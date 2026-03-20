@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `ToadStool` Compute Metrics Adapter
 //!
 //! **LEGACY EXAMPLE**: This example uses `reqwest` for demonstration purposes.

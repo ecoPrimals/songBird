@@ -67,14 +67,17 @@ mod integration_tests {
     };
 
     /// Test: All adapters can be created successfully
-    #[test]
-    fn test_all_adapters_creation() -> SongbirdResult<()> {
+    #[tokio::test]
+    async fn test_all_adapters_creation() -> SongbirdResult<()> {
         // Create all 4 production adapters
         let toadstool =
-            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))?;
-        let beardog = SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()))?;
-        let nestgate = StorageAdapter::new(format!("http://localhost:{}", test_health_port()))?;
-        let squirrel = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))?;
+            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port())).await?;
+        let beardog =
+            SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port())).await?;
+        let nestgate =
+            StorageAdapter::new(format!("http://localhost:{}", test_health_port())).await?;
+        let squirrel =
+            AIAdapter::new(format!("http://localhost:{}", test_federation_port())).await?;
 
         // Verify endpoints
         assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
@@ -85,21 +88,25 @@ mod integration_tests {
     }
 
     /// Test: All adapters support custom timeouts
-    #[test]
-    fn test_all_adapters_custom_timeouts() -> SongbirdResult<()> {
+    #[tokio::test]
+    async fn test_all_adapters_custom_timeouts() -> SongbirdResult<()> {
         use std::time::Duration;
 
         let toadstool =
-            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))?
+            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))
+                .await?
                 .with_timeout(Duration::from_secs(10));
 
-        let beardog = SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()))?
+        let beardog = SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()))
+            .await?
             .with_timeout(Duration::from_secs(10));
 
-        let nestgate = StorageAdapter::new(format!("http://localhost:{}", test_health_port()))?
+        let nestgate = StorageAdapter::new(format!("http://localhost:{}", test_health_port()))
+            .await?
             .with_timeout(Duration::from_secs(10));
 
-        let squirrel = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))?
+        let squirrel = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))
+            .await?
             .with_timeout(Duration::from_secs(20));
 
         assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
@@ -432,18 +439,24 @@ mod integration_tests {
     }
 
     /// Test: Adapter resilience - graceful handling of missing services
-    #[test]
-    fn test_adapter_endpoint_validation() -> SongbirdResult<()> {
+    #[tokio::test]
+    async fn test_adapter_endpoint_validation() -> SongbirdResult<()> {
         // All adapters should accept various endpoint formats
         let adapters = [
-            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))?
+            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))
+                .await?
                 .endpoint()
                 .to_string(),
-            SecurityAdapter::new("https://secure-beardog:8081".to_string())?.endpoint().to_string(),
-            StorageAdapter::new(format!("http://nestgate.local:{}", test_health_port()))?
+            SecurityAdapter::new("https://secure-beardog:8081".to_string())
+                .await?
                 .endpoint()
                 .to_string(),
-            AIAdapter::new(format!("http://192.168.1.100:{}", test_federation_port()))?
+            StorageAdapter::new(format!("http://nestgate.local:{}", test_health_port()))
+                .await?
+                .endpoint()
+                .to_string(),
+            AIAdapter::new(format!("http://192.168.1.100:{}", test_federation_port()))
+                .await?
                 .endpoint()
                 .to_string(),
         ];
@@ -518,7 +531,7 @@ mod integration_tests {
         assert!(
             time_series
                 .is_trending_up()
-                .map_err(|_e| SongbirdError::configuration(format!("trend check failed: {}", e)))?
+                .map_err(|e| SongbirdError::configuration(format!("trend check failed: {e}")))?
         );
         Ok(())
     }

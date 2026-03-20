@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Mock BearDog server for testing BTSP client
 //!
 //! Provides a lightweight mock implementation of BearDog's Unix socket server

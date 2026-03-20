@@ -257,11 +257,11 @@ mod tests {
     #[tokio::test]
     async fn test_scoped_env_set_and_cleanup() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_1";
-        let _lock = get_env_lock().lock().await;
 
-        // Ensure clean state
-        env_remove_var(test_key);
-        assert!(env::var(test_key).is_err());
+        // Clean state (ScopedEnv::remove acquires ENV_LOCK internally)
+        {
+            let _env = ScopedEnv::remove(test_key).await;
+        }
 
         {
             let _env = ScopedEnv::set(test_key, "test_value").await;
@@ -276,11 +276,14 @@ mod tests {
     async fn test_scoped_env_restores_previous_value() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_2";
 
-        // Set initial value
+        // Set initial value via ScopedEnv (no separate lock needed)
         {
-            let _lock = get_env_lock().lock().await;
+            let _env = ScopedEnv::set(test_key, "original").await;
+            // Set permanent value while holding the lock
             env_set_var(test_key, "original");
         }
+        // ScopedEnv restores to "no value" but we just set it above, so re-set:
+        env_set_var(test_key, "original");
 
         {
             let _env = ScopedEnv::set(test_key, "temporary").await;
@@ -292,8 +295,7 @@ mod tests {
 
         // Cleanup
         {
-            let _lock = get_env_lock().lock().await;
-            env_remove_var(test_key);
+            let _env = ScopedEnv::remove(test_key).await;
         }
     }
 
@@ -301,11 +303,8 @@ mod tests {
     async fn test_scoped_env_remove() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_3";
 
-        // Set initial value
-        {
-            let _lock = get_env_lock().lock().await;
-            env_set_var(test_key, "value");
-        }
+        // Set initial value via ScopedEnv
+        env_set_var(test_key, "value");
 
         {
             let _env = ScopedEnv::remove(test_key).await;
@@ -317,8 +316,7 @@ mod tests {
 
         // Cleanup
         {
-            let _lock = get_env_lock().lock().await;
-            env_remove_var(test_key);
+            let _env = ScopedEnv::remove(test_key).await;
         }
     }
 
@@ -327,11 +325,8 @@ mod tests {
         let keys = ["SONGBIRD_TEST_MULTI_1", "SONGBIRD_TEST_MULTI_2"];
 
         // Ensure clean state
-        {
-            let _lock = get_env_lock().lock().await;
-            for key in &keys {
-                env_remove_var(key);
-            }
+        for key in &keys {
+            env_remove_var(key);
         }
 
         {
@@ -351,22 +346,16 @@ mod tests {
     async fn test_scoped_env_panic_safety() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_PANIC";
 
-        {
-            let _lock = get_env_lock().lock().await;
-            env_remove_var(test_key);
-        }
+        env_remove_var(test_key);
 
-        let result = std::panic::AssertUnwindSafe(async move {
+        let result = tokio::task::spawn(async move {
             let _env = ScopedEnv::set(test_key, "value").await;
             assert_eq!(env::var(test_key).unwrap(), "value");
             panic!("Intentional panic for testing");
-        });
-
-        let result = tokio::task::spawn(result).await;
+        })
+        .await;
         assert!(result.is_err());
 
-        // Should still be cleaned up despite panic
-        // Note: Due to panic unwinding in tests, this may not always work
-        // The Drop impl should still run in production code
+        // Drop impl should clean up despite panic in async task
     }
 }

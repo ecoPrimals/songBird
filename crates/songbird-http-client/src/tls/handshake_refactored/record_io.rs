@@ -359,9 +359,10 @@ impl TlsHandshake {
         let mut random = Vec::with_capacity(32);
 
         // Use timestamp for first 4 bytes (not cryptographically secure, but good enough for testing)
-        let timestamp =
-            u32::try_from(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs())
-                .unwrap_or(0);
+        let timestamp = u32::try_from(
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
+        )
+        .unwrap_or(0);
         random.extend_from_slice(&timestamp.to_be_bytes());
 
         // Fill rest with pseudo-random (in production, BearDog should provide this)

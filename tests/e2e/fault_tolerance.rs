@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Fault Tolerance E2E Tests
 //!
 //! Tests for circuit breaking, timeouts, and retry logic

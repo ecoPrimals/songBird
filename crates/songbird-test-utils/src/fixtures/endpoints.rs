@@ -179,7 +179,7 @@ fn allocate_available_port() -> u16 {
 /// }
 /// ```
 pub fn clear_port_registry() {
-    let mut registry = PORT_REGISTRY.lock().unwrap();
+    let mut registry = PORT_REGISTRY.lock().expect("lock poisoned");
     registry.clear();
 }
 

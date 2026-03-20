@@ -9,9 +9,7 @@
 //! - `discovery`: Capability discovery (env, network, inference)
 //! - `capability_query`: Querying and selecting capability providers
 //! - `connection_manager`: Connection lifecycle management
-//! - `federation`: Federation coordination (TODO)
-//! - `cache`: Response caching (TODO)
-//! - `metrics`: `QoS` metrics collection (TODO)
+//! - `federation`, `cache`, `metrics`: described on the roadmap; only discovery/query/connection live here today
 //!
 //! Each module has clear boundaries and responsibilities.
 //! This orchestration layer provides a unified API by delegating to specialized components.
@@ -563,5 +561,5 @@ mod tests {
 #[allow(clippy::cast_precision_loss)]
 #[allow(clippy::cast_sign_loss)]
 #[allow(clippy::cast_possible_truncation)]
-#[allow(dead_code)] // TODO: Implement metrics calculation
+#[allow(dead_code)] // QoS metrics calculation hook reserved; callers not wired yet
 const fn calculate_metrics() {}

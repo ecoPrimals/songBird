@@ -199,17 +199,19 @@ impl QuicConfig {
         // Configure transport
         let mut transport = quinn::TransportConfig::default();
         transport.max_concurrent_bidi_streams(
-            quinn::VarInt::from_u64(self.max_concurrent_bidi_streams).unwrap(),
+            quinn::VarInt::from_u64(self.max_concurrent_bidi_streams)
+                .expect("value within VarInt range"),
         );
         transport.max_concurrent_uni_streams(
-            quinn::VarInt::from_u64(self.max_concurrent_uni_streams).unwrap(),
+            quinn::VarInt::from_u64(self.max_concurrent_uni_streams)
+                .expect("value within VarInt range"),
         );
 
         let idle_timeout = quinn::IdleTimeout::from(
             quinn::VarInt::from_u64(
                 u64::try_from(self.idle_timeout.as_millis()).unwrap_or(u64::MAX),
             )
-            .unwrap(),
+            .expect("value within VarInt range"),
         );
         transport.max_idle_timeout(Some(idle_timeout));
 
@@ -252,17 +254,19 @@ impl QuicConfig {
         // Configure transport
         let mut transport = quinn::TransportConfig::default();
         transport.max_concurrent_bidi_streams(
-            quinn::VarInt::from_u64(self.max_concurrent_bidi_streams).unwrap(),
+            quinn::VarInt::from_u64(self.max_concurrent_bidi_streams)
+                .expect("value within VarInt range"),
         );
         transport.max_concurrent_uni_streams(
-            quinn::VarInt::from_u64(self.max_concurrent_uni_streams).unwrap(),
+            quinn::VarInt::from_u64(self.max_concurrent_uni_streams)
+                .expect("value within VarInt range"),
         );
 
         let idle_timeout = quinn::IdleTimeout::from(
             quinn::VarInt::from_u64(
                 u64::try_from(self.idle_timeout.as_millis()).unwrap_or(u64::MAX),
             )
-            .unwrap(),
+            .expect("value within VarInt range"),
         );
         transport.max_idle_timeout(Some(idle_timeout));
 

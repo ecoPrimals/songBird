@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `NestGate` Storage Adapter
 //!
 //! **LEGACY EXAMPLE**: This example uses `reqwest` for demonstration purposes.

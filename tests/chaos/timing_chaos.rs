@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Timing Chaos Tests
 //!
 //! Tests system behavior with timing anomalies

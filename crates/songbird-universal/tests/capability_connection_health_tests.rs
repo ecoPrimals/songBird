@@ -33,22 +33,16 @@
     clippy::cast_precision_loss,
     clippy::cast_possible_wrap
 )]
-#![cfg(feature = "tests-incomplete")]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-
-//! NOTE: Disabled - requires fixes
 
 //! Comprehensive tests for Capability Connection and Health Management
 //!
 //! Tests all connection management, health checking, and service monitoring functionality
 
-// Unused imports removed - can be re-added when tests are re-enabled
-// use songbird_test_utils::network_fixtures::*;
-// use songbird_test_utils::test_discovery_port;
-// use songbird_test_utils::test_federation_port;
-// use songbird_test_utils::test_health_port;
-// use songbird_test_utils::test_orchestrator_port;
+use songbird_test_utils::network_fixtures::{
+    test_discovery_port, test_federation_port, test_health_port, test_orchestrator_port,
+};
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::capabilities::{
     ConnectionHealth, PrimalConnection, PrimalType as CapPrimalType,
@@ -74,6 +68,7 @@ fn create_test_primal_connection(
         endpoint: endpoint.into(),
         health,
         last_contact: chrono::Utc::now(),
+        last_health_check: None,
         metadata: HashMap::new(),
     }
 }
@@ -93,9 +88,9 @@ fn create_test_service_connection(
 fn create_test_service_info(name: &str, endpoint: &str, health: HealthStatus) -> ServiceInfo {
     ServiceInfo {
         name: name.to_string(),
+        primal_type: PrimalType::new("generic"),
         endpoint: endpoint.to_string(),
         capabilities: vec![],
-        primal_type: PrimalType::new("generic"),
         health,
         metadata: HashMap::new(),
     }
@@ -349,12 +344,11 @@ fn test_service_connection_with_different_health_states() {
 
 #[test]
 fn test_service_connection_debug() -> SongbirdResult<()> {
-    let conn = create_test_service_connection(
-        format!("http://localhost:{}", test_orchestrator_port()),
-        HealthStatus::Healthy,
-    );
+    let port = test_orchestrator_port();
+    let conn =
+        create_test_service_connection(format!("http://localhost:{port}"), HealthStatus::Healthy);
     let debug_str = format!("{conn:?}");
-    assert!(debug_str.contains("localhost:8080"));
+    assert!(debug_str.contains(&format!("localhost:{port}")));
     assert!(debug_str.contains("Healthy"));
     Ok(())
 }

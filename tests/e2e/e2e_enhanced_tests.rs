@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Enhanced End-to-End Tests
 //!
 //! Additional comprehensive E2E test scenarios

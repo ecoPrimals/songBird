@@ -267,20 +267,69 @@ struct HealthCheckResult {
     error_message: Option<String>,
 }
 
+/// Convert internal `ServiceInstance` to the trait's `ServiceInfo`
+fn instance_to_service_info(instance: &ServiceInstance) -> crate::traits::ServiceInfo {
+    use crate::traits::{ServiceEndpoint as TraitEndpoint, ServiceStatus};
+    use chrono::Utc;
+
+    let endpoint = TraitEndpoint {
+        address: instance.endpoint.clone(),
+        port: 0,
+        protocol: "http".to_string(),
+        path: String::new(),
+        tls: instance.endpoint.starts_with("https"),
+    };
+
+    crate::traits::ServiceInfo {
+        service_id: instance.id.clone(),
+        name: instance.name.clone(),
+        version: instance.metadata.get("version").cloned().unwrap_or_else(|| "0.0.0".to_string()),
+        service_type: instance.metadata.get("type").cloned().unwrap_or_else(|| "unknown".to_string()),
+        description: instance.metadata.get("description").cloned(),
+        endpoints: vec![endpoint],
+        health_check_endpoint: Some(format!("{}/health", instance.endpoint.trim_end_matches('/'))),
+        metadata: instance.metadata.iter().map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone()))).collect(),
+        tags: instance.capabilities.clone(),
+        dependencies: Vec::new(),
+        status: ServiceStatus::Active,
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+        instance_id: instance.id.clone(),
+        host: instance.endpoint.clone(),
+        port: 0,
+    }
+}
+
+/// Convert the trait's `ServiceInfo` to internal `ServiceInstance`
+fn service_info_to_instance(info: &crate::traits::ServiceInfo) -> ServiceInstance {
+    let endpoint = info.endpoints.first()
+        .map(|e| e.address.clone())
+        .unwrap_or_default();
+
+    ServiceInstance {
+        id: info.service_id.clone(),
+        name: info.name.clone(),
+        endpoint,
+        capabilities: info.tags.clone(),
+        health_status: "unknown".to_string(),
+        metadata: info.metadata.iter()
+            .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+            .collect(),
+    }
+}
+
 impl ServiceDiscovery for ProductionServiceDiscovery {
     async fn discover(&self, query: crate::traits::ServiceQuery) -> SongbirdResult<Vec<crate::traits::ServiceInfo>> {
         info!("Discovering services with query: {:?}", query);
 
         let services = self.services.read().await;
-        let discovered_services: Vec<ServiceInstance> = services
+        let discovered: Vec<crate::traits::ServiceInfo> = services
             .values()
             .filter(|service| {
-                // Filter by health status
                 service.health_status == ServiceHealthStatus::Healthy
                     || service.health_status == ServiceHealthStatus::Degraded
             })
             .filter(|service| {
-                // Apply query filters
                 if let Some(ref name) = query.name {
                     if !service.instance.name.contains(name) {
                         return false;
@@ -288,18 +337,26 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
                 }
                 true
             })
-            .map(|service| service.instance.clone())
+            .map(|service| instance_to_service_info(&service.instance))
             .collect();
 
-        info!("Discovered {} services", discovered_services.len());
-        
-        // Convert ServiceInstance to ServiceInfo
-        // This is a placeholder - actual conversion would be needed
-        Ok(vec![])
+        info!("Discovered {} services", discovered.len());
+        Ok(discovered)
     }
 
-    async fn register(&self, _service: crate::traits::ServiceInfo) -> SongbirdResult<()> {
-        // Placeholder - needs ServiceInfo to ServiceInstance conversion
+    async fn register(&self, service: crate::traits::ServiceInfo) -> SongbirdResult<()> {
+        let instance = service_info_to_instance(&service);
+        let registered = RegisteredService {
+            instance,
+            registered_at: SystemTime::now(),
+            last_heartbeat: None,
+            health_status: ServiceHealthStatus::Unknown,
+            retry_count: 0,
+        };
+
+        let mut services = self.services.write().await;
+        info!("Registering service: {}", service.service_id);
+        services.insert(service.service_id, registered);
         Ok(())
     }
 
@@ -313,38 +370,67 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
             warn!("Attempted to deregister unknown service: {}", service_id);
         }
 
-        // Also remove from health cache
         let mut health_cache = self.health_cache.write().await;
         health_cache.remove(service_id);
 
         Ok(())
     }
 
-    async fn watch(&self, _query: crate::traits::ServiceQuery) -> SongbirdResult<std::pin::Pin<Box<dyn futures::stream::Stream<Item = crate::traits::ServiceEvent> + Send>>> {
-        // Not implemented for production discovery
-        Ok(Box::pin(futures::stream::empty()))
+    async fn watch(&self, query: crate::traits::ServiceQuery) -> SongbirdResult<std::pin::Pin<Box<dyn futures::stream::Stream<Item = crate::traits::ServiceEvent> + Send>>> {
+        use tokio_stream::wrappers::IntervalStream;
+        use futures::StreamExt;
+
+        let services = Arc::clone(&self.services);
+        let interval = tokio::time::interval(self.config.health_check_interval);
+
+        let stream = IntervalStream::new(interval)
+            .then(move |_| {
+                let services = Arc::clone(&services);
+                let query = query.clone();
+                async move {
+                    let guard = services.read().await;
+                    let matching: Vec<_> = guard.values()
+                        .filter(|s| {
+                            if let Some(ref name) = query.name {
+                                s.instance.name.contains(name)
+                            } else {
+                                true
+                            }
+                        })
+                        .map(|s| instance_to_service_info(&s.instance))
+                        .collect();
+                    crate::traits::ServiceEvent::ServicesUpdated(matching)
+                }
+            });
+
+        Ok(Box::pin(stream))
     }
 
-    async fn update_health(&self, service_id: &str, _health: crate::traits::discovery::ServiceHealthStatus) -> SongbirdResult<()> {
-        debug!("Checking health for service: {}", service_id);
-
-        let services = self.services.read().await;
-        if let Some(service) = services.get(service_id) {
-            let is_healthy = matches!(
-                service.health_status,
-                ServiceHealthStatus::Healthy | ServiceHealthStatus::Degraded
-            );
-            debug!("Service {} health status: {:?}", service_id, service.health_status);
-            Ok(())
+    async fn update_health(&self, service_id: &str, health: crate::traits::discovery::ServiceHealthStatus) -> SongbirdResult<()> {
+        let mut services = self.services.write().await;
+        if let Some(service) = services.get_mut(service_id) {
+            let internal_status = match health {
+                crate::traits::discovery::ServiceHealthStatus::Healthy => ServiceHealthStatus::Healthy,
+                crate::traits::discovery::ServiceHealthStatus::Degraded => ServiceHealthStatus::Degraded,
+                crate::traits::discovery::ServiceHealthStatus::Unhealthy => ServiceHealthStatus::Unhealthy,
+                _ => ServiceHealthStatus::Unknown,
+            };
+            debug!("Updating health for {}: {:?} -> {:?}", service_id, service.health_status, internal_status);
+            service.health_status = internal_status;
+            service.last_heartbeat = Some(SystemTime::now());
         } else {
-            warn!("Health check requested for unknown service: {}", service_id);
-            Ok(())
+            warn!("Health update requested for unknown service: {}", service_id);
         }
+        Ok(())
     }
 
     async fn list_all(&self) -> SongbirdResult<Vec<crate::traits::ServiceInfo>> {
-        // Placeholder
-        Ok(vec![])
+        let services = self.services.read().await;
+        let all: Vec<crate::traits::ServiceInfo> = services
+            .values()
+            .map(|s| instance_to_service_info(&s.instance))
+            .collect();
+        Ok(all)
     }
 
     async fn exists(&self, service_id: &str) -> SongbirdResult<bool> {
@@ -356,8 +442,16 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
         self.exists(service_id).await
     }
 
-    async fn update_metadata(&self, _service_id: &str, _metadata: HashMap<String, String>) -> SongbirdResult<()> {
-        // Not implemented yet
+    async fn update_metadata(&self, service_id: &str, metadata: HashMap<String, String>) -> SongbirdResult<()> {
+        let mut services = self.services.write().await;
+        if let Some(service) = services.get_mut(service_id) {
+            for (k, v) in &metadata {
+                service.instance.metadata.insert(k.clone(), v.clone());
+            }
+            debug!("Updated metadata for service {}: {} keys", service_id, metadata.len());
+        } else {
+            warn!("Metadata update requested for unknown service: {}", service_id);
+        }
         Ok(())
     }
 

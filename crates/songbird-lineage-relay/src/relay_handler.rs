@@ -99,7 +99,7 @@ impl RelayHandler {
             .get("bind_addr")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| "0.0.0.0:3479".parse().unwrap());
+            .unwrap_or_else(|| "0.0.0.0:3479".parse().expect("valid static default bind address"));
 
         info!("🚀 Starting relay server on {}", bind_addr);
 

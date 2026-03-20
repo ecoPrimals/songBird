@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Real Adapter Discovery E2E Tests
 //!
 //! **Purpose**: Test actual adapter discovery and connection workflows

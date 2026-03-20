@@ -229,29 +229,31 @@ impl CapabilityQuery {
             .to_string()
     }
 
-    /// Infer primal type from name
+    /// Infer primal type from name using only capability terms.
+    ///
+    /// Primal-agnostic: matches on domain terminology rather than specific
+    /// primal names. Provider identities are discovered at runtime.
     fn infer_primal_type(name: &str) -> PrimalType {
         let name_lower = name.to_lowercase();
 
-        // Capability terms first, known provider names as secondary hints
         if name_lower.contains("security")
             || name_lower.contains("auth")
-            || name_lower.contains("beardog")
+            || name_lower.contains("crypto")
         {
             PrimalType::Security
         } else if name_lower.contains("compute")
             || name_lower.contains("worker")
-            || name_lower.contains("toadstool")
+            || name_lower.contains("exec")
         {
             PrimalType::Compute
         } else if name_lower.contains("storage")
             || name_lower.contains("data")
-            || name_lower.contains("nestgate")
+            || name_lower.contains("persist")
         {
             PrimalType::Storage
         } else if name_lower.contains("ai")
-            || name_lower.contains("squirrel")
             || name_lower.contains("ml")
+            || name_lower.contains("inference")
         {
             PrimalType::AI
         } else {
@@ -266,10 +268,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_infer_primal_type() {
-        assert_eq!(CapabilityQuery::infer_primal_type("beardog"), PrimalType::Security);
-        assert_eq!(CapabilityQuery::infer_primal_type("toadstool"), PrimalType::Compute);
-        assert_eq!(CapabilityQuery::infer_primal_type("nestgate"), PrimalType::Storage);
-        assert_eq!(CapabilityQuery::infer_primal_type("squirrel"), PrimalType::AI);
+        assert_eq!(CapabilityQuery::infer_primal_type("security-provider"), PrimalType::Security);
+        assert_eq!(CapabilityQuery::infer_primal_type("auth-service"), PrimalType::Security);
+        assert_eq!(CapabilityQuery::infer_primal_type("compute-worker"), PrimalType::Compute);
+        assert_eq!(CapabilityQuery::infer_primal_type("data-storage"), PrimalType::Storage);
+        assert_eq!(CapabilityQuery::infer_primal_type("ml-inference"), PrimalType::AI);
+        assert_eq!(CapabilityQuery::infer_primal_type("unknown-service"), PrimalType::Generic);
     }
 
     #[tokio::test]
@@ -283,9 +287,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_infer_basic_capabilities() {
-        let caps = CapabilityQuery::infer_basic_capabilities("http://beardog:8443");
-        assert_eq!(caps.len(), 2); // auth + encryption
+        let caps = CapabilityQuery::infer_basic_capabilities("http://security-provider:8443");
+        assert_eq!(caps.len(), 2);
         assert!(caps.iter().any(|c| c.capability_type == "authentication"));
         assert!(caps.iter().any(|c| c.capability_type == "encryption"));
+
+        let caps = CapabilityQuery::infer_basic_capabilities("http://compute-worker:9000");
+        assert_eq!(caps.len(), 1);
+        assert!(caps.iter().any(|c| c.capability_type == "compute"));
     }
 }

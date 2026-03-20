@@ -43,8 +43,7 @@ impl QuicClient {
         let client_config = config.build_client_config()?;
 
         // Create endpoint (binds to random port)
-        #[allow(clippy::unwrap_used)] // constant address is always valid
-        let mut endpoint = Endpoint::client("[::]:0".parse().unwrap())?;
+        let mut endpoint = Endpoint::client("[::]:0".parse().expect("valid static address"))?;
         endpoint.set_default_client_config(client_config);
 
         debug!("QUIC client bound to {}", endpoint.local_addr()?);

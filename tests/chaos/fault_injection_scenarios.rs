@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Chaos engineering fault injection scenarios
 //!
 //! Active fault injection tests for resilience validation

@@ -133,7 +133,9 @@ mod tests {
             async fn discover_capabilities(
                 &self,
                 _connection: &PrimalConnection,
-            ) -> songbird_primal_coordination::Result<PrimalCapabilities> {
+            ) -> songbird_primal_coordination::Result<
+                songbird_primal_coordination::PrimalCapabilities,
+            > {
                 use songbird_primal_coordination::types::*;
                 Ok(PrimalCapabilities {
                     services: vec!["security".to_string()],

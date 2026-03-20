@@ -135,7 +135,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if characteristic discovery fails
-    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
+    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (ATT over L2CAP)
     pub async fn discover_characteristics(&mut self, service_uuid: &Uuid) -> Result<()> {
         debug!("Discovering characteristics for service: {}", service_uuid);
 
@@ -160,8 +160,8 @@ impl<T: Transport + 'static> GattClient<T> {
             start_handle, end_handle
         );
 
-        // TODO: Send request over L2CAP ATT channel (0x0004)
-        // Parse response and add characteristics to service
+        // ATT request bytes are assembled above; sending on L2CAP ATT (CID 0x0004) and parsing the
+        // response into `self.services` is not wired on this code path yet.
 
         Ok(())
     }
@@ -293,7 +293,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Read not supported
     /// - Read fails
-    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
+    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (ATT over L2CAP)
     pub async fn read_characteristic(&self, uuid: &Uuid) -> Result<Vec<u8>> {
         debug!("Reading characteristic: {}", uuid);
 
@@ -311,8 +311,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
                 trace!("Sending ATT Read Request for handle 0x{:04X}", characteristic.handle);
 
-                // TODO: Send request over L2CAP ATT channel (0x0004)
-                // Parse response and return value
+                // Returns empty payload: ATT read is not sent on L2CAP until the transport hook exists.
 
                 return Ok(Vec::new());
             }
@@ -363,7 +362,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Write not supported
     /// - Write fails
-    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
+    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (ATT over L2CAP)
     pub async fn write_characteristic(&self, uuid: &Uuid, data: &[u8]) -> Result<()> {
         debug!("Writing {} bytes to characteristic: {}", data.len(), uuid);
 
@@ -398,8 +397,7 @@ impl<T: Transport + 'static> GattClient<T> {
                     characteristic.handle
                 );
 
-                // TODO: Send request over L2CAP ATT channel (0x0004)
-                // If with_response, wait for Write Response
+                // Succeeds without I/O: write request/command bytes are not sent on L2CAP in this build.
 
                 return Ok(());
             }

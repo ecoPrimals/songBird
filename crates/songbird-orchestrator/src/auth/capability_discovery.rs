@@ -15,7 +15,7 @@ use tracing::{debug, info, warn};
 
 /// Well-known search terms for security capability socket scanning.
 /// Capability terms come first; known provider names are secondary hints.
-const SECURITY_SEARCH_TERMS: &[&str] = &["security", "auth", "beardog"];
+const SECURITY_SEARCH_TERMS: &[&str] = &["security", "auth", "encryption"];
 
 /// Discover security provider socket via capability-based discovery.
 ///
@@ -86,42 +86,25 @@ where
             return Some(cap_path);
         }
         debug!("   ⏭️  XDG capability path not found: {}", cap_path.display());
-
-        // Known provider hint
-        let hint_path = PathBuf::from(&xdg_dir).join("biomeos").join("beardog.sock");
-        if hint_path.exists() {
-            info!(
-                "   ✅ Found security provider via XDG (known provider): {}",
-                hint_path.display()
-            );
-            return Some(hint_path);
-        }
-        debug!("   ⏭️  XDG provider path not found: {}", hint_path.display());
     }
 
-    // UID-based fallback
     if let Ok(uid) = env_reader("UID") {
-        for name in &["security.sock", "beardog.sock"] {
-            let uid_path = PathBuf::from(format!("/run/user/{uid}/biomeos/{name}"));
-            if uid_path.exists() {
-                info!("   ✅ Found security provider via UID: {}", uid_path.display());
-                return Some(uid_path);
-            }
+        let uid_path = PathBuf::from(format!("/run/user/{uid}/biomeos/security.sock"));
+        if uid_path.exists() {
+            info!("   ✅ Found security provider via UID: {}", uid_path.display());
+            return Some(uid_path);
         }
     }
 
-    // Legacy /tmp fallbacks — capability name first
-    for name in &["security.sock", "beardog.sock"] {
-        let path = PathBuf::from(format!("/tmp/biomeos/{name}"));
-        if path.exists() {
-            info!("   ✅ Found security provider at: {}", path.display());
-            return Some(path);
-        }
-        let legacy = PathBuf::from(format!("/tmp/{name}"));
-        if legacy.exists() {
-            info!("   ✅ Found security provider at legacy path: {}", legacy.display());
-            return Some(legacy);
-        }
+    let path = PathBuf::from("/tmp/biomeos/security.sock");
+    if path.exists() {
+        info!("   ✅ Found security provider at: {}", path.display());
+        return Some(path);
+    }
+    let legacy = PathBuf::from("/tmp/security.sock");
+    if legacy.exists() {
+        info!("   ✅ Found security provider at legacy path: {}", legacy.display());
+        return Some(legacy);
     }
 
     // Strategy 6: Scan socket directories for any security-capable socket
@@ -197,7 +180,7 @@ where
 
     // Check family-specific sockets — capability name first
     if let Ok(xdg_dir) = env_reader("XDG_RUNTIME_DIR") {
-        for base in &["security", "beardog"] {
+        for base in &["security", "auth"] {
             let family_path =
                 PathBuf::from(&xdg_dir).join("biomeos").join(format!("{base}-{family_id}.sock"));
             if family_path.exists() {

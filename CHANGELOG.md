@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.2] - 2026-03-20 - Deep Audit: Production Evolution & Capability Purity
+
+### Changed - Production Code Evolution
+- All JSON-RPC placeholder handlers wired to live `FederatedServiceRegistry` and `FederationState`
+- `ProductionServiceDiscovery` stubs evolved to real implementations (filtering, registration, health, watch stream)
+- iOS XPC `create_endpoint` evolved from `warn!()` stub to `InProcess` fallback with proper errors
+- `production_storage.rs` fully rewritten (was syntax-corrupted)
+
+### Changed - Capability-Only Discovery
+- All discovery paths purged of hardcoded primal names (beardog, squirrel, nestgate, toadstool)
+- Socket patterns, search terms, and TCP discovery now use capability terms only (crypto, security, ai, storage)
+- BTSP provider URL configurable via `SONGBIRD_UPA_ENDPOINT` env var
+- Tower CLI port/bind respect `SONGBIRD_HTTP_PORT` and `SONGBIRD_BIND_ADDRESS` env vars
+
+### Fixed
+- Test deadlock in `env_isolation.rs` (double mutex acquisition)
+- SSH deploy hardcoded user `"eastgate"` → `$USER` fallback
+- All XDG socket discovery e2e tests updated for capability-named sockets
+
+### Metrics
+- Line coverage baseline: 62.04% (148,723 instrumented lines via cargo llvm-cov)
+- Zero production `todo!()`, `FIXME`, `HACK`, `unimplemented!()`
+- All 29 crates pass clippy pedantic + nursery with `-D warnings`
+
+### Cleaned
+- Archived orphaned `network/scan.rs` (dead code, never compiled)
+- Archived superseded handoffs to fossil record
+
+---
+
 ## [v0.3.1] - 2026-03-19 - Deep Debt: Full Compliance, Edition 2024, UniBin
 
 ### Changed - Clippy Pedantic Completion (29/29 crates clean)

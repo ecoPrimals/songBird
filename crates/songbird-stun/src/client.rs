@@ -331,8 +331,7 @@ impl StunClient {
     pub async fn discover_public_endpoint(&self, stun_server: &str) -> StunResult<PublicEndpoint> {
         let address = self.discover_public_address(stun_server).await?;
 
-        // TODO: Implement full NAT type detection (requires multiple requests)
-        // For now, return Unknown NAT type
+        // Full NAT typing deferred: would need multiple STUN exchanges and server diversity.
         Ok(PublicEndpoint {
             address,
             nat_type: NatType::Unknown,

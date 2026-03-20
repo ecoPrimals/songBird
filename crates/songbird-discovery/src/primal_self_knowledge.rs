@@ -93,26 +93,20 @@ impl PrimalSelfKnowledge {
     ///
     /// No hardcoding - discovers what this binary can do.
     fn introspect_capabilities() -> Vec<String> {
-        let mut caps = Vec::new();
-
-        // Check compiled features
-        #[cfg(feature = "security")]
-        caps.push("security".to_string());
-
-        #[cfg(feature = "storage")]
-        caps.push("storage".to_string());
-
-        #[cfg(feature = "compute")]
-        caps.push("compute".to_string());
-
-        #[cfg(feature = "ai")]
-        caps.push("ai".to_string());
-
-        #[cfg(feature = "discovery")]
-        caps.push("discovery".to_string());
-
-        #[cfg(feature = "orchestration")]
-        caps.push("orchestration".to_string());
+        let mut caps = vec![
+            #[cfg(feature = "security")]
+            "security".to_string(),
+            #[cfg(feature = "storage")]
+            "storage".to_string(),
+            #[cfg(feature = "compute")]
+            "compute".to_string(),
+            #[cfg(feature = "ai")]
+            "ai".to_string(),
+            #[cfg(feature = "discovery")]
+            "discovery".to_string(),
+            #[cfg(feature = "orchestration")]
+            "orchestration".to_string(),
+        ];
 
         // Check environment hints
         if std::env::var("ENABLE_SECURITY").is_ok() && !caps.contains(&"security".to_string()) {
@@ -128,28 +122,32 @@ impl PrimalSelfKnowledge {
             && let Some(name) = exe.file_name().and_then(|n| n.to_str())
         {
             let name_lower = name.to_lowercase();
-            // Capability terms first, known binary names as hints
             if name_lower.contains("security")
                 || name_lower.contains("crypto")
-                || name_lower.contains("beardog")
+                || name_lower.contains("auth")
             {
                 caps.push("security".to_string());
             } else if name_lower.contains("ai")
                 || name_lower.contains("inference")
-                || name_lower.contains("squirrel")
+                || name_lower.contains("ml")
             {
                 caps.push("ai".to_string());
             } else if name_lower.contains("discovery")
                 || name_lower.contains("gateway")
-                || name_lower.contains("nestgate")
+                || name_lower.contains("registry")
             {
                 caps.push("discovery".to_string());
             } else if name_lower.contains("storage")
-                || name_lower.contains("compute")
-                || name_lower.contains("toadstool")
+                || name_lower.contains("data")
+                || name_lower.contains("persist")
             {
                 caps.push("storage".to_string());
-            } else if name_lower.contains("orchestrat") || name_lower.contains("songbird") {
+            } else if name_lower.contains("compute")
+                || name_lower.contains("worker")
+                || name_lower.contains("exec")
+            {
+                caps.push("compute".to_string());
+            } else if name_lower.contains("orchestrat") || name_lower.contains("coordinat") {
                 caps.push("orchestration".to_string());
             }
         }
@@ -340,17 +338,17 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
 
             // Attempt to resolve via DNS
             // This is a simple implementation - production should use hickory-dns
-            if let Ok(mut addrs) = format!("{service_name}:0").to_socket_addrs() {
-                if let Some(addr) = addrs.next() {
-                    return Ok(PrimalInfo {
-                        name: capability.to_string(),
-                        host: addr.ip().to_string(),
-                        port: 8080,
-                        capabilities: vec![capability.to_string()],
-                        discovered_at: SystemTime::now(),
-                        discovery_method: "dns-srv".to_string(),
-                    });
-                }
+            if let Ok(mut addrs) = format!("{service_name}:0").to_socket_addrs()
+                && let Some(addr) = addrs.next()
+            {
+                return Ok(PrimalInfo {
+                    name: capability.to_string(),
+                    host: addr.ip().to_string(),
+                    port: 8080,
+                    capabilities: vec![capability.to_string()],
+                    discovered_at: SystemTime::now(),
+                    discovery_method: "dns-srv".to_string(),
+                });
             }
         }
 

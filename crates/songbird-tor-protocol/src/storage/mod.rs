@@ -26,7 +26,7 @@ pub trait Storage: Send + Sync {
 /// In-memory storage (default)
 #[derive(Default)]
 pub struct MemoryStorage {
-    // TODO: Add RwLock<Option<Consensus>>
+    // Intentionally stateless: MemoryStorage does not retain consensus between calls.
 }
 
 impl Storage for MemoryStorage {

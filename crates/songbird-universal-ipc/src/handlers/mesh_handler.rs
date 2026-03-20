@@ -540,8 +540,10 @@ impl MeshHandler {
         let beacon_bytes = serde_json::to_vec(&beacon).unwrap_or_default();
 
         // Send to multicast group and broadcast
-        let multicast_addr: SocketAddr = format!("239.255.77.77:{port}").parse().unwrap();
-        let broadcast_addr: SocketAddr = format!("255.255.255.255:{port}").parse().unwrap();
+        let multicast_addr: SocketAddr =
+            format!("239.255.77.77:{port}").parse().expect("valid multicast socket address");
+        let broadcast_addr: SocketAddr =
+            format!("255.255.255.255:{port}").parse().expect("valid broadcast socket address");
 
         // Try both multicast and broadcast
         let _ = socket.send_to(&beacon_bytes, multicast_addr).await;

@@ -279,7 +279,7 @@ impl BeaconMesh {
         SignalingMessage::Register {
             peer_info: PeerInfo {
                 node_id: self.my_node_id.clone(),
-                public_addr: "0.0.0.0:0".parse().unwrap(), // Will be filled by STUN
+                public_addr: "0.0.0.0:0".parse().expect("valid static address"), // Will be filled by STUN
                 local_addr: None,
                 nat_type: NatType::Unknown,
                 timestamp: SystemTime::now(),

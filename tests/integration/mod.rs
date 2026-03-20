@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration Tests Module
 //!
 //! This module contains integration tests that test Songbird components

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! E2E Test: Runtime Capability-Based Discovery
 //!
 //! Tests the new RuntimeDiscoveryEngine with zero hardcoding.

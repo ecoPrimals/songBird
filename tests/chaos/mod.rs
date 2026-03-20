@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Chaos Engineering Tests for Songbird
 //!
 //! These tests intentionally introduce failures and unexpected conditions

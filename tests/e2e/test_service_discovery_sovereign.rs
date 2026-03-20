@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! E2E Test: Sovereign Service Discovery
 //!
 //! Tests that services discover each other through capability-based discovery

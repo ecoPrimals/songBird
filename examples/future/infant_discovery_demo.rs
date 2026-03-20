@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # 🍼 Infant Discovery Demo
 //!
 //! **Demonstrates zero-knowledge startup with pure capability discovery**
@@ -179,7 +180,7 @@ async fn discover_capability(capability: &str) -> Result<CapabilityProvider, Str
     // Method 4: Network scanning (if enabled)
     // Only scan if explicitly enabled for security
     if std::env::var("SONGBIRD_ENABLE_NETWORK_SCAN").is_ok() {
-        // TODO: Implement network scanning
+        // Network scan hook: env gate only; no scan implementation in this demo.
     }
 
     Err(format!(

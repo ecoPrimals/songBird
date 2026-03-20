@@ -40,7 +40,5 @@ pub mod transcript;
 pub use client_hello::{ClientHelloBuilder, generate_random};
 pub use transcript::Transcript;
 
-// TODO: Integrate remaining modules into main handshake flow
-// - encryption.rs - Application data encryption
-// - decryption.rs - Application data decryption
-// - certificates.rs - Certificate processing (may be in parser.rs)
+// v2 layout: client_hello / transcript / parser / server_hello / keys / finished are the integrated
+// surface; record-layer encrypt/decrypt helpers live alongside the legacy handshake until unified.

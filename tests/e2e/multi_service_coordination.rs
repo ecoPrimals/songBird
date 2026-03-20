@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! End-to-End Tests for Multi-Service Coordination
 //!
 //! These tests validate that multiple services can coordinate effectively

@@ -194,7 +194,7 @@ impl Transport for UsbTransport {
         }
 
         // ACL data via control OUT (simplified for now)
-        // TODO: Use bulk endpoint when we add streaming support
+        // Bulk endpoints remain available for a higher-throughput path when streaming lands.
         self.interface
             .control_out(
                 ControlOut {
@@ -220,7 +220,7 @@ impl Transport for UsbTransport {
         }
 
         // ACL data via control IN (simplified for now)
-        // TODO: Use bulk endpoint when we add streaming support
+        // Bulk IN can replace this once a streaming-oriented ACL path is implemented.
         let data = self
             .interface
             .control_in(

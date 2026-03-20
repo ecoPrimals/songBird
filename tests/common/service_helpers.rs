@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Service lifecycle helpers for testing
 //!
 //! Provides utilities for starting, stopping, and managing test services.

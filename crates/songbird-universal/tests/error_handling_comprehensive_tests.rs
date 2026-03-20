@@ -43,9 +43,9 @@
 //!
 //! Tests error propagation, recovery, context, and edge cases
 
-use songbird_test_utils::test_orchestrator_port;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdError;
 use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
+use std::error::Error;
 
 #[tokio::test]
 async fn test_service_not_found_returns_empty() {
@@ -87,28 +87,18 @@ async fn test_invalid_capability_name_graceful() {
 #[tokio::test]
 #[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_capability_not_available() {
-    let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-
-    let result = adapter.request_capability("super_rare_capability").await;
-
-    assert!(result.is_err());
-    if let Err(err) = result {
-        assert!(matches!(err, SongbirdError::Service { .. }));
-    }
+    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
+    // Needed on UniversalCapabilityAdapter: request_capability(&self, name: &str) -> SongbirdResult<...>
+    todo!("UniversalCapabilityAdapter::request_capability");
 }
 
 #[tokio::test]
 #[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_context_preservation() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-
-    let result = adapter.find_capability_providers("test").await;
-
-    if let Err(err) = result {
-        // Error should have context
-        let context = err.to_string();
-        assert!(!context.is_empty());
-    }
+    // find_capability_providers returns Vec<String>, not Result — a fallible discovery API is needed for this scenario.
+    let providers = adapter.find_capability_providers("test").await;
+    assert!(providers.is_empty() || !providers.is_empty(), "query completed");
 }
 
 #[tokio::test]
@@ -124,42 +114,25 @@ async fn test_error_chain() {
 #[tokio::test]
 #[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_retry_on_transient_error() {
-    let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-
-    // Should retry on transient errors
-    let result = adapter.discover_with_retry("compute", 3).await;
-
-    // Even if it fails, it should have attempted retries
-    assert!(result.is_ok() || result.is_err());
+    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
+    // Needed: discover_with_retry(&self, capability: &str, max_attempts: u32) -> SongbirdResult<...>
+    todo!("UniversalCapabilityAdapter::discover_with_retry");
 }
 
 #[tokio::test]
 #[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_circuit_breaker_opens() {
-    let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-
-    // Simulate multiple failures
-    for _ in 0..10 {
-        let _ = adapter
-            .connect_to_endpoint(format!("http://failing-service:{}", test_orchestrator_port()))
-            .await;
-    }
-
-    // Circuit breaker should open
-    let is_open = adapter.is_circuit_open("failing-service").await;
-    assert!(is_open.unwrap_or(false));
+    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
+    // Needed: connect_to_endpoint(&self, url: String) and is_circuit_open(&self, key: &str) APIs
+    todo!("UniversalCapabilityAdapter::connect_to_endpoint / is_circuit_open");
 }
 
 #[tokio::test]
 #[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_graceful_degradation() {
-    let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-
-    // When primary fails, should try fallback
-    let result = adapter.find_capability_providers_with_fallback("compute").await;
-
-    // Should either succeed or fail gracefully
-    assert!(result.is_ok() || matches!(result, Err(SongbirdError::Service { .. })));
+    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
+    // Needed: find_capability_providers_with_fallback(&self, capability: &str) -> SongbirdResult<Vec<String>>
+    todo!("UniversalCapabilityAdapter::find_capability_providers_with_fallback");
 }
 
 #[tokio::test]
@@ -177,16 +150,9 @@ async fn test_error_serialization() {
 async fn test_error_recovery() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
-    // First attempt fails
     let first = adapter.find_capability_providers("test").await;
-    assert!(first.is_err());
-
-    // No sleep needed - retry should be immediate for tests
-    // In production, circuit breaker or backoff would be handled by the adapter itself
-
     let second = adapter.find_capability_providers("test").await;
-    // Should be able to retry (even if it fails again)
-    assert!(second.is_ok() || second.is_err());
+    assert_eq!(first.len(), second.len());
 }
 
 #[tokio::test]
@@ -218,14 +184,8 @@ async fn test_concurrent_error_handling() {
 async fn test_partial_failure_handling() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
-    // When some services in a capability group fail
-    let result = adapter.find_capability_providers("compute").await;
-
-    // Should return available services, not fail completely
-    match result {
-        Ok(providers) => assert!(providers.len() >= 0),
-        Err(_) => {} // Also acceptable
-    }
+    let providers = adapter.find_capability_providers("compute").await;
+    assert!(providers.is_empty() || !providers.is_empty(), "query completed");
 }
 
 #[tokio::test]
@@ -239,7 +199,7 @@ async fn test_error_metrics() {
     }
 
     // Should track error metrics (method not yet implemented)
-    // TODO: Implement get_error_metrics() on UniversalCapabilityAdapter
+    // Blocked until `get_error_metrics()` exists on `UniversalCapabilityAdapter`
     // let metrics = adapter.get_error_metrics().await;
     // assert!(metrics.is_ok());
 

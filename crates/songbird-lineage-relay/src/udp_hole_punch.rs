@@ -93,7 +93,7 @@ pub async fn udp_hole_punch(
     info!("🔗 Attempting UDP hole punch to {} ({})", peer_id, peer_addr);
     debug!(
         "   Local address: {}",
-        local_socket.local_addr().unwrap_or_else(|_| "unknown".parse().unwrap())
+        local_socket.local_addr().map_or_else(|_| "unavailable".to_string(), |a| a.to_string())
     );
     debug!("   Max attempts: {}", config.max_attempts);
 
@@ -218,7 +218,7 @@ pub async fn coordinated_hole_punch(
 ///
 /// Bound UDP socket ready for hole punching.
 pub async fn create_hole_punch_socket(bind_addr: Option<SocketAddr>) -> Result<UdpSocket> {
-    let addr = bind_addr.unwrap_or_else(|| "0.0.0.0:0".parse().unwrap());
+    let addr = bind_addr.unwrap_or_else(|| "0.0.0.0:0".parse().expect("valid static address"));
 
     UdpSocket::bind(addr)
         .await

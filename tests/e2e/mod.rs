@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # End-to-End Test Framework
 //!
 //! **Purpose**: Validate complete workflows across multiple components

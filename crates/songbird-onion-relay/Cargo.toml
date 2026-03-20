@@ -26,7 +26,9 @@ categories = ["network-programming", "cryptography"]
 default = []
 # Sovereign Onion Service (Pure Rust, BearDog crypto delegation)
 # Enable with `--features onion` for .onion address support
-onion = ["songbird-sovereign-onion"]
+# `standalone` enables `OnionStorage::load_or_generate_identity` for sync transport init
+# (production paths use `load_or_generate_identity_via_beardog` async API).
+onion = ["songbird-sovereign-onion", "songbird-sovereign-onion/standalone"]
 
 [dependencies]
 # Async runtime

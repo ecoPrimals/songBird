@@ -136,7 +136,7 @@ impl OnionIdentity {
         let signing_key = SigningKey::from_bytes(&secret_bytes);
         let verifying_key = signing_key.verifying_key();
         let onion_address = derive_onion_address(&verifying_key);
-        let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         Self {
             secret_key: secret_bytes,
@@ -387,27 +387,27 @@ impl SessionKeys {
         type HmacSha256 = Hmac<Sha256>;
 
         // 1. HKDF-Extract: PRK = HMAC-SHA256(salt=zeros, IKM=shared_secret)
-        let mut mac = HmacSha256::new_from_slice(&[0u8; 32]).unwrap();
+        let mut mac = HmacSha256::new_from_slice(&[0u8; 32]).expect("known size");
         mac.update(shared_secret);
         let prk = mac.finalize().into_bytes();
 
         // 2. HKDF-Expand for client key
-        let mut mac = HmacSha256::new_from_slice(&prk).unwrap();
+        let mut mac = HmacSha256::new_from_slice(&prk).expect("known size");
         mac.update(b"sovereign-onion client");
         mac.update(client_nonce);
         mac.update(server_nonce);
         mac.update(&[0x01]); // Counter
         let client_key_full = mac.finalize().into_bytes();
-        let client_key: [u8; 32] = client_key_full[..32].try_into().unwrap();
+        let client_key: [u8; 32] = client_key_full[..32].try_into().expect("known size");
 
         // 3. HKDF-Expand for server key
-        let mut mac = HmacSha256::new_from_slice(&prk).unwrap();
+        let mut mac = HmacSha256::new_from_slice(&prk).expect("known size");
         mac.update(b"sovereign-onion server");
         mac.update(client_nonce);
         mac.update(server_nonce);
         mac.update(&[0x01]); // Counter
         let server_key_full = mac.finalize().into_bytes();
-        let server_key: [u8; 32] = server_key_full[..32].try_into().unwrap();
+        let server_key: [u8; 32] = server_key_full[..32].try_into().expect("known size");
 
         // Assign keys based on role
         if is_client {

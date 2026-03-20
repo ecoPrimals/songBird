@@ -44,9 +44,12 @@
 //!
 //! Tests for service discovery, announcements, and protocol handling
 
-use songbird_test_utils::test_orchestrator_port;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use std::time::Duration;
+
+fn test_port() -> u16 {
+    8080
+}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_types_available() {
@@ -117,14 +120,14 @@ fn test_ttl_comparison() {
 
 #[test]
 fn test_endpoint_variations() {
-    let endpoints = vec![
-        format!("http://localhost:{}", test_orchestrator_port()),
-        "https://secure.example.com",
-        "http://192.168.1.100:9000",
-        "ws://websocket.example.com:3000",
+    let endpoints: Vec<String> = vec![
+        format!("http://localhost:{}", test_port()),
+        "https://secure.example.com".to_string(),
+        "http://192.168.1.100:9000".to_string(),
+        "ws://websocket.example.com:3000".to_string(),
     ];
 
-    for endpoint in endpoints {
+    for endpoint in &endpoints {
         assert!(!endpoint.is_empty());
         assert!(endpoint.contains("://"));
     }
@@ -162,31 +165,23 @@ fn test_service_map_operations() -> SongbirdResult<()> {
 }
 
 #[test]
-fn test_service_find_by_type() -> SongbirdResult<()> {
+fn test_service_find_by_type() {
     let services = vec![("compute-1", "compute"), ("storage-1", "storage")];
 
     let storage = services.iter().find(|(_, stype)| *stype == "storage");
 
-    assert!(storage.is_some());
-    assert_eq!(
-        storage.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.0,
-        "storage-1"
-    );
-    Ok(())
+    let storage = storage.expect("storage service should be found");
+    assert_eq!(storage.0, "storage-1");
 }
 
 #[test]
-fn test_ttl_expiration_logic() -> SongbirdResult<()> {
+fn test_ttl_expiration_logic() {
     let ttl = Duration::from_secs(30);
     let elapsed = Duration::from_secs(10);
 
     let remaining = ttl.checked_sub(elapsed);
-    assert!(remaining.is_some());
-    assert_eq!(
-        remaining.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
-        Duration::from_secs(20)
-    );
-    Ok(())
+    let remaining = remaining.expect("subtraction should not underflow");
+    assert_eq!(remaining, Duration::from_secs(20));
 }
 
 #[test]

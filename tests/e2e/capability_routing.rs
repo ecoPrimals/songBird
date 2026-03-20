@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-Based Routing E2E Tests
 //!
 //! Tests for multi-capability service routing and discovery

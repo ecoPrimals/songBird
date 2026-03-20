@@ -129,7 +129,7 @@ impl OnionServiceDescriptor {
     ///
     /// Returns error if descriptor creation fails.
     pub fn new(keys: &OnionServiceKeys, intro_points: &[IntroductionPoint]) -> Result<Self> {
-        // TODO: Generate descriptor signing key (blinded from identity)
+        // Descriptor signing uses the identity public key until blinded signing keys are modeled.
         let signing_key = keys.identity_public;
 
         // Default lifetime: 3 hours

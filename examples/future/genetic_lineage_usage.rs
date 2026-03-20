@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Example: Using Genetic Lineage for Automatic Peer Trust
 //!
 //! This example demonstrates how to use genetic lineage to automatically

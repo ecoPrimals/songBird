@@ -87,21 +87,19 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
     std::fs::create_dir_all(&xdg_biomeos).unwrap();
     std::fs::create_dir_all(&tmp_biomeos).unwrap();
 
-    // Create socket files at all locations
-    let xdg_socket = xdg_biomeos.join("beardog.sock");
-    let tmp_biomeos_socket = tmp_biomeos.join("beardog.sock");
-    let legacy_socket = PathBuf::from("/tmp/beardog.sock");
+    // Create capability-named socket files at all locations
+    let xdg_socket = xdg_biomeos.join("crypto.sock");
+    let tmp_biomeos_socket = tmp_biomeos.join("crypto.sock");
+    let legacy_socket = PathBuf::from("/tmp/crypto.sock");
 
     std::fs::write(&xdg_socket, "xdg").unwrap();
     std::fs::write(&tmp_biomeos_socket, "tmp_biomeos").unwrap();
     std::fs::write(&legacy_socket, "legacy").unwrap();
 
-    // Clear env vars
     songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
 
-    // Test: Discovery should find XDG socket first
     use songbird_orchestrator::primal_discovery::{Capability, discover};
     let result = discover(Capability::Crypto).await;
 
@@ -109,12 +107,11 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
     let found = result.unwrap();
     assert!(
         found.contains(&temp_dir.to_string_lossy().to_string())
-            && found.contains("biomeos/beardog.sock"),
+            && found.contains("biomeos/crypto.sock"),
         "Should prioritize XDG_RUNTIME_DIR socket, got: {}",
         found
     );
 
-    // Cleanup
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);
     let _ = std::fs::remove_file(&tmp_biomeos_socket);
@@ -125,19 +122,16 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
 async fn test_e2e_fallback_to_tmp_biomeos_when_no_xdg() {
     let _guard = ENV_MUTEX.lock().unwrap();
 
-    // Clear XDG
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
-    // Create /tmp/biomeos socket
     let tmp_biomeos = PathBuf::from("/tmp/biomeos");
     std::fs::create_dir_all(&tmp_biomeos).unwrap();
-    let socket = tmp_biomeos.join("beardog.sock");
+    let socket = tmp_biomeos.join("crypto.sock");
     std::fs::write(&socket, "").unwrap();
 
-    // Remove legacy socket to ensure fallback works
-    let _ = std::fs::remove_file("/tmp/beardog.sock");
+    let _ = std::fs::remove_file("/tmp/crypto.sock");
 
     use songbird_orchestrator::primal_discovery::{Capability, discover};
     let result = discover(Capability::Crypto).await;
@@ -145,12 +139,11 @@ async fn test_e2e_fallback_to_tmp_biomeos_when_no_xdg() {
     assert!(result.is_ok(), "Should discover /tmp/biomeos socket");
     let found = result.unwrap();
     assert!(
-        found == "/tmp/biomeos/beardog.sock",
+        found == "/tmp/biomeos/crypto.sock",
         "Should use /tmp/biomeos fallback, got: {}",
         found
     );
 
-    // Cleanup
     let _ = std::fs::remove_file(&socket);
 }
 
@@ -166,12 +159,10 @@ async fn test_e2e_socket_naming_no_family_suffix() {
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
-    // Create correct socket (no family suffix)
-    let correct_socket = biomeos_dir.join("beardog.sock");
+    let correct_socket = biomeos_dir.join("crypto.sock");
     std::fs::write(&correct_socket, "").unwrap();
 
-    // Create legacy socket (with family suffix) - should NOT be used if correct exists
-    let legacy_socket = biomeos_dir.join("beardog-nat0.sock");
+    let legacy_socket = biomeos_dir.join("crypto-nat0.sock");
     std::fs::write(&legacy_socket, "").unwrap();
 
     songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
@@ -184,14 +175,12 @@ async fn test_e2e_socket_naming_no_family_suffix() {
     assert!(result.is_ok());
     let found = result.unwrap();
 
-    // Should find beardog.sock, NOT beardog-nat0.sock
     assert!(
-        found.ends_with("beardog.sock") && !found.contains("-nat0"),
-        "Should use {{primal}}.sock naming (no family suffix), got: {}",
+        found.ends_with("crypto.sock") && !found.contains("-nat0"),
+        "Should use {{capability}}.sock naming (no family suffix), got: {}",
         found
     );
 
-    // Cleanup
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);
 }
@@ -208,16 +197,14 @@ async fn test_e2e_discover_all_primals_at_xdg() {
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
-    // Create sockets for all primals
-    let primals = ["beardog", "songbird", "squirrel", "nestgate", "messenger"];
-    for primal in &primals {
-        let socket = biomeos_dir.join(format!("{}.sock", primal));
+    let capability_names = ["crypto", "http", "ai", "storage", "messaging"];
+    for cap_name in &capability_names {
+        let socket = biomeos_dir.join(format!("{cap_name}.sock"));
         std::fs::write(&socket, "").unwrap();
     }
 
     songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
 
-    // Clear all env vars
     songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::remove_var("HTTP_PROVIDER_SOCKET");
@@ -227,13 +214,12 @@ async fn test_e2e_discover_all_primals_at_xdg() {
 
     use songbird_orchestrator::primal_discovery::{Capability, discover};
 
-    // Test each capability
     let capabilities = [
-        (Capability::Crypto, "beardog.sock"),
-        (Capability::Http, "songbird.sock"),
-        (Capability::Ai, "squirrel.sock"),
-        (Capability::Storage, "nestgate.sock"),
-        (Capability::Messaging, "messenger.sock"),
+        (Capability::Crypto, "crypto.sock"),
+        (Capability::Http, "http.sock"),
+        (Capability::Ai, "ai.sock"),
+        (Capability::Storage, "storage.sock"),
+        (Capability::Messaging, "messaging.sock"),
     ];
 
     for (cap, expected_name) in &capabilities {
@@ -249,7 +235,6 @@ async fn test_e2e_discover_all_primals_at_xdg() {
         );
     }
 
-    // Cleanup
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);
 }
@@ -302,22 +287,20 @@ async fn test_e2e_security_client_discovers_xdg_beardog() {
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
-    let beardog_socket = biomeos_dir.join("beardog.sock");
-    std::fs::write(&beardog_socket, "").unwrap();
+    let crypto_socket = biomeos_dir.join("crypto.sock");
+    std::fs::write(&crypto_socket, "").unwrap();
 
     songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
     songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
-    // Test that crypto discovery finds XDG socket
     use songbird_orchestrator::crypto::discovery::get_beardog_crypto_socket;
     let result = get_beardog_crypto_socket().await;
 
-    assert!(result.is_ok(), "Should discover BearDog at XDG path");
+    assert!(result.is_ok(), "Should discover crypto provider at XDG path");
     let found = result.unwrap();
-    assert!(found.contains("biomeos/beardog.sock"), "Should use XDG BearDog path, got: {}", found);
+    assert!(found.contains("biomeos/crypto.sock"), "Should use XDG crypto path, got: {}", found);
 
-    // Cleanup
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);
 }
@@ -341,15 +324,8 @@ async fn test_e2e_xdg_directory_structure_compliance() {
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
-    // Verify we're creating sockets in the right structure
-    let expected_sockets = [
-        "beardog.sock",
-        "songbird.sock",
-        "neural-api.sock",
-        "squirrel.sock",
-        "nestgate.sock",
-        "messenger.sock",
-    ];
+    let expected_sockets =
+        ["crypto.sock", "security.sock", "http.sock", "ai.sock", "storage.sock", "messaging.sock"];
 
     for socket_name in &expected_sockets {
         let socket_path = biomeos_dir.join(socket_name);
@@ -390,12 +366,10 @@ async fn test_e2e_env_var_overrides_xdg() {
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
-    // Create XDG socket
-    let xdg_socket = biomeos_dir.join("beardog.sock");
+    let xdg_socket = biomeos_dir.join("crypto.sock");
     std::fs::write(&xdg_socket, "xdg").unwrap();
 
-    // Create custom override socket
-    let custom_socket = temp_dir.join("custom-beardog.sock");
+    let custom_socket = temp_dir.join("custom-crypto.sock");
     std::fs::write(&custom_socket, "custom").unwrap();
 
     songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! End-to-End Orchestration Tests
 //!
 //! Tests the full orchestrator lifecycle and coordination

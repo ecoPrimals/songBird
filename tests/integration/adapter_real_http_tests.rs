@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Real HTTP Integration Tests for Capability-Based Adapters
 //!
 //! 🍼 MIGRATED: These tests now use capability-based adapters instead of hardcoded primal names

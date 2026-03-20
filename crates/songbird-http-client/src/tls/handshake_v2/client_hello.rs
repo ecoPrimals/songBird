@@ -266,7 +266,8 @@ pub fn generate_random() -> Vec<u8> {
     let mut random = Vec::with_capacity(32);
 
     // Use timestamp for first 4 bytes
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32;
+    let timestamp =
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as u32;
     random.extend_from_slice(&timestamp.to_be_bytes());
 
     // Fill rest with pseudo-random

@@ -256,7 +256,7 @@ impl CapabilityRouter {
             anyhow!("No providers available for capability: {capability_id}")
         })?;
 
-        // Get the first available provider (TODO: implement selection strategy)
+        // First registered provider wins; no load-balancing or scoring yet.
         let provider_id = provider_ids
             .first()
             .ok_or_else(|| anyhow!("Provider list empty for capability: {capability_id}"))?;

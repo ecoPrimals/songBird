@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Test helpers for Songbird integration testing
 //!
 //! This module provides mock servers, test utilities, and common patterns

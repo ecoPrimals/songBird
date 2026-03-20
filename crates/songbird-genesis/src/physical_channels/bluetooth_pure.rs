@@ -97,8 +97,7 @@ impl PureRustBluetoothChannel {
 
         debug!("Found {} BLE devices", devices.len());
 
-        // TODO: Filter by Genesis service UUID when service discovery is implemented
-        // For now, return all devices
+        // Scan results are unfiltered by Genesis service UUID until targeted discovery exists.
         info!("Found {} potential witness devices", devices.len());
         Ok(devices)
     }
@@ -137,8 +136,7 @@ impl PureRustBluetoothChannel {
 
         debug!("Discovered {} services", services.len());
 
-        // TODO: Find Genesis service and read credential characteristic
-        // For Phase 3, return demo credentials
+        // Demo credentials: Genesis service UUID / credential characteristic read not selected yet.
         info!("✅ Genesis credentials retrieved (demo mode)");
         Ok(b"pure_rust_genesis_credentials_v1".to_vec())
     }
@@ -178,7 +176,7 @@ impl PhysicalChannelProvider for PureRustBluetoothChannel {
         // 1. ✅ Scan for witness (done in verify_proximity)
         // 2. ✅ Connect to witness
         // 3. ✅ Read Genesis credentials via GATT
-        // 4. TODO: Verify signature (via BearDog integration)
+        // 4. Credential signature verification is not performed on this path (BearDog not wired).
         // 5. ✅ Return credentials
 
         info!("✅ Secure exchange complete via Pure Rust BLE");

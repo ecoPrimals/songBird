@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! End-to-End tests for capability-based orchestration
 //!
 //! Tests real-world multi-primal workflow scenarios using capability discovery

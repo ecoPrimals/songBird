@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 /// Songbird tarpc Client - High-Performance Native Rust RPC
 ///
 /// This module provides a high-performance, type-safe Rust client for

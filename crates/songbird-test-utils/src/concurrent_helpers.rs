@@ -466,8 +466,10 @@ pub fn unique_unix_socket() -> std::path::PathBuf {
 
     let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
     let pid = std::process::id();
-    let timestamp =
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros();
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_micros();
 
     std::env::temp_dir().join(format!("songbird-test-{}-{}-{}.sock", pid, timestamp, counter))
 }

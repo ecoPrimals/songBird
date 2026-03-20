@@ -283,24 +283,35 @@ async fn handle_jsonrpc_request(
 // ============================================================================
 
 /// songbird.services.list
-/// Returns list of all registered services
-async fn handle_services_list(_state: &JsonRpcState) -> Result<Value, JsonRpcError> {
-    // Phase 2: Return placeholder
-    // Full ServiceRegistry integration in later phase
+/// Returns list of all registered services from the federated registry
+async fn handle_services_list(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
+    let services = state.service_registry.get_all_services().await;
+    let service_list: Vec<Value> = services
+        .iter()
+        .map(|svc| {
+            serde_json::json!({
+                "service_id": svc.service_id,
+                "name": svc.service_name,
+                "type": svc.service_type,
+                "endpoint": svc.endpoint,
+                "tower_id": svc.tower_id,
+                "capabilities": svc.capabilities,
+            })
+        })
+        .collect();
+
     Ok(serde_json::json!({
-        "services": [],
-        "count": 0,
-        "message": "Service listing via JSON-RPC coming soon! Full integration pending."
+        "services": service_list,
+        "count": services.len(),
     }))
 }
 
 /// songbird.services.get
 /// Get information about a specific service
 async fn handle_service_get(
-    _state: &JsonRpcState,
+    state: &JsonRpcState,
     params: Option<Value>,
 ) -> Result<Value, JsonRpcError> {
-    // Extract service_id from params
     let service_id = match &params {
         Some(Value::Object(map)) => map
             .get("service_id")
@@ -314,25 +325,74 @@ async fn handle_service_get(
         _ => return Err(JsonRpcError::invalid_params("Missing service_id parameter")),
     };
 
-    // Phase 2: Return placeholder
-    Ok(serde_json::json!({
-        "service_id": service_id,
-        "status": "not_implemented",
-        "message": "Service details via JSON-RPC coming soon!"
-    }))
+    match state.service_registry.find_by_id(&service_id).await {
+        Some(svc) => Ok(serde_json::json!({
+            "service_id": svc.service_id,
+            "name": svc.service_name,
+            "type": svc.service_type,
+            "endpoint": svc.endpoint,
+            "tower_id": svc.tower_id,
+            "tower_name": svc.tower_name,
+            "capabilities": svc.capabilities,
+            "status": "active",
+        })),
+        None => Err(JsonRpcError {
+            code: -32001,
+            message: format!("Service not found: {service_id}"),
+            data: None,
+        }),
+    }
 }
 
 /// songbird.services.register
-/// Register a new service (Phase 2: Foundation only)
+/// Register a new local service via JSON-RPC
 async fn handle_service_register(
-    _state: &JsonRpcState,
-    _params: Option<Value>,
+    state: &JsonRpcState,
+    params: Option<Value>,
 ) -> Result<Value, JsonRpcError> {
-    // Phase 2: Return placeholder
-    // Full implementation in later phase
+    let params =
+        params.ok_or_else(|| JsonRpcError::invalid_params("Missing registration parameters"))?;
+
+    let obj = params
+        .as_object()
+        .ok_or_else(|| JsonRpcError::invalid_params("Parameters must be an object"))?;
+
+    let service_id = obj
+        .get("service_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'service_id'"))?;
+    let service_name = obj.get("name").and_then(|v| v.as_str()).unwrap_or(service_id);
+    let service_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("generic");
+    let endpoint = obj
+        .get("endpoint")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'endpoint'"))?;
+    let capabilities: Vec<String> = obj
+        .get("capabilities")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .unwrap_or_default();
+
+    let now = chrono::Utc::now();
+    let registration = songbird_network_federation::service_registry::ServiceRegistration {
+        service_id: service_id.to_string(),
+        service_name: service_name.to_string(),
+        service_type: service_type.to_string(),
+        tower_id: "local".to_string(),
+        tower_name: "local".to_string(),
+        endpoint: endpoint.to_string(),
+        capabilities,
+        health_status: songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+        registered_at: now,
+        last_seen: now,
+        metadata: std::collections::HashMap::new(),
+    };
+
+    state.service_registry.register_local(registration).await;
+
     Ok(serde_json::json!({
-        "status": "not_implemented",
-        "message": "Service registration via JSON-RPC coming soon!"
+        "status": "registered",
+        "service_id": service_id,
     }))
 }
 
@@ -371,34 +431,82 @@ async fn handle_compute_status(
         _ => return Err(JsonRpcError::invalid_params("Missing task_id parameter")),
     };
 
-    // Phase 2: Return placeholder
     Ok(serde_json::json!({
-        "status": "not_implemented",
-        "message": "Task status via JSON-RPC coming soon!"
+        "task_id": _task_id,
+        "status": "unknown",
+        "message": "Task tracking requires a connected compute provider (set COMPUTE_ENDPOINT).",
     }))
 }
 
 /// songbird.federation.peers
-/// List federation peers
-async fn handle_federation_peers(_state: &JsonRpcState) -> Result<Value, JsonRpcError> {
-    // Phase 2: Return placeholder
+/// List active federation peers from the federation state
+async fn handle_federation_peers(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
+    let nodes = state.federation_state.active_nodes().await;
+    let peers: Vec<Value> = nodes
+        .iter()
+        .map(|node| {
+            serde_json::json!({
+                "node_id": node.node_id,
+                "name": node.node_name,
+                "address": node.node_address,
+                "endpoints": node.active_endpoints().iter().map(|ep| &ep.address).collect::<Vec<_>>(),
+                "capabilities": node.capabilities,
+            })
+        })
+        .collect();
+
     Ok(serde_json::json!({
-        "peers": [],
-        "count": 0,
-        "message": "Federation peer listing via JSON-RPC coming soon!"
+        "peers": peers,
+        "count": nodes.len(),
     }))
 }
 
 /// songbird.federation.join
-/// Join federation network
+/// Register this node with the federation
 async fn handle_federation_join(
-    _state: &JsonRpcState,
-    _params: Option<Value>,
+    state: &JsonRpcState,
+    params: Option<Value>,
 ) -> Result<Value, JsonRpcError> {
-    // Phase 2: Return placeholder
+    let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing join parameters"))?;
+
+    let obj = params
+        .as_object()
+        .ok_or_else(|| JsonRpcError::invalid_params("Parameters must be an object"))?;
+
+    let node_id = obj
+        .get("node_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'node_id'"))?;
+    let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or(node_id);
+
+    let now = chrono::Utc::now();
+    let registration = songbird_network_federation::state::NodeRegistration {
+        node_id: node_id.to_string(),
+        node_name: name.to_string(),
+        node_address: obj.get("address").and_then(|v| v.as_str()).unwrap_or("unknown").to_string(),
+        endpoints: None,
+        cpu_cores: 0,
+        memory_gb: 0,
+        gpu_model: None,
+        storage_gb: None,
+        capabilities: obj
+            .get("capabilities")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default(),
+        status: songbird_network_federation::state::NodeStatus::Active,
+        joined_at: now,
+        last_heartbeat: now,
+    };
+
+    state.federation_state.register_node(registration).await;
+
+    let stats = state.federation_state.get_stats().await;
+
     Ok(serde_json::json!({
-        "status": "not_implemented",
-        "message": "Federation join via JSON-RPC coming soon!"
+        "status": "joined",
+        "node_id": node_id,
+        "active_peers": stats.active_nodes,
     }))
 }
 

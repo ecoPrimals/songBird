@@ -38,8 +38,7 @@ impl TlsHandshake {
                 self.build_extensions_standard(server_name, public_key)
             }
             crate::tls::config::ExtensionStrategy::Custom(_) => {
-                // For now, Custom uses Standard as base
-                // TODO: Implement custom extension building
+                // Custom strategy currently maps to the standard extension set (no per-policy builder).
                 self.build_extensions_standard(server_name, public_key)
             }
         })

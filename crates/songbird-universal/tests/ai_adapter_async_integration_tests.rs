@@ -48,6 +48,7 @@
 //! - Network error handling
 //! - Timeout behavior
 
+use serial_test::serial;
 use songbird_universal::adapters::ai::{AIAdapter, AIHealth};
 use std::time::Duration;
 
@@ -55,10 +56,14 @@ use std::time::Duration;
 // DISCOVERY ASYNC TESTS
 // ============================================================================
 
+#[serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_env_variable() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
+
+    // Ensure capability resolver does not override legacy env (parallel tests / CI env).
+    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
 
     // Set environment variable
     songbird_process_env::set_var("SONGBIRD_AI_ENDPOINT", &endpoint);
@@ -74,10 +79,14 @@ async fn test_from_discovery_with_env_variable() {
     songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
 }
 
+#[serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_legacy_env() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
+
+    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
+    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
 
     // Set legacy AI_PROVIDER_ENDPOINT
     songbird_process_env::set_var("AI_PROVIDER_ENDPOINT", &endpoint);
@@ -90,9 +99,11 @@ async fn test_from_discovery_with_legacy_env() {
     songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
 }
 
+#[serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_fallback_to_default() {
     // Clear all env vars that might interfere
+    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
     songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
     songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
 

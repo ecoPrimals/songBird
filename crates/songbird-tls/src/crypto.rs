@@ -10,7 +10,7 @@
 //!
 //! **Deep Debt Evolution Status:**
 //! - ✅ Phase 1: Platform-agnostic transport (Unix sockets, named pipes, TCP)
-//! - 🔄 Phase 2 (TODO): Use universal IPC service discovery instead of socket path discovery
+//! - 🔄 Phase 2 (planned): universal IPC service discovery instead of filesystem socket heuristics
 //!
 //! **Current Approach:**
 //! - Uses platform-conditional compilation for socket paths
@@ -207,7 +207,7 @@ impl BeardogCryptoClient {
         #[cfg(windows)]
         {
             // Windows: Use TCP localhost fallback
-            // TODO (Deep Debt): Use universal IPC service discovery + named pipes
+            // Windows path: env-based TCP fallback until universal IPC discovery covers named pipes.
             tracing::warn!("⚠️  Windows: Using TCP localhost fallback for BearDog crypto");
 
             // Try environment variables first

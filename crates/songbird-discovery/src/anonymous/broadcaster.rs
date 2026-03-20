@@ -473,7 +473,7 @@ impl AnonymousDiscoveryBroadcaster {
             self.node_id.clone().unwrap_or_else(|| "unknown".to_string()),
             endpoints,
             &self.capabilities,
-            None,                       // cluster_id - TODO: Add cluster support
+            None, // cluster_id omitted: anonymous beacons are not cluster-scoped yet
             self.generate_session_id(), // Session ID for rotation
         );
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Discovery Workflow E2E Tests
 //!
 //! **Purpose**: Test complete service discovery workflows

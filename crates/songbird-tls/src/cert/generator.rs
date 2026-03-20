@@ -156,13 +156,7 @@ impl CertificateGenerator {
         // So we'll use standalone generation but could delegate crypto operations to BearDog
         // This is a placeholder for future BearDog integration
 
-        // TODO: Once BearDog adds certificate.generate_self_signed to its JSON-RPC API:
-        // let params = serde_json::json!({
-        //     "domain": domain,
-        //     "validity_days": validity_days,
-        //     "key_type": "Ed25519",
-        // });
-        // let result = client.call_method("certificate.generate_self_signed", params).await?;
+        // BearDog has no `certificate.generate_self_signed` RPC in this build; standalone path only.
 
         tracing::debug!("BearDog cert generation not yet implemented, using standalone");
         Self::generate_standalone(domain, validity_days)

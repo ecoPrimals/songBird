@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Multi-service E2E workflow tests
 //!
 //! Tests complete workflows across multiple services

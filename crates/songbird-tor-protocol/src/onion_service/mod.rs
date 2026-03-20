@@ -189,8 +189,7 @@ impl OnionServiceManager {
         // Generate descriptor
         let descriptor = OnionServiceDescriptor::new(keys, &intro_points)?;
 
-        // TODO: Upload descriptor to HSDir relays
-        // For now, just log that we would upload
+        // HSDir upload is not performed; descriptor is built then discarded for this state machine step.
         let _ = descriptor; // Suppress unused warning
 
         // Update state

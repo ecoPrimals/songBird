@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Simple HTTPS test example for Songbird
 //!
 //! Tests the TLS 1.3 client against real HTTPS servers.

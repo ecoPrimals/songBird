@@ -40,7 +40,7 @@ impl Default for SoloKeyChannel {
 #[async_trait]
 impl PhysicalChannelProvider for SoloKeyChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
-        // TODO: Implement actual SoloKey/FIDO2 verification
+        // Placeholder attestation: real SoloKey/FIDO2 verification is not invoked here.
         Ok(ProximityProof {
             channel_type: PhysicalChannelType::HardwareKey,
             timestamp: Utc::now(),
@@ -50,7 +50,7 @@ impl PhysicalChannelProvider for SoloKeyChannel {
     }
 
     async fn secure_exchange(&self) -> Result<Vec<u8>> {
-        // TODO: Implement actual key exchange via SoloKey
+        // Returns static demo material: hardware key exchange path is stubbed.
         Ok(b"solokey_genesis_creds".to_vec())
     }
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! End-to-End Service Discovery Tests
 //!
 //! Tests the complete service discovery flow

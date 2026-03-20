@@ -93,33 +93,20 @@ impl Capability {
         let xdg_base = std::env::var("XDG_RUNTIME_DIR")
             .map_or_else(|_| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
 
-        // (capability_name, known_provider_hints)
-        let (cap_name, hints): (&str, &[&str]) = match self {
-            Self::Crypto => ("crypto", &["beardog"]),
-            Self::Security => ("security", &["beardog"]),
-            Self::Http => ("http", &["songbird"]),
-            Self::Ai => ("ai", &["squirrel"]),
-            Self::Storage => ("storage", &["nestgate"]),
-            Self::Messaging => ("messaging", &["messenger"]),
+        let cap_name: &str = match self {
+            Self::Crypto => "crypto",
+            Self::Security => "security",
+            Self::Http => "http",
+            Self::Ai => "ai",
+            Self::Storage => "storage",
+            Self::Messaging => "messaging",
         };
 
-        let mut patterns = Vec::with_capacity(6);
-
-        // Capability-named sockets first (any provider offering this capability)
-        patterns.push(format!("{xdg_base}/{cap_name}.sock"));
-        patterns.push(format!("/tmp/biomeos/{cap_name}.sock"));
-        patterns.push(format!("/tmp/{cap_name}.sock"));
-
-        // Known-provider hints (backward compatibility)
-        for hint in hints {
-            if *hint != cap_name {
-                patterns.push(format!("{xdg_base}/{hint}.sock"));
-                patterns.push(format!("/tmp/biomeos/{hint}.sock"));
-                patterns.push(format!("/tmp/{hint}.sock"));
-            }
-        }
-
-        patterns
+        vec![
+            format!("{xdg_base}/{cap_name}.sock"),
+            format!("/tmp/biomeos/{cap_name}.sock"),
+            format!("/tmp/{cap_name}.sock"),
+        ]
     }
 }
 
@@ -199,14 +186,13 @@ where
 ///
 /// Scan priority: `$XDG_RUNTIME_DIR/biomeos/` → `/tmp/biomeos/` → `/tmp/`
 fn scan_sockets(capability: Capability) -> Option<String> {
-    // Capability terms first, then known-provider hints
     let search_terms = match capability {
-        Capability::Crypto => vec!["crypto", "beardog"],
-        Capability::Security => vec!["security", "auth", "beardog"],
-        Capability::Http => vec!["http", "songbird"],
-        Capability::Ai => vec!["ai", "squirrel"],
-        Capability::Storage => vec!["storage", "nestgate"],
-        Capability::Messaging => vec!["messaging", "messenger"],
+        Capability::Crypto => vec!["crypto", "encryption"],
+        Capability::Security => vec!["security", "auth"],
+        Capability::Http => vec!["http", "gateway"],
+        Capability::Ai => vec!["ai", "inference", "ml"],
+        Capability::Storage => vec!["storage", "persist", "data"],
+        Capability::Messaging => vec!["messaging", "pubsub"],
     };
 
     // Build directory search order
@@ -264,14 +250,13 @@ fn scan_sockets(capability: Capability) -> Option<String> {
 ///
 /// Socket descriptor string (e.g., "tcp:127.0.0.1:12345") if found, None otherwise.
 fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
-    // Capability names first, then known-provider hints
     let names: Vec<&str> = match capability {
-        Capability::Crypto => vec!["crypto", "beardog"],
-        Capability::Security => vec!["security", "beardog"],
-        Capability::Http => vec!["http", "songbird"],
-        Capability::Ai => vec!["ai", "squirrel"],
-        Capability::Storage => vec!["storage", "nestgate"],
-        Capability::Messaging => vec!["messaging", "messenger"],
+        Capability::Crypto => vec!["crypto"],
+        Capability::Security => vec!["security"],
+        Capability::Http => vec!["http"],
+        Capability::Ai => vec!["ai"],
+        Capability::Storage => vec!["storage"],
+        Capability::Messaging => vec!["messaging"],
     };
 
     for name in names {
@@ -382,14 +367,13 @@ mod tests {
     fn test_capability_patterns_capability_first() {
         let patterns = Capability::Crypto.socket_patterns();
         assert!(!patterns.is_empty());
-        // Capability-named socket should appear before provider hints
-        let first_cap = patterns.iter().position(|p| p.contains("crypto.sock"));
-        let first_hint = patterns.iter().position(|p| p.contains("beardog.sock"));
-        assert!(first_cap.is_some(), "Should have crypto.sock pattern");
-        assert!(first_hint.is_some(), "Should have beardog.sock hint");
         assert!(
-            first_cap.unwrap() < first_hint.unwrap(),
-            "Capability name should appear before provider hint"
+            patterns.iter().any(|p| p.contains("crypto.sock")),
+            "Should have crypto.sock pattern"
+        );
+        assert!(
+            !patterns.iter().any(|p| p.contains("beardog")),
+            "Should not contain primal-specific names"
         );
     }
 
@@ -530,13 +514,24 @@ mod tests {
     }
 
     #[test]
-    fn test_socket_patterns_include_provider_hints() {
-        // Known provider hints should still be present for backward compatibility
-        assert!(Capability::Crypto.socket_patterns().iter().any(|p| p.contains("beardog")));
-        assert!(Capability::Http.socket_patterns().iter().any(|p| p.contains("songbird")));
-        assert!(Capability::Ai.socket_patterns().iter().any(|p| p.contains("squirrel")));
-        assert!(Capability::Storage.socket_patterns().iter().any(|p| p.contains("nestgate")));
-        assert!(Capability::Messaging.socket_patterns().iter().any(|p| p.contains("messenger")));
+    fn test_socket_patterns_are_capability_only() {
+        for cap in [
+            Capability::Crypto,
+            Capability::Security,
+            Capability::Http,
+            Capability::Ai,
+            Capability::Storage,
+            Capability::Messaging,
+        ] {
+            let patterns = cap.socket_patterns();
+            assert!(
+                !patterns.iter().any(|p| p.contains("beardog")
+                    || p.contains("squirrel")
+                    || p.contains("nestgate")
+                    || p.contains("toadstool")),
+                "{cap:?} patterns should not contain primal-specific names: {patterns:?}"
+            );
+        }
     }
 
     #[tokio::test]

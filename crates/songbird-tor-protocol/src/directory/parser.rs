@@ -87,8 +87,8 @@ fn relay_entry(input: &str) -> IResult<&str, RelayInfo> {
             dir_port: None,
             flags,
             bandwidth,
-            ntor_key: None, // TODO: Parse from microdescriptors
-            version: None,  // TODO: Parse from v line
+            ntor_key: None, // Populated when microdescriptor parsing is wired
+            version: None,  // Tor version line not parsed from consensus `r` entries here
         },
     ))
 }

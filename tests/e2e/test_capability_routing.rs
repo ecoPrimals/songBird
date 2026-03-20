@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! E2E Test: Capability-Based Routing
 //!
 //! Tests that orchestrator routes requests based on capabilities,

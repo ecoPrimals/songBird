@@ -245,7 +245,10 @@ impl HolePunchCoordinator {
         let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await?);
 
         // Wait until coordinated start time
-        let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+        let now_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| OnionRelayError::Other("System time before UNIX epoch".to_string()))?
+            .as_millis() as u64;
 
         if start_time > now_ms {
             sleep(Duration::from_millis(start_time - now_ms)).await;
@@ -316,10 +319,11 @@ impl HolePunchCoordinator {
                     let my_info = self.my_info.read().await.clone();
                     if let Some(info) = my_info {
                         // Start in 100ms to allow network propagation
-                        let start_at_ms =
-                            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
-                                as u64
-                                + 100;
+                        let start_at_ms = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64
+                            + 100;
 
                         return Some(SignalingMessage::PunchAck {
                             from: info,
@@ -399,9 +403,11 @@ impl HolePunchCoordinator {
         let Some(mut rx) = rx else {
             warn!("⚠️ No signal receiver available - using fallback timing");
             // Fallback: coordinate 100ms in future
-            return Ok(
-                SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64 + 100
-            );
+            return Ok(SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|_| OnionRelayError::Other("System time before UNIX epoch".to_string()))?
+                .as_millis() as u64
+                + 100);
         };
 
         // Wait for matching PunchAck with timeout
@@ -679,7 +685,7 @@ impl HolePunchCoordinator {
 fn rand_nonce() -> [u8; 16] {
     use std::time::{SystemTime, UNIX_EPOCH};
     let mut nonce = [0u8; 16];
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
     nonce[..8].copy_from_slice(&now.to_le_bytes()[..8]);
     // Add some randomness from memory address
     let ptr = &nonce as *const _ as usize;

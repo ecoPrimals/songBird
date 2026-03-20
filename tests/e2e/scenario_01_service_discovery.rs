@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 // E2E Scenario 1: Service Discovery and Registration
 // Created: October 30, 2025
 // Updated: December 2, 2025 - Modernized for concurrent execution

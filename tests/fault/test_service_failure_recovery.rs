@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Service Failure Recovery Tests
 //!
 //! Comprehensive tests for service failure detection and recovery in the Songbird orchestrator.

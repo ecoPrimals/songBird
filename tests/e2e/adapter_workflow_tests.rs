@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Adapter Workflow E2E Tests
 //!
 //! **Purpose**: Test complete adapter integration workflows

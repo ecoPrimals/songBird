@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Enhanced Integration Tests
 //!
 //! Additional cross-module integration tests

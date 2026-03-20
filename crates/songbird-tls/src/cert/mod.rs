@@ -73,9 +73,7 @@ impl CertificateValidator {
             return Err(TlsError::CertificateError("Empty certificate data".to_string()));
         }
 
-        // TODO: Full X.509 parsing and validation
-        // This will be implemented in Phase 7 (Production Deployment)
-        // For now, we accept any non-empty certificate data
+        // Non-empty DER blob check only; full PKIX validation is not applied on this path.
 
         Ok(())
     }
@@ -112,9 +110,7 @@ impl CertificateValidator {
             )));
         }
 
-        // TODO: Actual signature verification via BearDog
-        // This will be implemented when we have Ed25519 verify in crypto client
-        // For now, basic length validation is sufficient for Phase 5
+        // Length checks only; cryptographic verify is delegated elsewhere when wired to BearDog.
 
         Ok(())
     }
@@ -205,13 +201,7 @@ impl CertificateValidator {
             return Err(TlsError::CertificateError("Empty certificate chain".to_string()));
         }
 
-        // TODO: Full chain validation
-        // 1. Verify each certificate's signature using the next cert's public key
-        // 2. Verify the root certificate is in our trusted roots
-        // 3. Check all certificates' validity periods
-        // 4. Verify no certificate is revoked (OCSP/CRL)
-
-        // For Phase 5, basic validation is sufficient
+        // Chain presence only: per-link signatures, trust anchors, and revocation are out of scope here.
         Ok(())
     }
 }

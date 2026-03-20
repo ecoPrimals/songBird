@@ -130,7 +130,7 @@ impl Consensus {
     /// # Errors
     /// Returns error if not enough relays or no suitable path found.
     pub fn select_path(&self) -> Result<CircuitPath> {
-        // TODO Phase 2A: Implement intelligent relay selection
+        // Path selection is heuristic (guard/middle/exit flags), not weighted or privacy-tuned yet.
 
         // For now, require at least 3 relays
         if self.relays.len() < 3 {

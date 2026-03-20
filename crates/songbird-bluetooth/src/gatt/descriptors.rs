@@ -18,7 +18,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Notifications not supported
     /// - Subscription fails
-    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
+    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (notifications/CCCD)
     pub async fn subscribe_notifications(
         &self,
         uuid: &Uuid,
@@ -35,7 +35,7 @@ impl<T: Transport + 'static> GattClient<T> {
                     )));
                 }
 
-                // TODO: Implement actual subscription using trouble-host (CCCD 0x2902)
+                // No CCCD (0x2902) write yet: subscription is a no-op until the ATT stack wires notify.
                 return Ok(());
             }
         }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration tests for task lifecycle management
 //!
 //! **Evolution**: Each test uses an isolated temp directory for its sled database,

@@ -51,7 +51,7 @@ async fn test_sovereignty_adapter_basic_creation() -> Result<(), Box<dyn std::er
 }
 // Note: This test file is intentionally minimal because the comprehensive test suite
 // (~750 lines) is maintained in the source tree for better organization.
-// TODO: Add remaining ~750 lines of tests from original sovereignty/adapter.rs
+// Extended cases live in `adapter_comprehensive_tests.rs` (~750 lines) instead of this file
 // These tests cover:
 // - Sovereignty-aware routing
 // - Federation coordination

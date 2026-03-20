@@ -201,7 +201,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if service not found
-    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
+    #[allow(clippy::unused_async)] // Placeholder for future async GATT service resolution
     pub async fn find_service(&self, uuid: &Uuid) -> Result<&Service> {
         self.services
             .iter()

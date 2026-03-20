@@ -115,11 +115,12 @@ impl KeccakState {
     }
 
     /// XOR a rate-sized block into the state
-    #[allow(clippy::unwrap_used)] // slice length is bounds-checked by the `if` guard
     fn xor_block(&mut self, block: &[u8]) {
         for i in 0..(RATE / 8) {
             if i * 8 + 8 <= block.len() {
-                let word = u64::from_le_bytes(block[i * 8..i * 8 + 8].try_into().unwrap());
+                let word = u64::from_le_bytes(
+                    block[i * 8..i * 8 + 8].try_into().expect("slice is exactly 8 bytes"),
+                );
                 self.state[i] ^= word;
             }
         }

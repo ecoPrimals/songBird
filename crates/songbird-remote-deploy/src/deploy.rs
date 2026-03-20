@@ -74,9 +74,9 @@ enum Commands {
         #[arg(long = "env", value_parser = parse_env_var)]
         env_vars: Vec<(String, String)>,
 
-        /// SSH user
-        #[arg(long, env = "SSH_USER", default_value = "eastgate")]
-        ssh_user: String,
+        /// SSH user (defaults to $USER)
+        #[arg(long, env = "SSH_USER")]
+        ssh_user: Option<String>,
 
         /// SSH key path
         #[arg(long, env = "SSH_KEY")]
@@ -164,13 +164,16 @@ pub async fn run(args: Args) -> Result<()> {
             ssh_key,
             auto_start,
         } => {
+            let effective_user = ssh_user
+                .or_else(|| std::env::var("USER").ok())
+                .unwrap_or_else(|| "root".to_string());
             deploy_service(DeploymentConfig {
                 songbird_endpoint: &args.songbird_endpoint,
                 tower_id: &tower,
                 binary_path: &binary,
                 remote_path: &remote_path,
                 env_vars: &env_vars,
-                ssh_user: &ssh_user,
+                ssh_user: &effective_user,
                 ssh_key: ssh_key.as_deref(),
                 auto_start,
             })

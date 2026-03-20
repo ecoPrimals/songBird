@@ -113,15 +113,15 @@ impl UsbTransport {
 
             for device in devices.iter() {
                 if let Ok(desc) = device.device_descriptor() {
-                    if let Some(vid) = vendor_id {
-                        if desc.vendor_id() != vid {
-                            continue;
-                        }
+                    if let Some(vid) = vendor_id
+                        && desc.vendor_id() != vid
+                    {
+                        continue;
                     }
-                    if let Some(pid) = product_id {
-                        if desc.product_id() != pid {
-                            continue;
-                        }
+                    if let Some(pid) = product_id
+                        && desc.product_id() != pid
+                    {
+                        continue;
                     }
 
                     if desc.class_code() == USB_CLASS_WIRELESS_CONTROLLER

@@ -104,7 +104,10 @@ impl BeardogCryptoClient {
     fn parse_transport(conn_str: &str) -> Result<BeardogTransport> {
         if conn_str.starts_with("tcp:") {
             // TCP format: tcp:host:port
-            let parts: Vec<&str> = conn_str.strip_prefix("tcp:").unwrap().split(':').collect();
+            let rest = conn_str.strip_prefix("tcp:").ok_or_else(|| {
+                OnionError::ConfigError(format!("Invalid TCP format: {conn_str}"))
+            })?;
+            let parts: Vec<&str> = rest.split(':').collect();
             if parts.len() != 2 {
                 return Err(OnionError::ConfigError(format!(
                     "Invalid TCP format: {conn_str}. Use tcp:host:port"

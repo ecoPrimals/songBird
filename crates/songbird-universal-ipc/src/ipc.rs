@@ -126,10 +126,7 @@ impl UniversalIPC {
         // Unregister from registry
         self.registry.unregister(name).await?;
 
-        // Clean up platform resources
-        // Note: We need to get the native endpoint first
-        // For now, just unregister from registry
-        // TODO: Store native endpoints for cleanup
+        // Registry-only teardown: native listener/socket cleanup needs a stored endpoint map first.
 
         Ok(())
     }

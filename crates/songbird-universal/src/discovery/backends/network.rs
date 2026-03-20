@@ -307,28 +307,42 @@ async fn resolve_srv_to_primal(
     })
 }
 
-/// Infer capabilities from service name
+/// Infer capabilities from service name using only capability terms.
+///
+/// Primal-agnostic: matches on domain terminology (e.g. "security", "ai")
+/// rather than specific primal names. Concrete provider identities are
+/// discovered at runtime via the capability advertisement protocol.
 #[allow(dead_code)]
 fn infer_capabilities_from_name(name: &str) -> Vec<String> {
     let name_lower = name.to_lowercase();
     let mut capabilities = Vec::new();
 
-    // Common naming patterns
-    // Capability terms first, known provider names as secondary hints
-    if name_lower.contains("security") || name_lower.contains("beardog") {
+    if name_lower.contains("security")
+        || name_lower.contains("crypto")
+        || name_lower.contains("auth")
+    {
         capabilities.push("security".to_string());
     }
-    if name_lower.contains("squirrel") || name_lower.contains("ai") {
+    if name_lower.contains("ai") || name_lower.contains("ml") || name_lower.contains("inference") {
         capabilities.push("ai".to_string());
     }
-    if name_lower.contains("nestgate") || name_lower.contains("discovery") {
+    if name_lower.contains("discovery") || name_lower.contains("registry") {
         capabilities.push("discovery".to_string());
     }
-    if name_lower.contains("toadstool") || name_lower.contains("storage") {
+    if name_lower.contains("storage")
+        || name_lower.contains("data")
+        || name_lower.contains("persist")
+    {
         capabilities.push("storage".to_string());
     }
-    if name_lower.contains("songbird") || name_lower.contains("orchestrat") {
+    if name_lower.contains("orchestrat") || name_lower.contains("coordinat") {
         capabilities.push("orchestration".to_string());
+    }
+    if name_lower.contains("compute")
+        || name_lower.contains("worker")
+        || name_lower.contains("exec")
+    {
+        capabilities.push("compute".to_string());
     }
 
     capabilities
@@ -347,11 +361,11 @@ mod tests {
 
     #[test]
     fn test_infer_capabilities() {
-        assert_eq!(infer_capabilities_from_name("beardog-security-service"), vec!["security"]);
-
-        assert_eq!(infer_capabilities_from_name("songbird-orchestrator"), vec!["orchestration"]);
-
-        let caps = infer_capabilities_from_name("squirrel-ai-worker");
-        assert!(caps.contains(&"ai".to_string()));
+        assert_eq!(infer_capabilities_from_name("my-security-service"), vec!["security"]);
+        assert_eq!(infer_capabilities_from_name("crypto-provider"), vec!["security"]);
+        assert_eq!(infer_capabilities_from_name("auth-gateway"), vec!["security"]);
+        assert_eq!(infer_capabilities_from_name("task-orchestrator"), vec!["orchestration"]);
+        assert_eq!(infer_capabilities_from_name("ml-inference-worker"), vec!["ai", "compute"]);
+        assert!(infer_capabilities_from_name("unknown-service").is_empty());
     }
 }

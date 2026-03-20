@@ -16,7 +16,7 @@ use tracing::{debug, info, warn};
 
 /// Well-known search terms for crypto capability socket scanning.
 /// Capability terms come first; known provider names are secondary hints.
-const CRYPTO_SEARCH_TERMS: &[&str] = &["crypto", "security", "beardog"];
+const CRYPTO_SEARCH_TERMS: &[&str] = &["crypto", "security", "encryption"];
 
 /// Discover crypto provider socket via capability-based discovery.
 ///
@@ -72,14 +72,9 @@ pub async fn discover_crypto_socket() -> Result<String> {
         .map_or_else(|_| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
 
     let common_paths = [
-        // Capability-named (preferred — any primal offering crypto)
         format!("{xdg_base}/crypto.sock"),
         "/tmp/biomeos/crypto.sock".to_string(),
         "/tmp/crypto.sock".to_string(),
-        // Known provider hints (backward compatibility)
-        format!("{xdg_base}/beardog.sock"),
-        "/tmp/biomeos/beardog.sock".to_string(),
-        "/tmp/beardog.sock".to_string(),
     ];
 
     for path in &common_paths {

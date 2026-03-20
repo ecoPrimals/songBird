@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Complete Primal IPC Example - NO Songbird Imports!
 //!
 //! This example demonstrates a complete primal implementation that:

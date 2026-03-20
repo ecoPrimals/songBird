@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-Based Discovery Example - NO Songbird Imports!
 //!
 //! This example demonstrates capability-based service discovery using

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-Based Configuration Example
 //!
 //! This example demonstrates the evolution from hardcoded configuration

@@ -169,7 +169,7 @@ pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
     let mut hasher = Sha3_256::new();
     hasher.update(b".onion checksum");
     hasher.update(pubkey.as_bytes());
-    hasher.update(&[0x03]); // Version 3
+    hasher.update([0x03]); // Version 3
     let hash = hasher.finalize();
     let checksum = &hash[..2];
 
@@ -259,7 +259,7 @@ pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
     let mut hasher = Sha3_256::new();
     hasher.update(b".onion checksum");
     hasher.update(pubkey_bytes);
-    hasher.update(&[version]);
+    hasher.update([version]);
     let hash = hasher.finalize();
     let expected_checksum = &hash[..2];
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Chaos Engineering Tests - Network Failures
 //!
 //! These tests validate system resilience under network failures,

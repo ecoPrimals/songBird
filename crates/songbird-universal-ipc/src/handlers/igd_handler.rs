@@ -138,15 +138,14 @@ impl IgdHandler {
                     }
                     // Need to drop and re-acquire to avoid borrow issues
                     drop(gateway);
-                    return self
-                        .do_map_port(
-                            self.gateway.read().await.as_ref().unwrap(),
-                            external_port,
-                            internal_port,
-                            protocol,
-                            ttl,
-                        )
-                        .await;
+                    let gateway = self.gateway.read().await;
+                    let Some(gw) = gateway.as_ref() else {
+                        return json!({
+                            "error": "No gateway available after discovery",
+                            "suggestion": "Try igd.discover again or check network connectivity"
+                        });
+                    };
+                    return self.do_map_port(gw, external_port, internal_port, protocol, ttl).await;
                 }
                 None => {
                     return json!({"error": "Gateway discovery failed"});

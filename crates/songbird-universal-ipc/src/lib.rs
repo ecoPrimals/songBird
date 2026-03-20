@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # 🌍 Songbird Universal IPC
 //!
 //! **Platform-agnostic IPC for ecoPrimals** - Works on ALL platforms!

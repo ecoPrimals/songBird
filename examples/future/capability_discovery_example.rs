@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration example: Using capability discovery and primal self-knowledge
 //!
 //! This example shows how the new architecture eliminates hardcoding.

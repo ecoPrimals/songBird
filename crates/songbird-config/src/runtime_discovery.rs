@@ -271,7 +271,7 @@ impl RuntimeDiscoveryEngine {
     ///
     /// This function handles the complete announcement lifecycle. Consider
     /// refactoring into smaller helper functions in future iterations.
-    #[allow(clippy::too_many_lines)] // TODO: Extract helper functions
+    #[allow(clippy::too_many_lines)] // Whole announcement lifecycle kept inline for clarity
     async fn wait_for_announcement(&self, capability: &str) -> SongbirdResult<DiscoveredService> {
         use tokio::time::timeout;
         use tracing::{debug, info};

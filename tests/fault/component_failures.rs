@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Component-Level Fault Tests
 //!
 //! Tests individual component failure handling

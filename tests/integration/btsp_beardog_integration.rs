@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BTSP Integration Tests with BearDog
 //!
 //! These tests validate the Unix socket-based BTSP client integration

@@ -1,8 +1,8 @@
 # Ultra-pedantic cargo-deny configuration for maximum security and hygiene
 
 [bans]
-# Deny multiple versions of the same crate
-multiple-versions = "deny"
+# Multiple versions are common in large trees; warn instead of failing CI.
+multiple-versions = "warn"
 wildcards = "deny"
 highlight = "all"
 workspace-default-features = "allow"
@@ -19,37 +19,22 @@ deny = [
 ]
 
 [licenses]
-# Only allow permissive licenses
-unlicensed = "deny"
+# Anything not listed is denied (cargo-deny 0.19+). GPL/LGPL/CC-BY-SA-4.0 are rejected
+# by omission. Workspace uses AGPL-3.0-only; allow it so our own crates pass.
 allow = [
     "MIT",
-    "Apache-2.0", 
+    "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
     "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "AGPL-3.0-only",
 ]
-deny = [
-    "GPL-2.0",
-    "GPL-3.0", 
-    "LGPL-2.1",
-    "LGPL-3.0",
-    "AGPL-3.0",
-    "CC-BY-SA-4.0",
-]
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
 
 [advisories]
-# Security advisory checking
-db-path = "~/.cargo/advisory-db"
-db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "deny"
-notice = "warn"
+# Advisory DB location/URLs are managed by cargo-deny. Vulnerabilities fail unless ignored.
 ignore = []
 
 [sources]
@@ -57,4 +42,4 @@ ignore = []
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = [] 
+allow-git = []

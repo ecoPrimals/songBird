@@ -154,7 +154,7 @@ impl AdaptiveExtensions {
 
     /// Adaptive extension set based on server profile
     fn adaptive_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
-        let profiles = self.profiles.read().unwrap();
+        let profiles = self.profiles.read().expect("lock poisoned");
 
         if let Some(profile) = profiles.get(hostname) {
             // Use known successful extension set
@@ -175,7 +175,7 @@ impl AdaptiveExtensions {
     /// Panics if the internal lock is poisoned.
     #[allow(clippy::significant_drop_tightening)] // Guard must be held while modifying profile
     pub fn record_success(&self, hostname: &str, extensions: Vec<ExtensionType>) {
-        let mut profiles = self.profiles.write().unwrap();
+        let mut profiles = self.profiles.write().expect("lock poisoned");
 
         let profile = profiles.entry(hostname.to_string()).or_insert_with(|| ServerProfile {
             hostname: hostname.to_string(),
@@ -198,7 +198,7 @@ impl AdaptiveExtensions {
     /// Panics if the internal lock is poisoned.
     #[allow(clippy::significant_drop_tightening)] // Guard must be held while modifying profile
     pub fn record_failure(&self, hostname: &str, extensions: Vec<ExtensionType>) {
-        let mut profiles = self.profiles.write().unwrap();
+        let mut profiles = self.profiles.write().expect("lock poisoned");
 
         let profile = profiles.entry(hostname.to_string()).or_insert_with(|| ServerProfile {
             hostname: hostname.to_string(),
@@ -221,7 +221,7 @@ impl AdaptiveExtensions {
     /// Panics if the internal lock is poisoned.
     #[must_use]
     pub fn get_profile(&self, hostname: &str) -> Option<ServerProfile> {
-        let profiles = self.profiles.read().unwrap();
+        let profiles = self.profiles.read().expect("lock poisoned");
         profiles.get(hostname).cloned()
     }
 
@@ -231,7 +231,7 @@ impl AdaptiveExtensions {
     ///
     /// Panics if the internal lock is poisoned.
     pub fn clear_profiles(&self) {
-        let mut profiles = self.profiles.write().unwrap();
+        let mut profiles = self.profiles.write().expect("lock poisoned");
         profiles.clear();
     }
 
@@ -242,7 +242,7 @@ impl AdaptiveExtensions {
     /// Panics if the internal lock is poisoned.
     #[must_use]
     pub fn profile_count(&self) -> usize {
-        let profiles = self.profiles.read().unwrap();
+        let profiles = self.profiles.read().expect("lock poisoned");
         profiles.len()
     }
 }

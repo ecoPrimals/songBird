@@ -40,9 +40,8 @@ pub struct TowerStartArgs {
     #[arg(short, long, default_value = "auto")]
     pub role: String,
 
-    /// Port to listen on (environment-aware)
-    /// Respects SONGBIRD_HTTP_PORT, SONGBIRD_PORT, or PORT
-    #[arg(short, long, default_value = "8080")]
+    /// Port to listen on
+    #[arg(short, long, env = "SONGBIRD_HTTP_PORT", default_value = "8080")]
     pub port: u16,
 
     /// Bootstrap node address (for joining existing federation)
@@ -50,7 +49,7 @@ pub struct TowerStartArgs {
     pub bootstrap: Option<String>,
 
     /// Bind address (0.0.0.0 for network access, 127.0.0.1 for local only)
-    #[arg(long, default_value = "0.0.0.0")]
+    #[arg(long, env = "SONGBIRD_BIND_ADDRESS", default_value = "0.0.0.0")]
     pub bind: String,
 
     /// Enable federation mode

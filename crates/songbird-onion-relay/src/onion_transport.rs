@@ -90,7 +90,7 @@ impl OnionTransport {
             .context("Failed to load/generate onion identity")?;
 
         let onion_address = identity.onion_address().to_string();
-        let verifying_key_bytes = identity.verifying_key().as_bytes().to_vec();
+        let verifying_key_bytes = identity.public_key_bytes().to_vec();
 
         info!("Onion address: {}", onion_address);
 

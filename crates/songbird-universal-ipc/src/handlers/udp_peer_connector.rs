@@ -161,7 +161,7 @@ impl PeerConnector for UdpPeerConnector {
             Some(addr) => {
                 addr.parse().map_err(|e| format!("Invalid binding address '{addr}': {e}"))?
             }
-            None => "0.0.0.0:0".parse().unwrap(), // Ephemeral port
+            None => "0.0.0.0:0".parse().expect("valid static address"), // Ephemeral port
         };
 
         let socket = UdpSocket::bind(bind_addr)

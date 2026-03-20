@@ -201,13 +201,13 @@ impl BtspProviderFactory {
     /// not hardcoded primal name. Any primal providing security with BTSP
     /// support will be discovered (`BearDog`, future alternatives, etc.)
     async fn query_local_upa_for_security_provider(&self) -> SongbirdResult<Option<String>> {
-        // Query localhost:8080 (local Songbird UPA)
-        // Note: Using HTTP (not HTTPS) for localhost discovery
         let client = IpcHttpClient::new()
             .await
             .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;
 
-        let url = "https://localhost:8080/api/v1/services/query/security";
+        let base = std::env::var("SONGBIRD_UPA_ENDPOINT")
+            .unwrap_or_else(|_| "http://localhost:8080".to_string());
+        let url = format!("{base}/api/v1/services/query/security");
 
         match client.get(url).await {
             Ok(response) if response.is_success() => {

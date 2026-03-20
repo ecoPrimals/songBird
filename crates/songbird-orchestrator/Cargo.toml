@@ -173,7 +173,7 @@ serde_json = "1.0"
 hmac = "0.12"       # HMAC for JWT signatures (Pure Rust, audited) - ONLY remaining crypto!
 # 
 # ✅ REMOVED 5 UNUSED CRYPTO DEPS: aes-gcm, ed25519-dalek, x25519-dalek, argon2, chacha20poly1305
-# TODO Phase 2: Delegate JWT to BearDog via hmac_sha256 method (BearDog already has this!)
+# Phase 2 handoff: delegate JWT HMAC to BearDog (`hmac_sha256`) when orchestrator IPC is ready
 # See: CRYPTO_PRIMAL_OVERSTEP_CLEANUP_FEB_06_2026.md for cleanup details
 
 # tarpc for high-performance native RPC (Phase 3)

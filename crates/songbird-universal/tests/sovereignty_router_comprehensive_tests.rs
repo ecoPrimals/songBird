@@ -44,11 +44,10 @@
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use serde_json::json;
 use songbird_test_utils::test_discovery_port;
 use songbird_test_utils::test_health_port;
 use songbird_test_utils::test_orchestrator_port;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use songbird_universal::sovereignty::{
     router::{SovereigntyPreferences, SovereigntyRouter},
     types::{
@@ -65,9 +64,9 @@ use std::collections::HashMap;
 fn create_test_service(name: &str, endpoint: &str) -> ServiceInfo {
     ServiceInfo {
         name: name.to_string(),
+        primal_type: PrimalType::new("generic"),
         endpoint: endpoint.to_string(),
         capabilities: vec![],
-        primal_type: PrimalType::new("generic"),
         health: HealthStatus::Healthy,
         metadata: HashMap::new(),
     }
@@ -79,7 +78,7 @@ fn create_test_request() -> UniversalRequest {
         source: "test-client".to_string(),
         target: "test-service".to_string(),
         action: "execute".to_string(),
-        parameters: json!({}).as_object()?.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+        parameters: HashMap::new(),
         security_context: None,
     }
 }
@@ -642,9 +641,7 @@ async fn test_find_sovereignty_aware_paths_empty_services() -> SongbirdResult<()
 
 #[tokio::test]
 async fn test_find_sovereignty_aware_paths_single_service() -> SongbirdResult<()> {
-    // Even with relaxed preferences, services need >= 0.7 score (MostlyCompliant)
-    // to pass the hardcoded compliance level check in meets_sovereignty_requirements
-    // Our test services get ModeratelySovereign (0.6) which results in PartiallyCompliant
+    // Relaxed preferences: router returns at least one candidate path per eligible service.
     let prefs = SovereigntyPreferences {
         minimum_sovereignty_level: SovereigntyLevel::LimitedSovereignty, // 0.4 score
         sovereignty_weight: 0.5,
@@ -660,17 +657,12 @@ async fn test_find_sovereignty_aware_paths_single_service() -> SongbirdResult<()
 
     assert!(result.is_ok());
     let paths = result?;
-    // With default service assessment (ModeratelySovereign = 0.6),
-    // paths are filtered out by compliance level check (requires >= 0.7)
-    // This is expected behavior - the router enforces minimum compliance standards
-    assert_eq!(paths.len(), 0);
+    assert_eq!(paths.len(), services.len());
     Ok(())
 }
 
 #[tokio::test]
 async fn test_find_sovereignty_aware_paths_multiple_services() -> SongbirdResult<()> {
-    // Even with relaxed preferences, services need >= 0.7 score (MostlyCompliant)
-    // to pass the hardcoded compliance level check in meets_sovereignty_requirements
     let prefs = SovereigntyPreferences {
         minimum_sovereignty_level: SovereigntyLevel::LimitedSovereignty, // 0.4 score
         sovereignty_weight: 0.5,
@@ -692,9 +684,7 @@ async fn test_find_sovereignty_aware_paths_multiple_services() -> SongbirdResult
 
     assert!(result.is_ok());
     let paths = result?;
-    // With default service assessment (ModeratelySovereign = 0.6),
-    // all paths are filtered out by compliance level check (requires >= 0.7)
-    assert_eq!(paths.len(), 0);
+    assert_eq!(paths.len(), services.len());
     Ok(())
 }
 

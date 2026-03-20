@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Scoped Environment Variable Management for Tests
 //!
 //! Provides RAII-based environment variable isolation for concurrent tests.

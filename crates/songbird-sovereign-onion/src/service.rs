@@ -212,9 +212,10 @@ impl OnionService {
                     let mut header = [0u8; 12];
                     stream.read_exact(&mut header).await?;
 
-                    let msg_sequence = u64::from_be_bytes(header[0..8].try_into().unwrap());
+                    let msg_sequence =
+                        u64::from_be_bytes(header[0..8].try_into().expect("known size"));
                     let payload_len =
-                        u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
+                        u32::from_be_bytes(header[8..12].try_into().expect("known size")) as usize;
 
                     // Read encrypted payload
                     let mut encrypted = vec![0u8; payload_len];

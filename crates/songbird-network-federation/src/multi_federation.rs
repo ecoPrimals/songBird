@@ -165,8 +165,7 @@ impl FederationContext {
 
     /// Try to join a discovered peer to this federation
     pub async fn try_join(&self, peer: &DiscoveredPeer, endpoint: &str) -> Result<()> {
-        // TODO: Implement actual federation join logic
-        // For now, just add to nodes
+        // Registers the peer locally: no remote join protocol runs in this minimal integration.
         let node = NodeRegistration {
             node_id: peer.session_id.clone(),
             node_name: peer.session_id.clone(),

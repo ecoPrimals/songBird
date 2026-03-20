@@ -90,8 +90,8 @@ fn create_test_service_with_sovereignty(
 
     ServiceInfo {
         name: name.to_string(),
-        endpoint: endpoint.to_string(),
         primal_type: PrimalType::new("test"),
+        endpoint: endpoint.to_string(),
         capabilities: vec![DiscoveredCapability {
             name: "test_capability".to_string(),
             version: "1.0".to_string(),
@@ -341,7 +341,7 @@ fn test_security_level_variants() -> SongbirdResult<()> {
 fn test_routing_path_creation() {
     let service = create_test_service_with_sovereignty(
         "test-service",
-        format!("http://localhost:{}", test_orchestrator_port()),
+        &format!("http://localhost:{}", test_orchestrator_port()),
         SovereigntyLevel::HighlySovereign,
     );
 

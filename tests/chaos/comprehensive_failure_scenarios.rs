@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive Failure Scenarios for Chaos Testing
 //!
 //! **MODERN CONCURRENT CHAOS TESTING** ✅

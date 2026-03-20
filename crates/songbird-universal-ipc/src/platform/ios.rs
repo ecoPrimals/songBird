@@ -5,7 +5,7 @@
 //!
 //! **Platform**: iOS, macOS (Apple platforms)
 //! **Transport**:
-//! - iOS: XPC (Apple IPC) - **TODO: Requires platform-specific bindings**
+//! - iOS: XPC (Apple IPC) — requires platform-specific bindings (not shipped in this crate)
 //! - macOS: Unix sockets (filesystem-based, works today)
 //!
 //! ## Platform Differences
@@ -101,17 +101,22 @@ impl PlatformIPC for iOSIPC {
 
         #[cfg(target_os = "ios")]
         {
-            // iOS: XPC is preferred but requires platform-specific bindings
-            // For now, document the requirement and use fallback
+            // iOS: XPC requires Apple framework bindings not yet available in Pure Rust.
+            // Return an InProcess endpoint as fallback (same runtime, zero IPC overhead).
+            let logical_port = {
+                use std::collections::hash_map::DefaultHasher;
+                use std::hash::{Hash, Hasher};
+                let mut h = DefaultHasher::new();
+                primal_name.hash(&mut h);
+                (h.finish() % 60000 + 1024) as u16
+            };
 
-            let xpc_service = format!("org.biomeos.{}", primal_name);
+            debug!(
+                "iOS: XPC bindings unavailable, using InProcess fallback for '{}' (port {})",
+                primal_name, logical_port
+            );
 
-            warn!("iOS XPC endpoint documented but not yet implemented: {}", xpc_service);
-            warn!("TODO: Implement XPC transport using Pure Rust bindings");
-            warn!("Fallback: Use TCP localhost for iOS deployment");
-
-            // Document the XPC endpoint for future implementation
-            Ok(NativeEndpoint::XPC(xpc_service))
+            Ok(NativeEndpoint::InProcess(logical_port))
         }
 
         #[cfg(not(any(target_os = "macos", target_os = "ios")))]
@@ -143,14 +148,11 @@ impl PlatformIPC for iOSIPC {
             }
 
             #[cfg(target_os = "ios")]
-            NativeEndpoint::XPC(service) => {
-                // XPC implementation placeholder
-                warn!("XPC listener not yet implemented: {}", service);
-                Err(IpcError::Other(format!(
-                    "XPC transport not yet implemented for iOS. Service: {}. Use TCP fallback.",
-                    service
-                )))
-            }
+            NativeEndpoint::XPC(service) => Err(IpcError::PlatformError(format!(
+                "XPC transport requires Apple framework bindings (not yet available in Pure Rust). \
+                     Service: {}. Use InProcess or Unix socket fallback.",
+                service
+            ))),
 
             _ => Err(IpcError::PlatformError(
                 "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint".to_string(),
@@ -179,14 +181,11 @@ impl PlatformIPC for iOSIPC {
             }
 
             #[cfg(target_os = "ios")]
-            NativeEndpoint::XPC(service) => {
-                // XPC implementation placeholder
-                warn!("XPC connection not yet implemented: {}", service);
-                Err(IpcError::Other(format!(
-                    "XPC transport not yet implemented for iOS. Service: {}. Use TCP fallback.",
-                    service
-                )))
-            }
+            NativeEndpoint::XPC(service) => Err(IpcError::PlatformError(format!(
+                "XPC transport requires Apple framework bindings (not yet available in Pure Rust). \
+                     Service: {}. Use InProcess or Unix socket fallback.",
+                service
+            ))),
 
             _ => Err(IpcError::PlatformError(
                 "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint".to_string(),
