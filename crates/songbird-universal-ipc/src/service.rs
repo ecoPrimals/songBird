@@ -541,7 +541,10 @@ impl JsonRpcHandler for IpcServiceHandler {
             "discover_capabilities" => Ok(crate::introspection::discover_capabilities()),
 
             // ── biomeOS standard ─────────────────────────────────────
-            "health" => self.handle_health().await,
+            "health" | "health.liveness" | "health.readiness" | "health.check" => {
+                self.handle_health().await
+            }
+            "capabilities.list" => Ok(crate::introspection::primal_capabilities()),
             "identity" => self.handle_identity().await,
 
             // ── IPC registry ─────────────────────────────────────────
