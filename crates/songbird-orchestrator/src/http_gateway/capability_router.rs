@@ -375,11 +375,12 @@ struct ProviderRegistry {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
     fn create_test_capability(id: &str) -> Capability {
-        let (category, capability_type, sub_type) = Capability::parse(id).unwrap();
+        let (category, capability_type, sub_type) = Capability::parse(id).expect("parse id");
         Capability {
             id: id.to_string(),
             description: format!("Test capability: {}", id),
@@ -413,7 +414,7 @@ mod tests {
         let router = CapabilityRouter::new();
         let provider = create_test_provider("test1", vec!["ai:text-generation"]);
 
-        router.register_provider(provider).await.unwrap();
+        router.register_provider(provider).await.expect("register");
 
         assert_eq!(router.list_providers().await.len(), 1);
         assert_eq!(router.list_capabilities().await.len(), 1);
@@ -425,9 +426,9 @@ mod tests {
         let provider =
             create_test_provider("test1", vec!["ai:text-generation", "ai:image-generation"]);
 
-        router.register_provider(provider).await.unwrap();
+        router.register_provider(provider).await.expect("register");
 
-        let route = router.route("ai:text-generation").await.unwrap();
+        let route = router.route("ai:text-generation").await.expect("route");
         assert_eq!(route.provider.id, "test1");
         assert_eq!(route.capability.id, "ai:text-generation");
     }
@@ -437,7 +438,7 @@ mod tests {
         let router = CapabilityRouter::new();
         let provider = create_test_provider("test1", vec!["ai:text-generation"]);
 
-        router.register_provider(provider).await.unwrap();
+        router.register_provider(provider).await.expect("register");
 
         let result = router.route("ai:image-generation").await;
         assert!(result.is_err());
@@ -448,10 +449,10 @@ mod tests {
         let router = CapabilityRouter::new();
         let provider = create_test_provider("test1", vec!["ai:text-generation"]);
 
-        router.register_provider(provider).await.unwrap();
+        router.register_provider(provider).await.expect("register");
         assert_eq!(router.list_providers().await.len(), 1);
 
-        router.unregister_provider("test1").await.unwrap();
+        router.unregister_provider("test1").await.expect("unregister");
         assert_eq!(router.list_providers().await.len(), 0);
     }
 
@@ -461,21 +462,21 @@ mod tests {
         let provider1 = create_test_provider("test1", vec!["ai:text-generation"]);
         let provider2 = create_test_provider("test2", vec!["ai:text-generation"]);
 
-        router.register_provider(provider1).await.unwrap();
-        router.register_provider(provider2).await.unwrap();
+        router.register_provider(provider1).await.expect("register1");
+        router.register_provider(provider2).await.expect("register2");
 
-        let route = router.route("ai:text-generation").await.unwrap();
+        let route = router.route("ai:text-generation").await.expect("route");
         assert!(route.provider.id == "test1" || route.provider.id == "test2");
     }
 
     #[tokio::test]
     async fn test_capability_parse() {
-        let parsed = Capability::parse("ai:text-generation").unwrap();
+        let parsed = Capability::parse("ai:text-generation").expect("parse");
         assert_eq!(parsed.0, "ai");
         assert_eq!(parsed.1, "text-generation");
         assert_eq!(parsed.2, None);
 
-        let parsed = Capability::parse("ai:text-generation:chat").unwrap();
+        let parsed = Capability::parse("ai:text-generation:chat").expect("parse");
         assert_eq!(parsed.0, "ai");
         assert_eq!(parsed.1, "text-generation");
         assert_eq!(parsed.2, Some("chat".to_string()));
@@ -488,5 +489,51 @@ mod tests {
         assert!(cap.matches("ai:text-generation:chat"));
         assert!(cap.matches("ai:text-generation:*"));
         assert!(!cap.matches("ai:image-generation"));
+    }
+
+    #[test]
+    fn capability_parse_rejects_invalid_segment_count() {
+        assert!(Capability::parse("ai").is_none());
+        assert!(Capability::parse("a:b:c:d").is_none());
+    }
+
+    #[test]
+    fn capability_matches_wildcard_prefix_strips_colon_star_suffix() {
+        let cap = create_test_capability("ai:text-generation");
+        // `:*` request compares prefix before `:*` to capability id prefix
+        assert!(cap.matches("ai:text-generation:*"));
+        assert!(!cap.matches("ai:image-generation:*"));
+    }
+
+    #[tokio::test]
+    async fn route_errors_when_no_providers_registered() {
+        let router = CapabilityRouter::new();
+        let err = router.route("ai:text-generation").await;
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn capability_matches_wildcard_uses_prefix_after_stripping_colon_star() {
+        let cap = create_test_capability("ai:text-generation");
+        assert_eq!(Capability::parse("ai:text-generation").expect("parse").1, "text-generation");
+        assert_eq!(Capability::parse("ai:text-generation").expect("parse").2, None);
+        // Wildcard strips `:*` then compares prefix; `ai:text` prefixes `ai:text-generation`.
+        assert!(cap.matches("ai:text:*"));
+        assert!(cap.matches("ai:text-generation:*"));
+        assert!(!cap.matches("ai:image-generation:*"));
+    }
+
+    #[test]
+    fn capability_router_default_impl_matches_new() {
+        let _ = CapabilityRouter::default();
+    }
+
+    #[tokio::test]
+    async fn route_picks_first_matching_capability_when_multiple_on_provider() {
+        let router = CapabilityRouter::new();
+        let provider = create_test_provider("multi", vec!["store:foo", "store:bar"]);
+        router.register_provider(provider).await.expect("register");
+        let r = router.route("store:foo").await.expect("route");
+        assert_eq!(r.capability.id, "store:foo");
     }
 }

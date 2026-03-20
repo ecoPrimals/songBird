@@ -225,7 +225,10 @@ impl GraphValidator {
     }
 
     /// DFS helper for cycle detection
-    #[allow(clippy::self_only_used_in_recursion)] // &self needed for method dispatch context
+    #[expect(
+        clippy::self_only_used_in_recursion,
+        reason = "&self needed for method dispatch context"
+    )]
     fn dfs_cycle(
         &self,
         node: &str,

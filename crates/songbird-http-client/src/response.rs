@@ -111,8 +111,10 @@ impl ResponseParser {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn test_parse_simple_response() {
@@ -149,5 +151,30 @@ mod tests {
 
         assert_eq!(parsed.status, 204);
         assert_eq!(parsed.body, serde_json::json!(""));
+    }
+
+    #[test]
+    fn test_parse_status_line_invalid() {
+        let err = ResponseParser::parse_status_line("HTTP/1.1 OK").unwrap_err();
+        assert!(matches!(err, Error::InvalidResponse(_)));
+
+        let err = ResponseParser::parse_status_line("").unwrap_err();
+        assert!(matches!(err, Error::InvalidResponse(_)));
+    }
+
+    #[test]
+    fn test_parse_multiline_headers_and_body_json_fallback() {
+        let response = b"HTTP/1.1 200 OK\r\nX-Test: a\r\nY-Test: b\r\n\r\nnot json {{{";
+        let parsed = ResponseParser::parse(response).unwrap();
+        assert_eq!(parsed.status, 200);
+        assert_eq!(parsed.headers.get("x-test"), Some(&"a".to_string()));
+        assert_eq!(parsed.body, serde_json::json!("not json {{{"));
+    }
+
+    #[test]
+    fn test_parse_headers_skips_malformed_lines_until_blank() {
+        let response = b"HTTP/1.1 200 OK\r\nbadheader\r\nGood: yes\r\n\r\n";
+        let parsed = ResponseParser::parse(response).unwrap();
+        assert_eq!(parsed.headers.get("good"), Some(&"yes".to_string()));
     }
 }

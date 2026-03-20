@@ -253,7 +253,6 @@ impl CapabilityEndpointResolver {
     }
 
     /// Discover from service registry
-    #[allow(clippy::unused_self, clippy::unnecessary_wraps, clippy::unused_async)]
     async fn discover_from_registry(
         &self,
         capability: &CapabilityType,
@@ -326,7 +325,6 @@ impl CapabilityEndpointResolver {
     }
 
     /// Discover from container metadata
-    #[allow(clippy::unused_self, clippy::unnecessary_wraps, clippy::unused_async)]
     async fn discover_from_container_metadata(
         &self,
         capability: &CapabilityType,
@@ -392,7 +390,6 @@ impl CapabilityEndpointResolver {
     }
 
     /// Discover from DNS
-    #[allow(clippy::unused_self, clippy::unnecessary_wraps, clippy::unused_async)]
     async fn discover_from_dns(
         &self,
         capability: &CapabilityType,
@@ -529,6 +526,7 @@ pub async fn get_multiple_endpoints(capabilities: &[&str]) -> SongbirdResult<Vec
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     // ✅ CONCURRENT-SAFE! Using ScopedEnv for proper isolation
@@ -539,7 +537,7 @@ mod tests {
         // ScopedEnv automatically cleans up when dropped (RAII pattern)
         let _env = ScopedEnv::set("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443").await;
 
-        let endpoint = get_capability_endpoint("security").await.unwrap();
+        let endpoint = get_capability_endpoint("security").await.expect("security endpoint");
         assert_eq!(endpoint, "http://security:8443");
 
         // Cleanup happens automatically when _env drops
@@ -563,11 +561,28 @@ mod tests {
 
     #[test]
     fn test_capability_type_parsing() {
-        assert_eq!("security".parse::<CapabilityType>().unwrap(), CapabilityType::Security);
-        assert_eq!("AUTH".parse::<CapabilityType>().unwrap(), CapabilityType::Security);
-        assert_eq!("Storage".parse::<CapabilityType>().unwrap(), CapabilityType::Storage);
+        assert_eq!("security".parse::<CapabilityType>().expect("parse"), CapabilityType::Security);
+        assert_eq!("AUTH".parse::<CapabilityType>().expect("parse"), CapabilityType::Security);
+        assert_eq!(
+            "encryption".parse::<CapabilityType>().expect("parse"),
+            CapabilityType::Security
+        );
+        assert_eq!("database".parse::<CapabilityType>().expect("parse"), CapabilityType::Storage);
+        assert_eq!("runtime".parse::<CapabilityType>().expect("parse"), CapabilityType::Compute);
+        assert_eq!("intelligence".parse::<CapabilityType>().expect("parse"), CapabilityType::Ai);
+        assert_eq!(
+            "workflow".parse::<CapabilityType>().expect("parse"),
+            CapabilityType::Orchestration
+        );
+        assert_eq!(
+            "metrics".parse::<CapabilityType>().expect("parse"),
+            CapabilityType::Observability
+        );
+        assert_eq!("mesh".parse::<CapabilityType>().expect("parse"), CapabilityType::Networking);
+        assert_eq!("Storage".parse::<CapabilityType>().expect("parse"), CapabilityType::Storage);
 
-        if let CapabilityType::Custom(name) = "my_custom".parse::<CapabilityType>().unwrap() {
+        if let CapabilityType::Custom(name) = "my_custom".parse::<CapabilityType>().expect("parse")
+        {
             assert_eq!(name, "my_custom");
         } else {
             panic!("Expected Custom capability");
@@ -581,6 +596,24 @@ mod tests {
             CapabilityType::Custom("test".to_string()).env_var_name(),
             "CAPABILITY_TEST_ENDPOINT"
         );
+        assert_eq!(CapabilityType::Observability.as_str(), "observability");
+        assert_eq!(CapabilityType::Networking.as_str(), "networking");
+    }
+
+    #[test]
+    fn test_capability_type_json_roundtrip() {
+        let cap = CapabilityType::Orchestration;
+        let json = serde_json::to_string(&cap).expect("serialize");
+        let back: CapabilityType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, cap);
+    }
+
+    #[test]
+    fn test_discovery_method_serde_roundtrip() {
+        let m = DiscoveryMethod::ConfigFile;
+        let json = serde_json::to_string(&m).expect("serialize");
+        let back: DiscoveryMethod = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(format!("{back:?}"), format!("{m:?}"));
     }
 
     #[tokio::test] // ✅ CONCURRENT! Using ScopedEnv
@@ -592,7 +625,7 @@ mod tests {
         ])
         .await;
 
-        let endpoints = get_multiple_endpoints(&["security", "storage"]).await.unwrap();
+        let endpoints = get_multiple_endpoints(&["security", "storage"]).await.expect("multiple");
 
         assert_eq!(endpoints.len(), 2);
         assert_eq!(endpoints[0], "http://security:8443");
@@ -607,10 +640,10 @@ mod tests {
         let _env = ScopedEnv::set("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443").await;
 
         // First call - should discover
-        let endpoint1 = get_capability_endpoint("security").await.unwrap();
+        let endpoint1 = get_capability_endpoint("security").await.expect("first");
 
         // Second call - should use cache
-        let endpoint2 = get_capability_endpoint("security").await.unwrap();
+        let endpoint2 = get_capability_endpoint("security").await.expect("second");
 
         assert_eq!(endpoint1, endpoint2);
 
@@ -618,7 +651,7 @@ mod tests {
         clear_cache();
 
         // Should discover again
-        let endpoint3 = get_capability_endpoint("security").await.unwrap();
+        let endpoint3 = get_capability_endpoint("security").await.expect("third");
 
         assert_eq!(endpoint1, endpoint3);
 

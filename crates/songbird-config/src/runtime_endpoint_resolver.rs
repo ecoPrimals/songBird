@@ -184,7 +184,7 @@ impl RuntimeEndpointResolver {
     ///
     /// Panics if called with an empty `endpoints` slice. The caller must ensure the slice
     /// is non-empty before calling this function.
-    #[allow(clippy::expect_used)] // Invariant enforced at call site (line 109)
+    #[expect(clippy::expect_used, reason = "invariant enforced at call site (non-empty endpoints)")]
     fn select_best_endpoint(endpoints: &[ServiceEndpoint]) -> &ServiceEndpoint {
         endpoints
             .iter()
@@ -267,6 +267,7 @@ impl EndpointMigrationHelper {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -274,9 +275,12 @@ mod tests {
     async fn test_local_service_resolution() {
         let resolver = RuntimeEndpointResolver::new();
 
-        resolver.register_local_service("my-service", "http://my-endpoint:9000").await.unwrap();
+        resolver
+            .register_local_service("my-service", "http://my-endpoint:9000")
+            .await
+            .expect("register local");
 
-        let endpoint = resolver.resolve_capability("my-service").await.unwrap();
+        let endpoint = resolver.resolve_capability("my-service").await.expect("resolve");
         assert_eq!(endpoint, "http://my-endpoint:9000");
     }
 
@@ -285,11 +289,77 @@ mod tests {
         songbird_process_env::set_var("COMPUTE_ENDPOINT", "http://env-compute:8080");
 
         let resolver = RuntimeEndpointResolver::new();
-        let endpoint = resolver.resolve_capability("compute").await.unwrap();
+        let endpoint = resolver.resolve_capability("compute").await.expect("resolve from env");
 
         assert_eq!(endpoint, "http://env-compute:8080");
 
         songbird_process_env::remove_var("COMPUTE_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_env_resolution_songbird_url_variant() {
+        songbird_process_env::remove_var("STORAGE_ENDPOINT");
+        songbird_process_env::remove_var("STORAGE_URL");
+        songbird_process_env::set_var("SONGBIRD_STORAGE_URL", "http://storage-from-songbird:9000");
+
+        let resolver = RuntimeEndpointResolver::new();
+        let endpoint = resolver.resolve_capability("storage").await.expect("SONGBIRD_*_URL");
+
+        assert_eq!(endpoint, "http://storage-from-songbird:9000");
+
+        songbird_process_env::remove_var("SONGBIRD_STORAGE_URL");
+    }
+
+    #[test]
+    fn test_try_env_resolution_skips_empty_values() {
+        songbird_process_env::set_var("NETSVC_ENDPOINT", "");
+        assert!(RuntimeEndpointResolver::try_env_resolution("netsvc").is_none());
+        songbird_process_env::remove_var("NETSVC_ENDPOINT");
+    }
+
+    #[test]
+    fn test_select_best_endpoint_prefers_health_score() {
+        let endpoints = vec![
+            ServiceEndpoint {
+                id: "a".to_string(),
+                url: "http://low".to_string(),
+                capabilities: vec![],
+                health_score: 0.2,
+                last_seen: std::time::SystemTime::UNIX_EPOCH,
+            },
+            ServiceEndpoint {
+                id: "b".to_string(),
+                url: "http://high".to_string(),
+                capabilities: vec![],
+                health_score: 0.95,
+                last_seen: std::time::SystemTime::UNIX_EPOCH,
+            },
+        ];
+        let best = RuntimeEndpointResolver::select_best_endpoint(&endpoints);
+        assert_eq!(best.url, "http://high");
+    }
+
+    #[tokio::test]
+    async fn test_resolve_uses_fallback_when_nothing_else() {
+        songbird_process_env::remove_var("ORCHESTRATOR_ENDPOINT");
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_URL");
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_ENDPOINT");
+        songbird_process_env::remove_var("ORCHESTRATOR_URL");
+
+        let resolver =
+            RuntimeEndpointResolver::with_discovery(CapabilityDiscovery::with_methods(Vec::new()));
+
+        let url = resolver.resolve_capability("orchestrator").await.expect("fallback");
+        assert!(url.contains("8080"), "url={url}");
+    }
+
+    #[tokio::test]
+    async fn test_migration_helper_delegates_to_resolver() {
+        let resolver = RuntimeEndpointResolver::new();
+        resolver.register_local_service("legacy", "http://legacy:1").await.expect("register");
+        let helper = EndpointMigrationHelper::new(resolver);
+        let url = helper.migrate_endpoint("ignored", "legacy").await.expect("migrate");
+        assert_eq!(url, "http://legacy:1");
     }
 
     #[test]

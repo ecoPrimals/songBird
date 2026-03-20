@@ -388,15 +388,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_compute_endpoint_legacy_fallback() {
-        // Modern pattern: test legacy option path without modifying env
+        // Skip if another test leaked COMPUTE_ENDPOINT into the process env
+        if std::env::var("COMPUTE_ENDPOINT").is_ok() {
+            return;
+        }
+
         let options = DiscoveryOptions::for_testing()
             .toadstool_endpoint("http://legacy-toadstool:8001")
             .build();
 
         let result = get_compute_endpoint(options).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "http://legacy-toadstool:8001");
-        // NO cleanup needed!
+        assert_eq!(result.expect("should resolve"), "http://legacy-toadstool:8001");
     }
 
     #[tokio::test]

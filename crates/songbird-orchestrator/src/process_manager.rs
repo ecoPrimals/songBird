@@ -397,7 +397,10 @@ impl ProcessManager {
 
 impl Default for ProcessManager {
     fn default() -> Self {
-        #[allow(clippy::expect_used)] // Default impl must succeed or is a fatal misconfiguration
+        #[expect(
+            clippy::expect_used,
+            reason = "Default impl must succeed or is a fatal misconfiguration"
+        )]
         Self::new().expect("Failed to create default ProcessManager")
     }
 }
@@ -427,13 +430,14 @@ impl Drop for SingletonGuard {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use std::env;
 
     #[test]
     fn test_default_pid_file_location() {
-        let path = ProcessManager::default_pid_file().unwrap();
+        let path = ProcessManager::default_pid_file().expect("default pid path");
         assert!(path.to_string_lossy().contains("songbird"));
         assert!(path.to_string_lossy().ends_with(".pid"));
     }
@@ -449,7 +453,7 @@ mod tests {
         let manager = ProcessManager::with_pid_file(pid_file);
 
         // First lock should succeed
-        let _guard1 = manager.acquire_lock().expect("First lock should succeed");
+        let _guard1 = manager.acquire_lock().expect("first lock");
 
         // Second lock should fail
         let result = manager.acquire_lock();
@@ -459,7 +463,7 @@ mod tests {
         drop(_guard1);
 
         // Now we should be able to acquire again
-        let _guard2 = manager.acquire_lock().expect("Lock should be available after drop");
+        let _guard2 = manager.acquire_lock().expect("second lock");
     }
 
     #[test]
@@ -468,17 +472,17 @@ mod tests {
         let pid_file = temp_dir.join(format!("songbird_stale_{}.pid", process::id()));
 
         // Create a stale PID file with a definitely-not-running PID
-        fs::write(&pid_file, "999999").unwrap();
+        fs::write(&pid_file, "999999").expect("write pid");
 
         let manager = ProcessManager::with_pid_file(pid_file);
 
         // Should succeed by cleaning up stale file
-        let _guard = manager.acquire_lock().expect("Should clean up stale PID");
+        let _guard = manager.acquire_lock().expect("stale cleanup");
     }
 
     #[test]
     fn test_process_running_check() {
-        let manager = ProcessManager::new().unwrap();
+        let manager = ProcessManager::new().expect("process manager");
 
         // Current process should be running
         let current_pid = process::id();
@@ -498,7 +502,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn test_zombie_detection_logic() {
-        let manager = ProcessManager::new().unwrap();
+        let manager = ProcessManager::new().expect("process manager");
 
         // Test 1: Current process should be running (not a zombie)
         let current_pid = process::id();
@@ -533,30 +537,43 @@ mod tests {
 
         // Test case 1: Running process
         let stat_running = "12345 (bash) R 1 12345 12345 0 -1 4194304 123 456 0 0 10 20 0 0 20 0 1 0 1234567 8192 100 18446744073709551615";
-        let state_pos = stat_running.rfind(')').unwrap();
-        let state = stat_running[state_pos + 2..].chars().next().unwrap();
+        let state_pos = stat_running.rfind(')').expect("paren");
+        let state = stat_running[state_pos + 2..].chars().next().expect("state");
         assert_eq!(state, 'R', "Should parse running state");
 
         // Test case 2: Sleeping process
         let stat_sleeping = "12346 (sleep) S 1 12346 12346 0 -1 4194304 123 456 0 0 10 20 0 0 20 0 1 0 1234568 8192 100 18446744073709551615";
-        let state_pos = stat_sleeping.rfind(')').unwrap();
-        let state = stat_sleeping[state_pos + 2..].chars().next().unwrap();
+        let state_pos = stat_sleeping.rfind(')').expect("paren");
+        let state = stat_sleeping[state_pos + 2..].chars().next().expect("state");
         assert_eq!(state, 'S', "Should parse sleeping state");
 
         // Test case 3: Zombie process
         let stat_zombie = "12347 (defunct) Z 1 12347 12347 0 -1 4194304 0 0 0 0 0 0 0 0 20 0 1 0 1234569 0 0 18446744073709551615";
-        let state_pos = stat_zombie.rfind(')').unwrap();
-        let state = stat_zombie[state_pos + 2..].chars().next().unwrap();
+        let state_pos = stat_zombie.rfind(')').expect("paren");
+        let state = stat_zombie[state_pos + 2..].chars().next().expect("state");
         assert_eq!(state, 'Z', "Should parse zombie state");
 
         // Test case 4: Process name with spaces and special chars
         let stat_complex = "12348 (my (complex) name!) R 1 12348 12348 0 -1 4194304 123 456 0 0 10 20 0 0 20 0 1 0 1234570 8192 100 18446744073709551615";
-        let state_pos = stat_complex.rfind(')').unwrap();
-        let state = stat_complex[state_pos + 2..].chars().next().unwrap();
+        let state_pos = stat_complex.rfind(')').expect("paren");
+        let state = stat_complex[state_pos + 2..].chars().next().expect("state");
         assert_eq!(state, 'R', "Should handle complex process names");
     }
 
-    /// Test that zombies block new instances (before cleanup) (v3.17.0)
+    #[test]
+    fn singleton_guard_drop_removes_pid_file() {
+        let temp_dir = env::temp_dir();
+        let pid_file = temp_dir.join(format!("songbird_guard_drop_{}.pid", process::id()));
+        let _ = fs::remove_file(&pid_file);
+
+        let manager = ProcessManager::with_pid_file(pid_file.clone());
+        let guard = manager.acquire_lock().expect("lock");
+        assert!(pid_file.exists(), "PID file should exist while holding guard");
+        drop(guard);
+        assert!(!pid_file.exists(), "PID file should be removed on guard drop");
+    }
+
+    // Test that zombies block new instances (before cleanup) (v3.17.0)
     #[test]
     fn test_zombie_allows_new_deployment() {
         let temp_dir = env::temp_dir();
@@ -572,7 +589,7 @@ mod tests {
 
         // For this test, we use PID 999999 which definitely doesn't exist
         // In production, is_process_running() would detect a real zombie via /proc
-        fs::write(&pid_file, "999999").unwrap();
+        fs::write(&pid_file, "999999").expect("write pid");
 
         let manager = ProcessManager::with_pid_file(pid_file);
 
@@ -596,14 +613,14 @@ mod tests {
         let manager = ProcessManager::with_pid_file(pid_file);
 
         // First lock succeeds
-        let _guard1 = manager.acquire_lock().expect("First lock should succeed");
+        let _guard1 = manager.acquire_lock().expect("first lock");
 
         // Second lock fails with helpful error
         let result = manager.acquire_lock();
         assert!(result.is_err());
 
         // Error message should mention the PID and how to resolve
-        let error_msg = format!("{}", result.unwrap_err());
+        let error_msg = format!("{}", result.expect_err("duplicate lock should fail"));
         assert!(
             error_msg.contains("already running") || error_msg.contains("PID"),
             "Error should explain the conflict clearly"

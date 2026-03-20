@@ -53,7 +53,7 @@ pub struct CanonicalUniversalAdapter {
     /// Circuit breaker for fault tolerance
     circuit_breaker: Arc<CanonicalCircuitBreaker>,
     /// Configuration for the adapter
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future adapter behavior wired to config")]
     config: CanonicalAdapterConfig,
     /// Performance metrics and monitoring
     metrics: Arc<RwLock<CanonicalAdapterMetrics>>,
@@ -69,7 +69,7 @@ pub struct CanonicalServiceRegistry {
     /// All registered services
     all_services: HashMap<String, CanonicalRegisteredService>,
     /// Service health status cache
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future health snapshot caching")]
     health_cache: HashMap<String, (CanonicalHealthStatus, SystemTime)>,
 }
 
@@ -96,7 +96,7 @@ pub struct CanonicalLoadBalancer {
     /// Load balancing strategy
     strategy: CanonicalLoadBalancingStrategy,
     /// Service performance tracking
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future load-aware routing")]
     performance_tracker: Arc<RwLock<HashMap<String, CanonicalServicePerformance>>>,
 }
 
@@ -106,7 +106,7 @@ pub struct CanonicalCircuitBreaker {
     /// Circuit breaker states indexed by service ID
     states: Arc<RwLock<HashMap<String, CanonicalCircuitState>>>,
     /// Configuration for circuit breaker behavior
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future per-service breaker tuning")]
     config: CanonicalCircuitBreakerConfig,
 }
 
@@ -194,7 +194,6 @@ pub struct CanonicalRetryConfig {
 /// This is a foundation definition in songbird-types.
 /// Matches the network timeout configuration from `songbird_config::canonical::network::NetworkTimeouts`
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)] // "timeout" suffix is intentionally descriptive
 pub struct CanonicalTimeoutConfig {
     /// Request timeout
     pub request_timeout: Duration,
@@ -422,6 +421,7 @@ impl CanonicalUniversalAdapter {
     ) -> SongbirdResult<()> {
         let mut registry = self.registry.write().await;
 
+        let service_id = service.id.clone();
         let registered_service = CanonicalRegisteredService {
             provider_type: service
                 .metadata
@@ -431,12 +431,12 @@ impl CanonicalUniversalAdapter {
             registered_at: SystemTime::now(),
             last_health_check: None,
             performance: CanonicalServicePerformance::default(),
-            service: service.clone(),
-            capabilities: capabilities.clone(),
+            service,
+            capabilities,
         };
 
         // Index by capabilities
-        for capability in &capabilities {
+        for capability in &registered_service.capabilities {
             registry
                 .services_by_capability
                 .entry(capability.clone())
@@ -452,7 +452,7 @@ impl CanonicalUniversalAdapter {
             .push(registered_service.clone());
 
         // Store in all services
-        registry.all_services.insert(service.id.clone(), registered_service);
+        registry.all_services.insert(service_id, registered_service);
 
         // Explicitly drop the write lock to release it early
         drop(registry);
@@ -519,9 +519,15 @@ impl CanonicalUniversalAdapter {
 
             // Update average response time
             let processing_time = start_time.elapsed().unwrap_or(Duration::from_millis(0));
-            #[allow(clippy::cast_possible_truncation)] // Truncation acceptable for perf metrics
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "truncation acceptable: nanos fit in u64 for running average window"
+            )]
             let avg_nanos = metrics.avg_response_time.as_nanos() as u64;
-            #[allow(clippy::cast_possible_truncation)] // Truncation acceptable for perf metrics
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "truncation acceptable: nanos fit in u64 for running average window"
+            )]
             let processing_nanos = processing_time.as_nanos() as u64;
             let new_avg = (avg_nanos * (metrics.successful_requests - 1) + processing_nanos)
                 / metrics.successful_requests;
@@ -612,13 +618,13 @@ impl CanonicalProtocolRouter {
         request: &CanonicalAdapterRequest,
     ) -> SongbirdResult<CanonicalAdapterResponse> {
         // Determine protocol from service endpoints
-        let protocol = service
+        let protocol: &str = service
             .endpoints
             .first()
-            .map_or_else(|| self.default_protocol.clone(), |e| e.protocol.clone());
+            .map_or(self.default_protocol.as_str(), |e| e.protocol.as_str());
 
         // Get appropriate handler
-        let handler = self.handlers.get(&protocol).ok_or_else(|| SongbirdError::Service {
+        let handler = self.handlers.get(protocol).ok_or_else(|| SongbirdError::Service {
             service: format!("protocol:{protocol}"),
             message: format!("Protocol '{protocol}' is not supported"),
             suggested_alternatives: self.handlers.keys().cloned().collect(),
@@ -867,5 +873,186 @@ pub fn create_adapter_request(
         priority,
         timeout: None,
         metadata: HashMap::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::traits::canonical::{
+        Endpoint, HealthStatus, ProviderType, ServiceInfo as CanonicalServiceInfo, ServiceType,
+    };
+    use serde_json::json;
+    use std::sync::Arc;
+    use std::time::{Duration, SystemTime};
+
+    fn sample_service(id: &str, capability: &str) -> CanonicalServiceInfo {
+        let mut metadata = HashMap::new();
+        metadata.insert(
+            "provider_type".to_string(),
+            serde_json::to_string(&ProviderType::Service).expect("serialize ProviderType"),
+        );
+        CanonicalServiceInfo {
+            id: id.to_string(),
+            name: format!("service-{id}"),
+            service_type: ServiceType::WebService,
+            version: "1.0.0".to_string(),
+            endpoints: vec![Endpoint {
+                protocol: "http".to_string(),
+                host: "127.0.0.1".to_string(),
+                port: 8080,
+                path: None,
+                metadata: HashMap::new(),
+            }],
+            health: HealthStatus::Healthy,
+            metadata,
+            tags: vec![],
+            capabilities: vec![capability.to_string()],
+            last_updated: SystemTime::now(),
+        }
+    }
+
+    #[tokio::test]
+    async fn register_service_indexes_by_capability_and_type() {
+        let adapter = create_canonical_adapter();
+        adapter
+            .register_service(sample_service("alpha", "compute"), vec!["compute".to_string()])
+            .await
+            .expect("register");
+
+        let metrics = adapter.get_metrics().await;
+        assert_eq!(metrics.total_requests, 0);
+    }
+
+    #[tokio::test]
+    async fn handle_request_errors_when_no_services_for_capability() {
+        let adapter = create_canonical_adapter();
+        let req =
+            create_adapter_request("missing-cap", json!({}), CanonicalRequestPriority::Normal);
+        let err = adapter.handle_request(req).await.expect_err("expected service error");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("No services found") || msg.contains("No services"),
+            "unexpected message: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_request_errors_when_protocol_handler_missing() {
+        let adapter = create_canonical_adapter();
+        adapter
+            .register_service(sample_service("s1", "compute"), vec!["compute".to_string()])
+            .await
+            .expect("register");
+
+        let req = create_adapter_request("compute", json!({}), CanonicalRequestPriority::Normal);
+        let err = adapter.handle_request(req).await.expect_err("expected protocol error");
+        assert!(
+            err.to_string().contains("Protocol") || err.to_string().contains("protocol"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[test]
+    fn load_balancer_select_empty_returns_error() {
+        let lb = CanonicalLoadBalancer::new(CanonicalLoadBalancingConfig::default());
+        let req = create_adapter_request("x", json!({}), CanonicalRequestPriority::Normal);
+        let err = lb.select_service(&[], &req).expect_err("empty services");
+        assert!(err.to_string().contains("No services available"));
+    }
+
+    #[tokio::test]
+    async fn circuit_breaker_opens_after_failure() {
+        let cb = CanonicalCircuitBreaker::new(CanonicalCircuitBreakerConfig::default());
+        assert!(cb.can_execute("peer").await);
+        cb.record_failure("peer").await;
+        assert!(!cb.can_execute("peer").await);
+        cb.record_success("peer").await;
+        assert!(cb.can_execute("peer").await);
+    }
+
+    #[test]
+    fn adapter_config_defaults_are_sensible() {
+        let cfg = CanonicalAdapterConfig::default();
+        assert!(cfg.monitoring.enabled);
+        assert_eq!(cfg.load_balancing.strategy, CanonicalLoadBalancingStrategy::HealthAware);
+    }
+
+    fn registered_service(id: &str, capability: &str, avg_ms: u64) -> CanonicalRegisteredService {
+        CanonicalRegisteredService {
+            service: sample_service(id, capability),
+            capabilities: vec![capability.to_string()],
+            provider_type: ProviderType::Service,
+            registered_at: SystemTime::now(),
+            last_health_check: None,
+            performance: CanonicalServicePerformance {
+                avg_response_time: Duration::from_millis(avg_ms),
+                success_rate: 1.0,
+                total_requests: 0,
+                successful_requests: 0,
+                failed_requests: 0,
+                last_updated: SystemTime::now(),
+            },
+        }
+    }
+
+    #[test]
+    fn load_balancer_least_response_time_picks_lowest_latency() {
+        let lb = CanonicalLoadBalancer::new(CanonicalLoadBalancingConfig {
+            strategy: CanonicalLoadBalancingStrategy::LeastResponseTime,
+            ..CanonicalLoadBalancingConfig::default()
+        });
+        let req = create_adapter_request("compute", json!({}), CanonicalRequestPriority::Normal);
+        let slow = registered_service("slow", "compute", 500);
+        let fast = registered_service("fast", "compute", 5);
+        let picked = lb
+            .select_service(&[slow, fast], &req)
+            .expect("select service with least response time");
+        assert_eq!(picked.service.id, "fast");
+    }
+
+    #[derive(Debug)]
+    struct MockHttpHandler;
+
+    #[async_trait::async_trait]
+    impl CanonicalProtocolHandler for MockHttpHandler {
+        fn protocol_name(&self) -> &str {
+            "http"
+        }
+
+        async fn handle_request(
+            &self,
+            service: &CanonicalServiceInfo,
+            request: &CanonicalAdapterRequest,
+        ) -> SongbirdResult<CanonicalAdapterResponse> {
+            Ok(CanonicalAdapterResponse {
+                request_id: request.id.clone(),
+                service_id: service.id.clone(),
+                payload: json!({"ok": true}),
+                metadata: HashMap::new(),
+                processing_time: Duration::from_millis(1),
+                performance_info: CanonicalServicePerformance::default(),
+            })
+        }
+
+        fn supports_service(&self, _service: &CanonicalServiceInfo) -> bool {
+            true
+        }
+
+        fn get_metadata(&self) -> HashMap<String, String> {
+            HashMap::new()
+        }
+    }
+
+    #[tokio::test]
+    async fn protocol_router_routes_registered_http_handler() {
+        let mut router = CanonicalProtocolRouter::new();
+        router.register_handler(Arc::new(MockHttpHandler));
+        let svc = sample_service("svc", "compute");
+        let req = create_adapter_request("compute", json!({}), CanonicalRequestPriority::Normal);
+        let res = router.route_request(&svc, &req).await.expect("route");
+        assert_eq!(res.service_id, "svc");
     }
 }

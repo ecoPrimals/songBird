@@ -347,10 +347,14 @@ pub struct AdapterStats {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
     #![allow(clippy::float_cmp)]
     #![allow(clippy::all)]
 
     use super::*;
+
+    use crate::types::capability::PrimalType;
+    use crate::types::{HealthStatus, ServiceInfo};
 
     #[tokio::test]
     async fn test_adapter_creation_default() {
@@ -754,6 +758,53 @@ mod tests {
 
         let debug_str = format!("{adapter:?}");
         assert!(debug_str.contains("SovereigntyAwareAdapter"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_generate_basic_paths_non_empty() -> Result<(), Box<dyn std::error::Error>> {
+        let adapter = SovereigntyAwareAdapter::new()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+
+        let services = vec![ServiceInfo {
+            name: "edge-service".to_string(),
+            primal_type: PrimalType::new("compute"),
+            endpoint: "http://127.0.0.1:9000".to_string(),
+            capabilities: vec![],
+            health: HealthStatus::Unknown,
+            metadata: std::collections::HashMap::new(),
+        }];
+
+        let paths = adapter.generate_basic_paths(&services).await?;
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0].segments.len(), 1);
+        assert_eq!(paths[0].combined_score, 0.65);
+        Ok(())
+    }
+
+    #[test]
+    fn test_select_best_path_tie_prefers_one() -> Result<(), Box<dyn std::error::Error>> {
+        let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+
+        let path_a = RoutingPath {
+            segments: vec![],
+            sovereignty_score: 0.8,
+            efficiency_score: 0.7,
+            combined_score: 0.75,
+            security_level: super::super::types::SecurityLevel::High,
+        };
+        let path_b = RoutingPath {
+            segments: vec![],
+            sovereignty_score: 0.7,
+            efficiency_score: 0.8,
+            combined_score: 0.75,
+            security_level: super::super::types::SecurityLevel::High,
+        };
+
+        let selected = adapter.select_best_path(&[path_a, path_b])?;
+        assert_eq!(selected.combined_score, 0.75);
         Ok(())
     }
 }

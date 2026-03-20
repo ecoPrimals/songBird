@@ -352,7 +352,6 @@ impl CircuitManager {
     }
 
     /// Add hop to circuit
-    #[allow(dead_code)]
     fn add_hop_to_circuit(&self, circuit_id: u32, hop: CircuitHop) -> Result<()> {
         self.circuits
             .write()

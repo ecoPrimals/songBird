@@ -553,6 +553,7 @@ impl AnonymousDiscoveryBroadcaster {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -631,5 +632,41 @@ mod tests {
 
         assert!(broadcaster.identity_attestations.is_some());
         assert_eq!(broadcaster.identity_attestations.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn with_identity_tags_empty_clears() {
+        let b = AnonymousDiscoveryBroadcaster::new(
+            vec!["c".into()],
+            vec!["https".into()],
+            8080,
+            vec!["224.0.0.251:2300".parse().expect("addr")],
+            30,
+        )
+        .with_identity_tags(vec!["t".into()])
+        .with_identity_tags(vec![]);
+        assert!(b.tags.is_none());
+    }
+
+    #[test]
+    fn v3_message_to_bytes_roundtrip_preserves_version() {
+        use crate::anonymous::messages::AnonymousDiscoveryMessage;
+        let endpoints = vec![TransportEndpointMessage {
+            interface_type: "ethernet".into(),
+            address: "192.168.1.2:8443".into(),
+            protocols: vec!["https".into()],
+            preference: 1,
+        }];
+        let msg = AnonymousDiscoveryMessage::new_v3(
+            "nid".into(),
+            "nn".into(),
+            endpoints,
+            vec!["cap".into()],
+        );
+        let bytes = msg.to_bytes().expect("to_bytes");
+        let back = AnonymousDiscoveryMessage::from_bytes(&bytes).expect("from_bytes");
+        assert_eq!(back.version, "3.0");
+        assert_eq!(back.node_id.as_deref(), Some("nid"));
+        assert!(back.validate().is_ok());
     }
 }

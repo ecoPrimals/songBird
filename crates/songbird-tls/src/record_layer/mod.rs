@@ -246,6 +246,7 @@ impl Default for RecordLayer {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -607,5 +608,37 @@ mod tests {
 
         // Sequence should have incremented
         assert_eq!(record_layer.write_sequence(), initial_seq + 1);
+    }
+
+    #[test]
+    fn parse_record_rejects_oversized_length_field() {
+        let mut record_layer = RecordLayer::new();
+        let oversized = MAX_RECORD_SIZE + 1;
+        let len_hi = ((oversized >> 8) & 0xff) as u8;
+        let len_lo = (oversized & 0xff) as u8;
+        let buf = vec![0x17, 0x03, 0x03, len_hi, len_lo];
+        let err = record_layer.parse_record(&buf).expect_err("oversized header");
+        assert!(matches!(err, crate::error::TlsError::RecordTooLarge { .. }));
+    }
+
+    #[test]
+    fn decrypt_record_errors_when_inner_empty_after_padding_strip() {
+        let mut record_layer = RecordLayer::new();
+        let decrypt_fn = |_data: &[u8], _seq: u64| Ok(vec![0u8, 0u8]); // only padding zeros
+        let err = record_layer.decrypt_record(&[1, 2, 3], decrypt_fn).expect_err("empty inner");
+        assert!(matches!(err, crate::error::TlsError::DecryptError));
+    }
+
+    #[test]
+    fn decrypt_record_parses_inner_content_type() {
+        let mut record_layer = RecordLayer::new();
+        let decrypt_fn = |_data: &[u8], _seq: u64| {
+            let mut v = vec![b'a', b'b'];
+            v.push(ContentType::Handshake as u8);
+            Ok(v)
+        };
+        let (ct, plain) = record_layer.decrypt_record(&[0u8], decrypt_fn).expect("decrypt");
+        assert_eq!(ct, ContentType::Handshake);
+        assert_eq!(plain, b"ab");
     }
 }

@@ -577,14 +577,11 @@ impl CanonicalEnvironmentConfig {
     }
 }
 
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
-)]
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::unnecessary_wraps, clippy::field_reassign_with_default)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::SongbirdError;
     use std::collections::HashMap;
@@ -618,6 +615,41 @@ mod tests {
         if let DeploymentMode::Custom(name) = mode {
             assert_eq!(name, "custom-env");
         }
+    }
+
+    #[test]
+    fn test_deployment_mode_from_env_map_reads_songbird_env() {
+        let mut env = HashMap::new();
+        env.insert("SONGBIRD_ENV".to_string(), "staging".to_string());
+        assert!(matches!(DeploymentMode::from_env_map(&env), DeploymentMode::Staging));
+
+        let mut env2 = HashMap::new();
+        env2.insert("SONGBIRD_ENV".to_string(), "production".to_string());
+        assert!(matches!(DeploymentMode::from_env_map(&env2), DeploymentMode::Production));
+    }
+
+    #[test]
+    fn test_deployment_mode_from_env_map_defaults_when_missing() {
+        let env = HashMap::new();
+        assert!(matches!(DeploymentMode::from_env_map(&env), DeploymentMode::Development));
+    }
+
+    #[test]
+    fn test_resource_limits_invalid_numeric_falls_back_to_defaults() {
+        let mut env = HashMap::new();
+        env.insert("SONGBIRD_MAX_CONNECTIONS".to_string(), "not-a-number".to_string());
+        let limits = ResourceLimits::from_env_map(&env);
+        assert_eq!(limits.max_connections, 1000);
+    }
+
+    #[test]
+    fn test_network_binding_config_from_env_map_parses_bind() {
+        let mut env = HashMap::new();
+        env.insert("SONGBIRD_BIND_ADDRESS".to_string(), "10.0.0.1".to_string());
+        env.insert("SONGBIRD_BIND_PORT".to_string(), "9090".to_string());
+        let nb = NetworkBindingConfig::from_env_map(&env);
+        assert_eq!(nb.bind_port, 9090);
+        assert_eq!(nb.bind_address.to_string(), "10.0.0.1");
     }
 
     #[test]
@@ -828,6 +860,17 @@ mod tests {
         };
         let addr = config.get_bind_address();
         assert_eq!(addr, IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+    }
+
+    #[test]
+    fn test_staging_is_not_production_or_development_flags() {
+        let config = CanonicalEnvironmentConfig {
+            deployment_mode: DeploymentMode::Staging,
+            ..Default::default()
+        };
+        assert!(!config.is_production());
+        assert!(!config.is_development());
+        assert_eq!(config.get_bind_address(), IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
     }
 
     #[test]

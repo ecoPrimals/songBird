@@ -528,6 +528,8 @@ impl Default for StunClient {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::message::{MAGIC_COOKIE, MessageType, StunAttribute};
     use std::net::{IpAddr, Ipv4Addr};
@@ -610,14 +612,15 @@ mod tests {
     #[tokio::test]
     async fn discover_public_address_racing_empty_server_list() {
         let client = StunClient::with_timeout(Duration::from_millis(200));
-        let err = client.discover_public_address_racing(&[]).await.unwrap_err();
+        let err = client.discover_public_address_racing(&[]).await.expect_err("empty server list");
         assert!(matches!(err, StunError::Config(_)));
     }
 
     #[tokio::test]
     async fn discover_public_address_parallel_empty_server_list() {
         let client = StunClient::with_timeout(Duration::from_millis(200));
-        let err = client.discover_public_address_parallel(&[]).await.unwrap_err();
+        let err =
+            client.discover_public_address_parallel(&[]).await.expect_err("empty server list");
         assert!(matches!(err, StunError::Config(_)));
     }
 

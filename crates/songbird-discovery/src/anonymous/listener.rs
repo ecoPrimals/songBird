@@ -479,6 +479,7 @@ impl AnonymousDiscoveryListener {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -516,5 +517,20 @@ mod tests {
         let listener = AnonymousDiscoveryListener::new(2300, 60);
         let peer = listener.get_peer("nonexistent").await;
         assert!(peer.is_none());
+    }
+
+    #[test]
+    fn anonymous_message_from_bytes_matches_constructed() {
+        use crate::anonymous::messages::AnonymousDiscoveryMessage;
+        let msg = AnonymousDiscoveryMessage::new(
+            vec!["orchestration".into()],
+            vec!["https".into()],
+            8443,
+        );
+        let bytes = msg.to_bytes().expect("serialize");
+        let parsed = AnonymousDiscoveryMessage::from_bytes(&bytes).expect("parse");
+        assert_eq!(parsed.port, 8443);
+        assert_eq!(parsed.version, "2.1");
+        assert!(parsed.validate().is_ok());
     }
 }

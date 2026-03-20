@@ -53,10 +53,18 @@
 //! # }
 //! ```
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
+/// Capability-based bridges and discovery helpers for connecting to primals.
 pub mod bridge;
+
+/// [`PrimalCoordinator`] and mesh coordination.
 pub mod coordinator;
+
+/// Error types and [`Result`] alias for this crate.
 pub mod error;
+
+/// Shared request/response and identity types for primal coordination.
 pub mod types;
 
 // Re-exports

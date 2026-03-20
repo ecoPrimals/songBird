@@ -236,10 +236,12 @@ pub trait PrimalDiscovery: Send + Sync {
     -> Result<DiscoveredPrimal>;
 }
 
-/// Discovered primal information
+/// Result of a capability-based discovery lookup.
 #[derive(Debug, Clone)]
 pub struct DiscoveredPrimal {
+    /// Connectable base URL or address for the primal.
     pub endpoint: String,
+    /// Advertised capabilities used to build a [`PrimalConnection`].
     pub capabilities: PrimalCapabilities,
 }
 

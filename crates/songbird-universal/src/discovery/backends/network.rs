@@ -12,12 +12,9 @@ use tracing::{debug, info};
 #[cfg(feature = "mdns")]
 use crate::capabilities::Capability;
 
-// Conditionally used types - only when feature is implemented
-#[cfg(feature = "mdns")]
-#[allow(unused_imports)]
+#[cfg(feature = "dns-sd")]
 use super::super::types::{DiscoveryMethod, PrimalHealth};
-#[cfg(feature = "mdns")]
-#[allow(unused_imports)]
+#[cfg(any(feature = "mdns", feature = "dns-sd"))]
 use std::collections::HashMap;
 
 /// Discover primals from local network using mDNS
@@ -77,7 +74,10 @@ pub async fn discover_from_network() -> Result<Vec<DiscoveredPrimal>, DiscoveryE
 ///
 /// Returns `DiscoveryError::BackendUnavailable` if mDNS feature is not enabled,
 /// or `DiscoveryError::NetworkError` if discovery fails.
-#[allow(clippy::unused_async)] // async for consistent interface
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required for consistent discovery backend interface"
+)]
 pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "mdns")]
     {
@@ -115,7 +115,10 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
 /// Currently returns empty - stub for future mDNS library integration.
 /// Kept async for API consistency with future implementation.
 #[cfg(feature = "mdns")]
-#[allow(clippy::unused_async)]
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required for consistent mDNS query API and future library integration"
+)]
 async fn query_mdns_services(
     service_type: &str,
     timeout: std::time::Duration,
@@ -160,7 +163,7 @@ async fn query_mdns_services(
 /// environment=production
 /// ```
 #[cfg(feature = "mdns")]
-#[allow(dead_code)] // Prepared for future mDNS implementation
+#[expect(dead_code, reason = "prepared for future mDNS TXT/SRV parsing integration")]
 fn parse_mdns_response(
     service_name: &str,
     records: HashMap<String, String>,
@@ -213,7 +216,10 @@ fn parse_mdns_response(
 /// # Errors
 ///
 /// Returns an error if DNS-SD support is not enabled.
-#[allow(clippy::unused_async)] // async used when dns-sd feature is enabled
+#[expect(
+    clippy::unused_async,
+    reason = "async used when dns-sd feature is enabled; stub path stays synchronous"
+)]
 pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "dns-sd")]
     {
@@ -312,7 +318,7 @@ async fn resolve_srv_to_primal(
 /// Primal-agnostic: matches on domain terminology (e.g. "security", "ai")
 /// rather than specific primal names. Concrete provider identities are
 /// discovered at runtime via the capability advertisement protocol.
-#[allow(dead_code)]
+#[expect(dead_code, reason = "reserved for capability inference from service names")]
 fn infer_capabilities_from_name(name: &str) -> Vec<String> {
     let name_lower = name.to_lowercase();
     let mut capabilities = Vec::new();
@@ -350,6 +356,8 @@ fn infer_capabilities_from_name(name: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -367,5 +375,50 @@ mod tests {
         assert_eq!(infer_capabilities_from_name("task-orchestrator"), vec!["orchestration"]);
         assert_eq!(infer_capabilities_from_name("ml-inference-worker"), vec!["ai", "compute"]);
         assert!(infer_capabilities_from_name("unknown-service").is_empty());
+    }
+
+    #[test]
+    fn test_infer_capabilities_discovery_and_storage() {
+        assert_eq!(infer_capabilities_from_name("service-registry"), vec!["discovery"]);
+        assert_eq!(infer_capabilities_from_name("blob-persist"), vec!["storage"]);
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_parse_mdns_response_success() {
+        use std::collections::HashMap;
+
+        let mut records = HashMap::new();
+        records.insert("endpoint".to_string(), "http://mdns-host:8443".to_string());
+        records.insert("capabilities".to_string(), "compute,security".to_string());
+        let p = parse_mdns_response("songbird-svc", records).expect("parsed primal");
+        assert_eq!(p.name, "songbird-svc");
+        assert_eq!(p.endpoint, "http://mdns-host:8443");
+        assert!(p.capabilities.iter().any(|c| c.capability_type == "compute"));
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_parse_mdns_response_missing_fields() {
+        use std::collections::HashMap;
+
+        assert!(parse_mdns_response("x", HashMap::new()).is_none());
+        let mut partial = HashMap::new();
+        partial.insert("endpoint".to_string(), "http://h:1".to_string());
+        assert!(parse_mdns_response("x", partial).is_none());
+    }
+
+    #[cfg(feature = "mdns")]
+    #[tokio::test]
+    async fn test_discover_mdns_services_returns_ok_empty_stub() {
+        let got = discover_mdns_services().await.expect("mDNS stub");
+        assert!(got.is_empty());
+    }
+
+    #[cfg(not(feature = "mdns"))]
+    #[tokio::test]
+    async fn test_discover_mdns_services_backend_unavailable() {
+        let err = discover_mdns_services().await.expect_err("mdns feature off");
+        assert!(matches!(err, DiscoveryError::BackendUnavailable(_)));
     }
 }

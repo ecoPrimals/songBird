@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.3] - 2026-03-20 - Deep Audit: Standards Compliance, Coverage & Architecture
+
+### Changed - wateringHole Standards Compliance
+- Migrated 122 `#[allow()]` → `#[expect(reason = "...")]` across all 29 crates (Rust 2024 idiom)
+- 23 reverted to `#[allow(reason)]` where lint doesn't fire (correct `#[expect]` behavior)
+- 13 stale lint suppressions discovered and removed by `#[expect()]` (code was no longer dead)
+- Fixed example crate SPDX: `AGPL-3.0` → `AGPL-3.0-only`
+
+### Changed - Safety & Production Hardening
+- Removed 3 production `panic!()`/`unreachable!()` → `Result`-based error returns
+- `MockBearDogProvider` isolated behind `#[cfg(any(test, feature = "test-mocks"))]`
+- Added `test-mocks` feature to `songbird-network-federation`
+- SAFETY documentation added to `songbird-process-env` unsafe blocks
+- Tower CLI `tower info`/`tower config` now honor `SONGBIRD_BIND_ADDRESS` env var
+
+### Changed - Architecture
+- Refactored `unified_adapter.rs` (956 lines → 5-module tree, largest 243 lines)
+- Refactored `http_handler.rs` (949 lines → 8-module tree, largest 166 lines)
+- Extracted `src/lib.rs` from binary-only `songbird` crate (testable CLI types)
+- Feature-gated `infer_capabilities_from_name` behind `#[cfg(any(feature = "k8s", feature = "docker"))]`
+
+### Changed - Zero-Copy
+- Eliminated 6 unnecessary `.clone()` calls in discovery_bridge, canonical, real_service_discovery
+- Moved `String` values instead of cloning on trust decision paths
+- Borrowed protocol lookup in canonical router (avoided `String` clone per routed request)
+
+### Added - Tests (+150)
+- 16 CLI parsing tests (`tests/cli_parsing_tests.rs`)
+- 27 tests in `songbird-config` (discovery, endpoints, constants, cache TTL)
+- 35+ tests in `songbird-orchestrator` (availability, core, compute API, trust, router, process manager)
+- 30 tests in `songbird-universal` (tarpc, jsonrpc, connection_manager, query, sovereignty)
+- 31 tests in `songbird-http-client` (redirect, IPC client, TLS record, beardog RPC)
+- 5 tests in `songbird-tls`, 8 in `songbird-discovery`, 8 in `songbird-types`
+- 7 tests in `songbird-registry`, 3 in `songbird-stun`
+- Fixed 3 env-var race conditions in concurrent tests
+
+### Added - Documentation
+- `#![warn(missing_docs)]` added to `songbird-remote-deploy` + ~20 doc items
+- 5/29 crates now have `#![warn(missing_docs)]` and compile clean
+
+### Cleaned
+- Removed broken Dockerfiles referencing nonexistent binaries/subcommands
+- Removed stale `production-deployment-demo.sh` (echo-only script)
+- Removed broken `config/scripts/deploy.sh` (wrong PROJECT_ROOT)
+
+### Analysis
+- Complete `ring` elimination roadmap: `rcgen` removable via BearDog; `quinn` blocked upstream
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Tests | ~6,300+ passed, 0 failed |
+| Line Coverage | 63.50% (152,744 instrumented lines) |
+| Clippy | Zero warnings (pedantic + nursery + cargo) |
+| Build | Zero errors, zero warnings |
+
+---
+
 ## [v0.3.2] - 2026-03-20 - Deep Audit: Production Evolution & Capability Purity
 
 ### Changed - Production Code Evolution

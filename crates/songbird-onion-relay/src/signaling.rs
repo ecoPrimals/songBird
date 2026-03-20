@@ -47,13 +47,14 @@ pub enum NatType {
     Unknown,
 }
 
-/// Signaling messages exchanged via rendezvous
+/// Rendezvous protocol messages (register, punch, relay, errors).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum SignalingMessage {
     /// Register presence with rendezvous
     #[serde(rename = "register")]
     Register {
+        /// Local peer metadata for the rendezvous directory.
         peer_info: PeerInfo,
         /// Encrypted with beacon seed (only family can read)
         encrypted_beacon: Option<String>,
@@ -62,19 +63,23 @@ pub enum SignalingMessage {
     /// Query for a specific peer
     #[serde(rename = "query")]
     Query {
+        /// Node id whose [`PeerInfo`] should be returned.
         target_node_id: String,
     },
 
     /// Response to query with peer info
     #[serde(rename = "peer_info")]
     PeerInfoResponse {
+        /// Matching peer when known, otherwise `None`.
         peer_info: Option<PeerInfo>,
     },
 
     /// Request to initiate hole punch
     #[serde(rename = "punch_request")]
     PunchRequest {
+        /// Initiator metadata.
         from: PeerInfo,
+        /// Intended responder node id.
         to_node_id: String,
         /// Nonce for this punch attempt
         nonce: [u8; 16],
@@ -83,7 +88,9 @@ pub enum SignalingMessage {
     /// Acknowledge punch request - start simultaneous open
     #[serde(rename = "punch_ack")]
     PunchAck {
+        /// Responder metadata.
         from: PeerInfo,
+        /// Echo of the punch nonce.
         nonce: [u8; 16],
         /// When to start punching (coordinated time)
         start_at_ms: u64,
@@ -92,7 +99,9 @@ pub enum SignalingMessage {
     /// Report punch result
     #[serde(rename = "punch_result")]
     PunchResult {
+        /// Nonce tied to the punch attempt.
         nonce: [u8; 16],
+        /// Whether UDP packets were observed on the expected path.
         success: bool,
         /// If successful, the working address
         connected_addr: Option<SocketAddr>,
@@ -101,13 +110,16 @@ pub enum SignalingMessage {
     /// Heartbeat to keep registration alive
     #[serde(rename = "heartbeat")]
     Heartbeat {
+        /// Sender node id.
         node_id: String,
     },
 
     /// Relay data through rendezvous (fallback if punch fails)
     #[serde(rename = "relay")]
     RelayData {
+        /// Source node id.
         from_node_id: String,
+        /// Destination node id.
         to_node_id: String,
         /// Encrypted payload
         data: Vec<u8>,
@@ -116,18 +128,28 @@ pub enum SignalingMessage {
     /// Error response
     #[serde(rename = "error")]
     Error {
+        /// Application-level error code.
         code: i32,
+        /// Human-readable detail.
         message: String,
     },
 }
 
 impl SignalingMessage {
-    /// Serialize to JSON
+    /// Serializes this message to JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`serde_json::Error`] if serialization fails.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
 
-    /// Deserialize from JSON
+    /// Parses a [`SignalingMessage`] from JSON text.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`serde_json::Error`] when the payload is not valid JSON or mismatches the schema.
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(json)
     }

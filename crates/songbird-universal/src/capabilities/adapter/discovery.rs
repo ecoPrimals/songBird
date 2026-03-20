@@ -301,7 +301,10 @@ impl CapabilityDiscovery {
     ///
     /// Pure function - could be static but kept as method for potential future
     /// use of discovery config or primal registry state.
-    #[allow(clippy::unused_self)]
+    #[expect(
+        clippy::unused_self,
+        reason = "method on self for API consistency with other discovery helpers"
+    )]
     fn infer_capability_providers(&self, capability_type: &str) -> Vec<String> {
         let mut providers = Vec::new();
 

@@ -12,6 +12,12 @@ use sysinfo::System;
 
 use crate::errors::SongbirdResult;
 
+/// Bind address for `tower info` / `tower config` when no CLI `--bind` is parsed (matches
+/// `SONGBIRD_BIND_ADDRESS` with `0.0.0.0` default, same as [`TowerStartArgs::bind`]).
+fn tower_bind_from_env_or_default() -> String {
+    std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string())
+}
+
 /// Tower management commands
 #[derive(Debug, Clone, Subcommand)]
 pub enum TowerCommand {
@@ -191,7 +197,7 @@ async fn show_tower_info() -> SongbirdResult<()> {
         role: "auto".to_string(),
         port: songbird_config::defaults::ports::orchestrator_port(),
         bootstrap: None,
-        bind: "0.0.0.0".to_string(),
+        bind: tower_bind_from_env_or_default(),
         federation: false,
         cpu_cores: None,
         memory_gb: None,
@@ -247,12 +253,13 @@ async fn show_tower_info() -> SongbirdResult<()> {
 async fn generate_config(output: &str) -> SongbirdResult<()> {
     println!("📝 Generating tower configuration...\n");
 
+    let bind = tower_bind_from_env_or_default();
     let args = TowerStartArgs {
         name: None,
         role: "auto".to_string(),
         port: songbird_config::defaults::ports::orchestrator_port(),
         bootstrap: None,
-        bind: "0.0.0.0".to_string(),
+        bind: bind.clone(),
         federation: false,
         cpu_cores: None,
         memory_gb: None,
@@ -273,7 +280,7 @@ NODE_NAME="{}"
 NODE_ROLE="{}"
 
 # Network
-BIND_ADDRESS="0.0.0.0"
+BIND_ADDRESS="{}"
 SERVICE_PORT="8080"
 ORCHESTRATOR_PORT="8080"
 
@@ -297,6 +304,7 @@ RUST_LOG="info,songbird=debug"
         caps.hostname,
         caps.hostname,
         role,
+        bind,
         caps.cpu_cores,
         caps.memory_gb,
         caps.gpu_model.as_ref().map(|gpu| format!("GPU_MODEL=\"{gpu}\"\n")).unwrap_or_default(),

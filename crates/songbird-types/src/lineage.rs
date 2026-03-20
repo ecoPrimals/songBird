@@ -28,7 +28,10 @@ impl LineageId {
     ///
     /// # Errors
     /// Returns error if the string is not a valid lineage ID format
-    #[allow(clippy::should_implement_trait)]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "explicit from_str API; std::str::FromStr reserved for a stricter contract"
+    )]
     pub fn from_str(s: &str) -> Result<Self, LineageError> {
         if s.starts_with("lineage:") {
             Ok(Self(s.to_string()))
@@ -282,7 +285,8 @@ mod base64 {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unreadable_literal, clippy::unwrap_used)]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unreadable_literal)]
 
     use super::*;
 
@@ -290,6 +294,13 @@ mod tests {
     fn test_lineage_id_creation() {
         let id = LineageId::new("lineage:tower1:2026-01-02:abc123");
         assert_eq!(id.as_str(), "lineage:tower1:2026-01-02:abc123");
+    }
+
+    #[test]
+    fn test_lineage_id_from_str_rejects_invalid_prefix() {
+        let err = LineageId::from_str("bad-prefix").expect_err("should reject");
+        assert!(matches!(err, LineageError::InvalidFormat(_)));
+        assert!(err.to_string().contains("Invalid lineage"));
     }
 
     #[test]
@@ -309,13 +320,37 @@ mod tests {
         };
 
         // Test TXT record conversion
-        let txt = proof.to_discovery_txt().unwrap();
+        let txt = proof.to_discovery_txt().expect("proof should serialize");
         assert!(!txt.is_empty());
 
         // Test round-trip
-        let decoded = LineageProof::from_discovery_txt(&txt).unwrap();
+        let decoded = LineageProof::from_discovery_txt(&txt).expect("round-trip decode");
         assert_eq!(decoded.lineage_id, proof.lineage_id);
         assert_eq!(decoded.genesis_timestamp, proof.genesis_timestamp);
+    }
+
+    #[test]
+    fn test_from_discovery_txt_invalid_base64() {
+        let err = LineageProof::from_discovery_txt("not!!!base64!!!").expect_err("invalid b64");
+        assert!(matches!(err, LineageError::DecodingError(_)));
+    }
+
+    #[test]
+    fn test_lineage_proof_chain_length() {
+        let sig = LineageSignature {
+            signer_node_id: "n1".to_string(),
+            signature: "aa".to_string(),
+            signed_data_hash: "bb".to_string(),
+            timestamp: 1,
+        };
+        let proof = LineageProof {
+            lineage_id: LineageId::new("lineage:test:123:abc"),
+            signatures: vec![sig],
+            genesis_timestamp: 1234567890,
+            generated_at: 1234567900,
+            metadata: HashMap::new(),
+        };
+        assert_eq!(proof.chain_length(), 1);
     }
 
     #[test]
@@ -326,7 +361,7 @@ mod tests {
             genesis_timestamp: 1234567890,
             generated_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .expect("clock before epoch")
                 .as_secs()
                 - 3600, // 1 hour ago
             metadata: HashMap::new(),
@@ -349,5 +384,35 @@ mod tests {
 
         assert_eq!(lineage.genesis_tower, Some("tower1".to_string()));
         assert_eq!(lineage.parent_node_id, Some("parent-node-id".to_string()));
+    }
+
+    #[test]
+    fn test_lineage_verification_roundtrip() {
+        let v = LineageVerification {
+            valid: true,
+            same_genesis: false,
+            lineage_id: LineageId::new("lineage:x:1:h"),
+            messages: vec!["ok".to_string()],
+        };
+        let json = serde_json::to_string(&v).expect("serde");
+        let back: LineageVerification = serde_json::from_str(&json).expect("de");
+        assert_eq!(back.valid, v.valid);
+        assert_eq!(back.lineage_id.as_str(), v.lineage_id.as_str());
+    }
+
+    #[test]
+    fn test_lineage_error_display_variants() {
+        let cases = [
+            (LineageError::InvalidFormat("x".into()), "Invalid lineage"),
+            (LineageError::SerializationError("s".into()), "serialize"),
+            (LineageError::DeserializationError("d".into()), "deserialize"),
+            (LineageError::DecodingError("c".into()), "decode"),
+            (LineageError::VerificationFailed("v".into()), "verification"),
+            (LineageError::BearDogError("b".into()), "BearDog"),
+        ];
+        for (err, needle) in cases {
+            let msg = err.to_string();
+            assert!(msg.contains(needle), "expected {needle} in {msg}");
+        }
     }
 }

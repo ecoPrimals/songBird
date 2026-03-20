@@ -212,8 +212,10 @@ impl PluginRegistry for Registry {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
-    use crate::types::Plugin;
+    use crate::types::{Plugin, PluginId};
 
     #[tokio::test]
     async fn test_registry_register() -> Result<(), Box<dyn std::error::Error>> {
@@ -300,6 +302,66 @@ mod tests {
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].name, "Test Plugin");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_registry_rejects_missing_dependency() {
+        let mut registry = Registry::new();
+        let mut child = Plugin::new("child", "Child", "1.0.0");
+        child.dependencies.push(PluginId::from("missing-parent"));
+        let err = registry.register(child).await.expect_err("expected dependency error");
+        assert!(err.to_string().contains("Dependency") || err.to_string().contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn test_registry_get_not_found() {
+        let registry = Registry::new();
+        let err = registry.get(&PluginId::from("nope")).await.expect_err("missing plugin");
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn test_registry_unregister_blocked_by_dependents()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut registry = Registry::new();
+        registry.register(Plugin::new("parent", "Parent", "1.0.0")).await?;
+        let mut child = Plugin::new("child", "Child", "1.0.0");
+        child.dependencies.push(PluginId::from("parent"));
+        registry.register(child).await?;
+
+        let err = registry.unregister(&PluginId::from("parent")).await.expect_err("has dependents");
+        assert!(err.to_string().contains("dependent") || err.to_string().contains("Dependent"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_registry_search_respects_limit() -> Result<(), Box<dyn std::error::Error>> {
+        let mut registry = Registry::new();
+        for i in 0..5 {
+            registry.register(Plugin::new(format!("p{i}"), "Named Plugin", "1.0.0")).await?;
+        }
+        let q = Query::new().with_name("Named").with_limit(2);
+        let found = registry.search(&q).await;
+        assert_eq!(found.len(), 2);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_registry_unregister_missing_plugin_returns_error() {
+        let mut registry = Registry::new();
+        let err = registry.unregister(&PluginId::from("nope")).await.expect_err("missing");
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn test_registry_exists_false_after_unregister() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let mut registry = Registry::new();
+        let id = registry.register(Plugin::new("e", "E", "1.0.0")).await?;
+        assert!(registry.exists(&id).await);
+        registry.unregister(&id).await?;
+        assert!(!registry.exists(&id).await);
         Ok(())
     }
 }

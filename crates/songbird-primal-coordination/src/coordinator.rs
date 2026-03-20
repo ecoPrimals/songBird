@@ -354,22 +354,31 @@ impl PrimalCoordinator {
     }
 }
 
-/// Service mesh connection between primals
+/// Routed link between two capability endpoints (requester ↔ provider).
 #[derive(Debug, Clone)]
 pub struct MeshConnection {
+    /// Unique mesh link identifier.
     pub id: String,
+    /// Requester primal base URL.
     pub requester_endpoint: Arc<str>,
+    /// Provider primal base URL.
     pub provider_endpoint: Arc<str>,
+    /// Capability requested by the initiator.
     pub requester_capability: CapabilityType,
+    /// Capability offered by the peer.
     pub provider_capability: CapabilityType,
 }
 
-/// Health status of a primal
+/// Result of a status probe against one cached primal connection.
 #[derive(Debug, Clone)]
 pub struct PrimalHealthStatus {
+    /// Capability key used to cache this connection.
     pub capability: Arc<str>,
+    /// Primal base URL.
     pub endpoint: Arc<str>,
+    /// Whether the status call reported healthy.
     pub healthy: bool,
+    /// Reported version or `"unknown"` / `"error"` on failure.
     pub version: String,
 }
 

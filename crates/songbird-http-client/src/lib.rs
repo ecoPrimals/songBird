@@ -109,6 +109,7 @@ pub const fn is_pure_rust() -> bool {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

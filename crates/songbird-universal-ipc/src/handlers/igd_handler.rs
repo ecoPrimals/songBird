@@ -120,7 +120,10 @@ impl IgdHandler {
         info!("IGD: Mapping port {} {} -> :{}", protocol, external_port, internal_port);
 
         let gateway = self.gateway.read().await;
-        #[allow(clippy::manual_let_else)] // complex else branch with side effects
+        #[expect(
+            clippy::manual_let_else,
+            reason = "else branch drops lock and runs async discovery with side effects"
+        )]
         let gateway = if let Some(gw) = gateway.as_ref() {
             gw
         } else {

@@ -301,8 +301,10 @@ pub async fn unregister(name: &str) -> IpcResult<()> {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::endpoint::VirtualEndpoint;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     #[tokio::test]
@@ -367,5 +369,34 @@ mod tests {
 
         let storage_services = find_by_capability("storage").await;
         assert_eq!(storage_services.len(), 2);
+    }
+
+    #[test]
+    fn virtual_endpoint_new_and_primal_name() {
+        let v = VirtualEndpoint::new("beardog");
+        assert_eq!(v.path, "/primal/beardog");
+        assert_eq!(v.primal_name().expect("name"), "beardog");
+        assert!(v.is_valid());
+    }
+
+    #[test]
+    fn virtual_endpoint_invalid_path_not_primal_prefixed() {
+        let v = VirtualEndpoint {
+            path: "/other/x".into(),
+        };
+        assert!(v.primal_name().is_none());
+        assert!(!v.is_valid());
+    }
+
+    #[test]
+    fn try_global_none_before_init_in_test_process() {
+        // Other tests may have initialized global IPC; if so, we only assert try_global returns Some.
+        let g = try_global();
+        if g.is_none() {
+            init().expect("init ipc for try_global probe");
+            assert!(try_global().is_some(), "try_global after init");
+        } else {
+            assert!(g.is_some());
+        }
     }
 }

@@ -70,7 +70,10 @@ fn is_kubernetes_environment() -> bool {
 /// # Errors
 ///
 /// Returns an error if Kubernetes client initialization or API calls fail.
-#[allow(clippy::unused_async)] // async used when k8s feature is enabled
+#[expect(
+    clippy::unused_async,
+    reason = "async used when k8s feature is enabled; stub path returns immediately"
+)]
 pub async fn discover_kubernetes_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "k8s")]
     {
@@ -195,7 +198,10 @@ fn convert_k8s_service_to_primal(
 /// # Errors
 ///
 /// Returns an error if Docker daemon connection or container listing fails.
-#[allow(clippy::unused_async)] // async used when docker feature is enabled
+#[expect(
+    clippy::unused_async,
+    reason = "async used when docker feature is enabled; stub path returns immediately"
+)]
 pub async fn discover_docker_containers() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "docker")]
     {
@@ -302,7 +308,7 @@ fn convert_docker_container_to_primal(
 /// Primal-agnostic: matches on domain terminology (e.g. "security", "ai")
 /// rather than specific primal names. Concrete provider identities are
 /// discovered at runtime via the capability advertisement protocol.
-#[allow(dead_code)]
+#[cfg(any(feature = "k8s", feature = "docker"))]
 fn infer_capabilities_from_name(name: &str) -> Vec<String> {
     let name_lower = name.to_lowercase();
     let mut capabilities = Vec::new();
@@ -351,6 +357,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
     fn test_infer_capabilities_from_name() {
         assert_eq!(infer_capabilities_from_name("my-security-service"), vec!["security"]);
         assert_eq!(infer_capabilities_from_name("crypto-provider"), vec!["security"]);

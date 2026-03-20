@@ -72,4 +72,5 @@ default = ["gaming", "federation", "local-btsp"]  # Include local-btsp for backw
 gaming = []
 federation = []
 local-btsp = ["aes-gcm", "generic-array"]  # ⚠️ Local BTSP testing (uses crypto) - production uses BearDog!
+test-mocks = []
 # Removed legacy-compat feature flag - migration complete 

@@ -46,7 +46,10 @@ pub struct UniversalCapabilityAdapter {
     ///
     /// Used internally by discovery and query subsystems for capability caching and coordination.
     /// Not directly accessed by adapter, but necessary for subsystem communication.
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "shared registry for discovery/query subsystems; retained on adapter for coordination"
+    )]
     registry: Arc<RwLock<CapabilityRegistry>>,
 }
 
@@ -182,7 +185,10 @@ impl UniversalCapabilityAdapter {
         let error_rate = if connections.is_empty() {
             0.0
         } else {
-            #[allow(clippy::cast_precision_loss)] // Intentional for metrics calculation
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for metrics/display"
+            )]
             {
                 total_errors as f64 / connections.len() as f64
             }
@@ -224,7 +230,10 @@ impl UniversalCapabilityAdapter {
                         success: true,
                         result: Some(result),
                         error: None,
-                        #[allow(clippy::cast_sign_loss)] // max(0) guarantees non-negative
+                        #[expect(
+                            clippy::cast_sign_loss,
+                            reason = "non-negative: num_milliseconds().max(0) before cast to u64"
+                        )]
                         duration_ms: (Utc::now() - step_start).num_milliseconds().max(0) as u64,
                     });
                 }
@@ -235,7 +244,10 @@ impl UniversalCapabilityAdapter {
                         success: false,
                         result: None,
                         error: Some(e.to_string()),
-                        #[allow(clippy::cast_sign_loss)] // max(0) guarantees non-negative
+                        #[expect(
+                            clippy::cast_sign_loss,
+                            reason = "non-negative: num_milliseconds().max(0) before cast to u64"
+                        )]
                         duration_ms: (Utc::now() - step_start).num_milliseconds().max(0) as u64,
                     });
 
@@ -243,8 +255,12 @@ impl UniversalCapabilityAdapter {
                         return Ok(WorkflowResult {
                             success: false,
                             steps: step_results,
-                            #[allow(clippy::cast_sign_loss)] // max(0) guarantees non-negative
-                            total_duration_ms: (Utc::now() - start_time).num_milliseconds().max(0) as u64,
+                            #[expect(
+                                clippy::cast_sign_loss,
+                                reason = "non-negative: num_milliseconds().max(0) before cast to u64"
+                            )]
+                            total_duration_ms: (Utc::now() - start_time).num_milliseconds().max(0)
+                                as u64,
                             error: Some(format!("Workflow failed at step {idx}: {e}")),
                         });
                     }
@@ -257,7 +273,10 @@ impl UniversalCapabilityAdapter {
         Ok(WorkflowResult {
             success: all_success,
             steps: step_results,
-            #[allow(clippy::cast_sign_loss)] // max(0) guarantees non-negative
+            #[expect(
+                clippy::cast_sign_loss,
+                reason = "non-negative: num_milliseconds().max(0) before cast to u64"
+            )]
             total_duration_ms: (Utc::now() - start_time).num_milliseconds().max(0) as u64,
             error: None,
         })
@@ -271,7 +290,10 @@ impl UniversalCapabilityAdapter {
     /// # Errors
     ///
     /// Returns an error if metrics collection is not available
-    #[allow(clippy::unused_async)] // No .await needed for simple metrics return
+    #[expect(
+        clippy::unused_async,
+        reason = "async API consistent with other UniversalCapabilityAdapter methods"
+    )]
     pub async fn get_workflow_metrics(&self) -> Result<WorkflowMetrics, CapabilityError> {
         // Return basic metrics structure
         // In production with a metrics store, this would aggregate historical data
@@ -557,9 +579,5 @@ mod tests {
     }
 }
 
-// Allow specific lints for QoS calculations
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_sign_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(dead_code)] // QoS metrics calculation hook reserved; callers not wired yet
+#[expect(dead_code, reason = "QoS metrics calculation hook reserved; callers not wired yet")]
 const fn calculate_metrics() {}

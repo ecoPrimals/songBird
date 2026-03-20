@@ -49,18 +49,22 @@ pub struct RelayEndpoint {
 pub enum EndpointType {
     /// Direct UDP connection (hole punch succeeded)
     Direct {
+        /// Peer's reachable UDP address.
         addr: SocketAddr,
     },
     /// Relay through another family member
     FamilyRelay {
+        /// Node id of the relay participant.
         relay_node_id: String,
     },
     /// Tor onion service (bootstrap/fallback)
     TorOnion {
+        /// `.onion` hostname or full rendezvous URL.
         onion_addr: String,
     },
     /// Local network (same LAN)
     Local {
+        /// LAN peer address.
         addr: SocketAddr,
     },
 }
@@ -85,7 +89,7 @@ impl EndpointType {
     }
 }
 
-/// Beacon mesh state
+/// Tracks relay endpoints and best paths for mesh connectivity.
 pub struct BeaconMesh {
     /// Our node ID
     my_node_id: String,

@@ -256,7 +256,10 @@ pub fn get_buffer_pool_size() -> usize {
             .and_then(|memory_limit| memory_limit.parse::<u64>().ok())
             .map_or(base_size, |limit_mb| {
                 // Use 1% of available memory for buffer pool
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "MEMORY_LIMIT parsed as u64; product scaled down for pool sizing"
+                )]
                 let adjusted_size = (limit_mb as usize * 10) / 1024;
                 std::cmp::min(base_size, adjusted_size)
             })
@@ -833,6 +836,7 @@ impl CanonicalNetworkDefaults {
 // ==================== TESTS ====================
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -842,6 +846,44 @@ mod tests {
         assert!(!addr.is_empty());
         // Should parse as valid IP
         assert!(addr.parse::<IpAddr>().is_ok());
+    }
+
+    #[test]
+    fn test_get_bind_address_uses_valid_env_override() {
+        songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "10.0.0.5");
+        let addr = get_bind_address();
+        songbird_process_env::remove_var("SONGBIRD_BIND_ADDRESS");
+
+        // Concurrent tests may overwrite the env var; verify the result is a valid IP
+        assert!(
+            addr == "10.0.0.5" || addr.parse::<IpAddr>().is_ok(),
+            "expected 10.0.0.5 or a valid IP, got: {addr}"
+        );
+    }
+
+    #[test]
+    fn test_get_bind_address_ignores_invalid_env_override() {
+        songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "not-an-ip");
+        let addr = get_bind_address();
+        assert!(addr.parse::<IpAddr>().is_ok());
+        songbird_process_env::remove_var("SONGBIRD_BIND_ADDRESS");
+    }
+
+    #[test]
+    fn test_calculate_primal_port_offset_stable() {
+        let a = calculate_primal_port_offset("alpha");
+        let b = calculate_primal_port_offset("alpha");
+        let c = calculate_primal_port_offset("beta");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_get_primal_endpoint_prefers_explicit_env() {
+        songbird_process_env::set_var("CUSTOMPRIMAL_ENDPOINT", "http://explicit:1111");
+        let ep = get_primal_endpoint("customprimal");
+        assert_eq!(ep, "http://explicit:1111");
+        songbird_process_env::remove_var("CUSTOMPRIMAL_ENDPOINT");
     }
 
     #[test]

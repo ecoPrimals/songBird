@@ -1,11 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![warn(missing_docs)]
+
 //! Safe façade for mutating the process environment.
 //!
 //! Rust 2024 marks [`std::env::set_var`] and [`std::env::remove_var`] as `unsafe`. The safety
-//! contract is unchanged: callers must prevent concurrent reads of the environment from other
-//! threads while these run (see standard library documentation).
+//! contract is unchanged from earlier editions: callers must ensure no other thread reads the
+//! environment concurrently while these run (see standard library documentation).
+//!
+//! ## Why not `Mutex` or another “safe” wrapper?
+//!
+//! The unsafety is not about atomicity of a single update—it is a **process-wide** contract:
+//! concurrent readers (any `std::env::var` / `vars` on any thread) while the environment is
+//! mutating is undefined behavior. A `Mutex` around these two functions only serializes *our*
+//! calls; it does not stop other code (including dependencies) from reading the environment
+//! without holding that mutex, so it cannot make the operations sound in the general case.
+//! There is no stable, fully safe replacement in `std` for mutating the process environment;
+//! these wrappers document the contract and centralize the `unsafe` boundary.
 
 /// Sets an environment variable for the current process.
 ///
@@ -13,7 +25,10 @@
 ///
 /// Same as [`std::env::set_var`]: no other thread may read the environment concurrently.
 pub fn set_var(key: impl AsRef<str>, value: impl AsRef<str>) {
-    // SAFETY: Forwarding to `std`; caller must satisfy `std::env::set_var` safety requirements.
+    // SAFETY: Delegates to `std::env::set_var`. Callers must satisfy the same invariant as the
+    // standard library: no concurrent environment reads on any thread while this runs. This
+    // crate cannot enforce that; callers must only invoke from startup or other points where
+    // no other threads read `std::env` (or use a process-wide convention that matches).
     unsafe {
         std::env::set_var(key.as_ref(), value.as_ref());
     }
@@ -25,7 +40,8 @@ pub fn set_var(key: impl AsRef<str>, value: impl AsRef<str>) {
 ///
 /// Same as [`std::env::remove_var`]: no other thread may read the environment concurrently.
 pub fn remove_var(key: impl AsRef<str>) {
-    // SAFETY: Forwarding to `std`; caller must satisfy `std::env::remove_var` safety requirements.
+    // SAFETY: Delegates to `std::env::remove_var`. Same concurrent-read prohibition as
+    // [`set_var`]; see that function’s SAFETY comment.
     unsafe {
         std::env::remove_var(key.as_ref());
     }

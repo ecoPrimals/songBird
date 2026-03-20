@@ -74,7 +74,10 @@ impl HttpsConnection {
     /// - Sending request fails
     /// - Reading response fails
     /// - Response parsing fails
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "TLS execute bundles host, port, URI, method, headers, body, and parse/build callbacks"
+    )]
     pub async fn execute(
         &self,
         host: &str,

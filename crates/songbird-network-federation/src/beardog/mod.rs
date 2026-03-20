@@ -15,7 +15,7 @@ pub mod noop;
 pub mod production;
 pub mod relay;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 pub mod mock;
 
 pub use birdsong::{BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageHint};
@@ -86,7 +86,7 @@ impl BearDogProviderFactory {
     }
 
     /// Create mock provider for testing
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-mocks"))]
     #[must_use]
     pub fn create_mock() -> Box<dyn BearDogProvider> {
         use crate::beardog::mock::MockBearDogProvider;

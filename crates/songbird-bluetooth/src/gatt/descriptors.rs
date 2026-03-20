@@ -18,7 +18,10 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Notifications not supported
     /// - Subscription fails
-    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (notifications/CCCD)
+    #[expect(
+        clippy::unused_async,
+        reason = "placeholder for future GATT operations (notifications/CCCD)"
+    )]
     pub async fn subscribe_notifications(
         &self,
         uuid: &Uuid,

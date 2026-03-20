@@ -46,7 +46,7 @@ pub struct SovereignSecurityValidator {
     beardog: Arc<RwLock<Option<BearDogIntegration>>>,
 
     /// Configuration
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "stored for future validator configuration hooks")]
     config: SecurityConfig,
 }
 
@@ -217,7 +217,7 @@ struct BearDogIntegration {
     /// HTTP client for `BearDog` requests
     client: IpcHttpClient,
     /// Request timeout for security operations (reserved for timeout enforcement)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for BearDog request timeout enforcement")]
     timeout: std::time::Duration,
 }
 
@@ -341,7 +341,7 @@ impl BearDogIntegration {
     /// Check if `BearDog` is currently reachable
     ///
     /// Non-blocking health check to determine if `BearDog` integration is active
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for BearDog availability probing")]
     async fn is_available(&self) -> bool {
         let url = format!("{}/health", self.endpoint);
 
@@ -350,7 +350,7 @@ impl BearDogIntegration {
 
     /// Get `BearDog` endpoint URL
     #[must_use]
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "accessor reserved for diagnostics and future callers")]
     fn endpoint(&self) -> &str {
         &self.endpoint
     }

@@ -86,7 +86,10 @@ pub struct QoSProviderSelector {
 
 /// Configurable weights for provider selection
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_field_names)] // "weight" postfix is intentional and clear
+#[expect(
+    clippy::struct_field_names,
+    reason = "_weight field suffix is intentional for selection scoring clarity"
+)]
 pub struct SelectionWeights {
     /// Weight for health status (0.0 to 1.0)
     pub health_weight: f64,

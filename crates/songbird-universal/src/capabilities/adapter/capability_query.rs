@@ -264,6 +264,12 @@ impl CapabilityQuery {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use std::sync::Arc;
+
+    use tokio::sync::RwLock;
+
     use super::*;
 
     #[tokio::test]
@@ -295,5 +301,69 @@ mod tests {
         let caps = CapabilityQuery::infer_basic_capabilities("http://compute-worker:9000");
         assert_eq!(caps.len(), 1);
         assert!(caps.iter().any(|c| c.capability_type == "compute"));
+    }
+
+    #[tokio::test]
+    async fn test_infer_basic_capabilities_storage_and_ai() {
+        let storage_caps =
+            CapabilityQuery::infer_basic_capabilities("http://data-persist-service:8443");
+        assert_eq!(storage_caps.len(), 1);
+        assert_eq!(storage_caps[0].capability_type, "storage");
+
+        let ai_caps = CapabilityQuery::infer_basic_capabilities("http://ml-inference:9000");
+        assert_eq!(ai_caps.len(), 2);
+        assert!(ai_caps.iter().any(|c| c.capability_type == "ai"));
+        assert!(ai_caps.iter().any(|c| c.capability_type == "ml"));
+    }
+
+    #[tokio::test]
+    async fn test_infer_basic_capabilities_generic_empty() {
+        let caps = CapabilityQuery::infer_basic_capabilities("http://unknown-host:8080");
+        assert!(caps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_extract_primal_name_localhost_only() {
+        assert_eq!(CapabilityQuery::extract_primal_name("http://localhost"), "localhost");
+    }
+
+    #[tokio::test]
+    async fn test_check_primal_provides_capability() {
+        let mut registry = CapabilityRegistry::default();
+        registry.primal_capabilities.insert(
+            "p1".to_string(),
+            vec![Capability {
+                capability_type: "storage".to_string(),
+                name: "blob".to_string(),
+                version: "1".to_string(),
+                parameters: Default::default(),
+                qos_metrics: QoSMetrics::default(),
+                available: true,
+            }],
+        );
+        let registry = Arc::new(RwLock::new(registry));
+        let q = CapabilityQuery::new(registry);
+
+        assert!(q.check_primal_provides_capability("p1", "storage").await);
+        assert!(!q.check_primal_provides_capability("p1", "compute").await);
+        assert!(!q.check_primal_provides_capability("missing", "storage").await);
+    }
+
+    #[tokio::test]
+    async fn test_get_best_primal_no_providers() {
+        let registry = Arc::new(RwLock::new(CapabilityRegistry::default()));
+        let q = CapabilityQuery::new(registry);
+        assert!(q.get_best_primal_for_capability("anything").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_best_primal_first_without_qos_selector() {
+        let mut reg = CapabilityRegistry::default();
+        reg.capability_providers
+            .insert("compute".to_string(), vec!["alpha".to_string(), "beta".to_string()]);
+        reg.qos_selector = None;
+        let registry = Arc::new(RwLock::new(reg));
+        let q = CapabilityQuery::new(registry);
+        assert_eq!(q.get_best_primal_for_capability("compute").await.as_deref(), Some("alpha"));
     }
 }

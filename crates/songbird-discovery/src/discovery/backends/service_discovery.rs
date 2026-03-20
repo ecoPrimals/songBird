@@ -410,7 +410,10 @@ impl UniversalServiceDiscovery {
     }
 
     /// Parse service response from any HTTP registry
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "Result kept for uniform SongbirdResult propagation"
+    )]
     fn parse_universal_service_response(
         &self,
         data: &serde_json::Value,

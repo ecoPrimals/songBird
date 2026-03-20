@@ -187,6 +187,7 @@ impl RequestBuilder {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::http_config::HttpClientConfig;
@@ -281,5 +282,23 @@ mod tests {
         let request_str = String::from_utf8_lossy(&request);
 
         assert!(request_str.starts_with("GET /api?key=value&foo=bar HTTP/1.1\r\n"));
+    }
+
+    #[test]
+    fn test_host_header_includes_explicit_port() {
+        let uri: Uri = "https://example.com:4443/path".parse().unwrap();
+        let config = HttpClientConfig::minimal();
+        let request = RequestBuilder::build(&uri, "GET", &config, &HashMap::new(), None).unwrap();
+        let request_str = String::from_utf8_lossy(&request);
+        assert!(request_str.contains("Host: example.com:4443\r\n"));
+    }
+
+    #[test]
+    fn test_host_header_omits_default_https_port() {
+        let uri: Uri = "https://example.com:443/path".parse().unwrap();
+        let config = HttpClientConfig::minimal();
+        let request = RequestBuilder::build(&uri, "GET", &config, &HashMap::new(), None).unwrap();
+        let request_str = String::from_utf8_lossy(&request);
+        assert!(request_str.contains("Host: example.com\r\n"));
     }
 }

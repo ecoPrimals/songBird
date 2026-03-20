@@ -88,6 +88,8 @@
 )]
 
 // Core modules
+pub mod federation;
+pub mod persistence;
 pub mod registry;
 pub mod types;
 
@@ -112,4 +114,3 @@ pub use registry::{Composable, PluginRegistry, Query, Registry};
 
 // Production modules remain for reference
 // pub mod production;
-// pub mod persistence;

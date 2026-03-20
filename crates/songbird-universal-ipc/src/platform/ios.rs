@@ -55,7 +55,7 @@ use async_trait::async_trait;
 ///
 /// **macOS**: Uses Unix sockets (fully functional)
 /// **iOS**: XPC documented for future, TCP fallback for now
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types, reason = "iOSIPC matches platform naming and public type identity")]
 pub struct iOSIPC;
 
 #[async_trait]

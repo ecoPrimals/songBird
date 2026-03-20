@@ -65,7 +65,10 @@ use crate::self_knowledge;
 /// The listener is taken as `AnonymousDiscoveryListener` (not Arc'd),
 /// fully configured with builder methods, and THEN wrapped in Arc.
 /// This prevents the "two instances" bug and enables fractal patterns.
-#[allow(clippy::too_many_arguments)] // Startup passes pre-built listener, ports, and identity together.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "Startup passes pre-built listener, ports, and identity together"
+)]
 pub async fn start_discovery_system(
     discovery_port: u16,
     https_port: u16,

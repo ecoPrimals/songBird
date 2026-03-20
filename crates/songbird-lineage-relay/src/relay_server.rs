@@ -308,45 +308,46 @@ impl RelayServer {
         let auth_result = authority.authorize_relay(&request.relay_node, &request.requester).await;
 
         let response = match auth_result {
-            Ok(auth) if auth.authorized => {
-                // Authorized - create session
-                let session_id = Uuid::new_v4();
+            Ok(auth) => {
+                if auth.authorized {
+                    // Authorized - create session
+                    let session_id = Uuid::new_v4();
 
-                let session = RelaySessionState {
-                    session_id,
-                    requester_addr: src_addr,
-                    target_addr: request.target_addr,
-                    requester_id: request.requester.clone(),
-                    target_id: "unknown".into(), // Will be discovered on first packet
-                    masking_level: auth.masking_level,
-                    created_at: SystemTime::now(),
-                    last_activity: SystemTime::now(),
-                    bytes_forwarded: 0,
-                    packets_forwarded: 0,
-                };
+                    let session = RelaySessionState {
+                        session_id,
+                        requester_addr: src_addr,
+                        target_addr: request.target_addr,
+                        requester_id: request.requester.clone(),
+                        target_id: "unknown".into(), // Will be discovered on first packet
+                        masking_level: auth.masking_level,
+                        created_at: SystemTime::now(),
+                        last_activity: SystemTime::now(),
+                        bytes_forwarded: 0,
+                        packets_forwarded: 0,
+                    };
 
-                // Store session
-                {
-                    let mut sessions_guard = sessions.write().await;
-                    sessions_guard.insert(session_id, session);
+                    // Store session
+                    {
+                        let mut sessions_guard = sessions.write().await;
+                        sessions_guard.insert(session_id, session);
+
+                        let mut stats_guard = stats.write().await;
+                        stats_guard.sessions_active = sessions_guard.len() as u64;
+                        stats_guard.sessions_total += 1;
+                    }
+
+                    info!("✅ Allocated relay session {} for {}", session_id, request.requester);
+
+                    AllocationResponse::success(session_id, relay_addr, request.ttl_seconds)
+                } else {
+                    // Not authorized
+                    warn!("🚫 Unauthorized relay request from {}", request.requester);
 
                     let mut stats_guard = stats.write().await;
-                    stats_guard.sessions_active = sessions_guard.len() as u64;
-                    stats_guard.sessions_total += 1;
+                    stats_guard.authorization_failures += 1;
+
+                    AllocationResponse::unauthorized("Lineage verification failed")
                 }
-
-                info!("✅ Allocated relay session {} for {}", session_id, request.requester);
-
-                AllocationResponse::success(session_id, relay_addr, request.ttl_seconds)
-            }
-            Ok(auth) if !auth.authorized => {
-                // Not authorized
-                warn!("🚫 Unauthorized relay request from {}", request.requester);
-
-                let mut stats_guard = stats.write().await;
-                stats_guard.authorization_failures += 1;
-
-                AllocationResponse::unauthorized("Lineage verification failed")
             }
             Err(e) => {
                 // Authorization check failed
@@ -357,7 +358,6 @@ impl RelayServer {
 
                 AllocationResponse::error(format!("Authorization failed: {e}"))
             }
-            _ => unreachable!(), // auth.authorized is always true or false
         };
 
         // Send response

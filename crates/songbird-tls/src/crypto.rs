@@ -347,7 +347,7 @@ impl BeardogCryptoClient {
     }
 
     /// Make a JSON-RPC call (legacy/testing)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future use: legacy/testing JSON-RPC path")]
     async fn call_jsonrpc(
         &self,
         method: &str,
@@ -612,7 +612,7 @@ impl BeardogCryptoClient {
 ///
 /// Note: Fields are used during deserialization but not directly accessed in code.
 /// The response is parsed and converted to domain types immediately.
-#[allow(dead_code)]
+#[expect(dead_code, reason = "deserialized from external data")]
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,
@@ -630,6 +630,7 @@ struct JsonRpcError {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -719,5 +720,58 @@ mod tests {
         for handle in handles {
             handle.join().expect("thread panicked");
         }
+    }
+
+    #[test]
+    fn capability_call_request_json_shape_matches_neural_api() {
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "capability.call",
+            "params": {
+                "capability": "crypto",
+                "operation": "generate_keypair",
+                "args": { "purpose": "tls_handshake" }
+            },
+            "id": 1
+        });
+        let s = request.to_string();
+        let v: serde_json::Value = serde_json::from_str(&s).expect("parse");
+        assert_eq!(v["method"], "capability.call");
+        assert_eq!(v["params"]["capability"], "crypto");
+        assert_eq!(v["params"]["operation"], "generate_keypair");
+    }
+
+    #[test]
+    fn jsonrpc_error_response_parses_for_client_logic() {
+        let raw = r#"{"jsonrpc":"2.0","error":{"code":-1,"message":"fail"},"id":null}"#;
+        let v: serde_json::Value = serde_json::from_str(raw).expect("json");
+        assert_eq!(v["error"]["message"], "fail");
+        assert!(v.get("result").is_none());
+    }
+
+    #[test]
+    fn base64_roundtrip_for_beardog_payload_fields() {
+        use base64::{Engine as _, engine::general_purpose};
+        let bytes = b"\x00\x01\x02";
+        let enc = general_purpose::STANDARD.encode(bytes);
+        let dec = general_purpose::STANDARD.decode(&enc).expect("decode");
+        assert_eq!(dec, bytes);
+    }
+
+    #[test]
+    fn base64_decode_rejects_invalid_characters() {
+        use base64::{Engine as _, engine::general_purpose};
+        let err = general_purpose::STANDARD.decode("@@@");
+        assert!(err.is_err(), "invalid base64 must fail");
+    }
+
+    #[test]
+    fn capability_call_params_json_includes_derive_secret_shape() {
+        let params = serde_json::json!({
+            "our_secret": "YQ==",
+            "their_public": "Yg=="
+        });
+        assert!(params["our_secret"].as_str().is_some());
+        assert_eq!(params["our_secret"], "YQ==");
     }
 }

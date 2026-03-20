@@ -196,7 +196,7 @@ impl ConnectionManager {
     ///
     /// Future use: Will be used for connection pooling and reuse optimization.
     /// Currently connections are managed ephemerally, but this enables persistent connections.
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future connection pooling and reuse optimization")]
     pub async fn get_connection(&self, primal_name: &str) -> Option<PrimalConnection> {
         let connections = self.connections.read().await;
         connections.get(primal_name).cloned()
@@ -211,6 +211,8 @@ impl Default for ConnectionManager {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -221,6 +223,33 @@ mod tests {
         assert_eq!(ConnectionManager::infer_primal_type("data-storage"), PrimalType::Storage);
         assert_eq!(ConnectionManager::infer_primal_type("ml-inference"), PrimalType::AI);
         assert_eq!(ConnectionManager::infer_primal_type("unknown-service"), PrimalType::Generic);
+    }
+
+    #[test]
+    fn test_infer_primal_type_orchestration() {
+        assert_eq!(
+            ConnectionManager::infer_primal_type("task-orchestrator"),
+            PrimalType::Orchestration
+        );
+        assert_eq!(
+            ConnectionManager::infer_primal_type("coordinator-node"),
+            PrimalType::Orchestration
+        );
+    }
+
+    #[test]
+    fn test_connection_manager_default() {
+        let _ = ConnectionManager::default();
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_not_connected() {
+        let manager = ConnectionManager::new();
+        let err = manager.disconnect_from_primal("missing").await.expect_err("not connected");
+        match err {
+            CapabilityError::PrimalNotFound(msg) => assert!(msg.contains("missing")),
+            _ => panic!("expected PrimalNotFound"),
+        }
     }
 
     #[tokio::test]

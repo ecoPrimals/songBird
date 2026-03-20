@@ -32,7 +32,14 @@ pub async fn negotiate_chunked_upload(
     // Calculate chunks
     let chunk_size_mb = 10u32; // 10MB chunks
     // Safe cast: For any reasonable binary size (<18 exabytes), this won't overflow usize
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable: chunk count from MB-sized inputs"
+    )]
+    #[expect(
+        clippy::cast_sign_loss,
+        reason = "truncation acceptable: validated positive binary size yields non-negative ceil"
+    )]
     let total_chunks = ((request.binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
 
     // Create temp directory

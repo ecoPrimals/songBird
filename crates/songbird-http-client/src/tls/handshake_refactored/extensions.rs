@@ -213,7 +213,7 @@ impl TlsHandshake {
     }
 
     /// Build SNI extension
-    #[allow(clippy::unused_self)] // API consistency with other TlsHandshake methods
+    #[expect(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
     pub(crate) fn build_sni_extension(&self, server_name: &str) -> Vec<u8> {
         let mut sni = Vec::new();
         let name_bytes = server_name.as_bytes();
@@ -231,7 +231,7 @@ impl TlsHandshake {
     }
 
     /// Build key share extension
-    #[allow(clippy::unused_self)] // API consistency with other TlsHandshake methods
+    #[expect(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
     pub(crate) fn build_key_share_extension(&self, public_key: &[u8]) -> Vec<u8> {
         let mut ks = Vec::new();
 
@@ -249,6 +249,7 @@ impl TlsHandshake {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::crypto::CryptoCapability;
@@ -433,5 +434,49 @@ mod tests {
         assert!(minimal.len() < standard.len());
         assert!(standard.len() < modern.len());
         assert!(modern.len() < maxcompat.len());
+    }
+
+    #[test]
+    fn test_build_extensions_adaptive_maps_to_standard() {
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
+            as std::sync::Arc<dyn CryptoCapability>;
+        let config = TlsConfig {
+            extension_strategy: ExtensionStrategy::Adaptive,
+            ..Default::default()
+        };
+        let adaptive_hs = TlsHandshake::with_config(beardog.clone(), config, None);
+
+        let standard_config = TlsConfig {
+            extension_strategy: ExtensionStrategy::Standard,
+            ..Default::default()
+        };
+        let standard_hs = TlsHandshake::with_config(beardog, standard_config, None);
+
+        let key = vec![0x42; 32];
+        let adaptive = adaptive_hs.build_extensions("example.com", &key).unwrap();
+        let standard = standard_hs.build_extensions("example.com", &key).unwrap();
+        assert_eq!(adaptive, standard);
+    }
+
+    #[test]
+    fn test_build_extensions_custom_maps_to_standard() {
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
+            as std::sync::Arc<dyn CryptoCapability>;
+        let config = TlsConfig {
+            extension_strategy: ExtensionStrategy::Custom(vec![0x000a, 0x002b]),
+            ..Default::default()
+        };
+        let custom_hs = TlsHandshake::with_config(beardog.clone(), config, None);
+
+        let standard_config = TlsConfig {
+            extension_strategy: ExtensionStrategy::Standard,
+            ..Default::default()
+        };
+        let standard_hs = TlsHandshake::with_config(beardog, standard_config, None);
+
+        let key = vec![0x42; 32];
+        let custom = custom_hs.build_extensions("example.com", &key).unwrap();
+        let standard = standard_hs.build_extensions("example.com", &key).unwrap();
+        assert_eq!(custom, standard);
     }
 }

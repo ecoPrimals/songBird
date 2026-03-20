@@ -63,7 +63,10 @@ pub struct MultiFederationState {
     federations: Arc<RwLock<HashMap<FederationId, FederationContext>>>,
 
     /// Node's core identity (used for federation membership tracking)
-    #[allow(dead_code)] // Will be used for federation-specific identity management
+    #[expect(
+        dead_code,
+        reason = "reserved for future use: federation-specific identity management"
+    )]
     node_id: Uuid,
 }
 

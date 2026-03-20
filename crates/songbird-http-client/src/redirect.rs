@@ -86,7 +86,7 @@ impl RedirectHandler {
     /// # Returns
     ///
     /// Hostname if it can be extracted
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "API surface for downstream consumers")]
     pub fn extract_host(location: &str, base_url: &str) -> Option<String> {
         // Try to parse location as absolute URL
         if let Ok(uri) = Uri::try_from(location)
@@ -178,6 +178,7 @@ impl RedirectHandler {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use std::collections::HashMap;
@@ -290,5 +291,72 @@ mod tests {
             )
             .unwrap()
         );
+    }
+
+    #[test]
+    fn test_resolve_url_invalid_base_url() {
+        let err = RedirectHandler::resolve_url("not a url", "/path").unwrap_err();
+        assert!(matches!(err, Error::InvalidUrl(_)));
+    }
+
+    #[test]
+    fn test_resolve_absolute_http() {
+        let url =
+            RedirectHandler::resolve_url("https://example.com/x", "http://plain.test/r").unwrap();
+        assert_eq!(url, "http://plain.test/r");
+    }
+
+    #[test]
+    fn test_resolve_preserves_non_default_port() {
+        let url = RedirectHandler::resolve_url("https://example.com:8443/old", "/new").unwrap();
+        assert_eq!(url, "https://example.com:8443/new");
+    }
+
+    #[test]
+    fn test_resolve_from_root_relative_segment() {
+        let url = RedirectHandler::resolve_url("https://example.com/", "next").unwrap();
+        assert_eq!(url, "https://example.com/next");
+    }
+
+    #[test]
+    fn test_should_follow_requires_location_header() {
+        let handler = RedirectHandler::new(3);
+        let response = HttpResponse {
+            status: 302,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+        assert!(!handler.should_follow(&response, 0, RedirectMode::Follow));
+    }
+
+    #[test]
+    fn test_should_follow_same_origin_mode_still_requires_location() {
+        let handler = RedirectHandler::new(3);
+        let mut headers = HashMap::new();
+        headers.insert("location".to_string(), "/ok".to_string());
+        let response = HttpResponse {
+            status: 302,
+            headers,
+            body: serde_json::json!({}),
+        };
+        assert!(handler.should_follow(&response, 0, RedirectMode::SameOrigin));
+    }
+
+    #[test]
+    fn test_is_same_origin_invalid_original() {
+        let err = RedirectHandler::is_same_origin("%%%", "https://a.com/").unwrap_err();
+        assert!(matches!(err, Error::InvalidUrl(_)));
+    }
+
+    #[test]
+    fn test_is_same_origin_invalid_redirect() {
+        let err = RedirectHandler::is_same_origin("https://a.com/", "%%%").unwrap_err();
+        assert!(matches!(err, Error::InvalidUrl(_)));
+    }
+
+    #[test]
+    fn test_extract_host_unparseable_location_uses_base_host() {
+        let host = RedirectHandler::extract_host("%%%", "https://fallback.example");
+        assert_eq!(host, Some("fallback.example".to_string()));
     }
 }

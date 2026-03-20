@@ -118,7 +118,7 @@ impl BearDogClient {
         id: u64,
     ) -> Result<Value> {
         // Note: Direct mode is deprecated for production use
-        #[allow(deprecated)]
+        #[expect(deprecated, reason = "migration to successor API planned")]
         let method = Self::semantic_to_actual(capability)?;
 
         let request = JsonRpcRequest {
@@ -281,6 +281,7 @@ impl BearDogClient {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -304,5 +305,38 @@ mod tests {
         #[allow(deprecated)]
         let result = BearDogClient::semantic_to_actual("unknown.method");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_semantic_mapping_all_crypto_and_tls_aliases() {
+        #[allow(deprecated)]
+        {
+            let pairs = [
+                ("crypto.encrypt", "crypto.chacha20_poly1305_encrypt"),
+                ("crypto.decrypt", "crypto.chacha20_poly1305_decrypt"),
+                ("crypto.encrypt_aes_128_gcm", "crypto.aes128_gcm_encrypt"),
+                ("crypto.decrypt_aes_128_gcm", "crypto.aes128_gcm_decrypt"),
+                ("crypto.encrypt_aes_256_gcm", "crypto.aes256_gcm_encrypt"),
+                ("crypto.decrypt_aes_256_gcm", "crypto.aes256_gcm_decrypt"),
+                ("crypto.sha256", "crypto.sha256"),
+                ("crypto.sha384", "crypto.sha384"),
+                ("crypto.hkdf_extract", "crypto.hkdf_extract"),
+                ("crypto.hkdf_expand", "crypto.hkdf_expand"),
+                ("tls.derive_handshake_secrets", "tls.derive_handshake_secrets"),
+                ("tls.derive_application_secrets", "tls.derive_application_secrets"),
+                ("tls.compute_finished_verify_data", "tls.compute_finished_verify_data"),
+            ];
+            for (cap, expected) in pairs {
+                assert_eq!(BearDogClient::semantic_to_actual(cap).unwrap(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_semantic_mapping_unknown_returns_bear_dog_rpc_error() {
+        #[allow(deprecated)]
+        let err = BearDogClient::semantic_to_actual("not.mapped.here").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Unknown capability"));
     }
 }

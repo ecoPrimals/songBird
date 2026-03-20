@@ -96,7 +96,10 @@ impl EnvReader for MockEnv {
 ///
 /// NOTE: Capability-first discovery is now preferred. This function is retained
 /// for backward compatibility with deployments using family-ID in socket names.
-#[allow(dead_code)] // Retained for backward compatibility, may be used in legacy paths
+#[expect(
+    dead_code,
+    reason = "retained for backward compatibility with legacy family-ID socket paths"
+)]
 fn discover_xdg_socket_with_env(
     primal_name: &str,
     family_id: &str,

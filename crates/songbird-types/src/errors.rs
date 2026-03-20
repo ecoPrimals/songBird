@@ -476,22 +476,22 @@ impl From<std::io::Error> for SongbirdError {
 // Note: From implementations for external crates (serde_yaml, reqwest, tokio)
 // are implemented in their respective modules where those dependencies are available
 
+#[cfg(test)]
 #[allow(
     clippy::unwrap_used,
-    clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    clippy::uninlined_format_args,
+    clippy::float_cmp,
+    clippy::useless_vec,
+    clippy::unreadable_literal,
+    clippy::items_after_statements,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
 )]
-#[cfg(test)]
-#[allow(clippy::uninlined_format_args)]
-#[allow(clippy::float_cmp)]
-#[allow(clippy::useless_vec)]
-#[allow(clippy::unreadable_literal)]
-#[allow(clippy::items_after_statements)]
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
     #![allow(clippy::all)]
     #![allow(unused)]
 
@@ -589,5 +589,62 @@ mod tests {
 
         assert!(security_error.to_string().contains("Invalid token"));
         assert!(network_error.to_string().contains("Connection failed"));
+    }
+
+    #[test]
+    fn test_from_str_and_string_configuration() {
+        let e: SongbirdError = "env missing".into();
+        assert!(e.to_string().contains("env missing"));
+
+        let e2: SongbirdError = String::from("boxed").into();
+        assert!(e2.to_string().contains("boxed"));
+    }
+
+    #[test]
+    fn test_from_addr_parse_error_display() {
+        let err: SongbirdError =
+            ":::".parse::<std::net::IpAddr>().expect_err("invalid IP should not parse").into();
+        assert!(err.to_string().contains("Address parse") || err.to_string().contains("parse"));
+    }
+
+    #[test]
+    fn test_songbird_error_timeout_has_suggestion() {
+        let e = SongbirdError::timeout("deadline exceeded");
+        assert!(e.to_string().contains("deadline"));
+        match e {
+            SongbirdError::Network {
+                suggestion,
+                ..
+            } => {
+                let s = suggestion.expect("timeout() should attach remediation text");
+                assert!(s.contains("timeout") || s.contains("network"));
+            }
+            _ => panic!("expected Network variant for timeout()"),
+        }
+    }
+
+    #[test]
+    fn test_metrics_and_registry_constructors_display() {
+        let m = SongbirdError::metrics("counter stuck", "flush");
+        assert!(m.to_string().contains("Metrics"));
+
+        let r = SongbirdError::registry("not found", "lookup");
+        assert!(r.to_string().contains("Registry"));
+    }
+
+    #[test]
+    fn test_from_serde_json_error_maps_to_serialization_variant() {
+        let bad = "not json";
+        let json_err = serde_json::from_str::<serde_json::Value>(bad).expect_err("invalid json");
+        let e: SongbirdError = json_err.into();
+        let s = e.to_string();
+        assert!(s.contains("Serialization") || s.contains("JSON"));
+    }
+
+    #[test]
+    fn test_from_io_error_maps_to_network() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
+        let e: SongbirdError = io_err.into();
+        assert!(e.to_string().contains("IO error") || e.to_string().contains("Network"));
     }
 }

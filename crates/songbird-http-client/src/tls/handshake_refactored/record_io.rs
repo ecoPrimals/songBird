@@ -18,7 +18,7 @@ impl TlsHandshake {
     ///
     /// Returns the content type byte (e.g., 0x14=ChangeCipherSpec, 0x17=ApplicationData)
     /// and the record content
-    #[allow(clippy::too_many_lines)] // Record parsing has many validation branches
+    #[expect(clippy::too_many_lines, reason = "Record parsing has many validation branches")]
     pub(super) async fn read_record(&self, stream: &mut TcpStream) -> Result<(u8, Vec<u8>)> {
         // Read record header
         trace!("Reading TLS record header (5 bytes)");
@@ -352,7 +352,7 @@ impl TlsHandshake {
     }
 
     /// Generate 32-byte random (for testing, production should use `BearDog`)
-    #[allow(clippy::unused_self)] // API consistency
+    #[expect(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
     pub(crate) fn generate_random(&self) -> Vec<u8> {
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -366,7 +366,10 @@ impl TlsHandshake {
         random.extend_from_slice(&timestamp.to_be_bytes());
 
         // Fill rest with pseudo-random (in production, BearDog should provide this)
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable: test-only pseudo-random filler bytes"
+        )]
         for i in 4u8..32 {
             random.push(i.wrapping_mul(7).wrapping_add(timestamp as u8));
         }

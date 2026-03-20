@@ -88,7 +88,7 @@ struct JsonRpcRequest {
 /// JSON-RPC 2.0 Response
 #[derive(Debug, Clone, Deserialize)]
 struct JsonRpcResponse {
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
     jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<Value>,
@@ -356,6 +356,8 @@ impl JsonRpcClient {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -424,5 +426,27 @@ mod tests {
         let error = response.error.unwrap();
         assert_eq!(error.code, -32600);
         assert_eq!(error.message, "Invalid Request");
+    }
+
+    #[tokio::test]
+    async fn test_call_missing_method_field() {
+        let client = JsonRpcClient::new("/tmp/songbird-jsonrpc-test.sock").expect("client");
+        let err =
+            client.call(json!({"jsonrpc": "2.0", "id": 1})).await.expect_err("method required");
+        assert!(err.to_string().contains("method") || err.to_string().contains("Missing"));
+    }
+
+    #[test]
+    fn test_jsonrpc_error_roundtrip_serialize() {
+        let err = JsonRpcError {
+            code: -32700,
+            message: "Parse error".to_string(),
+            data: Some(json!({"detail": "x"})),
+        };
+        let s = serde_json::to_string(&err).expect("serialize");
+        let back: JsonRpcError = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(back.code, -32700);
+        assert_eq!(back.message, "Parse error");
+        assert!(back.data.is_some());
     }
 }

@@ -284,7 +284,7 @@ impl SongbirdOrchestrator {
 
                                     let security_client =
                                         match SecurityCapabilityClient::from_endpoint(
-                                            sec_endpoint.clone(),
+                                            sec_endpoint.as_str(),
                                         )
                                         .await
                                         {
@@ -387,7 +387,7 @@ impl SongbirdOrchestrator {
                                     ) => {
                                         info!(
                                             "✅ Trust Decision: AUTO-ACCEPT for '{}' (reason: {}, confidence: {:.2})",
-                                            node_name, reason, confidence
+                                            node_name, &reason, confidence
                                         );
 
                                         // Handle trust decision via connection manager (progressive trust)
@@ -397,7 +397,7 @@ impl SongbirdOrchestrator {
                                             peer.capabilities.clone(),
                                             peer.tags.clone().unwrap_or_default(),  // v3.18.0: Pass tags for BTSP selection
                                             &crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
-                                                reason: reason.clone(),
+                                                reason,
                                                 confidence,
                                                 encryption_tag: None,
                                             },
@@ -515,8 +515,8 @@ impl SongbirdOrchestrator {
                                             peer.capabilities.clone(),
                                             peer.tags.clone().unwrap_or_default(),  // v3.18.0: Pass tags (unused for rejections)
                                             &crate::trust::peer_trust::PeerTrustDecision::Reject {
-                                                reason: reason.clone(),
-                                                trust_level: trust_level.clone(),
+                                                reason,
+                                                trust_level,
                                             },
                                             "udp_multicast".to_string(),
                                         ).await {

@@ -236,22 +236,22 @@ impl OptimizedCapabilities {
     }
 }
 
+#[cfg(test)]
 #[allow(
     clippy::unwrap_used,
-    clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    clippy::uninlined_format_args,
+    clippy::float_cmp,
+    clippy::useless_vec,
+    clippy::unreadable_literal,
+    clippy::items_after_statements,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
 )]
-#[cfg(test)]
-#[allow(clippy::uninlined_format_args)]
-#[allow(clippy::float_cmp)]
-#[allow(clippy::useless_vec)]
-#[allow(clippy::unreadable_literal)]
-#[allow(clippy::items_after_statements)]
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
     #![allow(clippy::all)]
     #![allow(unused)]
 
@@ -270,12 +270,32 @@ mod tests {
     }
 
     #[test]
+    fn test_optimized_primal_id_to_owned() {
+        let id = OptimizedPrimalId::new(
+            CanonicalPrimalType::Compute,
+            "c-1",
+            CanonicalHealthStatus::Degraded,
+        );
+        let owned = id.to_owned();
+        assert_eq!(owned.instance_id.as_ref(), "c-1");
+        assert!(!owned.is_healthy());
+    }
+
+    #[test]
     fn test_optimized_endpoint() {
         let endpoint = OptimizedEndpoint::localhost(8080);
         let url = endpoint.to_url();
         // Test the URL structure matches expected format
         assert!(url.starts_with("http://"));
         assert!(url.contains(":8080"));
+    }
+
+    #[test]
+    fn test_optimized_endpoint_custom_protocol_url() {
+        let mut ep = OptimizedEndpoint::new("example.com", 443, "https");
+        ep.protocol = EndpointProtocol::Https;
+        assert!(ep.to_url().starts_with("https://"));
+        assert!(ep.to_url().contains("example.com:443"));
     }
 
     #[test]
@@ -289,6 +309,24 @@ mod tests {
     }
 
     #[test]
+    fn test_optimized_capabilities_to_string_vec_order() {
+        let mut caps = OptimizedCapabilities::new();
+        caps.with_compute();
+        caps.add_custom("x");
+        let v = caps.to_string_vec();
+        assert!(v.contains(&"compute".to_string()));
+        assert!(v.contains(&"x".to_string()));
+    }
+
+    #[test]
+    fn test_optimized_capabilities_count_all_flags() {
+        let mut caps = OptimizedCapabilities::new();
+        caps.with_security().with_storage().with_compute();
+        caps.add_custom("extra");
+        assert_eq!(caps.count(), 4);
+    }
+
+    #[test]
     fn test_host_optimization() -> Result<(), Box<dyn std::error::Error>> {
         use crate::SongbirdError;
         let localhost = OptimizedHost::from_str("localhost").map_err(|e| {
@@ -296,6 +334,9 @@ mod tests {
         })?;
         assert!(matches!(localhost, OptimizedHost::Localhost));
         assert_eq!(localhost.as_str(), "127.0.0.1");
+
+        let custom = OptimizedHost::from_str("other.example")?;
+        assert_eq!(custom.as_str(), "other.example");
         Ok(())
     }
 }

@@ -5,23 +5,30 @@
 //!
 //! Real persistent storage for service registry replacing mock implementations
 
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_types::{ServiceResult, SongbirdError, SongbirdResult, success};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::RwLock;
-use crate::service::{ServiceEntry, ServiceHealthStatus, ServiceInfo, ServiceMetrics};
+use tracing::{debug, error, info, warn};
+
+use crate::persistence::service_data::{RegistryServiceEntry, ServiceInfo};
 
 /// Storage backend types
 #[derive(Debug, Clone)]
 pub enum StorageBackend {
-    FileSystem { data_dir: PathBuf },
-    InMemory { persistent: bool },
-    Database { connection_string: String },
+    FileSystem {
+        data_dir: PathBuf,
+    },
+    InMemory {
+        persistent: bool,
+    },
+    Database {
+        connection_string: String,
+    },
 }
 
 /// Service registry persistence configuration
@@ -41,7 +48,7 @@ pub struct PersistenceConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersistentServiceData {
     /// Service entries
-    pub services: HashMap<String, ServiceEntry>,
+    pub services: HashMap<String, RegistryServiceEntry>,
     /// Service information
     pub service_info: HashMap<String, ServiceInfo>,
     /// Registration timestamps
@@ -93,7 +100,7 @@ impl Default for PersistenceConfig {
 
 impl ProductionServicePersistence {
     /// Create new production service persistence
-    pub async fn new(config: PersistenceConfig) -> ServiceResult<Self> {
+    pub async fn new(config: PersistenceConfig) -> SongbirdResult<Self> {
         let cache = Arc::new(RwLock::new(PersistentServiceData {
             services: HashMap::new(),
             service_info: HashMap::new(),
@@ -120,7 +127,11 @@ impl ProductionServicePersistence {
     }
 
     /// Save service entry
-    pub async fn save_service(&self, service_id: &str, entry: &ServiceEntry) -> ServiceResult<()> {
+    pub async fn save_service(
+        &self,
+        service_id: &str,
+        entry: &RegistryServiceEntry,
+    ) -> SongbirdResult<()> {
         let mut cache = self.cache.write().await;
         cache.services.insert(service_id.to_string(), entry.clone());
         cache.registration_times.insert(service_id.to_string(), Utc::now());
@@ -130,7 +141,11 @@ impl ProductionServicePersistence {
     }
 
     /// Save service info
-    pub async fn save_service_info(&self, service_id: &str, info: &ServiceInfo) -> ServiceResult<()> {
+    pub async fn save_service_info(
+        &self,
+        service_id: &str,
+        info: &ServiceInfo,
+    ) -> SongbirdResult<()> {
         let mut cache = self.cache.write().await;
         cache.service_info.insert(service_id.to_string(), info.clone());
 
@@ -139,19 +154,22 @@ impl ProductionServicePersistence {
     }
 
     /// Load service entry
-    pub async fn load_service(&self, service_id: &str) -> ServiceResult<Option<ServiceEntry>> {
+    pub async fn load_service(
+        &self,
+        service_id: &str,
+    ) -> SongbirdResult<Option<RegistryServiceEntry>> {
         let cache = self.cache.read().await;
         Ok(cache.services.get(service_id).cloned())
     }
 
     /// Load service info
-    pub async fn load_service_info(&self, service_id: &str) -> ServiceResult<Option<ServiceInfo>> {
+    pub async fn load_service_info(&self, service_id: &str) -> SongbirdResult<Option<ServiceInfo>> {
         let cache = self.cache.read().await;
         Ok(cache.service_info.get(service_id).cloned())
     }
 
     /// Remove service from persistence
-    pub async fn remove_service(&self, service_id: &str) -> ServiceResult<()> {
+    pub async fn remove_service(&self, service_id: &str) -> SongbirdResult<()> {
         let mut cache = self.cache.write().await;
         cache.services.remove(service_id);
         cache.service_info.remove(service_id);
@@ -162,25 +180,31 @@ impl ProductionServicePersistence {
     }
 
     /// Get all service IDs
-    pub async fn get_all_service_ids(&self) -> ServiceResult<Vec<String>> {
+    pub async fn get_all_service_ids(&self) -> SongbirdResult<Vec<String>> {
         let cache = self.cache.read().await;
         Ok(cache.services.keys().cloned().collect())
     }
 
     /// Save to persistent storage
-    pub async fn save_to_storage(&self) -> ServiceResult<()> {
+    pub async fn save_to_storage(&self) -> SongbirdResult<()> {
         let save_start = std::time::Instant::now();
 
         match &self.config.backend {
-            StorageBackend::FileSystem { data_dir } => {
+            StorageBackend::FileSystem {
+                data_dir,
+            } => {
                 self.save_to_filesystem(data_dir).await?;
             }
-            StorageBackend::InMemory { persistent } => {
+            StorageBackend::InMemory {
+                persistent,
+            } => {
                 if *persistent {
                     debug!("InMemory backend with persistence - data retained in cache");
                 }
             }
-            StorageBackend::Database { connection_string } => {
+            StorageBackend::Database {
+                connection_string,
+            } => {
                 self.save_to_database(connection_string).await?;
             }
         }
@@ -188,7 +212,7 @@ impl ProductionServicePersistence {
         let mut cache = self.cache.write().await;
         cache.last_saved = Utc::now();
 
-        let duration_ms = save_start.elapsed().as_millis() as u64;
+        let duration_ms = u64::try_from(save_start.elapsed().as_millis()).unwrap_or(u64::MAX);
         self.update_save_stats(true, duration_ms).await;
 
         debug!("Registry data saved to storage in {}ms", duration_ms);
@@ -196,27 +220,31 @@ impl ProductionServicePersistence {
     }
 
     /// Save to filesystem
-    async fn save_to_filesystem(&self, data_dir: &PathBuf) -> ServiceResult<()> {
-        fs::create_dir_all(data_dir).await
-            .map_err(|e| SongbirdError::service("persistence", &format!("Failed to create data directory: {}", e)))?;
+    async fn save_to_filesystem(&self, data_dir: &PathBuf) -> SongbirdResult<()> {
+        fs::create_dir_all(data_dir).await.map_err(|e| {
+            SongbirdError::service("persistence", format!("Failed to create data directory: {e}"))
+        })?;
 
         let cache = self.cache.read().await;
         let data = cache.clone();
         drop(cache);
 
-        let json_data = serde_json::to_string_pretty(&data)
-            .map_err(|e| SongbirdError::service("persistence", &format!("Serialization failed: {}", e)))?;
+        let json_data = serde_json::to_string_pretty(&data).map_err(|e| {
+            SongbirdError::service("persistence", format!("Serialization failed: {e}"))
+        })?;
 
         let main_file = data_dir.join("registry.json");
         let backup_file = data_dir.join(format!("registry_backup_{}.json", Utc::now().timestamp()));
 
         if main_file.exists() {
-            fs::copy(&main_file, &backup_file).await
-                .map_err(|e| SongbirdError::service("persistence", &format!("Backup creation failed: {}", e)))?;
+            fs::copy(&main_file, &backup_file).await.map_err(|e| {
+                SongbirdError::service("persistence", format!("Backup creation failed: {e}"))
+            })?;
         }
 
-        fs::write(&main_file, json_data).await
-            .map_err(|e| SongbirdError::service("persistence", &format!("File write failed: {}", e)))?;
+        fs::write(&main_file, json_data).await.map_err(|e| {
+            SongbirdError::service("persistence", format!("File write failed: {e}"))
+        })?;
 
         self.cleanup_old_backups(data_dir).await?;
 
@@ -224,7 +252,7 @@ impl ProductionServicePersistence {
     }
 
     /// Save to database — falls back to filesystem until a DB driver is integrated
-    async fn save_to_database(&self, _connection_string: &str) -> ServiceResult<()> {
+    async fn save_to_database(&self, _connection_string: &str) -> SongbirdResult<()> {
         warn!("Database backend not yet implemented, falling back to filesystem");
 
         let fallback_dir = PathBuf::from("./data/registry_db_fallback");
@@ -232,22 +260,28 @@ impl ProductionServicePersistence {
     }
 
     /// Load from persistent storage
-    pub async fn load_from_storage(&self) -> ServiceResult<()> {
+    pub async fn load_from_storage(&self) -> SongbirdResult<()> {
         let load_start = std::time::Instant::now();
 
         match &self.config.backend {
-            StorageBackend::FileSystem { data_dir } => {
+            StorageBackend::FileSystem {
+                data_dir,
+            } => {
                 self.load_from_filesystem(data_dir).await?;
             }
-            StorageBackend::InMemory { .. } => {
+            StorageBackend::InMemory {
+                ..
+            } => {
                 debug!("InMemory backend - no persistent data to load");
             }
-            StorageBackend::Database { connection_string } => {
+            StorageBackend::Database {
+                connection_string,
+            } => {
                 self.load_from_database(connection_string).await?;
             }
         }
 
-        let duration_ms = load_start.elapsed().as_millis() as u64;
+        let duration_ms = u64::try_from(load_start.elapsed().as_millis()).unwrap_or(u64::MAX);
         self.update_load_stats(true, duration_ms).await;
 
         debug!("Registry data loaded from storage in {}ms", duration_ms);
@@ -255,7 +289,7 @@ impl ProductionServicePersistence {
     }
 
     /// Load from filesystem
-    async fn load_from_filesystem(&self, data_dir: &PathBuf) -> ServiceResult<()> {
+    async fn load_from_filesystem(&self, data_dir: &Path) -> SongbirdResult<()> {
         let main_file = data_dir.join("registry.json");
 
         if !main_file.exists() {
@@ -263,11 +297,13 @@ impl ProductionServicePersistence {
             return Ok(());
         }
 
-        let json_data = fs::read_to_string(&main_file).await
-            .map_err(|e| SongbirdError::service("persistence", &format!("File read failed: {}", e)))?;
+        let json_data = fs::read_to_string(&main_file)
+            .await
+            .map_err(|e| SongbirdError::service("persistence", format!("File read failed: {e}")))?;
 
-        let data: PersistentServiceData = serde_json::from_str(&json_data)
-            .map_err(|e| SongbirdError::service("persistence", &format!("Deserialization failed: {}", e)))?;
+        let data: PersistentServiceData = serde_json::from_str(&json_data).map_err(|e| {
+            SongbirdError::service("persistence", format!("Deserialization failed: {e}"))
+        })?;
 
         let mut cache = self.cache.write().await;
         *cache = data;
@@ -277,7 +313,7 @@ impl ProductionServicePersistence {
     }
 
     /// Load from database — falls back to filesystem until a DB driver is integrated
-    async fn load_from_database(&self, _connection_string: &str) -> ServiceResult<()> {
+    async fn load_from_database(&self, _connection_string: &str) -> SongbirdResult<()> {
         warn!("Database backend not yet implemented, falling back to filesystem");
 
         let fallback_dir = PathBuf::from("./data/registry_db_fallback");
@@ -285,7 +321,7 @@ impl ProductionServicePersistence {
     }
 
     /// Start auto-save task
-    async fn start_auto_save(&self) -> ServiceResult<()> {
+    async fn start_auto_save(&self) -> SongbirdResult<()> {
         let persistence = self.clone();
         let interval = self.config.auto_save_interval;
 
@@ -309,15 +345,18 @@ impl ProductionServicePersistence {
     }
 
     /// Cleanup old backup files
-    async fn cleanup_old_backups(&self, data_dir: &PathBuf) -> ServiceResult<()> {
+    async fn cleanup_old_backups(&self, data_dir: &PathBuf) -> SongbirdResult<()> {
         if let Ok(mut entries) = fs::read_dir(data_dir).await {
             let mut backup_files = Vec::new();
 
             while let Ok(Some(entry)) = entries.next_entry().await {
-                if let Some(name) = entry.file_name().to_str() {
-                    if name.starts_with("registry_backup_") && name.ends_with(".json") {
-                        backup_files.push((entry.path(), entry.metadata().await.ok()));
-                    }
+                if let Some(name) = entry.file_name().to_str()
+                    && name.starts_with("registry_backup_")
+                    && std::path::Path::new(name)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                {
+                    backup_files.push((entry.path(), entry.metadata().await.ok()));
                 }
             }
 
@@ -370,7 +409,7 @@ impl ProductionServicePersistence {
     }
 
     /// Stop persistence (cleanup auto-save)
-    pub async fn stop(&self) -> ServiceResult<()> {
+    pub async fn stop(&self) -> SongbirdResult<()> {
         let mut task = self.auto_save_task.write().await;
         if let Some(handle) = task.take() {
             handle.abort();
@@ -391,5 +430,115 @@ impl Clone for ProductionServicePersistence {
             auto_save_task: Arc::clone(&self.auto_save_task),
             stats: Arc::clone(&self.stats),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::persistence::service_data::{
+        RegistryHealthStatus, RegistryServiceEntry, RegistryServiceMetrics,
+    };
+    use chrono::Utc;
+    use songbird_discovery::traits::service::ServiceStatus;
+    use std::collections::HashMap;
+
+    fn sample_info(id: &str) -> ServiceInfo {
+        let now = Utc::now();
+        ServiceInfo {
+            service_id: id.to_string(),
+            name: "test-svc".to_string(),
+            version: "1.0.0".to_string(),
+            service_type: "unit".to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: now,
+            updated_at: now,
+            instance_id: format!("{id}-inst"),
+            host: "127.0.0.1".to_string(),
+            port: 8080,
+        }
+    }
+
+    fn sample_entry(id: &str) -> RegistryServiceEntry {
+        RegistryServiceEntry {
+            service_info: sample_info(id),
+            instance_count: 1,
+            max_instances: 3,
+            min_instances: 1,
+            health_status: RegistryHealthStatus::Healthy,
+            metrics: RegistryServiceMetrics::default(),
+        }
+    }
+
+    fn in_memory_config() -> PersistenceConfig {
+        PersistenceConfig {
+            backend: StorageBackend::InMemory {
+                persistent: false,
+            },
+            auto_save_interval: std::time::Duration::from_secs(0),
+            backup_retention: 3,
+            compression_enabled: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn in_memory_save_load_remove_roundtrip() {
+        let p =
+            ProductionServicePersistence::new(in_memory_config()).await.expect("persistence init");
+
+        p.save_service("svc-a", &sample_entry("svc-a")).await.expect("save entry");
+        p.save_service_info("svc-a", &sample_info("svc-a")).await.expect("save info");
+
+        let e = p.load_service("svc-a").await.expect("load entry");
+        assert!(e.is_some());
+        assert_eq!(e.expect("entry").service_info.service_id, "svc-a");
+
+        let i = p.load_service_info("svc-a").await.expect("load info");
+        assert_eq!(i.expect("info").port, 8080);
+
+        let ids = p.get_all_service_ids().await.expect("ids");
+        assert_eq!(ids.len(), 1);
+
+        p.remove_service("svc-a").await.expect("remove");
+        assert!(p.load_service("svc-a").await.expect("load").is_none());
+    }
+
+    #[tokio::test]
+    async fn save_to_storage_in_memory_updates_stats() {
+        let p =
+            ProductionServicePersistence::new(in_memory_config()).await.expect("persistence init");
+
+        p.save_service("x", &sample_entry("x")).await.expect("save");
+        p.save_to_storage().await.expect("save to storage");
+
+        let s = p.get_statistics().await;
+        assert!(s.successful_saves >= 1);
+        assert_eq!(s.total_saves, s.successful_saves);
+    }
+
+    #[test]
+    fn persistent_service_data_json_roundtrip() {
+        let mut data = PersistentServiceData {
+            services: HashMap::new(),
+            service_info: HashMap::new(),
+            registration_times: HashMap::new(),
+            last_saved: Utc::now(),
+            schema_version: 1,
+        };
+        data.services.insert("k".to_string(), sample_entry("k"));
+        data.service_info.insert("k".to_string(), sample_info("k"));
+
+        let json = serde_json::to_string(&data).expect("serialize");
+        let back: PersistentServiceData = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.services.get("k").expect("entry").instance_count, 1);
+        assert_eq!(back.schema_version, 1);
     }
 }

@@ -113,6 +113,56 @@ async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
     PlatformStream::connect(address).await
 }
 
+/// JSON-RPC body for `capability.register` (pure; covered by unit tests).
+pub(crate) fn capability_registration_params(
+    primal_id: &str,
+    songbird_socket: &str,
+    family_id: &str,
+    version: &str,
+) -> serde_json::Value {
+    json!({
+        "jsonrpc": "2.0",
+        "method": "capability.register",
+        "params": {
+            "primal_id": primal_id,
+            "capability": "secure_http",
+            "socket_path": songbird_socket,
+            "operations": [
+                "http.get",
+                "http.post",
+                "http.put",
+                "http.delete",
+                "http.patch",
+                "http.request"
+            ],
+            "metadata": {
+                "tls_version": "1.3",
+                "pure_rust": true,
+                "supports_http2": true,
+                "tower_atomic": true,
+                "ecobin_compliant": true,
+                "provider": "songbird",
+                "family_id": family_id,
+                "version": version
+            }
+        },
+        "id": 1
+    })
+}
+
+/// JSON-RPC body for `capability.unregister` (pure; covered by unit tests).
+pub(crate) fn capability_unregister_params(primal_id: &str) -> serde_json::Value {
+    json!({
+        "jsonrpc": "2.0",
+        "method": "capability.unregister",
+        "params": {
+            "primal_id": primal_id,
+            "capability": "secure_http"
+        },
+        "id": 2
+    })
+}
+
 /// Register Songbird's capabilities with the Neural API
 ///
 /// This function is called during Songbird startup to make its
@@ -168,35 +218,12 @@ pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -
         .or_else(|_| env::var("SONGBIRD_FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string());
 
-    // Build registration request
-    let registration = json!({
-        "jsonrpc": "2.0",
-        "method": "capability.register",
-        "params": {
-            "primal_id": primal_id,
-            "capability": "secure_http",
-            "socket_path": songbird_socket,
-            "operations": [
-                "http.get",
-                "http.post",
-                "http.put",
-                "http.delete",
-                "http.patch",
-                "http.request"  // Generic fallback
-            ],
-            "metadata": {
-                "tls_version": "1.3",
-                "pure_rust": true,
-                "supports_http2": true,
-                "tower_atomic": true,
-                "ecobin_compliant": true,
-                "provider": "songbird",
-                "family_id": family_id,
-                "version": env!("CARGO_PKG_VERSION")
-            }
-        },
-        "id": 1
-    });
+    let registration = capability_registration_params(
+        primal_id,
+        songbird_socket,
+        &family_id,
+        env!("CARGO_PKG_VERSION"),
+    );
 
     // Connect to Neural API (platform-agnostic)
     let mut stream = match connect_platform(neural_socket).await {
@@ -291,16 +318,7 @@ pub async fn unregister_capabilities() -> Result<()> {
 pub async fn unregister_capabilities_with(neural_socket: &str, primal_id: &str) -> Result<()> {
     info!("🔄 Unregistering capabilities from Neural API...");
 
-    // Build unregister request
-    let unregister = json!({
-        "jsonrpc": "2.0",
-        "method": "capability.unregister",
-        "params": {
-            "primal_id": primal_id,
-            "capability": "secure_http"
-        },
-        "id": 2
-    });
+    let unregister = capability_unregister_params(primal_id);
 
     // Try to connect and unregister (platform-agnostic)
     match connect_platform(neural_socket).await {
@@ -360,10 +378,66 @@ pub async fn check_neural_api_available_at(neural_socket: &str) -> bool {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     #[cfg(unix)]
     use tokio::net::UnixListener;
+
+    #[test]
+    fn test_for_testing_sets_explicit_paths() {
+        let c =
+            CapabilityRegistrationConfig::for_testing("/neural/path.sock", "/songbird/app.sock");
+        assert_eq!(c.neural_socket, "/neural/path.sock");
+        assert_eq!(c.songbird_socket, "/songbird/app.sock");
+        assert_eq!(c.primal_id, "songbird");
+    }
+
+    #[test]
+    fn capability_registration_params_jsonrpc_and_operations() {
+        let v = capability_registration_params("p1", "/sock/a", "fam-x", "9.9.9");
+        assert_eq!(v["jsonrpc"], "2.0");
+        assert_eq!(v["method"], "capability.register");
+        assert_eq!(v["params"]["primal_id"], "p1");
+        assert_eq!(v["params"]["capability"], "secure_http");
+        assert_eq!(v["params"]["socket_path"], "/sock/a");
+        let ops = v["params"]["operations"].as_array().expect("operations array");
+        assert_eq!(ops.len(), 6);
+        assert_eq!(ops[0], "http.get");
+        assert_eq!(ops[5], "http.request");
+        assert_eq!(v["params"]["metadata"]["family_id"], "fam-x");
+        assert_eq!(v["params"]["metadata"]["version"], "9.9.9");
+        assert_eq!(v["params"]["metadata"]["tls_version"], "1.3");
+        assert_eq!(v["params"]["metadata"]["provider"], "songbird");
+        assert_eq!(v["id"], 1);
+    }
+
+    #[test]
+    fn capability_unregister_params_matches_contract() {
+        let v = capability_unregister_params("primal-z");
+        assert_eq!(v["jsonrpc"], "2.0");
+        assert_eq!(v["method"], "capability.unregister");
+        assert_eq!(v["params"]["primal_id"], "primal-z");
+        assert_eq!(v["params"]["capability"], "secure_http");
+        assert_eq!(v["id"], 2);
+    }
+
+    #[test]
+    fn capability_registration_params_embeds_metadata_and_escapes_json() {
+        let v =
+            capability_registration_params("p\"id", "/path/with space", "fam:beta", "0.0.1-pre");
+        assert_eq!(v["params"]["primal_id"], "p\"id");
+        assert_eq!(v["params"]["socket_path"], "/path/with space");
+        assert_eq!(v["params"]["metadata"]["family_id"], "fam:beta");
+        assert_eq!(v["params"]["metadata"]["version"], "0.0.1-pre");
+    }
+
+    #[test]
+    fn capability_unregister_empty_primal_id_still_well_formed() {
+        let v = capability_unregister_params("");
+        assert_eq!(v["params"]["primal_id"], "");
+        assert_eq!(v["method"], "capability.unregister");
+    }
 
     #[test]
     fn test_config_defaults() {

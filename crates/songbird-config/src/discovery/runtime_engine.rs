@@ -431,6 +431,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_functionality() {
+        // Unique capability/env to avoid races with other tests using `*_ENDPOINT`.
+        const CAP: &str = "sb_rteng_cache_isolated";
+        const ENV: &str = "SB_RTENG_CACHE_ISOLATED_ENDPOINT";
+
         // Use very short TTL for fast test without sleep
         let engine = CapabilityDiscoveryEngine::new(
             vec![DiscoveryBackend::Environment],
@@ -438,11 +442,11 @@ mod tests {
         );
 
         // First call should query backend
-        songbird_process_env::set_var("STORAGE_ENDPOINT", "127.0.0.1:9000");
-        let services1 = engine.discover_by_capability("storage").await;
+        songbird_process_env::set_var(ENV, "127.0.0.1:9000");
+        let services1 = engine.discover_by_capability(CAP).await;
 
         // Second call should use cache
-        let services2 = engine.discover_by_capability("storage").await;
+        let services2 = engine.discover_by_capability(CAP).await;
         assert_eq!(services1, services2, "Cache should return same results");
 
         // Wait for cache expiration using tokio::time::timeout
@@ -457,10 +461,10 @@ mod tests {
         }
 
         // Should re-query after expiration
-        let services3 = engine.discover_by_capability("storage").await;
+        let services3 = engine.discover_by_capability(CAP).await;
         assert_eq!(services1, services3, "Should still find service after cache expiry");
 
-        songbird_process_env::remove_var("STORAGE_ENDPOINT");
+        songbird_process_env::remove_var(ENV);
     }
 
     #[test]

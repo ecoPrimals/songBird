@@ -82,22 +82,22 @@ pub fn smart_cow<T: Clone>(item: &T, need_owned: bool) -> Cow<'_, T> {
     }
 }
 
+#[cfg(test)]
 #[allow(
     clippy::unwrap_used,
-    clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    clippy::uninlined_format_args,
+    clippy::float_cmp,
+    clippy::useless_vec,
+    clippy::unreadable_literal,
+    clippy::items_after_statements,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
 )]
-#[cfg(test)]
-#[allow(clippy::uninlined_format_args)]
-#[allow(clippy::float_cmp)]
-#[allow(clippy::useless_vec)]
-#[allow(clippy::unreadable_literal)]
-#[allow(clippy::items_after_statements)]
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
     #![allow(clippy::all)]
     #![allow(unused)]
 
@@ -112,6 +112,20 @@ mod tests {
         assert_eq!(shared1.as_ref(), shared2.as_ref());
         assert_eq!(shared1.as_ref().len(), 5);
         assert_eq!(shared2.as_ref().len(), 5);
+    }
+
+    #[test]
+    fn test_shared_get_mut_when_unique() {
+        let mut s = Shared::new(42u32);
+        *s.get_mut().expect("unique ref") += 1;
+        assert_eq!(*s.as_ref(), 43);
+    }
+
+    #[test]
+    fn test_shared_get_mut_none_when_cloned() {
+        let mut s = Shared::new(1u32);
+        let _t = s.clone();
+        assert!(s.get_mut().is_none());
     }
 
     #[test]
@@ -145,5 +159,12 @@ mod tests {
         let arc_data = arc(data);
 
         assert_eq!(shared.as_ref(), arc_data.as_ref());
+    }
+
+    #[test]
+    fn test_clone_arc_matches_inner() {
+        let s = Shared::new("x".to_string());
+        let a = s.clone_arc();
+        assert_eq!(a.as_ref(), s.as_ref());
     }
 }

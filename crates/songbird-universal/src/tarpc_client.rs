@@ -499,7 +499,10 @@ impl std::fmt::Debug for TarpcClient {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn test_endpoint_parsing_valid() {
@@ -547,5 +550,83 @@ mod tests {
         let debug_str = format!("{:?}", client);
         assert!(debug_str.contains("TarpcClient"));
         assert!(debug_str.contains("localhost:9001"));
+    }
+
+    #[test]
+    fn test_parse_endpoint_localhost_localdomain() {
+        let addr = TarpcClient::parse_endpoint("tarpc://localhost.localdomain:9003")
+            .expect("localhost.localdomain resolves");
+        assert_eq!(addr, "127.0.0.1:9003".parse().expect("socket addr"));
+    }
+
+    #[test]
+    fn test_parse_endpoint_missing_port() {
+        let err = TarpcClient::parse_endpoint("tarpc://localhost").expect_err("port required");
+        assert!(err.to_string().contains("port") || err.to_string().contains("Invalid"));
+    }
+
+    #[test]
+    fn test_parse_endpoint_invalid_port() {
+        let err = TarpcClient::parse_endpoint("tarpc://127.0.0.1:notaport").expect_err("bad port");
+        assert!(err.to_string().contains("port") || err.to_string().contains("Invalid"));
+    }
+
+    #[test]
+    fn test_parse_endpoint_unknown_hostname_rejected() {
+        let err = TarpcClient::parse_endpoint("tarpc://not-a-resolvable-name.example:9000")
+            .expect_err("non-IP host must be localhost");
+        assert!(err.to_string().contains("Invalid") || err.to_string().contains("hostname"));
+    }
+
+    #[test]
+    fn test_parse_endpoint_ipv6() {
+        let addr = TarpcClient::parse_endpoint("tarpc://[::1]:9004").expect("IPv6 bracket addr");
+        assert_eq!(addr.port(), 9004);
+    }
+
+    #[tokio::test]
+    async fn test_call_method_unknown_no_connection() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59998").expect("client");
+        let err = client.call_method("unknown_method", None).await.expect_err("unknown method");
+        assert!(err.to_string().contains("Unknown method"));
+    }
+
+    #[tokio::test]
+    async fn test_call_method_discover_missing_capability() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59997").expect("client");
+        let err =
+            client.call_method("discover", Some(json!({}))).await.expect_err("missing capability");
+        assert!(err.to_string().contains("capability") || err.to_string().contains("Missing"));
+    }
+
+    #[tokio::test]
+    async fn test_call_method_register_missing_body() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59996").expect("client");
+        let err = client.call_method("register", None).await.expect_err("missing registration");
+        assert!(err.to_string().contains("registration") || err.to_string().contains("Missing"));
+    }
+
+    #[tokio::test]
+    async fn test_call_method_unregister_missing_service_id() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59995").expect("client");
+        let err = client
+            .call_method("unregister", Some(json!({})))
+            .await
+            .expect_err("missing service_id");
+        assert!(err.to_string().contains("service_id") || err.to_string().contains("Missing"));
+    }
+
+    #[tokio::test]
+    async fn test_call_method_register_invalid_json() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59994").expect("client");
+        let err = client
+            .call_method("register", Some(json!("not-an-object")))
+            .await
+            .expect_err("invalid registration");
+        assert!(
+            err.to_string().contains("registration")
+                || err.to_string().contains("serialize")
+                || err.to_string().contains("Invalid")
+        );
     }
 }

@@ -641,6 +641,7 @@ impl JsonRpcHandler for IpcServiceHandler {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -826,5 +827,89 @@ mod tests {
         assert!(cap_strs.contains(&"stun.detect"), "must advertise stun capability");
         assert!(cap_strs.contains(&"mesh.status"), "must advertise mesh capability");
         assert!(cap_strs.contains(&"punch.request"), "must advertise punch capability");
+    }
+
+    #[test]
+    fn ipc_register_params_deserialize_roundtrip() {
+        let v = json!({
+            "primal_id": "beardog",
+            "capabilities": ["crypto"],
+            "endpoint": "/tmp/x.sock"
+        });
+        let p: RegisterParams = serde_json::from_value(v).expect("RegisterParams");
+        assert_eq!(p.primal_id, "beardog");
+        assert_eq!(p.capabilities, vec!["crypto".to_string()]);
+        assert_eq!(p.endpoint, "/tmp/x.sock");
+    }
+
+    #[test]
+    fn ipc_resolve_and_discover_params_deserialize() {
+        let r: ResolveParams = serde_json::from_value(json!({"primal_id": "a"})).expect("resolve");
+        assert_eq!(r.primal_id, "a");
+
+        let d: DiscoverParams =
+            serde_json::from_value(json!({"capability": "stun"})).expect("disc");
+        assert_eq!(d.capability, "stun");
+    }
+
+    #[test]
+    fn ipc_list_and_provider_serialization_shapes() {
+        let list = ListResult {
+            services: vec![ServiceInfo {
+                primal_id: "p".into(),
+                virtual_endpoint: "/primal/p".into(),
+                capabilities: vec!["c".into()],
+            }],
+        };
+        let v = serde_json::to_value(&list).expect("list json");
+        assert_eq!(v["services"][0]["primal_id"], "p");
+
+        let dr = DiscoverResult {
+            providers: vec![ProviderInfo {
+                primal_id: "q".into(),
+                virtual_endpoint: "/primal/q".into(),
+                native_endpoint: "unix:///run/q".into(),
+                capabilities: vec![],
+            }],
+        };
+        let v2 = serde_json::to_value(&dr).expect("discover result");
+        assert_eq!(v2["providers"][0]["native_endpoint"], "unix:///run/q");
+    }
+
+    #[test]
+    fn register_and_resolve_result_serialization() {
+        let reg = RegisterResult {
+            virtual_endpoint: "/primal/x".into(),
+            registered_at: "t0".into(),
+        };
+        let v = serde_json::to_value(&reg).expect("RegisterResult json");
+        assert_eq!(v["virtual_endpoint"], "/primal/x");
+
+        let res = ResolveResult {
+            virtual_endpoint: "/primal/x".into(),
+            native_endpoint: "native".into(),
+            capabilities: vec!["c".into()],
+        };
+        let v2 = serde_json::to_value(&res).expect("ResolveResult json");
+        assert_eq!(v2["capabilities"][0], "c");
+    }
+
+    #[tokio::test]
+    async fn ipc_resolve_errors_when_primal_not_registered() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+        let err = handler
+            .handle("ipc.resolve", json!({ "primal_id": "ghost" }))
+            .await
+            .expect_err("not registered");
+        assert!(err.contains("not found") || err.contains("Not found") || err.contains("found"));
+    }
+
+    #[tokio::test]
+    async fn unknown_rpc_method_returns_error() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+        let err = handler.handle("no.such.method", json!({})).await.expect_err("unknown method");
+        assert!(err.contains("Unknown method"));
     }
 }

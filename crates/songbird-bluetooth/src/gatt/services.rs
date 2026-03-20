@@ -46,7 +46,10 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if service discovery fails
-    #[allow(clippy::cognitive_complexity)]
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "ATT primary service discovery kept as one loop for clarity"
+    )]
     pub async fn discover_services(&mut self) -> Result<&[Service]> {
         debug!("Discovering services on {}", self.device.address());
 
@@ -201,7 +204,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if service not found
-    #[allow(clippy::unused_async)] // Placeholder for future async GATT service resolution
+    #[expect(clippy::unused_async, reason = "placeholder for future async GATT service resolution")]
     pub async fn find_service(&self, uuid: &Uuid) -> Result<&Service> {
         self.services
             .iter()

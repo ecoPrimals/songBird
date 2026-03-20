@@ -378,7 +378,10 @@ fn calculate_max_concurrent(available_memory_gb: u64) -> usize {
     // Assume each deployment needs ~1GB
     // Modern idiomatic: clamp() is cleaner than max().min()
     // Safe cast: u64 fits in usize on 64-bit, truncates on 32-bit (acceptable for concurrency limit)
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable: GB count bounded; only used as deployment concurrency hint"
+    )]
     let memory_as_usize = available_memory_gb as usize;
     memory_as_usize.clamp(1, 10)
 }

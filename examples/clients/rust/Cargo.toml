@@ -2,7 +2,7 @@
 name = "songbird-tarpc-client-example"
 version = "0.2.1"
 edition = "2021"
-license = "AGPL-3.0"
+license = "AGPL-3.0-only"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "High-performance tarpc client for Songbird - 100x faster than JSON-RPC!"
 

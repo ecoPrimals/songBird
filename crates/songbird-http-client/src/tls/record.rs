@@ -709,6 +709,7 @@ impl TlsRecordLayer {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::crypto::BearDogProvider;
@@ -787,5 +788,40 @@ mod tests {
         assert_ne!(write_nonce, write_nonce2);
         assert_ne!(read_nonce, read_nonce2);
         assert_ne!(write_nonce2, read_nonce2);
+    }
+
+    #[test]
+    fn test_tls_record_layer_accessors_and_initial_read_sequence() {
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let keys = SessionKeys {
+            client_write_key: vec![0; 32],
+            server_write_key: vec![0; 32],
+            client_write_iv: vec![0; 12],
+            server_write_iv: vec![0; 12],
+            cipher_suite: 0x1301,
+            initial_read_sequence: 7,
+        };
+
+        let layer = TlsRecordLayer::new(crypto, keys);
+        assert_eq!(layer.write_sequence_number(), 0);
+        assert_eq!(layer.keys().cipher_suite, 0x1301);
+        assert_eq!(layer.read_sequence_number, 7);
+    }
+
+    #[test]
+    fn test_build_write_nonce_short_iv_no_xor_branch() {
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let keys = SessionKeys {
+            client_write_key: vec![0; 32],
+            server_write_key: vec![0; 32],
+            client_write_iv: vec![1, 2, 3, 4], // < 8 bytes: XOR loop skipped
+            server_write_iv: vec![0; 12],
+            cipher_suite: 0x1303,
+            initial_read_sequence: 0,
+        };
+
+        let layer = TlsRecordLayer::new(crypto, keys);
+        let nonce = layer.build_write_nonce();
+        assert_eq!(nonce, vec![1, 2, 3, 4]);
     }
 }

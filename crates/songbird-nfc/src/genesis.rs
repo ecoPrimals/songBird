@@ -44,7 +44,7 @@ pub struct GenesisExchange {
     config: NfcConfig,
 
     /// Protocol handler
-    #[allow(dead_code)] // reserved for future NFC frame operations
+    #[expect(dead_code, reason = "reserved for future NFC frame operations")]
     protocol: NfcProtocol,
 
     /// Timing protector
@@ -415,7 +415,10 @@ impl BearDogNfcCrypto {
 }
 
 /// Decode hex or base64 encoded bytes
-#[allow(clippy::unnecessary_wraps)] // Result kept for uniform error propagation at call sites
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "Result kept for uniform error propagation at call sites"
+)]
 fn decode_hex_or_b64(s: &str) -> Result<Vec<u8>> {
     // Try hex first (common for BearDog responses)
     if let Ok(bytes) = hex::decode(s) {

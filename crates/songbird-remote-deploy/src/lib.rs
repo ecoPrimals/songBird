@@ -6,7 +6,9 @@
 //! Used by the `songbird-deploy` binary and the unified `songbird deploy` subcommand.
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
+/// HTTP deployment client, capability negotiation, and adaptive upload helpers.
 pub mod http_deploy;
 
 mod deploy;

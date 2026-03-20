@@ -73,7 +73,7 @@ impl OnionService {
 
         // Create dummy BearDog client (won't be used)
         let beardog = BeardogCryptoClient::from_env()
-            .unwrap_or_else(|_| panic!("Standalone mode doesn't need BearDog"));
+            .unwrap_or_else(|_| BeardogCryptoClient::with_tcp("127.0.0.1", 9900));
 
         Ok(Self {
             identity,

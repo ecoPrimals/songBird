@@ -62,11 +62,11 @@ where
 /// JSON-RPC response structure
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse<T> {
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "deserialized from JSON-RPC response")]
     jsonrpc: String,
     result: Option<T>,
     error: Option<JsonRpcError>,
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "deserialized from JSON-RPC response")]
     id: u64,
 }
 

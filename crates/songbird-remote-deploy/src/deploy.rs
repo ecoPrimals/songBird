@@ -35,6 +35,7 @@ use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use tracing::{debug, info, warn};
 
+/// CLI arguments for `songbird-deploy` (SSH, HTTP, list, and status subcommands).
 #[derive(Parser, Debug)]
 #[command(name = "songbird-deploy")]
 #[command(about = "Agnostic remote service deployment for Songbird federation")]
@@ -42,7 +43,7 @@ pub struct Args {
     #[command(subcommand)]
     command: Commands,
 
-    /// Songbird federation endpoint
+    /// Base URL of the Songbird federation API (discovery and coordination).
     #[arg(long, env = "SONGBIRD_FEDERATION_ENDPOINT", default_value = "http://localhost:8080")]
     songbird_endpoint: String,
 }

@@ -35,14 +35,23 @@
 //!
 //! See: biomeOS/docs/handoffs/SOVEREIGN_BEACON_MESH_HANDOFF_FEB06_2026.md
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
+/// STUN, signaling, and relay-assisted UDP hole punch coordination.
 pub mod coordinator;
+
+/// [`OnionRelayError`] and result alias for this crate.
 pub mod error;
+
+/// Beacon mesh relay selection and family relay bookkeeping.
 pub mod mesh;
+
+/// Rendezvous messages exchanged while negotiating NAT traversal.
 pub mod signaling;
 
 // Sovereign Onion Service (optional - enable with `--features onion`)
 #[cfg(feature = "onion")]
+/// Optional `.onion` transport built on `songbird-sovereign-onion`.
 pub mod onion_transport;
 
 // DEPRECATED: Arti-based transport (removed Feb 6, 2026)

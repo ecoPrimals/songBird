@@ -248,7 +248,6 @@ pub fn get_worker_threads() -> usize {
     SafeEnv::parse("SONGBIRD_WORKER_THREADS", {
         // Use CPU count or container limits
         // Fallback to 4 threads
-        #[allow(clippy::incompatible_msrv)] // NonZero::get is the clearest API
         std::thread::available_parallelism().map(std::num::NonZero::get).unwrap_or(4)
     })
 }
@@ -271,7 +270,10 @@ pub fn get_buffer_pool_size() -> usize {
             .and_then(|memory_limit| memory_limit.parse::<u64>().ok())
             .map_or(base_size, |limit_mb| {
                 // Use 1% of available memory for buffer pool
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "MEMORY_LIMIT parsed as u64; product scaled down for pool sizing"
+                )]
                 let adjusted_size = (limit_mb as usize * 10) / 1024;
                 std::cmp::min(base_size, adjusted_size)
             })

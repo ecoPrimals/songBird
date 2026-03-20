@@ -69,7 +69,7 @@ impl Default for HolePunchConfig {
 }
 
 impl HolePunchConfig {
-    /// Create with custom STUN servers
+    /// Overrides the resolved STUN server list used for discovery and punching.
     pub fn with_stun_servers(mut self, servers: Vec<String>) -> Self {
         self.stun_servers = servers;
         self
@@ -118,12 +118,16 @@ impl HolePunchConfig {
 pub enum PunchResult {
     /// Direct connection established
     Direct {
+        /// Confirmed peer UDP endpoint.
         peer_addr: SocketAddr,
+        /// Local socket bound for the session.
         local_socket: Arc<UdpSocket>,
+        /// Time from punch start to first inbound datagram.
         latency: Duration,
     },
     /// Must use relay (hole punch failed)
     Relay {
+        /// Number of punch rounds attempted before giving up.
         attempts: u32,
     },
 }
@@ -147,7 +151,7 @@ pub struct HolePunchCoordinator {
 }
 
 impl HolePunchCoordinator {
-    /// Create new coordinator
+    /// Builds a coordinator plus inbound/outbound signaling channels wired to it.
     pub fn new(
         my_node_id: String,
         config: HolePunchConfig,
@@ -167,7 +171,11 @@ impl HolePunchCoordinator {
         (coordinator, inbound_tx, outbound_rx)
     }
 
-    /// Discover our public address via STUN
+    /// Performs STUN binding against configured servers and caches [`PeerInfo`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OnionRelayError::StunFailed`] when every STUN server fails.
     pub async fn discover_public_address(&self) -> Result<PeerInfo> {
         info!("🔍 Discovering public address via STUN...");
 
@@ -205,7 +213,11 @@ impl HolePunchCoordinator {
         Err(OnionRelayError::StunFailed("All STUN servers failed".to_string()))
     }
 
-    /// Attempt hole punch to peer
+    /// Runs the simultaneous-open punch flow toward a previously registered peer.
+    ///
+    /// # Errors
+    ///
+    /// Returns when local/peer info is missing, signaling times out, or UDP operations fail.
     pub async fn punch_to_peer(&self, peer_node_id: &str) -> Result<PunchResult> {
         info!("🥊 Initiating hole punch to {}", peer_node_id);
 
@@ -283,13 +295,13 @@ impl HolePunchCoordinator {
         }
     }
 
-    /// Register a peer from signaling
+    /// Stores or replaces [`PeerInfo`] learned from the rendezvous channel.
     pub async fn register_peer(&self, peer_info: PeerInfo) {
         info!("📝 Registered peer: {} at {}", peer_info.node_id, peer_info.public_addr);
         self.peers.write().await.insert(peer_info.node_id.clone(), peer_info);
     }
 
-    /// Handle incoming signaling message
+    /// Dispatches rendezvous messages (register, query, punch, relay, etc.).
     pub async fn handle_message(&self, msg: SignalingMessage) -> Option<SignalingMessage> {
         match msg {
             SignalingMessage::Register {

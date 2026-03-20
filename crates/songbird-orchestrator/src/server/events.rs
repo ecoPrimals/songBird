@@ -51,7 +51,10 @@ impl EventType {
     ///
     /// Returns Option instead of Result to distinguish from the trait implementation.
     /// This is an intentional design choice for flexibility.
-    #[allow(clippy::should_implement_trait)]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "intentional: Option-based parse distinct from std::str::FromStr"
+    )]
     #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
@@ -84,12 +87,18 @@ impl Event {
     /// # Modern Idiomatic Pattern
     /// `EventType` is Copy (enum variants), payload is consumed (moved into Self)
     /// The clippy warning is about `EventType` not being consumed, but it IS used
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "EventType is used via as_str(); pass-by-value keeps call sites simple"
+    )]
     #[must_use]
     pub fn new(event_type: EventType, payload: serde_json::Value) -> Self {
         // Safe: u128 millis since 1970 won't overflow u64 for centuries
         // Alternative would be storing full SystemTime but u64 millis is standard
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable: millis since epoch fits in u64 for practical times"
+        )]
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()

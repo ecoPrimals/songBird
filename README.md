@@ -1,6 +1,6 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.3.2  
+**Version**: v0.3.3  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-only (scyBorg provenance trio)  
 **Edition**: Rust 2024
@@ -11,21 +11,22 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 
 | Metric | Value |
 |--------|-------|
-| Safe Rust | 100% (`#![forbid(unsafe_code)]` across all crates) |
+| Safe Rust | 100% (`#![forbid(unsafe_code)]` across 28/29 crates; `process-env` isolated with SAFETY docs) |
 | Pure Rust | Structural `ring` via quinn+rcgen; all Songbird code is pure Rust |
 | Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
 | Runtime Discovery | All config: env → XDG → smart defaults. Capability-only (zero primal names in discovery) |
-| Production Stubs | Zero (`todo!()` only in `#[cfg(test)]`) |
+| Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `FIXME`/`HACK` | Zero |
+| Lint suppressions | `#[expect(reason)]` per wateringHole standard (zero bare `#[allow()]`) |
 | Concurrent Tests | Zero `std::env::set_var` in tests (injectable env readers) |
-| Tests | ~6,100+ unit/integration, 0 failed |
-| Clippy Pedantic | All 29 crates clean (`clippy::pedantic + nursery`, `-D warnings`) |
-| Line Coverage | 62.04% (148,723 instrumented lines) |
+| Tests | ~6,300+ unit/integration, 0 failed |
+| Clippy Pedantic | All 29 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings) |
+| Line Coverage | 63.50% (152,744 instrumented lines) |
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --all`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 |
-| SPDX Headers | All 1,376 `.rs` files |
+| Files >1000 lines | 0 (largest: 948 lines) |
+| SPDX Headers | All `.rs` files have `AGPL-3.0-only` |
 | UniBin | Single binary with subcommands |
 | Edition | Rust 2024 |
 

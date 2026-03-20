@@ -213,6 +213,7 @@ impl Default for CertificateValidator {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::messages::certificate::CertificateEntry;
@@ -397,5 +398,21 @@ mod tests {
         let cert = Certificate::new(vec![]);
 
         assert!(validator.validate_chain_to_root(&cert).is_err());
+    }
+
+    #[test]
+    fn certificate_validator_default_matches_new() {
+        let a = CertificateValidator::new();
+        let b = CertificateValidator::default();
+        assert_eq!(a.trusted_roots.len(), b.trusted_roots.len());
+        assert!(a.crypto_client.is_none() && b.crypto_client.is_none());
+    }
+
+    #[test]
+    fn set_crypto_client_stores_client() {
+        let mut v = CertificateValidator::new();
+        let client = BeardogCryptoClient::with_socket_path("/tmp/cert-validator-test.sock".into());
+        v.set_crypto_client(client);
+        assert!(v.crypto_client.is_some());
     }
 }

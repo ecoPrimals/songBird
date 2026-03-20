@@ -173,7 +173,10 @@ impl AdaptiveExtensions {
     /// # Panics
     ///
     /// Panics if the internal lock is poisoned.
-    #[allow(clippy::significant_drop_tightening)] // Guard must be held while modifying profile
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "RwLock guard must be held while modifying profile"
+    )]
     pub fn record_success(&self, hostname: &str, extensions: Vec<ExtensionType>) {
         let mut profiles = self.profiles.write().expect("lock poisoned");
 
@@ -196,7 +199,10 @@ impl AdaptiveExtensions {
     /// # Panics
     ///
     /// Panics if the internal lock is poisoned.
-    #[allow(clippy::significant_drop_tightening)] // Guard must be held while modifying profile
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "RwLock guard must be held while modifying profile"
+    )]
     pub fn record_failure(&self, hostname: &str, extensions: Vec<ExtensionType>) {
         let mut profiles = self.profiles.write().expect("lock poisoned");
 

@@ -362,6 +362,7 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -402,5 +403,40 @@ mod tests {
         let info = result.unwrap();
         assert_eq!(info.host, "localhost");
         assert_eq!(info.port, 9000);
+    }
+
+    #[tokio::test]
+    async fn environment_discovery_fails_without_env() {
+        songbird_process_env::remove_var("MISSINGCAP_HOST");
+        songbird_process_env::remove_var("MISSINGCAP_PORT");
+        let discovery = EnvironmentDiscovery::new();
+        let err = discovery.discover("missingcap").await.expect_err("no env");
+        assert!(matches!(err, PrimalError::EnvironmentError(_)));
+    }
+
+    #[test]
+    fn primal_identity_serde_roundtrip() {
+        let id = PrimalIdentity {
+            name: "n".into(),
+            capabilities: vec!["a".into()],
+        };
+        let json = serde_json::to_string(&id).expect("ser");
+        let back: PrimalIdentity = serde_json::from_str(&json).expect("de");
+        assert_eq!(back.name, "n");
+        assert_eq!(back.capabilities, vec!["a".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn dns_srv_discovery_returns_discovery_failed_without_feature() {
+        let d = DnsSrvDiscovery::new();
+        let err = d.discover("anything").await.expect_err("dns-srv");
+        match err {
+            PrimalError::DiscoveryFailed {
+                reason,
+            } => {
+                assert!(reason.contains("DNS SRV") || reason.contains("dns-srv"));
+            }
+            _ => panic!("expected DiscoveryFailed"),
+        }
     }
 }

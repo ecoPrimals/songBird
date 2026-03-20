@@ -349,6 +349,7 @@ mod arc_str_option_serde {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use songbird_types::SongbirdError;
@@ -781,5 +782,152 @@ mod tests {
         assert!(debug_string.contains("performance"));
         assert!(debug_string.contains("registry"));
         assert!(debug_string.contains("scaling"));
+    }
+
+    #[test]
+    fn test_component_health_json_roundtrip_preserves_arc_message()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let health = ComponentHealth {
+            status: HealthStatus::Degraded,
+            message: Some(Arc::from("queue lag")),
+            last_check: Some(12345),
+        };
+        let json = serde_json::to_string(&health)?;
+        let back: ComponentHealth = serde_json::from_str(&json)?;
+        assert_eq!(back.status, HealthStatus::Degraded);
+        assert_eq!(back.message.as_deref(), Some("queue lag"));
+        assert_eq!(back.last_check, Some(12345));
+        Ok(())
+    }
+
+    #[test]
+    fn test_performance_config_json_roundtrip_preserves_threshold_keys()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let config = PerformanceConfig::default();
+        let json = serde_json::to_string(&config)?;
+        let back: PerformanceConfig = serde_json::from_str(&json)?;
+        assert_eq!(back.alert_thresholds.get(&Arc::from("cpu_usage")), Some(&80.0));
+        assert_eq!(back.alert_thresholds.get(&Arc::from("response_time")), Some(&1000.0));
+        Ok(())
+    }
+
+    #[test]
+    fn orchestrator_health_roundtrip_json() -> Result<(), Box<dyn std::error::Error>> {
+        let health = OrchestratorHealth {
+            status: HealthStatus::Degraded,
+            load_balancer_health: ComponentHealth {
+                status: HealthStatus::Healthy,
+                message: Some(Arc::from("ok")),
+                last_check: Some(1),
+            },
+            performance_health: ComponentHealth {
+                status: HealthStatus::Unknown,
+                message: None,
+                last_check: None,
+            },
+            registry_health: ComponentHealth {
+                status: HealthStatus::Unhealthy,
+                message: Some(Arc::from("down")),
+                last_check: Some(2),
+            },
+            scaling_health: ComponentHealth {
+                status: HealthStatus::Healthy,
+                message: None,
+                last_check: None,
+            },
+        };
+        let json = serde_json::to_string(&health)?;
+        let back: OrchestratorHealth = serde_json::from_str(&json)?;
+        assert_eq!(back.status, HealthStatus::Degraded);
+        assert_eq!(back.registry_health.message.as_deref(), Some("down"));
+        Ok(())
+    }
+
+    #[test]
+    fn scaling_config_extreme_instances_still_serializes() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let config = ScalingConfig {
+            enable_auto_scaling: false,
+            scale_up_threshold: 99.0,
+            scale_down_threshold: 1.0,
+            min_instances: 100,
+            max_instances: 100,
+        };
+        let json = serde_json::to_string(&config)?;
+        let back: ScalingConfig = serde_json::from_str(&json)?;
+        assert_eq!(back.min_instances, 100);
+        assert_eq!(back.max_instances, 100);
+        Ok(())
+    }
+
+    #[test]
+    fn registry_config_zero_max_services_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
+        let config = RegistryConfig {
+            discovery_interval: 0,
+            service_timeout: 0,
+            max_services: 0,
+        };
+        let json = serde_json::to_string(&config)?;
+        let back: RegistryConfig = serde_json::from_str(&json)?;
+        assert_eq!(back.max_services, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn performance_config_empty_alert_thresholds_roundtrip()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let config = PerformanceConfig {
+            metrics_interval: 10,
+            alert_thresholds: HashMap::new(),
+            enable_benchmarking: false,
+        };
+        let json = serde_json::to_string(&config)?;
+        let back: PerformanceConfig = serde_json::from_str(&json)?;
+        assert!(back.alert_thresholds.is_empty());
+        assert_eq!(back.metrics_interval, 10);
+        Ok(())
+    }
+
+    #[test]
+    fn orchestrator_health_mixed_component_statuses() {
+        let health = OrchestratorHealth {
+            status: HealthStatus::Degraded,
+            load_balancer_health: ComponentHealth {
+                status: HealthStatus::Healthy,
+                message: None,
+                last_check: Some(1),
+            },
+            performance_health: ComponentHealth {
+                status: HealthStatus::Unknown,
+                message: Some(Arc::from("metrics delayed")),
+                last_check: None,
+            },
+            registry_health: ComponentHealth {
+                status: HealthStatus::Unhealthy,
+                message: Some(Arc::from("stale")),
+                last_check: Some(2),
+            },
+            scaling_health: ComponentHealth {
+                status: HealthStatus::Degraded,
+                message: None,
+                last_check: Some(3),
+            },
+        };
+        assert_eq!(health.status, HealthStatus::Degraded);
+        assert_eq!(health.registry_health.status, HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn consolidated_orchestrator_config_preserves_zero_touch_api() {
+        let mut c = ConsolidatedOrchestratorConfig::default();
+        c.api.port = 9090;
+        c.api.enable_cors = false;
+        c.zero_touch.enable_auto_deployment = true;
+        let json = serde_json::to_string(&c).expect("serialize config");
+        let back: ConsolidatedOrchestratorConfig =
+            serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.zero_touch.enable_auto_deployment, true);
+        assert_eq!(back.api.port, 9090);
+        assert_eq!(back.api.enable_cors, false);
     }
 }

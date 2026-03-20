@@ -451,13 +451,17 @@ impl StunAttribute {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use std::net::Ipv4Addr;
 
     #[test]
     fn test_message_type_conversion() {
         assert_eq!(MessageType::BindingRequest.to_u16(), 0x0001);
-        assert_eq!(MessageType::from_u16(0x0001).unwrap(), MessageType::BindingRequest);
+        assert_eq!(MessageType::from_u16(0x0001).expect("valid type"), MessageType::BindingRequest);
+        let err = MessageType::from_u16(0xFFFF).expect_err("unknown type");
+        assert!(err.to_string().contains("Unknown") || err.to_string().contains("message type"));
     }
 
     #[test]
@@ -478,7 +482,7 @@ mod tests {
     fn test_binding_request_decode() {
         let msg = StunMessage::new_binding_request();
         let encoded = msg.encode();
-        let decoded = StunMessage::decode(&encoded).unwrap();
+        let decoded = StunMessage::decode(&encoded).expect("decode binding request");
 
         assert_eq!(decoded.message_type, MessageType::BindingRequest);
         assert_eq!(decoded.transaction_id, msg.transaction_id);
@@ -493,8 +497,35 @@ mod tests {
         msg.attributes.push(StunAttribute::XorMappedAddress(addr));
 
         let encoded = msg.encode();
-        let decoded = StunMessage::decode(&encoded).unwrap();
+        let decoded = StunMessage::decode(&encoded).expect("decode with xor");
 
         assert_eq!(decoded.get_xor_mapped_address(), Some(addr));
+    }
+
+    #[test]
+    fn decode_rejects_short_buffer() {
+        let err = StunMessage::decode(&[0u8; 8]).expect_err("too short");
+        assert!(err.to_string().contains("short") || err.to_string().contains("20"));
+    }
+
+    #[test]
+    fn decode_rejects_bad_magic_cookie() {
+        let mut buf = vec![0u8; 20];
+        buf[0] = 0x00;
+        buf[1] = 0x01;
+        buf[2] = 0x00;
+        buf[3] = 0x00;
+        buf[4] = 0xff;
+        buf[5] = 0xff;
+        buf[6] = 0xff;
+        buf[7] = 0xff;
+        let err = StunMessage::decode(&buf).expect_err("bad cookie");
+        assert!(err.to_string().contains("magic") || err.to_string().contains("cookie"));
+    }
+
+    #[test]
+    fn attribute_type_roundtrip() {
+        assert_eq!(AttributeType::Unknown(0xabcd).to_u16(), 0xabcd);
+        assert!(matches!(AttributeType::from_u16(0xabcd), AttributeType::Unknown(0xabcd)));
     }
 }

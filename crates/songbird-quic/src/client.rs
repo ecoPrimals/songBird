@@ -35,7 +35,7 @@ impl QuicClient {
     /// # Panics
     ///
     /// Panics if the static bind address `[::]:0` cannot be parsed (unreachable).
-    #[allow(clippy::unused_async)] // async retained for API consistency with connect()
+    #[expect(clippy::unused_async, reason = "async retained for API consistency with connect()")]
     pub async fn new(config: QuicConfig) -> Result<Self> {
         info!("Creating QUIC client");
 

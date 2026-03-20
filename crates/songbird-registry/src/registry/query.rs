@@ -79,6 +79,7 @@ impl Query {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::CapabilityType;
 
     #[test]
     fn test_query_builder() {
@@ -87,5 +88,21 @@ mod tests {
         assert_eq!(query.name, Some("test".to_string()));
         assert_eq!(query.author, Some("developer".to_string()));
         assert_eq!(query.limit, 10);
+    }
+
+    #[test]
+    fn test_query_with_id_and_tags() {
+        let q = Query::new().with_id("plugin-a").with_tag("net").with_tag("core");
+        assert_eq!(q.id.as_deref(), Some("plugin-a"));
+        assert_eq!(q.tags.len(), 2);
+    }
+
+    #[test]
+    fn test_query_with_capability() {
+        let q = Query::new().with_capability(CapabilityType::Compute {
+            cpu_cores: 2,
+            memory_gb: 4,
+        });
+        assert_eq!(q.capabilities.len(), 1);
     }
 }

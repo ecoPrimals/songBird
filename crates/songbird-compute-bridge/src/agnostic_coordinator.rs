@@ -210,11 +210,14 @@ impl Default for AgnosticComputeCoordinator {
     }
 }
 
-/// Workload to deploy
+/// Workload description sent to a compute provider for deployment.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workload {
+    /// Stable workload identifier.
     pub id: String,
+    /// Logical service or workload type (e.g. `ml-inference`).
     pub service_type: String,
+    /// Arbitrary key/value scheduling or resource requirements.
     pub requirements: HashMap<String, String>,
 }
 

@@ -28,7 +28,7 @@ pub struct TrustEscalationManager {
     trust_timeouts: TrustTimeouts,
 
     /// Security provider integration for hardware verification (optional)
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "reserved for future use: security provider wiring")]
     security_client: Option<Arc<SecurityCapabilityClient>>,
 }
 
@@ -148,7 +148,7 @@ impl BearDogClient {
     /// - **Deep Debt Solution**: Evolve to BTSP, not HTTP
     /// - **Mocks Isolated**: This is a `NoOp` provider, not a production mock
     #[deprecated(since = "0.1.0", note = "Use BTSP client for hardware key verification")]
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "deprecated API retained for compatibility until BTSP migration")]
     pub async fn verify_hardware_key(&self, hardware_key: &str) -> Result<bool> {
         if let Some(ref endpoint) = self.endpoint {
             tracing::warn!("⚠️  DEPRECATED: HTTP-based hardware key verification at {}", endpoint);
@@ -521,9 +521,10 @@ impl TrustEscalationManager {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
-    use crate::trust::{IdentityProof, TowerIdentity};
+    use crate::trust::{HardwareAttestation, IdentityProof, TowerIdentity};
 
     #[tokio::test]
     async fn test_trust_escalation_manager_creation() {
@@ -537,9 +538,9 @@ mod tests {
         let manager = TrustEscalationManager::with_defaults();
         let session_id = "test-session".to_string();
 
-        manager.establish_anonymous(session_id.clone()).await.unwrap();
+        manager.establish_anonymous(session_id.clone()).await.expect("anonymous");
 
-        let level = manager.get_trust_level(&session_id).await.unwrap();
+        let level = manager.get_trust_level(&session_id).await.expect("level");
         assert_eq!(level, TrustLevel::Anonymous);
     }
 
@@ -549,7 +550,7 @@ mod tests {
         let session_id = "test-session".to_string();
 
         // Establish anonymous trust first
-        manager.establish_anonymous(session_id.clone()).await.unwrap();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
 
         // Create capability proof (must be >= 32 chars)
         let proof = CapabilityProof {
@@ -559,9 +560,9 @@ mod tests {
         };
 
         // Verify capabilities
-        manager.verify_capabilities(&session_id, proof).await.unwrap();
+        manager.verify_capabilities(&session_id, proof).await.expect("cap");
 
-        let level = manager.get_trust_level(&session_id).await.unwrap();
+        let level = manager.get_trust_level(&session_id).await.expect("level");
         assert_eq!(level, TrustLevel::CapabilityVerified);
     }
 
@@ -571,7 +572,7 @@ mod tests {
         let session_id = "test-session".to_string();
 
         // Establish anonymous trust
-        manager.establish_anonymous(session_id.clone()).await.unwrap();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
 
         // Escalate to capability-verified (proof must be >= 32 chars)
         let cap_proof = CapabilityProof {
@@ -579,10 +580,10 @@ mod tests {
             proof: "0123456789abcdef0123456789abcdef".to_string(), // 32 chars minimum
             timestamp: SystemTime::now(),
         };
-        manager.verify_capabilities(&session_id, cap_proof).await.unwrap();
+        manager.verify_capabilities(&session_id, cap_proof).await.expect("cap");
 
         // Escalate to role-verified (use "coordinator" not "admin" - admin requires identity first)
-        manager.verify_role(&session_id, "coordinator".to_string()).await.unwrap();
+        manager.verify_role(&session_id, "coordinator".to_string()).await.expect("role");
 
         // Escalate to identity-verified
         let identity = TowerIdentity {
@@ -599,9 +600,9 @@ mod tests {
             timestamp: SystemTime::now(),
         };
 
-        manager.verify_identity(&session_id, identity_proof).await.unwrap();
+        manager.verify_identity(&session_id, identity_proof).await.expect("identity");
 
-        let level = manager.get_trust_level(&session_id).await.unwrap();
+        let level = manager.get_trust_level(&session_id).await.expect("level");
         assert_eq!(level, TrustLevel::IdentityVerified);
     }
 
@@ -611,23 +612,26 @@ mod tests {
         let session_id = "test-session".to_string();
 
         // Establish capability-verified trust (proof must be >= 32 chars)
-        manager.establish_anonymous(session_id.clone()).await.unwrap();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
         let proof = CapabilityProof {
             capabilities: vec!["orchestration".to_string()],
             proof: "0123456789abcdef0123456789abcdef".to_string(), // 32 chars minimum
             timestamp: SystemTime::now(),
         };
-        manager.verify_capabilities(&session_id, proof).await.unwrap();
+        manager.verify_capabilities(&session_id, proof).await.expect("cap");
 
         // Should be able to perform anonymous and capability operations
-        assert!(manager.check_permission(&session_id, TrustLevel::Anonymous).await.unwrap());
+        assert!(manager.check_permission(&session_id, TrustLevel::Anonymous).await.expect("anon"));
         assert!(
-            manager.check_permission(&session_id, TrustLevel::CapabilityVerified).await.unwrap()
+            manager
+                .check_permission(&session_id, TrustLevel::CapabilityVerified)
+                .await
+                .expect("cap")
         );
 
         // Should NOT be able to perform identity operations
         assert!(
-            !manager.check_permission(&session_id, TrustLevel::IdentityVerified).await.unwrap()
+            !manager.check_permission(&session_id, TrustLevel::IdentityVerified).await.expect("id")
         );
     }
 
@@ -636,8 +640,8 @@ mod tests {
         let manager = TrustEscalationManager::with_defaults();
         let session_id = "test-session".to_string();
 
-        manager.establish_anonymous(session_id.clone()).await.unwrap();
-        manager.revoke_trust(&session_id).await.unwrap();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        manager.revoke_trust(&session_id).await.expect("revoke");
 
         // Should fail to get trust level after revocation
         assert!(manager.get_trust_level(&session_id).await.is_err());
@@ -651,12 +655,150 @@ mod tests {
         let manager = TrustEscalationManager::new(timeouts, None);
         let session_id = "test-session".to_string();
 
-        manager.establish_anonymous(session_id.clone()).await.unwrap();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
 
         // Wait a moment to ensure expiration
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         let removed = manager.cleanup_expired().await;
         assert_eq!(removed, 1);
+    }
+
+    #[tokio::test]
+    async fn verify_capabilities_rejects_bad_proof() {
+        let manager = TrustEscalationManager::with_defaults();
+        let session_id = "bad-proof".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        let proof = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "short".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        let err = manager.verify_capabilities(&session_id, proof).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn verify_role_rejects_empty_role() {
+        let manager = TrustEscalationManager::with_defaults();
+        let session_id = "role-empty".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        let cap = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        manager.verify_capabilities(&session_id, cap).await.expect("cap");
+        let err = manager.verify_role(&session_id, String::new()).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn verify_role_admin_rejected_without_identity_chain() {
+        let manager = TrustEscalationManager::with_defaults();
+        let session_id = "admin-chain".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        let cap = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        manager.verify_capabilities(&session_id, cap).await.expect("cap");
+        let err = manager.verify_role(&session_id, "admin".to_string()).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn verify_role_requires_capability_first() {
+        let manager = TrustEscalationManager::with_defaults();
+        let session_id = "role-order".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        let err = manager.verify_role(&session_id, "worker".to_string()).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn verify_identity_requires_role_first() {
+        let manager = TrustEscalationManager::with_defaults();
+        let session_id = "id-order".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        let cap = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        manager.verify_capabilities(&session_id, cap).await.expect("cap");
+        let identity = TowerIdentity {
+            node_id: "n".to_string(),
+            hostname: "h".to_string(),
+            organization: None,
+            public_key: None,
+        };
+        let id_proof = IdentityProof {
+            identity,
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            proof_type: "jwt".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        let err = manager.verify_identity(&session_id, id_proof).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_relationship_clones_store_entry() {
+        let manager = TrustEscalationManager::with_defaults();
+        let session_id = "rel-clone".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        let rel = manager.get_relationship(&session_id).await;
+        assert!(rel.is_some());
+        assert_eq!(rel.expect("rel").trust_level, TrustLevel::Anonymous);
+    }
+
+    #[tokio::test]
+    async fn verify_hardware_fails_without_security_client() {
+        let manager = TrustEscalationManager::with_defaults();
+        let hw = HardwareAttestation {
+            hardware_key: "0123456789abcdef0123456789abcdef".to_string(),
+            genetic_proof: None,
+            attested_at: SystemTime::now(),
+            signature: "sig".to_string(),
+        };
+        let err = manager.verify_hardware("any-session", hw).await;
+        assert!(err.is_err());
+        let msg = err.expect_err("expected err").to_string();
+        assert!(msg.contains("security") || msg.contains("Session"), "unexpected message: {msg}");
+    }
+
+    #[tokio::test]
+    async fn get_trust_level_reports_anonymous_when_expired() {
+        let mut timeouts = TrustTimeouts::default();
+        timeouts.anonymous = 0;
+        let manager = TrustEscalationManager::new(timeouts, None);
+        let session_id = "exp-anon".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let level = manager.get_trust_level(&session_id).await.expect("level");
+        assert_eq!(level, TrustLevel::Anonymous);
+    }
+
+    #[tokio::test]
+    async fn check_permission_false_when_session_expired() {
+        let mut timeouts = TrustTimeouts::default();
+        timeouts.anonymous = 0;
+        let manager = TrustEscalationManager::new(timeouts, None);
+        let session_id = "exp-check".to_string();
+        manager.establish_anonymous(session_id.clone()).await.expect("establish");
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let allowed =
+            manager.check_permission(&session_id, TrustLevel::Anonymous).await.expect("check");
+        assert!(!allowed);
+    }
+
+    #[test]
+    fn trust_timeouts_defaults_are_ordered_by_increasing_duration() {
+        let t = TrustTimeouts::default();
+        assert!(t.anonymous < t.capability);
+        assert!(t.capability < t.identity);
+        assert_eq!(t.hardware, 0);
     }
 }

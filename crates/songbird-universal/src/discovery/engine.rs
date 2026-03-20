@@ -118,6 +118,8 @@ impl UniversalPrimalDiscovery {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -143,5 +145,19 @@ mod tests {
 
         assert!(result.is_ok());
         assert!(result.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_find_primals_with_capability_empty_cache() {
+        let engine = UniversalPrimalDiscovery::new(DiscoveryConfig::default());
+        assert!(engine.find_primals_with_capability("compute").is_empty());
+    }
+
+    #[test]
+    fn test_discovery_engine_clone_and_debug() {
+        let engine = UniversalPrimalDiscovery::new(DiscoveryConfig::default());
+        let clone = engine.clone();
+        let s = format!("{clone:?}");
+        assert!(s.contains("UniversalPrimalDiscovery"));
     }
 }

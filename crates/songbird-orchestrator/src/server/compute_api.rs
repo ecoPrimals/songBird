@@ -117,6 +117,31 @@ pub fn compute_routes() -> Router<ComputeApiState> {
         .route("/task/:job_id", get(get_task_status))
 }
 
+/// Human-readable routing destination label (mirrors `submit_compute_task` mapping).
+#[must_use]
+pub(crate) fn format_compute_routed_destination(decision: &RoutingDecision) -> String {
+    match decision {
+        RoutingDecision::ExecuteLocally => "local".to_string(),
+        RoutingDecision::RouteToSongbird {
+            node_id,
+            ..
+        } => format!("songbird:{node_id}"),
+        RoutingDecision::RouteToRegisteredService {
+            service_name,
+            port,
+            ..
+        } => format!("service:{service_name}:{port}"),
+        RoutingDecision::RouteToCapability {
+            capability_type,
+            provider_endpoint,
+        } => format!("{capability_type:?}:{provider_endpoint}"),
+        RoutingDecision::RouteToExternalProvider {
+            provider_id,
+            ..
+        } => format!("external:{provider_id}"),
+    }
+}
+
 /// Request to submit a compute task
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ComputeTaskRequest {
@@ -203,32 +228,7 @@ async fn submit_compute_task(
     debug!("Routing decision for job {}: {:?}", job_id, routing_decision);
 
     // Determine where the task was routed
-    let routed_to = match &routing_decision {
-        RoutingDecision::ExecuteLocally => "local".to_string(),
-        RoutingDecision::RouteToSongbird {
-            node_id,
-            ..
-        } => format!("songbird:{node_id}"),
-        RoutingDecision::RouteToRegisteredService {
-            service_name,
-            port,
-            ..
-        } => {
-            format!("service:{service_name}:{port}")
-        }
-        RoutingDecision::RouteToCapability {
-            capability_type,
-            provider_endpoint,
-        } => {
-            format!("{capability_type:?}:{provider_endpoint}")
-        }
-        RoutingDecision::RouteToExternalProvider {
-            provider_id,
-            ..
-        } => {
-            format!("external:{provider_id}")
-        }
-    };
+    let routed_to = format_compute_routed_destination(&routing_decision);
 
     // Create job status
     let job_status = JobStatus {
@@ -689,8 +689,11 @@ impl IntoResponse for ApiError {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use axum::http::StatusCode;
+    use songbird_config::capability_endpoints::CapabilityType;
 
     fn create_test_state() -> ComputeApiState {
         let federation_state = Arc::new(FederationState::new("default".to_string()));
@@ -738,7 +741,9 @@ mod tests {
             timeout_secs: Some(1800),
         };
 
-        let response = submit_compute_task(State(state.clone()), Json(req)).await.unwrap();
+        let response = submit_compute_task(State(state.clone()), Json(req))
+            .await
+            .expect("heavy task should route");
 
         assert_eq!(response.status, "routing");
         // Should route to capability (Compute)
@@ -761,5 +766,144 @@ mod tests {
     fn test_api_error_display() {
         let err = ApiError::Routing("Test error".to_string());
         assert_eq!(err.to_string(), "Routing error: Test error");
+    }
+
+    #[test]
+    fn test_api_error_into_response_status_codes() {
+        let cases = [
+            (ApiError::Routing("r".into()), StatusCode::INTERNAL_SERVER_ERROR),
+            (ApiError::Execution("e".into()), StatusCode::INTERNAL_SERVER_ERROR),
+            (ApiError::InvalidRequest("i".into()), StatusCode::BAD_REQUEST),
+            (ApiError::NotFound("n".into()), StatusCode::NOT_FOUND),
+        ];
+        for (err, expected) in cases {
+            let resp = err.into_response();
+            assert_eq!(resp.status(), expected);
+        }
+    }
+
+    #[test]
+    fn test_job_status_type_serde_lowercase_roundtrip() {
+        let json = serde_json::to_string(&JobStatusType::Queued).expect("serialize");
+        assert_eq!(json, "\"queued\"");
+        let back: JobStatusType = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, JobStatusType::Queued);
+    }
+
+    #[test]
+    fn job_status_type_all_variants_serde() {
+        let cases = [
+            (JobStatusType::Queued, "\"queued\""),
+            (JobStatusType::Routing, "\"routing\""),
+            (JobStatusType::Running, "\"running\""),
+            (JobStatusType::Completed, "\"completed\""),
+            (JobStatusType::Failed, "\"failed\""),
+            (JobStatusType::Cancelled, "\"cancelled\""),
+        ];
+        for (variant, expected) in cases {
+            let j = serde_json::to_string(&variant).expect("serialize");
+            assert_eq!(j, expected);
+            let back: JobStatusType = serde_json::from_str(&j).expect("deserialize");
+            assert_eq!(back, variant);
+        }
+    }
+
+    #[test]
+    fn compute_task_request_roundtrip() {
+        let req = ComputeTaskRequest {
+            task: Task::new("ping"),
+            priority: Some(3),
+            timeout_secs: Some(12),
+        };
+        let json = serde_json::to_string(&req).expect("serialize");
+        let back: ComputeTaskRequest = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.priority, Some(3));
+        assert_eq!(back.timeout_secs, Some(12));
+    }
+
+    #[test]
+    fn api_error_is_std_error() {
+        let err = ApiError::Routing("x".into());
+        let _: &dyn std::error::Error = &err;
+        assert_eq!(format!("{err}"), "Routing error: x");
+    }
+
+    #[test]
+    fn format_compute_routed_destination_all_variants() {
+        assert_eq!(format_compute_routed_destination(&RoutingDecision::ExecuteLocally), "local");
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToSongbird {
+                node_id: "n1".to_string(),
+                endpoint: "https://peer".to_string(),
+            }),
+            "songbird:n1"
+        );
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToRegisteredService {
+                service_id: "sid".to_string(),
+                service_name: "toad".to_string(),
+                endpoint: "127.0.0.1".to_string(),
+                port: 8080,
+            }),
+            "service:toad:8080"
+        );
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToCapability {
+                capability_type: CapabilityType::Compute,
+                provider_endpoint: "unix:///run/c.sock".to_string(),
+            })
+            .contains("Compute"),
+            true
+        );
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToExternalProvider {
+                provider_id: "prov-1".to_string(),
+                execution_endpoint: "https://x/exec".to_string(),
+                capability_name: "compute_heavy".to_string(),
+            }),
+            "external:prov-1"
+        );
+    }
+
+    #[test]
+    fn api_error_display_covers_all_variants() {
+        assert_eq!(ApiError::Execution("e".into()).to_string(), "Execution error: e");
+        assert_eq!(ApiError::InvalidRequest("bad".into()).to_string(), "Invalid request: bad");
+        assert_eq!(ApiError::NotFound("n".into()).to_string(), "Not found: n");
+    }
+
+    #[test]
+    fn compute_task_response_roundtrip_json() -> Result<(), serde_json::Error> {
+        let id = Uuid::nil();
+        let resp = ComputeTaskResponse {
+            job_id: id,
+            routed_to: "local".to_string(),
+            status: "routing".to_string(),
+            estimated_completion: None,
+        };
+        let json = serde_json::to_string(&resp)?;
+        let back: ComputeTaskResponse = serde_json::from_str(&json)?;
+        assert_eq!(back.job_id, id);
+        assert_eq!(back.routed_to, "local");
+        Ok(())
+    }
+
+    #[test]
+    fn job_status_roundtrip_json() -> Result<(), serde_json::Error> {
+        let started = chrono::Utc::now();
+        let js = JobStatus {
+            job_id: Uuid::nil(),
+            status: JobStatusType::Failed,
+            routed_to: "x".to_string(),
+            progress: Some(0.5),
+            started_at: started,
+            completed_at: None,
+            error: Some("oops".to_string()),
+        };
+        let json = serde_json::to_string(&js)?;
+        let back: JobStatus = serde_json::from_str(&json)?;
+        assert_eq!(back.status, JobStatusType::Failed);
+        assert_eq!(back.error.as_deref(), Some("oops"));
+        Ok(())
     }
 }

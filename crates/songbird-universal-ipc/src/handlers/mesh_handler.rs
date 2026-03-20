@@ -640,6 +640,18 @@ impl Default for MeshHandler {
 }
 
 #[cfg(test)]
+impl MeshHandler {
+    pub fn endpoint_strings_for_test(&self, endpoint: &EndpointType) -> (String, Option<String>) {
+        self.endpoint_to_strings(endpoint)
+    }
+
+    pub fn path_json_for_test(&self, path: &RelayEndpoint, found: bool) -> Value {
+        self.path_to_json(path, found)
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -846,5 +858,120 @@ mod tests {
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response["all_healthy"], false);
+    }
+
+    #[test]
+    fn endpoint_to_strings_local_and_direct() {
+        use std::net::SocketAddr;
+        let handler = MeshHandler::new();
+        let addr: SocketAddr = "192.168.0.1:1234".parse().expect("addr");
+        let (t, s) = handler.endpoint_strings_for_test(&EndpointType::Local {
+            addr,
+        });
+        assert_eq!(t, "local");
+        assert_eq!(s.as_deref(), Some("192.168.0.1:1234"));
+
+        let (t2, s2) = handler.endpoint_strings_for_test(&EndpointType::Direct {
+            addr,
+        });
+        assert_eq!(t2, "direct");
+        assert_eq!(s2.as_deref(), Some("192.168.0.1:1234"));
+    }
+
+    #[test]
+    fn endpoint_to_strings_relay_and_onion() {
+        let handler = MeshHandler::new();
+        let (t, s) = handler.endpoint_strings_for_test(&EndpointType::FamilyRelay {
+            relay_node_id: "relay-1".into(),
+        });
+        assert_eq!(t, "family_relay");
+        assert_eq!(s.as_deref(), Some("relay-1"));
+
+        let (t2, s2) = handler.endpoint_strings_for_test(&EndpointType::TorOnion {
+            onion_addr: "abc.onion".into(),
+        });
+        assert_eq!(t2, "onion");
+        assert_eq!(s2.as_deref(), Some("abc.onion"));
+    }
+
+    #[test]
+    fn path_to_json_includes_expected_fields() {
+        let handler = MeshHandler::new();
+        use std::net::SocketAddr;
+        let addr: SocketAddr = "10.0.0.2:9000".parse().expect("addr");
+        let path = RelayEndpoint {
+            node_id: "peer-9".into(),
+            endpoint_type: EndpointType::Direct {
+                addr,
+            },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+        let v = handler.path_json_for_test(&path, true);
+        assert_eq!(v["found"], true);
+        assert_eq!(v["path_type"], "direct");
+        assert_eq!(v["target_node_id"], "peer-9");
+        assert_eq!(v["reachable"], true);
+    }
+
+    #[tokio::test]
+    async fn mesh_init_missing_node_id_errors() {
+        let handler = MeshHandler::new();
+        let err = handler.handle_init(json!({})).await.expect_err("missing node_id");
+        assert!(err.contains("node_id"));
+    }
+
+    #[tokio::test]
+    async fn mesh_find_path_missing_target_errors() {
+        let handler = MeshHandler::new();
+        handler
+            .handle_init(json!({
+                "node_id": "tower",
+                "bootstrap_onions": []
+            }))
+            .await
+            .expect("init");
+
+        let err = handler.handle_find_path(json!({})).await.expect_err("missing target");
+        assert!(err.contains("target_node_id"));
+    }
+
+    #[tokio::test]
+    async fn mesh_announce_as_relay_false_short_circuits() {
+        let handler = MeshHandler::new();
+        handler
+            .handle_init(json!({
+                "node_id": "tower",
+                "bootstrap_onions": []
+            }))
+            .await
+            .expect("init");
+
+        let v =
+            handler.handle_announce(json!({ "as_relay": false })).await.expect("announce response");
+        assert_eq!(v["announced"], false);
+    }
+
+    #[test]
+    fn path_to_json_respects_found_flag_and_latency() {
+        let handler = MeshHandler::new();
+        use std::net::SocketAddr;
+        use std::time::Duration;
+        let addr: SocketAddr = "10.0.0.2:9000".parse().expect("addr");
+        let path = RelayEndpoint {
+            node_id: "peer-x".into(),
+            endpoint_type: EndpointType::Local {
+                addr,
+            },
+            latency: Some(Duration::from_millis(12)),
+            last_seen: Instant::now(),
+            reachable: false,
+        };
+        let v = handler.path_json_for_test(&path, false);
+        assert_eq!(v["found"], false);
+        assert_eq!(v["estimated_latency_ms"], 12);
+        assert_eq!(v["reachable"], false);
+        assert_eq!(v["path_type"], "local");
     }
 }

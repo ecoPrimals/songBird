@@ -73,6 +73,10 @@ description = "Network Orchestration & Discovery Primal"
 keywords = ["orchestrator", "network", "discovery", "p2p"]
 categories = ["command-line-utilities", "network-programming"]
 
+[lib]
+name = "songbird"
+path = "src/lib.rs"
+
 [[bin]]
 name = "songbird"
 path = "src/main.rs"

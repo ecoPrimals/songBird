@@ -135,7 +135,10 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if characteristic discovery fails
-    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (ATT over L2CAP)
+    #[expect(
+        clippy::unused_async,
+        reason = "placeholder for future GATT operations (ATT over L2CAP)"
+    )]
     pub async fn discover_characteristics(&mut self, service_uuid: &Uuid) -> Result<()> {
         debug!("Discovering characteristics for service: {}", service_uuid);
 
@@ -184,7 +187,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read By Type Response for characteristics
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for Phase 3 characteristic discovery parsing")]
     fn parse_read_by_type_response(response: &[u8]) -> Result<Vec<Characteristic>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -293,7 +296,10 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Read not supported
     /// - Read fails
-    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (ATT over L2CAP)
+    #[expect(
+        clippy::unused_async,
+        reason = "placeholder for future GATT operations (ATT over L2CAP)"
+    )]
     pub async fn read_characteristic(&self, uuid: &Uuid) -> Result<Vec<u8>> {
         debug!("Reading characteristic: {}", uuid);
 
@@ -329,7 +335,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for Phase 3 ATT read response parsing")]
     fn parse_read_response(response: &[u8]) -> Result<Vec<u8>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -362,7 +368,10 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Write not supported
     /// - Write fails
-    #[allow(clippy::unused_async)] // Placeholder for future GATT operations (ATT over L2CAP)
+    #[expect(
+        clippy::unused_async,
+        reason = "placeholder for future GATT operations (ATT over L2CAP)"
+    )]
     pub async fn write_characteristic(&self, uuid: &Uuid, data: &[u8]) -> Result<()> {
         debug!("Writing {} bytes to characteristic: {}", data.len(), uuid);
 
@@ -415,7 +424,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Build ATT Write Command (without response)
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "instance method for symmetry with build_write_request")]
     fn build_write_command(&self, handle: u16, data: &[u8]) -> Vec<u8> {
         let mut request = vec![att_opcode::WRITE_CMD];
         request.extend_from_slice(&handle.to_le_bytes());
@@ -425,8 +434,11 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Write Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[allow(dead_code)]
-    #[allow(clippy::unused_self)]
+    #[expect(
+        dead_code,
+        clippy::unused_self,
+        reason = "reserved for Phase 3 write response parsing; &self for API consistency"
+    )]
     fn parse_write_response(&self, response: &[u8]) -> Result<()> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));

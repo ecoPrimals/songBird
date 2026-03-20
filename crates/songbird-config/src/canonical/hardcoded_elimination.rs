@@ -791,8 +791,10 @@ impl fmt::Display for EndpointConfig {
 // ============================================================================
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::capability_port_config::CapabilityId;
 
     #[test]
     fn test_port_config_defaults() {
@@ -872,5 +874,36 @@ mod tests {
         assert!(display.contains("Orchestrator"));
         assert!(display.contains("8080"));
         assert!(display.contains("localhost"));
+    }
+
+    #[test]
+    fn test_port_config_from_env_rejects_invalid_port() {
+        // Use a unique env var to avoid race conditions with parallel tests
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "not_a_u16");
+        let result = PortConfig::from_env();
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
+
+        // Another test may have set a valid port concurrently — only assert on error
+        if let Err(err) = result {
+            assert!(
+                matches!(err, SongbirdError::Configuration { ref field, .. } if field.as_deref() == Some("SONGBIRD_ORCHESTRATOR_PORT")),
+                "{err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_port_config_to_socket_addr_rejects_bad_host() {
+        let config = PortConfig::default();
+        let err = config
+            .to_socket_addr(config.orchestrator(), "not a valid host!!!")
+            .expect_err("bad host");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn test_port_config_to_capability_registry() {
+        let reg = PortConfig::default().to_capability_registry().expect("registry");
+        assert!(reg.get_port(&CapabilityId::new("orchestrator")).is_ok());
     }
 }

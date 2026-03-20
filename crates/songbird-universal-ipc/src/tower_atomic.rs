@@ -344,6 +344,17 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
     }
 }
 
+#[cfg(test)]
+impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
+    /// Exposes [`TowerAtomicServer::handle_request`] for unit tests (no I/O).
+    pub(crate) async fn handle_request_for_test(
+        request: JsonRpcRequest,
+        handler: &H,
+    ) -> JsonRpcResponse {
+        Self::handle_request(request, handler).await
+    }
+}
+
 /// Tower Atomic Client - Call JSON-RPC methods over Universal IPC
 ///
 /// This client makes JSON-RPC 2.0 calls over the Universal IPC layer,
@@ -434,6 +445,7 @@ impl TowerAtomicClient {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -504,5 +516,94 @@ mod tests {
         // Test unknown method
         let result = handler.handle("unknown", json!({})).await;
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn json_rpc_request_serde_roundtrip() {
+        let req = JsonRpcRequest::new("echo", Some(json!({"k": 1})), 42);
+        let s = serde_json::to_string(&req).expect("serialize request");
+        let back: JsonRpcRequest = serde_json::from_str(&s).expect("deserialize request");
+        assert_eq!(back.jsonrpc, "2.0");
+        assert_eq!(back.method, "echo");
+        assert_eq!(back.id, json!(42));
+    }
+
+    #[test]
+    fn json_rpc_error_helpers_and_serde() {
+        let e = JsonRpcError::method_not_found("m");
+        assert_eq!(e.code, JsonRpcError::METHOD_NOT_FOUND);
+        let e2 = JsonRpcError::invalid_params("bad");
+        assert_eq!(e2.code, JsonRpcError::INVALID_PARAMS);
+        let e3 = JsonRpcError::internal_error("x");
+        assert_eq!(e3.code, JsonRpcError::INTERNAL_ERROR);
+        let v = serde_json::to_value(&e3).expect("to value");
+        let back: JsonRpcError = serde_json::from_value(v).expect("from value");
+        assert_eq!(back.message, "x");
+    }
+
+    #[test]
+    fn json_rpc_response_roundtrip() {
+        let ok = JsonRpcResponse::success(json!(true), json!(7));
+        let s = serde_json::to_string(&ok).expect("ser");
+        let back: JsonRpcResponse = serde_json::from_str(&s).expect("de");
+        assert_eq!(back.result, Some(json!(true)));
+
+        let err = JsonRpcResponse::error(
+            JsonRpcError {
+                code: JsonRpcError::PARSE_ERROR,
+                message: "parse".into(),
+                data: None,
+            },
+            json!(null),
+        );
+        assert!(err.error.is_some());
+    }
+
+    struct EchoHandler;
+
+    #[async_trait]
+    impl JsonRpcHandler for EchoHandler {
+        async fn handle(&self, _method: &str, params: Value) -> Result<Value, String> {
+            Ok(params)
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_request_for_test_rejects_non_2_0_jsonrpc() {
+        let handler = EchoHandler;
+        let req = JsonRpcRequest {
+            jsonrpc: "1.0".into(),
+            method: "x".into(),
+            params: None,
+            id: json!(1),
+        };
+        let resp = TowerAtomicServer::handle_request_for_test(req, &handler).await;
+        let err = resp.error.expect("error response");
+        assert_eq!(err.code, JsonRpcError::INVALID_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn handle_request_for_test_success_wraps_handler_ok() {
+        let handler = EchoHandler;
+        let req = JsonRpcRequest::new("echo", Some(json!({"a": 1})), 7);
+        let resp = TowerAtomicServer::handle_request_for_test(req, &handler).await;
+        assert!(resp.error.is_none());
+        assert_eq!(resp.result.expect("result"), json!({"a": 1}));
+    }
+
+    #[tokio::test]
+    async fn handle_request_for_test_wraps_handler_err_as_internal() {
+        struct Fail;
+        #[async_trait]
+        impl JsonRpcHandler for Fail {
+            async fn handle(&self, _method: &str, _params: Value) -> Result<Value, String> {
+                Err("boom".into())
+            }
+        }
+        let req = JsonRpcRequest::new("m", None, 1);
+        let resp = TowerAtomicServer::handle_request_for_test(req, &Fail).await;
+        let err = resp.error.expect("rpc error");
+        assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+        assert!(err.message.contains("boom"));
     }
 }

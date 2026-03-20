@@ -102,7 +102,7 @@ pub struct CapabilityResolver {
     /// Cache of discovered providers
     provider_cache: HashMap<String, CachedProvider>,
     /// Configuration hints from environment (for future expansion)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future resolver configuration")]
     environment_hints: EnvironmentHints,
 }
 
@@ -202,7 +202,10 @@ impl CapabilityResolver {
     /// - etc.
     ///
     /// Pure function kept as method for trait implementation consistency and future extensibility.
-    #[allow(clippy::unused_self)]
+    #[expect(
+        clippy::unused_self,
+        reason = "method shape for resolver API consistency and future extensibility"
+    )]
     fn discover_from_environment(
         &self,
         request: &CapabilityRequest,
@@ -230,7 +233,6 @@ impl CapabilityResolver {
     ///
     /// Note: Currently uses environment for registry endpoint.
     /// Future: Will query actual service registry infrastructure.
-    #[allow(clippy::unused_self)]
     async fn discover_from_registry(
         &self,
         request: &CapabilityRequest,
@@ -448,7 +450,7 @@ impl EnvironmentHints {
         }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for future hint-based resolution")]
     fn get_hint(&self, key: &str) -> Option<&String> {
         self.hints.get(key)
     }
@@ -493,6 +495,7 @@ macro_rules! discover_capability {
 // ============================================================================
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -552,10 +555,73 @@ mod tests {
 
         let cached = CachedProvider {
             provider,
-            discovered_at: std::time::Instant::now().checked_sub(Duration::from_secs(400)).unwrap(),
+            discovered_at: std::time::Instant::now()
+                .checked_sub(Duration::from_secs(400))
+                .expect("instant sub"),
             ttl: Duration::from_secs(300),
         };
 
         assert!(cached.is_expired());
+    }
+
+    #[test]
+    fn test_cached_provider_not_expired_when_fresh() {
+        let provider = CapabilityProvider {
+            name: "p".to_string(),
+            capability: "ai".to_string(),
+            endpoint: "http://x".to_string(),
+            protocol: Protocol::Http,
+            features: vec![],
+            metadata: HashMap::new(),
+        };
+        let cached = CachedProvider {
+            provider,
+            discovered_at: std::time::Instant::now(),
+            ttl: Duration::from_secs(3600),
+        };
+        assert!(!cached.is_expired());
+    }
+
+    #[test]
+    fn test_protocol_json_roundtrip() {
+        let p = Protocol::Custom("coap".to_string());
+        let json = serde_json::to_string(&p).expect("serde");
+        let back: Protocol = serde_json::from_str(&json).expect("de");
+        assert_eq!(format!("{back:?}"), format!("{p:?}"));
+    }
+
+    #[test]
+    fn test_capability_provider_display() {
+        let p = CapabilityProvider {
+            name: "prov".to_string(),
+            capability: "ai".to_string(),
+            endpoint: "http://h:1".to_string(),
+            protocol: Protocol::Http,
+            features: vec![],
+            metadata: HashMap::new(),
+        };
+        assert_eq!(format!("{p}"), "prov[ai] @ http://h:1");
+    }
+
+    #[test]
+    fn test_supports_features_empty_required() {
+        let p = CapabilityProvider {
+            name: "p".to_string(),
+            capability: "x".to_string(),
+            endpoint: "http://x".to_string(),
+            protocol: Protocol::Http,
+            features: vec!["a".to_string()],
+            metadata: HashMap::new(),
+        };
+        assert!(p.supports_features(&[]));
+    }
+
+    #[test]
+    fn test_discover_from_environment_errors_without_var() {
+        let resolver = CapabilityResolver::new();
+        songbird_process_env::remove_var("SONGBIRD_SBUNSETCAP_PROVIDER_URL");
+        let req = CapabilityRequest::new("sbunsetcap");
+        let err = resolver.discover_from_environment(&req).expect_err("no env");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
     }
 }

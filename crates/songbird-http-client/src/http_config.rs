@@ -377,6 +377,7 @@ impl HttpClientConfig {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -487,5 +488,30 @@ mod tests {
 
         assert_eq!(config.default_headers.get("Accept").unwrap(), "application/json");
         assert_eq!(config.default_headers.get("Content-Type").unwrap(), "application/json");
+    }
+
+    #[test]
+    fn test_add_rule_sorts_by_priority_descending() {
+        let mut config = HttpClientConfig::minimal();
+        let low = HeaderRule::new(DomainPattern::Exact("a.com".to_string()), "low")
+            .with_header("X-P", "1")
+            .with_priority(10);
+        let high = HeaderRule::new(DomainPattern::Exact("a.com".to_string()), "high")
+            .with_header("X-P", "2")
+            .with_priority(90);
+        config.add_rule(low);
+        config.add_rule(high);
+
+        assert_eq!(config.header_rules[0].priority, 90);
+        assert_eq!(config.header_rules[1].priority, 10);
+    }
+
+    #[test]
+    fn test_headers_for_domain_lowercase_user_agent_override() {
+        let config = HttpClientConfig::standard();
+        let mut caller = HashMap::new();
+        caller.insert("user-agent".to_string(), "LowercaseAgent/1".to_string());
+        let headers = config.headers_for_domain("example.com", &caller);
+        assert_eq!(headers.get("user-agent"), Some(&"LowercaseAgent/1".to_string()));
     }
 }

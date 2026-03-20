@@ -763,14 +763,14 @@ impl RequestBuilder {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn test_socket_discovery() {
         // ✅ Concurrent-safe: Uses discover_socket_path_with (no env vars)
-        use std::collections::HashMap;
-
         // Test with explicit socket path
         let env1: HashMap<String, String> =
             HashMap::from([("SONGBIRD_SOCKET".to_string(), "/tmp/test.sock".to_string())]);
@@ -782,6 +782,74 @@ mod tests {
             HashMap::from([("SONGBIRD_FAMILY_ID".to_string(), "test".to_string())]);
         let path = IpcHttpClient::discover_socket_path_with(|name| env2.get(name).cloned());
         assert!(path.to_string_lossy().contains("songbird-test.sock"));
+    }
+
+    #[test]
+    fn test_socket_discovery_songbird_socket_wins_over_ipc_socket() {
+        let env: HashMap<String, String> = HashMap::from([
+            ("SONGBIRD_SOCKET".to_string(), "/explicit/primary.sock".to_string()),
+            ("SONGBIRD_IPC_SOCKET".to_string(), "/explicit/secondary.sock".to_string()),
+        ]);
+        let path = IpcHttpClient::discover_socket_path_with(|name| env.get(name).cloned());
+        assert_eq!(path, PathBuf::from("/explicit/primary.sock"));
+    }
+
+    #[test]
+    fn test_socket_discovery_ipc_socket_when_no_primary() {
+        let env: HashMap<String, String> =
+            HashMap::from([("SONGBIRD_IPC_SOCKET".to_string(), "/only/ipc.sock".to_string())]);
+        let path = IpcHttpClient::discover_socket_path_with(|name| env.get(name).cloned());
+        assert_eq!(path, PathBuf::from("/only/ipc.sock"));
+    }
+
+    #[test]
+    fn test_socket_discovery_family_id_alias() {
+        let env: HashMap<String, String> =
+            HashMap::from([("FAMILY_ID".to_string(), "prod".to_string())]);
+        let path = IpcHttpClient::discover_socket_path_with(|name| env.get(name).cloned());
+        assert!(path.to_string_lossy().contains("songbird-prod.sock"));
+    }
+
+    #[test]
+    fn test_response_is_success_and_headers() {
+        let ok = Response {
+            status: 201,
+            headers: HashMap::from([("X-Test".to_string(), "1".to_string())]),
+            body: vec![],
+        };
+        assert!(ok.is_success());
+        assert_eq!(ok.status(), 201);
+        assert_eq!(ok.headers().get("X-Test"), Some(&"1".to_string()));
+
+        let fail = Response {
+            status: 404,
+            headers: HashMap::new(),
+            body: vec![],
+        };
+        assert!(!fail.is_success());
+    }
+
+    #[tokio::test]
+    async fn test_response_text_and_bytes() {
+        let r = Response {
+            status: 200,
+            headers: HashMap::new(),
+            body: b"hello utf8".to_vec(),
+        };
+        assert_eq!(r.text().await.expect("utf8 body"), "hello utf8");
+
+        let raw = Response {
+            status: 200,
+            headers: HashMap::new(),
+            body: vec![0, 159, 146, 150],
+        };
+        assert!(raw.text().await.is_err());
+        let bytes = Response {
+            status: 200,
+            headers: HashMap::new(),
+            body: vec![1, 2, 3],
+        };
+        assert_eq!(bytes.bytes().await, vec![1, 2, 3]);
     }
 
     #[tokio::test]

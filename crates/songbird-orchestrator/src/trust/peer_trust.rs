@@ -232,6 +232,7 @@ fn extract_family_from_tags(tags: &[String]) -> Option<String> {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -318,7 +319,7 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        let decision = handle_trust_response("peer1", response).unwrap();
+        let decision = handle_trust_response("peer1", response).expect("handle");
 
         match decision {
             PeerTrustDecision::AutoAccept {
@@ -346,7 +347,7 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        let decision = handle_trust_response("peer2", response).unwrap();
+        let decision = handle_trust_response("peer2", response).expect("handle");
 
         match decision {
             PeerTrustDecision::PromptUser {
@@ -372,7 +373,7 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        let decision = handle_trust_response("peer3", response).unwrap();
+        let decision = handle_trust_response("peer3", response).expect("handle");
 
         match decision {
             PeerTrustDecision::Reject {
@@ -398,7 +399,7 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        let decision = handle_trust_response("peer4", response).unwrap();
+        let decision = handle_trust_response("peer4", response).expect("handle");
 
         // Unknown decisions should default to PromptUser (safe default)
         match decision {
@@ -406,6 +407,145 @@ mod tests {
                 ..
             } => {}
             _ => panic!("Expected PromptUser for unknown decision"),
+        }
+    }
+
+    #[test]
+    fn handle_prompt_user_high_confidence_recommends_accept() {
+        use std::collections::HashMap;
+        let response = TrustEvaluationResponse {
+            decision: "prompt_user".to_string(),
+            trust_level: "medium".to_string(),
+            confidence: 0.9,
+            reason: "r".to_string(),
+            encryption_tag: None,
+            metadata: HashMap::new(),
+        };
+        let decision = handle_trust_response("p", response).expect("handle");
+        match decision {
+            PeerTrustDecision::PromptUser {
+                recommendation,
+                ..
+            } => assert_eq!(recommendation, "accept"),
+            _ => panic!("expected prompt"),
+        }
+    }
+
+    #[test]
+    fn handle_prompt_user_low_confidence_recommends_neutral() {
+        use std::collections::HashMap;
+        let response = TrustEvaluationResponse {
+            decision: "prompt_user".to_string(),
+            trust_level: "low".to_string(),
+            confidence: 0.4,
+            reason: "r".to_string(),
+            encryption_tag: None,
+            metadata: HashMap::new(),
+        };
+        let decision = handle_trust_response("p", response).expect("handle");
+        match decision {
+            PeerTrustDecision::PromptUser {
+                recommendation,
+                ..
+            } => assert_eq!(recommendation, "neutral"),
+            _ => panic!("expected prompt"),
+        }
+    }
+
+    #[test]
+    fn extract_family_ignores_wrong_prefix() {
+        let tags = vec!["Beardog:family:nat0".to_string()];
+        assert_eq!(extract_family_from_tags(&tags), None);
+    }
+
+    #[test]
+    fn extract_family_from_tags_empty_slice() {
+        let tags: Vec<String> = vec![];
+        assert_eq!(extract_family_from_tags(&tags), None);
+    }
+
+    #[test]
+    fn handle_prompt_user_confidence_boundary_half_recommends_neutral() {
+        use std::collections::HashMap;
+        let response = TrustEvaluationResponse {
+            decision: "prompt_user".to_string(),
+            trust_level: "low".to_string(),
+            confidence: 0.5,
+            reason: "boundary".to_string(),
+            encryption_tag: None,
+            metadata: HashMap::new(),
+        };
+        let decision = handle_trust_response("peer-b", response).expect("handle");
+        match decision {
+            PeerTrustDecision::PromptUser {
+                recommendation,
+                ..
+            } => assert_eq!(recommendation, "neutral"),
+            _ => panic!("expected prompt"),
+        }
+    }
+
+    #[test]
+    fn handle_prompt_user_confidence_above_half_recommends_accept() {
+        use std::collections::HashMap;
+        let response = TrustEvaluationResponse {
+            decision: "prompt_user".to_string(),
+            trust_level: "low".to_string(),
+            confidence: 0.5000001,
+            reason: "boundary".to_string(),
+            encryption_tag: None,
+            metadata: HashMap::new(),
+        };
+        let decision = handle_trust_response("peer-b2", response).expect("handle");
+        match decision {
+            PeerTrustDecision::PromptUser {
+                recommendation,
+                ..
+            } => assert_eq!(recommendation, "accept"),
+            _ => panic!("expected prompt"),
+        }
+    }
+
+    #[test]
+    fn handle_prompt_user_confidence_just_below_half_neutral() {
+        use std::collections::HashMap;
+        let response = TrustEvaluationResponse {
+            decision: "prompt_user".to_string(),
+            trust_level: "low".to_string(),
+            confidence: 0.49,
+            reason: "boundary".to_string(),
+            encryption_tag: None,
+            metadata: HashMap::new(),
+        };
+        let decision = handle_trust_response("peer-c", response).expect("handle");
+        match decision {
+            PeerTrustDecision::PromptUser {
+                recommendation,
+                ..
+            } => assert_eq!(recommendation, "neutral"),
+            _ => panic!("expected prompt"),
+        }
+    }
+
+    #[test]
+    fn peer_trust_decision_serde_roundtrip_auto_accept() {
+        let d = PeerTrustDecision::AutoAccept {
+            reason: "r".to_string(),
+            confidence: 0.75,
+            encryption_tag: Some("t".to_string()),
+        };
+        let json = serde_json::to_string(&d).expect("serialize");
+        let back: PeerTrustDecision = serde_json::from_str(&json).expect("deserialize");
+        match back {
+            PeerTrustDecision::AutoAccept {
+                reason,
+                confidence,
+                ..
+            } => {
+                assert_eq!(reason, "r");
+                assert!((confidence - 0.75).abs() < f64::EPSILON);
+            }
+            _ => panic!("Expected AutoAccept"),
         }
     }
 }

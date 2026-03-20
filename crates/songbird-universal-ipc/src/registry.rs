@@ -221,6 +221,7 @@ impl Default for ServiceRegistry {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::endpoint::NativeEndpoint;
@@ -318,5 +319,127 @@ mod tests {
         registry.unregister("test-primal").await.unwrap();
 
         assert!(registry.get_service("test-primal").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_register_duplicate_returns_error() {
+        let registry = ServiceRegistry::new();
+        #[cfg(unix)]
+        let endpoint = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/dup.sock"));
+        #[cfg(not(unix))]
+        let endpoint = NativeEndpoint::TcpLocal(8080);
+
+        registry.register("dup", endpoint.clone(), vec![]).await.expect("first register");
+        let err = registry.register("dup", endpoint, vec![]).await.expect_err("duplicate");
+        assert!(matches!(err, crate::error::IpcError::ServiceAlreadyRegistered(_)));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_invalid_virtual_path() {
+        let registry = ServiceRegistry::new();
+        let err = registry.resolve("/wrong/beardog").await.expect_err("bad path");
+        assert!(matches!(err, crate::error::IpcError::InvalidVirtualPath(_)));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_unknown_service() {
+        let registry = ServiceRegistry::new();
+        let err = registry.resolve("/primal/missing").await.expect_err("missing");
+        assert!(matches!(err, crate::error::IpcError::ServiceNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_unregister_missing_service() {
+        let registry = ServiceRegistry::new();
+        let err = registry.unregister("nope").await.expect_err("not found");
+        assert!(matches!(err, crate::error::IpcError::ServiceNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_update_last_seen_errors_when_missing() {
+        let registry = ServiceRegistry::new();
+        let err = registry.update_last_seen("ghost").await.expect_err("no service");
+        assert!(matches!(err, crate::error::IpcError::ServiceNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_list_and_metadata_track_services() {
+        let registry = ServiceRegistry::new();
+        #[cfg(unix)]
+        let ep = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/meta.sock"));
+        #[cfg(not(unix))]
+        let ep = NativeEndpoint::TcpLocal(9090);
+
+        registry.register("alpha", ep, vec!["a".into()]).await.expect("register");
+        let names = registry.list_services().await;
+        assert!(names.contains(&"alpha".to_string()));
+
+        let meta = registry.get_all_metadata().await;
+        assert_eq!(meta.len(), 1);
+        assert_eq!(meta[0].name, "alpha");
+        assert!(meta[0].virtual_path.contains("alpha"));
+    }
+
+    #[tokio::test]
+    async fn test_service_entry_to_metadata_shape() {
+        #[cfg(unix)]
+        let ep = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/md.sock"));
+        #[cfg(not(unix))]
+        let ep = NativeEndpoint::TcpLocal(7070);
+
+        let entry = ServiceEntry {
+            virtual_endpoint: crate::endpoint::VirtualEndpoint::new("z"),
+            native_endpoint: ep,
+            capabilities: vec!["x".into()],
+            registered_at: std::time::Instant::now(),
+            last_seen: std::time::Instant::now(),
+        };
+        let m = entry.to_metadata();
+        assert_eq!(m.name, "z");
+        assert_eq!(m.virtual_path, "/primal/z");
+        assert_eq!(m.capabilities, vec!["x".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn update_last_seen_updates_existing_service() {
+        let registry = ServiceRegistry::new();
+        #[cfg(unix)]
+        let ep = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/seen.sock"));
+        #[cfg(not(unix))]
+        let ep = NativeEndpoint::TcpLocal(6060);
+
+        registry.register("seen", ep, vec![]).await.expect("register");
+        registry.update_last_seen("seen").await.expect("last_seen");
+        let svc = registry.get_service("seen").await.expect("service");
+        assert_eq!(svc.capabilities.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn find_by_capability_empty_when_no_match() {
+        let registry = ServiceRegistry::new();
+        #[cfg(unix)]
+        let ep = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/nomatch.sock"));
+        #[cfg(not(unix))]
+        let ep = NativeEndpoint::TcpLocal(5050);
+
+        registry.register("only", ep, vec!["a".into()]).await.expect("register");
+        let paths = registry.find_by_capability("missing-cap").await;
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn service_metadata_serde_roundtrip() {
+        let m = ServiceMetadata {
+            name: "n".into(),
+            virtual_path: "/primal/n".into(),
+            native_endpoint_display: "unix:///x".into(),
+            capabilities: vec!["c".into()],
+            platform: "linux".into(),
+            registered_at_secs: 42,
+        };
+        let v = serde_json::to_string(&m).expect("serialize metadata");
+        let back: ServiceMetadata = serde_json::from_str(&v).expect("deserialize metadata");
+        assert_eq!(back.name, "n");
+        assert_eq!(back.registered_at_secs, 42);
     }
 }

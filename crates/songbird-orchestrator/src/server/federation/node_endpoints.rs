@@ -148,7 +148,10 @@ pub async fn get_node_details(
 // ========================================================================
 
 /// Helper: Get federation status
-#[allow(clippy::similar_names)] // `state` and `stats` are semantically different despite similar names
+#[expect(
+    clippy::similar_names,
+    reason = "`state` and `stats` are semantically different despite similar names"
+)]
 async fn get_federation_status(state: &FederationAppState) -> FederationStatus {
     let stats = state.federation_state.get_stats().await;
     let nodes: Vec<NodeRegistration> =

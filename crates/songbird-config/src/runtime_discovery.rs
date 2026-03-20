@@ -33,11 +33,10 @@ const MULTICAST_PORT: u16 = 9091;
 /// Discovers services by capability at runtime with zero hardcoded knowledge.
 pub struct RuntimeDiscoveryEngine {
     /// Required capabilities for this primal
-    #[allow(dead_code)] // Future: Will be used for multi-capability queries
+    #[expect(dead_code, reason = "future: multi-capability queries")]
     capabilities: Vec<String>,
 
     /// Discovery timeout (will be used in timeout wrapper around discovery methods)
-    #[allow(dead_code)] // Future: Will wrap discovery calls with timeout
     timeout: Duration,
 
     /// Cache of discovered services
@@ -149,7 +148,10 @@ impl RuntimeDiscoveryEngine {
     ///
     /// Uses the mdns-sd crate for zero-configuration discovery on local networks.
     /// Queries for services advertising the requested capability via TXT records.
-    #[allow(clippy::unused_async)] // Async required for trait consistency
+    #[expect(
+        clippy::unused_async,
+        reason = "async required for trait consistency with other discovery paths"
+    )]
     async fn discover_mdns(&self, capability: &str) -> SongbirdResult<DiscoveredService> {
         use tracing::debug;
 
@@ -271,7 +273,6 @@ impl RuntimeDiscoveryEngine {
     ///
     /// This function handles the complete announcement lifecycle. Consider
     /// refactoring into smaller helper functions in future iterations.
-    #[allow(clippy::too_many_lines)] // Whole announcement lifecycle kept inline for clarity
     async fn wait_for_announcement(&self, capability: &str) -> SongbirdResult<DiscoveredService> {
         use tokio::time::timeout;
         use tracing::{debug, info};
@@ -539,6 +540,7 @@ pub async fn discover_security() -> SongbirdResult<DiscoveredService> {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -558,13 +560,35 @@ mod tests {
         let result = RuntimeDiscoveryEngine::from_environment("test");
         assert!(result.is_ok());
 
-        let service = result.unwrap();
+        let service = result.expect("env set");
         assert_eq!(service.capability, "test");
         assert_eq!(service.endpoint, "http://test.example.com:8080");
         assert_eq!(service.discovered_via, DiscoveryMethod::Environment);
 
         // Cleanup
         songbird_process_env::remove_var("TEST_ENDPOINT");
+    }
+
+    #[test]
+    fn test_from_environment_errors_when_var_missing() {
+        songbird_process_env::remove_var("NO_SUCH_VAR_FOR_SB_RTDISC_ENDPOINT");
+        let err = RuntimeDiscoveryEngine::from_environment("no_such_var_for_sb_rtdisc")
+            .expect_err("missing env var");
+        assert!(matches!(err, songbird_types::SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn test_check_cache_misses_expired_entry() {
+        let engine = RuntimeDiscoveryEngine::new();
+        let service = DiscoveredService {
+            capability: "exp".to_string(),
+            endpoint: "http://old".to_string(),
+            discovered_via: DiscoveryMethod::Environment,
+            health_score: 1.0,
+            last_seen: std::time::SystemTime::UNIX_EPOCH,
+        };
+        engine.update_cache("exp", &service).await;
+        assert!(engine.check_cache("exp").await.is_none());
     }
 
     #[tokio::test]
@@ -586,7 +610,7 @@ mod tests {
         let cached = engine.check_cache("test").await;
         assert!(cached.is_some());
 
-        let cached_service = cached.unwrap();
+        let cached_service = cached.expect("cached");
         assert_eq!(cached_service.capability, "test");
         assert_eq!(cached_service.endpoint, "http://test.example.com:8080");
     }

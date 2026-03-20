@@ -140,8 +140,11 @@ pub enum PrimalRequest {
 
     /// Sign lineage proof
     SignLineage {
+        /// Keys produced during genesis key generation.
         keys: GeneratedKeys,
+        /// Witness data to bind into the lineage signature.
         proof: WitnessProof,
+        /// Node receiving the signed lineage.
         node_id: NodeId,
     },
 
@@ -153,7 +156,9 @@ pub enum PrimalRequest {
 
     /// Custom request
     Custom {
+        /// Operation name understood by the target primal.
         operation: String,
+        /// JSON parameters for the operation.
         params: serde_json::Value,
     },
 }
@@ -184,9 +189,12 @@ pub enum PrimalResponse {
     Custom(serde_json::Value),
 }
 
-/// Node identity
+/// Opaque node identifier used in genesis and coordination messages.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct NodeId(pub String);
+pub struct NodeId(
+    /// Stable string form (often a UUID).
+    pub String,
+);
 
 impl std::fmt::Display for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -202,46 +210,61 @@ impl NodeId {
     }
 }
 
-/// Identity established through genesis
+/// Identity bundle produced when genesis completes successfully.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Identity {
+    /// Participant node id.
     pub node_id: NodeId,
+    /// Public key bytes advertised to the federation.
     pub public_key: Vec<u8>,
+    /// Cryptographic lineage binding the node to its ancestors.
     pub lineage: Lineage,
+    /// Proximity or witness data collected during the ceremony.
     pub witness_proof: WitnessProof,
 }
 
-/// Generated cryptographic keys
+/// Key material references returned by a security primal (private material stays remote).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneratedKeys {
+    /// Public key bytes for verification.
     pub public_key: Vec<u8>,
-    pub private_key_handle: String, // Handle/reference, not the key itself
+    /// Opaque handle to private key material; not the raw secret.
+    pub private_key_handle: String,
 }
 
-/// Witness proof from physical proximity
+/// Opaque witness attestation blob built during genesis coordination.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WitnessProof {
+    /// Serialized proof bytes (format defined by the security primal).
     pub data: Vec<u8>,
 }
 
-/// Lineage signature
+/// Signed lineage record for a node.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Lineage {
+    /// Opaque lineage payload bytes.
     pub data: Vec<u8>,
 }
 
-/// Compute workload
+/// Workload description for compute primals.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workload {
+    /// Workload identifier.
     pub id: String,
+    /// Service or workload type key used for routing.
     pub service_type: String,
+    /// Resource or scheduling hints.
     pub requirements: HashMap<String, String>,
+    /// Arbitrary JSON parameters for the target primal.
     pub payload: serde_json::Value,
 }
 
-/// Deployment identifier
+/// Opaque deployment id returned after scheduling a workload.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct DeploymentId(pub String);
+pub struct DeploymentId(
+    /// Server-assigned deployment identifier string.
+    pub String,
+);
 
 impl std::fmt::Display for DeploymentId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -257,12 +280,16 @@ impl DeploymentId {
     }
 }
 
-/// Service status
+/// Health and capability snapshot reported by a primal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceStatus {
+    /// Whether the primal considers itself healthy.
     pub healthy: bool,
+    /// Reported software version string.
     pub version: String,
+    /// Capability tags or service names.
     pub capabilities: Vec<String>,
+    /// Optional diagnostic metrics as JSON values.
     pub metrics: HashMap<String, serde_json::Value>,
 }
 

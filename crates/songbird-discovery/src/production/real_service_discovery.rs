@@ -224,7 +224,7 @@ impl ProductionServiceDiscovery {
         let matching_services: Vec<ServiceInstance> = services
             .values()
             .filter(|service| {
-                service.instance.capabilities.contains(&capability.to_string())
+                service.instance.capabilities.iter().any(|c| c == capability)
                     && service.health_status == ServiceHealthStatus::Healthy
             })
             .map(|service| service.instance.clone())
@@ -273,11 +273,13 @@ fn instance_to_service_info(instance: &ServiceInstance) -> crate::traits::Servic
     use chrono::Utc;
 
     let endpoint = TraitEndpoint {
-        address: instance.endpoint.clone(),
-        port: 0,
-        protocol: "http".to_string(),
-        path: String::new(),
-        tls: instance.endpoint.starts_with("https"),
+        path: instance.endpoint.clone(),
+        method: "GET".to_string(),
+        description: None,
+        parameters: Vec::new(),
+        response_schema: None,
+        auth_required: false,
+        rate_limit: None,
     };
 
     crate::traits::ServiceInfo {
@@ -291,7 +293,7 @@ fn instance_to_service_info(instance: &ServiceInstance) -> crate::traits::Servic
         metadata: instance.metadata.iter().map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone()))).collect(),
         tags: instance.capabilities.clone(),
         dependencies: Vec::new(),
-        status: ServiceStatus::Active,
+        status: ServiceStatus::Running,
         created_at: Utc::now(),
         updated_at: Utc::now(),
         instance_id: instance.id.clone(),
@@ -302,9 +304,18 @@ fn instance_to_service_info(instance: &ServiceInstance) -> crate::traits::Servic
 
 /// Convert the trait's `ServiceInfo` to internal `ServiceInstance`
 fn service_info_to_instance(info: &crate::traits::ServiceInfo) -> ServiceInstance {
-    let endpoint = info.endpoints.first()
-        .map(|e| e.address.clone())
-        .unwrap_or_default();
+    let endpoint = info
+        .endpoints
+        .first()
+        .map(|e| e.path.clone())
+        .filter(|p| !p.is_empty())
+        .unwrap_or_else(|| {
+            if info.host.starts_with("http://") || info.host.starts_with("https://") {
+                info.host.clone()
+            } else {
+                format!("http://{}:{}", info.host, info.port)
+            }
+        });
 
     ServiceInstance {
         id: info.service_id.clone(),
@@ -461,6 +472,7 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -496,5 +508,99 @@ mod tests {
         // Test capability filtering
         let services = discovery.get_services_by_capability("security").await;
         assert!(services.is_ok());
+    }
+
+    fn sample_service_info(id: &str, name: &str, endpoint_path: &str, tags: Vec<String>) -> crate::traits::ServiceInfo {
+        use crate::traits::service::{ServiceEndpoint, ServiceInfo, ServiceStatus};
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        ServiceInfo {
+            service_id: id.to_string(),
+            name: name.to_string(),
+            version: "1.0.0".to_string(),
+            service_type: "test".to_string(),
+            description: None,
+            endpoints: vec![ServiceEndpoint {
+                path: endpoint_path.to_string(),
+                method: "GET".to_string(),
+                description: None,
+                parameters: Vec::new(),
+                response_schema: None,
+                auth_required: false,
+                rate_limit: None,
+            }],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags,
+            dependencies: Vec::new(),
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: id.to_string(),
+            host: endpoint_path.to_string(),
+            port: 8080,
+        }
+    }
+
+    #[tokio::test]
+    async fn register_list_and_capability_queries() {
+        use crate::traits::discovery::{ServiceHealthStatus, ServiceQuery};
+        use crate::traits::ServiceDiscovery;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info(
+            "svc-reg-1",
+            "RegistryAlpha",
+            "http://127.0.0.1:9",
+            vec!["security".to_string(), "metrics".to_string()],
+        );
+
+        ServiceDiscovery::register(&discovery, info)
+            .await
+            .expect("register service");
+
+        ServiceDiscovery::update_health(&discovery, "svc-reg-1", ServiceHealthStatus::Healthy)
+            .await
+            .expect("mark healthy");
+
+        let by_cap = discovery
+            .get_services_by_capability("security")
+            .await
+            .expect("by capability");
+        assert_eq!(by_cap.len(), 1);
+        assert_eq!(by_cap[0].id, "svc-reg-1");
+
+        let all = ServiceDiscovery::list_all(&discovery).await.expect("list all");
+        assert_eq!(all.len(), 1);
+
+        let mut q = ServiceQuery::new();
+        q.name = Some("Alpha".into());
+        let filtered = ServiceDiscovery::discover(&discovery, q).await.expect("discover");
+        assert_eq!(filtered.len(), 1);
+        assert!(filtered[0].name.contains("Alpha"));
+    }
+
+    #[tokio::test]
+    async fn unregister_removes_service() {
+        use crate::traits::ServiceDiscovery;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info("svc-rm", "Rm", "http://127.0.0.1:8", vec![]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+        assert!(ServiceDiscovery::exists(&discovery, "svc-rm").await.expect("exists"));
+
+        ServiceDiscovery::unregister(&discovery, "svc-rm")
+            .await
+            .expect("unregister");
+        assert!(!ServiceDiscovery::exists(&discovery, "svc-rm").await.expect("gone"));
     }
 }
