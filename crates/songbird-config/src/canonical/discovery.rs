@@ -265,6 +265,9 @@ pub type UnifiedDiscoveryConfig = DiscoveryConfig;
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -363,5 +366,25 @@ mod tests {
         assert!(config.common_ports.contains(&80));
         assert!(config.common_ports.contains(&443));
         assert!(config.common_ports.contains(&8080));
+    }
+
+    #[test]
+    fn test_unified_discovery_config_alias_equivalence() {
+        let u: UnifiedDiscoveryConfig = DiscoveryConfig::default();
+        let d: DiscoveryConfig = u;
+        assert_eq!(d.scan_timeout_secs, DiscoveryConfig::default().scan_timeout_secs);
+    }
+
+    #[test]
+    fn test_network_discovery_config_serde_roundtrip() {
+        let c = NetworkDiscoveryConfig {
+            enabled: true,
+            scan_local_network: false,
+            scan_ports: vec![1, 2],
+            discovery_protocols: vec!["http".to_string()],
+        };
+        let json = serde_json::to_string(&c).unwrap();
+        let back: NetworkDiscoveryConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(c, back);
     }
 }

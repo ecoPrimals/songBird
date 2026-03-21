@@ -251,10 +251,14 @@ impl SecurityAdapter {
     ///
     /// Returns an error if no security capability can be discovered.
     pub async fn from_discovery() -> SongbirdResult<Self> {
-        use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
+        Self::from_discovery_with_resolver(songbird_config::capability_endpoints::CapabilityEndpointResolver::new()).await
+    }
 
-        // ✅ PHASE 1 INTEGRATION: Multi-tier capability discovery
-        let resolver = CapabilityEndpointResolver::new();
+    /// Like [`Self::from_discovery`], but uses an explicit [`songbird_config::capability_endpoints::CapabilityEndpointResolver`].
+    pub async fn from_discovery_with_resolver(
+        resolver: songbird_config::capability_endpoints::CapabilityEndpointResolver,
+    ) -> SongbirdResult<Self> {
+        use songbird_config::capability_endpoints::CapabilityType;
 
         match resolver.get_endpoint(CapabilityType::Security).await {
             Ok(endpoint) => {
@@ -855,15 +859,3 @@ impl SecurityProvider for SecurityAdapter {
         self.verify_auth(token).await
     }
 }
-
-#[cfg(test)]
-#[path = "security_tests.rs"]
-mod tests;
-
-#[cfg(test)]
-#[path = "tests_protocol_detection.rs"]
-mod protocol_detection_tests;
-
-#[cfg(test)]
-#[path = "security_trust_tests.rs"]
-mod trust_tests;

@@ -19,6 +19,22 @@
 
 use serde_json::Value;
 
+/// Resolve canonical BirdSong / biomeOS `family_id` from environment keys.
+///
+/// Priority: `SONGBIRD_ORCHESTRATOR_FAMILY_ID` → `BIOMEOS_FAMILY_ID` →
+/// `SONGBIRD_FAMILY_ID` → `FAMILY_ID` → `NODE_FAMILY_ID`, then `"default"`.
+#[must_use]
+pub fn canonical_family_id(
+    env: impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> String {
+    env("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+        .or_else(|_| env("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| env("SONGBIRD_FAMILY_ID"))
+        .or_else(|_| env("FAMILY_ID"))
+        .or_else(|_| env("NODE_FAMILY_ID"))
+        .unwrap_or_else(|_| "default".to_string())
+}
+
 /// Generate primal info (self-knowledge only)
 #[must_use]
 pub fn primal_info() -> Value {

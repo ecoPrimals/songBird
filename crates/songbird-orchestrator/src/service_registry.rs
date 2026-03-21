@@ -606,6 +606,9 @@ pub fn spawn_cleanup_task(
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use songbird_types::defaults::ports::DEFAULT_PORT_RANGE_START;
 
@@ -727,5 +730,131 @@ mod tests {
         };
 
         assert!(registry.register(request).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_service_after_register() {
+        let registry = ServiceRegistry::new();
+        let reg = registry
+            .register(RegistrationRequest {
+                primal_name: "P".to_string(),
+                primal_version: "1".to_string(),
+                capabilities: vec![],
+                protocols: vec!["https".to_string()],
+                preferred_protocol: "https".to_string(),
+                health_check_path: None,
+                metadata: None,
+            })
+            .await
+            .unwrap();
+        let svc = registry.get_service(&reg.service_id).await.unwrap();
+        assert_eq!(svc.service_id, reg.service_id);
+    }
+
+    #[tokio::test]
+    async fn list_and_query_by_capability() {
+        let registry = ServiceRegistry::new();
+        let cap = ServiceCapability {
+            name: "ml.infer".to_string(),
+            capability_type: "compute".to_string(),
+            metadata: std::collections::HashMap::new(),
+        };
+        registry
+            .register(RegistrationRequest {
+                primal_name: "Infer".to_string(),
+                primal_version: "1".to_string(),
+                capabilities: vec![cap],
+                protocols: vec!["https".to_string()],
+                preferred_protocol: "https".to_string(),
+                health_check_path: None,
+                metadata: None,
+            })
+            .await
+            .unwrap();
+        let list = registry.list_services().await;
+        assert_eq!(list.len(), 1);
+        let q = registry.query_by_capability("ml.infer").await;
+        assert_eq!(q.len(), 1);
+        assert_eq!(q[0].service_name, "Infer");
+    }
+
+    #[tokio::test]
+    async fn heartbeat_rejects_bad_token() {
+        let registry = ServiceRegistry::new();
+        let reg = registry
+            .register(RegistrationRequest {
+                primal_name: "P".to_string(),
+                primal_version: "1".to_string(),
+                capabilities: vec![],
+                protocols: vec!["https".to_string()],
+                preferred_protocol: "https".to_string(),
+                health_check_path: None,
+                metadata: None,
+            })
+            .await
+            .unwrap();
+        let err = registry
+            .heartbeat(HeartbeatRequest {
+                service_id: reg.service_id,
+                token: "wrong".to_string(),
+                status: "operational".to_string(),
+                current_load: None,
+                capabilities_changed: false,
+            })
+            .await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn deregister_wrong_token_fails() {
+        let registry = ServiceRegistry::new();
+        let reg = registry
+            .register(RegistrationRequest {
+                primal_name: "P".to_string(),
+                primal_version: "1".to_string(),
+                capabilities: vec![],
+                protocols: vec!["https".to_string()],
+                preferred_protocol: "https".to_string(),
+                health_check_path: None,
+                metadata: None,
+            })
+            .await
+            .unwrap();
+        let r = registry
+            .deregister(DeregistrationRequest {
+                service_id: reg.service_id,
+                token: "bad".to_string(),
+                reason: "x".to_string(),
+            })
+            .await;
+        assert!(r.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_stats_reflects_registration() {
+        let registry = ServiceRegistry::new();
+        registry
+            .register(RegistrationRequest {
+                primal_name: "P".to_string(),
+                primal_version: "1".to_string(),
+                capabilities: vec![],
+                protocols: vec!["https".to_string()],
+                preferred_protocol: "https".to_string(),
+                health_check_path: None,
+                metadata: None,
+            })
+            .await
+            .unwrap();
+        let s = registry.get_stats().await;
+        assert_eq!(s.total_services, 1);
+        assert_eq!(s.active_services, 1);
+        assert!(s.allocated_ports >= 1);
+    }
+
+    #[test]
+    fn service_endpoint_new_url() {
+        let e = ServiceEndpoint::new("https", "127.0.0.1", 8443);
+        assert_eq!(e.full_url, "https://127.0.0.1:8443");
+        assert_eq!(e.port, 8443);
     }
 }

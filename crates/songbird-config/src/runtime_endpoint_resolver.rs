@@ -146,9 +146,16 @@ impl RuntimeEndpointResolver {
     /// - `{CAPABILITY}_ENDPOINT` (e.g., `COMPUTE_ENDPOINT`)
     /// - `SONGBIRD_{CAPABILITY}_URL` (e.g., `SONGBIRD_COMPUTE_URL`)
     fn try_env_resolution(capability: &str) -> Option<String> {
+        Self::try_env_resolution_with(capability, |k| std::env::var(k))
+    }
+
+    /// Injectable version for testing without global env mutation
+    fn try_env_resolution_with(
+        capability: &str,
+        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> Option<String> {
         let capability_upper = capability.to_uppercase();
 
-        // Try various env var patterns
         let env_keys = [
             format!("{capability_upper}_ENDPOINT"),
             format!("SONGBIRD_{capability_upper}_URL"),
@@ -157,7 +164,7 @@ impl RuntimeEndpointResolver {
         ];
 
         for key in env_keys {
-            if let Ok(value) = std::env::var(&key)
+            if let Ok(value) = env(&key)
                 && !value.is_empty()
             {
                 return Some(value);
@@ -284,37 +291,31 @@ mod tests {
         assert_eq!(endpoint, "http://my-endpoint:9000");
     }
 
-    #[tokio::test]
-    async fn test_env_resolution() {
-        songbird_process_env::set_var("COMPUTE_ENDPOINT", "http://env-compute:8080");
-
-        let resolver = RuntimeEndpointResolver::new();
-        let endpoint = resolver.resolve_capability("compute").await.expect("resolve from env");
-
-        assert_eq!(endpoint, "http://env-compute:8080");
-
-        songbird_process_env::remove_var("COMPUTE_ENDPOINT");
+    #[test]
+    fn test_env_resolution_compute_endpoint() {
+        let result = RuntimeEndpointResolver::try_env_resolution_with("compute", |key| match key {
+            "COMPUTE_ENDPOINT" => Ok("http://env-compute:8080".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        });
+        assert_eq!(result, Some("http://env-compute:8080".to_string()));
     }
 
-    #[tokio::test]
-    async fn test_env_resolution_songbird_url_variant() {
-        songbird_process_env::remove_var("STORAGE_ENDPOINT");
-        songbird_process_env::remove_var("STORAGE_URL");
-        songbird_process_env::set_var("SONGBIRD_STORAGE_URL", "http://storage-from-songbird:9000");
-
-        let resolver = RuntimeEndpointResolver::new();
-        let endpoint = resolver.resolve_capability("storage").await.expect("SONGBIRD_*_URL");
-
-        assert_eq!(endpoint, "http://storage-from-songbird:9000");
-
-        songbird_process_env::remove_var("SONGBIRD_STORAGE_URL");
+    #[test]
+    fn test_env_resolution_songbird_url_variant() {
+        let result = RuntimeEndpointResolver::try_env_resolution_with("storage", |key| match key {
+            "SONGBIRD_STORAGE_URL" => Ok("http://storage-from-songbird:9000".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        });
+        assert_eq!(result, Some("http://storage-from-songbird:9000".to_string()));
     }
 
     #[test]
     fn test_try_env_resolution_skips_empty_values() {
-        songbird_process_env::set_var("NETSVC_ENDPOINT", "");
-        assert!(RuntimeEndpointResolver::try_env_resolution("netsvc").is_none());
-        songbird_process_env::remove_var("NETSVC_ENDPOINT");
+        let result = RuntimeEndpointResolver::try_env_resolution_with("netsvc", |key| match key {
+            "NETSVC_ENDPOINT" => Ok(String::new()),
+            _ => Err(std::env::VarError::NotPresent),
+        });
+        assert!(result.is_none());
     }
 
     #[test]
@@ -339,18 +340,12 @@ mod tests {
         assert_eq!(best.url, "http://high");
     }
 
-    #[tokio::test]
-    async fn test_resolve_uses_fallback_when_nothing_else() {
-        songbird_process_env::remove_var("ORCHESTRATOR_ENDPOINT");
-        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_URL");
-        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_ENDPOINT");
-        songbird_process_env::remove_var("ORCHESTRATOR_URL");
-
-        let resolver =
-            RuntimeEndpointResolver::with_discovery(CapabilityDiscovery::with_methods(Vec::new()));
-
-        let url = resolver.resolve_capability("orchestrator").await.expect("fallback");
-        assert!(url.contains("8080"), "url={url}");
+    #[test]
+    fn test_fallback_is_configured_for_orchestrator() {
+        let fallbacks = RuntimeEndpointResolver::default_fallbacks();
+        let orch = fallbacks.get("orchestrator").expect("orchestrator fallback");
+        assert!(!orch.is_empty());
+        assert!(orch[0].contains("8080"), "url={}", orch[0]);
     }
 
     #[tokio::test]

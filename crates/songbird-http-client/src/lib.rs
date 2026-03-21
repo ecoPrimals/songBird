@@ -60,27 +60,36 @@
 //! - ✅ Agnostic crypto provider support
 #![forbid(unsafe_code)]
 
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
-pub mod beardog_client; // ✅ ACTIVE: Smart refactored module (7 sub-modules)
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
+/// BearDog IPC client submodules (refactored HTTP/TLS helpers).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod beardog_client;
+/// High-level `SongbirdHttpClient` and HTTP/HTTPS request execution.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod client;
 mod connection; // ✅ NEW: Connection management (HTTP/HTTPS) (extracted from client.rs)
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
-pub mod connection_pool; // ✅ NEW: Connection pooling for resource optimization (Feb 3, 2026)
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
+/// Bounded connection pool with acquire/return and health-aware cleanup.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod connection_pool;
+/// Crypto capability traits, BearDog discovery, and TLS secret bags.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod crypto;
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
+/// Error types and `Result` alias for this crate.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod error;
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
-pub mod http_config; // ✅ NEW: Adaptive HTTP configuration (User-Agent, routing, etc.)
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
+/// Adaptive HTTP client config: headers, redirects, timeouts, domain rules.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod http_config;
+/// IPC-backed HTTP client, multipart forms, and request builders.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod ipc_client;
 mod redirect; // ✅ NEW: HTTP redirect handling (extracted from client.rs)
 mod request; // ✅ NEW: HTTP request building (extracted from client.rs)
 mod response; // ✅ NEW: HTTP response parsing (extracted from client.rs)
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
+/// Pure Rust TLS 1.3 stack (record layer, handshake, adaptive extensions).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod tls;
-#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
+/// HTTP request/response value types shared by the client stack.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod types;
 
 // Legacy implementation moved to archive/legacy_implementations/beardog_client_jan_26_2026/

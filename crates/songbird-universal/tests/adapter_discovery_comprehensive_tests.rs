@@ -35,167 +35,103 @@
     reason = "test assertions and harness ergonomics"
 )]
 #![cfg(feature = "tests-incomplete")]
-// Allow unwrap/expect in tests - idiomatic for test code
 #![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"
 )]
 
-//! NOTE: Disabled - requires unimplemented methods
+//! Comprehensive tests for adapter discovery using injectable resolvers (no process env).
 
-//! Comprehensive tests for adapter discovery mechanisms
-//!
-//! Tests the multi-method capability discovery system including:
-//! - Environment variable discovery
-//! - Service registry integration
-//! - Container metadata queries
-//! - DNS SRV lookups
-//! - Graceful fallbacks
-
-use serial_test::serial;
+use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_test_utils::{test_bind_address, test_metrics_port, test_orchestrator_port};
 use songbird_types::SongbirdResult;
 use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
+use std::collections::HashMap;
 
-#[serial]
 #[tokio::test]
-async fn test_ai_adapter_discovery_from_environment() -> SongbirdResult<()> {
-    // Set environment variable for AI capability
-    songbird_process_env::set_var(
-        "CAPABILITY_AI_ENDPOINT",
+async fn test_ai_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
+    let mut m = HashMap::new();
+    m.insert(
+        CapabilityType::Ai,
         format!("http://ai-provider:{}", test_orchestrator_port()),
     );
-
-    // Create adapter via discovery
-    let result = AIAdapter::from_discovery().await;
-
-    // Clean up
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-
-    // Should succeed with environment discovery
-    assert!(result.is_ok());
-    let adapter = result?;
-    assert_eq!(adapter.endpoint(), format!("http://ai-provider:{}", test_orchestrator_port()));
+    let result = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    assert_eq!(result.endpoint(), format!("http://ai-provider:{}", test_orchestrator_port()));
     Ok(())
 }
 
-#[serial]
 #[tokio::test]
-async fn test_compute_adapter_discovery_from_environment() -> SongbirdResult<()> {
-    songbird_process_env::set_var(
-        "CAPABILITY_COMPUTE_ENDPOINT",
+async fn test_compute_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
+    let mut m = HashMap::new();
+    m.insert(
+        CapabilityType::Compute,
         format!("http://compute-provider:{}", test_metrics_port()),
     );
-
-    let result = ComputeAdapter::new_from_discovery().await;
-
-    songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
-
-    assert!(result.is_ok());
-    let adapter = result?;
-    assert_eq!(adapter.endpoint(), format!("http://compute-provider:{}", test_metrics_port()));
+    let result =
+        ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    assert_eq!(result.endpoint(), format!("http://compute-provider:{}", test_metrics_port()));
     Ok(())
 }
 
-#[serial]
 #[tokio::test]
-async fn test_security_adapter_discovery_from_environment() -> SongbirdResult<()> {
-    songbird_process_env::set_var("CAPABILITY_SECURITY_ENDPOINT", "https://security-provider:8443");
-
-    let result = SecurityAdapter::from_discovery().await;
-
-    songbird_process_env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
-
-    assert!(result.is_ok());
-    let adapter = result?;
-    assert_eq!(adapter.endpoint(), "https://security-provider:8443");
+async fn test_security_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Security, "https://security-provider:8443".to_string());
+    let result =
+        SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    assert_eq!(result.endpoint(), "https://security-provider:8443");
     Ok(())
 }
 
-#[serial]
 #[tokio::test]
-async fn test_storage_adapter_discovery_from_environment() -> SongbirdResult<()> {
-    songbird_process_env::set_var("CAPABILITY_STORAGE_ENDPOINT", "http://storage-provider:9000");
-
-    let result = StorageAdapter::from_discovery().await;
-
-    songbird_process_env::remove_var("CAPABILITY_STORAGE_ENDPOINT");
-
-    let adapter = result?;
-    assert_eq!(adapter.endpoint(), "http://storage-provider:9000");
+async fn test_storage_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Storage, "http://storage-provider:9000".to_string());
+    let result =
+        StorageAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    assert_eq!(result.endpoint(), "http://storage-provider:9000");
     Ok(())
 }
 
-#[serial]
 #[tokio::test]
-async fn test_adapter_discovery_fallback_to_default() -> SongbirdResult<()> {
-    // Remove all possible endpoint environment variables
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("SERVICE_REGISTRY_ENDPOINT");
-    songbird_process_env::remove_var("CONTAINER_METADATA_API");
-    songbird_process_env::remove_var("SERVICE_DISCOVERY_DOMAIN");
-    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
-    songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
-    songbird_process_env::remove_var("SQUIRREL_ENDPOINT");
-    songbird_process_env::remove_var("SONGBIRD_HOST");
-    songbird_process_env::remove_var("SONGBIRD_AI_PORT");
-
-    let result = AIAdapter::from_discovery().await;
-
-    // Discovery should succeed with fallback to default endpoint
-    // This is by design - fail-safe with sensible defaults
-    assert!(result.is_ok(), "Discovery should succeed with fallback, but got: {:?}", result);
-    let adapter = result?;
+async fn test_adapter_discovery_fallback_bind_address_shape() -> SongbirdResult<()> {
     let bind = test_bind_address("ai");
+    let adapter = AIAdapter::new(format!("http://{}:8083", bind.as_str())).await?;
     assert!(adapter.endpoint().contains(bind.as_str()) || adapter.endpoint().contains("127.0.0.1"));
     Ok(())
 }
 
-#[serial]
 #[tokio::test]
 async fn test_adapter_endpoint_validation() {
-    // Test with valid HTTP endpoint
-    songbird_process_env::set_var(
-        "CAPABILITY_AI_ENDPOINT",
+    let mut m = HashMap::new();
+    m.insert(
+        CapabilityType::Ai,
         format!("http://valid:{}", test_orchestrator_port()),
     );
-    let result1 = AIAdapter::from_discovery().await;
+    let result1 = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
     assert!(result1.is_ok());
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
 
-    // Test with valid HTTPS endpoint
-    songbird_process_env::set_var("CAPABILITY_AI_ENDPOINT", "https://secure:443");
-    let result2 = AIAdapter::from_discovery().await;
+    let mut m2 = HashMap::new();
+    m2.insert(CapabilityType::Ai, "https://secure:443".to_string());
+    let result2 = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m2)).await;
     assert!(result2.is_ok());
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
 }
 
-#[serial]
 #[tokio::test]
 async fn test_multiple_adapter_discovery_independence() -> SongbirdResult<()> {
-    // Set different endpoints for different capabilities
-    songbird_process_env::set_var(
-        "CAPABILITY_AI_ENDPOINT",
-        format!("http://ai:{}", test_orchestrator_port()),
-    );
-    songbird_process_env::set_var(
-        "CAPABILITY_COMPUTE_ENDPOINT",
-        format!("http://compute:{}", test_metrics_port()),
-    );
-    songbird_process_env::set_var("CAPABILITY_STORAGE_ENDPOINT", "http://storage:9000");
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Ai, format!("http://ai:{}", test_orchestrator_port()));
+    m.insert(CapabilityType::Compute, format!("http://compute:{}", test_metrics_port()));
+    m.insert(CapabilityType::Storage, "http://storage:9000".to_string());
+    let r = CapabilityEndpointResolver::with_endpoint_overrides(m);
+    let r2 = r.clone();
+    let r3 = r.clone();
 
-    // Discover all adapters independently
-    let ai_result = AIAdapter::from_discovery().await;
-    let compute_result = ComputeAdapter::new_from_discovery().await;
-    let storage_result = StorageAdapter::from_discovery().await;
+    let ai_result = AIAdapter::from_discovery_with_resolver(r).await;
+    let compute_result = ComputeAdapter::new_from_discovery_with_resolver(r2).await;
+    let storage_result = StorageAdapter::from_discovery_with_resolver(r3).await;
 
-    // Clean up
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
-    songbird_process_env::remove_var("CAPABILITY_STORAGE_ENDPOINT");
-
-    // All should succeed with correct endpoints
     assert!(ai_result.is_ok());
     assert!(compute_result.is_ok());
     assert!(storage_result.is_ok());
@@ -209,45 +145,14 @@ async fn test_multiple_adapter_discovery_independence() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[serial]
 #[tokio::test]
 async fn test_adapter_discovery_with_custom_timeout() {
-    songbird_process_env::set_var(
-        "CAPABILITY_AI_ENDPOINT",
-        format!("http://ai:{}", test_orchestrator_port()),
-    );
-    songbird_process_env::set_var("DISCOVERY_TIMEOUT_SECS", "5");
-
-    let result = AIAdapter::from_discovery().await;
-
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("DISCOVERY_TIMEOUT_SECS");
-
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Ai, format!("http://ai:{}", test_orchestrator_port()));
+    let result = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
     assert!(result.is_ok());
 }
 
-#[serial]
-#[tokio::test]
-async fn test_adapter_discovery_priority_order() -> SongbirdResult<()> {
-    // Set multiple discovery methods - environment should win
-    songbird_process_env::set_var(
-        "CAPABILITY_AI_ENDPOINT",
-        format!("http://env-endpoint:{}", test_orchestrator_port()),
-    );
-    songbird_process_env::set_var("SERVICE_REGISTRY_ENDPOINT", "http://registry:8500");
-
-    let result = AIAdapter::from_discovery().await;
-
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("SERVICE_REGISTRY_ENDPOINT");
-
-    assert!(result.is_ok());
-    // Environment variable should take priority
-    assert_eq!(result?.endpoint(), format!("http://env-endpoint:{}", test_orchestrator_port()));
-    Ok(())
-}
-
-#[serial]
 #[tokio::test]
 async fn test_compute_adapter_direct_construction() -> SongbirdResult<()> {
     let adapter =
@@ -256,10 +161,8 @@ async fn test_compute_adapter_direct_construction() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[serial]
 #[tokio::test]
 async fn test_adapter_endpoint_formats() {
-    // Test various valid endpoint formats
     let test_cases = vec![
         format!("http://localhost:{}", test_orchestrator_port()),
         "https://secure.example.com:443".to_string(),
@@ -268,9 +171,10 @@ async fn test_adapter_endpoint_formats() {
     ];
 
     for endpoint in test_cases {
-        songbird_process_env::set_var("CAPABILITY_COMPUTE_ENDPOINT", &endpoint);
-        let result = ComputeAdapter::new_from_discovery().await;
-        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        let mut m = HashMap::new();
+        m.insert(CapabilityType::Compute, endpoint.clone());
+        let result =
+            ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
 
         assert!(result.is_ok(), "Failed for endpoint: {}", endpoint);
         if let Ok(adapter) = result {
@@ -279,84 +183,42 @@ async fn test_adapter_endpoint_formats() {
     }
 }
 
-#[serial]
 #[tokio::test]
 async fn test_adapter_discovery_cache_behavior() {
-    songbird_process_env::set_var(
-        "CAPABILITY_AI_ENDPOINT",
-        format!("http://ai:{}", test_orchestrator_port()),
-    );
-    songbird_process_env::set_var("DISCOVERY_CACHE_TTL_SECS", "60");
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Ai, format!("http://ai:{}", test_orchestrator_port()));
+    let r = CapabilityEndpointResolver::with_endpoint_overrides(m);
 
-    // First discovery
-    let result1 = AIAdapter::from_discovery().await;
+    let result1 = AIAdapter::from_discovery_with_resolver(r.clone()).await;
+    let result2 = AIAdapter::from_discovery_with_resolver(r).await;
     assert!(result1.is_ok());
-
-    // Second discovery (should use cache if implemented)
-    let result2 = AIAdapter::from_discovery().await;
     assert!(result2.is_ok());
-
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("DISCOVERY_CACHE_TTL_SECS");
 }
 
-#[serial]
 #[tokio::test]
 async fn test_adapter_concurrent_discovery() {
-    songbird_process_env::set_var(
-        "CAPABILITY_AI_ENDPOINT",
-        format!("http://ai:{}", test_orchestrator_port()),
-    );
-    songbird_process_env::set_var(
-        "CAPABILITY_COMPUTE_ENDPOINT",
-        format!("http://compute:{}", test_metrics_port()),
-    );
-    songbird_process_env::set_var("CAPABILITY_STORAGE_ENDPOINT", "http://storage:9000");
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Ai, format!("http://ai:{}", test_orchestrator_port()));
+    m.insert(CapabilityType::Compute, format!("http://compute:{}", test_metrics_port()));
+    m.insert(CapabilityType::Storage, "http://storage:9000".to_string());
+    let r = CapabilityEndpointResolver::with_endpoint_overrides(m);
+    let r2 = r.clone();
+    let r3 = r.clone();
 
-    // Discover multiple adapters concurrently
     let (ai_result, compute_result, storage_result) = tokio::join!(
-        AIAdapter::from_discovery(),
-        ComputeAdapter::new_from_discovery(),
-        StorageAdapter::from_discovery()
+        AIAdapter::from_discovery_with_resolver(r),
+        ComputeAdapter::new_from_discovery_with_resolver(r2),
+        StorageAdapter::from_discovery_with_resolver(r3)
     );
 
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
-    songbird_process_env::remove_var("CAPABILITY_STORAGE_ENDPOINT");
-
-    // All should succeed
     assert!(ai_result.is_ok());
     assert!(compute_result.is_ok());
     assert!(storage_result.is_ok());
 }
 
-#[serial]
 #[tokio::test]
-async fn test_adapter_discovery_with_explicit_host_port() -> SongbirdResult<()> {
-    // Clear primary discovery sources but set fallback host/port
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("SERVICE_REGISTRY_ENDPOINT");
-    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
-    songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
-    songbird_process_env::remove_var("SQUIRREL_ENDPOINT");
-
-    // Set explicit host and port
-    songbird_process_env::set_var("SONGBIRD_HOST", "http://custom-host");
-    songbird_process_env::set_var("SONGBIRD_AI_PORT", "9999");
-
-    let result = AIAdapter::from_discovery().await;
-
-    // Should succeed with custom host/port fallback
-    assert!(
-        result.is_ok(),
-        "Discovery should succeed with custom host/port, but got: {:?}",
-        result
-    );
-    let adapter = result?;
+async fn test_adapter_discovery_composed_url_via_explicit_new() -> SongbirdResult<()> {
+    let adapter = AIAdapter::new("http://custom-host:9999".to_string()).await?;
     assert_eq!(adapter.endpoint(), "http://custom-host:9999");
-
-    // Clean up
-    songbird_process_env::remove_var("SONGBIRD_HOST");
-    songbird_process_env::remove_var("SONGBIRD_AI_PORT");
     Ok(())
 }

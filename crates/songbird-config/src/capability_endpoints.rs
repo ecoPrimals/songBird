@@ -150,12 +150,14 @@ pub enum DiscoveryMethod {
 }
 
 /// Capability endpoint resolver
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CapabilityEndpointResolver {
     /// Cached endpoints
     cache: Arc<RwLock<HashMap<CapabilityType, CapabilityEndpoint>>>,
     /// Cache TTL
     cache_ttl: Duration,
+    /// Injected endpoints (tests, explicit wiring) — consulted before environment discovery.
+    static_overrides: Option<Arc<HashMap<CapabilityType, String>>>,
 }
 
 impl CapabilityEndpointResolver {
@@ -168,7 +170,19 @@ impl CapabilityEndpointResolver {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
             cache_ttl: Duration::from_secs(cache_ttl_secs),
+            static_overrides: None,
         }
+    }
+
+    /// Resolver with fixed capability → endpoint URLs (checked before any environment lookup).
+    ///
+    /// Use for tests and embedders that pass configuration in-process instead of mutating
+    /// process-global environment variables.
+    #[must_use]
+    pub fn with_endpoint_overrides(overrides: HashMap<CapabilityType, String>) -> Self {
+        let mut base = Self::new();
+        base.static_overrides = Some(Arc::new(overrides));
+        base
     }
 
     /// Get endpoint for a capability
@@ -208,6 +222,20 @@ impl CapabilityEndpointResolver {
         capability: &CapabilityType,
     ) -> SongbirdResult<CapabilityEndpoint> {
         debug!("Discovering endpoint for capability: {:?}", capability);
+
+        // Method 0: Injected static overrides (tests / explicit config)
+        if let Some(overrides) = &self.static_overrides
+            && let Some(endpoint) = overrides.get(capability)
+        {
+            return Ok(CapabilityEndpoint {
+                capability: capability.clone(),
+                endpoint: endpoint.clone(),
+                provider_id: None,
+                discovery_method: DiscoveryMethod::ConfigFile,
+                confidence: 1.0,
+                discovered_at: std::time::SystemTime::now(),
+            });
+        }
 
         // Method 1: Environment variable (highest priority)
         if let Ok(endpoint) = env::var(capability.env_var_name()) {

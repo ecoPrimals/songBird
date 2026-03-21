@@ -38,6 +38,7 @@ fn test_discovery_config_custom() {
         max_concurrent_discoveries: 5,
         auto_discovery: false,
         enable_network_discovery: true,
+        provider_endpoints: HashMap::new(),
     };
 
     assert_eq!(config.refresh_interval, std::time::Duration::from_secs(60));

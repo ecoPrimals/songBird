@@ -92,6 +92,9 @@ impl<T: Clone> DegradationStrategy<T> {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -196,5 +199,12 @@ mod tests {
         let err = NoFallbackError;
         let cloned = err.clone();
         assert_eq!(err, cloned);
+    }
+
+    #[test]
+    fn no_fallback_error_source_trait() {
+        use std::error::Error;
+        let err: &(dyn Error + 'static) = &NoFallbackError;
+        assert!(err.source().is_none());
     }
 }

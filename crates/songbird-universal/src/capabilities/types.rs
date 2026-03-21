@@ -106,6 +106,11 @@ pub struct DiscoveryConfig {
     pub auto_discovery: bool,
     /// Whether to enable network-based discovery (aligns with `network_discovery.enabled`)
     pub enable_network_discovery: bool,
+    /// Explicit provider base URLs per canonical capability (`compute`, `storage`, `ai`, `security`).
+    ///
+    /// Same role as `*_PROVIDER_ENDPOINT` environment variables, but scoped to this adapter
+    /// instance (safe for concurrent tests).
+    pub provider_endpoints: HashMap<String, String>,
 }
 
 impl Default for DiscoveryConfig {
@@ -116,6 +121,7 @@ impl Default for DiscoveryConfig {
             max_concurrent_discoveries: 10,                        // Aligns with canonical default
             auto_discovery: true,                                  // Aligns with canonical default
             enable_network_discovery: false, // Secure default (canonical: false)
+            provider_endpoints: HashMap::new(),
         }
     }
 }
@@ -259,6 +265,7 @@ mod tests {
         assert_eq!(config.max_concurrent_discoveries, 10);
         assert!(config.auto_discovery);
         assert!(!config.enable_network_discovery);
+        assert!(config.provider_endpoints.is_empty());
     }
 
     #[test]

@@ -28,6 +28,9 @@ use std::{
 };
 use tracing::info;
 
+/// Default tarpc listen port when `SONGBIRD_TARPC_PORT` is unset.
+const DEFAULT_TARPC_PORT: &str = "8091";
+
 /// Protocol capability discovery and negotiation routes
 pub fn protocol_routes() -> Router<ProtocolApiState> {
     Router::new()
@@ -71,6 +74,8 @@ impl Default for AvailableProtocols {
     fn default() -> Self {
         // ✅ MIGRATED: Use environment-based configuration
         let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
+        let tarpc_port =
+            std::env::var("SONGBIRD_TARPC_PORT").unwrap_or_else(|_| DEFAULT_TARPC_PORT.to_string());
         let base_url = format!("http://[::]:{port}");
 
         Self {
@@ -105,7 +110,10 @@ impl Default for AvailableProtocols {
             // tarpc: Phase 3 IMPLEMENTED! ✅ (Nov 11, 2025)
             tarpc: Some(ProtocolInfo {
                 version: "0.34".to_string(),
-                endpoints: HashMap::from([("rpc".to_string(), "tarpc://[::]:8091".to_string())]),
+                endpoints: HashMap::from([(
+                    "rpc".to_string(),
+                    format!("tarpc://[::]:{tarpc_port}"),
+                )]),
                 features: vec![
                     "binary".to_string(),
                     "high-performance".to_string(),

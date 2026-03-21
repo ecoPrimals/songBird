@@ -73,4 +73,35 @@ mod tests {
         assert_eq!(p.always_require_consent, back.always_require_consent);
         assert_eq!(p.blocked_operations, back.blocked_operations);
     }
+
+    #[test]
+    fn clone_preserves_fields() {
+        let p = UserPreferences {
+            auto_approve_under_cost: Some(3.0),
+            always_require_consent: vec!["a".to_string()],
+            blocked_operations: vec!["b".to_string()],
+        };
+        let q = p.clone();
+        assert_eq!(p.auto_approve_under_cost, q.auto_approve_under_cost);
+        assert_eq!(p.always_require_consent, q.always_require_consent);
+        assert_eq!(p.blocked_operations, q.blocked_operations);
+    }
+
+    #[test]
+    fn merge_semantics_manual_union() {
+        // No merge() API — document intended use: caller unions lists when combining profiles
+        let base = UserPreferences::default();
+        let overlay = UserPreferences {
+            auto_approve_under_cost: Some(25.0),
+            always_require_consent: vec!["export_data".to_string()],
+            blocked_operations: vec!["danger".to_string()],
+        };
+        let mut merged = base.clone();
+        merged.auto_approve_under_cost = overlay.auto_approve_under_cost;
+        merged.always_require_consent.extend(overlay.always_require_consent);
+        merged.blocked_operations.extend(overlay.blocked_operations);
+        assert_eq!(merged.auto_approve_under_cost, Some(25.0));
+        assert!(merged.always_require_consent.contains(&"export_data".to_string()));
+        assert!(merged.blocked_operations.contains(&"danger".to_string()));
+    }
 }

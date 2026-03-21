@@ -168,11 +168,14 @@ impl ComputeAdapter {
     /// # });
     /// ```
     pub async fn new_from_discovery() -> SongbirdResult<Self> {
-        use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
+        Self::new_from_discovery_with_resolver(songbird_config::capability_endpoints::CapabilityEndpointResolver::new()).await
+    }
 
-        // ✅ PHASE 1 INTEGRATION: Multi-tier capability discovery
-        // Priority: Environment → Service Registry → Container Metadata → DNS SRV
-        let resolver = CapabilityEndpointResolver::new();
+    /// Like [`Self::new_from_discovery`], but uses an explicit resolver (see [`songbird_config::capability_endpoints::CapabilityEndpointResolver::with_endpoint_overrides`]).
+    pub async fn new_from_discovery_with_resolver(
+        resolver: songbird_config::capability_endpoints::CapabilityEndpointResolver,
+    ) -> SongbirdResult<Self> {
+        use songbird_config::capability_endpoints::CapabilityType;
 
         match resolver.get_endpoint(CapabilityType::Compute).await {
             Ok(endpoint) => {

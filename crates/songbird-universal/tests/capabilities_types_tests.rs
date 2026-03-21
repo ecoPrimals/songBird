@@ -373,6 +373,7 @@ fn test_discovery_config_default() {
     assert_eq!(config.max_concurrent_discoveries, 10);
     assert!(config.auto_discovery);
     assert!(!config.enable_network_discovery);
+    assert!(config.provider_endpoints.is_empty());
 }
 
 #[test]
@@ -385,6 +386,7 @@ fn test_discovery_config_custom() {
         max_concurrent_discoveries: 20,
         auto_discovery: false,
         enable_network_discovery: true,
+        provider_endpoints: HashMap::new(),
     };
 
     assert_eq!(config.refresh_interval.as_secs(), 60);
@@ -404,6 +406,7 @@ fn test_discovery_config_fast_refresh() -> SongbirdResult<()> {
         max_concurrent_discoveries: 5,
         auto_discovery: true,
         enable_network_discovery: false,
+        provider_endpoints: HashMap::new(),
     };
 
     assert!(config.refresh_interval.as_secs() < 30);
@@ -511,6 +514,7 @@ fn test_discovery_config_with_timeout() {
         max_concurrent_discoveries: 15,
         auto_discovery: true,
         enable_network_discovery: true,
+        provider_endpoints: HashMap::new(),
     };
 
     assert!(config.discovery_timeout.as_secs() >= 10);

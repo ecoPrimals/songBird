@@ -222,7 +222,7 @@ mod e2e_scenarios {
     use super::*;
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "Integration: artificial TCP/TLS delay scenario; run with --ignored"]
     async fn test_handshake_with_delays() {
         // Server that responds slowly
         let port = 18445;

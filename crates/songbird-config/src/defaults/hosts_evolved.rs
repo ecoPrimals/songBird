@@ -33,6 +33,10 @@ pub struct SelfAwareConfig {
     pub environment: Environment,
 }
 
+fn read_process_env(key: &str) -> Result<String, std::env::VarError> {
+    std::env::var(key)
+}
+
 impl SelfAwareConfig {
     /// Create configuration with environment awareness
     ///
@@ -43,7 +47,13 @@ impl SelfAwareConfig {
     /// - **Test**: Isolated, ephemeral configuration
     #[must_use]
     pub fn from_environment() -> Self {
-        let environment = Environment::detect();
+        Self::from_environment_with(&read_process_env)
+    }
+
+    /// Same as [`from_environment`](Self::from_environment) with an injectable env reader.
+    #[must_use]
+    pub fn from_environment_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+        let environment = Environment::detect_with(env);
 
         Self {
             bind: BindConfig::for_environment(&environment),
@@ -333,8 +343,14 @@ impl Environment {
     /// ```
     #[must_use]
     pub fn detect() -> Self {
+        Self::detect_with(&read_process_env)
+    }
+
+    /// Same as [`detect`](Self::detect) with an injectable env reader.
+    #[must_use]
+    pub fn detect_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
         // Check explicit environment variable
-        if let Ok(env_str) = std::env::var("SONGBIRD_ENVIRONMENT") {
+        if let Ok(env_str) = env("SONGBIRD_ENVIRONMENT") {
             return match env_str.to_lowercase().as_str() {
                 "production" | "prod" => Self::Production,
                 "staging" | "stage" => Self::Staging,
@@ -344,14 +360,12 @@ impl Environment {
         }
 
         // Check for common production indicators
-        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
-            || std::env::var("ECS_CONTAINER_METADATA_URI").is_ok()
-        {
+        if env("KUBERNETES_SERVICE_HOST").is_ok() || env("ECS_CONTAINER_METADATA_URI").is_ok() {
             return Self::Production;
         }
 
         // Check for test environment
-        if std::env::var("RUST_TEST_THREADS").is_ok() {
+        if env("RUST_TEST_THREADS").is_ok() {
             return Self::Test;
         }
 
@@ -685,11 +699,15 @@ mod tests {
 
     #[test]
     fn test_self_aware_config_development() {
-        songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "development");
-        let config = SelfAwareConfig::from_environment();
+        let config = SelfAwareConfig::from_environment_with(&|k| {
+            if k == "SONGBIRD_ENVIRONMENT" {
+                Ok("development".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
         assert_eq!(config.environment, Environment::Development);
         assert!(config.bind_address().ip().is_loopback());
-        songbird_process_env::remove_var("SONGBIRD_ENVIRONMENT");
     }
 
     #[test]

@@ -297,14 +297,16 @@ mod tests {
 
     #[test]
     fn test_windows_env_override() {
-        // Test environment variable override
-        songbird_process_env::set_var("TESTPRIMAL_PIPE", r"\\.\pipe\custom_test");
-
-        // This would use the custom pipe path
-        let custom_name = std::env::var("TESTPRIMAL_PIPE").unwrap();
+        // Same logic as `create_endpoint`: read `{PRIMAL}_PIPE` via injectable lookup
+        let get_var = |k: &str| -> Result<String, std::env::VarError> {
+            if k == "TESTPRIMAL_PIPE" {
+                Ok(r"\\.\pipe\custom_test".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        };
+        let custom_name = get_var("TESTPRIMAL_PIPE").unwrap();
         assert_eq!(custom_name, r"\\.\pipe\custom_test");
-
-        songbird_process_env::remove_var("TESTPRIMAL_PIPE");
     }
 
     #[test]

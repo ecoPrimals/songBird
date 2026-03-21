@@ -203,6 +203,9 @@ impl Default for QuotaManager {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -271,5 +274,42 @@ mod tests {
         // Verify usage decreased
         let quota = manager.get_quota(&user_id).await;
         assert_eq!(quota.used.get(&ResourceType::Cpu).unwrap().value, 0.0);
+    }
+
+    #[test]
+    fn empty_request_can_allocate() {
+        let quota = ResourceQuota::new(UserId::from("u"));
+        assert!(quota.can_allocate(&HashMap::new()).unwrap());
+    }
+
+    #[test]
+    fn available_reflects_limits_minus_used() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        let mut req = HashMap::new();
+        req.insert(ResourceType::Cpu, ResourceAmount::new(2.0, ResourceUnit::Cores));
+        quota.allocate(&req).unwrap();
+        let avail = quota.available();
+        let cpu = avail.get(&ResourceType::Cpu).unwrap();
+        assert_eq!(cpu.value, 6.0);
+    }
+
+    #[test]
+    fn cumulative_cpu_at_limit_rejects_extra() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        let mut fill = HashMap::new();
+        fill.insert(ResourceType::Cpu, ResourceAmount::new(8.0, ResourceUnit::Cores));
+        quota.allocate(&fill).unwrap();
+        let mut more = HashMap::new();
+        more.insert(ResourceType::Cpu, ResourceAmount::new(0.1, ResourceUnit::Cores));
+        assert!(!quota.can_allocate(&more).unwrap());
+    }
+
+    #[tokio::test]
+    async fn get_quota_creates_and_reuses() {
+        let m = QuotaManager::new();
+        let u = UserId::from("same");
+        let q1 = m.get_quota(&u).await;
+        let q2 = m.get_quota(&u).await;
+        assert_eq!(q1.user_id, q2.user_id);
     }
 }

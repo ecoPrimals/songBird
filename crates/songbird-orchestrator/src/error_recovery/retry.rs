@@ -156,6 +156,9 @@ impl RetryPolicy {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -291,5 +294,50 @@ mod tests {
 
         let permanent_err = anyhow::anyhow!("Resource not found");
         assert!(!policy.should_retry(&permanent_err));
+    }
+
+    #[test]
+    fn retry_all_includes_permanent_in_policy() {
+        let p = RetryPolicy::retry_all(5);
+        assert!(p.retry_on.contains(&ErrorClass::Permanent));
+        assert_eq!(p.max_attempts, 5);
+    }
+
+    #[test]
+    fn transient_only_policy() {
+        let p = RetryPolicy::transient_only(3);
+        assert_eq!(p.retry_on, vec![ErrorClass::Transient]);
+        assert_eq!(p.max_attempts, 3);
+    }
+
+    #[test]
+    fn backoff_jitter_nonzero() {
+        let policy = RetryPolicy {
+            initial_backoff: Duration::from_millis(10),
+            multiplier: 2.0,
+            jitter: true,
+            ..Default::default()
+        };
+        let a = policy.calculate_backoff(0);
+        let b = policy.calculate_backoff(0);
+        // Jitter may differ between draws (not guaranteed unequal)
+        assert!(a.as_millis() >= 7);
+        assert!(a.as_millis() <= 13);
+        assert!(b.as_millis() >= 7);
+        assert!(b.as_millis() <= 13);
+    }
+
+    #[tokio::test]
+    async fn exhausted_returns_last_transient_error() {
+        let policy = RetryPolicy {
+            max_attempts: 2,
+            initial_backoff: Duration::from_millis(1),
+            ..Default::default()
+        };
+        let err = policy
+            .execute(|| async { Err::<i32, _>(anyhow::anyhow!("rate limited")) })
+            .await
+            .expect_err("should fail");
+        assert!(err.to_string().contains("rate limited"));
     }
 }

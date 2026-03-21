@@ -36,17 +36,12 @@ impl Default for ZeroTouchConfig {
 }
 
 #[derive(Debug)]
-pub struct ZeroTouchDeployment {
-    #[allow(dead_code, reason = "config retained for future deployment wiring")]
-    config: ZeroTouchConfig,
-}
+pub struct ZeroTouchDeployment;
 
 impl ZeroTouchDeployment {
     #[must_use]
-    pub const fn new(config: ZeroTouchConfig) -> Self {
-        Self {
-            config,
-        }
+    pub fn new(_config: ZeroTouchConfig) -> Self {
+        Self
     }
 
     /// Deploy zero-touch configuration

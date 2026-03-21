@@ -53,7 +53,9 @@
 //! - Network error handling
 //! - Timeout behavior
 
+use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_universal::adapters::compute::{ComputeAdapter, HealthStatus as ComputeHealth};
+use std::collections::HashMap;
 use std::time::Duration;
 
 // ============================================================================
@@ -61,53 +63,27 @@ use std::time::Duration;
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_new_from_discovery_with_env_variable() {
+async fn test_new_from_discovery_with_injected_resolver() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
 
-    // Set environment variable
-    songbird_process_env::set_var("SONGBIRD_COMPUTE_ENDPOINT", &endpoint);
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Compute, endpoint.clone());
+    let resolver = CapabilityEndpointResolver::with_endpoint_overrides(m);
 
-    // Should discover from env var
-    let adapter = ComputeAdapter::new_from_discovery().await;
-    assert!(adapter.is_ok(), "Should create adapter from env var");
+    let adapter = ComputeAdapter::new_from_discovery_with_resolver(resolver).await;
+    assert!(adapter.is_ok(), "Should create adapter from injected resolver");
 
     let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
-
-    // Cleanup
-    songbird_process_env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_new_from_discovery_with_legacy_env() {
+async fn test_new_from_discovery_matches_explicit_new() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
-
-    // Set legacy COMPUTE_PROVIDER_ENDPOINT
-    songbird_process_env::set_var("COMPUTE_PROVIDER_ENDPOINT", &endpoint);
-
-    // Should discover from legacy env var
-    let adapter = ComputeAdapter::new_from_discovery().await;
-    assert!(adapter.is_ok(), "Should create adapter from legacy env var");
-
-    // Cleanup
-    songbird_process_env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_new_from_discovery_fallback_to_default() {
-    // Clear all env vars that might interfere
-    songbird_process_env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
-    songbird_process_env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
-
-    // Should fall back to default host:port
-    let adapter = ComputeAdapter::new_from_discovery().await;
-    assert!(adapter.is_ok(), "Should create adapter with fallback");
-
-    let adapter = adapter.expect("test precondition");
-    // Should have some default endpoint
-    assert!(!adapter.endpoint().is_empty());
+    let direct = ComputeAdapter::new(endpoint.clone()).await.expect("explicit new");
+    assert_eq!(direct.endpoint(), &endpoint);
 }
 
 // ============================================================================

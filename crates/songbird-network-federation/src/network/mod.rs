@@ -77,19 +77,6 @@ impl NetworkManager {
         Ok(())
     }
 
-    /// Register a network provider (currently unused)
-    ///
-    /// # Future Enhancement
-    /// If multi-provider support is needed, use `Arc<dyn NetworkProvider>` instead of enum
-    #[allow(dead_code, reason = "reserved multi-provider hook; single-provider path in use today")]
-    pub async fn register_provider<P: NetworkProvider + 'static>(
-        &mut self,
-        _provider: P,
-    ) -> SongbirdResult<()> {
-        // Provider registration deferred until multi-provider requirements emerge
-        Ok(())
-    }
-
     /// Get network health status
     pub async fn health_check(&self) -> SongbirdResult<NetworkHealth> {
         // Multi-provider health aggregation deferred - currently single gaming provider only

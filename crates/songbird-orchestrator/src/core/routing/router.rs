@@ -9,6 +9,7 @@ use super::analyzer::{TaskComplexity, TaskComplexityAnalyzer};
 use super::types::Task;
 use crate::core::registry::CapabilityRegistry;
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
+use std::collections::HashMap;
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::{FederationState, NodeStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
@@ -104,6 +105,21 @@ impl CapabilityRouter {
             service_registry,
             capability_resolver: CapabilityEndpointResolver::new(),
             capability_registry: Some(capability_registry),
+        }
+    }
+
+    /// Router with fixed capability endpoints (tests, embedders) — no process env for those URLs.
+    #[must_use]
+    pub fn with_capability_endpoint_overrides(
+        federation_state: Arc<FederationState>,
+        service_registry: Arc<FederatedServiceRegistry>,
+        overrides: HashMap<CapabilityType, String>,
+    ) -> Self {
+        Self {
+            federation_state,
+            service_registry,
+            capability_resolver: CapabilityEndpointResolver::with_endpoint_overrides(overrides),
+            capability_registry: None,
         }
     }
 

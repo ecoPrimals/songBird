@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_config_creation() {
-        let config = CanonicalNetworkConfig::default();
+        let config = CanonicalNetworkConfig::default_from_env_reader(|_| Err(std::env::VarError::NotPresent));
         assert_eq!(config.orchestrator_port, 8080);
         assert_eq!(config.gaming.starcraft_port, 6112);
     }

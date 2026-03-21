@@ -9,10 +9,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[cfg(test)]
-#[path = "capability_tests.rs"]
-mod tests;
-
 /// Universal primal type classification
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PrimalType {

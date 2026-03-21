@@ -73,12 +73,13 @@ fn test_error_injection() {
     let mut network_failures = 0;
     let mut database_failures = 0;
 
-    // Test failure injection over multiple iterations
-    for _ in 0..100 {
-        if error_injector.should_fail("network_call") {
+    // Test failure injection over multiple iterations (trial index mixed into hash so each
+    // iteration is independent; wall-clock time alone can repeat within a tight loop).
+    for trial in 0..100 {
+        if error_injector.should_fail("network_call", trial) {
             network_failures += 1;
         }
-        if error_injector.should_fail("database_query") {
+        if error_injector.should_fail("database_query", trial) {
             database_failures += 1;
         }
     }
@@ -124,19 +125,15 @@ impl ErrorInjector {
         self.failure_rates.insert(operation.to_string(), rate);
     }
 
-    fn should_fail(&self, operation: &str) -> bool {
-        // Mock implementation - uses deterministic hash for testing
+    fn should_fail(&self, operation: &str, trial: usize) -> bool {
+        // Mock implementation: hash operation + trial for repeatable, independent draws
         let rate = self.failure_rates.get(operation).copied().unwrap_or(0.0);
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        use std::time::SystemTime;
 
-        // Mix operation name with current microsecond for pseudo-randomness
         let mut hasher = DefaultHasher::new();
         operation.hash(&mut hasher);
-        if let Ok(duration) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-            hasher.write_u64(duration.as_micros() as u64);
-        }
+        trial.hash(&mut hasher);
         let hash_value = hasher.finish();
         (hash_value % 100) < (rate * 100.0) as u64
     }

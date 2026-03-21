@@ -186,6 +186,9 @@ impl AdmissionController {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::task_lifecycle::UserId;
     use crate::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
@@ -273,5 +276,47 @@ mod tests {
 
         let load_after_release = controller.get_system_load().await;
         assert_eq!(load_after_release.active_tasks, 0);
+    }
+
+    #[tokio::test]
+    async fn memory_pressure_delays() {
+        let quota_mgr = Arc::new(QuotaManager::new());
+        let controller = AdmissionController::new(quota_mgr);
+        controller.update_system_load(0.2, 0.95).await;
+        let task = create_test_task("alice", Some(1), Some(512));
+        let d = controller.evaluate(&task).await.unwrap();
+        assert!(matches!(d, AdmissionDecision::Delayed { .. }));
+    }
+
+    #[tokio::test]
+    async fn get_system_load_clamps_to_unit_interval() {
+        let quota_mgr = Arc::new(QuotaManager::new());
+        let controller = AdmissionController::new(quota_mgr);
+        controller.update_system_load(-1.0, 2.0).await;
+        let load = controller.get_system_load().await;
+        assert_eq!(load.cpu_usage, 0.0);
+        assert_eq!(load.memory_usage, 1.0);
+    }
+
+    #[tokio::test]
+    async fn evaluate_empty_resource_task_admitted() {
+        let quota_mgr = Arc::new(QuotaManager::new());
+        let controller = AdmissionController::new(quota_mgr);
+        let spec = TaskSpec {
+            task_type: "noop".into(),
+            config: serde_json::json!({}),
+            required_capabilities: vec![],
+            resources: ResourceRequirements {
+                cpu_cores: None,
+                memory_mb: None,
+                gpu_count: None,
+                network_mbps: None,
+                storage_gb: None,
+            },
+            priority: Priority::Standard,
+        };
+        let task = TaskLifecycle::new(UserId::from("alice"), spec);
+        let d = controller.evaluate(&task).await.unwrap();
+        assert!(matches!(d, AdmissionDecision::Admitted));
     }
 }

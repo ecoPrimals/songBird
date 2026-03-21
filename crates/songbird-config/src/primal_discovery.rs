@@ -178,14 +178,22 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
 /// - No `STORAGE_ENDPOINT` or `NESTGATE_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a storage provider
 pub async fn get_storage_endpoint() -> SongbirdResult<String> {
+    get_storage_endpoint_with(|k| std::env::var(k)).await
+}
+
+/// Same as [`get_storage_endpoint`](get_storage_endpoint) with an injectable env reader.
+pub async fn get_storage_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
+where
+    F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+{
     // 1. Try modern STORAGE_ENDPOINT
-    if let Ok(endpoint) = std::env::var("STORAGE_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("STORAGE_ENDPOINT") {
         debug!("Using STORAGE_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
     // 2. Try legacy NESTGATE_ENDPOINT (backwards compatibility)
-    if let Ok(endpoint) = std::env::var("NESTGATE_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("NESTGATE_ENDPOINT") {
         warn!("Using deprecated NESTGATE_ENDPOINT - migrate to STORAGE_ENDPOINT");
         return Ok(endpoint);
     }
@@ -223,14 +231,22 @@ pub async fn get_storage_endpoint() -> SongbirdResult<String> {
 /// - No `SECURITY_ENDPOINT` or `BEARDOG_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a security provider
 pub async fn get_security_endpoint() -> SongbirdResult<String> {
+    get_security_endpoint_with(|k| std::env::var(k)).await
+}
+
+/// Same as [`get_security_endpoint`](get_security_endpoint) with an injectable env reader.
+pub async fn get_security_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
+where
+    F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+{
     // 1. Try modern SECURITY_ENDPOINT
-    if let Ok(endpoint) = std::env::var("SECURITY_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("SECURITY_ENDPOINT") {
         debug!("Using SECURITY_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
     // 2. Try legacy BEARDOG_ENDPOINT (backwards compatibility)
-    if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("BEARDOG_ENDPOINT") {
         warn!("Using deprecated BEARDOG_ENDPOINT - migrate to SECURITY_ENDPOINT");
         return Ok(endpoint);
     }
@@ -268,14 +284,22 @@ pub async fn get_security_endpoint() -> SongbirdResult<String> {
 /// - No `AI_ENDPOINT` or `SQUIRREL_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find an AI provider
 pub async fn get_ai_endpoint() -> SongbirdResult<String> {
+    get_ai_endpoint_with(|k| std::env::var(k)).await
+}
+
+/// Same as [`get_ai_endpoint`](get_ai_endpoint) with an injectable env reader.
+pub async fn get_ai_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
+where
+    F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+{
     // 1. Try modern AI_ENDPOINT
-    if let Ok(endpoint) = std::env::var("AI_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("AI_ENDPOINT") {
         debug!("Using AI_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
     // 2. Try legacy SQUIRREL_ENDPOINT (backwards compatibility)
-    if let Ok(endpoint) = std::env::var("SQUIRREL_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("SQUIRREL_ENDPOINT") {
         warn!("Using deprecated SQUIRREL_ENDPOINT - migrate to AI_ENDPOINT");
         return Ok(endpoint);
     }
@@ -369,6 +393,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     // ✅ Modern async pattern: NO #[serial] needed!
@@ -468,5 +495,47 @@ mod tests {
         {
             assert!(message.contains("No provider found"));
         }
+    }
+
+    #[tokio::test]
+    async fn test_get_storage_endpoint_from_env() {
+        let ep = get_storage_endpoint_with(|k| {
+            if k == "STORAGE_ENDPOINT" {
+                Ok("http://storage-test:3".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+        .await
+        .expect("storage env");
+        assert_eq!(ep, "http://storage-test:3");
+    }
+
+    #[tokio::test]
+    async fn test_get_security_endpoint_from_env() {
+        let ep = get_security_endpoint_with(|k| {
+            if k == "SECURITY_ENDPOINT" {
+                Ok("http://sec-test:4".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+        .await
+        .expect("security env");
+        assert_eq!(ep, "http://sec-test:4");
+    }
+
+    #[tokio::test]
+    async fn test_get_ai_endpoint_from_env() {
+        let ep = get_ai_endpoint_with(|k| {
+            if k == "AI_ENDPOINT" {
+                Ok("http://ai-test:5".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+        .await
+        .expect("ai env");
+        assert_eq!(ep, "http://ai-test:5");
     }
 }

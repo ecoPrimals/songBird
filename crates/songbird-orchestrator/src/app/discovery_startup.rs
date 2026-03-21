@@ -82,7 +82,7 @@ pub async fn start_discovery_system(
     info!("🌐 Starting anonymous discovery system...");
 
     // Step 1: Fetch identity attestations from security provider
-    let identity_attestations = fetch_identity_attestations().await?;
+    let identity_attestations = fetch_identity_attestations(SecurityFetchMode::Discover).await?;
 
     // Step 2: Initialize BirdSong processor (if genetic identity available)
     let birdsong_processor = initialize_birdsong_processor(&identity_attestations).await;
@@ -131,9 +131,23 @@ pub async fn start_discovery_system(
 ///
 /// - `SONGBIRD_SECURITY_PROVIDER` (generic capability)
 /// - `SECURITY_ENDPOINT` (generic)
-async fn fetch_identity_attestations()
--> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
-    if let Ok(url) = crate::app::security_setup::discover_security_endpoint(None).await {
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum SecurityFetchMode {
+    /// Normal discovery via [`crate::app::security_setup::discover_security_endpoint`].
+    Discover,
+    /// Skip env/capability discovery — behave as if no security provider is configured (tests).
+    NoProvider,
+}
+
+async fn fetch_identity_attestations(
+    mode: SecurityFetchMode,
+) -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
+    let url_result = match mode {
+        SecurityFetchMode::Discover => crate::app::security_setup::discover_security_endpoint(None).await,
+        SecurityFetchMode::NoProvider => Err(anyhow::anyhow!("no security provider (test mode)")),
+    };
+
+    if let Ok(url) = url_result {
         info!("🔐 Fetching identity attestations from security provider: {}", url);
         let security_client =
             crate::security_capability_client::SecurityCapabilityClient::from_endpoint(url).await;
@@ -357,10 +371,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_identity_attestations_no_provider() {
-        // No security provider configured
-        songbird_process_env::remove_var("SECURITY_ENDPOINT");
-
-        let attestations = fetch_identity_attestations().await.unwrap_or_default();
+        let attestations = fetch_identity_attestations(SecurityFetchMode::NoProvider)
+            .await
+            .unwrap_or_default();
         assert!(
             attestations.is_empty(),
             "Should return empty attestations when no provider configured"

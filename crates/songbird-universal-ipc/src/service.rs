@@ -49,6 +49,7 @@ use serde_json::Value;
 use songbird_lineage_relay::beardog::BearDogRelayAuthority; // Production relay auth (Feb 8, 2026)
 use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
 use std::sync::Arc;
+use std::env::VarError;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
@@ -125,6 +126,8 @@ pub struct ServiceInfo {
 /// **TRUE PRIMAL**: Zero code embedding, pure service protocol!
 pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
+    /// When set, used instead of [`std::env::var`] for identity `family_id` resolution (tests).
+    family_id_env: Option<Arc<dyn Fn(&str) -> Result<String, VarError> + Send + Sync>>,
     http_handler: Arc<HttpHandler>,
     stun_handler: Arc<StunHandler>,
     discovery_handler: Arc<DiscoveryHandler>,
@@ -216,6 +219,7 @@ impl IpcServiceHandler {
 
         Self {
             registry,
+            family_id_env: None,
             http_handler,
             stun_handler,
             discovery_handler,
@@ -261,6 +265,18 @@ impl IpcServiceHandler {
         http_handler: Arc<HttpHandler>,
     ) -> Self {
         Self::assemble(registry, http_handler, Arc::new(DiscoveryHandler::new()))
+    }
+
+    /// Same as [`new`](Self::new) but resolves `family_id` for `identity` via `env` instead of
+    /// [`std::env::var`] (for tests and injected configuration).
+    #[must_use]
+    pub fn with_family_id_env<F>(registry: Arc<RwLock<ServiceRegistry>>, env: F) -> Self
+    where
+        F: Fn(&str) -> Result<String, VarError> + Send + Sync + 'static,
+    {
+        let mut h = Self::new(registry);
+        h.family_id_env = Some(Arc::new(env));
+        h
     }
 
     /// Handle `ipc.register` method
@@ -519,12 +535,10 @@ impl IpcServiceHandler {
 
     /// Handle `identity` method — canonical family-id lookup
     async fn handle_identity(&self) -> Result<Value, String> {
-        let family_id = std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
-            .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
-            .or_else(|_| std::env::var("FAMILY_ID"))
-            .or_else(|_| std::env::var("NODE_FAMILY_ID"))
-            .unwrap_or_else(|_| "default".to_string());
+        let family_id = match &self.family_id_env {
+            Some(f) => crate::introspection::canonical_family_id(|k| (f)(k)),
+            None => crate::introspection::canonical_family_id(|k| std::env::var(k)),
+        };
         Ok(crate::introspection::identity(&family_id))
     }
 }
@@ -644,6 +658,7 @@ impl JsonRpcHandler for IpcServiceHandler {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 #[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;

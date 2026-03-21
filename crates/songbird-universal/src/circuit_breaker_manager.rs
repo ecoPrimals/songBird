@@ -372,6 +372,9 @@ impl Default for CircuitBreakerManagerBuilder {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -442,5 +445,31 @@ mod tests {
         assert_eq!(stats.len(), 2);
         assert!(stats.contains_key("api.github.com"));
         assert!(stats.contains_key("api.gitlab.com"));
+    }
+
+    #[tokio::test]
+    async fn test_get_breaker_and_all_breakers() {
+        let manager = CircuitBreakerManager::new();
+        let _ = manager.get_breaker_for_endpoint("https://example.com/a").await;
+        assert!(manager.get_breaker("example.com").await.is_some());
+        let all = manager.all_breakers().await;
+        assert_eq!(all.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_reset_all_breakers() {
+        let manager = CircuitBreakerManager::new();
+        let _ = manager.get_breaker_for_endpoint("https://reset-all.example/x").await;
+        manager.reset_all().await;
+        assert!(manager.get_breaker("reset-all.example").await.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_call_with_breaker_success_records_success() {
+        let manager = CircuitBreakerManager::new();
+        let out: Result<String, String> = manager
+            .call_with_breaker("https://success.example/api", || async { Ok("ok".to_string()) })
+            .await;
+        assert_eq!(out.expect("ok"), "ok");
     }
 }

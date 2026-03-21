@@ -416,6 +416,9 @@ impl NodeIdentity {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -497,5 +500,57 @@ mod tests {
         let endpoint = &identity.endpoints[0];
         assert_eq!(endpoint.protocols.len(), 2);
         assert_eq!(endpoint.preference, 90);
+    }
+
+    #[test]
+    fn preferred_endpoint_none_when_empty() {
+        let id = NodeIdentity {
+            node_id: Uuid::new_v4(),
+            node_name: "n".to_string(),
+            endpoints: vec![],
+            genetic_lineage: None,
+            lineage_proof: None,
+        };
+        assert!(id.preferred_endpoint().is_none());
+        assert!(id.all_addresses().is_empty());
+    }
+
+    #[test]
+    fn all_addresses_collects_ips() {
+        let mut id = NodeIdentity {
+            node_id: Uuid::new_v4(),
+            node_name: "n".to_string(),
+            endpoints: vec![],
+            genetic_lineage: None,
+            lineage_proof: None,
+        };
+        id.add_endpoint(TransportEndpoint {
+            interface_type: "eth".to_string(),
+            address: "10.0.0.1:1".parse().unwrap(),
+            protocols: vec![],
+            preference: 10,
+        });
+        assert_eq!(id.all_addresses().len(), 1);
+    }
+
+    #[test]
+    fn classify_interface_ethernet_wifi_loopback() {
+        assert_eq!(NodeIdentity::classify_interface("eth0").0, "ethernet");
+        assert_eq!(NodeIdentity::classify_interface("wlan0").0, "wifi");
+        assert_eq!(NodeIdentity::classify_interface("lo").0, "loopback");
+        assert_eq!(NodeIdentity::classify_interface("docker0").0, "other");
+    }
+
+    #[test]
+    fn has_lineage_false_without_proof() {
+        let id = NodeIdentity {
+            node_id: Uuid::new_v4(),
+            node_name: "n".to_string(),
+            endpoints: vec![],
+            genetic_lineage: None,
+            lineage_proof: None,
+        };
+        assert!(!id.has_lineage());
+        assert!(id.get_lineage().is_none());
     }
 }

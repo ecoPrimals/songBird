@@ -8,6 +8,7 @@
 #![allow(missing_docs, reason = "CORS struct fields follow standard browser terminology")]
 
 use serde::{Deserialize, Serialize};
+use songbird_types::SafeEnv;
 
 /// CORS configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,7 +23,10 @@ impl Default for CorsConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            origins: vec!["http://localhost:3000".to_string()],
+            origins: SafeEnv::get_or_default("SONGBIRD_CORS_ORIGINS", "http://localhost:3000")
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect(),
             allowed_methods: vec!["GET".to_string(), "POST".to_string()],
             allowed_headers: vec!["Content-Type".to_string()],
         }

@@ -31,7 +31,7 @@ use tracing::{info, warn};
 // Request/Response Types
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PeerConnectParams {
     /// Target peer address (IP:port)
     pub target_address: String,
@@ -207,6 +207,7 @@ impl PeerConnector for MockPeerConnector {
 // ============================================================================
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -314,5 +315,19 @@ mod tests {
         let channel = result.channel.unwrap();
         assert_eq!(channel.local_address, "192.168.1.10:5000");
         assert_eq!(channel.remote_address, "203.0.113.100:6000");
+    }
+
+    #[test]
+    fn peer_connect_params_json_roundtrip() {
+        let p = PeerConnectParams {
+            target_address: "198.51.100.2:4000".into(),
+            our_binding: Some("0.0.0.0:5000".into()),
+            rendezvous_token: Some("tok".into()),
+        };
+        let v = serde_json::to_value(&p).expect("serialize");
+        let back: PeerConnectParams = serde_json::from_value(v).expect("deserialize");
+        assert_eq!(back.target_address, p.target_address);
+        assert_eq!(back.our_binding, p.our_binding);
+        assert_eq!(back.rendezvous_token, p.rendezvous_token);
     }
 }

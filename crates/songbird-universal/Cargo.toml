@@ -62,9 +62,8 @@ k8s-openapi = { version = "0.23", optional = true, features = ["v1_30"] }
 bollard = { version = "0.17", optional = true }
 
 [dev-dependencies]
-songbird-process-env.workspace = true
+songbird-config = { path = "../songbird-config" }
 mockito = "1.2"
 tokio-test = "0.4"
-songbird-test-utils = { path = "../songbird-test-utils" } 
-serial_test = "3.2.0"
+songbird-test-utils = { path = "../songbird-test-utils" }
 wiremock = "0.6"

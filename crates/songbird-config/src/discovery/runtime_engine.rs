@@ -15,6 +15,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
+type EnvReader = Arc<dyn Fn(&str) -> Result<String, std::env::VarError> + Send + Sync>;
+
 /// Discovery backend types
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiscoveryBackend {
@@ -52,6 +54,8 @@ pub struct CapabilityDiscoveryEngine {
     cache: Arc<RwLock<HashMap<String, Vec<DiscoveredService>>>>,
     /// Cache TTL
     cache_ttl: Duration,
+    /// Optional env reader (tests inject; production uses process environment)
+    env_reader: Option<EnvReader>,
 }
 
 /// A discovered service with its capabilities
@@ -75,6 +79,28 @@ impl CapabilityDiscoveryEngine {
             backends,
             cache: Arc::new(RwLock::new(HashMap::new())),
             cache_ttl,
+            env_reader: None,
+        }
+    }
+
+    /// Same as [`new`](Self::new) with an injectable environment reader (concurrent-safe tests).
+    #[must_use]
+    pub fn new_with_env_reader<F>(backends: Vec<DiscoveryBackend>, cache_ttl: Duration, env_reader: F) -> Self
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError> + Send + Sync + 'static,
+    {
+        Self {
+            backends,
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            cache_ttl,
+            env_reader: Some(Arc::new(env_reader)),
+        }
+    }
+
+    fn read_env(&self, key: &str) -> Result<String, std::env::VarError> {
+        match &self.env_reader {
+            Some(f) => f(key),
+            None => std::env::var(key),
         }
     }
 
@@ -205,7 +231,7 @@ impl CapabilityDiscoveryEngine {
     ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
         let env_key = format!("{}_ENDPOINT", capability.to_uppercase());
 
-        if let Ok(endpoint) = std::env::var(&env_key) {
+        if let Ok(endpoint) = self.read_env(&env_key) {
             // Parse address
             let addr: SocketAddr = endpoint
                 .trim_start_matches("http://")
@@ -414,21 +440,27 @@ impl CapabilityDiscoveryEngine {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        songbird_process_env::set_var("SECURITY_ENDPOINT", "127.0.0.1:8443");
-
-        let engine = CapabilityDiscoveryEngine::new(
+        let engine = CapabilityDiscoveryEngine::new_with_env_reader(
             vec![DiscoveryBackend::Environment],
             Duration::from_secs(60),
+            |k| {
+                if k == "SECURITY_ENDPOINT" {
+                    Ok("127.0.0.1:8443".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
         );
 
         let services = engine.discover_by_capability("security").await;
         assert!(!services.is_empty(), "Should discover security service from environment");
-
-        songbird_process_env::remove_var("SECURITY_ENDPOINT");
     }
 
     #[tokio::test]
@@ -438,13 +470,19 @@ mod tests {
         const ENV: &str = "SB_RTENG_CACHE_ISOLATED_ENDPOINT";
 
         // Use very short TTL for fast test without sleep
-        let engine = CapabilityDiscoveryEngine::new(
+        let engine = CapabilityDiscoveryEngine::new_with_env_reader(
             vec![DiscoveryBackend::Environment],
             Duration::from_millis(10), // Very short TTL
+            move |k| {
+                if k == ENV {
+                    Ok("127.0.0.1:9000".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
         );
 
         // First call should query backend
-        songbird_process_env::set_var(ENV, "127.0.0.1:9000");
         let services1 = engine.discover_by_capability(CAP).await;
 
         // Second call should use cache
@@ -465,8 +503,6 @@ mod tests {
         // Should re-query after expiration
         let services3 = engine.discover_by_capability(CAP).await;
         assert_eq!(services1, services3, "Should still find service after cache expiry");
-
-        songbird_process_env::remove_var(ENV);
     }
 
     #[test]
@@ -478,5 +514,33 @@ mod tests {
             backends.contains(&DiscoveryBackend::Environment),
             "Should always include environment backend"
         );
+    }
+
+    #[test]
+    fn test_engine_new_empty_backends_still_runs() {
+        let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
+        assert_eq!(engine.cache_ttl, Duration::from_secs(60));
+    }
+
+    #[tokio::test]
+    async fn test_discover_with_no_backends_returns_empty() {
+        let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
+        let addrs = engine.discover_by_capability("anything").await;
+        assert!(addrs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_register_self_no_panic() {
+        let engine = CapabilityDiscoveryEngine::new(
+            vec![DiscoveryBackend::Environment],
+            Duration::from_secs(60),
+        );
+        let addr: std::net::SocketAddr = "127.0.0.1:8080".parse().unwrap();
+        engine.register_self(&["test".to_string()], addr).await.expect("register_self returns Ok");
+    }
+
+    #[test]
+    fn test_with_defaults_constructed() {
+        let _ = CapabilityDiscoveryEngine::with_defaults();
     }
 }

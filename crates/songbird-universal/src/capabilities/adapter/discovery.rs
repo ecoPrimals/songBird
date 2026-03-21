@@ -104,7 +104,7 @@ impl CapabilityDiscovery {
     pub async fn find_capability_providers(&self, capability_type: &str) -> Vec<String> {
         debug!("🔍 Finding providers for capability: {}", capability_type);
 
-        let mut providers = Vec::new();
+        let mut providers = self.injected_providers_from_config(capability_type);
 
         // Check environment variables for capability-based discovery
         let capability_providers = Self::discover_capability_providers_from_env(capability_type);
@@ -153,6 +153,20 @@ impl CapabilityDiscovery {
         );
 
         providers
+    }
+
+    /// Provider names derived from [`DiscoveryConfig::provider_endpoints`] (no process env).
+    fn injected_providers_from_config(&self, capability_type: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        for (canonical, url) in &self.config.provider_endpoints {
+            if capability_type.eq_ignore_ascii_case(canonical)
+                || Self::primal_provides_capability(canonical.as_str(), capability_type)
+                || Self::primal_provides_capability(capability_type, canonical.as_str())
+            {
+                out.push(Self::extract_primal_name_from_endpoint(url));
+            }
+        }
+        out
     }
 
     /// Discover capability providers from environment variables
@@ -397,6 +411,9 @@ impl CapabilityDiscovery {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::capabilities::registry::CapabilityRegistry;
     use crate::capabilities::types::{Capability, QoSMetrics};
@@ -432,18 +449,18 @@ mod tests {
     }
 
     #[test]
-    fn test_discover_from_env() {
-        songbird_process_env::set_var("SECURITY_PROVIDER_ENDPOINT", "http://beardog:8443");
-
+    fn test_discover_from_config_injection() {
         let registry = Arc::new(RwLock::new(CapabilityRegistry::default()));
-        let config = DiscoveryConfig::default();
+        let mut config = DiscoveryConfig::default();
+        config
+            .provider_endpoints
+            .insert("security".to_string(), "http://beardog:8443".to_string());
         let discovery = CapabilityDiscovery::new(registry, config);
 
-        let providers = CapabilityDiscovery::discover_capability_providers_from_env("security");
+        let providers = discovery.injected_providers_from_config("security");
 
         assert!(!providers.is_empty(), "Should find at least one security provider");
-
-        songbird_process_env::remove_var("SECURITY_PROVIDER_ENDPOINT");
+        assert_eq!(providers[0], "beardog");
     }
 
     #[tokio::test]
@@ -454,5 +471,28 @@ mod tests {
         let name2 =
             CapabilityDiscovery::extract_primal_name_from_endpoint("https://toadstool.local:9000");
         assert_eq!(name2, "toadstool");
+    }
+
+    #[tokio::test]
+    async fn test_find_capability_providers_hierarchy_workers_under_compute() {
+        let registry = Arc::new(RwLock::new(CapabilityRegistry::default()));
+        {
+            let mut r = registry.write().await;
+            r.primal_capabilities.insert(
+                "worker-node".to_string(),
+                vec![Capability {
+                    capability_type: "compute".to_string(),
+                    name: "batch".to_string(),
+                    version: "1.0.0".to_string(),
+                    parameters: HashMap::new(),
+                    qos_metrics: QoSMetrics::default(),
+                    available: true,
+                }],
+            );
+        }
+        let config = DiscoveryConfig::default();
+        let discovery = CapabilityDiscovery::new(registry, config);
+        let providers = discovery.find_capability_providers("workers").await;
+        assert!(providers.contains(&"worker-node".to_string()));
     }
 }

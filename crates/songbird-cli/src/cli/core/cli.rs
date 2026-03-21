@@ -32,14 +32,6 @@ pub async fn run_cli() -> SongbirdResult<()> {
         Commands::Version {
             detailed,
         } => commands::version::execute_version_command(detailed).await,
-        Commands::Gaming {
-            command,
-        } => {
-            commands::gaming::handle_gaming_command(commands::gaming::GamingArgs {
-                command,
-            })
-            .await
-        }
         Commands::Network {
             command,
         } => commands::network::handle_network_command(command).await,

@@ -377,6 +377,7 @@ impl HttpClientConfig {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 #[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
@@ -513,5 +514,10 @@ mod tests {
         caller.insert("user-agent".to_string(), "LowercaseAgent/1".to_string());
         let headers = config.headers_for_domain("example.com", &caller);
         assert_eq!(headers.get("user-agent"), Some(&"LowercaseAgent/1".to_string()));
+    }
+
+    #[test]
+    fn redirect_mode_default_is_follow() {
+        assert_eq!(RedirectMode::default(), RedirectMode::Follow);
     }
 }

@@ -352,6 +352,7 @@ pub struct AdapterStats {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
     #![expect(clippy::expect_used, reason = "test assertions")]
     #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
     #![expect(clippy::all, reason = "test assertions and harness ergonomics")]

@@ -106,9 +106,6 @@ pub struct CapabilityResolver {
     discovery_mechanisms: Vec<DiscoveryMechanism>,
     /// Cache of discovered providers
     provider_cache: HashMap<String, CachedProvider>,
-    /// Configuration hints from environment (for future expansion)
-    #[expect(dead_code, reason = "reserved for future resolver configuration")]
-    environment_hints: EnvironmentHints,
 }
 
 impl CapabilityResolver {
@@ -123,7 +120,6 @@ impl CapabilityResolver {
                 DiscoveryMechanism::DNSSD,
             ],
             provider_cache: HashMap::new(),
-            environment_hints: EnvironmentHints::from_env(),
         }
     }
 
@@ -191,7 +187,7 @@ impl CapabilityResolver {
         request: &CapabilityRequest,
     ) -> SongbirdResult<CapabilityProvider> {
         match mechanism {
-            DiscoveryMechanism::Environment => self.discover_from_environment(request),
+            DiscoveryMechanism::Environment => self.discover_from_environment_with(request, &|k| std::env::var(k)),
             DiscoveryMechanism::ServiceRegistry => self.discover_from_registry(request).await,
             DiscoveryMechanism::MDNS => self.discover_from_mdns(request).await,
             DiscoveryMechanism::DNSSD => self.discover_from_dnssd(request).await,
@@ -215,9 +211,17 @@ impl CapabilityResolver {
         &self,
         request: &CapabilityRequest,
     ) -> SongbirdResult<CapabilityProvider> {
+        self.discover_from_environment_with(request, &|k| std::env::var(k))
+    }
+
+    fn discover_from_environment_with(
+        &self,
+        request: &CapabilityRequest,
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<CapabilityProvider> {
         let env_var = format!("SONGBIRD_{}_PROVIDER_URL", request.capability.to_uppercase());
 
-        if let Ok(url) = std::env::var(&env_var) {
+        if let Ok(url) = env(&env_var) {
             return Ok(CapabilityProvider {
                 name: format!("{}-provider-from-env", request.capability),
                 capability: request.capability.clone(),
@@ -433,34 +437,6 @@ impl CachedProvider {
     }
 }
 
-/// Environment hints for discovery
-#[derive(Debug, Clone, Default)]
-struct EnvironmentHints {
-    hints: HashMap<String, String>,
-}
-
-impl EnvironmentHints {
-    fn from_env() -> Self {
-        let mut hints = HashMap::new();
-
-        // Collect all SONGBIRD_*_HINT environment variables
-        for (key, value) in std::env::vars() {
-            if key.starts_with("SONGBIRD_") && key.ends_with("_HINT") {
-                hints.insert(key, value);
-            }
-        }
-
-        Self {
-            hints,
-        }
-    }
-
-    #[expect(dead_code, reason = "reserved for future hint-based resolution")]
-    fn get_hint(&self, key: &str) -> Option<&String> {
-        self.hints.get(key)
-    }
-}
-
 // ============================================================================
 // MIGRATION HELPERS
 // ============================================================================
@@ -533,18 +509,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        songbird_process_env::set_var("SONGBIRD_AI_PROVIDER_URL", "http://test.local:9200");
-
         let mut resolver = CapabilityResolver::new();
         let request = CapabilityRequest::new("ai");
 
-        let result = resolver.discover_provider(request).await;
+        let result = resolver
+            .discover_from_environment_with(&request, &|k| {
+                if k == "SONGBIRD_AI_PROVIDER_URL" {
+                    Ok("http://test.local:9200".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            });
         assert!(result.is_ok());
 
         let provider = result.expect("Provider discovery should succeed in test");
         assert_eq!(provider.endpoint, "http://test.local:9200");
-
-        songbird_process_env::remove_var("SONGBIRD_AI_PROVIDER_URL");
     }
 
     #[test]
@@ -624,9 +603,10 @@ mod tests {
     #[test]
     fn test_discover_from_environment_errors_without_var() {
         let resolver = CapabilityResolver::new();
-        songbird_process_env::remove_var("SONGBIRD_SBUNSETCAP_PROVIDER_URL");
         let req = CapabilityRequest::new("sbunsetcap");
-        let err = resolver.discover_from_environment(&req).expect_err("no env");
+        let err = resolver
+            .discover_from_environment_with(&req, &|_| Err(std::env::VarError::NotPresent))
+            .expect_err("no env");
         assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
     }
 }

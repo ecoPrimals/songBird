@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: March 20, 2026  
-**Version**: v0.3.4  
-**Last Deep Debt Audit**: March 20, 2026
+**Date**: March 21, 2026  
+**Version**: v0.2.1  
+**Last Deep Debt Audit**: March 21, 2026
 
 ---
 
@@ -10,42 +10,42 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 9,876 passed, 0 failed, 312 ignored (workspace-wide `--all-features`) |
-| **Line Coverage** | ~67% (estimated; +256 new pure-logic tests added across two sessions) |
+| **Tests** | 9,734 passed, 0 failed, 273 ignored (workspace-wide `--all-features`) |
+| **Line Coverage** | ~65% (llvm-cov measured; +114 new tests, orphaned dead code removed improved ratio) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 29 crates compile clean |
 | **Clippy Pedantic** | 29/29 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --all-features --no-deps` passes, zero warnings) |
-| **Files >1000 lines** | 0 (5 former near-limit files refactored into submodules) |
+| **Files >1000 lines** | 0 (largest: 962 lines) |
 | **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[allow]`) |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining are in `#[cfg(test)]` modules) |
 | **Production `panic!()`** | 0 |
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
+| **Orphaned dead code** | 0 (41 files / 11.5K lines removed this session) |
 | **`#[allow()]` vs `#[expect()]`** | Bulk migration complete; `#[expect(reason)]` where lint fires, `#[allow(reason)]` where unfulfilled |
 | **Capability discovery** | `find_primals_with_capability` evolved to real capability filter (env-driven, identity-agnostic) |
-| **Hardcoded elimination** | `staging.internal:8080` removed; all URLs use env → bind → fallback const chain |
+| **Hardcoded elimination** | All ports env-driven (tarpc, CORS, network ports); `staging.internal:8080` removed |
 | **JSON-RPC handlers** | All wired to live `FederatedServiceRegistry` and `FederationState` |
 | **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors with delegation paths |
 | **C dependencies** | `ring` via `quinn` + `rcgen` (structural; requires upstream quinn changes) |
 | **License** | AGPL-3.0-only + ORC + CC-BY-SA 4.0 (full scyBorg trio) |
-| **SPDX Headers** | 1,324/1,324 .rs files have `SPDX-License-Identifier: AGPL-3.0-only` (100%) |
+| **SPDX Headers** | 100% of .rs files have `SPDX-License-Identifier: AGPL-3.0-only` |
 | **cargo-deny** | Config updated for cargo-deny 0.19+ |
 | **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]` |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, clone hotspots audited |
-| **Concurrent tests** | Zero `std::env::set_var` (via `songbird-process-env` Mutex-guarded facade) |
+| **Concurrent tests** | Zero `std::env::set_var` (via `songbird-process-env` Mutex-guarded facade); `#[serial_test::serial]` on env-modifying tests |
 | **Event-driven** | Zero `sleep`-based polling in production |
-| **Health checks** | `health_check_all()` evolved from stub to real TCP reachability probes |
-| **Load balancing** | `RoundRobin` and `WeightedRoundRobin` use stateful `AtomicU64` counter |
-| **Federation join** | Parses `FederationStatus` / `nodes` / `peers` from response (no longer empty) |
+| **Module docs** | 77 `pub mod` declarations documented across 5 crates |
+| **`#[ignore]` tests** | 119 total; 100% have reason strings |
 | **Binary size** | 20MB release |
 | **`#[warn(missing_docs)]`** | 29/29 crates (all library crates have the lint enabled) |
 | **JSON-RPC methods** | 10 semantic methods wrapping all major REST endpoints |
-| **Dependencies** | ~418 unique; `kube`/`k8s-openapi`/`bollard` feature-gated; 2 unused deps removed |
-| **Build time** | ~46s clippy (warm), ~565s test suite |
-| **Total Rust lines** | 404,698 (crates + src + tests) |
+| **Dependencies** | ~418 unique; `kube`/`k8s-openapi`/`bollard` feature-gated |
+| **Build time** | ~43s clippy (warm), ~513s test suite |
+| **Total Rust lines** | 382,889 (crates + src + tests; -21.8K from dead code removal) |
 
 ---
 
@@ -69,6 +69,66 @@
 | Capability-based discovery | S+ | No hardcoded primal names; env-driven capability filter |
 | Mock isolation | S+ | All mocks behind `#[cfg(test)]` or `feature = "test-mocks"` |
 | File size discipline | S+ | 0 files over 1000 lines; 5 near-limit files refactored into domain submodules |
+
+---
+
+## Completed (Mar 21, 2026 — Comprehensive Audit & Deep Debt Session 3)
+
+### Wave 18: Orphaned Dead Code Removal (41 files, 11.5K lines)
+- [x] Deleted `production_benchmarks/` (12 files) — severely malformed code, never compiled
+- [x] Deleted `basic_iot/mod.rs` — broken syntax, never compiled
+- [x] Deleted 10+ orphaned CLI command stubs (`scale.rs`, `firewall.rs`, `compose.rs`, `node.rs`, `share.rs`, `service.rs`, `basic_iot.rs`, `init.rs`, `join.rs`, `gaming/`)
+- [x] Deleted orphaned test files across orchestrator, universal, discovery, CLI
+- [x] Cleaned up `#[cfg(test)] #[path = "..."]` references to deleted files
+- [x] Total: ~21,800 lines removed from codebase (404K → 383K)
+
+### Wave 19: Unfulfilled Lint Expectations
+- [x] Fixed `songbird-bluetooth/transport/mod.rs` — `#[expect(dead_code)]` → `#[allow(dead_code)]` (dual-feature gate)
+- [x] Fixed `songbird-genesis/bluetooth_pure.rs` — same pattern
+- [x] Fixed `songbird-compute-bridge/service.rs` — `#[expect]` → `#[allow]` for deserialized fields
+- [x] Fixed `songbird-cli/resources.rs` — `#[expect]` → `#[allow]` for reserved API
+- [x] Fixed `songbird-config/service_registry.rs` — `#[expect]` → `#[allow]` for planned fields
+- [x] Zero compiler warnings across entire workspace
+
+### Wave 20: Hardcoding Evolution
+- [x] tarpc port: `SONGBIRD_TARPC_PORT` env var with `DEFAULT_TARPC_PORT` const fallback
+- [x] All network ports in `CanonicalNetworkConfig` use `SafeEnv::get_port()` pattern
+- [x] Issue templates rewritten — removed "Gaming Bridge" branding, reflects network orchestrator identity
+
+### Wave 21: Version & Standards Alignment
+- [x] Fixed version discrepancy: REMAINING_WORK.md aligned with Cargo.toml v0.2.1
+- [x] All `#[ignore]` tests now have reason strings (14 bare ignores fixed)
+
+### Wave 22: todo!() Test Stubs → Real Implementations
+- [x] 7 workflow tests evolved from `todo!()` to real `execute_capability_workflow` assertions
+- [x] 4 error handling tests evolved from `todo!()` to real error chain/context assertions
+- [x] 2 tests properly marked `#[ignore = "reason"]` where API doesn't exist yet
+
+### Wave 23: dead_code Evolution
+- [x] `songbird-remote-deploy` — `#[allow(dead_code)]` → `#[expect(dead_code)]` for Deserialize fields
+- [x] `songbird-compute-bridge` — same pattern for request fields
+
+### Wave 24: Module Documentation (77 pub mod docs)
+- [x] `songbird-orchestrator/src/lib.rs` — 36 module doc comments
+- [x] `songbird-universal-ipc/src/lib.rs` — 10 module doc comments
+- [x] `songbird-discovery/src/lib.rs` — 8 module doc comments
+- [x] `songbird-http-client/src/lib.rs` — 9 module doc comments
+- [x] `songbird-network-federation/src/lib.rs` — 14 module doc comments
+
+### Wave 25: Coverage Expansion (+114 new tests)
+- [x] `songbird-orchestrator`: 55 tests (consent, retry, scheduler, quota, admission, graph, registry, identity, self-knowledge, tokens, JWT)
+- [x] `songbird-config`: 46 tests (constants, network/core, environment, runtime engine, infant config, capability/primal discovery)
+- [x] `songbird-universal`: 5 tests (connection manager, discovery, circuit breaker manager)
+- [x] `songbird-http-client`: 4 tests (connection pool, request, response, adaptive TLS)
+- [x] `songbird-universal-ipc`: 4 tests (peer handler, discovery handler)
+- [x] Test race conditions fixed with `#[serial_test::serial]` on env-modifying tests
+
+### Wave 26: Ring Dependency Analysis
+- [x] Documented exact dependency chain: songbird-quic → quinn → quinn-proto → ring; songbird-quic → rcgen → ring
+- [x] Confirmed `default-features = false` on quinn eliminates ring (but requires alternative crypto backend)
+- [x] Confirmed rcgen supports `default-features = false` with aws-lc-rs alternative
+- [x] Pure-Rust QUIC path still blocked upstream (rustls-rustcrypto coverage gaps)
+- [x] Documented migration steps and effort estimates in this file
 
 ---
 

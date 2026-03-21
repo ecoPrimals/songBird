@@ -141,7 +141,6 @@ fn test_primal_info_clone_debug() {
 
 #[tokio::test]
 async fn test_discover_self() {
-    let _guard = ENV_LOCK.lock().await;
     let result = PrimalSelfKnowledge::discover_self();
     assert!(result.is_ok());
 
@@ -152,11 +151,7 @@ async fn test_discover_self() {
 
 #[tokio::test]
 async fn test_discover_self_with_primal_name() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::set_var("PRIMAL_NAME", "test-songbird");
-    let result = PrimalSelfKnowledge::discover_self();
-    songbird_process_env::remove_var("PRIMAL_NAME");
-
+    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("PRIMAL_NAME", "test-songbird")]));
     assert!(result.is_ok());
     let identity = result.unwrap().identity();
     assert_eq!(identity.name, "test-songbird");
@@ -164,12 +159,7 @@ async fn test_discover_self_with_primal_name() {
 
 #[tokio::test]
 async fn test_discover_self_with_service_name() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::remove_var("PRIMAL_NAME");
-    songbird_process_env::set_var("SERVICE_NAME", "my-service");
-    let result = PrimalSelfKnowledge::discover_self();
-    songbird_process_env::remove_var("SERVICE_NAME");
-
+    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("SERVICE_NAME", "my-service")]));
     assert!(result.is_ok());
     let identity = result.unwrap().identity();
     assert_eq!(identity.name, "my-service");
@@ -177,24 +167,19 @@ async fn test_discover_self_with_service_name() {
 
 #[tokio::test]
 async fn test_discovered_empty_initially() {
-    let _guard = ENV_LOCK.lock().await;
-    let self_knowledge = PrimalSelfKnowledge::discover_self().unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![])).unwrap();
     let discovered = self_knowledge.discovered().await;
     assert!(discovered.is_empty());
 }
 
 #[tokio::test]
 async fn test_discover_primal_via_environment() {
-    let _guard = ENV_LOCK.lock().await;
-    // Set up env vars for capability discovery
-    songbird_process_env::set_var("COMPUTE_HOST", "10.0.0.5");
-    songbird_process_env::set_var("COMPUTE_PORT", "7070");
-
-    let self_knowledge = PrimalSelfKnowledge::discover_self().unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![
+        ("COMPUTE_HOST", "10.0.0.5"),
+        ("COMPUTE_PORT", "7070"),
+    ]))
+    .unwrap();
     let result = self_knowledge.discover_primal("compute").await;
-
-    songbird_process_env::remove_var("COMPUTE_HOST");
-    songbird_process_env::remove_var("COMPUTE_PORT");
 
     assert!(result.is_ok());
     let info = result.unwrap();
@@ -205,11 +190,11 @@ async fn test_discover_primal_via_environment() {
 
 #[tokio::test]
 async fn test_discover_primal_caching() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::set_var("STORAGE_HOST", "10.0.0.10");
-    songbird_process_env::set_var("STORAGE_PORT", "5050");
-
-    let self_knowledge = PrimalSelfKnowledge::discover_self().unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![
+        ("STORAGE_HOST", "10.0.0.10"),
+        ("STORAGE_PORT", "5050"),
+    ]))
+    .unwrap();
 
     // First discovery
     let result1 = self_knowledge.discover_primal("storage").await;
@@ -221,18 +206,11 @@ async fn test_discover_primal_caching() {
 
     let discovered = self_knowledge.discovered().await;
     assert!(discovered.contains_key("storage"));
-
-    songbird_process_env::remove_var("STORAGE_HOST");
-    songbird_process_env::remove_var("STORAGE_PORT");
 }
 
 #[tokio::test]
 async fn test_discover_primal_not_found() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::remove_var("NONEXISTENT_HOST");
-    songbird_process_env::remove_var("NONEXISTENT_PORT");
-
-    let self_knowledge = PrimalSelfKnowledge::discover_self().unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![])).unwrap();
     let result = self_knowledge.discover_primal("nonexistent").await;
     assert!(result.is_err());
 
@@ -248,15 +226,12 @@ async fn test_discover_primal_not_found() {
 
 #[tokio::test]
 async fn test_discover_primal_with_primal_prefix() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::set_var("PRIMAL_AI_HOST", "ai-server.local");
-    songbird_process_env::set_var("PRIMAL_AI_PORT", "6060");
-
-    let self_knowledge = PrimalSelfKnowledge::discover_self().unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![
+        ("PRIMAL_AI_HOST", "ai-server.local"),
+        ("PRIMAL_AI_PORT", "6060"),
+    ]))
+    .unwrap();
     let result = self_knowledge.discover_primal("ai").await;
-
-    songbird_process_env::remove_var("PRIMAL_AI_HOST");
-    songbird_process_env::remove_var("PRIMAL_AI_PORT");
 
     assert!(result.is_ok());
     let info = result.unwrap();
@@ -266,26 +241,18 @@ async fn test_discover_primal_with_primal_prefix() {
 
 #[tokio::test]
 async fn test_introspect_capabilities_with_env() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::set_var("ENABLE_SECURITY", "1");
-
-    let self_knowledge = PrimalSelfKnowledge::discover_self().unwrap();
+    let self_knowledge =
+        PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("ENABLE_SECURITY", "1")])).unwrap();
     let identity = self_knowledge.identity();
     assert!(identity.capabilities.contains(&"security".to_string()));
-
-    songbird_process_env::remove_var("ENABLE_SECURITY");
 }
 
 #[tokio::test]
 async fn test_introspect_capabilities_with_ai_env() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::set_var("ENABLE_AI", "1");
-
-    let self_knowledge = PrimalSelfKnowledge::discover_self().unwrap();
+    let self_knowledge =
+        PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("ENABLE_AI", "1")])).unwrap();
     let identity = self_knowledge.identity();
     assert!(identity.capabilities.contains(&"ai".to_string()));
-
-    songbird_process_env::remove_var("ENABLE_AI");
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -300,18 +267,13 @@ async fn test_environment_discovery_name() {
 
 #[tokio::test]
 async fn test_environment_discovery_success() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::set_var("ORCHESTRATION_HOST", "orch.local");
-    songbird_process_env::set_var("ORCHESTRATION_PORT", "3000");
-
-    let discovery = EnvironmentDiscovery::new();
-    let result = discovery.discover("orchestration").await;
-
-    songbird_process_env::remove_var("ORCHESTRATION_HOST");
-    songbird_process_env::remove_var("ORCHESTRATION_PORT");
-
-    assert!(result.is_ok());
-    let info = result.unwrap();
+    let info = EnvironmentDiscovery::discover_with("orchestration", |k| match k {
+        "ORCHESTRATION_HOST" => Ok("orch.local".to_string()),
+        "ORCHESTRATION_PORT" => Ok("3000".to_string()),
+        _ => Err(VarError::NotPresent),
+    })
+    .await
+    .unwrap();
     assert_eq!(info.host, "orch.local");
     assert_eq!(info.port, 3000);
     assert_eq!(info.name, "orchestration");
@@ -319,27 +281,18 @@ async fn test_environment_discovery_success() {
 
 #[tokio::test]
 async fn test_environment_discovery_missing_host() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::remove_var("MISSING_HOST");
-    songbird_process_env::remove_var("PRIMAL_MISSING_HOST");
-
-    let discovery = EnvironmentDiscovery::new();
-    let result = discovery.discover("missing").await;
+    let result = EnvironmentDiscovery::discover_with("missing", |_| Err(VarError::NotPresent)).await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_environment_discovery_invalid_port() {
-    let _guard = ENV_LOCK.lock().await;
-    songbird_process_env::set_var("BADPORT_HOST", "localhost");
-    songbird_process_env::set_var("BADPORT_PORT", "not_a_number");
-
-    let discovery = EnvironmentDiscovery::new();
-    let result = discovery.discover("badport").await;
-
-    songbird_process_env::remove_var("BADPORT_HOST");
-    songbird_process_env::remove_var("BADPORT_PORT");
-
+    let result = EnvironmentDiscovery::discover_with("badport", |k| match k {
+        "BADPORT_HOST" => Ok("localhost".to_string()),
+        "BADPORT_PORT" => Ok("not_a_number".to_string()),
+        _ => Err(VarError::NotPresent),
+    })
+    .await;
     assert!(result.is_err());
 }
 

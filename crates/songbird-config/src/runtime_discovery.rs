@@ -91,7 +91,7 @@ impl RuntimeDiscoveryEngine {
         }
 
         // 1. Try environment variable (highest priority)
-        if let Ok(service) = Self::from_environment(capability) {
+        if let Ok(service) = Self::from_environment_with(capability, &|k| std::env::var(k)) {
             self.update_cache(capability, &service).await;
             return Ok(service);
         }
@@ -123,10 +123,13 @@ impl RuntimeDiscoveryEngine {
     ///
     /// Environment variable format: `{CAPABILITY}_ENDPOINT`
     /// Example: `COMPUTE_ENDPOINT=http://10.0.1.50:8001`
-    fn from_environment(capability: &str) -> Result<DiscoveredService, SongbirdError> {
+    fn from_environment_with(
+        capability: &str,
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> Result<DiscoveredService, SongbirdError> {
         let env_var = format!("{}_ENDPOINT", capability.to_uppercase());
 
-        let endpoint = std::env::var(&env_var).map_err(|_| {
+        let endpoint = env(&env_var).map_err(|_| {
             SongbirdError::configuration(format!("Environment variable {env_var} not set"))
         })?;
 
@@ -550,26 +553,27 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        // Set test environment variable
-        songbird_process_env::set_var("TEST_ENDPOINT", "http://test.example.com:8080");
-
-        let result = RuntimeDiscoveryEngine::from_environment("test");
+        let result = RuntimeDiscoveryEngine::from_environment_with("test", &|k| {
+            if k == "TEST_ENDPOINT" {
+                Ok("http://test.example.com:8080".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
         assert!(result.is_ok());
 
         let service = result.expect("env set");
         assert_eq!(service.capability, "test");
         assert_eq!(service.endpoint, "http://test.example.com:8080");
         assert_eq!(service.discovered_via, DiscoveryMethod::Environment);
-
-        // Cleanup
-        songbird_process_env::remove_var("TEST_ENDPOINT");
     }
 
     #[test]
     fn test_from_environment_errors_when_var_missing() {
-        songbird_process_env::remove_var("NO_SUCH_VAR_FOR_SB_RTDISC_ENDPOINT");
-        let err = RuntimeDiscoveryEngine::from_environment("no_such_var_for_sb_rtdisc")
-            .expect_err("missing env var");
+        let err = RuntimeDiscoveryEngine::from_environment_with("no_such_var_for_sb_rtdisc", &|_| {
+            Err(std::env::VarError::NotPresent)
+        })
+        .expect_err("missing env var");
         assert!(matches!(err, songbird_types::SongbirdError::Configuration { .. }), "{err:?}");
     }
 

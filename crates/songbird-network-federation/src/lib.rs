@@ -86,33 +86,46 @@
 )]
 
 // Core modules
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod beardog; // ✨ NEW: BearDog integration traits (lineage, birdSong, relay)
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod birdsong_payload; // ✨ NEW: BirdSong payload structures
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod btsp; // ✨ NEW: BearDog Secure Tunnel Protocol interface
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod discovery_mode; // ✨ NEW: Discovery mode (plaintext vs birdSong)
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
+/// BearDog integration traits (lineage, BirdSong, relay hooks).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod beardog;
+/// BirdSong wire payloads and federation message types.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod birdsong_payload;
+/// BearDog Secure Tunnel Protocol configuration and provider traits.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod btsp;
+/// Discovery mode selection (plaintext vs BirdSong-encrypted).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod discovery_mode;
+/// Federation coordinator, node metadata, and multi-node configuration.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod federation;
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
+/// Bridge between the network stack and federation-aware coordination.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod integration;
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod multi_federation; // ✨ NEW: Multi-federation support with context-aware boundaries
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
+/// Multi-federation contexts and boundary-aware routing.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod multi_federation;
+/// Network managers, providers, bind configuration, and transports.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod network;
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod protocol_capability; // ✨ NEW: Protocol capability advertisement
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod rendezvous; // ✨ NEW: Rendezvous client for internet discovery
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
+/// Protocol capability advertisement and tower/federation negotiation.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod protocol_capability;
+/// Rendezvous client for internet-scale peer discovery.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod rendezvous;
+/// Federated service registry and lookup helpers.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod service_registry;
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
+/// Federation and network shared runtime state.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod state;
 // pub mod tls;  // ✅ DEPRECATED: Using songbird-tls instead (100% Pure Rust via BearDog!)
-#[allow(missing_docs, reason = "federation submodule; primary docs on crate root and re-exports")]
-pub mod zero_copy_registry; // ✨ NEW: Zero-copy evolved registry
+/// Zero-copy friendly registry for hot federation paths.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod zero_copy_registry;
 
 // Re-export core types for convenience
 /// `BearDog` Secure Tunnel Protocol configuration and provider traits.

@@ -181,4 +181,22 @@ mod tests {
         };
         assert!(!bad.feasible);
     }
+
+    #[test]
+    fn coordination_pattern_exhaustive_match() {
+        let p = CoordinationPattern::Hybrid;
+        let s = match p {
+            CoordinationPattern::Sequential => "seq",
+            CoordinationPattern::Parallel => "par",
+            CoordinationPattern::Pipeline => "pipe",
+            CoordinationPattern::MapReduce => "mr",
+            CoordinationPattern::Hybrid => "hybrid",
+        };
+        assert_eq!(s, "hybrid");
+    }
+
+    #[test]
+    fn issue_severity_info_distinct() {
+        assert_ne!(IssueSeverity::Info, IssueSeverity::Error);
+    }
 }

@@ -111,7 +111,7 @@ async fn build_router(
     // Task lifecycle + consent (shared with JSON-RPC semantic methods)
     let _ = std::fs::create_dir_all(crate::env_config::data_dir());
     let task_db_url =
-        format!("sqlite:{}", crate::env_config::data_dir().join("task_lifecycle.db").display());
+        crate::env_config::data_dir().join("task_lifecycle.db").display().to_string();
     let task_manager = Arc::new(
         crate::task_lifecycle::TaskLifecycleManager::new(&task_db_url)
             .await

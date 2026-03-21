@@ -1,44 +1,42 @@
 ---
-name: 🚀 Feature Request
-about: Suggest a new feature for SongBird Gaming Bridge
+name: Feature Request
+about: Suggest a feature for Songbird (Network Orchestration & Discovery Primal)
 title: '[FEATURE] '
 labels: 'enhancement'
 assignees: ''
 ---
 
-## 🚀 **Feature Request**
-A clear and concise description of the feature you'd like to see.
+## Summary
 
-## 🎮 **Gaming Use Case**
-- **Game(s)**: Which games would benefit from this feature?
-- **Scenario**: Describe the gaming scenario where this would be useful
-- **Players**: How many players would this typically involve?
+A clear, concise description of the feature or improvement you want.
 
-## 💡 **Problem Statement**
-What problem does this feature solve? What pain point does it address?
+## Problem / motivation
 
-## ✨ **Proposed Solution**
-Describe your ideal solution. How should this feature work?
+What problem does this solve? Who benefits (operators, integrators, federated deployments)?
 
-## 🔄 **Alternative Solutions**
-Describe any alternative solutions or features you've considered.
+## Proposed solution
 
-## 📈 **Impact & Priority**
-- **Impact**: How many users would benefit from this?
-- **Priority**: How important is this feature to you?
-- **Workaround**: Is there currently a workaround?
+How you imagine this working in Songbird: orchestration, service discovery, federation, compute routing, relay coordination, configuration, or related areas.
 
-## 🛠️ **Implementation Ideas** (Optional)
-If you have ideas about how this could be implemented, share them here.
+## Alternatives considered
 
-## 🎯 **Acceptance Criteria** (Optional)
-- [ ] Feature should do X
-- [ ] Feature should support Y
-- [ ] Feature should be configurable for Z
+Other approaches you have considered.
 
-## 📋 **Additional Context**
-Add any other context, screenshots, or examples about the feature request here.
+## Impact and priority
+
+- Impact: who or what deployments would benefit?
+- Priority: how important is this to you?
+- Workaround: is there a viable workaround today?
+
+## Acceptance criteria (optional)
+
+- [ ]
+- [ ]
+
+## Additional context
+
+Design notes, prior art, or links that help scope the work.
 
 ---
 
-**🌱 ecoPrimals | Gaming Bridge Free Forever** 
+ecoPrimals | Sovereign Infrastructure

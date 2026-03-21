@@ -9,7 +9,9 @@
 #![allow(missing_docs, reason = "core network structs align with `NetworkConfig` documentation")]
 
 use serde::{Deserialize, Serialize};
-use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
+
+use crate::canonical::constants::read_process_env;
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tracing::warn;
@@ -23,6 +25,18 @@ use super::gaming::GamingNetworkConfig;
 use super::limits::ConnectionLimits;
 use super::ports::PortRange;
 use super::timeouts::NetworkTimeouts;
+
+fn env_or_default(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    key: &str,
+    default: &str,
+) -> String {
+    env(key).unwrap_or_else(|_| default.to_string())
+}
+
+fn env_port(env: &impl Fn(&str) -> Result<String, std::env::VarError>, key: &str, default: u16) -> u16 {
+    env(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+}
 
 /// **CANONICAL**: Peer type in network topology
 ///
@@ -163,7 +177,18 @@ impl CanonicalNetworkConfig {
     ///
     /// Returns an error if the bind address environment variable is invalid
     pub fn from_env() -> SongbirdResult<Self> {
-        let bind_address = SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0")
+        Self::from_env_reader(read_process_env)
+    }
+
+    /// Same as [`from_env`](Self::from_env) with an injectable env reader.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the bind address value is not a valid IP address.
+    pub fn from_env_reader(
+        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<Self> {
+        let bind_address = env_or_default(&env, "SONGBIRD_BIND_ADDRESS", "0.0.0.0")
             .parse()
             .map_err(|e| SongbirdError::Configuration {
                 message: format!("Invalid bind address: {e}"),
@@ -171,27 +196,27 @@ impl CanonicalNetworkConfig {
                 suggestion: Some("Provide a valid IP address".to_string()),
             })?;
 
+        let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", 8001);
+
         let config = Self {
             bind_address,
-            production_bind_address: SafeEnv::get_or_default(
-                "SONGBIRD_PRODUCTION_BIND_ADDRESS",
-                "0.0.0.0",
-            )
-            .parse()
-            .unwrap_or_else(|e| {
-                warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
-                std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
-            }),
-            orchestrator_port: SafeEnv::get_port(
+            production_bind_address: env_or_default(&env, "SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0")
+                .parse()
+                .unwrap_or_else(|e| {
+                    warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
+                    std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
+                }),
+            orchestrator_port: env_port(
+                &env,
                 "SONGBIRD_ORCHESTRATOR_PORT",
-                SafeEnv::get_port("DEFAULT_HTTP_PORT", 8080),
+                env_port(&env, "DEFAULT_HTTP_PORT", 8080),
             ),
-            discovery_port: 8001,
-            health_port: 8002,
-            dashboard_port: 3000,
-            websocket_port: 8080,
-            metrics_port: 8004,
-            federation_port: 8005,
+            discovery_port,
+            health_port: env_port(&env, "SONGBIRD_HEALTH_PORT", 8002),
+            dashboard_port: env_port(&env, "SONGBIRD_DASHBOARD_PORT", 3000),
+            websocket_port: env_port(&env, "SONGBIRD_WEBSOCKET_PORT", 8080),
+            metrics_port: env_port(&env, "SONGBIRD_METRICS_PORT", 8004),
+            federation_port: env_port(&env, "SONGBIRD_FEDERATION_PORT", 8005),
             gaming: GamingNetworkConfig::default(),
             gaming_port_range: PortRange::default(),
             connection_timeout: Duration::from_secs(30),
@@ -201,7 +226,7 @@ impl CanonicalNetworkConfig {
             worker_threads: 2,
             require_tls: false,
             cors: CorsConfig::default(),
-            discovery_ports: vec![8001],
+            discovery_ports: vec![discovery_port],
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
             allowed_networks: vec!["127.0.0.0/8".to_string()],
@@ -222,6 +247,84 @@ impl CanonicalNetworkConfig {
         };
 
         Ok(config)
+    }
+
+    /// Build the same shape as [`Default`](Default) using an injectable env reader (for tests).
+    #[must_use]
+    pub fn default_from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+        let bind_address = "0.0.0.0".parse().unwrap_or_else(|_| {
+            warn!("Failed to parse bind address, using development default");
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
+        });
+
+        let orchestrator_port = env_port(
+            &env,
+            "SONGBIRD_ORCHESTRATOR_PORT",
+            env_port(&env, "DEFAULT_HTTP_PORT", 8080),
+        );
+        let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", 8001);
+        let health_port = env_port(&env, "SONGBIRD_HEALTH_PORT", 8002);
+        let dashboard_port = env_port(&env, "SONGBIRD_DASHBOARD_PORT", 3000);
+        let websocket_port = env_port(&env, "SONGBIRD_WEBSOCKET_PORT", 8080);
+        let metrics_port = env_port(&env, "SONGBIRD_METRICS_PORT", 8004);
+        let federation_port = env_port(&env, "SONGBIRD_FEDERATION_PORT", 8005);
+
+        Self {
+            bind_address,
+            production_bind_address: "0.0.0.0"
+                .parse()
+                .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
+            orchestrator_port,
+            discovery_port,
+            health_port,
+            dashboard_port,
+            websocket_port,
+            metrics_port,
+            federation_port,
+            gaming: GamingNetworkConfig::default(),
+            gaming_port_range: PortRange::default(),
+            connection_timeout: Duration::from_secs(30),
+            request_timeout: Duration::from_secs(60),
+            max_connections: 50,
+            max_bandwidth_mbps: 50,
+            worker_threads: 2,
+            require_tls: false,
+            cors: CorsConfig {
+                enabled: true,
+                origins: env_or_default(&env, "SONGBIRD_CORS_ORIGINS", "http://localhost:3000")
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .collect(),
+                allowed_methods: vec![
+                    "GET".to_string(),
+                    "POST".to_string(),
+                    "PUT".to_string(),
+                    "DELETE".to_string(),
+                ],
+                allowed_headers: vec!["Content-Type".to_string(), "Authorization".to_string()],
+            },
+            discovery_ports: vec![discovery_port],
+            federation_endpoints: Vec::new(),
+            stun_servers: Vec::new(),
+            allowed_networks: vec![
+                "10.0.0.0/8".to_string(),
+                "172.16.0.0/12".to_string(),
+                "192.168.0.0/16".to_string(),
+            ],
+            timeouts: NetworkTimeouts::default(),
+            connection_limits: ConnectionLimits::default(),
+            metrics_bind_address: bind_address,
+            federation_bind_address: bind_address,
+
+            self_config: None,
+            universal_discovery: None,
+            reverse_proxy: None,
+            ssl_config: None,
+            turn_relay: None,
+            upnp_device: None,
+            topology_discovery: None,
+            network_metrics: None,
+        }
     }
 
     /// Validate production readiness
@@ -303,65 +406,7 @@ impl CanonicalNetworkConfig {
 
 impl Default for CanonicalNetworkConfig {
     fn default() -> Self {
-        let bind_address = "0.0.0.0".parse().unwrap_or_else(|_| {
-            warn!("Failed to parse bind address, using development default");
-            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
-        });
-
-        Self {
-            bind_address,
-            production_bind_address: "0.0.0.0"
-                .parse()
-                .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
-            orchestrator_port: 8080,
-            discovery_port: 8001,
-            health_port: 8002,
-            dashboard_port: 3000,
-            websocket_port: 8080,
-            metrics_port: 8004,
-            federation_port: 8005,
-            gaming: GamingNetworkConfig::default(),
-            gaming_port_range: PortRange::default(),
-            connection_timeout: Duration::from_secs(30),
-            request_timeout: Duration::from_secs(60),
-            max_connections: 50,
-            max_bandwidth_mbps: 50,
-            worker_threads: 2,
-            require_tls: false,
-            cors: CorsConfig {
-                enabled: true,
-                origins: vec!["http://localhost:3000".to_string()],
-                allowed_methods: vec![
-                    "GET".to_string(),
-                    "POST".to_string(),
-                    "PUT".to_string(),
-                    "DELETE".to_string(),
-                ],
-                allowed_headers: vec!["Content-Type".to_string(), "Authorization".to_string()],
-            },
-            discovery_ports: vec![8001],
-            federation_endpoints: Vec::new(),
-            stun_servers: Vec::new(),
-            allowed_networks: vec![
-                "10.0.0.0/8".to_string(),
-                "172.16.0.0/12".to_string(),
-                "192.168.0.0/16".to_string(),
-            ],
-            timeouts: NetworkTimeouts::default(),
-            connection_limits: ConnectionLimits::default(),
-            metrics_bind_address: bind_address,
-            federation_bind_address: bind_address,
-
-            // Phase 2B: Advanced features (optional, None by default for backward compatibility)
-            self_config: None,
-            universal_discovery: None,
-            reverse_proxy: None,
-            ssl_config: None,
-            turn_relay: None,
-            upnp_device: None,
-            topology_discovery: None,
-            network_metrics: None,
-        }
+        Self::default_from_env_reader(read_process_env)
     }
 }
 
@@ -370,6 +415,9 @@ pub type NetworkConfig = CanonicalNetworkConfig;
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -400,5 +448,87 @@ mod tests {
     #[test]
     fn test_peer_type_default() {
         assert_eq!(PeerType::default(), PeerType::Unknown);
+    }
+
+    #[test]
+    fn test_peer_type_parse_error() {
+        assert!("nope".parse::<PeerType>().is_err());
+    }
+
+    #[test]
+    fn test_peer_type_relay_and_peer_roundtrip() {
+        assert_eq!("relay".parse::<PeerType>().unwrap(), PeerType::Relay);
+        assert_eq!("peer".parse::<PeerType>().unwrap(), PeerType::Peer);
+        assert_eq!(PeerType::Relay.to_string(), "relay");
+        assert_eq!(PeerType::Peer.to_string(), "peer");
+    }
+
+    #[test]
+    fn test_from_env_invalid_bind_address_errors() {
+        let env = |key: &str| match key {
+            "SONGBIRD_BIND_ADDRESS" => Ok(":::not-valid".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        };
+        let err = CanonicalNetworkConfig::from_env_reader(env).expect_err("invalid bind");
+        assert!(matches!(err, SongbirdError::Configuration { .. }));
+    }
+
+    #[test]
+    fn test_config_with_loopback_bind() {
+        let mut cfg = CanonicalNetworkConfig::default();
+        cfg.bind_address = "127.0.0.1".parse().unwrap();
+        assert_eq!(cfg.bind_address, std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+    }
+
+    #[test]
+    fn test_config_with_invalid_bind_parse_is_err() {
+        let result: Result<std::net::IpAddr, _> = ":::not-valid".parse();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_production_readiness_localhost_err() {
+        let mut cfg = CanonicalNetworkConfig::default();
+        cfg.bind_address = std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
+        assert!(cfg.validate_production_readiness().is_err());
+    }
+
+    #[test]
+    fn test_validate_production_readiness_non_localhost_ok() {
+        let mut cfg = CanonicalNetworkConfig::default();
+        cfg.bind_address = "10.0.0.1".parse().unwrap();
+        assert!(cfg.validate_production_readiness().is_ok());
+    }
+
+    #[test]
+    fn test_local_bind_address() {
+        let mut cfg = CanonicalNetworkConfig::default();
+        cfg.bind_address = "127.0.0.1".parse().unwrap();
+        cfg.orchestrator_port = 9000;
+        let sa = cfg.local_bind_address().expect("socket addr");
+        assert_eq!(sa.port(), 9000);
+    }
+
+    #[test]
+    fn test_gaming_port_known_protocols() {
+        let cfg = CanonicalNetworkConfig::default();
+        assert_eq!(cfg.gaming_port("starcraft").unwrap(), cfg.gaming.starcraft_port);
+        assert_eq!(cfg.gaming_port("aoe2").unwrap(), cfg.gaming.aoe2_port);
+        assert_eq!(cfg.gaming_port("udp").unwrap(), cfg.gaming.aoe2_port);
+    }
+
+    #[test]
+    fn test_gaming_port_unknown() {
+        let cfg = CanonicalNetworkConfig::default();
+        assert!(cfg.gaming_port("quic").is_err());
+    }
+
+    #[test]
+    fn test_endpoint_helpers() {
+        let cfg = CanonicalNetworkConfig::default();
+        assert_eq!(cfg.orchestrator_endpoint().port(), cfg.orchestrator_port);
+        assert_eq!(cfg.discovery_endpoint().port(), cfg.discovery_port);
+        assert_eq!(cfg.metrics_endpoint().port(), cfg.metrics_port);
+        assert_eq!(cfg.federation_endpoint().port(), cfg.federation_port);
     }
 }

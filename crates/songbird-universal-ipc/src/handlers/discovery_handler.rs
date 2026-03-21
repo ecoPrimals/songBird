@@ -186,6 +186,7 @@ impl PeerRegistry for MockPeerRegistry {
 // ============================================================================
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -194,6 +195,13 @@ mod tests {
     async fn test_discovery_handler_creation() {
         let handler = DiscoveryHandler::new();
         assert!(handler.peer_registry.is_none());
+    }
+
+    #[tokio::test]
+    async fn discovery_handler_default_matches_new() {
+        let a = DiscoveryHandler::new();
+        let b = DiscoveryHandler::default();
+        assert!(a.peer_registry.is_none() && b.peer_registry.is_none());
     }
 
     #[tokio::test]
@@ -313,5 +321,16 @@ mod tests {
         assert_eq!(json["node_id"], "test-node");
         assert_eq!(json["family_id"], "test-family");
         assert_eq!(json["tcp_port"], 8080);
+    }
+
+    #[test]
+    fn discovery_peers_result_serialization_shape() {
+        let r = DiscoveryPeersResult {
+            peers: vec![],
+            total_count: 0,
+        };
+        let v = serde_json::to_value(&r).expect("json");
+        assert_eq!(v["total_count"], 0);
+        assert!(v["peers"].as_array().unwrap().is_empty());
     }
 }

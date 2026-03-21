@@ -15,7 +15,9 @@ mod registry;
 mod types;
 
 // Re-export main types
-pub use adapter::{CapabilityWorkflow, UniversalCapabilityAdapter, WorkflowStep};
+pub use adapter::{
+    CapabilityWorkflow, UniversalCapabilityAdapter, WorkflowMetrics, WorkflowResult, WorkflowStep,
+};
 pub use connection::{ConnectionHealth, PrimalConnection};
 pub use error::CapabilityError;
 pub use registry::CapabilityRegistry;

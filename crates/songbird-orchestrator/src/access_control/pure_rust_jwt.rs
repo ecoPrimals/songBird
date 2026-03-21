@@ -130,7 +130,12 @@ pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Resul
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+    use hmac::Mac;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     struct TestClaims {
@@ -261,5 +266,21 @@ mod tests {
         let token = encode(&claims, secret).unwrap();
         let decoded: ComplexClaims = decode(&token, secret).unwrap();
         assert_eq!(decoded, claims);
+    }
+
+    #[test]
+    fn decode_invalid_payload_json() {
+        let secret = b"secret";
+        let header = URL_SAFE_NO_PAD.encode(r#"{"alg":"HS256","typ":"JWT"}"#.as_bytes());
+        let payload = URL_SAFE_NO_PAD.encode(b"not-json");
+        let mut mac = HmacSha256::new_from_slice(secret).unwrap();
+        let signing_input = format!("{header}.{payload}");
+        mac.update(signing_input.as_bytes());
+        let sig = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
+        let token = format!("{signing_input}.{sig}");
+        let r: Result<TestClaims> = decode(&token, secret);
+        assert!(r.is_err());
+        let msg = r.err().expect("err").to_string();
+        assert!(msg.contains("deserialize") || msg.contains("Failed to deserialize"), "{msg}");
     }
 }

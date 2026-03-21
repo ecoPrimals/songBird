@@ -166,27 +166,37 @@
 )]
 
 // Public modules
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
-pub mod capability; // ✨ NEW: Capability-based discovery
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
+/// Capability registry types and provider trait for IPC-facing discovery.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod capability;
+/// Virtual (`/primal/...`) and native (socket, pipe, TCP) endpoint representations.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod endpoint;
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
+/// Universal IPC error type and result alias.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod error;
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
-pub mod handlers; // ✨ NEW: IPC method handlers (HTTP, etc.)
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
-pub mod introspection; // Smart refactor: primal self-description (Feb 8, 2026)
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
+/// JSON-RPC method handlers (HTTP, discovery, STUN, mesh, etc.).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod handlers;
+/// Primal self-description and introspection helpers for IPC consumers.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod introspection;
+/// Platform-specific IPC implementation and async stream abstractions.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod platform;
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
+/// In-memory registry of registered primals and service metadata.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod registry;
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
-pub mod service; // ✨ NEW: IPC Service (JSON-RPC broker)
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
-pub mod tower_atomic; // ✨ NEW: JSON-RPC over Universal IPC
+/// Songbird IPC JSON-RPC broker and `IpcServiceHandler` entrypoints.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod service;
+/// JSON-RPC over universal IPC (Tower Atomic integration).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod tower_atomic;
 
 // Public API
-#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
+/// User-facing universal IPC API: `init`, `register`, `listen`, `connect`.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod ipc;
 
 // Re-exports

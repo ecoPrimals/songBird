@@ -227,8 +227,34 @@ impl Default for CapabilityRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::capability::strategy::{DiscoveryStrategy, EnvironmentStrategy, FilesystemStrategy};
+    use async_trait::async_trait;
+    use std::collections::HashMap;
 
-    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    /// Injects env without mutating the process environment.
+    struct HashMapEnvStrategy(HashMap<String, String>);
+
+    #[async_trait]
+    impl DiscoveryStrategy for HashMapEnvStrategy {
+        fn name(&self) -> &str {
+            "environment(injected)"
+        }
+
+        async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
+            let map = &self.0;
+            EnvironmentStrategy::discover_with(capability, |k| {
+                map.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+            })
+            .await
+        }
+    }
+
+    fn registry_with_injected_env(map: HashMap<String, String>) -> CapabilityRegistry {
+        CapabilityRegistry::with_strategies(vec![
+            Box::new(HashMapEnvStrategy(map)),
+            Box::new(FilesystemStrategy::with_paths(vec![])),
+        ])
+    }
 
     #[tokio::test]
     async fn test_registry_creation() {
@@ -245,11 +271,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_not_found() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        // Ensure no env vars set
-        songbird_process_env::remove_var("NONEXISTENT_PROVIDER_SOCKET");
-
-        let registry = CapabilityRegistry::new();
+        let registry = registry_with_injected_env(HashMap::new());
         let result = registry.discover("nonexistent").await;
 
         assert!(result.is_err());
@@ -257,10 +279,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        songbird_process_env::set_var("TEST_PROVIDER_SOCKET", "/tmp/test.sock");
+        let mut map = HashMap::new();
+        map.insert("TEST_PROVIDER_SOCKET".to_string(), "/tmp/test.sock".to_string());
 
-        let registry = CapabilityRegistry::new().with_cache_ttl(Duration::from_secs(10));
+        let registry = registry_with_injected_env(map).with_cache_ttl(Duration::from_secs(10));
 
         // First discovery
         let result1 = registry.discover("test").await;
@@ -272,20 +294,18 @@ mod tests {
 
         // Clear cache
         registry.clear_cache().await;
-
-        songbird_process_env::remove_var("TEST_PROVIDER_SOCKET");
     }
 
     #[tokio::test]
     async fn test_discover_all() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/crypto1.sock");
+        const CAP: &str = "sbipc_registry_discover_all";
+        const ENV: &str = "SBIPC_REGISTRY_DISCOVER_ALL_PROVIDER_SOCKET";
+        let mut map = HashMap::new();
+        map.insert(ENV.to_string(), "/tmp/sbipc_registry_discover_all.sock".to_string());
 
-        let registry = CapabilityRegistry::new();
-        let providers = registry.discover_all("crypto").await.unwrap();
+        let registry = registry_with_injected_env(map);
+        let providers = registry.discover_all(CAP).await.unwrap();
 
-        assert!(!providers.is_empty());
-
-        songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
+        assert!(!providers.is_empty(), "expected env strategy to find {ENV}");
     }
 }

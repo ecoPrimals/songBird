@@ -192,26 +192,36 @@
 //! error information including network errors, timeout handling, and recovery
 //! suggestions for common discovery failures.
 
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
-pub mod beardog_birdsong_provider; // NEW: BearDog BirdSong encryption provider (Jan 3, 2026)
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
-pub mod birdsong; // NEW: BirdSong encrypted discovery (REFACTORED v3.22.0 - Feb 5, 2026)
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
+/// BearDog-backed BirdSong encryption provider for discovery traffic.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod beardog_birdsong_provider;
+/// BirdSong encryption configuration and processing for discovery.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod birdsong;
+/// Adapters converting between discovery representations and legacy types.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod conversion;
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
-pub mod dark_forest_beacon; // ✅ NEW (Feb 3, 2026): Dark Forest Beacon Genetics (TRUE encrypted discovery, zero metadata leakage)
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
+/// Dark Forest beacon genetics and encrypted discovery metadata.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod dark_forest_beacon;
+/// Core discovery engine, backends, and `UniversalDiscoveryFactory`.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod discovery;
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
-pub mod discovery_packet; // NEW: Enhanced discovery with genetic lineage
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
+/// Wire-format discovery packets, errors, and identity attestations.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod discovery_packet;
+/// Runtime discovery statistics, snapshots, and network status.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod discovery_stats;
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
-pub mod lineage_discovery; // NEW: Lineage-aware mDNS backend
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
-pub mod primal_self_knowledge; // Primal self-knowledge architecture (capability-first)
-#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
-pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
+/// Lineage-aware mDNS service discovery backend.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod lineage_discovery;
+/// Capability-first primal self-knowledge for discovery and advertisement.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod primal_self_knowledge;
+/// Discovery traits, service metadata, configuration, and feature flags.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod traits;
 
 /// Anonymous discovery protocol (v3.22.1) - Refactored modules
 ///
@@ -228,7 +238,7 @@ pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
 /// - Old `anonymous_discovery.rs` removed (Jan 12, 2026)
 /// - All imports updated to use `anonymous::` module
 /// - File size compliance achieved (<1000 lines per file)
-#[allow(missing_docs, reason = "anonymous discovery submodule; module docs above")]
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod anonymous;
 
 /// Unit and integration tests for self-filtering (v3.10.2 - Jan 5, 2026)

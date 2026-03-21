@@ -16,14 +16,12 @@ use uuid::Uuid;
 
 mod checkpoint;
 mod manager;
-// mod storage;  // ❌ REMOVED Jan 27, 2026: sqlx-based storage (migrated to sled)
-mod storage_sled; // ✅ NEW: Pure Rust sled-based storage (TRUE ecoBin!)
-pub mod types; // Made public for cross-module access
+mod storage_sled;
+pub mod types;
 
 pub use checkpoint::*;
 pub use manager::TaskLifecycleManager;
-// pub use storage::*;  // ❌ OLD sqlx storage
-pub use storage_sled::*; // ✅ NEW sled storage (100% Pure Rust!)
+pub use storage_sled::*;
 pub use types::*;
 
 /// Task identifier (UUID v7 for time-ordered IDs)

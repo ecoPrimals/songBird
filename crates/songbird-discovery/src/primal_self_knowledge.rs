@@ -8,6 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env::VarError;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
@@ -53,8 +54,16 @@ impl PrimalSelfKnowledge {
     ///
     /// No assumptions, pure self-discovery.
     pub fn discover_self() -> Result<Self> {
-        let my_name = Self::introspect_name();
-        let my_capabilities = Self::introspect_capabilities();
+        Self::discover_self_with(|k| std::env::var(k))
+    }
+
+    /// Same as [`discover_self`](Self::discover_self) with an injectable env reader (tests).
+    pub fn discover_self_with(
+        env: impl Fn(&str) -> Result<String, VarError> + Send + Sync + 'static,
+    ) -> Result<Self> {
+        let env = Arc::new(env);
+        let my_name = Self::introspect_name_with(|k| env(k));
+        let my_capabilities = Self::introspect_capabilities_with(|k| env(k));
 
         tracing::info!(
             "Primal self-discovered: name='{}', capabilities={:?}",
@@ -62,23 +71,33 @@ impl PrimalSelfKnowledge {
             my_capabilities
         );
 
+        let env_mech = Arc::clone(&env);
         Ok(Self {
             my_name,
             my_capabilities,
             discovered_primals: Arc::new(RwLock::new(HashMap::new())),
-            discovery_mechanisms: Self::initialize_discovery_mechanisms(),
+            discovery_mechanisms: vec![
+                Box::new(EnvInjectedDiscovery {
+                    get_var: env_mech,
+                }),
+                Box::new(DnsSrvDiscovery::new()),
+            ],
         })
     }
 
     /// Introspect own name from environment
     fn introspect_name() -> String {
+        Self::introspect_name_with(|k| std::env::var(k))
+    }
+
+    fn introspect_name_with(env: impl Fn(&str) -> Result<String, VarError>) -> String {
         // Try explicit name first
-        if let Ok(name) = std::env::var("PRIMAL_NAME") {
+        if let Ok(name) = env("PRIMAL_NAME") {
             return name;
         }
 
         // Try service name
-        if let Ok(name) = std::env::var("SERVICE_NAME") {
+        if let Ok(name) = env("SERVICE_NAME") {
             return name;
         }
 
@@ -93,6 +112,10 @@ impl PrimalSelfKnowledge {
     ///
     /// No hardcoding - discovers what this binary can do.
     fn introspect_capabilities() -> Vec<String> {
+        Self::introspect_capabilities_with(|k| std::env::var(k))
+    }
+
+    fn introspect_capabilities_with(env: impl Fn(&str) -> Result<String, VarError>) -> Vec<String> {
         let mut caps = vec![
             #[cfg(feature = "security")]
             "security".to_string(),
@@ -109,11 +132,11 @@ impl PrimalSelfKnowledge {
         ];
 
         // Check environment hints
-        if std::env::var("ENABLE_SECURITY").is_ok() && !caps.contains(&"security".to_string()) {
+        if env("ENABLE_SECURITY").is_ok() && !caps.contains(&"security".to_string()) {
             caps.push("security".to_string());
         }
 
-        if std::env::var("ENABLE_AI").is_ok() && !caps.contains(&"ai".to_string()) {
+        if env("ENABLE_AI").is_ok() && !caps.contains(&"ai".to_string()) {
             caps.push("ai".to_string());
         }
 
@@ -154,15 +177,6 @@ impl PrimalSelfKnowledge {
 
         caps.dedup();
         caps
-    }
-
-    /// Initialize discovery mechanisms
-    fn initialize_discovery_mechanisms() -> Vec<Box<dyn DiscoveryMechanism>> {
-        vec![
-            Box::new(EnvironmentDiscovery::new()),
-            Box::new(DnsSrvDiscovery::new()),
-            // Add mDNS, Consul, K8s, etc. as available
-        ]
     }
 
     /// Discover another primal by capability at runtime
@@ -256,6 +270,22 @@ pub trait DiscoveryMechanism: Send + Sync {
 /// Environment variable based discovery
 pub struct EnvironmentDiscovery;
 
+/// Uses injected env lookup for [`PrimalSelfKnowledge::discover_self_with`].
+struct EnvInjectedDiscovery {
+    get_var: Arc<dyn Fn(&str) -> Result<String, VarError> + Send + Sync>,
+}
+
+#[async_trait::async_trait]
+impl DiscoveryMechanism for EnvInjectedDiscovery {
+    fn name(&self) -> &str {
+        "environment"
+    }
+
+    async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
+        EnvironmentDiscovery::discover_with(capability, |k| (self.get_var)(k)).await
+    }
+}
+
 impl Default for EnvironmentDiscovery {
     fn default() -> Self {
         Self::new()
@@ -267,23 +297,19 @@ impl EnvironmentDiscovery {
     pub const fn new() -> Self {
         Self
     }
-}
 
-#[async_trait::async_trait]
-impl DiscoveryMechanism for EnvironmentDiscovery {
-    fn name(&self) -> &'static str {
-        "environment"
-    }
-
-    async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
-        // Check for CAPABILITY_HOST and CAPABILITY_PORT env vars
+    /// Discover `host` / `port` from env using an injectable reader (tests).
+    pub async fn discover_with<F>(capability: &str, get_var: F) -> Result<PrimalInfo>
+    where
+        F: Fn(&str) -> Result<String, VarError> + Send,
+    {
         let var_prefix = capability.to_uppercase();
 
-        let host = std::env::var(format!("{var_prefix}_HOST"))
-            .or_else(|_| std::env::var(format!("PRIMAL_{var_prefix}_HOST")))?;
+        let host = get_var(&format!("{var_prefix}_HOST"))
+            .or_else(|_| get_var(&format!("PRIMAL_{var_prefix}_HOST")))?;
 
-        let port = std::env::var(format!("{var_prefix}_PORT"))
-            .or_else(|_| std::env::var(format!("PRIMAL_{var_prefix}_PORT")))?
+        let port = get_var(&format!("{var_prefix}_PORT"))
+            .or_else(|_| get_var(&format!("PRIMAL_{var_prefix}_PORT")))?
             .parse::<u16>()
             .map_err(|e| PrimalError::IntrospectionFailed(e.to_string()))?;
 
@@ -295,6 +321,17 @@ impl DiscoveryMechanism for EnvironmentDiscovery {
             discovered_at: SystemTime::now(),
             discovery_method: "environment".to_string(),
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl DiscoveryMechanism for EnvironmentDiscovery {
+    fn name(&self) -> &'static str {
+        "environment"
+    }
+
+    async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
+        Self::discover_with(capability, |k| std::env::var(k)).await
     }
 }
 
@@ -365,6 +402,7 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
 #[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use std::env::VarError;
 
     #[test]
     fn test_introspect_name() {

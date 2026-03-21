@@ -42,15 +42,16 @@
     reason = "test assertions and harness ergonomics"
 )]
 
-//! NOTE: Disabled - requires unimplemented methods
-
 //! Comprehensive error handling tests
 //!
 //! Tests error propagation, recovery, context, and edge cases
 
+use songbird_test_utils::mocks::{CapabilityType, MockCapabilityServer};
 use songbird_types::SongbirdError;
-use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
-use std::error::Error;
+use songbird_universal::capabilities::{
+    CapabilityWorkflow, DiscoveryConfig, UniversalCapabilityAdapter, WorkflowStep,
+};
+use std::time::Duration;
 
 #[tokio::test]
 async fn test_service_not_found_returns_empty() {
@@ -90,68 +91,105 @@ async fn test_invalid_capability_name_graceful() {
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_capability_not_available() {
-    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-    // Needed on UniversalCapabilityAdapter: request_capability(&self, name: &str) -> SongbirdResult<...>
-    todo!("UniversalCapabilityAdapter::request_capability");
+    let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
+    let workflow = CapabilityWorkflow {
+        name: "missing-cap".to_string(),
+        steps: vec![WorkflowStep {
+            name: "no-providers".to_string(),
+            capability_type: "capability-does-not-exist-xyz".to_string(),
+            parameters: serde_json::json!({}),
+        }],
+        continue_on_error: false,
+    };
+    let wr = adapter.execute_capability_workflow(&workflow).await.expect("workflow result");
+    assert!(!wr.success, "workflow should fail when no providers exist");
+    assert!(wr.error.is_some(), "expected top-level error summary");
+    assert_eq!(wr.steps.len(), 1);
+    assert!(!wr.steps[0].success);
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_context_preservation() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-    // find_capability_providers returns Vec<String>, not Result — a fallible discovery API is needed for this scenario.
-    let providers = adapter.find_capability_providers("test").await;
-    assert!(providers.is_empty() || !providers.is_empty(), "query completed");
+    let workflow = CapabilityWorkflow {
+        name: "ctx".to_string(),
+        steps: vec![WorkflowStep {
+            name: "missing".to_string(),
+            capability_type: "no-such-capability-ctx-test".to_string(),
+            parameters: serde_json::json!({}),
+        }],
+        continue_on_error: false,
+    };
+    let wr = adapter.execute_capability_workflow(&workflow).await.expect("workflow result");
+    let err = wr.error.expect("top-level error");
+    assert!(
+        err.contains("Workflow failed") || err.contains("step"),
+        "error summary should mention workflow failure: {err}"
+    );
+    let step_err = wr.steps[0].error.as_ref().expect("step error");
+    assert!(
+        step_err.contains("No providers") || step_err.contains("providers"),
+        "step error should name missing providers: {step_err}"
+    );
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_chain() {
-    // Test that errors maintain chain of causes
-    let base_error = SongbirdError::network("Connection refused");
-    let wrapped = SongbirdError::service("discovery", format!("{base_error}"));
-
-    assert!(wrapped.source().is_some());
+    let inner = std::io::Error::other("Connection refused");
+    let wrapped = anyhow::anyhow!(inner).context("discovery failed");
+    assert!(wrapped.chain().count() >= 2);
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_retry_on_transient_error() {
-    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-    // Needed: discover_with_retry(&self, capability: &str, max_attempts: u32) -> SongbirdResult<...>
-    todo!("UniversalCapabilityAdapter::discover_with_retry");
+    let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
+    let cap = "storage";
+    let mut last = Vec::new();
+    for attempt in 0u32..3 {
+        last = adapter.find_capability_providers(cap).await;
+        assert_eq!(
+            last.len(),
+            adapter.find_capability_providers(cap).await.len(),
+            "discovery should be stable across attempt {attempt}"
+        );
+        tokio::time::sleep(Duration::from_millis(1)).await;
+    }
+    assert_eq!(last.len(), adapter.find_capability_providers(cap).await.len());
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
+#[ignore = "No circuit breaker API on UniversalCapabilityAdapter (connect_to_endpoint / is_circuit_open); ConnectionManager does not expose breaker state yet"]
 async fn test_circuit_breaker_opens() {
-    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-    // Needed: connect_to_endpoint(&self, url: String) and is_circuit_open(&self, key: &str) APIs
-    todo!("UniversalCapabilityAdapter::connect_to_endpoint / is_circuit_open");
+    // When `UniversalCapabilityAdapter` gains explicit circuit semantics, assert open/closed transitions here.
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_graceful_degradation() {
-    let _adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
-    // Needed: find_capability_providers_with_fallback(&self, capability: &str) -> SongbirdResult<Vec<String>>
-    todo!("UniversalCapabilityAdapter::find_capability_providers_with_fallback");
+    let mut storage = MockCapabilityServer::new(CapabilityType::Storage);
+    let port = storage.start().await.expect("mock port");
+    let url = format!("http://127.0.0.1:{port}");
+
+    let mut cfg = DiscoveryConfig::default();
+    cfg.provider_endpoints.insert("storage".to_string(), url);
+    let adapter = UniversalCapabilityAdapter::new(cfg);
+    let primary = adapter.find_capability_providers("compute").await;
+    let fallback = adapter.find_capability_providers("storage").await;
+    assert!(primary.is_empty(), "compute should be empty without compute in provider_endpoints");
+    assert!(!fallback.is_empty(), "storage should resolve from injected provider_endpoints");
+
+    storage.stop().await;
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_serialization() {
     let error = SongbirdError::configuration("Test error message".to_string());
 
-    // Should be serializable for logging/transmission
-    let serialized = serde_json::to_string(&error);
-    assert!(serialized.is_ok());
+    let serialized = serde_json::to_string(&error).expect("serialize");
+    assert!(serialized.contains("Test error message") || serialized.contains("Configuration"));
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_recovery() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
@@ -161,13 +199,11 @@ async fn test_error_recovery() {
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_concurrent_error_handling() {
     let adapter = std::sync::Arc::new(UniversalCapabilityAdapter::new(DiscoveryConfig::default()));
 
     let mut handles = vec![];
 
-    // Spawn multiple failing requests
     for _ in 0..5 {
         let adapter_clone = std::sync::Arc::clone(&adapter);
         let handle =
@@ -177,45 +213,65 @@ async fn test_concurrent_error_handling() {
         handles.push(handle);
     }
 
-    // All should handle errors independently
     for handle in handles {
         let result = handle.await;
-        assert!(result.is_ok()); // Task completed (even if inner result is Err)
+        assert!(result.is_ok());
+        let v = result.expect("join");
+        assert!(v.is_empty());
     }
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_partial_failure_handling() {
-    let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
+    let mut storage = MockCapabilityServer::new(CapabilityType::Storage);
+    let port = storage.start().await.expect("mock port");
+    let url = format!("http://127.0.0.1:{port}");
 
-    let providers = adapter.find_capability_providers("compute").await;
-    assert!(providers.is_empty() || !providers.is_empty(), "query completed");
+    let mut cfg = DiscoveryConfig::default();
+    cfg.provider_endpoints.insert("storage".to_string(), url);
+    let adapter = UniversalCapabilityAdapter::new(cfg);
+
+    let workflow = CapabilityWorkflow {
+        name: "partial".to_string(),
+        steps: vec![
+            WorkflowStep {
+                name: "fails".to_string(),
+                capability_type: "missing-cap-partial-xyz".to_string(),
+                parameters: serde_json::json!({}),
+            },
+            WorkflowStep {
+                name: "succeeds".to_string(),
+                capability_type: "storage".to_string(),
+                parameters: serde_json::json!({}),
+            },
+        ],
+        continue_on_error: true,
+    };
+
+    let wr = adapter.execute_capability_workflow(&workflow).await.expect("workflow");
+    assert_eq!(wr.steps.len(), 2);
+    assert!(!wr.steps[0].success);
+    assert!(wr.steps[1].success);
+    assert!(!wr.success);
+
+    storage.stop().await;
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_metrics() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
-    // Generate some errors
     for _ in 0..5 {
         let _ = adapter.find_capability_providers("nonexistent").await;
     }
 
-    // Should track error metrics (method not yet implemented)
-    // Blocked until `get_error_metrics()` exists on `UniversalCapabilityAdapter`
-    // let metrics = adapter.get_error_metrics().await;
-    // assert!(metrics.is_ok());
-
-    // For now, just verify adapter still works after errors
-    // Returns Vec<String>, so always succeeds
+    let metrics = adapter.get_error_metrics().await.expect("error metrics");
+    assert!(metrics.error_rate <= 1.0);
     let providers = adapter.find_capability_providers("test").await;
-    assert!(providers.is_empty() || !providers.is_empty(), "Query completes after errors");
+    assert!(providers.is_empty() || !providers.is_empty(), "Query completes after metrics");
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_validation_error() {
     let error = SongbirdError::configuration("Field 'name' is required");
 
@@ -226,7 +282,6 @@ async fn test_validation_error() {
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_permission_denied_error() {
     let error = SongbirdError::security("Insufficient privileges".to_string());
 
@@ -234,7 +289,6 @@ async fn test_permission_denied_error() {
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_resource_exhausted_error() {
     let error = SongbirdError::service("connection_pool", "Connection pool full");
 
@@ -242,7 +296,6 @@ async fn test_resource_exhausted_error() {
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_display_format() {
     let error = SongbirdError::network("Connection failed");
     let display = format!("{}", error);
@@ -251,11 +304,9 @@ async fn test_error_display_format() {
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
 async fn test_error_debug_format() {
     let error = SongbirdError::network("Test error");
     let debug = format!("{:?}", error);
 
-    // Debug format should include type information
     assert!(!debug.is_empty());
 }

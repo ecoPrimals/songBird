@@ -187,6 +187,7 @@ impl RequestBuilder {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 #[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
@@ -300,5 +301,14 @@ mod tests {
         let request = RequestBuilder::build(&uri, "GET", &config, &HashMap::new(), None).unwrap();
         let request_str = String::from_utf8_lossy(&request);
         assert!(request_str.contains("Host: example.com\r\n"));
+    }
+
+    #[test]
+    fn test_request_line_root_path() {
+        let uri: Uri = "https://example.com".parse().unwrap();
+        let config = HttpClientConfig::minimal();
+        let request = RequestBuilder::build(&uri, "GET", &config, &HashMap::new(), None).unwrap();
+        let request_str = String::from_utf8_lossy(&request);
+        assert!(request_str.starts_with("GET / HTTP/1.1\r\n"));
     }
 }

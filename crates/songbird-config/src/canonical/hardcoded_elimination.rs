@@ -90,11 +90,11 @@
 //! 4. **IPv6 Ready**: All host configs support dual-stack IPv4/IPv6
 //! 5. **Zero Trust**: No hardcoded credentials, tokens, or secrets
 
+use crate::canonical::constants::read_process_env;
 use crate::capability_port_config::{CapabilityPortRegistry, PortSource, RegistryBuilder};
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
-use std::env;
 use std::fmt;
 use std::net::SocketAddr;
 
@@ -169,31 +169,41 @@ impl PortConfig {
     /// - Port range is invalid (start >= end)
     /// - Duplicate ports detected
     pub fn from_env() -> SongbirdResult<Self> {
+        Self::from_env_reader(&read_process_env)
+    }
+
+    /// Load port configuration using an injectable env reader (tests avoid mutating process env).
+    pub fn from_env_reader(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<Self> {
         let config = Self {
-            orchestrator: Self::parse_port("SONGBIRD_ORCHESTRATOR_PORT", 8080)?,
-            discovery: Self::parse_port("SONGBIRD_DISCOVERY_PORT", 8500)?,
-            registry: Self::parse_port("SONGBIRD_REGISTRY_PORT", 8600)?,
-            security: Self::parse_port("SONGBIRD_SECURITY_PORT", 8443)?,
-            storage: Self::parse_port("SONGBIRD_STORAGE_PORT", 9000)?,
-            compute: Self::parse_port("SONGBIRD_COMPUTE_PORT", 9100)?,
-            ai: Self::parse_port("SONGBIRD_AI_PORT", 9200)?,
-            gaming: Self::parse_port("SONGBIRD_GAMING_PORT", 9300)?,
-            dashboard: Self::parse_port("SONGBIRD_DASHBOARD_PORT", 3000)?,
-            metrics: Self::parse_port("SONGBIRD_METRICS_PORT", 9090)?,
-            health: Self::parse_port("SONGBIRD_HEALTH_PORT", 8081)?,
-            dynamic_range_start: Self::parse_port("SONGBIRD_PORT_RANGE_START", 10000)?,
-            dynamic_range_end: Self::parse_port("SONGBIRD_PORT_RANGE_END", 20000)?,
+            orchestrator: Self::parse_port_env(env, "SONGBIRD_ORCHESTRATOR_PORT", 8080)?,
+            discovery: Self::parse_port_env(env, "SONGBIRD_DISCOVERY_PORT", 8500)?,
+            registry: Self::parse_port_env(env, "SONGBIRD_REGISTRY_PORT", 8600)?,
+            security: Self::parse_port_env(env, "SONGBIRD_SECURITY_PORT", 8443)?,
+            storage: Self::parse_port_env(env, "SONGBIRD_STORAGE_PORT", 9000)?,
+            compute: Self::parse_port_env(env, "SONGBIRD_COMPUTE_PORT", 9100)?,
+            ai: Self::parse_port_env(env, "SONGBIRD_AI_PORT", 9200)?,
+            gaming: Self::parse_port_env(env, "SONGBIRD_GAMING_PORT", 9300)?,
+            dashboard: Self::parse_port_env(env, "SONGBIRD_DASHBOARD_PORT", 3000)?,
+            metrics: Self::parse_port_env(env, "SONGBIRD_METRICS_PORT", 9090)?,
+            health: Self::parse_port_env(env, "SONGBIRD_HEALTH_PORT", 8081)?,
+            dynamic_range_start: Self::parse_port_env(env, "SONGBIRD_PORT_RANGE_START", 10000)?,
+            dynamic_range_end: Self::parse_port_env(env, "SONGBIRD_PORT_RANGE_END", 20000)?,
         };
 
-        // Validate configuration
         config.validate()?;
 
         Ok(config)
     }
 
     /// Parse a port from environment variable with fallback to default
-    fn parse_port(env_var: &str, default: u16) -> SongbirdResult<u16> {
-        env::var(env_var).map_or(Ok(default), |val| {
+    fn parse_port_env(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+        env_var: &str,
+        default: u16,
+    ) -> SongbirdResult<u16> {
+        env(env_var).map_or(Ok(default), |val| {
             val.parse::<u16>().map_err(|e| SongbirdError::Configuration {
                 message: format!("Invalid port in {env_var}: {val} (error: {e})"),
                 field: Some(env_var.to_string()),
@@ -562,23 +572,34 @@ impl HostConfig {
     ///
     /// Currently infallible, but returns `Result` for future extensibility
     pub fn from_env() -> SongbirdResult<Self> {
+        Self::from_env_reader(&read_process_env)
+    }
+
+    /// Load host configuration using an injectable env reader.
+    pub fn from_env_reader(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<Self> {
         Ok(Self {
-            orchestrator: Self::parse_host("SONGBIRD_ORCHESTRATOR_HOST", "localhost"),
-            discovery: Self::parse_host("SONGBIRD_DISCOVERY_HOST", "localhost"),
-            registry: Self::parse_host("SONGBIRD_REGISTRY_HOST", "localhost"),
-            security: Self::parse_host("SONGBIRD_SECURITY_HOST", "localhost"),
-            storage: Self::parse_host("SONGBIRD_STORAGE_HOST", "localhost"),
-            compute: Self::parse_host("SONGBIRD_COMPUTE_HOST", "localhost"),
-            ai: Self::parse_host("SONGBIRD_AI_HOST", "localhost"),
-            gaming: Self::parse_host("SONGBIRD_GAMING_HOST", "localhost"),
-            dashboard: Self::parse_host("SONGBIRD_DASHBOARD_HOST", "localhost"),
-            metrics: Self::parse_host("SONGBIRD_METRICS_HOST", "localhost"),
+            orchestrator: Self::parse_host_env(env, "SONGBIRD_ORCHESTRATOR_HOST", "localhost"),
+            discovery: Self::parse_host_env(env, "SONGBIRD_DISCOVERY_HOST", "localhost"),
+            registry: Self::parse_host_env(env, "SONGBIRD_REGISTRY_HOST", "localhost"),
+            security: Self::parse_host_env(env, "SONGBIRD_SECURITY_HOST", "localhost"),
+            storage: Self::parse_host_env(env, "SONGBIRD_STORAGE_HOST", "localhost"),
+            compute: Self::parse_host_env(env, "SONGBIRD_COMPUTE_HOST", "localhost"),
+            ai: Self::parse_host_env(env, "SONGBIRD_AI_HOST", "localhost"),
+            gaming: Self::parse_host_env(env, "SONGBIRD_GAMING_HOST", "localhost"),
+            dashboard: Self::parse_host_env(env, "SONGBIRD_DASHBOARD_HOST", "localhost"),
+            metrics: Self::parse_host_env(env, "SONGBIRD_METRICS_HOST", "localhost"),
         })
     }
 
     /// Parse a host from environment variable with fallback to default
-    fn parse_host(env_var: &str, default: &str) -> String {
-        env::var(env_var).unwrap_or_else(|_| default.to_string())
+    fn parse_host_env(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+        env_var: &str,
+        default: &str,
+    ) -> String {
+        env(env_var).unwrap_or_else(|_| default.to_string())
     }
 
     /// Get orchestrator host
@@ -689,9 +710,16 @@ impl EndpointConfig {
     ///
     /// Returns error if port or host configuration fails to load
     pub fn from_env() -> SongbirdResult<Self> {
+        Self::from_env_reader(&read_process_env)
+    }
+
+    /// Load endpoint configuration using an injectable env reader.
+    pub fn from_env_reader(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<Self> {
         Ok(Self {
-            ports: PortConfig::from_env()?,
-            hosts: HostConfig::from_env()?,
+            ports: PortConfig::from_env_reader(env)?,
+            hosts: HostConfig::from_env_reader(env)?,
         })
     }
 
@@ -851,21 +879,17 @@ mod tests {
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_endpoint_config_from_env() {
-        // Set test environment variables
-        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "9999");
-        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_HOST", "test.local");
-
-        let config = EndpointConfig::from_env().expect("Failed to load config");
+        let env = |key: &str| match key {
+            "SONGBIRD_ORCHESTRATOR_PORT" => Ok("9999".to_string()),
+            "SONGBIRD_ORCHESTRATOR_HOST" => Ok("test.local".to_string()),
+            _ => read_process_env(key),
+        };
+        let config = EndpointConfig::from_env_reader(&env).expect("Failed to load config");
 
         assert_eq!(config.ports.orchestrator(), 9999);
         assert_eq!(config.hosts.orchestrator(), "test.local");
         assert_eq!(config.orchestrator_endpoint(), "http://test.local:9999");
-
-        // Cleanup
-        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
-        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_HOST");
     }
 
     #[test]
@@ -878,20 +902,16 @@ mod tests {
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_port_config_from_env_rejects_invalid_port() {
-        // Use a unique env var to avoid race conditions with parallel tests
-        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "not_a_u16");
-        let result = PortConfig::from_env();
-        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
-
-        // Another test may have set a valid port concurrently — only assert on error
-        if let Err(err) = result {
-            assert!(
-                matches!(err, SongbirdError::Configuration { ref field, .. } if field.as_deref() == Some("SONGBIRD_ORCHESTRATOR_PORT")),
-                "{err:?}"
-            );
-        }
+        let env = |key: &str| match key {
+            "SONGBIRD_ORCHESTRATOR_PORT" => Ok("not_a_u16".to_string()),
+            _ => read_process_env(key),
+        };
+        let err = PortConfig::from_env_reader(&env).expect_err("invalid port");
+        assert!(
+            matches!(err, SongbirdError::Configuration { ref field, .. } if field.as_deref() == Some("SONGBIRD_ORCHESTRATOR_PORT")),
+            "{err:?}"
+        );
     }
 
     #[test]

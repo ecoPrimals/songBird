@@ -201,8 +201,6 @@ impl CanonicalProtocolRouter {
 #[derive(Debug)]
 pub struct CanonicalLoadBalancer {
     strategy: CanonicalLoadBalancingStrategy,
-    #[expect(dead_code, reason = "reserved for future load-aware routing")]
-    performance_tracker: Arc<RwLock<HashMap<String, super::types::CanonicalServicePerformance>>>,
     /// Round-robin cursor (global across [`select_service`] calls).
     round_robin_next: Arc<AtomicUsize>,
 }
@@ -213,7 +211,6 @@ impl CanonicalLoadBalancer {
     pub fn new(config: CanonicalLoadBalancingConfig) -> Self {
         Self {
             strategy: config.strategy,
-            performance_tracker: Arc::new(RwLock::new(HashMap::new())),
             round_robin_next: Arc::new(AtomicUsize::new(0)),
         }
     }
@@ -273,7 +270,8 @@ impl CanonicalLoadBalancer {
 #[derive(Debug)]
 pub struct CanonicalCircuitBreaker {
     states: Arc<RwLock<HashMap<String, CanonicalCircuitState>>>,
-    #[expect(dead_code, reason = "reserved for future per-service breaker tuning")]
+    /// Retained for threshold / timeout tuning when failure counting is wired.
+    #[expect(dead_code, reason = "stored for future per-service breaker tuning")]
     config: CanonicalCircuitBreakerConfig,
 }
 

@@ -420,9 +420,15 @@ async fn resources_handler(State(state): State<BridgeState>) -> Json<ServiceInfo
 
 #[derive(Debug, Serialize, Deserialize)]
 struct WorkloadRequest {
-    #[allow(dead_code, reason = "reserved for workload name/payload routing; serde keeps fields")]
+    #[allow(
+        dead_code,
+        reason = "deserialized from API request JSON; not read until routing is wired"
+    )]
     name: String,
-    #[allow(dead_code, reason = "reserved for workload name/payload routing; serde keeps fields")]
+    #[allow(
+        dead_code,
+        reason = "deserialized from API request JSON; not read until routing is wired"
+    )]
     payload: serde_json::Value,
 }
 

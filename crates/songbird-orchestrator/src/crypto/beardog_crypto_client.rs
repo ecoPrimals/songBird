@@ -436,7 +436,7 @@ mod tests {
     // Run with: cargo test --package songbird-orchestrator -- crypto::beardog_crypto_client --ignored
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "Requires BearDog crypto Unix socket (sign_ed25519)"]
     async fn test_sign_ed25519() {
         let socket = super::super::discovery::get_beardog_crypto_socket()
             .await
@@ -451,7 +451,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "Requires BearDog crypto Unix socket (x25519)"]
     async fn test_x25519_key_exchange() {
         let socket = super::super::discovery::get_beardog_crypto_socket()
             .await
@@ -470,7 +470,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "Requires BearDog crypto Unix socket (ChaCha20-Poly1305)"]
     async fn test_chacha20_poly1305_round_trip() {
         let socket = super::super::discovery::get_beardog_crypto_socket()
             .await
@@ -497,7 +497,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "Requires BearDog crypto Unix socket (BLAKE3)"]
     async fn test_blake3_hash() {
         let socket = super::super::discovery::get_beardog_crypto_socket()
             .await
@@ -509,7 +509,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "Requires BearDog crypto Unix socket (HMAC-SHA256)"]
     async fn test_hmac_sha256() {
         let socket = super::super::discovery::get_beardog_crypto_socket()
             .await

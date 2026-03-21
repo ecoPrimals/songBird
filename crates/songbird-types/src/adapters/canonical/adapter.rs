@@ -50,8 +50,6 @@ pub struct CanonicalUniversalAdapter {
     protocol_router: Arc<CanonicalProtocolRouter>,
     load_balancer: Arc<CanonicalLoadBalancer>,
     circuit_breaker: Arc<CanonicalCircuitBreaker>,
-    #[expect(dead_code, reason = "reserved for future adapter behavior wired to config")]
-    config: CanonicalAdapterConfig,
     metrics: Arc<RwLock<CanonicalAdapterMetrics>>,
 }
 
@@ -74,7 +72,6 @@ impl CanonicalUniversalAdapter {
             protocol_router: Arc::new(CanonicalProtocolRouter::new()),
             load_balancer: Arc::new(CanonicalLoadBalancer::new(config.load_balancing.clone())),
             circuit_breaker: Arc::new(CanonicalCircuitBreaker::new(config.circuit_breaker.clone())),
-            config,
             metrics: Arc::new(RwLock::new(CanonicalAdapterMetrics::default())),
         }
     }

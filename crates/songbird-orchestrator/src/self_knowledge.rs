@@ -258,6 +258,9 @@ fn discover_interfaces() -> Result<Vec<NetworkInterface>> {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -359,5 +362,33 @@ mod tests {
         let endpoints = discover_endpoints(8443);
         // Should have at least localhost
         assert!(!endpoints.is_empty());
+    }
+
+    #[test]
+    fn discover_identity_tags_trims_whitespace() {
+        let mut env = std::collections::HashMap::new();
+        env.insert("SONGBIRD_TAGS".to_string(), "  a:b:c  ,  d:e:f  ".to_string());
+        let tags = discover_identity_tags_with(|k| env.get(k).cloned());
+        assert!(tags.contains(&"a:b:c".to_string()));
+        assert!(tags.contains(&"d:e:f".to_string()));
+    }
+
+    #[test]
+    fn discover_capabilities_stable_set() {
+        let c = discover_capabilities();
+        assert!(c.iter().any(|x| x == "coordination"));
+        assert_eq!(c.len(), 5);
+    }
+
+    #[test]
+    fn network_interface_struct_fields() {
+        let ni = NetworkInterface {
+            name: "eth0".to_string(),
+            addresses: vec!["127.0.0.1".parse().unwrap()],
+            flags: vec![],
+            mtu: Some(1500),
+        };
+        assert_eq!(ni.name, "eth0");
+        assert_eq!(ni.mtu, Some(1500));
     }
 }

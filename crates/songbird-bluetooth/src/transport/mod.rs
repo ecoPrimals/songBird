@@ -33,7 +33,10 @@ pub use usb::UsbTransport;
 
 // Keep usb module available for reference even when using nusb
 #[cfg(all(feature = "usb-c", feature = "usb-rust"))]
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(
+    dead_code,
+    reason = "dual-feature gate: usb-rust preferred, but usb-c module kept for fallback"
+)]
 pub mod usb;
 
 #[cfg(feature = "uart")]

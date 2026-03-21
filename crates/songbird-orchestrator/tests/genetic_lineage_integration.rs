@@ -227,7 +227,7 @@ async fn test_registration_manager() {
 
 /// NOTE: Ignored - requires BearDog running at localhost:9000
 #[tokio::test]
-#[ignore]
+#[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_same_lineage() -> Result<()> {
     let (lineage_id, proof) = create_test_lineage("auth-node-1").await;
 
@@ -275,7 +275,7 @@ async fn test_lineage_authenticator_same_lineage() -> Result<()> {
 
 /// NOTE: Ignored - requires BearDog running at localhost:9000
 #[tokio::test]
-#[ignore]
+#[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_different_lineage() -> Result<()> {
     let (_lineage_id_a, _proof_a) = create_test_lineage("auth-node-a").await;
     let (lineage_id_b, proof_b) = create_test_lineage("auth-node-b").await;
@@ -332,7 +332,7 @@ async fn test_lineage_authenticator_different_lineage() -> Result<()> {
 
 /// NOTE: Ignored - requires BearDog running at localhost:9000
 #[tokio::test]
-#[ignore]
+#[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_no_lineage() -> Result<()> {
     let mut auth = LineageAuthenticator::new();
     auth.initialize("http://localhost:9000").await?;
@@ -379,7 +379,7 @@ async fn test_lineage_authenticator_no_lineage() -> Result<()> {
 
 /// NOTE: Ignored - requires BearDog running at localhost:9000
 #[tokio::test]
-#[ignore]
+#[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_invalid_proof() -> Result<()> {
     use songbird_types::lineage::LineageSignature;
 

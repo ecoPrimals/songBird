@@ -18,10 +18,11 @@
 
 #![allow(missing_docs, reason = "infant discovery structs are descriptive configuration bags")]
 
+use crate::canonical::constants::read_process_env;
+
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
-use std::env;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 use tracing::{debug, info, warn};
@@ -287,14 +288,21 @@ impl ZeroTouchConfig {
     ///
     /// Returns an error if required environment variables are not set or invalid
     pub fn from_environment() -> SongbirdResult<Self> {
+        Self::from_environment_reader(read_process_env)
+    }
+
+    /// Same as [`from_environment`](Self::from_environment) with an injectable env reader.
+    pub fn from_environment_reader(
+        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<Self> {
         info!("🍼 Creating zero-touch configuration from environment (no hardcoded knowledge)");
 
-        let self_identity = Self::discover_self_identity();
-        let required_capabilities = Self::discover_required_capabilities();
-        let optional_capabilities = Self::discover_optional_capabilities();
-        let discovery = Self::create_discovery_config();
-        let network = Self::create_network_config()?;
-        let bootstrap = Self::create_bootstrap_config();
+        let self_identity = Self::discover_self_identity(&env);
+        let required_capabilities = Self::discover_required_capabilities(&env);
+        let optional_capabilities = Self::discover_optional_capabilities(&env);
+        let discovery = Self::create_discovery_config(&env);
+        let network = Self::create_network_config(&env)?;
+        let bootstrap = Self::create_bootstrap_config(&env);
 
         Ok(Self {
             self_identity,
@@ -307,11 +315,11 @@ impl ZeroTouchConfig {
     }
 
     /// Discover this service's own identity from environment
-    fn discover_self_identity() -> ServiceIdentity {
+    fn discover_self_identity(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> ServiceIdentity {
         // Service ID from environment or generate one
-        let service_id = env::var("SERVICE_ID")
-            .or_else(|_| env::var("HOSTNAME"))
-            .or_else(|_| env::var("POD_NAME"))
+        let service_id = env("SERVICE_ID")
+            .or_else(|_| env("HOSTNAME"))
+            .or_else(|_| env("POD_NAME"))
             .unwrap_or_else(|_| {
                 let id = uuid::Uuid::new_v4().to_string();
                 warn!("No SERVICE_ID found in environment, generated: {}", id);
@@ -319,7 +327,7 @@ impl ZeroTouchConfig {
             });
 
         // Discover what capabilities THIS service provides
-        let provides_capabilities = env::var("SERVICE_CAPABILITIES").map_or_else(
+        let provides_capabilities = env("SERVICE_CAPABILITIES").map_or_else(
             |_| {
                 debug!("No SERVICE_CAPABILITIES defined, service provides no capabilities");
                 Vec::new()
@@ -328,7 +336,7 @@ impl ZeroTouchConfig {
         );
 
         // Collect metadata from environment
-        let metadata = Self::collect_service_metadata();
+        let metadata = Self::collect_service_metadata(env);
 
         info!("🔍 Discovered self identity: {} providing {:?}", service_id, provides_capabilities);
 
@@ -340,11 +348,11 @@ impl ZeroTouchConfig {
     }
 
     /// Discover required capabilities from environment
-    fn discover_required_capabilities() -> Vec<CapabilityRequirement> {
+    fn discover_required_capabilities(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> Vec<CapabilityRequirement> {
         let mut requirements = Vec::new();
 
         // Check for required capabilities in environment
-        if let Ok(required) = env::var("REQUIRED_CAPABILITIES") {
+        if let Ok(required) = env("REQUIRED_CAPABILITIES") {
             for cap_type in required.split(',') {
                 let cap_type = cap_type.trim();
                 if cap_type.is_empty() {
@@ -353,7 +361,7 @@ impl ZeroTouchConfig {
 
                 // Get operations for this capability
                 let ops_var = format!("REQUIRED_OPERATIONS_{}", cap_type.to_uppercase());
-                let operations = env::var(&ops_var).map_or_else(
+                let operations = env(ops_var.as_str()).map_or_else(
                     |_| vec!["*".to_string()],
                     |ops| ops.split(',').map(|s| s.trim().to_string()).collect(),
                 );
@@ -361,8 +369,8 @@ impl ZeroTouchConfig {
                 requirements.push(CapabilityRequirement {
                     capability_type: cap_type.to_string(),
                     required_operations: operations,
-                    quality_requirements: Self::parse_quality_requirements(cap_type),
-                    fallback_behavior: Self::parse_fallback_behavior(cap_type),
+                    quality_requirements: Self::parse_quality_requirements(env, cap_type),
+                    fallback_behavior: Self::parse_fallback_behavior(env, cap_type),
                 });
             }
         }
@@ -372,10 +380,10 @@ impl ZeroTouchConfig {
     }
 
     /// Discover optional capabilities from environment
-    fn discover_optional_capabilities() -> Vec<CapabilityRequirement> {
+    fn discover_optional_capabilities(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> Vec<CapabilityRequirement> {
         let mut requirements = Vec::new();
 
-        if let Ok(optional) = env::var("OPTIONAL_CAPABILITIES") {
+        if let Ok(optional) = env("OPTIONAL_CAPABILITIES") {
             for cap_type in optional.split(',') {
                 let cap_type = cap_type.trim();
                 if cap_type.is_empty() {
@@ -396,7 +404,7 @@ impl ZeroTouchConfig {
     }
 
     /// Create discovery configuration from environment
-    fn create_discovery_config() -> DiscoveryConfig {
+    fn create_discovery_config(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> DiscoveryConfig {
         let mut methods = Vec::new();
 
         // Always include environment variable discovery
@@ -409,7 +417,7 @@ impl ZeroTouchConfig {
         });
 
         // Add HTTP registry if endpoint is provided
-        if env::var("SERVICE_REGISTRY_ENDPOINT").is_ok() {
+        if env("SERVICE_REGISTRY_ENDPOINT").is_ok() {
             methods.push(DiscoveryMethod::HttpRegistry {
                 endpoint_env_var: "SERVICE_REGISTRY_ENDPOINT".to_string(),
                 api_path: "/v1/services".to_string(),
@@ -417,21 +425,21 @@ impl ZeroTouchConfig {
         }
 
         // Add DNS discovery if domain is provided
-        if env::var("SERVICE_DISCOVERY_DOMAIN").is_ok() {
+        if env("SERVICE_DISCOVERY_DOMAIN").is_ok() {
             methods.push(DiscoveryMethod::DnsSrv {
                 domain_env_var: "SERVICE_DISCOVERY_DOMAIN".to_string(),
             });
         }
 
         // Add container metadata discovery if API endpoint is available
-        if env::var("CONTAINER_METADATA_API").is_ok() {
+        if env("CONTAINER_METADATA_API").is_ok() {
             methods.push(DiscoveryMethod::ContainerMetadata {
                 api_endpoint_env_var: "CONTAINER_METADATA_API".to_string(),
             });
         }
 
         // Add network scanning for development mode
-        if env::var("ENABLE_NETWORK_DISCOVERY").is_ok() {
+        if env("ENABLE_NETWORK_DISCOVERY").is_ok() {
             warn!("🔍 Network scanning enabled (development mode only)");
             methods.push(DiscoveryMethod::NetworkScan {
                 ranges_env_var: "DISCOVERY_IP_RANGES".to_string(),
@@ -440,32 +448,32 @@ impl ZeroTouchConfig {
         }
 
         let timeout_secs =
-            env::var("DISCOVERY_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(30);
+            env("DISCOVERY_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(30);
 
         let refresh_secs =
-            env::var("DISCOVERY_REFRESH_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
+            env("DISCOVERY_REFRESH_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
 
         let cache_ttl_secs =
-            env::var("DISCOVERY_CACHE_TTL_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(300);
+            env("DISCOVERY_CACHE_TTL_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(300);
 
         DiscoveryConfig {
             methods,
             timeout: Duration::from_secs(timeout_secs),
             refresh_interval: Duration::from_secs(refresh_secs),
-            enable_cache: env::var("DISABLE_DISCOVERY_CACHE").is_err(),
+            enable_cache: env("DISABLE_DISCOVERY_CACHE").is_err(),
             cache_ttl: Duration::from_secs(cache_ttl_secs),
         }
     }
 
     /// Create network configuration from environment (NO hardcoded ports)
-    fn create_network_config() -> SongbirdResult<NetworkConfig> {
+    fn create_network_config(read_env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> SongbirdResult<NetworkConfig> {
         // Bind address from environment
         let bind_address =
-            env::var("BIND_ADDRESS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
+            read_env("BIND_ADDRESS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
                 // Check if we're in production (container/cloud environment)
-                if env::var("KUBERNETES_SERVICE_HOST").is_ok()
-                    || env::var("DOCKER_HOST").is_ok()
-                    || env::var("PRODUCTION").is_ok()
+                if read_env("KUBERNETES_SERVICE_HOST").is_ok()
+                    || read_env("DOCKER_HOST").is_ok()
+                    || read_env("PRODUCTION").is_ok()
                 {
                     IpAddr::V4(Ipv4Addr::UNSPECIFIED) // 0.0.0.0 for production
                 } else {
@@ -474,8 +482,8 @@ impl ZeroTouchConfig {
             });
 
         // All ports from environment - NO defaults
-        let service_port = env::var("SERVICE_PORT")
-            .or_else(|_| env::var("PORT"))
+        let service_port = read_env("SERVICE_PORT")
+            .or_else(|_| read_env("PORT"))
             .map_err(|_| SongbirdError::Configuration {
                 message: "SERVICE_PORT or PORT environment variable required".to_string(),
                 field: Some("service_port".to_string()),
@@ -489,22 +497,22 @@ impl ZeroTouchConfig {
             })?;
 
         let health_port =
-            env::var("HEALTH_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(service_port); // Use service port if not specified
+            read_env("HEALTH_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(service_port); // Use service port if not specified
 
         let metrics_port =
-            env::var("METRICS_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(service_port); // Use service port if not specified
+            read_env("METRICS_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(service_port); // Use service port if not specified
 
         let max_connections =
-            env::var("MAX_CONNECTIONS").ok().and_then(|s| s.parse().ok()).unwrap_or(1000);
+            read_env("MAX_CONNECTIONS").ok().and_then(|s| s.parse().ok()).unwrap_or(1000);
 
         let max_connections_per_ip =
-            env::var("MAX_CONNECTIONS_PER_IP").ok().and_then(|s| s.parse().ok()).unwrap_or(100);
+            read_env("MAX_CONNECTIONS_PER_IP").ok().and_then(|s| s.parse().ok()).unwrap_or(100);
 
         let connection_timeout_secs =
-            env::var("CONNECTION_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(30);
+            read_env("CONNECTION_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(30);
 
         let request_timeout_secs =
-            env::var("REQUEST_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
+            read_env("REQUEST_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
 
         info!(
             "🌐 Network config: {}:{} (health: {}, metrics: {})",
@@ -530,8 +538,8 @@ impl ZeroTouchConfig {
     }
 
     /// Create bootstrap configuration
-    fn create_bootstrap_config() -> BootstrapConfig {
-        let enable_infant_discovery = env::var("ENABLE_INFANT_DISCOVERY")
+    fn create_bootstrap_config(read_env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> BootstrapConfig {
+        let enable_infant_discovery = read_env("ENABLE_INFANT_DISCOVERY")
             .map(|v| v.to_lowercase() == "true" || v == "1")
             .unwrap_or(true);
 
@@ -547,9 +555,9 @@ impl ZeroTouchConfig {
         };
 
         let max_bootstrap_secs =
-            env::var("MAX_BOOTSTRAP_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
+            read_env("MAX_BOOTSTRAP_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
 
-        let fail_on_missing = env::var("FAIL_ON_MISSING_CAPABILITIES")
+        let fail_on_missing = read_env("FAIL_ON_MISSING_CAPABILITIES")
             .map(|v| v.to_lowercase() == "true" || v == "1")
             .unwrap_or(true);
 
@@ -562,31 +570,31 @@ impl ZeroTouchConfig {
     }
 
     /// Collect service metadata from environment
-    fn collect_service_metadata() -> HashMap<String, String> {
+    fn collect_service_metadata(read_env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> HashMap<String, String> {
         let mut metadata = HashMap::new();
 
         // Collect standard metadata
-        if let Ok(version) = env::var("SERVICE_VERSION") {
+        if let Ok(version) = read_env("SERVICE_VERSION") {
             metadata.insert("version".to_string(), version);
         }
-        if let Ok(environment) = env::var("ENVIRONMENT") {
+        if let Ok(environment) = read_env("ENVIRONMENT") {
             metadata.insert("environment".to_string(), environment);
         }
-        if let Ok(region) = env::var("REGION") {
+        if let Ok(region) = read_env("REGION") {
             metadata.insert("region".to_string(), region);
         }
-        if let Ok(az) = env::var("AVAILABILITY_ZONE") {
+        if let Ok(az) = read_env("AVAILABILITY_ZONE") {
             metadata.insert("availability_zone".to_string(), az);
         }
 
         // Collect container metadata if available
-        if let Ok(pod_name) = env::var("POD_NAME") {
+        if let Ok(pod_name) = read_env("POD_NAME") {
             metadata.insert("pod_name".to_string(), pod_name);
         }
-        if let Ok(namespace) = env::var("POD_NAMESPACE") {
+        if let Ok(namespace) = read_env("POD_NAMESPACE") {
             metadata.insert("namespace".to_string(), namespace);
         }
-        if let Ok(node_name) = env::var("NODE_NAME") {
+        if let Ok(node_name) = read_env("NODE_NAME") {
             metadata.insert("node_name".to_string(), node_name);
         }
 
@@ -594,19 +602,24 @@ impl ZeroTouchConfig {
     }
 
     /// Parse quality requirements for a capability
-    fn parse_quality_requirements(capability_type: &str) -> QualityRequirements {
+    fn parse_quality_requirements(
+        read_env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+        capability_type: &str,
+    ) -> QualityRequirements {
         let prefix = format!("CAPABILITY_{}_", capability_type.to_uppercase());
 
-        let max_response_time =
-            env::var(format!("{prefix}MAX_RESPONSE_MS")).ok().and_then(|s| s.parse().ok());
+        let max_response_key = format!("{prefix}MAX_RESPONSE_MS");
+        let min_avail_key = format!("{prefix}MIN_AVAILABILITY");
+        let min_tp_key = format!("{prefix}MIN_THROUGHPUT_RPS");
+        let sec_key = format!("{prefix}SECURITY_LEVEL");
 
-        let min_availability =
-            env::var(format!("{prefix}MIN_AVAILABILITY")).ok().and_then(|s| s.parse().ok());
+        let max_response_time = read_env(&max_response_key).ok().and_then(|s| s.parse().ok());
 
-        let min_throughput =
-            env::var(format!("{prefix}MIN_THROUGHPUT_RPS")).ok().and_then(|s| s.parse().ok());
+        let min_availability = read_env(&min_avail_key).ok().and_then(|s| s.parse().ok());
 
-        let security_level = env::var(format!("{prefix}SECURITY_LEVEL"))
+        let min_throughput = read_env(&min_tp_key).ok().and_then(|s| s.parse().ok());
+
+        let security_level = read_env(&sec_key)
             .ok()
             .and_then(|s| match s.to_lowercase().as_str() {
                 "none" => Some(SecurityLevel::None),
@@ -627,10 +640,13 @@ impl ZeroTouchConfig {
     }
 
     /// Parse fallback behavior for a capability
-    fn parse_fallback_behavior(capability_type: &str) -> FallbackBehavior {
+    fn parse_fallback_behavior(
+        read_env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+        capability_type: &str,
+    ) -> FallbackBehavior {
         let var_name = format!("CAPABILITY_{}_FALLBACK", capability_type.to_uppercase());
 
-        env::var(&var_name)
+        read_env(var_name.as_str())
             .ok()
             .and_then(|s| match s.to_lowercase().as_str() {
                 "fail" => Some(FallbackBehavior::Fail),
@@ -664,29 +680,50 @@ impl Default for QualityRequirements {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::canonical::constants::read_process_env;
 
     #[test]
     fn test_zero_touch_config_requires_service_port() {
-        // Clear environment
-        songbird_process_env::remove_var("SERVICE_PORT");
-        songbird_process_env::remove_var("PORT");
-
-        let result = ZeroTouchConfig::from_environment();
+        let result = ZeroTouchConfig::from_environment_reader(|key| match key {
+            "SERVICE_PORT" | "PORT" => Err(std::env::VarError::NotPresent),
+            _ => read_process_env(key),
+        });
         assert!(result.is_err(), "Should require SERVICE_PORT");
     }
 
     #[test]
     fn test_self_identity_discovery() {
-        songbird_process_env::set_var("SERVICE_ID", "test-service-123");
-        songbird_process_env::set_var("SERVICE_CAPABILITIES", "compute,storage");
-
-        let identity = ZeroTouchConfig::discover_self_identity();
+        let identity = ZeroTouchConfig::discover_self_identity(&|key| match key {
+            "SERVICE_ID" => Ok("test-service-123".to_string()),
+            "SERVICE_CAPABILITIES" => Ok("compute,storage".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        });
         assert_eq!(identity.service_id, "test-service-123");
         assert_eq!(identity.provides_capabilities.len(), 2);
+    }
 
-        songbird_process_env::remove_var("SERVICE_ID");
-        songbird_process_env::remove_var("SERVICE_CAPABILITIES");
+    #[test]
+    fn test_zero_touch_config_from_environment_success() {
+        let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
+            "SERVICE_PORT" => Ok("18080".to_string()),
+            _ => read_process_env(key),
+        })
+        .expect("valid zero-touch config");
+        assert_eq!(cfg.network.service_port, 18080);
+    }
+
+    #[test]
+    fn test_service_port_invalid_errors() {
+        let err = ZeroTouchConfig::from_environment_reader(|key| match key {
+            "SERVICE_PORT" => Ok("not-a-port".to_string()),
+            _ => read_process_env(key),
+        })
+        .expect_err("invalid port");
+        assert!(matches!(err, SongbirdError::Configuration { .. }));
     }
 
     #[test]

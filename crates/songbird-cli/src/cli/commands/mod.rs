@@ -15,7 +15,6 @@ use clap::Subcommand;
 // Core gaming command modules
 pub mod config;
 pub mod federation;
-pub mod gaming;
 pub mod network;
 pub mod status;
 pub mod tower; // NEW: Tower management
@@ -33,13 +32,6 @@ pub enum Commands {
     Tower {
         #[command(subcommand)]
         command: tower::TowerCommand,
-    },
-
-    /// 🎮 Gaming session management
-    #[command(about = "🎮 Create, join, and manage gaming sessions")]
-    Gaming {
-        #[command(subcommand)]
-        command: gaming::GamingCommand,
     },
 
     /// 🌐 Gaming network optimization

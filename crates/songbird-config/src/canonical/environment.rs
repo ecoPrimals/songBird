@@ -7,6 +7,31 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::constants::read_process_env;
+
+fn env_get_or_default(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    key: &str,
+    default: impl Into<String>,
+) -> String {
+    env(key).unwrap_or_else(|_| default.into())
+}
+
+fn env_get_bool(env: &impl Fn(&str) -> Result<String, std::env::VarError>, key: &str, default: bool) -> bool {
+    env(key)
+        .ok()
+        .and_then(|v| match v.to_lowercase().as_str() {
+            "true" | "1" | "yes" | "on" => Some(true),
+            "false" | "0" | "no" | "off" => Some(false),
+            _ => v.parse().ok(),
+        })
+        .unwrap_or(default)
+}
+
+fn env_get_port(env: &impl Fn(&str) -> Result<String, std::env::VarError>, key: &str, default: u16) -> u16 {
+    env(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+}
+
 /// **CANONICAL**: Environment type for deployment configuration
 ///
 /// Unified from multiple definitions across the ecosystem
@@ -84,8 +109,14 @@ impl Environment {
     /// Detect environment from environment variable
     #[must_use]
     pub fn detect() -> Self {
-        std::env::var("SONGBIRD_ENV")
-            .or_else(|_| std::env::var("ENVIRONMENT"))
+        Self::detect_with(read_process_env)
+    }
+
+    /// Detect environment using an injectable env reader (e.g. for tests).
+    #[must_use]
+    pub fn detect_with(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+        env("SONGBIRD_ENV")
+            .or_else(|_| env("ENVIRONMENT"))
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or_default()
@@ -95,8 +126,6 @@ impl Environment {
 // ============================================================================
 // EXTENDED ENVIRONMENT CONFIG TYPES (merged from environment_config_clean.rs)
 // ============================================================================
-
-use songbird_types::SafeEnv;
 
 /// Comprehensive environment configuration
 #[derive(Debug, Clone)]
@@ -130,25 +159,35 @@ impl ServiceEndpoints {
     /// Get endpoint by capability type instead of hardcoded primal names
     #[must_use]
     pub fn get_by_capability(capability_type: &str, default_port: u16) -> String {
-        SafeEnv::get_required(&format!("{}_ENDPOINT", capability_type.to_uppercase()))
-            .unwrap_or_else(|_| format!("http://127.0.0.1:{default_port}"))
+        Self::get_by_capability_with(read_process_env, capability_type, default_port)
+    }
+
+    /// Same as [`get_by_capability`](Self::get_by_capability) with an injectable env reader.
+    #[must_use]
+    pub fn get_by_capability_with(
+        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+        capability_type: &str,
+        default_port: u16,
+    ) -> String {
+        let key = format!("{}_ENDPOINT", capability_type.to_uppercase());
+        env(&key).unwrap_or_else(|_| format!("http://127.0.0.1:{default_port}"))
+    }
+
+    /// Build from environment using an injectable reader.
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+        Self {
+            orchestrator_endpoint: env_get_or_default(&env, "SONGBIRD_ENDPOINT", "http://127.0.0.1:8080"),
+            discovery_endpoint: env_get_or_default(&env, "DISCOVERY_ENDPOINT", "http://127.0.0.1:8001"),
+            health_endpoint: env_get_or_default(&env, "HEALTH_ENDPOINT", "http://127.0.0.1:8002"),
+            metrics_endpoint: env_get_or_default(&env, "METRICS_ENDPOINT", "http://127.0.0.1:8004"),
+        }
     }
 }
 
 impl Default for ServiceEndpoints {
     fn default() -> Self {
-        Self {
-            orchestrator_endpoint: SafeEnv::get_or_default(
-                "SONGBIRD_ENDPOINT",
-                "http://127.0.0.1:8080",
-            ),
-            discovery_endpoint: SafeEnv::get_or_default(
-                "DISCOVERY_ENDPOINT",
-                "http://127.0.0.1:8001",
-            ),
-            health_endpoint: SafeEnv::get_or_default("HEALTH_ENDPOINT", "http://127.0.0.1:8002"),
-            metrics_endpoint: SafeEnv::get_or_default("METRICS_ENDPOINT", "http://127.0.0.1:8004"),
-        }
+        Self::from_env_reader(read_process_env)
     }
 }
 
@@ -167,16 +206,24 @@ pub struct LogConfig {
     pub max_file_size_mb: u32,
 }
 
+impl LogConfig {
+    /// Build from environment using an injectable reader.
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+        let profile = Environment::detect_with(&env);
+        Self {
+            level: profile.log_level().to_string(),
+            format: env_get_or_default(&env, "LOG_FORMAT", "json"),
+            output: env_get_or_default(&env, "LOG_OUTPUT", "stdout"),
+            file_rotation: env_get_bool(&env, "LOG_FILE_ROTATION", true),
+            max_file_size_mb: u32::from(env_get_port(&env, "LOG_MAX_FILE_SIZE_MB", 100)),
+        }
+    }
+}
+
 impl Default for LogConfig {
     fn default() -> Self {
-        let env = Environment::detect();
-        Self {
-            level: env.log_level().to_string(),
-            format: SafeEnv::get_or_default("LOG_FORMAT", "json"),
-            output: SafeEnv::get_or_default("LOG_OUTPUT", "stdout"),
-            file_rotation: SafeEnv::get_bool("LOG_FILE_ROTATION", true),
-            max_file_size_mb: u32::from(SafeEnv::get_port("LOG_MAX_FILE_SIZE_MB", 100)),
-        }
+        Self::from_env_reader(read_process_env)
     }
 }
 
@@ -195,17 +242,23 @@ pub struct ResourceLimits {
     pub max_threads: usize,
 }
 
-impl Default for ResourceLimits {
-    fn default() -> Self {
+impl ResourceLimits {
+    /// Build from environment using an injectable reader.
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
         Self {
-            max_connections: SafeEnv::get_port("MAX_CONNECTIONS", 50) as usize,
-            max_memory_mb: std::env::var("MAX_MEMORY_MB").ok().and_then(|s| s.parse().ok()),
-            max_cpu_cores: std::env::var("MAX_CPU_CORES").ok().and_then(|s| s.parse().ok()),
-            max_file_descriptors: std::env::var("MAX_FILE_DESCRIPTORS")
-                .ok()
-                .and_then(|s| s.parse().ok()),
+            max_connections: env_get_port(&env, "MAX_CONNECTIONS", 50) as usize,
+            max_memory_mb: env("MAX_MEMORY_MB").ok().and_then(|s| s.parse().ok()),
+            max_cpu_cores: env("MAX_CPU_CORES").ok().and_then(|s| s.parse().ok()),
+            max_file_descriptors: env("MAX_FILE_DESCRIPTORS").ok().and_then(|s| s.parse().ok()),
             max_threads: num_cpus::get() * 2,
         }
+    }
+}
+
+impl Default for ResourceLimits {
+    fn default() -> Self {
+        Self::from_env_reader(read_process_env)
     }
 }
 
@@ -226,28 +279,30 @@ pub struct PerformanceParameters {
     pub request_timeout_ms: u64,
 }
 
-impl Default for PerformanceParameters {
-    fn default() -> Self {
+impl PerformanceParameters {
+    /// Build from environment using an injectable reader.
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
         Self {
             worker_threads: num_cpus::get(),
-            buffer_pool_size: SafeEnv::get_port("BUFFER_POOL_SIZE", 1024) as usize,
-            batch_size: SafeEnv::get_port("BATCH_SIZE", 100) as usize,
-            enable_zero_copy: SafeEnv::get_bool("ENABLE_ZERO_COPY", true),
-            connection_pool_size: SafeEnv::get_port("CONNECTION_POOL_SIZE", 10) as usize,
-            request_timeout_ms: u64::from(SafeEnv::get_port("REQUEST_TIMEOUT_MS", 30000)),
+            buffer_pool_size: env_get_port(&env, "BUFFER_POOL_SIZE", 1024) as usize,
+            batch_size: env_get_port(&env, "BATCH_SIZE", 100) as usize,
+            enable_zero_copy: env_get_bool(&env, "ENABLE_ZERO_COPY", true),
+            connection_pool_size: env_get_port(&env, "CONNECTION_POOL_SIZE", 10) as usize,
+            request_timeout_ms: u64::from(env_get_port(&env, "REQUEST_TIMEOUT_MS", 30000)),
         }
+    }
+}
+
+impl Default for PerformanceParameters {
+    fn default() -> Self {
+        Self::from_env_reader(read_process_env)
     }
 }
 
 impl Default for EnvironmentConfig {
     fn default() -> Self {
-        Self {
-            environment: Environment::detect(),
-            service_endpoints: ServiceEndpoints::default(),
-            log_config: LogConfig::default(),
-            resource_limits: ResourceLimits::default(),
-            performance_config: PerformanceParameters::default(),
-        }
+        Self::from_env_reader(read_process_env)
     }
 }
 
@@ -255,7 +310,19 @@ impl EnvironmentConfig {
     /// Create from environment variables
     #[must_use]
     pub fn from_env() -> Self {
-        Self::default()
+        Self::from_env_reader(read_process_env)
+    }
+
+    /// Create from an injectable env reader (tests avoid mutating process environment).
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+        Self {
+            environment: Environment::detect_with(&env),
+            service_endpoints: ServiceEndpoints::from_env_reader(&env),
+            log_config: LogConfig::from_env_reader(&env),
+            resource_limits: ResourceLimits::from_env_reader(&env),
+            performance_config: PerformanceParameters::from_env_reader(&env),
+        }
     }
 
     /// Check if running in production
@@ -273,9 +340,11 @@ impl EnvironmentConfig {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use songbird_types::SongbirdResult;
-    // Removed unused imports
 
     #[test]
     fn test_environment_variants() -> SongbirdResult<()> {
@@ -309,5 +378,79 @@ mod tests {
         assert_eq!("development".parse::<Environment>().unwrap(), Environment::Development);
         assert_eq!("prod".parse::<Environment>().unwrap(), Environment::Production);
         assert_eq!("staging".parse::<Environment>().unwrap(), Environment::Staging);
+    }
+
+    #[test]
+    fn test_environment_from_str_error() {
+        assert!("unknown-env-xyz".parse::<Environment>().is_err());
+    }
+
+    #[test]
+    fn test_environment_from_str_aliases() {
+        assert_eq!("dev".parse::<Environment>().unwrap(), Environment::Development);
+        assert_eq!("test".parse::<Environment>().unwrap(), Environment::Testing);
+        assert_eq!("local".parse::<Environment>().unwrap(), Environment::Local);
+    }
+
+    #[test]
+    fn test_environment_helpers() {
+        assert!(Environment::Production.is_production());
+        assert!(!Environment::Staging.is_production());
+        assert!(!Environment::Production.enable_debug());
+        assert!(Environment::Testing.enable_debug());
+        assert!(Environment::Development.is_development());
+        assert!(Environment::Local.is_development());
+        assert!(!Environment::Production.is_development());
+        assert_eq!(Environment::Production.log_level(), "warn");
+    }
+
+    #[test]
+    fn test_environment_detect_songbird_env() {
+        let env = |key: &str| match key {
+            "SONGBIRD_ENV" => Ok("staging".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        };
+        assert_eq!(Environment::detect_with(env), Environment::Staging);
+    }
+
+    #[test]
+    fn test_environment_detect_environment_fallback() {
+        let env = |key: &str| match key {
+            "ENVIRONMENT" => Ok("production".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        };
+        assert_eq!(Environment::detect_with(env), Environment::Production);
+    }
+
+    #[test]
+    fn test_service_endpoints_get_by_capability() {
+        let env = |key: &str| match key {
+            "FOO_ENDPOINT" => Ok("http://cap:1".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        };
+        let ep = ServiceEndpoints::get_by_capability_with(env, "foo", 9999);
+        assert_eq!(ep, "http://cap:1");
+    }
+
+    #[test]
+    fn test_service_endpoints_get_by_capability_default_port() {
+        let ep = ServiceEndpoints::get_by_capability("missingcap_xyz", 4242);
+        assert_eq!(ep, "http://127.0.0.1:4242");
+    }
+
+    #[test]
+    fn test_environment_config_from_env_matches_detect() {
+        let env = |key: &str| match key {
+            "SONGBIRD_ENV" => Ok("production".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        };
+        let cfg = EnvironmentConfig::from_env_reader(env);
+        let detected = Environment::detect_with(|key| match key {
+            "SONGBIRD_ENV" => Ok("production".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        });
+        assert_eq!(cfg.environment, detected);
+        assert_eq!(cfg.is_production(), cfg.environment.is_production());
+        assert_eq!(cfg.is_development(), cfg.environment.is_development());
     }
 }

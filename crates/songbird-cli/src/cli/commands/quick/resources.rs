@@ -24,7 +24,7 @@ pub async fn detect_system_resources_api() -> SongbirdResult<SystemResources> {
 }
 
 /// Detect system resources with selective detection for performance (used for light resource checks,
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "fast resource detection reserved for CLI quick-check subcommand")]
 pub async fn detect_system_resources_fast() -> SongbirdResult<SystemResources> {
     // Fast detection - skip expensive tests
     let request = ResourceDetectionRequest {

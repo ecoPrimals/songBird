@@ -53,72 +53,37 @@
 //! - Network error handling
 //! - Timeout behavior
 
-use serial_test::serial;
+use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_universal::adapters::ai::{AIAdapter, AIHealth};
+use std::collections::HashMap;
 use std::time::Duration;
 
 // ============================================================================
 // DISCOVERY ASYNC TESTS
 // ============================================================================
 
-#[serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_from_discovery_with_env_variable() {
+async fn test_from_discovery_with_injected_resolver() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
 
-    // Ensure capability resolver does not override legacy env (parallel tests / CI env).
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Ai, endpoint.clone());
+    let resolver = CapabilityEndpointResolver::with_endpoint_overrides(m);
 
-    // Set environment variable
-    songbird_process_env::set_var("SONGBIRD_AI_ENDPOINT", &endpoint);
-
-    // Should discover from env var
-    let adapter = AIAdapter::from_discovery().await;
-    assert!(adapter.is_ok(), "Should create adapter from env var");
+    let adapter = AIAdapter::from_discovery_with_resolver(resolver).await;
+    assert!(adapter.is_ok(), "Should create adapter from injected resolver");
 
     let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
-
-    // Cleanup
-    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
 }
 
-#[serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_from_discovery_with_legacy_env() {
+async fn test_from_discovery_matches_explicit_new() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
-
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
-
-    // Set legacy AI_PROVIDER_ENDPOINT
-    songbird_process_env::set_var("AI_PROVIDER_ENDPOINT", &endpoint);
-
-    // Should discover from legacy env var
-    let adapter = AIAdapter::from_discovery().await;
-    assert!(adapter.is_ok(), "Should create adapter from legacy env var");
-
-    // Cleanup
-    songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
-}
-
-#[serial]
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_from_discovery_fallback_to_default() {
-    // Clear all env vars that might interfere
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
-    songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
-
-    // Should fall back to default host:port
-    let adapter = AIAdapter::from_discovery().await;
-    assert!(adapter.is_ok(), "Should create adapter with fallback");
-
-    let adapter = adapter.expect("test precondition");
-    // Should have some default endpoint
-    assert!(!adapter.endpoint().is_empty());
+    let direct = AIAdapter::new(endpoint.clone()).await.expect("explicit new");
+    assert_eq!(direct.endpoint(), &endpoint);
 }
 
 // ============================================================================

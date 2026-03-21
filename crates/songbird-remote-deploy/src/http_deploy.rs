@@ -27,29 +27,6 @@ pub struct DeploymentResponse {
     pub service_url: Option<String>,
 }
 
-/// Deployment information from server API
-/// Note: Currently unused - reserved for future status queries
-#[allow(dead_code, reason = "reserved for future deployment status API")]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DeploymentInfo {
-    /// Deployment identifier.
-    pub deployment_id: String,
-    /// Logical service name on the tower.
-    pub service_name: String,
-    /// Path to the deployed binary on the remote host.
-    pub binary_path: String,
-    /// Environment variables passed at deploy time.
-    pub env_vars: HashMap<String, String>,
-    /// Current lifecycle status string from the tower.
-    pub status: String,
-    /// RFC3339 or server-specific deployment timestamp.
-    pub deployed_at: String,
-    /// Remote process ID when running under process supervision.
-    pub pid: Option<u32>,
-    /// Listening port when exposed by the tower.
-    pub port: Option<u16>,
-}
-
 // ============================================================================
 // PHASE 2.2: CAPABILITY NEGOTIATION
 // ============================================================================
@@ -80,15 +57,12 @@ pub struct NetworkCapabilities {
 /// Throughput and latency hints returned with [`DeploymentCapabilities`].
 #[derive(Debug, Deserialize)]
 pub struct BandwidthEstimate {
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Estimated download throughput in Mbps.
     pub download_mbps: u32,
     /// Estimated upload throughput in Mbps.
     pub upload_mbps: u32,
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Estimated round-trip latency in milliseconds.
     pub latency_ms: u32,
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Qualitative confidence label for the estimate (tower-defined).
     pub confidence: String,
 }
@@ -112,11 +86,9 @@ pub struct SingleUploadMethod {
     /// Maximum artifact size for a single upload, in MiB.
     pub max_size_mb: u32,
     // Future: compression negotiation
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Compression codecs advertised for single-request uploads.
     pub compression_supported: Vec<String>,
     // Future: method recommendations
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Tower hint for when single upload is preferred (e.g. small artifacts).
     pub recommended_for: String,
 }
@@ -131,15 +103,12 @@ pub struct ChunkedUploadMethod {
     /// Preferred chunk size, in MiB.
     pub chunk_size_mb: u32,
     // Future: adaptive chunking
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Maximum number of chunks allowed for one deployment.
     pub max_chunks: u32,
     // Future: compression negotiation
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Compression codecs advertised for chunked uploads.
     pub compression_supported: Vec<String>,
     // Future: method recommendations
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Tower hint for when chunked upload is preferred.
     pub recommended_for: String,
 }
@@ -150,15 +119,12 @@ pub struct StreamingUploadMethod {
     /// Whether streaming upload is implemented on the tower.
     pub enabled: bool,
     // Future: size restrictions
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Whether the tower treats streaming uploads as unbounded in size.
     pub unlimited: bool,
     // Future: compression support
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Compression codecs advertised for streaming uploads.
     pub compression_supported: Vec<String>,
     // Future: method recommendations
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Tower hint for when streaming upload is preferred.
     pub recommended_for: String,
 }
@@ -173,41 +139,20 @@ pub struct ResourceInfo {
     /// Logical CPU cores available to new workloads.
     pub cpu_cores: usize,
     // Future: load-based selection
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Recent CPU utilization on the tower (0.0–1.0 or percent, tower-defined).
     pub cpu_load_percent: f32,
     // Future: queue management
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Maximum deployments the tower will run concurrently.
     pub max_concurrent_deployments: usize,
-    #[allow(dead_code, reason = "deserialized from API response")]
     /// Deployments currently active on the tower.
     pub current_deployments: usize,
-}
-
-/// Deployment preferences from server
-/// Note: Reserved for future intelligent method selection
-#[allow(dead_code, reason = "reserved for API response handling")]
-#[derive(Debug, Deserialize)]
-pub struct DeploymentPreferences {
-    /// Preferred compression codec name from the tower.
-    pub preferred_compression: String,
-    /// Preferred upload method name when multiple apply.
-    pub preferred_method: String,
-    /// Whether the tower requires TLS or payload encryption.
-    pub encryption_required: bool,
 }
 
 /// Upload strategy chosen from [`select_deployment_method`].
 #[derive(Debug, Clone)]
 pub enum SelectedMethod {
-    /// Single HTTP request within `max_size_mb`.
-    Single {
-        // Future: size validation
-        /// Maximum artifact size for this single upload (MiB), from tower limits.
-        #[allow(dead_code, reason = "reserved for future size validation")]
-        max_size_mb: u32,
-    },
+    /// Single HTTP request within tower `single.max_size_mb` (validated in [`select_deployment_method`]).
+    Single,
     /// Chunked upload using the given chunk size in MiB.
     Chunked {
         /// Chunk size to use for each part (MiB).
@@ -237,16 +182,16 @@ struct NegotiationRequest {
 struct NegotiationResponse {
     negotiation_id: String,
     // Future: method validation
-    #[expect(dead_code, reason = "reserved for API response handling")]
+    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     accepted_method: String,
     chunk_size_mb: u32,
     total_chunks: usize,
     // Future: dynamic endpoint routing
-    #[expect(dead_code, reason = "reserved for API response handling")]
+    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     chunk_upload_path: String,
-    #[expect(dead_code, reason = "reserved for API response handling")]
+    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     finalize_path: String,
-    #[expect(dead_code, reason = "reserved for API response handling")]
+    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     timeout_seconds: u64,
 }
 
@@ -315,9 +260,7 @@ pub fn select_deployment_method(
             "✓ Selected: Single upload ({:.2}MB < {}MB limit)",
             binary_size_mb, caps.deployment_methods.single.max_size_mb
         );
-        return SelectedMethod::Single {
-            max_size_mb: caps.deployment_methods.single.max_size_mb,
-        };
+        return SelectedMethod::Single;
     }
 
     // Check if chunked is available
@@ -385,10 +328,7 @@ pub async fn deploy_via_http_adaptive(
 
     // Execute deployment based on selected method
     match method {
-        SelectedMethod::Single {
-            ..
-        }
-        | SelectedMethod::Fallback => {
+        SelectedMethod::Single | SelectedMethod::Fallback => {
             // Use existing single upload
             deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
         }
@@ -645,80 +585,6 @@ pub async fn deploy_via_http(
     Ok(deployment_response)
 }
 
-/// Fetches deployment status from `GET .../api/deployment/status/{id}`.
-///
-/// # Errors
-///
-/// Returns an error on HTTP failure or JSON parse errors.
-#[allow(dead_code, reason = "reserved for future deployment lifecycle API")]
-pub async fn get_deployment_status(
-    tower_endpoint: &str,
-    deployment_id: &str,
-) -> Result<DeploymentInfo> {
-    let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
-    let url = format!("{tower_endpoint}/api/deployment/status/{deployment_id}");
-
-    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {e}"))?;
-
-    if !response.is_success() {
-        let status = response.status();
-        return Err(anyhow!("Failed to get deployment status: {status}"));
-    }
-
-    let deployment_info: DeploymentInfo =
-        response.json().await.map_err(|e| anyhow!("Failed to parse response: {e}"))?;
-
-    Ok(deployment_info)
-}
-
-/// Stops a deployment via `DELETE .../api/deployment/{id}`.
-///
-/// # Errors
-///
-/// Returns an error if the HTTP request fails or the tower returns a non-success status.
-#[allow(dead_code, reason = "reserved for future deployment lifecycle API")]
-pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Result<()> {
-    let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
-    let url = format!("{tower_endpoint}/api/deployment/{deployment_id}");
-
-    let response = client.delete(&url).await.map_err(|e| anyhow!("HTTP request failed: {e}"))?;
-
-    if !response.is_success() {
-        let status = response.status();
-        return Err(anyhow!("Failed to stop deployment: {status}"));
-    }
-
-    info!("✅ Deployment {} stopped", deployment_id);
-
-    Ok(())
-}
-
-/// Lists deployments from `GET .../api/deployment/list`.
-///
-/// # Errors
-///
-/// Returns an error if the HTTP request fails or JSON parsing fails.
-#[allow(dead_code, reason = "reserved for future deployment lifecycle API")]
-pub async fn list_deployments(tower_endpoint: &str) -> Result<Vec<DeploymentInfo>> {
-    let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
-    let url = format!("{tower_endpoint}/api/deployment/list");
-
-    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {e}"))?;
-
-    if !response.is_success() {
-        let status = response.status();
-        return Err(anyhow!("Failed to list deployments: {status}"));
-    }
-
-    let deployments: Vec<DeploymentInfo> =
-        response.json().await.map_err(|e| anyhow!("Failed to parse response: {e}"))?;
-
-    Ok(deployments)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -794,7 +660,7 @@ mod tests {
         let caps: DeploymentCapabilities =
             serde_json::from_str(sample_capabilities_json()).unwrap();
         let m = select_deployment_method(Some(&caps), 10.0);
-        assert!(matches!(m, SelectedMethod::Single { .. }));
+        assert!(matches!(m, SelectedMethod::Single));
     }
 
     #[test]

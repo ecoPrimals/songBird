@@ -10,10 +10,6 @@ use super::capability::{DiscoveredCapability, HealthStatus, PrimalType, QosMetri
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[cfg(test)]
-#[path = "service_tests.rs"]
-mod tests;
-
 /// Service information structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceInfo {

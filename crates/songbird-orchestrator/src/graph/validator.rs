@@ -359,6 +359,9 @@ impl Default for GraphValidator {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::graph::types::{GraphEdge, GraphMetadata, GraphNode};
 
@@ -706,5 +709,54 @@ mod tests {
 
         let result = validator.validate(&graph);
         assert!(result.valid, "Graph with proper data mapping should be valid");
+    }
+
+    #[test]
+    fn invalid_edge_source_node() {
+        let validator = GraphValidator::new();
+        let graph = Graph::new(
+            "t".to_string(),
+            "T".to_string(),
+            vec![create_test_node("only", "cap")],
+            vec![GraphEdge {
+                from: "missing".to_string(),
+                to: "only".to_string(),
+                data_mapping: None,
+            }],
+            GraphMetadata::default(),
+        );
+        let r = validator.validate(&graph);
+        assert!(!r.valid);
+        assert!(r.issues.iter().any(|i| i.code == "INVALID_EDGE_SOURCE"));
+    }
+
+    #[test]
+    fn entry_point_with_inputs_emits_warning() {
+        let validator = GraphValidator::new();
+        let mut n = create_test_node("entry", "cap");
+        n.outputs = vec!["o".to_string()];
+        n.inputs = vec!["external".to_string()];
+        let graph =
+            Graph::new("w".to_string(), "W".to_string(), vec![n], vec![], GraphMetadata::default());
+        let r = validator.validate(&graph);
+        assert!(r.warnings.iter().any(|w| w.contains("entry point")));
+    }
+
+    #[test]
+    fn graph_validator_default_same_as_new() {
+        let a = GraphValidator::new();
+        let b = GraphValidator::default();
+        let g = Graph::new(
+            "id".to_string(),
+            "n".to_string(),
+            vec![create_test_node("n1", "c")],
+            vec![],
+            GraphMetadata::default(),
+        );
+        let ra = a.validate(&g);
+        let rb = b.validate(&g);
+        assert_eq!(ra.valid, rb.valid);
+        assert_eq!(ra.issues.len(), rb.issues.len());
+        assert_eq!(ra.warnings.len(), rb.warnings.len());
     }
 }

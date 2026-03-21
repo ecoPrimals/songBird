@@ -90,8 +90,18 @@ impl Capability {
     /// 3. `/tmp/biomeos/{capability}.sock` (fallback)
     /// 4. `/tmp/{provider}.sock` (legacy)
     fn socket_patterns(&self) -> Vec<String> {
-        let xdg_base = std::env::var("XDG_RUNTIME_DIR")
-            .map_or_else(|_| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
+        self.socket_patterns_with_env(&|k| std::env::var(k).ok())
+    }
+
+    /// Same as [`Self::socket_patterns`], but `XDG_RUNTIME_DIR` (and any future lookups)
+    /// go through `env_reader` so tests can inject values without mutating process env.
+    fn socket_patterns_with_env<F>(&self, env_reader: &F) -> Vec<String>
+    where
+        F: Fn(&str) -> Option<String>,
+    {
+        let xdg_base = env_reader("XDG_RUNTIME_DIR")
+            .map(|d| format!("{d}/biomeos"))
+            .unwrap_or_else(|| "/tmp/biomeos".to_string());
 
         let cap_name: &str = match self {
             Self::Crypto => "crypto",
@@ -154,7 +164,7 @@ where
     }
 
     // Strategy 3: Common socket patterns (Unix sockets)
-    for pattern in capability.socket_patterns() {
+    for pattern in capability.socket_patterns_with_env(&env_reader) {
         if Path::new(&pattern).exists() {
             info!("   ✅ Found {:?} provider socket at: {}", capability, pattern);
             return Ok(pattern);
@@ -169,7 +179,7 @@ where
     }
 
     // Strategy 4: Socket scanning (last resort)
-    if let Some(socket_path) = scan_sockets(capability) {
+    if let Some(socket_path) = scan_sockets_with_env(capability, &env_reader) {
         info!("   ✅ Found {:?} provider via scanning: {}", capability, socket_path);
         return Ok(socket_path);
     }
@@ -186,6 +196,13 @@ where
 ///
 /// Scan priority: `$XDG_RUNTIME_DIR/biomeos/` → `/tmp/biomeos/` → `/tmp/`
 fn scan_sockets(capability: Capability) -> Option<String> {
+    scan_sockets_with_env(capability, &|k| std::env::var(k).ok())
+}
+
+fn scan_sockets_with_env<F>(capability: Capability, env_reader: &F) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
     let search_terms = match capability {
         Capability::Crypto => vec!["crypto", "encryption"],
         Capability::Security => vec!["security", "auth"],
@@ -199,7 +216,7 @@ fn scan_sockets(capability: Capability) -> Option<String> {
     let mut dirs_to_scan = Vec::new();
 
     // Priority 1: XDG_RUNTIME_DIR/biomeos/
-    if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Some(xdg_runtime) = env_reader("XDG_RUNTIME_DIR") {
         dirs_to_scan.push(format!("{xdg_runtime}/biomeos"));
     }
 

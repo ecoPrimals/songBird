@@ -263,6 +263,7 @@ impl Clone for AdaptiveExtensions {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -389,5 +390,12 @@ mod tests {
 
         let google_profile = adaptive.get_profile("google.com").unwrap();
         assert_eq!(google_profile.successful_extensions, vec![ExtensionType::Alpn]);
+    }
+
+    #[test]
+    fn modern_strategy_extensions_are_deterministic_across_hostnames() {
+        let a = AdaptiveExtensions::new(ExtensionStrategy::Modern);
+        let b = AdaptiveExtensions::new(ExtensionStrategy::Modern);
+        assert_eq!(a.get_extensions("x.com"), b.get_extensions("y.com"));
     }
 }

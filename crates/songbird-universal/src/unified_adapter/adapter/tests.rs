@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![expect(clippy::unwrap_used, reason = "test assertions")]
+#![expect(clippy::expect_used, reason = "test assertions")]
+
 use super::*;
 use crate::capabilities::{Capability, QoSMetrics, ResourceMetrics};
 use crate::types::{DiscoveredCapability, PrimalType, QosMetrics};

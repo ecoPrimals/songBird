@@ -67,6 +67,8 @@ pub enum DiscoveryMethod {
     },
 }
 
+type CapEnvReader = Arc<dyn Fn(&str) -> Result<String, std::env::VarError> + Send + Sync>;
+
 /// Capability-based service discovery engine
 pub struct CapabilityDiscovery {
     /// Discovered services cache
@@ -75,10 +77,8 @@ pub struct CapabilityDiscovery {
     /// Enabled discovery methods
     methods: Vec<DiscoveryMethod>,
 
-    /// Cache TTL for service endpoint validity
-    /// Used in future cache invalidation logic
-    #[expect(dead_code, reason = "reserved for future cache invalidation")]
-    cache_ttl: Duration,
+    /// Optional env reader (tests inject; default reads process environment)
+    env_reader: Option<CapEnvReader>,
 }
 
 impl CapabilityDiscovery {
@@ -92,7 +92,7 @@ impl CapabilityDiscovery {
                 DiscoveryMethod::DnsSD,
                 DiscoveryMethod::MDNS,
             ],
-            cache_ttl: Duration::from_secs(60),
+            env_reader: None,
         }
     }
 
@@ -102,7 +102,27 @@ impl CapabilityDiscovery {
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
             methods,
-            cache_ttl: Duration::from_secs(60),
+            env_reader: None,
+        }
+    }
+
+    /// Same as [`with_methods`](Self::with_methods) with an injectable env reader (concurrent-safe tests).
+    #[must_use]
+    pub fn with_methods_env_reader<F>(methods: Vec<DiscoveryMethod>, env_reader: F) -> Self
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError> + Send + Sync + 'static,
+    {
+        Self {
+            services: Arc::new(RwLock::new(HashMap::new())),
+            methods,
+            env_reader: Some(Arc::new(env_reader)),
+        }
+    }
+
+    fn read_env(&self, key: &str) -> Result<String, std::env::VarError> {
+        match &self.env_reader {
+            Some(f) => f(key),
+            None => std::env::var(key),
         }
     }
 
@@ -227,7 +247,7 @@ impl CapabilityDiscovery {
         // Try {CAPABILITY}_ENDPOINT environment variable
         let env_var = format!("{}_ENDPOINT", capability.to_uppercase());
 
-        if let Ok(endpoint_url) = std::env::var(&env_var) {
+        if let Ok(endpoint_url) = self.read_env(&env_var) {
             debug!("Found {} in environment: {}", env_var, endpoint_url);
 
             return Ok(vec![ServiceEndpoint {
@@ -716,29 +736,37 @@ impl CapabilityDiscovery {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        songbird_process_env::set_var("COMPUTE_ENDPOINT", "http://10.0.0.100:8001");
-
-        let discovery = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+        let discovery = CapabilityDiscovery::with_methods_env_reader(
+            vec![DiscoveryMethod::Environment],
+            |k| {
+                if k == "COMPUTE_ENDPOINT" {
+                    Ok("http://10.0.0.100:8001".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
 
         let providers = discovery.discover_compute().await.expect("compute from env");
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0].url, "http://10.0.0.100:8001");
         assert!(providers[0].capabilities.contains(&"compute".to_string()));
-
-        songbird_process_env::remove_var("COMPUTE_ENDPOINT");
     }
 
     #[tokio::test]
     async fn test_no_providers_found() {
-        songbird_process_env::remove_var("NONEXISTENT_ENDPOINT");
-
-        let discovery = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+        let discovery = CapabilityDiscovery::with_methods_env_reader(
+            vec![DiscoveryMethod::Environment],
+            |_| Err(std::env::VarError::NotPresent),
+        );
 
         let result = discovery.find_providers_by_capability("nonexistent").await;
         assert!(result.is_err());
@@ -757,9 +785,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_behavior() {
-        songbird_process_env::set_var("TEST_CAPABILITY_ENDPOINT", "http://test:1234");
-
-        let discovery = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+        let discovery = CapabilityDiscovery::with_methods_env_reader(
+            vec![DiscoveryMethod::Environment],
+            |k| {
+                if k == "TEST_CAPABILITY_ENDPOINT" {
+                    Ok("http://test:1234".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
 
         // First discovery
         let providers1 = discovery
@@ -777,8 +812,6 @@ mod tests {
 
         // Clear cache
         discovery.clear_cache("test_capability").await;
-
-        songbird_process_env::remove_var("TEST_CAPABILITY_ENDPOINT");
     }
 
     #[test]
@@ -886,5 +919,43 @@ services:
             }
             other => panic!("expected Discovery error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_capability_discovery_default_impl() {
+        let d = CapabilityDiscovery::default();
+        assert!(d.methods.len() >= 1);
+    }
+
+    #[tokio::test]
+    async fn test_clear_all_caches() {
+        let d = CapabilityDiscovery::with_methods_env_reader(
+            vec![DiscoveryMethod::Environment],
+            |k| {
+                if k == "SB_CAP_CLEAR_ENDPOINT" {
+                    Ok("http://127.0.0.1:1".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
+        let _ = d.find_providers_by_capability("sb_cap_clear").await;
+        d.clear_all_caches().await;
+    }
+
+    #[tokio::test]
+    async fn test_discover_storage_delegates_to_find() {
+        let d = CapabilityDiscovery::with_methods_env_reader(
+            vec![DiscoveryMethod::Environment],
+            |k| {
+                if k == "STORAGE_ENDPOINT" {
+                    Ok("http://store:9".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
+        let v = d.discover_storage().await.expect("storage from env");
+        assert!(!v.is_empty());
     }
 }

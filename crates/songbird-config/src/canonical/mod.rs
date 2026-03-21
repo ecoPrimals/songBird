@@ -59,6 +59,7 @@ pub use constants::{
     enable_zero_copy,
     external_address,
     find_primals_with_capability,
+    find_primals_with_capability_in_env,
     get_batch_size,
     // Network configuration
     get_bind_address,
@@ -70,6 +71,7 @@ pub use constants::{
     get_canonical_discovery_endpoint,
     // Endpoint configuration
     get_canonical_endpoint,
+    get_canonical_endpoint_with,
     get_canonical_gaming_endpoint,
     get_canonical_orchestrator_endpoint,
     get_canonical_security_endpoint,

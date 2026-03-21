@@ -271,7 +271,11 @@ pub struct Identity {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::access_control::Role;
 
     #[test]
     fn test_token_encoding_decoding() {
@@ -306,5 +310,62 @@ mod tests {
 
         assert_eq!(identity.id, "student-123");
         assert!(matches!(identity.role, Role::Student { .. }));
+    }
+
+    #[test]
+    fn encode_decode_anonymous_ta_professor_admin() {
+        let secret = b"sec";
+        for token in [
+            AccessToken::anonymous(),
+            AccessToken::ta("ta1", "C1"),
+            AccessToken::professor("p1", vec!["c".to_string()]),
+            AccessToken::admin("root"),
+        ] {
+            let enc = token.encode(secret).unwrap();
+            let dec = AccessToken::decode(&enc, secret).unwrap();
+            assert_eq!(dec.sub, token.sub);
+            assert_eq!(dec.role, token.role);
+        }
+    }
+
+    #[tokio::test]
+    async fn validate_expired_rejected() {
+        let v = TokenValidator::with_secret(b"x");
+        let mut t = AccessToken::anonymous();
+        t.exp = chrono::Utc::now().timestamp() - 10;
+        let e = v.validate(&t).await;
+        assert!(e.is_err());
+    }
+
+    #[test]
+    fn has_2fa_verified_admin_and_bear_dog() {
+        let admin = AccessToken::admin("a");
+        assert!(admin.has_2fa_verified());
+        let mut bd = AccessToken::anonymous();
+        bd.token_type = TokenType::BearDog;
+        assert!(bd.has_2fa_verified());
+        let st = AccessToken::student("s", "c");
+        assert!(!st.has_2fa_verified());
+    }
+
+    #[test]
+    fn has_2fa_remote_admin() {
+        let mut t = AccessToken::anonymous();
+        t.role = Role::RemoteAdmin {
+            admin_id: "r".into(),
+            vpn_session: "v".into(),
+            hardware_key_verified: true,
+        };
+        assert!(t.has_2fa_verified());
+    }
+
+    #[tokio::test]
+    async fn token_validator_with_secret() {
+        let v = TokenValidator::with_secret("custom-secret");
+        let mut tok = AccessToken::student("s", "c");
+        let enc = tok.encode(b"custom-secret").unwrap();
+        tok = AccessToken::decode(&enc, b"custom-secret").unwrap();
+        let id = v.validate(&tok).await.unwrap();
+        assert_eq!(id.id, "s");
     }
 }

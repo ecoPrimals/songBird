@@ -255,7 +255,7 @@ async fn test_e2e_decrypt_wrong_aad() {
 // ====================================================================
 
 #[tokio::test]
-#[ignore]
+#[ignore = "Chaos E2E: requires Neural API + BearDog at /tmp/neural-api-nat0.sock"]
 async fn test_chaos_e2e_rapid_fire_requests() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -267,7 +267,7 @@ async fn test_chaos_e2e_rapid_fire_requests() {
 }
 
 #[tokio::test]
-#[ignore]
+#[ignore = "Chaos E2E: requires Neural API + BearDog at /tmp/neural-api-nat0.sock"]
 async fn test_chaos_e2e_alternating_operations() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -299,7 +299,7 @@ async fn test_chaos_e2e_alternating_operations() {
 }
 
 #[tokio::test]
-#[ignore]
+#[ignore = "Chaos E2E: requires Neural API + BearDog at /tmp/neural-api-nat0.sock"]
 async fn test_chaos_e2e_varying_sizes() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 

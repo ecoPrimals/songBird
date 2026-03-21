@@ -69,17 +69,22 @@ pub async fn clear_cache() {
 #[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::capability::strategy::EnvironmentStrategy;
 
     #[tokio::test]
     async fn test_global_registry() {
         init_capability_registry();
 
-        songbird_process_env::set_var("TEST_PROVIDER_SOCKET", "/tmp/test.sock");
-
-        let provider = discover("test").await;
-        assert!(provider.is_ok());
-
-        songbird_process_env::remove_var("TEST_PROVIDER_SOCKET");
+        let providers = EnvironmentStrategy::discover_with("test", |k| {
+            if k == "TEST_PROVIDER_SOCKET" {
+                Ok("/tmp/test.sock".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+        .await
+        .unwrap();
+        assert!(!providers.is_empty());
     }
 
     #[test]

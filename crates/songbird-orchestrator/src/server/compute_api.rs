@@ -22,6 +22,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use songbird_config::capability_endpoints::CapabilityType;
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
 use std::collections::HashMap;
@@ -49,6 +50,25 @@ impl ComputeApiState {
         service_registry: Arc<FederatedServiceRegistry>,
     ) -> Self {
         let router = Arc::new(CapabilityRouter::new(federation_state, service_registry));
+        Self {
+            router,
+            enhanced_router: None,
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Test/embedder constructor: fixed capability endpoints (no `CAPABILITY_*` env vars).
+    #[must_use]
+    pub fn new_with_capability_endpoint_overrides(
+        federation_state: Arc<FederationState>,
+        service_registry: Arc<FederatedServiceRegistry>,
+        overrides: HashMap<CapabilityType, String>,
+    ) -> Self {
+        let router = Arc::new(CapabilityRouter::with_capability_endpoint_overrides(
+            federation_state,
+            service_registry,
+            overrides,
+        ));
         Self {
             router,
             enhanced_router: None,
@@ -725,10 +745,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_submit_heavy_task() {
-        // Set compute capability endpoint for test
-        songbird_process_env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://localhost:9000");
-
-        let state = create_test_state();
+        let federation_state = Arc::new(FederationState::new("default".to_string()));
+        let service_registry = Arc::new(FederatedServiceRegistry::new());
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Compute, "http://localhost:9000".to_string());
+        let state = ComputeApiState::new_with_capability_endpoint_overrides(
+            federation_state,
+            service_registry,
+            overrides,
+        );
 
         let req = ComputeTaskRequest {
             task: Task::builder("ml_training")
@@ -748,9 +773,6 @@ mod tests {
         assert_eq!(response.status, "routing");
         // Should route to capability (Compute)
         assert!(response.routed_to.starts_with("Compute:"));
-
-        // Cleanup
-        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
     }
 
     #[tokio::test]

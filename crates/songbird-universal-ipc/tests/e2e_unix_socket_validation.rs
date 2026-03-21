@@ -43,15 +43,13 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{RwLock, oneshot};
 use tokio::time::{Duration, timeout};
 
-// Global mutex to serialize environment variable tests
-static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
-
 /// Helper: Start a test Unix socket server with readiness signaling.
 ///
 /// Returns a join handle and a oneshot receiver that resolves when the
 /// server has bound its socket and is ready to accept connections.
-async fn start_test_server(
+async fn start_test_server_with_handler(
     socket_path: &str,
+    make_handler: impl FnOnce(Arc<RwLock<ServiceRegistry>>) -> IpcServiceHandler + Send + 'static,
 ) -> (tokio::task::JoinHandle<()>, oneshot::Receiver<()>) {
     let socket_path = socket_path.to_string();
     let (ready_tx, ready_rx) = oneshot::channel();
@@ -68,7 +66,7 @@ async fn start_test_server(
 
         // Create handler
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = make_handler(registry);
 
         // Accept ONE connection for testing
         if let Ok((stream, _)) = listener.accept().await {
@@ -122,6 +120,12 @@ async fn start_test_server(
     });
 
     (handle, ready_rx)
+}
+
+async fn start_test_server(
+    socket_path: &str,
+) -> (tokio::task::JoinHandle<()>, oneshot::Receiver<()>) {
+    start_test_server_with_handler(socket_path, IpcServiceHandler::new).await
 }
 
 // ============================================================================
@@ -182,19 +186,19 @@ async fn test_e2e_health_via_unix_socket() {
 
 #[tokio::test]
 async fn test_e2e_identity_via_unix_socket() {
-    let _guard = ENV_TEST_LOCK.lock().unwrap();
     let socket_path = "/tmp/songbird-test-identity.sock";
 
-    // Clean slate
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
-
-    // Set test environment variable
-    songbird_process_env::set_var("FAMILY_ID", "test_e2e_family");
-
     // Start server and wait for readiness signal
-    let (server_handle, ready_rx) = start_test_server(socket_path).await;
+    let (server_handle, ready_rx) = start_test_server_with_handler(socket_path, |registry| {
+        IpcServiceHandler::with_family_id_env(registry, |k| {
+            if k == "FAMILY_ID" {
+                Ok("test_e2e_family".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+    })
+    .await;
     ready_rx.await.expect("Server failed to signal readiness");
 
     // Connect and request
@@ -224,7 +228,6 @@ async fn test_e2e_identity_via_unix_socket() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    songbird_process_env::remove_var("FAMILY_ID");
     let _ = std::fs::remove_file(socket_path);
 }
 
@@ -279,24 +282,20 @@ async fn test_e2e_persistent_connection_multiple_requests() {
 
 #[tokio::test]
 async fn test_e2e_family_id_priority_family_id_first() {
-    let _guard = ENV_TEST_LOCK.lock().unwrap();
     let socket_path = "/tmp/songbird-test-fam1.sock";
-
-    // Clean slate
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
 
     // Canonical priority: SONGBIRD_ORCHESTRATOR_FAMILY_ID > BIOMEOS_FAMILY_ID
     // > SONGBIRD_FAMILY_ID > FAMILY_ID > NODE_FAMILY_ID
     // Set lower-priority vars — SONGBIRD_FAMILY_ID should win over FAMILY_ID
-    songbird_process_env::set_var("FAMILY_ID", "lowest");
-    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "winner");
-    songbird_process_env::set_var("NODE_FAMILY_ID", "third");
-
-    let (server_handle, ready_rx) = start_test_server(socket_path).await;
+    let (server_handle, ready_rx) = start_test_server_with_handler(socket_path, |registry| {
+        IpcServiceHandler::with_family_id_env(registry, |k| match k {
+            "FAMILY_ID" => Ok("lowest".to_string()),
+            "SONGBIRD_FAMILY_ID" => Ok("winner".to_string()),
+            "NODE_FAMILY_ID" => Ok("third".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+    })
+    .await;
     ready_rx.await.expect("Server failed to signal readiness");
 
     let mut stream = UnixStream::connect(socket_path).await.unwrap();

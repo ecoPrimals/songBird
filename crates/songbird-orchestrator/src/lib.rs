@@ -75,80 +75,116 @@
 // receive the same allows as the library (inner attributes here do not apply to them).
 #![forbid(unsafe_code)]
 
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod access_control; // Access control & graduated information disclosure (Q1 2025)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
+/// Access control and graduated information disclosure.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod access_control;
+/// Core application wiring and the main [`SongbirdOrchestrator`] entrypoint.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod app;
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod auth; // JWT authentication via BearDog delegation (Pure Rust!) (Jan 17, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod bin_interface; // ✅ UniBin public API (Jan 19, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod btsp_client; // BTSP Unix socket client for BearDog tunnels (Jan 16, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod capability_registration; // Neural API capability registration (TRUE PRIMAL) (Jan 25, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
+/// JWT authentication delegated to BearDog over IPC.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod auth;
+/// UniBin public API: `run_server`, `run_doctor`, `run_config`, and related CLI types.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod bin_interface;
+/// BTSP Unix socket client for BearDog secure tunnels.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod btsp_client;
+/// Neural API capability registration for the local runtime.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod capability_registration;
+/// Orchestrator CLI parsing and command dispatch.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod cli;
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod commands; // Server, doctor, config command implementations (extracted from main.rs)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod connections; // Progressive trust connection management (Jan 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
+/// Server, doctor, and config command implementations.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod commands;
+/// Progressive trust and federated peer connection types.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod connections;
+/// User consent management for sensitive operations.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod consent_management;
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod core; // Consolidated core functionality
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod crypto; // Pure Rust TLS via BearDog crypto delegation (Jan 18, 2026) - Path to 100% ecoBin!
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod env_config; // Environment configuration - self-knowledge (TRUE PRIMAL) (Jan 21, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod graph; // Graph validation for Collaborative Intelligence (Jan 11, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod http_gateway; // HTTP gateway for universal pure Rust ecosystem (Jan 16, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
+/// Consolidated orchestrator core (routing, execution, benchmarks, adapters).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod core;
+/// Pure Rust TLS and crypto delegation to BearDog.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod crypto;
+/// Environment-backed self-configuration for the orchestrator process.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod env_config;
+/// Error recovery, circuit breaking, and resilience helpers.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod error_recovery;
+/// Graph validation for collaborative intelligence workflows.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod graph;
+/// HTTP gateway for the universal pure Rust service surface.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod http_gateway;
+/// External system and service integration glue.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod integration;
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod ipc; // Inter-Primal Communication (Unix socket IPC + primal registry) (Jan 4, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod network; // Network binding & endpoint management (Dec 20, 2025) - Zero-config intelligent binding
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
+/// Inter-primal communication, Unix IPC, and primal registry.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod ipc;
+/// Network binding, listeners, and endpoint management.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod network;
+/// Stable node identity and cryptographic node identifiers.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod node_identity;
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod observability; // Basic observability (Week 4 - Dec 18, 2025)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod orchestrator; // MVP Integration (Week 1-5 - Dec 18, 2025)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod primal_discovery; // Agnostic primal discovery (TRUE PRIMAL) (Jan 21, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod privilege; // Secure privilege management (Dec 20, 2025) - CAP_NET_ADMIN, no sudo prompts
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod process_manager; // Process lifecycle & multi-instance support (Jan 4, 2026) - Enables fractal scaling
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod registration; // Node registration with genetic lineage (Jan 1, 2026) - biomeOS integration
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod resilience; // Modern resilience patterns (Circuit Breaker, etc.) (Feb 3, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18, 2025)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod security_client; // Security capability client (refactored v4.9.0) - ✅ Pure Rust HTTP (Jan 21, 2026)
+/// Metrics, tracing hooks, and basic observability.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod observability;
+/// Legacy MVP orchestrator integration and health types.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod orchestrator;
+/// Capability-agnostic primal and provider endpoint discovery.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod primal_discovery;
+/// Privileged capability handling (e.g. network caps) without interactive sudo.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod privilege;
+/// Process lifecycle, spawning, and multi-instance coordination.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod process_manager;
+/// Node registration and genetic lineage with biomeOS.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod registration;
+/// Modern resilience patterns (circuit breaker, bulkhead, etc.).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod resilience;
+/// Resource limits, fairness, and orchestrator-wide resource policy.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod resource_management;
+/// Multi-protocol RPC (JSON-RPC, tarpc, etc.).
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod rpc;
+/// HTTP client for security-capability and trust RPC against BearDog.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod security_client;
 /// Backward-compatible module alias for [`security_client`] (existing imports use `security_capability_client`).
 pub use security_client as security_capability_client; // Backward compatibility alias
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod self_knowledge; // Self-knowledge about this primal (zero hardcoding!) (Jan 1, 2026)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
+/// Runtime introspection: what this primal exposes without hardcoded names.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod self_knowledge;
+/// HTTP/API server stack for orchestrator endpoints.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
 pub mod server;
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod service_registry; // Universal Port Authority (Dec 20, 2025) - Inter-primal service registration
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod task_lifecycle; // Task lifecycle management (Week 1 - Dec 18, 2025) // Consent management (Week 5 - Dec 18, 2025)
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod trust; // Trust escalation system (Dec 19, 2025) - Zero-trust progressive escalation
-#[allow(missing_docs, reason = "orchestrator submodule; primary docs on crate root and re-exports")]
-pub mod universal_adapter; // Universal Primal Adapter (capability-based discovery) (Jan 1, 2026)
+/// Inter-primal service registration and port authority.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod service_registry;
+/// Task lifecycle and scheduling hooks for orchestrated work.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod task_lifecycle;
+/// Trust escalation, evaluation, and progressive trust policy.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod trust;
+/// Universal primal adapter and capability-based provider discovery.
+#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+pub mod universal_adapter;
 
 // Re-export main orchestrator
 /// Primary orchestrator application type: loads config, wires subsystems, runs the server loop.

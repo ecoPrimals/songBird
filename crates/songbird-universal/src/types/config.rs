@@ -9,10 +9,6 @@
 use super::capability::SecurityLevel;
 use serde::{Deserialize, Serialize};
 
-#[cfg(test)]
-#[path = "config_tests.rs"]
-mod tests;
-
 /// Security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {

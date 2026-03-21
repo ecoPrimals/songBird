@@ -664,4 +664,17 @@ mod tests {
             .unwrap_err();
         assert!(matches!(err, PoolError::ShuttingDown));
     }
+
+    #[tokio::test]
+    async fn pool_stats_track_max_and_min_idle_from_config() {
+        let pool = ConnectionPool::<MockConnection>::builder()
+            .max_size(7)
+            .min_idle(4)
+            .build()
+            .await
+            .unwrap();
+        let stats = pool.stats().await;
+        assert_eq!(stats.max_connections, 7);
+        assert_eq!(stats.min_idle, 4);
+    }
 }

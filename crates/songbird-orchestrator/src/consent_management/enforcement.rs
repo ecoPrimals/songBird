@@ -279,6 +279,9 @@ impl DignityChecker {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::task_lifecycle::UserId;
 
@@ -373,5 +376,130 @@ mod tests {
         let violations = DignityChecker::check_operation("simple_task", Some(5.0), true);
 
         assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn requires_consent_cost_at_threshold_not_required() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("alice"), "other");
+        assert!(!enforcer.requires_consent(&task, Some(50.0)));
+    }
+
+    #[test]
+    fn requires_consent_cost_just_above_threshold() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("alice"), "other");
+        assert!(enforcer.requires_consent(&task, Some(50.01)));
+    }
+
+    #[test]
+    fn dignity_expensive_but_transparent_no_cost_violation() {
+        let v = DignityChecker::check_operation("compute", Some(150.0), true);
+        assert!(!v.iter().any(|m| m.contains("transparent")), "{v:?}");
+    }
+
+    #[test]
+    fn dignity_sensitive_keyword_share() {
+        let v = DignityChecker::check_operation("share_data", None, true);
+        assert!(v.iter().any(|m| m.contains("share")));
+    }
+
+    #[tokio::test]
+    async fn wait_for_decision_approved() {
+        let cm = Arc::new(ConsentManager::new());
+        let enforcer = ConsentEnforcer::new(cm.clone());
+        let task = test_task(UserId::from("alice"), "op");
+        let consent_id = cm.request_consent(task.owner.clone(), task.id, "op", Some(100.0)).await;
+        assert!(cm.approve(consent_id.as_ref(), None).await);
+        let r = enforcer.wait_for_decision(consent_id.as_ref()).await.unwrap();
+        assert!(matches!(r, EnforcementResult::Allowed { .. }));
+    }
+
+    #[tokio::test]
+    async fn wait_for_decision_denied() {
+        let cm = Arc::new(ConsentManager::new());
+        let enforcer = ConsentEnforcer::new(cm.clone());
+        let task = test_task(UserId::from("alice"), "op");
+        let consent_id = cm.request_consent(task.owner.clone(), task.id, "op", Some(100.0)).await;
+        assert!(cm.deny(consent_id.as_ref(), None).await);
+        let r = enforcer.wait_for_decision(consent_id.as_ref()).await.unwrap();
+        assert!(matches!(r, EnforcementResult::Blocked { .. }));
+    }
+
+    #[tokio::test]
+    async fn wait_for_decision_times_out_fail_safe_deny() {
+        let cm = Arc::new(ConsentManager::new());
+        let config = EnforcementConfig {
+            default_timeout: std::time::Duration::from_millis(30),
+            ..Default::default()
+        };
+        let enforcer = ConsentEnforcer::with_config(cm.clone(), config);
+        let task = test_task(UserId::from("alice"), "op");
+        let _consent_id = cm.request_consent(task.owner.clone(), task.id, "op", Some(100.0)).await;
+        // Still pending — wait_for_decision should time out
+        let r = enforcer.wait_for_decision(_consent_id.as_ref()).await.unwrap();
+        assert!(matches!(
+            r,
+            EnforcementResult::Blocked {
+                reason,
+                ..
+            } if reason.as_ref().contains("expired") || reason.as_ref().contains("timed out")
+        ));
+    }
+
+    #[tokio::test]
+    async fn wait_for_decision_times_out_proceed() {
+        let cm = Arc::new(ConsentManager::new());
+        let config = EnforcementConfig {
+            default_timeout: std::time::Duration::from_millis(30),
+            timeout_behavior: TimeoutBehavior::Proceed,
+            ..Default::default()
+        };
+        let enforcer = ConsentEnforcer::with_config(cm.clone(), config);
+        let task = test_task(UserId::from("alice"), "op");
+        let cid = cm.request_consent(task.owner.clone(), task.id, "op", Some(100.0)).await;
+        let r = enforcer.wait_for_decision(cid.as_ref()).await.unwrap();
+        assert!(matches!(r, EnforcementResult::Allowed { .. }));
+    }
+
+    #[tokio::test]
+    async fn check_consent_all_statuses() {
+        let cm = Arc::new(ConsentManager::new());
+        let enforcer = ConsentEnforcer::new(cm.clone());
+        let task = test_task(UserId::from("alice"), "op");
+
+        let pending_id = cm.request_consent(task.owner.clone(), task.id, "op", Some(100.0)).await;
+        assert!(matches!(
+            enforcer.check_consent(pending_id.as_ref()).await,
+            Some(EnforcementResult::Pending { .. })
+        ));
+
+        let approve_id = cm.request_consent(task.owner.clone(), task.id, "op2", Some(100.0)).await;
+        cm.approve(approve_id.as_ref(), None).await;
+        assert!(matches!(
+            enforcer.check_consent(approve_id.as_ref()).await,
+            Some(EnforcementResult::Allowed { .. })
+        ));
+
+        let deny_id = cm.request_consent(task.owner.clone(), task.id, "op3", Some(100.0)).await;
+        cm.deny(deny_id.as_ref(), None).await;
+        assert!(matches!(
+            enforcer.check_consent(deny_id.as_ref()).await,
+            Some(EnforcementResult::Blocked { .. })
+        ));
+    }
+
+    #[tokio::test]
+    async fn with_config_exposes_custom_threshold() {
+        let enforcer = ConsentEnforcer::with_config(
+            Arc::new(ConsentManager::new()),
+            EnforcementConfig {
+                consent_required_above_cost: 500.0,
+                ..Default::default()
+            },
+        );
+        let task = test_task(UserId::from("alice"), "x");
+        assert!(!enforcer.requires_consent(&task, Some(100.0)));
+        assert!(enforcer.requires_consent(&task, Some(600.0)));
     }
 }

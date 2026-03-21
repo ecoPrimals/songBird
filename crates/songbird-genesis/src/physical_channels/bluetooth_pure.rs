@@ -57,7 +57,7 @@ const GENESIS_CREDENTIAL_CHAR_UUID: uuid::Uuid =
 /// # }
 /// ```
 #[cfg(feature = "pure-bluetooth")]
-#[expect(dead_code, reason = "struct fields wired incrementally with pure Bluetooth stack")]
+#[allow(dead_code, reason = "fields wired incrementally as pure Bluetooth stack matures")]
 pub struct PureRustBluetoothChannel {
     host: BluetoothHost<UsbTransport>,
     witness_address: Option<Address>,

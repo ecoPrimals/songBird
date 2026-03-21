@@ -269,6 +269,9 @@ impl Default for FairScheduler {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
 
@@ -416,5 +419,36 @@ mod tests {
         }
 
         assert!(low_found, "Low priority task should not starve");
+    }
+
+    #[tokio::test]
+    async fn empty_queue_dequeue_none() {
+        let s = FairScheduler::new();
+        assert!(s.dequeue().await.is_none());
+        assert_eq!(s.queue_len().await, 0);
+    }
+
+    #[tokio::test]
+    async fn peek_matches_next_dequeue() {
+        let s = FairScheduler::new();
+        let t = create_test_task("alice", Priority::Standard);
+        let id = t.id;
+        s.enqueue(t).await.unwrap();
+        let peeked = s.peek().await.unwrap();
+        assert_eq!(peeked.id, id);
+        let popped = s.dequeue().await.unwrap();
+        assert_eq!(popped.id, id);
+        assert!(s.peek().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn high_priority_before_standard_same_user() {
+        let s = FairScheduler::new();
+        let std_task = create_test_task("bob", Priority::Standard);
+        let hi_task = create_test_task("bob", Priority::High);
+        s.enqueue(std_task).await.unwrap();
+        s.enqueue(hi_task).await.unwrap();
+        assert_eq!(s.dequeue().await.unwrap().spec.priority, Priority::High);
+        assert_eq!(s.dequeue().await.unwrap().spec.priority, Priority::Standard);
     }
 }

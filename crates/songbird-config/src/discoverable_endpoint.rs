@@ -199,20 +199,28 @@ impl DiscoverableEndpoint {
     ///
     /// Returns an error if discovery fails for all configured methods (primary and fallback)
     pub async fn discover(&self) -> SongbirdResult<EndpointSpec> {
+        self.discover_with(|k| std::env::var(k)).await
+    }
+
+    /// Same as [`discover`](Self::discover) with an injectable env reader.
+    pub async fn discover_with(
+        &self,
+        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<EndpointSpec> {
         // Try primary method
-        if let Ok(endpoint) = self.try_discovery_method(&self.discovery_method).await {
+        if let Ok(endpoint) = self.try_discovery_method_with(&self.discovery_method, &env).await {
             return Ok(endpoint);
         }
 
         // Try fallback methods
         for method in &self.fallback_methods {
-            if let Ok(endpoint) = self.try_discovery_method(method).await {
+            if let Ok(endpoint) = self.try_discovery_method_with(method, &env).await {
                 return Ok(endpoint);
             }
         }
 
         // Use dev fallback if available and we're in development mode
-        if is_development_mode()
+        if is_development_mode_with(&env)
             && let Some(fallback) = &self.dev_fallback
         {
             return Ok(fallback.clone());
@@ -227,17 +235,24 @@ impl DiscoverableEndpoint {
 
     /// Try a single discovery method
     async fn try_discovery_method(&self, method: &DiscoveryMethod) -> SongbirdResult<EndpointSpec> {
+        self.try_discovery_method_with(method, &|k| std::env::var(k)).await
+    }
+
+    async fn try_discovery_method_with(
+        &self,
+        method: &DiscoveryMethod,
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<EndpointSpec> {
         match method {
             DiscoveryMethod::Environment {
                 var_name,
                 parser,
             } => {
-                let value =
-                    SafeEnv::get_required(var_name).map_err(|_| SongbirdError::Configuration {
-                        message: format!("Environment variable {var_name} not found"),
-                        field: Some(var_name.clone()),
-                        suggestion: Some(format!("Set {var_name} environment variable")),
-                    })?;
+                let value = env(var_name).map_err(|_| SongbirdError::Configuration {
+                    message: format!("Environment variable {var_name} not found"),
+                    field: Some(var_name.clone()),
+                    suggestion: Some(format!("Set {var_name} environment variable")),
+                })?;
 
                 parse_endpoint(&value, parser)
             }
@@ -277,11 +292,13 @@ impl DiscoverableEndpoint {
                 port,
             } => {
                 // Check if we're in kubernetes
-                if SafeEnv::get_required("KUBERNETES_SERVICE_HOST").is_ok() {
+                if env("KUBERNETES_SERVICE_HOST").is_ok() {
                     let port_num = match port {
                         PortSpec::Number(n) => *n,
                         PortSpec::Named(name) => resolve_named_port(name)?,
-                        PortSpec::Environment(var) => SafeEnv::get_port(var, 8080),
+                        PortSpec::Environment(var) => {
+                            env(var).ok().and_then(|v| v.parse().ok()).unwrap_or(8080)
+                        }
                     };
 
                     Ok(EndpointSpec {

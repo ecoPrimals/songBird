@@ -11,7 +11,9 @@
     reason = "path helper structs mirror `canonical::constants`; fields self-describing"
 )]
 
-use crate::canonical::constants::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir};
+use crate::canonical::constants::{
+    get_cache_dir_with, get_config_dir_with, get_data_dir_with, get_log_dir_with,
+};
 use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::fs;
@@ -53,24 +55,31 @@ pub struct ServiceDataDirs {
 
 impl Default for PathConfig {
     fn default() -> Self {
-        Self {
-            log_dir: PathBuf::from(get_log_dir()),
-            cache_dir: PathBuf::from(get_cache_dir()),
-            data_dir: PathBuf::from(get_data_dir()),
-            config_dir: PathBuf::from(get_config_dir()),
-            runtime_dir: std::env::temp_dir(),
-            service_data_dirs: ServiceDataDirs {
-                orchestrator: PathBuf::from(get_config_dir()).join("orchestrator"),
-                federation: PathBuf::from(get_config_dir()).join("federation"),
-                metrics: PathBuf::from(get_config_dir()).join("metrics"),
-                discovery: PathBuf::from(get_config_dir()).join("discovery"),
-                registry: PathBuf::from(get_config_dir()).join("registry"),
-            },
-        }
+        Self::from_env_reader(|k| std::env::var(k))
     }
 }
 
 impl PathConfig {
+    /// Build defaults from an injectable env reader (tests and embedders).
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> std::result::Result<String, std::env::VarError>) -> Self {
+        let config_dir = get_config_dir_with(&env);
+        Self {
+            log_dir: PathBuf::from(get_log_dir_with(&env)),
+            cache_dir: PathBuf::from(get_cache_dir_with(&env)),
+            data_dir: PathBuf::from(get_data_dir_with(&env)),
+            config_dir: PathBuf::from(&config_dir),
+            runtime_dir: std::env::temp_dir(),
+            service_data_dirs: ServiceDataDirs {
+                orchestrator: PathBuf::from(&config_dir).join("orchestrator"),
+                federation: PathBuf::from(&config_dir).join("federation"),
+                metrics: PathBuf::from(&config_dir).join("metrics"),
+                discovery: PathBuf::from(&config_dir).join("discovery"),
+                registry: PathBuf::from(&config_dir).join("registry"),
+            },
+        }
+    }
+
     /// Create a new `PathConfig` instance
     ///
     /// # Errors
@@ -285,7 +294,7 @@ impl PathConfig {
             return PathBuf::from(log_dir);
         }
 
-        PathBuf::from(get_log_dir())
+        PathBuf::from(crate::canonical::constants::get_log_dir())
     }
 
     /// Get fallback cache directory when substrate is unavailable
@@ -294,7 +303,7 @@ impl PathConfig {
             return PathBuf::from(cache_dir);
         }
 
-        PathBuf::from(get_cache_dir())
+        PathBuf::from(crate::canonical::constants::get_cache_dir())
     }
 
     /// Get fallback runtime directory when substrate is unavailable

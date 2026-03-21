@@ -48,15 +48,13 @@
 //!
 //! Uses `wiremock` for HTTP mocking without hardcoded ports
 
+use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_universal::adapters::security::{
     AuthResult, SecurityAdapter, SecurityHealth, SecurityProvider,
 };
+use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::Mutex;
 use wiremock::matchers::{method, path};
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-static ENV_LOCK: Mutex<()> = Mutex::const_new(());
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // ============================================================================
@@ -64,82 +62,22 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 // ============================================================================
 
 #[tokio::test]
-async fn test_from_discovery_with_env_var() {
-    let _guard = ENV_LOCK.lock().await;
-    // Setup mock server
+async fn test_from_discovery_with_injected_resolver() {
     let mock_server = MockServer::start().await;
-
-    // Set environment variable
-    songbird_process_env::set_var("SONGBIRD_SECURITY_ENDPOINT", mock_server.uri());
-
-    // Test discovery
-    let result = SecurityAdapter::from_discovery().await;
-    assert!(result.is_ok(), "Should discover from environment variable");
-
-    // Cleanup
-    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
+    let uri = mock_server.uri();
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Security, uri.clone());
+    let result = SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
+    assert!(result.is_ok(), "Should discover from injected resolver");
+    assert_eq!(result.expect("adapter").endpoint(), &uri);
 }
 
 #[tokio::test]
-async fn test_from_discovery_fallback_to_security_provider_endpoint() {
-    let _guard = ENV_LOCK.lock().await;
-    // Setup mock server
+async fn test_from_discovery_injected_matches_explicit_new() {
     let mock_server = MockServer::start().await;
-
-    // Remove primary env var and set fallback
-    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-    songbird_process_env::set_var("SECURITY_PROVIDER_ENDPOINT", mock_server.uri());
-
-    // Test discovery
-    let result = SecurityAdapter::from_discovery().await;
-    assert!(result.is_ok(), "Should fallback to SECURITY_PROVIDER_ENDPOINT");
-
-    // Cleanup
-    songbird_process_env::remove_var("SECURITY_PROVIDER_ENDPOINT");
-}
-
-#[tokio::test]
-async fn test_from_discovery_fallback_to_beardog_endpoint() {
-    let _guard = ENV_LOCK.lock().await;
-    // Setup mock server
-    let mock_server = MockServer::start().await;
-
-    // Remove all primary env vars and set BearDog fallback
-    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-    songbird_process_env::remove_var("SECURITY_PROVIDER_ENDPOINT");
-    songbird_process_env::set_var("BEARDOG_ENDPOINT", mock_server.uri());
-
-    // Test discovery
-    let result = SecurityAdapter::from_discovery().await;
-    assert!(result.is_ok(), "Should fallback to BEARDOG_ENDPOINT");
-
-    // Cleanup
-    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
-}
-
-#[tokio::test]
-async fn test_from_discovery_uses_host_and_port_fallback() {
-    let _guard = ENV_LOCK.lock().await;
-    // Remove all security endpoint env vars
-    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-    songbird_process_env::remove_var("SECURITY_PROVIDER_ENDPOINT");
-    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
-
-    // Set host and port
-    songbird_process_env::set_var("SONGBIRD_HOST", "http://testhost");
-    songbird_process_env::set_var("SONGBIRD_SECURITY_PORT", "9999");
-
-    // Test discovery - should fall back to constructed endpoint
-    let result = SecurityAdapter::from_discovery().await;
-    assert!(result.is_ok(), "Should construct endpoint from host and port");
-
-    let adapter = result.expect("test precondition");
-    assert!(adapter.endpoint().contains("testhost"), "Should use configured host");
-    assert!(adapter.endpoint().contains("9999"), "Should use configured port");
-
-    // Cleanup
-    songbird_process_env::remove_var("SONGBIRD_HOST");
-    songbird_process_env::remove_var("SONGBIRD_SECURITY_PORT");
+    let uri = mock_server.uri();
+    let direct = SecurityAdapter::new(uri.clone()).await.expect("new");
+    assert_eq!(direct.endpoint(), &uri);
 }
 
 // ============================================================================

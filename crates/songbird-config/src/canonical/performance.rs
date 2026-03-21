@@ -7,7 +7,7 @@
 //! and benchmarking across the Songbird ecosystem.
 
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::env::VarError;
 
 // ============================================================================
 // PERFORMANCE CONFIGURATION
@@ -82,29 +82,36 @@ pub struct PerformanceConfig {
 
 impl Default for PerformanceConfig {
     fn default() -> Self {
+        Self::from_env_reader(|k| std::env::var(k))
+    }
+}
+
+impl PerformanceConfig {
+    /// Build from an injectable env reader (tests and embedders).
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
-            thread_pool_size: env::var("SONGBIRD_THREAD_POOL_SIZE")
+            thread_pool_size: env("SONGBIRD_THREAD_POOL_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or_else(|| {
-                    // Default to number of CPU cores
                     std::thread::available_parallelism().map(std::num::NonZero::get).unwrap_or(4)
                 }),
-            max_concurrent_requests: env::var("SONGBIRD_MAX_CONCURRENT_REQUESTS")
+            max_concurrent_requests: env("SONGBIRD_MAX_CONCURRENT_REQUESTS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(1000),
             request_buffer_size: 8192,
-            enable_zero_copy: env::var("SONGBIRD_ZERO_COPY_ENABLED").is_ok(),
+            enable_zero_copy: env("SONGBIRD_ZERO_COPY_ENABLED").is_ok(),
             connection_pool_size: 50,
-            cache: CacheConfig::default(),
-            metrics: MetricsConfig::default(),
+            cache: CacheConfig::from_env_reader(|k| env(k)),
+            metrics: MetricsConfig::from_env_reader(|k| env(k)),
             enable_fast_load_balancing: false,
             enable_adaptive_caching: false,
             enable_memory_optimization: false,
             enable_async_batching: false,
             cache_size_mb: 100,
-            object_pool_sizes: ObjectPoolSizes::default(),
+            object_pool_sizes: ObjectPoolSizes::from_env_reader(|k| env(k)),
             monitoring_interval_secs: 60,
             auto_tuning_sensitivity: 0.5,
         }
@@ -145,16 +152,23 @@ pub struct ObjectPoolSizes {
 
 impl Default for ObjectPoolSizes {
     fn default() -> Self {
+        Self::from_env_reader(|k| std::env::var(k))
+    }
+}
+
+impl ObjectPoolSizes {
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
-            message: env::var("SONGBIRD_MESSAGE_POOL_SIZE")
+            message: env("SONGBIRD_MESSAGE_POOL_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(1000),
-            buffer: env::var("SONGBIRD_BUFFER_POOL_SIZE")
+            buffer: env("SONGBIRD_BUFFER_POOL_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(500),
-            connection: env::var("SONGBIRD_CONNECTION_POOL_SIZE")
+            connection: env("SONGBIRD_CONNECTION_POOL_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(100),
@@ -196,16 +210,23 @@ pub struct CacheConfig {
 
 impl Default for CacheConfig {
     fn default() -> Self {
+        Self::from_env_reader(|k| std::env::var(k))
+    }
+}
+
+impl CacheConfig {
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
-            enabled: env::var("SONGBIRD_CACHE_ENABLED")
+            enabled: env("SONGBIRD_CACHE_ENABLED")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
-            max_size: env::var("SONGBIRD_CACHE_MAX_SIZE")
+            max_size: env("SONGBIRD_CACHE_MAX_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(1000),
-            ttl_secs: env::var("SONGBIRD_CACHE_TTL_SECS")
+            ttl_secs: env("SONGBIRD_CACHE_TTL_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(300),
@@ -247,16 +268,23 @@ pub struct MetricsConfig {
 
 impl Default for MetricsConfig {
     fn default() -> Self {
+        Self::from_env_reader(|k| std::env::var(k))
+    }
+}
+
+impl MetricsConfig {
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
-            enabled: env::var("SONGBIRD_METRICS_ENABLED")
+            enabled: env("SONGBIRD_METRICS_ENABLED")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
-            collection_interval_secs: env::var("SONGBIRD_METRICS_INTERVAL_SECS")
+            collection_interval_secs: env("SONGBIRD_METRICS_INTERVAL_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60),
-            export_prometheus: env::var("SONGBIRD_PROMETHEUS_ENABLED").is_ok(),
+            export_prometheus: env("SONGBIRD_PROMETHEUS_ENABLED").is_ok(),
         }
     }
 }
@@ -307,22 +335,28 @@ pub struct BenchmarkConfig {
 
 impl Default for BenchmarkConfig {
     fn default() -> Self {
+        Self::from_env_reader(|k| std::env::var(k))
+    }
+}
+
+impl BenchmarkConfig {
+    #[must_use]
+    pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
-            enabled: env::var("SONGBIRD_BENCHMARK_ENABLED").is_ok(),
-            duration_secs: env::var("SONGBIRD_BENCHMARK_DURATION_SECS")
+            enabled: env("SONGBIRD_BENCHMARK_ENABLED").is_ok(),
+            duration_secs: env("SONGBIRD_BENCHMARK_DURATION_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60),
-            concurrent_requests: env::var("SONGBIRD_BENCHMARK_CONCURRENT")
+            concurrent_requests: env("SONGBIRD_BENCHMARK_CONCURRENT")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(100),
-            warmup_duration_secs: env::var("SONGBIRD_BENCHMARK_WARMUP_SECS")
+            warmup_duration_secs: env("SONGBIRD_BENCHMARK_WARMUP_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(10),
-            output_format: env::var("SONGBIRD_BENCHMARK_OUTPUT")
-                .unwrap_or_else(|_| "json".to_string()),
+            output_format: env("SONGBIRD_BENCHMARK_OUTPUT").unwrap_or_else(|_| "json".to_string()),
             batch_test_size: 1000,
         }
     }

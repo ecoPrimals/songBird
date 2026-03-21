@@ -1,49 +1,50 @@
 ---
-name: 🐛 Bug Report
-about: Report a bug in SongBird Gaming Bridge
+name: Bug Report
+about: Report a bug in Songbird (Network Orchestration & Discovery Primal)
 title: '[BUG] '
 labels: 'bug'
 assignees: ''
 ---
 
-## 🐛 **Bug Description**
-A clear and concise description of what the bug is.
+## Bug description
 
-## 🎮 **Gaming Context**
-- **Game**: (e.g., StarCraft, Age of Empires II)
-- **Protocol**: (e.g., IPX, DirectPlay, NetBIOS)
-- **Players**: (e.g., 2 players, 8 players)
-- **Network**: (e.g., LAN, Internet, VPN)
+A clear, concise description of what went wrong.
 
-## 🔄 **Steps to Reproduce**
-1. Go to '...'
-2. Click on '....'
-3. Execute command '....'
-4. See error
+## Context
 
-## ✅ **Expected Behavior**
-A clear and concise description of what you expected to happen.
+Songbird is the ecoPrimals network orchestration and service discovery primal. It coordinates federation, compute routing, and relay endpoints across deployments. If your issue relates to a specific area (orchestration, discovery, federation, relays), say so here.
 
-## ❌ **Actual Behavior**
-A clear and concise description of what actually happened.
+## Steps to reproduce
 
-## 📊 **Performance Info**
-- **Latency**: (from `curl http://localhost:8081/metrics`)
-- **Error Logs**: (from `docker logs` or application logs)
-- **Session Status**: (from `curl http://localhost:8080/status`)
+1.
+2.
+3.
 
-## 🖥️ **Environment**
-- **OS**: (e.g., Ubuntu 22.04, Windows 11, macOS 13)
-- **SongBird Version**: (git commit hash or release version)
-- **Docker Version**: (if using Docker deployment)
-- **Network Setup**: (e.g., home router, corporate firewall, VPN)
+## Expected behavior
 
-## 📋 **Additional Context**
-Add any other context about the problem here.
+What you expected to happen.
 
-## 🔧 **Attempted Solutions**
-List any solutions you've already tried.
+## Actual behavior
+
+What happened instead, including error messages if any.
+
+## Diagnostics (optional)
+
+- Relevant log excerpts or metrics
+- HTTP/API or CLI output that illustrates the issue
+
+## Environment
+
+- OS: (e.g. Ubuntu 24.04, Fedora, macOS)
+- Songbird version: (git commit or release tag)
+- Rust version: (e.g. output of `rustc --version` if building from source)
+- Deployment mode: standalone, family, or federation
+- Network context: (e.g. LAN, VPN, firewall) if relevant
+
+## Additional context
+
+Anything else that helps reproduce or understand the issue.
 
 ---
 
-**🎮 Thanks for helping make SongBird Gaming Bridge better!** 
+ecoPrimals | Sovereign Infrastructure

@@ -22,13 +22,10 @@ pub struct ServiceRegistryDiscovery {
     /// Registry endpoint
     registry_endpoint: String,
     /// Query timeout (reserved for async timeout implementation)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "wired when async discovery timeout is added")]
     timeout: Duration,
     /// Cache TTL for future caching implementation
-    ///
-    /// Note: Currently unused, reserved for future caching layer.
-    /// Will be used when implementing distributed cache for service discovery.
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "wired when distributed discovery cache is added")]
     cache_ttl: Duration,
 }
 

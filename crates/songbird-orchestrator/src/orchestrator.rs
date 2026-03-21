@@ -50,7 +50,7 @@ pub struct OrchestratorConfig {
 impl Default for OrchestratorConfig {
     fn default() -> Self {
         Self {
-            database_url: "sqlite:songbird.db".to_string(),
+            database_url: "songbird.db".to_string(),
             enable_resource_management: true,
             enable_consent_management: true,
             enable_observability: true,

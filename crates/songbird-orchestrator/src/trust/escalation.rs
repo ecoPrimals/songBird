@@ -28,7 +28,6 @@ pub struct TrustEscalationManager {
     trust_timeouts: TrustTimeouts,
 
     /// Security provider integration for hardware verification (optional)
-    #[allow(dead_code, reason = "reserved for future use: security provider wiring")]
     security_client: Option<Arc<SecurityCapabilityClient>>,
 }
 
@@ -111,68 +110,6 @@ impl BearDogClient {
 
         Self {
             endpoint,
-        }
-    }
-
-    /// Verify a hardware key via security provider
-    ///
-    /// **DEPRECATED (Jan 16, 2026)**: This HTTP-based approach is deprecated in favor of BTSP.
-    ///
-    /// ## Evolution Path
-    ///
-    /// Hardware key verification should be evolved to use the BTSP (`BearDog` Tunnel Security Protocol)
-    /// client for secure, Unix socket-based communication:
-    ///
-    /// ```ignore
-    /// use crate::btsp_client::BtspClient;
-    ///
-    /// let btsp_client = BtspClient::new();
-    /// let request = json!({
-    ///     "jsonrpc": "2.0",
-    ///     "method": "security.verify_hardware_key",
-    ///     "params": { "key": hardware_key },
-    ///     "id": 1
-    /// });
-    /// let response = btsp_client.send_request(request).await?;
-    /// let is_valid = response["result"]["valid"].as_bool().unwrap_or(false);
-    /// ```
-    ///
-    /// ## Current Implementation
-    ///
-    /// - **Development mode**: Basic validation (length check)
-    /// - **Production**: Should use BTSP client (not yet implemented)
-    ///
-    /// ## Philosophy
-    ///
-    /// - **Zero Hardcoding**: Discover security provider via capability
-    /// - **Deep Debt Solution**: Evolve to BTSP, not HTTP
-    /// - **Mocks Isolated**: This is a `NoOp` provider, not a production mock
-    #[deprecated(since = "0.1.0", note = "Use BTSP client for hardware key verification")]
-    #[allow(dead_code, reason = "deprecated API retained for compatibility until BTSP migration")]
-    pub async fn verify_hardware_key(&self, hardware_key: &str) -> Result<bool> {
-        if let Some(ref endpoint) = self.endpoint {
-            tracing::warn!("⚠️  DEPRECATED: HTTP-based hardware key verification at {}", endpoint);
-            tracing::warn!("   Evolution path: Use BTSP client for secure verification");
-
-            // NoOp provider: Return basic validation
-            // This is NOT a production mock - it's a NoOp provider that clearly indicates
-            // the feature is not implemented. In production, use BTSP client.
-            let is_valid = !hardware_key.is_empty() && hardware_key.len() >= 32;
-
-            if is_valid {
-                tracing::warn!("   Hardware key accepted (NoOp provider - evolve to BTSP!)");
-            } else {
-                tracing::warn!("   Hardware key rejected (invalid format)");
-            }
-
-            Ok(is_valid)
-        } else {
-            // Development mode: Basic validation
-            let is_valid = !hardware_key.is_empty() && hardware_key.len() >= 32;
-
-            tracing::debug!("Hardware key validation (development): {}", is_valid);
-
-            Ok(is_valid)
         }
     }
 }

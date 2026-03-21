@@ -211,6 +211,7 @@ impl Default for ConnectionManager {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
     #![expect(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
@@ -235,6 +236,13 @@ mod tests {
             ConnectionManager::infer_primal_type("coordinator-node"),
             PrimalType::Orchestration
         );
+    }
+
+    #[test]
+    fn test_infer_primal_type_crypto_and_persist() {
+        assert_eq!(ConnectionManager::infer_primal_type("crypto-vault"), PrimalType::Security);
+        assert_eq!(ConnectionManager::infer_primal_type("persist-layer"), PrimalType::Storage);
+        assert_eq!(ConnectionManager::infer_primal_type("exec-runner"), PrimalType::Compute);
     }
 
     #[test]

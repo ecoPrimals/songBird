@@ -35,20 +35,19 @@ pub trait DiscoveryStrategy: Send + Sync {
 /// - `CAPABILITY_PROVIDERS` - JSON map of capabilities to endpoints
 pub struct EnvironmentStrategy;
 
-#[async_trait]
-impl DiscoveryStrategy for EnvironmentStrategy {
-    fn name(&self) -> &'static str {
-        "environment"
-    }
-
-    async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
-        debug!("🔍 [{}] Discovering {} providers...", self.name(), capability);
+impl EnvironmentStrategy {
+    /// Discover using an injectable env reader (e.g. for tests without mutating process env).
+    pub async fn discover_with<F>(capability: &str, get_var: F) -> IpcResult<Vec<Provider>>
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError> + Send,
+    {
+        debug!("🔍 [environment] Discovering {capability} providers...");
 
         let mut providers = Vec::new();
 
         // Strategy 1: {CAPABILITY}_PROVIDER_SOCKET (most specific)
         let env_var_socket = format!("{}_PROVIDER_SOCKET", capability.to_uppercase());
-        if let Ok(socket_path) = std::env::var(&env_var_socket) {
+        if let Ok(socket_path) = get_var(&env_var_socket) {
             info!("   ✅ Found {}: {}", env_var_socket, socket_path);
 
             // Extract provider ID from path (e.g., /tmp/beardog.sock → beardog)
@@ -66,7 +65,7 @@ impl DiscoveryStrategy for EnvironmentStrategy {
 
         // Strategy 2: {CAPABILITY}_PROVIDER (alternative)
         let env_var = format!("{}_PROVIDER", capability.to_uppercase());
-        if let Ok(socket_path) = std::env::var(&env_var)
+        if let Ok(socket_path) = get_var(&env_var)
             && providers.is_empty()
         {
             // Only add if not already found
@@ -86,7 +85,7 @@ impl DiscoveryStrategy for EnvironmentStrategy {
 
         // Strategy 3: Generic capability environment variable
         let generic_env = format!("{}_SOCKET", capability.to_uppercase());
-        if let Ok(socket_path) = std::env::var(&generic_env)
+        if let Ok(socket_path) = get_var(&generic_env)
             && providers.is_empty()
         {
             info!("   ✅ Found {}: {}", generic_env, socket_path);
@@ -104,10 +103,21 @@ impl DiscoveryStrategy for EnvironmentStrategy {
         }
 
         if providers.is_empty() {
-            debug!("   ⏭️  No {} providers found via environment", capability);
+            debug!("   ⏭️  No {capability} providers found via environment");
         }
 
         Ok(providers)
+    }
+}
+
+#[async_trait]
+impl DiscoveryStrategy for EnvironmentStrategy {
+    fn name(&self) -> &'static str {
+        "environment"
+    }
+
+    async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
+        Self::discover_with(capability, |k| std::env::var(k)).await
     }
 }
 
@@ -231,18 +241,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_strategy() {
-        let strategy = EnvironmentStrategy;
-
-        // Set test environment variable
-        songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/test-crypto.sock");
-
-        let providers = strategy.discover("crypto").await.unwrap();
+        let providers = EnvironmentStrategy::discover_with("crypto", |k| {
+            if k == "CRYPTO_PROVIDER_SOCKET" {
+                Ok("/tmp/test-crypto.sock".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+        .await
+        .unwrap();
 
         assert!(!providers.is_empty());
         assert_eq!(providers[0].capabilities, vec!["crypto"]);
-
-        // Cleanup
-        songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     }
 
     #[tokio::test]

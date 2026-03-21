@@ -111,6 +111,7 @@ impl ResponseParser {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 #[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
@@ -176,5 +177,13 @@ mod tests {
         let response = b"HTTP/1.1 200 OK\r\nbadheader\r\nGood: yes\r\n\r\n";
         let parsed = ResponseParser::parse(response).unwrap();
         assert_eq!(parsed.headers.get("good"), Some(&"yes".to_string()));
+    }
+
+    #[test]
+    fn test_parse_plain_text_body_fallback() {
+        let response = b"HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\nmissing";
+        let parsed = ResponseParser::parse(response).unwrap();
+        assert_eq!(parsed.status, 404);
+        assert_eq!(parsed.body, serde_json::json!("missing"));
     }
 }

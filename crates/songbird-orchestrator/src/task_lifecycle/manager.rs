@@ -80,7 +80,7 @@ pub enum TaskEvent {
 /// # use songbird_orchestrator::task_lifecycle::*;
 /// # async fn example() -> anyhow::Result<()> {
 /// // Initialize manager with database
-/// let manager = TaskLifecycleManager::new("sqlite:tasks.db").await?;
+/// let manager = TaskLifecycleManager::new("/tmp/songbird-data/tasks.db").await?;
 ///
 /// // Create a task
 /// let user_id = UserId::from("alice");
