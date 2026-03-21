@@ -1,246 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Capability-Based Service Discovery
-//!
-//! Modern replacement for hardcoded primal endpoints. Each primal discovers others
-//! through runtime capability-based discovery, respecting sovereignty principles.
-//!
-//! ## Sovereignty Principles
-//!
-//! 1. **Self-Knowledge Only**: Each primal knows only about itself
-//! 2. **Runtime Discovery**: All inter-primal communication discovered at runtime
-//! 3. **No Hardcoding**: Zero compile-time dependencies on other primals
-//! 4. **Capability-Based**: Route by what you need, not who provides it
-
-#![allow(missing_docs, reason = "discovery client structs mirror `songbird-discovery` traits")]
-
-use serde::{Deserialize, Serialize};
 use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
-use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-/// Service endpoint discovered through capability-based discovery
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceEndpoint {
-    /// Service identifier (not necessarily a primal name)
-    pub id: String,
-
-    /// Endpoint URL
-    pub url: String,
-
-    /// Capabilities this service offers
-    pub capabilities: Vec<String>,
-
-    /// Health score (0.0-1.0)
-    pub health_score: f64,
-
-    /// Last seen timestamp
-    pub last_seen: std::time::SystemTime,
-}
-
-/// Discovery method for finding services
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DiscoveryMethod {
-    /// Environment variables (`COMPUTE_ENDPOINT`, `STORAGE_ENDPOINT`, etc.)
-    Environment,
-
-    /// DNS Service Discovery (_compute._tcp, etc.)
-    DnsSD,
-
-    /// Multicast DNS (zero-conf)
-    MDNS,
-
-    /// Central registry (Songbird's capability registry)
-    Registry {
-        endpoint: String,
-    },
-
-    /// Direct configuration file
-    ConfigFile {
-        path: String,
-    },
-}
-
-type CapEnvReader = Arc<dyn Fn(&str) -> Result<String, std::env::VarError> + Send + Sync>;
-
-/// Capability-based service discovery engine
-pub struct CapabilityDiscovery {
-    /// Discovered services cache
-    services: Arc<RwLock<HashMap<String, Vec<ServiceEndpoint>>>>,
-
-    /// Enabled discovery methods
-    methods: Vec<DiscoveryMethod>,
-
-    /// Optional env reader (tests inject; default reads process environment)
-    env_reader: Option<CapEnvReader>,
-}
+use super::CapabilityDiscovery;
+use super::types::ServiceEndpoint;
 
 impl CapabilityDiscovery {
-    /// Create new discovery engine with default methods
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            services: Arc::new(RwLock::new(HashMap::new())),
-            methods: vec![
-                DiscoveryMethod::Environment,
-                DiscoveryMethod::DnsSD,
-                DiscoveryMethod::MDNS,
-            ],
-            env_reader: None,
-        }
-    }
-
-    /// Create with specific discovery methods
-    #[must_use]
-    pub fn with_methods(methods: Vec<DiscoveryMethod>) -> Self {
-        Self {
-            services: Arc::new(RwLock::new(HashMap::new())),
-            methods,
-            env_reader: None,
-        }
-    }
-
-    /// Same as [`with_methods`](Self::with_methods) with an injectable env reader (concurrent-safe tests).
-    #[must_use]
-    pub fn with_methods_env_reader<F>(methods: Vec<DiscoveryMethod>, env_reader: F) -> Self
-    where
-        F: Fn(&str) -> Result<String, std::env::VarError> + Send + Sync + 'static,
-    {
-        Self {
-            services: Arc::new(RwLock::new(HashMap::new())),
-            methods,
-            env_reader: Some(Arc::new(env_reader)),
-        }
-    }
-
-    fn read_env(&self, key: &str) -> Result<String, std::env::VarError> {
-        match &self.env_reader {
-            Some(f) => f(key),
-            None => std::env::var(key),
-        }
-    }
-
-    /// Discover services providing a specific capability
-    ///
-    /// ## Example
-    ///
-    /// ```no_run
-    /// use songbird_config::capability_discovery::CapabilityDiscovery;
-    ///
-    /// #[tokio::main]
-    /// async fn main() -> songbird_types::SongbirdResult<()> {
-    ///     let discovery = CapabilityDiscovery::new();
-    ///     
-    ///     // Discover ANY provider offering "compute" capability
-    ///     // Could be ToadStool, or ANY other compute provider
-    ///     let compute_providers = discovery
-    ///         .find_providers_by_capability("compute")
-    ///         .await?;
-    ///     
-    ///     for provider in compute_providers {
-    ///         println!("Found compute provider: {} at {}", provider.id, provider.url);
-    ///     }
-    ///     
-    ///     Ok(())
-    /// }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Discovery methods fail to find providers
-    /// - Network errors occur during discovery
-    /// - Cache operations fail
-    pub async fn find_providers_by_capability(
-        &self,
-        capability: &str,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        // Check cache first
-        {
-            let services = self.services.read().await;
-            if let Some(cached) = services.get(capability)
-                && !cached.is_empty()
-            {
-                return Ok(cached.clone());
-            }
-        }
-
-        // Discover through enabled methods
-        let mut discovered = Vec::new();
-
-        for method in &self.methods {
-            match self.discover_via_method(capability, method).await {
-                Ok(mut endpoints) => {
-                    debug!(
-                        "Discovered {} providers for '{}' via {:?}",
-                        endpoints.len(),
-                        capability,
-                        method
-                    );
-                    discovered.append(&mut endpoints);
-                }
-                Err(e) => {
-                    debug!("Discovery failed for '{}' via {:?}: {}", capability, method, e);
-                }
-            }
-        }
-
-        if discovered.is_empty() {
-            return Err(SongbirdError::Discovery {
-                message: format!(
-                    "No providers found for capability '{}'. Enable discovery or set {}_ENDPOINT environment variable.",
-                    capability,
-                    capability.to_uppercase()
-                ),
-                backend: Some("all_methods".to_string()),
-                retry_strategy: Some(
-                    "Set environment variable or enable discovery methods".to_string(),
-                ),
-            });
-        }
-
-        // Cache results
-        {
-            let mut services = self.services.write().await;
-            services.insert(capability.to_string(), discovered.clone());
-        }
-
-        info!("✅ Discovered {} providers for capability '{}'", discovered.len(), capability);
-
-        Ok(discovered)
-    }
-
-    /// Discover via specific method
-    async fn discover_via_method(
-        &self,
-        capability: &str,
-        method: &DiscoveryMethod,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        match method {
-            DiscoveryMethod::Environment => self.discover_via_environment(capability).await,
-            DiscoveryMethod::DnsSD => self.discover_via_dnssd(capability).await,
-            DiscoveryMethod::MDNS => self.discover_via_mdns(capability).await,
-            DiscoveryMethod::Registry {
-                endpoint,
-            } => self.discover_via_registry(capability, endpoint).await,
-            DiscoveryMethod::ConfigFile {
-                path,
-            } => self.discover_via_config_file(capability, path).await,
-        }
-    }
-
     /// Discover via environment variables
-    #[expect(
+    #[allow(
         clippy::unused_async,
         reason = "no .await needed for environment variable reads; async for uniform discover_via_method"
     )]
-    async fn discover_via_environment(
+    pub(super) async fn discover_via_environment(
         &self,
         capability: &str,
     ) -> SongbirdResult<Vec<ServiceEndpoint>> {
@@ -275,7 +51,10 @@ impl CapabilityDiscovery {
     /// ```text
     /// _compute._tcp.local.  IN SRV 0 5 8001 toadstool.local.
     /// ```
-    async fn discover_via_dnssd(&self, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    pub(super) async fn discover_via_dnssd(
+        &self,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
         use hickory_resolver::TokioAsyncResolver;
         use hickory_resolver::config::{ResolverConfig, ResolverOpts};
 
@@ -383,7 +162,10 @@ impl CapabilityDiscovery {
     ///     }
     /// }
     /// ```
-    async fn discover_via_mdns(&self, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    pub(super) async fn discover_via_mdns(
+        &self,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
         use crate::discovery::MdnsDiscovery;
 
         debug!("🌐 Starting mDNS discovery for capability: {}", capability);
@@ -432,7 +214,7 @@ impl CapabilityDiscovery {
     }
 
     /// Discover via central registry (Songbird's capability registry)
-    async fn discover_via_registry(
+    pub(super) async fn discover_via_registry(
         &self,
         capability: &str,
         registry_endpoint: &str,
@@ -483,7 +265,7 @@ impl CapabilityDiscovery {
     ///
     /// Reads service configurations from TOML, JSON, or YAML files.
     /// Supports standard configuration paths and formats.
-    async fn discover_via_config_file(
+    pub(crate) async fn discover_via_config_file(
         &self,
         capability: &str,
         config_path: &str,
@@ -531,7 +313,10 @@ impl CapabilityDiscovery {
     }
 
     /// Parse TOML configuration
-    fn parse_toml_config(content: &str, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    pub(crate) fn parse_toml_config(
+        content: &str,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
         let config: toml::Value =
             toml::from_str(content).map_err(|e| SongbirdError::Discovery {
                 message: format!("Failed to parse TOML: {e}"),
@@ -543,7 +328,10 @@ impl CapabilityDiscovery {
     }
 
     /// Parse JSON configuration
-    fn parse_json_config(content: &str, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    pub(crate) fn parse_json_config(
+        content: &str,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
         let config: serde_json::Value =
             serde_json::from_str(content).map_err(|e| SongbirdError::Discovery {
                 message: format!("Failed to parse JSON: {e}"),
@@ -555,7 +343,10 @@ impl CapabilityDiscovery {
     }
 
     /// Parse YAML configuration
-    fn parse_yaml_config(content: &str, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    pub(crate) fn parse_yaml_config(
+        content: &str,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
         let config: serde_yaml::Value =
             serde_yaml::from_str(content).map_err(|e| SongbirdError::Discovery {
                 message: format!("Failed to parse YAML: {e}"),
@@ -567,7 +358,7 @@ impl CapabilityDiscovery {
     }
 
     /// Extract endpoints from TOML config
-    fn extract_endpoints_from_config(
+    pub(crate) fn extract_endpoints_from_config(
         config: &toml::Value,
         capability: &str,
     ) -> Vec<ServiceEndpoint> {
@@ -603,7 +394,7 @@ impl CapabilityDiscovery {
     }
 
     /// Extract endpoints from JSON config
-    fn extract_endpoints_from_json(
+    pub(crate) fn extract_endpoints_from_json(
         config: &serde_json::Value,
         capability: &str,
     ) -> Vec<ServiceEndpoint> {
@@ -639,7 +430,7 @@ impl CapabilityDiscovery {
     }
 
     /// Extract endpoints from YAML config
-    fn extract_endpoints_from_yaml(
+    pub(crate) fn extract_endpoints_from_yaml(
         config: &serde_yaml::Value,
         capability: &str,
     ) -> Vec<ServiceEndpoint> {
@@ -675,279 +466,5 @@ impl CapabilityDiscovery {
         }
 
         endpoints
-    }
-
-    /// Clear cache for a specific capability
-    pub async fn clear_cache(&self, capability: &str) {
-        let mut services = self.services.write().await;
-        services.remove(capability);
-    }
-
-    /// Clear all cached discoveries
-    pub async fn clear_all_caches(&self) {
-        let mut services = self.services.write().await;
-        services.clear();
-    }
-}
-
-impl Default for CapabilityDiscovery {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Convenience functions for common capabilities
-impl CapabilityDiscovery {
-    /// Discover compute providers (replaces hardcoded `ToadStool` endpoint)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if no compute providers are found via any discovery method.
-    pub async fn discover_compute(&self) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        self.find_providers_by_capability("compute").await
-    }
-
-    /// Discover storage providers (replaces hardcoded `NestGate` endpoint)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if no storage providers are found via any discovery method.
-    pub async fn discover_storage(&self) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        self.find_providers_by_capability("storage").await
-    }
-
-    /// Discover security providers (replaces hardcoded `BearDog` endpoint)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if no security providers are found via any discovery method.
-    pub async fn discover_security(&self) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        self.find_providers_by_capability("security").await
-    }
-
-    /// Discover AI providers (replaces hardcoded `Squirrel` endpoint)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if no AI providers are found via any discovery method.
-    pub async fn discover_ai(&self) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        self.find_providers_by_capability("ai").await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_environment_discovery() {
-        let discovery =
-            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
-                if k == "COMPUTE_ENDPOINT" {
-                    Ok("http://10.0.0.100:8001".to_string())
-                } else {
-                    Err(std::env::VarError::NotPresent)
-                }
-            });
-
-        let providers = discovery.discover_compute().await.expect("compute from env");
-        assert_eq!(providers.len(), 1);
-        assert_eq!(providers[0].url, "http://10.0.0.100:8001");
-        assert!(providers[0].capabilities.contains(&"compute".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_no_providers_found() {
-        let discovery = CapabilityDiscovery::with_methods_env_reader(
-            vec![DiscoveryMethod::Environment],
-            |_| Err(std::env::VarError::NotPresent),
-        );
-
-        let result = discovery.find_providers_by_capability("nonexistent").await;
-        assert!(result.is_err());
-
-        if let Err(SongbirdError::Discovery {
-            message,
-            ..
-        }) = result
-        {
-            assert!(message.contains("No providers found"));
-            assert!(message.contains("NONEXISTENT_ENDPOINT"));
-        } else {
-            panic!("Expected Discovery error");
-        }
-    }
-
-    #[tokio::test]
-    async fn test_cache_behavior() {
-        let discovery =
-            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
-                if k == "TEST_CAPABILITY_ENDPOINT" {
-                    Ok("http://test:1234".to_string())
-                } else {
-                    Err(std::env::VarError::NotPresent)
-                }
-            });
-
-        // First discovery
-        let providers1 = discovery
-            .find_providers_by_capability("test_capability")
-            .await
-            .expect("first discovery");
-
-        // Second discovery should use cache
-        let providers2 = discovery
-            .find_providers_by_capability("test_capability")
-            .await
-            .expect("cached discovery");
-
-        assert_eq!(providers1.len(), providers2.len());
-
-        // Clear cache
-        discovery.clear_cache("test_capability").await;
-    }
-
-    #[test]
-    fn test_parse_toml_config_rejects_invalid_syntax() {
-        let err = CapabilityDiscovery::parse_toml_config("{{{not_toml", "compute")
-            .expect_err("invalid TOML");
-        match err {
-            SongbirdError::Discovery {
-                message,
-                backend: Some(b),
-                ..
-            } => {
-                assert_eq!(b, "config_file");
-                assert!(message.contains("TOML"), "message: {message}");
-            }
-            other => panic!("expected Discovery error, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn test_parse_json_config_rejects_invalid_syntax() {
-        let err = CapabilityDiscovery::parse_json_config("{", "compute").expect_err("invalid JSON");
-        assert!(
-            matches!(err, SongbirdError::Discovery { ref backend, .. } if backend.as_deref() == Some("config_file")),
-            "{err:?}"
-        );
-    }
-
-    #[test]
-    fn test_parse_yaml_config_rejects_invalid_syntax() {
-        let err =
-            CapabilityDiscovery::parse_yaml_config(":\n  -", "compute").expect_err("invalid YAML");
-        assert!(
-            matches!(err, SongbirdError::Discovery { ref backend, .. } if backend.as_deref() == Some("config_file")),
-            "{err:?}"
-        );
-    }
-
-    #[test]
-    fn test_extract_endpoints_from_toml_respects_capability_and_health() {
-        let toml = r#"
-[services.alpha]
-url = "http://alpha:1"
-capabilities = ["compute"]
-health_score = 0.42
-
-[services.beta]
-url = "http://beta:2"
-capabilities = ["storage"]
-"#;
-        let v: toml::Value = toml::from_str(toml).expect("fixture TOML");
-        let endpoints = CapabilityDiscovery::extract_endpoints_from_config(&v, "compute");
-        assert_eq!(endpoints.len(), 1);
-        assert_eq!(endpoints[0].id, "alpha");
-        assert_eq!(endpoints[0].url, "http://alpha:1");
-        assert!((endpoints[0].health_score - 0.42).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_extract_endpoints_from_json_empty_when_capability_missing() {
-        let json = r#"{"services":{"only":{"url":"http://x:1","capabilities":["ai"]}}}"#;
-        let v: serde_json::Value = serde_json::from_str(json).expect("fixture JSON");
-        let endpoints = CapabilityDiscovery::extract_endpoints_from_json(&v, "compute");
-        assert!(endpoints.is_empty());
-    }
-
-    #[test]
-    fn test_extract_endpoints_from_yaml_matches_capability() {
-        let yaml = r"
-services:
-  svc1:
-    url: http://y:3
-    capabilities:
-      - compute
-";
-        let v: serde_yaml::Value = serde_yaml::from_str(yaml).expect("fixture YAML");
-        let endpoints = CapabilityDiscovery::extract_endpoints_from_yaml(&v, "compute");
-        assert_eq!(endpoints.len(), 1);
-        assert_eq!(endpoints[0].url, "http://y:3");
-    }
-
-    #[tokio::test]
-    async fn test_discover_via_config_file_rejects_unsupported_extension() {
-        let path =
-            std::env::temp_dir().join(format!("songbird_cfg_unsup_{}.bin", uuid::Uuid::new_v4()));
-        tokio::fs::write(&path, b"{}").await.expect("write fixture");
-
-        let discovery = CapabilityDiscovery::new();
-        let path_str = path.to_str().expect("utf8 path");
-        let err = discovery
-            .discover_via_config_file("compute", path_str)
-            .await
-            .expect_err("unsupported extension");
-
-        let _ = tokio::fs::remove_file(&path).await;
-
-        match err {
-            SongbirdError::Discovery {
-                message,
-                backend: Some(b),
-                ..
-            } => {
-                assert_eq!(b, "config_file");
-                assert!(message.contains("Unsupported"), "message: {message}");
-            }
-            other => panic!("expected Discovery error, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn test_capability_discovery_default_impl() {
-        let d = CapabilityDiscovery::default();
-        assert!(d.methods.len() >= 1);
-    }
-
-    #[tokio::test]
-    async fn test_clear_all_caches() {
-        let d =
-            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
-                if k == "SB_CAP_CLEAR_ENDPOINT" {
-                    Ok("http://127.0.0.1:1".to_string())
-                } else {
-                    Err(std::env::VarError::NotPresent)
-                }
-            });
-        let _ = d.find_providers_by_capability("sb_cap_clear").await;
-        d.clear_all_caches().await;
-    }
-
-    #[tokio::test]
-    async fn test_discover_storage_delegates_to_find() {
-        let d =
-            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
-                if k == "STORAGE_ENDPOINT" {
-                    Ok("http://store:9".to_string())
-                } else {
-                    Err(std::env::VarError::NotPresent)
-                }
-            });
-        let v = d.discover_storage().await.expect("storage from env");
-        assert!(!v.is_empty());
     }
 }

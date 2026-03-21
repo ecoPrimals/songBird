@@ -21,20 +21,22 @@ pub fn load_config() -> SongbirdResult<Config> {
 
 **Test code** may use `.unwrap()` and `.expect()` — test panics are clear failures.
 
-### Lint Suppression: `#[expect]` over `#[allow]`
+### Lint Suppression: `#[expect]` and `#[allow]` with reasons
 
-Per wateringHole standards, all lint suppressions use `#[expect(reason = "...")]`
-(Rust 2024). This ensures the compiler warns when the suppression becomes stale.
+Per wateringHole standards, all lint suppressions require a `reason` string:
+
+- `#[expect(lint, reason = "...")]` — when the lint **fires** and you're suppressing it
+- `#[allow(lint, reason = "...")]` — when the lint **does not fire** but may in the future
 
 ```rust
 #[expect(clippy::too_many_lines, reason = "protocol state machine is inherently sequential")]
-fn build_circuit(&self) -> Result<Circuit> {
-    // ...
-}
+fn build_circuit(&self) -> Result<Circuit> { /* ... */ }
+
+#[allow(clippy::cast_sign_loss, reason = "value guaranteed non-negative by prior check")]
+fn compute_offset(&self) -> usize { /* ... */ }
 ```
 
-**Never** use bare `#[allow(lint)]`. If the lint genuinely doesn't fire, remove the
-attribute entirely — that's the point of `#[expect]`.
+**Never** use bare `#[allow(lint)]` or `#[expect(lint)]` without a reason string.
 
 ### Unsafe Code
 
@@ -89,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: 64.14% (llvm-cov, Mar 2026).
+**Goal**: 90% line coverage. Current: ~65% (llvm-cov, Mar 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html

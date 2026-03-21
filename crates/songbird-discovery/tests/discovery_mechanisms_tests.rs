@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -46,12 +46,12 @@
 //! - DNS-based discovery
 //! - Peer-to-peer discovery
 
-#![expect(clippy::assertions_on_constants, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::needless_collect, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::assertions_on_constants, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::needless_collect, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
 
 use chrono::Utc;
 use songbird_discovery::traits::ServiceQuery;

@@ -606,8 +606,8 @@ pub fn spawn_cleanup_task(
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use songbird_types::defaults::ports::DEFAULT_PORT_RANGE_START;

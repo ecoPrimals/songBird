@@ -51,8 +51,8 @@ impl From<UniversalAdapterError> for songbird_types::SongbirdError {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::UniversalAdapterError;
 
@@ -73,7 +73,7 @@ mod tests {
     fn no_providers_maps() {
         let e: songbird_types::SongbirdError =
             UniversalAdapterError::NoProvidersAvailable("c".to_string()).into();
-        assert!(e.to_string().contains("c") || !e.to_string().is_empty());
+        assert!(e.to_string().contains('c') || !e.to_string().is_empty());
     }
 
     #[test]

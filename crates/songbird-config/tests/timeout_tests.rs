@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -166,13 +166,13 @@ fn test_timeout_wrapping_operations() {
 }
 
 #[test]
-#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
 fn test_timeout_as_f64() {
     let timeout = 10u64;
-    #[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+    #[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
     let as_float = timeout as f64;
     // Use epsilon comparison for floats in production, but exact for small test values
-    #[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
     {
         assert_eq!(as_float, 10.0);
     }
@@ -200,7 +200,7 @@ fn test_timeout_power() {
 }
 
 #[test]
-#[expect(
+#[allow(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -208,7 +208,7 @@ fn test_timeout_power() {
 )]
 fn test_timeout_sqrt_approximation() {
     let timeout = 100u64;
-    #[expect(
+    #[allow(
         clippy::cast_precision_loss,
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,

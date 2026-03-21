@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -30,8 +30,8 @@
 
 //! Tests for observability metrics functionality
 
-#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::expect_used, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::expect_used, reason = "test assertions and harness ergonomics")]
 
 use songbird_observability::*;
 use songbird_types::SongbirdResult;

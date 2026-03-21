@@ -48,7 +48,7 @@ impl<T: Transport> ControllerAdapter<T> {
     /// Check if controller is connected
     ///
     /// Note: Awaiting hardware validation - will be used in Phase 3 testing
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub async fn is_connected(&self) -> bool {
         let transport = self.transport.lock().await;
         transport.is_connected()
@@ -56,7 +56,7 @@ impl<T: Transport> ControllerAdapter<T> {
 }
 
 /// HCI packet types
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 mod hci_packet {
     pub const COMMAND: u8 = 0x01;
     pub const ACL_DATA: u8 = 0x02;
@@ -65,7 +65,7 @@ mod hci_packet {
 }
 
 /// HCI Command opcodes
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 mod hci_opcode {
     pub const RESET: u16 = 0x0C03;
     pub const LE_SET_SCAN_PARAMETERS: u16 = 0x200B;

@@ -298,7 +298,7 @@ impl LineageRelayCoordinator {
         let mut stats = Vec::new();
 
         for session in sessions {
-            stats.push((session.requester.clone(), session.stats().await));
+            stats.push((session.requester.clone(), session.stats()));
         }
 
         stats

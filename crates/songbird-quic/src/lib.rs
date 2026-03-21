@@ -56,7 +56,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all, clippy::pedantic)]
-#![expect(
+#![allow(
     clippy::module_name_repetitions,
     reason = "intentional pattern; clippy false positive for this API"
 )]

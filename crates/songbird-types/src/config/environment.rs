@@ -578,15 +578,14 @@ impl CanonicalEnvironmentConfig {
 }
 
 #[cfg(test)]
-#[expect(
+#[allow(
     clippy::unwrap_used,
+    clippy::expect_used,
     clippy::unnecessary_wraps,
     clippy::field_reassign_with_default,
     reason = "test assertions and harness ergonomics"
 )]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
-
     use super::*;
     use crate::SongbirdError;
     use std::collections::HashMap;

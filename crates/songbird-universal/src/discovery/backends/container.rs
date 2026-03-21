@@ -70,7 +70,7 @@ fn is_kubernetes_environment() -> bool {
 /// # Errors
 ///
 /// Returns an error if Kubernetes client initialization or API calls fail.
-#[expect(
+#[allow(
     clippy::unused_async,
     reason = "async used when k8s feature is enabled; stub path returns immediately"
 )]
@@ -198,7 +198,7 @@ fn convert_k8s_service_to_primal(
 /// # Errors
 ///
 /// Returns an error if Docker daemon connection or container listing fails.
-#[expect(
+#[allow(
     clippy::unused_async,
     reason = "async used when docker feature is enabled; stub path returns immediately"
 )]

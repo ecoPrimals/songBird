@@ -99,7 +99,7 @@ impl OnionServiceKeys {
 
         // Encode to base32 (56 chars)
         base32::encode(
-            base32::Alphabet::RFC4648 {
+            base32::Alphabet::Rfc4648Lower {
                 padding: false,
             },
             &addr_bytes,

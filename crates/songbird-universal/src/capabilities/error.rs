@@ -48,8 +48,8 @@ impl std::error::Error for CapabilityError {}
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::CapabilityError;
 
@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn primal_not_found_display() {
         let e = CapabilityError::PrimalNotFound("p".to_string());
-        assert!(e.to_string().contains("p"));
+        assert!(e.to_string().contains('p'));
     }
 
     #[test]
@@ -82,13 +82,13 @@ mod tests {
         let e = CapabilityError::NoProvidersFound {
             capability_type: "t".to_string(),
         };
-        assert!(e.to_string().contains("t"));
+        assert!(e.to_string().contains('t'));
     }
 
     #[test]
     fn not_implemented_display() {
         let e = CapabilityError::NotImplemented("x".to_string());
-        assert!(e.to_string().contains("x"));
+        assert!(e.to_string().contains('x'));
     }
 
     #[test]

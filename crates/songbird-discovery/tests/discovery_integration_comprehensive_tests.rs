@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -40,7 +40,7 @@
 //! These tests cover integration scenarios, concurrent operations,
 //! error handling, and real-world usage patterns.
 
-#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
 use songbird_discovery::discovery::config::SongbirdDiscoveryConfig;
 use songbird_discovery::discovery::factory::UniversalDiscoveryFactory;
 use songbird_discovery::discovery::types::NodeType;

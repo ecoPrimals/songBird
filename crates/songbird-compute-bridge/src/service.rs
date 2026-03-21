@@ -347,12 +347,13 @@ async fn register_with_songbird(
     }
     metadata.insert("platform".to_string(), info.platform.clone());
 
+    let tower_id = config.tower_id.clone();
     let registration = ServiceRegistration {
         service_id: config.node_id.clone(),
         service_name: config.service_name.clone(),
         service_type: config.service_type.clone(),
-        tower_id: config.tower_id.clone(),
-        tower_name: config.tower_id.clone(), // Could be enhanced with hostname
+        tower_id: tower_id.clone(),
+        tower_name: tower_id, // Could be enhanced with hostname
         endpoint: format!("http://{}:{}", config.host, config.port),
         capabilities: config.capabilities.clone(),
         metadata,

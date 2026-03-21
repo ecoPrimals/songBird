@@ -76,24 +76,25 @@ impl AvailabilityChecker {
 
         for node in &graph.nodes {
             let node_availability = self.check_node_availability(node).await?;
+            let node_id = node.id.clone();
 
             match node_availability.status {
                 NodeAvailabilityStatus::Available => {
-                    report.available.push(node.id.clone());
+                    report.available.push(node_id.clone());
                     report.summary.available_nodes += 1;
                 }
                 NodeAvailabilityStatus::Unavailable => {
-                    report.unavailable.push(node.id.clone());
+                    report.unavailable.push(node_id.clone());
                 }
                 NodeAvailabilityStatus::Unhealthy => {
-                    report.unhealthy.push(node.id.clone());
+                    report.unhealthy.push(node_id.clone());
                 }
                 NodeAvailabilityStatus::Degraded => {
-                    report.degraded.push(node.id.clone());
+                    report.degraded.push(node_id.clone());
                 }
             }
 
-            report.details.insert(node.id.clone(), node_availability);
+            report.details.insert(node_id, node_availability);
         }
 
         if report.summary.total_nodes > 0 {

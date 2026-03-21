@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave41] - 2026-03-21 - Deep Debt S+ Tier: Full Compliance Audit Execution
+
+### Changed - License & Dependency Compliance
+- All 22 crate `Cargo.toml` files migrated to `license.workspace = true` (single source of truth)
+- `thiserror` aligned to 2.0 workspace-wide; `base32` to 0.5, `base64` to 0.22, `hostname` to 0.4
+- `ring-crypto` feature set to non-default in `songbird-quic` (opt-in only)
+- 5,325 unfulfilled `#[expect()]` attributes migrated to correct `#[allow(reason)]` across 299 test files
+- 66 real Clippy warnings in test code fixed (`.err().expect()` to `.unwrap_err()`, redundant clones, format args)
+
+### Changed - Production Code Evolution
+- Metrics stubs evolved to concrete `ComputeMetrics` + `AtomicU64` counters with real snapshotting
+- AI workload classification stubs evolved to typed `WorkloadType`, `BatchPriority`, `ResourceRequirements`
+- `bytes_relayed` in lineage relay evolved from `Arc<Mutex<u64>>` to `Arc<AtomicU64>` (lockless)
+- Deprecated `start_http_server` stub removed from orchestrator
+- 19 unnecessary `.clone()` calls eliminated in hot-path production files
+
+### Changed - Smart File Refactoring (5 files over 1000 lines)
+- `jsonrpc_api.rs` (962 lines) refactored into `server/jsonrpc_api/` (8 handler modules)
+- `client.rs` (954 lines) refactored into `ipc_client/client/` (3 modules)
+- `capability_discovery.rs` (953 lines) refactored into `capability_discovery/` (4 modules)
+- `validator.rs` tests extracted to `validator_tests.rs`
+- `service.rs` tests extracted to `service_tests.rs`
+- `canonical.rs` tests extracted to `canonical_tests.rs`
+- `constants.rs` (1,199 lines) refactored into `constants/` with `directories.rs` and `primal_discovery.rs`
+
+### Added - Tests (+253)
+- 84 new tests across `songbird-universal-ipc`, `songbird-discovery`, `songbird-types`
+- SSDP discovery module wired with unit tests
+- 81 `pub mod` declarations documented across 5 `lib.rs` files
+- Total: 9,983 passed, 0 failed (was 9,730)
+
+### Changed - Documentation & Root Docs
+- README.md: metrics updated (9,983 tests, ~401K lines, dependency alignment, ring opt-in)
+- CONTRIBUTING.md: lint suppression guidance corrected for `#[expect]` vs `#[allow]`
+- REMAINING_WORK.md: fully updated with Waves 28-41 completion status
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Tests | 9,983 passed, 0 failed, 271 ignored |
+| Clippy | Zero warnings (`clippy::pedantic + nursery + cargo`, all targets, all features) |
+| Build | Zero errors, zero warnings |
+| Format | Clean |
+| Files >1000 lines | 0 |
+| Production `.unwrap()` | 0 |
+| Production TODO/FIXME | 0 |
+| Unsafe blocks | 2 (justified, in `songbird-process-env`) |
+| Total Rust | ~401,000 lines across 29 crates |
+
+---
+
 ## [v0.2.1-wave27] - 2026-03-21 - Fully Concurrent Architecture: Injectable Env Readers
 
 ### Changed - Architecture: Global State Elimination

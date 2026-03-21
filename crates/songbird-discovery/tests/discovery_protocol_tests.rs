@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -35,9 +35,9 @@
     reason = "test assertions and harness ergonomics"
 )]
 #![cfg(feature = "tests-incomplete")]
-#![expect(unexpected_cfgs, reason = "test assertions and harness ergonomics")]
+#![allow(unexpected_cfgs, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"
@@ -107,8 +107,7 @@ fn test_service_collection_operations() {
 
 #[test]
 fn test_service_type_filtering() {
-    let services =
-        vec![("service-1", "compute"), ("service-2", "storage"), ("service-3", "compute")];
+    let services = [("service-1", "compute"), ("service-2", "storage"), ("service-3", "compute")];
 
     let compute_only: Vec<_> = services.iter().filter(|(_, stype)| *stype == "compute").collect();
 
@@ -140,10 +139,9 @@ fn test_endpoint_variations() {
 
 #[test]
 fn test_service_sorting_by_id() {
-    let mut services =
-        vec![("service-3", "compute"), ("service-1", "storage"), ("service-2", "ai")];
+    let mut services = [("service-3", "compute"), ("service-1", "storage"), ("service-2", "ai")];
 
-    services.sort_by(|a, b| a.0.cmp(&b.0));
+    services.sort_by(|a, b| a.0.cmp(b.0));
 
     assert_eq!(services[0].0, "service-1");
     assert_eq!(services[1].0, "service-2");
@@ -160,7 +158,7 @@ fn test_service_deduplication() {
 
 #[test]
 fn test_service_map_operations() -> SongbirdResult<()> {
-    let services = vec![("service-1", "compute"), ("service-2", "storage")];
+    let services = [("service-1", "compute"), ("service-2", "storage")];
 
     let service_ids: Vec<_> = services.iter().map(|(id, _)| id.to_string()).collect();
 
@@ -171,7 +169,7 @@ fn test_service_map_operations() -> SongbirdResult<()> {
 
 #[test]
 fn test_service_find_by_type() {
-    let services = vec![("compute-1", "compute"), ("storage-1", "storage")];
+    let services = [("compute-1", "compute"), ("storage-1", "storage")];
 
     let storage = services.iter().find(|(_, stype)| *stype == "storage");
 

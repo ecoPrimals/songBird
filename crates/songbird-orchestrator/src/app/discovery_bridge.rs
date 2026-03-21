@@ -151,7 +151,7 @@ impl SongbirdOrchestrator {
                     if !peers.is_empty() {
                         info!("🔍 Processing {} discovered peers", peers.len());
 
-                        for peer in peers {
+                        for mut peer in peers {
                             // Get HTTPS endpoint
                             let endpoint = peer.https_endpoint();
 
@@ -273,7 +273,9 @@ impl SongbirdOrchestrator {
                                 // ❌ Insecure: Auto-accepted all peers (no lineage check)
                                 // ✅ Now secure: Only accepts peers with valid lineage
 
-                                let trust_decision_result = if let Some(ref sec_endpoint) =
+                                let (trust_decision_result, maybe_discovered_peer) = if let Some(
+                                    ref sec_endpoint,
+                                ) =
                                     security_client_endpoint
                                 {
                                     // Security provider available - evaluate trust properly
@@ -318,8 +320,8 @@ impl SongbirdOrchestrator {
                                         })
                                         .unwrap_or_default();
 
-                                    // ✅ v3.14.2: Log peer tags for debugging
-                                    let peer_tags = peer.tags.clone().unwrap_or_default();
+                                    // ✅ v3.14.2: Log peer tags for debugging (take avoids cloning tags for DiscoveredPeer)
+                                    let peer_tags = peer.tags.take().unwrap_or_default();
                                     if peer_tags.is_empty() {
                                         warn!(
                                             "⚠️  Peer {} has NO tags - family extraction will fail!",
@@ -350,14 +352,14 @@ impl SongbirdOrchestrator {
                                     match evaluate_peer_trust(&discovered_peer, &security_client)
                                         .await
                                     {
-                                        Ok(decision) => Some(decision),
+                                        Ok(decision) => (Some(decision), Some(discovered_peer)),
                                         Err(e) => {
                                             warn!(
                                                 "⚠️  Trust evaluation failed for {}: {}",
                                                 node_name, e
                                             );
                                             warn!("   Defaulting to reject (safe default)");
-                                            None // Reject on error (safe default)
+                                            (None, None) // Reject on error (safe default)
                                         }
                                     }
                                 } else {
@@ -370,11 +372,14 @@ impl SongbirdOrchestrator {
                                     );
 
                                     // Use fully qualified path to avoid duplicate import
-                                    Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
+                                    (
+                                        Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
                                         reason: "no_security_provider_configured".to_string(),
                                         confidence: 0.0,
                                         encryption_tag: None,
-                                    })
+                                    }),
+                                        None,
+                                    )
                                 };
 
                                 match trust_decision_result {
@@ -390,29 +395,54 @@ impl SongbirdOrchestrator {
                                             node_name, &reason, confidence
                                         );
 
-                                        // Handle trust decision via connection manager (progressive trust)
-                                        match connection_manager.handle_trust_decision(
-                                            node_id.clone(),
-                                            endpoint.clone(),
-                                            peer.capabilities.clone(),
-                                            peer.tags.clone().unwrap_or_default(),  // v3.18.0: Pass tags for BTSP selection
-                                            &crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
+                                        let auto_decision =
+                                            crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
                                                 reason,
                                                 confidence,
                                                 encryption_tag: None,
-                                            },
-                                            "udp_multicast".to_string(),
-                                        ).await {
+                                            };
+
+                                        // Handle trust decision via connection manager (progressive trust)
+                                        match match maybe_discovered_peer {
+                                            Some(dp) => {
+                                                connection_manager
+                                                    .handle_trust_decision(
+                                                        dp.node_id,
+                                                        dp.endpoint,
+                                                        dp.capabilities,
+                                                        dp.tags,
+                                                        &auto_decision,
+                                                        "udp_multicast".to_string(),
+                                                    )
+                                                    .await
+                                            }
+                                            None => {
+                                                connection_manager
+                                                    .handle_trust_decision(
+                                                        node_id.clone(),
+                                                        endpoint.clone(),
+                                                        peer.capabilities.clone(),
+                                                        peer.tags.clone().unwrap_or_default(), // v3.18.0: Pass tags for BTSP selection
+                                                        &auto_decision,
+                                                        "udp_multicast".to_string(),
+                                                    )
+                                                    .await
+                                            }
+                                        } {
                                             Ok(()) => {
                                                 // Get trust level for logging
-                                                if let Some(trust_level) = connection_manager.get_connection(&node_id).await {
+                                                if let Some(trust_level) = connection_manager
+                                                    .get_connection(&node_id)
+                                                    .await
+                                                {
                                                     let trust_level_num = trust_level as u8;
                                                     info!(
                                                         "✅ Connection established with '{}' at trust level {} ({})",
                                                         node_name,
                                                         trust_level_num,
                                                         match trust_level_num {
-                                                            1 => "Limited - BirdSong coordination only",
+                                                            1 =>
+                                                                "Limited - BirdSong coordination only",
                                                             2 => "Elevated - Full federation",
                                                             3 => "Highest - All operations",
                                                             _ => "Unknown",
@@ -420,8 +450,16 @@ impl SongbirdOrchestrator {
                                                     );
 
                                                     // Also establish legacy anonymous trust for backward compatibility
-                                                    if let Err(e) = trust_manager.establish_anonymous(peer.session_id.clone()).await {
-                                                        warn!("⚠️  Failed to establish legacy trust: {}", e);
+                                                    if let Err(e) = trust_manager
+                                                        .establish_anonymous(
+                                                            peer.session_id.clone(),
+                                                        )
+                                                        .await
+                                                    {
+                                                        warn!(
+                                                            "⚠️  Failed to establish legacy trust: {}",
+                                                            e
+                                                        );
                                                     }
 
                                                     // Convert v3.0 endpoints to federation format (if available)
@@ -455,7 +493,9 @@ impl SongbirdOrchestrator {
                                                     };
 
                                                     // Register node in federation
-                                                    federation_state.register_node(node_registration).await;
+                                                    federation_state
+                                                        .register_node(node_registration)
+                                                        .await;
 
                                                     info!(
                                                         "🤝 Peer '{}' joined federation (progressive trust level {})",
@@ -479,6 +519,9 @@ impl SongbirdOrchestrator {
                                             recommendation,
                                         },
                                     ) => {
+                                        // Security path returns a DiscoveredPeer even when decision is prompt; not used here.
+                                        drop(maybe_discovered_peer);
+
                                         warn!(
                                             "⚠️  Trust Decision: PROMPT USER for '{}' (reason: {})",
                                             node_name, reason
@@ -508,18 +551,40 @@ impl SongbirdOrchestrator {
                                             &peer.session_id[..8]
                                         );
 
-                                        // Track rejection in connection manager for audit trail
-                                        if let Err(e) = connection_manager.handle_trust_decision(
-                                            node_id.clone(),
-                                            endpoint.clone(),
-                                            peer.capabilities.clone(),
-                                            peer.tags.clone().unwrap_or_default(),  // v3.18.0: Pass tags (unused for rejections)
-                                            &crate::trust::peer_trust::PeerTrustDecision::Reject {
+                                        let reject_decision =
+                                            crate::trust::peer_trust::PeerTrustDecision::Reject {
                                                 reason,
                                                 trust_level,
-                                            },
-                                            "udp_multicast".to_string(),
-                                        ).await {
+                                            };
+
+                                        // Track rejection in connection manager for audit trail
+                                        let reject_res = match maybe_discovered_peer {
+                                            Some(dp) => {
+                                                connection_manager
+                                                    .handle_trust_decision(
+                                                        dp.node_id,
+                                                        dp.endpoint,
+                                                        dp.capabilities,
+                                                        dp.tags,
+                                                        &reject_decision,
+                                                        "udp_multicast".to_string(),
+                                                    )
+                                                    .await
+                                            }
+                                            None => {
+                                                connection_manager
+                                                    .handle_trust_decision(
+                                                        node_id.clone(),
+                                                        endpoint.clone(),
+                                                        peer.capabilities.clone(),
+                                                        peer.tags.clone().unwrap_or_default(), // v3.18.0: Pass tags (unused for rejections)
+                                                        &reject_decision,
+                                                        "udp_multicast".to_string(),
+                                                    )
+                                                    .await
+                                            }
+                                        };
+                                        if let Err(e) = reject_res {
                                             warn!("⚠️  Failed to record rejection: {}", e);
                                         }
                                         // Skip this peer - do not add to federation

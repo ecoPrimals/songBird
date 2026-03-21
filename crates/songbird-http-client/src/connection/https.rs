@@ -74,7 +74,7 @@ impl HttpsConnection {
     /// - Sending request fails
     /// - Reading response fails
     /// - Response parsing fails
-    #[expect(
+    #[allow(
         clippy::too_many_arguments,
         reason = "TLS execute bundles host, port, URI, method, headers, body, and parse/build callbacks"
     )]
@@ -525,7 +525,7 @@ impl HttpsConnection {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::HttpsConnection;
     use crate::crypto::{BearDogProvider, CryptoCapability};
@@ -535,25 +535,31 @@ mod tests {
     #[test]
     fn https_connection_new_stores_config() {
         let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
-        let mut cfg = TlsConfig::default();
-        cfg.max_retries = 4;
+        let cfg = TlsConfig {
+            max_retries: 4,
+            ..Default::default()
+        };
         let conn = HttpsConnection::new(crypto, cfg.clone(), None);
         assert_eq!(conn.tls_config.max_retries, 4);
     }
 
     #[test]
     fn handshake_strategies_none_uses_configured_extension_strategy() {
-        let mut cfg = TlsConfig::default();
-        cfg.fallback_strategy = FallbackStrategy::None;
-        cfg.extension_strategy = ExtensionStrategy::Minimal;
+        let cfg = TlsConfig {
+            fallback_strategy: FallbackStrategy::None,
+            extension_strategy: ExtensionStrategy::Minimal,
+            ..Default::default()
+        };
         let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
         assert_eq!(strategies, vec![ExtensionStrategy::Minimal]);
     }
 
     #[test]
     fn handshake_strategies_progressive_order() {
-        let mut cfg = TlsConfig::default();
-        cfg.fallback_strategy = FallbackStrategy::Progressive;
+        let cfg = TlsConfig {
+            fallback_strategy: FallbackStrategy::Progressive,
+            ..Default::default()
+        };
         let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
         assert_eq!(
             strategies,
@@ -567,8 +573,10 @@ mod tests {
 
     #[test]
     fn handshake_strategies_reverse_order() {
-        let mut cfg = TlsConfig::default();
-        cfg.fallback_strategy = FallbackStrategy::Reverse;
+        let cfg = TlsConfig {
+            fallback_strategy: FallbackStrategy::Reverse,
+            ..Default::default()
+        };
         let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
         assert_eq!(
             strategies,
@@ -582,8 +590,10 @@ mod tests {
 
     #[test]
     fn handshake_strategies_exhaustive_includes_max_compat() {
-        let mut cfg = TlsConfig::default();
-        cfg.fallback_strategy = FallbackStrategy::Exhaustive;
+        let cfg = TlsConfig {
+            fallback_strategy: FallbackStrategy::Exhaustive,
+            ..Default::default()
+        };
         let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
         assert!(strategies.contains(&ExtensionStrategy::MaxCompatibility));
     }

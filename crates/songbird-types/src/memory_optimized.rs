@@ -242,7 +242,7 @@ impl OptimizedCapabilities {
 }
 
 #[cfg(test)]
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::unnecessary_wraps,
     clippy::field_reassign_with_default,
@@ -257,9 +257,9 @@ impl OptimizedCapabilities {
     reason = "test assertions and harness ergonomics"
 )]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
-    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
-    #![expect(unused, reason = "unused bindings/imports in this compilation unit")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![allow(unused, reason = "unused bindings/imports in this compilation unit")]
 
     use super::*;
 

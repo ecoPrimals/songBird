@@ -33,8 +33,8 @@ impl AutoApprovalRule {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::AutoApprovalRule;
 
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn clone_and_debug_do_not_panic() {
         let r = rule_named(&["a"], Some(1.0));
-        let _ = format!("{:?}", r.clone());
+        let _ = format!("{:?}", r);
     }
 
     #[test]
@@ -136,7 +136,7 @@ mod tests {
         let r = AutoApprovalRule {
             name: "many".to_string(),
             max_cost: None,
-            operations: ops.clone(),
+            operations: ops,
         };
         assert!(r.matches("op7", None));
         assert!(!r.matches("missing", None));

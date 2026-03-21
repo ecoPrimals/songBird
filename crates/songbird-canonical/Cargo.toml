@@ -2,7 +2,7 @@
 name = "songbird-canonical"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
 description = "Canonical type system and patterns for the Songbird ecosystem"

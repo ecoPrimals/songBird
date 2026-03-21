@@ -82,7 +82,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![expect(
+#![allow(
     clippy::module_name_repetitions,
     clippy::items_after_statements,
     clippy::missing_errors_doc,

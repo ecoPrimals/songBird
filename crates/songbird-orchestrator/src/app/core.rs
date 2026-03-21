@@ -300,21 +300,6 @@ impl SongbirdOrchestrator {
         super::startup_orchestration::StartupOrchestrator::new(self).start().await
     }
 
-    /// DEPRECATED (Jan 28, 2026): This stub method is no longer used
-    ///
-    /// The actual HTTP server is started via `crate::app::http_server::start_http_server()`
-    /// which properly binds TCP and returns the actual port for discovery beacons.
-    ///
-    /// **Historical Context**: This was originally a stub for Unix-socket-only mode,
-    /// but caused discovery beacons to advertise port 0, breaking peer connections.
-    ///
-    /// **Fix**: The `start()` method now calls the real HTTP server module directly.
-    #[deprecated(since = "8.11.0", note = "Use http_server::start_http_server() directly")]
-    async fn start_http_server(&self) -> Result<u16> {
-        warn!("⚠️  Deprecated stub start_http_server() called - use http_server module instead");
-        Ok(0) // No longer used
-    }
-
     /// Discover broadcast addresses with capability-based fallback (NEW - Jan 28, 2026)
     ///
     /// **Zero Hardcoding Philosophy**: Discovers broadcast addresses at runtime from:

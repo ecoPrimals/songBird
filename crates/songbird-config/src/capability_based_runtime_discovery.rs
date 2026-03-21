@@ -205,17 +205,17 @@ impl CapabilityResolver {
     /// - etc.
     ///
     /// Pure function kept as method for trait implementation consistency and future extensibility.
-    #[expect(
-        clippy::unused_self,
-        reason = "method shape for resolver API consistency and future extensibility"
-    )]
-    fn discover_from_environment(
+    pub fn discover_from_environment(
         &self,
         request: &CapabilityRequest,
     ) -> SongbirdResult<CapabilityProvider> {
         self.discover_from_environment_with(request, &|k| std::env::var(k))
     }
 
+    #[allow(
+        clippy::unused_self,
+        reason = "method shape matches other discover_* helpers that use resolver state"
+    )]
     fn discover_from_environment_with(
         &self,
         request: &CapabilityRequest,
@@ -478,8 +478,9 @@ macro_rules! discover_capability {
 // ============================================================================
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -609,5 +610,133 @@ mod tests {
             .discover_from_environment_with(&req, &|_| Err(std::env::VarError::NotPresent))
             .expect_err("no env");
         assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn test_capability_request_optional_features_and_sla() {
+        let sla = SlaRequirements {
+            max_latency_ms: 50,
+            min_uptime_percent: 99.9,
+            max_error_rate_percent: 0.1,
+        };
+        let req = CapabilityRequest::new("storage")
+            .with_optional_features(&["cold-archive"])
+            .with_sla(sla);
+        assert_eq!(req.optional_features, vec!["cold-archive"]);
+        assert_eq!(req.min_sla.as_ref().expect("sla").max_latency_ms, 50);
+    }
+
+    #[test]
+    fn test_env_var_name_uppercases_capability_for_discovery() {
+        let resolver = CapabilityResolver::new();
+        let req = CapabilityRequest::new("compute");
+        let out = resolver
+            .discover_from_environment_with(&req, &|k| {
+                if k == "SONGBIRD_COMPUTE_PROVIDER_URL" {
+                    Ok("http://compute:9".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            })
+            .expect("env");
+        assert_eq!(out.endpoint, "http://compute:9");
+        assert_eq!(out.protocol, Protocol::Http);
+        assert_eq!(out.name, "compute-provider-from-env");
+    }
+
+    #[test]
+    fn test_resolver_default_matches_new() {
+        assert_eq!(
+            CapabilityResolver::default().discovery_mechanisms.len(),
+            CapabilityResolver::new().discovery_mechanisms.len()
+        );
+    }
+
+    #[test]
+    fn test_discovery_mechanism_equality() {
+        assert_eq!(DiscoveryMechanism::Environment, DiscoveryMechanism::Environment);
+        assert_ne!(DiscoveryMechanism::Environment, DiscoveryMechanism::MDNS);
+    }
+
+    #[test]
+    fn test_provider_supports_features_requires_all() {
+        let p = CapabilityProvider {
+            name: "p".to_string(),
+            capability: "ai".to_string(),
+            endpoint: "http://x".to_string(),
+            protocol: Protocol::Https,
+            features: vec!["a".to_string()],
+            metadata: HashMap::new(),
+        };
+        assert!(!p.supports_features(&["a".to_string(), "b".to_string()]));
+    }
+
+    #[tokio::test]
+    async fn test_discover_provider_fails_when_all_mechanisms_fail() {
+        let mut resolver = CapabilityResolver {
+            discovery_mechanisms: vec![DiscoveryMechanism::Environment],
+            provider_cache: HashMap::new(),
+        };
+        let err = resolver
+            .discover_provider(CapabilityRequest::new("missingcap"))
+            .await
+            .expect_err("no provider");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn test_discover_provider_uses_cache_before_mechanisms() {
+        let cached = CapabilityProvider {
+            name: "cached".to_string(),
+            capability: "ai".to_string(),
+            endpoint: "http://cached".to_string(),
+            protocol: Protocol::Http,
+            features: vec![],
+            metadata: HashMap::new(),
+        };
+        let mut resolver = CapabilityResolver {
+            discovery_mechanisms: vec![DiscoveryMechanism::Environment],
+            provider_cache: HashMap::from([(
+                "ai".to_string(),
+                CachedProvider {
+                    provider: cached.clone(),
+                    discovered_at: std::time::Instant::now(),
+                    ttl: Duration::from_secs(3600),
+                },
+            )]),
+        };
+        let got =
+            resolver.discover_provider(CapabilityRequest::new("ai")).await.expect("cache hit");
+        assert_eq!(got.endpoint, "http://cached");
+    }
+
+    #[tokio::test]
+    async fn test_discover_provider_cache_miss_when_expired() {
+        let cached = CapabilityProvider {
+            name: "old".to_string(),
+            capability: "ai".to_string(),
+            endpoint: "http://old".to_string(),
+            protocol: Protocol::Http,
+            features: vec![],
+            metadata: HashMap::new(),
+        };
+        let mut resolver = CapabilityResolver {
+            discovery_mechanisms: vec![DiscoveryMechanism::Environment],
+            provider_cache: HashMap::from([(
+                "ai".to_string(),
+                CachedProvider {
+                    provider: cached,
+                    discovered_at: std::time::Instant::now()
+                        .checked_sub(Duration::from_secs(400))
+                        .expect("sub"),
+                    ttl: Duration::from_secs(300),
+                },
+            )]),
+        };
+        let got = resolver
+            .discover_provider(CapabilityRequest::new("ai"))
+            .await
+            .expect_err("env missing");
+        assert!(matches!(got, SongbirdError::Discovery { .. }));
     }
 }

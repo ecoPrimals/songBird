@@ -271,11 +271,11 @@ mod tests {
             Ok(ports) => {
                 println!("Found {} serial ports", ports.len());
                 for port in ports {
-                    println!("  - {}", port);
+                    println!("  - {port}");
                 }
             }
             Err(e) => {
-                println!("Failed to list ports: {}", e);
+                println!("Failed to list ports: {e}");
             }
         }
     }

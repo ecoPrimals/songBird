@@ -2,7 +2,7 @@
 name = "songbird-bluetooth"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals Team"]
 description = "EXPERIMENTAL: Pure Rust Bluetooth LE stack for Songbird - Genesis Phase 2"
 repository = "https://github.com/ecoPrimals/songbird"
@@ -28,7 +28,7 @@ serialport = { version = "4.5", optional = true }      # UART transport
 tokio = { version = "1", features = ["sync", "time", "macros", "rt", "rt-multi-thread"] }
 
 # Error handling (modern, zero-cost)
-thiserror = "1.0"
+thiserror = { workspace = true }
 anyhow = "1.0"
 
 # Serialization

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -380,7 +380,7 @@ async fn test_relay_client_session_full_lifecycle() {
     session.send(test_data).await.unwrap();
 
     // Verify stats updated
-    let bytes_sent = session.stats().await;
+    let bytes_sent = session.stats();
     assert_eq!(bytes_sent, test_data.len() as u64);
 
     // Refresh session

@@ -213,7 +213,7 @@ impl TlsHandshake {
     }
 
     /// Build SNI extension
-    #[expect(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
+    #[allow(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
     pub(crate) fn build_sni_extension(&self, server_name: &str) -> Vec<u8> {
         let mut sni = Vec::new();
         let name_bytes = server_name.as_bytes();
@@ -231,7 +231,7 @@ impl TlsHandshake {
     }
 
     /// Build key share extension
-    #[expect(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
+    #[allow(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
     pub(crate) fn build_key_share_extension(&self, public_key: &[u8]) -> Vec<u8> {
         let mut ks = Vec::new();
 
@@ -249,7 +249,7 @@ impl TlsHandshake {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::crypto::CryptoCapability;

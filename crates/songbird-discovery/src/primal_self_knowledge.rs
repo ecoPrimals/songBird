@@ -16,6 +16,9 @@ use tokio::sync::RwLock;
 /// Result type for primal operations
 pub type Result<T> = std::result::Result<T, PrimalError>;
 
+/// Injected process environment lookup, shared across discovery tasks.
+type EnvVarFn = Arc<dyn Fn(&str) -> std::result::Result<String, VarError> + Send + Sync>;
+
 /// Errors in primal self-knowledge system
 #[derive(Debug, thiserror::Error)]
 pub enum PrimalError {
@@ -86,7 +89,8 @@ impl PrimalSelfKnowledge {
     }
 
     /// Introspect own name from environment
-    fn introspect_name() -> String {
+    #[must_use]
+    pub fn introspect_name() -> String {
         Self::introspect_name_with(|k| std::env::var(k))
     }
 
@@ -111,7 +115,8 @@ impl PrimalSelfKnowledge {
     /// Introspect own capabilities through feature detection
     ///
     /// No hardcoding - discovers what this binary can do.
-    fn introspect_capabilities() -> Vec<String> {
+    #[must_use]
+    pub fn introspect_capabilities() -> Vec<String> {
         Self::introspect_capabilities_with(|k| std::env::var(k))
     }
 
@@ -274,12 +279,12 @@ pub struct EnvironmentDiscovery;
 
 /// Uses injected env lookup for [`PrimalSelfKnowledge::discover_self_with`].
 struct EnvInjectedDiscovery {
-    get_var: Arc<dyn Fn(&str) -> std::result::Result<String, VarError> + Send + Sync>,
+    get_var: EnvVarFn,
 }
 
 #[async_trait::async_trait]
 impl DiscoveryMechanism for EnvInjectedDiscovery {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "environment"
     }
 
@@ -401,8 +406,9 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use std::env::VarError;
 
@@ -478,5 +484,105 @@ mod tests {
             }
             _ => panic!("expected DiscoveryFailed"),
         }
+    }
+
+    #[test]
+    fn introspect_name_prefers_primal_name_from_env_fn() {
+        let name = PrimalSelfKnowledge::introspect_name_with(|k| {
+            if k == "PRIMAL_NAME" {
+                Ok("from-primal".into())
+            } else {
+                Err(VarError::NotPresent)
+            }
+        });
+        assert_eq!(name, "from-primal");
+    }
+
+    #[test]
+    fn introspect_name_falls_back_to_service_name() {
+        let name = PrimalSelfKnowledge::introspect_name_with(|k| match k {
+            "SERVICE_NAME" => Ok("svc".into()),
+            _ => Err(VarError::NotPresent),
+        });
+        assert_eq!(name, "svc");
+    }
+
+    #[test]
+    fn introspect_capabilities_adds_security_when_enable_security_set() {
+        let caps = PrimalSelfKnowledge::introspect_capabilities_with(|k| {
+            if k == "ENABLE_SECURITY" {
+                Ok("1".into())
+            } else {
+                Err(VarError::NotPresent)
+            }
+        });
+        assert!(caps.contains(&"security".to_string()));
+    }
+
+    #[tokio::test]
+    async fn discover_primal_caches_first_success() {
+        let pk = PrimalSelfKnowledge::discover_self_with(|k| match k {
+            "PRIMAL_NAME" => Ok("self".into()),
+            "AI_HOST" => Ok("127.0.0.1".into()),
+            "AI_PORT" => Ok("7777".into()),
+            _ => Err(VarError::NotPresent),
+        })
+        .expect("self");
+
+        let a = pk.discover_primal("ai").await.expect("first");
+        let b = pk.discover_primal("ai").await.expect("cached");
+        assert_eq!(a.host, b.host);
+        assert_eq!(a.port, b.port);
+
+        let map = pk.discovered().await;
+        assert_eq!(map.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn environment_discover_with_uses_primal_prefix_fallback() {
+        let info = EnvironmentDiscovery::discover_with("foo", |k| match k {
+            "PRIMAL_FOO_HOST" => Ok("h".into()),
+            "PRIMAL_FOO_PORT" => Ok("6500".into()),
+            _ => Err(VarError::NotPresent),
+        })
+        .await
+        .expect("discover");
+        assert_eq!(info.host, "h");
+        assert_eq!(info.port, 6500);
+    }
+
+    #[tokio::test]
+    async fn environment_discover_with_invalid_port_maps_to_introspection_failed() {
+        let err = EnvironmentDiscovery::discover_with("badport", |k| match k {
+            "BADPORT_HOST" => Ok("x".into()),
+            "BADPORT_PORT" => Ok("not-a-port".into()),
+            _ => Err(VarError::NotPresent),
+        })
+        .await
+        .expect_err("bad port");
+        assert!(matches!(err, PrimalError::IntrospectionFailed(_)));
+    }
+
+    #[tokio::test]
+    async fn discover_primal_fails_when_no_mechanism_succeeds() {
+        let pk =
+            PrimalSelfKnowledge::discover_self_with(|_| Err(VarError::NotPresent)).expect("self");
+        let err = pk.discover_primal("nonexistent-cap-xyz").await.expect_err("none");
+        assert!(matches!(err, PrimalError::DiscoveryFailed { .. }));
+    }
+
+    #[test]
+    fn primal_info_serde_roundtrip() {
+        let i = PrimalInfo {
+            name: "n".into(),
+            host: "h".into(),
+            port: 1,
+            capabilities: vec!["c".into()],
+            discovered_at: std::time::SystemTime::UNIX_EPOCH,
+            discovery_method: "m".into(),
+        };
+        let js = serde_json::to_string(&i).expect("ser");
+        let back: PrimalInfo = serde_json::from_str(&js).expect("de");
+        assert_eq!(back.name, "n");
     }
 }

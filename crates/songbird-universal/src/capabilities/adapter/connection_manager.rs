@@ -196,7 +196,7 @@ impl ConnectionManager {
     ///
     /// Future use: Will be used for connection pooling and reuse optimization.
     /// Currently connections are managed ephemerally, but this enables persistent connections.
-    #[expect(dead_code, reason = "reserved for future connection pooling and reuse optimization")]
+    #[allow(dead_code, reason = "reserved for future connection pooling and reuse optimization")]
     pub async fn get_connection(&self, primal_name: &str) -> Option<PrimalConnection> {
         let connections = self.connections.read().await;
         connections.get(primal_name).cloned()
@@ -211,8 +211,7 @@ impl Default for ConnectionManager {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -269,5 +268,53 @@ mod tests {
 
         // Can query non-existent connection
         assert!(manager.get_connection("test").await.is_none());
+    }
+
+    #[test]
+    fn test_infer_primal_type_case_insensitive() {
+        assert_eq!(ConnectionManager::infer_primal_type("SECURITY-GW"), PrimalType::Security);
+        assert_eq!(ConnectionManager::infer_primal_type("Ai-Core"), PrimalType::AI);
+    }
+
+    #[test]
+    fn test_infer_primal_type_boundary_keywords() {
+        assert_eq!(ConnectionManager::infer_primal_type("my-authz"), PrimalType::Security);
+        assert_eq!(ConnectionManager::infer_primal_type("worker-pool"), PrimalType::Compute);
+        assert_eq!(ConnectionManager::infer_primal_type("data-lake"), PrimalType::Storage);
+    }
+
+    #[tokio::test]
+    async fn test_update_connection_health_no_connections() {
+        let manager = ConnectionManager::new();
+        manager.update_connection_health().await.expect("no-op");
+    }
+
+    #[tokio::test]
+    async fn test_get_all_connections_returns_vec() {
+        let manager = ConnectionManager::new();
+        let v = manager.get_all_connections().await;
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_connection_manager_clone_shares_map() {
+        let a = ConnectionManager::new();
+        let b = a.clone();
+        assert!(Arc::ptr_eq(&a.connections, &b.connections));
+    }
+
+    #[test]
+    fn test_infer_primal_type_generic_when_no_keyword() {
+        assert_eq!(ConnectionManager::infer_primal_type("zzz-unknown"), PrimalType::Generic);
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_twice_second_fails() {
+        let manager = ConnectionManager::new();
+        let err = manager.disconnect_from_primal("nope").await.expect_err("missing");
+        match err {
+            CapabilityError::PrimalNotFound(_) => {}
+            _ => panic!("expected PrimalNotFound"),
+        }
     }
 }

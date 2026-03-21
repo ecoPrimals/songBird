@@ -7,7 +7,7 @@
 //! Old hardcoded primal names (BearDog, Squirrel, etc.) have been replaced
 //! with capability-based types (Security, Storage, Compute, AI)
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::useless_vec,

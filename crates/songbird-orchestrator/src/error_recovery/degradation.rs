@@ -80,7 +80,7 @@ impl<T: Clone> DegradationStrategy<T> {
         F: FnOnce() -> Fut,
         Fut: Future<Output = Result<T>>,
     {
-        #[expect(
+        #[allow(
             clippy::expect_used,
             reason = "intentional pattern; clippy false positive for this API"
         )] // invariant: strategy always has a fallback
@@ -92,8 +92,8 @@ impl<T: Clone> DegradationStrategy<T> {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 

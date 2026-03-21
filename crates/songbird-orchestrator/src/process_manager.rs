@@ -397,7 +397,7 @@ impl ProcessManager {
 
 impl Default for ProcessManager {
     fn default() -> Self {
-        #[expect(
+        #[allow(
             clippy::expect_used,
             reason = "Default impl must succeed or is a fatal misconfiguration"
         )]
@@ -431,8 +431,8 @@ impl Drop for SingletonGuard {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use std::env;

@@ -3,7 +3,7 @@ name = "songbird-compute-bridge"
 version.workspace = true
 edition.workspace = true
 description = "Agnostic compute service bridge for Songbird federation - works with ANY compute provider"
-license = "AGPL-3.0"
+license.workspace = true
 repository = "https://github.com/ecoPrimals/songbird"
 readme = "README.md"
 keywords = ["compute", "distributed", "orchestration", "bridge", "agnostic"]
@@ -20,9 +20,9 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.7", features = ["v4", "serde"] }
 clap = { version = "4.4", features = ["derive", "env"] }
 anyhow = "1.0"
-thiserror = "2.0"
+thiserror = { workspace = true }
 num_cpus = "1.16"
-hostname = "0.3"
+hostname = "0.4"
 
 # Internal dependencies
 songbird-config = { path = "../songbird-config" }

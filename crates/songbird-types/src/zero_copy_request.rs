@@ -150,7 +150,7 @@ mod arc_str_hashmap_serde {
     }
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

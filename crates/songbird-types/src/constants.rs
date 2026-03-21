@@ -187,7 +187,7 @@ pub mod legacy {
     pub const DEFAULT_LOCALHOST: &str = super::LOCALHOST;
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

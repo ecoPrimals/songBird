@@ -27,6 +27,34 @@ fn peer_matches_family_tags(peer_tags: Option<&Vec<String>>, family_tags: &[Stri
     family_tags.iter().any(|family_tag| tags.iter().any(|peer_tag| peer_tag.contains(family_tag)))
 }
 
+/// Build RPC node from a discovered peer without cloning fields the response owns.
+fn discovered_node_from_peer(
+    peer: songbird_discovery::anonymous::DiscoveredPeer,
+) -> DiscoveredNode {
+    let songbird_discovery::anonymous::DiscoveredPeer {
+        session_id,
+        node_id,
+        node_name,
+        tags,
+        capabilities,
+        last_seen,
+        address,
+        port,
+        ..
+    } = peer;
+    let https_endpoint = format!("https://{}:{}", address.ip(), port);
+    DiscoveredNode {
+        node_id: node_id.unwrap_or(session_id),
+        node_name,
+        genetic_families: tags.unwrap_or_default(),
+        sub_federations: vec![],
+        capabilities,
+        btsp_endpoint: None,
+        https_endpoint,
+        last_seen: format!("{last_seen:?}"),
+    }
+}
+
 // ============================================================================
 // jsonrpsee Handlers (for jsonrpsee server)
 // ============================================================================
@@ -68,19 +96,7 @@ pub async fn discover_by_family(
         );
 
         // Convert DiscoveredPeer to response nodes
-        let nodes = filtered_nodes
-            .into_iter()
-            .map(|peer| DiscoveredNode {
-                node_id: peer.node_id.clone().unwrap_or_else(|| peer.session_id.clone()),
-                node_name: peer.node_name.clone(),
-                genetic_families: peer.tags.clone().unwrap_or_default(),
-                sub_federations: vec![], // Not available in DiscoveredPeer
-                capabilities: peer.capabilities.clone(),
-                btsp_endpoint: None, // Would require BTSP integration
-                https_endpoint: peer.https_endpoint(),
-                last_seen: format!("{:?}", peer.last_seen), // Convert SystemTime to string
-            })
-            .collect();
+        let nodes = filtered_nodes.into_iter().map(discovered_node_from_peer).collect();
 
         Ok(DiscoverByFamilyResponse {
             nodes,
@@ -150,7 +166,7 @@ pub async fn create_genetic_tunnel(
                 tunnel_id,
                 status: "established".to_string(),
                 local_endpoint: None, // NOTE: Would require BTSP client integration (future: Arc<BtspClient> in handlers)
-                peer_endpoint: request.peer_endpoint.clone(),
+                peer_endpoint: Some(peer_endpoint),
                 encryption: Some("ChaCha20-Poly1305".to_string()),
                 created_at: SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
@@ -165,7 +181,7 @@ pub async fn create_genetic_tunnel(
                 tunnel_id: String::new(),
                 status: "failed".to_string(),
                 local_endpoint: None,
-                peer_endpoint: request.peer_endpoint,
+                peer_endpoint: Some(peer_endpoint),
                 encryption: None,
                 created_at: SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
@@ -242,19 +258,7 @@ pub async fn discover_by_family_json(
         };
 
         // Convert to response nodes
-        let nodes = filtered_nodes
-            .into_iter()
-            .map(|peer| DiscoveredNode {
-                node_id: peer.node_id.clone().unwrap_or_else(|| peer.session_id.clone()),
-                node_name: peer.node_name.clone(),
-                genetic_families: peer.tags.clone().unwrap_or_default(),
-                sub_federations: vec![],
-                capabilities: peer.capabilities.clone(),
-                btsp_endpoint: None,
-                https_endpoint: peer.https_endpoint(),
-                last_seen: format!("{:?}", peer.last_seen),
-            })
-            .collect();
+        let nodes = filtered_nodes.into_iter().map(discovered_node_from_peer).collect();
 
         let response = DiscoverByFamilyResponse {
             nodes,
@@ -321,7 +325,7 @@ pub async fn create_genetic_tunnel_json(
             tunnel_id,
             status: "established".to_string(),
             local_endpoint: None,
-            peer_endpoint: request.peer_endpoint.clone(),
+            peer_endpoint: Some(peer_endpoint),
             encryption: Some("ChaCha20-Poly1305".to_string()),
             created_at: timestamp,
         },
@@ -329,7 +333,7 @@ pub async fn create_genetic_tunnel_json(
             tunnel_id: String::new(),
             status: format!("failed: {e}"),
             local_endpoint: None,
-            peer_endpoint: request.peer_endpoint,
+            peer_endpoint: Some(peer_endpoint),
             encryption: None,
             created_at: timestamp,
         },

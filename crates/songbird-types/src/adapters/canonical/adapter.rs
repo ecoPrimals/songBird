@@ -67,11 +67,16 @@ impl CanonicalUniversalAdapter {
     /// Create a new canonical universal adapter.
     #[must_use]
     pub fn new(config: CanonicalAdapterConfig) -> Self {
+        let CanonicalAdapterConfig {
+            load_balancing,
+            circuit_breaker,
+            ..
+        } = config;
         Self {
             registry: Arc::new(RwLock::new(CanonicalServiceRegistry::default())),
             protocol_router: Arc::new(CanonicalProtocolRouter::new()),
-            load_balancer: Arc::new(CanonicalLoadBalancer::new(config.load_balancing.clone())),
-            circuit_breaker: Arc::new(CanonicalCircuitBreaker::new(config.circuit_breaker.clone())),
+            load_balancer: Arc::new(CanonicalLoadBalancer::new(load_balancing)),
+            circuit_breaker: Arc::new(CanonicalCircuitBreaker::new(circuit_breaker)),
             metrics: Arc::new(RwLock::new(CanonicalAdapterMetrics::default())),
         }
     }

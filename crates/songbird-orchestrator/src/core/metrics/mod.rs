@@ -3,65 +3,110 @@
 
 //! Metrics collection and aggregation
 //!
-//! This module provides comprehensive metrics collection from all primals in the ecosystem
-//! using capability-based adapters that respect each primal's expertise.
+//! This module provides metrics collection from primals in the ecosystem using
+//! capability-based adapters. [`ComputeMetrics`] is a point-in-time snapshot;
+//! [`ComputeMetricsCounters`] tracks thread-safe totals as collections run.
 
 pub mod capability_adapters;
 
-// Re-export main types for convenience;
-pub use capability_adapters::UniversalMetricsAdapter;
+pub use capability_adapters::{MetricsError, UniversalMetricsAdapter};
 
-// Temporary stub types for backward compatibility
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Stub for ComputeMetrics (delegated to capability adapters)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ComputeMetrics  {pub cpu_usage_percent: f64, // Changed from cpu_usage
-    pub cpu_usage: f64,         // Keep both for compatibility
-        pub load_average: f64,
-    // Additional fields expected by performance module;
-        pub memory_usage_bytes: u64,
-    /// Active Containers field
-    pub active_containers: u32,
-    /// Queued Jobs field
-    pub queued_jobs: u32,
-    /// Performance Score field
-    pub performance_score: f64,
-    pub zero_copy_operations_per_sec: u64, // Changed from f64 to u64
-    /// Timestamp when this was created or last updated
-
-    pub timestamp: chrono::DateTime<chrono::Utc> ,
- )
+/// Thread-safe counters incremented when metrics are collected or observed.
+#[derive(Debug, Default)]
+pub struct ComputeMetricsCounters {
+    /// Number of successful `collect_compute_metrics` calls.
+    pub collections_total: AtomicU64,
+    /// Rolling count of zero-copy operations reported by sources (if available).
+    pub zero_copy_ops_observed: AtomicU64,
+    /// Last observed queue depth hint (jobs waiting across primals).
+    pub queued_jobs_hint: AtomicU64,
 }
 
-impl Default for ComputeMetrics  {fn default() -> Self  {Self { cpu_usage_percent: 15.0, // Default CPU usage percentage
-            cpu_usage: 0.15,         // Default CPU usage as fraction
-            memory_usage: 0.0,
+impl ComputeMetricsCounters {
+    /// Creates a new counter bundle (typically wrapped in [`Arc`] for sharing).
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+/// Point-in-time compute snapshot (serializable for APIs and telemetry).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComputeMetrics {
+    /// CPU usage as a percentage (0–100).
+    pub cpu_usage_percent: f64,
+    /// CPU usage as a fraction (0.0–1.0), kept for older call sites.
+    pub cpu_usage: f64,
+    /// One-minute load average (platform-dependent; 0.0 if unknown).
+    pub load_average: f64,
+    /// Memory usage as a fraction of address space (0.0–1.0) when known.
+    pub memory_usage: f64,
+    /// Bytes of memory currently in use (workload / host reported).
+    pub memory_usage_bytes: u64,
+    /// Bytes of memory considered available to the workload.
+    pub memory_available_bytes: u64,
+    /// Active containers / workload units (from discovery or runtime).
+    pub active_containers: u32,
+    /// Jobs queued for execution.
+    pub queued_jobs: u32,
+    /// Normalized performance score (0.0–1.0).
+    pub performance_score: f64,
+    /// Observed zero-copy operations per second (last sample).
+    pub zero_copy_operations_per_sec: u64,
+    /// Logical name for this metric sample (e.g. host or cluster id).
+    pub metric_name: String,
+    /// When this snapshot was produced.
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+impl Default for ComputeMetrics {
+    fn default() -> Self {
+        Self {
+            cpu_usage_percent: 15.0,
+            cpu_usage: 0.15,
             load_average: 0.0,
-            memory_available_bytes: 8_000_000_000, // 8GB default
-            memory_usage_bytes: 1_000_000_000,     // 1GB default usage
+            memory_usage: 0.0,
+            memory_usage_bytes: 1_000_000_000,
+            memory_available_bytes: 8_000_000_000,
             active_containers: 0,
             queued_jobs: 0,
             performance_score: 0.8,
-            zero_copy_operations_per_sec: 1000, // Changed to u64
-            timestamp: chrono::Utc::now();}}}
+            zero_copy_operations_per_sec: 1000,
+            metric_name: "songbird.compute".to_string(),
+            timestamp: chrono::Utc::now(),
+        }
+    }
+}
 
-/// Trait for metrics capability adapters
-#[async_trait: :async_trait]
-pub trait MetricsCapabilityAdapter: Send + Sync { /// Get compute metrics if available
+/// Capability adapters expose compute metrics snapshots and async collection.
+#[async_trait::async_trait]
+pub trait MetricsCapabilityAdapter: Send + Sync {
+    /// Return the last computed snapshot (cheap; may reflect discovery/counters only).
+    fn get_compute_metrics(&self) -> ComputeMetrics;
+
+    /// Collect a fresh snapshot (increments collection counters).
     ///
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
-    fn get_compute_metrics() {
+    /// Returns an error if collection fails (e.g. future HTTP delegation).
+    async fn collect_compute_metrics(
+        &self,
+    ) -> Result<ComputeMetrics, Box<dyn std::error::Error + Send + Sync>>;
+}
 
-
-    -> ComputeMetrics
-
-
-      ;
+#[async_trait::async_trait]
+impl MetricsCapabilityAdapter for UniversalMetricsAdapter {
+    fn get_compute_metrics(&self) -> ComputeMetrics {
+        self.snapshot_compute_metrics()
     }
-impl MetricsCapabilityAdapter for UniversalMetricsAdapter { fn get_compute_metrics(&self)self, -> ComputeMetrics { // Default implementation - would delegate to primals
-        ComputeMetrics::default,
-    async fn collect_compute_metrics(&self)self, -> Result<ComputeMetrics, Box<dyn std: :error::Error + Send + Sync>> { // Default implementation - would collect from primals;
-        Ok(ComputeMetrics::default();}}
+
+    async fn collect_compute_metrics(
+        &self,
+    ) -> Result<ComputeMetrics, Box<dyn std::error::Error + Send + Sync>> {
+        self.metrics_counters.collections_total.fetch_add(1, Ordering::Relaxed);
+        Ok(self.snapshot_compute_metrics())
+    }
+}

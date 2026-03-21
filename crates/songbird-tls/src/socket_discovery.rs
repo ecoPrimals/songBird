@@ -70,12 +70,14 @@ impl Default for MockEnv {
 
 #[cfg(test)]
 impl MockEnv {
+    /// Creates an empty mock environment map.
     pub fn new() -> Self {
         Self {
             vars: std::collections::HashMap::new(),
         }
     }
 
+    /// Inserts a key/value pair and returns `self` for chaining.
     pub fn set(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.vars.insert(key.into(), value.into());
         self

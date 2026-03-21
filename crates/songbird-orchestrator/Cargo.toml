@@ -2,7 +2,7 @@
 name = "songbird-orchestrator"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Main Songbird gaming bridge orchestrator application"
 repository = "https://github.com/ecoPrimals/SongBird"

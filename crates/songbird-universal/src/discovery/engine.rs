@@ -118,7 +118,7 @@ impl UniversalPrimalDiscovery {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -156,8 +156,7 @@ mod tests {
     #[test]
     fn test_discovery_engine_clone_and_debug() {
         let engine = UniversalPrimalDiscovery::new(DiscoveryConfig::default());
-        let clone = engine.clone();
-        let s = format!("{clone:?}");
+        let s = format!("{engine:?}");
         assert!(s.contains("UniversalPrimalDiscovery"));
     }
 }

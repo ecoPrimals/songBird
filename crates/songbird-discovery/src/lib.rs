@@ -193,52 +193,44 @@
 //! suggestions for common discovery failures.
 
 /// BearDog-backed BirdSong encryption provider for discovery traffic.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod beardog_birdsong_provider;
 /// BirdSong encryption configuration and processing for discovery.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod birdsong;
 /// Adapters converting between discovery representations and legacy types.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod conversion;
 /// Dark Forest beacon genetics and encrypted discovery metadata.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod dark_forest_beacon;
 /// Core discovery engine, backends, and `UniversalDiscoveryFactory`.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod discovery;
 /// Wire-format discovery packets, errors, and identity attestations.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod discovery_packet;
 /// Runtime discovery statistics, snapshots, and network status.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod discovery_stats;
 /// Lineage-aware mDNS service discovery backend.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod lineage_discovery;
 /// Capability-first primal self-knowledge for discovery and advertisement.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod primal_self_knowledge;
+/// Production-backed service discovery registry and health tracking.
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
+pub mod production;
+/// SSDP and related wire-format helpers (pure parsing / framing).
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
+pub mod protocol;
 /// Discovery traits, service metadata, configuration, and feature flags.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod traits;
 
-/// Anonymous discovery protocol (v3.22.1) - Refactored modules
-///
-/// Implements secure anonymous discovery with UDP multicast.
-/// Split into domain-driven modules for maintainability and testability.
-///
-/// ## Modules
-/// - `messages` - Message types and serialization (✅ Complete)
-/// - `peer` - Peer discovery and management (✅ Complete)
-/// - `broadcaster` - Broadcasting logic (✅ Complete)
-/// - `listener` - Listening and processing (✅ Complete)
-///
-/// **Refactoring Complete (v3.22.1)**: 1402 lines → 4 focused modules
-/// - Old `anonymous_discovery.rs` removed (Jan 12, 2026)
-/// - All imports updated to use `anonymous::` module
-/// - File size compliance achieved (<1000 lines per file)
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+/// Secure anonymous UDP multicast discovery (messages, peers, broadcast, listener).
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod anonymous;
 
 /// Unit and integration tests for self-filtering (v3.10.2 - Jan 5, 2026)
@@ -246,10 +238,6 @@ pub mod anonymous;
 mod tests_self_filtering;
 
 // 🌐 Federation-aware discovery (Phase 2)
-// Deferred: Optional P2 feature for advanced federation capabilities
-// pub mod federation_aware_discovery;
-// pub mod migration;
-
 // Re-export universal discovery functionality
 /// BearDog-backed `BirdSong` provider for encrypted discovery.
 pub use beardog_birdsong_provider::BearDogBirdSongProvider; // NEW (Jan 3, 2026)

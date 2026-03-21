@@ -315,7 +315,7 @@ impl CapabilityDiscovery {
     ///
     /// Pure function - could be static but kept as method for potential future
     /// use of discovery config or primal registry state.
-    #[expect(
+    #[allow(
         clippy::unused_self,
         reason = "method on self for API consistency with other discovery helpers"
     )]
@@ -411,8 +411,8 @@ impl CapabilityDiscovery {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use crate::capabilities::registry::CapabilityRegistry;

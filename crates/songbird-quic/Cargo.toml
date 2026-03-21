@@ -26,7 +26,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Error handling
-thiserror = "1"
+thiserror = { workspace = true }
 anyhow = "1"
 
 # Logging
@@ -56,7 +56,8 @@ anyhow = "1.0"
 
 [features]
 # ring: reliable QUIC cipher suites with quinn/rustls 0.23 (rustls-rustcrypto alone may lack QUIC suites).
-default = ["ring-crypto"]
+# Default is empty (ecoBin forbids ring in application code). Enable `ring-crypto` only for local/standalone testing.
+default = []
 # Opt-in for standalone testing with ring (quinn/rcgen still pull ring transitively).
 # Production builds use BearDog/Tower Atomic for crypto via IPC.
 ring-crypto = ["rustls/ring"]

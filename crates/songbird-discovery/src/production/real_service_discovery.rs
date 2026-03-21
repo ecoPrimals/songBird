@@ -9,7 +9,6 @@
 //! # Native Async Traits (Rust 1.75+)
 //! Uses native async fn in traits for zero-cost abstraction
 
-#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -19,8 +18,8 @@ use tracing::{debug, info, warn};
 
 use crate::discovery::core::ServiceInstance;
 use crate::traits::ServiceDiscovery;
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_config;
+use songbird_types::SongbirdResult;
 
 /// Production service discovery implementation
 #[derive(Debug)]
@@ -51,7 +50,7 @@ impl Default for ProductionDiscoveryConfig {
         // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig
         // Replaces hardcoded Duration::from_secs with configurable timeouts
         let timeout_config = songbird_config::timeouts::TimeoutConfig::from_env();
-        
+
         Self {
             health_check_interval: timeout_config.health_check,
             service_timeout: timeout_config.discovery,
@@ -92,7 +91,7 @@ pub struct HealthRecord {
 }
 
 /// Service health status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ServiceHealthStatus {
     Healthy,
     Degraded,
@@ -134,11 +133,12 @@ impl ProductionServiceDiscovery {
                 };
 
                 for service in services_to_check {
-                    let health_result = Self::perform_health_check(&service.instance, timeout).await;
+                    let health_result =
+                        Self::perform_health_check(&service.instance, timeout).await;
 
                     let health_record = HealthRecord {
                         service_id: service.instance.id.clone(),
-                        status: health_result.status.clone(),
+                        status: health_result.status,
                         last_check: SystemTime::now(),
                         response_time_ms: health_result.response_time_ms,
                         error_message: health_result.error_message,
@@ -160,7 +160,10 @@ impl ProductionServiceDiscovery {
     }
 
     /// Perform health check on a service
-    async fn perform_health_check(service: &ServiceInstance, timeout: Duration) -> HealthCheckResult {
+    async fn perform_health_check(
+        service: &ServiceInstance,
+        timeout: Duration,
+    ) -> HealthCheckResult {
         let start_time = SystemTime::now();
 
         // Try to construct health check URL
@@ -173,7 +176,7 @@ impl ProductionServiceDiscovery {
         debug!("Performing health check for service: {} at {}", service.id, health_url);
 
         let client = match songbird_http_client::IpcHttpClient::builder()
-            .timeout(timeout)
+            .with_timeout(timeout)
             .build()
             .await
         {
@@ -182,16 +185,18 @@ impl ProductionServiceDiscovery {
                 return HealthCheckResult {
                     status: ServiceHealthStatus::Unhealthy,
                     response_time_ms: 0,
-                    error_message: Some(format!("Failed to create HTTP client: {}", e)),
+                    error_message: Some(format!("Failed to create HTTP client: {e}")),
                 };
             }
         };
 
         match client.get(&health_url).await {
             Ok(response) => {
-                let response_time = start_time.elapsed().unwrap_or(Duration::ZERO).as_millis() as u64;
+                let response_time =
+                    u64::try_from(start_time.elapsed().unwrap_or(Duration::ZERO).as_millis())
+                        .unwrap_or(u64::MAX);
 
-                if response.status().is_success() {
+                if (200..300).contains(&response.status()) {
                     HealthCheckResult {
                         status: ServiceHealthStatus::Healthy,
                         response_time_ms: response_time,
@@ -206,7 +211,9 @@ impl ProductionServiceDiscovery {
                 }
             }
             Err(e) => {
-                let response_time = start_time.elapsed().unwrap_or(Duration::ZERO).as_millis() as u64;
+                let response_time =
+                    u64::try_from(start_time.elapsed().unwrap_or(Duration::ZERO).as_millis())
+                        .unwrap_or(u64::MAX);
                 warn!("Health check failed for service {}: {}", service.id, e);
 
                 HealthCheckResult {
@@ -219,7 +226,10 @@ impl ProductionServiceDiscovery {
     }
 
     /// Get services by capability
-    pub async fn get_services_by_capability(&self, capability: &str) -> SongbirdResult<Vec<ServiceInstance>> {
+    pub async fn get_services_by_capability(
+        &self,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceInstance>> {
         let services = self.services.read().await;
         let matching_services: Vec<ServiceInstance> = services
             .values()
@@ -235,7 +245,10 @@ impl ProductionServiceDiscovery {
     }
 
     /// Get service health information
-    pub async fn get_service_health(&self, service_id: &str) -> SongbirdResult<Option<HealthRecord>> {
+    pub async fn get_service_health(
+        &self,
+        service_id: &str,
+    ) -> SongbirdResult<Option<HealthRecord>> {
         let health_cache = self.health_cache.read().await;
         Ok(health_cache.get(service_id).cloned())
     }
@@ -272,6 +285,7 @@ fn instance_to_service_info(instance: &ServiceInstance) -> crate::traits::Servic
     use crate::traits::{ServiceEndpoint as TraitEndpoint, ServiceStatus};
     use chrono::Utc;
 
+    let id = instance.id.clone();
     let endpoint = TraitEndpoint {
         path: instance.endpoint.clone(),
         method: "GET".to_string(),
@@ -283,20 +297,28 @@ fn instance_to_service_info(instance: &ServiceInstance) -> crate::traits::Servic
     };
 
     crate::traits::ServiceInfo {
-        service_id: instance.id.clone(),
+        service_id: id.clone(),
         name: instance.name.clone(),
         version: instance.metadata.get("version").cloned().unwrap_or_else(|| "0.0.0".to_string()),
-        service_type: instance.metadata.get("type").cloned().unwrap_or_else(|| "unknown".to_string()),
+        service_type: instance
+            .metadata
+            .get("type")
+            .cloned()
+            .unwrap_or_else(|| "unknown".to_string()),
         description: instance.metadata.get("description").cloned(),
         endpoints: vec![endpoint],
         health_check_endpoint: Some(format!("{}/health", instance.endpoint.trim_end_matches('/'))),
-        metadata: instance.metadata.iter().map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone()))).collect(),
+        metadata: instance
+            .metadata
+            .iter()
+            .map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone())))
+            .collect(),
         tags: instance.capabilities.clone(),
         dependencies: Vec::new(),
         status: ServiceStatus::Running,
         created_at: Utc::now(),
         updated_at: Utc::now(),
-        instance_id: instance.id.clone(),
+        instance_id: id,
         host: instance.endpoint.clone(),
         port: 0,
     }
@@ -304,18 +326,16 @@ fn instance_to_service_info(instance: &ServiceInstance) -> crate::traits::Servic
 
 /// Convert the trait's `ServiceInfo` to internal `ServiceInstance`
 fn service_info_to_instance(info: &crate::traits::ServiceInfo) -> ServiceInstance {
-    let endpoint = info
-        .endpoints
-        .first()
-        .map(|e| e.path.clone())
-        .filter(|p| !p.is_empty())
-        .unwrap_or_else(|| {
-            if info.host.starts_with("http://") || info.host.starts_with("https://") {
-                info.host.clone()
-            } else {
-                format!("http://{}:{}", info.host, info.port)
-            }
-        });
+    let endpoint =
+        info.endpoints.first().map(|e| e.path.clone()).filter(|p| !p.is_empty()).unwrap_or_else(
+            || {
+                if info.host.starts_with("http://") || info.host.starts_with("https://") {
+                    info.host.clone()
+                } else {
+                    format!("http://{}:{}", info.host, info.port)
+                }
+            },
+        );
 
     ServiceInstance {
         id: info.service_id.clone(),
@@ -323,14 +343,19 @@ fn service_info_to_instance(info: &crate::traits::ServiceInfo) -> ServiceInstanc
         endpoint,
         capabilities: info.tags.clone(),
         health_status: "unknown".to_string(),
-        metadata: info.metadata.iter()
+        metadata: info
+            .metadata
+            .iter()
             .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
             .collect(),
     }
 }
 
 impl ServiceDiscovery for ProductionServiceDiscovery {
-    async fn discover(&self, query: crate::traits::ServiceQuery) -> SongbirdResult<Vec<crate::traits::ServiceInfo>> {
+    async fn discover(
+        &self,
+        query: crate::traits::ServiceQuery,
+    ) -> SongbirdResult<Vec<crate::traits::ServiceInfo>> {
         info!("Discovering services with query: {:?}", query);
 
         let services = self.services.read().await;
@@ -341,10 +366,10 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
                     || service.health_status == ServiceHealthStatus::Degraded
             })
             .filter(|service| {
-                if let Some(ref name) = query.name {
-                    if !service.instance.name.contains(name) {
-                        return false;
-                    }
+                if let Some(ref name) = query.name
+                    && !service.instance.name.contains(name)
+                {
+                    return false;
                 }
                 true
             })
@@ -387,46 +412,42 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
         Ok(())
     }
 
-    async fn watch(&self, query: crate::traits::ServiceQuery) -> SongbirdResult<std::pin::Pin<Box<dyn futures::stream::Stream<Item = crate::traits::ServiceEvent> + Send>>> {
-        use tokio_stream::wrappers::IntervalStream;
-        use futures::StreamExt;
-
-        let services = Arc::clone(&self.services);
-        let interval = tokio::time::interval(self.config.health_check_interval);
-
-        let stream = IntervalStream::new(interval)
-            .then(move |_| {
-                let services = Arc::clone(&services);
-                let query = query.clone();
-                async move {
-                    let guard = services.read().await;
-                    let matching: Vec<_> = guard.values()
-                        .filter(|s| {
-                            if let Some(ref name) = query.name {
-                                s.instance.name.contains(name)
-                            } else {
-                                true
-                            }
-                        })
-                        .map(|s| instance_to_service_info(&s.instance))
-                        .collect();
-                    crate::traits::ServiceEvent::ServicesUpdated(matching)
-                }
-            });
-
-        Ok(Box::pin(stream))
+    async fn watch(
+        &self,
+        _query: crate::traits::ServiceQuery,
+    ) -> SongbirdResult<
+        std::pin::Pin<Box<dyn futures_util::Stream<Item = crate::traits::ServiceEvent> + Send>>,
+    > {
+        use futures_util::stream;
+        // Periodic push-based updates would require extending `ServiceEvent`; keep API wired with an empty stream.
+        Ok(Box::pin(stream::empty()))
     }
 
-    async fn update_health(&self, service_id: &str, health: crate::traits::discovery::ServiceHealthStatus) -> SongbirdResult<()> {
+    async fn update_health(
+        &self,
+        service_id: &str,
+        health: crate::traits::discovery::ServiceHealthStatus,
+    ) -> SongbirdResult<()> {
         let mut services = self.services.write().await;
         if let Some(service) = services.get_mut(service_id) {
             let internal_status = match health {
-                crate::traits::discovery::ServiceHealthStatus::Healthy => ServiceHealthStatus::Healthy,
-                crate::traits::discovery::ServiceHealthStatus::Degraded => ServiceHealthStatus::Degraded,
-                crate::traits::discovery::ServiceHealthStatus::Unhealthy => ServiceHealthStatus::Unhealthy,
-                _ => ServiceHealthStatus::Unknown,
+                crate::traits::discovery::ServiceHealthStatus::Healthy => {
+                    ServiceHealthStatus::Healthy
+                }
+                crate::traits::discovery::ServiceHealthStatus::Degraded => {
+                    ServiceHealthStatus::Degraded
+                }
+                crate::traits::discovery::ServiceHealthStatus::Unhealthy => {
+                    ServiceHealthStatus::Unhealthy
+                }
+                crate::traits::discovery::ServiceHealthStatus::Unknown => {
+                    ServiceHealthStatus::Unknown
+                }
             };
-            debug!("Updating health for {}: {:?} -> {:?}", service_id, service.health_status, internal_status);
+            debug!(
+                "Updating health for {}: {:?} -> {:?}",
+                service_id, service.health_status, internal_status
+            );
             service.health_status = internal_status;
             service.last_heartbeat = Some(SystemTime::now());
         } else {
@@ -437,10 +458,8 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
 
     async fn list_all(&self) -> SongbirdResult<Vec<crate::traits::ServiceInfo>> {
         let services = self.services.read().await;
-        let all: Vec<crate::traits::ServiceInfo> = services
-            .values()
-            .map(|s| instance_to_service_info(&s.instance))
-            .collect();
+        let all: Vec<crate::traits::ServiceInfo> =
+            services.values().map(|s| instance_to_service_info(&s.instance)).collect();
         Ok(all)
     }
 
@@ -453,7 +472,11 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
         self.exists(service_id).await
     }
 
-    async fn update_metadata(&self, service_id: &str, metadata: HashMap<String, String>) -> SongbirdResult<()> {
+    async fn update_metadata(
+        &self,
+        service_id: &str,
+        metadata: HashMap<String, String>,
+    ) -> SongbirdResult<()> {
         let mut services = self.services.write().await;
         if let Some(service) = services.get_mut(service_id) {
             for (k, v) in &metadata {
@@ -472,8 +495,9 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -481,17 +505,16 @@ mod tests {
         let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig::default());
 
         // Use configurable test endpoint
-        let test_host = std::env::var("TEST_SERVICE_HOST")
-            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
-        let test_port = std::env::var("TEST_SERVICE_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(8080);
-        
+        let test_host = std::env::var("TEST_SERVICE_HOST").unwrap_or_else(|_| {
+            songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()
+        });
+        let test_port =
+            std::env::var("TEST_SERVICE_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+
         let service = ServiceInstance {
             id: "test-service".to_string(),
             name: "Test Service".to_string(),
-            endpoint: format!("http://{}:{}", test_host, test_port),
+            endpoint: format!("http://{test_host}:{test_port}"),
             capabilities: vec!["test".to_string()],
             health_status: "unknown".to_string(),
             metadata: HashMap::new(),
@@ -510,7 +533,12 @@ mod tests {
         assert!(services.is_ok());
     }
 
-    fn sample_service_info(id: &str, name: &str, endpoint_path: &str, tags: Vec<String>) -> crate::traits::ServiceInfo {
+    fn sample_service_info(
+        id: &str,
+        name: &str,
+        endpoint_path: &str,
+        tags: Vec<String>,
+    ) -> crate::traits::ServiceInfo {
         use crate::traits::service::{ServiceEndpoint, ServiceInfo, ServiceStatus};
         use chrono::Utc;
         use std::collections::HashMap;
@@ -545,8 +573,8 @@ mod tests {
 
     #[tokio::test]
     async fn register_list_and_capability_queries() {
-        use crate::traits::discovery::{ServiceHealthStatus, ServiceQuery};
         use crate::traits::ServiceDiscovery;
+        use crate::traits::discovery::{ServiceHealthStatus, ServiceQuery};
 
         let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
             enable_health_checks: false,
@@ -560,18 +588,13 @@ mod tests {
             vec!["security".to_string(), "metrics".to_string()],
         );
 
-        ServiceDiscovery::register(&discovery, info)
-            .await
-            .expect("register service");
+        ServiceDiscovery::register(&discovery, info).await.expect("register service");
 
         ServiceDiscovery::update_health(&discovery, "svc-reg-1", ServiceHealthStatus::Healthy)
             .await
             .expect("mark healthy");
 
-        let by_cap = discovery
-            .get_services_by_capability("security")
-            .await
-            .expect("by capability");
+        let by_cap = discovery.get_services_by_capability("security").await.expect("by capability");
         assert_eq!(by_cap.len(), 1);
         assert_eq!(by_cap[0].id, "svc-reg-1");
 
@@ -598,9 +621,192 @@ mod tests {
         ServiceDiscovery::register(&discovery, info).await.expect("register");
         assert!(ServiceDiscovery::exists(&discovery, "svc-rm").await.expect("exists"));
 
-        ServiceDiscovery::unregister(&discovery, "svc-rm")
-            .await
-            .expect("unregister");
+        ServiceDiscovery::unregister(&discovery, "svc-rm").await.expect("unregister");
         assert!(!ServiceDiscovery::exists(&discovery, "svc-rm").await.expect("gone"));
+    }
+
+    #[tokio::test]
+    async fn discover_excludes_unknown_health() {
+        use crate::traits::ServiceDiscovery;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info =
+            sample_service_info("u1", "UnknownHealth", "http://127.0.0.1:7", vec!["x".into()]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+        // Unknown health — not listed by discover()
+        let q = crate::traits::ServiceQuery::default();
+        let found = ServiceDiscovery::discover(&discovery, q).await.expect("discover");
+        assert_eq!(found.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn discover_includes_degraded_health() {
+        use crate::traits::ServiceDiscovery;
+        use crate::traits::discovery::ServiceHealthStatus;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info("d1", "DegradedSvc", "http://127.0.0.1:6", vec![]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+        ServiceDiscovery::update_health(&discovery, "d1", ServiceHealthStatus::Degraded)
+            .await
+            .expect("health");
+
+        let found = ServiceDiscovery::discover(&discovery, crate::traits::ServiceQuery::default())
+            .await
+            .expect("discover");
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].service_id, "d1");
+    }
+
+    #[tokio::test]
+    async fn get_services_by_capability_excludes_non_healthy() {
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        use crate::traits::ServiceDiscovery;
+
+        let info =
+            sample_service_info("cap-test", "Cap", "http://127.0.0.1:5", vec!["wanted".into()]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+
+        let empty = discovery.get_services_by_capability("wanted").await.expect("cap");
+        assert_eq!(empty.len(), 0);
+
+        use crate::traits::discovery::ServiceHealthStatus;
+        ServiceDiscovery::update_health(&discovery, "cap-test", ServiceHealthStatus::Healthy)
+            .await
+            .expect("mark healthy");
+
+        let got = discovery.get_services_by_capability("wanted").await.expect("cap2");
+        assert_eq!(got.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn cleanup_unhealthy_keeps_when_retry_below_max() {
+        use crate::traits::ServiceDiscovery;
+        use crate::traits::discovery::ServiceHealthStatus;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            max_retry_attempts: 5,
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info("uh", "Unhealthy", "http://127.0.0.1:4", vec![]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+        ServiceDiscovery::update_health(&discovery, "uh", ServiceHealthStatus::Unhealthy)
+            .await
+            .expect("health");
+
+        let removed = discovery.cleanup_unhealthy_services().await.expect("cleanup");
+        assert_eq!(removed, 0);
+        assert!(ServiceDiscovery::exists(&discovery, "uh").await.expect("exists"));
+    }
+
+    #[tokio::test]
+    async fn cleanup_unhealthy_removes_when_retry_budget_is_zero() {
+        use crate::traits::ServiceDiscovery;
+        use crate::traits::discovery::ServiceHealthStatus;
+
+        // With `max_retry_attempts == 0`, `retry_count < max` is false even at 0, so unhealthy rows are dropped.
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            max_retry_attempts: 0,
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info("gone", "Gone", "http://127.0.0.1:3", vec![]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+        ServiceDiscovery::update_health(&discovery, "gone", ServiceHealthStatus::Unhealthy)
+            .await
+            .expect("health");
+
+        let removed = discovery.cleanup_unhealthy_services().await.expect("cleanup");
+        assert_eq!(removed, 1);
+        assert!(!ServiceDiscovery::exists(&discovery, "gone").await.expect("gone"));
+    }
+
+    #[tokio::test]
+    async fn update_metadata_for_known_service() {
+        use crate::traits::ServiceDiscovery;
+        use std::collections::HashMap;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info("meta", "Meta", "http://127.0.0.1:2", vec![]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+
+        let mut m = HashMap::new();
+        m.insert("k".into(), "v".into());
+        ServiceDiscovery::update_metadata(&discovery, "meta", m).await.expect("meta");
+
+        let all = ServiceDiscovery::list_all(&discovery).await.expect("list");
+        assert_eq!(all[0].metadata.get("k").and_then(|v| v.as_str()), Some("v"));
+    }
+
+    #[tokio::test]
+    async fn get_service_health_returns_none_when_missing() {
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig::default());
+        let h = discovery.get_service_health("nope").await.expect("health");
+        assert!(h.is_none());
+    }
+
+    #[tokio::test]
+    async fn discover_filters_by_name_substring() {
+        use crate::traits::ServiceDiscovery;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let a = sample_service_info("a", "AlphaTeam", "http://127.0.0.1:11", vec![]);
+        let b = sample_service_info("b", "Beta", "http://127.0.0.1:12", vec![]);
+        ServiceDiscovery::register(&discovery, a).await.expect("a");
+        ServiceDiscovery::register(&discovery, b).await.expect("b");
+
+        use crate::traits::discovery::ServiceHealthStatus;
+        ServiceDiscovery::update_health(&discovery, "a", ServiceHealthStatus::Healthy)
+            .await
+            .expect("ha");
+        ServiceDiscovery::update_health(&discovery, "b", ServiceHealthStatus::Healthy)
+            .await
+            .expect("hb");
+
+        let mut q = crate::traits::ServiceQuery::new();
+        q.name = Some("Alpha".into());
+        let found = ServiceDiscovery::discover(&discovery, q).await.expect("discover");
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "AlphaTeam");
+    }
+
+    #[tokio::test]
+    async fn exists_and_is_registered_agree() {
+        use crate::traits::ServiceDiscovery;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info("ex", "Ex", "http://127.0.0.1:10", vec![]);
+        ServiceDiscovery::register(&discovery, info).await.expect("reg");
+        let e = ServiceDiscovery::exists(&discovery, "ex").await.expect("e");
+        let i = ServiceDiscovery::is_registered(&discovery, "ex").await.expect("i");
+        assert_eq!(e, i);
+        assert!(e);
     }
 }

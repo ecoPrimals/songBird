@@ -3,8 +3,8 @@
 
 //! High-volume pure-logic coverage tests (no network, no env mutation).
 
-#![expect(clippy::unwrap_used, reason = "test assertions")]
-#![expect(clippy::expect_used, reason = "test assertions")]
+#![allow(clippy::unwrap_used, reason = "test assertions")]
+#![allow(clippy::expect_used, reason = "test assertions")]
 
 use songbird_orchestrator::graph::GraphValidator;
 use songbird_orchestrator::graph::types::{Graph, GraphEdge, GraphMetadata, GraphNode};

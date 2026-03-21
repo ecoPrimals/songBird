@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(clippy::unwrap_used, reason = "test assertions")]
-#![expect(clippy::expect_used, reason = "test assertions")]
+#![allow(clippy::unwrap_used, reason = "test assertions")]
 
 use super::*;
 use std::collections::HashMap;
@@ -184,7 +183,6 @@ fn test_get_common_primal_ports_includes_base_and_enabled_flag() {
 fn test_get_canonical_endpoint_development_uses_base_url_fallback() {
     let ep = get_canonical_endpoint_with("mysvc", 9999, |k| match k {
         "SONGBIRD_ENVIRONMENT" => Ok("development".to_string()),
-        "SONGBIRD_BASE_URL" | "SONGBIRD_MYSVC_ENDPOINT" => Err(std::env::VarError::NotPresent),
         _ => Err(std::env::VarError::NotPresent),
     });
     assert!(ep.contains("9999") || ep.contains("http"));
@@ -194,7 +192,6 @@ fn test_get_canonical_endpoint_development_uses_base_url_fallback() {
 fn test_cors_origins_non_production_not_empty() {
     let origins = get_canonical_cors_origins_with(&|k| match k {
         "SONGBIRD_ENVIRONMENT" => Ok("development".to_string()),
-        "SONGBIRD_CORS_ORIGINS" => Err(std::env::VarError::NotPresent),
         _ => Err(std::env::VarError::NotPresent),
     });
     assert!(!origins.is_empty());

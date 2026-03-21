@@ -32,7 +32,7 @@ impl Default for CanonicalHealthConfig {
 /// Health check configuration - alias for canonical type
 pub type HealthCheckConfig = CanonicalHealthConfig;
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

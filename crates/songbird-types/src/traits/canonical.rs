@@ -882,3 +882,7 @@ pub struct SystemHealth {
     /// When this snapshot was taken.
     pub last_check: SystemTime,
 }
+
+#[cfg(test)]
+#[path = "canonical_tests.rs"]
+mod tests;

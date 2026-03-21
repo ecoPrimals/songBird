@@ -167,36 +167,36 @@
 
 // Public modules
 /// Capability registry types and provider trait for IPC-facing discovery.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod capability;
 /// Virtual (`/primal/...`) and native (socket, pipe, TCP) endpoint representations.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod endpoint;
 /// Universal IPC error type and result alias.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod error;
 /// JSON-RPC method handlers (HTTP, discovery, STUN, mesh, etc.).
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod handlers;
 /// Primal self-description and introspection helpers for IPC consumers.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod introspection;
 /// Platform-specific IPC implementation and async stream abstractions.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod platform;
 /// In-memory registry of registered primals and service metadata.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod registry;
 /// Songbird IPC JSON-RPC broker and `IpcServiceHandler` entrypoints.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service;
 /// JSON-RPC over universal IPC (Tower Atomic integration).
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod tower_atomic;
 
 // Public API
 /// User-facing universal IPC API: `init`, `register`, `listen`, `connect`.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod ipc;
 
 // Re-exports

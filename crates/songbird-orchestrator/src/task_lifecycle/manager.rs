@@ -205,13 +205,13 @@ impl TaskLifecycleManager {
 
         self.storage.save_task(&task).await?;
 
-        // Emit event
+        info!("Task started: {} on {}", task_id, tower);
+
+        // Emit event (move `tower` after logging)
         let _ = self.event_tx.send(TaskEvent::Started {
             task_id,
-            tower: tower.clone(),
+            tower,
         });
-
-        info!("Task started: {} on {}", task_id, tower);
         Ok(())
     }
 
@@ -268,13 +268,13 @@ impl TaskLifecycleManager {
 
         self.storage.save_task(&task).await?;
 
-        // Emit event
+        info!("Task resumed: {} on {}", task_id, tower);
+
+        // Emit event (move `tower` after logging)
         let _ = self.event_tx.send(TaskEvent::Resumed {
             task_id,
-            tower: tower.clone(),
+            tower,
         });
-
-        info!("Task resumed: {} on {}", task_id, tower);
         Ok(())
     }
 
@@ -306,17 +306,17 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        task.fail(error.clone(), 0).map_err(|e| anyhow::anyhow!("{e}"))?;
+        task.fail(Arc::clone(&error), 0).map_err(|e| anyhow::anyhow!("{e}"))?;
 
         self.storage.save_task(&task).await?;
 
-        // Emit event
+        warn!("Task failed: {} - {}", task_id, error);
+
+        // Emit event (move `error` after logging)
         let _ = self.event_tx.send(TaskEvent::Failed {
             task_id,
-            error: error.clone(),
+            error,
         });
-
-        warn!("Task failed: {} - {}", task_id, error);
         Ok(())
     }
 
@@ -332,13 +332,13 @@ impl TaskLifecycleManager {
 
         self.storage.save_task(&task).await?;
 
-        // Emit event
+        info!("Task cancelled: {} - {:?}", task_id, reason);
+
+        // Emit event (move `reason` after logging)
         let _ = self.event_tx.send(TaskEvent::Cancelled {
             task_id,
-            reason: reason.clone(),
+            reason,
         });
-
-        info!("Task cancelled: {} - {:?}", task_id, reason);
         Ok(())
     }
 

@@ -260,7 +260,7 @@ impl CanonicalPrimalResponse {
     }
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -268,23 +268,21 @@ impl CanonicalPrimalResponse {
     reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
-#[expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
-#[expect(
+#[allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[allow(
     clippy::cast_possible_truncation,
     reason = "intentional pattern; clippy false positive for this API"
 )]
-#[expect(
-    clippy::cast_sign_loss,
-    reason = "intentional pattern; clippy false positive for this API"
-)]
+#[allow(clippy::cast_sign_loss, reason = "intentional pattern; clippy false positive for this API")]
 mod tests {
-    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
-    #![expect(unused, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(unused, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 
@@ -338,5 +336,66 @@ mod tests {
 
         assert_eq!(config.security_level, Some("high".to_string()));
         assert_eq!(config.config.get("max_workers"), Some(&"10".to_string()));
+    }
+
+    #[test]
+    fn canonical_primal_type_unknown_variant_roundtrip() {
+        let t = CanonicalPrimalType::Unknown("custom-x".into());
+        let v = serde_json::to_string(&t).expect("ser");
+        let back: CanonicalPrimalType = serde_json::from_str(&v).expect("de");
+        assert_eq!(t, back);
+    }
+
+    #[test]
+    fn canonical_primal_id_serde_roundtrip() {
+        let mut id = CanonicalPrimalId::new(CanonicalPrimalType::Discovery, "d1", "2.0.0");
+        id.with_endpoint("api", "http://127.0.0.1:1");
+        let s = serde_json::to_string(&id).expect("ser");
+        let back: CanonicalPrimalId = serde_json::from_str(&s).expect("de");
+        assert_eq!(back.instance_id, "d1");
+        assert_eq!(back.endpoints.get("api").map(String::as_str), Some("http://127.0.0.1:1"));
+    }
+
+    #[test]
+    fn primal_id_get_type_and_flags() {
+        let storage = CanonicalPrimalId::new(CanonicalPrimalType::Storage, "s", "1");
+        assert!(storage.is_storage());
+        assert!(!storage.is_security());
+
+        let compute = CanonicalPrimalId::new(CanonicalPrimalType::Compute, "c", "1");
+        assert!(compute.is_compute());
+    }
+
+    #[test]
+    fn primal_response_service_unavailable_includes_metadata() {
+        let r = CanonicalPrimalResponse::service_unavailable("req-9", "pid-1");
+        assert_eq!(r.status, "service_unavailable");
+        let meta = r.metadata.expect("meta");
+        assert_eq!(meta.get("primal_id").map(String::as_str), Some("pid-1"));
+    }
+
+    #[test]
+    fn primal_config_default_enabled() {
+        let c = CanonicalPrimalConfig::default();
+        assert!(c.enabled);
+    }
+
+    #[test]
+    fn canonical_primal_type_default_is_unknown_default() {
+        let d = CanonicalPrimalType::default();
+        assert_eq!(d.to_string(), "default");
+    }
+
+    #[test]
+    fn primal_response_error_is_error_and_not_success() {
+        let r = CanonicalPrimalResponse::error("rid", "oops");
+        assert!(r.is_error());
+        assert!(!r.is_success());
+    }
+
+    #[test]
+    fn primal_id_default_constructor() {
+        let d = CanonicalPrimalId::default();
+        assert_eq!(d.instance_id, "default-instance");
     }
 }

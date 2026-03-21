@@ -18,7 +18,7 @@ impl TlsHandshake {
     /// - `ClientHello`: Must strip 5-byte TLS record header before calling
     /// - `ServerHello`: Already stripped by `read_record()`
     /// - Post-handshake messages: Already stripped by `read_record()`
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) fn update_transcript(&mut self, message: &[u8]) {
         let before = self.transcript.len();
         let after = before + message.len();
@@ -96,7 +96,7 @@ impl TlsHandshake {
                     error!("🚨 LENGTH MISMATCH!");
                     error!("   Declared: {} bytes", declared_length);
                     error!("   Actual: {} bytes", actual_length);
-                    #[expect(
+                    #[allow(
                         clippy::cast_possible_wrap,
                         reason = "intentional pattern; clippy false positive for this API"
                     )] // Handshake message lengths are < 16MB
@@ -142,8 +142,8 @@ impl TlsHandshake {
     ///
     /// A single TLS record may contain MULTIPLE handshake messages concatenated together!
     /// This function parses them individually so they can be added to the transcript separately.
-    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency
-    #[expect(
+    #[allow(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency
+    #[allow(
         clippy::too_many_lines,
         reason = "intentional pattern; clippy false positive for this API"
     )] // Handshake parsing has many validation branches
@@ -287,7 +287,7 @@ impl TlsHandshake {
     ///
     /// NOTE: This uses local SHA-256 only. For cipher-aware hashing (SHA-384 for 0x1302),
     /// use `compute_transcript_hash_for_cipher` instead.
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) fn compute_transcript_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(&self.transcript);

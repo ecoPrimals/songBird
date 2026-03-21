@@ -86,7 +86,7 @@ impl RedirectHandler {
     /// # Returns
     ///
     /// Hostname if it can be extracted
-    #[expect(dead_code, reason = "API surface for downstream consumers")]
+    #[allow(dead_code, reason = "API surface for downstream consumers")]
     pub fn extract_host(location: &str, base_url: &str) -> Option<String> {
         // Try to parse location as absolute URL
         if let Ok(uri) = Uri::try_from(location)
@@ -178,8 +178,8 @@ impl RedirectHandler {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use std::collections::HashMap;

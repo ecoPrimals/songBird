@@ -869,13 +869,12 @@ mod tests {
             }),
             "service:toad:8080"
         );
-        assert_eq!(
+        assert!(
             format_compute_routed_destination(&RoutingDecision::RouteToCapability {
                 capability_type: CapabilityType::Compute,
                 provider_endpoint: "unix:///run/c.sock".to_string(),
             })
-            .contains("Compute"),
-            true
+            .contains("Compute")
         );
         assert_eq!(
             format_compute_routed_destination(&RoutingDecision::RouteToExternalProvider {

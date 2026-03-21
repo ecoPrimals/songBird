@@ -5,6 +5,8 @@
 //!
 //! **MODERN API LAYER** ✅
 
+pub mod ai_workload_classification;
+
 use serde::{Deserialize, Serialize};
 // use songbird_types::constants::canonical; // Not yet available
 // use songbird_types::SongbirdResult;

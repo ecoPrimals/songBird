@@ -2,7 +2,7 @@
 name = "songbird-cli"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Command-line interface for Songbird orchestrator"
 repository = "https://github.com/ecoPrimals/SongBird"
@@ -46,7 +46,7 @@ serde_yaml = "0.9"
 toml = "0.8"
 dirs = "5.0"
 whoami = "1.4"
-hostname = "0.3"
+hostname = "0.4"
 rand = "0.8"
 num_cpus = "1.16"
 term_size = "0.3"
@@ -64,7 +64,7 @@ console = "0.15"
 indicatif = "0.17"
 sysinfo = "0.30"
 uuid = { version = "1.6", features = ["v4"] }
-thiserror = "1.0"
+thiserror = { workspace = true }
 futures-util = "0.3"
 regex = "1.10"
 tracing-subscriber = "0.3"

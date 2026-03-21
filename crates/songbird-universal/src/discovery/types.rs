@@ -242,7 +242,7 @@ mod tests {
         let s = e.to_string();
         assert!(s.contains("bad"));
         let t = DiscoveryError::Timeout(Duration::from_secs(1));
-        assert!(t.to_string().contains("timeout") || t.to_string().contains("1"));
+        assert!(t.to_string().contains("timeout") || t.to_string().contains('1'));
     }
 
     #[test]

@@ -2,7 +2,7 @@
 name = "songbird-discovery"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Network discovery and service registry for Songbird"
 repository = "https://github.com/ecoPrimals/SongBird"
@@ -30,7 +30,7 @@ tracing = "0.1"
 async-trait = "0.1"
 futures-util = "0.3"
 parking_lot = "0.12"
-base64 = "0.21"  # For BearDog BirdSong provider
+base64 = "0.22"  # For BearDog BirdSong provider
 uuid = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
@@ -41,7 +41,7 @@ anyhow = "1.0"  # For lineage discovery error handling
 hex = "0.4"  # For discovery packet hashing
 socket2 = "0.5"  # For multicast socket configuration
 blake3 = "1.5"  # ✅ NEW (Feb 3, 2026): For Dark Forest beacon capabilities hashing
-hostname = "0.3"  # For primal self-knowledge name introspection
+hostname = "0.4"  # For primal self-knowledge name introspection
 getrandom = { workspace = true }  # Cryptographically secure random nonce for beacon encryption
 
 [features]

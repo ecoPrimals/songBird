@@ -409,7 +409,45 @@ impl CapabilityRouter {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use chrono::Utc;
+    use songbird_config::capability_endpoints::CapabilityType;
+    use songbird_network_federation::state::{NodeRegistration, NodeStatus};
+    use std::collections::HashMap;
+
+    fn ep_overrides() -> HashMap<CapabilityType, String> {
+        [
+            (CapabilityType::Compute, "https://compute.test".into()),
+            (CapabilityType::Security, "https://security.test".into()),
+            (CapabilityType::Ai, "https://ai.test".into()),
+            (CapabilityType::Storage, "https://storage.test".into()),
+            (CapabilityType::Orchestration, "https://orch.test".into()),
+            (CapabilityType::Observability, "https://obs.test".into()),
+            (CapabilityType::Networking, "https://net.test".into()),
+        ]
+        .into_iter()
+        .collect()
+    }
+
+    async fn register_active_peer(state: &FederationState, id: &str, addr: &str) {
+        let reg = NodeRegistration {
+            node_id: id.to_string(),
+            node_name: "peer".to_string(),
+            node_address: addr.to_string(),
+            endpoints: None,
+            cpu_cores: 4,
+            memory_gb: 8,
+            gpu_model: None,
+            storage_gb: None,
+            capabilities: vec![],
+            status: NodeStatus::Active,
+            joined_at: Utc::now(),
+            last_heartbeat: Utc::now(),
+        };
+        state.register_node(reg).await;
+    }
 
     #[test]
     fn test_determine_capability_type_gpu() {
@@ -445,5 +483,171 @@ mod tests {
         let federation_state = Arc::new(FederationState::new("default".to_string()));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
         CapabilityRouter::new(federation_state, service_registry)
+    }
+
+    #[test]
+    fn determine_capability_batch_and_video_map_to_compute() {
+        let t1 = Task::new("batch_processing");
+        let t2 = Task::new("video_processing");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t1), CapabilityType::Compute);
+        assert_eq!(CapabilityRouter::determine_capability_type(&t2), CapabilityType::Compute);
+    }
+
+    #[test]
+    fn determine_capability_decrypt_and_verify_map_to_security() {
+        let t1 = Task::new("decrypt");
+        let t2 = Task::new("verify");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t1), CapabilityType::Security);
+        assert_eq!(CapabilityRouter::determine_capability_type(&t2), CapabilityType::Security);
+    }
+
+    #[test]
+    fn determine_capability_retrieve_maps_to_storage() {
+        let t = Task::new("retrieve");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Storage);
+    }
+
+    #[test]
+    fn determine_capability_model_serve_maps_to_ai() {
+        let t = Task::new("model_serve");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Ai);
+    }
+
+    #[test]
+    fn determine_capability_unknown_string_defaults_to_compute() {
+        let t = Task::new("unknown_workload");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Compute);
+    }
+
+    #[test]
+    fn capability_type_to_name_custom_variant() {
+        let ct = CapabilityType::Custom("my_cap".to_string());
+        assert_eq!(CapabilityRouter::capability_type_to_name(&ct), "my_cap");
+    }
+
+    #[test]
+    fn capability_type_to_name_compute() {
+        assert_eq!(
+            CapabilityRouter::capability_type_to_name(&CapabilityType::Compute),
+            "compute_heavy"
+        );
+    }
+
+    #[tokio::test]
+    async fn route_lightweight_executes_locally() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::new("ping");
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(d, RoutingDecision::ExecuteLocally));
+    }
+
+    #[tokio::test]
+    async fn route_moderate_prefers_peer_when_available() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        register_active_peer(&fs, "n1", "https://peer:1").await;
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::builder("work").with_cpu(2.0).build();
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(
+            d,
+            RoutingDecision::RouteToSongbird {
+                node_id,
+                ..
+            } if node_id == "n1"
+        ));
+    }
+
+    #[tokio::test]
+    async fn route_moderate_falls_back_to_capability_without_peer() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::builder("work").with_cpu(2.0).build();
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(
+            d,
+            RoutingDecision::RouteToCapability {
+                capability_type: CapabilityType::Compute,
+                ..
+            }
+        ));
+    }
+
+    #[tokio::test]
+    async fn route_heavy_targets_specialized_compute() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::builder("ml_training").with_gpu().build();
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(
+            d,
+            RoutingDecision::RouteToCapability {
+                capability_type: CapabilityType::Compute,
+                provider_endpoint,
+                ..
+            } if provider_endpoint.contains("compute.test")
+        ));
+    }
+
+    #[tokio::test]
+    async fn route_encrypt_heavy_security_endpoint() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::builder("encrypt").with_memory(8192).build();
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(
+            d,
+            RoutingDecision::RouteToCapability {
+                capability_type: CapabilityType::Security,
+                ..
+            }
+        ));
+    }
+
+    #[tokio::test]
+    async fn route_inference_to_ai_capability() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::builder("inference").with_memory(8192).build();
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(
+            d,
+            RoutingDecision::RouteToCapability {
+                capability_type: CapabilityType::Ai,
+                ..
+            }
+        ));
+    }
+
+    #[tokio::test]
+    async fn route_store_to_storage_capability() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::builder("store").with_memory(8192).build();
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(
+            d,
+            RoutingDecision::RouteToCapability {
+                capability_type: CapabilityType::Storage,
+                ..
+            }
+        ));
+    }
+
+    #[tokio::test]
+    async fn route_long_duration_is_heavy_even_if_type_light() {
+        let fs = Arc::new(FederationState::new("f".into()));
+        let sr = Arc::new(FederatedServiceRegistry::new());
+        let router = CapabilityRouter::with_capability_endpoint_overrides(fs, sr, ep_overrides());
+        let task = Task::builder("long").with_duration(400).build();
+        let d = router.route_task(&task).await.unwrap();
+        assert!(matches!(d, RoutingDecision::RouteToCapability { .. }));
     }
 }

@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Pure Rust HTTP/HTTPS client using BearDog crypto delegation (Tower Atomic)"
-license = "AGPL-3.0"
+license.workspace = true
 repository = "https://github.com/ecoPrimals/SongBird"
 homepage = "https://songbird-gaming.ecoprimals.dev"
 keywords = ["http", "https", "tls", "pure-rust", "tower-atomic"]
@@ -28,8 +28,8 @@ serde_json = { workspace = true }
 
 # Utilities
 tracing = { workspace = true }
-thiserror = "1.0"
-base64 = "0.21"
+thiserror = { workspace = true }
+base64 = "0.22"
 bytes = "1.0"
 anyhow = "1.0"
 async-trait = { workspace = true }

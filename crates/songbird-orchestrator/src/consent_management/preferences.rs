@@ -30,8 +30,8 @@ impl Default for UserPreferences {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::UserPreferences;
     use songbird_test_utils::canonical_test_framework::TestContext;
@@ -96,7 +96,7 @@ mod tests {
             always_require_consent: vec!["export_data".to_string()],
             blocked_operations: vec!["danger".to_string()],
         };
-        let mut merged = base.clone();
+        let mut merged = base;
         merged.auto_approve_under_cost = overlay.auto_approve_under_cost;
         merged.always_require_consent.extend(overlay.always_require_consent);
         merged.blocked_operations.extend(overlay.blocked_operations);

@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn decode_invalid_payload_json() {
         let secret = b"secret";
-        let header = URL_SAFE_NO_PAD.encode(r#"{"alg":"HS256","typ":"JWT"}"#.as_bytes());
+        let header = URL_SAFE_NO_PAD.encode(br#"{"alg":"HS256","typ":"JWT"}"#);
         let payload = URL_SAFE_NO_PAD.encode(b"not-json");
         let mut mac = HmacSha256::new_from_slice(secret).unwrap();
         let signing_input = format!("{header}.{payload}");
@@ -280,7 +280,7 @@ mod tests {
         let token = format!("{signing_input}.{sig}");
         let r: Result<TestClaims> = decode(&token, secret);
         assert!(r.is_err());
-        let msg = r.err().expect("err").to_string();
+        let msg = r.expect_err("err").to_string();
         assert!(msg.contains("deserialize") || msg.contains("Failed to deserialize"), "{msg}");
     }
 }

@@ -2,7 +2,7 @@
 name = "songbird-tls"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 repository = "https://github.com/ecoPrimals/SongBird"
 readme = "README.md"
 description = "Pure Rust TLS 1.3 implementation with capability-based crypto delegation to BearDog"

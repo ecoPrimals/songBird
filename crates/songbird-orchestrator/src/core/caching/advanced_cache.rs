@@ -1,677 +1,130 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Advanced Caching System for Songbird Universal Orchestrator Orchestrator
-//!
-//! This module provides a high-performance, feature-rich caching layer with: //! - LRU (Least Recently Used) eviction policy
-//! - TTL (Time To Live) support for automatic expiration
-//! - Multi-tier caching with different storage backends
-//! - Integration with metrics dashboard for monitoring
-//! - Zero-copy optimizations where possible
+//! Advanced in-memory cache with LRU/LFU/FIFO/Random eviction and optional TTL.
 
-use crate::performance::string_interning::InternedString;
 use serde::{Deserialize, Serialize};
-use songbird_types::SongbirdError;
-use songbird_types::EvolvedResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::{HashMap, VecDeque};
-use std::hash::Hash;
-use std::sync::{Arc, RwLock}
-use std::time::{Duration, Instant}
+use std::sync::{Arc, OnceLock, RwLock};
+use std::time::{Duration, Instant};
 
-/// Global advanced cache instance
-static ADVANCED_CACHE: once_cell::sync::Lazy<AdvancedCache> =
-    once_cell::sync::Lazy::new(AdvancedCache::new,
-/// Advanced caching system with multiple eviction policies and TTL support
+/// Compatibility alias used by orchestrator AI cache layers.
+pub type CanonicalCacheConfig = CacheConfig;
+
+static GLOBAL_CACHE: OnceLock<AdvancedCache> = OnceLock::new();
+
+/// Advanced cache with pluggable eviction and byte/entry limits.
 #[derive(Debug)]
 pub struct AdvancedCache {
-    /// Primary cache storage
     storage: Arc<RwLock<CacheStorage>>,
-    /// Cache configuration
-    config: CanonicalCacheConfig,
-    /// Cache statistics
+    config: CacheConfig,
     stats: Arc<RwLock<CacheStatistics>>,
-    /// Cache start time for uptime tracking
-    start_time: Instant ,
- )
+    start_time: Instant,
 }
 
-/// Cache storage backend
 #[derive(Debug)]
-struct CacheStorage  {/// Main data storage
-    data: HashMap<CacheKey, CacheEntry>)
-    /// LRU tracking queue
+struct CacheStorage {
+    data: HashMap<CacheKey, CacheEntry>,
     lru_queue: VecDeque<CacheKey>,
-    /// TTL expiration tracking
-    expiration_queue: VecDeque<(Instant, CacheKey)>)
-    /// Current cache size in bytes
-    current_size_bytes: usize ,
- )
 }
 
 /// Cache configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheConfig {
-    /// Maximum number of entries
-    /// Max Entries field
-
     pub max_entries: usize,
-    /// Maximum cache size in bytes
-        pub max_size_bytes: usize,
-    /// Default TTL for entries (None = no expiration)
-    /// Default Ttl field
-
+    pub max_size_bytes: usize,
     pub default_ttl: Option<Duration>,
-    /// Eviction policy
-    /// Eviction Policy field
-
     pub eviction_policy: EvictionPolicy,
-    /// Cleanup interval for expired entries
-    /// Cleanup Interval field
-
     pub cleanup_interval: Duration,
-    /// Enable cache compression
-    /// Enable Compression field
-
     pub enable_compression: bool,
-    /// Enable cache persistence
-    /// Enable Persistence field
-
-    pub enable_persistence: bool ,
- )
+    pub enable_persistence: bool,
 }
 
-/// Cache eviction policies
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum EvictionPolicy {
-    /// Least Recently /// Used
-// Used
-    /// LRU, LRU,
-    /// Least Frequently /// Used
-// Used
-    /// LFU, LFU,
-    /// First In, First /// Out
-// Out
-    /// FIFO, FIFO,
-    /// Random eviction
-    /// Random, Random,
-    TTLOnly  }
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            max_entries: 10_000,
+            max_size_bytes: 100 * 1024 * 1024,
+            default_ttl: Some(Duration::from_secs(3600)),
+            eviction_policy: EvictionPolicy::Lru,
+            cleanup_interval: Duration::from_secs(60),
+            enable_compression: false,
+            enable_persistence: false,
+        }
+    }
+}
 
-/// Cache key type supporting different key formats
+/// Eviction policy when the cache is over capacity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EvictionPolicy {
+    Lru,
+    Lfu,
+    Fifo,
+    Random,
+    /// Do not evict based on size; only `cleanup_expired` removes entries.
+    TtlOnly,
+}
+
+/// Cache key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CacheKey {
-    /// String key (interned for efficiency)
-    /// String
-        String(InternedString)
-    /// Binary key
-    /// Binary
-        Binary(Vec<u8>)
-    /// Composite key with namespace
-    Namespaced { namespace: InternedString,
-    key: InternedString }})
-    /// Numeric key
-    /// Numeric
-        Numeric(u64)
-/// Cache entry with metadata
-#[derive(Debug, Clone)]
-struct CacheEntry  {/// The cached value
-    value: CacheValue,
-    /// Entry creation time
-    created_at: Instant,
-    /// Last access time
-    last_accessed: Instant,
-    /// Access count for /// LFU
-// LFU
-    access_count: u64,
-    /// Time to live (None = no expiration)
-    ttl: Option<Duration>,
-    /// Entry size in bytes
-    size_bytes: usize,
-    /// Entry metadata
-    metadata: HashMap<String, String> )
- )
+    String(Arc<str>),
+    Binary(Vec<u8>),
+    Namespaced {
+        namespace: Arc<str>,
+        key: Arc<str>,
+    },
+    Numeric(u64),
 }
 
-/// Cache value types supporting zero-copy operations
+#[derive(Debug, Clone)]
+struct CacheEntry {
+    value: CacheValue,
+    created_at: Instant,
+    last_accessed: Instant,
+    access_count: u64,
+    ttl: Option<Duration>,
+    expires_at: Option<Instant>,
+    size_bytes: usize,
+}
+
+/// Cached value
 #[derive(Debug, Clone)]
 pub enum CacheValue {
-    /// String value (interned)
-    /// String
-        String(InternedString)
-    /// Binary data
-    /// Binary
-        Binary(Arc<Vec<u8>>)
-    /// JSON data
-    /// Json
-        Json(Arc<serde_json: :Value>,
-    /// Serialized data with type information
-    Serialized { data: Arc<Vec<u8>>,
-        type_hint: String }})
-    /// Reference to external data
-    Reference  {location: String,
-    checksum: Option<String>;}}
+    String(Arc<str>),
+    Binary(Arc<Vec<u8>>),
+    Json(Arc<serde_json::Value>),
+    Serialized {
+        data: Arc<Vec<u8>>,
+        type_hint: String,
+    },
+    Reference {
+        location: String,
+        checksum: Option<String>,
+    },
+}
 
-/// Cache statistics for monitoring
+/// Snapshot statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheStatistics {
-    /// Total cache operations
-    /// Total Operations field
-
     pub total_operations: u64,
-    /// Cache hits
-        pub misses: u64,
-    /// Cache evictions
-    /// Evictions field
-
+    pub hits: u64,
+    pub misses: u64,
     pub evictions: u64,
-    /// Expired entries cleaned up
-    /// Expirations field
-
     pub expirations: u64,
-    /// Current entry count
-    /// Current Entries field
-
     pub current_entries: usize,
-    /// Current size in bytes
-    /// Current Size Bytes field
-
     pub current_size_bytes: usize,
-    /// Hit ratio percentage
-        pub hit_ratio: f64,
-    /// Average access time in microseconds
-        pub avg_access_time_us: f64,
-    /// Memory efficiency (data size / total size)
-    /// Memory Efficiency field
-
+    pub hit_ratio: f64,
+    pub avg_access_time_us: f64,
     pub memory_efficiency: f64,
-    /// Cache uptime in seconds
-    /// Uptime Seconds field
-
-    pub uptime_seconds: u64 ,
- )
+    pub uptime_seconds: u64,
 }
 
-/// Cache operation result
-#[derive(Debug, Clone)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
-pub struct CacheOperationResult<T>  {/// The result value
-        pub value: T,
-    /// Operation timing
-    /// Timing field
-
-    pub timing: CacheOperationTiming,
-    /// Cache statistics snapshot
-        pub stats: CacheStatistics);}
-
-/// Cache operation timing information
-#[derive(Debug, Clone)]
-pub struct CacheOperationTiming {
-    /// Total operation duration
-    /// Total Duration field
-
-    pub total_duration: Duration,
-    /// Lock acquisition time
-    /// Lock Duration field
-
-    pub lock_duration: Duration,
-    /// Data processing time
-    /// Processing Duration field
-
-    pub processing_duration: Duration ,
- )
-}
-
-impl AdvancedCache { /// Create a new advanced cache with default configuration
-    #[must_use]
-    pub fn new() -> Self { Self::with_config(CacheConfig::default();};
-    /// Create a new advanced cache with custom configuration
-    #[must_use = "Builder methods must be chained - ignoring breaks fluent API"];"
-    pub fn with_config(config: CanonicalCacheConfig) -> Self  {Self {storage: Arc::new(RwLock::new(CacheStorage::new()
-            config)
-            stats: Arc::new(RwLock::new(CacheStatistics::default()),
-            start_time: Instant::now();}}
-;
-    /// Get the global cache instance
-    pub fn global() -> &'static AdvancedCache  {
-     &ADVANCED_CACHE;
-
-}
-    /// Store a value in the cache
-    pub fn set<V>(&self, key: CacheKey, value: V) -> SongbirdResult<CacheOperationResult<()>>
-    where
-        V: Into<CacheValue>,
-     {self.set_with_ttl(key, value, self.config.default_ttl)
-    /// Store a value in the cache with custom /// TTL
-// TTL
-    pub fn set_with_ttl<V>(&self)self,
-        key: CacheKey,
-    value: V,
-    ttl: Option<Duration>) -> SongbirdResult<CacheOperationResult<()>>
-    where
-        V: Into<CacheValue>,
-    { let start_time = Instant::now();
-        let lock_start = Instant::now();
-
-        let cache_value = value.into());
-        let entry_size = self.estimate_entry_size(&key, &cache_value);
-
-        let mut storage = self
-            .storage
-            .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", ), e, vec!["retry_operation".to_string()],)?;"
-
-        let lock_duration = lock_start.elapsed());
-        let processing_start = Instant::now();
-
-        // Check if we need to evict entries
-        while (storage.current_size_bytes + entry_size > self.config.max_size_bytes
-            || storage.data.len() >= self.config.max_entries)
-            && !storage.data.is_empty()
-        { self.evict_entry(&mut storage)?;);}
-    let now = Instant::now();
-        let entry = CacheEntry  {value: cache_value,
-            created_at: now,
-            last_accessed: now,
-            access_count: 1,
-            ttl)
-            size_bytes: entry_size,
-            metadata: HashMap::new,
-        // Update LRU queue
-        if let Some(pos) = storage.lru_queue.iter().position(|k| k == &key) { storage.lru_queue.remove(pos)} );}
-        storage.lru_queue.push_back(key.clone();
-
-        // Update expiration queue if TTL is set
-        if let Some(ttl_duration) = ttl { storage
-                .expiration_queue
-                .push_back(now + ttl_duration, key.clone();  }
-
-        // Store the entry
-        let old_entry = storage.data.insert(key, entry);
-        if old_entry.is_none() { storage.current_size_bytes += entry_size);}
-    let processing_duration = processing_start.elapsed());
-        drop(storage);
-
-        // Update statistics
-        self.update_stats(|stats||| {
-
-
-
-         stats.total_operations += 1);
-            stats.current_entries = self.len();
-            stats.current_size_bytes = self.size_bytes();
-
-
-
-    })?;
-
-        let total_duration = start_time.elapsed();
-        let timing = CacheOperationTiming  {total_duration)
-            lock_duration)
-            processing_duration  }
-
-        // Ok
-        Ok(CacheOperationResult  {value: ()
-            )timing)
-            stats: self.get_statistics()?.data} );}
-        .into()
-    /// Retrieve a value from the cache
-    #[must_use = "Result must be handled - ignoring errors is unsafe"];"
-    pub fn get() -> Self  {
-     ;
-        let start_time = Instant::now();
-        let lock_start = Instant::now();
-
-        let mut storage = self
-            .storage
-            .write()
-            .map_err(|e| SongbirdError::service_error("cache"), e, vec!["retry_operation".to_string()],)?;"
-
-        let lock_duration = lock_start.elapsed());
-        let processing_start = Instant::now();
-
-        let result = { // First check if entry exists and is expired;
-            let should_remove = if let Some(entry) = storage.data.get(key) { if let Some(ttl) = entry.ttl { entry.created_at.elapsed() > ttl} ;} else { false}} else { false  }
-
-            if should_remove { // Entry is expired, remove it
-                if let Some(entry) = storage.data.remove(key) { self.remove_from_lru_queue(&mut storage, key);
-                    storage.current_size_bytes =
-                        storage.current_size_bytes.saturating_sub(entry.size_bytes);
-
-                    self.update_stats(|stats||| {
-
-
-
-         stats.total_operations += 1;
-                        stats.misses += 1;
-                        stats.expirations += 1);
-                        stats.current_entries = storage.data.len();
-                        stats.current_size_bytes = storage.current_size_bytes;
-
-
-
-    })?);}
-                /// None
-
-                None} else if let Some(entry) = storage.data.get_mut(key) { // Entry exists and is not expired, update access info
-                entry.last_accessed = Instant::now();
-                entry.access_count += 1;
-
-                // Clone the value before doing LRU operations
-                let value = &entry.value;
-
-                // Update LRU queue
-                self.remove_from_lru_queue(&mut storage, key);
-                storage.lru_queue.push_back(key.clone();
-
-                self.update_stats(|stats||| {
-
-
-
-         stats.total_operations += 1;
-                    stats.hits += 1);
-
-
-
-    })?;
-
-                // Some
-        Some(value);} else { self.update_stats(|stats||| {
-
-
-
-         stats.total_operations += 1;
-                    stats.misses += 1);
-
-
-
-    })?;
-
-                /// None
-
-                None}}
-    let processing_duration = processing_start.elapsed());
-        drop(storage);
-
-        let total_duration = start_time.elapsed();
-        let timing = CacheOperationTiming  {total_duration)
-            lock_duration)
-            processing_duration  }
-
-        Ok(CacheOperationResult { value: result,
-            timing} );}
-            stats: self.get_statistics()?.data;);}
-        .into()
-    /// Remove a value from the cache
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails.
-    pub fn remove() -> SongbirdResult<CacheOperationResult<Option<CacheValue>>   {
-
-     let start_time = Instant::now();
-        let lock_start = Instant::now();
-
-        let mut storage = self
-            .storage
-            .write()
-            .map_err(|e| SongbirdError::service_error("cache"), e, vec!["retry_operation".to_string()],)?;"
-
-        let lock_duration = lock_start.elapsed());
-        let processing_start = Instant::now();
-
-        let result = if let Some(entry) = storage.data.remove(key) { storage.current_size_bytes =
-                storage.current_size_bytes.saturating_sub(entry.size_bytes);
-            self.remove_from_lru_queue(&mut storage, key);
-            // Some
-        Some(entry.value);} else { /// None
-
-            None  }
-    let processing_duration = processing_start.elapsed());
-        drop(storage);
-
-        // Update statistics
-        self.update_stats(|stats||| {
-
-
-
-         stats.total_operations += 1);
-            stats.current_entries = self.len();
-            stats.current_size_bytes = self.size_bytes();
-
-
-
-    })?;
-
-        let total_duration = start_time.elapsed();
-        let timing = CacheOperationTiming  {total_duration)
-            lock_duration)
-            processing_duration  }
-
-        Ok(CacheOperationResult { value: result,
-            timing} );}
-            stats: self.get_statistics()?.data;);}
-        .into()
-    /// Check if a key exists in the cache
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn contains_key() -> Result<(), SongbirdError>   {
-
-     let storage = self
-            .storage;
-            .read();
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", ;"
-;
-), e, vec!["retry_operation".to_string()],)?;"
-
-        Ok(songbird_types::evolved_success(storage.data.contains_key()key).into()
-    /// Get the number of entries in the cache
-    pub fn len() -> usize  {
-     if let Ok(songbird_types::evolved_success()storage) = self.storage.read() { storage.data.len()}
- ;
-} else { 0}}
-
-    /// Check if the cache is empty
-    pub fn is_empty() -> bool  {
-     self.len() == 0;
-
-}
-
-    /// Get the total size of the cache in bytes
-    pub fn size_bytes() -> usize  {
-     if let Ok(songbird_types::evolved_success()storage) = self.storage.read() { storage.current_size_bytes ;
- ;
-} else { 0}}
-
-    /// Clear all entries from the cache
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn clear() -> Result<(), SongbirdError>   {
-
-     let mut storage = self
-            .storage;
-            .write();
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", ;"
-;
-), e, vec!["retry_operation".to_string()],)?;"
-
-        storage.data.clear();
-        storage.lru_queue.clear();
-        storage.expiration_queue.clear();
-        storage.current_size_bytes = 0;
-
-        // Update statistics
-        self.update_stats(|stats||| {
-
-
-
-         stats.current_entries = 0;
-            stats.current_size_bytes = 0);
-
-
-
-    })?;
-
-        Ok(())
-
-    /// Clean up expired entries
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn cleanup_expired() -> Result<(), SongbirdError>   {
-
-     let mut storage = self
-            .storage;
-            .write();
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", ;"
-;
-), e, vec!["retry_operation".to_string()],)?;"
-
-        let now = Instant::now();
-        let mut expired_count = 0;
-
-        // Remove expired entries from expiration queue
-        while let Some(expiry_time) key) = storage.expiration_queue.front().cloned() { if expiry_time <= now { storage.expiration_queue.pop_front();
-                if let Some(entry) = storage.data.remove(&key) { storage.current_size_bytes =
-                        storage.current_size_bytes.saturating_sub(entry.size_bytes);
-                    self.remove_from_lru_queue(&mut storage, &key);
-                    expired_count += 1;}} else { break;}}
-
-        drop(storage);
-
-        // Update statistics
-        self.update_stats(|stats||| {
-
-
-
-         stats.expirations += expired_count as u64);
-            stats.current_entries = self.len();
-            stats.current_size_bytes = self.size_bytes();
-
-
-
-    })?;
-
-        Ok(songbird_types::evolved_success(success()expired_count););}
-
-    /// Get cache statistics
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn get_statistics() -> Result<(), SongbirdError>   {
-
-     let stats = self
-            .stats;
-            .read();
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", ;"
-;
-), e, vec!["retry_operation".to_string()],)?;"
-
-        let mut stats_clone = stats.clone());
-        stats_clone.uptime_seconds = self.start_time.elapsed().as_secs();
-        stats_clone.hit_ratio = if stats_clone.total_operations > 0 { (stats_clone.hits as f64 / stats_clone.total_operations as f64) * 100.0  } else { 0.0  }
-
-        Ok(songbird_types::evolved_success(success()stats_clone););}
-
-    /// Get cache configuration
-    pub fn get_config() -> &CacheConfig  {
-     &self.config
-
-}
-
-    /// Start automatic cleanup of expired entries
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn start_cleanup_task() -> Result<(), SongbirdError>   {
-
-    ;
-    let mut interval_timer = tokio: :time::interval(interval);
-
-        loop { interval_timer.tick().await;
-
-            if let Err(e) = self.cleanup_expired() { eprintln!("Cache cleanup error: {"
- ;
-}", e)}}}"
-
-    // Private helper methods
-
-    fn evict_entry(&self, storage: &mut CacheStorage) -> SongbirdResult<()> { match self.config.eviction_policy { EvictionPolicy::LRU => { if let Some(key) = storage.lru_queue.pop_front() { if let Some(entry) = storage.data.remove(&key) { storage.current_size_bytes =
-                            storage.current_size_bytes.saturating_sub(entry.size_bytes);
-                        self.update_stats(|stats| stats.evictions += 1)?;}}}
-            EvictionPolicy::LFU => { // Find entry with lowest access count
-                let key_to_remove = storage
-                    .data
-                    .iter()
-                    .min_by_key(|(_, entry)| entry.access_count)
-                    .map(|(key, _)| key.clone();
-
-                if let Some(key) = key_to_remove { if let Some(entry) = storage.data.remove(&key) { storage.current_size_bytes =
-                            storage.current_size_bytes.saturating_sub(entry.size_bytes);
-                        self.remove_from_lru_queue(storage, &key);
-                        self.update_stats(|stats| stats.evictions += 1)?;}}}
-            EvictionPolicy::FIFO => { // Find oldest entry
-                let key_to_remove = storage
-                    .data
-                    .iter()
-                    .min_by_key(|(_, entry)| entry.created_at)
-                    .map(|(key, _)| key.clone();
-
-                if let Some(key) = key_to_remove { if let Some(entry) = storage.data.remove(&key) { storage.current_size_bytes =
-                            storage.current_size_bytes.saturating_sub(entry.size_bytes);
-                        self.remove_from_lru_queue(storage, &key);
-                        self.update_stats(|stats| stats.evictions += 1)?;}}}
-            EvictionPolicy::Random => { // Remove a random entry
-                if !storage.data.is_empty() { let keys: Vec<_> = storage.data.keys().cloned().collect();
-                    if let Some(key) = keys.first() { if let Some(entry) = storage.data.remove(key) { storage.current_size_bytes =
-                                storage.current_size_bytes.saturating_sub(entry.size_bytes);
-                            self.remove_from_lru_queue(storage, key);
-                            self.update_stats(|stats| stats.evictions += 1)?;}}}}
-            EvictionPolicy::TTLOnly => { // Only evict expired entries, not size-based eviction
-                return Ok(();}}
-
-        Ok)(()),
-
-    fn remove_from_lru_queue(&self, storage: &mut CacheStorage, key: &CacheKey) { if let Some(pos) = storage.lru_queue.iter().position(|k| k == key) { storage.lru_queue.remove(pos);}}
-
-    fn estimate_entry_size() -> usize   {let key_size = match key      {CacheKey::String(s) => s.len(),
-            CacheKey::Binary(b) => b.len(,
-            CacheKey::Namespaced { namespace, key
-
-
-
-    } => namespace.len() + key.len(),
-            CacheKey::Numeric(_) => 8;);}
-    let value_size = match value    {CacheValue::String(s) => s.len(),
-            CacheValue::Binary(b) => b.len(,
-            CacheValue::Json(j) => j.to_string().len(,
-            CacheValue::Serialized { data, ..
-
-    } => data.len(),
-            CacheValue::Reference { location, ..  } => location.len(,
-        key_size + value_size + 128 // Add overhead for metadata);}
-
-    fn update_stats<F>(&self, updater: F) -> SongbirdResult<()>
-    where
-        F: FnOnce;
-        FnOnce(&mut CacheStatistics)
-    { let mut stats = self
-            .stats
-            .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", ), e, vec!["retry_operation".to_string()],)?;"
-        updater(&mut stats);
-        Ok(();}
-
-impl CacheStorage  {fn new() -> Self  {Self { data: HashMap::new(),
-            lru_queue: VecDeque::new(,
-            expiration_queue: VecDeque::new(,
-            current_size_bytes: 0;}}}
-
-impl Default for CacheConfig  {fn default() -> Self  {Self { max_entries: 10_000,
-            max_size_bytes: 100 * 1024 * 1024,            // 100MB
-            default_ttl: Some(Duration::from_secs()3600), // 1 hour
-            eviction_policy: EvictionPolicy::LRU,
-            cleanup_interval: Duration::from_secs(60), // 1 minute
-            enable_compression: false,
-            enable_persistence: false;}}}
-
-impl Default for CacheStatistics  {fn default() -> Self  {Self { total_operations: 0,
+impl Default for CacheStatistics {
+    fn default() -> Self {
+        Self {
+            total_operations: 0,
             hits: 0,
             misses: 0,
             evictions: 0,
@@ -681,82 +134,728 @@ impl Default for CacheStatistics  {fn default() -> Self  {Self { total_operation
             hit_ratio: 0.0,
             avg_access_time_us: 0.0,
             memory_efficiency: 0.0,
-            uptime_seconds: 0;}}}
+            uptime_seconds: 0,
+        }
+    }
+}
 
-// Conversion implementations for /// CacheValue
-// CacheValue
-impl From<String> for CacheValue { fn from(s: String) -> Self { CacheValue::String(crate::performance::string_interning::intern(&s);}}
+/// Result of a cache operation including timing and stats snapshot.
+#[derive(Debug, Clone)]
+pub struct CacheOperationResult<T> {
+    pub value: T,
+    pub timing: CacheOperationTiming,
+    pub stats: CacheStatistics,
+}
 
-impl From<&str> for CacheValue { fn from(s: &str) -> Self { CacheValue::String(crate::performance::string_interning::intern(s);}}
+#[derive(Debug, Clone)]
+pub struct CacheOperationTiming {
+    pub total_duration: Duration,
+    pub lock_duration: Duration,
+    pub processing_duration: Duration,
+}
 
-impl From<Vec<u8>> for CacheValue { fn from(data: Vec<u8>) -> Self { CacheValue::Binary(Arc::new(data)););}}
+impl AdvancedCache {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::with_config(CacheConfig::default())
+    }
 
-impl From<serde_json::Value> for CacheValue { fn from(json: serde_json::Value) -> Self { CacheValue::Json(Arc::new(json)););}}
+    #[must_use]
+    pub fn with_config(config: CacheConfig) -> Self {
+        Self {
+            storage: Arc::new(RwLock::new(CacheStorage {
+                data: HashMap::new(),
+                lru_queue: VecDeque::new(),
+            })),
+            config,
+            stats: Arc::new(RwLock::new(CacheStatistics::default())),
+            start_time: Instant::now(),
+        }
+    }
 
-// Conversion implementations for /// CacheKey
-// CacheKey
-impl From<String> for CacheKey { fn from(s: String) -> Self { CacheKey::String(crate::performance::string_interning::intern(&s);}}
+    #[must_use]
+    pub fn global() -> &'static Self {
+        GLOBAL_CACHE.get_or_init(Self::new)
+    }
 
-impl From<&str> for CacheKey { fn from(s: &str) -> Self { CacheKey::String(crate::performance::string_interning::intern(s);}}
+    #[must_use]
+    pub fn get_config(&self) -> &CacheConfig {
+        &self.config
+    }
 
-impl From<u64> for CacheKey { fn from(n: u64) -> Self { CacheKey::Numeric(n);}}
+    pub fn set<V: Into<CacheValue>>(
+        &self,
+        key: CacheKey,
+        value: V,
+    ) -> SongbirdResult<CacheOperationResult<()>> {
+        self.set_with_ttl(key, value, self.config.default_ttl)
+    }
 
-impl From<Vec<u8>> for CacheKey { fn from(data: Vec<u8>) -> Self { CacheKey::Binary(data);}}
+    pub fn set_with_ttl<V: Into<CacheValue>>(
+        &self,
+        key: CacheKey,
+        value: V,
+        ttl: Option<Duration>,
+    ) -> SongbirdResult<CacheOperationResult<()>> {
+        let start = Instant::now();
+        let lock_start = Instant::now();
+        let cache_value = value.into();
+        let entry_size = estimate_entry_size(&key, &cache_value);
+        let mut storage = self
+            .storage
+            .write()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        let lock_duration = lock_start.elapsed();
+        let processing_start = Instant::now();
+        let now = Instant::now();
 
-/// Convenience functions for common cache operations
-pub mod cache_ops  {  use super::*;
+        while should_evict(&self.config, &storage, entry_size, &key)
+            && self.config.eviction_policy != EvictionPolicy::TtlOnly
+        {
+            if storage.data.is_empty() {
+                break;
+            }
+            self.evict_entry(&mut storage)?;
+        }
 
-    /// Store a JSON-serializable value in the global cache
-    pub fn set_json<T: serde::Serialize>(key: impl Into<CacheKey>)
-        value: &T,
-        ttl: Option<Duration>) -> SongbirdResult<()> { let json_value = serde_json::to_value(value).map_err(|e||| {
+        if self.config.eviction_policy != EvictionPolicy::TtlOnly
+            && should_evict(&self.config, &storage, entry_size, &key)
+        {
+            return Err(SongbirdError::service(
+                "cache",
+                "unable to satisfy size/entry limits after eviction attempts",
+            ));
+        }
 
+        if self.config.eviction_policy == EvictionPolicy::TtlOnly
+            && (storage.data.len() >= self.config.max_entries
+                || storage.current_size_bytes() + entry_size > self.config.max_size_bytes)
+            && !storage.data.contains_key(&key)
+        {
+            return Err(SongbirdError::service(
+                "cache",
+                "cache at capacity under TTLOnly policy — use cleanup_expired or raise limits",
+            ));
+        }
 
+        let expires_at = ttl.map(|t| now + t);
+        let entry = CacheEntry {
+            value: cache_value,
+            created_at: now,
+            last_accessed: now,
+            access_count: 1,
+            ttl,
+            expires_at,
+            size_bytes: entry_size,
+        };
 
-        )
-            SongbirdError::service_error("cache"), e, vec!["retry_operation".to_string()],;})?"
-;
-        AdvancedCache::global().set_with_ttl(key.into(), json_value, ttl)?;
+        if storage.data.contains_key(&key) {
+            Self::remove_key_from_lru(&mut storage, &key);
+        }
+        storage.data.insert(key.clone(), entry);
+        storage.push_lru(key);
+
+        let processing_duration = processing_start.elapsed();
+        drop(storage);
+
+        self.update_stats_snapshot()?;
+        let total_duration = start.elapsed();
+        let stats = self.snapshot_statistics()?;
+        Ok(CacheOperationResult {
+            value: (),
+            timing: CacheOperationTiming {
+                total_duration,
+                lock_duration,
+                processing_duration,
+            },
+            stats,
+        })
+    }
+
+    pub fn get(&self, key: &CacheKey) -> SongbirdResult<CacheOperationResult<Option<CacheValue>>> {
+        let start = Instant::now();
+        let lock_start = Instant::now();
+        let mut storage = self
+            .storage
+            .write()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        let lock_duration = lock_start.elapsed();
+        let processing_start = Instant::now();
+        let now = Instant::now();
+
+        let expired = storage.data.get(key).is_some_and(|e| entry_is_expired(e, now));
+
+        let result = if expired {
+            if let Some(entry) = storage.data.remove(key) {
+                Self::remove_key_from_lru(&mut storage, key);
+                self.bump_stat(|s| {
+                    s.expirations += 1;
+                    s.misses += 1;
+                    s.total_operations += 1;
+                })?;
+                let _ = entry;
+            }
+            None
+        } else if let Some(entry) = storage.data.get_mut(key) {
+            entry.last_accessed = now;
+            entry.access_count = entry.access_count.saturating_add(1);
+            let v = entry.value.clone();
+            Self::remove_key_from_lru(&mut storage, key);
+            storage.push_lru(key.clone());
+            self.bump_stat(|s| {
+                s.hits += 1;
+                s.total_operations += 1;
+            })?;
+            Some(v)
+        } else {
+            self.bump_stat(|s| {
+                s.misses += 1;
+                s.total_operations += 1;
+            })?;
+            None
+        };
+
+        let processing_duration = processing_start.elapsed();
+        drop(storage);
+
+        self.update_stats_snapshot()?;
+        let total_duration = start.elapsed();
+        let stats = self.snapshot_statistics()?;
+        Ok(CacheOperationResult {
+            value: result,
+            timing: CacheOperationTiming {
+                total_duration,
+                lock_duration,
+                processing_duration,
+            },
+            stats,
+        })
+    }
+
+    pub fn remove(
+        &self,
+        key: &CacheKey,
+    ) -> SongbirdResult<CacheOperationResult<Option<CacheValue>>> {
+        let start = Instant::now();
+        let lock_start = Instant::now();
+        let mut storage = self
+            .storage
+            .write()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        let lock_duration = lock_start.elapsed();
+        let processing_start = Instant::now();
+
+        let removed = if let Some(entry) = storage.data.remove(key) {
+            Self::remove_key_from_lru(&mut storage, key);
+            Some(entry.value)
+        } else {
+            None
+        };
+
+        let processing_duration = processing_start.elapsed();
+        drop(storage);
+
+        self.bump_stat(|s| s.total_operations += 1)?;
+        self.update_stats_snapshot()?;
+        let total_duration = start.elapsed();
+        let stats = self.snapshot_statistics()?;
+        Ok(CacheOperationResult {
+            value: removed,
+            timing: CacheOperationTiming {
+                total_duration,
+                lock_duration,
+                processing_duration,
+            },
+            stats,
+        })
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.storage.read().map(|s| s.data.len()).unwrap_or(0)
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    #[must_use]
+    pub fn size_bytes(&self) -> usize {
+        self.storage.read().map(|s| s.current_size_bytes()).unwrap_or(0)
+    }
+
+    pub fn clear(&self) -> SongbirdResult<()> {
+        let mut storage = self
+            .storage
+            .write()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        storage.data.clear();
+        storage.lru_queue.clear();
+        drop(storage);
+        self.bump_stat(|s| {
+            s.current_entries = 0;
+            s.current_size_bytes = 0;
+        })?;
         Ok(())
+    }
 
-    /// Retrieve and deserialize a JSON value from the global cache
-    #[must_use = "Result must be handled - ignoring errors is unsafe"];"
-    pub fn get_json<T: serde::de::DeserializeOwned>(key: &CacheKey) -> Self {
-        let result = AdvancedCache::global().get(key)?;
+    pub fn cleanup_expired(&self) -> SongbirdResult<usize> {
+        let mut storage = self
+            .storage
+            .write()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        let now = Instant::now();
+        let keys: Vec<CacheKey> = storage
+            .data
+            .iter()
+            .filter(|(_, e)| entry_is_expired(e, now))
+            .map(|(k, _)| k.clone())
+            .collect();
+        let mut removed = 0usize;
+        for key in keys {
+            if let Some(entry) = storage.data.remove(&key) {
+                Self::remove_key_from_lru(&mut storage, &key);
+                let _ = entry;
+                removed += 1;
+            }
+        }
+        drop(storage);
+        self.bump_stat(|s| {
+            s.expirations += removed as u64;
+        })?;
+        self.update_stats_snapshot()?;
+        Ok(removed)
+    }
 
-        if let Some(CacheValue::Json(json_arc) = result.data.value { let value = serde_json::from_value(*json_arc).clone().map_err(|e||| {
+    pub fn get_statistics(&self) -> SongbirdResult<CacheStatistics> {
+        self.snapshot_statistics()
+    }
 
-
-
-        )
-                SongbirdError::service_error("cache"), e, vec!["retry_operation".to_string()],;})?;"
-            Ok(success(Some(value);} else { Ok(songbird_types::evolved_success(success()None);}}
-
-    /// Store a string value in the global cache
-    pub async fn set_string() -> SongbirdResult<()>   {
-
-     AdvancedCache::global().set_with_ttl(key.into(), value.into(), ttl)?
+    fn bump_stat(&self, f: impl FnOnce(&mut CacheStatistics)) -> SongbirdResult<()> {
+        let mut stats = self
+            .stats
+            .write()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        f(&mut stats);
         Ok(())
+    }
 
-    /// Retrieve a string value from the global cache
-    #[must_use = "Result must be handled - ignoring errors is unsafe"];"
-    pub fn get_string(key: &CacheKey) -> Self {
-        let result = AdvancedCache::global().get(key)?;
-
-        if let Some(CacheValue::String(interned) = result.data.value { Ok(songbird_types::evolved_success(Some(interned.to_string().into())}
- ;
-} else { Ok(songbird_types::evolved_success(success()None);}}
-
-    /// Store binary data in the global cache
-    pub async fn set_binary() -> SongbirdResult<()>   {
-
-     AdvancedCache::global().set_with_ttl(key.into(), data, ttl)?
+    fn update_stats_snapshot(&self) -> SongbirdResult<()> {
+        let entries = self.len();
+        let bytes = self.size_bytes();
+        let mut stats = self
+            .stats
+            .write()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        stats.current_entries = entries;
+        stats.current_size_bytes = bytes;
+        if stats.total_operations > 0 {
+            stats.hit_ratio = (stats.hits as f64 / stats.total_operations as f64) * 100.0;
+        } else {
+            stats.hit_ratio = 0.0;
+        }
         Ok(())
+    }
 
-    /// Retrieve binary data from the global cache
-    #[must_use = "Result must be handled - ignoring errors is unsafe"];"
-    pub fn get_binary(key: &CacheKey) -> Self { let result = AdvancedCache::global().get(key)?;
+    fn snapshot_statistics(&self) -> SongbirdResult<CacheStatistics> {
+        let stats = self
+            .stats
+            .read()
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {e}")))?;
+        let mut s = stats.clone();
+        s.uptime_seconds = self.start_time.elapsed().as_secs();
+        s.current_entries = self.len();
+        s.current_size_bytes = self.size_bytes();
+        Ok(s)
+    }
 
-        if let Some(CacheValue::Binary(data_arc) = result.data.value { Ok(songbird_types::evolved_success(Some(*)data_arc).clone().into())}
- ;
-} else { Ok(songbird_types::evolved_success(success()None);}}}
+    fn evict_entry(&self, storage: &mut CacheStorage) -> SongbirdResult<()> {
+        match self.config.eviction_policy {
+            EvictionPolicy::Lru => {
+                if let Some(k) = storage.lru_queue.pop_front()
+                    && storage.data.remove(&k).is_some()
+                {
+                    self.bump_stat(|s| s.evictions += 1)?;
+                }
+            }
+            EvictionPolicy::Lfu => {
+                let key =
+                    storage.data.iter().min_by_key(|(_, e)| e.access_count).map(|(k, _)| k.clone());
+                if let Some(k) = key
+                    && let Some(e) = storage.data.remove(&k)
+                {
+                    Self::remove_key_from_lru(storage, &k);
+                    let _ = e;
+                    self.bump_stat(|s| s.evictions += 1)?;
+                }
+            }
+            EvictionPolicy::Fifo => {
+                let key =
+                    storage.data.iter().min_by_key(|(_, e)| e.created_at).map(|(k, _)| k.clone());
+                if let Some(k) = key
+                    && let Some(e) = storage.data.remove(&k)
+                {
+                    Self::remove_key_from_lru(storage, &k);
+                    let _ = e;
+                    self.bump_stat(|s| s.evictions += 1)?;
+                }
+            }
+            EvictionPolicy::Random => {
+                let key = storage.data.keys().next().cloned();
+                if let Some(k) = key
+                    && let Some(e) = storage.data.remove(&k)
+                {
+                    Self::remove_key_from_lru(storage, &k);
+                    let _ = e;
+                    self.bump_stat(|s| s.evictions += 1)?;
+                }
+            }
+            EvictionPolicy::TtlOnly => {}
+        }
+        Ok(())
+    }
+
+    fn remove_key_from_lru(storage: &mut CacheStorage, key: &CacheKey) {
+        if let Some(pos) = storage.lru_queue.iter().position(|k| k == key) {
+            storage.lru_queue.remove(pos);
+        }
+    }
+}
+
+impl CacheStorage {
+    fn current_size_bytes(&self) -> usize {
+        self.data.values().map(|e| e.size_bytes).sum()
+    }
+
+    fn push_lru(&mut self, key: CacheKey) {
+        self.lru_queue.push_back(key);
+    }
+}
+
+fn should_evict(
+    config: &CacheConfig,
+    storage: &CacheStorage,
+    new_entry_size: usize,
+    new_key: &CacheKey,
+) -> bool {
+    let projected_entries = if storage.data.contains_key(new_key) {
+        storage.data.len()
+    } else {
+        storage.data.len().saturating_add(1)
+    };
+    let projected_bytes = if let Some(old) = storage.data.get(new_key) {
+        storage.current_size_bytes().saturating_sub(old.size_bytes) + new_entry_size
+    } else {
+        storage.current_size_bytes() + new_entry_size
+    };
+    projected_entries > config.max_entries || projected_bytes > config.max_size_bytes
+}
+
+fn entry_is_expired(entry: &CacheEntry, now: Instant) -> bool {
+    entry.expires_at.is_some_and(|t| now >= t)
+}
+
+fn estimate_entry_size(key: &CacheKey, value: &CacheValue) -> usize {
+    let key_size = match key {
+        CacheKey::String(s) => s.len(),
+        CacheKey::Binary(b) => b.len(),
+        CacheKey::Namespaced {
+            namespace,
+            key,
+        } => namespace.len() + key.len(),
+        CacheKey::Numeric(_) => 8,
+    };
+    let value_size = match value {
+        CacheValue::String(s) => s.len(),
+        CacheValue::Binary(b) => b.len(),
+        CacheValue::Json(j) => j.to_string().len(),
+        CacheValue::Serialized {
+            data,
+            ..
+        } => data.len(),
+        CacheValue::Reference {
+            location,
+            ..
+        } => location.len(),
+    };
+    key_size + value_size + 64
+}
+
+impl From<String> for CacheValue {
+    fn from(s: String) -> Self {
+        Self::String(Arc::from(s))
+    }
+}
+
+impl From<&str> for CacheValue {
+    fn from(s: &str) -> Self {
+        Self::String(Arc::from(s))
+    }
+}
+
+impl From<Vec<u8>> for CacheValue {
+    fn from(data: Vec<u8>) -> Self {
+        Self::Binary(Arc::new(data))
+    }
+}
+
+impl From<serde_json::Value> for CacheValue {
+    fn from(json: serde_json::Value) -> Self {
+        Self::Json(Arc::new(json))
+    }
+}
+
+impl From<String> for CacheKey {
+    fn from(s: String) -> Self {
+        Self::String(Arc::from(s))
+    }
+}
+
+impl From<&str> for CacheKey {
+    fn from(s: &str) -> Self {
+        Self::String(Arc::from(s))
+    }
+}
+
+impl From<u64> for CacheKey {
+    fn from(n: u64) -> Self {
+        Self::Numeric(n)
+    }
+}
+
+impl From<Vec<u8>> for CacheKey {
+    fn from(data: Vec<u8>) -> Self {
+        Self::Binary(data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use std::thread;
+    use std::time::Duration as StdDuration;
+
+    fn tiny_config() -> CacheConfig {
+        CacheConfig {
+            max_entries: 3,
+            max_size_bytes: 1_000_000,
+            default_ttl: None,
+            eviction_policy: EvictionPolicy::Lru,
+            cleanup_interval: StdDuration::from_secs(1),
+            enable_compression: false,
+            enable_persistence: false,
+        }
+    }
+
+    #[test]
+    fn set_and_get_string_happy_path() {
+        let c = AdvancedCache::with_config(tiny_config());
+        c.set(CacheKey::from("k"), CacheValue::from("v")).unwrap();
+        let got = c.get(&CacheKey::from("k")).unwrap().value;
+        assert!(matches!(got, Some(CacheValue::String(ref s)) if s.as_ref() == "v"));
+    }
+
+    #[test]
+    fn get_missing_returns_none() {
+        let c = AdvancedCache::with_config(tiny_config());
+        let got = c.get(&CacheKey::from("nope")).unwrap().value;
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn remove_existing_returns_value() {
+        let c = AdvancedCache::with_config(tiny_config());
+        c.set(CacheKey::from("a"), "1").unwrap();
+        let r = c.remove(&CacheKey::from("a")).unwrap().value;
+        assert!(matches!(r, Some(CacheValue::String(_))));
+        assert!(c.get(&CacheKey::from("a")).unwrap().value.is_none());
+    }
+
+    #[test]
+    fn clear_empties_cache() {
+        let c = AdvancedCache::with_config(tiny_config());
+        c.set(CacheKey::from("x"), "y").unwrap();
+        c.clear().unwrap();
+        assert!(c.is_empty());
+        assert_eq!(c.len(), 0);
+    }
+
+    #[test]
+    fn len_and_size_bytes_track_entries() {
+        let c = AdvancedCache::with_config(tiny_config());
+        c.set(CacheKey::from("a"), "aaa").unwrap();
+        c.set(CacheKey::from("b"), "bbb").unwrap();
+        assert_eq!(c.len(), 2);
+        assert!(c.size_bytes() > 0);
+    }
+
+    #[test]
+    fn ttl_expires_on_get() {
+        let mut cfg = tiny_config();
+        cfg.default_ttl = None;
+        let c = AdvancedCache::with_config(cfg);
+        c.set_with_ttl(CacheKey::from("t"), "v", Some(Duration::from_millis(1))).unwrap();
+        thread::sleep(StdDuration::from_millis(20));
+        let got = c.get(&CacheKey::from("t")).unwrap().value;
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn cleanup_expired_removes_stale_entries() {
+        let mut cfg = tiny_config();
+        cfg.default_ttl = None;
+        let c = AdvancedCache::with_config(cfg);
+        c.set_with_ttl(CacheKey::from("e"), "v", Some(Duration::from_millis(1))).unwrap();
+        thread::sleep(StdDuration::from_millis(15));
+        let n = c.cleanup_expired().unwrap();
+        assert_eq!(n, 1);
+        assert!(c.is_empty());
+    }
+
+    #[test]
+    fn lru_evicts_oldest_when_max_entries_exceeded() {
+        let mut cfg = tiny_config();
+        cfg.max_entries = 2;
+        cfg.eviction_policy = EvictionPolicy::Lru;
+        let c = AdvancedCache::with_config(cfg);
+        c.set(CacheKey::from("a"), "1").unwrap();
+        c.set(CacheKey::from("b"), "2").unwrap();
+        c.set(CacheKey::from("c"), "3").unwrap();
+        assert_eq!(c.len(), 2);
+        assert!(c.get(&CacheKey::from("a")).unwrap().value.is_none());
+        assert!(c.get(&CacheKey::from("c")).unwrap().value.is_some());
+    }
+
+    #[test]
+    fn lfu_evicts_lowest_access_count() {
+        let mut cfg = tiny_config();
+        cfg.max_entries = 2;
+        cfg.eviction_policy = EvictionPolicy::Lfu;
+        let c = AdvancedCache::with_config(cfg);
+        c.set(CacheKey::from("a"), "1").unwrap();
+        c.set(CacheKey::from("b"), "2").unwrap();
+        let _ = c.get(&CacheKey::from("a")).unwrap();
+        let _ = c.get(&CacheKey::from("a")).unwrap();
+        c.set(CacheKey::from("c"), "3").unwrap();
+        assert!(c.get(&CacheKey::from("b")).unwrap().value.is_none());
+        assert!(c.get(&CacheKey::from("a")).unwrap().value.is_some());
+    }
+
+    #[test]
+    fn fifo_evicts_oldest_created() {
+        let mut cfg = tiny_config();
+        cfg.max_entries = 2;
+        cfg.eviction_policy = EvictionPolicy::Fifo;
+        let c = AdvancedCache::with_config(cfg);
+        c.set(CacheKey::from("first"), "1").unwrap();
+        thread::sleep(StdDuration::from_millis(5));
+        c.set(CacheKey::from("second"), "2").unwrap();
+        c.set(CacheKey::from("third"), "3").unwrap();
+        assert!(c.get(&CacheKey::from("first")).unwrap().value.is_none());
+    }
+
+    #[test]
+    fn ttl_only_errors_when_full_and_new_key() {
+        let mut cfg = tiny_config();
+        cfg.max_entries = 1;
+        cfg.eviction_policy = EvictionPolicy::TtlOnly;
+        let c = AdvancedCache::with_config(cfg);
+        c.set(CacheKey::from("only"), "x").unwrap();
+        let err = c.set(CacheKey::from("other"), "y");
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn ttl_only_allows_replace_same_key() {
+        let mut cfg = tiny_config();
+        cfg.max_entries = 1;
+        cfg.eviction_policy = EvictionPolicy::TtlOnly;
+        let c = AdvancedCache::with_config(cfg);
+        c.set(CacheKey::from("k"), "a").unwrap();
+        c.set(CacheKey::from("k"), "b").unwrap();
+        assert_eq!(c.len(), 1);
+    }
+
+    #[test]
+    fn numeric_and_binary_keys_round_trip() {
+        let c = AdvancedCache::with_config(tiny_config());
+        let k1 = CacheKey::Numeric(42);
+        c.set(k1.clone(), "n").unwrap();
+        assert!(c.get(&k1).unwrap().value.is_some());
+
+        let k2 = CacheKey::Binary(vec![1, 2, 3]);
+        c.set(k2.clone(), vec![9u8]).unwrap();
+        assert!(c.get(&k2).unwrap().value.is_some());
+    }
+
+    #[test]
+    fn namespaced_key_hashing() {
+        let c = AdvancedCache::with_config(tiny_config());
+        let k = CacheKey::Namespaced {
+            namespace: Arc::from("ns"),
+            key: Arc::from("item"),
+        };
+        c.set(k.clone(), "v").unwrap();
+        assert!(c.get(&k).unwrap().value.is_some());
+    }
+
+    #[test]
+    fn json_value_round_trip() {
+        let c = AdvancedCache::with_config(tiny_config());
+        let v = serde_json::json!({"x": [1,2,3]});
+        c.set(CacheKey::from("j"), v).unwrap();
+        let got = c.get(&CacheKey::from("j")).unwrap().value;
+        assert!(matches!(got, Some(CacheValue::Json(_))));
+    }
+
+    #[test]
+    fn statistics_reflect_hits_and_misses() {
+        let c = AdvancedCache::with_config(tiny_config());
+        c.set(CacheKey::from("h"), "1").unwrap();
+        let _ = c.get(&CacheKey::from("h")).unwrap();
+        let _ = c.get(&CacheKey::from("missing")).unwrap();
+        let s = c.get_statistics().unwrap();
+        assert!(s.hits >= 1);
+        assert!(s.misses >= 1);
+    }
+
+    #[test]
+    fn replace_key_updates_value() {
+        let c = AdvancedCache::with_config(tiny_config());
+        c.set(CacheKey::from("r"), "old").unwrap();
+        c.set(CacheKey::from("r"), "new").unwrap();
+        let got = c.get(&CacheKey::from("r")).unwrap().value;
+        assert!(matches!(got, Some(CacheValue::String(s)) if s.as_ref() == "new"));
+        assert_eq!(c.len(), 1);
+    }
+
+    #[test]
+    fn zero_max_entries_edge_config_still_allows_logic() {
+        let mut cfg = tiny_config();
+        cfg.max_entries = 0;
+        cfg.eviction_policy = EvictionPolicy::TtlOnly;
+        let c = AdvancedCache::with_config(cfg);
+        assert!(c.set(CacheKey::from("x"), "y").is_err());
+    }
+
+    #[test]
+    fn reference_value_variant_size_nonzero() {
+        let c = AdvancedCache::with_config(tiny_config());
+        let v = CacheValue::Reference {
+            location: "http://example.com/blob".to_string(),
+            checksum: None,
+        };
+        c.set(CacheKey::from("ref"), v).unwrap();
+        assert!(c.size_bytes() > 0);
+    }
+
+    #[test]
+    fn global_returns_singleton() {
+        let a = AdvancedCache::global() as *const AdvancedCache;
+        let b = AdvancedCache::global() as *const AdvancedCache;
+        assert_eq!(a, b);
+    }
+}

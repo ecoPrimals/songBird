@@ -148,9 +148,9 @@ impl TrustEscalationManager {
         let relationship =
             TrustRelationship::new_anonymous(session_id.clone(), self.trust_timeouts.anonymous);
 
-        self.trust_store.write().await.insert(session_id.clone(), relationship);
-
         info!("✅ Anonymous trust established (Level 0): {}", session_id);
+
+        self.trust_store.write().await.insert(session_id, relationship);
         Ok(())
     }
 
@@ -293,13 +293,13 @@ impl TrustEscalationManager {
 
         // Escalate trust level
         relationship.trust_level = TrustLevel::IdentityVerified;
-        relationship.identity = Some(identity_proof.identity.clone());
+        info!("✅ Trust escalated to Identity-Verified (Level 3): {}", session_id);
+        info!("   Identity: {}", identity_proof.identity.node_id);
+
+        relationship.identity = Some(identity_proof.identity);
         relationship.last_verified_at = SystemTime::now();
         relationship.expires_at =
             SystemTime::now() + std::time::Duration::from_secs(self.trust_timeouts.identity);
-
-        info!("✅ Trust escalated to Identity-Verified (Level 3): {}", session_id);
-        info!("   Identity: {}", identity_proof.identity.node_id);
 
         Ok(())
     }
@@ -436,8 +436,9 @@ impl TrustEscalationManager {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::trust::{HardwareAttestation, IdentityProof, TowerIdentity};
 
@@ -715,5 +716,152 @@ mod tests {
         assert!(t.anonymous < t.capability);
         assert!(t.capability < t.identity);
         assert_eq!(t.hardware, 0);
+    }
+
+    #[tokio::test]
+    async fn revoke_unknown_session_errors() {
+        let m = TrustEscalationManager::with_defaults();
+        let err = m.revoke_trust("no-such").await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_trust_level_missing_session_errors() {
+        let m = TrustEscalationManager::with_defaults();
+        assert!(m.get_trust_level("missing").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn check_permission_missing_session_errors() {
+        let m = TrustEscalationManager::with_defaults();
+        assert!(m.check_permission("missing", TrustLevel::Anonymous).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn verify_capabilities_missing_session() {
+        let m = TrustEscalationManager::with_defaults();
+        let proof = CapabilityProof {
+            capabilities: vec!["x".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        assert!(m.verify_capabilities("nope", proof).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn verify_identity_bad_proof_fails() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("s1".to_string()).await.expect("establish");
+        let cap = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        m.verify_capabilities("s1", cap).await.expect("cap");
+        m.verify_role("s1", "worker".to_string()).await.expect("role");
+        let id = TowerIdentity {
+            node_id: "n".to_string(),
+            hostname: "h".to_string(),
+            organization: None,
+            public_key: None,
+        };
+        let bad = IdentityProof {
+            identity: id,
+            proof: "short".to_string(),
+            proof_type: "jwt".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        assert!(m.verify_identity("s1", bad).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_all_relationships_lists_sessions() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("a".to_string()).await.expect("establish");
+        m.establish_anonymous("b".to_string()).await.expect("establish");
+        let all = m.get_all_relationships().await;
+        assert_eq!(all.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn get_trust_level_counts_after_escalation() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("s".to_string()).await.expect("establish");
+        let proof = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        m.verify_capabilities("s", proof).await.expect("cap");
+        let counts = m.get_trust_level_counts().await;
+        assert_eq!(counts.get(&TrustLevel::CapabilityVerified).copied().unwrap_or(0), 1);
+    }
+
+    #[tokio::test]
+    async fn cleanup_expired_noop_when_nothing_expired() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("fresh".to_string()).await.expect("establish");
+        assert_eq!(m.cleanup_expired().await, 0);
+    }
+
+    #[tokio::test]
+    async fn verify_role_accepts_worker_role() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("vr".to_string()).await.expect("establish");
+        let cap = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        m.verify_capabilities("vr", cap).await.expect("cap");
+        m.verify_role("vr", "Worker".to_string()).await.expect("role");
+        assert_eq!(m.get_trust_level("vr").await.expect("level"), TrustLevel::RoleVerified);
+    }
+
+    #[tokio::test]
+    async fn verify_role_accepts_observer_role() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("obs".to_string()).await.expect("establish");
+        let cap = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        m.verify_capabilities("obs", cap).await.expect("cap");
+        m.verify_role("obs", "observer".to_string()).await.expect("role");
+        assert_eq!(m.get_trust_level("obs").await.expect("level"), TrustLevel::RoleVerified);
+    }
+
+    #[tokio::test]
+    async fn permission_denied_for_higher_level() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("p".to_string()).await.expect("establish");
+        assert!(!m.check_permission("p", TrustLevel::CapabilityVerified).await.expect("check"));
+    }
+
+    #[tokio::test]
+    async fn get_relationship_none_for_unknown_session() {
+        let m = TrustEscalationManager::with_defaults();
+        assert!(m.get_relationship("nope").await.is_none());
+    }
+
+    #[test]
+    fn trust_escalation_manager_debug_smoke() {
+        let m = TrustEscalationManager::with_defaults();
+        let s = format!("{m:?}");
+        assert!(s.contains("TrustEscalationManager"));
+    }
+
+    #[tokio::test]
+    async fn verify_role_rejects_admin_case_insensitive() {
+        let m = TrustEscalationManager::with_defaults();
+        m.establish_anonymous("adm".to_string()).await.expect("establish");
+        let cap = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        m.verify_capabilities("adm", cap).await.expect("cap");
+        assert!(m.verify_role("adm", "ADMIN".to_string()).await.is_err());
     }
 }

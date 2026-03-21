@@ -61,35 +61,35 @@
 #![forbid(unsafe_code)]
 
 /// BearDog IPC client submodules (refactored HTTP/TLS helpers).
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod beardog_client;
 /// High-level `SongbirdHttpClient` and HTTP/HTTPS request execution.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod client;
 mod connection; // ✅ NEW: Connection management (HTTP/HTTPS) (extracted from client.rs)
 /// Bounded connection pool with acquire/return and health-aware cleanup.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod connection_pool;
 /// Crypto capability traits, BearDog discovery, and TLS secret bags.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod crypto;
 /// Error types and `Result` alias for this crate.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod error;
 /// Adaptive HTTP client config: headers, redirects, timeouts, domain rules.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod http_config;
 /// IPC-backed HTTP client, multipart forms, and request builders.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod ipc_client;
 mod redirect; // ✅ NEW: HTTP redirect handling (extracted from client.rs)
 mod request; // ✅ NEW: HTTP request building (extracted from client.rs)
 mod response; // ✅ NEW: HTTP response parsing (extracted from client.rs)
 /// Pure Rust TLS 1.3 stack (record layer, handshake, adaptive extensions).
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod tls;
 /// HTTP request/response value types shared by the client stack.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod types;
 
 // Legacy implementation moved to archive/legacy_implementations/beardog_client_jan_26_2026/
@@ -137,7 +137,7 @@ pub const fn is_pure_rust() -> bool {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

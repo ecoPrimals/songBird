@@ -162,7 +162,7 @@ impl TlsHandshake {
     /// RFC 8446 Section 5.1: Multiple handshake messages MAY be coalesced into
     /// a single TLS record. This method parses the framing to locate Finished
     /// at any offset.
-    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency with other TlsHandshake methods
+    #[allow(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency with other TlsHandshake methods
     pub(crate) fn contains_finished_message(&self, plaintext: &[u8]) -> bool {
         let mut offset = 0;
         // Skip ContentType byte at end (added during encryption)
@@ -210,7 +210,7 @@ impl TlsHandshake {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::TlsHandshake;
     use crate::crypto::{BearDogProvider, CryptoCapability};

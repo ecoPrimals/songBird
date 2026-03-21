@@ -51,8 +51,6 @@ fn get_canonical_endpoint_production_uses_configurable_https_port() {
         "SONGBIRD_ENVIRONMENT" => Ok("production".to_string()),
         "SONGBIRD_BIND_ADDRESS" => Ok("127.0.0.1".to_string()),
         "SONGBIRD_PRODUCTION_HTTPS_PORT" => Ok("9443".to_string()),
-        "SONGBIRD_BASE_URL" => Err(std::env::VarError::NotPresent),
-        "SONGBIRD_SVC_ENDPOINT" => Err(std::env::VarError::NotPresent),
         _ => Err(std::env::VarError::NotPresent),
     });
 
@@ -65,9 +63,6 @@ fn get_canonical_endpoint_staging_avoids_literal_internal_host_when_unset() {
         "SONGBIRD_ENVIRONMENT" => Ok("staging".to_string()),
         "SONGBIRD_BIND_ADDRESS" => Ok("127.0.0.1".to_string()),
         "SONGBIRD_STAGING_HTTP_PORT" => Ok("9090".to_string()),
-        "SONGBIRD_BASE_URL" => Err(std::env::VarError::NotPresent),
-        "SONGBIRD_STAGING_BASE_URL" => Err(std::env::VarError::NotPresent),
-        "SONGBIRD_SVC_ENDPOINT" => Err(std::env::VarError::NotPresent),
         _ => Err(std::env::VarError::NotPresent),
     });
 

@@ -12,8 +12,11 @@
 pub mod api;
 pub mod benchmarks;
 pub mod biome;
+pub mod caching;
 pub mod execution;
 pub mod load_balancer;
+/// Capability-based metrics snapshots and primal discovery for telemetry.
+pub mod metrics;
 pub mod orchestrator;
 pub mod performance;
 pub mod registry;

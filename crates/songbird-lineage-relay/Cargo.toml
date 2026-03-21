@@ -2,7 +2,7 @@
 name = "songbird-lineage-relay"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 repository = "https://github.com/ecoPrimals/songbird"
 readme = "README.md"
 keywords = ["lineage", "relay", "genetic", "p2p", "connectivity"]
@@ -15,7 +15,7 @@ tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-thiserror = "1.0"
+thiserror = { workspace = true }
 tracing = "0.1"
 uuid = { version = "1.6", features = ["v4", "serde"] }
 bytes = "1.5"

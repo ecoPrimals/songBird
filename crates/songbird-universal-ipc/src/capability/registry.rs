@@ -236,7 +236,7 @@ mod tests {
 
     #[async_trait]
     impl DiscoveryStrategy for HashMapEnvStrategy {
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "environment(injected)"
         }
 

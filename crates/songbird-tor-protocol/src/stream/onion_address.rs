@@ -53,7 +53,7 @@ impl OnionAddress {
 
         // Decode base32 (RFC 4648)
         let decoded = base32::decode(
-            base32::Alphabet::RFC4648 {
+            base32::Alphabet::Rfc4648Lower {
                 padding: false,
             },
             addr,
@@ -202,7 +202,7 @@ mod tests {
 
         // Encode to base32
         let encoded = base32::encode(
-            base32::Alphabet::RFC4648 {
+            base32::Alphabet::Rfc4648Lower {
                 padding: false,
             },
             &addr_bytes,
@@ -228,7 +228,7 @@ mod tests {
         addr_bytes.push(version);
 
         let encoded = base32::encode(
-            base32::Alphabet::RFC4648 {
+            base32::Alphabet::Rfc4648Lower {
                 padding: false,
             },
             &addr_bytes,
@@ -257,7 +257,7 @@ mod tests {
         addr_bytes.push(version);
 
         let encoded = base32::encode(
-            base32::Alphabet::RFC4648 {
+            base32::Alphabet::Rfc4648Lower {
                 padding: false,
             },
             &addr_bytes,

@@ -2,7 +2,7 @@
 name = "songbird-stun"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 repository = "https://github.com/ecoPrimals/songbird"
 readme = "README.md"
 keywords = ["stun", "nat", "p2p", "pure-rust", "rfc5389"]
@@ -14,7 +14,7 @@ authors = ["ecoPrimals Team"]
 tokio = { version = "1", features = ["net", "time", "sync"] }
 async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
+thiserror = { workspace = true }
 tracing = "0.1"
 bytes = "1.5"
 rand = "0.8"

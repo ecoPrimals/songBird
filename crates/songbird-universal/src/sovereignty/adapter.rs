@@ -6,7 +6,7 @@
 //! This module provides the main sovereignty-aware adapter that orchestrates
 //! routing, federation, and network optimization while maintaining sovereignty.
 
-#![expect(
+#![allow(
     clippy::unused_self,
     clippy::struct_excessive_bools,
     clippy::unused_async,
@@ -352,10 +352,10 @@ pub struct AdapterStats {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
-    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

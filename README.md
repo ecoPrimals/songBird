@@ -12,26 +12,26 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across 28/29 crates; `process-env` isolated with `Mutex` + SAFETY docs) |
-| Pure Rust | Structural `ring` via quinn+rcgen; all Songbird code is pure Rust |
+| Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); all application code is pure Rust |
 | Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
 | Runtime Discovery | All config: env → XDG → smart defaults. Capability-only (zero primal names in discovery) |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
+| Production `.unwrap()` | Zero (all in test modules) |
 | Production `FIXME`/`HACK` | Zero |
-| Lint suppressions | `#[expect(reason)]` per wateringHole standard (bulk migration complete) |
+| Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent at 16 threads via injectable `_with` env readers |
-| Tests | 9,730 passed, 0 failed, 271 ignored (16 threads, fully concurrent) |
-| Clippy Pedantic | All 29 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings) |
-| Line Coverage | 64.14% (llvm-cov: branch 63.11%, region 63.23%) |
+| Tests | 9,983 passed, 0 failed, 271 ignored (16 threads, fully concurrent) |
+| Clippy Pedantic | All 29 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings, all targets) |
 | Build | Clean (zero errors, zero warnings) |
-| Formatting | Clean (`cargo fmt --all -- --check`) |
+| Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`cargo doc --all-features --no-deps`, 29/29 crates with `#[warn(missing_docs)]`) |
-| Files >1000 lines | 0 (5 near-limit files refactored into domain submodules) |
-| SPDX Headers | 1,324/1,324 `.rs` files have `AGPL-3.0-only` |
+| Files >1000 lines | 0 (all large files refactored into domain submodules) |
+| License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
+| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` |
 | JSON-RPC Gateway | 10 semantic methods wrapping all major REST endpoints |
-| Dependencies | ~418 unique; `kube`/`k8s-openapi`/`bollard` feature-gated; 2 unused pruned |
+| Dependencies | ~418 unique; duplicates aligned (base32, base64, hostname, thiserror); `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Edition | Rust 2024 |
-| Total Rust | 380,555 lines across 29 crates |
+| Total Rust | ~401,000 lines across 29 crates |
 
 ## Architecture
 

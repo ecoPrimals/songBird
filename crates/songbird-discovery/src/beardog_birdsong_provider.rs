@@ -96,7 +96,7 @@ struct BearDogDecryptResponse {
 
 /// Connection type for `BearDog` (Unix socket or TCP)
 #[derive(Debug, Clone)]
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 enum BearDogConnection {
     /// Unix socket path
     Unix(PathBuf),
@@ -119,11 +119,11 @@ enum BearDogConnection {
 /// - TCP socket: `tcp:host:port` (e.g., `tcp:127.0.0.1:9900`)
 pub struct BearDogBirdSongProvider {
     /// Connection type (Unix socket or TCP)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     connection: BearDogConnection,
 
     /// `BearDog` socket path (for backward compatibility)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     socket_path: PathBuf,
 
     /// JSON-RPC client for `BearDog` communication (Pure Rust!)

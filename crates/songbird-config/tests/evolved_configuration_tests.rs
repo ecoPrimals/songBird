@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -398,7 +398,7 @@ fn test_environment_detection_ecs() {
 // ============================================================================
 
 #[test]
-#[expect(deprecated, reason = "test assertions and harness ergonomics")]
+#[allow(deprecated, reason = "test assertions and harness ergonomics")]
 fn test_well_known_ports_still_work() {
     use songbird_config::defaults::ports_evolved::well_known;
     // Old constants should still be accessible

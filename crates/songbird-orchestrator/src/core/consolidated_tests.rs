@@ -565,7 +565,7 @@ fn consolidated_orchestrator_config_preserves_zero_touch_api() {
     c.zero_touch.enable_auto_deployment = true;
     let json = serde_json::to_string(&c).expect("serialize config");
     let back: ConsolidatedOrchestratorConfig = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(back.zero_touch.enable_auto_deployment, true);
+    assert!(back.zero_touch.enable_auto_deployment);
     assert_eq!(back.api.port, 9090);
-    assert_eq!(back.api.enable_cors, false);
+    assert!(!back.api.enable_cors);
 }

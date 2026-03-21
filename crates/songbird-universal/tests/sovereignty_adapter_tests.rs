@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -41,7 +41,7 @@
 //! See: crates/songbird-universal/src/sovereignty/adapter_comprehensive_tests.rs (750+ lines)
 
 // SongbirdResult not needed - using Result<(), SongbirdError> directly
-#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
 use songbird_universal::sovereignty::SovereigntyAwareAdapter;
 // Basic struct creation test - using test mode with stub implementation
 #[tokio::test]

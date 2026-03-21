@@ -334,7 +334,7 @@ impl<T> std::ops::IndexMut<usize> for ModernSafeBuffer<T> {
 // Send and Sync are automatically derived for Vec<T> when T: Send/Sync
 // No unsafe impl needed!
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

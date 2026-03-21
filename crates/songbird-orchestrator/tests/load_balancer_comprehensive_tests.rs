@@ -7,7 +7,7 @@
 
 #![cfg(test)]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"

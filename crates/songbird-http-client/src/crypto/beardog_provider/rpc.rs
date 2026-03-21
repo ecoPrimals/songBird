@@ -32,7 +32,7 @@ struct JsonRpcRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 struct JsonRpcResponse {
     jsonrpc: String,
     result: Option<Value>,
@@ -44,7 +44,7 @@ struct JsonRpcResponse {
 struct JsonRpcError {
     code: i32,
     message: String,
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     data: Option<Value>,
 }
 
@@ -197,7 +197,7 @@ impl BearDogProvider {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::BearDogProvider;
 

@@ -180,7 +180,7 @@ mod tests {
 
     #[async_trait::async_trait]
     impl CanonicalProtocolHandler for MockHttpHandler {
-        fn protocol_name(&self) -> &str {
+        fn protocol_name(&self) -> &'static str {
             "http"
         }
 

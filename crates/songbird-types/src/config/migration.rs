@@ -103,7 +103,7 @@ impl ConfigMigrationUtils {
     }
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -111,23 +111,21 @@ impl ConfigMigrationUtils {
     reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
-#[expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
-#[expect(
+#[allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[allow(
     clippy::cast_possible_truncation,
     reason = "intentional pattern; clippy false positive for this API"
 )]
-#[expect(
-    clippy::cast_sign_loss,
-    reason = "intentional pattern; clippy false positive for this API"
-)]
+#[allow(clippy::cast_sign_loss, reason = "intentional pattern; clippy false positive for this API")]
 mod tests {
-    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
-    #![expect(unused, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(unused, reason = "test assertions and harness ergonomics")]
 
     use super::*;
     use serde_json::json;
@@ -149,5 +147,76 @@ mod tests {
 
         let result = ConfigMigrationUtils::migrate_from_json(old_config);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn migrate_non_object_returns_validated_default() {
+        let result = ConfigMigrationUtils::migrate_from_json(json!([]));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn migrate_preserves_unknown_fields_in_custom() {
+        let j = json!({
+            "environment": "production",
+            "system_id": "sys-1",
+            "legacy_field": { "nested": true }
+        });
+        let u = ConfigMigrationUtils::migrate_from_json(j).expect("ok");
+        let custom = u.custom.expect("custom");
+        assert!(custom.contains_key("legacy_field"));
+    }
+
+    #[test]
+    fn known_top_level_keys_are_not_duplicated_in_custom() {
+        let j = json!({
+            "environment": "development",
+            "system_id": "id1",
+            "network": { "note": "ignored_by_migration" }
+        });
+        let u = ConfigMigrationUtils::migrate_from_json(j).expect("ok");
+        assert!(u.custom.is_none());
+    }
+
+    #[test]
+    fn migrate_empty_object_validates() {
+        let u = ConfigMigrationUtils::migrate_from_json(json!({})).expect("empty");
+        assert!(!u.system.environment.is_empty());
+    }
+
+    #[test]
+    fn canonical_migration_config_default() {
+        let c = CanonicalMigrationConfig::default();
+        assert!(c.auto_migrate);
+        assert_eq!(c.log_level, "info");
+    }
+
+    #[test]
+    fn migrate_from_json_maps_environment_and_system_id() {
+        let u = ConfigMigrationUtils::migrate_from_json(json!({
+            "environment": "qa",
+            "system_id": "qa-box"
+        }))
+        .expect("migrated");
+        assert_eq!(u.system.environment, "qa");
+        assert_eq!(u.system.system_id, "qa-box");
+    }
+
+    #[test]
+    fn migrate_array_root_returns_ok_with_defaults() {
+        let u = ConfigMigrationUtils::migrate_from_json(json!([1, 2, 3])).expect("array");
+        assert!(!u.system.system_id.is_empty());
+    }
+
+    #[test]
+    fn migrate_string_root_returns_ok() {
+        let u = ConfigMigrationUtils::migrate_from_json(json!("legacy")).expect("str");
+        assert_eq!(u.system.environment, "development");
+    }
+
+    #[test]
+    fn migrate_null_root_returns_ok() {
+        let u = ConfigMigrationUtils::migrate_from_json(serde_json::Value::Null).expect("null");
+        assert!(!u.validate().is_err());
     }
 }

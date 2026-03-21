@@ -2,7 +2,7 @@
 name = "songbird-config"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Configuration management for Songbird components"
 repository = "https://github.com/ecoPrimals/SongBird"
@@ -32,7 +32,7 @@ config = { version = "0.14", default-features = false, features = ["toml", "json
 toml = "0.8"
 tracing = "0.1"
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
@@ -45,7 +45,7 @@ url = "2.5"
 gethostname = "0.4"
 hickory-resolver = { workspace = true }
 mdns-sd = "0.10"
-hostname = "0.3"
+hostname = "0.4"
 
 # [target.'cfg(unix)'.dependencies]
 # libc removed - not used, evolved to pure Rust alternatives

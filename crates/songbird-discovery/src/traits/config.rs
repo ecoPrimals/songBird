@@ -15,7 +15,7 @@
 //! - 20-30% performance improvement over `async_trait` macro
 //! - Cleaner, more idiomatic Rust code
 
-#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
+#![allow(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -73,7 +73,7 @@ pub enum ConfigFormat {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::{ConfigFormat, ConfigMetadata, ConfigProviderInfo};
 

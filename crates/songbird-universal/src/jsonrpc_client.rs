@@ -88,7 +88,7 @@ struct JsonRpcRequest {
 /// JSON-RPC 2.0 Response
 #[derive(Debug, Clone, Deserialize)]
 struct JsonRpcResponse {
-    #[expect(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
+    #[allow(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
     jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<Value>,
@@ -356,8 +356,7 @@ impl JsonRpcClient {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -449,5 +448,114 @@ mod tests {
         assert_eq!(back.code, -32700);
         assert_eq!(back.message, "Parse error");
         assert!(back.data.is_some());
+    }
+
+    #[test]
+    fn test_jsonrpc_request_omits_none_params() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "ping".to_string(),
+            params: None,
+            id: 42,
+        };
+        let json = serde_json::to_string(&request).expect("serialize");
+        assert!(!json.contains("params"));
+    }
+
+    #[test]
+    fn test_response_deserialization_invalid_json() {
+        let bad = "{not json";
+        let parsed: Result<JsonRpcResponse, _> = serde_json::from_str(bad);
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_response_id_mismatch_still_deserializes() {
+        let json = r#"{"jsonrpc":"2.0","result":{},"id":99}"#;
+        let response: JsonRpcResponse = serde_json::from_str(json).expect("parse");
+        assert_eq!(response.id, 99);
+    }
+
+    #[tokio::test]
+    async fn test_call_with_explicit_string_id_in_envelope() {
+        let client = JsonRpcClient::new("/tmp/songbird-jsonrpc-id.sock").expect("client");
+        let err = client
+            .call(json!({
+                "jsonrpc": "2.0",
+                "method": "m",
+                "id": "rpc-1"
+            }))
+            .await
+            .expect_err("no socket");
+        assert!(
+            err.to_string().contains("connect")
+                || err.to_string().contains("timeout")
+                || err.to_string().contains("Failed")
+        );
+    }
+
+    #[test]
+    fn test_protocol_error_mapping_from_missing_result() {
+        let json = r#"{"jsonrpc":"2.0","id":1}"#;
+        let response: JsonRpcResponse = serde_json::from_str(json).expect("parse");
+        assert!(response.result.is_none() && response.error.is_none());
+    }
+
+    #[test]
+    fn test_new_rejects_only_unix_prefix() {
+        let r = JsonRpcClient::new("unix://");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn test_jsonrpc_request_id_zero_serializes() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "noop".to_string(),
+            params: Some(json!([])),
+            id: 0,
+        };
+        let s = serde_json::to_string(&request).expect("serialize");
+        assert!(s.contains("\"id\":0"));
+    }
+
+    #[test]
+    fn test_jsonrpc_error_with_null_data() {
+        let err = JsonRpcError {
+            code: -32603,
+            message: "Internal".to_string(),
+            data: None,
+        };
+        let s = serde_json::to_string(&err).expect("serialize");
+        assert!(!s.contains("data"));
+    }
+
+    #[test]
+    fn test_socket_path_and_timeout_accessors() {
+        let c = JsonRpcClient::new("/var/run/x.sock")
+            .expect("client")
+            .with_timeout(Duration::from_secs(33));
+        assert_eq!(c.socket_path(), &PathBuf::from("/var/run/x.sock"));
+        assert_eq!(c.timeout(), Duration::from_secs(33));
+    }
+
+    #[test]
+    fn test_response_with_both_error_and_result_prefers_error_handling_path() {
+        let json = r#"{"jsonrpc":"2.0","result":1,"error":{"code":1,"message":"x"},"id":1}"#;
+        let response: JsonRpcResponse = serde_json::from_str(json).expect("parse");
+        assert!(response.error.is_some());
+        assert!(response.result.is_some());
+    }
+
+    #[test]
+    fn test_empty_method_in_request_serializes() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: String::new(),
+            params: None,
+            id: 3,
+        };
+        let v: serde_json::Value = serde_json::to_value(&request).expect("value");
+        assert_eq!(v["method"], "");
     }
 }

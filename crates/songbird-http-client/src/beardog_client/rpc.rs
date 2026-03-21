@@ -118,7 +118,7 @@ impl BearDogClient {
         id: u64,
     ) -> Result<Value> {
         // Note: Direct mode is deprecated for production use
-        #[expect(deprecated, reason = "migration to successor API planned")]
+        #[allow(deprecated, reason = "migration to successor API planned")]
         let method = Self::semantic_to_actual(capability)?;
 
         let request = JsonRpcRequest {
@@ -281,13 +281,13 @@ impl BearDogClient {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
     #[test]
     fn test_semantic_mapping() {
-        #[expect(deprecated, reason = "test assertions and harness ergonomics")]
+        #[allow(deprecated, reason = "test assertions and harness ergonomics")]
         {
             assert_eq!(
                 BearDogClient::semantic_to_actual("crypto.generate_keypair").unwrap(),
@@ -302,14 +302,14 @@ mod tests {
 
     #[test]
     fn test_semantic_mapping_unknown() {
-        #[expect(deprecated, reason = "calling deprecated API until migration completes")]
+        #[allow(deprecated, reason = "calling deprecated API until migration completes")]
         let result = BearDogClient::semantic_to_actual("unknown.method");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_semantic_mapping_all_crypto_and_tls_aliases() {
-        #[expect(deprecated, reason = "calling deprecated API until migration completes")]
+        #[allow(deprecated, reason = "calling deprecated API until migration completes")]
         {
             let pairs = [
                 ("crypto.encrypt", "crypto.chacha20_poly1305_encrypt"),
@@ -334,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_semantic_mapping_unknown_returns_bear_dog_rpc_error() {
-        #[expect(deprecated, reason = "calling deprecated API until migration completes")]
+        #[allow(deprecated, reason = "calling deprecated API until migration completes")]
         let err = BearDogClient::semantic_to_actual("not.mapped.here").unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("Unknown capability"));

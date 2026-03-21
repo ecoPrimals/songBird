@@ -42,10 +42,7 @@ mod arc_str_option_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::sync::Arc;
 
-    #[expect(
-        clippy::ref_option,
-        reason = "intentional pattern; clippy false positive for this API"
-    )]
+    #[allow(clippy::ref_option, reason = "intentional pattern; clippy false positive for this API")]
     pub fn serialize<S>(value: &Option<Arc<str>>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -67,8 +64,8 @@ mod arc_str_option_serde {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::{ComponentHealth, HealthStatus, OrchestratorHealth};
     use std::sync::Arc;

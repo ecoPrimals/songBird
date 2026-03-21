@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// **CANONICAL**: AI-First Citizen API configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[expect(
+#[allow(
     clippy::struct_excessive_bools,
     reason = "intentional pattern; clippy false positive for this API"
 )]
@@ -34,7 +34,7 @@ impl Default for CanonicalAIFirstConfig {
     }
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

@@ -219,6 +219,11 @@ impl ConsentManager {
         records.values().filter(|r| &r.user_id == user_id).cloned().collect()
     }
 
+    /// Replace stored consent preferences for a user (e.g. auto-approval thresholds).
+    pub async fn set_user_preferences(&self, user_id: UserId, prefs: UserPreferences) {
+        self.preferences.write().await.insert(user_id, prefs);
+    }
+
     /// Wait for consent decision (with timeout)
     ///
     /// Event-driven: uses `tokio::sync::Notify` to wake instantly when

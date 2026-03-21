@@ -207,8 +207,9 @@ impl PeerConnector for MockPeerConnector {
 // ============================================================================
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use serde_json::json;
 
@@ -329,5 +330,113 @@ mod tests {
         assert_eq!(back.target_address, p.target_address);
         assert_eq!(back.our_binding, p.our_binding);
         assert_eq!(back.rendezvous_token, p.rendezvous_token);
+    }
+
+    struct ErrorPeerConnector;
+
+    #[async_trait]
+    impl PeerConnector for ErrorPeerConnector {
+        async fn connect(
+            &self,
+            _target_address: &str,
+            _our_binding: Option<&str>,
+            _rendezvous_token: Option<&str>,
+        ) -> Result<PeerConnectResult, String> {
+            Err("simulated transport failure".to_string())
+        }
+    }
+
+    #[tokio::test]
+    async fn connect_propagates_connector_error() {
+        let handler = PeerHandler::new(Arc::new(ErrorPeerConnector));
+        let err = handler
+            .handle_connect(json!({ "target_address": "127.0.0.1:1" }))
+            .await
+            .expect_err("connector error");
+        match err {
+            IpcError::Internal(msg) => assert!(msg.contains("simulated")),
+            _ => panic!("expected Internal error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn connect_invalid_params_type_errors() {
+        let handler = PeerHandler::new(Arc::new(MockPeerConnector::new()));
+        let err = handler
+            .handle_connect(json!({ "target_address": 12345 }))
+            .await
+            .expect_err("type mismatch");
+        assert!(matches!(err, IpcError::InvalidParams(_)));
+    }
+
+    #[test]
+    fn peer_connect_result_serialization_shape() {
+        let r = PeerConnectResult {
+            connection_id: "cid".into(),
+            state: "connecting".into(),
+            channel: None,
+        };
+        let v = serde_json::to_value(&r).expect("json");
+        assert_eq!(v["state"], "connecting");
+        assert!(v["channel"].is_null());
+    }
+
+    #[test]
+    fn peer_channel_serialization_roundtrip() {
+        let c = PeerChannel {
+            local_address: "a".into(),
+            remote_address: "b".into(),
+            protocol: "udp".into(),
+            latency_ms: Some(1),
+        };
+        let v = serde_json::to_value(&c).expect("ser");
+        assert_eq!(v["protocol"], "udp");
+    }
+
+    #[tokio::test]
+    async fn connect_accepts_optional_null_fields() {
+        let handler = PeerHandler::new(Arc::new(MockPeerConnector::new()));
+        let params = json!({
+            "target_address": "198.51.100.1:4000",
+            "our_binding": null,
+            "rendezvous_token": null
+        });
+        let r = handler.handle_connect(params).await.expect("ok");
+        assert_eq!(r.state, "connected");
+    }
+
+    #[tokio::test]
+    async fn connect_unknown_state_still_returns_ok() {
+        struct WeirdConnector;
+
+        #[async_trait]
+        impl PeerConnector for WeirdConnector {
+            async fn connect(
+                &self,
+                _target: &str,
+                _b: Option<&str>,
+                _t: Option<&str>,
+            ) -> Result<PeerConnectResult, String> {
+                Ok(PeerConnectResult {
+                    connection_id: "x".into(),
+                    state: "negotiating".into(),
+                    channel: None,
+                })
+            }
+        }
+
+        let handler = PeerHandler::new(Arc::new(WeirdConnector));
+        let r = handler.handle_connect(json!({ "target_address": "1.1.1.1:1" })).await.expect("ok");
+        assert_eq!(r.state, "negotiating");
+    }
+
+    #[tokio::test]
+    async fn target_address_accepts_ipv6_bracket_form() {
+        let handler = PeerHandler::new(Arc::new(MockPeerConnector::new()));
+        let r = handler
+            .handle_connect(json!({ "target_address": "[2001:db8::1]:5000" }))
+            .await
+            .expect("ok");
+        assert_eq!(r.channel.expect("ch").remote_address, "[2001:db8::1]:5000");
     }
 }

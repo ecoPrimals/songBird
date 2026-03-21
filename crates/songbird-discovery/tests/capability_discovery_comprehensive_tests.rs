@@ -2,8 +2,8 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![cfg(feature = "tests-incomplete")]
-#![expect(unexpected_cfgs, reason = "test assertions and harness ergonomics")]
-#![expect(
+#![allow(unexpected_cfgs, reason = "test assertions and harness ergonomics")]
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"
@@ -27,112 +27,92 @@
 //! - Duplicate registration handling
 //! - Discovery statistics
 
-use songbird_types::SongbirdResult;
-
 #[test]
-fn test_discover_by_single_capability() -> SongbirdResult<()> {
+fn test_discover_by_single_capability() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_discover_multiple_capabilities() -> SongbirdResult<()> {
+fn test_discover_multiple_capabilities() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_not_found() -> SongbirdResult<()> {
+fn test_capability_not_found() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_dynamic_capability_registration() -> SongbirdResult<()> {
+fn test_dynamic_capability_registration() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_deregistration() -> SongbirdResult<()> {
+fn test_capability_deregistration() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_multiple_providers_same_capability() -> SongbirdResult<()> {
+fn test_multiple_providers_same_capability() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_with_metadata() -> SongbirdResult<()> {
+fn test_capability_with_metadata() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_filtered_discovery_by_metadata() -> SongbirdResult<()> {
+fn test_filtered_discovery_by_metadata() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_priority_selection() -> SongbirdResult<()> {
+fn test_capability_priority_selection() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_health_aware_discovery() -> SongbirdResult<()> {
+fn test_capability_health_aware_discovery() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_concurrent_capability_registration() -> SongbirdResult<()> {
+fn test_concurrent_capability_registration() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_cache_invalidation() -> SongbirdResult<()> {
+fn test_capability_cache_invalidation() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_wildcard_capability_discovery() -> SongbirdResult<()> {
+fn test_wildcard_capability_discovery() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_version_compatibility() -> SongbirdResult<()> {
+fn test_capability_version_compatibility() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_discovery_timeout() -> SongbirdResult<()> {
+fn test_capability_discovery_timeout() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_empty_capability_list() -> SongbirdResult<()> {
+fn test_empty_capability_list() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_duplicate_capability_registration() -> SongbirdResult<()> {
+fn test_duplicate_capability_registration() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }
 
 #[test]
-fn test_capability_statistics() -> SongbirdResult<()> {
+fn test_capability_statistics() {
     // Requires CapabilityDiscovery implementation
-    Ok(())
 }

@@ -5,10 +5,10 @@
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
-    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-    #![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
-    #![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
 
     use crate::errors::*;
     use songbird_types::SongbirdResult;

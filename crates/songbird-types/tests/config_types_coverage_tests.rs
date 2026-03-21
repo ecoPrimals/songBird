@@ -5,7 +5,7 @@
 //!
 //! Tests gaming, adapters, communication, and other config types.
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"

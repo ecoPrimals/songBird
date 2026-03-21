@@ -100,8 +100,7 @@ impl Capability {
         F: Fn(&str) -> Option<String>,
     {
         let xdg_base = env_reader("XDG_RUNTIME_DIR")
-            .map(|d| format!("{d}/biomeos"))
-            .unwrap_or_else(|| "/tmp/biomeos".to_string());
+            .map_or_else(|| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
 
         let cap_name: &str = match self {
             Self::Crypto => "crypto",

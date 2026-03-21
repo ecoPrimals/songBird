@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -35,7 +35,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"
@@ -425,7 +425,7 @@ fn test_discovered_capability_with_health() {
         version: "1.0.0".to_string(),
         description: "Test capability".to_string(),
         provider: "test-provider".to_string(),
-        endpoint: format!("http://localhost:{}", test_orchestrator_port()).to_string(),
+        endpoint: format!("http://localhost:{}", test_orchestrator_port()),
         qos_metrics: QosMetrics::default(),
         health_status: HealthStatus::Healthy,
     };
@@ -441,7 +441,7 @@ fn test_discovered_capability_health_transitions() {
         version: "1.0.0".to_string(),
         description: "Test capability".to_string(),
         provider: "test-provider".to_string(),
-        endpoint: format!("http://localhost:{}", test_orchestrator_port()).to_string(),
+        endpoint: format!("http://localhost:{}", test_orchestrator_port()),
         qos_metrics: QosMetrics::default(),
         health_status: HealthStatus::Unknown,
     };
@@ -462,7 +462,7 @@ fn test_discovered_capability_clone() {
         version: "1.0.0".to_string(),
         description: "Test capability".to_string(),
         provider: "test-provider".to_string(),
-        endpoint: format!("http://localhost:{}", test_orchestrator_port()).to_string(),
+        endpoint: format!("http://localhost:{}", test_orchestrator_port()),
         qos_metrics: QosMetrics::default(),
         health_status: HealthStatus::Healthy,
     };
@@ -595,7 +595,7 @@ fn test_health_status_all_states() -> SongbirdResult<()> {
 
 #[test]
 fn test_multiple_connections_with_different_health() {
-    let connections = vec![
+    let connections = [
         create_test_primal_connection(
             "primal-1",
             format!("http://localhost:{}", test_orchestrator_port()),
@@ -677,7 +677,7 @@ fn test_primal_connection_metadata_operations() {
 
 #[test]
 fn test_connection_health_grouping() {
-    let connections = vec![
+    let connections = [
         create_test_primal_connection(
             "primal-1",
             format!("http://localhost:{}", test_orchestrator_port()),

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -34,10 +34,10 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-#![expect(clippy::all, reason = "test assertions and harness ergonomics")]
-#![expect(unused, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::all, reason = "test assertions and harness ergonomics")]
+#![allow(unused, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"

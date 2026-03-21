@@ -2,7 +2,7 @@
 name = "songbird-types"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
 homepage = "https://songbird-gaming.ecoprimals.dev"
@@ -26,7 +26,7 @@ unsafe-reference = []  # Feature flag for deprecated unsafe SafeZeroCopyBuffer (
 
 [dependencies]
 # Foundation layer has minimal external dependencies
-thiserror = "1.0"
+thiserror = { workspace = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 async-trait = "0.1"
 serde_json = { version = "1.0", optional = true }
@@ -48,9 +48,9 @@ futures-util = "0.3"
 # Added for canonical adapters
 rand = { workspace = true }
 # Hostname detection for federation
-hostname = "0.3"
+hostname = "0.4"
 # Base64 encoding for lineage proofs
-base64 = "0.21"
+base64 = "0.22"
 
 [dev-dependencies]
 songbird-process-env.workspace = true

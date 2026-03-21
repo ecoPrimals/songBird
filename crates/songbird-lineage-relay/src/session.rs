@@ -156,7 +156,7 @@ impl RelayedConnection {
     pub async fn stats(&self) -> ConnectionStats {
         let mut stats = self.stats.lock().await.clone();
         // Add relay-specific stats
-        stats.bytes_sent = self.relay_session.stats().await;
+        stats.bytes_sent = self.relay_session.stats();
         stats
     }
 }

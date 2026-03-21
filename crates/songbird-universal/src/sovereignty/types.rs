@@ -377,8 +377,8 @@ pub enum RiskSeverity {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-    #![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

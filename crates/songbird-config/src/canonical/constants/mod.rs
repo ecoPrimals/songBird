@@ -16,8 +16,15 @@
     reason = "constants are self-describing; top-level module doc explains policy"
 )]
 
+/// Platform-aware directory resolution (logs, cache, data, config, temp).
+pub mod directories;
+/// Primal endpoint discovery and capability-based filtering.
+pub mod primal_discovery;
+
+pub use directories::*;
+pub use primal_discovery::*;
+
 use songbird_types::error_helpers::SafeEnv;
-use std::collections::HashMap;
 use std::net::IpAddr;
 use std::time::Duration;
 
@@ -90,10 +97,10 @@ pub fn get_bind_address() -> String {
 /// Same as [`get_bind_address`](get_bind_address) with an injectable env reader.
 #[must_use]
 pub fn get_bind_address_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
-    if let Ok(addr) = env("SONGBIRD_BIND_ADDRESS") {
-        if addr.parse::<IpAddr>().is_ok() {
-            return addr;
-        }
+    if let Ok(addr) = env("SONGBIRD_BIND_ADDRESS")
+        && addr.parse::<IpAddr>().is_ok()
+    {
+        return addr;
     }
 
     if env("KUBERNETES_SERVICE_HOST").is_ok()
@@ -373,7 +380,7 @@ pub fn get_buffer_pool_size_with(
             base_size,
             |limit_mb| {
                 // Use 1% of available memory for buffer pool
-                #[expect(
+                #[allow(
                     clippy::cast_possible_truncation,
                     reason = "MEMORY_LIMIT parsed as u64; product scaled down for pool sizing"
                 )]
@@ -430,262 +437,11 @@ pub fn enable_zero_copy_with(env: &impl Fn(&str) -> Result<String, std::env::Var
     })
 }
 
-// ==================== PRIMAL CONFIGURATION ====================
+// Primal discovery and endpoint configuration now in submodules:
+// - primal_discovery (primal endpoint resolution, capability filtering)
+// - directories (platform directory resolution)
 
-/// Universal primal endpoint discovery - works with any primal name
-#[must_use]
-pub fn get_primal_endpoint(primal_name: &str) -> String {
-    get_primal_endpoint_with(primal_name, &read_process_env)
-}
-
-/// Same as [`get_primal_endpoint`](get_primal_endpoint) with an injectable env reader.
-#[must_use]
-pub fn get_primal_endpoint_with(
-    primal_name: &str,
-    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
-) -> String {
-    // First try primal-specific environment variable
-    let env_var = format!("{}_ENDPOINT", primal_name.to_uppercase());
-    if let Ok(endpoint) = env(&env_var) {
-        return endpoint;
-    }
-
-    // Try generic primal endpoint pattern
-    let generic_env = format!("PRIMAL_{}_ENDPOINT", primal_name.to_uppercase());
-    if let Ok(endpoint) = env(&generic_env) {
-        return endpoint;
-    }
-
-    // Calculate default endpoint based on environment and primal name
-    calculate_default_primal_endpoint(primal_name)
-}
-
-/// Calculate default endpoint for any primal based on naming conventions
-fn calculate_default_primal_endpoint(primal_name: &str) -> String {
-    let base_port = get_port_range_start();
-    let primal_offset = calculate_primal_port_offset(primal_name);
-    let port = base_port + primal_offset;
-
-    let host = if SafeEnv::get("KUBERNETES_SERVICE_HOST").is_ok() {
-        // Kubernetes service discovery pattern
-        format!("{}-service", primal_name.to_lowercase())
-    } else if SafeEnv::get("DOCKER_HOST").is_ok() || SafeEnv::get("CONTAINER").is_ok() {
-        // Docker container pattern
-        primal_name.to_lowercase()
-    } else {
-        // Local development pattern
-        get_bind_address()
-    };
-
-    let protocol = if should_use_tls_for_primal(primal_name) {
-        "https"
-    } else {
-        "http"
-    };
-
-    format!("{protocol}://{host}:{port}")
-}
-
-/// Calculate port offset for any primal name using consistent hashing
-fn calculate_primal_port_offset(primal_name: &str) -> u16 {
-    // Use consistent hashing to assign port offsets
-    // This ensures the same primal name always gets the same offset
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    let mut hasher = DefaultHasher::new();
-    primal_name.hash(&mut hasher);
-    let hash = hasher.finish();
-
-    // Map hash to reasonable port offset (0-999)
-    (hash % 1000) as u16
-}
-
-/// Calculate deterministic port offset for any primal name.
-///
-/// Delegates to `calculate_primal_port_offset` — no hardcoded primal names.
-fn get_primal_port_offset(primal_type: &str) -> u16 {
-    calculate_primal_port_offset(primal_type)
-}
-
-/// Determine if primal should use TLS based on environment and naming
-fn should_use_tls_for_primal(primal_name: &str) -> bool {
-    should_use_tls_for_primal_with(primal_name, &read_process_env)
-}
-
-fn should_use_tls_for_primal_with(
-    primal_name: &str,
-    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
-) -> bool {
-    // Check primal-specific TLS setting
-    let tls_env = format!("{}_USE_TLS", primal_name.to_uppercase());
-    if env_get_bool_with(env, &tls_env, false) {
-        return true;
-    }
-
-    // Security-related primals default to TLS in production
-    let is_security_primal = primal_name.to_lowercase().contains("security")
-        || primal_name.to_lowercase().contains("auth")
-        || primal_name.to_lowercase().contains("crypto");
-
-    match env("SONGBIRD_ENV").as_deref() {
-        Ok("production") => true,
-        Ok("staging") => is_security_primal,
-        _ => false, // Development default
-    }
-}
-
-/// Get all configured primal names from a snapshot of environment variables.
-#[must_use]
-pub fn get_configured_primal_names_in_env(env: &HashMap<String, String>) -> Vec<String> {
-    let mut primal_names = Vec::new();
-
-    for key in env.keys() {
-        if key.ends_with("_ENDPOINT") && !key.starts_with("SONGBIRD_") {
-            let primal_name = key.trim_end_matches("_ENDPOINT").to_lowercase();
-            if !primal_names.contains(&primal_name) {
-                primal_names.push(primal_name);
-            }
-        }
-
-        if key.starts_with("PRIMAL_")
-            && key.ends_with("_ENDPOINT")
-            && let Some(primal_part) =
-                key.strip_prefix("PRIMAL_").and_then(|s| s.strip_suffix("_ENDPOINT"))
-        {
-            let primal_name = primal_part.to_lowercase();
-            if !primal_names.contains(&primal_name) {
-                primal_names.push(primal_name);
-            }
-        }
-    }
-
-    primal_names
-}
-
-/// Get all configured primal names from environment
-#[must_use]
-pub fn get_configured_primal_names() -> Vec<String> {
-    let map: HashMap<String, String> = std::env::vars().collect();
-    get_configured_primal_names_in_env(&map)
-}
-
-/// Get common primal service ports from environment.
-///
-/// Dynamically discovers enabled primals via `SONGBIRD_ENABLE_*` env vars
-/// rather than hardcoding specific primal names. Any primal can be enabled
-/// by setting `SONGBIRD_ENABLE_{NAME}=true`.
-#[must_use]
-pub fn get_common_primal_ports() -> Vec<u16> {
-    let map: HashMap<String, String> = std::env::vars().collect();
-    get_common_primal_ports_from_env_map(&map)
-}
-
-/// Common primal ports from a snapshot of environment variables (concurrent-safe tests).
-#[must_use]
-pub fn get_common_primal_ports_from_env_map(env: &HashMap<String, String>) -> Vec<u16> {
-    let default_computed = {
-        let mut ports = Vec::new();
-        let base_port = get_port_range_start();
-
-        // Always include the main service port
-        ports.push(base_port);
-
-        // Dynamically discover enabled primals from env vars
-        for (key, value) in env {
-            if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_")
-                && (value.eq_ignore_ascii_case("true") || value == "1")
-            {
-                let name = primal_name.to_lowercase();
-                ports.push(base_port + get_primal_port_offset(&name));
-            }
-        }
-
-        ports.into_iter().map(|p| p.to_string()).collect::<Vec<_>>().join(",")
-    };
-
-    env.get("SONGBIRD_COMMON_PORTS")
-        .cloned()
-        .unwrap_or(default_computed)
-        .split(',')
-        .filter_map(|s| s.trim().parse().ok())
-        .collect()
-}
-
-fn normalize_capability_env_key(capability: &str) -> String {
-    capability.trim().to_lowercase().replace(['-', ' '], "_").to_uppercase()
-}
-
-fn normalize_capability_match_key(s: &str) -> String {
-    s.trim().to_lowercase().replace(['-', ' '], "_")
-}
-
-fn trim_nonempty(s: &str) -> Option<&str> {
-    let t = s.trim();
-    if t.is_empty() {
-        None
-    } else {
-        Some(t)
-    }
-}
-
-fn capability_env_for_primal_in(
-    primal_lower: &str,
-    env: &HashMap<String, String>,
-) -> Option<String> {
-    let u = primal_lower.to_uppercase();
-    env.get(&format!("{u}_CAPABILITIES"))
-        .cloned()
-        .or_else(|| env.get(&format!("PRIMAL_{u}_CAPABILITIES")).cloned())
-        .or_else(|| env.get(&format!("SONGBIRD_PRIMAL_{u}_CAPABILITIES")).cloned())
-}
-
-fn primal_declares_capability_in(
-    primal_lower: &str,
-    capability_query: &str,
-    env: &HashMap<String, String>,
-) -> bool {
-    let Some(list) = capability_env_for_primal_in(primal_lower, env) else {
-        return false;
-    };
-    let want = normalize_capability_match_key(capability_query);
-    list.split(',').filter_map(trim_nonempty).map(normalize_capability_match_key).any(|c| c == want)
-}
-
-/// Filters by capability using an env snapshot (tests avoid mutating process environment).
-#[must_use]
-pub fn find_primals_with_capability_in_env(
-    capability: &str,
-    env: &HashMap<String, String>,
-) -> Vec<String> {
-    let key = normalize_capability_env_key(capability);
-    let providers_key = format!("SONGBIRD_CAPABILITY_{key}_PROVIDERS");
-    if let Some(raw) = env.get(&providers_key) {
-        let providers: Vec<String> =
-            raw.split(',').filter_map(trim_nonempty).map(str::to_lowercase).collect();
-        if !providers.is_empty() {
-            return providers;
-        }
-    }
-
-    let mut out = Vec::new();
-    for primal in get_configured_primal_names_in_env(env) {
-        if primal_declares_capability_in(&primal, capability, env) && !out.contains(&primal) {
-            out.push(primal);
-        }
-    }
-    out
-}
-
-/// Filters by capability: `SONGBIRD_CAPABILITY_<CAP>_PROVIDERS` first, else primals from `*_ENDPOINT`
-/// with matching `{ID}_CAPABILITIES` / `PRIMAL_{ID}_CAPABILITIES` / `SONGBIRD_PRIMAL_{ID}_CAPABILITIES`.
-#[must_use]
-pub fn find_primals_with_capability(capability: &str) -> Vec<String> {
-    let map: HashMap<String, String> = std::env::vars().collect();
-    find_primals_with_capability_in_env(capability, &map)
-}
-
-fn env_port_with(
+pub(crate) fn env_port_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
     key: &str,
     default: u16,
@@ -698,210 +454,7 @@ fn env_or_default_with(
     key: &str,
     default: impl Into<String>,
 ) -> String {
-    env(key).unwrap_or_else(|_| default.into())
-}
-
-fn default_production_base_url_with(
-    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
-) -> String {
-    let host = get_bind_address_with(env);
-    let port = env_port_with(env, "SONGBIRD_PRODUCTION_HTTPS_PORT", FALLBACK_PRODUCTION_HTTPS_PORT);
-    format!("https://{host}:{port}")
-}
-
-fn default_staging_base_url_with(
-    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
-) -> String {
-    let host = get_bind_address_with(env);
-    let port = env_port_with(env, "SONGBIRD_STAGING_HTTP_PORT", FALLBACK_STAGING_HTTP_PORT);
-    format!("http://{host}:{port}")
-}
-
-// ==================== ENDPOINT CONFIGURATION ====================
-
-/// Get canonical endpoint URL based on environment and service (injectable env reader).
-#[must_use]
-pub fn get_canonical_endpoint_with(
-    service_name: &str,
-    default_port: u16,
-    env: impl Fn(&str) -> Result<String, std::env::VarError>,
-) -> String {
-    let base_url = match env_or_default_with(&env, "SONGBIRD_ENVIRONMENT", "development").as_str() {
-        "production" | "prod" => {
-            env_or_default_with(&env, "SONGBIRD_BASE_URL", default_production_base_url_with(&env))
-        }
-        "staging" => env_or_default_with(
-            &env,
-            "SONGBIRD_BASE_URL",
-            env_or_default_with(
-                &env,
-                "SONGBIRD_STAGING_BASE_URL",
-                default_staging_base_url_with(&env),
-            ),
-        ),
-        _ => {
-            let host = get_bind_address_with(&env);
-            env_or_default_with(&env, "SONGBIRD_BASE_URL", format!("http://{host}:{default_port}"))
-        }
-    };
-
-    env_or_default_with(
-        &env,
-        &format!("SONGBIRD_{}_ENDPOINT", service_name.to_uppercase()),
-        base_url,
-    )
-}
-
-/// Get canonical endpoint URL based on environment and service
-#[must_use]
-pub fn get_canonical_endpoint(service_name: &str, default_port: u16) -> String {
-    get_canonical_endpoint_with(service_name, default_port, read_process_env)
-}
-
-/// Get canonical discovery endpoint
-#[must_use]
-pub fn get_canonical_discovery_endpoint() -> String {
-    let default_port =
-        SafeEnv::get_port("SONGBIRD_CANONICAL_DISCOVERY_PORT", FALLBACK_CANONICAL_DISCOVERY_PORT);
-    get_canonical_endpoint("discovery", default_port)
-}
-
-/// Get canonical security endpoint
-#[must_use]
-pub fn get_canonical_security_endpoint() -> String {
-    let default_port =
-        SafeEnv::get_port("SONGBIRD_CANONICAL_SECURITY_PORT", FALLBACK_CANONICAL_SECURITY_PORT);
-    get_canonical_endpoint("security", default_port)
-}
-
-/// Get canonical orchestrator endpoint
-#[must_use]
-pub fn get_canonical_orchestrator_endpoint() -> String {
-    let default_port = SafeEnv::get_port(
-        "SONGBIRD_CANONICAL_ORCHESTRATOR_PORT",
-        FALLBACK_CANONICAL_ORCHESTRATOR_PORT,
-    );
-    get_canonical_endpoint("orchestrator", default_port)
-}
-
-/// Get canonical gaming endpoint
-#[must_use]
-pub fn get_canonical_gaming_endpoint() -> String {
-    let default_port =
-        SafeEnv::get_port("SONGBIRD_CANONICAL_GAMING_PORT", FALLBACK_CANONICAL_GAMING_PORT);
-    get_canonical_endpoint("gaming", default_port)
-}
-
-// ==================== DIRECTORY CONFIGURATION ====================
-
-/// Get log directory from environment or calculate default
-#[must_use]
-pub fn get_log_dir() -> String {
-    get_log_dir_with(&read_process_env)
-}
-
-/// Same as [`get_log_dir`](get_log_dir) with an injectable env reader.
-#[must_use]
-pub fn get_log_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
-    env_get_or_default_with(env, "SONGBIRD_LOG_DIR", {
-        // Use platform-appropriate log directory
-        if cfg!(windows) {
-            format!(
-                "{}\\AppData\\Local\\Songbird\\logs",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
-            )
-        } else {
-            format!(
-                "{}/.local/share/songbird/logs",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
-            )
-        }
-    })
-}
-
-/// Get cache directory from environment or calculate default
-#[must_use]
-pub fn get_cache_dir() -> String {
-    get_cache_dir_with(&read_process_env)
-}
-
-/// Same as [`get_cache_dir`](get_cache_dir) with an injectable env reader.
-#[must_use]
-pub fn get_cache_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
-    env_get_or_default_with(env, "SONGBIRD_CACHE_DIR", {
-        // Use platform-appropriate cache directory
-        if cfg!(windows) {
-            format!(
-                "{}\\AppData\\Local\\Songbird\\cache",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
-            )
-        } else {
-            format!("{}/.cache/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
-        }
-    })
-}
-
-/// Get data directory from environment or calculate default
-#[must_use]
-pub fn get_data_dir() -> String {
-    get_data_dir_with(&read_process_env)
-}
-
-/// Same as [`get_data_dir`](get_data_dir) with an injectable env reader.
-#[must_use]
-pub fn get_data_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
-    env_get_or_default_with(env, "SONGBIRD_DATA_DIR", {
-        // Use platform-appropriate data directory
-        if cfg!(windows) {
-            format!(
-                "{}\\AppData\\Roaming\\Songbird",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
-            )
-        } else {
-            format!(
-                "{}/.local/share/songbird",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
-            )
-        }
-    })
-}
-
-/// Get configuration directory from environment or calculate default
-#[must_use]
-pub fn get_config_dir() -> String {
-    get_config_dir_with(&read_process_env)
-}
-
-/// Same as [`get_config_dir`](get_config_dir) with an injectable env reader.
-#[must_use]
-pub fn get_config_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
-    env_get_or_default_with(env, "SONGBIRD_CONFIG_DIR", {
-        // Use platform-appropriate config directory
-        if cfg!(windows) {
-            format!(
-                "{}\\AppData\\Roaming\\Songbird\\config",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
-            )
-        } else {
-            format!("{}/.config/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
-        }
-    })
-}
-
-/// Get temporary directory from environment or use system default
-#[must_use]
-pub fn get_temp_dir() -> String {
-    get_temp_dir_with(&read_process_env)
-}
-
-/// Same as [`get_temp_dir`](get_temp_dir) with an injectable env reader.
-#[must_use]
-pub fn get_temp_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
-    env_get_or_default_with(
-        env,
-        "SONGBIRD_TEMP_DIR",
-        std::env::temp_dir().to_string_lossy().to_string(),
-    )
+    env_get_or_default_with(env, key, default)
 }
 
 // ==================== LOGGING CONFIGURATION ====================
@@ -1195,5 +748,5 @@ impl CanonicalNetworkDefaults {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests;

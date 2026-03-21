@@ -49,7 +49,7 @@ mod systemtime_option {
 // UNIFIED CONFIGURATION RE-EXPORTS - **MIGRATION COMPLETE**
 // ============================================================================
 
-/// Experiment configuration - **MIGRATED TO UNIFIED**
+// Experiment configuration - **MIGRATED TO UNIFIED**
 // TEMPORARY: Disabled - songbird_config::unified has E0765 corruption
 // pub use songbird_config::unified::testing::{ByzantineFailureConfig, ExperimentConfig, NetworkFaultConfig, PerformanceDegradationConfig,
 //     ResourceConstraintConfig, ServiceFailureConfig,

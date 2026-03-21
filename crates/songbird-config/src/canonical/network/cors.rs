@@ -35,8 +35,8 @@ impl Default for CorsConfig {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::CorsConfig;
     use songbird_test_utils::canonical_test_framework::TestContext;

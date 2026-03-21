@@ -159,7 +159,7 @@ impl BearDogClient {
     }
 
     /// Get endpoint based on mode (for diagnostics/debugging)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) const fn endpoint(&self) -> &IpcEndpoint {
         match &self.mode {
             BearDogMode::Direct {
@@ -174,7 +174,7 @@ impl BearDogClient {
     }
 
     /// Check if in Neural API mode (for diagnostics/debugging)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) const fn is_neural_api(&self) -> bool {
         matches!(self.mode, BearDogMode::NeuralApi { .. })
     }

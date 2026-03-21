@@ -279,10 +279,11 @@ impl DignityChecker {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::consent_management::UserPreferences;
     use crate::task_lifecycle::UserId;
 
     fn test_task(user_id: UserId, task_type: &str) -> TaskLifecycle {
@@ -501,5 +502,145 @@ mod tests {
         let task = test_task(UserId::from("alice"), "x");
         assert!(!enforcer.requires_consent(&task, Some(100.0)));
         assert!(enforcer.requires_consent(&task, Some(600.0)));
+    }
+
+    #[test]
+    fn requires_consent_none_cost_below_threshold_not_always_list() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("u"), "misc");
+        assert!(!enforcer.requires_consent(&task, None));
+    }
+
+    #[test]
+    fn always_require_includes_delete_data() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("u"), "delete_data");
+        assert!(enforcer.requires_consent(&task, None));
+    }
+
+    #[test]
+    fn always_require_includes_export_data() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("u"), "export_data");
+        assert!(enforcer.requires_consent(&task, Some(0.0)));
+    }
+
+    #[test]
+    fn always_require_includes_gpu_training() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("u"), "gpu_training");
+        assert!(enforcer.requires_consent(&task, Some(0.0)));
+    }
+
+    #[test]
+    fn enforcement_config_default_timeout_is_positive() {
+        let c = EnforcementConfig::default();
+        assert!(c.default_timeout.as_secs() > 0);
+        assert_eq!(c.timeout_behavior, TimeoutBehavior::Deny);
+    }
+
+    #[test]
+    fn dignity_cost_exactly_100_non_transparent_no_violation() {
+        let v = DignityChecker::check_operation("job", Some(100.0), false);
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn dignity_cost_100_01_non_transparent_flags() {
+        let v = DignityChecker::check_operation("job", Some(100.01), false);
+        assert!(v.iter().any(|m| m.contains("transparent")));
+    }
+
+    #[test]
+    fn dignity_keywords_gpu_and_training() {
+        let v1 = DignityChecker::check_operation("run_gpu_step", None, true);
+        assert!(v1.iter().any(|m| m.contains("gpu")));
+        let v2 = DignityChecker::check_operation("model_training", None, true);
+        assert!(v2.iter().any(|m| m.contains("training")));
+    }
+
+    #[test]
+    fn dignity_large_scale_keyword() {
+        let v = DignityChecker::check_operation("large_scale_import", None, true);
+        assert!(v.iter().any(|m| m.contains("large_scale")));
+    }
+
+    #[test]
+    fn dignity_sensitive_stops_after_first_match() {
+        let v = DignityChecker::check_operation("delete_and_export", None, true);
+        assert_eq!(v.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn enforce_auto_approved_when_under_user_threshold() {
+        let cm = Arc::new(ConsentManager::new());
+        cm.set_user_preferences(
+            UserId::from("bob"),
+            UserPreferences {
+                auto_approve_under_cost: Some(200.0),
+                ..UserPreferences::default()
+            },
+        )
+        .await;
+        let enforcer = ConsentEnforcer::new(cm);
+        let task = test_task(UserId::from("bob"), "pay");
+        let r = enforcer.enforce(&task, Some(50.0)).await.unwrap();
+        assert!(matches!(r, EnforcementResult::Allowed { .. }));
+    }
+
+    #[tokio::test]
+    async fn check_consent_unknown_id_returns_none() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        assert!(enforcer.check_consent("00000000-0000-0000-0000-000000000000").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn wait_for_decision_blocked_preserves_consent_id() {
+        let cm = Arc::new(ConsentManager::new());
+        let enforcer = ConsentEnforcer::new(cm.clone());
+        let task = test_task(UserId::from("u"), "op");
+        let cid = cm.request_consent(task.owner.clone(), task.id, "op", Some(99.0)).await;
+        assert!(cm.deny(cid.as_ref(), None).await);
+        let r = enforcer.wait_for_decision(cid.as_ref()).await.unwrap();
+        assert!(matches!(
+            r,
+            EnforcementResult::Blocked {
+                consent_id: Some(id),
+                ..
+            } if id.as_ref() == cid.as_ref()
+        ));
+    }
+
+    #[test]
+    fn cost_nan_does_not_trigger_threshold_compare() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("u"), "misc");
+        assert!(!enforcer.requires_consent(&task, Some(f64::NAN)));
+    }
+
+    #[test]
+    fn custom_always_require_list_respected() {
+        let enforcer = ConsentEnforcer::with_config(
+            Arc::new(ConsentManager::new()),
+            EnforcementConfig {
+                always_require_consent: vec!["custom_op".into()],
+                ..Default::default()
+            },
+        );
+        let task = test_task(UserId::from("u"), "custom_op");
+        assert!(enforcer.requires_consent(&task, None));
+    }
+
+    #[test]
+    fn cost_infinity_exceeds_threshold() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("u"), "misc");
+        assert!(enforcer.requires_consent(&task, Some(f64::INFINITY)));
+    }
+
+    #[test]
+    fn dignity_export_keyword() {
+        let v = DignityChecker::check_operation("export", None, true);
+        assert!(v.iter().any(|m| m.contains("export")));
     }
 }

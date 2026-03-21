@@ -74,7 +74,7 @@ pub async fn discover_from_network() -> Result<Vec<DiscoveredPrimal>, DiscoveryE
 ///
 /// Returns `DiscoveryError::BackendUnavailable` if mDNS feature is not enabled,
 /// or `DiscoveryError::NetworkError` if discovery fails.
-#[expect(
+#[allow(
     clippy::unused_async,
     reason = "async signature required for consistent discovery backend interface"
 )]
@@ -115,7 +115,7 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
 /// Currently returns empty - stub for future mDNS library integration.
 /// Kept async for API consistency with future implementation.
 #[cfg(feature = "mdns")]
-#[expect(
+#[allow(
     clippy::unused_async,
     reason = "async signature required for consistent mDNS query API and future library integration"
 )]
@@ -163,7 +163,7 @@ async fn query_mdns_services(
 /// environment=production
 /// ```
 #[cfg(feature = "mdns")]
-#[expect(dead_code, reason = "prepared for future mDNS TXT/SRV parsing integration")]
+#[allow(dead_code, reason = "prepared for future mDNS TXT/SRV parsing integration")]
 fn parse_mdns_response(
     service_name: &str,
     records: HashMap<String, String>,
@@ -216,7 +216,7 @@ fn parse_mdns_response(
 /// # Errors
 ///
 /// Returns an error if DNS-SD support is not enabled.
-#[expect(
+#[allow(
     clippy::unused_async,
     reason = "async used when dns-sd feature is enabled; stub path stays synchronous"
 )]
@@ -318,7 +318,7 @@ async fn resolve_srv_to_primal(
 /// Primal-agnostic: matches on domain terminology (e.g. "security", "ai")
 /// rather than specific primal names. Concrete provider identities are
 /// discovered at runtime via the capability advertisement protocol.
-#[expect(dead_code, reason = "reserved for capability inference from service names")]
+#[allow(dead_code, reason = "reserved for capability inference from service names")]
 fn infer_capabilities_from_name(name: &str) -> Vec<String> {
     let name_lower = name.to_lowercase();
     let mut capabilities = Vec::new();
@@ -356,7 +356,7 @@ fn infer_capabilities_from_name(name: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 

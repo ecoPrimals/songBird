@@ -1,89 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (c) 2024-2026 ecoPrimals
-
-//! IPC HTTP Client - Self-Delegation Pattern
-//!
-//! Pure Rust HTTP client that delegates to Songbird's own HTTP service via IPC.
-//!
-//! ## Architecture: Tower Atomic Self-Delegation
-//!
-//! ```text
-//! ┌──────────────────────────────────────────────────────────┐
-//! │  Application Code (Discovery, Config, etc.)              │
-//! │  "I need to make an HTTP request"                        │
-//! └─────────────────────┬────────────────────────────────────┘
-//!                       │
-//!                       │ IpcHttpClient::new()
-//!                       │ client.get("https://...").await?
-//!                       │
-//! ┌─────────────────────▼────────────────────────────────────┐
-//! │  IpcHttpClient (THIS FILE)                               │
-//! │  - Provides HTTP client API                              │
-//! │  - Delegates via JSON-RPC over Unix socket               │
-//! │  - Zero C dependencies                                   │
-//! └─────────────────────┬────────────────────────────────────┘
-//!                       │
-//!                       │ JSON-RPC: {"method": "http.request", ...}
-//!                       │ Socket: /primal/songbird
-//!                       │
-//! ┌─────────────────────▼────────────────────────────────────┐
-//! │  Songbird IPC Handler                                    │
-//! │  (src/ipc/handlers/http.rs)                             │
-//! └─────────────────────┬────────────────────────────────────┘
-//!                       │
-//! ┌─────────────────────▼────────────────────────────────────┐
-//! │  SongbirdHttpClient                                      │
-//! │  - Pure Rust TLS 1.3                                    │
-//! │  - Tower Atomic with BearDog                            │
-//! └──────────────────────────────────────────────────────────┘
-//! ```
-//!
-//! ## Usage
-//!
-//! ```rust,no_run
-//! use songbird_http_client::IpcHttpClient;
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create client (connects to Songbird via IPC)
-//!     let client = IpcHttpClient::new().await?;
-//!
-//!     // Make HTTP GET request
-//!     let response = client.get("https://api.github.com/repos/rust-lang/rust").await?;
-//!     
-//!     println!("Status: {}", response.status());
-//!     println!("Body: {}", response.text().await?);
-//!
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ## Migration from legacy HTTP clients
-//!
-//! ```rust,ignore
-//! // BEFORE (legacy - C dependencies)
-//! use legacy_http::Client;
-//!
-//! let client = Client::new();
-//! let response = client.get(url).send().await?;
-//! let text = response.text().await?;
-//!
-//! // AFTER (IpcHttpClient - Pure Rust via IPC)
-//! use songbird_http_client::IpcHttpClient;
-//!
-//! let client = IpcHttpClient::new().await?;
-//! let response = client.get(url).await?;
-//! let text = response.text().await?;
-//! ```
-//!
-//! ## Benefits
-//!
-//! - ✅ **Pure Rust**: Zero C dependencies (TRUE ecoBin compliant)
-//! - ✅ **Self-Delegation**: Reuses Songbird's own HTTP client
-//! - ✅ **Tower Atomic**: `BearDog` crypto via IPC (no ring/openssl)
-//! - ✅ **Simple Migration**: Drop-in replacement for legacy HTTP clients
-//! - ✅ **Maintained**: Songbird HTTP client is actively developed
-
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Value, json};
@@ -99,8 +13,8 @@ use tokio::net::TcpStream as PlatformStream;
 #[cfg(unix)]
 use tokio::net::UnixStream as PlatformStream;
 
-use super::multipart::Form;
 use crate::connection_pool::ConnectionPool;
+use crate::ipc_client::multipart::Form;
 
 /// IPC HTTP Client - Pure Rust via Songbird self-delegation
 ///
@@ -239,7 +153,7 @@ impl IpcHttpClient {
     }
 
     /// Discover socket path with injectable env reader (concurrent-safe, testable)
-    fn discover_socket_path_with<F>(env_reader: F) -> PathBuf
+    pub(crate) fn discover_socket_path_with<F>(env_reader: F) -> PathBuf
     where
         F: Fn(&str) -> Option<String>,
     {
@@ -492,9 +406,9 @@ impl IpcHttpClient {
 /// Simplified HTTP response type.
 #[derive(Debug)]
 pub struct Response {
-    status: u16,
-    headers: HashMap<String, String>,
-    body: Vec<u8>,
+    pub(crate) status: u16,
+    pub(crate) headers: HashMap<String, String>,
+    pub(crate) body: Vec<u8>,
 }
 
 impl Response {
@@ -759,122 +673,5 @@ impl RequestBuilder {
         };
 
         self.client.request(&self.method, &self.url, Some(headers), body).await
-    }
-}
-
-#[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
-mod tests {
-    use super::*;
-    use std::collections::HashMap;
-
-    #[test]
-    fn test_socket_discovery() {
-        // ✅ Concurrent-safe: Uses discover_socket_path_with (no env vars)
-        // Test with explicit socket path
-        let env1: HashMap<String, String> =
-            HashMap::from([("SONGBIRD_SOCKET".to_string(), "/tmp/test.sock".to_string())]);
-        let path = IpcHttpClient::discover_socket_path_with(|name| env1.get(name).cloned());
-        assert_eq!(path, PathBuf::from("/tmp/test.sock"));
-
-        // Test with family ID (no explicit socket — falls back to /tmp)
-        let env2: HashMap<String, String> =
-            HashMap::from([("SONGBIRD_FAMILY_ID".to_string(), "test".to_string())]);
-        let path = IpcHttpClient::discover_socket_path_with(|name| env2.get(name).cloned());
-        assert!(path.to_string_lossy().contains("songbird-test.sock"));
-    }
-
-    #[test]
-    fn test_socket_discovery_songbird_socket_wins_over_ipc_socket() {
-        let env: HashMap<String, String> = HashMap::from([
-            ("SONGBIRD_SOCKET".to_string(), "/explicit/primary.sock".to_string()),
-            ("SONGBIRD_IPC_SOCKET".to_string(), "/explicit/secondary.sock".to_string()),
-        ]);
-        let path = IpcHttpClient::discover_socket_path_with(|name| env.get(name).cloned());
-        assert_eq!(path, PathBuf::from("/explicit/primary.sock"));
-    }
-
-    #[test]
-    fn test_socket_discovery_ipc_socket_when_no_primary() {
-        let env: HashMap<String, String> =
-            HashMap::from([("SONGBIRD_IPC_SOCKET".to_string(), "/only/ipc.sock".to_string())]);
-        let path = IpcHttpClient::discover_socket_path_with(|name| env.get(name).cloned());
-        assert_eq!(path, PathBuf::from("/only/ipc.sock"));
-    }
-
-    #[test]
-    fn test_socket_discovery_family_id_alias() {
-        let env: HashMap<String, String> =
-            HashMap::from([("FAMILY_ID".to_string(), "prod".to_string())]);
-        let path = IpcHttpClient::discover_socket_path_with(|name| env.get(name).cloned());
-        assert!(path.to_string_lossy().contains("songbird-prod.sock"));
-    }
-
-    #[test]
-    fn test_response_is_success_and_headers() {
-        let ok = Response {
-            status: 201,
-            headers: HashMap::from([("X-Test".to_string(), "1".to_string())]),
-            body: vec![],
-        };
-        assert!(ok.is_success());
-        assert_eq!(ok.status(), 201);
-        assert_eq!(ok.headers().get("X-Test"), Some(&"1".to_string()));
-
-        let fail = Response {
-            status: 404,
-            headers: HashMap::new(),
-            body: vec![],
-        };
-        assert!(!fail.is_success());
-    }
-
-    #[tokio::test]
-    async fn test_response_text_and_bytes() {
-        let r = Response {
-            status: 200,
-            headers: HashMap::new(),
-            body: b"hello utf8".to_vec(),
-        };
-        assert_eq!(r.text().await.expect("utf8 body"), "hello utf8");
-
-        let raw = Response {
-            status: 200,
-            headers: HashMap::new(),
-            body: vec![0, 159, 146, 150],
-        };
-        assert!(raw.text().await.is_err());
-        let bytes = Response {
-            status: 200,
-            headers: HashMap::new(),
-            body: vec![1, 2, 3],
-        };
-        assert_eq!(bytes.bytes().await, vec![1, 2, 3]);
-    }
-
-    #[tokio::test]
-    #[ignore = "requires running Songbird instance"]
-    async fn test_http_get() {
-        let client = IpcHttpClient::new().await.unwrap();
-        let response = client.get("https://httpbin.org/get").await.unwrap();
-        assert_eq!(response.status(), 200);
-    }
-
-    #[tokio::test]
-    #[ignore = "requires running Songbird instance"]
-    async fn test_http_post_json() {
-        let client = IpcHttpClient::new().await.unwrap();
-        let body = json!({"test": "data"});
-
-        let response = client
-            .post("https://httpbin.org/post")
-            .await
-            .json(&body)
-            .unwrap()
-            .send()
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), 200);
     }
 }

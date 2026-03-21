@@ -13,9 +13,10 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 use tokio::net::UdpSocket;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 use tracing::{debug, info, warn};
 
@@ -66,8 +67,6 @@ pub struct RelayOffer {
 /// Active relay session
 ///
 /// **Pure Rust | Zero Unsafe | Complete Implementation**
-///
-/// Evolution from stub to production-ready relay client.
 #[derive(Debug)]
 pub struct RelaySession {
     /// Wire identifier echoed in [`crate::relay_protocol::RelayProtocol`] frames.
@@ -85,7 +84,7 @@ pub struct RelaySession {
     /// When the session became active.
     pub established_at: SystemTime,
     /// Monotonic counter of payload bytes forwarded through this socket.
-    pub bytes_relayed: Arc<Mutex<u64>>,
+    pub bytes_relayed: Arc<AtomicU64>,
     /// UDP socket for relay communication (created at bind time)
     socket: Arc<UdpSocket>,
 }
@@ -123,17 +122,12 @@ impl RelaySession {
             target,
             masking_level,
             established_at: SystemTime::now(),
-            bytes_relayed: Arc::new(Mutex::new(0)),
+            bytes_relayed: Arc::new(AtomicU64::new(0)),
             socket: Arc::new(socket),
         })
     }
 
-    /// Send data through relay
-    ///
-    /// **EVOLUTION: Stub → Complete Implementation**
-    ///
-    /// BEFORE (v3.22): Only logged and incremented counter (stub)
-    /// AFTER (v3.23+): Actually forwards packet through UDP to relay server
+    /// Send data through relay (forwards over UDP and updates byte counter).
     ///
     /// # Errors
     ///
@@ -161,15 +155,14 @@ impl RelaySession {
             LineageRelayError::NetworkError(format!("Failed to send data through relay: {e}"))
         })?;
 
-        // Update statistics
-        let mut bytes = self.bytes_relayed.lock().await;
-        *bytes += data.len() as u64;
+        let total =
+            self.bytes_relayed.fetch_add(data.len() as u64, Ordering::Relaxed) + data.len() as u64;
 
         info!(
             "✅ Forwarded {} bytes through relay {} (total: {} bytes)",
             data.len(),
             self.relay_node,
-            *bytes
+            total
         );
 
         Ok(())
@@ -215,9 +208,10 @@ impl RelaySession {
         Ok(())
     }
 
-    /// Get relay statistics
-    pub async fn stats(&self) -> u64 {
-        *self.bytes_relayed.lock().await
+    /// Get relay statistics (total payload bytes sent on this session).
+    #[must_use]
+    pub fn stats(&self) -> u64 {
+        self.bytes_relayed.load(Ordering::Relaxed)
     }
 }
 
@@ -471,7 +465,7 @@ mod tests {
 
         // Send will succeed (UDP is connectionless, doesn't fail on send)
         session.send(b"test data").await.unwrap();
-        assert_eq!(session.stats().await, 9);
+        assert_eq!(session.stats(), 9);
     }
 
     #[tokio::test]

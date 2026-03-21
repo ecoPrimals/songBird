@@ -205,7 +205,7 @@ impl DiscoverableEndpoint {
     /// Same as [`discover`](Self::discover) with an injectable env reader.
     pub async fn discover_with(
         &self,
-        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+        env: impl Fn(&str) -> Result<String, std::env::VarError> + Send + Sync,
     ) -> SongbirdResult<EndpointSpec> {
         // Try primary method
         if let Ok(endpoint) = self.try_discovery_method_with(&self.discovery_method, &env).await {
@@ -236,7 +236,7 @@ impl DiscoverableEndpoint {
     async fn try_discovery_method_with(
         &self,
         method: &DiscoveryMethod,
-        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+        env: &(impl Fn(&str) -> Result<String, std::env::VarError> + Send + Sync),
     ) -> SongbirdResult<EndpointSpec> {
         match method {
             DiscoveryMethod::Environment {
@@ -448,7 +448,9 @@ fn resolve_named_port(name: &str) -> SongbirdResult<u16> {
     }
 }
 
-fn is_development_mode_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> bool {
+fn is_development_mode_with(
+    env: &(impl Fn(&str) -> Result<String, std::env::VarError> + Send + Sync),
+) -> bool {
     let sb = env("SONGBIRD_ENV").unwrap_or_default();
     let rust = env("RUST_ENV").unwrap_or_default();
     sb.as_str() == "development"

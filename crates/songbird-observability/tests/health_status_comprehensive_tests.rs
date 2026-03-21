@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -33,9 +33,9 @@
 //! This test suite provides extensive coverage for health monitoring,
 //! status transitions, and health assessment logic to reach 60% coverage.
 
-#![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
-#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
 
 use songbird_observability::health::*;
 use std::collections::HashMap;

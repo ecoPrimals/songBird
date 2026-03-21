@@ -39,7 +39,7 @@ type Result<T> = SongbirdResult<T>;
 /// and `StaticServiceDiscovery` with universal capability-based detection.
 pub struct UniversalDiscoveryFactory;
 
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Infrastructure code - factory methods used as system evolves
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Infrastructure code - factory methods used as system evolves
 impl UniversalDiscoveryFactory {
     /// Create service discovery with auto-detection
     ///
@@ -402,7 +402,7 @@ impl UniversalServiceDiscoveryAdapter {
 // All discovery now uses UniversalDiscoveryFactory with automatic capability detection
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use crate::traits::discovery::{DiscoveryBackend, DiscoveryConfig};
 

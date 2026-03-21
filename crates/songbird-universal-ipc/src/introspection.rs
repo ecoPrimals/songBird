@@ -19,7 +19,7 @@
 
 use serde_json::Value;
 
-/// Resolve canonical BirdSong / biomeOS `family_id` from environment keys.
+/// Resolve canonical `BirdSong` / biomeOS `family_id` from environment keys.
 ///
 /// Priority: `SONGBIRD_ORCHESTRATOR_FAMILY_ID` → `BIOMEOS_FAMILY_ID` →
 /// `SONGBIRD_FAMILY_ID` → `FAMILY_ID` → `NODE_FAMILY_ID`, then `"default"`.
@@ -357,11 +357,16 @@ pub fn identity(family_id: &str) -> Value {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::{
-        discover_capabilities, health, identity, primal_capabilities, primal_info, rpc_methods,
+        canonical_family_id, discover_capabilities, health, identity, primal_capabilities,
+        primal_info, rpc_discover_standard, rpc_methods,
     };
+
+    use std::collections::HashMap;
+    use std::env::VarError;
 
     #[test]
     fn primal_info_has_expected_keys() {
@@ -409,5 +414,121 @@ mod tests {
         assert_eq!(v["primal"], "songbird");
         let caps = v["capabilities"].as_array().unwrap();
         assert!(caps.iter().any(|c| c == "http.request"));
+    }
+
+    #[test]
+    fn canonical_family_id_prefers_orchestrator() {
+        let m = HashMap::from([
+            ("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "orch"),
+            ("BIOMEOS_FAMILY_ID", "biome"),
+        ]);
+        assert_eq!(
+            canonical_family_id(|k| m
+                .get(k)
+                .copied()
+                .map(String::from)
+                .ok_or(VarError::NotPresent)),
+            "orch"
+        );
+    }
+
+    #[test]
+    fn canonical_family_id_falls_back_to_biomeos() {
+        let m = HashMap::from([("BIOMEOS_FAMILY_ID", "biome-only")]);
+        assert_eq!(
+            canonical_family_id(|k| m
+                .get(k)
+                .copied()
+                .map(String::from)
+                .ok_or(VarError::NotPresent)),
+            "biome-only"
+        );
+    }
+
+    #[test]
+    fn canonical_family_id_falls_back_to_songbird_family_id() {
+        let m = HashMap::from([("SONGBIRD_FAMILY_ID", "sb")]);
+        assert_eq!(
+            canonical_family_id(|k| m
+                .get(k)
+                .copied()
+                .map(String::from)
+                .ok_or(VarError::NotPresent)),
+            "sb"
+        );
+    }
+
+    #[test]
+    fn canonical_family_id_falls_back_to_family_id() {
+        let m = HashMap::from([("FAMILY_ID", "fam")]);
+        assert_eq!(
+            canonical_family_id(|k| m
+                .get(k)
+                .copied()
+                .map(String::from)
+                .ok_or(VarError::NotPresent)),
+            "fam"
+        );
+    }
+
+    #[test]
+    fn canonical_family_id_falls_back_to_node_family_id() {
+        let m = HashMap::from([("NODE_FAMILY_ID", "node")]);
+        assert_eq!(
+            canonical_family_id(|k| m
+                .get(k)
+                .copied()
+                .map(String::from)
+                .ok_or(VarError::NotPresent)),
+            "node"
+        );
+    }
+
+    #[test]
+    fn canonical_family_id_default_when_missing() {
+        let m: HashMap<&str, &str> = HashMap::new();
+        assert_eq!(
+            canonical_family_id(|k| m
+                .get(k)
+                .copied()
+                .map(String::from)
+                .ok_or(VarError::NotPresent)),
+            "default"
+        );
+    }
+
+    #[test]
+    fn rpc_discover_standard_includes_core_methods() {
+        let v = rpc_discover_standard();
+        let methods = v["methods"].as_array().unwrap();
+        let names: Vec<&str> = methods.iter().filter_map(|x| x.as_str()).collect();
+        assert!(names.contains(&"health"));
+        assert!(names.contains(&"identity"));
+        assert!(names.contains(&"peer.connect"));
+        assert!(names.contains(&"tor.circuit.build"));
+    }
+
+    #[test]
+    fn rpc_methods_includes_igd_and_tor_entries() {
+        let v = rpc_methods();
+        let methods = v["methods"].as_array().unwrap();
+        let has_igd = methods.iter().any(|m| m["name"] == "igd.discover");
+        let has_tor = methods.iter().any(|m| m["name"] == "tor.status");
+        assert!(has_igd);
+        assert!(has_tor);
+    }
+
+    #[test]
+    fn primal_info_lists_discovery_methods() {
+        let v = primal_info();
+        let dm = v["discovery_methods"].as_array().unwrap();
+        assert!(dm.iter().any(|x| x == "mdns"));
+    }
+
+    #[test]
+    fn identity_lists_ipc_methods_in_capabilities() {
+        let v = identity("fam");
+        let caps = v["capabilities"].as_array().unwrap();
+        assert!(caps.iter().any(|c| c == "ipc.register"));
     }
 }

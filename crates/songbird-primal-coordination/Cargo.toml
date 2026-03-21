@@ -2,7 +2,7 @@
 name = "songbird-primal-coordination"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals Team"]
 description = "Agnostic primal coordination - Songbird as universal signal and coordinator"
 repository = "https://github.com/ecoPrimals/songbird"
@@ -16,7 +16,7 @@ tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
 
 # Error handling
-thiserror = "2.0"
+thiserror = { workspace = true }
 anyhow = "1"
 
 # Serialization

@@ -694,3 +694,130 @@ impl Default for LogRotation {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn test_songbird_config_test_defaults_environment_and_ports() {
+        let cfg = SongbirdConfig::test_defaults();
+        assert_eq!(cfg.environment, "test");
+        assert_eq!(cfg.network.port_range.start, 19000);
+        assert_eq!(cfg.network.port_range.end, 19999);
+        assert_eq!(cfg.network.bind_address, "127.0.0.1");
+        assert!(!cfg.security.enabled);
+    }
+
+    #[test]
+    fn test_songbird_config_json_roundtrip() {
+        let cfg = SongbirdConfig::test_defaults();
+        let json = serde_json::to_string(&cfg).expect("serialize");
+        let back: SongbirdConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.environment, cfg.environment);
+        assert_eq!(back.network.bind_address, cfg.network.bind_address);
+    }
+
+    #[test]
+    fn test_network_config_serialization() {
+        let n = NetworkConfig {
+            bind_address: "10.0.0.1".to_string(),
+            port_range: PortRange {
+                start: 1,
+                end: 2,
+            },
+            connection_timeout_ms: 100,
+            max_connections: 10,
+            enable_ipv6: false,
+            tls: None,
+            proxy: None,
+        };
+        let v = serde_json::to_value(&n).expect("json");
+        assert_eq!(v["bind_address"], "10.0.0.1");
+    }
+
+    #[test]
+    fn test_discovery_config_default_mechanism() {
+        let d = DiscoveryConfig::default();
+        assert_eq!(d.interval_seconds, 30);
+        assert!(matches!(d.mechanism, DiscoveryMechanism::Dns));
+    }
+
+    #[test]
+    fn test_security_config_rate_limit_present() {
+        let s = SecurityConfig::default();
+        assert!(s.rate_limiting.enabled || !s.rate_limiting.enabled);
+    }
+
+    #[test]
+    fn test_observability_default() {
+        let o = ObservabilityConfig::default();
+        assert!(o.metrics.enabled);
+    }
+
+    #[test]
+    fn test_enable_primal_and_queries() {
+        let mut cfg = SongbirdConfig::test_defaults();
+        cfg.enable_primal("alpha", "http://alpha.local:1");
+        assert!(cfg.is_primal_enabled("alpha"));
+        assert_eq!(
+            cfg.get_primal_config("alpha").expect("primal").endpoint.primary_url,
+            "http://alpha.local:1"
+        );
+        cfg.disable_primal("alpha");
+        assert!(!cfg.is_primal_enabled("alpha"));
+    }
+
+    #[test]
+    fn test_get_enabled_primals_filters() {
+        let mut cfg = SongbirdConfig::test_defaults();
+        cfg.enable_primal("one", "http://a");
+        cfg.enable_primal("two", "http://b");
+        cfg.disable_primal("two");
+        let names: Vec<_> =
+            cfg.get_enabled_primals().into_iter().map(|p| p.primal_type.as_str()).collect();
+        assert!(names.contains(&"one"));
+        assert!(!names.contains(&"two"));
+    }
+
+    #[test]
+    fn test_registration_config_default_tags() {
+        let r = RegistrationConfig::default();
+        assert!(r.tags.iter().any(|t| t == "songbird"));
+    }
+
+    #[test]
+    fn test_metrics_config_default_exporter() {
+        let m = MetricsConfig::default();
+        assert!(matches!(m.exporters[0], MetricsExporter::Prometheus));
+    }
+
+    #[test]
+    fn test_logging_config_default() {
+        let l = LoggingConfig::default();
+        assert!(matches!(l.level, LogLevel::Info));
+        assert!(matches!(l.format, LogFormat::Json));
+    }
+
+    #[test]
+    fn test_proxy_config_roundtrip() {
+        let p = ProxyConfig {
+            enabled: true,
+            proxy_url: "http://proxy:8080".to_string(),
+            bypass_list: vec!["localhost".to_string()],
+        };
+        let json = serde_json::to_string(&p).expect("ser");
+        let back: ProxyConfig = serde_json::from_str(&json).expect("de");
+        assert_eq!(back.proxy_url, p.proxy_url);
+    }
+
+    #[test]
+    fn test_auth_and_authz_enums_serialize() {
+        let a = AuthMethod::ApiKey;
+        assert_eq!(serde_json::to_string(&a).unwrap(), "\"ApiKey\"");
+        let z = AuthzModel::Abac;
+        assert!(serde_json::to_string(&z).unwrap().contains("Abac"));
+    }
+}

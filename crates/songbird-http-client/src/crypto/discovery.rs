@@ -108,7 +108,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 /// ```rust,ignore
 /// let crypto = discover_crypto_capability_at("/custom/path/crypto.sock").await?;
 /// ```
-#[expect(dead_code, reason = "API surface for downstream consumers and explicit-socket discovery")]
+#[allow(dead_code, reason = "API surface for downstream consumers and explicit-socket discovery")]
 pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn CryptoCapability>> {
     let provider = BearDogProvider::new(socket_path);
 
@@ -122,7 +122,7 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
 /// Create crypto capability without availability check (for testing)
 ///
 /// Use this in tests where you control the provider lifecycle.
-#[expect(
+#[allow(
     dead_code,
     reason = "test helper and explicit provider construction for controlled lifecycles"
 )]

@@ -71,18 +71,21 @@ pub struct DiscoveryOptionsBuilder {
 
 #[cfg(test)]
 impl DiscoveryOptionsBuilder {
+    /// Sets an explicit compute endpoint (skips env for this field).
     #[must_use]
     pub fn compute_endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.options.compute_endpoint = Some(endpoint.into());
         self
     }
 
+    /// Sets an explicit Toadstool endpoint (skips env for this field).
     #[must_use]
     pub fn toadstool_endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.options.toadstool_endpoint = Some(endpoint.into());
         self
     }
 
+    /// Consumes the builder and returns [`DiscoveryOptions`].
     #[must_use]
     pub fn build(self) -> DiscoveryOptions {
         self.options

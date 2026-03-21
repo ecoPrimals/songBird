@@ -499,8 +499,7 @@ impl std::fmt::Debug for TarpcClient {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use serde_json::json;
@@ -629,5 +628,54 @@ mod tests {
                 || err.to_string().contains("serialize")
                 || err.to_string().contains("Invalid")
         );
+    }
+
+    #[test]
+    fn test_parse_endpoint_preserves_port_max() {
+        let addr = TarpcClient::parse_endpoint("tarpc://127.0.0.1:65535").expect("addr");
+        assert_eq!(addr.port(), 65535);
+    }
+
+    #[test]
+    fn test_client_clone_shares_state() {
+        let a = TarpcClient::new("tarpc://127.0.0.1:9001").expect("client");
+        let b = a.clone();
+        assert_eq!(a.endpoint, b.endpoint);
+        assert_eq!(a.addr, b.addr);
+    }
+
+    #[tokio::test]
+    async fn test_call_method_health_requires_network() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59993").expect("client");
+        let err = client.call_method("health", None).await.expect_err("no server");
+        assert!(err.to_string().contains("tarpc") || err.to_string().contains("connect"));
+    }
+
+    #[tokio::test]
+    async fn test_call_method_version_requires_network() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59992").expect("client");
+        let err = client.call_method("version", None).await.expect_err("no server");
+        assert!(err.to_string().contains("tarpc") || err.to_string().contains("connect"));
+    }
+
+    #[tokio::test]
+    async fn test_call_method_protocols_requires_network() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59991").expect("client");
+        let err = client.call_method("protocols", None).await.expect_err("no server");
+        assert!(err.to_string().contains("tarpc") || err.to_string().contains("connect"));
+    }
+
+    #[tokio::test]
+    async fn test_call_method_discover_all_requires_network() {
+        let client = TarpcClient::new("tarpc://127.0.0.1:59990").expect("client");
+        let err = client.call_method("discover_all", None).await.expect_err("no server");
+        assert!(err.to_string().contains("tarpc") || err.to_string().contains("connect"));
+    }
+
+    #[test]
+    fn test_new_strips_tarpc_prefix_only() {
+        let c = TarpcClient::new("tarpc://localhost:5555").expect("client");
+        assert!(c.endpoint.starts_with("tarpc://"));
+        assert_eq!(c.addr.port(), 5555);
     }
 }

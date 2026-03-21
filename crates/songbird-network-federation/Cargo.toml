@@ -2,7 +2,7 @@
 name = "songbird-network-federation"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0"
+license.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Consolidated network and federation layer for Songbird Universal Orchestrator"
 repository = "https://github.com/ecoPrimals/SongBird"

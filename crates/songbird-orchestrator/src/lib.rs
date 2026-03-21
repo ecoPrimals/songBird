@@ -76,114 +76,114 @@
 #![forbid(unsafe_code)]
 
 /// Access control and graduated information disclosure.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod access_control;
 /// Core application wiring and the main [`SongbirdOrchestrator`] entrypoint.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod app;
 /// JWT authentication delegated to BearDog over IPC.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod auth;
 /// UniBin public API: `run_server`, `run_doctor`, `run_config`, and related CLI types.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod bin_interface;
 /// BTSP Unix socket client for BearDog secure tunnels.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod btsp_client;
 /// Neural API capability registration for the local runtime.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod capability_registration;
 /// Orchestrator CLI parsing and command dispatch.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod cli;
 /// Server, doctor, and config command implementations.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod commands;
 /// Progressive trust and federated peer connection types.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod connections;
 /// User consent management for sensitive operations.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod consent_management;
 /// Consolidated orchestrator core (routing, execution, benchmarks, adapters).
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod core;
 /// Pure Rust TLS and crypto delegation to BearDog.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod crypto;
 /// Environment-backed self-configuration for the orchestrator process.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod env_config;
 /// Error recovery, circuit breaking, and resilience helpers.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod error_recovery;
 /// Graph validation for collaborative intelligence workflows.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod graph;
 /// HTTP gateway for the universal pure Rust service surface.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod http_gateway;
 /// External system and service integration glue.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod integration;
 /// Inter-primal communication, Unix IPC, and primal registry.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod ipc;
 /// Network binding, listeners, and endpoint management.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod network;
 /// Stable node identity and cryptographic node identifiers.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod node_identity;
 /// Metrics, tracing hooks, and basic observability.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod observability;
 /// Legacy MVP orchestrator integration and health types.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod orchestrator;
 /// Capability-agnostic primal and provider endpoint discovery.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod primal_discovery;
 /// Privileged capability handling (e.g. network caps) without interactive sudo.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod privilege;
 /// Process lifecycle, spawning, and multi-instance coordination.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod process_manager;
 /// Node registration and genetic lineage with biomeOS.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod registration;
 /// Modern resilience patterns (circuit breaker, bulkhead, etc.).
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod resilience;
 /// Resource limits, fairness, and orchestrator-wide resource policy.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod resource_management;
 /// Multi-protocol RPC (JSON-RPC, tarpc, etc.).
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod rpc;
 /// HTTP client for security-capability and trust RPC against BearDog.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod security_client;
 /// Backward-compatible module alias for [`security_client`] (existing imports use `security_capability_client`).
 pub use security_client as security_capability_client; // Backward compatibility alias
 /// Runtime introspection: what this primal exposes without hardcoded names.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod self_knowledge;
 /// HTTP/API server stack for orchestrator endpoints.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod server;
 /// Inter-primal service registration and port authority.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service_registry;
 /// Task lifecycle and scheduling hooks for orchestrated work.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod task_lifecycle;
 /// Trust escalation, evaluation, and progressive trust policy.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod trust;
 /// Universal primal adapter and capability-based provider discovery.
-#[allow(missing_docs, reason = "internal module; doc coverage expanding incrementally")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod universal_adapter;
 
 // Re-export main orchestrator
