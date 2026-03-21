@@ -145,8 +145,8 @@ struct CapabilityServerState {
 ///     let mut security = MockCapabilityServer::new(CapabilityType::Security);
 ///     let port = security.start().await?;
 ///     
-///     // Set environment for discovery
-///     songbird_process_env::set_var("CAPABILITY_SECURITY_ENDPOINT", format!("http://localhost:{}", port));
+///     // Use `server.endpoint()` (or `MockCapabilityEnvironment::endpoint`) for discovery —
+///     avoid mutating process environment in tests when possible.
 ///     
 ///     // Test your code that discovers capabilities
 ///     // ...
@@ -321,8 +321,7 @@ impl MockCapabilityServer {
 ///         .build()
 ///         .await?;
 ///     
-///     // All capabilities are now available and environment variables are set
-///     // Your code can discover them via capability_endpoints
+///     // All capabilities are now available — use `env.endpoint(...)` for URLs
 ///     
 ///     env.shutdown().await;
 /// }
@@ -401,6 +400,9 @@ impl MockCapabilityEnvironmentBuilder {
 
     /// Build and start the environment
     ///
+    /// Endpoints are available via [`MockCapabilityEnvironment::endpoint`]; no process
+    /// environment variables are mutated.
+    ///
     /// # Errors
     ///
     /// Returns an error if any mock server fails to start or bind to its port.
@@ -409,22 +411,8 @@ impl MockCapabilityEnvironmentBuilder {
 
         for capability in self.capabilities {
             let mut server = MockCapabilityServer::new(capability.clone());
-            let port = server.start().await?;
+            let _port = server.start().await?;
 
-            // Set environment variable for discovery
-            let env_var = match &capability {
-                CapabilityType::Security => "CAPABILITY_SECURITY_ENDPOINT",
-                CapabilityType::Storage => "CAPABILITY_STORAGE_ENDPOINT",
-                CapabilityType::Compute => "CAPABILITY_COMPUTE_ENDPOINT",
-                CapabilityType::Ai => "CAPABILITY_AI_ENDPOINT",
-                CapabilityType::Custom(name) => {
-                    // For custom capabilities, use uppercase name
-                    let var_name = format!("CAPABILITY_{}_ENDPOINT", name.to_uppercase());
-                    Box::leak(var_name.into_boxed_str())
-                }
-            };
-
-            songbird_process_env::set_var(env_var, format!("http://localhost:{}", port));
             servers.insert(capability, server);
         }
 
@@ -500,10 +488,6 @@ mod tests {
         // Check that endpoints are available
         assert!(env.endpoint(&CapabilityType::Security).is_some());
         assert!(env.endpoint(&CapabilityType::Storage).is_some());
-
-        // Check environment variables are set
-        assert!(std::env::var("CAPABILITY_SECURITY_ENDPOINT").is_ok());
-        assert!(std::env::var("CAPABILITY_STORAGE_ENDPOINT").is_ok());
 
         env.shutdown().await;
         Ok(())

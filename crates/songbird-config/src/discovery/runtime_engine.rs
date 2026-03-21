@@ -85,7 +85,11 @@ impl CapabilityDiscoveryEngine {
 
     /// Same as [`new`](Self::new) with an injectable environment reader (concurrent-safe tests).
     #[must_use]
-    pub fn new_with_env_reader<F>(backends: Vec<DiscoveryBackend>, cache_ttl: Duration, env_reader: F) -> Self
+    pub fn new_with_env_reader<F>(
+        backends: Vec<DiscoveryBackend>,
+        cache_ttl: Duration,
+        env_reader: F,
+    ) -> Self
     where
         F: Fn(&str) -> Result<String, std::env::VarError> + Send + Sync + 'static,
     {

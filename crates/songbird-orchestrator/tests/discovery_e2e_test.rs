@@ -11,6 +11,7 @@
 use anyhow::Result;
 use songbird_orchestrator::app::SongbirdOrchestrator;
 use songbird_types::config::CanonicalSongbirdConfig;
+use songbird_types::config::consolidated_canonical::{CanonicalDiscoveryConfig, DiscoveryMode};
 use std::time::Duration;
 
 mod common;
@@ -24,17 +25,20 @@ async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
     // Initialize tracing for test
     let _ = tracing_subscriber::fmt::try_init();
 
-    // Create config with discovery enabled
-    songbird_process_env::set_var("SONGBIRD_TLS_ENABLED", "true");
-    songbird_process_env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
-    songbird_process_env::set_var("SONGBIRD_ANONYMOUS_DISCOVERY", "true");
-    songbird_process_env::set_var("SONGBIRD_NODE_NAME", "test-e2e");
-    songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
-    songbird_process_env::set_var("SONGBIRD_PORT", "18080"); // Use test port
-    songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "12300"); // Use test port
+    let discovery = CanonicalDiscoveryConfig {
+        mode: DiscoveryMode::Anonymous,
+        backend: "universal".to_string(),
+        port: 12300,
+        broadcast_addresses: vec!["224.0.0.251:2300".to_string()],
+        known_peers: vec![],
+        protocol_version: "2.0".to_string(),
+        session_rotation_interval: 3600,
+    };
 
-    let config = CanonicalSongbirdConfig::from_env()
-        .map_err(|e| anyhow::anyhow!("Failed to load config: {}", e))?;
+    let config = CanonicalSongbirdConfig::builder()
+        .discovery(discovery)
+        .build()
+        .map_err(|e| anyhow::anyhow!("Failed to build config: {}", e))?;
 
     // Verify discovery is enabled in config
     assert!(config.discovery.mode.is_enabled(), "Discovery should be enabled");
@@ -175,17 +179,20 @@ async fn test_discovery_federation_bridge_polls_peers() -> Result<()> {
 async fn test_full_orchestrator_startup_with_discovery() -> Result<()> {
     let _ = tracing_subscriber::fmt::try_init();
 
-    // Set environment for test
-    songbird_process_env::set_var("SONGBIRD_TLS_ENABLED", "false"); // Disable TLS for test
-    songbird_process_env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
-    songbird_process_env::set_var("SONGBIRD_ANONYMOUS_DISCOVERY", "true");
-    songbird_process_env::set_var("SONGBIRD_NODE_NAME", "integration-test");
-    songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
-    songbird_process_env::set_var("SONGBIRD_PORT", "18081");
-    songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "12303");
+    let discovery = CanonicalDiscoveryConfig {
+        mode: DiscoveryMode::Anonymous,
+        backend: "universal".to_string(),
+        port: 12303,
+        broadcast_addresses: vec!["224.0.0.251:2300".to_string()],
+        known_peers: vec![],
+        protocol_version: "2.0".to_string(),
+        session_rotation_interval: 3600,
+    };
 
-    let config = CanonicalSongbirdConfig::from_env()
-        .map_err(|e| anyhow::anyhow!("Failed to load config: {}", e))?;
+    let config = CanonicalSongbirdConfig::builder()
+        .discovery(discovery)
+        .build()
+        .map_err(|e| anyhow::anyhow!("Failed to build config: {}", e))?;
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     tracing::info!("✅ Orchestrator created for integration test");

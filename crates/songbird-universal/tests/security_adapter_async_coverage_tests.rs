@@ -67,7 +67,10 @@ async fn test_from_discovery_with_injected_resolver() {
     let uri = mock_server.uri();
     let mut m = HashMap::new();
     m.insert(CapabilityType::Security, uri.clone());
-    let result = SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
+    let result = SecurityAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await;
     assert!(result.is_ok(), "Should discover from injected resolver");
     assert_eq!(result.expect("adapter").endpoint(), &uri);
 }

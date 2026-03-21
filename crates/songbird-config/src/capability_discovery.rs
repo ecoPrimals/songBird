@@ -744,16 +744,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        let discovery = CapabilityDiscovery::with_methods_env_reader(
-            vec![DiscoveryMethod::Environment],
-            |k| {
+        let discovery =
+            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
                 if k == "COMPUTE_ENDPOINT" {
                     Ok("http://10.0.0.100:8001".to_string())
                 } else {
                     Err(std::env::VarError::NotPresent)
                 }
-            },
-        );
+            });
 
         let providers = discovery.discover_compute().await.expect("compute from env");
         assert_eq!(providers.len(), 1);
@@ -785,16 +783,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_behavior() {
-        let discovery = CapabilityDiscovery::with_methods_env_reader(
-            vec![DiscoveryMethod::Environment],
-            |k| {
+        let discovery =
+            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
                 if k == "TEST_CAPABILITY_ENDPOINT" {
                     Ok("http://test:1234".to_string())
                 } else {
                     Err(std::env::VarError::NotPresent)
                 }
-            },
-        );
+            });
 
         // First discovery
         let providers1 = discovery
@@ -929,32 +925,28 @@ services:
 
     #[tokio::test]
     async fn test_clear_all_caches() {
-        let d = CapabilityDiscovery::with_methods_env_reader(
-            vec![DiscoveryMethod::Environment],
-            |k| {
+        let d =
+            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
                 if k == "SB_CAP_CLEAR_ENDPOINT" {
                     Ok("http://127.0.0.1:1".to_string())
                 } else {
                     Err(std::env::VarError::NotPresent)
                 }
-            },
-        );
+            });
         let _ = d.find_providers_by_capability("sb_cap_clear").await;
         d.clear_all_caches().await;
     }
 
     #[tokio::test]
     async fn test_discover_storage_delegates_to_find() {
-        let d = CapabilityDiscovery::with_methods_env_reader(
-            vec![DiscoveryMethod::Environment],
-            |k| {
+        let d =
+            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
                 if k == "STORAGE_ENDPOINT" {
                     Ok("http://store:9".to_string())
                 } else {
                     Err(std::env::VarError::NotPresent)
                 }
-            },
-        );
+            });
         let v = d.discover_storage().await.expect("storage from env");
         assert!(!v.is_empty());
     }

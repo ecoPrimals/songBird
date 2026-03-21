@@ -143,7 +143,9 @@ async fn fetch_identity_attestations(
     mode: SecurityFetchMode,
 ) -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
     let url_result = match mode {
-        SecurityFetchMode::Discover => crate::app::security_setup::discover_security_endpoint(None).await,
+        SecurityFetchMode::Discover => {
+            crate::app::security_setup::discover_security_endpoint(None).await
+        }
         SecurityFetchMode::NoProvider => Err(anyhow::anyhow!("no security provider (test mode)")),
     };
 
@@ -371,9 +373,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_identity_attestations_no_provider() {
-        let attestations = fetch_identity_attestations(SecurityFetchMode::NoProvider)
-            .await
-            .unwrap_or_default();
+        let attestations =
+            fetch_identity_attestations(SecurityFetchMode::NoProvider).await.unwrap_or_default();
         assert!(
             attestations.is_empty(),
             "Should return empty attestations when no provider configured"

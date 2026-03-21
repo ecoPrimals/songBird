@@ -1,6 +1,8 @@
-# 📋 DEEP DEBT SOLUTIONS & EVOLUTION ROADMAP
+# Deep Debt Solutions & Evolution Roadmap
 
-## 🎯 **PHILOSOPHY: EVOLVE, DON'T PATCH**
+> **Status**: Historical reference. For current status and pending work, see [`REMAINING_WORK.md`](../REMAINING_WORK.md).
+
+## Philosophy: Evolve, Don't Patch
 
 This document outlines our approach to evolving the Songbird codebase to modern, idiomatic Rust with deep solutions rather than surface-level patches.
 

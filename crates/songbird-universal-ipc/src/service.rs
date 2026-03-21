@@ -48,8 +48,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use songbird_lineage_relay::beardog::BearDogRelayAuthority; // Production relay auth (Feb 8, 2026)
 use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
-use std::sync::Arc;
 use std::env::VarError;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 

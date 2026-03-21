@@ -37,7 +37,7 @@ use serde_json::{Value, json};
 use songbird_universal_ipc::registry::ServiceRegistry;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{RwLock, oneshot};
@@ -47,7 +47,7 @@ use tokio::time::{Duration, timeout};
 ///
 /// Returns a join handle and a oneshot receiver that resolves when the
 /// server has bound its socket and is ready to accept connections.
-async fn start_test_server_with_handler(
+fn start_test_server_with_handler(
     socket_path: &str,
     make_handler: impl FnOnce(Arc<RwLock<ServiceRegistry>>) -> IpcServiceHandler + Send + 'static,
 ) -> (tokio::task::JoinHandle<()>, oneshot::Receiver<()>) {
@@ -122,10 +122,8 @@ async fn start_test_server_with_handler(
     (handle, ready_rx)
 }
 
-async fn start_test_server(
-    socket_path: &str,
-) -> (tokio::task::JoinHandle<()>, oneshot::Receiver<()>) {
-    start_test_server_with_handler(socket_path, IpcServiceHandler::new).await
+fn start_test_server(socket_path: &str) -> (tokio::task::JoinHandle<()>, oneshot::Receiver<()>) {
+    start_test_server_with_handler(socket_path, IpcServiceHandler::new)
 }
 
 // ============================================================================
@@ -137,7 +135,7 @@ async fn test_e2e_health_via_unix_socket() {
     let socket_path = "/tmp/songbird-test-health.sock";
 
     // Start server and wait for readiness signal
-    let (server_handle, ready_rx) = start_test_server(socket_path).await;
+    let (server_handle, ready_rx) = start_test_server(socket_path);
     ready_rx.await.expect("Server failed to signal readiness");
 
     // Connect client
@@ -197,8 +195,7 @@ async fn test_e2e_identity_via_unix_socket() {
                 Err(std::env::VarError::NotPresent)
             }
         })
-    })
-    .await;
+    });
     ready_rx.await.expect("Server failed to signal readiness");
 
     // Connect and request
@@ -236,7 +233,7 @@ async fn test_e2e_persistent_connection_multiple_requests() {
     let socket_path = "/tmp/songbird-test-persistent.sock";
 
     // Start server and wait for readiness signal
-    let (server_handle, ready_rx) = start_test_server(socket_path).await;
+    let (server_handle, ready_rx) = start_test_server(socket_path);
     ready_rx.await.expect("Server failed to signal readiness");
 
     // Connect once
@@ -294,8 +291,7 @@ async fn test_e2e_family_id_priority_family_id_first() {
             "NODE_FAMILY_ID" => Ok("third".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         })
-    })
-    .await;
+    });
     ready_rx.await.expect("Server failed to signal readiness");
 
     let mut stream = UnixStream::connect(socket_path).await.unwrap();
@@ -312,25 +308,16 @@ async fn test_e2e_family_id_priority_family_id_first() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
     let _ = std::fs::remove_file(socket_path);
 }
 
 #[tokio::test]
 async fn test_e2e_family_id_default() {
-    let _guard = ENV_TEST_LOCK.lock().unwrap();
     let socket_path = "/tmp/songbird-test-default.sock";
 
-    // Ensure no env vars set — canonical default is "default"
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
-
-    let (server_handle, ready_rx) = start_test_server(socket_path).await;
+    let (server_handle, ready_rx) = start_test_server_with_handler(socket_path, |registry| {
+        IpcServiceHandler::with_family_id_env(registry, |_| Err(std::env::VarError::NotPresent))
+    });
     ready_rx.await.expect("Server failed to signal readiness");
 
     let mut stream = UnixStream::connect(socket_path).await.unwrap();
@@ -358,7 +345,7 @@ async fn test_e2e_family_id_default() {
 async fn test_e2e_connection_stays_open_after_response() {
     let socket_path = "/tmp/songbird-test-persistent2.sock";
 
-    let (server_handle, ready_rx) = start_test_server(socket_path).await;
+    let (server_handle, ready_rx) = start_test_server(socket_path);
     ready_rx.await.expect("Server failed to signal readiness");
 
     let stream = UnixStream::connect(socket_path).await.unwrap();

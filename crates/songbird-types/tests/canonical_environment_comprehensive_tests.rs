@@ -136,37 +136,44 @@ fn test_log_level() {
 // ============================================================================
 
 #[test]
-#[ignore = "Uses global env vars - needs refactor to use TestEnv for isolation"]
 fn test_detect_with_songbird_env() {
-    songbird_process_env::set_var("SONGBIRD_ENV", "production");
-    let env = Environment::detect();
-    songbird_process_env::remove_var("SONGBIRD_ENV");
+    let env = Environment::detect_with(|k| {
+        if k == "SONGBIRD_ENV" {
+            Ok("production".to_string())
+        } else {
+            Err(std::env::VarError::NotPresent)
+        }
+    });
     assert_eq!(env, Environment::Production);
 }
 
 #[test]
-#[ignore = "Uses global env vars - needs refactor to use TestEnv for isolation"]
 fn test_detect_with_environment_fallback() {
-    songbird_process_env::remove_var("SONGBIRD_ENV");
-    songbird_process_env::set_var("ENVIRONMENT", "staging");
-    let env = Environment::detect();
-    songbird_process_env::remove_var("ENVIRONMENT");
+    let env = Environment::detect_with(|k| {
+        if k == "ENVIRONMENT" {
+            Ok("staging".to_string())
+        } else {
+            Err(std::env::VarError::NotPresent)
+        }
+    });
     assert_eq!(env, Environment::Staging);
 }
 
 #[test]
 fn test_detect_defaults_to_development() {
-    songbird_process_env::remove_var("SONGBIRD_ENV");
-    songbird_process_env::remove_var("ENVIRONMENT");
-    let env = Environment::detect();
+    let env = Environment::detect_with(|_| Err(std::env::VarError::NotPresent));
     assert_eq!(env, Environment::Development);
 }
 
 #[test]
 fn test_detect_invalid_value_defaults() {
-    songbird_process_env::set_var("SONGBIRD_ENV", "invalid_env");
-    let env = Environment::detect();
-    songbird_process_env::remove_var("SONGBIRD_ENV");
+    let env = Environment::detect_with(|k| {
+        if k == "SONGBIRD_ENV" {
+            Ok("invalid_env".to_string())
+        } else {
+            Err(std::env::VarError::NotPresent)
+        }
+    });
     assert_eq!(env, Environment::Development);
 }
 

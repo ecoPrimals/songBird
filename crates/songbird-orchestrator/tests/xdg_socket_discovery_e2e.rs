@@ -96,12 +96,14 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
     std::fs::write(&tmp_biomeos_socket, "tmp_biomeos").unwrap();
     std::fs::write(&legacy_socket, "legacy").unwrap();
 
-    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("BEARDOG_SOCKET");
-    songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-
-    use songbird_orchestrator::primal_discovery::{Capability, discover};
-    let result = discover(Capability::Crypto).await;
+    use songbird_orchestrator::primal_discovery::{Capability, discover_with};
+    let temp_dir_str = temp_dir.to_str().unwrap();
+    let result = discover_with(Capability::Crypto, |name| match name {
+        "CRYPTO_PROVIDER_SOCKET" | "BEARDOG_SOCKET" => None,
+        "XDG_RUNTIME_DIR" => Some(temp_dir_str.to_string()),
+        _ => None,
+    })
+    .await;
 
     assert!(result.is_ok(), "Should discover socket");
     let found = result.unwrap();
@@ -112,7 +114,6 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
         found
     );
 
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);
     let _ = std::fs::remove_file(&tmp_biomeos_socket);
     let _ = std::fs::remove_file(&legacy_socket);
@@ -122,10 +123,6 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
 async fn test_e2e_fallback_to_tmp_biomeos_when_no_xdg() {
     let _guard = ENV_MUTEX.lock().unwrap();
 
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
-    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("BEARDOG_SOCKET");
-
     let tmp_biomeos = PathBuf::from("/tmp/biomeos");
     std::fs::create_dir_all(&tmp_biomeos).unwrap();
     let socket = tmp_biomeos.join("crypto.sock");
@@ -133,8 +130,8 @@ async fn test_e2e_fallback_to_tmp_biomeos_when_no_xdg() {
 
     let _ = std::fs::remove_file("/tmp/crypto.sock");
 
-    use songbird_orchestrator::primal_discovery::{Capability, discover};
-    let result = discover(Capability::Crypto).await;
+    use songbird_orchestrator::primal_discovery::{Capability, discover_with};
+    let result = discover_with(Capability::Crypto, |_| None).await;
 
     assert!(result.is_ok(), "Should discover /tmp/biomeos socket");
     let found = result.unwrap();
@@ -165,12 +162,14 @@ async fn test_e2e_socket_naming_no_family_suffix() {
     let legacy_socket = biomeos_dir.join("crypto-nat0.sock");
     std::fs::write(&legacy_socket, "").unwrap();
 
-    songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("BEARDOG_SOCKET");
-
-    use songbird_orchestrator::primal_discovery::{Capability, discover};
-    let result = discover(Capability::Crypto).await;
+    use songbird_orchestrator::primal_discovery::{Capability, discover_with};
+    let temp_dir_str = temp_dir.to_str().unwrap();
+    let result = discover_with(Capability::Crypto, |name| match name {
+        "CRYPTO_PROVIDER_SOCKET" | "BEARDOG_SOCKET" => None,
+        "XDG_RUNTIME_DIR" => Some(temp_dir_str.to_string()),
+        _ => None,
+    })
+    .await;
 
     assert!(result.is_ok());
     let found = result.unwrap();
@@ -181,7 +180,6 @@ async fn test_e2e_socket_naming_no_family_suffix() {
         found
     );
 
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);
 }
 
@@ -203,16 +201,8 @@ async fn test_e2e_discover_all_primals_at_xdg() {
         std::fs::write(&socket, "").unwrap();
     }
 
-    songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-
-    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("BEARDOG_SOCKET");
-    songbird_process_env::remove_var("HTTP_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("AI_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("STORAGE_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("MESSAGING_PROVIDER_SOCKET");
-
-    use songbird_orchestrator::primal_discovery::{Capability, discover};
+    use songbird_orchestrator::primal_discovery::{Capability, discover_with};
+    let temp_dir_str = temp_dir.to_str().unwrap().to_string();
 
     let capabilities = [
         (Capability::Crypto, "crypto.sock"),
@@ -223,7 +213,14 @@ async fn test_e2e_discover_all_primals_at_xdg() {
     ];
 
     for (cap, expected_name) in &capabilities {
-        let result = discover(*cap).await;
+        let xdg = temp_dir_str.clone();
+        let result = discover_with(*cap, move |name| {
+            if name == "XDG_RUNTIME_DIR" {
+                return Some(xdg.clone());
+            }
+            None
+        })
+        .await;
         assert!(result.is_ok(), "{:?} discovery should succeed", cap);
         let found = result.unwrap();
         assert!(
@@ -235,7 +232,6 @@ async fn test_e2e_discover_all_primals_at_xdg() {
         );
     }
 
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);
 }
 
@@ -372,11 +368,15 @@ async fn test_e2e_env_var_overrides_xdg() {
     let custom_socket = temp_dir.join("custom-crypto.sock");
     std::fs::write(&custom_socket, "custom").unwrap();
 
-    songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-    songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", custom_socket.to_str().unwrap());
-
-    use songbird_orchestrator::primal_discovery::{Capability, discover};
-    let result = discover(Capability::Crypto).await;
+    use songbird_orchestrator::primal_discovery::{Capability, discover_with};
+    let temp_s = temp_dir.to_str().unwrap();
+    let custom_s = custom_socket.to_str().unwrap();
+    let result = discover_with(Capability::Crypto, |name| match name {
+        "CRYPTO_PROVIDER_SOCKET" => Some(custom_s.to_string()),
+        "XDG_RUNTIME_DIR" => Some(temp_s.to_string()),
+        _ => None,
+    })
+    .await;
 
     assert!(result.is_ok());
     let found = result.unwrap();
@@ -384,8 +384,5 @@ async fn test_e2e_env_var_overrides_xdg() {
     // Env var should take priority over XDG
     assert_eq!(found, custom_socket.to_str().unwrap(), "Env var should override XDG discovery");
 
-    // Cleanup
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
-    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     let _ = std::fs::remove_dir_all(&temp_dir);
 }

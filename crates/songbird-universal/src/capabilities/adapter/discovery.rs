@@ -452,9 +452,7 @@ mod tests {
     fn test_discover_from_config_injection() {
         let registry = Arc::new(RwLock::new(CapabilityRegistry::default()));
         let mut config = DiscoveryConfig::default();
-        config
-            .provider_endpoints
-            .insert("security".to_string(), "http://beardog:8443".to_string());
+        config.provider_endpoints.insert("security".to_string(), "http://beardog:8443".to_string());
         let discovery = CapabilityDiscovery::new(registry, config);
 
         let providers = discovery.injected_providers_from_config("security");

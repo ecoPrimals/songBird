@@ -17,7 +17,11 @@ fn env_get_or_default(
     env(key).unwrap_or_else(|_| default.into())
 }
 
-fn env_get_bool(env: &impl Fn(&str) -> Result<String, std::env::VarError>, key: &str, default: bool) -> bool {
+fn env_get_bool(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    key: &str,
+    default: bool,
+) -> bool {
     env(key)
         .ok()
         .and_then(|v| match v.to_lowercase().as_str() {
@@ -28,7 +32,11 @@ fn env_get_bool(env: &impl Fn(&str) -> Result<String, std::env::VarError>, key: 
         .unwrap_or(default)
 }
 
-fn env_get_port(env: &impl Fn(&str) -> Result<String, std::env::VarError>, key: &str, default: u16) -> u16 {
+fn env_get_port(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    key: &str,
+    default: u16,
+) -> u16 {
     env(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
 }
 
@@ -177,8 +185,16 @@ impl ServiceEndpoints {
     #[must_use]
     pub fn from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
         Self {
-            orchestrator_endpoint: env_get_or_default(&env, "SONGBIRD_ENDPOINT", "http://127.0.0.1:8080"),
-            discovery_endpoint: env_get_or_default(&env, "DISCOVERY_ENDPOINT", "http://127.0.0.1:8001"),
+            orchestrator_endpoint: env_get_or_default(
+                &env,
+                "SONGBIRD_ENDPOINT",
+                "http://127.0.0.1:8080",
+            ),
+            discovery_endpoint: env_get_or_default(
+                &env,
+                "DISCOVERY_ENDPOINT",
+                "http://127.0.0.1:8001",
+            ),
             health_endpoint: env_get_or_default(&env, "HEALTH_ENDPOINT", "http://127.0.0.1:8002"),
             metrics_endpoint: env_get_or_default(&env, "METRICS_ENDPOINT", "http://127.0.0.1:8004"),
         }

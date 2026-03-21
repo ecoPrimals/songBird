@@ -14,7 +14,7 @@
 //! 3. Fall back to safe defaults only for development
 
 use serde::{Deserialize, Serialize};
-use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
@@ -233,11 +233,6 @@ impl DiscoverableEndpoint {
         })
     }
 
-    /// Try a single discovery method
-    async fn try_discovery_method(&self, method: &DiscoveryMethod) -> SongbirdResult<EndpointSpec> {
-        self.try_discovery_method_with(method, &|k| std::env::var(k)).await
-    }
-
     async fn try_discovery_method_with(
         &self,
         method: &DiscoveryMethod,
@@ -453,12 +448,13 @@ fn resolve_named_port(name: &str) -> SongbirdResult<u16> {
     }
 }
 
-/// Check if we're in development mode
-fn is_development_mode() -> bool {
-    SafeEnv::get_or_default("SONGBIRD_ENV", "").as_str() == "development"
-        || SafeEnv::get_or_default("SONGBIRD_ENV", "").as_str() == "dev"
-        || SafeEnv::get_or_default("RUST_ENV", "").as_str() == "development"
-        || SafeEnv::get_or_default("RUST_ENV", "").as_str() == "dev"
+fn is_development_mode_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> bool {
+    let sb = env("SONGBIRD_ENV").unwrap_or_default();
+    let rust = env("RUST_ENV").unwrap_or_default();
+    sb.as_str() == "development"
+        || sb.as_str() == "dev"
+        || rust.as_str() == "development"
+        || rust.as_str() == "dev"
 }
 
 impl EndpointSpec {

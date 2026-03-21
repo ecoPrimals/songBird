@@ -315,7 +315,9 @@ impl ZeroTouchConfig {
     }
 
     /// Discover this service's own identity from environment
-    fn discover_self_identity(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> ServiceIdentity {
+    fn discover_self_identity(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> ServiceIdentity {
         // Service ID from environment or generate one
         let service_id = env("SERVICE_ID")
             .or_else(|_| env("HOSTNAME"))
@@ -348,7 +350,9 @@ impl ZeroTouchConfig {
     }
 
     /// Discover required capabilities from environment
-    fn discover_required_capabilities(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> Vec<CapabilityRequirement> {
+    fn discover_required_capabilities(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> Vec<CapabilityRequirement> {
         let mut requirements = Vec::new();
 
         // Check for required capabilities in environment
@@ -380,7 +384,9 @@ impl ZeroTouchConfig {
     }
 
     /// Discover optional capabilities from environment
-    fn discover_optional_capabilities(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> Vec<CapabilityRequirement> {
+    fn discover_optional_capabilities(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> Vec<CapabilityRequirement> {
         let mut requirements = Vec::new();
 
         if let Ok(optional) = env("OPTIONAL_CAPABILITIES") {
@@ -404,7 +410,9 @@ impl ZeroTouchConfig {
     }
 
     /// Create discovery configuration from environment
-    fn create_discovery_config(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> DiscoveryConfig {
+    fn create_discovery_config(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> DiscoveryConfig {
         let mut methods = Vec::new();
 
         // Always include environment variable discovery
@@ -466,7 +474,9 @@ impl ZeroTouchConfig {
     }
 
     /// Create network configuration from environment (NO hardcoded ports)
-    fn create_network_config(read_env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> SongbirdResult<NetworkConfig> {
+    fn create_network_config(
+        read_env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> SongbirdResult<NetworkConfig> {
         // Bind address from environment
         let bind_address =
             read_env("BIND_ADDRESS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
@@ -538,7 +548,9 @@ impl ZeroTouchConfig {
     }
 
     /// Create bootstrap configuration
-    fn create_bootstrap_config(read_env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> BootstrapConfig {
+    fn create_bootstrap_config(
+        read_env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> BootstrapConfig {
         let enable_infant_discovery = read_env("ENABLE_INFANT_DISCOVERY")
             .map(|v| v.to_lowercase() == "true" || v == "1")
             .unwrap_or(true);
@@ -570,7 +582,9 @@ impl ZeroTouchConfig {
     }
 
     /// Collect service metadata from environment
-    fn collect_service_metadata(read_env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> HashMap<String, String> {
+    fn collect_service_metadata(
+        read_env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> HashMap<String, String> {
         let mut metadata = HashMap::new();
 
         // Collect standard metadata

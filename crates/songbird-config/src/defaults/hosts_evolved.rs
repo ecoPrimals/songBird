@@ -52,7 +52,9 @@ impl SelfAwareConfig {
 
     /// Same as [`from_environment`](Self::from_environment) with an injectable env reader.
     #[must_use]
-    pub fn from_environment_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+    pub fn from_environment_with(
+        env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> Self {
         let environment = Environment::detect_with(env);
 
         Self {

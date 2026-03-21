@@ -24,9 +24,7 @@ use serde_json::Value;
 /// Priority: `SONGBIRD_ORCHESTRATOR_FAMILY_ID` → `BIOMEOS_FAMILY_ID` →
 /// `SONGBIRD_FAMILY_ID` → `FAMILY_ID` → `NODE_FAMILY_ID`, then `"default"`.
 #[must_use]
-pub fn canonical_family_id(
-    env: impl Fn(&str) -> Result<String, std::env::VarError>,
-) -> String {
+pub fn canonical_family_id(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
     env("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
         .or_else(|_| env("BIOMEOS_FAMILY_ID"))
         .or_else(|_| env("SONGBIRD_FAMILY_ID"))

@@ -62,7 +62,9 @@ impl Default for PathConfig {
 impl PathConfig {
     /// Build defaults from an injectable env reader (tests and embedders).
     #[must_use]
-    pub fn from_env_reader(env: impl Fn(&str) -> std::result::Result<String, std::env::VarError>) -> Self {
+    pub fn from_env_reader(
+        env: impl Fn(&str) -> std::result::Result<String, std::env::VarError>,
+    ) -> Self {
         let config_dir = get_config_dir_with(&env);
         Self {
             log_dir: PathBuf::from(get_log_dir_with(&env)),

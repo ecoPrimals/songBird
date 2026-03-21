@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 #[test]
 fn find_primals_respects_capability_providers_env() {
-    let mut env = HashMap::new();
+    let mut env: HashMap<String, String> = HashMap::new();
     env.insert(
         "SONGBIRD_CAPABILITY_ALPHA_TEST_PROVIDERS".to_string(),
         "node-one, node-two".to_string(),
@@ -22,12 +22,9 @@ fn find_primals_respects_capability_providers_env() {
 
 #[test]
 fn find_primals_filters_by_per_primal_capabilities_env() {
-    let mut env = HashMap::new();
+    let mut env: HashMap<String, String> = HashMap::new();
     env.insert("ALICE_ENDPOINT".to_string(), "http://alice:1".to_string());
-    env.insert(
-        "ALICE_CAPABILITIES".to_string(),
-        "metrics, alpha-test , storage".to_string(),
-    );
+    env.insert("ALICE_CAPABILITIES".to_string(), "metrics, alpha-test , storage".to_string());
     env.insert("BOB_ENDPOINT".to_string(), "http://bob:2".to_string());
     env.insert("BOB_CAPABILITIES".to_string(), "other".to_string());
 
@@ -38,7 +35,7 @@ fn find_primals_filters_by_per_primal_capabilities_env() {
 
 #[test]
 fn find_primals_capability_providers_overrides_per_primal_scan() {
-    let mut env = HashMap::new();
+    let mut env: HashMap<String, String> = HashMap::new();
     env.insert("ALICE_ENDPOINT".to_string(), "http://alice:1".to_string());
     env.insert("ALICE_CAPABILITIES".to_string(), "ignored".to_string());
     env.insert("SONGBIRD_CAPABILITY_METRICS_PROVIDERS".to_string(), "z-only".to_string());

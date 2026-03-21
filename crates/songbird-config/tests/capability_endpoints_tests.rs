@@ -31,10 +31,7 @@
 //! CapabilityEndpointResolver, caching, and discovery.
 
 use songbird_config::capability_endpoints::*;
-use std::sync::Mutex;
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use std::collections::HashMap;
 
 // ============================================================
 // CapabilityType FromStr Tests
@@ -228,7 +225,6 @@ fn test_discovery_method_serialization() {
 
 #[tokio::test]
 async fn test_resolver_creation() {
-    let _guard = ENV_LOCK.lock().unwrap();
     let resolver = CapabilityEndpointResolver::new();
     let debug = format!("{:?}", resolver);
     assert!(debug.contains("CapabilityEndpointResolver"));
@@ -236,47 +232,36 @@ async fn test_resolver_creation() {
 
 #[tokio::test]
 async fn test_resolver_discovers_from_env() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    songbird_process_env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://compute:8080");
-
-    let resolver = CapabilityEndpointResolver::new();
+    let mut overrides: HashMap<CapabilityType, String> = HashMap::new();
+    overrides.insert(CapabilityType::Compute, "http://compute:8080".to_string());
+    let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
     let result = resolver.get_endpoint(CapabilityType::Compute).await;
     assert!(result.is_ok(), "Should discover endpoint from env");
     assert_eq!(result.unwrap(), "http://compute:8080");
-
-    songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_resolver_caches_result() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    songbird_process_env::set_var("CAPABILITY_AI_ENDPOINT", "http://ai:9090");
+    let mut overrides: HashMap<CapabilityType, String> = HashMap::new();
+    overrides.insert(CapabilityType::Ai, "http://ai:9090".to_string());
+    let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
 
-    let resolver = CapabilityEndpointResolver::new();
-
-    // First call should discover
     let result1 = resolver.get_endpoint(CapabilityType::Ai).await.unwrap();
     assert_eq!(result1, "http://ai:9090");
 
-    // Second call should use cache (remove env var to prove it)
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
     let result2 = resolver.get_endpoint(CapabilityType::Ai).await.unwrap();
-    assert_eq!(result2, "http://ai:9090"); // Still cached
-
-    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
+    assert_eq!(result2, "http://ai:9090");
 }
 
 #[tokio::test]
 async fn test_resolver_custom_capability_from_env() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    songbird_process_env::set_var("CAPABILITY_BLOCKCHAIN_ENDPOINT", "http://chain:3000");
-
-    let resolver = CapabilityEndpointResolver::new();
+    let mut overrides: HashMap<CapabilityType, String> = HashMap::new();
+    overrides
+        .insert(CapabilityType::Custom("blockchain".to_string()), "http://chain:3000".to_string());
+    let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
     let result = resolver.get_endpoint(CapabilityType::Custom("blockchain".to_string())).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "http://chain:3000");
-
-    songbird_process_env::remove_var("CAPABILITY_BLOCKCHAIN_ENDPOINT");
 }
 
 // ============================================================

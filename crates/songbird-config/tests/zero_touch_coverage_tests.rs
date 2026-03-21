@@ -32,51 +32,7 @@
 
 use songbird_config::zero_touch::infant_config::*;
 use std::collections::HashMap;
-use std::sync::Mutex;
 use std::time::Duration;
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-struct ScopedEnv {
-    vars: Vec<(String, Option<String>)>,
-}
-
-impl ScopedEnv {
-    fn new() -> Self {
-        Self {
-            vars: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, key: &str, value: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::set_var(key, value);
-        self
-    }
-
-    fn remove(&mut self, key: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::remove_var(key);
-        self
-    }
-}
-
-impl Drop for ScopedEnv {
-    fn drop(&mut self) {
-        for (key, old) in self.vars.drain(..).rev() {
-            match old {
-                Some(val) => songbird_process_env::set_var(&key, &val),
-                None => songbird_process_env::remove_var(&key),
-            }
-        }
-    }
-}
 
 // ==================== TYPE CONSTRUCTION TESTS ====================
 
@@ -350,41 +306,41 @@ fn test_discovery_phase_variants() {
 
 #[test]
 fn test_zero_touch_config_from_environment() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SERVICE_ID", "test-node-42");
-    env.set("SERVICE_PORT", "8080");
-    env.remove("SONGBIRD_ENV");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SERVICE_ID".into(), "test-node-42".into());
+    m.insert("SERVICE_PORT".into(), "8080".into());
 
-    let config = ZeroTouchConfig::from_environment();
-    assert!(config.is_ok(), "from_environment should succeed: {:?}", config.err());
+    let config = ZeroTouchConfig::from_environment_reader(|k| {
+        m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+    });
+    assert!(config.is_ok(), "from_environment_reader should succeed: {:?}", config.err());
     let config = config.unwrap();
     assert_eq!(config.self_identity.service_id, "test-node-42");
 }
 
 #[test]
 fn test_zero_touch_config_default_service_id() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SERVICE_ID");
-    env.remove("HOSTNAME");
-    env.set("SERVICE_PORT", "8080");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SERVICE_PORT".into(), "8080".into());
 
-    let config = ZeroTouchConfig::from_environment();
+    let config = ZeroTouchConfig::from_environment_reader(|k| {
+        m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+    });
     assert!(config.is_ok());
     let config = config.unwrap();
-    // Should generate a default service ID
     assert!(!config.self_identity.service_id.is_empty());
 }
 
 #[test]
 fn test_zero_touch_config_serialization() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SERVICE_ID", "serde-test");
-    env.set("SERVICE_PORT", "8080");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SERVICE_ID".into(), "serde-test".into());
+    m.insert("SERVICE_PORT".into(), "8080".into());
 
-    let config = ZeroTouchConfig::from_environment().unwrap();
+    let config = ZeroTouchConfig::from_environment_reader(|k| {
+        m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+    })
+    .unwrap();
     let json = serde_json::to_string(&config).unwrap();
     assert!(json.contains("serde-test"));
 
@@ -394,46 +350,54 @@ fn test_zero_touch_config_serialization() {
 
 #[test]
 fn test_zero_touch_config_has_discovery_methods() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SERVICE_ID", "discovery-test");
-    env.set("SERVICE_PORT", "8080");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SERVICE_ID".into(), "discovery-test".into());
+    m.insert("SERVICE_PORT".into(), "8080".into());
 
-    let config = ZeroTouchConfig::from_environment().unwrap();
+    let config = ZeroTouchConfig::from_environment_reader(|k| {
+        m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+    })
+    .unwrap();
     assert!(!config.discovery.methods.is_empty(), "Should have at least one discovery method");
 }
 
 #[test]
 fn test_zero_touch_config_network() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SERVICE_ID", "network-test");
-    env.set("SERVICE_PORT", "9999");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SERVICE_ID".into(), "network-test".into());
+    m.insert("SERVICE_PORT".into(), "9999".into());
 
-    let config = ZeroTouchConfig::from_environment().unwrap();
+    let config = ZeroTouchConfig::from_environment_reader(|k| {
+        m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+    })
+    .unwrap();
     assert!(config.network.connection_limits.max_connections > 0);
 }
 
 #[test]
 fn test_zero_touch_config_debug() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SERVICE_ID", "debug-test");
-    env.set("SERVICE_PORT", "8080");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SERVICE_ID".into(), "debug-test".into());
+    m.insert("SERVICE_PORT".into(), "8080".into());
 
-    let config = ZeroTouchConfig::from_environment().unwrap();
+    let config = ZeroTouchConfig::from_environment_reader(|k| {
+        m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+    })
+    .unwrap();
     let debug = format!("{config:?}");
     assert!(debug.contains("ZeroTouchConfig"));
 }
 
 #[test]
 fn test_zero_touch_config_clone() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SERVICE_ID", "clone-test");
-    env.set("SERVICE_PORT", "8080");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SERVICE_ID".into(), "clone-test".into());
+    m.insert("SERVICE_PORT".into(), "8080".into());
 
-    let config = ZeroTouchConfig::from_environment().unwrap();
+    let config = ZeroTouchConfig::from_environment_reader(|k| {
+        m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+    })
+    .unwrap();
     let cloned = config.clone();
     assert_eq!(config.self_identity.service_id, cloned.self_identity.service_id);
 }

@@ -570,10 +570,11 @@ mod tests {
 
     #[test]
     fn test_from_environment_errors_when_var_missing() {
-        let err = RuntimeDiscoveryEngine::from_environment_with("no_such_var_for_sb_rtdisc", &|_| {
-            Err(std::env::VarError::NotPresent)
-        })
-        .expect_err("missing env var");
+        let err =
+            RuntimeDiscoveryEngine::from_environment_with("no_such_var_for_sb_rtdisc", &|_| {
+                Err(std::env::VarError::NotPresent)
+            })
+            .expect_err("missing env var");
         assert!(matches!(err, songbird_types::SongbirdError::Configuration { .. }), "{err:?}");
     }
 

@@ -8,6 +8,7 @@
 use songbird_orchestrator::crypto::{
     CryptoProvider, UnixSocketCryptoProvider, discover_crypto_provider,
 };
+use songbird_orchestrator::primal_discovery::{Capability, discover_with};
 
 #[tokio::test]
 async fn test_fault_nonexistent_socket() {
@@ -56,13 +57,7 @@ async fn test_fault_very_large_data() {
 
 #[tokio::test]
 async fn test_fault_discover_without_provider() {
-    // Clear all environment variables
-    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
-    songbird_process_env::remove_var("CRYPTO_PROVIDER");
-    songbird_process_env::remove_var("BEARDOG_CRYPTO_SOCKET");
-    songbird_process_env::remove_var("BEARDOG_SOCKET");
-
-    let result = discover_crypto_provider().await;
+    let result = discover_with(Capability::Crypto, |_| None).await;
 
     // Should fail gracefully if no provider found
     if result.is_err() {
@@ -276,17 +271,11 @@ async fn test_fault_provider_after_tokio_drop() {
 
 #[tokio::test]
 async fn test_fault_discovery_with_invalid_env() {
-    // Set invalid environment variable (paths that are clearly invalid)
-    // Note: NUL bytes are not allowed in environment variable values on any platform
-    songbird_process_env::set_var(
-        "CRYPTO_PROVIDER_SOCKET",
-        "///invalid///path///with///too///many///slashes",
-    );
+    let result = discover_with(Capability::Crypto, |name| {
+        (name == "CRYPTO_PROVIDER_SOCKET")
+            .then_some("///invalid///path///with///too///many///slashes".to_string())
+    })
+    .await;
 
-    let result = discover_crypto_provider().await;
-
-    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
-
-    // Should handle invalid paths gracefully (will fail to connect, but won't panic)
     assert!(result.is_ok() || result.is_err());
 }

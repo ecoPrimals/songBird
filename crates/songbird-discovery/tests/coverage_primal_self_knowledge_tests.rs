@@ -41,9 +41,17 @@ use songbird_discovery::primal_self_knowledge::{
     DiscoveryMechanism, DnsSrvDiscovery, EnvironmentDiscovery, PrimalError, PrimalIdentity,
     PrimalInfo, PrimalSelfKnowledge,
 };
+use std::collections::HashMap;
+use std::env::VarError;
 use std::time::SystemTime;
 
-static ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+fn map_env_owned(
+    pairs: Vec<(&str, &str)>,
+) -> impl Fn(&str) -> std::result::Result<String, VarError> + Send + Sync + 'static {
+    let map: HashMap<String, String> =
+        pairs.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+    move |k: &str| map.get(k).cloned().ok_or(VarError::NotPresent)
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // PrimalError tests
@@ -151,7 +159,10 @@ async fn test_discover_self() {
 
 #[tokio::test]
 async fn test_discover_self_with_primal_name() {
-    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("PRIMAL_NAME", "test-songbird")]));
+    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![(
+        "PRIMAL_NAME",
+        "test-songbird",
+    )]));
     assert!(result.is_ok());
     let identity = result.unwrap().identity();
     assert_eq!(identity.name, "test-songbird");
@@ -159,7 +170,10 @@ async fn test_discover_self_with_primal_name() {
 
 #[tokio::test]
 async fn test_discover_self_with_service_name() {
-    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("SERVICE_NAME", "my-service")]));
+    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![(
+        "SERVICE_NAME",
+        "my-service",
+    )]));
     assert!(result.is_ok());
     let identity = result.unwrap().identity();
     assert_eq!(identity.name, "my-service");
@@ -242,7 +256,8 @@ async fn test_discover_primal_with_primal_prefix() {
 #[tokio::test]
 async fn test_introspect_capabilities_with_env() {
     let self_knowledge =
-        PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("ENABLE_SECURITY", "1")])).unwrap();
+        PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("ENABLE_SECURITY", "1")]))
+            .unwrap();
     let identity = self_knowledge.identity();
     assert!(identity.capabilities.contains(&"security".to_string()));
 }
@@ -281,7 +296,8 @@ async fn test_environment_discovery_success() {
 
 #[tokio::test]
 async fn test_environment_discovery_missing_host() {
-    let result = EnvironmentDiscovery::discover_with("missing", |_| Err(VarError::NotPresent)).await;
+    let result =
+        EnvironmentDiscovery::discover_with("missing", |_| Err(VarError::NotPresent)).await;
     assert!(result.is_err());
 }
 

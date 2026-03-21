@@ -1,6 +1,6 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.3.4  
+**Version**: v0.2.1  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-only (scyBorg provenance trio)  
 **Edition**: Rust 2024
@@ -18,10 +18,10 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` per wateringHole standard (bulk migration complete) |
-| Concurrent Tests | Zero `std::env::set_var` in tests (injectable env readers via `Mutex`-guarded facade) |
-| Tests | 9,876 unit/integration, 0 failed, 312 ignored |
+| Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent at 16 threads via injectable `_with` env readers |
+| Tests | 9,730 passed, 0 failed, 271 ignored (16 threads, fully concurrent) |
 | Clippy Pedantic | All 29 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings) |
-| Line Coverage | ~67% (target: 90%) |
+| Line Coverage | 64.14% (llvm-cov: branch 63.11%, region 63.23%) |
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --all -- --check`) |
 | Docs | Clean (`cargo doc --all-features --no-deps`, 29/29 crates with `#[warn(missing_docs)]`) |
@@ -31,7 +31,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Dependencies | ~418 unique; `kube`/`k8s-openapi`/`bollard` feature-gated; 2 unused pruned |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
 | Edition | Rust 2024 |
-| Total Rust | 404,698 lines across 29 crates |
+| Total Rust | 380,555 lines across 29 crates |
 
 ## Architecture
 
@@ -67,7 +67,7 @@ BearDog Crypto Primal (runtime capability discovery)
 5. **Pure Rust** - Zero C dependencies in Songbird code (ecoBin compliant)
 6. **Safe Rust** - `#![forbid(unsafe_code)]` everywhere
 7. **Event-Driven** - Zero polling anti-patterns (`tokio::sync::Notify`)
-8. **Concurrent Testing** - Injectable env readers, no global state pollution
+8. **Concurrent Testing** - Injectable `_with` env readers for fully concurrent tests
 9. **JSON-RPC + tarpc First** - Primary IPC protocols
 
 ## Quick Start

@@ -34,7 +34,11 @@ fn env_or_default(
     env(key).unwrap_or_else(|_| default.to_string())
 }
 
-fn env_port(env: &impl Fn(&str) -> Result<String, std::env::VarError>, key: &str, default: u16) -> u16 {
+fn env_port(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+    key: &str,
+    default: u16,
+) -> u16 {
     env(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
 }
 
@@ -200,12 +204,16 @@ impl CanonicalNetworkConfig {
 
         let config = Self {
             bind_address,
-            production_bind_address: env_or_default(&env, "SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0")
-                .parse()
-                .unwrap_or_else(|e| {
-                    warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
-                    std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
-                }),
+            production_bind_address: env_or_default(
+                &env,
+                "SONGBIRD_PRODUCTION_BIND_ADDRESS",
+                "0.0.0.0",
+            )
+            .parse()
+            .unwrap_or_else(|e| {
+                warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
+                std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
+            }),
             orchestrator_port: env_port(
                 &env,
                 "SONGBIRD_ORCHESTRATOR_PORT",
@@ -251,17 +259,16 @@ impl CanonicalNetworkConfig {
 
     /// Build the same shape as [`Default`](Default) using an injectable env reader (for tests).
     #[must_use]
-    pub fn default_from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
+    pub fn default_from_env_reader(
+        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) -> Self {
         let bind_address = "0.0.0.0".parse().unwrap_or_else(|_| {
             warn!("Failed to parse bind address, using development default");
             std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
         });
 
-        let orchestrator_port = env_port(
-            &env,
-            "SONGBIRD_ORCHESTRATOR_PORT",
-            env_port(&env, "DEFAULT_HTTP_PORT", 8080),
-        );
+        let orchestrator_port =
+            env_port(&env, "SONGBIRD_ORCHESTRATOR_PORT", env_port(&env, "DEFAULT_HTTP_PORT", 8080));
         let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", 8001);
         let health_port = env_port(&env, "SONGBIRD_HEALTH_PORT", 8002);
         let dashboard_port = env_port(&env, "SONGBIRD_DASHBOARD_PORT", 3000);

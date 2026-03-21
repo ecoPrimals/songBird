@@ -64,20 +64,25 @@ fn test_environment_detection_default() {
 
 #[test]
 fn test_environment_detection_explicit() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "production");
-    let env = Environment::detect();
-    assert_eq!(env, Environment::Production);
-    songbird_process_env::remove_var("SONGBIRD_ENVIRONMENT");
+    use std::collections::HashMap;
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "production".into());
+    assert_eq!(
+        Environment::detect_with(&|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)),
+        Environment::Production
+    );
 
-    songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "staging");
-    let env = Environment::detect();
-    assert_eq!(env, Environment::Staging);
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "staging".into());
+    assert_eq!(
+        Environment::detect_with(&|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)),
+        Environment::Staging
+    );
 
-    songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "development");
-    let env = Environment::detect();
-    assert_eq!(env, Environment::Development);
-    songbird_process_env::remove_var("SONGBIRD_ENVIRONMENT");
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "development".into());
+    assert_eq!(
+        Environment::detect_with(&|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)),
+        Environment::Development
+    );
 }
 
 #[test]
@@ -370,41 +375,22 @@ fn test_port_allocation_different_capabilities() {
 
 #[test]
 fn test_environment_detection_kubernetes() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    // Simulate Kubernetes environment
-    songbird_process_env::set_var("KUBERNETES_SERVICE_HOST", "10.0.0.1");
-    let env = Environment::detect();
+    use std::collections::HashMap;
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("KUBERNETES_SERVICE_HOST".into(), "10.0.0.1".into());
+    let env =
+        Environment::detect_with(&|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent));
     assert_eq!(env, Environment::Production, "K8s should be detected as production");
-    songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
 }
 
 #[test]
 fn test_environment_detection_ecs() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    // Clear other environment indicators
-    let _k8s = std::env::var("KUBERNETES_SERVICE_HOST");
-    let _docker = std::env::var("DOCKER_HOST");
-    let _prod = std::env::var("PRODUCTION");
-    songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
-    songbird_process_env::remove_var("DOCKER_HOST");
-    songbird_process_env::remove_var("PRODUCTION");
-
-    // Simulate ECS environment
-    songbird_process_env::set_var("ECS_CONTAINER_METADATA_URI", "http://169.254.170.2");
-    let env = Environment::detect();
+    use std::collections::HashMap;
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("ECS_CONTAINER_METADATA_URI".into(), "http://169.254.170.2".into());
+    let env =
+        Environment::detect_with(&|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent));
     assert_eq!(env, Environment::Production, "ECS should be detected as production");
-
-    // Cleanup
-    songbird_process_env::remove_var("ECS_CONTAINER_METADATA_URI");
-    if let Ok(v) = _k8s {
-        songbird_process_env::set_var("KUBERNETES_SERVICE_HOST", v);
-    }
-    if let Ok(v) = _docker {
-        songbird_process_env::set_var("DOCKER_HOST", v);
-    }
-    if let Ok(v) = _prod {
-        songbird_process_env::set_var("PRODUCTION", v);
-    }
 }
 
 // ============================================================================

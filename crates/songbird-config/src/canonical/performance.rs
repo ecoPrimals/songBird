@@ -87,7 +87,7 @@ impl Default for PerformanceConfig {
 }
 
 impl PerformanceConfig {
-    /// Build from an injectable env reader (tests and embedders).
+    /// Build from an injectable env reader (same keys as [`Default`](Self::default)).
     #[must_use]
     pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
@@ -157,6 +157,7 @@ impl Default for ObjectPoolSizes {
 }
 
 impl ObjectPoolSizes {
+    /// Build from an injectable env reader (same keys as [`Default`](Self::default)).
     #[must_use]
     pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
@@ -215,6 +216,7 @@ impl Default for CacheConfig {
 }
 
 impl CacheConfig {
+    /// Build from an injectable env reader (same keys as [`Default`](Self::default)).
     #[must_use]
     pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
@@ -273,6 +275,7 @@ impl Default for MetricsConfig {
 }
 
 impl MetricsConfig {
+    /// Build from an injectable env reader (same keys as [`Default`](Self::default)).
     #[must_use]
     pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {
@@ -340,6 +343,7 @@ impl Default for BenchmarkConfig {
 }
 
 impl BenchmarkConfig {
+    /// Build from an injectable env reader (same keys as [`Default`](Self::default)).
     #[must_use]
     pub fn from_env_reader(env: impl Fn(&str) -> Result<String, VarError>) -> Self {
         Self {

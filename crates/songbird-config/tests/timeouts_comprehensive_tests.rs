@@ -39,7 +39,7 @@ fn empty_env() -> HashMap<String, String> {
 }
 
 fn env_with<K: Into<String>, V: Into<String>>(key: K, value: V) -> HashMap<String, String> {
-    let mut m = HashMap::new();
+    let mut m: HashMap<String, String> = HashMap::new();
     m.insert(key.into(), value.into());
     m
 }
@@ -192,7 +192,7 @@ fn test_operation_timeout_from_env() {
 
 #[test]
 fn test_operation_timeout_lowercase_operation_name() {
-    let mut env = HashMap::new();
+    let mut env: HashMap<String, String> = HashMap::new();
     env.insert("SONGBIRD_MYOP_TIMEOUT_MS".to_string(), "7000".to_string());
     let timeout = operation_timeout_from_map(&env, "myop", Duration::from_secs(5));
     assert_eq!(timeout, Duration::from_millis(7000));
@@ -296,7 +296,7 @@ fn test_multiple_timeout_calls_consistent() {
 
 #[test]
 fn test_operation_timeout_with_special_characters() {
-    let mut env = HashMap::new();
+    let mut env: HashMap<String, String> = HashMap::new();
     env.insert("SONGBIRD_MY_SPECIAL_OP_TIMEOUT_MS".to_string(), "12000".to_string());
     let _timeout = operation_timeout_from_map(&env, "MY-SPECIAL-OP", Duration::from_secs(5));
 }
@@ -337,7 +337,7 @@ fn test_request_timeout_equals_long_by_default() {
 #[test]
 fn test_operation_timeout_with_very_long_name() {
     let very_long_name = "A".repeat(100);
-    let mut env = HashMap::new();
+    let mut env: HashMap<String, String> = HashMap::new();
     env.insert(
         format!("SONGBIRD_{}_TIMEOUT_MS", very_long_name.to_uppercase()),
         "5000".to_string(),

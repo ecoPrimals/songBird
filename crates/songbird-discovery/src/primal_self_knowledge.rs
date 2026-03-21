@@ -59,7 +59,7 @@ impl PrimalSelfKnowledge {
 
     /// Same as [`discover_self`](Self::discover_self) with an injectable env reader (tests).
     pub fn discover_self_with(
-        env: impl Fn(&str) -> Result<String, VarError> + Send + Sync + 'static,
+        env: impl Fn(&str) -> std::result::Result<String, VarError> + Send + Sync + 'static,
     ) -> Result<Self> {
         let env = Arc::new(env);
         let my_name = Self::introspect_name_with(|k| env(k));
@@ -90,7 +90,7 @@ impl PrimalSelfKnowledge {
         Self::introspect_name_with(|k| std::env::var(k))
     }
 
-    fn introspect_name_with(env: impl Fn(&str) -> Result<String, VarError>) -> String {
+    fn introspect_name_with(env: impl Fn(&str) -> std::result::Result<String, VarError>) -> String {
         // Try explicit name first
         if let Ok(name) = env("PRIMAL_NAME") {
             return name;
@@ -115,7 +115,9 @@ impl PrimalSelfKnowledge {
         Self::introspect_capabilities_with(|k| std::env::var(k))
     }
 
-    fn introspect_capabilities_with(env: impl Fn(&str) -> Result<String, VarError>) -> Vec<String> {
+    fn introspect_capabilities_with(
+        env: impl Fn(&str) -> std::result::Result<String, VarError>,
+    ) -> Vec<String> {
         let mut caps = vec![
             #[cfg(feature = "security")]
             "security".to_string(),
@@ -272,7 +274,7 @@ pub struct EnvironmentDiscovery;
 
 /// Uses injected env lookup for [`PrimalSelfKnowledge::discover_self_with`].
 struct EnvInjectedDiscovery {
-    get_var: Arc<dyn Fn(&str) -> Result<String, VarError> + Send + Sync>,
+    get_var: Arc<dyn Fn(&str) -> std::result::Result<String, VarError> + Send + Sync>,
 }
 
 #[async_trait::async_trait]
@@ -301,7 +303,7 @@ impl EnvironmentDiscovery {
     /// Discover `host` / `port` from env using an injectable reader (tests).
     pub async fn discover_with<F>(capability: &str, get_var: F) -> Result<PrimalInfo>
     where
-        F: Fn(&str) -> Result<String, VarError> + Send,
+        F: Fn(&str) -> std::result::Result<String, VarError> + Send,
     {
         let var_prefix = capability.to_uppercase();
 

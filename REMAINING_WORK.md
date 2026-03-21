@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 9,734 passed, 0 failed, 273 ignored (workspace-wide `--all-features`) |
-| **Line Coverage** | ~65% (llvm-cov measured; +114 new tests, orphaned dead code removed improved ratio) |
+| **Tests** | 9,730 passed, 0 failed, 271 ignored (workspace-wide `--all-features`, 16 threads) |
+| **Line Coverage** | 64.14% (llvm-cov measured; branch 63.11%, region 63.23%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 29 crates compile clean |
 | **Clippy Pedantic** | 29/29 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings) |
@@ -36,7 +36,7 @@
 | **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]` |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, clone hotspots audited |
-| **Concurrent tests** | Zero `std::env::set_var` (via `songbird-process-env` Mutex-guarded facade); `#[serial_test::serial]` on env-modifying tests |
+| **Concurrent tests** | Zero `#[serial_test::serial]`; all tests fully concurrent at 16 threads; injectable `_with` env readers replace global mutation |
 | **Event-driven** | Zero `sleep`-based polling in production |
 | **Module docs** | 77 `pub mod` declarations documented across 5 crates |
 | **`#[ignore]` tests** | 119 total; 100% have reason strings |
@@ -44,8 +44,8 @@
 | **`#[warn(missing_docs)]`** | 29/29 crates (all library crates have the lint enabled) |
 | **JSON-RPC methods** | 10 semantic methods wrapping all major REST endpoints |
 | **Dependencies** | ~418 unique; `kube`/`k8s-openapi`/`bollard` feature-gated |
-| **Build time** | ~43s clippy (warm), ~513s test suite |
-| **Total Rust lines** | 382,889 (crates + src + tests; -21.8K from dead code removal) |
+| **Build time** | ~39s check (warm), ~421s test suite (16 threads) |
+| **Total Rust lines** | 380,555 (crates + src + tests; -24.1K from dead code removal + env injection evolution) |
 
 ---
 
@@ -63,12 +63,40 @@
 | `#[expect()]` with reasons | S+ | Bulk migration complete; all bare `#[allow()]` eliminated |
 | Runtime discovery | S+ | All socket paths: env → XDG → fallback; `find_primals_with_capability` capability-based |
 | Event-driven architecture | S+ | Zero polling anti-patterns in production code |
-| Concurrent-safe testing | S+ | Injectable env readers, `parking_lot::Mutex`-guarded env facade |
+| Concurrent-safe testing | S+ | Zero `#[serial_test::serial]`; injectable `_with` env readers across all crates; 9,730 tests at 16 threads |
 | Self-knowledge only | S+ | Introspection describes only Songbird |
 | AGPL-3.0 license | S+ | 1,324/1,324 SPDX headers `AGPL-3.0-only`, cargo-deny configured |
 | Capability-based discovery | S+ | No hardcoded primal names; env-driven capability filter |
 | Mock isolation | S+ | All mocks behind `#[cfg(test)]` or `feature = "test-mocks"` |
 | File size discipline | S+ | 0 files over 1000 lines; 5 near-limit files refactored into domain submodules |
+
+---
+
+## Completed (Mar 21, 2026 — Fully Concurrent Architecture Evolution)
+
+### Wave 27: Injectable Environment Readers — Zero Serial Tests
+- [x] Evolved `Environment::detect()` → `detect_with(env)` across songbird-config
+- [x] Evolved `CanonicalNetworkConfig::from_env()` → `from_env_reader(env)` with `default_from_env_reader`
+- [x] Evolved `ZeroTouchConfig::from_environment()` → `from_environment_reader(env)`
+- [x] Evolved `PortConfig/HostConfig/EndpointConfig::from_env()` → `from_env_reader(env)` (hardcoded elimination)
+- [x] Evolved `ServiceEndpoints::get_by_capability()` → `get_by_capability_with(env, ...)`
+- [x] Evolved `LogConfig/ResourceLimits/PerformanceParameters` → `from_env_reader(env)`
+- [x] Evolved `RuntimeEndpointResolver::try_env_resolution()` → `try_env_resolution_with(capability, env)`
+- [x] Evolved `CapabilityDiscoveryEngine` → `new_with_env_reader(methods, env)`
+- [x] Evolved `RuntimeDiscovery::discover_by_capability()` → `from_environment_with(capability, env)`
+- [x] Evolved `CapabilityBasedRuntimeDiscovery::discover_from_environment()` → `discover_from_environment_with(capability, env)`
+- [x] Evolved `CapabilityDiscovery` → `with_methods_env_reader(methods, env)`
+- [x] Evolved `EnvironmentStrategy::discover()` → `discover_with(capability, env)` in songbird-universal-ipc
+- [x] Evolved `IpcServiceHandler::handle_identity()` → `with_family_id_env(registry, env)` injection
+- [x] Evolved `PrimalSelfKnowledge::discover_self()` → `discover_self_with(env)` in songbird-discovery
+- [x] Evolved `DiscoveryConfig` to accept `provider_endpoints: HashMap<String, String>` injection
+- [x] Evolved all adapters (compute, ai, storage, security) to `new_from_discovery_with_resolver(resolver)`
+- [x] Evolved `CapabilityEndpointResolver` to `with_endpoint_overrides(overrides)` for test injection
+- [x] Evolved `canonical/constants.rs` — `get_bind_address_with`, `get_primal_endpoint_with`, `get_log_level_with`, `find_primals_with_capability_in_env`, `get_common_primal_ports_from_env_map`
+- [x] Removed ALL `#[serial_test::serial]` from codebase (was 30+ usages)
+- [x] Removed `set_var`/`remove_var` from ALL lib-internal `#[cfg(test)]` blocks
+- [x] All 9,730 tests pass at `--test-threads=16` with zero races
+- [x] `cargo llvm-cov` completes clean: 64.14% line, 63.11% branch, 63.23% region
 
 ---
 
@@ -121,7 +149,7 @@
 - [x] `songbird-universal`: 5 tests (connection manager, discovery, circuit breaker manager)
 - [x] `songbird-http-client`: 4 tests (connection pool, request, response, adaptive TLS)
 - [x] `songbird-universal-ipc`: 4 tests (peer handler, discovery handler)
-- [x] Test race conditions fixed with `#[serial_test::serial]` on env-modifying tests
+- [x] Test race conditions initially fixed with `#[serial_test::serial]` (superseded by Wave 27 injectable env readers)
 
 ### Wave 26: Ring Dependency Analysis
 - [x] Documented exact dependency chain: songbird-quic → quinn → quinn-proto → ring; songbird-quic → rcgen → ring

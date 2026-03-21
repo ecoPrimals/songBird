@@ -30,50 +30,13 @@
 //! Tests path configuration, initialization, fallback logic, and validation.
 
 use songbird_config::config::paths::{PathConfig, get_path_config, testing_config};
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
     ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-struct ScopedEnv {
-    vars: Vec<(String, Option<String>)>,
-}
-
-impl ScopedEnv {
-    fn new() -> Self {
-        Self {
-            vars: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, key: &str, value: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::set_var(key, value);
-        self
-    }
-
-    #[expect(dead_code, reason = "test assertions and harness ergonomics")]
-    fn remove(&mut self, key: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::remove_var(key);
-        self
-    }
-}
-
-impl Drop for ScopedEnv {
-    fn drop(&mut self) {
-        for (key, old) in self.vars.drain(..).rev() {
-            match old {
-                Some(val) => songbird_process_env::set_var(&key, &val),
-                None => songbird_process_env::remove_var(&key),
-            }
-        }
-    }
 }
 
 // ==================== DEFAULT TESTS ====================
@@ -202,13 +165,11 @@ fn test_initialize_service_paths() {
 #[test]
 fn test_paths_from_environment() {
     let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_DATA_DIR", "/custom/data");
-    env.set("SONGBIRD_CONFIG_DIR", "/custom/config");
-
-    let config = get_path_config();
-    // The get_path_config function should respect env overrides
-    // (depending on implementation, it may or may not use these)
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_DATA_DIR".into(), "/custom/data".into());
+    m.insert("SONGBIRD_CONFIG_DIR".into(), "/custom/config".into());
+    let config =
+        PathConfig::from_env_reader(|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent));
     drop(config);
 }
 

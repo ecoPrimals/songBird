@@ -32,78 +32,34 @@
 use songbird_config::capability_discovery::{
     CapabilityDiscovery, DiscoveryMethod, ServiceEndpoint,
 };
-use std::sync::Mutex;
+use std::collections::HashMap;
 
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-struct ScopedEnv {
-    vars: Vec<(String, Option<String>)>,
-}
-
-impl ScopedEnv {
-    fn new() -> Self {
-        Self {
-            vars: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, key: &str, value: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::set_var(key, value);
-        self
-    }
-
-    fn remove(&mut self, key: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::remove_var(key);
-        self
-    }
-}
-
-impl Drop for ScopedEnv {
-    fn drop(&mut self) {
-        for (key, old) in self.vars.drain(..).rev() {
-            match old {
-                Some(val) => songbird_process_env::set_var(&key, &val),
-                None => songbird_process_env::remove_var(&key),
-            }
-        }
-    }
+fn env_reader(m: HashMap<String, String>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
+    move |k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
 }
 
 // ==================== CONSTRUCTION TESTS ====================
 
 #[test]
 fn test_discovery_default() {
-    let _g = lock_env();
     let d = CapabilityDiscovery::default();
-    // Default should not panic
     drop(d);
 }
 
 #[test]
 fn test_discovery_new() {
-    let _g = lock_env();
     let d = CapabilityDiscovery::new();
     drop(d);
 }
 
 #[test]
 fn test_discovery_with_methods() {
-    let _g = lock_env();
     let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
     drop(d);
 }
 
 #[test]
 fn test_discovery_with_multiple_methods() {
-    let _g = lock_env();
     let d = CapabilityDiscovery::with_methods(vec![
         DiscoveryMethod::Environment,
         DiscoveryMethod::DnsSD,
@@ -161,11 +117,12 @@ fn test_discovery_method_debug() {
 
 #[tokio::test]
 async fn test_env_compute_discovery() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("COMPUTE_ENDPOINT", "http://compute.local:9001");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("COMPUTE_ENDPOINT".into(), "http://compute.local:9001".into());
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
     let providers = d.discover_compute().await.unwrap();
     assert_eq!(providers.len(), 1);
     assert_eq!(providers[0].url, "http://compute.local:9001");
@@ -174,11 +131,12 @@ async fn test_env_compute_discovery() {
 
 #[tokio::test]
 async fn test_env_storage_discovery() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("STORAGE_ENDPOINT", "http://storage.local:9002");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("STORAGE_ENDPOINT".into(), "http://storage.local:9002".into());
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
     let providers = d.discover_storage().await.unwrap();
     assert_eq!(providers.len(), 1);
     assert_eq!(providers[0].url, "http://storage.local:9002");
@@ -186,11 +144,12 @@ async fn test_env_storage_discovery() {
 
 #[tokio::test]
 async fn test_env_security_discovery() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SECURITY_ENDPOINT", "http://security.local:9003");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SECURITY_ENDPOINT".into(), "http://security.local:9003".into());
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
     let providers = d.discover_security().await.unwrap();
     assert_eq!(providers.len(), 1);
     assert_eq!(providers[0].url, "http://security.local:9003");
@@ -198,11 +157,12 @@ async fn test_env_security_discovery() {
 
 #[tokio::test]
 async fn test_env_ai_discovery() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("AI_ENDPOINT", "http://ai.local:9004");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("AI_ENDPOINT".into(), "http://ai.local:9004".into());
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
     let providers = d.discover_ai().await.unwrap();
     assert_eq!(providers.len(), 1);
     assert_eq!(providers[0].url, "http://ai.local:9004");
@@ -210,12 +170,11 @@ async fn test_env_ai_discovery() {
 
 #[tokio::test]
 async fn test_no_providers_returns_error() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("NONEXISTENT_ENDPOINT");
-    env.remove("NONEXISTENT_URL");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let m: HashMap<String, String> = HashMap::new();
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
     let result = d.find_providers_by_capability("nonexistent").await;
     assert!(result.is_err(), "Should error when no providers found");
 }
@@ -224,11 +183,12 @@ async fn test_no_providers_returns_error() {
 
 #[tokio::test]
 async fn test_cache_returns_same_results() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("CACHETEST_ENDPOINT", "http://cache.local:5555");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("CACHETEST_ENDPOINT".into(), "http://cache.local:5555".into());
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
 
     let first = d.find_providers_by_capability("cachetest").await.unwrap();
     let second = d.find_providers_by_capability("cachetest").await.unwrap();
@@ -238,30 +198,30 @@ async fn test_cache_returns_same_results() {
 
 #[tokio::test]
 async fn test_clear_cache() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("CLEARCACHE_ENDPOINT", "http://clear.local:5556");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("CLEARCACHE_ENDPOINT".into(), "http://clear.local:5556".into());
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
     let _ = d.find_providers_by_capability("clearcache").await.unwrap();
 
     d.clear_cache("clearcache").await;
-    // After clearing, should re-discover
     let result = d.find_providers_by_capability("clearcache").await.unwrap();
     assert_eq!(result.len(), 1);
 }
 
 #[tokio::test]
 async fn test_clear_all_caches() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("CLEARALL_ENDPOINT", "http://clearall.local:5557");
-
-    let d = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("CLEARALL_ENDPOINT".into(), "http://clearall.local:5557".into());
+    let d = CapabilityDiscovery::with_methods_env_reader(
+        vec![DiscoveryMethod::Environment],
+        env_reader(m),
+    );
     let _ = d.find_providers_by_capability("clearall").await.unwrap();
 
     d.clear_all_caches().await;
-    // After clearing, should re-discover
     let result = d.find_providers_by_capability("clearall").await.unwrap();
     assert_eq!(result.len(), 1);
 }

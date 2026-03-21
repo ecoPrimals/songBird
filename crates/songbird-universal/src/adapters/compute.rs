@@ -168,7 +168,10 @@ impl ComputeAdapter {
     /// # });
     /// ```
     pub async fn new_from_discovery() -> SongbirdResult<Self> {
-        Self::new_from_discovery_with_resolver(songbird_config::capability_endpoints::CapabilityEndpointResolver::new()).await
+        Self::new_from_discovery_with_resolver(
+            songbird_config::capability_endpoints::CapabilityEndpointResolver::new(),
+        )
+        .await
     }
 
     /// Like [`Self::new_from_discovery`], but uses an explicit resolver (see [`songbird_config::capability_endpoints::CapabilityEndpointResolver::with_endpoint_overrides`]).

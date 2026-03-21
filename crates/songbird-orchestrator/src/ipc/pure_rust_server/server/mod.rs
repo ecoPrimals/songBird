@@ -111,10 +111,19 @@ impl UnixSocketServer {
 
     #[must_use]
     pub fn get_family_id() -> String {
-        std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
-            .or_else(|_| std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY"))
-            .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+        Self::get_family_id_with_env(|key| std::env::var(key))
+    }
+
+    /// Same priority as [`Self::get_family_id`], with injectable env (tests, embedders).
+    #[must_use]
+    pub fn get_family_id_with_env<F>(env_reader: F) -> String
+    where
+        F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+    {
+        env_reader("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+            .or_else(|_| env_reader("SONGBIRD_ORCHESTRATOR_FAMILY"))
+            .or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
+            .or_else(|_| env_reader("SONGBIRD_FAMILY_ID"))
             .unwrap_or_else(|_| "default".to_string())
     }
 

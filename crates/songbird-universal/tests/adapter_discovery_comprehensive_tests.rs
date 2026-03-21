@@ -52,11 +52,11 @@ use std::collections::HashMap;
 #[tokio::test]
 async fn test_ai_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
     let mut m = HashMap::new();
-    m.insert(
-        CapabilityType::Ai,
-        format!("http://ai-provider:{}", test_orchestrator_port()),
-    );
-    let result = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    m.insert(CapabilityType::Ai, format!("http://ai-provider:{}", test_orchestrator_port()));
+    let result = AIAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await?;
     assert_eq!(result.endpoint(), format!("http://ai-provider:{}", test_orchestrator_port()));
     Ok(())
 }
@@ -64,12 +64,11 @@ async fn test_ai_adapter_discovery_from_injected_resolver() -> SongbirdResult<()
 #[tokio::test]
 async fn test_compute_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
     let mut m = HashMap::new();
-    m.insert(
-        CapabilityType::Compute,
-        format!("http://compute-provider:{}", test_metrics_port()),
-    );
-    let result =
-        ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    m.insert(CapabilityType::Compute, format!("http://compute-provider:{}", test_metrics_port()));
+    let result = ComputeAdapter::new_from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await?;
     assert_eq!(result.endpoint(), format!("http://compute-provider:{}", test_metrics_port()));
     Ok(())
 }
@@ -78,8 +77,10 @@ async fn test_compute_adapter_discovery_from_injected_resolver() -> SongbirdResu
 async fn test_security_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
     let mut m = HashMap::new();
     m.insert(CapabilityType::Security, "https://security-provider:8443".to_string());
-    let result =
-        SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    let result = SecurityAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await?;
     assert_eq!(result.endpoint(), "https://security-provider:8443");
     Ok(())
 }
@@ -88,8 +89,10 @@ async fn test_security_adapter_discovery_from_injected_resolver() -> SongbirdRes
 async fn test_storage_adapter_discovery_from_injected_resolver() -> SongbirdResult<()> {
     let mut m = HashMap::new();
     m.insert(CapabilityType::Storage, "http://storage-provider:9000".to_string());
-    let result =
-        StorageAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    let result = StorageAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await?;
     assert_eq!(result.endpoint(), "http://storage-provider:9000");
     Ok(())
 }
@@ -105,16 +108,19 @@ async fn test_adapter_discovery_fallback_bind_address_shape() -> SongbirdResult<
 #[tokio::test]
 async fn test_adapter_endpoint_validation() {
     let mut m = HashMap::new();
-    m.insert(
-        CapabilityType::Ai,
-        format!("http://valid:{}", test_orchestrator_port()),
-    );
-    let result1 = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
+    m.insert(CapabilityType::Ai, format!("http://valid:{}", test_orchestrator_port()));
+    let result1 = AIAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await;
     assert!(result1.is_ok());
 
     let mut m2 = HashMap::new();
     m2.insert(CapabilityType::Ai, "https://secure:443".to_string());
-    let result2 = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m2)).await;
+    let result2 = AIAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m2),
+    )
+    .await;
     assert!(result2.is_ok());
 }
 
@@ -149,7 +155,10 @@ async fn test_multiple_adapter_discovery_independence() -> SongbirdResult<()> {
 async fn test_adapter_discovery_with_custom_timeout() {
     let mut m = HashMap::new();
     m.insert(CapabilityType::Ai, format!("http://ai:{}", test_orchestrator_port()));
-    let result = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
+    let result = AIAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await;
     assert!(result.is_ok());
 }
 
@@ -173,8 +182,10 @@ async fn test_adapter_endpoint_formats() {
     for endpoint in test_cases {
         let mut m = HashMap::new();
         m.insert(CapabilityType::Compute, endpoint.clone());
-        let result =
-            ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await;
+        let result = ComputeAdapter::new_from_discovery_with_resolver(
+            CapabilityEndpointResolver::with_endpoint_overrides(m),
+        )
+        .await;
 
         assert!(result.is_ok(), "Failed for endpoint: {}", endpoint);
         if let Ok(adapter) = result {

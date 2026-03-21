@@ -31,62 +31,20 @@
 //! `ObjectPoolSizes`, and `BenchmarkConfig`.
 
 use songbird_config::canonical::performance::*;
-use std::sync::Mutex;
+use std::collections::HashMap;
 
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-struct ScopedEnv {
-    vars: Vec<(String, Option<String>)>,
-}
-
-impl ScopedEnv {
-    fn new() -> Self {
-        Self {
-            vars: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, key: &str, value: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::set_var(key, value);
-        self
-    }
-
-    fn remove(&mut self, key: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::remove_var(key);
-        self
-    }
-}
-
-impl Drop for ScopedEnv {
-    fn drop(&mut self) {
-        for (key, old) in self.vars.drain(..).rev() {
-            match old {
-                Some(val) => songbird_process_env::set_var(&key, &val),
-                None => songbird_process_env::remove_var(&key),
-            }
-        }
-    }
+fn env_reader(
+    m: &HashMap<String, String>,
+) -> impl Fn(&str) -> Result<String, std::env::VarError> + '_ {
+    |k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
 }
 
 // ==================== PERFORMANCE CONFIG TESTS ====================
 
 #[test]
 fn test_performance_config_default_values() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SONGBIRD_THREAD_POOL_SIZE");
-    env.remove("SONGBIRD_MAX_CONCURRENT_REQUESTS");
-    env.remove("SONGBIRD_ZERO_COPY_ENABLED");
-
-    let config = PerformanceConfig::default();
+    let m: HashMap<String, String> = HashMap::new();
+    let config = PerformanceConfig::from_env_reader(env_reader(&m));
     assert!(config.thread_pool_size >= 1);
     assert_eq!(config.max_concurrent_requests, 1000);
     assert_eq!(config.request_buffer_size, 8192);
@@ -95,31 +53,25 @@ fn test_performance_config_default_values() {
 
 #[test]
 fn test_performance_config_thread_pool_from_env() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_THREAD_POOL_SIZE", "8");
-
-    let config = PerformanceConfig::default();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_THREAD_POOL_SIZE".into(), "8".into());
+    let config = PerformanceConfig::from_env_reader(env_reader(&m));
     assert_eq!(config.thread_pool_size, 8);
 }
 
 #[test]
 fn test_performance_config_max_concurrent_from_env() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_MAX_CONCURRENT_REQUESTS", "5000");
-
-    let config = PerformanceConfig::default();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_MAX_CONCURRENT_REQUESTS".into(), "5000".into());
+    let config = PerformanceConfig::from_env_reader(env_reader(&m));
     assert_eq!(config.max_concurrent_requests, 5000);
 }
 
 #[test]
 fn test_performance_config_zero_copy_from_env() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ZERO_COPY_ENABLED", "1");
-
-    let config = PerformanceConfig::default();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ZERO_COPY_ENABLED".into(), "1".into());
+    let config = PerformanceConfig::from_env_reader(env_reader(&m));
     assert!(config.enable_zero_copy);
 }
 
@@ -151,13 +103,8 @@ fn test_performance_config_serialization() {
 
 #[test]
 fn test_cache_config_default_values() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SONGBIRD_CACHE_ENABLED");
-    env.remove("SONGBIRD_CACHE_MAX_SIZE");
-    env.remove("SONGBIRD_CACHE_TTL_SECS");
-
-    let config = CacheConfig::default();
+    let m: HashMap<String, String> = HashMap::new();
+    let config = CacheConfig::from_env_reader(env_reader(&m));
     assert!(config.enabled);
     assert_eq!(config.max_size, 1000);
     assert_eq!(config.ttl_secs, 300);
@@ -165,13 +112,11 @@ fn test_cache_config_default_values() {
 
 #[test]
 fn test_cache_config_from_env() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_CACHE_ENABLED", "false");
-    env.set("SONGBIRD_CACHE_MAX_SIZE", "5000");
-    env.set("SONGBIRD_CACHE_TTL_SECS", "600");
-
-    let config = CacheConfig::default();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_CACHE_ENABLED".into(), "false".into());
+    m.insert("SONGBIRD_CACHE_MAX_SIZE".into(), "5000".into());
+    m.insert("SONGBIRD_CACHE_TTL_SECS".into(), "600".into());
+    let config = CacheConfig::from_env_reader(env_reader(&m));
     assert!(!config.enabled);
     assert_eq!(config.max_size, 5000);
     assert_eq!(config.ttl_secs, 600);
@@ -210,13 +155,8 @@ fn test_cache_config_debug() {
 
 #[test]
 fn test_metrics_config_default_values() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SONGBIRD_METRICS_ENABLED");
-    env.remove("SONGBIRD_METRICS_INTERVAL_SECS");
-    env.remove("SONGBIRD_PROMETHEUS_ENABLED");
-
-    let config = MetricsConfig::default();
+    let m: HashMap<String, String> = HashMap::new();
+    let config = MetricsConfig::from_env_reader(env_reader(&m));
     assert!(config.enabled);
     assert_eq!(config.collection_interval_secs, 60);
     assert!(!config.export_prometheus);
@@ -224,13 +164,11 @@ fn test_metrics_config_default_values() {
 
 #[test]
 fn test_metrics_config_from_env() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_METRICS_ENABLED", "false");
-    env.set("SONGBIRD_METRICS_INTERVAL_SECS", "30");
-    env.set("SONGBIRD_PROMETHEUS_ENABLED", "1");
-
-    let config = MetricsConfig::default();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_METRICS_ENABLED".into(), "false".into());
+    m.insert("SONGBIRD_METRICS_INTERVAL_SECS".into(), "30".into());
+    m.insert("SONGBIRD_PROMETHEUS_ENABLED".into(), "1".into());
+    let config = MetricsConfig::from_env_reader(env_reader(&m));
     assert!(!config.enabled);
     assert_eq!(config.collection_interval_secs, 30);
     assert!(config.export_prometheus);
@@ -269,13 +207,8 @@ fn test_metrics_config_debug() {
 
 #[test]
 fn test_object_pool_sizes_default_values() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SONGBIRD_MESSAGE_POOL_SIZE");
-    env.remove("SONGBIRD_BUFFER_POOL_SIZE");
-    env.remove("SONGBIRD_CONNECTION_POOL_SIZE");
-
-    let pools = ObjectPoolSizes::default();
+    let m: HashMap<String, String> = HashMap::new();
+    let pools = ObjectPoolSizes::from_env_reader(env_reader(&m));
     assert_eq!(pools.message, 1000);
     assert_eq!(pools.buffer, 500);
     assert_eq!(pools.connection, 100);
@@ -283,13 +216,11 @@ fn test_object_pool_sizes_default_values() {
 
 #[test]
 fn test_object_pool_sizes_from_env() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_MESSAGE_POOL_SIZE", "2000");
-    env.set("SONGBIRD_BUFFER_POOL_SIZE", "1000");
-    env.set("SONGBIRD_CONNECTION_POOL_SIZE", "200");
-
-    let pools = ObjectPoolSizes::default();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_MESSAGE_POOL_SIZE".into(), "2000".into());
+    m.insert("SONGBIRD_BUFFER_POOL_SIZE".into(), "1000".into());
+    m.insert("SONGBIRD_CONNECTION_POOL_SIZE".into(), "200".into());
+    let pools = ObjectPoolSizes::from_env_reader(env_reader(&m));
     assert_eq!(pools.message, 2000);
     assert_eq!(pools.buffer, 1000);
     assert_eq!(pools.connection, 200);
@@ -336,15 +267,8 @@ fn test_object_pool_sizes_serialization() {
 
 #[test]
 fn test_benchmark_config_default_values() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SONGBIRD_BENCHMARK_ENABLED");
-    env.remove("SONGBIRD_BENCHMARK_DURATION_SECS");
-    env.remove("SONGBIRD_BENCHMARK_CONCURRENT");
-    env.remove("SONGBIRD_BENCHMARK_WARMUP_SECS");
-    env.remove("SONGBIRD_BENCHMARK_OUTPUT");
-
-    let config = BenchmarkConfig::default();
+    let m: HashMap<String, String> = HashMap::new();
+    let config = BenchmarkConfig::from_env_reader(env_reader(&m));
     assert!(!config.enabled);
     assert_eq!(config.duration_secs, 60);
     assert_eq!(config.concurrent_requests, 100);
@@ -355,15 +279,13 @@ fn test_benchmark_config_default_values() {
 
 #[test]
 fn test_benchmark_config_from_env() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_BENCHMARK_ENABLED", "1");
-    env.set("SONGBIRD_BENCHMARK_DURATION_SECS", "120");
-    env.set("SONGBIRD_BENCHMARK_CONCURRENT", "500");
-    env.set("SONGBIRD_BENCHMARK_WARMUP_SECS", "15");
-    env.set("SONGBIRD_BENCHMARK_OUTPUT", "csv");
-
-    let config = BenchmarkConfig::default();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_BENCHMARK_ENABLED".into(), "1".into());
+    m.insert("SONGBIRD_BENCHMARK_DURATION_SECS".into(), "120".into());
+    m.insert("SONGBIRD_BENCHMARK_CONCURRENT".into(), "500".into());
+    m.insert("SONGBIRD_BENCHMARK_WARMUP_SECS".into(), "15".into());
+    m.insert("SONGBIRD_BENCHMARK_OUTPUT".into(), "csv".into());
+    let config = BenchmarkConfig::from_env_reader(env_reader(&m));
     assert!(config.enabled);
     assert_eq!(config.duration_secs, 120);
     assert_eq!(config.concurrent_requests, 500);
@@ -418,11 +340,7 @@ fn test_benchmark_config_serialization() {
 
 #[test]
 fn test_unified_performance_config_alias() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SONGBIRD_MAX_CONCURRENT_REQUESTS");
-
-    // UnifiedPerformanceConfig should be identical to PerformanceConfig
-    let config: UnifiedPerformanceConfig = PerformanceConfig::default();
+    let m: HashMap<String, String> = HashMap::new();
+    let config: UnifiedPerformanceConfig = PerformanceConfig::from_env_reader(env_reader(&m));
     assert_eq!(config.max_concurrent_requests, 1000);
 }

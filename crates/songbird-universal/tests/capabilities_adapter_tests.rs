@@ -112,10 +112,9 @@ async fn test_find_capability_providers_empty() {
 #[tokio::test]
 async fn test_find_capability_providers_security() {
     let mut config = DiscoveryConfig::default();
-    config.provider_endpoints.insert(
-        "security".to_string(),
-        format!("http://security-local:{}", test_discovery_port()),
-    );
+    config
+        .provider_endpoints
+        .insert("security".to_string(), format!("http://security-local:{}", test_discovery_port()));
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let providers = adapter.find_capability_providers("security").await;
@@ -126,10 +125,9 @@ async fn test_find_capability_providers_security() {
 #[tokio::test]
 async fn test_find_capability_providers_compute() {
     let mut config = DiscoveryConfig::default();
-    config.provider_endpoints.insert(
-        "compute".to_string(),
-        format!("http://compute-local:{}", test_health_port()),
-    );
+    config
+        .provider_endpoints
+        .insert("compute".to_string(), format!("http://compute-local:{}", test_health_port()));
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let providers = adapter.find_capability_providers("compute").await;
@@ -140,10 +138,9 @@ async fn test_find_capability_providers_compute() {
 #[tokio::test]
 async fn test_find_capability_providers_storage() {
     let mut config = DiscoveryConfig::default();
-    config.provider_endpoints.insert(
-        "storage".to_string(),
-        format!("http://storage-local:{}", test_federation_port()),
-    );
+    config
+        .provider_endpoints
+        .insert("storage".to_string(), format!("http://storage-local:{}", test_federation_port()));
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let providers = adapter.find_capability_providers("storage").await;
@@ -154,9 +151,7 @@ async fn test_find_capability_providers_storage() {
 #[tokio::test]
 async fn test_find_capability_providers_ai() {
     let mut config = DiscoveryConfig::default();
-    config
-        .provider_endpoints
-        .insert("ai".to_string(), "http://ai-local:8084".to_string());
+    config.provider_endpoints.insert("ai".to_string(), "http://ai-local:8084".to_string());
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let providers = adapter.find_capability_providers("ai").await;
@@ -199,10 +194,9 @@ async fn test_get_best_primal_for_capability_empty() {
 #[tokio::test]
 async fn test_get_best_primal_for_capability_security() {
     let mut config = DiscoveryConfig::default();
-    config.provider_endpoints.insert(
-        "security".to_string(),
-        format!("http://beardog:{}", test_discovery_port()),
-    );
+    config
+        .provider_endpoints
+        .insert("security".to_string(), format!("http://beardog:{}", test_discovery_port()));
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let best = adapter.get_best_primal_for_capability("security").await;
@@ -289,14 +283,12 @@ fn test_discovery_config_debug() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_adapter_multiple_capability_types() {
     let mut config = DiscoveryConfig::default();
-    config.provider_endpoints.insert(
-        "security".to_string(),
-        format!("http://security-node:{}", test_discovery_port()),
-    );
-    config.provider_endpoints.insert(
-        "compute".to_string(),
-        format!("http://compute-node:{}", test_health_port()),
-    );
+    config
+        .provider_endpoints
+        .insert("security".to_string(), format!("http://security-node:{}", test_discovery_port()));
+    config
+        .provider_endpoints
+        .insert("compute".to_string(), format!("http://compute-node:{}", test_health_port()));
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let security_providers = adapter.find_capability_providers("security").await;
@@ -308,10 +300,9 @@ async fn test_adapter_multiple_capability_types() {
 #[tokio::test]
 async fn test_adapter_capability_aliases() {
     let mut config = DiscoveryConfig::default();
-    config.provider_endpoints.insert(
-        "security".to_string(),
-        format!("http://security-alias:{}", test_discovery_port()),
-    );
+    config
+        .provider_endpoints
+        .insert("security".to_string(), format!("http://security-alias:{}", test_discovery_port()));
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let security_providers = adapter.find_capability_providers("security").await;
@@ -347,10 +338,9 @@ async fn test_adapter_with_disabled_network_discovery() {
         enable_network_discovery: false,
         provider_endpoints: HashMap::new(),
     };
-    config.provider_endpoints.insert(
-        "security".to_string(),
-        format!("http://security-net:{}", test_discovery_port()),
-    );
+    config
+        .provider_endpoints
+        .insert("security".to_string(), format!("http://security-net:{}", test_discovery_port()));
 
     let adapter = UniversalCapabilityAdapter::new(config);
 

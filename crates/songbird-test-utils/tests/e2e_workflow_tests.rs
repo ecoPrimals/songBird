@@ -62,6 +62,7 @@
 
 #[cfg(test)]
 mod e2e_workflow_tests {
+    use songbird_config::canonical::environment::Environment;
     use songbird_types::SongbirdResult;
     use songbird_types::config::CanonicalSongbirdConfig;
     use std::time::Duration;
@@ -108,19 +109,20 @@ mod e2e_workflow_tests {
         // Test configuration management across different environments
         let environments = vec!["development", "staging", "production"];
 
-        for env in environments {
-            songbird_process_env::set_var("SONGBIRD_ENV", env);
-
-            // Test environment detection - simplified for now
-            match env {
-                "production" => println!("Production environment detected"),
-                "staging" => println!("Staging environment detected"),
-                _ => println!("Development environment detected"),
+        for env_name in environments {
+            let detected = Environment::detect_with(|k| {
+                if k == "SONGBIRD_ENV" {
+                    Ok(env_name.to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            });
+            match env_name {
+                "production" => assert!(detected.is_production()),
+                "staging" => assert_eq!(detected, Environment::Staging),
+                _ => assert!(detected.is_development()),
             }
         }
-
-        // Clean up environment
-        songbird_process_env::remove_var("SONGBIRD_ENV");
 
         Ok(())
     }

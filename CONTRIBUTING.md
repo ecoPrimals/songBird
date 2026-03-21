@@ -89,7 +89,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: ~67%.
+**Goal**: 90% line coverage. Current: 64.14% (llvm-cov, Mar 2026).
 
 ```bash
 cargo llvm-cov --workspace --lib --html

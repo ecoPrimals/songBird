@@ -151,7 +151,10 @@ impl AIAdapter {
     ///
     /// Returns an error if no AI capability can be discovered.
     pub async fn from_discovery() -> SongbirdResult<Self> {
-        Self::from_discovery_with_resolver(songbird_config::capability_endpoints::CapabilityEndpointResolver::new()).await
+        Self::from_discovery_with_resolver(
+            songbird_config::capability_endpoints::CapabilityEndpointResolver::new(),
+        )
+        .await
     }
 
     /// Like [`Self::from_discovery`], but uses an explicit [`CapabilityEndpointResolver`].

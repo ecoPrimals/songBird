@@ -109,22 +109,19 @@ async fn test_legacy_named_endpoints_via_resolver() {
 
 #[tokio::test]
 async fn test_host_port_style_url_via_explicit_new() {
-    let adapter = ComputeAdapter::new("http://fallback-host:9999".to_string())
-        .await
-        .expect("explicit new");
+    let adapter =
+        ComputeAdapter::new("http://fallback-host:9999".to_string()).await.expect("explicit new");
     assert_eq!(adapter.endpoint(), "http://fallback-host:9999");
 }
 
 #[tokio::test]
 async fn test_adapter_timeout_configuration() -> SongbirdResult<()> {
     let mut m = HashMap::new();
-    m.insert(
-        CapabilityType::Compute,
-        format!("http://compute:{}", test_orchestrator_port()),
-    );
-    let adapter =
-        ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m))
-            .await?;
+    m.insert(CapabilityType::Compute, format!("http://compute:{}", test_orchestrator_port()));
+    let adapter = ComputeAdapter::new_from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await?;
 
     let custom_adapter = adapter.with_timeout(std::time::Duration::from_secs(30));
     drop(custom_adapter);
@@ -135,7 +132,10 @@ async fn test_adapter_timeout_configuration() -> SongbirdResult<()> {
 async fn test_discovery_priority_injected_endpoint() -> SongbirdResult<()> {
     let mut m = HashMap::new();
     m.insert(CapabilityType::Security, "http://new-priority:8443".to_string());
-    let adapter = SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(m)).await?;
+    let adapter = SecurityAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(m),
+    )
+    .await?;
 
     assert_eq!(adapter.endpoint(), "http://new-priority:8443");
     Ok(())
@@ -167,15 +167,18 @@ async fn test_invalid_endpoint_handling() {
 #[tokio::test]
 async fn test_adapter_capability_isolation() -> SongbirdResult<()> {
     let mut mc = HashMap::new();
-    mc.insert(
-        CapabilityType::Compute,
-        format!("http://compute-only:{}", test_orchestrator_port()),
-    );
-    let compute = ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(mc)).await?;
+    mc.insert(CapabilityType::Compute, format!("http://compute-only:{}", test_orchestrator_port()));
+    let compute = ComputeAdapter::new_from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(mc),
+    )
+    .await?;
 
     let mut ms = HashMap::new();
     ms.insert(CapabilityType::Security, "http://security-only:8443".to_string());
-    let security = SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(ms)).await?;
+    let security = SecurityAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(ms),
+    )
+    .await?;
 
     assert_ne!(compute.endpoint(), security.endpoint());
     Ok(())
@@ -229,10 +232,7 @@ async fn test_capability_type_boundaries() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_mixed_injected_configuration() {
     let mut m = HashMap::new();
-    m.insert(
-        CapabilityType::Compute,
-        format!("http://compute-cap:{}", test_orchestrator_port()),
-    );
+    m.insert(CapabilityType::Compute, format!("http://compute-cap:{}", test_orchestrator_port()));
     m.insert(CapabilityType::Security, "http://security-legacy:8443".to_string());
     let r = CapabilityEndpointResolver::with_endpoint_overrides(m);
     let r2 = r.clone();
@@ -242,11 +242,20 @@ async fn test_mixed_injected_configuration() {
 
     let mut ms = HashMap::new();
     ms.insert(CapabilityType::Storage, "http://storage-fb:9000".to_string());
-    assert!(StorageAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(ms)).await.is_ok());
+    assert!(
+        StorageAdapter::from_discovery_with_resolver(
+            CapabilityEndpointResolver::with_endpoint_overrides(ms)
+        )
+        .await
+        .is_ok()
+    );
 
     let mut ma = HashMap::new();
     ma.insert(CapabilityType::Ai, "http://ai-custom:7777".to_string());
-    let ai = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::with_endpoint_overrides(ma)).await;
+    let ai = AIAdapter::from_discovery_with_resolver(
+        CapabilityEndpointResolver::with_endpoint_overrides(ma),
+    )
+    .await;
     assert!(ai.is_ok());
     assert_eq!(ai.expect("ai").endpoint(), "http://ai-custom:7777");
 }

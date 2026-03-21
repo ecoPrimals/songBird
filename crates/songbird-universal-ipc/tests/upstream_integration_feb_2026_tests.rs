@@ -49,11 +49,8 @@ use songbird_universal_ipc::registry::ServiceRegistry;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::RwLock;
-
-// Global mutex to serialize environment variable tests
-static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 // ============================================================================
 // UNIT TESTS - Standard Methods
@@ -130,19 +127,14 @@ async fn test_unit_rpc_discover_method() {
 
 #[tokio::test]
 async fn test_unit_family_id_from_environment() {
-    // Serialize with other env tests
-    let _guard = ENV_TEST_LOCK.lock().unwrap();
-
-    // Clean slate - remove all family ID vars first
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
-
-    // Test FAMILY_ID (highest priority)
-    songbird_process_env::set_var("FAMILY_ID", "test_family_1");
-
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry);
+    let handler = IpcServiceHandler::with_family_id_env(registry, |k| {
+        if k == "FAMILY_ID" {
+            Ok("test_family_1".to_string())
+        } else {
+            Err(std::env::VarError::NotPresent)
+        }
+    });
 
     let result = handler.handle("identity", json!({})).await;
     assert!(result.is_ok());
@@ -150,11 +142,6 @@ async fn test_unit_family_id_from_environment() {
     let response = result.unwrap();
     let family_id = response["family_id"].as_str().unwrap();
     assert_eq!(family_id, "test_family_1", "Should use FAMILY_ID");
-
-    // Clean up
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
 }
 
 #[tokio::test]
@@ -541,60 +528,39 @@ async fn test_regression_rpc_methods() {
 
 #[tokio::test]
 async fn test_env_family_id_priority() {
-    // Serialize with other env tests
-    let _guard = ENV_TEST_LOCK.lock().unwrap();
-
-    // Clean slate first
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
-
-    // Test 1: Only FAMILY_ID set (highest priority)
-    songbird_process_env::set_var("FAMILY_ID", "test_priority_1");
-
+    // Test 1: Only FAMILY_ID set
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry);
+    let handler = IpcServiceHandler::with_family_id_env(registry, |k| {
+        if k == "FAMILY_ID" {
+            Ok("test_priority_1".to_string())
+        } else {
+            Err(std::env::VarError::NotPresent)
+        }
+    });
 
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "test_priority_1");
 
-    songbird_process_env::remove_var("FAMILY_ID");
-
-    // Test 2: Only SONGBIRD_FAMILY_ID set (middle priority)
-    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "test_priority_2");
-
+    // Test 2: Only SONGBIRD_FAMILY_ID set
     let registry2 = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler2 = IpcServiceHandler::new(registry2);
+    let handler2 = IpcServiceHandler::with_family_id_env(registry2, |k| {
+        if k == "SONGBIRD_FAMILY_ID" {
+            Ok("test_priority_2".to_string())
+        } else {
+            Err(std::env::VarError::NotPresent)
+        }
+    });
 
     let result2 = handler2.handle("identity", json!({})).await.unwrap();
     assert_eq!(result2["family_id"], "test_priority_2");
-
-    // Clean up completely
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
 }
 
 #[tokio::test]
 async fn test_env_family_id_default() {
-    // Serialize with other env tests
-    let _guard = ENV_TEST_LOCK.lock().unwrap();
-
-    // Clear all family ID env vars (canonical chain)
-    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
-
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry);
+    let handler =
+        IpcServiceHandler::with_family_id_env(registry, |_| Err(std::env::VarError::NotPresent));
 
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "default", "Should default to 'default'");
-
-    // Clean up (restore any vars that might have been set before test)
-    songbird_process_env::remove_var("FAMILY_ID");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    songbird_process_env::remove_var("NODE_FAMILY_ID");
 }

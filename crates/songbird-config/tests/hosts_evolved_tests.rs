@@ -31,50 +31,13 @@
 //! and environment detection.
 
 use songbird_config::defaults::hosts_evolved::*;
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Mutex;
 
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-struct ScopedEnv {
-    vars: Vec<(String, Option<String>)>,
-}
-
-impl ScopedEnv {
-    fn new() -> Self {
-        Self {
-            vars: Vec::new(),
-        }
-    }
-
-    fn set(&mut self, key: &str, value: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::set_var(key, value);
-        self
-    }
-
-    fn remove(&mut self, key: &str) -> &mut Self {
-        let old = std::env::var(key).ok();
-        self.vars.push((key.to_string(), old));
-        songbird_process_env::remove_var(key);
-        self
-    }
-}
-
-impl Drop for ScopedEnv {
-    fn drop(&mut self) {
-        for (key, old) in self.vars.drain(..).rev() {
-            match old {
-                Some(val) => songbird_process_env::set_var(&key, &val),
-                None => songbird_process_env::remove_var(&key),
-            }
-        }
-    }
+fn env_reader(
+    m: &HashMap<String, String>,
+) -> impl Fn(&str) -> Result<String, std::env::VarError> + '_ {
+    |k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)
 }
 
 // ==================== ENVIRONMENT TESTS ====================
@@ -118,44 +81,32 @@ fn test_environment_serialization() {
 
 #[test]
 fn test_environment_detect_development() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.remove("SONGBIRD_ENV");
-    env.remove("KUBERNETES_SERVICE_HOST");
-    env.remove("CONTAINER");
-
-    let detected = Environment::detect();
-    // Without production indicators, should default to Development
+    let m: HashMap<String, String> = HashMap::new();
+    let detected = Environment::detect_with(&env_reader(&m));
     assert!(matches!(detected, Environment::Development | Environment::Test));
 }
 
 #[test]
 fn test_environment_detect_production() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "production");
-
-    let detected = Environment::detect();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "production".into());
+    let detected = Environment::detect_with(&env_reader(&m));
     assert_eq!(detected, Environment::Production);
 }
 
 #[test]
 fn test_environment_detect_staging() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "staging");
-
-    let detected = Environment::detect();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "staging".into());
+    let detected = Environment::detect_with(&env_reader(&m));
     assert_eq!(detected, Environment::Staging);
 }
 
 #[test]
 fn test_environment_detect_test() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "test");
-
-    let detected = Environment::detect();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "test".into());
+    let detected = Environment::detect_with(&env_reader(&m));
     assert_eq!(detected, Environment::Test);
 }
 
@@ -273,65 +224,53 @@ fn test_advertise_config_serialization() {
 
 #[test]
 fn test_self_aware_config_from_environment() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "development");
-
-    let config = SelfAwareConfig::from_environment();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "development".into());
+    let config = SelfAwareConfig::from_environment_with(&env_reader(&m));
     assert_eq!(config.environment, Environment::Development);
 }
 
 #[test]
 fn test_self_aware_config_bind_address() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "development");
-
-    let config = SelfAwareConfig::from_environment();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "development".into());
+    let config = SelfAwareConfig::from_environment_with(&env_reader(&m));
     let addr = config.bind_address();
     assert_eq!(addr.port(), 8080);
 }
 
 #[test]
 fn test_self_aware_config_advertise_address() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "development");
-
-    let config = SelfAwareConfig::from_environment();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "development".into());
+    let config = SelfAwareConfig::from_environment_with(&env_reader(&m));
     let addr = config.advertise_address();
     assert!(addr.port() > 0 || addr.port() == 0); // Valid port range
 }
 
 #[test]
 fn test_self_aware_config_clone() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "test");
-
-    let config = SelfAwareConfig::from_environment();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "test".into());
+    let config = SelfAwareConfig::from_environment_with(&env_reader(&m));
     let cloned = config.clone();
     assert_eq!(config.environment, cloned.environment);
 }
 
 #[test]
 fn test_self_aware_config_debug() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "test");
-
-    let config = SelfAwareConfig::from_environment();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "test".into());
+    let config = SelfAwareConfig::from_environment_with(&env_reader(&m));
     let debug = format!("{:?}", config);
     assert!(debug.contains("SelfAwareConfig"));
 }
 
 #[test]
 fn test_self_aware_config_serialization() {
-    let _g = lock_env();
-    let mut env = ScopedEnv::new();
-    env.set("SONGBIRD_ENVIRONMENT", "staging");
-
-    let config = SelfAwareConfig::from_environment();
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENVIRONMENT".into(), "staging".into());
+    let config = SelfAwareConfig::from_environment_with(&env_reader(&m));
     let json = serde_json::to_string(&config).unwrap();
     let deserialized: SelfAwareConfig = serde_json::from_str(&json).unwrap();
     assert_eq!(config.environment, deserialized.environment);

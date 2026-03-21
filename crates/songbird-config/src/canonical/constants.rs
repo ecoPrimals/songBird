@@ -160,11 +160,6 @@ pub fn get_port_range_end_with(env: &impl Fn(&str) -> Result<String, std::env::V
     })
 }
 
-/// Calculate environment-specific port offset
-fn get_environment_offset() -> u16 {
-    get_environment_offset_with(&read_process_env)
-}
-
 fn get_environment_offset_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
     match env("SONGBIRD_ENV").as_deref() {
         Ok("production") => 0,
@@ -179,10 +174,6 @@ fn get_environment_offset_with(env: &impl Fn(&str) -> Result<String, std::env::V
 }
 
 /// Calculate port range size based on expected service count
-fn get_port_range_size() -> u16 {
-    get_port_range_size_with(&read_process_env)
-}
-
 fn get_port_range_size_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
     env_parse_with(env, "SONGBIRD_PORT_RANGE_SIZE", {
         // Calculate based on enabled services and expected scale
@@ -193,25 +184,19 @@ fn get_port_range_size_with(env: &impl Fn(&str) -> Result<String, std::env::VarE
 }
 
 /// Calculate user-specific port offset to avoid conflicts in multi-user environments
-fn calculate_user_port_offset() -> u16 {
-    calculate_user_port_offset_with(&read_process_env)
-}
-
-fn calculate_user_port_offset_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
+fn calculate_user_port_offset_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> u16 {
     // Use user ID hash for deterministic but unique offset
-    let user = env("USER")
-        .or_else(|_| env("USERNAME"))
-        .unwrap_or_else(|_| "default".to_string());
+    let user = env("USER").or_else(|_| env("USERNAME")).unwrap_or_else(|_| "default".to_string());
     let hash = user.bytes().fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
     (hash % 500) as u16 // Limit to reasonable range
 }
 
 /// Get expected service count from configuration or environment
-fn get_expected_service_count() -> u16 {
-    get_expected_service_count_with(&read_process_env)
-}
-
-fn get_expected_service_count_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
+fn get_expected_service_count_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> u16 {
     env_parse_with(env, "SONGBIRD_EXPECTED_SERVICES", {
         // Calculate based on enabled primals and features
         let mut count = 1; // Base Songbird service
@@ -270,7 +255,9 @@ pub fn default_discovery_port() -> u16 {
 
 /// Same as [`default_discovery_port`](default_discovery_port) with an injectable env reader.
 #[must_use]
-pub fn default_discovery_port_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
+pub fn default_discovery_port_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> u16 {
     env_port_with(env, "SONGBIRD_DISCOVERY_PORT", 5678)
 }
 
@@ -284,7 +271,9 @@ pub fn get_connection_timeout_ms() -> u64 {
 
 /// Same as [`get_connection_timeout_ms`](get_connection_timeout_ms) with an injectable env reader.
 #[must_use]
-pub fn get_connection_timeout_ms_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u64 {
+pub fn get_connection_timeout_ms_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> u64 {
     env_parse_with(env, "SONGBIRD_CONNECTION_TIMEOUT_MS", {
         match env("SONGBIRD_ENV").as_deref() {
             Ok("production") => 30000,  // 30 seconds for production
@@ -296,11 +285,9 @@ pub fn get_connection_timeout_ms_with(env: &impl Fn(&str) -> Result<String, std:
 }
 
 /// Calculate timeout based on detected network conditions
-fn calculate_network_based_timeout() -> u64 {
-    calculate_network_based_timeout_with(&read_process_env)
-}
-
-fn calculate_network_based_timeout_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u64 {
+fn calculate_network_based_timeout_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> u64 {
     // Check if we're in a cloud/container environment
     if env("KUBERNETES_SERVICE_HOST").is_ok()
         || env("AWS_EXECUTION_ENV").is_ok()
@@ -332,7 +319,9 @@ pub fn get_max_connections() -> usize {
 
 /// Same as [`get_max_connections`](get_max_connections) with an injectable env reader.
 #[must_use]
-pub fn get_max_connections_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> usize {
+pub fn get_max_connections_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> usize {
     env_parse_with(env, "SONGBIRD_MAX_CONNECTIONS", {
         match env("SONGBIRD_ENV").as_deref() {
             Ok("production") => 10000,
@@ -367,7 +356,9 @@ pub fn get_buffer_pool_size() -> usize {
 
 /// Same as [`get_buffer_pool_size`](get_buffer_pool_size) with an injectable env reader.
 #[must_use]
-pub fn get_buffer_pool_size_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> usize {
+pub fn get_buffer_pool_size_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> usize {
     env_parse_with(env, "SONGBIRD_BUFFER_POOL_SIZE", {
         // Calculate based on available memory
         let base_size = match env("SONGBIRD_ENV").as_deref() {
@@ -378,10 +369,9 @@ pub fn get_buffer_pool_size_with(env: &impl Fn(&str) -> Result<String, std::env:
         };
 
         // Adjust for container memory limits
-        env("MEMORY_LIMIT")
-            .ok()
-            .and_then(|memory_limit| memory_limit.parse::<u64>().ok())
-            .map_or(base_size, |limit_mb| {
+        env("MEMORY_LIMIT").ok().and_then(|memory_limit| memory_limit.parse::<u64>().ok()).map_or(
+            base_size,
+            |limit_mb| {
                 // Use 1% of available memory for buffer pool
                 #[expect(
                     clippy::cast_possible_truncation,
@@ -389,7 +379,8 @@ pub fn get_buffer_pool_size_with(env: &impl Fn(&str) -> Result<String, std::env:
                 )]
                 let adjusted_size = (limit_mb as usize * 10) / 1024;
                 std::cmp::min(base_size, adjusted_size)
-            })
+            },
+        )
     })
 }
 
@@ -638,7 +629,10 @@ fn trim_nonempty(s: &str) -> Option<&str> {
     }
 }
 
-fn capability_env_for_primal_in(primal_lower: &str, env: &HashMap<String, String>) -> Option<String> {
+fn capability_env_for_primal_in(
+    primal_lower: &str,
+    env: &HashMap<String, String>,
+) -> Option<String> {
     let u = primal_lower.to_uppercase();
     env.get(&format!("{u}_CAPABILITIES"))
         .cloned()
@@ -660,7 +654,10 @@ fn primal_declares_capability_in(
 
 /// Filters by capability using an env snapshot (tests avoid mutating process environment).
 #[must_use]
-pub fn find_primals_with_capability_in_env(capability: &str, env: &HashMap<String, String>) -> Vec<String> {
+pub fn find_primals_with_capability_in_env(
+    capability: &str,
+    env: &HashMap<String, String>,
+) -> Vec<String> {
     let key = normalize_capability_env_key(capability);
     let providers_key = format!("SONGBIRD_CAPABILITY_{key}_PROVIDERS");
     if let Some(raw) = env.get(&providers_key) {
@@ -704,13 +701,17 @@ fn env_or_default_with(
     env(key).unwrap_or_else(|_| default.into())
 }
 
-fn default_production_base_url_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
+fn default_production_base_url_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> String {
     let host = get_bind_address_with(env);
     let port = env_port_with(env, "SONGBIRD_PRODUCTION_HTTPS_PORT", FALLBACK_PRODUCTION_HTTPS_PORT);
     format!("https://{host}:{port}")
 }
 
-fn default_staging_base_url_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
+fn default_staging_base_url_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> String {
     let host = get_bind_address_with(env);
     let port = env_port_with(env, "SONGBIRD_STAGING_HTTP_PORT", FALLBACK_STAGING_HTTP_PORT);
     format!("http://{host}:{port}")
@@ -732,7 +733,11 @@ pub fn get_canonical_endpoint_with(
         "staging" => env_or_default_with(
             &env,
             "SONGBIRD_BASE_URL",
-            env_or_default_with(&env, "SONGBIRD_STAGING_BASE_URL", default_staging_base_url_with(&env)),
+            env_or_default_with(
+                &env,
+                "SONGBIRD_STAGING_BASE_URL",
+                default_staging_base_url_with(&env),
+            ),
         ),
         _ => {
             let host = get_bind_address_with(&env);
@@ -831,10 +836,7 @@ pub fn get_cache_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarErr
                 env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!(
-                "{}/.cache/songbird",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
-            )
+            format!("{}/.cache/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
         }
     })
 }
@@ -881,10 +883,7 @@ pub fn get_config_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarEr
                 env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!(
-                "{}/.config/songbird",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
-            )
+            format!("{}/.config/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
         }
     })
 }
@@ -898,7 +897,11 @@ pub fn get_temp_dir() -> String {
 /// Same as [`get_temp_dir`](get_temp_dir) with an injectable env reader.
 #[must_use]
 pub fn get_temp_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
-    env_get_or_default_with(env, "SONGBIRD_TEMP_DIR", std::env::temp_dir().to_string_lossy().to_string())
+    env_get_or_default_with(
+        env,
+        "SONGBIRD_TEMP_DIR",
+        std::env::temp_dir().to_string_lossy().to_string(),
+    )
 }
 
 // ==================== LOGGING CONFIGURATION ====================
@@ -942,7 +945,9 @@ pub fn is_production_environment() -> bool {
 
 // ==================== CORS CONFIGURATION ====================
 
-fn is_production_environment_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> bool {
+fn is_production_environment_with(
+    env: &impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> bool {
     let e = env_or_default_with(env, "SONGBIRD_ENVIRONMENT", "development");
     e == "production" || e == "prod"
 }

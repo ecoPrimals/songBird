@@ -31,10 +31,7 @@
 //! parse_endpoint, discovery, resolve_named_port, and edge cases.
 
 use songbird_config::discoverable_endpoint::*;
-use std::sync::Mutex;
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use std::collections::HashMap;
 
 // ============================================================
 // Constructor Tests
@@ -173,17 +170,15 @@ fn test_endpoint_spec_serialization_roundtrip() {
 
 #[tokio::test]
 async fn test_discover_from_env_var() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    songbird_process_env::set_var("TEST_DISCOVER_ENDPOINT", "http://discovered-host:9999/path");
-
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("TEST_DISCOVER_ENDPOINT".into(), "http://discovered-host:9999/path".into());
     let ep = DiscoverableEndpoint::from_env("TEST_DISCOVER_ENDPOINT");
-    let result = ep.discover().await;
+    let result =
+        ep.discover_with(|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)).await;
     assert!(result.is_ok(), "Should discover from env var");
     let spec = result.unwrap();
     assert_eq!(spec.host, "discovered-host");
     assert_eq!(spec.port, 9999);
-
-    songbird_process_env::remove_var("TEST_DISCOVER_ENDPOINT");
 }
 
 #[tokio::test]
@@ -219,11 +214,8 @@ async fn test_discover_consul_returns_not_implemented() {
 
 #[tokio::test]
 async fn test_discover_falls_back_to_dev_fallback() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    // Set dev mode
-    songbird_process_env::set_var("SONGBIRD_ENV", "development");
-    songbird_process_env::remove_var("NONEXISTENT_SERVICE_ENDPOINT");
-    songbird_process_env::remove_var("NONEXISTENT_SERVICE_ENDPOINT_HOST");
+    let mut m: HashMap<String, String> = HashMap::new();
+    m.insert("SONGBIRD_ENV".into(), "development".into());
 
     let ep = DiscoverableEndpoint {
         discovery_method: DiscoveryMethod::Environment {
@@ -240,21 +232,17 @@ async fn test_discover_falls_back_to_dev_fallback() {
         cache_discovery: false,
     };
 
-    let result = ep.discover().await;
+    let result =
+        ep.discover_with(|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)).await;
     assert!(result.is_ok(), "Should fall back to dev endpoint");
     let spec = result.unwrap();
     assert_eq!(spec.host, "dev-host");
     assert_eq!(spec.port, 5555);
-
-    songbird_process_env::remove_var("SONGBIRD_ENV");
 }
 
 #[tokio::test]
 async fn test_discover_all_methods_fail_no_dev_fallback() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    songbird_process_env::remove_var("SONGBIRD_ENV");
-    songbird_process_env::remove_var("RUST_ENV");
-    songbird_process_env::remove_var("TOTALLY_NONEXISTENT_VAR");
+    let m: HashMap<String, String> = HashMap::new();
 
     let ep = DiscoverableEndpoint {
         discovery_method: DiscoveryMethod::Environment {
@@ -266,7 +254,8 @@ async fn test_discover_all_methods_fail_no_dev_fallback() {
         cache_discovery: false,
     };
 
-    let result = ep.discover().await;
+    let result =
+        ep.discover_with(|k| m.get(k).cloned().ok_or(std::env::VarError::NotPresent)).await;
     assert!(result.is_err(), "Should fail when all methods exhausted");
 }
 

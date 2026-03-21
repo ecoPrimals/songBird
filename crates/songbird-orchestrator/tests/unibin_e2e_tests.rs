@@ -142,16 +142,11 @@ async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Er
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::error::Error>> {
-    // Set environment variables
-    songbird_process_env::set_var("SONGBIRD_PORT", "9000");
-    songbird_process_env::set_var("SONGBIRD_NODE_ID", "e2e-test-node");
-    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-
-    // Run doctor to verify env vars are read
     let mut cmd = clean_cmd();
+    cmd.env("SONGBIRD_PORT", "9000")
+        .env("SONGBIRD_NODE_ID", "e2e-test-node")
+        .env("SONGBIRD_FAMILY_ID", "nat0");
     cmd.arg("doctor").assert().success();
-
-    // Clean up
 
     Ok(())
 }
@@ -383,11 +378,8 @@ async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_precedence() -> Result<(), Box<dyn std::error::Error>> {
-    // Test environment variable precedence
-    songbird_process_env::set_var("SONGBIRD_PORT", "9000");
-
-    // Command line should override env var
     let mut cmd = clean_cmd();
+    cmd.env("SONGBIRD_PORT", "9000");
     cmd.arg("server").arg("--port").arg("8888").arg("--help").assert().success();
 
     Ok(())

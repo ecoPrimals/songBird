@@ -187,7 +187,9 @@ impl CapabilityResolver {
         request: &CapabilityRequest,
     ) -> SongbirdResult<CapabilityProvider> {
         match mechanism {
-            DiscoveryMechanism::Environment => self.discover_from_environment_with(request, &|k| std::env::var(k)),
+            DiscoveryMechanism::Environment => {
+                self.discover_from_environment_with(request, &|k| std::env::var(k))
+            }
             DiscoveryMechanism::ServiceRegistry => self.discover_from_registry(request).await,
             DiscoveryMechanism::MDNS => self.discover_from_mdns(request).await,
             DiscoveryMechanism::DNSSD => self.discover_from_dnssd(request).await,
@@ -509,17 +511,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        let mut resolver = CapabilityResolver::new();
+        let resolver = CapabilityResolver::new();
         let request = CapabilityRequest::new("ai");
 
-        let result = resolver
-            .discover_from_environment_with(&request, &|k| {
-                if k == "SONGBIRD_AI_PROVIDER_URL" {
-                    Ok("http://test.local:9200".to_string())
-                } else {
-                    Err(std::env::VarError::NotPresent)
-                }
-            });
+        let result = resolver.discover_from_environment_with(&request, &|k| {
+            if k == "SONGBIRD_AI_PROVIDER_URL" {
+                Ok("http://test.local:9200".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
         assert!(result.is_ok());
 
         let provider = result.expect("Provider discovery should succeed in test");

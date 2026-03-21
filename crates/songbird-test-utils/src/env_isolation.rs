@@ -54,6 +54,10 @@ fn env_remove_var(key: impl AsRef<str>) {
 /// This type uses RAII to ensure environment variables set in tests
 /// are always cleaned up, even if the test panics.
 ///
+/// **Note:** Prefer injecting env readers (`*_with` / `detect_with` APIs) into code under test
+/// instead of mutating the process environment; this type remains for tests that still require
+/// global env mutation and RAII cleanup.
+///
 /// # Thread Safety & Async Safety
 ///
 /// Uses a global `tokio::sync::Mutex` to ensure only one test can modify

@@ -68,7 +68,7 @@ impl ScopedEnv {
             self.restore.insert(key.to_string(), env::var(key).ok());
         }
 
-        // Set new value
+        // Rust 2024: use façade (workspace forbids `unsafe` in tests).
         songbird_process_env::set_var(key, value);
 
         self
@@ -83,7 +83,6 @@ impl ScopedEnv {
             self.restore.insert(key.to_string(), env::var(key).ok());
         }
 
-        // Remove variable
         songbird_process_env::remove_var(key);
 
         self

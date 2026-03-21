@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave27] - 2026-03-21 - Fully Concurrent Architecture: Injectable Env Readers
+
+### Changed - Architecture: Global State Elimination
+- Evolved ALL `from_env()` / `detect()` / `discover()` patterns to injectable `_with` variants
+- Production API unchanged; `from_env()` delegates to `from_env_reader(|k| std::env::var(k))`
+- Tests inject closures/HashMaps — zero global env mutation
+- Eliminated ALL 30+ `#[serial_test::serial]` usages — fully concurrent test suite
+- All 9,730 tests pass at `--test-threads=16` with zero races
+- `cargo llvm-cov` completes cleanly: 64.14% line, 63.11% branch
+
+### Changed - Crate-by-Crate Injectable APIs
+- `songbird-config`: `detect_with`, `from_env_reader`, `from_environment_reader`, `from_env_reader` (PortConfig/HostConfig/EndpointConfig), `try_env_resolution_with`, `discover_from_environment_with`, `get_bind_address_with`, `get_canonical_endpoint_with`, `find_primals_with_capability_in_env`, `get_log_level_with`
+- `songbird-discovery`: `discover_self_with`, `introspect_name_with`, `introspect_capabilities_with`
+- `songbird-universal`: `DiscoveryConfig::provider_endpoints` HashMap injection, adapter `with_resolver` constructors
+- `songbird-universal-ipc`: `EnvironmentStrategy::discover_with`, `IpcServiceHandler::with_family_id_env`
+- `songbird-orchestrator`: `ComputeApiState::new_with_capability_endpoint_overrides`, `SecurityFetchMode` enum
+
+### Cleaned
+- Removed `songbird_process_env::set_var/remove_var` from all lib-internal `#[cfg(test)]` blocks
+- Consolidated 4 redundant env-resolution tests into direct injection tests
+- Total Rust lines: 382,889 → 380,555 (env mutation boilerplate removed)
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Tests | 9,730 passed, 0 failed, 271 ignored |
+| Line Coverage | 64.14% (llvm-cov) |
+| serial_test::serial | 0 (was 30+) |
+| Test threads | 16 (fully concurrent) |
+| Build | Zero errors, zero warnings |
+| Total Rust | 380,555 lines |
+
+---
+
 ## [v0.3.4] - 2026-03-20 - Deep Debt Execution: Refactoring, JSON-RPC, Docs & Coverage
 
 ### Changed - Architecture & Refactoring

@@ -290,7 +290,7 @@ fn test_env_var_overwrite() {
     assert_eq!(env::var("OVERWRITE_VAR").expect("test precondition"), "first");
 
     // Test overwrite within the same scope
-    // Note: This tests that songbird_process_env::set_var still works, but ScopedEnv will restore original on drop
+    // Note: Overwrite within scope; ScopedEnv restores original on drop
     songbird_process_env::set_var("OVERWRITE_VAR", "second");
     assert_eq!(env::var("OVERWRITE_VAR").expect("test precondition"), "second");
     // When _env drops, it will restore to "first" (or None if didn't exist before)
