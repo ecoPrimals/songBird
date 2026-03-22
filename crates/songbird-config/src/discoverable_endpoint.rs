@@ -495,6 +495,7 @@ impl Default for DiscoverableEndpoint {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -537,5 +538,159 @@ mod tests {
             path: Some("/api/v1".to_string()),
         };
         assert_eq!(spec.to_url(), "https://localhost:8080/api/v1");
+    }
+
+    #[test]
+    fn parse_url_rejects_bad_url() {
+        let err = parse_endpoint("not a url", &EndpointParser::Url).expect_err("invalid url");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn parse_url_rejects_unparseable_value() {
+        let err = parse_endpoint(":::not-a-url", &EndpointParser::Url).expect_err("invalid url");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn parse_host_port_rejects_wrong_segment_count() {
+        let err = parse_endpoint("a:b:c", &EndpointParser::HostPort).expect_err("segments");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn parse_host_port_rejects_invalid_port() {
+        let err = parse_endpoint("host:99999", &EndpointParser::HostPort).expect_err("port");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn parse_pattern_returns_not_implemented() {
+        let err = parse_endpoint("x", &EndpointParser::Pattern("p".into())).expect_err("pattern");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn endpoint_to_url_defaults_protocol_and_path() {
+        let spec = EndpointSpec {
+            host: "127.0.0.1".to_string(),
+            port: 80,
+            protocol: None,
+            path: None,
+        };
+        assert_eq!(spec.to_url(), "http://127.0.0.1:80");
+    }
+
+    #[test]
+    fn to_socket_addr_accepts_ip_literal() {
+        let spec = EndpointSpec {
+            host: "203.0.113.1".to_string(),
+            port: 9000,
+            protocol: None,
+            path: None,
+        };
+        let sa = spec.to_socket_addr().expect("socket addr");
+        assert_eq!(sa.port(), 9000);
+    }
+
+    #[test]
+    fn to_socket_addr_rejects_hostname() {
+        let spec = EndpointSpec {
+            host: "example.com".to_string(),
+            port: 443,
+            protocol: None,
+            path: None,
+        };
+        assert!(spec.to_socket_addr().is_err());
+    }
+
+    #[test]
+    fn resolve_named_port_http_https_grpc() {
+        assert_eq!(resolve_named_port("http").expect("http"), 80);
+        assert_eq!(resolve_named_port("https").expect("https"), 443);
+        assert_eq!(resolve_named_port("grpc").expect("grpc"), 9090);
+    }
+
+    #[test]
+    fn resolve_named_port_unknown_errors() {
+        assert!(resolve_named_port("unknown_port_name").is_err());
+    }
+
+    #[tokio::test]
+    async fn discover_static_succeeds_without_env() {
+        let ep = DiscoverableEndpoint {
+            discovery_method: DiscoveryMethod::Static {
+                endpoint: EndpointSpec {
+                    host: "10.0.0.1".to_string(),
+                    port: 1111,
+                    protocol: Some("https".to_string()),
+                    path: None,
+                },
+            },
+            fallback_methods: vec![],
+            dev_fallback: None,
+            cache_discovery: false,
+        };
+        let got = ep.discover_with(|_| Err(std::env::VarError::NotPresent)).await.expect("static");
+        assert_eq!(got.host, "10.0.0.1");
+        assert_eq!(got.port, 1111);
+    }
+
+    #[tokio::test]
+    async fn discover_dev_fallback_when_development_env() {
+        let ep = DiscoverableEndpoint {
+            discovery_method: DiscoveryMethod::ConsulService {
+                service_name: "x".into(),
+                consul_addr: None,
+            },
+            fallback_methods: vec![],
+            dev_fallback: Some(EndpointSpec {
+                host: "dev.local".into(),
+                port: 4000,
+                protocol: Some("http".into()),
+                path: None,
+            }),
+            cache_discovery: false,
+        };
+        let got = ep
+            .discover_with(|k| {
+                if k == "SONGBIRD_ENV" {
+                    Ok("development".into())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            })
+            .await
+            .expect("dev fallback");
+        assert_eq!(got.host, "dev.local");
+        assert_eq!(got.port, 4000);
+    }
+
+    #[tokio::test]
+    async fn discover_fails_when_no_method_and_no_dev_fallback() {
+        let ep = DiscoverableEndpoint {
+            discovery_method: DiscoveryMethod::ConsulService {
+                service_name: "n".into(),
+                consul_addr: None,
+            },
+            fallback_methods: vec![],
+            dev_fallback: None,
+            cache_discovery: false,
+        };
+        let err = ep
+            .discover_with(|_| Err(std::env::VarError::NotPresent))
+            .await
+            .expect_err("no discovery");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn from_k8s_service_errors_outside_cluster() {
+        let ep = DiscoverableEndpoint::from_k8s_service("api", "ns", 8080);
+        let err = ep
+            .discover_with(|_| Err(std::env::VarError::NotPresent))
+            .await
+            .expect_err("not in k8s");
+        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
     }
 }

@@ -34,13 +34,6 @@ anyhow = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
 url = "2.5"
 
-# TLS/HTTPS support - REMOVED! Using songbird-tls instead (100% Pure Rust!)
-# ❌ REMOVED (Jan 19, 2026):
-#   - rustls-tls feature → hyper-rustls → rustls → ring (C code)
-#   - rustls, rustls-pemfile, tokio-rustls (all had C dependencies via ring/aws-lc-rs)
-#   - rcgen (uses ring for crypto)
-# ✅ NOW: songbird-tls handles all TLS (delegated to BearDog for Pure Rust crypto)
-
 # Random number generation (missing dependency that caused errors)
 fastrand = "2.0"
 
@@ -57,7 +50,6 @@ base64 = "0.22"
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-universal = { path = "../songbird-universal" }
-# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-discovery = { path = "../songbird-discovery" }
 # ⚠️ TRUE PRIMAL: Crypto for local BTSP testing only (optional)
 aes-gcm = { version = "0.10.3", optional = true }

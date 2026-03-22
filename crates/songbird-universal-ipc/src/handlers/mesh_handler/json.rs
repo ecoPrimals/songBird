@@ -19,19 +19,19 @@ pub(super) fn path_to_json(path: &RelayEndpoint, found: bool) -> Value {
     })
 }
 
-pub(super) fn endpoint_to_strings(endpoint: &EndpointType) -> (String, Option<String>) {
+pub(super) fn endpoint_to_strings(endpoint: &EndpointType) -> (&'static str, Option<String>) {
     match endpoint {
         EndpointType::Local {
             addr,
-        } => ("local".to_string(), Some(addr.to_string())),
+        } => ("local", Some(addr.to_string())),
         EndpointType::Direct {
             addr,
-        } => ("direct".to_string(), Some(addr.to_string())),
+        } => ("direct", Some(addr.to_string())),
         EndpointType::FamilyRelay {
             relay_node_id,
-        } => ("family_relay".to_string(), Some(relay_node_id.clone())),
+        } => ("family_relay", Some(relay_node_id.clone())),
         EndpointType::TorOnion {
             onion_addr,
-        } => ("onion".to_string(), Some(onion_addr.clone())),
+        } => ("onion", Some(onion_addr.clone())),
     }
 }

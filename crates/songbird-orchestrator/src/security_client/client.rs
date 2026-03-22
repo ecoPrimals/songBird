@@ -290,6 +290,15 @@ impl SecurityCapabilityClient {
         self.adapter.endpoint()
     }
 
+    /// Test hook for [`parse_response_body`](Self::parse_response_body) (no network I/O).
+    #[cfg(test)]
+    pub(crate) fn test_parse_response_body<T>(&self, status: u16, body: &str) -> anyhow::Result<T>
+    where
+        T: serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        self.parse_response_body(status, body)
+    }
+
     /// Convert identity response to universal attestations
     #[must_use]
     pub fn identity_to_attestations(
@@ -569,7 +578,14 @@ impl SecurityCapabilityClient {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
+
+    #[derive(Debug, serde::Deserialize)]
+    struct SimpleOk {
+        ok: bool,
+    }
 
     #[tokio::test]
     async fn test_client_creation() {
@@ -577,5 +593,33 @@ mod tests {
         let client =
             SecurityCapabilityClient::from_endpoint("http://discovered-security-provider").await;
         assert_eq!(client.unwrap().endpoint(), "http://discovered-security-provider");
+    }
+
+    #[tokio::test]
+    async fn parse_response_body_rejects_non_success_http() {
+        let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider")
+            .await
+            .unwrap();
+        let err =
+            client.test_parse_response_body::<SimpleOk>(500, "{}").expect_err("should fail on 5xx");
+        assert!(err.to_string().contains("500") || err.to_string().contains("Security provider"));
+    }
+
+    #[tokio::test]
+    async fn parse_response_body_unwrapped_json() {
+        let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider")
+            .await
+            .unwrap();
+        let v: SimpleOk =
+            client.test_parse_response_body(200, r#"{"ok":true}"#).expect("unwrapped");
+        assert!(v.ok);
+    }
+
+    #[tokio::test]
+    async fn parse_response_body_rejects_garbage() {
+        let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider")
+            .await
+            .unwrap();
+        client.test_parse_response_body::<SimpleOk>(200, "not-json {{{").expect_err("invalid json");
     }
 }

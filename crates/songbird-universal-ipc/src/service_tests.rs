@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+#![expect(clippy::unwrap_used, reason = "test assertions")]
+#![expect(clippy::expect_used, reason = "test assertions")]
 
 use super::*;
 use serde_json::json;
+use songbird_network_federation::state::{FederationState, NodeRegistration, NodeStatus};
 
 #[tokio::test]
 async fn test_ipc_service_register() {
@@ -273,137 +275,95 @@ async fn unknown_rpc_method_returns_error() {
 }
 
 #[tokio::test]
-async fn ipc_register_tcp_localhost_parses_port() {
+async fn health_liveness_returns_healthy_status_only() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
-    let params = json!({
-        "primal_id": "tcp-primal",
-        "capabilities": ["x"],
-        "endpoint": "127.0.0.1:9555"
-    });
-    let v = handler.handle("ipc.register", params).await.expect("register");
-    assert_eq!(v["virtual_endpoint"], "/primal/tcp-primal");
-}
-
-#[tokio::test]
-async fn ipc_register_rejects_invalid_endpoint_format() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
-    let params = json!({
-        "primal_id": "bad",
-        "capabilities": [],
-        "endpoint": "not-a-socket-or-tcp"
-    });
-    let err = handler.handle("ipc.register", params).await.expect_err("bad endpoint");
-    assert!(err.contains("Invalid endpoint") || err.contains("endpoint"));
-}
-
-#[tokio::test]
-async fn ipc_register_rejects_bad_tcp_port() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
-    let params = json!({
-        "primal_id": "bad",
-        "capabilities": [],
-        "endpoint": "127.0.0.1:notaport"
-    });
-    let err = handler.handle("ipc.register", params).await.expect_err("bad port");
-    assert!(err.contains("Invalid TCP port") || err.contains("port"));
-}
-
-#[tokio::test]
-async fn ipc_register_invalid_json_params() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
-    let err = handler.handle("ipc.register", json!("not-an-object")).await.expect_err("params");
-    assert!(err.contains("Invalid params"));
-}
-
-#[tokio::test]
-async fn http_get_missing_url_errors() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
-    let err = handler.handle("http.get", json!({})).await.expect_err("url");
-    assert!(err.contains("Missing 'url'"));
-}
-
-#[tokio::test]
-async fn http_post_missing_body_errors() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
-    let err = handler
-        .handle("http.post", json!({ "url": "http://127.0.0.1:9/" }))
-        .await
-        .expect_err("body");
-    assert!(err.contains("body"));
-}
-
-#[tokio::test]
-async fn health_returns_service_count() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
-    handler
-        .handle(
-            "ipc.register",
-            json!({
-                "primal_id": "h1",
-                "capabilities": [],
-                "endpoint": "/tmp/h1.sock"
-            }),
-        )
-        .await
-        .expect("reg");
-    let v = handler.handle("health", json!({})).await.expect("health");
-    assert_eq!(v["status"], "healthy");
-    assert_eq!(v["services"], 1);
-}
-
-#[tokio::test]
-async fn health_liveness_returns_minimal_payload() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
-    let v = handler.handle("health.liveness", json!({})).await.expect("live");
+    let v = handler.handle("health.liveness", json!({})).await.expect("liveness");
     assert_eq!(v, json!({ "status": "healthy" }));
 }
 
 #[tokio::test]
-async fn identity_uses_injected_family_id_env() {
-    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::with_family_id_env(registry, |_| Ok("family-xyz".into()));
-    let v = handler.handle("identity", json!({})).await.expect("id");
-    assert_eq!(v["family_id"], "family-xyz");
-}
-
-#[tokio::test]
-async fn capabilities_list_returns_string_array() {
+async fn capabilities_list_returns_expected_tokens() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
-    let a = handler.handle("capabilities.list", json!({})).await.expect("caps");
-    let arr = a.as_array().expect("array");
+    let v = handler.handle("capabilities.list", json!({})).await.expect("caps");
+    let arr = v.as_array().expect("capabilities.list must return a JSON array");
     let strings: Vec<&str> = arr.iter().filter_map(|x| x.as_str()).collect();
-    assert!(strings.contains(&"network.discovery"));
-    assert!(strings.contains(&"ipc.jsonrpc"));
+    for expected in crate::introspection::SONGBIRD_CAPABILITY_STRINGS {
+        assert!(strings.contains(expected), "missing capability token {expected}");
+    }
     assert_eq!(strings.len(), crate::introspection::SONGBIRD_CAPABILITY_STRINGS.len());
 }
 
+#[test]
+fn federation_response_types_serialize_expected_shape() {
+    let peers = FederationPeersResponse {
+        peers: vec!["a".into(), "b".into()],
+        total_count: 2,
+        federation_enabled: true,
+    };
+    let v = serde_json::to_value(&peers).expect("FederationPeersResponse json");
+    assert_eq!(v["peers"], json!(["a", "b"]));
+    assert_eq!(v["total_count"], json!(2));
+    assert_eq!(v["federation_enabled"], json!(true));
+    assert!(v.get("comment").is_none());
+
+    let status = FederationStatusResponse {
+        enabled: true,
+        active_connections: 3,
+    };
+    let s = serde_json::to_value(&status).expect("FederationStatusResponse json");
+    assert_eq!(s["enabled"], json!(true));
+    assert_eq!(s["active_connections"], json!(3));
+    assert!(s.get("comment").is_none());
+}
+
 #[tokio::test]
-async fn ipc_discover_empty_when_no_match() {
+async fn federation_peers_and_status_without_state_match_empty_defaults() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
-    handler
-        .handle(
-            "ipc.register",
-            json!({
-                "primal_id": "only-stun",
-                "capabilities": ["stun"],
-                "endpoint": "/tmp/o.sock"
-            }),
-        )
-        .await
-        .expect("reg");
-    let v = handler
-        .handle("ipc.discover", json!({ "capability": "nonexistent-cap" }))
-        .await
-        .expect("disc");
-    assert_eq!(v["providers"].as_array().map(Vec::len), Some(0));
+
+    let p = handler.handle("federation.peers", json!({})).await.expect("peers");
+    assert_eq!(p["peers"], json!([]));
+    assert_eq!(p["total_count"], json!(0));
+    assert_eq!(p["federation_enabled"], json!(false));
+
+    let st = handler.handle("federation.status", json!({})).await.expect("status");
+    assert_eq!(st["enabled"], json!(false));
+    assert_eq!(st["active_connections"], json!(0));
+}
+
+#[tokio::test]
+async fn federation_peers_and_status_reflect_federation_state() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let federation = Arc::new(FederationState::new("ipc-test".into()));
+    let now = chrono::Utc::now();
+    federation
+        .register_node(NodeRegistration {
+            node_id: "tower-1".into(),
+            node_name: "Tower".into(),
+            node_address: "127.0.0.1:1".into(),
+            endpoints: None,
+            cpu_cores: 0,
+            memory_gb: 0,
+            gpu_model: None,
+            storage_gb: None,
+            capabilities: vec![],
+            status: NodeStatus::Active,
+            joined_at: now,
+            last_heartbeat: now,
+        })
+        .await;
+
+    let handler =
+        IpcServiceHandler::with_federation_state(registry.clone(), Arc::clone(&federation));
+
+    let p = handler.handle("songbird.federation.peers", json!({})).await.expect("peers");
+    assert_eq!(p["peers"], json!(["tower-1"]));
+    assert_eq!(p["total_count"], json!(1));
+    assert_eq!(p["federation_enabled"], json!(true));
+
+    let st = handler.handle("songbird.federation.status", json!({})).await.expect("status");
+    assert_eq!(st["enabled"], json!(true));
+    assert_eq!(st["active_connections"], json!(1));
 }

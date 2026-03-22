@@ -432,7 +432,7 @@ impl Drop for SingletonGuard {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use std::env;
@@ -627,5 +627,40 @@ mod tests {
             error_msg.contains("already running") || error_msg.contains("PID"),
             "Error should explain the conflict clearly"
         );
+    }
+
+    #[test]
+    fn acquire_lock_fails_when_pid_file_not_parseable() {
+        let temp_dir = env::temp_dir();
+        let pid_file = temp_dir.join(format!("songbird_bad_pid_{}.pid", process::id()));
+        let _ = fs::remove_file(&pid_file);
+        fs::write(&pid_file, "not-a-valid-pid\n").expect("write bad pid");
+
+        let manager = ProcessManager::with_pid_file(pid_file);
+        let result = manager.acquire_lock();
+        assert!(result.is_err(), "expected parse error from malformed PID file");
+    }
+
+    #[test]
+    fn acquire_lock_fails_when_pid_file_empty() {
+        let temp_dir = env::temp_dir();
+        let pid_file = temp_dir.join(format!("songbird_empty_pid_{}.pid", process::id()));
+        let _ = fs::remove_file(&pid_file);
+        fs::write(&pid_file, "   \n").expect("write empty");
+
+        let manager = ProcessManager::with_pid_file(pid_file);
+        assert!(manager.acquire_lock().is_err());
+    }
+
+    #[test]
+    fn singleton_guard_debug_is_bounded() {
+        let temp_dir = env::temp_dir();
+        let pid_file = temp_dir.join(format!("songbird_dbg_{}.pid", process::id()));
+        let _ = fs::remove_file(&pid_file);
+        let manager = ProcessManager::with_pid_file(pid_file);
+        let guard = manager.acquire_lock().expect("lock");
+        let s = format!("{guard:?}");
+        assert!(s.contains("SingletonGuard"));
+        assert!(s.contains("pid_file"));
     }
 }

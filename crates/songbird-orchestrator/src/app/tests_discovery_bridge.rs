@@ -68,6 +68,17 @@ mod unit_tests {
     }
 
     #[test]
+    fn test_same_family_detection_hyphenated_family_id() {
+        let my_family = "nat-0";
+        let peer_tags = ["beardog:family:nat-0:tower1".to_string()];
+        let same_family = peer_tags.iter().any(|tag| {
+            tag.contains(&format!(":family:{}:", my_family))
+                || tag.contains(&format!("family_{}", my_family))
+        });
+        assert!(same_family);
+    }
+
+    #[test]
     fn test_option_chaining_pattern() {
         // Test the Option chaining pattern used in same-family detection
         let my_family_env = Some("nat0".to_string());

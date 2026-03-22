@@ -247,6 +247,18 @@ impl SongbirdHttpClient {
         headers: HashMap<String, String>,
         body: Option<serde_json::Value>,
     ) -> Result<HttpResponse> {
+        self.request_ref(method, url, &headers, body.as_ref()).await
+    }
+
+    /// Same as [`Self::request`], but borrows headers and body to avoid cloning on hot paths
+    /// (e.g. redirect following).
+    async fn request_ref(
+        &self,
+        method: &str,
+        url: &str,
+        headers: &HashMap<String, String>,
+        body: Option<&serde_json::Value>,
+    ) -> Result<HttpResponse> {
         info!("🌐 HTTP {} {}", method, url);
 
         // Parse URL into URI
@@ -330,9 +342,8 @@ impl SongbirdHttpClient {
         let mut redirects_followed = 0;
 
         loop {
-            // Make the request
-            let response =
-                self.request(method, &current_url, headers.clone(), body.clone()).await?;
+            // Make the request (borrow headers/body — no per-hop clone)
+            let response = self.request_ref(method, &current_url, &headers, body.as_ref()).await?;
 
             // Check if we should follow this redirect
             if !redirect_handler.should_follow(
@@ -402,8 +413,8 @@ impl SongbirdHttpClient {
         port: u16,
         uri: &Uri,
         method: &str,
-        headers: HashMap<String, String>,
-        body: Option<serde_json::Value>,
+        headers: &HashMap<String, String>,
+        body: Option<&serde_json::Value>,
     ) -> Result<HttpResponse> {
         let https_conn = HttpsConnection::new(
             self.crypto.clone(),
@@ -435,8 +446,8 @@ impl SongbirdHttpClient {
         tcp_stream: TcpStream,
         uri: &Uri,
         method: &str,
-        headers: HashMap<String, String>,
-        body: Option<serde_json::Value>,
+        headers: &HashMap<String, String>,
+        body: Option<&serde_json::Value>,
     ) -> Result<HttpResponse> {
         HttpConnection::execute(tcp_stream, uri, method, headers, body).await
     }
@@ -515,8 +526,11 @@ impl SongbirdHttpClient {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::error::Error;
+    use crate::http_config::HttpClientConfig;
 
     #[test]
     fn test_client_creation() {
@@ -599,5 +613,34 @@ mod tests {
         // Relative URL should use base host
         let host = RedirectHandler::extract_host("/new-path", "https://example.com/old-path");
         assert_eq!(host, Some("example.com".to_string()));
+    }
+
+    #[test]
+    fn songbird_http_client_debug_includes_tls_and_config() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let dbg = format!("{client:?}");
+        assert!(dbg.contains("SongbirdHttpClient"));
+        assert!(dbg.contains("tls_config"));
+    }
+
+    #[test]
+    fn with_http_config_preserves_user_agent_and_headers() {
+        let cfg = HttpClientConfig::minimal().with_user_agent("UA-Test/1");
+        let client = SongbirdHttpClient::with_http_config(cfg);
+        assert_eq!(client.http_config().user_agent, "UA-Test/1");
+    }
+
+    #[tokio::test]
+    async fn request_rejects_invalid_url() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let err = client.request("GET", "not-a-valid-url", HashMap::new(), None).await.unwrap_err();
+        assert!(matches!(err, Error::InvalidUrl(_)));
+    }
+
+    #[tokio::test]
+    async fn request_rejects_missing_scheme() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let err = client.request("GET", "example.com", HashMap::new(), None).await.unwrap_err();
+        assert!(matches!(err, Error::InvalidUrl(_)));
     }
 }

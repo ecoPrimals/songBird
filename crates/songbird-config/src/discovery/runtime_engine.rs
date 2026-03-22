@@ -387,8 +387,11 @@ impl CapabilityDiscoveryEngine {
         // Register with each backend
         for backend in &self.backends {
             if let Err(e) = self.register_with_backend(backend, capabilities, address).await {
-                eprintln!("Failed to register with backend {backend:?}: {e}");
-                // Continue with other backends
+                tracing::warn!(
+                    backend = ?backend,
+                    error = %e,
+                    "Failed to register with discovery backend; continuing with other backends"
+                );
             }
         }
         Ok(())

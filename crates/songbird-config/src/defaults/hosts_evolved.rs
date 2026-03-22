@@ -605,10 +605,12 @@ impl ServiceLocator {
     fn announce_via_environment(capabilities: &[&str], advertise_addr: &SocketAddr) {
         // In development, we can "announce" by logging our presence
         // Other services can discover us via environment variables
-        eprintln!("🎤 Service Announcement:");
-        eprintln!("   Address: {advertise_addr}");
-        eprintln!("   Capabilities: {}", capabilities.join(", "));
-        eprintln!("   Discovery: Set SONGBIRD_CAPABILITY_<NAME>_ENDPOINTS={advertise_addr}");
+        tracing::info!(
+            address = %advertise_addr,
+            capabilities = %capabilities.join(", "),
+            "Service announcement: Set SONGBIRD_CAPABILITY_<NAME>_ENDPOINTS={} for discovery",
+            advertise_addr,
+        );
     }
 }
 

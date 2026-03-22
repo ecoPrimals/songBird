@@ -84,8 +84,8 @@ impl HttpsConnection {
         port: u16,
         uri: &Uri,
         method: &str,
-        headers: HashMap<String, String>,
-        body: Option<serde_json::Value>,
+        headers: &HashMap<String, String>,
+        body: Option<&serde_json::Value>,
         build_http_request: impl Fn(
             &Uri,
             &str,
@@ -112,7 +112,7 @@ impl HttpsConnection {
         debug!("✅ TLS record layer initialized (sequence numbers at 0)");
 
         // Build HTTP request
-        let http_request = build_http_request(uri, method, &headers, body.as_ref())?;
+        let http_request = build_http_request(uri, method, headers, body)?;
         info!("🔼 SENDING HTTP REQUEST to server:");
         info!("   Method: {}", method);
         info!("   URI: {}", uri);

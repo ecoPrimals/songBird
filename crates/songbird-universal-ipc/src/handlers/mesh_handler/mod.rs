@@ -394,7 +394,10 @@ impl Default for MeshHandler {
 
 #[cfg(test)]
 impl MeshHandler {
-    pub fn endpoint_strings_for_test(&self, endpoint: &EndpointType) -> (String, Option<String>) {
+    pub fn endpoint_strings_for_test(
+        &self,
+        endpoint: &EndpointType,
+    ) -> (&'static str, Option<String>) {
         let _ = self;
         json::endpoint_to_strings(endpoint)
     }

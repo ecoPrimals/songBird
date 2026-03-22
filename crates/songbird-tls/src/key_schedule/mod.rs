@@ -158,11 +158,13 @@ impl KeySchedule {
 
         let mut output = Vec::new();
         let mut t = Vec::new();
+        let mut input = Vec::new();
         let mut counter = 1u8;
 
         while output.len() < length {
             // T(i) = HMAC(PRK, T(i-1) | info | counter)
-            let mut input = t.clone();
+            input.clear();
+            input.extend_from_slice(&t);
             input.extend_from_slice(info);
             input.push(counter);
 
@@ -370,6 +372,8 @@ impl Default for KeySchedule {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]

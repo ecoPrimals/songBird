@@ -20,7 +20,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent at 16 threads via injectable `_with` env readers |
-| Tests | 9,683 passed, 0 failed, 266 ignored (16 threads, fully concurrent) |
+| Tests | 9,969 passed, 0 failed, 266 ignored (16 threads, fully concurrent) |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings, all targets) |
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`) |
@@ -32,7 +32,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Nest Atomic | `health.liveness` + `capabilities.list` (14 capability tokens, wateringHole compliant) |
 | Dependencies | ~418 unique; duplicates aligned (base32, base64, hostname, thiserror); `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~400,243 lines across 30 crates |
+| Total Rust | ~406,455 lines across 30 crates |
 
 ## Architecture
 

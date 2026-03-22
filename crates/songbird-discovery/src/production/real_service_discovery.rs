@@ -496,7 +496,7 @@ impl ServiceDiscovery for ProductionServiceDiscovery {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::*;
 
@@ -808,5 +808,98 @@ mod tests {
         let i = ServiceDiscovery::is_registered(&discovery, "ex").await.expect("i");
         assert_eq!(e, i);
         assert!(e);
+    }
+
+    #[test]
+    fn service_health_status_roundtrips_json() {
+        let v = serde_json::to_string(&ServiceHealthStatus::Degraded).unwrap();
+        let back: ServiceHealthStatus = serde_json::from_str(&v).unwrap();
+        assert_eq!(back, ServiceHealthStatus::Degraded);
+    }
+
+    #[test]
+    fn registered_service_serializes_metadata() {
+        let reg = RegisteredService {
+            instance: ServiceInstance {
+                id: "i1".into(),
+                name: "n".into(),
+                endpoint: "http://127.0.0.1:1".into(),
+                capabilities: vec!["c".into()],
+                health_status: "ok".into(),
+                metadata: {
+                    let mut m = HashMap::new();
+                    m.insert("k".into(), "v".into());
+                    m
+                },
+            },
+            registered_at: std::time::SystemTime::UNIX_EPOCH,
+            last_heartbeat: None,
+            health_status: ServiceHealthStatus::Healthy,
+            retry_count: 0,
+        };
+        let json = serde_json::to_string(&reg).unwrap();
+        let back: RegisteredService = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.instance.id, "i1");
+        assert_eq!(back.health_status, ServiceHealthStatus::Healthy);
+    }
+
+    #[test]
+    fn production_discovery_config_clones_and_defaults() {
+        let a = ProductionDiscoveryConfig::default();
+        let b = a.clone();
+        assert_eq!(a.max_retry_attempts, b.max_retry_attempts);
+        assert_eq!(a.enable_health_checks, b.enable_health_checks);
+    }
+
+    #[test]
+    fn health_record_fields_accessible() {
+        let r = HealthRecord {
+            service_id: "s".into(),
+            status: ServiceHealthStatus::Unknown,
+            last_check: std::time::SystemTime::UNIX_EPOCH,
+            response_time_ms: 12,
+            error_message: Some("e".into()),
+        };
+        assert_eq!(r.response_time_ms, 12);
+        assert_eq!(r.error_message.as_deref(), Some("e"));
+    }
+
+    #[tokio::test]
+    async fn discover_skips_name_mismatch_when_query_has_name() {
+        use crate::traits::ServiceDiscovery;
+        use crate::traits::discovery::{ServiceHealthStatus, ServiceQuery};
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let info = sample_service_info("n1", "OnlyName", "http://127.0.0.1:20", vec![]);
+        ServiceDiscovery::register(&discovery, info).await.expect("register");
+        ServiceDiscovery::update_health(&discovery, "n1", ServiceHealthStatus::Healthy)
+            .await
+            .expect("health");
+
+        let mut q = ServiceQuery::new();
+        q.name = Some("nomatch".into());
+        let found = ServiceDiscovery::discover(&discovery, q).await.expect("discover");
+        assert!(found.is_empty());
+    }
+
+    #[tokio::test]
+    async fn list_all_includes_all_health_states() {
+        use crate::traits::ServiceDiscovery;
+        use crate::traits::discovery::ServiceHealthStatus;
+
+        let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig {
+            enable_health_checks: false,
+            ..ProductionDiscoveryConfig::default()
+        });
+
+        let u = sample_service_info("u", "U", "http://127.0.0.1:21", vec![]);
+        ServiceDiscovery::register(&discovery, u).await.expect("reg");
+        let all = ServiceDiscovery::list_all(&discovery).await.expect("list");
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].service_id, "u");
     }
 }

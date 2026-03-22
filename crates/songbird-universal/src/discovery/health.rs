@@ -94,6 +94,9 @@ impl Default for HealthChecker {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::capabilities::Capability;
     use crate::discovery::types::*;
@@ -103,6 +106,12 @@ mod tests {
     async fn test_health_checker_creation() {
         let checker = HealthChecker::new(Duration::from_secs(10));
         assert_eq!(checker.timeout, Duration::from_secs(10));
+    }
+
+    #[tokio::test]
+    async fn test_health_checker_default_uses_five_second_timeout() {
+        let checker = HealthChecker::default();
+        assert_eq!(checker.timeout, Duration::from_secs(5));
     }
 
     #[tokio::test]

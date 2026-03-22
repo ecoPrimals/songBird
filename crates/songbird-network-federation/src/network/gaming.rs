@@ -507,3 +507,87 @@ impl ProtocolHandler for NetBiosProtocolHandler {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use uuid::Uuid;
+
+    #[test]
+    fn create_protocol_handler_custom_errors() {
+        let err = create_protocol_handler(GameProtocolType::Custom("x".into())).unwrap_err();
+        let s = err.to_string();
+        assert!(s.contains("Custom") || s.contains("not supported"));
+    }
+
+    #[test]
+    fn create_protocol_handler_udp_and_tcp_variants() {
+        assert!(matches!(
+            create_protocol_handler(GameProtocolType::UDP).unwrap(),
+            ProtocolHandlerImpl::Udp(_)
+        ));
+        assert!(matches!(
+            create_protocol_handler(GameProtocolType::TCP).unwrap(),
+            ProtocolHandlerImpl::Tcp(_)
+        ));
+    }
+
+    #[tokio::test]
+    async fn udp_handler_echoes_packet() {
+        let mut h = UdpProtocolHandler::new();
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1);
+        let out = h.handle_packet(b"ping", addr).await.unwrap();
+        assert_eq!(out, b"ping");
+    }
+
+    #[test]
+    fn game_session_add_remove_player() {
+        let sid = Uuid::new_v4();
+        let mut session = GameSession::new(sid, GameProtocolType::UDP, SessionConfig::default());
+        let pid = Uuid::new_v4();
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9000);
+        session.add_player(PlayerInfo {
+            player_id: pid,
+            name: "p".into(),
+            address: addr,
+            joined_at: std::time::SystemTime::UNIX_EPOCH,
+            last_seen: std::time::SystemTime::UNIX_EPOCH,
+            properties: std::collections::HashMap::new(),
+        });
+        assert_eq!(session.players.len(), 1);
+        session.remove_player(&pid);
+        assert!(session.players.is_empty());
+    }
+
+    #[test]
+    fn game_session_is_expired() {
+        let sid = Uuid::new_v4();
+        let mut session = GameSession::new(sid, GameProtocolType::TCP, SessionConfig::default());
+        assert!(!session.is_expired(Duration::from_secs(3600)));
+        session.last_activity = std::time::SystemTime::UNIX_EPOCH;
+        assert!(session.is_expired(Duration::from_secs(1)));
+    }
+
+    #[tokio::test]
+    async fn gaming_manager_health_lists_protocols() {
+        let mut mgr = GamingManager::new(GamingConfig {
+            protocols: vec![GameProtocolType::UDP],
+            ..GamingConfig::default()
+        });
+        mgr.initialize().await.unwrap();
+        let h = mgr.health_check().await.unwrap();
+        assert_eq!(h.status, NetworkStatus::Healthy);
+        assert!(h.supported_protocols.contains(&GameProtocolType::UDP));
+    }
+
+    #[test]
+    fn game_protocol_type_custom_is_hashable() {
+        use std::collections::HashMap;
+        let mut m = HashMap::new();
+        m.insert(GameProtocolType::Custom("z".into()), 1u8);
+        assert_eq!(m[&GameProtocolType::Custom("z".into())], 1);
+    }
+}

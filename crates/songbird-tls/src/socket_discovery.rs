@@ -316,6 +316,8 @@ pub fn discover_neural_api_socket(explicit_path: Option<&PathBuf>) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use std::fs;
     use std::path::Path;
@@ -522,5 +524,23 @@ mod tests {
         for handle in handles {
             handle.join().unwrap();
         }
+    }
+
+    #[test]
+    fn neural_discovery_prefers_ai_provider_over_neurals() {
+        let env = MockEnv::new()
+            .set("AI_PROVIDER_SOCKET", "/run/ai.sock")
+            .set("NEURALS_SOCKET", "/run/neurals.sock");
+        let p = discover_neural_api_socket_with_env(None, &env);
+        assert_eq!(p, "/run/ai.sock");
+    }
+
+    #[test]
+    fn beardog_discovery_prefers_crypto_provider_socket() {
+        let env = MockEnv::new()
+            .set("CRYPTO_PROVIDER_SOCKET", "/run/crypto.sock")
+            .set("BEARDOG_SOCKET", "/run/beardog.sock");
+        let p = discover_beardog_socket_with_env(None, &env);
+        assert_eq!(p, "/run/crypto.sock");
     }
 }

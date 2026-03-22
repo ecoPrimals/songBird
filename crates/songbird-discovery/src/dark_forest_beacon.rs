@@ -437,6 +437,8 @@ impl BeaconPayload {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -603,5 +605,51 @@ mod tests {
     fn test_empty_capabilities_hash() {
         let hash = BeaconPayload::hash_capabilities(&[]);
         assert_ne!(hash, [0u8; 32], "Empty capabilities should have non-zero hash");
+    }
+
+    #[test]
+    fn tunnel_type_other_roundtrips_json() {
+        let t = TunnelType::Other("custom".into());
+        let json = serde_json::to_string(&t).unwrap();
+        let back: TunnelType = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, t);
+    }
+
+    #[test]
+    fn external_tunnel_roundtrip() {
+        let mut meta = std::collections::HashMap::new();
+        meta.insert("k".into(), "v".into());
+        let t = ExternalTunnel {
+            tunnel_type: TunnelType::OpenVPN,
+            endpoint: "e:1".into(),
+            public_key: None,
+            metadata: meta,
+        };
+        let bytes = serde_json::to_vec(&t).unwrap();
+        let back: ExternalTunnel = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(back.endpoint, "e:1");
+    }
+
+    #[test]
+    fn dark_forest_from_bytes_rejects_invalid_json() {
+        assert!(DarkForestBeacon::from_bytes(b"not-json").is_err());
+    }
+
+    #[test]
+    fn beacon_payload_with_external_tunnel_builder() {
+        let p = BeaconPayload::new(vec![1], "n".into(), vec![], &["a".into()], None, "s".into())
+            .with_external_tunnel(ExternalTunnel {
+                tunnel_type: TunnelType::IPsec,
+                endpoint: "x".into(),
+                public_key: None,
+                metadata: std::collections::HashMap::new(),
+            });
+        assert_eq!(p.external_tunnels.len(), 1);
+    }
+
+    #[test]
+    fn version_constant_matches_struct() {
+        let b = DarkForestBeacon::new(vec![], [0u8; 12]);
+        assert_eq!(b.version, DarkForestBeacon::VERSION);
     }
 }

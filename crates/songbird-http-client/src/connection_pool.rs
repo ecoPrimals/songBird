@@ -677,4 +677,67 @@ mod tests {
         assert_eq!(stats.max_connections, 7);
         assert_eq!(stats.min_idle, 4);
     }
+
+    #[tokio::test]
+    async fn connection_pool_new_sets_max_size() {
+        let pool = ConnectionPool::<MockConnection>::new(6).await.unwrap();
+        let stats = pool.stats().await;
+        assert_eq!(stats.max_connections, 6);
+    }
+
+    #[tokio::test]
+    async fn stale_idle_connection_is_not_acquired() {
+        let pool = ConnectionPool::<MockConnection>::builder()
+            .max_size(3)
+            .max_idle_time(Duration::from_millis(1))
+            .build()
+            .await
+            .unwrap();
+
+        pool.add_connection(MockConnection {
+            id: 1,
+        })
+        .await
+        .unwrap();
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        match pool.acquire().await {
+            Err(e) => assert!(matches!(e, PoolError::UnhealthyConnection)),
+            Ok(_) => panic!("expected unhealthy pool"),
+        }
+    }
+
+    #[tokio::test]
+    async fn acquire_after_shutdown_returns_shutting_down() {
+        let pool = ConnectionPool::<MockConnection>::builder().max_size(2).build().await.unwrap();
+        pool.shutdown().await;
+        match pool.acquire().await {
+            Err(e) => assert!(matches!(e, PoolError::ShuttingDown)),
+            Ok(_) => panic!("expected shutdown"),
+        }
+    }
+
+    #[tokio::test]
+    async fn build_fails_when_config_invalid() {
+        match ConnectionPool::<MockConnection>::builder().max_size(0).build().await {
+            Err(e) => assert!(matches!(e, PoolError::ConnectionCreation(_))),
+            Ok(_) => panic!("expected invalid config"),
+        }
+    }
+
+    #[tokio::test]
+    async fn pooled_connection_touch_updates_health() {
+        let pool = ConnectionPool::<MockConnection>::builder().max_size(2).build().await.unwrap();
+        pool.add_connection(MockConnection {
+            id: 1,
+        })
+        .await
+        .unwrap();
+
+        let mut conn = pool.acquire().await.unwrap();
+        assert!(conn.is_healthy());
+        conn.touch();
+        assert!(conn.is_healthy());
+    }
 }

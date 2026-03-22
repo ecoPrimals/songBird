@@ -90,35 +90,35 @@ impl TlsRecordLayer {
         let nonce = self.build_write_nonce();
 
         // DIAGNOSTIC: Show encryption parameters
-        info!("════════════════════════════════════════════════════════════");
-        info!("🔐 HTTP REQUEST ENCRYPTION PARAMETERS (DIAGNOSTIC)");
-        info!("════════════════════════════════════════════════════════════");
-        info!("Plaintext (HTTP request + ContentType): {} bytes", plaintext_with_type.len());
-        info!("  HTTP request: {} bytes", data.len());
-        info!("  ContentType byte: 0x17 (APPLICATION_DATA)");
-        info!("  Total plaintext: {} bytes (before AEAD encryption)", plaintext_with_type.len());
-        info!("");
-        info!("Sequence number: {} (write_sequence_number)", self.write_sequence_number);
-        info!("  ⚠️  CRITICAL: Should be 0 for first HTTP request!");
-        info!("");
-        info!("Nonce construction (RFC 8446 Section 5.3):");
-        info!("  client_write_iv (12 bytes): {}", hex::encode(&self.keys.client_write_iv));
-        info!("  Sequence (u64): {}", self.write_sequence_number);
-        info!("  Sequence (padded to 12 bytes, big-endian):");
+        trace!("════════════════════════════════════════════════════════════");
+        trace!("🔐 HTTP REQUEST ENCRYPTION PARAMETERS (DIAGNOSTIC)");
+        trace!("════════════════════════════════════════════════════════════");
+        trace!("Plaintext (HTTP request + ContentType): {} bytes", plaintext_with_type.len());
+        trace!("  HTTP request: {} bytes", data.len());
+        trace!("  ContentType byte: 0x17 (APPLICATION_DATA)");
+        trace!("  Total plaintext: {} bytes (before AEAD encryption)", plaintext_with_type.len());
+        trace!("");
+        trace!("Sequence number: {} (write_sequence_number)", self.write_sequence_number);
+        trace!("  ⚠️  CRITICAL: Should be 0 for first HTTP request!");
+        trace!("");
+        trace!("Nonce construction (RFC 8446 Section 5.3):");
+        trace!("  client_write_iv (12 bytes): {}", hex::encode(&self.keys.client_write_iv));
+        trace!("  Sequence (u64): {}", self.write_sequence_number);
+        trace!("  Sequence (padded to 12 bytes, big-endian):");
         let mut seq_bytes = [0u8; 12];
         seq_bytes[4..12].copy_from_slice(&self.write_sequence_number.to_be_bytes());
-        info!("    {}", hex::encode(seq_bytes));
-        info!("  Nonce = IV XOR Sequence:");
-        info!("    {}", hex::encode(&nonce));
-        info!("");
-        info!("AAD (Additional Authenticated Data):");
-        info!("  ContentType: 0x{:02x} (APPLICATION_DATA)", aad[0]);
-        info!("  TLS version: 0x{:02x} 0x{:02x} (1.2 compatibility)", aad[1], aad[2]);
-        info!("  Length: {} bytes (encrypted_length = plaintext + 16-byte tag)", encrypted_length);
-        info!("  Length bytes: 0x{:02x} 0x{:02x}", aad[3], aad[4]);
-        info!("  Full AAD: {}", hex::encode(aad));
-        info!("");
-        info!(
+        trace!("    {}", hex::encode(seq_bytes));
+        trace!("  Nonce = IV XOR Sequence:");
+        trace!("    {}", hex::encode(&nonce));
+        trace!("");
+        trace!("AAD (Additional Authenticated Data):");
+        trace!("  ContentType: 0x{:02x} (APPLICATION_DATA)", aad[0]);
+        trace!("  TLS version: 0x{:02x} 0x{:02x} (1.2 compatibility)", aad[1], aad[2]);
+        trace!("  Length: {} bytes (encrypted_length = plaintext + 16-byte tag)", encrypted_length);
+        trace!("  Length bytes: 0x{:02x} 0x{:02x}", aad[3], aad[4]);
+        trace!("  Full AAD: {}", hex::encode(aad));
+        trace!("");
+        trace!(
             "Cipher suite: 0x{:04x} ({})",
             self.keys.cipher_suite,
             match self.keys.cipher_suite {
@@ -128,17 +128,17 @@ impl TlsRecordLayer {
                 _ => "UNKNOWN",
             }
         );
-        info!(
+        trace!(
             "Client write key (application traffic key): {} bytes",
             self.keys.client_write_key.len()
         );
-        info!(
+        trace!(
             "  Key (first 8 bytes): {}",
             hex::encode(
                 &self.keys.client_write_key[..std::cmp::min(8, self.keys.client_write_key.len())]
             )
         );
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
 
         // Encrypt data with CLIENT write key (we're writing to server)
         // RFC 8446: Use the negotiated cipher suite for encryption
@@ -438,20 +438,20 @@ impl TlsRecordLayer {
         );
 
         // DIAGNOSTIC: Show exactly what we decrypted
-        info!("════════════════════════════════════════════════════════════");
-        info!("🔍 DECRYPTED CONTENT ANALYSIS (DIAGNOSTIC)");
-        info!("════════════════════════════════════════════════════════════");
-        info!("Ciphertext length: {} bytes (includes 16-byte AEAD tag)", encrypted.len());
-        info!("Plaintext length: {} bytes (after AEAD decryption)", decrypted.len());
+        trace!("════════════════════════════════════════════════════════════");
+        trace!("🔍 DECRYPTED CONTENT ANALYSIS (DIAGNOSTIC)");
+        trace!("════════════════════════════════════════════════════════════");
+        trace!("Ciphertext length: {} bytes (includes 16-byte AEAD tag)", encrypted.len());
+        trace!("Plaintext length: {} bytes (after AEAD decryption)", decrypted.len());
 
         if !decrypted.is_empty() {
             // Show first and last bytes
-            info!(
+            trace!(
                 "First 16 bytes (hex): {}",
                 hex::encode(&decrypted[..std::cmp::min(16, decrypted.len())])
             );
             if decrypted.len() > 16 {
-                info!(
+                trace!(
                     "Last 16 bytes (hex): {}",
                     hex::encode(&decrypted[decrypted.len().saturating_sub(16)..])
                 );
@@ -460,8 +460,8 @@ impl TlsRecordLayer {
             // Try to interpret as UTF-8
             let utf8_preview =
                 String::from_utf8_lossy(&decrypted[..std::cmp::min(200, decrypted.len())]);
-            info!("UTF-8 preview (first 200 bytes):");
-            info!("  {}", utf8_preview);
+            trace!("UTF-8 preview (first 200 bytes):");
+            trace!("  {}", utf8_preview);
 
             // Check if this might be a TLS alert
             let last_byte = *decrypted.last().unwrap_or(&0xFF);
@@ -499,7 +499,7 @@ impl TlsRecordLayer {
                 warn!("⚠️  Last byte is 0x{:02x} (unexpected ContentType!)", last_byte);
             }
         }
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
 
         // RFC 8446 Section 5.4: TLSInnerPlaintext structure is:
         // [content] [ContentType byte] [padding zeros...]
@@ -529,10 +529,10 @@ impl TlsRecordLayer {
         info!("📋 ContentType byte at end of plaintext: 0x{:02x}", content_type_byte);
         plaintext.truncate(plaintext.len() - 1);
 
-        info!("════════════════════════════════════════════════════════════");
-        info!("🎯 FINAL PLAINTEXT AFTER CONTENTTYPE STRIPPING");
-        info!("════════════════════════════════════════════════════════════");
-        info!(
+        trace!("════════════════════════════════════════════════════════════");
+        trace!("🎯 FINAL PLAINTEXT AFTER CONTENTTYPE STRIPPING");
+        trace!("════════════════════════════════════════════════════════════");
+        trace!(
             "ContentType stripped: 0x{:02x} ({})",
             content_type_byte,
             match content_type_byte {
@@ -612,10 +612,10 @@ impl TlsRecordLayer {
                 // CRITICAL FIX: close_notify (0x00) is GRACEFUL close, not an error!
                 // RFC 8446 Section 6.1: close_notify indicates orderly connection closure
                 if alert_desc == 0x00 {
-                    info!("════════════════════════════════════════════════════════════");
-                    info!("✅ close_notify: Server closed connection gracefully");
-                    info!("   This is NORMAL after receiving complete HTTP response");
-                    info!("════════════════════════════════════════════════════════════");
+                    debug!("════════════════════════════════════════════════════════════");
+                    debug!("✅ close_notify: Server closed connection gracefully");
+                    debug!("   This is NORMAL after receiving complete HTTP response");
+                    debug!("════════════════════════════════════════════════════════════");
                     // Return empty vec to signal clean EOF - NOT an error
                     return Ok(Vec::new());
                 }
@@ -638,32 +638,32 @@ impl TlsRecordLayer {
             return Err(Error::TlsAlert("Server sent malformed TLS alert".to_string()));
         }
 
-        info!("Final plaintext length: {} bytes (ready for HTTP parser)", plaintext.len());
+        trace!("Final plaintext length: {} bytes (ready for HTTP parser)", plaintext.len());
 
         if plaintext.is_empty() {
             warn!("⚠️  Final plaintext is EMPTY after ContentType stripping!");
         } else {
-            info!(
+            trace!(
                 "First 100 bytes (hex): {}",
                 hex::encode(&plaintext[..std::cmp::min(100, plaintext.len())])
             );
             let utf8_preview =
                 String::from_utf8_lossy(&plaintext[..std::cmp::min(300, plaintext.len())]);
-            info!("UTF-8 preview (first 300 bytes):");
-            info!("  {}", utf8_preview);
+            trace!("UTF-8 preview (first 300 bytes):");
+            trace!("  {}", utf8_preview);
 
             // Check if it starts with HTTP
             if plaintext.len() >= 8 {
                 let start = String::from_utf8_lossy(&plaintext[..8]);
                 if start.starts_with("HTTP/") {
-                    info!("✅ Plaintext starts with 'HTTP/' - looks like valid HTTP response!");
+                    trace!("✅ Plaintext starts with 'HTTP/' - looks like valid HTTP response!");
                 } else {
                     warn!("⚠️  Plaintext does NOT start with 'HTTP/' - may not be HTTP response!");
                     warn!("   Instead starts with: {:?}", start);
                 }
             }
         }
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
 
         self.read_sequence_number += 1;
         debug!("  → Incremented read sequence number to {}", self.read_sequence_number);

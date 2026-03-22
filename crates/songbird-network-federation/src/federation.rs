@@ -551,9 +551,56 @@ impl Default for FederationConfig {
 }
 
 /// Node information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NodeInfo {
     pub node_id: String,
     pub address: String,
     pub status: String,
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn federation_config_default_serde_roundtrip() {
+        let c = FederationConfig::default();
+        let json = serde_json::to_string(&c).unwrap();
+        let back: FederationConfig = serde_json::from_str(&json).unwrap();
+        assert!(!back.enabled);
+        assert_eq!(back.heartbeat_interval_secs, 30);
+        assert_eq!(back.node_timeout_secs, 60);
+    }
+
+    #[test]
+    fn federation_config_with_discovery_mode_serializes() {
+        let c = FederationConfig {
+            discovery_mode: Some(DiscoveryMode::BirdSong),
+            ..FederationConfig::default()
+        };
+        let json = serde_json::to_string(&c).unwrap();
+        let back: FederationConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.discovery_mode, Some(DiscoveryMode::BirdSong));
+    }
+
+    #[test]
+    fn node_info_roundtrip() {
+        let n = NodeInfo {
+            node_id: "a".into(),
+            address: "b".into(),
+            status: "c".into(),
+        };
+        let json = serde_json::to_string(&n).unwrap();
+        let back: NodeInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.node_id, "a");
+    }
+
+    #[test]
+    fn federation_config_default_heartbeat_and_timeout_match_helpers() {
+        let c = FederationConfig::default();
+        assert_eq!(c.heartbeat_interval_secs, 30);
+        assert_eq!(c.node_timeout_secs, 60);
+    }
 }

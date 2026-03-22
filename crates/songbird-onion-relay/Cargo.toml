@@ -12,8 +12,6 @@ categories = ["network-programming", "cryptography"]
 
 # ARCHITECTURE EVOLUTION (Feb 6, 2026):
 # =====================================
-# Arti dependency REMOVED. Using Songbird Sovereign Onion Service instead.
-# 
 # - Binary size: ~5MB → ~200KB (25x smaller)
 # - Startup time: 10-30s → instant (no Tor bootstrap)
 # - Crypto: Delegated to BearDog (TRUE PRIMAL pattern)

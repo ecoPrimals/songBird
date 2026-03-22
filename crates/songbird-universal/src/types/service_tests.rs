@@ -3,9 +3,39 @@
 
 //! Tests for service types module
 
+#![allow(clippy::unwrap_used, reason = "test assertions")]
+
 use super::*;
+use serde::Serialize;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
+
+fn assert_json_stable_roundtrip<T>(v: &T)
+where
+    T: Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+{
+    let json = serde_json::to_string(v).expect("serialize");
+    let back: T = serde_json::from_str(&json).expect("deserialize");
+    let json2 = serde_json::to_string(&back).expect("re-serialize");
+    assert_eq!(json, json2, "roundtrip changed JSON representation");
+}
+
+fn sample_discovered_capability() -> DiscoveredCapability {
+    DiscoveredCapability {
+        name: "compute".to_string(),
+        version: "1.0".to_string(),
+        description: "test cap".to_string(),
+        provider: "p1".to_string(),
+        endpoint: "http://localhost:8080/cap".to_string(),
+        qos_metrics: QosMetrics {
+            latency_ms: Some(12.0),
+            throughput_ops_sec: Some(100.0),
+            availability: Some(0.99),
+            reliability: Some(0.99),
+        },
+        health_status: HealthStatus::Healthy,
+    }
+}
 
 #[test]
 fn test_service_info_creation() {
@@ -216,4 +246,102 @@ fn test_registered_service_with_heartbeat() {
     };
 
     assert!(registered.last_heartbeat.is_some());
+}
+
+#[test]
+fn test_service_info_serialization_roundtrip() {
+    let s = ServiceInfo {
+        name: "svc-a".to_string(),
+        primal_type: PrimalType::new("compute"),
+        endpoint: "http://localhost:9000".to_string(),
+        capabilities: vec![sample_discovered_capability()],
+        health: HealthStatus::Degraded,
+        metadata: HashMap::from([("k".to_string(), "v".to_string())]),
+    };
+    assert_json_stable_roundtrip(&s);
+    assert!(format!("{s:?}").contains("ServiceInfo"));
+}
+
+#[test]
+fn test_service_event_serialization_roundtrip() {
+    let e = ServiceEvent {
+        service_name: "e-svc".to_string(),
+        event_type: "stopped".to_string(),
+        timestamp: chrono::DateTime::parse_from_rfc3339("2024-01-02T15:04:05Z")
+            .expect("ts")
+            .with_timezone(&chrono::Utc),
+        details: HashMap::from([("code".to_string(), serde_json::json!(42))]),
+    };
+    assert_json_stable_roundtrip(&e);
+}
+
+#[test]
+fn test_registered_service_serialization_roundtrip() {
+    let service_info = ServiceInfo {
+        name: "reg".to_string(),
+        primal_type: PrimalType::new("storage"),
+        endpoint: "http://x".to_string(),
+        capabilities: vec![],
+        health: HealthStatus::Unknown,
+        metadata: HashMap::new(),
+    };
+    let r = RegisteredService {
+        id: "id-1".to_string(),
+        service_info,
+        registration_time: chrono::DateTime::parse_from_rfc3339("2024-06-01T00:00:00Z")
+            .expect("ts")
+            .with_timezone(&chrono::Utc),
+        last_heartbeat: None,
+    };
+    assert_json_stable_roundtrip(&r);
+}
+
+#[test]
+fn test_service_identification_serialization_roundtrip() {
+    let i = ServiceIdentification {
+        service_id: "sid".to_string(),
+        service_name: "nice".to_string(),
+        version: "2.1.0".to_string(),
+        instance_id: "i1".to_string(),
+    };
+    assert_json_stable_roundtrip(&i);
+}
+
+#[test]
+fn test_service_endpoint_serialization_roundtrip() {
+    let e = ServiceEndpoint {
+        url: "https://h.example:8443/x".to_string(),
+        protocol: "https".to_string(),
+        tls_enabled: true,
+        port: 8443,
+    };
+    assert_json_stable_roundtrip(&e);
+}
+
+#[test]
+fn test_service_health_serialization_roundtrip() {
+    let h = ServiceHealth {
+        status: HealthStatus::Unhealthy,
+        last_check: chrono::Utc::now(),
+        consecutive_successes: 0,
+        consecutive_failures: 3,
+        recent_qos: Some(QosMetrics {
+            latency_ms: Some(500.0),
+            throughput_ops_sec: None,
+            availability: None,
+            reliability: None,
+        }),
+    };
+    assert_json_stable_roundtrip(&h);
+}
+
+#[test]
+fn test_resource_spec_serialization_roundtrip() {
+    let r = ResourceSpec {
+        cpu_cores: Some(8.0),
+        memory_mb: Some(16_384),
+        disk_mb: Some(100),
+        network_mbps: Some(10.5),
+    };
+    assert_json_stable_roundtrip(&r);
 }

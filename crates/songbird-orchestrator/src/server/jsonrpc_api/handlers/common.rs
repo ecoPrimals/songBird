@@ -35,3 +35,42 @@ pub(super) fn jsonrpc_code_from_http_status(status: StatusCode) -> i32 {
         _ => JsonRpcError::INTERNAL_ERROR,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    // SPDX-License-Identifier: AGPL-3.0-only
+
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use axum::http::StatusCode;
+
+    use super::{jsonrpc_code_from_http_status, jsonrpc_from_compute_error};
+    use crate::server::jsonrpc_api::types::JsonRpcError;
+
+    #[test]
+    fn jsonrpc_from_compute_error_maps_variants() {
+        use crate::server::compute_api::ApiError;
+        let e = jsonrpc_from_compute_error(ApiError::InvalidRequest("bad".into()));
+        assert_eq!(e.code, JsonRpcError::INVALID_PARAMS);
+        assert!(e.message.contains("bad"));
+
+        let e = jsonrpc_from_compute_error(ApiError::Routing("r".into()));
+        assert_eq!(e.code, JsonRpcError::INTERNAL_ERROR);
+
+        let e = jsonrpc_from_compute_error(ApiError::NotFound("n".into()));
+        assert_eq!(e.code, -32001);
+    }
+
+    #[test]
+    fn jsonrpc_code_from_http_status_maps_buckets() {
+        assert_eq!(jsonrpc_code_from_http_status(StatusCode::NOT_FOUND), -32001);
+        assert_eq!(
+            jsonrpc_code_from_http_status(StatusCode::BAD_REQUEST),
+            JsonRpcError::INVALID_PARAMS
+        );
+        assert_eq!(
+            jsonrpc_code_from_http_status(StatusCode::INTERNAL_SERVER_ERROR),
+            JsonRpcError::INTERNAL_ERROR
+        );
+    }
+}

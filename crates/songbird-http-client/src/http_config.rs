@@ -301,7 +301,14 @@ impl HttpClientConfig {
         domain: &str,
         caller_headers: &HashMap<String, String>,
     ) -> HashMap<String, String> {
-        let mut headers = HashMap::new();
+        let rule_extra: usize = self
+            .header_rules
+            .iter()
+            .filter(|rule| rule.pattern.matches(domain))
+            .map(|rule| rule.headers.len())
+            .sum();
+        let mut headers =
+            HashMap::with_capacity(self.default_headers.len() + rule_extra + caller_headers.len());
 
         // 1. Start with default headers
         headers.extend(self.default_headers.clone());
@@ -377,7 +384,7 @@ impl HttpClientConfig {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, reason = "test assertions")]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 #[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
@@ -519,5 +526,30 @@ mod tests {
     #[test]
     fn redirect_mode_default_is_follow() {
         assert_eq!(RedirectMode::default(), RedirectMode::Follow);
+    }
+
+    #[test]
+    fn http_client_config_default_matches_standard() {
+        let def: HttpClientConfig = Default::default();
+        let std = HttpClientConfig::standard();
+        assert_eq!(def.user_agent, std.user_agent);
+        assert_eq!(def.redirect_mode, std.redirect_mode);
+        assert_eq!(def.max_redirects, std.max_redirects);
+        assert_eq!(def.timeout, std.timeout);
+    }
+
+    #[test]
+    fn redirect_mode_none_and_same_origin_roundtrip() {
+        let none = HttpClientConfig::minimal().with_redirect_mode(RedirectMode::None);
+        assert_eq!(none.redirect_mode, RedirectMode::None);
+
+        let same = HttpClientConfig::minimal().with_redirect_mode(RedirectMode::SameOrigin);
+        assert_eq!(same.redirect_mode, RedirectMode::SameOrigin);
+    }
+
+    #[test]
+    fn standard_config_timeout_is_nonzero() {
+        let c = HttpClientConfig::standard();
+        assert!(!c.timeout.is_zero());
     }
 }

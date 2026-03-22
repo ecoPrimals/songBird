@@ -49,6 +49,9 @@ songbird-tor-protocol = { path = "../songbird-tor-protocol" }
 # Discovery (for peer registry bridge)
 songbird-discovery = { path = "../songbird-discovery" }
 
+# Federation node registry (IPC federation.* introspection)
+songbird-network-federation = { path = "../songbird-network-federation" }
+
 # IGD (for router port forwarding)
 songbird-igd = { path = "../songbird-igd" }
 
@@ -67,6 +70,7 @@ tokio = { workspace = true, features = ["net"] }
 
 [dev-dependencies]
 songbird-process-env.workspace = true
+serial_test = "3.0"
 tokio-test = "0.4"
 tempfile = "3.0"
 tracing-subscriber = { workspace = true }

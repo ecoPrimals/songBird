@@ -450,6 +450,8 @@ pub struct FederationStatus {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -511,5 +513,102 @@ mod tests {
 
         let elapsed = (Utc::now() - node.last_heartbeat).num_seconds();
         assert!(elapsed < 5); // Should be very recent
+    }
+
+    #[tokio::test]
+    async fn register_node_merges_capabilities() {
+        let state = FederationState::new("x".into());
+        let mut r1 = make_registration("n", "addr1");
+        r1.capabilities = vec!["a".into()];
+        state.register_node(r1).await;
+        let mut r2 = make_registration("n", "addr1");
+        r2.capabilities = vec!["b".into()];
+        state.register_node(r2).await;
+        let nodes = state.nodes.read().await;
+        let n = nodes.get("n").unwrap();
+        assert!(n.capabilities.contains(&"a".into()));
+        assert!(n.capabilities.contains(&"b".into()));
+    }
+
+    fn make_registration(id: &str, addr: &str) -> NodeRegistration {
+        NodeRegistration {
+            node_id: id.into(),
+            node_name: id.into(),
+            node_address: addr.into(),
+            endpoints: None,
+            cpu_cores: 1,
+            memory_gb: 1,
+            gpu_model: None,
+            storage_gb: None,
+            capabilities: vec![],
+            status: NodeStatus::Active,
+            joined_at: Utc::now(),
+            last_heartbeat: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn transport_endpoint_preference_sorts_in_add_endpoint() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.add_endpoint(TransportEndpointInfo {
+            interface_type: "e".into(),
+            address: "192.168.1.1:1".into(),
+            protocols: vec![],
+            preference: 10,
+            status: EndpointStatus::Active,
+            last_check: Utc::now(),
+        });
+        reg.add_endpoint(TransportEndpointInfo {
+            interface_type: "e".into(),
+            address: "192.168.1.2:2".into(),
+            protocols: vec![],
+            preference: 200,
+            status: EndpointStatus::Active,
+            last_check: Utc::now(),
+        });
+        let pref = reg.preferred_endpoint().unwrap();
+        assert_eq!(pref.address, "192.168.1.2:2");
+    }
+
+    fn make_registration_sync(id: &str, addr: &str) -> NodeRegistration {
+        NodeRegistration {
+            node_id: id.into(),
+            node_name: id.into(),
+            node_address: addr.into(),
+            endpoints: None,
+            cpu_cores: 0,
+            memory_gb: 0,
+            gpu_model: None,
+            storage_gb: None,
+            capabilities: vec![],
+            status: NodeStatus::Active,
+            joined_at: Utc::now(),
+            last_heartbeat: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn federation_stats_serde_roundtrip() {
+        let s = FederationStats {
+            total_nodes: 3,
+            active_nodes: 2,
+            total_cpu_cores: 4,
+            total_memory_gb: 8,
+            total_storage_gb: 16,
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        let back: FederationStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.active_nodes, 2);
+    }
+
+    #[tokio::test]
+    async fn cleanup_stale_nodes_removes_old() {
+        let state = FederationState::new("x".into());
+        let mut r = make_registration("old", "a");
+        r.last_heartbeat = Utc::now() - chrono::Duration::seconds(9999);
+        state.register_node(r).await;
+        let n = state.cleanup_stale_nodes(100).await;
+        assert_eq!(n, 1);
+        assert_eq!(state.nodes.read().await.len(), 0);
     }
 }

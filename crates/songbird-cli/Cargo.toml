@@ -55,9 +55,7 @@ tokio = { workspace = true }
 fastrand = { workspace = true }
 clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
-# REMOVED: reqwest (C dependency via native-tls/OpenSSL)
-# REPLACED WITH: songbird-http-client (Pure Rust IPC delegation)
-songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP via IPC!
+songbird-http-client = { path = "../songbird-http-client" }
 tracing = "0.1"
 dialoguer = "0.11"
 console = "0.15"

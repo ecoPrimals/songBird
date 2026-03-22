@@ -49,7 +49,6 @@ tokio-test = "0.4"
 criterion = "0.5"
 
 [features]
-# ✅ TRUE PRIMAL FIX (Feb 6, 2026): NO crypto by default!
 # Production builds: ZERO crypto (delegates to BearDog)
 # Test builds: Use --features standalone for offline testing
 default = []  # ✅ NO CRYPTO (production uses BearDog!)

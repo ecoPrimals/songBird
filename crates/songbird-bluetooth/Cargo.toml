@@ -76,12 +76,6 @@ serialport = ["dep:serialport"]
 # Any unsafe MUST be documented with SAFETY comments
 doctest = true
 
-# Benchmarks (to be added later)
-# [[bench]]
-# name = "bluetooth_benchmarks"
-# harness = false
-# required-features = ["tokio-runtime"]
-
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"

@@ -321,10 +321,15 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
 
     /// Handle a JSON-RPC request
     async fn handle_request(request: JsonRpcRequest, handler: &H) -> JsonRpcResponse {
-        let id = request.id.clone();
+        let JsonRpcRequest {
+            jsonrpc,
+            method,
+            params,
+            id,
+        } = request;
 
         // Validate JSON-RPC version
-        if request.jsonrpc != "2.0" {
+        if jsonrpc != "2.0" {
             return JsonRpcResponse::error(
                 JsonRpcError {
                     code: JsonRpcError::INVALID_REQUEST,
@@ -336,8 +341,8 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
         }
 
         // Call handler
-        let params = request.params.unwrap_or(Value::Null);
-        match handler.handle(&request.method, params).await {
+        let params = params.unwrap_or(Value::Null);
+        match handler.handle(&method, params).await {
             Ok(result) => JsonRpcResponse::success(result, id),
             Err(message) => JsonRpcResponse::error(JsonRpcError::internal_error(message), id),
         }
@@ -445,6 +450,7 @@ impl TowerAtomicClient {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 #[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
@@ -605,5 +611,141 @@ mod tests {
         let err = resp.error.expect("rpc error");
         assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
         assert!(err.message.contains("boom"));
+    }
+
+    #[tokio::test]
+    async fn handle_request_for_test_omitted_params_become_null() {
+        struct NullCheck;
+        #[async_trait]
+        impl JsonRpcHandler for NullCheck {
+            async fn handle(&self, _method: &str, params: Value) -> Result<Value, String> {
+                assert!(params.is_null());
+                Ok(json!(true))
+            }
+        }
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            method: "m".into(),
+            params: None,
+            id: json!(99),
+        };
+        let resp = TowerAtomicServer::handle_request_for_test(req, &NullCheck).await;
+        assert_eq!(resp.result, Some(json!(true)));
+    }
+
+    #[test]
+    fn json_rpc_error_standard_codes_match_spec() {
+        assert_eq!(JsonRpcError::PARSE_ERROR, -32700);
+        assert_eq!(JsonRpcError::INVALID_REQUEST, -32600);
+        assert_eq!(JsonRpcError::METHOD_NOT_FOUND, -32601);
+    }
+
+    #[test]
+    fn json_rpc_request_new_uses_numeric_id() {
+        let r = JsonRpcRequest::new("ping", None, 1001);
+        assert_eq!(r.id, json!(1001));
+        assert!(r.params.is_none());
+    }
+
+    #[tokio::test]
+    async fn handle_request_invalid_jsonrpc_version_message() {
+        struct X;
+        #[async_trait]
+        impl JsonRpcHandler for X {
+            async fn handle(&self, _method: &str, _params: Value) -> Result<Value, String> {
+                Ok(json!(0))
+            }
+        }
+        let req = JsonRpcRequest {
+            jsonrpc: "2.1".into(),
+            method: "m".into(),
+            params: Some(json!({})),
+            id: json!("abc"),
+        };
+        let resp = TowerAtomicServer::handle_request_for_test(req, &X).await;
+        let e = resp.error.expect("err");
+        assert_eq!(e.code, JsonRpcError::INVALID_REQUEST);
+    }
+}
+
+/// Hand-crafted malformed JSON-RPC inputs for [`JsonRpcRequest`] deserialization (fuzz-style).
+#[cfg(test)]
+mod jsonrpc_parse_fuzz_style_tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::JsonRpcRequest;
+    use serde_json::json;
+
+    #[test]
+    fn deserialize_rejects_malformed_json() {
+        assert!(serde_json::from_str::<JsonRpcRequest>("{").is_err());
+        assert!(serde_json::from_str::<JsonRpcRequest>("not json").is_err());
+        assert!(serde_json::from_str::<JsonRpcRequest>("").is_err());
+    }
+
+    #[test]
+    fn deserialize_rejects_missing_jsonrpc_field() {
+        let s = r#"{"method":"m","id":1}"#;
+        assert!(serde_json::from_str::<JsonRpcRequest>(s).is_err());
+    }
+
+    #[test]
+    fn deserialize_rejects_missing_method_field() {
+        let s = r#"{"jsonrpc":"2.0","id":1}"#;
+        assert!(serde_json::from_str::<JsonRpcRequest>(s).is_err());
+    }
+
+    #[test]
+    fn deserialize_accepts_various_id_types() {
+        let cases = [
+            r#"{"jsonrpc":"2.0","method":"a","id":null}"#,
+            r#"{"jsonrpc":"2.0","method":"a","id":"s"}"#,
+            r#"{"jsonrpc":"2.0","method":"a","id":true}"#,
+            r#"{"jsonrpc":"2.0","method":"a","id":[1,2]}"#,
+            r#"{"jsonrpc":"2.0","method":"a","id":{"x":1}}"#,
+        ];
+        for s in cases {
+            let r: JsonRpcRequest = serde_json::from_str(s).unwrap();
+            assert_eq!(r.jsonrpc, "2.0");
+            assert_eq!(r.method, "a");
+        }
+    }
+
+    #[test]
+    fn deserialize_nested_json_deep_structure() {
+        let mut inner = json!({});
+        for _ in 0..120 {
+            inner = json!({ "k": inner });
+        }
+        let v = json!({
+            "jsonrpc": "2.0",
+            "method": "deep",
+            "id": 1,
+            "params": inner
+        });
+        let s = v.to_string();
+        let r: JsonRpcRequest = serde_json::from_str(&s).unwrap();
+        assert_eq!(r.method, "deep");
+        assert!(r.params.is_some());
+    }
+
+    #[test]
+    fn deserialize_very_long_method_name() {
+        let long = "x".repeat(50_000);
+        let v = json!({
+            "jsonrpc": "2.0",
+            "method": long,
+            "id": 0
+        });
+        let s = v.to_string();
+        let r: JsonRpcRequest = serde_json::from_str(&s).unwrap();
+        assert_eq!(r.method.len(), 50_000);
+    }
+
+    #[test]
+    fn deserialize_unicode_method_name() {
+        let s = r#"{"jsonrpc":"2.0","method":"ping.тест.😀","id":1}"#;
+        let r: JsonRpcRequest = serde_json::from_str(s).unwrap();
+        assert_eq!(r.method, "ping.тест.😀");
     }
 }

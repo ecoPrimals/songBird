@@ -630,8 +630,9 @@ struct JsonRpcError {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use std::sync::atomic::{AtomicU32, Ordering};
 

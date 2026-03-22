@@ -597,6 +597,8 @@ impl RelayServer {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     use async_trait::async_trait;
@@ -688,5 +690,45 @@ mod tests {
 
         // Currently same as SizeObfuscation (encryption is future)
         assert!(masked.len() >= data.len());
+    }
+
+    #[test]
+    fn relay_server_stats_uptime_zero_without_start() {
+        let s = RelayServerStats {
+            start_time: None,
+            ..Default::default()
+        };
+        assert_eq!(s.uptime_seconds(), 0);
+    }
+
+    #[tokio::test]
+    async fn masking_legacy_masked_passes_through() {
+        let data = b"x";
+        let m = RelayServer::apply_masking(data, MaskingLevel::Masked).unwrap();
+        assert_eq!(m, data);
+    }
+
+    #[tokio::test]
+    async fn masking_full_visibility_passes_through() {
+        let data = b"y";
+        let m = RelayServer::apply_masking(data, MaskingLevel::FullVisibility).unwrap();
+        assert_eq!(m, data);
+    }
+
+    #[test]
+    fn relay_session_state_fields() {
+        let st = RelaySessionState {
+            session_id: Uuid::new_v4(),
+            requester_addr: "127.0.0.1:1".parse().unwrap(),
+            target_addr: "127.0.0.1:2".parse().unwrap(),
+            requester_id: "a".into(),
+            target_id: "b".into(),
+            masking_level: MaskingLevel::TimingOnly,
+            created_at: SystemTime::UNIX_EPOCH,
+            last_activity: SystemTime::UNIX_EPOCH,
+            bytes_forwarded: 0,
+            packets_forwarded: 0,
+        };
+        assert_eq!(st.bytes_forwarded, 0);
     }
 }

@@ -394,8 +394,9 @@ pub fn identity(family_id: &str) -> Value {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::{
         SONGBIRD_CAPABILITY_STRINGS, canonical_family_id, capabilities_list, discover_capabilities,
@@ -585,5 +586,54 @@ mod tests {
         let v = identity("fam");
         let caps = v["capabilities"].as_array().unwrap();
         assert!(caps.iter().any(|c| c == "ipc.register"));
+    }
+
+    #[test]
+    fn health_zero_uptime_and_zero_services() {
+        let v = health(0, 0);
+        assert_eq!(v["uptime_seconds"], 0);
+        assert_eq!(v["services"], 0);
+        assert_eq!(v["primal"], "songbird");
+    }
+
+    #[test]
+    fn rpc_methods_has_jsonrpc_and_non_empty_methods() {
+        let v = rpc_methods();
+        assert_eq!(v["jsonrpc"], "2.0");
+        let m = v["methods"].as_array().unwrap();
+        assert!(m.len() > 5);
+        assert!(m.iter().any(|x| x["name"] == "primal.info"));
+    }
+
+    #[test]
+    fn discover_capabilities_includes_tor_and_mesh() {
+        let v = discover_capabilities();
+        let caps = v["capabilities"].as_array().unwrap();
+        let s: Vec<&str> = caps.iter().filter_map(|x| x.as_str()).collect();
+        assert!(s.contains(&"tor.connect"));
+        assert!(s.contains(&"mesh.status"));
+    }
+
+    #[test]
+    fn songbird_capability_strings_count_matches_network_ipc_crypto() {
+        assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"ipc.jsonrpc"));
+        assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"network.tls"));
+        assert_eq!(SONGBIRD_CAPABILITY_STRINGS.len(), 14);
+    }
+
+    #[test]
+    fn rpc_discover_standard_contains_capabilities_listing() {
+        let v = rpc_discover_standard();
+        let methods = v["methods"].as_array().unwrap();
+        assert!(methods.iter().any(|m| m == "primal.capabilities"));
+    }
+
+    #[test]
+    fn primal_capabilities_includes_mesh_and_onion() {
+        let v = primal_capabilities();
+        let caps = v["capabilities"].as_array().unwrap();
+        let names: Vec<&str> = caps.iter().filter_map(|c| c["name"].as_str()).collect();
+        assert!(names.contains(&"mesh"));
+        assert!(names.contains(&"onion"));
     }
 }

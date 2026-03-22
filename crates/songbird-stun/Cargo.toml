@@ -31,8 +31,3 @@ tokio-test = "0.4"
 [lib]
 path = "src/lib.rs"
 
-# NOTE: Test file removed during evolution - inline tests in src/client.rs provide coverage
-# [[test]]
-# name = "stun_client_tests"
-# path = "tests/stun_client_tests.rs"
-

@@ -298,6 +298,8 @@ impl AllocationResponse {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -512,5 +514,102 @@ mod tests {
             }
             _ => panic!("Expected DataPacket"),
         }
+    }
+
+    #[test]
+    fn parse_data_packet_short_payload_errors() {
+        let mut bytes = vec![0x10];
+        bytes.extend_from_slice(&[0u8; 8]);
+        assert!(RelayProtocol::parse(&bytes).is_err());
+    }
+
+    #[test]
+    fn parse_refresh_wrong_length_errors() {
+        let mut b = vec![0x20];
+        b.extend_from_slice(&[0u8; 8]);
+        assert!(RelayProtocol::parse(&b).is_err());
+    }
+
+    #[test]
+    fn parse_deallocate_wrong_length_errors() {
+        let mut b = vec![0x30];
+        b.extend_from_slice(&[0u8; 10]);
+        assert!(RelayProtocol::parse(&b).is_err());
+    }
+
+    #[test]
+    fn encode_allocate_request_produces_valid_json_suffix() {
+        let req = AllocationRequest::new(
+            "r".into(),
+            "q".into(),
+            "127.0.0.1:1".parse().unwrap(),
+            vec![],
+            60,
+        );
+        let wire = RelayProtocol::AllocateRequest(req).encode();
+        assert_eq!(wire[0], 0x01);
+        serde_json::from_slice::<AllocationRequest>(&wire[1..]).unwrap();
+    }
+
+    // --- Fuzz-style wire edge cases (no external harness) ---
+
+    #[test]
+    fn parse_truncated_allocate_request_payload() {
+        assert!(RelayProtocol::parse(&[0x01]).is_err());
+        assert!(RelayProtocol::parse(&[0x01, b'{']).is_err());
+    }
+
+    #[test]
+    fn parse_allocate_with_malformed_json_errors() {
+        let mut b = vec![0x01];
+        b.extend_from_slice(b"not json");
+        assert!(RelayProtocol::parse(&b).is_err());
+    }
+
+    #[test]
+    fn parse_data_packet_truncated_at_session_id_boundary() {
+        let mut b = vec![0x10];
+        b.extend_from_slice(&[0u8; 15]);
+        assert!(RelayProtocol::parse(&b).is_err());
+    }
+
+    #[test]
+    fn parse_zero_length_data_packet_after_uuid() {
+        let sid = uuid::Uuid::nil();
+        let mut b = vec![0x10];
+        b.extend_from_slice(sid.as_bytes());
+        let parsed = RelayProtocol::parse(&b).unwrap();
+        match parsed {
+            RelayProtocol::DataPacket {
+                data,
+                ..
+            } => assert!(data.is_empty()),
+            _ => panic!("expected DataPacket"),
+        }
+    }
+
+    #[test]
+    fn parse_unknown_type_with_trailing_garbage_errors() {
+        let mut v = vec![0x99, 1, 2, 3, 4, 5];
+        assert!(RelayProtocol::parse(&v).is_err());
+        v.push(0xff);
+        assert!(RelayProtocol::parse(&v).is_err());
+    }
+
+    #[test]
+    fn parse_refresh_deallocate_exactly_seventeen_bytes_roundtrip() {
+        let sid = uuid::Uuid::new_v4();
+        let r = RelayProtocol::Refresh {
+            session_id: sid,
+        };
+        let w = r.encode();
+        assert_eq!(w.len(), 17);
+        assert!(RelayProtocol::parse(&w).is_ok());
+        let d = RelayProtocol::Deallocate {
+            session_id: sid,
+        };
+        let w2 = d.encode();
+        assert_eq!(w2.len(), 17);
+        assert!(RelayProtocol::parse(&w2).is_ok());
     }
 }

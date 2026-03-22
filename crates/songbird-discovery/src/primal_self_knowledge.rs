@@ -407,7 +407,7 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::*;
     use std::env::VarError;
@@ -584,5 +584,49 @@ mod tests {
         let js = serde_json::to_string(&i).expect("ser");
         let back: PrimalInfo = serde_json::from_str(&js).expect("de");
         assert_eq!(back.name, "n");
+    }
+
+    #[test]
+    fn primal_error_discovery_failed_display() {
+        let e = PrimalError::DiscoveryFailed {
+            reason: "r".into(),
+        };
+        assert!(e.to_string().contains('r'));
+    }
+
+    #[test]
+    fn introspect_capabilities_adds_ai_when_enable_ai_set() {
+        let caps = PrimalSelfKnowledge::introspect_capabilities_with(|k| {
+            if k == "ENABLE_AI" {
+                Ok("1".into())
+            } else {
+                Err(VarError::NotPresent)
+            }
+        });
+        assert!(caps.contains(&"ai".to_string()));
+    }
+
+    #[tokio::test]
+    async fn environment_discover_with_primary_host_port_keys() {
+        let info = EnvironmentDiscovery::discover_with("bar", |k| match k {
+            "BAR_HOST" => Ok("host".into()),
+            "BAR_PORT" => Ok("6501".into()),
+            _ => Err(VarError::NotPresent),
+        })
+        .await
+        .expect("discover");
+        assert_eq!(info.host, "host");
+        assert_eq!(info.port, 6501);
+    }
+
+    #[test]
+    fn primal_identity_empty_capabilities_serializes() {
+        let id = PrimalIdentity {
+            name: "solo".into(),
+            capabilities: vec![],
+        };
+        let js = serde_json::to_string(&id).unwrap();
+        let back: PrimalIdentity = serde_json::from_str(&js).unwrap();
+        assert!(back.capabilities.is_empty());
     }
 }

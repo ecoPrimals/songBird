@@ -529,3 +529,58 @@ mod tests {
         assert!(matches!(AttributeType::from_u16(0xabcd), AttributeType::Unknown(0xabcd)));
     }
 }
+
+/// Hand-crafted edge cases for [`StunMessage::decode`] (fuzz-style, no external harness).
+#[cfg(test)]
+mod fuzz_style_stun_decode_tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::{MAGIC_COOKIE, MessageType, StunMessage};
+
+    #[test]
+    fn decode_random_short_inputs_never_panic() {
+        for len in 0..20usize {
+            let buf: Vec<u8> = (0..len).map(|i| (i * 7 + 13) as u8).collect();
+            let _ = StunMessage::decode(&buf);
+        }
+    }
+
+    #[test]
+    fn decode_truncated_at_nineteen_bytes_errors() {
+        let buf = vec![0u8; 19];
+        assert!(StunMessage::decode(&buf).is_err());
+    }
+
+    #[test]
+    fn decode_header_length_claims_more_than_buffer_still_parses_header_fields() {
+        // 20-byte header: type, length=1000, magic, txn id — but no attribute bytes.
+        let mut buf = vec![0u8; 20];
+        buf[0] = 0x00;
+        buf[1] = 0x01;
+        buf[2] = 0x03;
+        buf[3] = 0xe8;
+        buf[4..8].copy_from_slice(&MAGIC_COOKIE.to_be_bytes());
+        let msg = StunMessage::decode(&buf).expect("header parses");
+        assert_eq!(msg.message_type, MessageType::BindingRequest);
+        assert!(msg.attributes.is_empty());
+    }
+
+    #[test]
+    fn decode_invalid_message_type_errors() {
+        let mut buf = vec![0u8; 20];
+        buf[0] = 0xff;
+        buf[1] = 0xff;
+        buf[2] = 0x00;
+        buf[3] = 0x00;
+        buf[4..8].copy_from_slice(&MAGIC_COOKIE.to_be_bytes());
+        assert!(StunMessage::decode(&buf).is_err());
+    }
+
+    #[test]
+    fn decode_binding_request_roundtrip_max_attribute_padding_stress() {
+        let msg = StunMessage::new_binding_request();
+        let encoded = msg.encode();
+        let decoded = StunMessage::decode(&encoded).expect("roundtrip");
+        assert_eq!(decoded.transaction_id, msg.transaction_id);
+    }
+}

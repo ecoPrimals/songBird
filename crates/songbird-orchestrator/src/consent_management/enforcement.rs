@@ -279,8 +279,8 @@ impl DignityChecker {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use crate::consent_management::UserPreferences;
@@ -642,5 +642,66 @@ mod tests {
     fn dignity_export_keyword() {
         let v = DignityChecker::check_operation("export", None, true);
         assert!(v.iter().any(|m| m.contains("export")));
+    }
+
+    #[tokio::test]
+    async fn enforce_pending_carries_custom_default_timeout() {
+        let cm = Arc::new(ConsentManager::new());
+        let custom = Duration::from_secs(777);
+        let enforcer = ConsentEnforcer::with_config(
+            cm,
+            EnforcementConfig {
+                default_timeout: custom,
+                ..Default::default()
+            },
+        );
+        let task = test_task(UserId::from("alice"), "expensive_task");
+        let result = enforcer.enforce(&task, Some(100.0)).await.expect("enforce");
+        match result {
+            EnforcementResult::Pending {
+                timeout,
+                ..
+            } => assert_eq!(timeout, custom),
+            other => panic!("expected Pending, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dignity_expensive_non_transparent_and_sensitive_yields_multiple_violations() {
+        let v = DignityChecker::check_operation("delete_all", Some(200.0), false);
+        assert!(v.len() >= 2);
+        assert!(v.iter().any(|m| m.contains("transparent")));
+        assert!(v.iter().any(|m| m.contains("delete")));
+    }
+
+    #[test]
+    fn requires_consent_zero_cost_does_not_exceed_threshold() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let task = test_task(UserId::from("u"), "misc");
+        assert!(!enforcer.requires_consent(&task, Some(0.0)));
+    }
+
+    #[test]
+    fn dignity_operation_without_lowercase_sensitive_keyword_is_clean() {
+        let v = DignityChecker::check_operation("DeletionTask", Some(5.0), true);
+        assert!(v.is_empty());
+    }
+
+    #[tokio::test]
+    async fn wait_for_decision_blocked_includes_consent_id_in_reason_path() {
+        let cm = Arc::new(ConsentManager::new());
+        let enforcer = ConsentEnforcer::new(cm.clone());
+        let task = test_task(UserId::from("u"), "op");
+        let cid = cm.request_consent(task.owner.clone(), task.id, "op", Some(100.0)).await;
+        assert!(cm.deny(cid.as_ref(), None).await);
+        let r = enforcer.wait_for_decision(cid.as_ref()).await.expect("wait");
+        assert!(matches!(
+            r,
+            EnforcementResult::Blocked {
+                reason,
+                consent_id: Some(id),
+                ..
+            } if reason.as_ref() == "User denied operation" && id.as_ref() == cid.as_ref()
+        ));
     }
 }

@@ -26,7 +26,6 @@ uuid = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
-# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-types = { path = "../songbird-types" }
 
 # Logging and tracing

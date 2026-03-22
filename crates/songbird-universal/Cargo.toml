@@ -50,7 +50,6 @@ tokio-serde = { version = "0.8.0", features = ["bincode"] }
 
 # Internal dependencies
 songbird-config = { path = "../songbird-config" }
-# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-types = { path = "../songbird-types" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 

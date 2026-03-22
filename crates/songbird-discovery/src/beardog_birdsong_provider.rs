@@ -447,6 +447,8 @@ impl BirdSongEncryption for BearDogBirdSongProvider {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use std::sync::Arc;
 
@@ -724,5 +726,59 @@ mod tests {
         }
 
         println!("✅ Pure Rust JSON-RPC handled 5 concurrent requests successfully!");
+    }
+
+    #[tokio::test]
+    async fn tcp_address_invalid_port_format_errors() {
+        let e = BearDogBirdSongProvider::new("tcp:127.0.0.1:notaport", None)
+            .await
+            .err()
+            .expect("expected error");
+        assert!(e.to_string().contains("port") || e.to_string().contains("Invalid"));
+    }
+
+    #[tokio::test]
+    async fn tcp_address_missing_colon_errors() {
+        let e =
+            BearDogBirdSongProvider::new("tcp:badformat", None).await.err().expect("expected err");
+        assert!(e.to_string().contains("TCP") || e.to_string().contains("format"));
+    }
+
+    #[test]
+    fn encrypt_request_omits_family_id_when_none() {
+        let req = BearDogEncryptRequest {
+            plaintext: vec![1, 2, 3],
+            family_id: None,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(!json.contains("family_id"));
+    }
+
+    #[test]
+    fn encrypt_request_includes_family_id_when_some() {
+        let req = BearDogEncryptRequest {
+            plaintext: vec![1],
+            family_id: Some("fam".into()),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("fam"));
+    }
+
+    #[test]
+    fn decrypt_response_accepts_success_false() {
+        let raw = r#"{"plaintext":"","family_id":"x","success":false}"#;
+        let d: BearDogDecryptResponse = serde_json::from_str(raw).unwrap();
+        assert!(!d.success);
+    }
+
+    #[test]
+    fn provider_name_and_family_accessor() {
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let p = rt
+            .block_on(BearDogBirdSongProvider::new("tcp:127.0.0.1:59998", Some("fam-x".into())))
+            .expect("tcp provider");
+        assert_eq!(p.provider_name(), "BearDog");
+        assert_eq!(p.family_id().as_deref(), Some("fam-x"));
+        assert!(p.is_available());
     }
 }

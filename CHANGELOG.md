@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave60] - 2026-03-22 - Deep Coverage, Zero-Copy, Fuzz & Mock Evolution
+
+### Added - Deep Coverage Expansion (+700 tests, 9,969 total)
+- Orchestrator: Full JSON-RPC handler coverage (compute.route, deployment.create, task.create, consent, protocol, services, registry, federation, health, version, identity, beacon)
+- Orchestrator: Axum route error paths (invalid jsonrpc → INVALID_REQUEST, unknown method → METHOD_NOT_FOUND)
+- Orchestrator: core.rs broadcast address discovery, node identity serde, security client response parsing, capability router flattening
+- Discovery: Federation-aware discovery module wired into lib.rs with full test coverage
+- Discovery: Real service discovery JSON serde, BearDog birdsong TCP/encrypt/decrypt, dark forest beacon serde, primal self-knowledge
+- Network Federation: Multi-federation routing/IPv6/trust, config serde, node info roundtrip, state capability merge, gaming protocol
+- Lineage Relay: Protocol malformed lengths/JSON, server stats/masking, BearDog lineage chains
+- TLS: Crypto/handshake/key_schedule test modules, socket discovery priority tests
+- Fuzz-style tests: TLS record (7), JSON-RPC parsing (7), relay protocol (6), STUN message (5)
+
+### Changed - Federation Mock Evolution → Real State
+- `FederationPeersResponse`/`FederationStatusResponse` typed structs replace inline `serde_json::json!` mocks
+- `IpcServiceHandler::with_federation_state()` wires live `FederationState` for real peer/status queries
+- Orchestrator `http_server.rs` passes federation state to IPC handler
+- Removed debug `comment` fields from federation JSON responses
+
+### Changed - Zero-Copy Evolution
+- HTTP client: Borrow-through redirect loop (no header/body clones per hop)
+- Universal IPC: JSON-RPC `id` moved by value (eliminated `Value::clone` per request)
+- Universal IPC: Mesh endpoint labels → `&'static str` (eliminated 4 String allocations per call)
+- TLS: HKDF buffer reuse (eliminated `Vec<u8>` clone per block iteration)
+- Types: `HashMap::with_capacity` pre-sizing for endpoint maps
+
+### Changed - Large File Refactoring (7 files)
+- `environment.rs` (910) → extracted tests to `environment_tests.rs`
+- `ai.rs` (908) → extracted tests to `ai_tests.rs`
+- `escalation.rs` (867) → extracted tests to `escalation_tests.rs`
+- `service_registry.rs` (860) → extracted tests to `service_registry_tests.rs`
+- `advanced_cache.rs` (861) → extracted tests to `advanced_cache_tests.rs`
+- `federation_aware_discovery.rs` (1097) → extracted tests (730 LOC production)
+- Max file: 977 lines (all under 1000)
+
+### Fixed - Clippy Compliance
+- `bool as usize` → `usize::from(bool)` in environment.rs
+- `repeat().take()` → `repeat_n()` in TLS record layer tests
+- Collapsible `if` statements, `map_or` → `is_none_or`, pass-by-ref, `Ipv4Addr::LOCALHOST`
+- Variable naming disambiguation in IPC federation handlers
+
+### Removed - Stale Examples
+- Deleted `examples/legacy/` (pre-ecoBin v2.0 examples using `reqwest`)
+- Deleted `examples/clients/rust/` (standalone tarpc 0.34 / edition 2021 example with own Cargo.lock)
+
+---
+
 ## [v0.2.1-wave48] - 2026-03-22 - Comprehensive Audit & Nest Atomic Compliance
 
 ### Fixed - Build Restoration

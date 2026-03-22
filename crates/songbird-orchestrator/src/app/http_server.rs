@@ -125,7 +125,10 @@ async fn build_router(
         songbird_universal_ipc::registry::ServiceRegistry::new(),
     ));
     let ipc_handler =
-        Arc::new(songbird_universal_ipc::service::IpcServiceHandler::new(ipc_registry));
+        Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
+            ipc_registry,
+            Arc::clone(&federation_state),
+        ));
 
     let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::with_ipc_handler(
         Arc::clone(&federation_state),

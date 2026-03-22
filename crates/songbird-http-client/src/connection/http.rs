@@ -46,8 +46,8 @@ impl HttpConnection {
         tcp_stream: TcpStream,
         uri: &Uri,
         method: &str,
-        headers: HashMap<String, String>,
-        body: Option<serde_json::Value>,
+        headers: &HashMap<String, String>,
+        body: Option<&serde_json::Value>,
     ) -> Result<HttpResponse> {
         debug!("📡 Making HTTP request (no TLS)");
 
@@ -88,12 +88,12 @@ impl HttpConnection {
 
         // Add caller-provided headers
         for (key, value) in headers {
-            req_builder = req_builder.header(&key, &value);
+            req_builder = req_builder.header(key, value);
         }
 
         // Build body
         let body_bytes = if let Some(b) = body {
-            Bytes::from(serde_json::to_vec(&b)?)
+            Bytes::from(serde_json::to_vec(b)?)
         } else {
             Bytes::new()
         };

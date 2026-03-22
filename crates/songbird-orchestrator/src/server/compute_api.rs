@@ -206,7 +206,7 @@ pub struct JobStatus {
 }
 
 /// Job status types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum JobStatusType {
     /// Job is queued
@@ -221,6 +221,65 @@ pub enum JobStatusType {
     Failed,
     /// Job was cancelled
     Cancelled,
+}
+
+async fn update_job_status(
+    active_jobs: &RwLock<HashMap<Uuid, JobStatus>>,
+    job_id: Uuid,
+    status: JobStatusType,
+    error: Option<String>,
+) {
+    let mut jobs = active_jobs.write().await;
+    if let Some(job) = jobs.get_mut(&job_id) {
+        job.status = status;
+        if status == JobStatusType::Completed || status == JobStatusType::Failed {
+            job.completed_at = Some(chrono::Utc::now());
+        }
+        if let Some(err) = error {
+            job.error = Some(err);
+        }
+    }
+}
+
+async fn discover_http_client(
+    active_jobs: &Arc<RwLock<HashMap<Uuid, JobStatus>>>,
+    job_id: Uuid,
+) -> Option<songbird_http_client::SongbirdHttpClient> {
+    match crate::primal_discovery::discover_crypto_provider().await {
+        Ok(socket) => Some(songbird_http_client::SongbirdHttpClient::new(socket)),
+        Err(e) => {
+            warn!("Failed to discover crypto provider: {e}");
+            update_job_status(
+                active_jobs.as_ref(),
+                job_id,
+                JobStatusType::Failed,
+                Some(format!("Crypto provider discovery failed: {e}")),
+            )
+            .await;
+            None
+        }
+    }
+}
+
+async fn serialize_task(
+    task: &Task,
+    active_jobs: &Arc<RwLock<HashMap<Uuid, JobStatus>>>,
+    job_id: Uuid,
+) -> Option<serde_json::Value> {
+    match serde_json::to_value(task) {
+        Ok(json) => Some(json),
+        Err(e) => {
+            warn!("Failed to serialize task {job_id}: {e}");
+            update_job_status(
+                active_jobs.as_ref(),
+                job_id,
+                JobStatusType::Failed,
+                Some(format!("Task serialization failed: {e}")),
+            )
+            .await;
+            None
+        }
+    }
 }
 
 /// Submit a compute task for intelligent routing
@@ -323,46 +382,55 @@ pub(crate) async fn submit_compute_task(
                 // Execute the command
                 let result = executor.execute(exec_request).await;
 
-                // Update job status based on execution result
-                let mut jobs = active_jobs_clone.write().await;
-                if let Some(status) = jobs.get_mut(&job_id) {
-                    match result {
-                        Ok(response) => {
-                            // Check execution status
-                            match response.status {
-                                ExecutionStatus::Completed => {
-                                    status.status = JobStatusType::Completed;
-                                    info!(
-                                        "Task {} completed successfully (exit code: {:?})",
-                                        job_id, response.exit_code
-                                    );
-                                }
-                                ExecutionStatus::Failed | ExecutionStatus::Timeout => {
-                                    status.status = JobStatusType::Failed;
-                                    warn!(
-                                        "Task {} failed (status: {}, exit code: {:?}): {}",
-                                        job_id,
-                                        response.status,
-                                        response.exit_code,
-                                        response.stderr
-                                    );
-                                }
-                                _ => {
-                                    // Should not happen for synchronous execution
-                                    status.status = JobStatusType::Failed;
-                                    warn!(
-                                        "Task {} in unexpected state: {}",
-                                        job_id, response.status
-                                    );
-                                }
-                            }
+                match result {
+                    Ok(response) => match response.status {
+                        ExecutionStatus::Completed => {
+                            update_job_status(
+                                active_jobs_clone.as_ref(),
+                                job_id,
+                                JobStatusType::Completed,
+                                None,
+                            )
+                            .await;
+                            info!(
+                                "Task {} completed successfully (exit code: {:?})",
+                                job_id, response.exit_code
+                            );
                         }
-                        Err(e) => {
-                            status.status = JobStatusType::Failed;
-                            error!("Task {} execution error: {}", job_id, e);
+                        ExecutionStatus::Failed | ExecutionStatus::Timeout => {
+                            update_job_status(
+                                active_jobs_clone.as_ref(),
+                                job_id,
+                                JobStatusType::Failed,
+                                None,
+                            )
+                            .await;
+                            warn!(
+                                "Task {} failed (status: {}, exit code: {:?}): {}",
+                                job_id, response.status, response.exit_code, response.stderr
+                            );
                         }
+                        _ => {
+                            update_job_status(
+                                active_jobs_clone.as_ref(),
+                                job_id,
+                                JobStatusType::Failed,
+                                None,
+                            )
+                            .await;
+                            warn!("Task {} in unexpected state: {}", job_id, response.status);
+                        }
+                    },
+                    Err(e) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Failed,
+                            None,
+                        )
+                        .await;
+                        error!("Task {} execution error: {}", job_id, e);
                     }
-                    status.completed_at = Some(chrono::Utc::now());
                 }
             });
         }
@@ -384,7 +452,6 @@ pub(crate) async fn submit_compute_task(
             let port_clone = *port;
 
             tokio::spawn(async move {
-                // Update to running
                 {
                     let mut jobs = active_jobs_clone.write().await;
                     if let Some(status) = jobs.get_mut(&job_id) {
@@ -392,73 +459,56 @@ pub(crate) async fn submit_compute_task(
                     }
                 }
 
-                // Send task to registered service (Pure Rust HTTP via Tower Atomic)
-                let crypto_socket = match crate::primal_discovery::discover_crypto_provider().await
-                {
-                    Ok(socket) => socket,
-                    Err(e) => {
-                        warn!(
-                            "Failed to discover crypto provider: {}, task {} may fail",
-                            e, job_id
-                        );
-                        // Update job status to failed
-                        let mut jobs = active_jobs_clone.write().await;
-                        if let Some(status) = jobs.get_mut(&job_id) {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Crypto provider discovery failed: {e}"));
-                        }
-                        return;
-                    }
+                let Some(client) = discover_http_client(&active_jobs_clone, job_id).await else {
+                    return;
                 };
 
-                let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
                 let service_url = format!("http://{endpoint_clone}:{port_clone}/execute");
 
-                let task_json = match serde_json::to_value(&task_clone) {
-                    Ok(json) => json,
-                    Err(e) => {
-                        warn!("Failed to serialize task {}: {}", job_id, e);
-                        let mut jobs = active_jobs_clone.write().await;
-                        if let Some(status) = jobs.get_mut(&job_id) {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Task serialization failed: {e}"));
-                        }
-                        return;
-                    }
+                let Some(task_json) = serialize_task(&task_clone, &active_jobs_clone, job_id).await
+                else {
+                    return;
                 };
 
                 let result = client.post(&service_url, task_json).await;
 
-                // Update job status with result
-                let mut jobs = active_jobs_clone.write().await;
-                if let Some(status) = jobs.get_mut(&job_id) {
-                    match result {
-                        Ok(response) if response.status >= 200 && response.status < 300 => {
-                            status.status = JobStatusType::Completed;
-                            status.completed_at = Some(chrono::Utc::now());
-                            info!("Task {} completed on service {}", job_id, service_name_clone);
-                        }
-                        Ok(response) => {
+                match result {
+                    Ok(response) if response.status >= 200 && response.status < 300 => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Completed,
+                            None,
+                        )
+                        .await;
+                        info!("Task {} completed on service {}", job_id, service_name_clone);
+                    }
+                    Ok(response) => {
+                        let mut jobs = active_jobs_clone.write().await;
+                        if let Some(status) = jobs.get_mut(&job_id) {
                             status.status = JobStatusType::Failed;
                             status.error = Some(format!(
                                 "Service {} returned error: {}",
                                 service_name_clone, response.status
                             ));
-                            warn!(
-                                "Task {} failed on service {}: {}",
-                                job_id, service_name_clone, response.status
-                            );
                         }
-                        Err(e) => {
+                        warn!(
+                            "Task {} failed on service {}: {}",
+                            job_id, service_name_clone, response.status
+                        );
+                    }
+                    Err(e) => {
+                        let mut jobs = active_jobs_clone.write().await;
+                        if let Some(status) = jobs.get_mut(&job_id) {
                             status.status = JobStatusType::Failed;
                             status.error = Some(format!(
                                 "HTTP request to service {service_name_clone} failed: {e}"
                             ));
-                            warn!(
-                                "Task {} HTTP error to service {}: {}",
-                                job_id, service_name_clone, e
-                            );
                         }
+                        warn!(
+                            "Task {} HTTP error to service {}: {}",
+                            job_id, service_name_clone, e
+                        );
                     }
                 }
             });
@@ -475,7 +525,6 @@ pub(crate) async fn submit_compute_task(
             let node_id_clone = node_id.clone();
 
             tokio::spawn(async move {
-                // Update to running
                 {
                     let mut jobs = active_jobs_clone.write().await;
                     if let Some(status) = jobs.get_mut(&job_id) {
@@ -483,77 +532,66 @@ pub(crate) async fn submit_compute_task(
                     }
                 }
 
-                // Forward task via HTTP POST to peer's /task endpoint (Pure Rust HTTP)
-                let crypto_socket = match crate::primal_discovery::discover_crypto_provider().await
-                {
-                    Ok(socket) => socket,
-                    Err(e) => {
-                        warn!("Failed to discover crypto provider for peer forward: {}", e);
-                        let mut jobs = active_jobs_clone.write().await;
-                        if let Some(status) = jobs.get_mut(&job_id) {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Crypto provider discovery failed: {e}"));
-                        }
-                        return;
-                    }
+                let Some(client) = discover_http_client(&active_jobs_clone, job_id).await else {
+                    return;
                 };
 
-                let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
                 let forward_url = format!("{endpoint_clone}/task");
 
-                let task_json = match serde_json::to_value(&task_clone) {
-                    Ok(json) => json,
-                    Err(e) => {
-                        warn!("Failed to serialize task for forward {}: {}", job_id, e);
-                        let mut jobs = active_jobs_clone.write().await;
-                        if let Some(status) = jobs.get_mut(&job_id) {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Task serialization failed: {e}"));
-                        }
-                        return;
-                    }
+                let Some(task_json) = serialize_task(&task_clone, &active_jobs_clone, job_id).await
+                else {
+                    return;
                 };
 
-                // Note: SongbirdHttpClient doesn't need .send() - post() returns the future directly
                 let result = tokio::time::timeout(
                     tokio::time::Duration::from_secs(300),
                     client.post(&forward_url, task_json),
                 )
                 .await;
 
-                // Update job status with result
-                let mut jobs = active_jobs_clone.write().await;
-                if let Some(status) = jobs.get_mut(&job_id) {
-                    match result {
-                        Ok(Ok(response)) if response.status >= 200 && response.status < 300 => {
-                            status.status = JobStatusType::Completed;
-                            status.completed_at = Some(chrono::Utc::now());
-                            info!("Task {} completed on peer {}", job_id, node_id_clone);
-                        }
-                        Ok(Ok(response)) => {
-                            status.status = JobStatusType::Failed;
-                            status.error =
-                                Some(format!("Peer returned error: {}", response.status));
-                            status.completed_at = Some(chrono::Utc::now());
-                            warn!(
-                                "Task {} failed on peer {}: {}",
-                                job_id, node_id_clone, response.status
-                            );
-                        }
-                        Ok(Err(e)) => {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(format!("HTTP request to peer failed: {e}"));
-                            status.completed_at = Some(chrono::Utc::now());
-                            warn!("Task {} HTTP error to peer {}: {}", job_id, node_id_clone, e);
-                        }
-                        Err(_timeout) => {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(format!(
-                                "Forward to peer {node_id_clone} timed out after 300s"
-                            ));
-                            status.completed_at = Some(chrono::Utc::now());
-                            warn!("Task {} forward to peer {} timed out", job_id, node_id_clone);
-                        }
+                match result {
+                    Ok(Ok(response)) if response.status >= 200 && response.status < 300 => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Completed,
+                            None,
+                        )
+                        .await;
+                        info!("Task {} completed on peer {}", job_id, node_id_clone);
+                    }
+                    Ok(Ok(response)) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Failed,
+                            Some(format!("Peer returned error: {}", response.status)),
+                        )
+                        .await;
+                        warn!(
+                            "Task {} failed on peer {}: {}",
+                            job_id, node_id_clone, response.status
+                        );
+                    }
+                    Ok(Err(e)) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Failed,
+                            Some(format!("HTTP request to peer failed: {e}")),
+                        )
+                        .await;
+                        warn!("Task {} HTTP error to peer {}: {}", job_id, node_id_clone, e);
+                    }
+                    Err(_timeout) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Failed,
+                            Some(format!("Forward to peer {node_id_clone} timed out after 300s")),
+                        )
+                        .await;
+                        warn!("Task {} forward to peer {} timed out", job_id, node_id_clone);
                     }
                 }
             });
@@ -575,21 +613,26 @@ pub(crate) async fn submit_compute_task(
                 let result =
                     router_clone.execute_on_external_provider(&endpoint_clone, &task_clone).await;
 
-                // Update job status with result
-                let mut jobs = active_jobs_clone.write().await;
-                if let Some(status) = jobs.get_mut(&job_id) {
-                    match result {
-                        Ok(_data) => {
-                            status.status = JobStatusType::Completed;
-                            status.completed_at = Some(chrono::Utc::now());
-                            info!("Task {} completed on capability provider", job_id);
-                        }
-                        Err(e) => {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(e.to_string());
-                            status.completed_at = Some(chrono::Utc::now());
-                            warn!("Task {} failed on capability provider: {}", job_id, e);
-                        }
+                match result {
+                    Ok(_data) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Completed,
+                            None,
+                        )
+                        .await;
+                        info!("Task {} completed on capability provider", job_id);
+                    }
+                    Err(e) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Failed,
+                            Some(e.to_string()),
+                        )
+                        .await;
+                        warn!("Task {} failed on capability provider: {}", job_id, e);
                     }
                 }
             });
@@ -609,7 +652,6 @@ pub(crate) async fn submit_compute_task(
             let endpoint_clone = execution_endpoint.clone();
 
             tokio::spawn(async move {
-                // Update status to running
                 {
                     let mut jobs = active_jobs_clone.write().await;
                     if let Some(status) = jobs.get_mut(&job_id) {
@@ -620,21 +662,26 @@ pub(crate) async fn submit_compute_task(
                 let result =
                     router_clone.execute_on_external_provider(&endpoint_clone, &task_clone).await;
 
-                // Update job status with result
-                let mut jobs = active_jobs_clone.write().await;
-                if let Some(status) = jobs.get_mut(&job_id) {
-                    match result {
-                        Ok(_data) => {
-                            status.status = JobStatusType::Completed;
-                            status.completed_at = Some(chrono::Utc::now());
-                            info!("Task {} completed successfully", job_id);
-                        }
-                        Err(e) => {
-                            status.status = JobStatusType::Failed;
-                            status.error = Some(e.to_string());
-                            status.completed_at = Some(chrono::Utc::now());
-                            warn!("Task {} failed: {}", job_id, e);
-                        }
+                match result {
+                    Ok(_data) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Completed,
+                            None,
+                        )
+                        .await;
+                        info!("Task {} completed successfully", job_id);
+                    }
+                    Err(e) => {
+                        update_job_status(
+                            active_jobs_clone.as_ref(),
+                            job_id,
+                            JobStatusType::Failed,
+                            Some(e.to_string()),
+                        )
+                        .await;
+                        warn!("Task {} failed: {}", job_id, e);
                     }
                 }
             });

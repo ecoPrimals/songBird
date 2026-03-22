@@ -553,8 +553,9 @@ impl AnonymousDiscoveryBroadcaster {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -668,5 +669,72 @@ mod tests {
         assert_eq!(back.version, "3.0");
         assert_eq!(back.node_id.as_deref(), Some("nid"));
         assert!(back.validate().is_ok());
+    }
+
+    #[test]
+    fn v3_defaults_port_when_address_has_no_port() {
+        let endpoints = vec![TransportEndpointMessage {
+            interface_type: "ethernet".into(),
+            address: "192.168.1.1".into(),
+            protocols: vec!["https".into()],
+            preference: 1,
+        }];
+        let b = AnonymousDiscoveryBroadcaster::new_v3(
+            "id".into(),
+            "name".into(),
+            endpoints,
+            vec![],
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            10,
+        );
+        assert_eq!(b.port, 8080);
+    }
+
+    #[test]
+    fn v3_uses_primary_protocols_for_fallback() {
+        let endpoints = vec![TransportEndpointMessage {
+            interface_type: "wifi".into(),
+            address: "10.0.0.1:9443".into(),
+            protocols: vec!["btsp".into(), "https".into()],
+            preference: 2,
+        }];
+        let b = AnonymousDiscoveryBroadcaster::new_v3(
+            "id".into(),
+            "n".into(),
+            endpoints,
+            vec!["cap".into()],
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            5,
+        );
+        assert!(b.protocols.contains(&"btsp".into()));
+    }
+
+    #[test]
+    fn with_known_peers_preserves_order() {
+        let a: SocketAddr = "192.168.0.1:1".parse().unwrap();
+        let b: SocketAddr = "192.168.0.2:2".parse().unwrap();
+        let br = AnonymousDiscoveryBroadcaster::new(
+            vec![],
+            vec!["https".into()],
+            443,
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            1,
+        )
+        .with_known_peers(vec![a, b]);
+        assert_eq!(br.known_peers, vec![a, b]);
+    }
+
+    #[test]
+    fn v2_constructor_sets_version_and_interval() {
+        let br = AnonymousDiscoveryBroadcaster::new(
+            vec!["a".into()],
+            vec!["p".into()],
+            9090,
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            42,
+        );
+        assert_eq!(br.version, "2.1");
+        assert_eq!(br.interval_secs, 42);
+        assert_eq!(br.port, 9090);
     }
 }

@@ -3,8 +3,21 @@
 
 //! Tests for configuration types module
 
+#![allow(clippy::unwrap_used, reason = "test assertions")]
+
 use super::*;
+use serde::Serialize;
 use std::time::Duration;
+
+fn assert_json_stable_roundtrip<T>(v: &T)
+where
+    T: Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+{
+    let json = serde_json::to_string(v).expect("serialize");
+    let back: T = serde_json::from_str(&json).expect("deserialize");
+    let json2 = serde_json::to_string(&back).expect("re-serialize");
+    assert_eq!(json, json2, "roundtrip changed JSON representation");
+}
 
 #[test]
 fn test_security_config_creation() {
@@ -190,4 +203,71 @@ fn test_feature_flags_clone() {
     };
     let cloned = flags.clone();
     assert_eq!(flags.experimental_features, cloned.experimental_features);
+}
+
+#[test]
+fn test_config_security_config_serialization_roundtrip() {
+    let c = SecurityConfig {
+        enabled: true,
+        level: SecurityLevel::Maximum,
+        authentication_required: false,
+        tls_enabled: true,
+        certificate_path: Some("/certs/x.pem".to_string()),
+    };
+    assert_json_stable_roundtrip(&c);
+    let dbg = format!("{c:?}");
+    assert!(dbg.contains("SecurityConfig"));
+}
+
+#[test]
+fn test_config_load_balancing_strategy_serialization_roundtrip() {
+    for s in [
+        LoadBalancingStrategy::RoundRobin,
+        LoadBalancingStrategy::LeastConnections,
+        LoadBalancingStrategy::Random,
+        LoadBalancingStrategy::WeightedRoundRobin,
+    ] {
+        assert_json_stable_roundtrip(&s);
+    }
+}
+
+#[test]
+fn test_config_load_balancing_config_serialization_roundtrip() {
+    let c = LoadBalancingConfig {
+        strategy: LoadBalancingStrategy::WeightedRoundRobin,
+        health_check_enabled: false,
+        connection_timeout_ms: 42,
+        max_retries: 7,
+    };
+    assert_json_stable_roundtrip(&c);
+}
+
+#[test]
+fn test_config_feature_flags_serialization_roundtrip() {
+    let f = FeatureFlags {
+        experimental_features: false,
+        verbose_logging: true,
+        metrics_enabled: false,
+        tracing_enabled: true,
+        auto_discovery: true,
+    };
+    assert_json_stable_roundtrip(&f);
+}
+
+#[test]
+fn test_config_retry_config_serialization_roundtrip() {
+    let c = RetryConfig::default();
+    assert_json_stable_roundtrip(&c);
+}
+
+#[test]
+fn test_config_circuit_breaker_config_serialization_roundtrip() {
+    let c = CircuitBreakerConfig::default();
+    assert_json_stable_roundtrip(&c);
+}
+
+#[test]
+fn test_config_health_check_config_serialization_roundtrip() {
+    let c = HealthCheckConfig::default();
+    assert_json_stable_roundtrip(&c);
 }

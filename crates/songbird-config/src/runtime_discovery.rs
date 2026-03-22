@@ -539,9 +539,11 @@ pub async fn discover_security() -> SongbirdResult<DiscoveredService> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 #[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use songbird_process_env;
 
     #[test]
     fn test_discovery_method_display() {
@@ -614,5 +616,86 @@ mod tests {
         let cached_service = cached.expect("cached");
         assert_eq!(cached_service.capability, "test");
         assert_eq!(cached_service.endpoint, "http://test.example.com:8080");
+    }
+
+    #[test]
+    fn engine_default_matches_new() {
+        let _ = RuntimeDiscoveryEngine::default();
+        let _ = RuntimeDiscoveryEngine::new();
+    }
+
+    #[test]
+    fn with_capabilities_constructs_engine() {
+        let _e = RuntimeDiscoveryEngine::with_capabilities(vec!["a".into(), "b".into()]);
+    }
+
+    #[serial_test::serial]
+    #[tokio::test]
+    async fn discover_by_capability_uses_environment_variable() {
+        let cap = "sbserialrtcap";
+        let var = format!("{}_ENDPOINT", cap.to_uppercase());
+        songbird_process_env::set_var(&var, "http://rt-env:8080");
+        let engine = RuntimeDiscoveryEngine::new();
+        let s = engine.discover_by_capability(cap).await.expect("from env");
+        assert_eq!(s.endpoint, "http://rt-env:8080");
+        assert_eq!(s.discovered_via, DiscoveryMethod::Environment);
+        songbird_process_env::remove_var(&var);
+    }
+
+    #[serial_test::serial]
+    #[tokio::test]
+    async fn discover_by_capability_returns_cached_before_env() {
+        let cap = "sbcachedcap";
+        let var = format!("{}_ENDPOINT", cap.to_uppercase());
+        songbird_process_env::set_var(&var, "http://should-not-be-used");
+        let engine = RuntimeDiscoveryEngine::new();
+        let fresh = DiscoveredService {
+            capability: cap.to_string(),
+            endpoint: "http://cached-first".to_string(),
+            discovered_via: DiscoveryMethod::Environment,
+            health_score: 1.0,
+            last_seen: std::time::SystemTime::now(),
+        };
+        engine.update_cache(cap, &fresh).await;
+        let s = engine.discover_by_capability(cap).await.expect("cache");
+        assert_eq!(s.endpoint, "http://cached-first");
+        songbird_process_env::remove_var(&var);
+    }
+
+    #[tokio::test]
+    async fn discover_compute_errors_without_configuration() {
+        let err = discover_compute().await.expect_err("no compute");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn discover_ai_errors_without_configuration() {
+        let err = discover_ai().await.expect_err("no ai");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn discover_storage_errors_without_configuration() {
+        let err = discover_storage().await.expect_err("no storage");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn discover_security_errors_without_configuration() {
+        let err = discover_security().await.expect_err("no security");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn discovered_service_clone_and_debug() {
+        let s = DiscoveredService {
+            capability: "c".into(),
+            endpoint: "e".into(),
+            discovered_via: DiscoveryMethod::Registry,
+            health_score: 0.5,
+            last_seen: std::time::SystemTime::UNIX_EPOCH,
+        };
+        let _ = format!("{:?}", &s);
+        assert_eq!(s.health_score, 0.5);
     }
 }

@@ -536,4 +536,13 @@ mod tests {
         let r = router.route("store:foo").await.expect("route");
         assert_eq!(r.capability.id, "store:foo");
     }
+
+    #[tokio::test]
+    async fn list_capabilities_flattens_all_providers() {
+        let router = CapabilityRouter::new();
+        router.register_provider(create_test_provider("a", vec!["c:one"])).await.expect("register");
+        router.register_provider(create_test_provider("b", vec!["c:two"])).await.expect("register");
+        let caps = router.list_capabilities().await;
+        assert_eq!(caps.len(), 2);
+    }
 }

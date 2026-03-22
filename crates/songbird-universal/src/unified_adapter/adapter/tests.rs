@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::unwrap_used, reason = "test assertions")]
+#![expect(clippy::unwrap_used, reason = "test assertions")]
 #![allow(clippy::expect_used, reason = "test assertions")]
 
 use super::*;
@@ -533,4 +533,44 @@ async fn test_concurrent_write_operations() {
 
     let stats = adapter.get_registry_stats().await;
     assert_eq!(stats.total_services, 2);
+}
+
+/// `IpcHttpClient` uses Songbird IPC, not raw TCP HTTP—discovery to a closed TCP port fails;
+/// services seeded only in the local registry are still merged into the discovery result.
+#[tokio::test]
+async fn test_unified_adapter_discover_services_merges_registry_on_discovery_transport_failure()
+-> SongbirdResult<()> {
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: vec!["http://127.0.0.1:1/".to_string()],
+        ..UnifiedAdapterConfig::default()
+    };
+    let adapter = UnifiedUniversalAdapter::with_config(config);
+    {
+        let mut registry = adapter.capability_registry.write().await;
+        registry.service_info.insert(
+            "registry-only".to_string(),
+            ServiceInfo {
+                name: "registry-only".to_string(),
+                primal_type: PrimalType::new("compute"),
+                endpoint: "http://127.0.0.1:9".to_string(),
+                capabilities: vec![create_test_discovered_capability(
+                    "compute",
+                    "http://127.0.0.1:9",
+                    "registry-only",
+                )],
+                health: HealthStatus::Healthy,
+                metadata: HashMap::new(),
+            },
+        );
+    }
+
+    let services = adapter
+        .discover_services()
+        .await
+        .map_err(|e| SongbirdError::configuration(format!("discover_services: {e}")))?;
+    assert!(
+        services.iter().any(|s| s.name == "registry-only"),
+        "expected seeded registry merge: {services:?}"
+    );
+    Ok(())
 }

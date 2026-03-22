@@ -38,7 +38,6 @@ sysinfo = "0.30"
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust, ecoBin compliant!
 
 # Internal dependencies
-# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-config = { path = "../songbird-config" }

@@ -645,6 +645,8 @@ impl RelayAuthority for MockRelayAuthority {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -714,5 +716,33 @@ mod tests {
             .await
             .unwrap();
         assert!(!auth.authorized);
+    }
+
+    #[test]
+    fn beardog_birdsong_provider_constructed_without_panicking() {
+        let _p = BearDogBirdSongProvider::new("/tmp/beardog-unit.sock", Some("fam".into()));
+    }
+
+    #[test]
+    fn beardog_relay_authority_with_explicit_path_constructed() {
+        let _a = BearDogRelayAuthority::with_socket_path("/tmp/relay-auth.sock");
+    }
+
+    #[tokio::test]
+    async fn mock_lineage_is_ancestor_chain() {
+        let p = MockLineageProvider::new();
+        p.add_lineage("c", "b").await;
+        p.add_lineage("b", "a").await;
+        assert!(p.is_ancestor("c", "a").await);
+    }
+
+    #[tokio::test]
+    async fn mock_birdsong_rejects_unknown_prefix() {
+        let lp = Arc::new(MockLineageProvider::new());
+        lp.add_lineage("child", "parent").await;
+        let crypto = MockBirdSongCrypto::new(lp, "parent".into());
+        let dec =
+            crypto.decrypt_birdsong(b"not-lineage-prefix", &NodeId::from("child")).await.unwrap();
+        assert!(dec.is_none());
     }
 }

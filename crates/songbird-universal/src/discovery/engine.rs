@@ -118,9 +118,17 @@ impl UniversalPrimalDiscovery {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used, reason = "test assertions")]
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::discovery::config::DiscoveryMechanisms;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_discovery_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(())).lock().expect("env discovery lock")
+    }
 
     #[tokio::test]
     async fn test_discovery_engine_creation() {
@@ -158,5 +166,35 @@ mod tests {
         let engine = UniversalPrimalDiscovery::new(DiscoveryConfig::default());
         let s = format!("{engine:?}");
         assert!(s.contains("UniversalPrimalDiscovery"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_all_primals_network_branch_completes() {
+        let config = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: false,
+                enable_network_scanning: true,
+                enable_container_discovery: false,
+            },
+            timeout: tokio::time::Duration::from_secs(5),
+        };
+        let mut engine = UniversalPrimalDiscovery::new(config);
+        let result = engine.discover_all_primals().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_discover_all_primals_container_branch_completes() {
+        let config = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: false,
+                enable_network_scanning: false,
+                enable_container_discovery: true,
+            },
+            timeout: tokio::time::Duration::from_secs(5),
+        };
+        let mut engine = UniversalPrimalDiscovery::new(config);
+        let result = engine.discover_all_primals().await;
+        assert!(result.is_ok());
     }
 }

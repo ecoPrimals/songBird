@@ -98,7 +98,6 @@ path = "src/main.rs"
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-execution-agent = { path = "../songbird-execution-agent" }  # For CommandExecutor integration
-# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-network-federation = { path = "../songbird-network-federation" }  # NEW: Consolidated
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-observability = { path = "../songbird-observability" }
@@ -107,8 +106,6 @@ songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-universal = { path = "../songbird-universal" }
 songbird-universal-ipc = { path = "../songbird-universal-ipc" }  # NEW (Jan 19, 2026): Universal IPC broker service
 songbird-igd = { path = "../songbird-igd" }  # IGD router auto-configure (Feb 8, 2026)
-# songbird-primal-sdk = { path = "../songbird-primal-sdk" }  # TEMPORARILY DISABLED: Syntax errors need fixing
-# songbird-cli = { path = "../songbird-cli" }  # TEMPORARILY DISABLED: Syntax errors need fixing
 
 # Runtime
 tokio = { workspace = true }
@@ -123,12 +120,8 @@ anyhow = "1.0"
 thiserror = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "v5", "v7"] }
 
-# Task lifecycle dependencies
-# sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "migrate"] }  # ❌ REMOVED Jan 27, 2026: Migrated to sled (100% Pure Rust!)
-sled = "0.34"  # ✅ 100% Pure Rust embedded database (TRUE ecoBin!)
-# bincode = "1.3"  # Efficient binary serialization for sled - DUPLICATE (using workspace version at line 106)
-# zstd = "0.13"  # MIGRATED to flate2 (pure Rust) - Jan 17, 2026
-flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }  # Pure Rust compression
+sled = "0.34"
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
 sha2 = "0.10"
 base64 = "0.22"
 
@@ -137,14 +130,8 @@ parking_lot = "0.12"
 num_cpus = "1.16"
 fastrand = "2.0"
 rand = { workspace = true }
-# ✅ TOWER ATOMIC CRITICAL PATHS COMPLETE (Jan 21, 2026): IPC HTTP handler is 100% Pure Rust
-# Production HTTP delegation (http.request via IPC) uses songbird-http-client with BearDog crypto ✅
-# ✅ ELIMINATED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
-# reqwest = { version = "0.11", features = ["json"], default-features = false }  # REMOVED
-songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP/HTTPS with BearDog crypto (PRODUCTION)
+songbird-http-client = { path = "../songbird-http-client" }
 socket2 = { workspace = true }
-# if-addrs = { workspace = true }  # ❌ REMOVED (Jan 31, 2026): Android-incompatible (getifaddrs/freeifaddrs unavailable)
-# EVOLVED TO: netdev (line 110) - Platform-agnostic network interface discovery (Linux, Android, Windows, macOS, iOS)
 serde_yaml = "0.9.34"
 sysinfo = "0.30"
 hostname = "0.4"
@@ -156,7 +143,6 @@ tokio-stream = "0.1"
 # HTTP server for web dashboard
 axum = { version = "0.7", features = ["multipart", "ws"] }
 # Modern pure Rust TLS stack (no axum-server needed!)
-# tokio-rustls = "0.26"  # ❌ REMOVED Jan 19, 2026: Replaced with songbird-tls (Pure Rust TLS via BearDog crypto)
 hyper = { version = "1.0", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 songbird-tls = { path = "../songbird-tls" }  # ✅ Pure Rust TLS implementation (future)
@@ -166,21 +152,14 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Access control and authentication
-# jsonwebtoken = "9.3"  # ❌ REMOVED: Uses ring (C code). Replaced with pure_rust_jwt (HMAC-SHA256) - Jan 19, 2026
 
 # ⚠️ TRUE PRIMAL EXCEPTION (Feb 6, 2026): Minimal JWT Auth Crypto
 # Songbird delegates 100% crypto to BearDog EXCEPT for local JWT auth (HMAC-SHA256)
-# Temporary exception for API authentication (sha2 already present above, adding hmac):
-hmac = "0.12"       # HMAC for JWT signatures (Pure Rust, audited) - ONLY remaining crypto!
-# 
-# ✅ REMOVED 5 UNUSED CRYPTO DEPS: aes-gcm, ed25519-dalek, x25519-dalek, argon2, chacha20poly1305
-# Phase 2 handoff: delegate JWT HMAC to BearDog (`hmac_sha256`) when orchestrator IPC is ready
-# See: CRYPTO_PRIMAL_OVERSTEP_CLEANUP_FEB_06_2026.md for cleanup details
+hmac = "0.12"
 
-# tarpc for high-performance native RPC (Phase 3)
+
 tarpc = { workspace = true, features = ["full"] }
 bincode = { workspace = true }
-# jsonrpsee = { version = "0.26.0", features = ["server", "client"] } # REMOVED: Phase 4C (v3.34.0) - Migrated to Pure Rust types
 tokio-util = { version = "0.7.17", features = ["codec"] }
 tokio-serde = { version = "0.8.0", features = ["bincode"] }
 netdev = "0.40.0"
@@ -188,7 +167,6 @@ netdev = "0.40.0"
 [dev-dependencies]
 songbird-process-env.workspace = true
 songbird-test-utils = { path = "../songbird-test-utils" }
-# serial_test = "3.0"  # ✅ REMOVED Jan 21, 2026: All #[serial] eliminated (20 total across 2 files)
 tokio-tungstenite = "0.24"
 assert_cmd = "2.0"  # UniBin CLI testing
 predicates = "3.0"  # UniBin assertion helpers

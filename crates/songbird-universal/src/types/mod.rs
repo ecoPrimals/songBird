@@ -76,3 +76,9 @@ pub use config::{
 //     ConfigError, DiscoveryError, EventError, LoadBalancingError, MetricsError, ProtocolError,
 //     RegistryError, SecurityError, ServiceError,
 // };
+
+#[cfg(test)]
+mod config_tests;
+
+#[cfg(test)]
+mod service_tests;

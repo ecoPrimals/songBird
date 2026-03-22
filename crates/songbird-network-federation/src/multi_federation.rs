@@ -478,6 +478,8 @@ impl RoutingMatcher {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::time::SystemTime;
@@ -590,5 +592,131 @@ mod tests {
         let routes = router.route(&home_peer).await;
         assert_eq!(routes.len(), 1);
         assert_eq!(routes[0], family_id);
+    }
+
+    fn sample_peer(ip: [u8; 4]) -> DiscoveredPeer {
+        DiscoveredPeer {
+            node_id: None,
+            node_name: None,
+            session_id: "s".into(),
+            endpoints: None,
+            capabilities: vec!["academic".into()],
+            protocols: vec!["https".into()],
+            port: 8080,
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::from(ip)), 2300),
+            last_seen: SystemTime::now(),
+            version: "2.1".into(),
+            tags: None,
+            timestamp: None,
+            identity_attestations: Some(vec![]),
+        }
+    }
+
+    #[test]
+    fn routing_matcher_all_matches_any_peer() {
+        let m = RoutingMatcher::All;
+        assert!(m.matches(&sample_peer([10, 0, 0, 1])));
+    }
+
+    #[test]
+    fn routing_matcher_has_capability_requires_tag() {
+        let m = RoutingMatcher::HasCapability("academic".into());
+        assert!(m.matches(&sample_peer([1, 1, 1, 1])));
+        let mut p = sample_peer([1, 1, 1, 1]);
+        p.capabilities = vec![];
+        assert!(!m.matches(&p));
+    }
+
+    #[test]
+    fn ip_network_ipv6_contains() {
+        let net = IpNetwork {
+            address: IpAddr::V6("2001:db8::".parse().unwrap()),
+            prefix_len: 32,
+        };
+        assert!(net.contains("2001:db8::1".parse().unwrap()));
+        assert!(!net.contains(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
+    }
+
+    #[tokio::test]
+    async fn multi_federation_add_remove_and_list() {
+        let st = MultiFederationState::new(uuid::Uuid::new_v4());
+        let ctx = FederationContext::new("fed-a".into());
+        let id = ctx.federation_id.clone();
+        st.add_federation(ctx).await;
+        assert!(st.get_federation(&id).await.is_some());
+        let all = st.get_all_federations().await;
+        assert_eq!(all.len(), 1);
+        assert!(st.remove_federation(&id).await.is_some());
+        assert!(st.get_federation(&id).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn total_nodes_sums_across_federations() {
+        let st = MultiFederationState::new(uuid::Uuid::new_v4());
+        let a = FederationContext::new("a".into());
+        let b = FederationContext::new("b".into());
+        let id_a = a.federation_id.clone();
+        let id_b = b.federation_id.clone();
+        a.nodes.write().await.insert(
+            "n1".into(),
+            NodeRegistration {
+                node_id: "n1".into(),
+                node_name: "n1".into(),
+                node_address: "x".into(),
+                endpoints: None,
+                cpu_cores: 0,
+                memory_gb: 0,
+                gpu_model: None,
+                storage_gb: None,
+                capabilities: vec![],
+                status: crate::state::NodeStatus::Active,
+                joined_at: chrono::Utc::now(),
+                last_heartbeat: chrono::Utc::now(),
+            },
+        );
+        b.nodes.write().await.insert(
+            "n2".into(),
+            NodeRegistration {
+                node_id: "n2".into(),
+                node_name: "n2".into(),
+                node_address: "y".into(),
+                endpoints: None,
+                cpu_cores: 0,
+                memory_gb: 0,
+                gpu_model: None,
+                storage_gb: None,
+                capabilities: vec![],
+                status: crate::state::NodeStatus::Active,
+                joined_at: chrono::Utc::now(),
+                last_heartbeat: chrono::Utc::now(),
+            },
+        );
+        st.add_federation(a).await;
+        st.add_federation(b).await;
+        assert_eq!(st.total_nodes().await, 2);
+        st.remove_federation(&id_a).await;
+        st.remove_federation(&id_b).await;
+    }
+
+    #[test]
+    fn auto_join_rejects_forbidden_capability() {
+        let policy = AutoJoinPolicy {
+            enabled: true,
+            required_capabilities: vec![],
+            forbidden_capabilities: vec!["bad".into()],
+            max_nodes: None,
+            ip_allowlist: None,
+            ip_denylist: vec![],
+            require_approval: false,
+        };
+        let mut p = sample_peer([8, 8, 8, 8]);
+        p.capabilities = vec!["bad".into()];
+        assert!(!policy.should_auto_join(&p, 0));
+    }
+
+    #[test]
+    fn trust_policy_default_allows_anonymous() {
+        let t = TrustPolicy::default();
+        assert!(t.allow_anonymous);
     }
 }

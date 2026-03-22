@@ -553,4 +553,61 @@ mod tests {
         assert!(!id.has_lineage());
         assert!(id.get_lineage().is_none());
     }
+
+    #[test]
+    fn node_identity_serde_roundtrip() {
+        let id = NodeIdentity {
+            node_id: Uuid::nil(),
+            node_name: "roundtrip".to_string(),
+            endpoints: vec![TransportEndpoint {
+                interface_type: "ethernet".to_string(),
+                address: "192.168.1.2:8443".parse().unwrap(),
+                protocols: vec!["https".to_string()],
+                preference: 100,
+            }],
+            genetic_lineage: None,
+            lineage_proof: None,
+        };
+        let json = serde_json::to_string(&id).expect("serialize");
+        let back: NodeIdentity = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.node_id, id.node_id);
+        assert_eq!(back.node_name, id.node_name);
+        assert_eq!(back.endpoints.len(), 1);
+    }
+
+    #[test]
+    fn new_or_load_uses_custom_data_dir_and_is_stable() {
+        use std::sync::{Mutex, OnceLock};
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        let _guard = LOCK.get_or_init(|| Mutex::new(())).lock().expect("lock");
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let prev_data = std::env::var("SONGBIRD_DATA_DIR").ok();
+        let prev_node = std::env::var("SONGBIRD_NODE_ID").ok();
+
+        songbird_process_env::set_var(
+            "SONGBIRD_DATA_DIR",
+            dir.path().to_str().expect("utf8 temp path"),
+        );
+        songbird_process_env::remove_var("SONGBIRD_NODE_ID");
+
+        let path = dir.path().join("songbird").join("node_identity.json");
+        let _ = std::fs::remove_file(&path);
+
+        let first = NodeIdentity::new_or_load(Some("persisted-name".into())).expect("create");
+        let second = NodeIdentity::new_or_load(Some("ignored-on-load".into())).expect("load");
+
+        assert_eq!(first.node_id, second.node_id);
+        assert_eq!(first.node_name, "persisted-name");
+        assert_eq!(second.node_name, "persisted-name");
+
+        match prev_data {
+            Some(ref v) => songbird_process_env::set_var("SONGBIRD_DATA_DIR", v),
+            None => songbird_process_env::remove_var("SONGBIRD_DATA_DIR"),
+        }
+        match prev_node {
+            Some(ref v) => songbird_process_env::set_var("SONGBIRD_NODE_ID", v),
+            None => songbird_process_env::remove_var("SONGBIRD_NODE_ID"),
+        }
+    }
 }

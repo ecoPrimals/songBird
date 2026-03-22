@@ -28,6 +28,9 @@ mod tests_birdsong_integration; // BirdSong listener/broadcaster E2E tests
 #[cfg(test)]
 mod tests_discovery_bridge; // Discovery→Federation bridge unit & E2E tests (v3.10.1)
 
+#[cfg(test)]
+mod core_tests;
+
 // Re-exports for backwards compatibility
 pub use core::SongbirdOrchestrator;
 pub use health::{HealthCheckReport, OrchestratorStatus};

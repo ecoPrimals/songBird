@@ -213,6 +213,9 @@ pub mod discovery_packet;
 /// Runtime discovery statistics, snapshots, and network status.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod discovery_stats;
+/// Federation-aware discovery routing, sovereignty assessment, and network-effect hints.
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
+pub mod federation_aware_discovery;
 /// Lineage-aware mDNS service discovery backend.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod lineage_discovery;
@@ -255,9 +258,6 @@ pub use discovery_stats::{
 pub use lineage_discovery::LineageServiceDiscovery; // NEW
 /// Core discovery traits, service metadata, and configuration.
 pub use traits::{DiscoveryConfig, ServiceDiscovery, ServiceInfo, ServiceStatus}; // NEW (Jan 5, 2026)
-
-// Note: federation_aware_discovery and migration modules deferred to Phase 2
-// These are optional P2 features for advanced federation capabilities
 
 // Export consolidated traits
 /// Provider hook for feature-flag driven discovery behavior.

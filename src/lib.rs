@@ -128,12 +128,17 @@ pub enum RendezvousRunError {
     NonZeroExit(i32),
 }
 
+/// Resolve the path to `songbird-rendezvous` in the same directory as `current_exe`, if it exists.
+#[must_use]
+pub(crate) fn rendezvous_binary_path_next_to(
+    current_exe: &std::path::Path,
+) -> Option<std::path::PathBuf> {
+    current_exe.parent().map(|p| p.join("songbird-rendezvous")).filter(|p| p.exists())
+}
+
 /// Resolve the path to `songbird-rendezvous` adjacent to the current executable, if it exists.
 pub fn rendezvous_binary_path() -> Option<std::path::PathBuf> {
-    std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.join("songbird-rendezvous")))
-        .filter(|p| p.exists())
+    std::env::current_exe().ok().and_then(|exe| rendezvous_binary_path_next_to(&exe))
 }
 
 /// Run rendezvous without exiting the process; callers map errors to [`std::process::exit`].
@@ -160,13 +165,18 @@ pub fn try_run_rendezvous(args: Vec<String>) -> Result<(), RendezvousRunError> {
 ///
 /// Returns I/O errors from stdin/stdout.
 pub fn run_interactive_cli() -> Result<()> {
+    let stdin = io::stdin();
+    run_interactive_cli_reader(&mut stdin.lock())
+}
+
+/// Same as [`run_interactive_cli`], but reads commands from `reader` (used by tests).
+pub(crate) fn run_interactive_cli_reader<R: BufRead>(reader: &mut R) -> Result<()> {
     println!("Songbird interactive CLI — commands: help, exit, quit");
     println!("Operational modes: server, doctor, config, compute-bridge, deploy, rendezvous");
     println!("Try: songbird server --help | songbird doctor --help | songbird config --help\n");
 
-    let stdin = io::stdin();
     let mut stdout = io::stdout();
-    for line in stdin.lock().lines() {
+    for line in reader.lines() {
         let line = line?;
         match line.trim() {
             "" => {}
@@ -213,5 +223,131 @@ pub fn run_rendezvous(args: Vec<String>) -> Result<()> {
         Err(RendezvousRunError::NonZeroExit(code)) => {
             std::process::exit(code);
         }
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use std::io::{BufReader, Cursor};
+
+    #[test]
+    fn try_parse_delegated_server() {
+        let cli = try_parse_delegated::<Cli>("songbird", vec!["server".into()]).unwrap();
+        assert!(matches!(cli.command, Commands::Server { .. }));
+    }
+
+    #[test]
+    fn try_parse_delegated_doctor() {
+        let cli = try_parse_delegated::<Cli>("songbird", vec!["doctor".into()]).unwrap();
+        assert!(matches!(cli.command, Commands::Doctor { .. }));
+    }
+
+    #[test]
+    fn try_parse_delegated_config_show() {
+        let cli =
+            try_parse_delegated::<Cli>("songbird", vec!["config".into(), "show".into()]).unwrap();
+        assert!(matches!(cli.command, Commands::Config { .. }));
+    }
+
+    #[test]
+    fn try_parse_delegated_config_validate() {
+        let cli = try_parse_delegated::<Cli>("songbird", vec!["config".into(), "validate".into()])
+            .unwrap();
+        assert!(matches!(cli.command, Commands::Config { .. }));
+    }
+
+    #[test]
+    fn try_parse_delegated_cli_subcommand() {
+        let cli = try_parse_delegated::<Cli>("songbird", vec!["cli".into()]).unwrap();
+        assert!(matches!(cli.command, Commands::Cli { args } if args.is_empty()));
+    }
+
+    #[test]
+    fn try_parse_delegated_compute_bridge() {
+        let cli = try_parse_delegated::<Cli>("songbird", vec!["compute-bridge".into()]).unwrap();
+        assert!(matches!(cli.command, Commands::ComputeBridge { args } if args.is_empty()));
+    }
+
+    #[test]
+    fn try_parse_delegated_deploy_list() {
+        let cli =
+            try_parse_delegated::<Cli>("songbird", vec!["deploy".into(), "list".into()]).unwrap();
+        assert!(matches!(cli.command, Commands::Deploy { .. }));
+    }
+
+    #[test]
+    fn try_parse_delegated_rendezvous() {
+        let cli = try_parse_delegated::<Cli>("songbird", vec!["rendezvous".into()]).unwrap();
+        assert!(matches!(cli.command, Commands::Rendezvous { args } if args.is_empty()));
+    }
+
+    #[test]
+    fn try_parse_delegated_invalid_server_port() {
+        let err = try_parse_delegated::<Cli>(
+            "songbird",
+            vec!["server".into(), "--port".into(), "not-a-u16".into()],
+        )
+        .unwrap_err();
+        assert!(err.kind() == clap::error::ErrorKind::ValueValidation);
+    }
+
+    #[test]
+    fn try_parse_delegated_unknown_flag() {
+        let err =
+            try_parse_delegated::<Cli>("songbird", vec!["server".into(), "--not-a-flag".into()])
+                .unwrap_err();
+        assert!(err.kind() == clap::error::ErrorKind::UnknownArgument);
+    }
+
+    #[test]
+    fn rendezvous_binary_path_next_to_none_when_binary_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake_exe = dir.path().join("songbird");
+        std::fs::write(&fake_exe, b"x").unwrap();
+        assert!(rendezvous_binary_path_next_to(fake_exe.as_path()).is_none());
+    }
+
+    #[test]
+    fn rendezvous_binary_path_next_to_some_when_binary_present() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake_exe = dir.path().join("songbird");
+        std::fs::write(&fake_exe, b"x").unwrap();
+        let rend = dir.path().join("songbird-rendezvous");
+        std::fs::write(&rend, b"y").unwrap();
+        assert_eq!(rendezvous_binary_path_next_to(fake_exe.as_path()), Some(rend));
+    }
+
+    #[test]
+    fn try_run_rendezvous_binary_not_found() {
+        let err = try_run_rendezvous(vec![]).unwrap_err();
+        assert!(matches!(err, RendezvousRunError::BinaryNotFound));
+    }
+
+    #[test]
+    fn run_interactive_cli_reader_help_and_exit() {
+        let input = b"help\nexit\n";
+        let mut reader = BufReader::new(Cursor::new(input));
+        run_interactive_cli_reader(&mut reader).unwrap();
+    }
+
+    #[test]
+    fn run_interactive_cli_reader_unknown_then_exit() {
+        let input = b"foo\nexit\n";
+        let mut reader = BufReader::new(Cursor::new(input));
+        run_interactive_cli_reader(&mut reader).unwrap();
+    }
+
+    #[test]
+    fn cli_parses_all_command_variants_via_try_parse() {
+        let _ = Cli::try_parse_from(["songbird", "server"]).unwrap();
+        let _ = Cli::try_parse_from(["songbird", "doctor"]).unwrap();
+        let _ = Cli::try_parse_from(["songbird", "config", "validate"]).unwrap();
+        let _ = Cli::try_parse_from(["songbird", "cli"]).unwrap();
+        let _ = Cli::try_parse_from(["songbird", "compute-bridge"]).unwrap();
+        let _ = Cli::try_parse_from(["songbird", "deploy", "list"]).unwrap();
+        let _ = Cli::try_parse_from(["songbird", "rendezvous"]).unwrap();
     }
 }
