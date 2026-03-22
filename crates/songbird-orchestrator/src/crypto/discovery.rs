@@ -1,136 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Capability-Based Crypto Provider Discovery
+//! Crypto provider socket discovery
 //!
-//! Discovers ANY primal offering "crypto" capability via runtime discovery.
-//! Maintains TRUE PRIMAL self-knowledge — Songbird only knows itself,
-//! discovers crypto providers at runtime by capability, not by name.
-//!
-//! **Philosophy**: Primals only know themselves, discover others by capability.
-//! The discovery order is: capability env vars → capability socket names →
-//! known-provider hints → filesystem scanning.
+//! Socket paths for crypto routing use the shared Neural API discovery from
+//! [`songbird_crypto_provider`]. For a full client (Neural API vs direct BearDog),
+//! use [`songbird_crypto_provider::CryptoProvider::from_env`].
 
 use anyhow::Result;
-use tracing::{debug, info, warn};
+use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, NEURAL_API_SOCKET_LEGACY_PATTERN};
+use tracing::info;
 
-/// Well-known search terms for crypto capability socket scanning.
-/// Capability terms come first; known provider names are secondary hints.
-const CRYPTO_SEARCH_TERMS: &[&str] = &["crypto", "security", "encryption"];
-
-/// Discover crypto provider socket via capability-based discovery.
+/// Discover crypto provider socket via Neural API socket discovery.
 ///
-/// ## TRUE PRIMAL Principles
-///
-/// 1. **Self-Knowledge**: Songbird only knows itself
-/// 2. **Capability Discovery**: Searches for "crypto" capability first
-/// 3. **Runtime Discovery**: No compile-time dependencies on providers
-/// 4. **Graceful Fallback**: Works without any crypto provider
-///
-/// ## Discovery Strategy (priority order)
-///
-/// 1. `CRYPTO_PROVIDER_SOCKET` env var (orchestrator-provided, preferred)
-/// 2. `CRYPTO_PROVIDER` env var (alternative)
-/// 3. `BEARDOG_CRYPTO_SOCKET` env var (migration compatibility)
-/// 4. `BEARDOG_SOCKET` env var (legacy compatibility)
-/// 5. Capability-named sockets: `crypto.sock` (XDG → `/tmp/biomeos` → `/tmp`)
-/// 6. Known-provider sockets: `beardog.sock` (XDG → `/tmp/biomeos` → `/tmp`)
-/// 7. Filesystem scan for any socket matching crypto search terms
+/// Delegates to [`songbird_crypto_provider::socket_discovery::discover_neural_api_socket`].
+/// Prefer [`songbird_crypto_provider::CryptoProvider::from_env`] when constructing a
+/// routed crypto client (Neural API by default; `BEARDOG_MODE=direct` for bootstrap).
 ///
 /// # Errors
 ///
-/// Returns error if no crypto provider is discoverable.
+/// Always returns `Ok` with a socket path (including legacy fallbacks when nothing else matches).
 pub async fn discover_crypto_socket() -> Result<String> {
-    info!("🔍 Discovering crypto provider via capability-based discovery...");
-
-    // Strategy 1: CRYPTO_PROVIDER_SOCKET (orchestrator-managed, preferred)
-    if let Ok(socket_path) = std::env::var("CRYPTO_PROVIDER_SOCKET") {
-        info!("   ✅ Found CRYPTO_PROVIDER_SOCKET: {}", socket_path);
-        return Ok(socket_path);
-    }
-
-    // Strategy 2: CRYPTO_PROVIDER (alternative env var)
-    if let Ok(socket_path) = std::env::var("CRYPTO_PROVIDER") {
-        info!("   ✅ Found CRYPTO_PROVIDER: {}", socket_path);
-        return Ok(socket_path);
-    }
-
-    // Strategy 3: BEARDOG_CRYPTO_SOCKET (compatibility during migration)
-    if let Ok(socket_path) = std::env::var("BEARDOG_CRYPTO_SOCKET") {
-        info!("   ✅ Found BEARDOG_CRYPTO_SOCKET (compatibility): {}", socket_path);
-        return Ok(socket_path);
-    }
-
-    // Strategy 4: BEARDOG_SOCKET (legacy compatibility)
-    if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET") {
-        info!("   ✅ Found BEARDOG_SOCKET (crypto capability): {}", socket_path);
-        return Ok(socket_path);
-    }
-
-    // Strategy 5+6: Search common socket paths — capability names first, then known providers
-    let xdg_base = std::env::var("XDG_RUNTIME_DIR")
-        .map_or_else(|_| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
-
-    let common_paths = [
-        format!("{xdg_base}/crypto.sock"),
-        "/tmp/biomeos/crypto.sock".to_string(),
-        "/tmp/crypto.sock".to_string(),
-    ];
-
-    for path in &common_paths {
-        if std::path::Path::new(path).exists() {
-            info!("   ✅ Found crypto provider socket at: {}", path);
-            return Ok(path.clone());
-        }
-        debug!("   ⏭️  Not found: {}", path);
-    }
-
-    // Strategy 7: Scan socket directories for any crypto-capable socket
-    if let Some(found) = scan_for_capability_socket(CRYPTO_SEARCH_TERMS) {
-        info!("   ✅ Found crypto provider via scanning: {}", found);
-        return Ok(found);
-    }
-
-    warn!("❌ No crypto provider found — checked all discovery strategies");
-    warn!("   Songbird will fall back to ring crypto provider (temporary)");
-    warn!("   This maintains TLS functionality but uses C dependencies");
-
-    Err(anyhow::anyhow!("No crypto provider available"))
+    info!("🔍 Discovering crypto provider via Neural API socket discovery...");
+    Ok(songbird_crypto_provider::socket_discovery::discover_neural_api_socket())
 }
 
 /// Backward-compatible alias for [`discover_crypto_socket`].
 pub async fn get_beardog_crypto_socket() -> Result<String> {
     discover_crypto_socket().await
-}
-
-/// Scan socket directories for sockets matching any of the given search terms.
-///
-/// Scans in priority order: `$XDG_RUNTIME_DIR/biomeos/` → `/tmp/biomeos/` → `/tmp/`.
-fn scan_for_capability_socket(search_terms: &[&str]) -> Option<String> {
-    let mut dirs = Vec::with_capacity(3);
-    if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
-        dirs.push(format!("{xdg}/biomeos"));
-    }
-    dirs.push("/tmp/biomeos".to_string());
-    dirs.push("/tmp".to_string());
-
-    for dir in dirs {
-        if let Ok(entries) = std::fs::read_dir(&dir) {
-            for entry in entries.flatten() {
-                if let Ok(file_name) = entry.file_name().into_string() {
-                    let lower = file_name.to_ascii_lowercase();
-                    if std::path::Path::new(&lower)
-                        .extension()
-                        .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
-                        && search_terms.iter().any(|term| lower.contains(term))
-                    {
-                        return Some(entry.path().to_string_lossy().to_string());
-                    }
-                }
-            }
-        }
-    }
-    None
 }
 
 /// Discover crypto provider socket for a specific family.
@@ -166,31 +63,37 @@ pub async fn get_beardog_crypto_socket_for_family(family_id: &str) -> Result<Str
 
 /// Check if any crypto provider is available.
 ///
-/// Quick check without logging warnings — suitable for conditional logic.
+/// Quick check without logging — suitable for conditional logic.
+/// Aligns with Neural API env vars and on-disk socket paths (no logging side effects).
 pub async fn is_crypto_available() -> bool {
-    // Quick check via env vars (no I/O)
-    if std::env::var("CRYPTO_PROVIDER_SOCKET").is_ok()
-        || std::env::var("CRYPTO_PROVIDER").is_ok()
-        || std::env::var("BEARDOG_CRYPTO_SOCKET").is_ok()
-        || std::env::var("BEARDOG_SOCKET").is_ok()
-    {
+    if std::env::var("NEURAL_API_SOCKET").map(|s| !s.is_empty()).unwrap_or(false) {
+        return true;
+    }
+    if std::env::var("NEURALS_SOCKET").map(|s| !s.is_empty()).unwrap_or(false) {
         return true;
     }
 
-    // Check common paths silently — capability names first
-    let xdg_base = std::env::var("XDG_RUNTIME_DIR")
-        .map_or_else(|_| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
+    if let Ok(xdg_dir) = std::env::var("XDG_RUNTIME_DIR") {
+        let family_id = std::env::var("FAMILY_ID").unwrap_or_default();
+        let socket_name = if family_id.is_empty() {
+            "neural-api.sock".to_string()
+        } else {
+            format!("neural-api-{family_id}.sock")
+        };
+        let socket_path =
+            std::path::PathBuf::from(xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(socket_name);
+        if socket_path.exists() {
+            return true;
+        }
+    }
 
-    let common_paths = [
-        format!("{xdg_base}/crypto.sock"),
-        "/tmp/biomeos/crypto.sock".to_string(),
-        "/tmp/crypto.sock".to_string(),
-        format!("{xdg_base}/beardog.sock"),
-        "/tmp/biomeos/beardog.sock".to_string(),
-        "/tmp/beardog.sock".to_string(),
-    ];
+    if std::path::Path::new("/tmp/biomeos/neural-api.sock").exists() {
+        return true;
+    }
 
-    common_paths.iter().any(|path| std::path::Path::new(path).exists())
+    let family_id = std::env::var("FAMILY_ID").unwrap_or_else(|_| "default".to_string());
+    let legacy = format!("{NEURAL_API_SOCKET_LEGACY_PATTERN}{family_id}.sock");
+    std::path::Path::new(&legacy).exists()
 }
 
 /// Backward-compatible alias for [`is_crypto_available`].
@@ -204,7 +107,7 @@ pub async fn is_beardog_crypto_available() -> bool {
 ///
 /// # Errors
 ///
-/// Returns error if no crypto provider is discoverable.
+/// Same as [`discover_crypto_socket`].
 pub async fn discover_crypto_socket_for_purpose(purpose: &str) -> Result<String> {
     info!("🔍 Discovering crypto provider for purpose: {purpose}");
     discover_crypto_socket().await
@@ -250,18 +153,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_discover_crypto_socket_graceful_failure() {
+    async fn test_discover_crypto_socket_returns_neural_path() {
         let result = discover_crypto_socket().await;
-        match result {
-            Ok(path) => assert!(!path.is_empty()),
-            Err(e) => {
-                let msg = format!("{e}");
-                assert!(
-                    msg.contains("not available") || msg.contains("No crypto provider"),
-                    "Unexpected error: {msg}"
-                );
-            }
-        }
+        let path = result.expect("Neural API discovery returns a path");
+        assert!(!path.is_empty());
     }
 
     #[tokio::test]
@@ -273,21 +168,7 @@ mod tests {
     #[tokio::test]
     async fn test_discover_crypto_socket_for_purpose_no_panic() {
         let result = discover_crypto_socket_for_purpose("signing").await;
-        match result {
-            Ok(path) => assert!(!path.is_empty()),
-            Err(e) => {
-                let msg = format!("{e}");
-                assert!(
-                    msg.contains("not available") || msg.contains("No crypto provider"),
-                    "Unexpected error: {msg}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_crypto_search_terms_capability_first() {
-        // Capability terms must appear before provider-specific hints
-        assert_eq!(CRYPTO_SEARCH_TERMS[0], "crypto");
+        let path = result.expect("Neural API discovery returns a path");
+        assert!(!path.is_empty());
     }
 }

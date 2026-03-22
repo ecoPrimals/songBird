@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
         .with_0rtt(true)
         .with_migration(true);
 
-    info!("BearDog socket: {:?}", config.beardog_socket);
+    info!("Neural API socket: {:?}", config.neural_api_socket);
 
     // Bind to IPv6 dual-stack (supports both IPv4 and IPv6)
     let server = QuicServer::new("[::]:4433", config).await?;

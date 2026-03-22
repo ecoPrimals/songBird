@@ -12,6 +12,10 @@ use songbird_types::SongbirdResult as Result;
 use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
 use tracing::{debug, warn};
 
+/// Development-only default AI primal URL when [`capability_endpoints::get_capability_endpoint`]
+/// fails and `SONGBIRD_AI_ENDPOINT` is unset.
+const DEFAULT_AI_ENDPOINT_URL: &str = "http://localhost:8002";
+
 pub mod types;
 pub use types::*;
 
@@ -102,9 +106,11 @@ impl AIWorkloadClassificationDelegate {
         }
 
         let provider_name = ai_providers.into_iter().next()?;
-        let endpoint = capability_endpoints::get_capability_endpoint("ai")
-            .await
-            .unwrap_or_else(|_| "http://localhost:8002".to_string());
+        let endpoint =
+            capability_endpoints::get_capability_endpoint("ai").await.unwrap_or_else(|_| {
+                std::env::var("SONGBIRD_AI_ENDPOINT")
+                    .unwrap_or_else(|_| DEFAULT_AI_ENDPOINT_URL.to_string())
+            });
         Some((provider_name, endpoint))
     }
 

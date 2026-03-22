@@ -39,6 +39,7 @@ async-trait = { workspace = true }
 
 # Songbird internal
 songbird-types = { path = "../songbird-types" }
+songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 [dev-dependencies]
 tokio-test = "0.4"

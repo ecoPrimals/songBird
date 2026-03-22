@@ -43,11 +43,11 @@
 //! // Server
 //! let server = QuicServer::new(
 //!     "[::]:4433",
-//!     beardog_socket_path,
+//!     neural_api_socket_path,
 //! ).await?;
 //!
 //! // Client
-//! let client = QuicClient::new(beardog_socket_path).await?;
+//! let client = QuicClient::new(neural_api_socket_path).await?;
 //! let conn = client.connect("[2600::27]:4433").await?;
 //! # Ok(())
 //! # }

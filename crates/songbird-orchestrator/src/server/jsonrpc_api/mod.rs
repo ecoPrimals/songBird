@@ -165,6 +165,8 @@ async fn handle_jsonrpc_request(
         "songbird.version" => handle_version().await,
 
         "health" => handle_health_standard(&state).await,
+        "health.liveness" => Ok(songbird_universal_ipc::introspection::health_liveness()),
+        "capabilities.list" => Ok(songbird_universal_ipc::introspection::capabilities_list()),
         "identity" => handle_identity().await,
         "network.beacon_exchange" => handle_beacon_exchange(request.params).await,
 

@@ -5,7 +5,7 @@
 //!
 //! Example: cargo run --example fetch_consensus
 
-use songbird_tor_protocol::{BeardogCryptoClient, Consensus};
+use songbird_tor_protocol::{Consensus, CryptoProvider};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧅 Fetching Tor network consensus...\n");
 
     // Create BearDog client (placeholder)
-    let beardog = BeardogCryptoClient::from_env()?;
+    let beardog = CryptoProvider::from_env();
 
     // Fetch consensus
     let consensus = Consensus::fetch(&beardog).await?;

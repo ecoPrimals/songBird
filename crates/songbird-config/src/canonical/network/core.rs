@@ -257,7 +257,7 @@ impl CanonicalNetworkConfig {
         Ok(config)
     }
 
-    /// Build the same shape as [`Default`](Default) using an injectable env reader (for tests).
+    /// Build the same shape as [`Default`] using an injectable env reader (for tests).
     #[must_use]
     pub fn default_from_env_reader(
         env: impl Fn(&str) -> Result<String, std::env::VarError>,

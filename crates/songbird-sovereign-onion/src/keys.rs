@@ -49,7 +49,7 @@ impl OnionIdentity {
     /// ```no_run
     /// # use songbird_sovereign_onion::{OnionIdentity, BeardogCryptoClient};
     /// # tokio_test::block_on(async {
-    /// let client = BeardogCryptoClient::from_env().unwrap();
+    /// let client = BeardogCryptoClient::from_env();
     /// let identity = OnionIdentity::generate_via_beardog(&client).await.unwrap();
     /// println!("Onion address: {}", identity.onion_address());
     /// # });
@@ -63,7 +63,7 @@ impl OnionIdentity {
     ///
     /// Panics if system time is before Unix epoch (should never happen).
     pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
-        let keypair = client.ed25519_generate_keypair()?;
+        let keypair = client.ed25519_generate_keypair().await?;
 
         // Derive .onion address via BearDog
         let onion_address =
@@ -87,7 +87,10 @@ impl OnionIdentity {
     /// # Errors
     ///
     /// Returns error if key bytes are invalid
-    pub fn from_stored_via_beardog(client: &BeardogCryptoClient, bytes: &[u8]) -> Result<Self> {
+    pub async fn from_stored_via_beardog(
+        client: &BeardogCryptoClient,
+        bytes: &[u8],
+    ) -> Result<Self> {
         // Extract secret key and timestamp from stored bytes
         let stored: StoredIdentity = serde_json::from_slice(bytes)?;
         let secret_key = &stored.secret_key_bytes;
@@ -110,9 +113,9 @@ impl OnionIdentity {
 
         #[cfg(not(feature = "standalone"))]
         {
-            let public_key = client.ed25519_public_from_secret(secret_key)?;
+            let public_key = client.ed25519_public_from_secret(secret_key).await?;
             let onion_address =
-                crate::address::derive_onion_address_with_beardog_sync(client, &public_key)?;
+                crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
 
             Ok(Self {
                 secret_key: *secret_key,
@@ -258,8 +261,8 @@ impl EphemeralKeypair {
     /// # Errors
     ///
     /// Returns error if BearDog RPC fails.
-    pub fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
-        let keypair = client.x25519_generate_ephemeral()?;
+    pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
+        let keypair = client.x25519_generate_ephemeral().await?;
         Ok(Self {
             secret_key: keypair.secret_key,
             public_key: keypair.public_key,
@@ -271,12 +274,12 @@ impl EphemeralKeypair {
     /// # Errors
     ///
     /// Returns error if BearDog RPC fails.
-    pub fn derive_shared_secret_via_beardog(
+    pub async fn derive_shared_secret_via_beardog(
         self,
         client: &BeardogCryptoClient,
         peer_public: &[u8; 32],
     ) -> Result<[u8; 32]> {
-        client.x25519_derive_secret(&self.secret_key, peer_public)
+        client.x25519_derive_secret(&self.secret_key, peer_public).await
     }
 
     /// Standalone generation (for testing/offline only)
@@ -334,7 +337,7 @@ impl SessionKeys {
     /// # Errors
     ///
     /// Returns error if BearDog HMAC RPC fails.
-    pub fn derive_via_beardog(
+    pub async fn derive_via_beardog(
         client: &BeardogCryptoClient,
         shared_secret: &[u8; 32],
         client_nonce: &[u8; 24],
@@ -342,7 +345,7 @@ impl SessionKeys {
         is_client: bool,
     ) -> Result<Self> {
         // 1. HKDF-Extract: PRK = HMAC-SHA256(salt=zeros, IKM=shared_secret)
-        let prk = client.hmac_sha256(&[0u8; 32], shared_secret)?;
+        let prk = client.hmac_sha256(&[0u8; 32], shared_secret).await?;
 
         // 2. HKDF-Expand for client key
         let mut client_info = Vec::new();
@@ -350,7 +353,7 @@ impl SessionKeys {
         client_info.extend_from_slice(client_nonce);
         client_info.extend_from_slice(server_nonce);
         client_info.push(0x01);
-        let client_key = client.hmac_sha256(&prk, &client_info)?;
+        let client_key = client.hmac_sha256(&prk, &client_info).await?;
 
         // 3. HKDF-Expand for server key
         let mut server_info = Vec::new();
@@ -358,7 +361,7 @@ impl SessionKeys {
         server_info.extend_from_slice(client_nonce);
         server_info.extend_from_slice(server_nonce);
         server_info.push(0x01);
-        let server_key = client.hmac_sha256(&prk, &server_info)?;
+        let server_key = client.hmac_sha256(&prk, &server_info).await?;
 
         if is_client {
             Ok(Self {

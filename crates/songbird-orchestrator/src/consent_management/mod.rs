@@ -219,9 +219,16 @@ impl ConsentManager {
         records.values().filter(|r| &r.user_id == user_id).cloned().collect()
     }
 
-    /// Replace stored consent preferences for a user (e.g. auto-approval thresholds).
-    pub async fn set_user_preferences(&self, user_id: UserId, prefs: UserPreferences) {
-        self.preferences.write().await.insert(user_id, prefs);
+    /// Set user-specific consent preferences (auto-approval thresholds, blocked operations, etc.)
+    pub async fn set_user_preferences(&self, user_id: UserId, preferences: UserPreferences) {
+        let mut prefs = self.preferences.write().await;
+        prefs.insert(user_id, preferences);
+    }
+
+    /// Get user-specific consent preferences
+    pub async fn get_user_preferences(&self, user_id: &UserId) -> Option<UserPreferences> {
+        let prefs = self.preferences.read().await;
+        prefs.get(user_id).cloned()
     }
 
     /// Wait for consent decision (with timeout)

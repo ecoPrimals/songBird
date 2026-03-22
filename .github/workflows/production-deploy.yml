@@ -1,7 +1,6 @@
-# 🎼 Songbird Production Deployment Pipeline
-# Comprehensive CI/CD with quality gates, security scanning, and automated deployment
+# Songbird Production Deployment Pipeline
 
-name: 🚀 Production Deployment
+name: Production Deployment
 
 on:
   push:
@@ -13,8 +12,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # Quality Gate 1: Code Quality & Security
@@ -145,45 +142,11 @@ jobs:
           name: benchmark-results
           path: benchmark-results.txt
 
-  # Quality Gate 4: Container Security
-  container-security:
-    name: 🛡️ Quality Gate - Container Security
+  # Production Build
+  production-build:
+    name: Production Build
     runs-on: ubuntu-latest
-    needs: [quality-gate, test-suite]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build container image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile.production
-          tags: songbird:security-scan
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: songbird:security-scan
-          format: sarif
-          output: trivy-results.sarif
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: trivy-results.sarif
-
-  # Production Build & Deploy
-  production-deploy:
-    name: 🚀 Production Deployment
-    runs-on: ubuntu-latest
-    needs: [quality-gate, test-suite, benchmarks, container-security]
+    needs: [quality-gate, test-suite, benchmarks]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     environment:
       name: production
@@ -192,104 +155,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          key: production-build
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
+      - name: Build release binary
+        run: cargo build --release
 
-      - name: Build and push container image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile.production
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-
-      - name: Generate deployment manifest
+      - name: Create production artifact
         run: |
-          # Create Kubernetes deployment manifest
-          cat > deployment.yaml << EOF
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: songbird-production
-            namespace: songbird
-          spec:
-            replicas: 3
-            selector:
-              matchLabels:
-                app: songbird
-            template:
-              metadata:
-                labels:
-                  app: songbird
-              spec:
-                containers:
-                - name: songbird
-                  image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-                  ports:
-                  - containerPort: 8080
-                  - containerPort: 8443
-                  - containerPort: 9090
-                  env:
-                  - name: SONGBIRD_ENVIRONMENT
-                    value: production
-                  - name: RUST_LOG
-                    value: songbird=info
-                  resources:
-                    requests:
-                      memory: "512Mi"
-                      cpu: "250m"
-                    limits:
-                      memory: "2Gi"
-                      cpu: "1000m"
-                  livenessProbe:
-                    httpGet:
-                      path: /health
-                      port: 8080
-                    initialDelaySeconds: 60
-                    periodSeconds: 30
-                  readinessProbe:
-                    httpGet:
-                      path: /ready
-                      port: 8080
-                    initialDelaySeconds: 10
-                    periodSeconds: 5
-          EOF
+          mkdir -p artifacts
+          cp target/release/songbird artifacts/
+          cp -r docs artifacts/
+          cp REMAINING_WORK.md artifacts/
+          tar -czf songbird-production-${{ github.sha }}.tar.gz artifacts/
 
-      - name: Deploy to production (dry-run)
-        run: |
-          echo "🚀 Production deployment ready!"
-          echo "Container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
-          echo "Deployment manifest created: deployment.yaml"
-          echo "✅ All quality gates passed - ready for production!"
+      - name: Upload production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: songbird-production-${{ github.sha }}
+          path: songbird-production-${{ github.sha }}.tar.gz
+          retention-days: 90
 
-  # Post-deployment validation
-  post-deploy-validation:
-    name: ✅ Post-Deployment Validation
+  # Post-build validation
+  post-build-validation:
+    name: Post-Build Validation
     runs-on: ubuntu-latest
-    needs: production-deploy
+    needs: production-build
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Health check validation

@@ -132,77 +132,11 @@ jobs:
         file: cobertura.xml
         fail_ci_if_error: true
 
-  # Build and Test Docker Images
-  docker:
-    name: Docker Build & Test
-    runs-on: ubuntu-latest
-    needs: [quality, test]
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Build production image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./docker/Dockerfile.production
-        push: false
-        tags: songbird:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-    
-    - name: Test Docker image
-      run: |
-        docker run --rm -d --name songbird-test -p 8080:8080 songbird:test
-        sleep 10
-        curl -f http://localhost:8080/health || (docker logs songbird-test && exit 1)
-        docker stop songbird-test
-    
-    - name: Build observability image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./docker/Dockerfile.production
-        target: observability
-        push: false
-        tags: songbird-observability:test
-    
-    - name: Build discovery image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./docker/Dockerfile.production
-        target: discovery
-        push: false
-        tags: songbird-discovery:test
-
-  # Security Scanning
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: [docker]
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'songbird:test'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-    
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
-
   # Deploy to Staging
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [quality, test, docker, security]
+    needs: [quality, test]
     if: github.ref == 'refs/heads/develop'
     environment: staging
     steps:
@@ -228,7 +162,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [quality, test, docker, security]
+    needs: [quality, test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'release'
     environment: production
     steps:

@@ -68,7 +68,7 @@ impl OnionConnector {
         debug!("TCP connection established, starting handshake");
 
         // Generate our ephemeral keypair via BearDog
-        let our_ephemeral = EphemeralKeypair::generate_via_beardog(beardog)?;
+        let our_ephemeral = EphemeralKeypair::generate_via_beardog(beardog).await?;
 
         // Send KeyExchange
         let key_exchange = KeyExchangeMessage::new(*our_ephemeral.public_bytes(), [0u8; 24]);
@@ -95,8 +95,9 @@ impl OnionConnector {
         debug!("Received key exchange response");
 
         // Derive shared secret via BearDog
-        let shared_secret =
-            our_ephemeral.derive_shared_secret_via_beardog(beardog, &peer_key_exchange.pubkey)?;
+        let shared_secret = our_ephemeral
+            .derive_shared_secret_via_beardog(beardog, &peer_key_exchange.pubkey)
+            .await?;
 
         info!("Handshake complete - connection established via BearDog crypto");
 
@@ -128,7 +129,8 @@ impl OnionConnection {
         let mut nonce = [0u8; 12];
         nonce[..8].copy_from_slice(&self.sequence.to_be_bytes());
 
-        let encrypted = self.beardog.chacha20_poly1305_encrypt(&self.session_key, &nonce, data)?;
+        let encrypted =
+            self.beardog.chacha20_poly1305_encrypt(&self.session_key, &nonce, data).await?;
 
         debug!(
             sequence = self.sequence,
@@ -174,7 +176,7 @@ impl OnionConnection {
         nonce[..8].copy_from_slice(&msg_sequence.to_be_bytes());
 
         let plaintext =
-            self.beardog.chacha20_poly1305_decrypt(&self.session_key, &nonce, &encrypted)?;
+            self.beardog.chacha20_poly1305_decrypt(&self.session_key, &nonce, &encrypted).await?;
 
         debug!(
             sequence = msg_sequence,
@@ -210,7 +212,8 @@ mod tests {
 
     #[tokio::test]
     async fn beardog_connector_tcp_fails_fast_when_port_closed() {
-        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let client =
+            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
         let connector = OnionConnector::new_via_beardog(client);
         let r = connector.connect("127.0.0.1", 1).await;
         assert!(matches!(r, Err(OnionError::ConnectionTimeout)));
@@ -218,7 +221,8 @@ mod tests {
 
     #[test]
     fn new_via_beardog_stores_client_for_connect() {
-        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 9999);
+        let client =
+            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
         let _connector = OnionConnector::new_via_beardog(client);
     }
 }

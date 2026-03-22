@@ -41,6 +41,7 @@ anyhow = "1.0"
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Internal dependencies
+songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-types = { path = "../songbird-types" }
 
 [dev-dependencies]

@@ -48,10 +48,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use songbird_lineage_relay::beardog::BearDogRelayAuthority; // Production relay auth (Feb 8, 2026)
 use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
-use std::sync::Arc;
 use std::env::VarError;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
+
+/// Injectable environment reader (for concurrent-safe tests without global mutation).
+type EnvReader = dyn Fn(&str) -> Result<String, VarError> + Send + Sync;
 
 /// IPC service request parameters for registration
 #[derive(Debug, Clone, Deserialize)]
@@ -127,7 +130,7 @@ pub struct ServiceInfo {
 pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
     /// When set, used instead of [`std::env::var`] for identity `family_id` resolution (tests).
-    family_id_env: Option<Arc<dyn Fn(&str) -> Result<String, VarError> + Send + Sync>>,
+    family_id_env: Option<Arc<EnvReader>>,
     http_handler: Arc<HttpHandler>,
     stun_handler: Arc<StunHandler>,
     discovery_handler: Arc<DiscoveryHandler>,
@@ -555,10 +558,9 @@ impl JsonRpcHandler for IpcServiceHandler {
             "discover_capabilities" => Ok(crate::introspection::discover_capabilities()),
 
             // ── biomeOS standard ─────────────────────────────────────
-            "health" | "health.liveness" | "health.readiness" | "health.check" => {
-                self.handle_health().await
-            }
-            "capabilities.list" => Ok(crate::introspection::primal_capabilities()),
+            "health.liveness" => Ok(crate::introspection::health_liveness()),
+            "health" | "health.readiness" | "health.check" => self.handle_health().await,
+            "capabilities.list" => Ok(crate::introspection::capabilities_list()),
             "identity" => self.handle_identity().await,
 
             // ── IPC registry ─────────────────────────────────────────
@@ -648,21 +650,17 @@ impl JsonRpcHandler for IpcServiceHandler {
             "onion.address" => self.onion_handler.handle_address(params).await,
 
             // ── Federation ─────────────────────────────────────────────
-            "songbird.federation.peers" | "federation.peers" => {
-                Ok(serde_json::json!({
-                    "peers": [],
-                    "total_count": 0,
-                    "federation_enabled": false,
-                    "comment": "Federation subsystem available, no active peers"
-                }))
-            }
-            "songbird.federation.status" | "federation.status" => {
-                Ok(serde_json::json!({
-                    "enabled": false,
-                    "active_connections": 0,
-                    "comment": "Federation subsystem initialized, awaiting peer connections"
-                }))
-            }
+            "songbird.federation.peers" | "federation.peers" => Ok(serde_json::json!({
+                "peers": [],
+                "total_count": 0,
+                "federation_enabled": false,
+                "comment": "Federation subsystem available, no active peers"
+            })),
+            "songbird.federation.status" | "federation.status" => Ok(serde_json::json!({
+                "enabled": false,
+                "active_connections": 0,
+                "comment": "Federation subsystem initialized, awaiting peer connections"
+            })),
 
             // ── Pure Rust Tor ────────────────────────────────────────
             "tor.status" => self.tor_handler.handle_status(params).await,
@@ -950,5 +948,26 @@ mod tests {
         let handler = IpcServiceHandler::new(registry.clone());
         let err = handler.handle("no.such.method", json!({})).await.expect_err("unknown method");
         assert!(err.contains("Unknown method"));
+    }
+
+    #[tokio::test]
+    async fn health_liveness_returns_healthy_status_only() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+        let v = handler.handle("health.liveness", json!({})).await.expect("liveness");
+        assert_eq!(v, json!({ "status": "healthy" }));
+    }
+
+    #[tokio::test]
+    async fn capabilities_list_returns_expected_tokens() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+        let v = handler.handle("capabilities.list", json!({})).await.expect("caps");
+        let arr = v.as_array().expect("capabilities.list must return a JSON array");
+        let strings: Vec<&str> = arr.iter().filter_map(|x| x.as_str()).collect();
+        for expected in crate::introspection::SONGBIRD_CAPABILITY_STRINGS {
+            assert!(strings.contains(expected), "missing capability token {expected}");
+        }
+        assert_eq!(strings.len(), crate::introspection::SONGBIRD_CAPABILITY_STRINGS.len());
     }
 }

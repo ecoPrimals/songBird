@@ -272,7 +272,7 @@ async fn test_e2e_capability_registration_discovers_xdg_neural_api() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧪 E2E: SECURITY CLIENT WITH XDG BEARDOG
+// 🧪 E2E: SECURITY CLIENT WITH XDG NEURAL API (shared songbird-crypto-provider)
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[tokio::test]
@@ -283,19 +283,25 @@ async fn test_e2e_security_client_discovers_xdg_beardog() {
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
-    let crypto_socket = biomeos_dir.join("crypto.sock");
-    std::fs::write(&crypto_socket, "").unwrap();
+    let neural_socket = biomeos_dir.join("neural-api.sock");
+    std::fs::write(&neural_socket, "").unwrap();
 
     songbird_process_env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
+    songbird_process_env::remove_var("NEURAL_API_SOCKET");
+    songbird_process_env::remove_var("NEURALS_SOCKET");
     songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     use songbird_orchestrator::crypto::discovery::get_beardog_crypto_socket;
     let result = get_beardog_crypto_socket().await;
 
-    assert!(result.is_ok(), "Should discover crypto provider at XDG path");
+    assert!(result.is_ok(), "Should discover Neural API socket at XDG path");
     let found = result.unwrap();
-    assert!(found.contains("biomeos/crypto.sock"), "Should use XDG crypto path, got: {}", found);
+    assert!(
+        found.contains("biomeos/neural-api.sock"),
+        "Should use XDG Neural API path, got: {}",
+        found
+    );
 
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let _ = std::fs::remove_dir_all(&temp_dir);

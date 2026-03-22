@@ -157,7 +157,8 @@ impl AIAdapter {
         .await
     }
 
-    /// Like [`Self::from_discovery`], but uses an explicit [`CapabilityEndpointResolver`].
+    /// Like [`Self::from_discovery`], but uses an explicit
+    /// [`CapabilityEndpointResolver`](songbird_config::capability_endpoints::CapabilityEndpointResolver).
     pub async fn from_discovery_with_resolver(
         resolver: songbird_config::capability_endpoints::CapabilityEndpointResolver,
     ) -> SongbirdResult<Self> {

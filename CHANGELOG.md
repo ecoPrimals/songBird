@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave48] - 2026-03-22 - Comprehensive Audit & Nest Atomic Compliance
+
+### Fixed - Build Restoration
+- Fixed compilation error: added `set_user_preferences`/`get_user_preferences` to `ConsentManager`
+- Fixed `songbird-crypto-provider` Cargo.toml (missing `readme` metadata) + created crate README
+- Fixed 7 clippy errors in `songbird-crypto-provider` (collapsible if, match-same-arms, `#[expect]`)
+- Fixed `ref_as_ptr`, collapsible if, format string interpolation, type complexity across 4 crates
+- Fixed stale test `test_validate_port_zero_with_discovery_disabled` (aligned with evolved validation)
+
+### Added - wateringHole Nest Atomic Compliance
+- `health.liveness` JSON-RPC method (IPC + HTTP gateway) — `{"status": "healthy"}`
+- `capabilities.list` JSON-RPC method (IPC + HTTP gateway) — 14 capability tokens
+- `SONGBIRD_CAPABILITY_STRINGS` const table (single source of truth for inter-primal discovery)
+- Both methods work standalone without IPC handler in HTTP gateway
+
+### Changed - Standards Compliance
+- 100% SPDX coverage: 1,324/1,324 `.rs` files (3 missing headers added)
+- 18 doc link fixes (5 broken intra-doc links + 13 redundant explicit targets)
+- QUIC tests gated behind `ring-crypto` feature (ecoBin compliance — default builds ring-free)
+- Added `EnvReader` type alias to reduce type complexity in `IpcServiceHandler`
+
+### Changed - Hardcoded Elimination
+- `lineage-relay/coordinator.rs`: port 42424 → `DEFAULT_BIRDSONG_PORT` + `SONGBIRD_BIRDSONG_PORT` env var
+- `orchestrator/capability_adapters.rs`: `localhost:8000` → `DEFAULT_ORCHESTRATOR_URL` + `SONGBIRD_ORCHESTRATOR_URL`
+- `orchestrator/ai_workload_classification`: `localhost:8002` → `DEFAULT_AI_ENDPOINT_URL` + `SONGBIRD_AI_ENDPOINT`
+
+### Changed - Cleanup
+- Removed broken CI workflow references to deleted `docker/Dockerfile.production`
+- Fixed CI binary artifact name (`songbird-orchestrator` → `songbird`)
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Tests | 9,683 passed, 0 failed, 266 ignored |
+| Clippy | Zero warnings (30/30 crates, `--all-targets --all-features`) |
+| Build | Zero errors, zero warnings |
+| Format | Clean |
+| Docs | Clean (1 expected output collision only) |
+| SPDX | 100% (1,324/1,324 `.rs` files) |
+| JSON-RPC | 12 semantic methods (+ `health.liveness`, `capabilities.list`) |
+| Crates | 30 workspace members |
+| Total Rust | ~400,243 lines |
+
+---
+
 ## [v0.2.1-wave41] - 2026-03-21 - Deep Debt S+ Tier: Full Compliance Audit Execution
 
 ### Changed - License & Dependency Compliance

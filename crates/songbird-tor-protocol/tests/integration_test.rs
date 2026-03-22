@@ -3,12 +3,12 @@
 
 //! Integration tests for Tor protocol
 
-use songbird_tor_protocol::{BeardogCryptoClient, Consensus, TorConnection};
+use songbird_tor_protocol::{Consensus, CryptoProvider, TorConnection};
 
 #[tokio::test]
 async fn test_fetch_consensus_live() {
     // This test requires network access
-    let beardog = BeardogCryptoClient::from_env().expect("BearDog client");
+    let beardog = CryptoProvider::from_env();
 
     let result = Consensus::fetch(&beardog).await;
 
@@ -87,7 +87,7 @@ fn test_consensus_freshness() {
 async fn test_connect_to_relay() {
     use songbird_tor_protocol::directory::RelayFlags;
 
-    let beardog = BeardogCryptoClient::from_env().expect("BearDog client");
+    let beardog = CryptoProvider::from_env();
 
     // Fetch consensus to get a real relay
     let consensus = match Consensus::fetch(&beardog).await {
@@ -130,7 +130,7 @@ async fn test_connect_to_relay() {
 async fn test_build_circuit() {
     use songbird_tor_protocol::circuit::{CircuitManager, CircuitPurpose};
 
-    let beardog = BeardogCryptoClient::from_env().expect("BearDog client");
+    let beardog = CryptoProvider::from_env();
 
     // Fetch consensus
     let consensus = match Consensus::fetch(&beardog).await {

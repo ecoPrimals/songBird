@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::*;
@@ -356,11 +359,11 @@ async fn health_returns_service_count() {
 }
 
 #[tokio::test]
-async fn health_liveness_alias_routes_to_health() {
+async fn health_liveness_returns_minimal_payload() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
     let v = handler.handle("health.liveness", json!({})).await.expect("live");
-    assert_eq!(v["status"], "healthy");
+    assert_eq!(v, json!({ "status": "healthy" }));
 }
 
 #[tokio::test]
@@ -372,12 +375,15 @@ async fn identity_uses_injected_family_id_env() {
 }
 
 #[tokio::test]
-async fn capabilities_list_aliases_primal_capabilities() {
+async fn capabilities_list_returns_string_array() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
     let a = handler.handle("capabilities.list", json!({})).await.expect("caps");
-    let b = handler.handle("primal.capabilities", json!({})).await.expect("primal caps");
-    assert_eq!(a, b);
+    let arr = a.as_array().expect("array");
+    let strings: Vec<&str> = arr.iter().filter_map(|x| x.as_str()).collect();
+    assert!(strings.contains(&"network.discovery"));
+    assert!(strings.contains(&"ipc.jsonrpc"));
+    assert_eq!(strings.len(), crate::introspection::SONGBIRD_CAPABILITY_STRINGS.len());
 }
 
 #[tokio::test]

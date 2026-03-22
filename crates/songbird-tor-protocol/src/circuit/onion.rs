@@ -6,8 +6,9 @@
 //! **Phase 2B**: Circuit building
 
 use crate::circuit::CircuitHop;
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::TorProtocolCrypto;
 use crate::error::{Error, Result};
+use songbird_crypto_provider::CryptoProvider;
 
 /// Onion encryption handler
 ///
@@ -15,7 +16,7 @@ use crate::error::{Error, Result};
 /// has forward/backward keys and digest states. The sequence counter
 /// tracks cell order for AES-CTR IV generation.
 pub struct OnionCrypto {
-    beardog: BeardogCryptoClient,
+    beardog: CryptoProvider,
     /// Forward sequence counter (cells sent through circuit)
     forward_sequence: std::sync::atomic::AtomicU64,
     /// Backward sequence counter (cells received from circuit)
@@ -25,7 +26,7 @@ pub struct OnionCrypto {
 impl OnionCrypto {
     /// Create new onion crypto handler
     #[must_use]
-    pub const fn new(beardog: BeardogCryptoClient) -> Self {
+    pub const fn new(beardog: CryptoProvider) -> Self {
         Self {
             beardog,
             forward_sequence: std::sync::atomic::AtomicU64::new(0),
@@ -49,7 +50,7 @@ impl OnionCrypto {
     ///
     /// # Errors
     /// Returns error if `BearDog` encryption fails or hop index overflows.
-    pub fn encrypt_forward(&self, cell: &[u8], hops: &[CircuitHop]) -> Result<Vec<u8>> {
+    pub async fn encrypt_forward(&self, cell: &[u8], hops: &[CircuitHop]) -> Result<Vec<u8>> {
         let mut data = cell.to_vec();
         let seq = self.forward_sequence.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
@@ -62,7 +63,7 @@ impl OnionCrypto {
             let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Encrypt with this hop's forward key via BearDog
-            data = self.beardog.aes_128_ctr_encrypt(&hop.forward_key, &iv, &data)?;
+            data = self.beardog.aes_128_ctr_encrypt(&hop.forward_key, &iv, &data).await?;
 
             // Running digest update (BearDog SHA3-256)
             // When BearDog is fully integrated:
@@ -86,7 +87,7 @@ impl OnionCrypto {
     ///
     /// # Errors
     /// Returns error if `BearDog` decryption fails or hop index overflows.
-    pub fn decrypt_backward(&self, cell: &[u8], hops: &[CircuitHop]) -> Result<Vec<u8>> {
+    pub async fn decrypt_backward(&self, cell: &[u8], hops: &[CircuitHop]) -> Result<Vec<u8>> {
         let mut data = cell.to_vec();
         let seq = self.backward_sequence.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
@@ -98,7 +99,7 @@ impl OnionCrypto {
             let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Decrypt with this hop's backward key via BearDog
-            data = self.beardog.aes_128_ctr_decrypt(&hop.backward_key, &iv, &data)?;
+            data = self.beardog.aes_128_ctr_decrypt(&hop.backward_key, &iv, &data).await?;
 
             // Running digest update (BearDog SHA3-256)
             // When BearDog is fully integrated:
@@ -147,9 +148,9 @@ impl OnionCrypto {
     ///
     /// Requires `BearDog` SHA3-256 integration.
     #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
-    fn update_digest(&self, current_digest: &[u8; 32], data: &[u8]) -> Result<[u8; 32]> {
+    async fn update_digest(&self, current_digest: &[u8; 32], data: &[u8]) -> Result<[u8; 32]> {
         let input = [&current_digest[..], data].concat();
-        self.beardog.sha3_256(&input)
+        self.beardog.sha3_256(&input).await
     }
 
     /// Get current forward sequence counter
@@ -192,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_iv_generation() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let _crypto = OnionCrypto::new(beardog);
 
         let iv = OnionCrypto::generate_iv(12345, 0);
@@ -214,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_onion_crypto_creation() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let crypto = OnionCrypto::new(beardog);
 
         assert_eq!(crypto.forward_sequence(), 0);
@@ -233,10 +234,10 @@ mod tests {
         assert_eq!(relay_digest, [0x11, 0x22, 0x33, 0x44]);
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Requires BearDog AES-128-CTR implementation"]
-    fn test_encrypt_decrypt_roundtrip() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+    async fn test_encrypt_decrypt_roundtrip() {
+        let beardog = CryptoProvider::from_env();
         let crypto = OnionCrypto::new(beardog);
 
         let hops = vec![create_test_hop(1), create_test_hop(2), create_test_hop(3)];
@@ -244,10 +245,11 @@ mod tests {
         let plaintext = b"Hello, Tor!";
 
         // Encrypt
-        let encrypted = crypto.encrypt_forward(plaintext, &hops).expect("Encryption failed");
+        let encrypted = crypto.encrypt_forward(plaintext, &hops).await.expect("Encryption failed");
 
         // Decrypt
-        let decrypted = crypto.decrypt_backward(&encrypted, &hops).expect("Decryption failed");
+        let decrypted =
+            crypto.decrypt_backward(&encrypted, &hops).await.expect("Decryption failed");
 
         assert_eq!(decrypted, plaintext);
     }

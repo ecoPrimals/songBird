@@ -19,6 +19,9 @@ use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
+/// Default UDP port for `BirdSong` bind/broadcast when `SONGBIRD_BIRDSONG_PORT` is unset or invalid.
+const DEFAULT_BIRDSONG_PORT: u16 = 42424;
+
 /// Configuration for lineage relay coordinator
 #[derive(Debug, Clone)]
 pub struct LineageRelayConfig {
@@ -38,15 +41,19 @@ pub struct LineageRelayConfig {
 
 impl Default for LineageRelayConfig {
     fn default() -> Self {
+        let birdsong_port = std::env::var("SONGBIRD_BIRDSONG_PORT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(DEFAULT_BIRDSONG_PORT);
         // These are well-known IPv4 addresses that will always parse successfully
-        // 0.0.0.0:42424 = bind to all interfaces
-        // 255.255.255.255:42424 = broadcast address
+        // 0.0.0.0:<port> = bind to all interfaces
+        // 255.255.255.255:<port> = broadcast address
         Self {
             my_id: NodeId::from("default-node"),
-            birdsong_bind: "0.0.0.0:42424"
+            birdsong_bind: format!("0.0.0.0:{birdsong_port}")
                 .parse()
                 .expect("hardcoded IPv4 bind address should always parse"),
-            birdsong_broadcast: "255.255.255.255:42424"
+            birdsong_broadcast: format!("255.255.255.255:{birdsong_port}")
                 .parse()
                 .expect("hardcoded IPv4 broadcast address should always parse"),
             my_relay_address: None,
@@ -322,8 +329,8 @@ mod tests {
             BirdSongBroadcaster::new(
                 crypto,
                 NodeId::from("node-1"),
-                "127.0.0.1:42424".parse().unwrap(),
-                "255.255.255.255:42424".parse().unwrap(),
+                format!("127.0.0.1:{DEFAULT_BIRDSONG_PORT}").parse().unwrap(),
+                format!("255.255.255.255:{DEFAULT_BIRDSONG_PORT}").parse().unwrap(),
             )
             .await
             .unwrap(),

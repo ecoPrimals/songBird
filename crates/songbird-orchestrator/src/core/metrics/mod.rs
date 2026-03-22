@@ -4,8 +4,8 @@
 //! Metrics collection and aggregation
 //!
 //! This module provides metrics collection from primals in the ecosystem using
-//! capability-based adapters. [`ComputeMetrics`] is a point-in-time snapshot;
-//! [`ComputeMetricsCounters`] tracks thread-safe totals as collections run.
+//! capability-based adapters. `ComputeMetrics` is a point-in-time snapshot;
+//! `ComputeMetricsCounters` tracks thread-safe totals as collections run.
 
 pub mod capability_adapters;
 
@@ -26,7 +26,7 @@ pub struct ComputeMetricsCounters {
 }
 
 impl ComputeMetricsCounters {
-    /// Creates a new counter bundle (typically wrapped in [`Arc`] for sharing).
+    /// Creates a new counter bundle (typically wrapped in [`std::sync::Arc`] for sharing).
     #[must_use]
     pub fn new() -> Self {
         Self::default()

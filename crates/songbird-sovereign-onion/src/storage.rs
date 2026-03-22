@@ -77,7 +77,7 @@ impl OnionStorage {
 
         if let Some(bytes) = self.db.get(IDENTITY_KEY)? {
             // Load existing identity via BearDog
-            OnionIdentity::from_stored_via_beardog(client, &bytes)
+            OnionIdentity::from_stored_via_beardog(client, &bytes).await
         } else {
             // Generate new identity
             let identity = OnionIdentity::generate_via_beardog(client).await?;

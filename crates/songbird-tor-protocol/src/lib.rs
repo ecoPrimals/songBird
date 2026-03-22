@@ -37,19 +37,19 @@ pub mod stream;
 
 // Re-export main types
 pub use connection::TorConnection;
-pub use crypto::BeardogCryptoClient;
+pub use crypto::{CryptoProvider, TorProtocolCrypto};
 pub use directory::Consensus;
 pub use error::{Error, Result};
 
 /// Tor client for connecting to .onion addresses
 pub struct TorClient {
-    _beardog: BeardogCryptoClient,
+    _beardog: CryptoProvider,
 }
 
 impl TorClient {
     /// Create new Tor client with `BearDog` delegation
     #[must_use]
-    pub const fn new(beardog: BeardogCryptoClient) -> Self {
+    pub const fn new(beardog: CryptoProvider) -> Self {
         Self {
             _beardog: beardog,
         }
@@ -58,7 +58,7 @@ impl TorClient {
 
 /// Tor service for hosting .onion addresses
 pub struct TorService {
-    _beardog: BeardogCryptoClient,
+    _beardog: CryptoProvider,
     _port: u16,
 }
 
@@ -68,7 +68,7 @@ impl TorService {
     /// # Errors
     ///
     /// Returns error if service creation fails.
-    pub async fn new(beardog: BeardogCryptoClient, port: u16) -> Result<Self> {
+    pub async fn new(beardog: CryptoProvider, port: u16) -> Result<Self> {
         core::future::ready(()).await;
         Ok(Self {
             _beardog: beardog,

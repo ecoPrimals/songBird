@@ -74,25 +74,13 @@ impl DiscoveryHandler {
     ///
     /// Announces this node's presence to the discovery network.
     pub async fn handle_announce(&self, params: Value) -> IpcResult<Value> {
-        let family_id = params
-            .get("family_id")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
+        let family_id = params.get("family_id").and_then(Value::as_str).unwrap_or("unknown");
         let capabilities: Vec<String> = params
             .get("capabilities")
             .and_then(Value::as_array)
-            .map(|a| {
-                a.iter()
-                    .filter_map(Value::as_str)
-                    .map(String::from)
-                    .collect()
-            })
+            .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
             .unwrap_or_default();
-        info!(
-            "✅ Discovery: announce (family={}, capabilities={})",
-            family_id,
-            capabilities.len()
-        );
+        info!("✅ Discovery: announce (family={}, capabilities={})", family_id, capabilities.len());
         Ok(serde_json::json!({
             "announced": true,
             "family_id": family_id,

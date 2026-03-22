@@ -18,13 +18,13 @@
 //!
 //! ## TRUE PRIMAL Architecture
 //!
-//! All crypto operations are delegated to `BearDog` via `BeardogCryptoClient`.
+//! All crypto operations are delegated to `BearDog` via `CryptoProvider`.
 //! Zero embedded crypto in Songbird.
 
 use serde_json::{Value, json};
+use songbird_tor_protocol::CryptoProvider;
 use songbird_tor_protocol::circuit::CircuitPurpose;
 use songbird_tor_protocol::circuit::manager::CircuitManager;
-use songbird_tor_protocol::crypto::BeardogCryptoClient;
 use songbird_tor_protocol::directory::Consensus;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -215,8 +215,7 @@ impl TorHandler {
         info!(port = port, "Starting Tor hidden service via pure Rust");
 
         // Create BearDog client for service key operations
-        let beardog = BeardogCryptoClient::from_env()
-            .map_err(|e| format!("BearDog unavailable for service hosting: {e}"))?;
+        let beardog = CryptoProvider::from_env();
 
         // Create Tor service
         match songbird_tor_protocol::TorService::new(beardog, port).await {
@@ -292,13 +291,7 @@ impl TorHandler {
         info!("Fetching Tor network consensus via pure Rust");
 
         // Create BearDog crypto client
-        let beardog = match BeardogCryptoClient::from_env() {
-            Ok(client) => client,
-            Err(e) => {
-                error!(error = %e, "Failed to create BearDog client");
-                return Err(format!("BearDog unavailable: {e}"));
-            }
-        };
+        let beardog = CryptoProvider::from_env();
 
         // Fetch consensus using songbird-tor-protocol
         match Consensus::fetch(&beardog).await {
@@ -315,11 +308,7 @@ impl TorHandler {
                 );
 
                 // Initialize circuit manager with fresh consensus
-                let manager = CircuitManager::new(
-                    BeardogCryptoClient::from_env()
-                        .map_err(|e| format!("BearDog for circuit manager: {e}"))?,
-                    consensus,
-                );
+                let manager = CircuitManager::new(CryptoProvider::from_env(), consensus);
                 {
                     let mut cm = self.circuit_manager.write().await;
                     *cm = Some(manager);

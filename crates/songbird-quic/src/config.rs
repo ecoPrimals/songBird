@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC configuration with `BearDog` integration
+//! QUIC configuration with Neural API socket discovery (crypto routing)
 
 use crate::error::{QuicError, Result};
+use songbird_crypto_provider::socket_discovery;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
 /// QUIC configuration
 ///
-/// All crypto operations delegated to `BearDog` - zero hardcoded secrets
+/// QUIC transport configuration; application crypto is routed via the Neural API socket.
 #[derive(Debug, Clone)]
 pub struct QuicConfig {
-    /// `BearDog` socket path for crypto operations
-    pub beardog_socket: PathBuf,
+    /// Neural API Unix socket path (same discovery as `songbird-crypto-provider`)
+    pub neural_api_socket: PathBuf,
 
     /// Connection idle timeout
     pub idle_timeout: Duration,
@@ -44,8 +45,7 @@ pub struct QuicConfig {
 impl Default for QuicConfig {
     fn default() -> Self {
         Self {
-            // BearDog socket discovered at runtime (no hardcoding)
-            beardog_socket: Self::discover_beardog_socket(),
+            neural_api_socket: PathBuf::from(socket_discovery::discover_neural_api_socket()),
 
             idle_timeout: Duration::from_secs(30),
             keep_alive_interval: Some(Duration::from_secs(10)),
@@ -67,10 +67,10 @@ impl QuicConfig {
         Self::default()
     }
 
-    /// Set `BearDog` socket path
+    /// Override Neural API socket path
     #[must_use]
-    pub fn with_beardog_socket(mut self, socket: PathBuf) -> Self {
-        self.beardog_socket = socket;
+    pub fn with_neural_api_socket(mut self, socket: PathBuf) -> Self {
+        self.neural_api_socket = socket;
         self
     }
 
@@ -93,69 +93,6 @@ impl QuicConfig {
     pub const fn with_migration(mut self, enabled: bool) -> Self {
         self.enable_migration = enabled;
         self
-    }
-
-    /// Discover security/crypto provider socket at runtime (capability-first)
-    ///
-    /// ## Resolution Order (capability-first, primal-agnostic)
-    ///
-    /// 1. `CRYPTO_PROVIDER_SOCKET` - Capability-based (preferred for QUIC)
-    /// 2. `SECURITY_PROVIDER_SOCKET` - Capability-based alternative
-    /// 3. `SONGBIRD_SECURITY_PROVIDER` - Legacy capability-based
-    /// 4. `BEARDOG_SOCKET` - Provider-specific (backward compatibility)
-    /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/crypto.sock` - Capability-named
-    /// 6. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` - Capability-named
-    /// 7. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` - Provider hint
-    /// 8. Legacy: `/tmp/biomeos/crypto.sock` - Fallback
-    fn discover_beardog_socket() -> PathBuf {
-        // 1. Capability-based env vars (preferred - primal agnostic)
-        for env_var in &[
-            "CRYPTO_PROVIDER_SOCKET",
-            "SECURITY_PROVIDER_SOCKET",
-            "SONGBIRD_SECURITY_PROVIDER",
-            "BEARDOG_SOCKET", // backward compatibility
-        ] {
-            if let Ok(socket) = std::env::var(env_var) {
-                return PathBuf::from(socket);
-            }
-        }
-
-        // 2. XDG runtime directory (capability names first, then provider hints)
-        if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
-            let biomeos = PathBuf::from(&xdg_runtime).join("biomeos");
-
-            // Capability-named sockets first, provider hints last
-            for socket_name in &["crypto.sock", "security.sock", "beardog.sock"] {
-                let socket = biomeos.join(socket_name);
-                if socket.exists() {
-                    return socket;
-                }
-            }
-        }
-
-        // 3. Fallback (platform-specific, capability name preferred)
-        #[cfg(unix)]
-        {
-            let fallback_paths = [
-                "/tmp/biomeos/crypto.sock",
-                "/tmp/biomeos/security.sock",
-                "/tmp/biomeos/beardog.sock",
-            ];
-
-            for path in fallback_paths {
-                let path_buf = PathBuf::from(path);
-                if path_buf.exists() {
-                    return path_buf;
-                }
-            }
-
-            PathBuf::from("/tmp/biomeos/crypto.sock")
-        }
-
-        #[cfg(not(unix))]
-        {
-            PathBuf::from("crypto.sock")
-        }
     }
 
     /// Build quinn `ServerConfig` from this config
@@ -367,7 +304,7 @@ impl rustls::client::danger::ServerCertVerifier for LineageCertVerifier {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ring-crypto"))]
 mod tests {
     use super::*;
     use std::path::PathBuf;
@@ -386,11 +323,11 @@ mod tests {
     fn builder_overrides_chain() {
         let socket = PathBuf::from("/tmp/test-crypto.sock");
         let c = QuicConfig::new()
-            .with_beardog_socket(socket.clone())
+            .with_neural_api_socket(socket.clone())
             .with_idle_timeout(Duration::from_secs(60))
             .with_0rtt(false)
             .with_migration(false);
-        assert_eq!(c.beardog_socket, socket);
+        assert_eq!(c.neural_api_socket, socket);
         assert_eq!(c.idle_timeout, Duration::from_secs(60));
         assert!(!c.enable_0rtt);
         assert!(!c.enable_migration);

@@ -19,6 +19,43 @@
 
 use serde_json::Value;
 
+/// Canonical capability tokens for [`capabilities_list`] (NEST / inter-primal discovery).
+///
+/// Kept as a single source of truth for `capabilities.list` JSON-RPC and gateways.
+pub const SONGBIRD_CAPABILITY_STRINGS: &[&str] = &[
+    "network.discovery",
+    "network.federation",
+    "network.relay",
+    "network.stun",
+    "network.igd",
+    "network.quic",
+    "network.tls",
+    "network.tor",
+    "network.onion",
+    "ipc.jsonrpc",
+    "ipc.tarpc",
+    "crypto.delegate",
+    "nfc.genesis",
+    "bluetooth.pair",
+];
+
+/// Minimal liveness probe result (`health.liveness`).
+#[must_use]
+pub fn health_liveness() -> Value {
+    serde_json::json!({ "status": "healthy" })
+}
+
+/// Flat capability string list for `capabilities.list` (JSON array result).
+#[must_use]
+pub fn capabilities_list() -> Value {
+    serde_json::Value::Array(
+        SONGBIRD_CAPABILITY_STRINGS
+            .iter()
+            .map(|s| serde_json::Value::String((*s).to_string()))
+            .collect(),
+    )
+}
+
 /// Resolve canonical `BirdSong` / biomeOS `family_id` from environment keys.
 ///
 /// Priority: `SONGBIRD_ORCHESTRATOR_FAMILY_ID` → `BIOMEOS_FAMILY_ID` →
@@ -361,8 +398,9 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::{
-        canonical_family_id, discover_capabilities, health, identity, primal_capabilities,
-        primal_info, rpc_discover_standard, rpc_methods,
+        SONGBIRD_CAPABILITY_STRINGS, canonical_family_id, capabilities_list, discover_capabilities,
+        health, health_liveness, identity, primal_capabilities, primal_info, rpc_discover_standard,
+        rpc_methods,
     };
 
     use std::collections::HashMap;
@@ -391,6 +429,23 @@ mod tests {
         assert_eq!(v["uptime_seconds"], 42);
         assert_eq!(v["services"], 7);
         assert_eq!(v["status"], "healthy");
+    }
+
+    #[test]
+    fn health_liveness_is_minimal() {
+        let v = health_liveness();
+        assert_eq!(v, serde_json::json!({ "status": "healthy" }));
+        assert!(v.get("uptime_seconds").is_none());
+    }
+
+    #[test]
+    fn capabilities_list_matches_const_table() {
+        let v = capabilities_list();
+        let arr = v.as_array().unwrap();
+        assert_eq!(arr.len(), SONGBIRD_CAPABILITY_STRINGS.len());
+        for (i, s) in SONGBIRD_CAPABILITY_STRINGS.iter().enumerate() {
+            assert_eq!(arr[i].as_str().unwrap(), *s);
+        }
     }
 
     #[test]

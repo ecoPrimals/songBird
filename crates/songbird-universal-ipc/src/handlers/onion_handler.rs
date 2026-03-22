@@ -61,11 +61,14 @@ impl OnionHandler {
         *self.beardog_socket.write().await = Some(socket_path);
     }
 
-    /// Get or create a `BearDog` client
-    fn get_beardog_client(&self) -> Result<BeardogCryptoClient, String> {
-        // Try from env first (standard approach)
+    /// Get or create a crypto client (Neural API socket from env, or IPC override).
+    async fn get_beardog_client(&self) -> BeardogCryptoClient {
+        if let Some(ref path) = *self.beardog_socket.read().await
+            && !path.is_empty()
+        {
+            return BeardogCryptoClient::from_neural_api_socket(path);
+        }
         BeardogCryptoClient::from_env()
-            .map_err(|e| format!("BearDog client not available: {e}. Set BEARDOG_SOCKET or ensure BearDog is running."))
     }
 
     /// Handle `onion.start` - Start the sovereign onion service
@@ -105,8 +108,7 @@ impl OnionHandler {
             }
         }
 
-        // Get BearDog client (creates fresh from env)
-        let beardog = self.get_beardog_client()?;
+        let beardog = self.get_beardog_client().await;
 
         // Parse port from params
         let port =
@@ -205,7 +207,7 @@ impl OnionHandler {
     /// ```
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
         let service = self.service.read().await;
-        let beardog_available = self.get_beardog_client().is_ok();
+        let beardog_available = true;
 
         if let Some(svc) = service.as_ref() {
             let uptime = self.start_time.read().await.map(|t| t.elapsed().as_secs()).unwrap_or(0);
@@ -256,8 +258,7 @@ impl OnionHandler {
     /// }
     /// ```
     pub async fn handle_connect(&self, params: Value) -> Result<Value, String> {
-        // Get BearDog client (creates fresh from env)
-        let beardog = self.get_beardog_client()?;
+        let beardog = self.get_beardog_client().await;
 
         let address =
             params.get("address").and_then(|v| v.as_str()).ok_or("Missing 'address' parameter")?;

@@ -14,8 +14,8 @@ pub use introduction::IntroductionPoint;
 pub use rendezvous::RendezvousPoint;
 
 use crate::circuit::Circuit;
-use crate::crypto::BeardogCryptoClient;
 use crate::error::{Error, Result};
+use songbird_crypto_provider::CryptoProvider;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -35,7 +35,7 @@ pub enum ServiceState {
 /// Onion service manager
 pub struct OnionServiceManager {
     /// `BearDog` crypto client
-    beardog: Arc<BeardogCryptoClient>,
+    beardog: Arc<CryptoProvider>,
     /// Service keys
     keys: Arc<RwLock<Option<OnionServiceKeys>>>,
     /// Introduction points
@@ -57,7 +57,7 @@ impl OnionServiceManager {
 
     /// Create new onion service manager
     #[must_use]
-    pub fn new(beardog: BeardogCryptoClient, port: u16) -> Self {
+    pub fn new(beardog: CryptoProvider, port: u16) -> Self {
         Self {
             beardog: Arc::new(beardog),
             keys: Arc::new(RwLock::new(None)),
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_service_manager_creation() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let manager = OnionServiceManager::new(beardog, 8080);
 
         assert_eq!(manager.port(), 8080);
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_service_state() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let manager = OnionServiceManager::new(beardog, 8080);
 
         let state = manager.state().expect("Failed to get state");
@@ -326,7 +326,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_setup_introduction_points() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let manager = OnionServiceManager::new(beardog, 8080);
 
         manager.setup_introduction_points(3).await.expect("Failed to setup intro points");

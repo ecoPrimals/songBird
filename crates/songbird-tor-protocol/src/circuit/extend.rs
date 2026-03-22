@@ -6,21 +6,22 @@
 //! **Phase 2B**: Circuit building
 
 use crate::circuit::{Circuit, CircuitHop};
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::TorProtocolCrypto;
 use crate::directory::RelayInfo;
 use crate::error::{Error, Result};
 use crate::protocol::{RelayCell, RelayCommand};
+use songbird_crypto_provider::CryptoProvider;
 use std::net::IpAddr;
 
 /// Circuit extension handler
 pub struct CircuitExtender {
-    beardog: BeardogCryptoClient,
+    beardog: CryptoProvider,
 }
 
 impl CircuitExtender {
     /// Create new circuit extender
     #[must_use]
-    pub const fn new(beardog: BeardogCryptoClient) -> Self {
+    pub const fn new(beardog: CryptoProvider) -> Self {
         Self {
             beardog,
         }
@@ -38,7 +39,7 @@ impl CircuitExtender {
     ///
     /// # Errors
     /// Returns error if relay has no `ntor_key` or `BearDog` crypto fails.
-    pub fn create_extend2(
+    pub async fn create_extend2(
         &self,
         _circuit: &Circuit,
         next_relay: &RelayInfo,
@@ -49,7 +50,7 @@ impl CircuitExtender {
         })?;
 
         // 1. Generate ephemeral X25519 keypair via BearDog
-        let client_ephemeral = self.beardog.x25519_generate_ephemeral()?;
+        let client_ephemeral = self.beardog.x25519_generate_ephemeral().await?;
 
         // 2. Construct EXTEND2 relay cell payload
         let mut payload = Vec::new();
@@ -118,7 +119,7 @@ impl CircuitExtender {
     ///
     /// # Errors
     /// Returns error if response is invalid or handshake fails.
-    pub fn process_extended2(
+    pub async fn process_extended2(
         &self,
         _circuit: &Circuit,
         state: &super::create::HandshakeState,
@@ -142,7 +143,7 @@ impl CircuitExtender {
 
         // Complete handshake using ntor
         let ntor = super::NtorHandshake::new(self.beardog.clone());
-        let key_material = ntor.complete_handshake(state, handshake_response)?;
+        let key_material = ntor.complete_handshake(state, handshake_response).await?;
 
         // Create circuit hop
         Ok(CircuitHop::new(
@@ -161,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_circuit_extender_creation() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let _extender = CircuitExtender::new(beardog);
 
         // Test passes if it creates successfully

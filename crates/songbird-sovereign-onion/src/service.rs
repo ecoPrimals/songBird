@@ -72,8 +72,7 @@ impl OnionService {
         );
 
         // Create dummy BearDog client (won't be used)
-        let beardog = BeardogCryptoClient::from_env()
-            .unwrap_or_else(|_| BeardogCryptoClient::with_tcp("127.0.0.1", 9900));
+        let beardog = BeardogCryptoClient::from_env();
 
         Ok(Self {
             identity,
@@ -166,12 +165,13 @@ impl OnionService {
         debug!("Received key exchange from peer");
 
         // Generate our ephemeral keypair via BearDog
-        let our_ephemeral = EphemeralKeypair::generate_via_beardog(&self.beardog)?;
+        let our_ephemeral = EphemeralKeypair::generate_via_beardog(&self.beardog).await?;
         let our_public_key = *our_ephemeral.public_bytes();
 
         // Derive shared secret via BearDog (consumes our_ephemeral)
-        let shared_secret =
-            our_ephemeral.derive_shared_secret_via_beardog(&self.beardog, &key_exchange.pubkey)?;
+        let shared_secret = our_ephemeral
+            .derive_shared_secret_via_beardog(&self.beardog, &key_exchange.pubkey)
+            .await?;
 
         debug!("Derived shared secret via BearDog - handshake complete");
 
@@ -225,8 +225,10 @@ impl OnionService {
                     let mut nonce = [0u8; 12];
                     nonce[..8].copy_from_slice(&msg_sequence.to_be_bytes());
 
-                    let plaintext =
-                        self.beardog.chacha20_poly1305_decrypt(session_key, &nonce, &encrypted)?;
+                    let plaintext = self
+                        .beardog
+                        .chacha20_poly1305_decrypt(session_key, &nonce, &encrypted)
+                        .await?;
 
                     debug!(
                         sequence = msg_sequence,
@@ -235,8 +237,10 @@ impl OnionService {
                     );
 
                     // Echo back (for testing - replace with actual logic)
-                    let response_encrypted =
-                        self.beardog.chacha20_poly1305_encrypt(session_key, &nonce, &plaintext)?;
+                    let response_encrypted = self
+                        .beardog
+                        .chacha20_poly1305_encrypt(session_key, &nonce, &plaintext)
+                        .await?;
 
                     let response_data = DataMessage::new(sequence, response_encrypted);
                     stream.write_all(&[MessageType::Data as u8]).await?;

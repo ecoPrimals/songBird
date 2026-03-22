@@ -94,7 +94,7 @@ pub fn get_bind_address() -> String {
     get_bind_address_with(&read_process_env)
 }
 
-/// Same as [`get_bind_address`](get_bind_address) with an injectable env reader.
+/// Same as [`get_bind_address`] with an injectable env reader.
 #[must_use]
 pub fn get_bind_address_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
     if let Ok(addr) = env("SONGBIRD_BIND_ADDRESS")
@@ -139,7 +139,7 @@ pub fn get_port_range_start() -> u16 {
     get_port_range_start_with(&read_process_env)
 }
 
-/// Same as [`get_port_range_start`](get_port_range_start) with an injectable env reader.
+/// Same as [`get_port_range_start`] with an injectable env reader.
 #[must_use]
 pub fn get_port_range_start_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
     env_parse_with(env, "SONGBIRD_PORT_START", {
@@ -158,7 +158,7 @@ pub fn get_port_range_end() -> u16 {
     get_port_range_end_with(&read_process_env)
 }
 
-/// Same as [`get_port_range_end`](get_port_range_end) with an injectable env reader.
+/// Same as [`get_port_range_end`] with an injectable env reader.
 #[must_use]
 pub fn get_port_range_end_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
     env_parse_with(env, "SONGBIRD_PORT_END", {
@@ -240,7 +240,7 @@ pub fn get_dashboard_port() -> u16 {
     get_dashboard_port_with(&read_process_env)
 }
 
-/// Same as [`get_dashboard_port`](get_dashboard_port) with an injectable env reader.
+/// Same as [`get_dashboard_port`] with an injectable env reader.
 #[must_use]
 pub fn get_dashboard_port_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> u16 {
     env_parse_with(env, "SONGBIRD_DASHBOARD_PORT", {
@@ -260,7 +260,7 @@ pub fn default_discovery_port() -> u16 {
     default_discovery_port_with(&read_process_env)
 }
 
-/// Same as [`default_discovery_port`](default_discovery_port) with an injectable env reader.
+/// Same as [`default_discovery_port`] with an injectable env reader.
 #[must_use]
 pub fn default_discovery_port_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
@@ -276,7 +276,7 @@ pub fn get_connection_timeout_ms() -> u64 {
     get_connection_timeout_ms_with(&read_process_env)
 }
 
-/// Same as [`get_connection_timeout_ms`](get_connection_timeout_ms) with an injectable env reader.
+/// Same as [`get_connection_timeout_ms`] with an injectable env reader.
 #[must_use]
 pub fn get_connection_timeout_ms_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
@@ -324,7 +324,7 @@ pub fn get_max_connections() -> usize {
     get_max_connections_with(&read_process_env)
 }
 
-/// Same as [`get_max_connections`](get_max_connections) with an injectable env reader.
+/// Same as [`get_max_connections`] with an injectable env reader.
 #[must_use]
 pub fn get_max_connections_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
@@ -345,7 +345,7 @@ pub fn get_worker_threads() -> usize {
     get_worker_threads_with(&read_process_env)
 }
 
-/// Same as [`get_worker_threads`](get_worker_threads) with an injectable env reader.
+/// Same as [`get_worker_threads`] with an injectable env reader.
 #[must_use]
 pub fn get_worker_threads_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> usize {
     env_parse_with(env, "SONGBIRD_WORKER_THREADS", {
@@ -361,7 +361,7 @@ pub fn get_buffer_pool_size() -> usize {
     get_buffer_pool_size_with(&read_process_env)
 }
 
-/// Same as [`get_buffer_pool_size`](get_buffer_pool_size) with an injectable env reader.
+/// Same as [`get_buffer_pool_size`] with an injectable env reader.
 #[must_use]
 pub fn get_buffer_pool_size_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
@@ -397,7 +397,7 @@ pub fn get_batch_size() -> usize {
     get_batch_size_with(&read_process_env)
 }
 
-/// Same as [`get_batch_size`](get_batch_size) with an injectable env reader.
+/// Same as [`get_batch_size`] with an injectable env reader.
 #[must_use]
 pub fn get_batch_size_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> usize {
     env_parse_with(env, "SONGBIRD_BATCH_SIZE", {
@@ -419,7 +419,7 @@ pub fn enable_zero_copy() -> bool {
     enable_zero_copy_with(&read_process_env)
 }
 
-/// Same as [`enable_zero_copy`](enable_zero_copy) with an injectable env reader.
+/// Same as [`enable_zero_copy`] with an injectable env reader.
 #[must_use]
 pub fn enable_zero_copy_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> bool {
     env_get_bool_with(env, "SONGBIRD_ENABLE_ZERO_COPY", {
@@ -465,7 +465,7 @@ pub fn get_log_level() -> String {
     get_log_level_with(&read_process_env)
 }
 
-/// Same as [`get_log_level`](get_log_level) with an injectable env reader.
+/// Same as [`get_log_level`] with an injectable env reader.
 #[must_use]
 pub fn get_log_level_with(env: &impl Fn(&str) -> Result<String, std::env::VarError>) -> String {
     env("SONGBIRD_LOG_LEVEL")
@@ -513,7 +513,7 @@ pub fn get_canonical_cors_origins() -> Vec<String> {
     get_canonical_cors_origins_with(&read_process_env)
 }
 
-/// Same as [`get_canonical_cors_origins`](get_canonical_cors_origins) with an injectable env reader.
+/// Same as [`get_canonical_cors_origins`] with an injectable env reader.
 #[must_use]
 pub fn get_canonical_cors_origins_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,

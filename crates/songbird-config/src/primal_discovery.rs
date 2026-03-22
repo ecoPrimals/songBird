@@ -184,7 +184,7 @@ pub async fn get_storage_endpoint() -> SongbirdResult<String> {
     get_storage_endpoint_with(|k| std::env::var(k)).await
 }
 
-/// Same as [`get_storage_endpoint`](get_storage_endpoint) with an injectable env reader.
+/// Same as [`get_storage_endpoint`] with an injectable env reader.
 pub async fn get_storage_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
@@ -237,7 +237,7 @@ pub async fn get_security_endpoint() -> SongbirdResult<String> {
     get_security_endpoint_with(|k| std::env::var(k)).await
 }
 
-/// Same as [`get_security_endpoint`](get_security_endpoint) with an injectable env reader.
+/// Same as [`get_security_endpoint`] with an injectable env reader.
 pub async fn get_security_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
@@ -290,7 +290,7 @@ pub async fn get_ai_endpoint() -> SongbirdResult<String> {
     get_ai_endpoint_with(|k| std::env::var(k)).await
 }
 
-/// Same as [`get_ai_endpoint`](get_ai_endpoint) with an injectable env reader.
+/// Same as [`get_ai_endpoint`] with an injectable env reader.
 pub async fn get_ai_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,

@@ -5,10 +5,11 @@
 //!
 //! **Phase 2D**: Onion Service
 
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::TorProtocolCrypto;
 use crate::error::{Error, Result};
 use crate::onion_service::IntroductionPoint;
 use base32;
+use songbird_crypto_provider::CryptoProvider;
 
 /// Attempt to get key material from `BearDog` via capability discovery.
 ///
@@ -43,7 +44,7 @@ impl OnionServiceKeys {
     /// # Errors
     ///
     /// Returns error if key generation or address derivation fails.
-    pub async fn generate(beardog: &BeardogCryptoClient) -> Result<Self> {
+    pub async fn generate(beardog: &CryptoProvider) -> Result<Self> {
         core::future::ready(()).await;
         // Ed25519 identity keypair: single BearDog RPC when wired (`secret || public`, 64 bytes)
         let identity_pair = request_beardog_key("crypto.ed25519.generate_onion_service_identity")?;
@@ -59,7 +60,7 @@ impl OnionServiceKeys {
         identity_public.copy_from_slice(&identity_pair[32..]);
 
         // Generate X25519 encryption keypair
-        let encryption_keypair = beardog.x25519_generate_ephemeral()?;
+        let encryption_keypair = beardog.x25519_generate_ephemeral().await?;
 
         // Derive onion address from public key
         let onion_address = Self::derive_onion_address(&identity_public);
@@ -299,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_descriptor_new_requires_beardog_signing() {
-        let _beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let _beardog = CryptoProvider::from_env();
 
         let keys = OnionServiceKeys {
             identity_secret: [0u8; 32],

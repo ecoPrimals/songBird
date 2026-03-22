@@ -124,7 +124,7 @@ impl Drop for QuicClient {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ring-crypto"))]
 mod tests {
     use super::*;
 

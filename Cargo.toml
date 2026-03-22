@@ -29,6 +29,9 @@ members = [
     "crates/songbird-genesis",
     "crates/songbird-execution-agent",
 
+    # Shared crypto provider (Neural API routing)
+    "crates/songbird-crypto-provider",
+
     # Protocols
     "crates/songbird-tor-protocol",
     "crates/songbird-sovereign-onion",

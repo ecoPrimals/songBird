@@ -5,11 +5,11 @@
 //!
 //! Fetches and parses the Tor network consensus document from directory authorities.
 
-use crate::crypto::BeardogCryptoClient;
 use crate::directory::authorities::DIRECTORY_AUTHORITIES;
 use crate::directory::{CircuitPath, DirectoryAuthority, RelayInfo};
 use crate::error::{Error, Result};
 use crate::http_fetch;
+use songbird_crypto_provider::CryptoProvider;
 use std::time::{Duration, SystemTime};
 use tracing::{debug, info, warn};
 
@@ -33,7 +33,7 @@ impl Consensus {
     ///
     /// # Errors
     /// Returns error if all authorities fail or consensus parse fails.
-    pub async fn fetch(beardog: &BeardogCryptoClient) -> Result<Self> {
+    pub async fn fetch(beardog: &CryptoProvider) -> Result<Self> {
         info!("Fetching Tor network consensus");
 
         // Try up to 3 authorities
@@ -65,7 +65,7 @@ impl Consensus {
     /// Fetch consensus from specific authority
     async fn fetch_from_authority(
         authority: &DirectoryAuthority,
-        _beardog: &BeardogCryptoClient,
+        _beardog: &CryptoProvider,
     ) -> Result<Self> {
         let url = authority.consensus_url();
 

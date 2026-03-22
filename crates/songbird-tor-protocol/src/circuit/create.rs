@@ -5,20 +5,21 @@
 //!
 //! **Phase 2B**: Circuit building
 
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::TorProtocolCrypto;
 use crate::error::{Error, Result};
+use songbird_crypto_provider::CryptoProvider;
 
 /// ntor handshake protocol for circuit creation
 ///
 /// **TRUE PRIMAL**: All crypto operations delegated to `BearDog`.
 pub struct NtorHandshake {
-    beardog: BeardogCryptoClient,
+    beardog: CryptoProvider,
 }
 
 impl NtorHandshake {
     /// Create new ntor handshake handler
     #[must_use]
-    pub const fn new(beardog: BeardogCryptoClient) -> Self {
+    pub const fn new(beardog: CryptoProvider) -> Self {
         Self {
             beardog,
         }
@@ -36,13 +37,13 @@ impl NtorHandshake {
     ///
     /// # Errors
     /// Returns error if `BearDog` crypto operations fail.
-    pub fn create_handshake(
+    pub async fn create_handshake(
         &self,
         node_id: &[u8; 20],
         relay_ntor_key: &[u8; 32],
     ) -> Result<(Vec<u8>, HandshakeState)> {
         // 1. Generate ephemeral X25519 keypair via BearDog
-        let client_ephemeral = self.beardog.x25519_generate_ephemeral()?;
+        let client_ephemeral = self.beardog.x25519_generate_ephemeral().await?;
 
         // 2. Construct CREATE2 payload (84 bytes per Tor ntor spec)
         // Format: ID (20 bytes) || B (32 bytes) || X (32 bytes)
@@ -76,7 +77,7 @@ impl NtorHandshake {
     ///
     /// # Errors
     /// Returns error if response is invalid or auth verification fails.
-    pub fn complete_handshake(
+    pub async fn complete_handshake(
         &self,
         state: &HandshakeState,
         response: &[u8],
@@ -100,12 +101,15 @@ impl NtorHandshake {
         // Per Tor ntor spec, compute TWO shared secrets:
         // 1. EXP(Y,x) - our ephemeral secret with server's ephemeral public
         // 2. EXP(B,x) - our ephemeral secret with server's static ntor key
-        let xy =
-            self.beardog.x25519_derive_secret(&state.client_ephemeral_secret, &server_pubkey)?;
+        let xy = self
+            .beardog
+            .x25519_derive_secret(&state.client_ephemeral_secret, &server_pubkey)
+            .await?;
 
         let xb = self
             .beardog
-            .x25519_derive_secret(&state.client_ephemeral_secret, &state.relay_ntor_key)?;
+            .x25519_derive_secret(&state.client_ephemeral_secret, &state.relay_ntor_key)
+            .await?;
 
         // secret_input = EXP(Y,x) || EXP(B,x) || ID || B || X || Y || PROTOID
         // PROTOID = "ntor-curve25519-sha256-1" (uses SHA256, not SHA3)
@@ -123,12 +127,15 @@ impl NtorHandshake {
 
         // KEY_SEED = H(secret_input, t_key) using HMAC-SHA256
         // t_key = "ntor-curve25519-sha256-1:key_extract"
-        let key_seed =
-            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:key_extract", &secret_input)?;
+        let key_seed = self
+            .beardog
+            .hmac_sha256(b"ntor-curve25519-sha256-1:key_extract", &secret_input)
+            .await?;
 
         // verify = H(secret_input, t_verify)
         // t_verify = "ntor-curve25519-sha256-1:verify"
-        let verify = self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:verify", &secret_input)?;
+        let verify =
+            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:verify", &secret_input).await?;
 
         // auth_input = verify | ID | B | Y | X | PROTOID | "Server"
         let auth_input = [
@@ -145,14 +152,14 @@ impl NtorHandshake {
         // AUTH = H(auth_input, t_mac)
         // t_mac = "ntor-curve25519-sha256-1:mac"
         let expected_auth =
-            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:mac", &auth_input)?;
+            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:mac", &auth_input).await?;
 
         if auth != expected_auth {
             return Err(Error::Protocol("ntor auth verification failed".to_string()));
         }
 
         // Derive forward/backward keys via RFC5869 HKDF
-        self.derive_circuit_keys(&key_seed)
+        self.derive_circuit_keys(&key_seed).await
     }
 
     /// Derive circuit keys from `KEY_SEED` using Tor's HKDF-like expansion
@@ -167,7 +174,7 @@ impl NtorHandshake {
     /// - Db (20 bytes): backward digest seed  
     /// - Kf (16 bytes): forward AES-128 key
     /// - Kb (16 bytes): backward AES-128 key
-    fn derive_circuit_keys(&self, key_seed: &[u8; 32]) -> Result<KeyMaterial> {
+    async fn derive_circuit_keys(&self, key_seed: &[u8; 32]) -> Result<KeyMaterial> {
         let m_expand = b"ntor-curve25519-sha256-1:key_expand";
 
         // Expand using HMAC-SHA256 with counter (Tor-style HKDF-expand)
@@ -182,7 +189,7 @@ impl NtorHandshake {
             input.push(i);
 
             // K_i = HMAC-SHA256(key_seed, input)
-            let k_i = self.beardog.hmac_sha256(key_seed, &input)?;
+            let k_i = self.beardog.hmac_sha256(key_seed, &input).await?;
             expanded.extend_from_slice(&k_i);
             prev = k_i.to_vec();
         }

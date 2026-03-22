@@ -47,6 +47,7 @@ rustls-pemfile = "2"
 rcgen = "0.13"
 
 # Songbird internal
+songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-types = { path = "../songbird-types" }
 
 [dev-dependencies]

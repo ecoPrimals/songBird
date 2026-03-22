@@ -15,7 +15,8 @@ use crate::{
     SIGNATURE_SIZE,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use serde_json::json;
+use songbird_crypto_provider::CryptoProvider;
 use tracing::{debug, info, warn};
 
 /// Genesis credentials (encrypted)
@@ -50,368 +51,8 @@ pub struct GenesisExchange {
     /// Timing protector
     timing: TimingProtector,
 
-    /// `BearDog` crypto client for key operations
-    beardog: BearDogNfcCrypto,
-}
-
-/// `BearDog` crypto client for NFC genesis operations
-///
-/// Delegates all cryptographic operations to `BearDog` via Unix socket JSON-RPC.
-/// Follows the same pattern as `songbird-tls::crypto::BeardogCryptoClient`.
-///
-/// ## Deep Debt Compliance
-/// - Zero production stubs (real IPC calls)
-/// - Runtime discovery (env -> XDG -> fallback)
-/// - Zero unsafe code
-/// - Graceful degradation (logs warning if `BearDog` unavailable)
-#[derive(Debug)]
-struct BearDogNfcCrypto {
-    socket_path: PathBuf,
-}
-
-impl BearDogNfcCrypto {
-    /// Create new `BearDog` NFC crypto client
-    ///
-    /// Discovers socket path via 3-tier runtime discovery:
-    /// 1. `BEARDOG_SOCKET` environment variable
-    /// 2. `$XDG_RUNTIME_DIR/beardog/beardog.sock`
-    /// 3. `/tmp/beardog.sock` fallback
-    fn new() -> Self {
-        let socket_path = Self::discover_socket();
-        debug!("BearDog NFC crypto client: {:?}", socket_path);
-        Self {
-            socket_path,
-        }
-    }
-
-    fn discover_socket() -> PathBuf {
-        Self::discover_socket_with(|key| std::env::var(key))
-    }
-
-    /// Discover socket with injectable env reader (capability-first, concurrent-safe)
-    ///
-    /// ## Resolution Order (capability-first, primal-agnostic)
-    ///
-    /// 1. Capability-based env vars: `SECURITY_PROVIDER_SOCKET`, `CRYPTO_PROVIDER_SOCKET`
-    /// 2. Provider-specific env var: `BEARDOG_SOCKET` (backward compatibility)
-    /// 3. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability-named)
-    /// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` (provider hint)
-    /// 5. Legacy: `/tmp/biomeos/security.sock` (fallback)
-    fn discover_socket_with<F>(env_reader: F) -> PathBuf
-    where
-        F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
-    {
-        // 1. Capability-based env vars first (primal-agnostic)
-        for env_var in &["SECURITY_PROVIDER_SOCKET", "CRYPTO_PROVIDER_SOCKET", "BEARDOG_SOCKET"] {
-            if let Ok(path) = env_reader(env_var)
-                && !path.is_empty()
-            {
-                return PathBuf::from(path);
-            }
-        }
-
-        // 2. XDG runtime directory (capability names first)
-        if let Ok(xdg) = env_reader("XDG_RUNTIME_DIR") {
-            let biomeos = PathBuf::from(&xdg).join("biomeos");
-
-            // Capability-named sockets first, then provider hints
-            for socket_name in &["security.sock", "crypto.sock", "beardog.sock"] {
-                let path = biomeos.join(socket_name);
-                if path.exists() {
-                    return path;
-                }
-            }
-
-            // Legacy beardog directory (backward compatibility)
-            let legacy_path = PathBuf::from(&xdg).join("beardog").join("beardog.sock");
-            if legacy_path.exists() {
-                return legacy_path;
-            }
-        }
-
-        // 3. Legacy fallback (capability name preferred)
-        let fallback_paths =
-            ["/tmp/biomeos/security.sock", "/tmp/biomeos/beardog.sock", "/tmp/beardog.sock"];
-
-        for path in fallback_paths {
-            let path_buf = PathBuf::from(path);
-            if path_buf.exists() {
-                return path_buf;
-            }
-        }
-
-        PathBuf::from("/tmp/biomeos/security.sock")
-    }
-
-    /// Call `BearDog` JSON-RPC method
-    async fn call(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value> {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-        let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params,
-            "id": 1
-        });
-
-        let request_bytes = serde_json::to_vec(&request)
-            .map_err(|e| NfcError::Crypto(format!("serialize: {e}")))?;
-
-        // Connect to BearDog
-        let mut stream = tokio::net::UnixStream::connect(&self.socket_path).await.map_err(|e| {
-            NfcError::Crypto(format!(
-                "BearDog connect failed ({}): {}",
-                self.socket_path.display(),
-                e
-            ))
-        })?;
-
-        stream
-            .write_all(&request_bytes)
-            .await
-            .map_err(|e| NfcError::Crypto(format!("write: {e}")))?;
-        stream
-            .write_all(b"\n")
-            .await
-            .map_err(|e| NfcError::Crypto(format!("write newline: {e}")))?;
-        stream.shutdown().await.map_err(|e| NfcError::Crypto(format!("shutdown write: {e}")))?;
-
-        let mut response_buf = Vec::new();
-        stream
-            .read_to_end(&mut response_buf)
-            .await
-            .map_err(|e| NfcError::Crypto(format!("read: {e}")))?;
-
-        let response: serde_json::Value = serde_json::from_slice(&response_buf)
-            .map_err(|e| NfcError::Crypto(format!("parse response: {e}")))?;
-
-        if let Some(error) = response.get("error") {
-            return Err(NfcError::Crypto(format!("BearDog error: {error}")));
-        }
-
-        response
-            .get("result")
-            .cloned()
-            .ok_or_else(|| NfcError::Crypto("BearDog response missing 'result'".to_string()))
-    }
-
-    /// Generate ephemeral X25519 keypair via `BearDog`
-    async fn generate_x25519_keypair(&self) -> Result<[u8; PUBLIC_KEY_SIZE]> {
-        match self
-            .call(
-                "crypto.generate_x25519_keypair",
-                serde_json::json!({
-                    "purpose": "nfc_genesis_ephemeral"
-                }),
-            )
-            .await
-        {
-            Ok(result) => {
-                if let Some(pk) = result.get("public_key").and_then(|v| v.as_str()) {
-                    let bytes = decode_hex_or_b64(pk)?;
-                    let mut key = [0u8; PUBLIC_KEY_SIZE];
-                    if bytes.len() >= PUBLIC_KEY_SIZE {
-                        key.copy_from_slice(&bytes[..PUBLIC_KEY_SIZE]);
-                    }
-                    Ok(key)
-                } else {
-                    Err(NfcError::Crypto("missing public_key".to_string()))
-                }
-            }
-            Err(e) => {
-                warn!("BearDog x25519 unavailable: {}. Using local RNG fallback.", e);
-                // Fallback: generate random bytes (not cryptographically ideal without BearDog)
-                let mut key = [0u8; PUBLIC_KEY_SIZE];
-                use rand::RngCore;
-                rand::thread_rng().fill_bytes(&mut key);
-                Ok(key)
-            }
-        }
-    }
-
-    /// Compute X25519 Diffie-Hellman shared secret via `BearDog`
-    async fn x25519_dh(&self, peer_pubkey: &[u8]) -> Result<Vec<u8>> {
-        match self
-            .call(
-                "crypto.x25519_dh",
-                serde_json::json!({
-                    "peer_public_key": hex::encode(peer_pubkey)
-                }),
-            )
-            .await
-        {
-            Ok(result) => result.get("shared_secret").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing shared_secret".to_string())),
-                decode_hex_or_b64,
-            ),
-            Err(e) => {
-                warn!("BearDog DH unavailable: {}. Using zero secret (TESTING ONLY).", e);
-                Ok(vec![0u8; 32])
-            }
-        }
-    }
-
-    /// Generate random nonce via `BearDog`
-    async fn generate_nonce(&self) -> Result<[u8; NONCE_SIZE]> {
-        match self
-            .call(
-                "crypto.generate_random",
-                serde_json::json!({
-                    "length": NONCE_SIZE,
-                    "purpose": "nfc_genesis_nonce"
-                }),
-            )
-            .await
-        {
-            Ok(result) => result.get("bytes").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing bytes".to_string())),
-                |n| {
-                    let bytes = decode_hex_or_b64(n)?;
-                    let mut nonce = [0u8; NONCE_SIZE];
-                    if bytes.len() >= NONCE_SIZE {
-                        nonce.copy_from_slice(&bytes[..NONCE_SIZE]);
-                    }
-                    Ok(nonce)
-                },
-            ),
-            Err(e) => {
-                warn!("BearDog nonce unavailable: {}. Using local RNG.", e);
-                let mut nonce = [0u8; NONCE_SIZE];
-                use rand::RngCore;
-                rand::thread_rng().fill_bytes(&mut nonce);
-                Ok(nonce)
-            }
-        }
-    }
-
-    /// Encrypt with ChaCha20-Poly1305 via `BearDog`
-    async fn encrypt(&self, plaintext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
-        match self
-            .call(
-                "crypto.chacha20poly1305_encrypt",
-                serde_json::json!({
-                    "plaintext": hex::encode(plaintext),
-                    "key": hex::encode(key),
-                    "nonce": hex::encode(nonce)
-                }),
-            )
-            .await
-        {
-            Ok(result) => result.get("ciphertext").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing ciphertext".to_string())),
-                decode_hex_or_b64,
-            ),
-            Err(e) => {
-                warn!("BearDog encrypt unavailable: {}. Passing plaintext (TESTING ONLY).", e);
-                Ok(plaintext.to_vec())
-            }
-        }
-    }
-
-    /// Decrypt with ChaCha20-Poly1305 via `BearDog`
-    async fn decrypt(&self, ciphertext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
-        match self
-            .call(
-                "crypto.chacha20poly1305_decrypt",
-                serde_json::json!({
-                    "ciphertext": hex::encode(ciphertext),
-                    "key": hex::encode(key),
-                    "nonce": hex::encode(nonce)
-                }),
-            )
-            .await
-        {
-            Ok(result) => result.get("plaintext").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing plaintext".to_string())),
-                decode_hex_or_b64,
-            ),
-            Err(e) => {
-                warn!("BearDog decrypt unavailable: {}. Treating as plaintext (TESTING ONLY).", e);
-                Ok(ciphertext.to_vec())
-            }
-        }
-    }
-
-    /// Sign with Ed25519 via `BearDog`
-    async fn ed25519_sign(&self, data: &[u8]) -> Result<[u8; SIGNATURE_SIZE]> {
-        match self
-            .call(
-                "crypto.ed25519_sign",
-                serde_json::json!({
-                    "message": hex::encode(data),
-                    "purpose": "nfc_genesis"
-                }),
-            )
-            .await
-        {
-            Ok(result) => {
-                if let Some(sig) = result.get("signature").and_then(|v| v.as_str()) {
-                    let bytes = decode_hex_or_b64(sig)?;
-                    let mut signature = [0u8; SIGNATURE_SIZE];
-                    if bytes.len() >= SIGNATURE_SIZE {
-                        signature.copy_from_slice(&bytes[..SIGNATURE_SIZE]);
-                    }
-                    Ok(signature)
-                } else {
-                    Err(NfcError::Crypto("missing signature".to_string()))
-                }
-            }
-            Err(e) => {
-                warn!("BearDog sign unavailable: {}. Using zero signature (TESTING ONLY).", e);
-                Ok([0u8; SIGNATURE_SIZE])
-            }
-        }
-    }
-
-    /// Verify Ed25519 signature via `BearDog`
-    async fn ed25519_verify(&self, data: &[u8], signature: &[u8]) -> Result<()> {
-        match self
-            .call(
-                "crypto.ed25519_verify",
-                serde_json::json!({
-                    "message": hex::encode(data),
-                    "signature": hex::encode(signature)
-                }),
-            )
-            .await
-        {
-            Ok(result) => {
-                let valid =
-                    result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
-                if valid {
-                    Ok(())
-                } else {
-                    Err(NfcError::Crypto("Signature verification failed".to_string()))
-                }
-            }
-            Err(e) => {
-                warn!("BearDog verify unavailable: {}. Accepting (TESTING ONLY).", e);
-                Ok(())
-            }
-        }
-    }
-
-    /// Destroy ephemeral keys via `BearDog`
-    async fn destroy_ephemeral_keys(&self) -> Result<()> {
-        match self
-            .call(
-                "crypto.destroy_ephemeral_keys",
-                serde_json::json!({
-                    "purpose": "nfc_genesis_ephemeral"
-                }),
-            )
-            .await
-        {
-            Ok(_) => {
-                debug!("Ephemeral keys destroyed via BearDog");
-                Ok(())
-            }
-            Err(e) => {
-                warn!("BearDog destroy_keys unavailable: {}. Keys will be dropped.", e);
-                Ok(())
-            }
-        }
-    }
+    /// Shared crypto provider (Neural API by default; `BEARDOG_MODE=direct` for BearDog socket)
+    provider: CryptoProvider,
 }
 
 /// Decode hex or base64 encoded bytes
@@ -459,13 +100,252 @@ impl GenesisExchange {
         let timing = TimingProtector::new(config.target_exchange_duration, config.max_random_delay);
 
         let protocol = NfcProtocol::new(config.clone());
-        let beardog = BearDogNfcCrypto::new();
+        let provider = CryptoProvider::from_env();
 
         Self {
             config,
             protocol,
             timing,
-            beardog,
+            provider,
+        }
+    }
+
+    #[cfg(test)]
+    fn for_test_with_provider(provider: CryptoProvider) -> Self {
+        let config = NfcConfig::default();
+        let timing = TimingProtector::new(config.target_exchange_duration, config.max_random_delay);
+        let protocol = NfcProtocol::new(config.clone());
+        Self {
+            config,
+            protocol,
+            timing,
+            provider,
+        }
+    }
+
+    async fn nfc_crypto_call(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        self.provider.call(method, params).await.map_err(|e| NfcError::Crypto(e.to_string()))
+    }
+
+    async fn generate_x25519_keypair(&self) -> Result<[u8; PUBLIC_KEY_SIZE]> {
+        match self
+            .nfc_crypto_call(
+                "crypto.generate_x25519_keypair",
+                json!({
+                    "purpose": "nfc_genesis_ephemeral"
+                }),
+            )
+            .await
+        {
+            Ok(result) => {
+                if let Some(pk) = result.get("public_key").and_then(|v| v.as_str()) {
+                    let bytes = decode_hex_or_b64(pk)?;
+                    let mut key = [0u8; PUBLIC_KEY_SIZE];
+                    if bytes.len() >= PUBLIC_KEY_SIZE {
+                        key.copy_from_slice(&bytes[..PUBLIC_KEY_SIZE]);
+                    }
+                    Ok(key)
+                } else {
+                    Err(NfcError::Crypto("missing public_key".to_string()))
+                }
+            }
+            Err(e) => {
+                warn!("Crypto provider x25519 unavailable: {}. Using local RNG fallback.", e);
+                let mut key = [0u8; PUBLIC_KEY_SIZE];
+                use rand::RngCore;
+                rand::thread_rng().fill_bytes(&mut key);
+                Ok(key)
+            }
+        }
+    }
+
+    async fn x25519_dh(&self, peer_pubkey: &[u8]) -> Result<Vec<u8>> {
+        match self
+            .nfc_crypto_call(
+                "crypto.x25519_dh",
+                json!({
+                    "peer_public_key": hex::encode(peer_pubkey)
+                }),
+            )
+            .await
+        {
+            Ok(result) => result.get("shared_secret").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing shared_secret".to_string())),
+                decode_hex_or_b64,
+            ),
+            Err(e) => {
+                warn!("Crypto provider DH unavailable: {}. Using zero secret (TESTING ONLY).", e);
+                Ok(vec![0u8; 32])
+            }
+        }
+    }
+
+    async fn generate_nonce(&self) -> Result<[u8; NONCE_SIZE]> {
+        match self
+            .nfc_crypto_call(
+                "crypto.generate_random",
+                json!({
+                    "length": NONCE_SIZE,
+                    "purpose": "nfc_genesis_nonce"
+                }),
+            )
+            .await
+        {
+            Ok(result) => result.get("bytes").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing bytes".to_string())),
+                |n| {
+                    let bytes = decode_hex_or_b64(n)?;
+                    let mut nonce = [0u8; NONCE_SIZE];
+                    if bytes.len() >= NONCE_SIZE {
+                        nonce.copy_from_slice(&bytes[..NONCE_SIZE]);
+                    }
+                    Ok(nonce)
+                },
+            ),
+            Err(e) => {
+                warn!("Crypto provider nonce unavailable: {}. Using local RNG.", e);
+                let mut nonce = [0u8; NONCE_SIZE];
+                use rand::RngCore;
+                rand::thread_rng().fill_bytes(&mut nonce);
+                Ok(nonce)
+            }
+        }
+    }
+
+    async fn encrypt(&self, plaintext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
+        match self
+            .nfc_crypto_call(
+                "crypto.chacha20poly1305_encrypt",
+                json!({
+                    "plaintext": hex::encode(plaintext),
+                    "key": hex::encode(key),
+                    "nonce": hex::encode(nonce)
+                }),
+            )
+            .await
+        {
+            Ok(result) => result.get("ciphertext").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing ciphertext".to_string())),
+                decode_hex_or_b64,
+            ),
+            Err(e) => {
+                warn!(
+                    "Crypto provider encrypt unavailable: {}. Passing plaintext (TESTING ONLY).",
+                    e
+                );
+                Ok(plaintext.to_vec())
+            }
+        }
+    }
+
+    async fn decrypt(&self, ciphertext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
+        match self
+            .nfc_crypto_call(
+                "crypto.chacha20poly1305_decrypt",
+                json!({
+                    "ciphertext": hex::encode(ciphertext),
+                    "key": hex::encode(key),
+                    "nonce": hex::encode(nonce)
+                }),
+            )
+            .await
+        {
+            Ok(result) => result.get("plaintext").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing plaintext".to_string())),
+                decode_hex_or_b64,
+            ),
+            Err(e) => {
+                warn!(
+                    "Crypto provider decrypt unavailable: {}. Treating as plaintext (TESTING ONLY).",
+                    e
+                );
+                Ok(ciphertext.to_vec())
+            }
+        }
+    }
+
+    async fn ed25519_sign(&self, data: &[u8]) -> Result<[u8; SIGNATURE_SIZE]> {
+        match self
+            .nfc_crypto_call(
+                "crypto.ed25519_sign",
+                json!({
+                    "message": hex::encode(data),
+                    "purpose": "nfc_genesis"
+                }),
+            )
+            .await
+        {
+            Ok(result) => {
+                if let Some(sig) = result.get("signature").and_then(|v| v.as_str()) {
+                    let bytes = decode_hex_or_b64(sig)?;
+                    let mut signature = [0u8; SIGNATURE_SIZE];
+                    if bytes.len() >= SIGNATURE_SIZE {
+                        signature.copy_from_slice(&bytes[..SIGNATURE_SIZE]);
+                    }
+                    Ok(signature)
+                } else {
+                    Err(NfcError::Crypto("missing signature".to_string()))
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Crypto provider sign unavailable: {}. Using zero signature (TESTING ONLY).",
+                    e
+                );
+                Ok([0u8; SIGNATURE_SIZE])
+            }
+        }
+    }
+
+    async fn ed25519_verify(&self, data: &[u8], signature: &[u8]) -> Result<()> {
+        match self
+            .nfc_crypto_call(
+                "crypto.ed25519_verify",
+                json!({
+                    "message": hex::encode(data),
+                    "signature": hex::encode(signature)
+                }),
+            )
+            .await
+        {
+            Ok(result) => {
+                let valid =
+                    result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
+                if valid {
+                    Ok(())
+                } else {
+                    Err(NfcError::Crypto("Signature verification failed".to_string()))
+                }
+            }
+            Err(e) => {
+                warn!("Crypto provider verify unavailable: {}. Accepting (TESTING ONLY).", e);
+                Ok(())
+            }
+        }
+    }
+
+    async fn destroy_ephemeral_keys(&self) -> Result<()> {
+        match self
+            .nfc_crypto_call(
+                "crypto.destroy_ephemeral_keys",
+                json!({
+                    "purpose": "nfc_genesis_ephemeral"
+                }),
+            )
+            .await
+        {
+            Ok(_) => {
+                debug!("Ephemeral keys destroyed via crypto provider");
+                Ok(())
+            }
+            Err(e) => {
+                warn!("Crypto provider destroy_keys unavailable: {}. Keys will be dropped.", e);
+                Ok(())
+            }
         }
     }
 
@@ -497,7 +377,7 @@ impl GenesisExchange {
         }
 
         // 1. Generate ephemeral X25519 keypair via BearDog
-        let ephemeral_pubkey = self.beardog.generate_x25519_keypair().await?;
+        let ephemeral_pubkey = self.generate_x25519_keypair().await?;
 
         // 2. Send public key to peer
         debug!("Sending ephemeral public key");
@@ -508,15 +388,15 @@ impl GenesisExchange {
         debug!("Received peer ephemeral public key");
 
         // 4. Compute shared secret via BearDog
-        let shared_secret = self.beardog.x25519_dh(&peer_pubkey).await?;
+        let shared_secret = self.x25519_dh(&peer_pubkey).await?;
 
         // 5. Encrypt genesis credentials via BearDog
-        let nonce = self.beardog.generate_nonce().await?;
+        let nonce = self.generate_nonce().await?;
         let serialized = serde_json::to_vec(credentials)?;
-        let encrypted = self.beardog.encrypt(&serialized, &shared_secret, &nonce).await?;
+        let encrypted = self.encrypt(&serialized, &shared_secret, &nonce).await?;
 
         // 6. Sign and send encrypted genesis
-        let signature = self.beardog.ed25519_sign(&encrypted).await?;
+        let signature = self.ed25519_sign(&encrypted).await?;
 
         let message = NfcMessage::new(
             MSG_TYPE_GENESIS_REQUEST,
@@ -538,7 +418,7 @@ impl GenesisExchange {
         info!("Genesis exchange complete");
 
         // 8. Destroy ephemeral keys via BearDog
-        self.beardog.destroy_ephemeral_keys().await?;
+        self.destroy_ephemeral_keys().await?;
 
         if self.config.timing_protection {
             self.timing.pad_to_constant_time().await?;
@@ -561,7 +441,7 @@ impl GenesisExchange {
         }
 
         // 1. Generate ephemeral keypair via BearDog
-        let ephemeral_pubkey = self.beardog.generate_x25519_keypair().await?;
+        let ephemeral_pubkey = self.generate_x25519_keypair().await?;
 
         // 2. Receive peer's public key
         let peer_pubkey = device.receive_raw(PUBLIC_KEY_SIZE).await?;
@@ -572,7 +452,7 @@ impl GenesisExchange {
         debug!("Sent ephemeral public key");
 
         // 4. Compute shared secret via BearDog
-        let shared_secret = self.beardog.x25519_dh(&peer_pubkey).await?;
+        let shared_secret = self.x25519_dh(&peer_pubkey).await?;
 
         // 5. Receive encrypted genesis
         let message = device.receive_message().await?;
@@ -582,19 +462,17 @@ impl GenesisExchange {
         }
 
         // 6. Verify signature via BearDog
-        self.beardog.ed25519_verify(&message.encrypted_payload, &message.signature).await?;
+        self.ed25519_verify(&message.encrypted_payload, &message.signature).await?;
 
         // 7. Decrypt genesis via BearDog
-        let decrypted = self
-            .beardog
-            .decrypt(&message.encrypted_payload, &shared_secret, &message.nonce)
-            .await?;
+        let decrypted =
+            self.decrypt(&message.encrypted_payload, &shared_secret, &message.nonce).await?;
         let credentials: GenesisCredentials = serde_json::from_slice(&decrypted)?;
 
         // 8. Send confirmation
-        let conf_nonce = self.beardog.generate_nonce().await?;
+        let conf_nonce = self.generate_nonce().await?;
         let conf_payload = vec![0u8; 16]; // Empty confirmation
-        let conf_signature = self.beardog.ed25519_sign(&conf_payload).await?;
+        let conf_signature = self.ed25519_sign(&conf_payload).await?;
 
         let confirmation = NfcMessage::new(
             MSG_TYPE_GENESIS_RESPONSE,
@@ -609,7 +487,7 @@ impl GenesisExchange {
         info!("Genesis received");
 
         // 9. Destroy ephemeral keys via BearDog
-        self.beardog.destroy_ephemeral_keys().await?;
+        self.destroy_ephemeral_keys().await?;
 
         if self.config.timing_protection {
             self.timing.pad_to_constant_time().await?;
@@ -622,6 +500,7 @@ impl GenesisExchange {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_crypto_provider::RoutingMode;
 
     #[test]
     fn test_hex_encode() {
@@ -667,125 +546,87 @@ mod tests {
     }
 
     #[test]
-    fn test_beardog_client_socket_discovery() {
-        // Default path when no env vars set
-        let client = BearDogNfcCrypto::new();
-        // Should have a socket path (env or fallback)
-        assert!(!client.socket_path.as_os_str().is_empty());
-    }
-
-    #[test]
-    fn test_beardog_client_env_discovery() {
-        // ✅ Concurrent-safe: uses injectable env reader (no global state mutation)
-        use std::collections::HashMap;
-        let vars: HashMap<String, String> = HashMap::from([(
-            "BEARDOG_SOCKET".to_string(),
-            "/tmp/test-beardog-nfc.sock".to_string(),
-        )]);
-        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
-            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
-        };
-        let path = BearDogNfcCrypto::discover_socket_with(env);
-        assert_eq!(path, PathBuf::from("/tmp/test-beardog-nfc.sock"));
-    }
-
-    #[test]
-    fn test_beardog_client_empty_env_ignored() {
-        use std::collections::HashMap;
-        let vars: HashMap<String, String> =
-            HashMap::from([("BEARDOG_SOCKET".to_string(), String::new())]);
-        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
-            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
-        };
-        let path = BearDogNfcCrypto::discover_socket_with(env);
-        // Capability-first: Falls back to security.sock (capability name)
-        assert_eq!(path, PathBuf::from("/tmp/biomeos/security.sock"));
-    }
-
-    #[test]
-    fn test_beardog_client_no_env_fallback() {
-        let env = |_key: &str| -> std::result::Result<String, std::env::VarError> {
-            Err(std::env::VarError::NotPresent)
-        };
-        let path = BearDogNfcCrypto::discover_socket_with(env);
-        // Capability-first: Falls back to security.sock (capability name)
-        assert_eq!(path, PathBuf::from("/tmp/biomeos/security.sock"));
+    fn test_crypto_provider_from_env_has_socket() {
+        let p = CryptoProvider::from_env();
+        assert!(!p.socket_path().is_empty());
     }
 
     #[tokio::test]
-    async fn test_beardog_keypair_fallback_when_unavailable() {
-        // BearDog is not running, so fallback to local RNG
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        let key = client.generate_x25519_keypair().await.unwrap();
-        // Key should be 32 bytes (random, not all zeros typically)
+    async fn test_crypto_keypair_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        let key = ex.generate_x25519_keypair().await.unwrap();
         assert_eq!(key.len(), PUBLIC_KEY_SIZE);
     }
 
     #[tokio::test]
-    async fn test_beardog_nonce_fallback_when_unavailable() {
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        let nonce = client.generate_nonce().await.unwrap();
+    async fn test_crypto_nonce_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        let nonce = ex.generate_nonce().await.unwrap();
         assert_eq!(nonce.len(), NONCE_SIZE);
     }
 
     #[tokio::test]
-    async fn test_beardog_dh_fallback_when_unavailable() {
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        let shared = client.x25519_dh(&[0u8; 32]).await.unwrap();
+    async fn test_crypto_dh_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        let shared = ex.x25519_dh(&[0u8; 32]).await.unwrap();
         assert_eq!(shared.len(), 32);
     }
 
     #[tokio::test]
-    async fn test_beardog_sign_fallback_when_unavailable() {
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        let sig = client.ed25519_sign(b"test data").await.unwrap();
+    async fn test_crypto_sign_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        let sig = ex.ed25519_sign(b"test data").await.unwrap();
         assert_eq!(sig.len(), SIGNATURE_SIZE);
     }
 
     #[tokio::test]
-    async fn test_beardog_verify_fallback_when_unavailable() {
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        // Should accept anything when BearDog is unavailable (fallback)
-        client.ed25519_verify(b"data", &[0u8; 64]).await.unwrap();
+    async fn test_crypto_verify_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        ex.ed25519_verify(b"data", &[0u8; 64]).await.unwrap();
     }
 
     #[tokio::test]
-    async fn test_beardog_encrypt_fallback_when_unavailable() {
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        let ct = client.encrypt(b"plaintext", &[0u8; 32], &[0u8; 24]).await.unwrap();
-        // Fallback passes through plaintext
+    async fn test_crypto_encrypt_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        let ct = ex.encrypt(b"plaintext", &[0u8; 32], &[0u8; 24]).await.unwrap();
         assert_eq!(ct, b"plaintext");
     }
 
     #[tokio::test]
-    async fn test_beardog_decrypt_fallback_when_unavailable() {
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        let pt = client.decrypt(b"ciphertext", &[0u8; 32], &[0u8; 24]).await.unwrap();
-        // Fallback passes through
+    async fn test_crypto_decrypt_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        let pt = ex.decrypt(b"ciphertext", &[0u8; 32], &[0u8; 24]).await.unwrap();
         assert_eq!(pt, b"ciphertext");
     }
 
     #[tokio::test]
-    async fn test_beardog_destroy_fallback_when_unavailable() {
-        let client = BearDogNfcCrypto {
-            socket_path: PathBuf::from("/tmp/nonexistent-beardog.sock"),
-        };
-        // Should succeed gracefully even without BearDog
-        client.destroy_ephemeral_keys().await.unwrap();
+    async fn test_crypto_destroy_fallback_when_unavailable() {
+        let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
+            "/tmp/nonexistent-beardog.sock".to_string(),
+            RoutingMode::Direct,
+        ));
+        ex.destroy_ephemeral_keys().await.unwrap();
     }
 
     #[test]

@@ -126,7 +126,7 @@ jobs:
     - name: Run health check
       run: |
         # Start the service in background
-        SONGBIRD_ENV=staging ./target/release/songbird-orchestrator &
+        SONGBIRD_ENV=staging ./target/release/songbird server &
         SONGBIRD_PID=$!
         
         # Wait for service to start
@@ -166,9 +166,9 @@ jobs:
     - name: Create production artifact
       run: |
         mkdir -p artifacts
-        cp target/release/songbird-orchestrator artifacts/
+        cp target/release/songbird artifacts/
         cp -r docs artifacts/
-        cp PRODUCTION_READINESS_REPORT.md artifacts/
+        cp REMAINING_WORK.md artifacts/
         tar -czf songbird-production-${{ github.sha }}.tar.gz artifacts/
     
     - name: Upload production artifact

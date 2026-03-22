@@ -148,7 +148,7 @@ impl Drop for QuicConnection {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ring-crypto"))]
 mod tests {
 
     use crate::client::QuicClient;

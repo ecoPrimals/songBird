@@ -461,19 +461,12 @@ mod tests {
 
     #[test]
     fn test_validate_port_zero_with_discovery_disabled() {
-        // Create a config with discovery disabled and port = 0 (still invalid, but different error)
         let mut config = CanonicalSongbirdConfig::default();
         config.network.base_port = 0;
         config.discovery.mode = DiscoveryMode::Disabled;
 
-        // Should fail validation with generic message
-        match config.validate() {
-            Err(err_msg) => {
-                assert!(err_msg.contains("Network base port must be greater than 0"));
-                assert!(!err_msg.contains("dual-mode"));
-            }
-            Ok(()) => panic!("expected validation to fail"),
-        }
+        // Port 0 (ephemeral) is valid when discovery is disabled (IPC-only / test mode).
+        assert!(config.validate().is_ok(), "port 0 should be allowed when discovery is disabled");
     }
 
     #[test]

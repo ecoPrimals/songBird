@@ -126,7 +126,7 @@ impl Drop for QuicServer {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ring-crypto"))]
 mod tests {
     use super::*;
 

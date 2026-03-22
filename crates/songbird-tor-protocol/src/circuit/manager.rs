@@ -7,10 +7,10 @@
 
 use crate::circuit::{Circuit, CircuitHop, CircuitPurpose, KeyMaterial};
 use crate::connection::TorConnection;
-use crate::crypto::BeardogCryptoClient;
 use crate::directory::{CircuitPath, Consensus, RelayInfo};
 use crate::error::{Error, Result};
 use crate::protocol::{Cell, CellCommand};
+use songbird_crypto_provider::CryptoProvider;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tracing::{debug, info};
@@ -18,7 +18,7 @@ use tracing::{debug, info};
 /// Circuit manager
 pub struct CircuitManager {
     /// `BearDog` crypto client
-    beardog: Arc<BeardogCryptoClient>,
+    beardog: Arc<CryptoProvider>,
     /// Network consensus
     consensus: Arc<RwLock<Consensus>>,
     /// Active circuits
@@ -32,7 +32,7 @@ pub struct CircuitManager {
 impl CircuitManager {
     /// Create new circuit manager
     #[must_use]
-    pub fn new(beardog: BeardogCryptoClient, consensus: Consensus) -> Self {
+    pub fn new(beardog: CryptoProvider, consensus: Consensus) -> Self {
         Self {
             beardog: Arc::new(beardog),
             consensus: Arc::new(RwLock::new(consensus)),
@@ -117,7 +117,7 @@ impl CircuitManager {
         // Node ID is the 20-byte fingerprint (SHA1 of RSA identity key)
         let node_id = &guard.fingerprint;
 
-        let (create2_payload, state) = ntor.create_handshake(node_id, &relay_ntor_key)?;
+        let (create2_payload, state) = ntor.create_handshake(node_id, &relay_ntor_key).await?;
 
         // 3. Build CREATE2 cell
         // CREATE2 cell payload format:
@@ -183,7 +183,7 @@ impl CircuitManager {
         let handshake_response = &response.payload[2..2 + hlen];
 
         // 7. Complete handshake
-        let key_material = ntor.complete_handshake(&state, handshake_response)?;
+        let key_material = ntor.complete_handshake(&state, handshake_response).await?;
         info!("First hop handshake complete with {}", guard.nickname);
 
         // 8. Add hop to circuit
@@ -243,14 +243,14 @@ impl CircuitManager {
 
         // Create EXTEND2 relay cell
         let extender = super::extend::CircuitExtender::new((*self.beardog).clone());
-        let (extend2_relay_cell, state) = extender.create_extend2(&circuit, next_relay)?;
+        let (extend2_relay_cell, state) = extender.create_extend2(&circuit, next_relay).await?;
 
         // Encode EXTEND2 as relay cell
         let relay_payload = extend2_relay_cell.encode();
 
         // Encrypt through existing hops (onion encryption)
         let onion = super::OnionCrypto::new((*self.beardog).clone());
-        let encrypted_payload = onion.encrypt_forward(&relay_payload, &circuit.hops)?;
+        let encrypted_payload = onion.encrypt_forward(&relay_payload, &circuit.hops).await?;
 
         // Build RELAY_EARLY cell (used for first 8 hops, required for EXTEND2)
         let relay_early_cell = Cell {
@@ -282,7 +282,7 @@ impl CircuitManager {
 
             // Decrypt through existing hops
             let decrypted_payload =
-                onion.decrypt_backward(&response_cell.payload, &circuit.hops)?;
+                onion.decrypt_backward(&response_cell.payload, &circuit.hops).await?;
 
             // Parse EXTENDED2 relay cell
             // Relay cell format: command (1) | recognized (2) | stream_id (2) | digest (4) | length (2) | data
@@ -316,12 +316,9 @@ impl CircuitManager {
             };
 
             // Complete handshake and create hop
-            let hop = extender.process_extended2(
-                &circuit,
-                &state,
-                &response_relay_cell,
-                next_relay.clone(),
-            )?;
+            let hop = extender
+                .process_extended2(&circuit, &state, &response_relay_cell, next_relay.clone())
+                .await?;
             info!("Extended circuit {} to {}", circuit_id, next_relay.nickname);
 
             // Add hop to circuit
@@ -446,7 +443,7 @@ mod tests {
     fn test_circuit_manager_creation() {
         use std::time::SystemTime;
 
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,
@@ -463,7 +460,7 @@ mod tests {
     fn test_circuit_id_allocation() {
         use std::time::SystemTime;
 
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+        let beardog = CryptoProvider::from_env();
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,

@@ -12,6 +12,10 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tracing::{info, warn};
 
+/// Development-only default base URL when [`capability_endpoints::get_capability_endpoint`]
+/// fails and `SONGBIRD_ORCHESTRATOR_URL` is unset.
+const DEFAULT_ORCHESTRATOR_URL: &str = "http://localhost:8000";
+
 /// Errors surfaced while resolving endpoints for metrics collection.
 #[derive(Debug, Clone)]
 pub enum MetricsError {
@@ -144,7 +148,10 @@ impl UniversalMetricsAdapter {
         for _ in &providers {
             let endpoint = capability_endpoints::get_capability_endpoint(capability)
                 .await
-                .unwrap_or_else(|_| "http://localhost:8000".to_string());
+                .unwrap_or_else(|_| {
+                    std::env::var("SONGBIRD_ORCHESTRATOR_URL")
+                        .unwrap_or_else(|_| DEFAULT_ORCHESTRATOR_URL.to_string())
+                });
             endpoints.push(endpoint);
         }
 

@@ -854,8 +854,8 @@ mod tests {
 
     #[test]
     fn global_returns_singleton() {
-        let a = AdvancedCache::global() as *const AdvancedCache;
-        let b = AdvancedCache::global() as *const AdvancedCache;
+        let a = std::ptr::from_ref(AdvancedCache::global());
+        let b = std::ptr::from_ref(AdvancedCache::global());
         assert_eq!(a, b);
     }
 }
