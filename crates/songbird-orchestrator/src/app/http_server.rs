@@ -110,7 +110,8 @@ async fn build_router(
 
     // Task lifecycle + consent (shared with JSON-RPC semantic methods)
     let _ = std::fs::create_dir_all(crate::env_config::data_dir());
-    let task_db_url = crate::env_config::data_dir().join("task_lifecycle.db").display().to_string();
+    let task_db_url =
+        crate::env_config::data_dir().join("task_lifecycle.db").display().to_string();
     let task_manager = Arc::new(
         crate::task_lifecycle::TaskLifecycleManager::new(&task_db_url)
             .await
@@ -420,6 +421,15 @@ async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListene
     use crate::network::SovereignBinder;
 
     let port = addr.port();
+
+    // Port 0 = ephemeral (OS-assigned). Let the OS pick a free port without
+    // the +1..+10 fallback loop (which would try privileged ports 1-10).
+    if port == 0 {
+        info!("🦅 Ephemeral port requested (port 0) — OS will assign");
+        let (listener, actual_addr) = SovereignBinder::bind_sovereign(0).await?;
+        info!("✅ Ephemeral bind successful: {}", actual_addr);
+        return Ok((listener, actual_addr));
+    }
 
     info!("🦅 Using sovereign socket binding for port {}", port);
 

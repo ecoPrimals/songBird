@@ -201,29 +201,25 @@ impl CanonicalSongbirdConfig {
         }
 
         // Validate network configuration
-        // Validate base port
-        if self.network.base_port == 0 {
-            // Check if discovery is enabled - if so, this is a critical error
-            if self.discovery.mode.is_enabled() {
-                return Err(
-                    "❌ Discovery requires external TCP port (network.base_port > 0).\n\
-                     \n\
-                     Songbird operates in dual-mode:\n\
-                     • External TCP port (for LAN discovery beacons)\n\
-                     • Internal Unix socket (for inter-primal IPC)\n\
-                     \n\
-                     Fix: Set network.base_port = 8080 or disable discovery.\n\
-                     \n\
-                     Example:\n\
-                       ./songbird server --port 8080 --socket /run/user/1000/biomeos/songbird-nat0.sock\n\
-                     \n\
-                     Or disable discovery:\n\
-                       [discovery]\n\
-                       mode = \"Disabled\"".to_string()
-                );
-            }
+        // Validate base port — port 0 means ephemeral (OS-assigned), valid for
+        // IPC-only or test deployments where TCP port doesn't need to be fixed.
+        if self.network.base_port == 0 && self.discovery.mode.is_enabled() {
             return Err(
-                "Network base port must be greater than 0 (use 8080 for default)".to_string()
+                "❌ Discovery requires external TCP port (network.base_port > 0).\n\
+                 \n\
+                 Songbird operates in dual-mode:\n\
+                 • External TCP port (for LAN discovery beacons)\n\
+                 • Internal Unix socket (for inter-primal IPC)\n\
+                 \n\
+                 Fix: Set network.base_port = 8080 or disable discovery.\n\
+                 Port 0 (ephemeral) is allowed only when discovery is disabled.\n\
+                 \n\
+                 Example:\n\
+                   ./songbird server --port 8080 --socket /run/user/1000/biomeos/songbird-nat0.sock\n\
+                 \n\
+                 Or disable discovery:\n\
+                   [discovery]\n\
+                   mode = \"Disabled\"".to_string()
             );
         }
 
