@@ -52,6 +52,9 @@ songbird-tls = { path = "../songbird-tls" }
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 async-trait = { workspace = true }
 
+[lints]
+workspace = true
+
 [dev-dependencies]
 tokio-test = "0.4"
 tracing-subscriber = "0.3"

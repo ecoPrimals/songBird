@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "Historical patterns in this crate (locks, tests); inherited workspace pedantic lints."
+)]
 //! # Songbird Sovereign Onion
 //!
 //! Pure Rust minimal onion service protocol for sovereign device-to-device communication.

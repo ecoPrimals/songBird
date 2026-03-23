@@ -1,6 +1,11 @@
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions"
+)]
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
-
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_lossless,

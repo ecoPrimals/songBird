@@ -28,6 +28,8 @@ anyhow = "1.0"
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
 
+[lints]
+workspace = true
 [dev-dependencies]
 tokio-test = "0.4"
 

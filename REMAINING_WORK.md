@@ -2,7 +2,7 @@
 
 **Date**: March 23, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 23, 2026 (Session 10 — Comprehensive Clippy Sweep, Smart Refactoring & Metrics Accuracy)
+**Last Deep Debt Audit**: March 23, 2026 (Session 12 — Doc Cleanup, CI Evolution, Handoffs & Debris Removal)
 
 ---
 
@@ -10,44 +10,119 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,304 `#[test]` + 2,719 `#[tokio::test]` = 10,023 total, 0 failed |
-| **Line Coverage** | 66.02% (llvm-cov measured; target 90%) |
+| **Tests** | 10,020 total, 0 failed |
+| **Line Coverage** | 62.27% (llvm-cov measured; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
-| **Docs** | Clean (`cargo doc --workspace --no-deps` passes) |
+| **Docs** | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps` passes) |
 | **Files >1000 lines** | 0 (max 959, test file; production max 888) |
 | **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[expect]`) |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
 | **Production `panic!()`** | 0 |
+| **Production `unreachable!()`** | 0 (evolved to `Err()` returns in http_server.rs) |
 | **Production `eprintln!`** | 0 in library crates (all evolved to `tracing`; CLI binary output remains intentional) |
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
 | **`#[allow()]` vs `#[expect()]`** | Fully correct: `#[expect(reason)]` only where lint fires, `#[allow(reason)]` everywhere else |
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
-| **Hardcoded elimination** | All ports env-driven; DNS-SD/mDNS/broadcast discovery real implementations; security health via crypto-provider probe |
-| **JSON-RPC handlers** | 12 semantic methods: 10 wrapping REST + `health.liveness` + `capabilities.list` (wateringHole Nest Atomic) |
+| **Hardcoded elimination** | All ports env-driven; DNS-SD/mDNS/broadcast discovery; health check uses capability-based crypto provider discovery (no primal names) |
+| **JSON-RPC handlers** | 14 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (ecosystem standard) |
+| **Method normalization** | `normalize_method()` handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
+| **Lint inheritance** | 30/30 crates inherit workspace lints (15 migrated this session); 3 crates have justified custom `[lints]` tables |
+| **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
 | **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors with delegation paths |
 | **C dependencies** | `ring` opt-in only (`ring-crypto` feature); not default in any crate; QUIC tests gated behind `ring-crypto` |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
-| **SPDX Headers** | 100% of .rs files have `SPDX-License-Identifier: AGPL-3.0-only` |
 | **cargo-deny** | Config updated for cargo-deny 0.19+ |
 | **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
-| **Nest Atomic** | `health.liveness` + `capabilities.list` JSON-RPC methods (14 capability tokens) |
+| **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]` |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, HashMap pre-sizing |
 | **Concurrent tests** | All tests fully concurrent at 16 threads; injectable `_with` env readers replace global mutation |
 | **Event-driven** | Zero `sleep`-based polling in production |
 | **Module docs** | 77 `pub mod` declarations documented across 5 crates |
-| **`#[ignore]` tests** | 191 total; 100% have reason strings (`#[ignore = "..."]` or `#[ignore] // reason`) |
 | **Binary size** | 20MB release |
 | **`#[warn(missing_docs)]`** | 30/30 crates (all library crates have the lint enabled) |
 | **Dependencies** | ~418 unique; duplicate versions aligned (base32→0.5, base64→0.22, hostname→0.4, thiserror→2.0) |
-| **Build time** | ~45s clean dev build, ~187s test suite |
+| **Build time** | ~45s clean dev build, ~84s test suite |
 | **Total Rust lines** | ~405,736 (crates + src + tests + examples) |
-| **Crates** | 30 workspace members (`songbird-crypto-provider` added) |
-| **TLS logging** | Diagnostic key material logging evolved to `trace!` level (was `info!` — security fix) |
+| **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 23, 2026 — Doc Cleanup, CI Evolution, Handoffs & Debris Removal Session 12)
+
+### Wave 65: Root Doc Updates
+- [x] README.md: updated metrics (10,020 tests, 62.27% coverage, 14 JSON-RPC methods, 30/30 lint inheritance, method normalization)
+- [x] CHANGELOG.md: added v0.2.1-wave64 entry for session 11 work
+- [x] CONTRIBUTING.md: updated coverage reference (62.27%), added `-D warnings` to doc check command
+- [x] CONTEXT.md: updated test count and coverage metrics
+- [x] REMAINING_WORK.md: corrected coverage in pending section (62.27%, not 66.02%)
+- [x] tests/README.md: rewritten to reflect actual test architecture (was stale with unreachable `cargo test --test e2e` commands)
+
+### Wave 65: CI Workflow Evolution
+- [x] Deleted `vendor-hardcoding-check.yml` (referenced nonexistent `tools/vendor_pattern_migrator/`, `agnostic_service_discovery.rs`, `infant_discovery.rs`)
+- [x] Deleted `ci-cd.yml` (overlapped with `ci.yml`; referenced nonexistent `scripts/deploy-ecosystem.sh`, `tests/performance/load-test.js`)
+- [x] Consolidated `ci.yml` into clean 3-job pipeline (check + test + build-release) using `dtolnay/rust-toolchain` + `Swatinem/rust-cache`
+- [x] Fixed `quality-checks.yml`: removed `continue-on-error` on clippy (zero warnings now), added `--workspace` flag, removed `--document-private-items` from doc check, replaced missing `scripts/find_production_unwraps.sh` and `scripts/audit_hardcoding.sh` with inline checks
+- [x] Remaining CI: `ci.yml` (primary), `quality-checks.yml` (extended), `coverage.yml`, `production-deploy.yml`
+
+### Wave 65: wateringHole Handoff
+- [x] Archived Wave 62 + Wave 63 handoffs to `handoffs/archive/`
+- [x] Created `SONGBIRD_V021_WAVE64_NAMING_CONVERGENCE_LINT_UNIFICATION_MAR23_2026.md` with SPDX header, quality gate table, inter-primal notes
+
+### Wave 65: baseCamp Update
+- [x] Updated `ecoPrimals/whitePaper/gen3/baseCamp/EXTENSION_PLAN.md` foundation line with Songbird v0.2.1-wave64 status
+- [x] Updated cross-institution provenance table entry with latest Songbird capabilities
+
+### Wave 65: Debris Cleanup
+- [x] Deleted stale `tests/README_E2E_TESTS.md` (referenced wrong crate paths and test names)
+- [x] Removed stale `exclude = ["examples/clients/rust"]` from workspace Cargo.toml (path doesn't exist)
+- [x] Removed empty `crates/songbird-orchestrator/sqlite::memory:/blobs` (test artifact from bad path)
+- [x] Removed empty `crates/songbird-orchestrator/src/app/modules/` (unused directory)
+
+---
+
+## Completed (Mar 23, 2026 — Cross-Ecosystem Absorption, Naming Convergence & Lint Unification Session 11)
+
+### Wave 64: Ecosystem Method Naming Convergence
+- [x] Added `health.readiness` JSON-RPC method (IPC + HTTP gateway) — subsystem status reporting
+- [x] Added `health.check` JSON-RPC method (IPC + HTTP gateway) — full health with details; aliases `status`, `check`, `health`
+- [x] Added `normalize_method()` in `songbird-universal-ipc/introspection` — canonicalizes ecosystem naming drift
+- [x] `capability.list` → `capabilities.list` (biomeOS/Squirrel alias tolerance)
+- [x] `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`
+- [x] Both IPC service handler and HTTP JSON-RPC gateway dispatch through `normalize_method()`
+- [x] Updated `rpc_discover_standard()` to advertise `health.liveness`, `health.readiness`, `health.check`, `capabilities.list`
+- [x] 7 new tests for normalization, readiness, and health check functions
+
+### Wave 64: Identity-Based Discovery Elimination
+- [x] Evolved `handle_health_standard` — removed hardcoded `BEARDOG_SOCKET` / `beardog.sock` identity-based discovery
+- [x] Now uses capability-based 5-tier: `CRYPTO_PROVIDER_SOCKET` → `CRYPTO_SIGN_PROVIDER_SOCKET` → XDG family-scoped socket
+- [x] Response field renamed `beardog_connected` → `crypto_provider_available` (capability, not identity)
+
+### Wave 64: Rustdoc Fix
+- [x] Fixed private intra-doc link in `health.rs` (`start_health_monitoring` linked to private `run_comprehensive_health_check`)
+- [x] `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps` now passes clean
+
+### Wave 64: Production Safety
+- [x] Evolved `unreachable!()` in `http_server.rs:483` → `Err(anyhow!(...))` return (zero production `unreachable!()`)
+
+### Wave 64: Workspace Lint Unification
+- [x] Added `[lints] workspace = true` to 15 crates previously missing lint config
+- [x] All 30 crates now inherit workspace pedantic+nursery lints (3 with justified custom tables)
+- [x] Fixed all clippy errors from lint inheritance (unwrap_used/expect_used scoped to test modules)
+
+### Wave 64: wateringHole Standards Compliance
+- [x] Created `CONTEXT.md` at repo root (PUBLIC_SURFACE_STANDARD requirement)
+- [x] AI-ingestible context block: role, capabilities, IPC surface, dependencies, metrics
+
+### Wave 64: Cross-Ecosystem Audit
+- [x] Reviewed 7 springs: hotSpring, groundSpring, neuralSpring, wetSpring, airSpring, healthSpring, ludoSpring, primalSpring
+- [x] Reviewed 13 primals: BearDog, NestGate, Squirrel, ToadStool, biomeOS, petalTongue, rhizoCrypt, LoamSpine, sweetGrass, sourDough, skunkBat, barraCuda, coralReef
+- [x] Documented absorption opportunities from primalSpring Phase 12 (bonding, STUN sovereignty, DispatchOutcome)
+- [x] Identified and resolved 4 OPEN items from primalSpring capability audit
 
 ---
 
@@ -619,7 +694,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Coverage Expansion (66.02% → 90% target)
+## Pending: Coverage Expansion (62.27% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |

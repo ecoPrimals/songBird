@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::ignore_without_reason,
+    reason = "Historical patterns in this crate (locks, tests); inherited workspace pedantic lints."
+)]
 //! # 🌳 Songbird Primal Coordination - Universal Signal and Coordinator
 //!
 //! **MISSION**: Songbird is the nervous system, not the organs

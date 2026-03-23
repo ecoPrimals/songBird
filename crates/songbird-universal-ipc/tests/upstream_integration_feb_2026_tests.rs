@@ -1,6 +1,11 @@
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions"
+)]
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
-
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -120,7 +125,9 @@ async fn test_unit_rpc_discover_method() {
     let method_strings: Vec<String> =
         methods.iter().map(|v| v.as_str().unwrap().to_string()).collect();
 
-    assert!(method_strings.contains(&"health".to_string()));
+    assert!(method_strings.contains(&"health.liveness".to_string()));
+    assert!(method_strings.contains(&"health.readiness".to_string()));
+    assert!(method_strings.contains(&"health.check".to_string()));
     assert!(method_strings.contains(&"identity".to_string()));
     assert!(method_strings.contains(&"rpc.discover".to_string()));
 }

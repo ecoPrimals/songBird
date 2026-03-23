@@ -131,9 +131,10 @@ async fn handle_jsonrpc_request(
         }));
     }
 
-    debug!("📞 JSON-RPC request: method={}", request.method);
+    let canonical = songbird_universal_ipc::introspection::normalize_method(&request.method);
+    debug!("📞 JSON-RPC request: method={} (canonical={canonical})", request.method);
 
-    let result = match request.method.as_str() {
+    let result = match canonical {
         "compute.route" => handle_compute_route(&state, request.params.clone()).await,
         "deployment.create" => handle_deployment_create(&state, request.params.clone()).await,
         "deployment.status" => handle_deployment_status(&state, request.params.clone()).await,
@@ -164,8 +165,9 @@ async fn handle_jsonrpc_request(
         "songbird.health" => handle_health(&state).await,
         "songbird.version" => handle_version().await,
 
-        "health" => handle_health_standard(&state).await,
         "health.liveness" => Ok(songbird_universal_ipc::introspection::health_liveness()),
+        "health.readiness" => Ok(songbird_universal_ipc::introspection::health_readiness()),
+        "health.check" => handle_health_standard(&state).await,
         "capabilities.list" => Ok(songbird_universal_ipc::introspection::capabilities_list()),
         "identity" => handle_identity().await,
         "network.beacon_exchange" => handle_beacon_exchange(request.params).await,

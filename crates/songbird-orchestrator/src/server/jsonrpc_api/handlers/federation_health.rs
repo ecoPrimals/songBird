@@ -122,23 +122,42 @@ pub async fn handle_version() -> Result<Value, JsonRpcError> {
     }))
 }
 
-/// health - biomeOS-standard health check
+/// `health.check` / `health` / `status` / `check` — full health with details
+///
+/// Capability-based crypto provider discovery: asks "who provides crypto?"
+/// rather than "where is beardog?". Follows the 5-tier discovery standard.
 pub async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
     let start_time = state.start_time.read().await;
     let uptime_seconds = start_time.elapsed().as_secs();
 
-    let beardog_connected = {
-        let beardog_socket = std::env::var("BEARDOG_SOCKET")
-            .or_else(|_| std::env::var("CRYPTO_PROVIDER_SOCKET"))
-            .unwrap_or_else(|_| "/tmp/biomeos/beardog.sock".to_string());
-        std::path::Path::new(&beardog_socket).exists()
+    let crypto_provider_available = {
+        let socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
+            .or_else(|_| std::env::var("CRYPTO_SIGN_PROVIDER_SOCKET"))
+            .ok();
+        if let Some(path) = socket {
+            std::path::Path::new(&path).exists()
+        } else {
+            let xdg = std::env::var("XDG_RUNTIME_DIR").unwrap_or_default();
+            if xdg.is_empty() {
+                false
+            } else {
+                let family_id = crate::env_config::family_id();
+                let xdg_path = format!("{xdg}/biomeos/crypto-provider-{family_id}.sock");
+                std::path::Path::new(&xdg_path).exists()
+            }
+        }
     };
 
     Ok(serde_json::json!({
         "status": "healthy",
         "uptime_seconds": uptime_seconds,
-        "beardog_connected": beardog_connected,
-        "version": env!("CARGO_PKG_VERSION")
+        "crypto_provider_available": crypto_provider_available,
+        "version": env!("CARGO_PKG_VERSION"),
+        "subsystems": {
+            "ipc": "up",
+            "discovery": "up",
+            "federation": "up"
+        }
     }))
 }
 

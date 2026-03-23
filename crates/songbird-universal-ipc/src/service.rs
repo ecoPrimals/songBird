@@ -632,6 +632,7 @@ impl IpcServiceHandler {
 #[async_trait]
 impl JsonRpcHandler for IpcServiceHandler {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
+        let method = crate::introspection::normalize_method(method);
         match method {
             // ── Introspection ────────────────────────────────────────
             "primal.info" => Ok(crate::introspection::primal_info()),
@@ -640,9 +641,10 @@ impl JsonRpcHandler for IpcServiceHandler {
             "rpc.discover" => Ok(crate::introspection::rpc_discover_standard()),
             "discover_capabilities" => Ok(crate::introspection::discover_capabilities()),
 
-            // ── biomeOS standard ─────────────────────────────────────
+            // ── biomeOS / ecosystem standard ─────────────────────────
             "health.liveness" => Ok(crate::introspection::health_liveness()),
-            "health" | "health.readiness" | "health.check" => self.handle_health().await,
+            "health.readiness" => Ok(crate::introspection::health_readiness()),
+            "health.check" => self.handle_health().await,
             "capabilities.list" => Ok(crate::introspection::capabilities_list()),
             "identity" => self.handle_identity().await,
 

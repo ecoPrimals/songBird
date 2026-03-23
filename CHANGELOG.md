@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave64] - 2026-03-23 - Cross-Ecosystem Absorption, Naming Convergence & Lint Unification
+
+### Added - Ecosystem Method Naming Convergence
+- `health.readiness` JSON-RPC method (IPC + HTTP gateway) — subsystem status reporting
+- `health.check` JSON-RPC method (IPC + HTTP gateway) — full health with details
+- `normalize_method()` in `songbird-universal-ipc/introspection` — canonicalizes ecosystem naming drift
+- `capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`
+- Both IPC service handler and HTTP JSON-RPC gateway dispatch through `normalize_method()`
+- 7 new tests for normalization, readiness, and health check functions
+
+### Changed - Identity-Based Discovery Elimination
+- `handle_health_standard` evolved — removed hardcoded `BEARDOG_SOCKET` / `beardog.sock` identity-based discovery
+- Now uses capability-based 5-tier: `CRYPTO_PROVIDER_SOCKET` → `CRYPTO_SIGN_PROVIDER_SOCKET` → XDG family-scoped socket
+- Response field renamed `beardog_connected` → `crypto_provider_available` (capability, not identity)
+
+### Changed - Workspace Lint Unification
+- Added `[lints] workspace = true` to 15 crates previously missing lint config
+- All 30 crates now inherit workspace pedantic+nursery lints (3 with justified custom tables)
+- Fixed all clippy errors from lint inheritance (unwrap_used/expect_used scoped to test modules)
+
+### Fixed
+- Private intra-doc link in `health.rs` (`start_health_monitoring` linked to private `run_comprehensive_health_check`)
+- `unreachable!()` in `http_server.rs:483` → `Err(anyhow!(...))` return (zero production `unreachable!()`)
+- `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps` now passes clean
+
+### Added - wateringHole Standards Compliance
+- Created `CONTEXT.md` at repo root (PUBLIC_SURFACE_STANDARD requirement)
+- AI-ingestible context block: role, capabilities, IPC surface, dependencies, metrics
+
+### Changed - Cross-Ecosystem Audit
+- Reviewed 7 springs and 13 primals for absorption opportunities
+- Documented absorption opportunities from primalSpring Phase 12 (bonding, STUN sovereignty, DispatchOutcome)
+- Resolved 4 OPEN items from primalSpring capability audit
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Tests | 10,020 total, 0 failed |
+| Clippy | Zero warnings (30/30 crates, pedantic + nursery) |
+| Build | Zero errors, zero warnings |
+| Format | Clean |
+| Docs | Clean (`-D warnings`) |
+| JSON-RPC | 14 semantic methods |
+| Lint inheritance | 30/30 crates |
+| Total Rust | ~405,736 lines |
+
+---
+
 ## [v0.2.1-wave63] - 2026-03-23 - Comprehensive Clippy Sweep, Smart Refactoring & Metrics Accuracy
 
 ### Fixed - Full Workspace Clippy Pedantic+Nursery Sweep (~800+ warnings resolved)

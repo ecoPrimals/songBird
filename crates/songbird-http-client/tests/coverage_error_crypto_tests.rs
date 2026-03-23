@@ -1,3 +1,9 @@
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions"
+)]
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Coverage tests for `songbird_http_client::error` and `songbird_http_client::crypto::capability`
 //!

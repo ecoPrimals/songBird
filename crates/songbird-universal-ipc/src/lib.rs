@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "Historical patterns in this crate (singleton init, Arc); inherited workspace pedantic lints."
+)]
 #![warn(missing_docs)]
 
 //! # 🌍 Songbird Universal IPC

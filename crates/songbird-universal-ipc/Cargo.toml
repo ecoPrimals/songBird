@@ -68,6 +68,9 @@ songbird-universal = { path = "../songbird-universal" }
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }
 
+[lints]
+workspace = true
+
 [dev-dependencies]
 songbird-process-env.workspace = true
 serial_test = "3.0"

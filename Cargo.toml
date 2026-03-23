@@ -1,10 +1,7 @@
 [workspace]
 resolver = "2"
 
-# Exclude standalone example projects
-exclude = [
-    "examples/clients/rust",  # Standalone tarpc client example
-]
+# No standalone example projects currently excluded
 
 members = [
     # Foundation

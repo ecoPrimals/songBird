@@ -1,3 +1,9 @@
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions"
+)]
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
@@ -32,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     let mut stream = conn.open_bi().await?;
 
     // Send test data
-    let test_data = "Hello from QUIC client!".as_bytes();
+    let test_data = b"Hello from QUIC client!";
     info!("📤 Sending: {:?}", String::from_utf8_lossy(test_data));
     stream.write(test_data).await?;
 

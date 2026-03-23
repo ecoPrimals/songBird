@@ -219,7 +219,7 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
     })?;
 
     let state = BridgeState {
-        config: config.clone(),
+        config: Arc::clone(&config),
         http_client,
         service_info: Arc::new(service_info),
     };

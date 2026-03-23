@@ -20,18 +20,20 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent via injectable `_with` env readers |
-| Tests | 7,304 `#[test]` + 2,719 `#[tokio::test]` = 10,023 total, 0 failed |
-| Line Coverage | 66.02% (llvm-cov measured; target 90%) |
+| Tests | 10,020 total, 0 failed |
+| Line Coverage | 62.27% (llvm-cov measured; target 90%) |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings, ~45s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
-| Docs | Clean (`cargo doc --no-deps`, 30/30 crates with `#[warn(missing_docs)]`) |
+| Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >1000 lines | 0 (max 959 test file; production max 888) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` |
-| JSON-RPC Gateway | 12 semantic methods (10 REST wrappers + `health.liveness` + `capabilities.list`) |
-| Nest Atomic | `health.liveness` + `capabilities.list` (14 capability tokens, wateringHole compliant) |
-| Dependencies | ~418 unique; duplicates aligned; `kube`/`k8s-openapi`/`bollard` feature-gated; unused `sys-info` removed |
+| JSON-RPC Gateway | 14 semantic methods (10 REST wrappers + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list`) |
+| Nest Atomic | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (14 capability tokens) |
+| Method Normalization | `normalize_method()` handles ecosystem naming drift (aliases for `ping`, `status`, `check`, `capability.list`) |
+| Lint Inheritance | 30/30 crates inherit workspace lints; 3 with justified custom tables |
+| Dependencies | ~418 unique; duplicates aligned; `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
 | Total Rust | ~405,736 lines across 30 crates |
 

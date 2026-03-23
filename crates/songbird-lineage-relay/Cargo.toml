@@ -27,6 +27,9 @@ songbird-types = { path = "../songbird-types" }
 songbird-primal-coordination = { path = "../songbird-primal-coordination" }
 songbird-stun = { path = "../songbird-stun" }
 
+[lints]
+workspace = true
+
 [features]
 default = []
 ## Expose mock types for integration tests (`MockLineageProvider`, etc.)

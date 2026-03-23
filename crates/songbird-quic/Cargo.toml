@@ -50,6 +50,8 @@ rcgen = "0.13"
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-types = { path = "../songbird-types" }
 
+[lints]
+workspace = true
 [dev-dependencies]
 tokio-test = "0.4"
 tracing-subscriber = "0.3"

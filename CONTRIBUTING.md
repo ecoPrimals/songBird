@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: 66.02% (llvm-cov measured, Mar 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: 62.27% (llvm-cov measured, Mar 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html
@@ -132,7 +132,7 @@ retry backoff, rate limiting, periodic renewal, chaos tests.
 cargo fmt --all
 cargo clippy --workspace --all-features --all-targets -- -D warnings
 cargo test --workspace
-cargo doc --workspace --no-deps
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 ```
 
 - [ ] Zero errors, zero warnings

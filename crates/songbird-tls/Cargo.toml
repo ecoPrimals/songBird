@@ -35,6 +35,8 @@ ed25519-dalek = { version = "2.1", optional = true }  # Ed25519 for self-signed 
 rand = { version = "0.8", optional = true }           # For key generation (testing only)
 chrono = { version = "0.4", optional = true }         # For certificate validity (testing only)
 
+[lints]
+workspace = true
 [dev-dependencies]
 tokio-test = "0.4"
 criterion = "0.5"

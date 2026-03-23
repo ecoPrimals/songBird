@@ -88,7 +88,9 @@
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::unused_async,
-    reason = "unused bindings/imports in this compilation unit"
+    clippy::clone_on_ref_ptr,
+    clippy::expect_used,
+    reason = "unused bindings/imports in this compilation unit; Arc::clone and invariant expects in relay paths"
 )]
 #![cfg_attr(
     test,

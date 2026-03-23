@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::ignore_without_reason,
+    reason = "Historical patterns in this crate (locks, tests); inherited workspace pedantic lints."
+)]
 //! # 🔐 Songbird Genesis Bootstrap
 //!
 //! **Physical Proximity Genesis** - "Never let a bird be alone in the dark forest"

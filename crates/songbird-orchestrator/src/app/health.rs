@@ -121,7 +121,7 @@ impl SongbirdOrchestrator {
 
     /// Start a background health monitoring loop.
     ///
-    /// Spawns a `tokio` task that runs [`run_comprehensive_health_check`](Self::run_comprehensive_health_check)
+    /// Spawns a `tokio` task that checks all subsystem health
     /// every 30 seconds and logs degraded subsystems.  The task exits when the
     /// shutdown broadcast fires.
     /// # Errors

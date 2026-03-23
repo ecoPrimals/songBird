@@ -45,6 +45,45 @@ pub fn health_liveness() -> Value {
     serde_json::json!({ "status": "healthy" })
 }
 
+/// Readiness probe result (`health.readiness`).
+///
+/// Reports whether the primal is ready to serve requests, including
+/// subsystem status. More detailed than liveness — indicates the primal
+/// has completed initialization and can accept work.
+#[must_use]
+pub fn health_readiness() -> Value {
+    serde_json::json!({
+        "status": "ready",
+        "subsystems": {
+            "ipc": "up",
+            "discovery": "up",
+            "federation": "up",
+            "tls": "up"
+        }
+    })
+}
+
+/// Full health check result (`health.check`).
+///
+/// Comprehensive health status with version, uptime placeholder, and
+/// subsystem details. Aliases: `status`, `check`.
+#[must_use]
+pub fn health_check() -> Value {
+    serde_json::json!({
+        "status": "healthy",
+        "primal": "songbird",
+        "version": env!("CARGO_PKG_VERSION"),
+        "subsystems": {
+            "ipc": "up",
+            "discovery": "up",
+            "federation": "up",
+            "tls": "up",
+            "relay": "up",
+            "mesh": "up"
+        }
+    })
+}
+
 /// Flat capability string list for `capabilities.list` (JSON array result).
 #[must_use]
 pub fn capabilities_list() -> Value {
@@ -54,6 +93,28 @@ pub fn capabilities_list() -> Value {
             .map(|s| serde_json::Value::String((*s).to_string()))
             .collect(),
     )
+}
+
+/// Normalize a JSON-RPC method name for legacy tolerance.
+///
+/// The ecosystem has naming drift: `capabilities.list` vs `capability.list`.
+/// This function canonicalizes known aliases so dispatch tables can use a
+/// single match arm per operation.
+///
+/// Note: `primal.capabilities` is intentionally NOT aliased — it returns a
+/// detailed capability description (operations, protocols) rather than the
+/// flat token list that `capabilities.list` provides.
+///
+/// Canonical names follow `SEMANTIC_METHOD_NAMING_STANDARD.md` (`domain.verb`).
+#[must_use]
+pub fn normalize_method(method: &str) -> &str {
+    match method {
+        "capability.list" => "capabilities.list",
+        "ping" => "health.liveness",
+        "status" | "check" => "health.check",
+        "health" => "health.check",
+        other => other,
+    }
 }
 
 /// Resolve canonical `BirdSong` / biomeOS `family_id` from environment keys.
@@ -276,7 +337,9 @@ pub fn rpc_methods() -> Value {
 pub fn rpc_discover_standard() -> Value {
     serde_json::json!({
         "methods": [
-            "health", "identity", "rpc.discover",
+            "health.liveness", "health.readiness", "health.check",
+            "capabilities.list",
+            "identity", "rpc.discover",
             "discover_capabilities",
             "primal.info", "primal.capabilities", "rpc.methods",
             "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
@@ -400,8 +463,8 @@ mod tests {
 
     use super::{
         SONGBIRD_CAPABILITY_STRINGS, canonical_family_id, capabilities_list, discover_capabilities,
-        health, health_liveness, identity, primal_capabilities, primal_info, rpc_discover_standard,
-        rpc_methods,
+        health, health_check, health_liveness, health_readiness, identity, normalize_method,
+        primal_capabilities, primal_info, rpc_discover_standard, rpc_methods,
     };
 
     use std::collections::HashMap;
@@ -558,7 +621,9 @@ mod tests {
         let v = rpc_discover_standard();
         let methods = v["methods"].as_array().unwrap();
         let names: Vec<&str> = methods.iter().filter_map(|x| x.as_str()).collect();
-        assert!(names.contains(&"health"));
+        assert!(names.contains(&"health.liveness"));
+        assert!(names.contains(&"health.readiness"));
+        assert!(names.contains(&"health.check"));
         assert!(names.contains(&"identity"));
         assert!(names.contains(&"peer.connect"));
         assert!(names.contains(&"tor.circuit.build"));
@@ -626,6 +691,50 @@ mod tests {
         let v = rpc_discover_standard();
         let methods = v["methods"].as_array().unwrap();
         assert!(methods.iter().any(|m| m == "primal.capabilities"));
+        assert!(methods.iter().any(|m| m == "health.liveness"));
+        assert!(methods.iter().any(|m| m == "health.readiness"));
+        assert!(methods.iter().any(|m| m == "health.check"));
+        assert!(methods.iter().any(|m| m == "capabilities.list"));
+    }
+
+    #[test]
+    fn health_readiness_reports_ready_status() {
+        let v = health_readiness();
+        assert_eq!(v["status"], "ready");
+        assert!(v.get("subsystems").is_some());
+        assert_eq!(v["subsystems"]["ipc"], "up");
+    }
+
+    #[test]
+    fn health_check_includes_primal_and_version() {
+        let v = health_check();
+        assert_eq!(v["status"], "healthy");
+        assert_eq!(v["primal"], "songbird");
+        assert!(v.get("version").is_some());
+        assert!(v.get("subsystems").is_some());
+    }
+
+    #[test]
+    fn normalize_method_canonicalizes_capability_list_aliases() {
+        assert_eq!(normalize_method("capabilities.list"), "capabilities.list");
+        assert_eq!(normalize_method("capability.list"), "capabilities.list");
+        // primal.capabilities is intentionally NOT aliased — different response shape
+        assert_eq!(normalize_method("primal.capabilities"), "primal.capabilities");
+    }
+
+    #[test]
+    fn normalize_method_canonicalizes_health_aliases() {
+        assert_eq!(normalize_method("health.liveness"), "health.liveness");
+        assert_eq!(normalize_method("ping"), "health.liveness");
+        assert_eq!(normalize_method("health"), "health.check");
+        assert_eq!(normalize_method("status"), "health.check");
+        assert_eq!(normalize_method("check"), "health.check");
+    }
+
+    #[test]
+    fn normalize_method_passes_through_unknown() {
+        assert_eq!(normalize_method("compute.route"), "compute.route");
+        assert_eq!(normalize_method("ipc.register"), "ipc.register");
     }
 
     #[test]

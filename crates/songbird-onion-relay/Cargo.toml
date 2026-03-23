@@ -54,6 +54,9 @@ songbird-sovereign-onion = { path = "../songbird-sovereign-onion", optional = tr
 songbird-stun = { path = "../songbird-stun" }
 songbird-lineage-relay = { path = "../songbird-lineage-relay" }
 
+[lints]
+workspace = true
+
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = "3.8"

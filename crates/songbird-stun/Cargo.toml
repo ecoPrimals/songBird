@@ -24,6 +24,9 @@ futures = "0.3"
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 
+[lints]
+workspace = true
+
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 tokio-test = "0.4"

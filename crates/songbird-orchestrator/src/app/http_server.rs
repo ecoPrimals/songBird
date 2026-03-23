@@ -480,7 +480,7 @@ async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListene
         }
     }
 
-    unreachable!("Loop should have returned or errored");
+    Err(anyhow::anyhow!("Port binding loop exhausted {max_attempts} attempts without returning"))
 }
 
 /// Start tarpc server for high-performance native RPC

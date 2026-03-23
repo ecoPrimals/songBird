@@ -34,5 +34,8 @@ songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 
+[lints]
+workspace = true
+
 [dev-dependencies]
 tokio-test = "0.4"

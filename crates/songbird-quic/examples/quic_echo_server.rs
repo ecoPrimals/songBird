@@ -1,3 +1,9 @@
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions"
+)]
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
@@ -68,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
                         })
                         .await
                         {
-                            Ok(_) => info!("Stream handler completed"),
+                            Ok(()) => info!("Stream handler completed"),
                             Err(e) => error!("Stream handler panicked: {}", e),
                         }
                     }

@@ -654,11 +654,11 @@ mod tests {
 
     #[test]
     fn test_extract_xml_value() {
-        let xml = r#"<root>
+        let xml = r"<root>
             <friendlyName>BGW320-505</friendlyName>
             <serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType>
             <controlURL>/ctl/IPConn</controlURL>
-        </root>"#;
+        </root>";
 
         assert_eq!(Gateway::extract_xml_value(xml, "friendlyName"), Some("BGW320-505".to_string()));
         assert_eq!(Gateway::extract_xml_value(xml, "controlURL"), Some("/ctl/IPConn".to_string()));
@@ -667,11 +667,11 @@ mod tests {
 
     #[test]
     fn test_extract_control_url_relative() {
-        let xml = r#"
+        let xml = r"
         <service>
             <serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType>
             <controlURL>/ctl/IPConn</controlURL>
-        </service>"#;
+        </service>";
 
         let result = Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
         assert!(result.is_ok());
@@ -680,11 +680,11 @@ mod tests {
 
     #[test]
     fn test_extract_control_url_absolute() {
-        let xml = r#"
+        let xml = r"
         <service>
             <serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType>
             <controlURL>http://192.168.1.254:5431/ctl/IPConn</controlURL>
-        </service>"#;
+        </service>";
 
         let result = Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
         assert!(result.is_ok());
@@ -694,11 +694,11 @@ mod tests {
     #[test]
     fn test_extract_control_url_wanppp() {
         // Some ISP routers use WANPPPConnection instead of WANIPConnection
-        let xml = r#"
+        let xml = r"
         <service>
             <serviceType>urn:schemas-upnp-org:service:WANPPPConnection:1</serviceType>
             <controlURL>/upnp/control/ppp</controlURL>
-        </service>"#;
+        </service>";
 
         let result = Gateway::extract_control_url(xml, "http://192.168.0.1:49000/rootDesc.xml");
         assert!(result.is_ok());
@@ -707,11 +707,11 @@ mod tests {
 
     #[test]
     fn test_extract_control_url_no_wan_service() {
-        let xml = r#"
+        let xml = r"
         <service>
             <serviceType>urn:schemas-upnp-org:service:Layer3Forwarding:1</serviceType>
             <controlURL>/ctl/L3F</controlURL>
-        </service>"#;
+        </service>";
 
         let result = Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
         assert!(result.is_err());

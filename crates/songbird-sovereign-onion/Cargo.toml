@@ -44,6 +44,8 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-types = { path = "../songbird-types" }
 
+[lints]
+workspace = true
 [dev-dependencies]
 tokio-test = "0.4"
 criterion = "0.5"
