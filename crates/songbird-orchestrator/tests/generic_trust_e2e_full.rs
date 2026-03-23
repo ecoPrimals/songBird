@@ -1,13 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Comprehensive E2E Tests for Generic Trust Integration
 //!
 //! Full end-to-end scenarios including:
 //! - Discovery announcement with attestations
 //! - Peer discovery and parsing
 //! - Trust evaluation with universal API
-//! - Decision handling (auto_accept/prompt/reject)
+//! - Decision handling (`auto_accept/prompt/reject`)
 
 use serde_json::json;
 use songbird_discovery::{DiscoveryPacket, IdentityAttestation};
@@ -369,7 +393,7 @@ fn e2e_concurrent_peer_handling() {
             thread::spawn(move || {
                 // Simulate peer discovery
                 let peer = DiscoveredPeer {
-                    node_id: format!("tower{}", i),
+                    node_id: format!("tower{i}"),
                     tags: vec![],
                     identity_attestations: vec![UniversalIdentityAttestation::tag_list(vec![
                         format!("beardog:family:iidn:tower{}", i),

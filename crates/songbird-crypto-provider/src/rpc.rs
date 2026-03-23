@@ -18,7 +18,7 @@ use super::{CryptoProvider, CryptoProviderError, Result};
 /// Routing mode for crypto operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoutingMode {
-    /// Call BearDog directly (bootstrap / fallback).
+    /// Call `BearDog` directly (bootstrap / fallback).
     Direct,
     /// Route via Neural API `capability.call` (production default).
     NeuralApi,
@@ -61,6 +61,9 @@ impl CryptoProvider {
     }
 
     /// Call a crypto method, routing through Neural API or direct depending on mode.
+    ///
+    /// # Errors
+    /// Returns an error if the RPC call fails or the response cannot be parsed.
     pub async fn call(&self, method: &str, params: Value) -> Result<Value> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
 
@@ -199,9 +202,10 @@ impl CryptoProvider {
         }
     }
 
-    /// Translate semantic method names to BearDog JSON-RPC wire names (direct mode).
+    /// Translate semantic method names to `BearDog` JSON-RPC wire names (direct mode).
     ///
     /// Methods that share the same semantic and wire name pass through the wildcard arm.
+    #[must_use]
     pub fn semantic_to_actual(method: &str) -> &str {
         match method {
             "crypto.generate_keypair" | "crypto.x25519.generate_ephemeral" => {
@@ -226,5 +230,118 @@ impl CryptoProvider {
             "crypto.ed25519.public_from_secret" => "crypto.ed25519_public_from_secret",
             _ => method,
         }
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use crate::CryptoProviderError;
+    use serde_json::json;
+
+    #[test]
+    fn semantic_to_actual_translates_aes_and_x25519_aliases() {
+        assert_eq!(
+            CryptoProvider::semantic_to_actual("crypto.encrypt_aes_128_gcm"),
+            "crypto.aes128_gcm_encrypt"
+        );
+        assert_eq!(
+            CryptoProvider::semantic_to_actual("crypto.generate_keypair"),
+            "crypto.x25519_generate_ephemeral"
+        );
+        assert_eq!(
+            CryptoProvider::semantic_to_actual("crypto.ecdh_derive"),
+            "crypto.x25519_derive_secret"
+        );
+    }
+
+    #[test]
+    fn semantic_to_actual_passes_through_unknown_methods() {
+        assert_eq!(CryptoProvider::semantic_to_actual("crypto.custom.op"), "crypto.custom.op");
+    }
+
+    #[test]
+    fn method_to_capability_maps_tls_and_tor_methods() {
+        assert_eq!(
+            CryptoProvider::method_to_capability("tls.derive_handshake_secrets"),
+            ("tls_crypto", "derive_handshake_secrets")
+        );
+        assert_eq!(
+            CryptoProvider::method_to_capability("crypto.ntor.client_init"),
+            ("crypto", "ntor_client_init")
+        );
+    }
+
+    #[test]
+    fn method_to_capability_unknown_falls_back_to_crypto_unknown() {
+        assert_eq!(
+            CryptoProvider::method_to_capability("not.a.real.method"),
+            ("crypto", "unknown")
+        );
+    }
+
+    #[test]
+    fn direct_json_rpc_request_serializes_expected_shape() {
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: CryptoProvider::semantic_to_actual("crypto.encrypt_aes_256_gcm").to_string(),
+            params: json!({ "k": "v" }),
+            id: 42,
+        };
+        let s = serde_json::to_string(&req).unwrap();
+        let v: Value = serde_json::from_str(&s).unwrap();
+        assert_eq!(v["jsonrpc"], "2.0");
+        assert_eq!(v["method"], "crypto.aes256_gcm_encrypt");
+        assert_eq!(v["id"], 42);
+        assert_eq!(v["params"]["k"], "v");
+    }
+
+    #[test]
+    fn neural_json_rpc_request_wraps_capability_call_params() {
+        let (cap, op) = CryptoProvider::method_to_capability("crypto.sha256");
+        assert_eq!((cap, op), ("crypto", "sha256"));
+        let inner = json!({
+            "capability": cap,
+            "operation": op,
+            "args": json!({ "data": "abc" })
+        });
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "capability.call".to_string(),
+            params: inner,
+            id: 7,
+        };
+        let s = serde_json::to_string(&req).unwrap();
+        let v: Value = s.parse().unwrap();
+        assert_eq!(v["method"], "capability.call");
+        assert_eq!(v["params"]["capability"], "crypto");
+        assert_eq!(v["params"]["operation"], "sha256");
+        assert_eq!(v["params"]["args"]["data"], "abc");
+    }
+
+    #[test]
+    fn json_rpc_response_deserializes_result() {
+        let raw = r#"{"jsonrpc":"2.0","result":{"ok":true},"id":1}"#;
+        let r: JsonRpcResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(r.jsonrpc, "2.0");
+        assert_eq!(r.result.unwrap()["ok"], true);
+        assert!(r.error.is_none());
+    }
+
+    #[test]
+    fn json_rpc_response_deserializes_error() {
+        let raw = r#"{"jsonrpc":"2.0","error":{"code":-1,"message":"oops","data":null},"id":2}"#;
+        let r: JsonRpcResponse = serde_json::from_str(raw).unwrap();
+        let err = r.error.unwrap();
+        assert_eq!(err.code, -1);
+        assert_eq!(err.message, "oops");
+        assert!(r.result.is_none());
+    }
+
+    #[test]
+    fn crypto_provider_error_display() {
+        let e = CryptoProviderError::Rpc("connection failed".to_string());
+        assert_eq!(e.to_string(), "RPC error: connection failed");
     }
 }

@@ -137,11 +137,21 @@ impl Capability {
 /// # Ok(())
 /// # }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover(capability: Capability) -> Result<String> {
     discover_with(capability, |name| std::env::var(name).ok()).await
 }
 
 /// Discover a primal by capability with injectable env reader (concurrent-safe, testable)
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn discover_with<F>(capability: Capability, env_reader: F) -> Result<String>
 where
     F: Fn(&str) -> Option<String>,
@@ -338,21 +348,33 @@ fn check_tcp_discovery_from_candidates(candidates: &[std::path::PathBuf]) -> Opt
 }
 
 /// Convenience function: Discover crypto provider
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_crypto_provider() -> Result<String> {
     discover(Capability::Crypto).await
 }
 
 /// Convenience function: Discover security provider
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_security_provider() -> Result<String> {
     discover(Capability::Security).await
 }
 
 /// Convenience function: Discover HTTP provider
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_http_provider() -> Result<String> {
     discover(Capability::Http).await
 }
 
 /// Convenience function: Discover AI provider
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_ai_provider() -> Result<String> {
     discover(Capability::Ai).await
 }
@@ -475,7 +497,7 @@ mod tests {
 
         assert!(patterns.len() >= 2, "Should have at least 2 patterns");
         for pattern in &patterns {
-            assert!(pattern.ends_with(".sock"), "Pattern should end with .sock: {}", pattern);
+            assert!(pattern.ends_with(".sock"), "Pattern should end with .sock: {pattern}");
         }
         assert!(
             patterns.iter().any(|p| p.contains("crypto")),
@@ -496,11 +518,10 @@ mod tests {
 
         for cap in &capabilities {
             let patterns = cap.socket_patterns();
-            assert!(!patterns.is_empty(), "{:?} should return at least one pattern", cap);
+            assert!(!patterns.is_empty(), "{cap:?} should return at least one pattern");
             assert!(
                 patterns.iter().all(|p| p.ends_with(".sock")),
-                "{:?} patterns should all end with .sock",
-                cap
+                "{cap:?} patterns should all end with .sock"
             );
         }
     }
@@ -512,8 +533,7 @@ mod tests {
             if pattern.contains("biomeos") {
                 assert!(
                     !pattern.contains("-nat0"),
-                    "XDG patterns should not have -nat0 suffix: {}",
-                    pattern
+                    "XDG patterns should not have -nat0 suffix: {pattern}"
                 );
             }
         }

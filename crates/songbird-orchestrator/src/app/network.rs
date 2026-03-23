@@ -14,6 +14,9 @@ use tracing::{info, warn};
 ///
 /// Uses a technique that creates a UDP socket to determine which interface
 /// would be used for external connectivity, without actually sending data.
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn get_local_ip_for_connectivity_test() -> Result<String> {
     // Try to get local IP by creating a UDP socket (doesn't actually send data)
     let socket = UdpSocket::bind("0.0.0.0:0")?;
@@ -52,6 +55,9 @@ pub async fn get_local_ip_for_connectivity_test() -> Result<String> {
 /// // IPv4 localhost
 /// let addr = parse_bind_address("127.0.0.1", 8080)?;
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn parse_bind_address(addr: &str, port: u16) -> Result<SocketAddr> {
     match addr {
         "[::]" => {

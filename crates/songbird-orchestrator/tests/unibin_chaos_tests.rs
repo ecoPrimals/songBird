@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! UniBin Chaos Tests
+//! `UniBin` Chaos Tests
 //!
 //! Unpredictable scenario testing including:
 //! - Random input generation

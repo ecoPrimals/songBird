@@ -60,7 +60,7 @@ impl TlsHandshake {
         // Steps 1-3: Generate keypair, random, send ClientHello
         let (client_public, client_private) = self.crypto.generate_x25519_keypair().await?;
         let client_random = self.generate_random();
-        let client_hello = self.build_client_hello(&client_random, &client_public, server_name)?;
+        let client_hello = self.build_client_hello(&client_random, &client_public, server_name);
 
         info!("📤 Sending ClientHello: {} bytes", client_hello.len());
         self.add_client_hello_to_transcript(&client_hello);
@@ -346,9 +346,8 @@ impl TlsHandshake {
     /// Validate application key lengths match cipher suite expectations
     fn validate_key_lengths(&self, secrets: &TlsApplicationSecrets) {
         let expected_key_len = match self.cipher_suite {
-            0x1301 => 16, // AES-128-GCM
-            0x1302 => 32, // AES-256-GCM
-            0x1303 => 32, // ChaCha20-Poly1305
+            0x1301 => 16,          // AES-128-GCM
+            0x1302 | 0x1303 => 32, // AES-256-GCM, ChaCha20-Poly1305
             _ => 0,
         };
 
@@ -377,12 +376,16 @@ impl TlsHandshake {
     }
 
     /// Build `ClientHello` message
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(crate) fn build_client_hello(
         &self,
         client_random: &[u8],
         client_public_key: &[u8],
         server_name: &str,
-    ) -> Result<Vec<u8>> {
+    ) -> Vec<u8> {
         let mut msg = Vec::new();
 
         // TLS record header
@@ -418,7 +421,7 @@ impl TlsHandshake {
         msg.push(0); // No compression
 
         // Extensions
-        let extensions = self.build_extensions(server_name, client_public_key)?;
+        let extensions = self.build_extensions(server_name, client_public_key);
         msg.extend_from_slice(
             &u16::try_from(extensions.len()).expect("extensions fit in u16").to_be_bytes(),
         );
@@ -434,6 +437,6 @@ impl TlsHandshake {
         msg[length_pos] = ((record_length >> 8) & 0xFF) as u8;
         msg[length_pos + 1] = (record_length & 0xFF) as u8;
 
-        Ok(msg)
+        msg
     }
 }

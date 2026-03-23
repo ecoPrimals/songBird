@@ -136,7 +136,7 @@ fn test_task_builder_pattern() {
 #[test]
 fn test_routing_decision_execute_locally_debug() {
     let decision = RoutingDecision::ExecuteLocally;
-    let debug = format!("{:?}", decision);
+    let debug = format!("{decision:?}");
     assert!(debug.contains("ExecuteLocally"));
 }
 
@@ -307,7 +307,7 @@ fn test_task_metadata_empty_value() {
 #[test]
 fn test_task_debug_format() {
     let task = Task::new("debug_test");
-    let debug = format!("{:?}", task);
+    let debug = format!("{task:?}");
     assert!(debug.contains("Task"));
 }
 

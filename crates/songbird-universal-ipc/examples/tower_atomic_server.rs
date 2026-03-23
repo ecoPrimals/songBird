@@ -88,7 +88,7 @@ impl JsonRpcHandler for MathService {
             }
             _ => {
                 info!("Unknown method: {}", method);
-                Err(format!("Unknown method: {}", method))
+                Err(format!("Unknown method: {method}"))
             }
         }
     }

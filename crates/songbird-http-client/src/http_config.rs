@@ -530,7 +530,7 @@ mod tests {
 
     #[test]
     fn http_client_config_default_matches_standard() {
-        let def: HttpClientConfig = Default::default();
+        let def = HttpClientConfig::default();
         let std = HttpClientConfig::standard();
         assert_eq!(def.user_agent, std.user_agent);
         assert_eq!(def.redirect_mode, std.redirect_mode);

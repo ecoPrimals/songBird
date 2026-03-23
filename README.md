@@ -12,27 +12,28 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across 29/30 crates; `process-env` isolated with `Mutex` + SAFETY docs) |
-| Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); all application code is pure Rust |
+| Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); `blake3` compiled in pure mode; all application code is pure Rust |
 | Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
 | Runtime Discovery | All config: env → XDG → smart defaults. Capability-only (zero primal names in discovery) |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
-| Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent at 16 threads via injectable `_with` env readers |
-| Tests | 9,969 passed, 0 failed, 266 ignored (16 threads, fully concurrent) |
-| Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings, all targets) |
-| Build | Clean (zero errors, zero warnings) |
+| Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent via injectable `_with` env readers |
+| Tests | 7,304 `#[test]` + 2,719 `#[tokio::test]` = 10,023 total, 0 failed |
+| Line Coverage | 66.02% (llvm-cov measured; target 90%) |
+| Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
+| Build | Clean (zero errors, zero warnings, ~45s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`cargo doc --no-deps`, 30/30 crates with `#[warn(missing_docs)]`) |
-| Files >1000 lines | 0 (all large files refactored into domain submodules) |
+| Files >1000 lines | 0 (max 959 test file; production max 888) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
-| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` (1,324/1,324) |
+| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` |
 | JSON-RPC Gateway | 12 semantic methods (10 REST wrappers + `health.liveness` + `capabilities.list`) |
 | Nest Atomic | `health.liveness` + `capabilities.list` (14 capability tokens, wateringHole compliant) |
-| Dependencies | ~418 unique; duplicates aligned (base32, base64, hostname, thiserror); `kube`/`k8s-openapi`/`bollard` feature-gated |
+| Dependencies | ~418 unique; duplicates aligned; `kube`/`k8s-openapi`/`bollard` feature-gated; unused `sys-info` removed |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~406,455 lines across 30 crates |
+| Total Rust | ~405,736 lines across 30 crates |
 
 ## Architecture
 

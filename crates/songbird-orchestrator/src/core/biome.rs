@@ -25,18 +25,46 @@ impl ServiceRegistry {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn initialize(&mut self) -> songbird_types::SongbirdResult<()> {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start(&mut self) -> songbird_types::SongbirdResult<()> {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn stop(&mut self) -> songbird_types::SongbirdResult<()> {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn health_check(
         &self,
     ) -> songbird_types::SongbirdResult<crate::core::ComponentHealth> {
@@ -52,6 +80,13 @@ impl ServiceRegistry {
         self.services.values().cloned().collect()
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn register_service(
         &mut self,
         _id: String,
@@ -71,7 +106,7 @@ mod tests {
 
     #[test]
     fn biome_coordinator_debug() {
-        let _ = format!("{:?}", BiomeCoordinator);
+        let _ = format!("{BiomeCoordinator:?}");
     }
 
     #[test]

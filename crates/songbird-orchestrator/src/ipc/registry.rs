@@ -77,6 +77,9 @@ impl ServiceRegistry {
     /// ## Returns
     ///
     /// Service ID (auto-generated UUID if new, existing ID if update)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn register_service(
         &self,
         primal_name: String,
@@ -133,6 +136,9 @@ impl ServiceRegistry {
     /// ## Protocol Filtering
     ///
     /// If `protocol` is `Some`, only returns services with matching protocol.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_by_capability(
         &self,
         capability: &str,
@@ -174,6 +180,9 @@ impl ServiceRegistry {
     }
 
     /// Get health status of a specific service
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_service_health(&self, service_id: &str) -> Result<(String, Option<String>)> {
         let services = self.services.read().await;
 
@@ -187,6 +196,9 @@ impl ServiceRegistry {
     /// Update health status of a service
     ///
     /// Used by health check background tasks
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn update_health(&self, service_id: &str, status: String) -> Result<()> {
         let mut services = self.services.write().await;
 
@@ -220,6 +232,9 @@ impl ServiceRegistry {
     }
 
     /// Remove a service (for cleanup)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn unregister_service(&self, service_id: &str) -> Result<()> {
         let mut services = self.services.write().await;
 

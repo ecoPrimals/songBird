@@ -147,6 +147,9 @@ impl CircuitBreakerConfig {
         CircuitBreakerConfigBuilder::default()
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn validate(&self) -> Result<(), String> {
         if self.failure_threshold == 0 {
             return Err("failure_threshold must be greater than 0".to_string());
@@ -216,6 +219,9 @@ pub struct CircuitBreaker {
 
 impl CircuitBreaker {
     /// Create a new circuit breaker with configuration
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new(config: CircuitBreakerConfig) -> Result<Self, String> {
         config.validate()?;
 
@@ -255,6 +261,9 @@ impl CircuitBreaker {
     /// }).await;
     /// # }
     /// ```
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn call<F, Fut, T, E>(&self, operation: F) -> CircuitBreakerResult<T>
     where
         F: FnOnce() -> Fut,
@@ -449,6 +458,9 @@ impl CircuitBreakerBuilder {
         self
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn build(self) -> Result<CircuitBreaker, String> {
         let config = self.config.build();
         CircuitBreaker::new(config)

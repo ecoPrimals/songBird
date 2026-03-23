@@ -262,7 +262,7 @@ pub struct ProviderCapabilities {
 
 impl ProviderCapabilities {
     #[must_use]
-    pub fn new(capabilities: Vec<ProviderCapability>) -> Self {
+    pub const fn new(capabilities: Vec<ProviderCapability>) -> Self {
         Self {
             capabilities,
         }

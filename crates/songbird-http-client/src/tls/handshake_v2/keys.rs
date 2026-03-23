@@ -52,6 +52,10 @@ pub enum CipherSuite {
 
 impl CipherSuite {
     /// Convert from u16 wire format
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the cipher suite is not supported.
     pub fn from_u16(value: u16) -> Result<Self> {
         match value {
             0x1301 => Ok(Self::Aes128GcmSha256),
@@ -72,8 +76,7 @@ impl CipherSuite {
     pub const fn key_len(&self) -> usize {
         match self {
             Self::Aes128GcmSha256 => 16,
-            Self::Aes256GcmSha384 => 32,
-            Self::ChaCha20Poly1305Sha256 => 32,
+            Self::Aes256GcmSha384 | Self::ChaCha20Poly1305Sha256 => 32,
         }
     }
 
@@ -89,9 +92,8 @@ impl CipherSuite {
     #[must_use]
     pub const fn hash_len(&self) -> usize {
         match self {
-            Self::Aes128GcmSha256 => 32,        // SHA-256
-            Self::Aes256GcmSha384 => 48,        // SHA-384
-            Self::ChaCha20Poly1305Sha256 => 32, // SHA-256
+            Self::Aes256GcmSha384 => 48,                                // SHA-384
+            Self::Aes128GcmSha256 | Self::ChaCha20Poly1305Sha256 => 32, // SHA-256
         }
     }
 
@@ -135,6 +137,10 @@ pub struct TrafficKeys {
 
 impl TrafficKeys {
     /// Create new `TrafficKeys` with validation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if key or IV lengths do not match the cipher suite.
     pub fn new(
         client_write_key: Vec<u8>,
         client_write_iv: Vec<u8>,

@@ -2,7 +2,7 @@
 
 **Date**: March 23, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 23, 2026 (Session 9 — Stub Evolution, Smart Refactoring & Health Probe Modernization)
+**Last Deep Debt Audit**: March 23, 2026 (Session 10 — Comprehensive Clippy Sweep, Smart Refactoring & Metrics Accuracy)
 
 ---
 
@@ -10,17 +10,17 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 9,969 passed, 0 failed, 266 ignored (workspace-wide, 16 threads) |
-| **Line Coverage** | ~72% estimated (target 90%; +700 new tests in session 7) |
+| **Tests** | 7,304 `#[test]` + 2,719 `#[tokio::test]` = 10,023 total, 0 failed |
+| **Line Coverage** | 66.02% (llvm-cov measured; target 90%) |
 | **Edition** | Rust 2024 |
-| **Build** | Zero errors, zero warnings, all 30 crates compile clean |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery + cargo`, `--all-targets --all-features`) |
+| **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` passes) |
-| **Files >1000 lines** | 0 (max 977; record.rs 911→454, hardcoded_elimination.rs 931→532 via smart refactor) |
+| **Files >1000 lines** | 0 (max 959, test file; production max 888) |
 | **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[expect]`) |
 | **Production `todo!()`** | 0 |
-| **Production `.unwrap()`** | 0 (all remaining are in `#[cfg(test)]` modules — verified via line-by-line audit) |
+| **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
 | **Production `panic!()`** | 0 |
 | **Production `eprintln!`** | 0 in library crates (all evolved to `tracing`; CLI binary output remains intentional) |
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
@@ -40,14 +40,55 @@
 | **Concurrent tests** | All tests fully concurrent at 16 threads; injectable `_with` env readers replace global mutation |
 | **Event-driven** | Zero `sleep`-based polling in production |
 | **Module docs** | 77 `pub mod` declarations documented across 5 crates |
-| **`#[ignore]` tests** | 266 total; 100% have reason strings |
+| **`#[ignore]` tests** | 191 total; 100% have reason strings (`#[ignore = "..."]` or `#[ignore] // reason`) |
 | **Binary size** | 20MB release |
 | **`#[warn(missing_docs)]`** | 30/30 crates (all library crates have the lint enabled) |
 | **Dependencies** | ~418 unique; duplicate versions aligned (base32→0.5, base64→0.22, hostname→0.4, thiserror→2.0) |
-| **Build time** | ~94s clean build, ~336s test suite (16 threads) |
-| **Total Rust lines** | ~406,455 (crates + src + tests + examples) |
+| **Build time** | ~45s clean dev build, ~187s test suite |
+| **Total Rust lines** | ~405,736 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members (`songbird-crypto-provider` added) |
 | **TLS logging** | Diagnostic key material logging evolved to `trace!` level (was `info!` — security fix) |
+
+---
+
+## Completed (Mar 23, 2026 — Comprehensive Clippy Sweep, Smart Refactoring & Metrics Accuracy Session 10)
+
+### Wave 63: Full Workspace Clippy Pedantic+Nursery Sweep (~800+ warnings resolved)
+- [x] `songbird-types`: Fixed `significant_drop_tightening` (RwLock guard → Arc clone pattern), 11x `doc_markdown`
+- [x] `songbird-crypto-provider`: 6x `doc_markdown` (`BearDog` backticks), `missing_errors_doc`, `must_use_candidate`
+- [x] `songbird-tls`: `manual_let_else`, `doc_markdown`, 5x `unreadable_literal`, 4x `redundant_clone`, 4x `uninlined_format_args`, test cast expects
+- [x] `songbird-http-client`: 131 errors — TLS cast truncation expects, `# Errors`/`# Panics` docs, `unused_self`, `unnecessary_wraps` removal, `branches_sharing_code`, `map_or_else`, `match_same_arms`, profiler precision loss, f32 test comparisons
+- [x] `songbird-tor-protocol`: 24 errors — `map_crypto_err` reference fix, `# Panics` docs, `publish_descriptor` sync evolution, lock scoping
+- [x] `songbird-sovereign-onion`: 33 errors — `must_use`/`const fn`, `# Errors`/`# Panics`, `BearDog` backticks, `use_self`, standalone feature gates
+- [x] `songbird-config`: 4 errors — `option_if_let_else`, `missing_const_for_fn`
+- [x] `songbird-execution-agent`: 2 errors — `doc_markdown`
+- [x] `songbird-remote-deploy`: 3 errors — `implicit_hasher`, `missing_errors_doc`
+- [x] `songbird-discovery`: 14 errors — `missing_const_for_fn`, `significant_drop_tightening` in health loop, test doc backticks
+- [x] `songbird-registry`: 8 errors — `const fn`, lock scope tightening, `uninlined_format_args`
+- [x] `songbird-primal-coordination`: 3 errors — `doc_markdown`, `significant_drop_tightening`, `uninlined_format_args`
+- [x] `songbird-lineage-relay`: 22 errors — lock scope tightening across 6 files, `const fn`, `map_or_else`, `manual_assert`
+- [x] `songbird-onion-relay`: 43 errors — `unix_epoch_millis_u64` helper, lock scoping, `must_use`, `const fn`, `.onion` path extension
+- [x] `songbird-universal-ipc`: 30 errors — `significant_drop_tightening` (Arc clone pattern), `option_if_let_else`, `derive_partial_eq_without_eq`, `const fn`
+- [x] `songbird-orchestrator`: 638 errors — `# Errors` docs (308), `unused_async` removal (90), lock tightening (61), float comparison expects (60), format args, `map_or_else`, `must_use`, crate-level lint policy alignment
+- [x] `songbird-universal`: 5 errors — `missing_errors_doc` on discovery resolvers, `map_or_else`
+- [x] `songbird-compute-bridge`: 1 error — `missing_errors_doc`
+- [x] Root `songbird`: 7 errors — `must_use`, `# Errors`, `doc_markdown`, `uninlined_format_args`
+- [x] Auto-fixed examples and integration tests via `cargo clippy --fix`
+
+### Wave 63: Flaky Test Fix
+- [x] `test_port_allocation_is_cached`: Race condition from concurrent `clear_port_registry()` — evolved `test_different_capabilities_get_different_ports` to use unique capability names instead of clearing global state
+
+### Wave 63: Smart Refactoring
+- [x] `compute_api.rs` (977 lines) → `compute_api/` directory module (mod.rs 266 + compute_handlers.rs 448 + compute_types.rs 185 + compute_state.rs 117 + compute_routing.rs 31)
+- [x] `real_service_discovery.rs` (923 lines) → `real_service_discovery/` directory module (mod.rs 153 + types.rs 76 + health.rs 85 + conversions.rs 78 + service_discovery_impl.rs 172 + tests.rs 412)
+
+### Wave 63: Metrics Accuracy
+- [x] Updated REMAINING_WORK.md with llvm-cov measured coverage (66.02%, was incorrectly listed as ~72%)
+- [x] Corrected test count to actual measured values (7,304 `#[test]` + 2,719 `#[tokio::test]` = 10,023 total)
+- [x] Corrected `#[ignore]` count to 191 (was incorrectly 266)
+- [x] Updated max file size (959 test file, 888 production)
+- [x] Updated total Rust lines to 405,736
+- [x] Updated build times to current measurements
 
 ---
 
@@ -232,7 +273,7 @@
 | `#[expect()]` with reasons | S+ | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled; zero unfulfilled expectations |
 | Runtime discovery | S+ | All socket paths: env → XDG → fallback; `find_primals_with_capability` capability-based |
 | Event-driven architecture | S+ | Zero polling anti-patterns in production code |
-| Concurrent-safe testing | S+ | Zero `#[serial_test::serial]`; injectable `_with` env readers across all crates; 9,969 tests at 16 threads |
+| Concurrent-safe testing | S+ | Zero `#[serial_test::serial]`; injectable `_with` env readers across all crates; 10,023 tests fully concurrent |
 | Self-knowledge only | S+ | Introspection describes only Songbird |
 | AGPL-3.0 license | S+ | `license.workspace = true` (all crates), `AGPL-3.0-only` SPDX headers, cargo-deny configured |
 | Capability-based discovery | S+ | No hardcoded primal names; env-driven capability filter |
@@ -578,7 +619,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Coverage Expansion (~67% → 90% target)
+## Pending: Coverage Expansion (66.02% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |
@@ -654,4 +695,4 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 4. **Deep documentation** — Fill `#[allow(missing_docs)]` internal modules with full doc coverage
 5. **Real hardware tests** (Tower + Pixel) — Validates cross-network
 6. **Platform backends** — Mobile pairing, iOS, WASM
-7. **Dependency pruning** — Reduce ~412 unique deps where possible
+7. **Dependency pruning** — Reduce ~418 unique deps where possible

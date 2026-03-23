@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Fault Injection Tests for BearDog JWT Delegation
+//! Fault Injection Tests for `BearDog` JWT Delegation
 //!
 //! Tests JWT provisioning under fault conditions.
 
@@ -23,13 +23,13 @@ async fn test_fault_invalid_socket_path() {
     ];
 
     for path in invalid_paths {
-        println!("   Testing path: {}", path);
+        println!("   Testing path: {path}");
         let secret = provision_jwt_secret(Some(path), "fault_invalid_path")
             .await
             .expect("Should fall back to secure random");
 
         assert!(secret.len() >= 85);
-        println!("   ✅ Fallback successful for: {}", path);
+        println!("   ✅ Fallback successful for: {path}");
     }
 
     println!("✅ FAULT: Invalid socket path test passed!");
@@ -152,7 +152,7 @@ async fn test_fault_concurrent_failures() {
                     None
                 };
 
-                provision_jwt_secret(socket, &format!("fault_concurrent_{}", i))
+                provision_jwt_secret(socket, &format!("fault_concurrent_{i}"))
                     .await
                     .expect("Should succeed with fallback")
             })
@@ -185,7 +185,7 @@ async fn test_fault_rapid_socket_changes() {
         .map(|i| {
             tokio::spawn(async move {
                 let socket = format!("/tmp/beardog-fault-{}.sock", i % 10);
-                provision_jwt_secret(Some(&socket), &format!("fault_rapid_{}", i))
+                provision_jwt_secret(Some(&socket), &format!("fault_rapid_{i}"))
                     .await
                     .expect("Should succeed with fallback")
             })
@@ -219,7 +219,7 @@ async fn test_fault_timeout_recovery() {
             Duration::from_millis(1), // Very short timeout
             provision_jwt_secret(
                 Some("/tmp/nonexistent-socket.sock"),
-                &format!("fault_timeout_{}", i),
+                &format!("fault_timeout_{i}"),
             ),
         )
         .await;
@@ -227,11 +227,11 @@ async fn test_fault_timeout_recovery() {
         match result {
             Ok(Ok(secret)) => {
                 assert!(secret.len() >= 85);
-                println!("   ✅ Iteration {} succeeded", i);
+                println!("   ✅ Iteration {i} succeeded");
             }
-            Ok(Err(e)) => panic!("Unexpected error: {}", e),
+            Ok(Err(e)) => panic!("Unexpected error: {e}"),
             Err(_) => {
-                println!("   ⏱️  Iteration {} timed out (acceptable)", i);
+                println!("   ⏱️  Iteration {i} timed out (acceptable)");
             }
         }
     }
@@ -258,7 +258,7 @@ async fn test_fault_resource_exhaustion() {
     let provision_handles: Vec<_> = (0..50)
         .map(|i| {
             tokio::spawn(async move {
-                provision_jwt_secret(None, &format!("fault_exhaustion_{}", i))
+                provision_jwt_secret(None, &format!("fault_exhaustion_{i}"))
                     .await
                     .expect("Should succeed despite resource exhaustion")
             })

@@ -33,6 +33,9 @@ use songbird_discovery::anonymous::TransportEndpointMessage;
 /// Discover our own node ID (persistent identity)
 ///
 /// Generates or loads UUID from `~/.config/songbird/node_id`
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn discover_node_id() -> Result<Uuid> {
     let config_dir = config_dir().context("Failed to get config directory")?;
     let identity_path = config_dir.join("songbird").join("node_id");
@@ -63,6 +66,9 @@ pub fn discover_node_id() -> Result<Uuid> {
 /// Discover our own node name
 ///
 /// Uses `NODE_ID` env var or hostname
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn discover_node_name() -> Result<String> {
     // Prefer NODE_ID env var (for multi-instance deployments)
     if let Ok(node_id) = std::env::var("NODE_ID") {
@@ -282,7 +288,7 @@ mod tests {
         assert!(capabilities.contains(&"discovery".to_string()));
     }
 
-    /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
+    /// Create a mock env reader from a `HashMap` (concurrent-safe, no global state)
     fn mock_env(
         vars: std::collections::HashMap<String, String>,
     ) -> impl Fn(&str) -> Option<String> {
@@ -304,8 +310,7 @@ mod tests {
         let tags = discover_identity_tags_with(mock_env(env));
         assert!(
             tags.contains(&"beardog:family:test_family".to_string()),
-            "Expected tag not found. Got: {:?}",
-            tags
+            "Expected tag not found. Got: {tags:?}"
         );
     }
 
@@ -318,13 +323,11 @@ mod tests {
 
         assert!(
             tags.contains(&"custom:tag:value1".to_string()),
-            "Expected custom:tag:value1 in tags. Got: {:?}",
-            tags
+            "Expected custom:tag:value1 in tags. Got: {tags:?}"
         );
         assert!(
             tags.contains(&"another:tag:value2".to_string()),
-            "Expected another:tag:value2 in tags. Got: {:?}",
-            tags
+            "Expected another:tag:value2 in tags. Got: {tags:?}"
         );
     }
 

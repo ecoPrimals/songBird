@@ -78,6 +78,9 @@ impl RetryPolicy {
     }
 
     /// Execute a function with retry logic
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn execute<F, Fut, T>(&self, mut operation: F) -> Result<T>
     where
         F: FnMut() -> Fut,

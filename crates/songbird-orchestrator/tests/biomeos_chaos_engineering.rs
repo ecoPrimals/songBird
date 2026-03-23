@@ -132,14 +132,14 @@ fn chaos_random_priority_conflicts() {
         // Randomly set socket vars
         for var in &socket_vars {
             if rng.gen_bool(0.6) {
-                songbird_process_env::set_var(var, format!("/tmp/test-{}.sock", var));
+                songbird_process_env::set_var(var, format!("/tmp/test-{var}.sock"));
             }
         }
 
         // Randomly set family vars
         for var in &family_vars {
             if rng.gen_bool(0.6) {
-                songbird_process_env::set_var(var, format!("family-{}", var));
+                songbird_process_env::set_var(var, format!("family-{var}"));
             }
         }
 
@@ -368,8 +368,8 @@ fn chaos_environment_pollution() {
 
     // Pollute environment with unrelated vars
     for i in 0..50 {
-        songbird_process_env::set_var(format!("RANDOM_VAR_{}", i), format!("value_{}", i));
-        songbird_process_env::set_var(format!("SONGBIRD_UNRELATED_{}", i), format!("value_{}", i));
+        songbird_process_env::set_var(format!("RANDOM_VAR_{i}"), format!("value_{i}"));
+        songbird_process_env::set_var(format!("SONGBIRD_UNRELATED_{i}"), format!("value_{i}"));
     }
 
     // Set correct vars
@@ -385,8 +385,8 @@ fn chaos_environment_pollution() {
 
     // Cleanup pollution
     for i in 0..50 {
-        songbird_process_env::remove_var(format!("RANDOM_VAR_{}", i));
-        songbird_process_env::remove_var(format!("SONGBIRD_UNRELATED_{}", i));
+        songbird_process_env::remove_var(format!("RANDOM_VAR_{i}"));
+        songbird_process_env::remove_var(format!("SONGBIRD_UNRELATED_{i}"));
     }
 
     restore_env_state(original);

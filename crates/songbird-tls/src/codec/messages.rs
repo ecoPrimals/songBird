@@ -364,7 +364,7 @@ mod tests {
             Extension::KeyShare(vec![1, 2, 3, 4, 5, 6, 7, 8]),
         ];
 
-        let hello = ClientHello::new(random, cipher_suites.clone(), extensions.clone());
+        let hello = ClientHello::new(random, cipher_suites, extensions);
 
         // Encode
         let mut buf = Vec::new();
@@ -376,7 +376,7 @@ mod tests {
         assert_eq!(bytes_read, buf.len());
         assert_eq!(decoded.legacy_version, hello.legacy_version);
         assert_eq!(decoded.random, hello.random);
-        assert_eq!(decoded.cipher_suites, cipher_suites);
+        assert_eq!(decoded.cipher_suites, vec![0x1303]);
     }
 
     #[test]
@@ -417,7 +417,7 @@ mod tests {
     #[test]
     fn test_extension_key_share_encode() {
         let key_data = vec![1, 2, 3, 4];
-        let ext = Extension::KeyShare(key_data.clone());
+        let ext = Extension::KeyShare(key_data);
         let mut buf = Vec::new();
         ext.encode(&mut buf).unwrap();
 
@@ -476,7 +476,7 @@ mod tests {
     #[test]
     fn test_extension_server_name_encoded_size() {
         let server_name = "example.com".to_string();
-        let ext = Extension::ServerName(server_name.clone());
+        let ext = Extension::ServerName(server_name);
 
         let mut buf = Vec::new();
         ext.encode(&mut buf).unwrap();

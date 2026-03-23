@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::uninlined_format_args,
+    clippy::doc_markdown,
+    reason = "RFC 8446 compliance tests use TLS framing helpers and protocol identifiers in docs"
+)]
+
 //! RFC 8446 Protocol Compliance Tests
 //!
 //! These tests verify TLS 1.3 protocol compliance WITHOUT requiring crypto operations.
@@ -212,7 +220,7 @@ fn test_contenttype_byte_stripping() {
 
     // Scenario 3: Empty content (edge case)
     let data3 = vec![0x17u8]; // Just ContentType
-    let mut result3 = data3.clone();
+    let mut result3 = data3;
     if !result3.is_empty() {
         result3.truncate(result3.len() - 1);
     }

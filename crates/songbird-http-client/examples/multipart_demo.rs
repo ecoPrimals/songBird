@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Example: Using multipart/form-data with IpcHttpClient
+//! Example: Using multipart/form-data with `IpcHttpClient`
 //!
 //! This example demonstrates how to use the multipart API to upload files
 //! and text data through Songbird's IPC HTTP client.

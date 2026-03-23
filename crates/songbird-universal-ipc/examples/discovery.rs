@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📋 All registered services:");
     let services = ipc::list_services().await;
     for service in &services {
-        println!("  - {}", service);
+        println!("  - {service}");
     }
 
     println!();
@@ -45,16 +45,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Finding services by capability:");
 
     let crypto_services = ipc::find_by_capability("crypto").await;
-    println!("  crypto: {:?}", crypto_services);
+    println!("  crypto: {crypto_services:?}");
 
     let ai_services = ipc::find_by_capability("ai").await;
-    println!("  ai: {:?}", ai_services);
+    println!("  ai: {ai_services:?}");
 
     let storage_services = ipc::find_by_capability("storage").await;
-    println!("  storage: {:?}", storage_services);
+    println!("  storage: {storage_services:?}");
 
     let compute_services = ipc::find_by_capability("compute").await;
-    println!("  compute: {:?}", compute_services);
+    println!("  compute: {compute_services:?}");
 
     println!("\n✅ Discovery complete!");
 

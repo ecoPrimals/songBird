@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! ClientHello Extension Tests
+#![allow(
+    clippy::cast_possible_truncation,
+    reason = "TLS wire-format test vectors use bounded length fields"
+)]
+
+//! `ClientHello` extension tests
 //!
-//! These tests verify that our ClientHello contains all required TLS 1.3 extensions
+//! These tests verify that our `ClientHello` contains all required TLS 1.3 extensions
 //! for compatibility with real-world HTTPS servers.
 //!
 //! Critical Extensions (RFC 8446):
@@ -195,7 +200,7 @@ fn test_psk_key_exchange_modes_extension() {
     println!("✅ PSK Key Exchange Modes extension (RFC 8446 Section 4.2.9) - PASS");
 }
 
-/// Test complete ClientHello extensions structure
+/// Test complete `ClientHello` extensions structure
 #[test]
 fn test_complete_clienthello_extensions() {
     // Simulate building all extensions
@@ -251,7 +256,7 @@ fn test_complete_clienthello_extensions() {
     assert!(!extensions.is_empty(), "Extensions should not be empty");
 
     // Verify extension type codes are present
-    let ext_string = format!("{:02x?}", extensions);
+    let ext_string = format!("{extensions:02x?}");
     assert!(ext_string.contains("00, 00"), "Should have SNI (0x0000)");
     assert!(ext_string.contains("00, 10"), "Should have ALPN (0x0010)");
     assert!(ext_string.contains("00, 2b"), "Should have Supported Versions (0x002b)");
@@ -330,7 +335,7 @@ fn test_extension_lengths() {
     println!("✅ All extension lengths correct - PASS");
 }
 
-/// Test ClientHello minimum size
+/// Test `ClientHello` minimum size
 #[test]
 fn test_clienthello_minimum_size() {
     // ClientHello should be at least:

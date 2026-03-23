@@ -111,6 +111,7 @@ impl ServiceRegistry {
         };
 
         services.insert(name.to_string(), entry);
+        drop(services);
 
         info!("Registered service '{}' with {} capabilities", name, capabilities.len());
         debug!("Service capabilities: {:?}", capabilities);

@@ -46,7 +46,7 @@
 fn test_service_id_generation() {
     let service_name = "my-service";
     let instance = 1;
-    let id = format!("{}-{}", service_name, instance);
+    let id = format!("{service_name}-{instance}");
 
     assert_eq!(id, "my-service-1");
     assert!(id.contains(service_name));

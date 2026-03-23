@@ -67,6 +67,9 @@ impl LimitedConnection {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new(
         peer_id: String,
         endpoint: String,
@@ -90,6 +93,9 @@ impl LimitedConnection {
     }
 
     /// Create with default Level 1 capabilities
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn with_defaults(peer_id: String, endpoint: String) -> Result<Self> {
         Self::new(peer_id, endpoint, TrustLevel::Limited.default_allowed_capabilities())
     }

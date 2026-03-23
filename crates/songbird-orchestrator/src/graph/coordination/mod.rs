@@ -219,11 +219,7 @@ mod tests {
         let result = validator.validate_sequential(&graph).await.unwrap();
         // Should fail because no primals registered for capabilities
         // Resource check will detect missing primals and add error
-        assert!(
-            !result.valid,
-            "Expected validation to fail with no primals, but got: {:?}",
-            result
-        );
+        assert!(!result.valid, "Expected validation to fail with no primals, but got: {result:?}");
     }
 
     #[tokio::test]
@@ -234,10 +230,6 @@ mod tests {
 
         let result = validator.validate_parallel(&graph).await.unwrap();
         // Should fail because no primals registered
-        assert!(
-            !result.valid,
-            "Expected validation to fail with no primals, but got: {:?}",
-            result
-        );
+        assert!(!result.valid, "Expected validation to fail with no primals, but got: {result:?}");
     }
 }

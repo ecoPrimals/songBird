@@ -327,6 +327,9 @@ impl SongbirdFederation for TarpcServer {
 /// # Returns
 /// * `Ok(())` - Server started successfully
 /// * `Err(anyhow::Error)` - Failed to start server
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_tarpc_server(
     addr: std::net::SocketAddr,
     federation_state: Arc<FederationState>,

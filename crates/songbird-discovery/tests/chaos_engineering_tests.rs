@@ -171,7 +171,7 @@ mod chaos_engineering_tests {
         let mut fallback_count = 0;
 
         for i in 0..100 {
-            let message = create_test_message(&format!("msg-{}", i));
+            let message = create_test_message(&format!("msg-{i}"));
             let plaintext = message.to_bytes().unwrap();
 
             let result = processor.encrypt_packet(&plaintext).await;
@@ -183,10 +183,7 @@ mod chaos_engineering_tests {
 
         // With 30% failure rate and fallback enabled, should have high success
         assert!(success_count > 60, "Should handle most messages despite failures");
-        println!(
-            "✅ Chaos test: {} successes, {} fallbacks out of 100",
-            success_count, fallback_count
-        );
+        println!("✅ Chaos test: {success_count} successes, {fallback_count} fallbacks out of 100");
     }
 
     #[tokio::test]
@@ -256,7 +253,7 @@ mod chaos_engineering_tests {
         assert!(delivered > 40, "Should deliver most packets despite 5% loss");
         assert!(lost > 0, "Should lose some packets");
 
-        println!("✅ Slow network: Delivered {}, Lost {} in {:?}", delivered, lost, duration);
+        println!("✅ Slow network: Delivered {delivered}, Lost {lost} in {duration:?}");
     }
 
     #[tokio::test]
@@ -282,7 +279,7 @@ mod chaos_engineering_tests {
             let handle = tokio::spawn(async move {
                 let mut task_success = 0;
                 for i in 0..20 {
-                    let msg = create_test_message(&format!("task-{}-msg-{}", task_id, i));
+                    let msg = create_test_message(&format!("task-{task_id}-msg-{i}"));
                     if processor_clone.encrypt_packet(&msg.to_bytes().unwrap()).await.is_ok() {
                         task_success += 1;
                     }
@@ -301,7 +298,7 @@ mod chaos_engineering_tests {
 
         // Should handle high contention gracefully
         assert!(total_success > 150, "Should handle most messages under contention");
-        println!("✅ High contention: {} successful out of 200 total", total_success);
+        println!("✅ High contention: {total_success} successful out of 200 total");
     }
 
     #[tokio::test]
@@ -363,7 +360,7 @@ mod chaos_engineering_tests {
         // Phase 1: High failure rate
         let mut phase1_success = 0;
         for i in 0..50 {
-            let msg = create_test_message(&format!("phase1-{}", i));
+            let msg = create_test_message(&format!("phase1-{i}"));
             if processor.encrypt_packet(&msg.to_bytes().unwrap()).await.is_ok() {
                 phase1_success += 1;
             }
@@ -374,7 +371,7 @@ mod chaos_engineering_tests {
 
         let mut phase2_success = 0;
         for i in 0..50 {
-            let msg = create_test_message(&format!("phase2-{}", i));
+            let msg = create_test_message(&format!("phase2-{i}"));
             if processor.encrypt_packet(&msg.to_bytes().unwrap()).await.is_ok() {
                 phase2_success += 1;
             }
@@ -383,8 +380,7 @@ mod chaos_engineering_tests {
         // System should recover in phase 2
         assert!(phase2_success >= phase1_success, "Should recover or maintain performance");
         println!(
-            "✅ Cascading failure: Phase 1 = {}, Phase 2 = {} (recovery verified)",
-            phase1_success, phase2_success
+            "✅ Cascading failure: Phase 1 = {phase1_success}, Phase 2 = {phase2_success} (recovery verified)"
         );
     }
 
@@ -409,7 +405,7 @@ mod chaos_engineering_tests {
         let mut success = 0;
 
         for i in 0..100 {
-            let msg = create_test_message(&format!("burst-{}", i));
+            let msg = create_test_message(&format!("burst-{i}"));
             if processor.encrypt_packet(&msg.to_bytes().unwrap()).await.is_ok() {
                 success += 1;
             }
@@ -421,7 +417,7 @@ mod chaos_engineering_tests {
         assert!(success > 90, "Should handle most messages in burst");
         assert!(duration < Duration::from_secs(5), "Should complete burst quickly");
 
-        println!("✅ Burst traffic: {} successful in {:?}", success, duration);
+        println!("✅ Burst traffic: {success} successful in {duration:?}");
     }
 
     #[tokio::test]
@@ -476,7 +472,7 @@ mod chaos_engineering_tests {
 
         // Create and process 1000 messages
         for i in 0..1000 {
-            let msg = create_test_message(&format!("memory-test-{}", i));
+            let msg = create_test_message(&format!("memory-test-{i}"));
             let plaintext = msg.to_bytes().unwrap();
             let _ = processor.encrypt_packet(&plaintext).await;
             // Messages are immediately dropped, simulating memory pressure
@@ -512,7 +508,7 @@ mod chaos_engineering_tests {
         // Send messages while state is changing
         let mut success = 0;
         for i in 0..100 {
-            let msg = create_test_message(&format!("rapid-{}", i));
+            let msg = create_test_message(&format!("rapid-{i}"));
             if processor_clone.encrypt_packet(&msg.to_bytes().unwrap()).await.is_ok() {
                 success += 1;
             }
@@ -523,7 +519,7 @@ mod chaos_engineering_tests {
 
         // Should handle rapid state changes
         assert!(success > 50, "Should handle messages despite rapid state changes");
-        println!("✅ Rapid state changes: {} successful despite chaos", success);
+        println!("✅ Rapid state changes: {success} successful despite chaos");
     }
 
     // Helper functions

@@ -81,7 +81,7 @@ async fn test_registration_with_unavailable_neural_api_succeeds() {
 
     let result = register_capabilities_with(&config).await;
     if let Err(ref e) = result {
-        eprintln!("Registration failed with error: {}", e);
+        eprintln!("Registration failed with error: {e}");
     }
     assert!(
         result.is_ok(),
@@ -119,7 +119,7 @@ async fn test_check_neural_api_with_mock_server() {
 fn test_xdg_neural_api_socket_resolution() {
     let resolve = |xdg_dir: Option<&str>| -> String {
         match xdg_dir {
-            Some(dir) => format!("{}/biomeos/neural-api.sock", dir),
+            Some(dir) => format!("{dir}/biomeos/neural-api.sock"),
             None => "/tmp/biomeos/neural-api.sock".to_string(),
         }
     };
@@ -160,7 +160,7 @@ async fn test_xdg_registration_with_xdg_socket() {
             let mut line = String::new();
             if reader.read_line(&mut line).await.is_ok() {
                 let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
             }
         }
     });
@@ -218,7 +218,7 @@ async fn test_e2e_full_registration_lifecycle() {
                 if reader.read_line(&mut line).await.is_ok() {
                     assert!(line.contains("capability.register"));
                     let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }
@@ -252,7 +252,7 @@ async fn test_e2e_registration_and_immediate_unregistration() {
                 let mut line = String::new();
                 if reader.read_line(&mut line).await.is_ok() {
                     let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }
@@ -290,7 +290,7 @@ async fn test_chaos_socket_disappears_during_registration() {
                 let mut line = String::new();
                 if reader.read_line(&mut line).await.is_ok() {
                     let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
             if i == 1 {
@@ -323,7 +323,7 @@ async fn test_chaos_slow_neural_api_responses() {
                 if reader.read_line(&mut line).await.is_ok() {
                     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                     let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }
@@ -351,7 +351,7 @@ async fn test_chaos_neural_api_restarts_during_operation() {
                 let mut line = String::new();
                 if reader.read_line(&mut line).await.is_ok() {
                     let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }
@@ -374,7 +374,7 @@ async fn test_chaos_neural_api_restarts_during_operation() {
                 let mut line = String::new();
                 if reader.read_line(&mut line).await.is_ok() {
                     let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }
@@ -428,7 +428,7 @@ async fn test_fault_neural_api_returns_errors() {
                 let mut line = String::new();
                 if reader.read_line(&mut line).await.is_ok() {
                     let response = r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid Request"},"id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }
@@ -488,7 +488,7 @@ async fn test_fault_concurrent_registrations() {
                 let mut line = String::new();
                 if reader.read_line(&mut line).await.is_ok() {
                     let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }

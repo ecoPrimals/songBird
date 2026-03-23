@@ -127,6 +127,9 @@ impl FederatedBtspConnection {
     }
 
     /// Create with default Level 2 capabilities
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn with_defaults(
         peer_id: String,
         peer_tags: Vec<String>,

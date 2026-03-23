@@ -170,6 +170,9 @@ impl UnixSocketListener {
     ///
     /// This is the main entry point for the listener.
     /// It binds to the Unix socket and spawns tasks for each incoming connection.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn start(self: Arc<Self>) -> Result<()> {
         // Remove existing socket file if it exists
         if self.config.socket_path.exists() {

@@ -6,17 +6,17 @@
 //! These are fallback defaults when runtime discovery is unavailable.
 //! Primals should discover actual ports via capability-based discovery.
 
-/// Default HTTP API port (env: SONGBIRD_HTTP_PORT)
+/// Default HTTP API port (env: `SONGBIRD_HTTP_PORT`)
 pub const DEFAULT_HTTP_PORT: u16 = 8080;
-/// Default HTTPS API port (env: SONGBIRD_HTTPS_PORT)
+/// Default HTTPS API port (env: `SONGBIRD_HTTPS_PORT`)
 pub const DEFAULT_HTTPS_PORT: u16 = 8443;
-/// Default metrics port (env: SONGBIRD_METRICS_PORT)
+/// Default metrics port (env: `SONGBIRD_METRICS_PORT`)
 pub const DEFAULT_METRICS_PORT: u16 = 8081;
-/// Default tarpc RPC port (env: SONGBIRD_TARPC_PORT)
+/// Default tarpc RPC port (env: `SONGBIRD_TARPC_PORT`)
 pub const DEFAULT_TARPC_PORT: u16 = 8001;
-/// Default federation port (env: SONGBIRD_FEDERATION_PORT)
+/// Default federation port (env: `SONGBIRD_FEDERATION_PORT`)
 pub const DEFAULT_FEDERATION_PORT: u16 = 8000;
-/// Default STUN port (env: SONGBIRD_STUN_PORT)
+/// Default STUN port (env: `SONGBIRD_STUN_PORT`)
 pub const DEFAULT_STUN_PORT: u16 = 3478;
 /// Default compute bridge port
 pub const DEFAULT_COMPUTE_PORT: u16 = 9000;

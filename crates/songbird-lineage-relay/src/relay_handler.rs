@@ -119,11 +119,12 @@ impl RelayHandler {
             }
         });
 
-        // Store server and task
+        // Store server and task (separate scopes so write locks are not held together)
         {
             let mut server_guard = self.server.write().await;
             *server_guard = Some(server);
-
+        }
+        {
             let mut task_guard = self.task.write().await;
             *task_guard = Some(task);
         }
@@ -152,17 +153,13 @@ impl RelayHandler {
     pub async fn handle_stop(&self, _params: Value) -> std::result::Result<Value, String> {
         info!("🛑 Stopping relay server");
 
-        // Get server and task
-        let (server, task) = {
+        let server = {
             let mut server_guard = self.server.write().await;
+            server_guard.take().ok_or_else(|| "Relay server not running".to_string())?
+        };
+        let task = {
             let mut task_guard = self.task.write().await;
-
-            let server =
-                server_guard.take().ok_or_else(|| "Relay server not running".to_string())?;
-
-            let task = task_guard.take();
-
-            (server, task)
+            task_guard.take()
         };
 
         // Shutdown server
@@ -246,9 +243,11 @@ impl RelayHandler {
     /// ```
     pub async fn handle_allocate(&self, params: Value) -> std::result::Result<Value, String> {
         // Check if server is running
-        let server_guard = self.server.read().await;
-        if server_guard.is_none() {
-            return Err("Relay server not running".to_string());
+        {
+            let server_guard = self.server.read().await;
+            if server_guard.is_none() {
+                return Err("Relay server not running".to_string());
+            }
         }
 
         // Parse parameters

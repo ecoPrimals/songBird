@@ -21,6 +21,9 @@ use tracing::{error, info, warn};
 /// Start HTTP server with federation API
 ///
 /// Returns the actual port the server bound to (may differ from configured port if fallback occurred)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_http_server(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
@@ -193,6 +196,10 @@ async fn build_router(
 }
 
 /// Start plain HTTP server (no TLS)
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn start_http_server_plain(app: Router, listener: tokio::net::TcpListener) -> Result<()> {
     // Spawn server in background
     tokio::spawn(async move {
@@ -205,6 +212,10 @@ async fn start_http_server_plain(app: Router, listener: tokio::net::TcpListener)
 }
 
 /// Get local IP address for certificate SANs
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn get_local_ip() -> Result<String> {
     use std::net::{IpAddr, Ipv4Addr};
 
@@ -476,6 +487,13 @@ async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListene
 ///
 /// tarpc provides binary RPC with ~50μs latency (100x faster than JSON-RPC!)
 /// for native Rust client-to-server communication.
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn start_tarpc_server(
     federation_state: Arc<FederationState>,
     service_registry: Arc<FederatedServiceRegistry>,

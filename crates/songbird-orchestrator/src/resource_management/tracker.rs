@@ -223,7 +223,7 @@ mod tests {
         assert!(record.duration_seconds.is_some());
         // With 100ms sleep and 2.0 CPU cores, should have measurable resource-seconds
         let resource_secs = record.resource_seconds();
-        assert!(resource_secs > 0.0, "Expected resource_seconds > 0, got {}", resource_secs);
+        assert!(resource_secs > 0.0, "Expected resource_seconds > 0, got {resource_secs}");
     }
 
     #[tokio::test]
@@ -281,7 +281,7 @@ mod tests {
         assert_eq!(summary.task_count, 3);
         assert!(summary.total_by_resource.contains_key(&ResourceType::Cpu));
         let cpu_total = summary.total_by_resource[&ResourceType::Cpu];
-        assert!(cpu_total > 0.0, "Expected CPU total > 0, got {}", cpu_total);
+        assert!(cpu_total > 0.0, "Expected CPU total > 0, got {cpu_total}");
     }
 
     #[tokio::test]

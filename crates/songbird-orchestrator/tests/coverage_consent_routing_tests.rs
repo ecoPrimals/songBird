@@ -4,11 +4,11 @@
 //! Comprehensive tests for consent management, routing types, and core orchestrator
 //!
 //! Covers:
-//! - consent_management/preferences.rs
-//! - consent_management/request.rs
-//! - consent_management/rules.rs
+//! - `consent_management/preferences.rs`
+//! - `consent_management/request.rs`
+//! - `consent_management/rules.rs`
 //! - core/orchestrator.rs
-//! - core/routing/types.rs (TaskBuilder, ResourceRequirements, Task serde)
+//! - core/routing/types.rs (`TaskBuilder`, `ResourceRequirements`, Task serde)
 
 use songbird_orchestrator::consent_management::{
     AutoApprovalRule, ConsentRequestBuilder, UserPreferences,
@@ -60,7 +60,7 @@ fn test_user_preferences_clone() {
 #[test]
 fn test_user_preferences_debug() {
     let prefs = UserPreferences::default();
-    let debug_str = format!("{:?}", prefs);
+    let debug_str = format!("{prefs:?}");
     assert!(debug_str.contains("UserPreferences"));
     assert!(debug_str.contains("10.0"));
 }
@@ -179,7 +179,7 @@ fn test_auto_approval_rule_debug() {
         max_cost: Some(42.0),
         operations: vec!["op1".to_string()],
     };
-    let debug = format!("{:?}", rule);
+    let debug = format!("{rule:?}");
     assert!(debug.contains("test-rule"));
     assert!(debug.contains("42.0"));
 }
@@ -232,7 +232,7 @@ fn test_orchestrator_config_custom() {
 #[test]
 fn test_orchestrator_config_debug() {
     let config = OrchestratorConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("OrchestratorConfig"));
 }
 
@@ -263,14 +263,14 @@ fn test_orchestrator_config_serde_roundtrip() {
 #[test]
 fn test_core_orchestrator_new() {
     let orch = CoreOrchestrator::new();
-    let debug = format!("{:?}", orch);
+    let debug = format!("{orch:?}");
     assert!(debug.contains("CoreOrchestrator"));
 }
 
 #[test]
 fn test_core_orchestrator_default() {
     let orch = CoreOrchestrator;
-    let debug = format!("{:?}", orch);
+    let debug = format!("{orch:?}");
     assert!(debug.contains("CoreOrchestrator"));
 }
 

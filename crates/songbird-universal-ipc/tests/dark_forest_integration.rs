@@ -31,14 +31,14 @@
 //! Dark Forest Protocol Integration Tests
 //!
 //! Comprehensive tests for all 6 Dark Forest JSON-RPC methods
-//! through the IpcServiceHandler wiring (no BearDog required).
+//! through the `IpcServiceHandler` wiring (no `BearDog` required).
 //!
 //! Tests validate:
 //! - Method routing (correct handler called)
 //! - Parameter parsing (JSON-RPC params)
 //! - Response structure (correct format)
 //! - Error handling (missing params, invalid data)
-//! - End-to-end wiring (bin_interface.rs fix)
+//! - End-to-end wiring (`bin_interface.rs` fix)
 //!
 //! Version: v8.19.0
 //! Date: January 29, 2026
@@ -76,7 +76,7 @@ async fn test_stun_get_public_address_routing() {
         }
         Err(e) => {
             // Allow specific errors, but not "Unknown method"
-            assert!(!e.contains("Unknown method"), "Method not routed: {}", e);
+            assert!(!e.contains("Unknown method"), "Method not routed: {e}");
         }
     }
 }
@@ -107,7 +107,7 @@ async fn test_stun_get_public_address_with_params() {
         }
         Err(e) => {
             // Specific error OK, but not "Unknown method"
-            assert!(!e.contains("Unknown method"), "Method should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "Method should be routed: {e}");
         }
     }
 }
@@ -135,7 +135,7 @@ async fn test_stun_bind_routing() {
         Err(e) => {
             // Real STUN request may fail in CI/test environments — accept
             // network errors but not routing errors
-            assert!(!e.contains("Unknown method"), "stun.bind should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "stun.bind should be routed: {e}");
         }
     }
 }
@@ -164,8 +164,7 @@ async fn test_stun_bind_missing_params() {
                     || e.contains("parameter")
                     || e.contains("timeout")
                     || e.contains("STUN"),
-                "Error should mention missing params or STUN failure: {}",
-                e
+                "Error should mention missing params or STUN failure: {e}"
             );
         }
     }
@@ -196,7 +195,7 @@ async fn test_discovery_peers_routing() {
             assert!(obj["total_count"].is_number(), "total_count should be number");
         }
         Err(e) => {
-            assert!(!e.contains("Unknown method"), "discovery.peers should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "discovery.peers should be routed: {e}");
         }
     }
 }
@@ -209,13 +208,17 @@ async fn test_discovery_peers_returns_empty_initially() {
     let result = handler.handle("discovery.peers", params).await;
 
     // Should succeed with empty list initially
-    assert!(result.is_ok(), "discovery.peers should work: {:?}", result);
+    assert!(result.is_ok(), "discovery.peers should work: {result:?}");
 
     let response = result.unwrap();
     let peers = response["peers"].as_array().unwrap();
     let count = response["total_count"].as_u64().unwrap();
 
-    assert_eq!(peers.len(), count as usize, "Peers length should match total_count");
+    assert_eq!(
+        peers.len(),
+        usize::try_from(count).expect("total_count should fit usize"),
+        "Peers length should match total_count"
+    );
 }
 
 // ============================================================================
@@ -248,7 +251,7 @@ async fn test_rendezvous_register_routing() {
             assert!(has_reg_fields, "Registration should have expected fields");
         }
         Err(e) => {
-            assert!(!e.contains("Unknown method"), "rendezvous.register should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "rendezvous.register should be routed: {e}");
             // Allow "not yet implemented", "not configured", or parameter errors
             assert!(
                 e.contains("not yet")
@@ -256,8 +259,7 @@ async fn test_rendezvous_register_routing() {
                     || e.contains("parameter")
                     || e.contains("not configured")
                     || e.contains("Rendezvous"),
-                "Error should be specific: {}",
-                e
+                "Error should be specific: {e}"
             );
         }
     }
@@ -282,8 +284,7 @@ async fn test_rendezvous_register_missing_params() {
                     || e.contains("family_id")
                     || e.contains("public_address")
                     || e.contains("parameter"),
-                "Should mention missing params: {}",
-                e
+                "Should mention missing params: {e}"
             );
         }
         Ok(_) => {
@@ -313,7 +314,7 @@ async fn test_rendezvous_lookup_routing() {
             assert!(obj["peers"].is_array(), "peers should be array");
         }
         Err(e) => {
-            assert!(!e.contains("Unknown method"), "rendezvous.lookup should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "rendezvous.lookup should be routed: {e}");
         }
     }
 }
@@ -365,7 +366,7 @@ async fn test_peer_connect_routing() {
             assert!(has_conn_fields, "Connect should have connection fields");
         }
         Err(e) => {
-            assert!(!e.contains("Unknown method"), "peer.connect should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "peer.connect should be routed: {e}");
         }
     }
 }
@@ -388,13 +389,12 @@ async fn test_peer_connect_with_optional_params() {
             if let Some(state) = response["state"].as_str() {
                 assert!(
                     ["connecting", "connected", "failed"].contains(&state),
-                    "State should be valid: {}",
-                    state
+                    "State should be valid: {state}"
                 );
             }
         }
         Err(e) => {
-            assert!(!e.contains("Unknown method"), "Should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "Should be routed: {e}");
         }
     }
 }
@@ -411,8 +411,7 @@ async fn test_peer_connect_missing_target() {
             assert!(!e.contains("Unknown method"), "Should be routed");
             assert!(
                 e.contains("target_address") || e.contains("parameter"),
-                "Should mention missing target: {}",
-                e
+                "Should mention missing target: {e}"
             );
         }
         Ok(_) => {
@@ -449,14 +448,12 @@ async fn test_all_six_methods_route_correctly() {
         match result {
             Ok(_) => {
                 // Success - method routed correctly
-                assert!(true, "{} routed successfully", method);
+                assert!(true, "{method} routed successfully");
             }
             Err(e) => {
                 assert!(
                     !e.contains("Unknown method"),
-                    "{} should be routed (got error: {})",
-                    method,
-                    e
+                    "{method} should be routed (got error: {e})"
                 );
             }
         }
@@ -471,7 +468,7 @@ async fn test_unknown_method_returns_error() {
 
     assert!(result.is_err(), "Unknown methods should error");
     let error = result.unwrap_err();
-    assert!(error.contains("Unknown method"), "Should indicate unknown method: {}", error);
+    assert!(error.contains("Unknown method"), "Should indicate unknown method: {error}");
 }
 
 #[tokio::test]
@@ -514,11 +511,11 @@ async fn test_concurrent_method_calls() {
     let handler = Arc::new(create_test_handler());
 
     // Spawn multiple concurrent calls
-    let mut handles = vec![];
+    let mut spawn_handles = vec![];
 
     for i in 0..10 {
         let handler_clone = Arc::clone(&handler);
-        let handle = tokio::spawn(async move {
+        let join_handle = tokio::spawn(async move {
             let method = match i % 6 {
                 0 => "stun.get_public_address",
                 1 => "stun.bind",
@@ -542,20 +539,19 @@ async fn test_concurrent_method_calls() {
 
             handler_clone.handle(method, params).await
         });
-        handles.push(handle);
+        spawn_handles.push(join_handle);
     }
 
     // Wait for all to complete
-    for handle in handles {
-        let result = handle.await.unwrap();
+    for join_handle in spawn_handles {
+        let result = join_handle.await.unwrap();
 
         // All should either succeed or have specific error (not "Unknown method")
         match result {
             Ok(_) => assert!(true),
             Err(e) => assert!(
                 !e.contains("Unknown method"),
-                "Concurrent call failed with unknown method: {}",
-                e
+                "Concurrent call failed with unknown method: {e}"
             ),
         }
     }
@@ -576,7 +572,7 @@ async fn test_json_rpc_null_params() {
         Ok(_) => assert!(true, "Should handle null params"),
         Err(e) => {
             // Should not be "Unknown method"
-            assert!(!e.contains("Unknown method"), "Should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "Should be routed: {e}");
         }
     }
 }
@@ -592,7 +588,7 @@ async fn test_json_rpc_array_params() {
         Ok(_) => assert!(true),
         Err(e) => {
             // Should handle or error gracefully (not "Unknown method")
-            assert!(!e.contains("Unknown method"), "Should be routed: {}", e);
+            assert!(!e.contains("Unknown method"), "Should be routed: {e}");
         }
     }
 }

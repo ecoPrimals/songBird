@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave63] - 2026-03-23 - Comprehensive Clippy Sweep, Smart Refactoring & Metrics Accuracy
+
+### Fixed - Full Workspace Clippy Pedantic+Nursery Sweep (~800+ warnings resolved)
+- All 30 crates clean under `clippy::pedantic + nursery` with `--all-targets --all-features`
+- `songbird-orchestrator`: 638 errors — `# Errors` docs (308), `unused_async` (90), lock tightening (61), float comparison expects (60)
+- `songbird-http-client`: 131 errors — TLS cast truncation, `# Errors`/`# Panics`, `branches_sharing_code`, `map_or_else`
+- `songbird-onion-relay`: 43 errors — `unix_epoch_millis_u64` helper, lock scoping, `const fn`
+- `songbird-sovereign-onion`: 33 errors — `must_use`/`const fn`, `use_self`, standalone feature gates
+- `songbird-universal-ipc`: 30 errors — `significant_drop_tightening`, `option_if_let_else`, `derive_partial_eq_without_eq`
+- `songbird-tor-protocol`: 24 errors — reference fix, `# Panics`, `publish_descriptor` sync evolution
+- `songbird-lineage-relay`: 22 errors — lock tightening across 6 files, `const fn`, `manual_assert`
+- `songbird-discovery`: 14 errors — `const fn`, lock scope tightening in health loop
+- Remaining crates: types (12), tls (20), registry (8), config (4), crypto-provider (6), and others
+
+### Fixed - Flaky Test Resolution
+- `test_port_allocation_is_cached`: Race condition from concurrent `clear_port_registry()` — evolved to unique capability names
+
+### Changed - Smart Refactoring
+- `compute_api.rs` (977 lines) → `compute_api/` directory module (mod.rs + handlers + types + state + routing)
+- `real_service_discovery.rs` (923 lines) → `real_service_discovery/` directory module (mod.rs + types + health + conversions + impl + tests)
+
+### Changed - Production Mock Evolution
+- `SecurityIntegration`: Evolved from `Arc<()>` to real struct with endpoint and health check
+- Health monitoring: Real background `tokio::spawn` loop with state-based federation/gaming/observability checks
+- `simulate_task_execution` → `execute_routed_task` with real crypto provider dispatch
+
+### Changed - Hardcoded Value Evolution
+- STUN servers: `LazyLock` + `BIOMEOS_STUN_SERVERS` env var (coordinator + stun_handler)
+- Default URLs: `LazyLock` + env vars for orchestrator, AI, UPA endpoints
+- `blake3` compiled in pure Rust mode (`default-features = false, features = ["std", "pure"]`)
+
+### Added - Coverage Expansion
+- `songbird-crypto-provider`: 29 tests (was 0) — routing modes, `semantic_to_actual`, error types, socket discovery
+- `songbird-compute-bridge`: Handler tests — health, info, resources, workload, args, routing
+- `songbird-orchestrator`: Startup orchestration tests — stage ordering, bind addr, IGD, error propagation
+
+### Removed - Dependency Cleanup
+- Removed unused `sys-info` from workspace dependencies
+- Removed stale `atty` dependency from songbird-cli
+- Removed stale `fix_pedantic.py` script from songbird-types
+
+### Fixed - Metrics Accuracy
+- Corrected test count: 7,304 `#[test]` + 2,719 `#[tokio::test]` = 10,023 total (was incorrectly 9,969)
+- Corrected coverage: 66.02% (llvm-cov measured, was incorrectly ~72%)
+- Corrected `#[ignore]` count: 191 (was incorrectly 266)
+- Corrected total Rust lines: 405,736
+
+---
+
 ## [v0.2.1-wave60] - 2026-03-22 - Deep Coverage, Zero-Copy, Fuzz & Mock Evolution
 
 ### Added - Deep Coverage Expansion (+700 tests, 9,969 total)

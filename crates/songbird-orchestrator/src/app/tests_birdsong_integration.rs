@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Integration tests for BirdSong listener/broadcaster wiring (v3.3)
+//! Integration tests for `BirdSong` listener/broadcaster wiring (v3.3)
 //!
 //! These tests verify that the orchestrator correctly:
-//! 1. Creates BirdSong processor from security identity
-//! 2. Wires BirdSong into broadcaster
-//! 3. Wires BirdSong into listener (v3.3 fix!)
+//! 1. Creates `BirdSong` processor from security identity
+//! 2. Wires `BirdSong` into broadcaster
+//! 3. Wires `BirdSong` into listener (v3.3 fix!)
 //! 4. Handles mixed-mode (encrypted + plaintext)
 //! 5. Preserves privacy across families
 
@@ -21,7 +21,7 @@ mod tests {
     use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
     use std::sync::Arc;
 
-    /// Mock BirdSong provider for testing
+    /// Mock `BirdSong` provider for testing
     struct MockBirdSongProvider {
         family_id: Option<String>,
     }

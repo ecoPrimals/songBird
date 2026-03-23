@@ -6,6 +6,27 @@
 //! These tests verify the full workflow from graph creation to availability
 //! checking and alternative suggestion, using real service registry integration.
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 use songbird_orchestrator::graph::{
     AvailabilityChecker, Graph, GraphMetadata, GraphNode, NodeAvailabilityStatus,
 };

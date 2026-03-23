@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Comprehensive tests for env_config module
+//! Comprehensive tests for `env_config` module
 //!
 //! Tests all environment-based configuration with proper mutex serialization
 //! to prevent race conditions on process-wide environment variables.

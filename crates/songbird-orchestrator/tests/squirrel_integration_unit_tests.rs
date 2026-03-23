@@ -4,7 +4,7 @@
 //! Unit Tests: Squirrel Integration - HTTP Delegation
 //!
 //! Tests the two critical RPC methods for Squirrel AI integration:
-//! - discover_capabilities: Capability discovery
+//! - `discover_capabilities`: Capability discovery
 //! - http.request: HTTP delegation for external APIs
 
 use serde_json::json;

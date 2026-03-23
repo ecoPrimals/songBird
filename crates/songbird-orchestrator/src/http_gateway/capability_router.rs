@@ -186,6 +186,9 @@ impl CapabilityRouter {
     ///
     /// This is called at runtime when providers announce themselves.
     /// No hardcoding required!
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn register_provider(&self, provider: ProviderConfig) -> Result<()> {
         let provider_id = provider.id.clone();
         info!(
@@ -217,6 +220,9 @@ impl CapabilityRouter {
     }
 
     /// Unregister a provider
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn unregister_provider(&self, provider_id: &str) -> Result<()> {
         info!("Unregistering provider '{}'", provider_id);
 
@@ -242,6 +248,9 @@ impl CapabilityRouter {
     ///
     /// This method discovers providers at runtime based on the requested capability.
     /// No vendor-specific logic - pure capability-based routing!
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn route(&self, capability_id: &str) -> Result<Route> {
         trace!("Routing request for capability '{}'", capability_id);
 
@@ -306,6 +315,9 @@ impl CapabilityRouter {
     /// Load provider configurations from environment or discovery
     ///
     /// This replaces hardcoded provider lists with runtime discovery.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_providers(&self) -> Result<()> {
         info!("🔍 Discovering providers from environment...");
 
@@ -383,7 +395,7 @@ mod tests {
         let (category, capability_type, sub_type) = Capability::parse(id).expect("parse id");
         Capability {
             id: id.to_string(),
-            description: format!("Test capability: {}", id),
+            description: format!("Test capability: {id}"),
             category,
             capability_type,
             sub_type,
@@ -394,9 +406,9 @@ mod tests {
     fn create_test_provider(id: &str, capabilities: Vec<&str>) -> ProviderConfig {
         ProviderConfig {
             id: id.to_string(),
-            name: format!("Test Provider {}", id),
+            name: format!("Test Provider {id}"),
             capabilities: capabilities.iter().map(|c| create_test_capability(c)).collect(),
-            socket_path: Some(format!("/tmp/provider-{}.sock", id)),
+            socket_path: Some(format!("/tmp/provider-{id}.sock")),
             backend: None,
             metadata: HashMap::new(),
         }

@@ -69,6 +69,9 @@ use crate::self_knowledge;
     clippy::too_many_arguments,
     reason = "Startup passes pre-built listener, ports, and identity together"
 )]
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_discovery_system(
     discovery_port: u16,
     https_port: u16,
@@ -280,6 +283,10 @@ async fn initialize_birdsong_processor(
 ///
 /// Creates and spawns the broadcaster task that periodically
 /// announces this node's presence to the network.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn start_discovery_broadcaster(
     node_identity: &NodeIdentity,
     endpoint_messages: Vec<TransportEndpointMessage>,
@@ -327,6 +334,10 @@ async fn start_discovery_broadcaster(
 ///
 /// This ensures ONE instance with full configuration is used by both
 /// the listening task and the discovery→federation bridge.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn start_discovery_listener(
     discovery_listener_pending: Option<AnonymousDiscoveryListener>,
     birdsong_processor: Option<Arc<songbird_discovery::BirdSongProcessor>>,

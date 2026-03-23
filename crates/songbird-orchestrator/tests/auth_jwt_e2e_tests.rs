@@ -1,7 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! E2E Tests for BearDog JWT Delegation
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
+//! E2E Tests for `BearDog` JWT Delegation
 //!
 //! Tests the complete JWT flow from discovery to provisioning.
 
@@ -16,7 +40,7 @@ async fn test_e2e_jwt_provisioning_from_beardog() {
     // Set BEARDOG_SOCKET to test with real BearDog
 
     if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
-        println!("🔍 Testing JWT provisioning from BearDog at: {}", socket);
+        println!("🔍 Testing JWT provisioning from BearDog at: {socket}");
 
         let result = timeout(
             Duration::from_secs(5),
@@ -38,10 +62,7 @@ async fn test_e2e_jwt_provisioning_from_beardog() {
                 assert_eq!(decoded.len(), 64); // 512 bits
             }
             Ok(Err(e)) => {
-                println!(
-                    "⚠️  BearDog JWT fetch failed (expected if method not implemented): {}",
-                    e
-                );
+                println!("⚠️  BearDog JWT fetch failed (expected if method not implemented): {e}");
                 // This is acceptable - BearDog may not have the method yet
             }
             Err(_) => {
@@ -104,7 +125,7 @@ async fn test_e2e_jwt_provisioning_concurrent() {
     let handles: Vec<_> = (0..10)
         .map(|i| {
             tokio::spawn(async move {
-                provision_jwt_secret(None, &format!("songbird_concurrent_{}", i))
+                provision_jwt_secret(None, &format!("songbird_concurrent_{i}"))
                     .await
                     .expect("Should succeed")
             })
@@ -145,14 +166,14 @@ async fn test_e2e_jwt_provisioning_performance() {
 
     for i in 0..iterations {
         let _ =
-            provision_jwt_secret(None, &format!("perf_test_{}", i)).await.expect("Should succeed");
+            provision_jwt_secret(None, &format!("perf_test_{i}")).await.expect("Should succeed");
     }
 
     let elapsed = start.elapsed();
     let avg_ms = elapsed.as_millis() / iterations;
 
-    println!("✅ {} iterations in {:?}", iterations, elapsed);
-    println!("   Average: {}ms per secret", avg_ms);
+    println!("✅ {iterations} iterations in {elapsed:?}");
+    println!("   Average: {avg_ms}ms per secret");
 
     // Should be fast (< 10ms per secret on average)
     assert!(avg_ms < 10, "JWT generation should be fast");

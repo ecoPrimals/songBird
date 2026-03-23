@@ -15,6 +15,9 @@ impl CoordinationValidator {
     ///
     /// Detects the coordination pattern from graph structure and validates
     /// that it can be executed given available primals.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn validate_pattern(&self, graph: &Graph) -> Result<CoordinationValidationResult> {
         debug!("Validating coordination pattern for graph: {}", graph.id);
 
@@ -144,6 +147,10 @@ impl CoordinationValidator {
     ///
     /// Pipeline: Stage1 → Stage2 → Stage3, with data streaming between stages
     /// Requirements: Stages can overlap (stage N+1 starts before stage N completes)
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn validate_pipeline(&self, graph: &Graph) -> Result<CoordinationValidationResult> {
         let mut result = CoordinationValidationResult::new(
             CoordinationPattern::Pipeline,

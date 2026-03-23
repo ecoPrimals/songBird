@@ -6,9 +6,9 @@
 //! Tests the TLS 1.3 client against real HTTPS servers.
 //!
 //! Usage:
-//!   cargo run --example test_https -- https://example.com
-//!   cargo run --example test_https -- https://github.com
-//!   cargo run --example test_https -- https://google.com
+//!   cargo run --example `test_https` -- <https://example.com>
+//!   cargo run --example `test_https` -- <https://github.com>
+//!   cargo run --example `test_https` -- <https://google.com>
 
 use songbird_http_client::SongbirdHttpClient;
 use std::env;
@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
     let preview = if body_str.len() > 200 {
         format!("{}...", &body_str[..200])
     } else {
-        body_str.clone()
+        body_str
     };
     info!("");
     info!("Body Preview:");

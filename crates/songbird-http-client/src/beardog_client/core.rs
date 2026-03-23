@@ -133,11 +133,12 @@ impl BearDogClient {
     ///
     /// Uses isomorphic discovery to automatically find Unix socket or TCP endpoint.
     pub fn from_env() -> Self {
+        use crate::crypto::socket_discovery;
+
         let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         if mode.to_lowercase() == "direct" {
             // Direct mode: Discover BearDog endpoint
-            use crate::crypto::socket_discovery;
             let endpoint = socket_discovery::discover_ipc_endpoint(
                 "BEARDOG_SOCKET",
                 "beardog",
@@ -147,7 +148,6 @@ impl BearDogClient {
             Self::new_direct_with_endpoint(endpoint)
         } else {
             // Default to Neural API (TRUE PRIMAL pattern)
-            use crate::crypto::socket_discovery;
             let endpoint = socket_discovery::discover_ipc_endpoint(
                 "NEURAL_API_SOCKET",
                 "neural-api",

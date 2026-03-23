@@ -141,6 +141,10 @@ impl CredentialManager {
     ///
     /// # Returns
     /// * List of services with configured credentials
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn load_all(&self) -> Vec<String> {
         let known_services = ["openai", "huggingface", "anthropic", "stripe", "github", "slack"];
 

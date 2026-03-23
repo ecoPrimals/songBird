@@ -124,7 +124,7 @@ mod tests {
         for i in 0..5 {
             let event = crate::observability::TaskEvent::new(
                 TaskId::new(),
-                UserId::new(format!("user-{}", i)),
+                UserId::new(format!("user-{i}")),
                 TaskEventType::Started,
             );
             manager.emit(event).await.ok();
@@ -224,7 +224,7 @@ mod tests {
         for j in 0..10 {
             let event = crate::observability::TaskEvent::new(
                 TaskId::new(),
-                UserId::new(format!("user-{}", j)),
+                UserId::new(format!("user-{j}")),
                 TaskEventType::Started,
             );
             manager.emit(event).await.ok();
@@ -235,7 +235,7 @@ mod tests {
         // Wait for all subscribers to receive events
         for handle in handles {
             let (sub_id, count) = handle.await.expect("Subscriber task failed");
-            assert_eq!(count, 10, "Subscriber {} didn't receive all events", sub_id);
+            assert_eq!(count, 10, "Subscriber {sub_id} didn't receive all events");
         }
     }
 

@@ -8,6 +8,13 @@ use crate::cli::utils::{print_info, print_success};
 use anyhow::Result;
 
 /// Handle discovery commands
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn handle_discovery_command(discovery_command: Option<DiscoveryCommands>) -> Result<()> {
     match discovery_command {
         Some(DiscoveryCommands::Scan {

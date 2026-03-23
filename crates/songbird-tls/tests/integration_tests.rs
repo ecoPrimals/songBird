@@ -3,22 +3,22 @@
 
 //! Integration tests for songbird-tls
 //!
-//! These tests validate the TLS implementation with mock BearDog crypto.
+//! These tests validate the TLS implementation with mock `BearDog` crypto.
 
 use songbird_tls::error::TlsError;
 use tokio::net::TcpListener;
 
-/// Mock BearDog crypto client for testing
+/// Mock `BearDog` crypto client for testing
 ///
-/// This simulates BearDog responses without requiring a live BearDog instance.
-/// In production, use real BeardogCryptoClient.
+/// This simulates `BearDog` responses without requiring a live `BearDog` instance.
+/// In production, use real `BeardogCryptoClient`.
 #[derive(Clone)]
 struct MockBearDogClient {
     fail_on_operation: Option<String>,
 }
 
 impl MockBearDogClient {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             fail_on_operation: None,
         }
@@ -30,7 +30,7 @@ impl MockBearDogClient {
         }
     }
 
-    async fn x25519_generate_ephemeral(&self) -> Result<(Vec<u8>, Vec<u8>), TlsError> {
+    fn x25519_generate_ephemeral(&self) -> Result<(Vec<u8>, Vec<u8>), TlsError> {
         if self.fail_on_operation.as_deref() == Some("x25519_generate") {
             return Err(TlsError::CryptoError("Mock failure: x25519_generate".to_string()));
         }
@@ -41,7 +41,7 @@ impl MockBearDogClient {
         Ok((public_key, secret_key))
     }
 
-    async fn x25519_derive_secret(
+    fn x25519_derive_secret(
         &self,
         _our_secret: &[u8],
         _their_public: &[u8],
@@ -54,7 +54,7 @@ impl MockBearDogClient {
         Ok(vec![3u8; 32])
     }
 
-    async fn hmac_sha256(&self, _message: &[u8], _key: &[u8]) -> Result<Vec<u8>, TlsError> {
+    fn hmac_sha256(&self, _message: &[u8], _key: &[u8]) -> Result<Vec<u8>, TlsError> {
         if self.fail_on_operation.as_deref() == Some("hmac") {
             return Err(TlsError::CryptoError("Mock failure: hmac".to_string()));
         }
@@ -63,7 +63,8 @@ impl MockBearDogClient {
         Ok(vec![4u8; 32])
     }
 
-    async fn chacha20_poly1305_encrypt(
+    #[allow(clippy::type_complexity)]
+    fn chacha20_poly1305_encrypt(
         &self,
         plaintext: &[u8],
         _key: &[u8],
@@ -80,7 +81,7 @@ impl MockBearDogClient {
         Ok((ciphertext, nonce, tag))
     }
 
-    async fn chacha20_poly1305_decrypt(
+    fn chacha20_poly1305_decrypt(
         &self,
         ciphertext: &[u8],
         _key: &[u8],
@@ -110,29 +111,29 @@ async fn test_mock_beardog_client_operations() {
     let client = MockBearDogClient::new();
 
     // Test key generation
-    let (public, secret) = client.x25519_generate_ephemeral().await.unwrap();
+    let (public, secret) = client.x25519_generate_ephemeral().unwrap();
     assert_eq!(public.len(), 32);
     assert_eq!(secret.len(), 32);
 
     // Test key derivation
-    let shared = client.x25519_derive_secret(&secret, &public).await.unwrap();
+    let shared = client.x25519_derive_secret(&secret, &public).unwrap();
     assert_eq!(shared.len(), 32);
 
     // Test HMAC
-    let hmac = client.hmac_sha256(b"test", b"key").await.unwrap();
+    let hmac = client.hmac_sha256(b"test", b"key").unwrap();
     assert_eq!(hmac.len(), 32);
 
     // Test encryption/decryption
     let plaintext = b"Hello, TLS!";
     let (ciphertext, nonce, tag) =
-        client.chacha20_poly1305_encrypt(plaintext, b"key", None).await.unwrap();
+        client.chacha20_poly1305_encrypt(plaintext, b"key", None).unwrap();
 
     assert_eq!(nonce.len(), 12);
     assert_eq!(tag.len(), 16);
     assert_ne!(ciphertext, plaintext); // Should be different
 
     let decrypted =
-        client.chacha20_poly1305_decrypt(&ciphertext, b"key", &nonce, &tag, None).await.unwrap();
+        client.chacha20_poly1305_decrypt(&ciphertext, b"key", &nonce, &tag, None).unwrap();
 
     assert_eq!(decrypted, plaintext); // Should match original
 }
@@ -141,28 +142,27 @@ async fn test_mock_beardog_client_operations() {
 async fn test_mock_beardog_failure_injection() {
     // Test x25519_generate failure
     let client = MockBearDogClient::with_failure("x25519_generate");
-    let result = client.x25519_generate_ephemeral().await;
+    let result = client.x25519_generate_ephemeral();
     assert!(result.is_err());
 
     // Test x25519_derive failure
     let client = MockBearDogClient::with_failure("x25519_derive");
-    let result = client.x25519_derive_secret(&[0u8; 32], &[1u8; 32]).await;
+    let result = client.x25519_derive_secret(&[0u8; 32], &[1u8; 32]);
     assert!(result.is_err());
 
     // Test HMAC failure
     let client = MockBearDogClient::with_failure("hmac");
-    let result = client.hmac_sha256(b"test", b"key").await;
+    let result = client.hmac_sha256(b"test", b"key");
     assert!(result.is_err());
 
     // Test encryption failure
     let client = MockBearDogClient::with_failure("encrypt");
-    let result = client.chacha20_poly1305_encrypt(b"test", b"key", None).await;
+    let result = client.chacha20_poly1305_encrypt(b"test", b"key", None);
     assert!(result.is_err());
 
     // Test decryption failure
     let client = MockBearDogClient::with_failure("decrypt");
-    let result =
-        client.chacha20_poly1305_decrypt(b"test", b"key", &[0u8; 12], &[0u8; 16], None).await;
+    let result = client.chacha20_poly1305_decrypt(b"test", b"key", &[0u8; 12], &[0u8; 16], None);
     assert!(result.is_err());
 }
 

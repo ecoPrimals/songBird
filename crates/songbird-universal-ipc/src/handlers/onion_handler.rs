@@ -316,15 +316,16 @@ impl OnionHandler {
     pub async fn handle_address(&self, _params: Value) -> Result<Value, String> {
         let service = self.service.read().await;
 
-        if let Some(svc) = service.as_ref() {
-            Ok(json!({
-                "address": svc.onion_address(),
-                "port": svc.port(),
-                "full": format!("{}:{}", svc.onion_address(), svc.port())
-            }))
-        } else {
-            Err("Onion service not running".to_string())
-        }
+        service.as_ref().map_or_else(
+            || Err("Onion service not running".to_string()),
+            |svc| {
+                Ok(json!({
+                    "address": svc.onion_address(),
+                    "port": svc.port(),
+                    "full": format!("{}:{}", svc.onion_address(), svc.port())
+                }))
+            },
+        )
     }
 }
 

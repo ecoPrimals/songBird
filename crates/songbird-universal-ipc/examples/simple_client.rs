@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Send message
     let message = "Hello from client!";
-    println!("📤 Sending: {}", message);
+    println!("📤 Sending: {message}");
     stream.write_all(message.as_bytes()).await?;
 
     // Read response
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n = stream.read(&mut buf).await?;
 
     let response = String::from_utf8_lossy(&buf[..n]);
-    println!("📥 Received: {}", response);
+    println!("📥 Received: {response}");
 
     println!("✅ Done!");
 

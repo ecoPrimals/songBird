@@ -8,6 +8,13 @@ use crate::cli::utils::{print_error, print_info, print_success};
 use anyhow::Result;
 
 /// Handle service commands
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn handle_service_command(service_command: Option<ServiceCommands>) -> Result<()> {
     match service_command {
         Some(ServiceCommands::List) | None => {

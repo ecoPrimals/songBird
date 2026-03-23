@@ -69,6 +69,9 @@ impl NodeIdentity {
     /// This will either:
     /// 1. Load existing identity from disk (if available)
     /// 2. Generate new identity and persist it
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new_or_load(node_name: Option<String>) -> Result<Self> {
         // Try to load existing identity
         if let Ok(identity) = Self::load_from_disk() {
@@ -107,6 +110,9 @@ impl NodeIdentity {
     /// Set genetic lineage for this node
     ///
     /// Updates the node identity with genetic lineage information from security provider.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn set_lineage(&mut self, lineage_id: LineageId, proof: LineageProof) -> Result<()> {
         self.genetic_lineage = Some(lineage_id.clone());
         self.lineage_proof = Some(proof);
@@ -290,6 +296,9 @@ impl NodeIdentity {
     /// - ✅ Platform-agnostic (Linux, Android, Windows, macOS, iOS)
     /// - ✅ Modern idiomatic Rust (netdev API)
     /// - ✅ Runtime capability discovery (no hardcoding)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn detect_all_endpoints(&mut self, port: u16) -> Result<()> {
         info!("🔍 Detecting network interfaces (platform-agnostic)...");
 

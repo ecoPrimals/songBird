@@ -54,7 +54,7 @@ pub struct LineageRelayAdapter {
 impl LineageRelayAdapter {
     /// Create new adapter
     #[must_use]
-    pub fn new(coordinator: Arc<LineageRelayCoordinator>) -> Self {
+    pub const fn new(coordinator: Arc<LineageRelayCoordinator>) -> Self {
         Self {
             coordinator,
         }
@@ -112,7 +112,7 @@ pub struct LineageRelayPrimalConnection {
 impl LineageRelayPrimalConnection {
     /// Create new primal connection wrapper
     #[must_use]
-    pub fn new(adapter: Arc<LineageRelayAdapter>) -> Self {
+    pub const fn new(adapter: Arc<LineageRelayAdapter>) -> Self {
         Self {
             adapter,
         }

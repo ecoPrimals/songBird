@@ -30,11 +30,30 @@ use tracing::{info, warn};
 
 use songbird_types::SafeEnv;
 
-/// Security integration placeholder
+/// Security integration backed by a discovered endpoint.
 ///
-/// Currently a placeholder until `UniversalSecurityIntegration` is available.
-/// The setup logic demonstrates capability-based discovery pattern.
-pub type SecurityIntegration = Arc<()>;
+/// Wraps the runtime-discovered security provider endpoint and exposes
+/// health probing via the crypto-provider discovery path.
+#[derive(Debug, Clone)]
+pub struct SecurityIntegration {
+    /// Discovered security provider endpoint.
+    endpoint: Arc<str>,
+}
+
+impl SecurityIntegration {
+    /// The discovered endpoint URL.
+    #[must_use]
+    pub fn endpoint(&self) -> &str {
+        &self.endpoint
+    }
+
+    /// Probe the security subsystem via crypto-provider socket discovery.
+    ///
+    /// Returns `true` when the crypto provider socket is reachable.
+    pub async fn is_healthy(&self) -> bool {
+        crate::primal_discovery::discover_crypto_provider().await.is_ok()
+    }
+}
 
 /// Discover security provider endpoint
 ///
@@ -53,6 +72,9 @@ pub type SecurityIntegration = Arc<()>;
 ///
 /// - `Ok(String)` if a security provider is found
 /// - `Err(...)` if no security provider is available
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_security_endpoint(
     universal_adapter: Option<&mut crate::universal_adapter::UniversalAdapter>,
 ) -> Result<String> {
@@ -113,16 +135,15 @@ pub async fn discover_security_endpoint(
 /// # Returns
 ///
 /// Security integration instance (currently a placeholder)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn setup_security() -> Result<SecurityIntegration> {
-    // Use new discovery function (supports Universal Adapter in future)
-    let _security_endpoint = discover_security_endpoint(None).await?;
-
-    // Security integration temporarily disabled - using placeholder
-    // The important architectural pattern is demonstrated:
-    // - Zero hardcoding
-    // - Runtime discovery
-    // - Environment-driven configuration
-    Ok(Arc::new(()))
+    let security_endpoint = discover_security_endpoint(None).await?;
+    info!("🔐 Security integration established at {security_endpoint}");
+    Ok(SecurityIntegration {
+        endpoint: Arc::from(security_endpoint),
+    })
 }
 
 /// Construct default security endpoint from bind address and port

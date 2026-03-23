@@ -1,7 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Fault Injection Tests for CryptoProvider
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
+//! Fault Injection Tests for `CryptoProvider`
 //!
 //! Tests error handling, edge cases, and resilience to failures.
 
@@ -176,7 +200,7 @@ async fn test_fault_concurrent_discovery() {
 async fn test_fault_rapid_provider_creation() {
     // Rapidly create and drop providers
     for i in 0..100 {
-        let path = format!("/tmp/test-{}.sock", i);
+        let path = format!("/tmp/test-{i}.sock");
         let _provider = UnixSocketCryptoProvider::new(path);
         // Provider dropped immediately
     }

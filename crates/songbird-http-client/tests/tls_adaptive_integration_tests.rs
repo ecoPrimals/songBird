@@ -4,7 +4,7 @@
 //! Adaptive TLS Integration Tests
 //!
 //! These tests verify that the adaptive TLS system is properly wired
-//! into the TlsHandshake and actually works end-to-end.
+//! into the `TlsHandshake` and actually works end-to-end.
 
 use songbird_http_client::tls::{CipherStrategy, ExtensionStrategy, ServerProfiler, TlsConfig};
 
@@ -145,7 +145,7 @@ async fn test_profiler_reliability_tracking() {
     let profile = profiler.get_profile(hostname).unwrap();
     assert_eq!(profile.success_count, 8);
     assert_eq!(profile.failure_count, 2);
-    assert_eq!(profile.reliability, 0.8);
+    assert!((profile.reliability - 0.8).abs() < 1e-5);
     assert!(profile.is_reliable());
 }
 
@@ -207,19 +207,19 @@ async fn test_global_stats_aggregation() {
     // Record connections to multiple servers
     profiler.record_success("server1.com", extensions.clone(), 0x1301, Duration::from_millis(80));
     profiler.record_success("server2.com", extensions.clone(), 0x1301, Duration::from_millis(85));
-    profiler.record_failure("server3.com", extensions.clone(), Some(0x1303), "timeout");
+    profiler.record_failure("server3.com", extensions, Some(0x1303), "timeout");
 
     let stats = profiler.get_stats();
     assert_eq!(stats.total_successes, 2);
     assert_eq!(stats.total_failures, 1);
-    assert_eq!(stats.success_rate(), 2.0 / 3.0);
+    assert!((stats.success_rate() - (2.0_f32 / 3.0)).abs() < 1e-5);
 }
 
 #[cfg(test)]
 mod e2e {
     /// E2E: Test that minimal config connects faster
     #[tokio::test]
-    #[ignore] // Requires real server connection
+    #[ignore = "requires real server connection"]
     async fn test_minimal_config_faster_handshake() {
         // When wired and connected to real server:
         // 1. Create client with minimal config
@@ -229,7 +229,7 @@ mod e2e {
 
     /// E2E: Test that adaptive config learns
     #[tokio::test]
-    #[ignore] // Requires real server connection
+    #[ignore = "requires real server connection"]
     async fn test_adaptive_learns_from_server() {
         // When wired and connected to real server:
         // 1. First connection: Uses standard config
@@ -240,7 +240,7 @@ mod e2e {
 
     /// E2E: Test that fallback works on failure
     #[tokio::test]
-    #[ignore] // Requires real server connection
+    #[ignore = "requires real server connection"]
     async fn test_progressive_fallback_on_failure() {
         // When wired and connected to difficult server:
         // 1. First attempt: Modern config (fails)
@@ -251,7 +251,7 @@ mod e2e {
 
     /// E2E: Test that profiler persists across connections
     #[tokio::test]
-    #[ignore] // Requires real server connection
+    #[ignore = "requires real server connection"]
     async fn test_profiler_persists_knowledge() {
         // When wired:
         // 1. Connect to server A (learns optimal config)

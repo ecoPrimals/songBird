@@ -33,7 +33,8 @@ impl OnionConnector {
 
     /// Create new onion connector (standalone mode - testing only)
     #[cfg(feature = "standalone")]
-    pub fn new_standalone() -> Self {
+    #[must_use]
+    pub const fn new_standalone() -> Self {
         Self {
             beardog: None,
         }
@@ -43,7 +44,7 @@ impl OnionConnector {
     ///
     /// # Errors
     ///
-    /// Returns error if connection fails, handshake fails, or BearDog crypto fails.
+    /// Returns error if connection fails, handshake fails, or `BearDog` crypto fails.
     ///
     /// # Arguments
     /// - `onion_address`: The target .onion address

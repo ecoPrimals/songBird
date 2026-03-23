@@ -58,6 +58,9 @@ impl ProcessManager {
     ///
     /// This automatically reads `SONGBIRD_FAMILY_ID` and `SONGBIRD_NODE_ID` from the environment
     /// to create a unique PID file per instance, enabling multi-instance deployments.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new() -> Result<Self> {
         let pid_file = Self::default_pid_file()?;
         let node_identity = Self::get_node_identity();
@@ -499,7 +502,7 @@ mod tests {
     /// This test verifies the evolved `is_process_running()` can distinguish
     /// zombies from healthy processes.
     ///
-    /// **Note**: Creating actual zombies in tests is complex (requires fork() and unsafe),
+    /// **Note**: Creating actual zombies in tests is complex (requires `fork()` and unsafe),
     /// so this test verifies the /proc parsing logic indirectly by testing known PIDs.
     #[test]
     #[cfg(unix)]

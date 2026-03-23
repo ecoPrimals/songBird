@@ -29,7 +29,7 @@ pub fn run_user_biomeos_socket(uid: &str, socket_filename: &str) -> PathBuf {
     PathBuf::from(format!("/run/user/{uid}/{BIOMEOS_RUNTIME_SUBDIR}/{socket_filename}"))
 }
 
-/// Default BearDog socket paths (tried in order during discovery)
+/// Default `BearDog` socket paths (tried in order during discovery)
 pub const BEARDOG_SOCKET_CANDIDATES: &[&str] =
     &["/tmp/beardog.sock", "/run/user/1000/beardog-default.sock", "/var/run/beardog.sock"];
 
@@ -47,10 +47,10 @@ pub const BIOMEOS_SOCKET_FALLBACK_PATHS: &[&str] = &[
 /// Default security socket path (final fallback)
 pub const BIOMEOS_SECURITY_SOCKET_DEFAULT: &str = "/tmp/biomeos/security.sock";
 
-/// Legacy BearDog socket path
+/// Legacy `BearDog` socket path
 pub const BEARDOG_SOCKET_LEGACY: &str = "/tmp/beardog.sock";
 
-/// Legacy Neural API socket path pattern (append "{family_id}.sock")
+/// Legacy Neural API socket path pattern (append `{family_id}.sock`)
 pub const NEURAL_API_SOCKET_LEGACY_PATTERN: &str = "/tmp/neural-api-";
 
 /// Default data directory

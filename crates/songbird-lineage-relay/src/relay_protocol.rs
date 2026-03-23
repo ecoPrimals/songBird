@@ -228,7 +228,7 @@ pub struct AllocationRequest {
 impl AllocationRequest {
     /// Create new allocation request
     #[must_use]
-    pub fn new(
+    pub const fn new(
         relay_node: NodeId,
         requester: NodeId,
         target_addr: SocketAddr,
@@ -267,7 +267,7 @@ pub struct AllocationResponse {
 impl AllocationResponse {
     /// Create success response
     #[must_use]
-    pub fn success(session_id: Uuid, relay_addr: SocketAddr, ttl_seconds: u32) -> Self {
+    pub const fn success(session_id: Uuid, relay_addr: SocketAddr, ttl_seconds: u32) -> Self {
         Self {
             success: true,
             session_id: Some(session_id),
@@ -279,7 +279,7 @@ impl AllocationResponse {
 
     /// Create error response
     #[must_use]
-    pub fn error(error: String) -> Self {
+    pub const fn error(error: String) -> Self {
         Self {
             success: false,
             session_id: None,
@@ -338,7 +338,7 @@ mod tests {
         let relay_addr: SocketAddr = "162.226.225.148:3479".parse().unwrap();
 
         let resp = AllocationResponse::success(session_id, relay_addr, 300);
-        let msg = RelayProtocol::AllocateResponse(resp.clone());
+        let msg = RelayProtocol::AllocateResponse(resp);
         let encoded = msg.encode();
 
         // Should start with 0x02

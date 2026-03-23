@@ -64,12 +64,13 @@ impl FederationOptions {
 
     /// Create options for testing with explicit values
     #[cfg(test)]
+    #[must_use]
     pub fn for_testing() -> FederationOptionsBuilder {
         FederationOptionsBuilder::default()
     }
 }
 
-/// Builder for FederationOptions (test fixture pattern)
+/// Builder for `FederationOptions` (test fixture pattern)
 #[cfg(test)]
 #[derive(Default)]
 pub struct FederationOptionsBuilder {
@@ -78,6 +79,7 @@ pub struct FederationOptionsBuilder {
 
 #[cfg(test)]
 impl FederationOptionsBuilder {
+    #[must_use]
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.options.enabled = Some(enabled);
         self
@@ -98,11 +100,13 @@ impl FederationOptionsBuilder {
         self
     }
 
+    #[must_use]
     pub fn port(mut self, port: u16) -> Self {
         self.options.port = Some(port);
         self
     }
 
+    #[must_use]
     pub fn build(self) -> FederationOptions {
         self.options
     }
@@ -148,6 +152,9 @@ pub struct FederationSetup {
 ///
 /// - `Some(coordinator, config)` if federation enabled
 /// - `None` if federation disabled (standalone mode)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn setup_federation(
     node_identity: &NodeIdentity,
     federation_state: Arc<FederationState>,

@@ -61,6 +61,10 @@ pub struct ServerHello {
 /// let server_hello = parse_server_hello(&handshake_message)?;
 /// println!("Server chose: {}", server_hello.cipher_suite.name());
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if the buffer is not a valid `ServerHello` or the cipher suite is unsupported.
 pub fn parse_server_hello(data: &[u8]) -> Result<ServerHello> {
     debug!("Parsing ServerHello: {} bytes", data.len());
 
@@ -269,7 +273,9 @@ mod tests {
         ext.extend_from_slice(&[1u8; 32]); // Public key
 
         // Extensions length
-        msg.extend_from_slice(&(ext.len() as u16).to_be_bytes());
+        msg.extend_from_slice(
+            &u16::try_from(ext.len()).expect("test extension blob fits in u16").to_be_bytes(),
+        );
         msg.extend_from_slice(&ext);
 
         let result = parse_server_hello(&msg);
@@ -349,7 +355,9 @@ mod tests {
         ext.extend_from_slice(&[0x00, 0x1d, 0x00, 0x20]);
         ext.extend_from_slice(&[1u8; 32]);
 
-        msg.extend_from_slice(&(ext.len() as u16).to_be_bytes());
+        msg.extend_from_slice(
+            &u16::try_from(ext.len()).expect("test extension blob fits in u16").to_be_bytes(),
+        );
         msg.extend_from_slice(&ext);
 
         let result = parse_server_hello(&msg).unwrap();

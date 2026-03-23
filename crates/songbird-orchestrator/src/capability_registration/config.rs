@@ -19,6 +19,9 @@ pub struct CapabilityRegistrationConfig {
 
 impl CapabilityRegistrationConfig {
     /// Build config from environment variables (production use)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn from_env() -> Result<Self> {
         let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
             if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
@@ -48,6 +51,7 @@ impl CapabilityRegistrationConfig {
 
     /// Build config with explicit values (test use)
     #[cfg(test)]
+    #[must_use]
     pub fn for_testing(neural_socket: &str, songbird_socket: &str) -> Self {
         Self {
             neural_socket: neural_socket.to_string(),

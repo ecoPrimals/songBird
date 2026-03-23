@@ -302,7 +302,7 @@ impl PrimalCoordinator {
 
     /// Internal: Coordinate witness network using capability-based routing
     ///
-    /// Uses the coordinator's registry (active_connections) to find primals that can
+    /// Uses the coordinator's registry (`active_connections`) to find primals that can
     /// participate in witness attestation. Prefers Networking and Discovery capabilities
     /// for P2P presence; falls back to any connected primal. Physical BLE proximity
     /// would be layered by Songbird's own stack when available.
@@ -336,8 +336,11 @@ impl PrimalCoordinator {
             }
         }
 
+        let connection_count = connections.len();
+        drop(connections);
+
         // Build proof: node_id + capability-derived witness attestations
-        let mut proof = format!("genesis_witness:{}:", node_id).into_bytes();
+        let mut proof = format!("genesis_witness:{node_id}:").into_bytes();
         if witness_data.is_empty() {
             proof.extend_from_slice(b"ble_proximity_proof");
         } else {
@@ -346,7 +349,7 @@ impl PrimalCoordinator {
 
         tracing::debug!(
             "Coordinating witness network via capability registry ({} participants)",
-            connections.len()
+            connection_count
         );
         Ok(WitnessProof {
             data: proof,

@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::uninlined_format_args,
+    clippy::doc_markdown,
+    reason = "ignored E2E tests against real TLS endpoints use verbose assertion messages"
+)]
+
 //! End-to-End TLS Handshake Tests
 //!
 //! These tests verify the complete TLS 1.3 handshake flow with real servers.
-//! They are marked #[ignore] by default and can be run with: cargo test -- --ignored
+//! They are marked `#[ignore]` by default and can be run with: cargo test -- --ignored
 
 use songbird_http_client::SongbirdHttpClient;
 use std::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_github_https_handshake() {
     let client = SongbirdHttpClient::from_env();
 
@@ -26,7 +32,7 @@ async fn test_github_https_handshake() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_cloudflare_https_handshake() {
     let client = SongbirdHttpClient::from_env();
 
@@ -38,7 +44,7 @@ async fn test_cloudflare_https_handshake() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_google_https_handshake() {
     let client = SongbirdHttpClient::from_env();
 
@@ -50,7 +56,7 @@ async fn test_google_https_handshake() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_mozilla_https_handshake() {
     let client = SongbirdHttpClient::from_env();
 
@@ -62,7 +68,7 @@ async fn test_mozilla_https_handshake() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_rust_lang_https_handshake() {
     let client = SongbirdHttpClient::from_env();
 
@@ -74,7 +80,7 @@ async fn test_rust_lang_https_handshake() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_crates_io_https_handshake() {
     let client = SongbirdHttpClient::from_env();
 
@@ -86,7 +92,7 @@ async fn test_crates_io_https_handshake() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_multiple_sequential_requests() {
     let client = SongbirdHttpClient::from_env();
 
@@ -100,7 +106,7 @@ async fn test_multiple_sequential_requests() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_concurrent_requests() {
     let client = SongbirdHttpClient::from_env();
 
@@ -124,7 +130,7 @@ async fn test_concurrent_requests() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_post_request() {
     let client = SongbirdHttpClient::from_env();
 
@@ -142,7 +148,7 @@ async fn test_post_request() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_large_response() {
     let client = SongbirdHttpClient::from_env();
 
@@ -160,7 +166,7 @@ async fn test_large_response() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_redirect_handling() {
     let client = SongbirdHttpClient::from_env();
 
@@ -175,7 +181,7 @@ async fn test_redirect_handling() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_invalid_hostname() {
     let client = SongbirdHttpClient::from_env();
 
@@ -190,7 +196,7 @@ async fn test_invalid_hostname() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_connection_reuse() {
     let client = SongbirdHttpClient::from_env();
 
@@ -212,7 +218,7 @@ async fn test_connection_reuse() {
 }
 
 #[tokio::test]
-#[ignore] // Requires network access
+#[ignore = "requires network access"]
 async fn test_different_tls_servers() {
     // Test against servers with different TLS configurations
     let client = SongbirdHttpClient::from_env();

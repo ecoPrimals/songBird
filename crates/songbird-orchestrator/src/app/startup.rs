@@ -43,6 +43,9 @@ use super::core::SongbirdOrchestrator;
 /// - No duplicate signal handlers
 /// - Clear ownership: caller controls lifecycle
 /// - Testable: can start/stop without blocking
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_orchestrator(config: CanonicalSongbirdConfig) -> Result<SongbirdOrchestrator> {
     info!("🔧 Initializing orchestrator components...");
 
@@ -76,6 +79,9 @@ impl Orchestrator {
     /// Start the orchestrator (convenience method)
     ///
     /// v3.18.2: Updated for new `start_orchestrator` signature
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn run(self) -> Result<()> {
         let _orchestrator = start_orchestrator(self._config).await?;
 

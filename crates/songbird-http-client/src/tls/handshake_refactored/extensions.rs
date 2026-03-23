@@ -11,16 +11,15 @@
 //! - **`MaxCompatibility`**: Maximum compatibility (session tickets)
 
 use super::core::TlsHandshake;
-use crate::error::Result;
 use crate::tls::TLS_1_3;
 use tracing::debug;
 
 impl TlsHandshake {
     /// Build extensions based on configured strategy
-    pub(super) fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    pub(super) fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         debug!("Building extensions with {:?} strategy", self.config.extension_strategy);
 
-        Ok(match self.config.extension_strategy {
+        match self.config.extension_strategy {
             crate::tls::config::ExtensionStrategy::Minimal => {
                 self.build_extensions_minimal(server_name, public_key)
             }
@@ -41,7 +40,7 @@ impl TlsHandshake {
                 // Custom strategy currently maps to the standard extension set (no per-policy builder).
                 self.build_extensions_standard(server_name, public_key)
             }
-        })
+        }
     }
 
     /// Build minimal extensions (only required, ~60ms handshake)
@@ -311,7 +310,7 @@ mod tests {
         let handshake = TlsHandshake::with_config(beardog, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key).unwrap();
+        let ext = handshake.build_extensions("example.com", &public_key);
 
         // Verify it's not empty
         assert!(!ext.is_empty());
@@ -331,7 +330,7 @@ mod tests {
         let handshake = TlsHandshake::with_config(beardog, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key).unwrap();
+        let ext = handshake.build_extensions("example.com", &public_key);
 
         // Standard should be larger than minimal (includes ALPN, groups, sig algs, etc.)
         assert!(ext.len() > 50);
@@ -348,7 +347,7 @@ mod tests {
         let handshake = TlsHandshake::with_config(beardog, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key).unwrap();
+        let ext = handshake.build_extensions("example.com", &public_key);
 
         // Modern should be larger than standard (includes OCSP stapling)
         assert!(ext.len() > 60);
@@ -365,7 +364,7 @@ mod tests {
         let handshake = TlsHandshake::with_config(beardog, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key).unwrap();
+        let ext = handshake.build_extensions("example.com", &public_key);
 
         // MaxCompatibility should be largest (includes session ticket, cert sig algs)
         assert!(ext.len() > 80);
@@ -382,7 +381,7 @@ mod tests {
         let handshake = TlsHandshake::with_config(beardog, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key).unwrap();
+        let ext = handshake.build_extensions("example.com", &public_key);
 
         // Standard extensions include ALPN with "http/1.1"
         // Search for ALPN extension: 0x0010 followed by "http/1.1"
@@ -403,32 +402,28 @@ mod tests {
             ..Default::default()
         };
         let minimal = TlsHandshake::with_config(beardog.clone(), minimal_config, None)
-            .build_extensions("example.com", &public_key)
-            .unwrap();
+            .build_extensions("example.com", &public_key);
 
         let standard_config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
         };
         let standard = TlsHandshake::with_config(beardog.clone(), standard_config, None)
-            .build_extensions("example.com", &public_key)
-            .unwrap();
+            .build_extensions("example.com", &public_key);
 
         let modern_config = TlsConfig {
             extension_strategy: ExtensionStrategy::Modern,
             ..Default::default()
         };
         let modern = TlsHandshake::with_config(beardog.clone(), modern_config, None)
-            .build_extensions("example.com", &public_key)
-            .unwrap();
+            .build_extensions("example.com", &public_key);
 
         let maxcompat_config = TlsConfig {
             extension_strategy: ExtensionStrategy::MaxCompatibility,
             ..Default::default()
         };
         let maxcompat = TlsHandshake::with_config(beardog, maxcompat_config, None)
-            .build_extensions("example.com", &public_key)
-            .unwrap();
+            .build_extensions("example.com", &public_key);
 
         // Verify size ordering: minimal < standard < modern < maxcompat
         assert!(minimal.len() < standard.len());
@@ -453,8 +448,8 @@ mod tests {
         let standard_hs = TlsHandshake::with_config(beardog, standard_config, None);
 
         let key = vec![0x42; 32];
-        let adaptive = adaptive_hs.build_extensions("example.com", &key).unwrap();
-        let standard = standard_hs.build_extensions("example.com", &key).unwrap();
+        let adaptive = adaptive_hs.build_extensions("example.com", &key);
+        let standard = standard_hs.build_extensions("example.com", &key);
         assert_eq!(adaptive, standard);
     }
 
@@ -475,8 +470,8 @@ mod tests {
         let standard_hs = TlsHandshake::with_config(beardog, standard_config, None);
 
         let key = vec![0x42; 32];
-        let custom = custom_hs.build_extensions("example.com", &key).unwrap();
-        let standard = standard_hs.build_extensions("example.com", &key).unwrap();
+        let custom = custom_hs.build_extensions("example.com", &key);
+        let standard = standard_hs.build_extensions("example.com", &key);
         assert_eq!(custom, standard);
     }
 }

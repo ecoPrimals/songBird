@@ -28,6 +28,9 @@ use super::ServerArgs;
 /// - Graceful shutdown
 /// - Instance locking
 /// - Comprehensive logging
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn run_server(args: ServerArgs) -> Result<()> {
     use crate::app;
     use crate::process_manager::ProcessManager;

@@ -3,7 +3,7 @@
 
 //! BTSP Integration Tests - Week 4 Part 2
 //!
-//! Comprehensive testing of BearDog BTSP (BearDog Tunnel Security Protocol)
+//! Comprehensive testing of `BearDog` BTSP (`BearDog` Tunnel Security Protocol)
 //! integration via Unix sockets. These tests validate the complete BTSP lifecycle:
 //! - Socket discovery and connection
 //! - Tunnel establishment
@@ -12,6 +12,30 @@
 //! - Error handling
 //!
 //! Modern, idiomatic, async Rust with deep debt solutions.
+
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
 
 use anyhow::Result;
 use songbird_orchestrator::btsp_client::{BtspClient, Direction, PeerEndpoint};
@@ -26,7 +50,7 @@ fn lock_env() -> std::sync::MutexGuard<'static, ()> {
     ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// Helper: Check if BearDog is available for testing
+/// Helper: Check if `BearDog` is available for testing
 async fn beardog_available() -> bool {
     let client = BtspClient::new();
     client.ping().await.is_ok()
@@ -63,7 +87,7 @@ async fn test_btsp_client_creation() {
     let client = BtspClient::new();
 
     // Client should be created successfully
-    assert!(format!("{:?}", client).contains("BtspClient"));
+    assert!(format!("{client:?}").contains("BtspClient"));
 
     cleanup_test_env();
 }
@@ -80,18 +104,17 @@ async fn test_socket_path_discovery_priority() {
     // Test priority 1: BEARDOG_SOCKET
     songbird_process_env::set_var("BEARDOG_SOCKET", "/custom/beardog.sock");
     let client1 = BtspClient::new();
-    let debug1 = format!("{:?}", client1);
-    assert!(debug1.contains("/custom/beardog.sock"), "Should use BEARDOG_SOCKET, got: {}", debug1);
+    let debug1 = format!("{client1:?}");
+    assert!(debug1.contains("/custom/beardog.sock"), "Should use BEARDOG_SOCKET, got: {debug1}");
 
     // Test priority 2: BIOMEOS_SOCKET_PATH (when BEARDOG_SOCKET not set)
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::set_var("BIOMEOS_SOCKET_PATH", "/biomeos/beardog.sock");
     let client2 = BtspClient::new();
-    let debug2 = format!("{:?}", client2);
+    let debug2 = format!("{client2:?}");
     assert!(
         debug2.contains("/biomeos/beardog.sock"),
-        "Should use BIOMEOS_SOCKET_PATH, got: {}",
-        debug2
+        "Should use BIOMEOS_SOCKET_PATH, got: {debug2}"
     );
 
     // Test priority 3: XDG_RUNTIME_DIR
@@ -99,11 +122,10 @@ async fn test_socket_path_discovery_priority() {
     songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
     songbird_process_env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
     let client3 = BtspClient::new();
-    let client3_path = format!("{:?}", client3);
+    let client3_path = format!("{client3:?}");
     assert!(
         client3_path.contains("/run/user/1000") && client3_path.contains("security"),
-        "Should use XDG path with security socket, got: {}",
-        client3_path
+        "Should use XDG path with security socket, got: {client3_path}"
     );
 
     // Cleanup — restore original XDG_RUNTIME_DIR
@@ -127,11 +149,10 @@ async fn test_socket_path_fallback() {
     let client = BtspClient::new();
 
     // BtspClient uses "security" socket pattern (XDG or /tmp fallback)
-    let client_path = format!("{:?}", client);
+    let client_path = format!("{client:?}");
     assert!(
         client_path.contains("security"),
-        "Should use security socket pattern, got: {}",
-        client_path
+        "Should use security socket pattern, got: {client_path}"
     );
 }
 
@@ -153,8 +174,7 @@ async fn test_btsp_ping_when_beardog_unavailable() {
         let err_msg = format!("{}", result.unwrap_err());
         assert!(
             err_msg.contains("Failed to connect") || err_msg.contains("No such file"),
-            "Error should indicate connection failure, got: {}",
-            err_msg
+            "Error should indicate connection failure, got: {err_msg}"
         );
     }
 
@@ -417,8 +437,8 @@ async fn test_multiple_tunnels_concurrent() -> Result<()> {
     let mut handles = vec![];
     for i in 0..5 {
         let peer = PeerEndpoint {
-            id: format!("concurrent-peer-{}", i),
-            endpoint: format!("peer://concurrent-peer-{}", i),
+            id: format!("concurrent-peer-{i}"),
+            endpoint: format!("peer://concurrent-peer-{i}"),
             public_key: None,
             capabilities: vec![format!("cap-{}", i)],
         };
@@ -517,8 +537,8 @@ async fn test_btsp_rapid_tunnel_creation() -> Result<()> {
     // Create 100 tunnels rapidly
     for i in 0..100 {
         let peer = PeerEndpoint {
-            id: format!("rapid-peer-{}", i),
-            endpoint: format!("peer://rapid-peer-{}", i),
+            id: format!("rapid-peer-{i}"),
+            endpoint: format!("peer://rapid-peer-{i}"),
             public_key: None,
             capabilities: vec![],
         };
@@ -573,7 +593,7 @@ async fn test_helper_beardog_availability_check() {
     let available = beardog_available().await;
 
     // Should not panic
-    println!("BearDog available: {}", available);
+    println!("BearDog available: {available}");
 }
 
 #[test]

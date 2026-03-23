@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::uninlined_format_args,
+    clippy::doc_markdown,
+    reason = "multi-record HTTP tests use verbose logging strings"
+)]
+
 //! HTTP Multi-Record Response Handling Tests
 //!
 //! These tests verify HTTP response assembly across multiple TLS APPLICATION_DATA records.

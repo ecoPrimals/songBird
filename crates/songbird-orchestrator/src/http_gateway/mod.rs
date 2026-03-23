@@ -97,6 +97,9 @@ impl HttpGatewayService {
     /// - Deep debt solution: comprehensive architecture
     /// - Modern idiomatic Rust: async/await, proper error handling
     /// - Zero hardcoding: all config from environment
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new() -> Result<Self> {
         info!("🌐 Initializing HTTP Gateway Service");
 
@@ -141,6 +144,13 @@ impl HttpGatewayService {
     ///
     /// **Status**: Phase 1 - Core infrastructure only
     /// **Future**: Phase 2 will add actual proxy listeners
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start(&self) -> Result<()> {
         info!("🚀 Starting HTTP Gateway Service");
 
@@ -164,6 +174,9 @@ impl HttpGatewayService {
     /// # Returns
     /// * `Ok(())` if rate limit allows request
     /// * `Err(...)` if rate limit exceeded
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check_rate_limit(&self, client_id: &str) -> Result<()> {
         self.rate_limiter.check(client_id).await
     }

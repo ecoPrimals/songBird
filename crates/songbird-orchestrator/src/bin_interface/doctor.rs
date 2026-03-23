@@ -13,6 +13,9 @@ use anyhow::Result;
 use super::DoctorArgs;
 
 /// Run health diagnostics and system checks
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn run_doctor(args: DoctorArgs) -> Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
@@ -312,6 +315,10 @@ struct PrimalStatus {
 }
 
 /// Check if a port is available
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn check_port_availability(port: u16) -> Result<bool> {
     use std::net::TcpListener;
 

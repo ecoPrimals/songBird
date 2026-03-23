@@ -111,9 +111,9 @@ async fn test_e2e_concurrent_registrations() {
         let handle = tokio::spawn(async move {
             registry_clone
                 .register_service(
-                    format!("Primal{}", i),
+                    format!("Primal{i}"),
                     vec![format!("capability{}", i)],
-                    format!("/tmp/primal{}.sock", i),
+                    format!("/tmp/primal{i}.sock"),
                     "json-rpc".to_string(),
                     30,
                 )

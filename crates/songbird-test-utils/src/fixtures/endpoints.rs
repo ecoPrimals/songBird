@@ -251,9 +251,8 @@ mod tests {
 
     #[test]
     fn test_different_capabilities_get_different_ports() {
-        clear_port_registry();
-        let port1 = test_port("capability_a");
-        let port2 = test_port("capability_b");
+        let port1 = test_port("diff_cap_unique_x7f2a");
+        let port2 = test_port("diff_cap_unique_y8g3b");
         assert_ne!(port1, port2, "Different capabilities should get different ports");
     }
 

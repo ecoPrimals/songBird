@@ -25,7 +25,7 @@ async fn test_fetch_consensus_live() {
             println!("✅ Fetched {} relays ({} guards)", consensus.relays.len(), guards.len());
         }
         Err(e) => {
-            println!("⚠️  Consensus fetch failed (expected if offline): {}", e);
+            println!("⚠️  Consensus fetch failed (expected if offline): {e}");
         }
     }
 }
@@ -93,7 +93,7 @@ async fn test_connect_to_relay() {
     let consensus = match Consensus::fetch(&beardog).await {
         Ok(c) => c,
         Err(e) => {
-            println!("⚠️  Skipping: could not fetch consensus: {}", e);
+            println!("⚠️  Skipping: could not fetch consensus: {e}");
             return;
         }
     };
@@ -118,7 +118,7 @@ async fn test_connect_to_relay() {
         }
         Err(e) => {
             // Connection failures are expected in some environments
-            println!("⚠️  Connection failed (may be expected): {}", e);
+            println!("⚠️  Connection failed (may be expected): {e}");
         }
     }
 }
@@ -136,7 +136,7 @@ async fn test_build_circuit() {
     let consensus = match Consensus::fetch(&beardog).await {
         Ok(c) => c,
         Err(e) => {
-            println!("⚠️  Skipping: could not fetch consensus: {}", e);
+            println!("⚠️  Skipping: could not fetch consensus: {e}");
             return;
         }
     };
@@ -154,7 +154,7 @@ async fn test_build_circuit() {
     // Try to build a circuit
     match manager.build_circuit(CircuitPurpose::General).await {
         Ok(circuit_id) => {
-            println!("✅ Circuit {} built successfully!", circuit_id);
+            println!("✅ Circuit {circuit_id} built successfully!");
 
             // Verify circuit has 3 hops
             let circuit = manager.get_circuit(circuit_id).expect("Circuit should exist");
@@ -166,7 +166,7 @@ async fn test_build_circuit() {
         }
         Err(e) => {
             // Circuit building can fail for many reasons
-            println!("⚠️  Circuit build failed: {}", e);
+            println!("⚠️  Circuit build failed: {e}");
         }
     }
 }

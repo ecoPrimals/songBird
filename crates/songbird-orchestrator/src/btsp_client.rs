@@ -94,6 +94,9 @@ impl BtspClient {
     ///
     /// # Returns
     /// * `TunnelHandle` - Handle to the established tunnel for encrypt/decrypt
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn establish_tunnel(&self, peer: PeerEndpoint) -> Result<TunnelHandle> {
         debug!("Establishing BTSP tunnel with peer: {:?}", peer.id);
 
@@ -121,6 +124,9 @@ impl BtspClient {
     ///
     /// # Returns
     /// * `Vec<u8>` - The encrypted ciphertext
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn tunnel_encrypt(
         &self,
         tunnel: &TunnelHandle,
@@ -159,6 +165,9 @@ impl BtspClient {
     ///
     /// # Returns
     /// * `Vec<u8>` - The decrypted plaintext
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn tunnel_decrypt(&self, tunnel: &TunnelHandle, data: &[u8]) -> Result<Vec<u8>> {
         debug!("Decrypting {} bytes via tunnel {}", data.len(), tunnel.id);
 
@@ -193,6 +202,9 @@ impl BtspClient {
     ///
     /// # Panics
     /// May panic if JSON-RPC communication fails unexpectedly.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn tunnel_status(&self, tunnel: &TunnelHandle) -> Result<TunnelStatus> {
         debug!("Querying status for tunnel {}", tunnel.id);
 
@@ -212,6 +224,9 @@ impl BtspClient {
     ///
     /// # Arguments
     /// * `tunnel` - The tunnel handle to close
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn tunnel_close(&self, tunnel: &TunnelHandle) -> Result<()> {
         debug!("Closing tunnel {}", tunnel.id);
 
@@ -231,6 +246,9 @@ impl BtspClient {
     ///
     /// # Arguments
     /// * `tunnel_id` - The tunnel ID to close
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn close_tunnel(&self, tunnel_id: &str) -> Result<()> {
         let tunnel = TunnelHandle {
             id: tunnel_id.to_string(),
@@ -249,6 +267,9 @@ impl BtspClient {
     ///
     /// # Returns
     /// * Contact information for the discovered peer
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn contact_exchange(
         &self,
         target_peer_id: &str,
@@ -276,6 +297,9 @@ impl BtspClient {
     ///
     /// # Panics
     /// May panic if JSON-RPC communication fails unexpectedly.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     #[must_use]
     pub async fn ping(&self) -> Result<serde_json::Value> {
         let request = json!({

@@ -1,6 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(
     clippy::unwrap_used,
@@ -41,10 +64,10 @@ fn create_test_registration_request(provider_id: &str) -> CapabilityRegistration
 
     CapabilityRegistrationRequest {
         provider_id: provider_id.to_string(),
-        provider_name: format!("{} Provider", provider_id),
+        provider_name: format!("{provider_id} Provider"),
         provider_type: "compute".to_string(),
         version: "1.0.0".to_string(),
-        endpoint: format!("http://{}:9000", provider_id),
+        endpoint: format!("http://{provider_id}:9000"),
         capabilities: vec![
             CapabilityDescriptor {
                 name: "compute_gpu".to_string(),
@@ -105,9 +128,9 @@ async fn test_multiple_providers() {
 
     // Register multiple providers
     for i in 1..=3 {
-        let request = create_test_registration_request(&format!("provider-{}", i));
+        let request = create_test_registration_request(&format!("provider-{i}"));
         let result = registry.register(request).await;
-        assert!(result.is_ok(), "Registration {} should succeed", i);
+        assert!(result.is_ok(), "Registration {i} should succeed");
     }
 
     // Verify all providers are registered
@@ -291,7 +314,7 @@ async fn test_routing_with_external_provider() {
         } => {
             assert_eq!(provider_id, "gpu-provider-1");
         }
-        other => panic!("Expected RouteToExternalProvider, got {:?}", other),
+        other => panic!("Expected RouteToExternalProvider, got {other:?}"),
     }
 }
 
@@ -321,7 +344,7 @@ async fn test_routing_falls_back_without_provider() {
         Err(_) => {
             // No provider available (expected when registry and resolver are empty)
         }
-        Ok(other) => panic!("Unexpected routing decision: {:?}", other),
+        Ok(other) => panic!("Unexpected routing decision: {other:?}"),
     }
 }
 
@@ -392,7 +415,7 @@ async fn test_concurrent_registrations() {
     for i in 1..=10 {
         let registry_clone = registry.clone();
         let handle = tokio::spawn(async move {
-            let request = create_test_registration_request(&format!("provider-{}", i));
+            let request = create_test_registration_request(&format!("provider-{i}"));
             registry_clone.register(request).await
         });
         handles.push(handle);

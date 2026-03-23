@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! # 📈 Auto Scaling
 //!
 //! **MODERN AUTO SCALING** ✅
@@ -40,6 +44,10 @@ impl AutoScaler {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn initialize(&mut self) -> SongbirdResult<()> {
         // Initialize auto-scaler
         Ok(())
@@ -49,6 +57,10 @@ impl AutoScaler {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start(&mut self) -> SongbirdResult<()> {
         // Start auto-scaler
         Ok(())
@@ -58,6 +70,10 @@ impl AutoScaler {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn stop(&mut self) -> SongbirdResult<()> {
         // Stop auto-scaler
         Ok(())
@@ -67,6 +83,10 @@ impl AutoScaler {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn health_check(&self) -> SongbirdResult<ComponentHealth> {
         Ok(ComponentHealth {
             status: HealthStatus::Healthy,
@@ -81,6 +101,10 @@ impl AutoScaler {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn scale_up(&mut self) -> SongbirdResult<()> {
         if self.current_instances < self.config.max_instances {
             self.current_instances += 1;
@@ -92,6 +116,10 @@ impl AutoScaler {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn scale_down(&mut self) -> SongbirdResult<()> {
         if self.current_instances > self.config.min_instances {
             self.current_instances -= 1;
@@ -288,13 +316,13 @@ mod tests {
 
         let json = serde_json::to_string(&policy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
         let deserialized: ScalingPolicy =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Parsing failed: {}", e),
+                message: format!("Parsing failed: {e}"),
                 debug_info: None,
             })?;
 
@@ -308,7 +336,7 @@ mod tests {
         let config = ScalingConfig::default();
         let scaler = AutoScaler::new(config);
 
-        let debug_string = format!("{:?}", scaler);
+        let debug_string = format!("{scaler:?}");
         assert!(debug_string.contains("AutoScaler"));
     }
 

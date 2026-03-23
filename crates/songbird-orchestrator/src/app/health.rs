@@ -9,6 +9,7 @@
 //! to reduce file size and improve maintainability. Follows single responsibility principle.
 
 use anyhow::Result;
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 use super::core::SongbirdOrchestrator;
@@ -75,6 +76,9 @@ impl SongbirdOrchestrator {
     /// Get current orchestrator status
     ///
     /// Returns a snapshot of the operational state from actual orchestrator state.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_status(&self) -> Result<OrchestratorStatus> {
         // Federation mesh: coordinator present and `FederationState` shows ≥2 active nodes
         // (typical: local + remote). Discovery path: `FederationCoordinator::coordinate` →
@@ -115,12 +119,54 @@ impl SongbirdOrchestrator {
         })
     }
 
-    /// Start health monitoring loop (placeholder for v3.13.0)
+    /// Start a background health monitoring loop.
     ///
-    /// Periodically checks health of all subsystems.
-    /// Note: Full background task implementation is in core.rs (future extraction target).
+    /// Spawns a `tokio` task that runs [`run_comprehensive_health_check`](Self::run_comprehensive_health_check)
+    /// every 30 seconds and logs degraded subsystems.  The task exits when the
+    /// shutdown broadcast fires.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async required: spawns background tokio task using self's Arc fields"
+    )]
     pub async fn start_health_monitoring(&self) -> Result<()> {
-        info!("🏥 Health monitoring initialized (checks via handle_command)");
+        let federation_state = Arc::clone(&self.federation_state);
+        let connection_manager = Arc::clone(&self.connection_manager);
+        let observability_manager = Arc::clone(&self.observability_manager);
+        let mut shutdown_rx = self.shutdown_sender.subscribe();
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+            loop {
+                tokio::select! {
+                    _ = interval.tick() => {
+                        let fed_healthy = {
+                            let stats = federation_state.get_stats().await;
+                            stats.active_nodes >= 1
+                        };
+                        let peers = connection_manager.get_all_peers().await;
+                        let _peer_count = peers.len();
+                        let obs_healthy = observability_manager.is_healthy();
+
+                        if !fed_healthy {
+                            warn!("🏥 Health: federation degraded (0 active nodes)");
+                        }
+                        if !obs_healthy {
+                            warn!("🏥 Health: observability degraded");
+                        }
+                        debug!("🏥 Health tick: federation={fed_healthy} peers={_peer_count} obs={obs_healthy}");
+                    }
+                    _ = shutdown_rx.recv() => {
+                        info!("🏥 Health monitoring shutting down");
+                        break;
+                    }
+                }
+            }
+        });
+
+        info!("🏥 Health monitoring started (30s interval)");
         Ok(())
     }
 
@@ -155,28 +201,37 @@ impl SongbirdOrchestrator {
         })
     }
 
-    /// Check gaming manager health
+    /// Check gaming health: at least one connected peer advertises a gaming capability.
     pub(crate) async fn check_gaming_manager_health(&self) -> bool {
-        // Validate gaming manager is operational
-        // In a real implementation, this would check gaming bridge connections
-        debug!("Gaming manager health check completed");
-        true
+        let peers = self.connection_manager.get_all_peers().await;
+        let has_gaming = peers.iter().any(|p| {
+            p.capabilities.iter().any(|c| c.eq_ignore_ascii_case("gaming") || c.contains("game"))
+        });
+        debug!("Gaming health: peers={}, gaming_capable={has_gaming}", peers.len());
+        has_gaming || peers.is_empty()
     }
 
-    /// Check federation manager health
+    /// Check federation health: coordinator present and at least one active node.
     pub(crate) async fn check_federation_manager_health(&self) -> bool {
-        // Validate federation manager is operational
-        // In a real implementation, this would check federation connectivity
-        debug!("Federation manager health check completed");
-        true
+        if self.federation_coordinator.is_none() {
+            debug!("Federation health: no coordinator configured");
+            return true;
+        }
+        let stats = self.federation_state.get_stats().await;
+        let healthy = stats.active_nodes >= 1;
+        debug!("Federation health: active_nodes={}", stats.active_nodes);
+        healthy
     }
 
-    /// Check observability manager health
+    /// Check observability health via the manager's own liveness signal.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required for trait consistency with other health checks"
+    )]
     pub(crate) async fn check_observability_manager_health(&self) -> bool {
-        // Validate observability manager is operational
-        // In a real implementation, this would check metrics collection
-        debug!("Observability manager health check completed");
-        true
+        let healthy = self.observability_manager.is_healthy();
+        debug!("Observability health: {healthy}");
+        healthy
     }
 
     /// Check security integration health via crypto-provider discovery

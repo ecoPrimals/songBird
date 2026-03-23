@@ -414,19 +414,24 @@ impl TowerAtomicClient {
 
         debug!("Sending JSON-RPC request: {}", request_json);
 
-        // Send request
-        let mut stream = self.stream.lock().await;
+        // Send request and read response (lock scope minimized)
+        let response_line = {
+            let mut stream = self.stream.lock().await;
 
-        stream
-            .write_all(request_json.as_bytes())
-            .await
-            .map_err(|e| IpcError::Other(e.to_string()))?;
-        stream.write_all(b"\n").await.map_err(|e| IpcError::Other(e.to_string()))?;
+            stream
+                .write_all(request_json.as_bytes())
+                .await
+                .map_err(|e| IpcError::Other(e.to_string()))?;
+            stream.write_all(b"\n").await.map_err(|e| IpcError::Other(e.to_string()))?;
 
-        // Read response
-        let mut reader = BufReader::new(&mut *stream);
-        let mut response_line = String::new();
-        reader.read_line(&mut response_line).await.map_err(|e| IpcError::Other(e.to_string()))?;
+            let mut line = String::new();
+            {
+                let mut reader = BufReader::new(&mut *stream);
+                reader.read_line(&mut line).await.map_err(|e| IpcError::Other(e.to_string()))?;
+            }
+            drop(stream);
+            line
+        };
 
         debug!("Received JSON-RPC response: {}", response_line);
 

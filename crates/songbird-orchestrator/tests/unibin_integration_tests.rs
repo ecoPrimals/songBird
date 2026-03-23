@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! UniBin Integration Tests
+//! `UniBin` Integration Tests
 //!
-//! Tests for Songbird UniBin architecture compliance and functionality
+//! Tests for Songbird `UniBin` architecture compliance and functionality
 //! Modern, idiomatic, async Rust tests
 
 use assert_cmd::Command;

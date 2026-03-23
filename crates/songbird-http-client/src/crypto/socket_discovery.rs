@@ -372,7 +372,7 @@ pub fn discover_neural_api_socket() -> String {
         .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
         .or_else(|_| std::env::var("FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string());
-    let socket = format!("{}{family_id}.sock", NEURAL_API_SOCKET_LEGACY_PATTERN);
+    let socket = format!("{NEURAL_API_SOCKET_LEGACY_PATTERN}{family_id}.sock");
     warn!("⚠️  Using legacy /tmp socket: {}", socket);
     warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
     socket
@@ -383,7 +383,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
+    /// Create a mock env reader from a `HashMap` (concurrent-safe, no global state)
     fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
         let owned: HashMap<String, String> =
             vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn test_ipc_endpoint_tcp() {
         use std::net::{IpAddr, Ipv4Addr};
-        let addr = std::net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 12345);
+        let addr = std::net::SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 12345);
         let endpoint = IpcEndpoint::TcpLocal(addr);
         assert_eq!(endpoint.display(), "tcp://127.0.0.1:12345");
     }

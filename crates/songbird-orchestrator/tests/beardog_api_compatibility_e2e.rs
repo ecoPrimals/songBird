@@ -1,9 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! BearDog API Compatibility E2E Tests
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
+//! `BearDog` API Compatibility E2E Tests
 //!
-//! End-to-end tests verifying the complete flow with BearDog API format
+//! End-to-end tests verifying the complete flow with `BearDog` API format
 
 use songbird_orchestrator::security_capability_client::{
     ConnectionInfo, TrustEvaluationRequest, TrustEvaluationResponse,
@@ -50,7 +74,7 @@ fn test_complete_trust_evaluation_flow() {
     assert!(!json.contains(r#""first_seen_at":1767368141"#)); // Not integer
 }
 
-/// Test: BearDog response deserialization
+/// Test: `BearDog` response deserialization
 #[test]
 fn test_beardog_response_deserialization() {
     let json_response = r#"{
@@ -232,7 +256,7 @@ fn test_different_discovery_methods() {
         };
 
         let json = serde_json::to_string(&request).expect("Failed to serialize");
-        assert!(json.contains(&format!(r#""discovery_method":"{}""#, method)));
+        assert!(json.contains(&format!(r#""discovery_method":"{method}""#)));
     }
 }
 
@@ -280,14 +304,13 @@ fn test_trust_decision_mapping() {
     for (decision, reason, confidence) in responses {
         let response_json = format!(
             r#"{{
-                "decision": "{}",
+                "decision": "{decision}",
                 "trust_level": "high",
-                "confidence": {},
-                "reason": "{}",
+                "confidence": {confidence},
+                "reason": "{reason}",
                 "encryption_tag": null,
                 "metadata": {{}}
-            }}"#,
-            decision, confidence, reason
+            }}"#
         );
 
         let response: TrustEvaluationResponse =

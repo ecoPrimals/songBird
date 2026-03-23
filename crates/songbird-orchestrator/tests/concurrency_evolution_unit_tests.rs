@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Concurrency Evolution Unit Tests
 //!
 //! Validates the concurrency improvements made during Phase 1:
@@ -63,7 +87,7 @@ async fn test_concurrent_command_creation() {
     for i in 0..10 {
         join_set.spawn(async move {
             let mut cmd = clean_cmd();
-            cmd.env("TEST_ID", format!("{}", i));
+            cmd.env("TEST_ID", format!("{i}"));
             // Each command is independent
             i
         });
@@ -145,7 +169,7 @@ async fn test_environment_isolation_stress() {
     for i in 0..1000 {
         join_set.spawn(async move {
             let mut cmd = clean_cmd();
-            cmd.env("STRESS_TEST_ID", format!("{}", i));
+            cmd.env("STRESS_TEST_ID", format!("{i}"));
             // Verify no interference
             true
         });
@@ -245,7 +269,7 @@ async fn test_concurrent_test_pattern() {
 // DOCUMENTATION TESTS
 // ====================
 
-/// Verify the clean_cmd pattern is documented correctly
+/// Verify the `clean_cmd` pattern is documented correctly
 #[test]
 fn test_clean_cmd_pattern_documentation() {
     // This test serves as documentation for the correct pattern

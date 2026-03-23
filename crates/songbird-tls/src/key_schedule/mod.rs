@@ -520,7 +520,7 @@ mod tests {
 
         // Error should mention crypto client
         if let Err(e) = result {
-            assert!(format!("{:?}", e).contains("Crypto client not set"));
+            assert!(format!("{e:?}").contains("Crypto client not set"));
         }
     }
 
@@ -610,7 +610,7 @@ mod tests {
 
         // Error should mention crypto client
         if let Err(e) = result {
-            assert!(format!("{:?}", e).contains("Crypto client not set"));
+            assert!(format!("{e:?}").contains("Crypto client not set"));
         }
     }
 

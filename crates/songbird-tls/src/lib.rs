@@ -100,7 +100,7 @@ pub const TLS_CHACHA20_POLY1305_SHA256: u16 = 0x1303;
 
 /// Reserved TLS record content type (invalid on the wire).
 pub const CONTENT_TYPE_INVALID: u8 = 0;
-/// ChangeCipherSpec content type (compatibility; TLS 1.3 uses other types for handshakes).
+/// `ChangeCipherSpec` content type (compatibility; TLS 1.3 uses other types for handshakes).
 pub const CONTENT_TYPE_CHANGE_CIPHER_SPEC: u8 = 20;
 /// Alert protocol records.
 pub const CONTENT_TYPE_ALERT: u8 = 21;
@@ -155,6 +155,6 @@ mod tests {
     fn test_max_sizes() {
         // Verify size constants
         assert_eq!(MAX_RECORD_SIZE, 16384);
-        assert_eq!(MAX_HANDSHAKE_SIZE, 262144);
+        assert_eq!(MAX_HANDSHAKE_SIZE, 262_144);
     }
 }

@@ -126,6 +126,9 @@ impl ConsentEnforcer {
     }
 
     /// Enforce consent before task execution
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn enforce(
         &self,
         task: &TaskLifecycle,
@@ -170,6 +173,9 @@ impl ConsentEnforcer {
     }
 
     /// Wait for consent decision with enforcement
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn wait_for_decision(&self, consent_id: &str) -> Result<EnforcementResult> {
         info!("Waiting for consent decision: {}", consent_id);
 

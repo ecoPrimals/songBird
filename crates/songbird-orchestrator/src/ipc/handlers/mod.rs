@@ -85,6 +85,9 @@ impl IpcHandlers {
     // ========================================================================
 
     /// Handle `register_service` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn register_service(
         &self,
         params: serde_json::Value,
@@ -94,6 +97,9 @@ impl IpcHandlers {
     }
 
     /// Handle `discover_by_capability` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_by_capability(
         &self,
         params: serde_json::Value,
@@ -105,6 +111,9 @@ impl IpcHandlers {
     }
 
     /// Handle `get_service_health` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_service_health(
         &self,
         params: serde_json::Value,
@@ -114,6 +123,9 @@ impl IpcHandlers {
     }
 
     /// Handle `health_check` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn health_check(
         &self,
         params: serde_json::Value,
@@ -126,6 +138,9 @@ impl IpcHandlers {
     // ========================================================================
 
     /// Handle `discover_by_family` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_by_family(
         &self,
         params: serde_json::Value,
@@ -135,6 +150,9 @@ impl IpcHandlers {
     }
 
     /// Handle `create_genetic_tunnel` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn create_genetic_tunnel(
         &self,
         params: serde_json::Value,
@@ -144,6 +162,9 @@ impl IpcHandlers {
     }
 
     /// Handle `announce_capabilities` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn announce_capabilities(
         &self,
         params: serde_json::Value,
@@ -159,6 +180,9 @@ impl IpcHandlers {
     // ========================================================================
 
     /// Handle `graph.validate` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn validate_graph(
         &self,
         params: serde_json::Value,
@@ -167,6 +191,9 @@ impl IpcHandlers {
     }
 
     /// Handle `graph.check_availability` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check_availability(
         &self,
         params: serde_json::Value,
@@ -175,6 +202,9 @@ impl IpcHandlers {
     }
 
     /// Handle `graph.suggest_alternatives` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn suggest_alternatives(
         &self,
         params: serde_json::Value,
@@ -184,6 +214,9 @@ impl IpcHandlers {
     }
 
     /// Handle `coordination.validate_pattern` RPC call (Pure Rust, v3.34.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn validate_coordination_pattern(
         &self,
         params: serde_json::Value,
@@ -199,6 +232,9 @@ impl IpcHandlers {
     // ========================================================================
 
     /// Service Registry: `register_service` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn register_service_json(
         &self,
         params: Option<serde_json::Value>,
@@ -207,6 +243,9 @@ impl IpcHandlers {
     }
 
     /// Service Registry: `discover_by_capability` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_by_capability_json(
         &self,
         params: Option<serde_json::Value>,
@@ -215,6 +254,9 @@ impl IpcHandlers {
     }
 
     /// Service Registry: `get_service_health` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_service_health_json(
         &self,
         params: Option<serde_json::Value>,
@@ -223,6 +265,9 @@ impl IpcHandlers {
     }
 
     /// Service Registry: `health_check` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn health_check_json(
         &self,
     ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
@@ -230,6 +275,9 @@ impl IpcHandlers {
     }
 
     /// P2P Discovery: `discover_by_family` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_by_family_json(
         &self,
         params: Option<serde_json::Value>,
@@ -238,6 +286,9 @@ impl IpcHandlers {
     }
 
     /// P2P Discovery: `create_genetic_tunnel` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn create_genetic_tunnel_json(
         &self,
         params: Option<serde_json::Value>,
@@ -246,6 +297,9 @@ impl IpcHandlers {
     }
 
     /// P2P Discovery: `announce_capabilities` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn announce_capabilities_json(
         &self,
         params: Option<serde_json::Value>,
@@ -254,6 +308,9 @@ impl IpcHandlers {
     }
 
     /// Graph Intelligence: `validate_graph` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn validate_graph_json(
         &self,
         params: Option<serde_json::Value>,
@@ -262,6 +319,9 @@ impl IpcHandlers {
     }
 
     /// Graph Intelligence: `check_availability` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check_availability_json(
         &self,
         params: Option<serde_json::Value>,
@@ -270,6 +330,9 @@ impl IpcHandlers {
     }
 
     /// Graph Intelligence: `suggest_alternatives` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn suggest_alternatives_json(
         &self,
         params: Option<serde_json::Value>,
@@ -278,6 +341,9 @@ impl IpcHandlers {
     }
 
     /// Graph Intelligence: `validate_coordination_pattern` (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn validate_coordination_pattern_json(
         &self,
         params: Option<serde_json::Value>,
@@ -327,6 +393,9 @@ impl IpcHandlers {
     ///     "id": 1
     /// }
     /// ```
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn http_request(
         &self,
         params: serde_json::Value,
@@ -335,6 +404,9 @@ impl IpcHandlers {
     }
 
     /// Handle `http.get` convenience method (v5.27.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn http_get(
         &self,
         params: serde_json::Value,
@@ -343,6 +415,9 @@ impl IpcHandlers {
     }
 
     /// Handle `http.post` convenience method (v5.27.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn http_post(
         &self,
         params: serde_json::Value,
@@ -351,6 +426,9 @@ impl IpcHandlers {
     }
 
     /// Handle `http.put` convenience method (v5.27.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn http_put(
         &self,
         params: serde_json::Value,
@@ -359,6 +437,9 @@ impl IpcHandlers {
     }
 
     /// Handle `http.delete` convenience method (v5.27.0)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn http_delete(
         &self,
         params: serde_json::Value,

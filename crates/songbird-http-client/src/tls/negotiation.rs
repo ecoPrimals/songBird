@@ -239,6 +239,7 @@ impl AlgorithmNegotiator {
     }
 
     /// Modern algorithm preference (`EdDSA` > ECDSA > RSA)
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     fn modern_algorithms(&self) -> Vec<SignatureAlgorithm> {
         vec![
             // EdDSA (most modern)
@@ -257,6 +258,7 @@ impl AlgorithmNegotiator {
     }
 
     /// All algorithms for maximum compatibility
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     fn all_algorithms(&self) -> Vec<SignatureAlgorithm> {
         vec![
             // ECDSA (most common for GitHub, CloudFlare, etc.)
@@ -276,6 +278,7 @@ impl AlgorithmNegotiator {
     }
 
     /// Only algorithms we fully support
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     fn supported_algorithms(&self) -> Vec<SignatureAlgorithm> {
         let _ = SignatureAlgorithm::Ed25519.family(); // Example
         vec![
@@ -347,6 +350,7 @@ impl Default for AlgorithmNegotiator {
 
 /// Helper: Convert algorithm list to wire format (u16 pairs)
 #[must_use]
+#[expect(clippy::cast_possible_truncation, reason = "TLS wire format: values are masked/bounded")]
 pub fn algorithms_to_wire(algorithms: &[SignatureAlgorithm]) -> Vec<u8> {
     let mut bytes = Vec::new();
 

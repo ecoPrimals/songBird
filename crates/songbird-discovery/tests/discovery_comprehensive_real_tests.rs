@@ -226,7 +226,7 @@ async fn test_discovery_with_large_tag_list() -> SongbirdResult<()> {
     // Create query with many tags
     let mut query = ServiceQuery::default();
     for i in 0..100 {
-        query = query.with_tag(format!("tag_{}", i));
+        query = query.with_tag(format!("tag_{i}"));
     }
 
     let result = discovery.discover(query).await;

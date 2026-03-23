@@ -161,15 +161,13 @@ pub async fn udp_hole_punch(
     })
     .await;
 
-    if let Ok(conn) = result {
-        conn
-    } else {
+    result.unwrap_or_else(|_| {
         warn!("⏱️  UDP hole punch timeout after {:?}", config.total_timeout);
         Err(LineageRelayError::DirectConnectionFailed(format!(
             "UDP hole punch timeout after {:?}",
             config.total_timeout
         )))
-    }
+    })
 }
 
 /// Coordinate UDP hole punch with peer via address exchange

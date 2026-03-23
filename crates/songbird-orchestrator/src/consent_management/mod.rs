@@ -78,6 +78,9 @@ impl ConsentManager {
     }
 
     /// Create a new consent manager with persistent storage (MVP Week 5)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn with_storage(database_url: &str) -> anyhow::Result<Self> {
         let storage = ConsentStorage::new(database_url).await?;
         Ok(Self {
@@ -382,7 +385,7 @@ mod tests {
                 .request_consent(
                     user_id.clone(),
                     TaskId::new(),
-                    format!("operation-{}", i),
+                    format!("operation-{i}"),
                     Some(50.0 * f64::from(i + 1)),
                 )
                 .await;

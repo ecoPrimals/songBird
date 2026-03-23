@@ -71,18 +71,19 @@ pub enum EndpointType {
 
 impl EndpointType {
     /// Priority for selection (lower = better)
-    pub fn priority(&self) -> u8 {
+    #[must_use]
+    pub const fn priority(&self) -> u8 {
         match self {
-            EndpointType::Local {
+            Self::Local {
                 ..
             } => 0, // Best: same network
-            EndpointType::Direct {
+            Self::Direct {
                 ..
             } => 1, // Great: direct internet
-            EndpointType::FamilyRelay {
+            Self::FamilyRelay {
                 ..
             } => 2, // Good: through family
-            EndpointType::TorOnion {
+            Self::TorOnion {
                 ..
             } => 3, // Fallback: Tor latency
         }
@@ -94,7 +95,7 @@ pub struct BeaconMesh {
     /// Our node ID
     my_node_id: String,
 
-    /// Known relay endpoints (node_id -> endpoints)
+    /// Known relay endpoints (`node_id` -> endpoints)
     /// A node might be reachable via multiple paths
     endpoints: RwLock<HashMap<String, Vec<RelayEndpoint>>>,
 
@@ -110,6 +111,7 @@ pub struct BeaconMesh {
 
 impl BeaconMesh {
     /// Create new beacon mesh
+    #[must_use]
     pub fn new(my_node_id: String, bootstrap_onions: Vec<String>) -> Self {
         Self {
             my_node_id,
@@ -199,38 +201,45 @@ impl BeaconMesh {
         }
 
         // 2. Find a connected peer that might relay for us
-        let endpoints = self.endpoints.read().await;
-        let mut best_relay: Option<(String, &RelayEndpoint)> = None;
+        let endpoints_snapshot = {
+            let guard = self.endpoints.read().await;
+            guard.clone()
+        };
+        let relay_node_id = {
+            let mut best_relay: Option<(String, &RelayEndpoint)> = None;
 
-        for (node_id, eps) in endpoints.iter() {
-            if node_id == target_node_id {
-                continue;
-            }
-
-            for ep in eps {
-                if !ep.reachable {
+            for (node_id, eps) in &endpoints_snapshot {
+                if node_id == target_node_id {
                     continue;
                 }
 
-                // Prefer lower priority (better connection type)
-                if let Some((_, best_ep)) = &best_relay {
-                    if ep.endpoint_type.priority() < best_ep.endpoint_type.priority() {
-                        best_relay = Some((node_id.clone(), ep));
-                    } else if ep.endpoint_type.priority() == best_ep.endpoint_type.priority() {
-                        // Same priority - prefer lower latency
-                        if let (Some(new_lat), Some(best_lat)) = (ep.latency, best_ep.latency)
-                            && new_lat < best_lat
-                        {
-                            best_relay = Some((node_id.clone(), ep));
-                        }
+                for ep in eps {
+                    if !ep.reachable {
+                        continue;
                     }
-                } else {
-                    best_relay = Some((node_id.clone(), ep));
+
+                    // Prefer lower priority (better connection type)
+                    if let Some((_, best_ep)) = &best_relay {
+                        if ep.endpoint_type.priority() < best_ep.endpoint_type.priority() {
+                            best_relay = Some((node_id.clone(), ep));
+                        } else if ep.endpoint_type.priority() == best_ep.endpoint_type.priority() {
+                            // Same priority - prefer lower latency
+                            if let (Some(new_lat), Some(best_lat)) = (ep.latency, best_ep.latency)
+                                && new_lat < best_lat
+                            {
+                                best_relay = Some((node_id.clone(), ep));
+                            }
+                        }
+                    } else {
+                        best_relay = Some((node_id.clone(), ep));
+                    }
                 }
             }
-        }
 
-        if let Some((relay_node_id, _)) = best_relay {
+            best_relay.map(|(id, _)| id)
+        };
+
+        if let Some(relay_node_id) = relay_node_id {
             return Some(RelayEndpoint {
                 node_id: target_node_id.to_string(),
                 endpoint_type: EndpointType::FamilyRelay {
@@ -270,6 +279,10 @@ impl BeaconMesh {
     }
 
     /// Announce ourselves as relay to the mesh
+    ///
+    /// # Panics
+    ///
+    /// Panics if the static placeholder `"0.0.0.0:0"` fails to parse as a [`SocketAddr`].
     pub async fn announce_as_relay(&self) -> SignalingMessage {
         let reachable = self.get_reachable_nodes().await;
         let my_onion = self.my_onion.read().await.clone();
@@ -294,6 +307,14 @@ impl BeaconMesh {
     }
 
     /// Handle relay request from another peer
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OnionRelayError::PeerNotFound`] when no path to `to_node_id` is known.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
     pub async fn handle_relay_request(
         &self,
         from_node_id: &str,
@@ -346,8 +367,9 @@ impl BeaconMesh {
                 .filter(|e| e.reachable)
                 .min_by_key(|e| {
                     // Sort by priority, then latency
-                    let priority = e.endpoint_type.priority() as u32 * 10000;
-                    let latency = e.latency.map(|l| l.as_millis() as u32).unwrap_or(5000);
+                    let priority = u32::from(e.endpoint_type.priority()) * 10000;
+                    let latency =
+                        e.latency.map_or(5000, |l| u32::try_from(l.as_millis()).unwrap_or(5000));
                     priority + latency
                 })
                 .cloned();

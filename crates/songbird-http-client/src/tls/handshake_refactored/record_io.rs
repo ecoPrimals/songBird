@@ -169,6 +169,14 @@ impl TlsHandshake {
     /// # Returns
     ///
     /// Decrypted plaintext handshake message (without `ContentType` byte)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if decryption fails or the negotiated cipher suite is unsupported.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(super) async fn decrypt_handshake_record(
         &self,
         encrypted_record: &[u8],
@@ -314,6 +322,7 @@ impl TlsHandshake {
     }
 
     /// Extract public key from `key_share` extension
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     fn extract_key_share(&self, extensions_data: &[u8]) -> Result<Vec<u8>> {
         if extensions_data.len() < 2 {
             return Err(Error::TlsHandshake("Extensions too short".to_string()));

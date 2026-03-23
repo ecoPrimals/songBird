@@ -9,9 +9,18 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use songbird_http_client::IpcHttpClient;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use super::tunnel::{SecurityContext, TunnelHandle, TunnelStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
+
+fn default_upa_endpoint_base() -> &'static str {
+    static URL: LazyLock<String> = LazyLock::new(|| {
+        std::env::var("SONGBIRD_UPA_ENDPOINT")
+            .unwrap_or_else(|_| "http://localhost:8080".to_string())
+    });
+    URL.as_str()
+}
 
 /// Configuration for BTSP provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,8 +214,7 @@ impl BtspProviderFactory {
             .await
             .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;
 
-        let base = std::env::var("SONGBIRD_UPA_ENDPOINT")
-            .unwrap_or_else(|_| "http://localhost:8080".to_string());
+        let base = default_upa_endpoint_base();
         let url = format!("{base}/api/v1/services/query/security");
 
         match client.get(url).await {

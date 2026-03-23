@@ -79,12 +79,13 @@ fn start_test_server_with_handler(
                 line.clear();
 
                 match reader.read_line(&mut line).await {
-                    Ok(0) => break, // Client closed
+                    Ok(0) | Err(_) => break, // Client closed or read error
                     Ok(_) => {
                         // Parse request
                         if let Ok(request) = serde_json::from_str::<Value>(&line) {
                             let method = request["method"].as_str().unwrap_or("");
-                            let params = request.get("params").cloned().unwrap_or(json!({}));
+                            let params =
+                                request.get("params").cloned().unwrap_or_else(|| json!({}));
                             let id = request["id"].clone();
 
                             // Handle request
@@ -110,7 +111,6 @@ fn start_test_server_with_handler(
                             let _ = write_half.write_all(b"\n").await;
                         }
                     }
-                    Err(_) => break,
                 }
             }
         }

@@ -709,11 +709,9 @@ mod tests {
         let handles: Vec<_> = (0..10)
             .map(|i| {
                 std::thread::spawn(move || {
-                    let client = BeardogCryptoClient::with_socket_path(format!(
-                        "/tmp/concurrent-{}.sock",
-                        i
-                    ));
-                    assert_eq!(client.socket_path, format!("/tmp/concurrent-{}.sock", i));
+                    let client =
+                        BeardogCryptoClient::with_socket_path(format!("/tmp/concurrent-{i}.sock"));
+                    assert_eq!(client.socket_path, format!("/tmp/concurrent-{i}.sock"));
                 })
             })
             .collect();

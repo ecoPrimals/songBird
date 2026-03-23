@@ -71,6 +71,7 @@ impl Default for MockEnv {
 #[cfg(test)]
 impl MockEnv {
     /// Creates an empty mock environment map.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             vars: std::collections::HashMap::new(),
@@ -78,6 +79,7 @@ impl MockEnv {
     }
 
     /// Inserts a key/value pair and returns `self` for chaining.
+    #[must_use]
     pub fn set(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.vars.insert(key.into(), value.into());
         self
@@ -406,18 +408,18 @@ mod tests {
         static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
         let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        let test_dir = format!("/tmp/test_xdg_runtime_tls_{}", test_id);
+        let test_dir = format!("/tmp/test_xdg_runtime_tls_{test_id}");
 
         let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
 
         // Capability-first: crypto.sock and ai.sock are preferred over provider names
-        let crypto_path = PathBuf::from(format!("{}/biomeos/crypto.sock", test_dir));
+        let crypto_path = PathBuf::from(format!("{test_dir}/biomeos/crypto.sock"));
         create_dummy_socket(&crypto_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, crypto_path.to_string_lossy().into_owned());
 
-        let ai_path = PathBuf::from(format!("{}/biomeos/ai.sock", test_dir));
+        let ai_path = PathBuf::from(format!("{test_dir}/biomeos/ai.sock"));
         create_dummy_socket(&ai_path);
 
         let discovered = discover_neural_api_socket_with_env(None, &env);
@@ -426,7 +428,7 @@ mod tests {
         // Cleanup
         fs::remove_file(&crypto_path).unwrap();
         fs::remove_file(&ai_path).unwrap();
-        fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
         fs::remove_dir_all(&test_dir).unwrap();
     }
 
@@ -460,10 +462,10 @@ mod tests {
         static COUNTER: AtomicU32 = AtomicU32::new(0);
         let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        let test_dir = format!("/tmp/test_xdg_standard_{}", test_id);
+        let test_dir = format!("/tmp/test_xdg_standard_{test_id}");
         let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
 
-        let xdg_path = PathBuf::from(format!("{}/biomeos/beardog.sock", test_dir));
+        let xdg_path = PathBuf::from(format!("{test_dir}/biomeos/beardog.sock"));
         create_dummy_socket(&xdg_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);
@@ -471,7 +473,7 @@ mod tests {
 
         // Cleanup
         fs::remove_file(&xdg_path).unwrap();
-        fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
         fs::remove_dir_all(&test_dir).unwrap();
     }
 
@@ -483,7 +485,7 @@ mod tests {
         static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
         let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        let test_dir = format!("/tmp/test_xdg_runtime_empty_tls_{}", test_id);
+        let test_dir = format!("/tmp/test_xdg_runtime_empty_tls_{test_id}");
 
         // Empty env vars should be ignored, XDG capability-named socket should be used
         let env = MockEnv::new()
@@ -492,7 +494,7 @@ mod tests {
             .set("XDG_RUNTIME_DIR", &test_dir);
 
         // Capability-first: security.sock is preferred
-        let security_path = PathBuf::from(format!("{}/biomeos/security.sock", test_dir));
+        let security_path = PathBuf::from(format!("{test_dir}/biomeos/security.sock"));
         create_dummy_socket(&security_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);
@@ -500,7 +502,7 @@ mod tests {
 
         // Cleanup
         fs::remove_file(&security_path).unwrap();
-        fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
         fs::remove_dir_all(&test_dir).unwrap();
     }
 
@@ -514,9 +516,9 @@ mod tests {
             .map(|i| {
                 thread::spawn(move || {
                     let env =
-                        MockEnv::new().set("BEARDOG_SOCKET", format!("/env/beardog-{}.sock", i));
+                        MockEnv::new().set("BEARDOG_SOCKET", format!("/env/beardog-{i}.sock"));
                     let discovered = discover_beardog_socket_with_env(None, &env);
-                    assert_eq!(discovered, format!("/env/beardog-{}.sock", i));
+                    assert_eq!(discovered, format!("/env/beardog-{i}.sock"));
                 })
             })
             .collect();

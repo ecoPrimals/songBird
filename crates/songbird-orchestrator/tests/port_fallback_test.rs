@@ -24,7 +24,7 @@ struct PortOccupier {
 
 impl PortOccupier {
     fn occupy(port: u16) -> Result<Self> {
-        let addr = format!("127.0.0.1:{}", port);
+        let addr = format!("127.0.0.1:{port}");
         let listener = TcpListener::bind(addr)?;
         Ok(Self {
             _listener: listener,
@@ -32,7 +32,7 @@ impl PortOccupier {
         })
     }
 
-    fn port(&self) -> u16 {
+    const fn port(&self) -> u16 {
         self.port
     }
 }
@@ -288,7 +288,7 @@ async fn test_health_check_on_actual_port() {
     let actual_port = listener.local_addr().unwrap().port();
 
     // Health check should target actual_port, not some configured port
-    let health_url = format!("http://127.0.0.1:{}/health", actual_port);
+    let health_url = format!("http://127.0.0.1:{actual_port}/health");
 
     assert!(health_url.contains(&actual_port.to_string()), "Health URL should use actual port");
 

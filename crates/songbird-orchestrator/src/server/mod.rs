@@ -55,6 +55,9 @@ impl ServerManager {
     }
 
     /// Start server monitoring
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn start_monitoring(&self, orchestrator: &SongbirdOrchestrator) -> Result<()> {
         info!("🔍 Server monitoring initialized");
 
@@ -75,6 +78,9 @@ impl ServerManager {
     }
 
     /// Get server status
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_server_status(
         &self,
         orchestrator: &SongbirdOrchestrator,
@@ -172,6 +178,10 @@ impl ServerManager {
     }
 
     /// Check observability manager health
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_observability_manager_health(
         &self,
         _orchestrator: &SongbirdOrchestrator,
@@ -244,6 +254,9 @@ impl HealthCheckService {
     }
 
     /// Run health check on orchestrator
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn run_health_check(
         &self,
         orchestrator: &SongbirdOrchestrator,
@@ -268,6 +281,13 @@ impl HealthCheckService {
     }
 
     /// Start continuous health checking
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start_continuous_health_check(
         &self,
         _orchestrator: &SongbirdOrchestrator,
@@ -300,6 +320,10 @@ impl HealthCheckService {
     }
 
     /// Check basic system health
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_system_health() -> HealthStatus {
         // Basic system health check without orchestrator dependency
         // In production, this would check system resources, services, etc.
@@ -341,6 +365,13 @@ impl ServiceMonitor {
     }
 
     /// Start service monitoring
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start_monitoring(&self) -> Result<()> {
         let mut monitor_interval = interval(self.check_interval);
 
@@ -393,6 +424,9 @@ impl ServiceMonitor {
     }
 
     /// Get service monitoring report
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_monitoring_report(&self) -> Result<ServiceMonitoringReport> {
         // Implement comprehensive monitoring report generation
         let mut healthy_services = 0;
@@ -438,6 +472,10 @@ impl ServiceMonitor {
     }
 
     /// Check service registry health
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_service_registry_health() -> bool {
         // In production, this would check actual service registry endpoints
         // For now, simulate with environment variable check
@@ -445,6 +483,10 @@ impl ServiceMonitor {
     }
 
     /// Check gaming bridges health
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_gaming_bridges_health() -> bool {
         // In production, this would check actual gaming bridge endpoints
         // For now, simulate with environment variable check
@@ -452,6 +494,10 @@ impl ServiceMonitor {
     }
 
     /// Check federation connections health
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_federation_connections_health() -> bool {
         // In production, this would check actual federation node connections
         // For now, simulate with environment variable check
@@ -459,6 +505,10 @@ impl ServiceMonitor {
     }
 
     /// Check security services health
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_security_services_health() -> bool {
         // In production, this would check actual security service endpoints
         // For now, simulate with environment variable check

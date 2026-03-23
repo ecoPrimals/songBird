@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! UniBin E2E (End-to-End) Tests
+//! `UniBin` E2E (End-to-End) Tests
 //!
-//! Full workflow testing for UniBin implementation including:
+//! Full workflow testing for `UniBin` implementation including:
 //! - Complete command execution flows
 //! - Multi-step operations
 //! - Real-world usage scenarios

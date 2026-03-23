@@ -234,7 +234,7 @@ mod tests {
     fn relay_authorization_authorized_and_unauthorized() {
         let a = RelayAuthorization::authorized("r".into(), "q".into(), MaskingLevel::None, 60);
         assert!(a.authorized);
-        let simple: SimpleRelayAuth = a.clone().into();
+        let simple: SimpleRelayAuth = a.into();
         assert!(simple.authorized);
         assert_eq!(simple.ttl, Duration::from_secs(60));
 

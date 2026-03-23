@@ -221,19 +221,20 @@ impl RendezvousClient for MockRendezvousClient {
     }
 
     async fn lookup(&self, _server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
-        let registered = self.registered.read().unwrap();
-
         // Find peers matching node_id or family_id
-        let peers: Vec<RendezvousPeer> = registered
-            .iter()
-            .filter(|(node_id, family_id, _, _)| node_id == target || family_id == target)
-            .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
-                node_id: node_id.clone(),
-                family_id: family_id.clone(),
-                public_address: public_address.clone(),
-                rendezvous_token: token.clone(),
-            })
-            .collect();
+        let peers: Vec<RendezvousPeer> = {
+            let registered = self.registered.read().unwrap();
+            registered
+                .iter()
+                .filter(|(node_id, family_id, _, _)| node_id == target || family_id == target)
+                .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
+                    node_id: node_id.clone(),
+                    family_id: family_id.clone(),
+                    public_address: public_address.clone(),
+                    rendezvous_token: token.clone(),
+                })
+                .collect()
+        };
 
         Ok(peers)
     }

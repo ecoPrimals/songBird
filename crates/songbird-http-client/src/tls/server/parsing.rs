@@ -15,6 +15,7 @@ impl TlsServer {
     /// Parse `ClientHello` to extract parameters
     ///
     /// Returns: (`client_random`, `client_public_key`, `cipher_suites`)
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     pub(super) fn parse_client_hello(&self, data: &[u8]) -> Result<(Vec<u8>, Vec<u8>, Vec<u16>)> {
         let mut offset = 0;
 
@@ -144,6 +145,7 @@ impl TlsServer {
     }
 
     /// Select cipher suite (choose first supported by both client and server)
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     pub(super) fn select_cipher_suite(&self, client_suites: &[u16]) -> Result<CipherSuite> {
         // Server supported suites (in order of preference)
         const SERVER_SUITES: &[u16] = &[

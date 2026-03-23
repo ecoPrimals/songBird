@@ -9,12 +9,17 @@ use songbird_config::capability_endpoints;
 use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::atomic::Ordering;
 use tracing::{info, warn};
 
-/// Development-only default base URL when [`capability_endpoints::get_capability_endpoint`]
-/// fails and `SONGBIRD_ORCHESTRATOR_URL` is unset.
-const DEFAULT_ORCHESTRATOR_URL: &str = "http://localhost:8000";
+fn default_orchestrator_url() -> &'static str {
+    static URL: LazyLock<String> = LazyLock::new(|| {
+        std::env::var("SONGBIRD_ORCHESTRATOR_URL")
+            .unwrap_or_else(|_| "http://localhost:8000".to_string())
+    });
+    URL.as_str()
+}
 
 /// Errors surfaced while resolving endpoints for metrics collection.
 #[derive(Debug, Clone)]
@@ -112,6 +117,9 @@ impl UniversalMetricsAdapter {
     }
 
     /// Discover and refresh endpoint lists from the capability registry.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_and_update_endpoints(&mut self) -> Result<(), MetricsError> {
         info!("Discovering primals for metrics collection");
 
@@ -148,10 +156,7 @@ impl UniversalMetricsAdapter {
         for _ in &providers {
             let endpoint = capability_endpoints::get_capability_endpoint(capability)
                 .await
-                .unwrap_or_else(|_| {
-                    std::env::var("SONGBIRD_ORCHESTRATOR_URL")
-                        .unwrap_or_else(|_| DEFAULT_ORCHESTRATOR_URL.to_string())
-                });
+                .unwrap_or_else(|_| default_orchestrator_url().to_string());
             endpoints.push(endpoint);
         }
 
@@ -162,6 +167,10 @@ impl UniversalMetricsAdapter {
         endpoints
     }
 
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn discover_capability_fallback(&self, capability: &str) -> Vec<String> {
         let mut endpoints = Vec::new();
 

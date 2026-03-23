@@ -45,7 +45,7 @@ pub struct PunchAttempt {
 }
 
 /// Punch attempt status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PunchStatus {
     /// Punch in progress
     InProgress,
@@ -148,7 +148,7 @@ impl PunchHandler {
             params
                 .get("max_attempts")
                 .and_then(serde_json::Value::as_u64)
-                .unwrap_or(u64::from(self.default_max_attempts)),
+                .unwrap_or_else(|| u64::from(self.default_max_attempts)),
         )
         .unwrap_or(self.default_max_attempts);
 
@@ -230,12 +230,14 @@ impl PunchHandler {
             }))
         } else {
             // No coordinator - simulate failure
-            let mut attempts = self.attempts.write().await;
-            if let Some(attempt) = attempts.get_mut(&target_node_id) {
-                attempt.status = PunchStatus::Failed {
-                    reason: "no_coordinator".to_string(),
-                };
-                attempt.attempts = 0;
+            {
+                let mut attempts = self.attempts.write().await;
+                if let Some(attempt) = attempts.get_mut(&target_node_id) {
+                    attempt.status = PunchStatus::Failed {
+                        reason: "no_coordinator".to_string(),
+                    };
+                    attempt.attempts = 0;
+                }
             }
 
             Ok(json!({
@@ -270,47 +272,50 @@ impl PunchHandler {
 
         let attempts = self.attempts.read().await;
 
-        if let Some(attempt) = attempts.get(target_node_id) {
-            let (status_str, reason) = match &attempt.status {
-                PunchStatus::InProgress => ("in_progress", None),
-                PunchStatus::Succeeded => ("succeeded", None),
-                PunchStatus::Failed {
-                    reason,
-                } => ("failed", Some(reason.clone())),
-            };
+        attempts.get(target_node_id).map_or_else(
+            || {
+                Ok(json!({
+                    "target_node_id": target_node_id,
+                    "status": "not_found",
+                    "reason": "no_punch_attempt_for_this_peer"
+                }))
+            },
+            |attempt| {
+                let (status_str, reason) = match &attempt.status {
+                    PunchStatus::InProgress => ("in_progress", None),
+                    PunchStatus::Succeeded => ("succeeded", None),
+                    PunchStatus::Failed {
+                        reason,
+                    } => ("failed", Some(reason.clone())),
+                };
 
-            let mut response = json!({
-                "target_node_id": target_node_id,
-                "status": status_str,
-                "attempts": attempt.attempts,
-                "max_attempts": attempt.max_attempts,
-                "elapsed_ms": u64::try_from(attempt.started.elapsed().as_millis()).unwrap_or(u64::MAX)
-            });
+                let mut response = json!({
+                    "target_node_id": target_node_id,
+                    "status": status_str,
+                    "attempts": attempt.attempts,
+                    "max_attempts": attempt.max_attempts,
+                    "elapsed_ms": u64::try_from(attempt.started.elapsed().as_millis()).unwrap_or(u64::MAX)
+                });
 
-            if let Some(addr) = attempt.connected_address {
-                response["connected_address"] = json!(addr.to_string());
-            }
-
-            if let Some(latency) = attempt.latency {
-                response["latency_ms"] =
-                    json!(u64::try_from(latency.as_millis()).unwrap_or(u64::MAX));
-            }
-
-            if let Some(r) = reason {
-                response["reason"] = json!(r);
-                if status_str == "failed" {
-                    response["fallback"] = json!("family_relay");
+                if let Some(addr) = attempt.connected_address {
+                    response["connected_address"] = json!(addr.to_string());
                 }
-            }
 
-            Ok(response)
-        } else {
-            Ok(json!({
-                "target_node_id": target_node_id,
-                "status": "not_found",
-                "reason": "no_punch_attempt_for_this_peer"
-            }))
-        }
+                if let Some(latency) = attempt.latency {
+                    response["latency_ms"] =
+                        json!(u64::try_from(latency.as_millis()).unwrap_or(u64::MAX));
+                }
+
+                if let Some(r) = reason {
+                    response["reason"] = json!(r);
+                    if status_str == "failed" {
+                        response["fallback"] = json!("family_relay");
+                    }
+                }
+
+                Ok(response)
+            },
+        )
     }
 
     /// Record a successful punch (called by coordinator callback)
@@ -419,10 +424,9 @@ impl PunchHandler {
             .ok_or("Missing or invalid peer_public_ip parameter")?;
 
         // Parse our port pattern
-        let our_pattern = match params.get("our_pattern") {
-            Some(p) => parse_port_pattern(p),
-            None => songbird_stun::PortPattern::Unknown,
-        };
+        let our_pattern = params
+            .get("our_pattern")
+            .map_or(songbird_stun::PortPattern::Unknown, parse_port_pattern);
 
         info!(
             "🎯 punch.coordinate: targeting {}:{} (our pattern: {:?})",

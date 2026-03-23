@@ -3,7 +3,7 @@
 
 //! Songbird - Network Orchestration & Discovery Primal
 //!
-//! UniBin Architecture (Ecosystem Standard v1.0.0)
+//! `UniBin` Architecture (Ecosystem Standard v1.0.0)
 //! Single binary with multiple operational modes
 //!
 //! ## Usage
@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
             args,
         } => {
             if !args.is_empty() {
-                eprintln!("songbird cli does not accept arguments yet: {:?}", args);
+                eprintln!("songbird cli does not accept arguments yet: {args:?}");
                 eprintln!("Run `songbird cli` with no extra tokens for the interactive shell.");
                 eprintln!("See also: songbird server --help | doctor --help | config --help");
                 std::process::exit(1);

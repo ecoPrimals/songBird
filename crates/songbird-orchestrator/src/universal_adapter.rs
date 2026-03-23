@@ -122,6 +122,9 @@ impl UniversalAdapter {
     /// Create a new universal adapter
     ///
     /// ✅ EVOLVED (Jan 21, 2026): Now requires crypto provider discovery
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new() -> Result<Self> {
         info!("🌐 Initializing Universal Primal Adapter (zero hardcoding!)");
 
@@ -155,6 +158,9 @@ impl UniversalAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn discover_capability(
         &mut self,
         capability: &str,
@@ -221,6 +227,10 @@ impl UniversalAdapter {
     /// Discover providers from environment variable
     ///
     /// Format: `CAPABILITY_PROVIDERS`='security=http://192.168.1.10:9000,storage=http://192.168.1.20:8000'
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn discover_from_environment(&self, capability: &str) -> Result<Vec<DiscoveredProvider>> {
         let Some(env_var) = std::env::var("CAPABILITY_PROVIDERS").ok() else {
             return Ok(vec![]);
@@ -253,6 +263,10 @@ impl UniversalAdapter {
     }
 
     /// Discover providers from mDNS
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn discover_from_mdns(&self, capability: &str) -> Result<Vec<DiscoveredProvider>> {
         // NOTE: For production mDNS discovery, integrate with songbird-config::discovery::MdnsDiscovery
         // which provides full RFC 6762 compliant capability-based mDNS discovery.
@@ -282,6 +296,9 @@ impl UniversalAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn call(
         &self,
         provider: &DiscoveredProvider,

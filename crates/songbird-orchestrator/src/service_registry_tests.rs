@@ -101,7 +101,7 @@ async fn test_port_allocation() {
     // Register 3 services (should fill the range)
     for i in 0..3 {
         let request = RegistrationRequest {
-            primal_name: format!("Service{}", i),
+            primal_name: format!("Service{i}"),
             primal_version: "1.0.0".to_string(),
             capabilities: vec![],
             protocols: vec!["https".to_string()],

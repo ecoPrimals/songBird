@@ -17,10 +17,43 @@
 use serde_json::{Value, json};
 use songbird_stun::{StunClient, StunServer};
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, warn};
+
+/// Default STUN servers for IPC handlers, from `BIOMEOS_STUN_SERVERS` or built-in defaults.
+///
+/// Parsed once per process; empty or whitespace-only env values use the defaults.
+fn stun_server_list() -> Vec<String> {
+    static SERVERS: LazyLock<Vec<String>> = LazyLock::new(|| {
+        std::env::var("BIOMEOS_STUN_SERVERS").map_or_else(
+            |_| default_stun_servers_fallback(),
+            |servers| {
+                let parsed: Vec<String> = servers
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(std::string::ToString::to_string)
+                    .collect();
+                if parsed.is_empty() {
+                    default_stun_servers_fallback()
+                } else {
+                    parsed
+                }
+            },
+        )
+    });
+    SERVERS.clone()
+}
+
+fn default_stun_servers_fallback() -> Vec<String> {
+    vec![
+        "stun.nextcloud.com:3478".to_string(),
+        "stun.cloudflare.com:3478".to_string(),
+        "stun.l.google.com:19302".to_string(),
+    ]
+}
 
 /// STUN server handler for JSON-RPC integration
 ///
@@ -218,29 +251,28 @@ impl StunHandler {
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
         let instance = self.server_handle.read().await;
 
-        if let Some(instance) = instance.as_ref() {
-            let uptime = instance.start_time.elapsed().as_secs();
+        instance.as_ref().map_or_else(
+            || {
+                Ok(json!({
+                    "running": false,
+                    "comment": "STUN server is not running (use stun.serve to start)"
+                }))
+            },
+            |instance| {
+                let uptime = instance.start_time.elapsed().as_secs();
 
-            Ok(json!({
-                "running": true,
-                "bind_addr": instance.bind_addr.to_string(),
-                "uptime_seconds": uptime
-            }))
-        } else {
-            Ok(json!({
-                "running": false,
-                "comment": "STUN server is not running (use stun.serve to start)"
-            }))
-        }
+                Ok(json!({
+                    "running": true,
+                    "bind_addr": instance.bind_addr.to_string(),
+                    "uptime_seconds": uptime
+                }))
+            },
+        )
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  STUN CLIENT METHODS — NAT traversal from the client side
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    /// Default STUN servers for public address discovery (sovereignty-vetted)
-    const DEFAULT_STUN_SERVERS: &'static [&'static str] =
-        &["stun.nextcloud.com:3478", "stun.cloudflare.com:3478", "stun.l.google.com:19302"];
 
     /// Handle `stun.get_public_address` method - Discover public IP/port via STUN
     ///
@@ -283,7 +315,7 @@ impl StunHandler {
             serde_json::from_value(servers_val.clone())
                 .map_err(|e| format!("Invalid 'servers' parameter: {e}"))?
         } else {
-            Self::DEFAULT_STUN_SERVERS.iter().map(std::string::ToString::to_string).collect()
+            stun_server_list()
         };
 
         if servers.is_empty() {
@@ -345,15 +377,22 @@ impl StunHandler {
     /// }
     /// ```
     pub async fn handle_bind(&self, params: Value) -> Result<Value, String> {
-        let stun_server =
-            params.get("stun_server").and_then(|v| v.as_str()).unwrap_or("stun.nextcloud.com:3478");
+        let stun_server = params.get("stun_server").and_then(|v| v.as_str()).map_or_else(
+            || {
+                stun_server_list()
+                    .into_iter()
+                    .next()
+                    .unwrap_or_else(|| "stun.nextcloud.com:3478".to_string())
+            },
+            str::to_owned,
+        );
 
         info!("🌐 STUN: Binding and discovering NAT mapping via {}", stun_server);
 
         let client = StunClient::new();
 
         let endpoint = client
-            .discover_public_endpoint(stun_server)
+            .discover_public_endpoint(&stun_server)
             .await
             .map_err(|e| format!("STUN bind failed: {e}"))?;
 
@@ -406,8 +445,15 @@ impl StunHandler {
     /// }
     /// ```
     pub async fn handle_probe_port_pattern(&self, params: Value) -> Result<Value, String> {
-        let stun_server =
-            params.get("stun_server").and_then(|v| v.as_str()).unwrap_or("stun.nextcloud.com:3478");
+        let stun_server = params.get("stun_server").and_then(|v| v.as_str()).map_or_else(
+            || {
+                stun_server_list()
+                    .into_iter()
+                    .next()
+                    .unwrap_or_else(|| "stun.nextcloud.com:3478".to_string())
+            },
+            str::to_owned,
+        );
 
         let probes = params
             .get("probes")
@@ -419,7 +465,7 @@ impl StunHandler {
         let client = StunClient::new();
 
         let pattern = client
-            .probe_port_pattern(stun_server, probes)
+            .probe_port_pattern(&stun_server, probes)
             .await
             .map_err(|e| format!("Port pattern probing failed: {e}"))?;
 
@@ -483,11 +529,7 @@ impl StunHandler {
             serde_json::from_value(servers_val.clone())
                 .map_err(|e| format!("Invalid 'servers' parameter: {e}"))?
         } else {
-            Self::DEFAULT_STUN_SERVERS
-                .iter()
-                .take(2)
-                .map(std::string::ToString::to_string)
-                .collect()
+            stun_server_list().into_iter().take(2).collect()
         };
 
         if servers.len() < 2 {

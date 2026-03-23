@@ -109,6 +109,9 @@ pub struct LoginResponse {
 /// - Production MUST set `SONGBIRD_SSO_ENDPOINT` or `SONGBIRD_AUTH_DB`
 /// - Development mode MUST be disabled in production
 /// - Admin/RemoteAdmin roles REQUIRE 2FA token
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>, AuthError> {
     tracing::info!("Login attempt for user '{}' with role '{}'", req.user_id, req.role);
 
@@ -263,6 +266,10 @@ async fn validate_sso_credential(
 ///
 /// This function validates credentials against a local database.
 /// Supports password hash verification (bcrypt, argon2, scrypt).
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn validate_db_credential(
     user_id: &str,
     credential: &str,
@@ -273,11 +280,11 @@ async fn validate_db_credential(
     // Parse database connection string
     // Format: "postgres://user:pass@host/db" or "sqlite:path/to/db.sqlite" or "redis://host:port"
     if auth_db.starts_with("postgres://") || auth_db.starts_with("postgresql://") {
-        return validate_db_postgres(user_id, credential, auth_db).await;
+        return validate_db_postgres(user_id, credential, auth_db);
     } else if auth_db.starts_with("sqlite:") {
-        return validate_db_sqlite(user_id, credential, auth_db).await;
+        return validate_db_sqlite(user_id, credential, auth_db);
     } else if auth_db.starts_with("redis://") {
-        return validate_db_redis(user_id, credential, auth_db).await;
+        return validate_db_redis(user_id, credential, auth_db);
     }
 
     tracing::error!("Unsupported database type in connection string: {}", auth_db);
@@ -285,11 +292,7 @@ async fn validate_db_credential(
 }
 
 /// Validate credential via `PostgreSQL` database
-async fn validate_db_postgres(
-    user_id: &str,
-    credential: &str,
-    _db_url: &str,
-) -> Result<(), AuthError> {
+fn validate_db_postgres(user_id: &str, credential: &str, _db_url: &str) -> Result<(), AuthError> {
     // NOTE: Full PostgreSQL implementation would use sqlx or tokio-postgres
     // For now, this is a framework for the implementation
     tracing::info!(
@@ -315,11 +318,7 @@ async fn validate_db_postgres(
 }
 
 /// Validate credential via `SQLite` database
-async fn validate_db_sqlite(
-    user_id: &str,
-    credential: &str,
-    _db_path: &str,
-) -> Result<(), AuthError> {
+fn validate_db_sqlite(user_id: &str, credential: &str, _db_path: &str) -> Result<(), AuthError> {
     // NOTE: Full SQLite implementation would use rusqlite or sqlx
     tracing::info!(
         "SQLite authentication for user '{}' (implementation pending: requires rusqlite dependency)",
@@ -344,11 +343,7 @@ async fn validate_db_sqlite(
 }
 
 /// Validate credential via Redis (for cached auth tokens)
-async fn validate_db_redis(
-    user_id: &str,
-    credential: &str,
-    _redis_url: &str,
-) -> Result<(), AuthError> {
+fn validate_db_redis(user_id: &str, credential: &str, _redis_url: &str) -> Result<(), AuthError> {
     // NOTE: Full Redis implementation would use redis-rs
     tracing::info!(
         "Redis authentication for user '{}' (implementation pending: requires redis dependency)",

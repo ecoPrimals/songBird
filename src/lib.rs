@@ -13,11 +13,16 @@ use std::io::{self, BufRead, Write};
 /// Parse argv for a delegated clap parser (`--help` / `--version` exit via clap, success code 0).
 ///
 /// Prefer [`try_parse_delegated`] in tests; this function terminates the process on parse failure.
+#[must_use]
 pub fn parse_delegated<A: Parser>(invocation: &str, args: Vec<String>) -> A {
     try_parse_delegated(invocation, args).unwrap_or_else(|e| e.exit())
 }
 
 /// Non-terminating variant of [`parse_delegated`], suitable for unit and integration tests.
+///
+/// # Errors
+///
+/// Returns a [`clap::Error`] if argument parsing fails.
 pub fn try_parse_delegated<A: Parser>(
     invocation: &str,
     args: Vec<String>,
@@ -27,7 +32,7 @@ pub fn try_parse_delegated<A: Parser>(
 
 /// Songbird - Network Orchestration & Discovery Primal
 ///
-/// UniBin Architecture: One binary, multiple modes
+/// `UniBin` Architecture: One binary, multiple modes
 #[derive(Parser, Debug)]
 #[command(name = "songbird")]
 #[command(about = "Network Orchestration & Discovery Primal")]
@@ -137,11 +142,16 @@ pub(crate) fn rendezvous_binary_path_next_to(
 }
 
 /// Resolve the path to `songbird-rendezvous` adjacent to the current executable, if it exists.
+#[must_use]
 pub fn rendezvous_binary_path() -> Option<std::path::PathBuf> {
     std::env::current_exe().ok().and_then(|exe| rendezvous_binary_path_next_to(&exe))
 }
 
 /// Run rendezvous without exiting the process; callers map errors to [`std::process::exit`].
+///
+/// # Errors
+///
+/// Returns an error if the rendezvous binary is not found, fails to spawn, or exits non-zero.
 pub fn try_run_rendezvous(args: Vec<String>) -> Result<(), RendezvousRunError> {
     let Some(path) = rendezvous_binary_path() else {
         return Err(RendezvousRunError::BinaryNotFound);
@@ -204,10 +214,14 @@ pub(crate) fn run_interactive_cli_reader<R: BufRead>(reader: &mut R) -> Result<(
     Ok(())
 }
 
-/// Run rendezvous server by re-executing the binary
+/// Run rendezvous server by re-executing the binary.
 ///
 /// Deep debt solution: Keep existing binaries working during migration phase.
 /// Future: Integrate directly into this binary via library calls.
+///
+/// # Errors
+///
+/// Returns an error if the rendezvous binary fails to spawn.
 pub fn run_rendezvous(args: Vec<String>) -> Result<()> {
     match try_run_rendezvous(args) {
         Ok(()) => Ok(()),
@@ -218,7 +232,7 @@ pub fn run_rendezvous(args: Vec<String>) -> Result<()> {
             std::process::exit(1);
         }
         Err(RendezvousRunError::SpawnFailed(e)) => {
-            Err(anyhow::anyhow!("Failed to execute songbird-rendezvous: {}", e))
+            Err(anyhow::anyhow!("Failed to execute songbird-rendezvous: {e}"))
         }
         Err(RendezvousRunError::NonZeroExit(code)) => {
             std::process::exit(code);

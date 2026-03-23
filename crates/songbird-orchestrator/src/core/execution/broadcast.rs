@@ -18,6 +18,9 @@ impl BroadcastExecutor {
     /// Create a new broadcast executor
     ///
     /// ✅ EVOLVED: Now async due to `ExecutionClient` async construction
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new() -> Result<Self, String> {
         let client = ExecutionClient::new()
             .await

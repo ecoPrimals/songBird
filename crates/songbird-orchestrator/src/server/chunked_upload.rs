@@ -17,6 +17,9 @@ use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info, warn};
 
 /// POST /api/deployment/negotiate - Start chunked upload negotiation
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn negotiate_chunked_upload(
     State(state): State<DeploymentState>,
     Json(request): Json<NegotiationRequest>,
@@ -78,6 +81,9 @@ pub async fn negotiate_chunked_upload(
 }
 
 /// POST /`api/deployment/chunk/:neg_id/:index` - Upload a chunk
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn upload_chunk(
     State(state): State<DeploymentState>,
     Path((neg_id, chunk_index)): Path<(String, usize)>,
@@ -159,6 +165,9 @@ pub async fn upload_chunk(
 }
 
 /// POST /`api/deployment/finalize/:neg_id` - Finalize and deploy
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn finalize_chunked_upload(
     State(state): State<DeploymentState>,
     Path(neg_id): Path<String>,

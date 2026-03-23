@@ -35,7 +35,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 
-//! Fault Injection Tests for Songbird Discovery and BirdSong
+//! Fault Injection Tests for `Songbird` Discovery and `BirdSong`
 //!
 //! These tests verify graceful degradation under failure conditions:
 //! - Network failures
@@ -78,7 +78,7 @@ mod fault_injection_tests {
         async fn encrypt_discovery(&self, _plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
             let count = self.call_count.fetch_add(1, Ordering::SeqCst);
             if count >= self.fail_after {
-                Err(anyhow::anyhow!("Simulated encryption failure after {} calls", count))
+                Err(anyhow::anyhow!("Simulated encryption failure after {count} calls"))
             } else {
                 Ok(b"ENCRYPTED".to_vec())
             }
@@ -87,7 +87,7 @@ mod fault_injection_tests {
         async fn decrypt_discovery(&self, _ciphertext: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
             let count = self.call_count.fetch_add(1, Ordering::SeqCst);
             if count >= self.fail_after {
-                Err(anyhow::anyhow!("Simulated decryption failure after {} calls", count))
+                Err(anyhow::anyhow!("Simulated decryption failure after {count} calls"))
             } else {
                 Ok(Some(b"DECRYPTED".to_vec()))
             }
@@ -150,8 +150,8 @@ mod fault_injection_tests {
 
         // First 3 calls should succeed
         for i in 0..3 {
-            let result = processor.encrypt_packet(format!("message-{}", i).as_bytes()).await;
-            assert!(result.is_ok(), "Call {} should succeed", i);
+            let result = processor.encrypt_packet(format!("message-{i}").as_bytes()).await;
+            assert!(result.is_ok(), "Call {i} should succeed");
         }
 
         // 4th call should fail but processor should handle gracefully
@@ -290,7 +290,7 @@ mod fault_injection_tests {
 
             // Some will encrypt, some will fall back to plaintext
             let result = processor.encrypt_packet(&plaintext).await;
-            assert!(result.is_ok(), "Iteration {} should succeed", i);
+            assert!(result.is_ok(), "Iteration {i} should succeed");
         }
     }
 
@@ -351,7 +351,7 @@ mod fault_injection_tests {
         // Rapidly check availability and encrypt
         for i in 0..10 {
             let _is_available = provider.is_available();
-            let result = processor.encrypt_packet(format!("msg-{}", i).as_bytes()).await;
+            let result = processor.encrypt_packet(format!("msg-{i}").as_bytes()).await;
 
             // Should handle state changes gracefully
             assert!(result.is_ok() || result.is_err()); // Just verify no panic

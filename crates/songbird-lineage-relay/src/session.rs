@@ -37,7 +37,7 @@ impl ConnectionSession {
 
     /// Get connection type
     #[must_use]
-    pub fn connection_type(&self) -> ConnectionType {
+    pub const fn connection_type(&self) -> ConnectionType {
         match self {
             Self::Direct(_) => ConnectionType::Direct,
             Self::Relayed(_) => ConnectionType::Relayed,
@@ -104,6 +104,7 @@ impl DirectConnection {
         let mut stats = self.stats.lock().await;
         stats.bytes_sent += data.len() as u64;
         stats.packets_sent += 1;
+        drop(stats);
 
         // In real implementation, would send through UDP/TCP socket
         Ok(())
@@ -148,6 +149,7 @@ impl RelayedConnection {
         let mut stats = self.stats.lock().await;
         stats.bytes_sent += data.len() as u64;
         stats.packets_sent += 1;
+        drop(stats);
 
         Ok(())
     }

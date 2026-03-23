@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Task Lifecycle Manager
 //!
 //! Coordinates all task lifecycle operations with:
@@ -114,6 +118,9 @@ pub struct TaskLifecycleManager {
 
 impl TaskLifecycleManager {
     /// Create a new task lifecycle manager
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new(database_url: &str) -> Result<Self> {
         let storage = Arc::new(
             TaskStorage::new(database_url).await.context("Failed to create task storage")?,
@@ -136,6 +143,9 @@ impl TaskLifecycleManager {
     }
 
     /// Create a new task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn create_task(&self, owner: UserId, spec: TaskSpec) -> Result<TaskId> {
         let task = TaskLifecycle::new(owner.clone(), spec);
         let task_id = task.id;
@@ -216,6 +226,9 @@ impl TaskLifecycleManager {
     }
 
     /// Update task progress
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn update_progress(&self, task_id: TaskId, progress: f32) -> Result<()> {
         let mut task = self
             .storage
@@ -237,6 +250,9 @@ impl TaskLifecycleManager {
     }
 
     /// Pause a task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn pause_task(&self, task_id: TaskId) -> Result<()> {
         let mut task = self
             .storage
@@ -257,6 +273,9 @@ impl TaskLifecycleManager {
     }
 
     /// Resume a task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn resume_task(&self, task_id: TaskId, tower: TowerId) -> Result<()> {
         let mut task = self
             .storage
@@ -279,6 +298,9 @@ impl TaskLifecycleManager {
     }
 
     /// Complete a task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn complete_task(&self, task_id: TaskId) -> Result<()> {
         let mut task = self
             .storage
@@ -299,6 +321,9 @@ impl TaskLifecycleManager {
     }
 
     /// Fail a task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn fail_task(&self, task_id: TaskId, error: Arc<str>) -> Result<()> {
         let mut task = self
             .storage
@@ -321,6 +346,9 @@ impl TaskLifecycleManager {
     }
 
     /// Cancel a task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn cancel_task(&self, task_id: TaskId, reason: Option<Arc<str>>) -> Result<()> {
         let mut task = self
             .storage
@@ -343,6 +371,9 @@ impl TaskLifecycleManager {
     }
 
     /// Create a checkpoint for a task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn create_checkpoint(&self, task_id: TaskId, state: Vec<u8>) -> Result<Arc<str>> {
         let task = self
             .storage
@@ -377,6 +408,9 @@ impl TaskLifecycleManager {
     }
 
     /// Resume from a checkpoint
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn resume_from_checkpoint(&self, checkpoint_id: &str) -> Result<(TaskId, Vec<u8>)> {
         let checkpoint = self
             .storage
@@ -572,7 +606,7 @@ mod tests {
         // Create multiple tasks
         for i in 0..5 {
             let spec = TaskSpec {
-                task_type: format!("test-{}", i).into(),
+                task_type: format!("test-{i}").into(),
                 config: serde_json::json!({}),
                 required_capabilities: vec![],
                 resources: ResourceRequirements::default(),

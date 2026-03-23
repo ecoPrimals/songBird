@@ -127,6 +127,13 @@ impl NodeRegistration {
 }
 
 /// Helper to create registration from `NodeIdentity`
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn create_registration_from_identity(
     identity: &crate::node_identity::NodeIdentity,
     endpoint: String,
@@ -210,6 +217,9 @@ impl RegistrationManager {
     }
 
     /// Update lineage in current registration
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn update_lineage(&mut self, lineage_id: LineageId, proof: LineageProof) -> Result<()> {
         let registration = self.current.as_mut().context("No active registration to update")?;
 

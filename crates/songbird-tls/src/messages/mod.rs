@@ -76,7 +76,7 @@ pub enum HandshakeType {
     CertificateRequest = 13,
     /// Certificate verify (signature over transcript).
     CertificateVerify = 15,
-    /// Finished verify_data message.
+    /// Finished `verify_data` message.
     Finished = 20,
     /// Key update post-handshake message.
     KeyUpdate = 24,

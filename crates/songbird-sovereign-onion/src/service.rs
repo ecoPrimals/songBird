@@ -26,9 +26,13 @@ pub struct OnionService {
 }
 
 impl OnionService {
-    /// Create new onion service via BearDog (TRUE PRIMAL - production)
+    /// Create new onion service via `BearDog` (TRUE PRIMAL - production)
     ///
-    /// Loads existing identity or generates new one via BearDog.
+    /// Loads existing identity or generates new one via `BearDog`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if storage open, identity load/generate, or persistence fails.
     pub async fn new_via_beardog(port: u16, beardog: BeardogCryptoClient) -> Result<Self> {
         let storage = OnionStorage::open("./data/sovereign-onion")?;
 
@@ -59,9 +63,13 @@ impl OnionService {
 
     /// Create new onion service (standalone mode - testing only)
     ///
-    /// ⚠️ **Testing only** - Uses direct crypto without BearDog
+    /// ⚠️ **Testing only** - Uses direct crypto without `BearDog`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if storage open or identity load/generate fails.
     #[cfg(feature = "standalone")]
-    pub async fn new_standalone(port: u16) -> Result<Self> {
+    pub fn new_standalone(port: u16) -> Result<Self> {
         let storage = OnionStorage::open("./data/sovereign-onion")?;
         let identity = storage.load_or_generate_identity()?;
 
@@ -83,12 +91,14 @@ impl OnionService {
     }
 
     /// Get our .onion address
+    #[must_use]
     pub fn onion_address(&self) -> &str {
         self.identity.onion_address()
     }
 
     /// Get listen port
-    pub fn port(&self) -> u16 {
+    #[must_use]
+    pub const fn port(&self) -> u16 {
         self.port
     }
 

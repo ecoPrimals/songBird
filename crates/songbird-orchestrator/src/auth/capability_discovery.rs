@@ -242,7 +242,7 @@ mod tests {
     // ✅ ALL TESTS FULLY CONCURRENT — Zero env var mutation!
     // ============================================================================
 
-    /// Create a mock env reader from a HashMap
+    /// Create a mock env reader from a `HashMap`
     fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
         let owned: HashMap<String, String> =
             vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
@@ -311,11 +311,11 @@ mod tests {
                 thread::spawn(move || {
                     let env = mock_env(HashMap::from([(
                         "SECURITY_PROVIDER",
-                        Box::leak(format!("/sock-{}.sock", i).into_boxed_str()) as &str,
+                        Box::leak(format!("/sock-{i}.sock").into_boxed_str()) as &str,
                     )]));
                     let socket = discover_beardog_socket_with(env);
                     assert!(socket.is_some());
-                    assert_eq!(socket.unwrap().to_str().unwrap(), format!("/sock-{}.sock", i));
+                    assert_eq!(socket.unwrap().to_str().unwrap(), format!("/sock-{i}.sock"));
                 })
             })
             .collect();

@@ -192,7 +192,7 @@ pub fn get_platform_transports() -> Vec<(&'static str, Box<dyn PlatformIPC>)> {
 
 /// Get platform-specific transport name (for logging/metrics)
 #[must_use]
-pub fn get_platform_name() -> &'static str {
+pub const fn get_platform_name() -> &'static str {
     #[cfg(target_os = "android")]
     {
         "android"

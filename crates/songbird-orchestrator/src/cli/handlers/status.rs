@@ -8,6 +8,13 @@ use crate::cli::utils::{print_info, print_success};
 use anyhow::Result;
 
 /// Handle status commands
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn handle_status_command(status_command: Option<StatusCommands>) -> Result<()> {
     match status_command {
         Some(StatusCommands::Overview) | None => {

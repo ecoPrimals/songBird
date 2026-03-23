@@ -87,6 +87,9 @@ impl CircuitBreaker {
     }
 
     /// Execute an operation through the circuit breaker
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn call<F, Fut, T>(&self, operation: F) -> Result<T>
     where
         F: FnOnce() -> Fut,

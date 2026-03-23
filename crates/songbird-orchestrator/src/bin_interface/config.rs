@@ -13,6 +13,9 @@ use anyhow::Result;
 use super::ConfigCommands;
 
 /// Run configuration management commands
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn run_config(cmd: ConfigCommands) -> Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
@@ -38,6 +41,10 @@ pub async fn run_config(cmd: ConfigCommands) -> Result<()> {
 }
 
 /// Show current configuration
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn show_config(show_secrets: bool, format: &str) -> Result<()> {
     use songbird_types::config::CanonicalSongbirdConfig;
 
@@ -106,6 +113,10 @@ async fn show_config(show_secrets: bool, format: &str) -> Result<()> {
 }
 
 /// Validate configuration
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn validate_config() -> Result<()> {
     use songbird_types::config::CanonicalSongbirdConfig;
 
@@ -143,6 +154,10 @@ async fn validate_config() -> Result<()> {
 }
 
 /// Initialize configuration template
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn init_config(output: &str, force: bool) -> Result<()> {
     println!("🔧 Generating Songbird Configuration Template");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

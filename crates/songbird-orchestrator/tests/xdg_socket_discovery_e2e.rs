@@ -1,19 +1,44 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! XDG Socket Discovery E2E Tests
 //!
 //! **Created**: February 4, 2026
-//! **Purpose**: Validate XDG-compliant socket discovery per PRIMAL_DEPLOYMENT_STANDARD
+//! **Purpose**: Validate XDG-compliant socket discovery per `PRIMAL_DEPLOYMENT_STANDARD`
 //!
 //! ## Test Coverage
 //!
-//! 1. **XDG Path Priority**: XDG_RUNTIME_DIR > /tmp/biomeos > /tmp (legacy)
+//! 1. **XDG Path Priority**: `XDG_RUNTIME_DIR` > /tmp/biomeos > /tmp (legacy)
 //! 2. **Socket Naming**: {primal}.sock (no family suffix)
-//! 3. **Cross-Primal Discovery**: Songbird finds BearDog, Neural API at XDG paths
+//! 3. **Cross-Primal Discovery**: Songbird finds `BearDog`, Neural API at XDG paths
 //! 4. **Fallback Chain**: Graceful degradation to legacy paths
 //!
-//! ## PRIMAL_DEPLOYMENT_STANDARD Compliance
+//! ## `PRIMAL_DEPLOYMENT_STANDARD` Compliance
 //!
 //! ```text
 //! Path Priority:
@@ -63,7 +88,7 @@ fn run_mock_jsonrpc_server(
                 let mut reader = BufReader::new(&mut stream);
                 let mut line = String::new();
                 if reader.read_line(&mut line).await.is_ok() {
-                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                    let _ = stream.write_all(format!("{response}\n").as_bytes()).await;
                 }
             }
         }
@@ -110,8 +135,7 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
     assert!(
         found.contains(&temp_dir.to_string_lossy().to_string())
             && found.contains("biomeos/crypto.sock"),
-        "Should prioritize XDG_RUNTIME_DIR socket, got: {}",
-        found
+        "Should prioritize XDG_RUNTIME_DIR socket, got: {found}"
     );
 
     let _ = std::fs::remove_dir_all(&temp_dir);
@@ -135,11 +159,7 @@ async fn test_e2e_fallback_to_tmp_biomeos_when_no_xdg() {
 
     assert!(result.is_ok(), "Should discover /tmp/biomeos socket");
     let found = result.unwrap();
-    assert!(
-        found == "/tmp/biomeos/crypto.sock",
-        "Should use /tmp/biomeos fallback, got: {}",
-        found
-    );
+    assert!(found == "/tmp/biomeos/crypto.sock", "Should use /tmp/biomeos fallback, got: {found}");
 
     let _ = std::fs::remove_file(&socket);
 }
@@ -176,8 +196,7 @@ async fn test_e2e_socket_naming_no_family_suffix() {
 
     assert!(
         found.ends_with("crypto.sock") && !found.contains("-nat0"),
-        "Should use {{capability}}.sock naming (no family suffix), got: {}",
-        found
+        "Should use {{capability}}.sock naming (no family suffix), got: {found}"
     );
 
     let _ = std::fs::remove_dir_all(&temp_dir);
@@ -221,14 +240,11 @@ async fn test_e2e_discover_all_primals_at_xdg() {
             None
         })
         .await;
-        assert!(result.is_ok(), "{:?} discovery should succeed", cap);
+        assert!(result.is_ok(), "{cap:?} discovery should succeed");
         let found = result.unwrap();
         assert!(
             found.ends_with(expected_name),
-            "{:?} should find {}, got: {}",
-            cap,
-            expected_name,
-            found
+            "{cap:?} should find {expected_name}, got: {found}"
         );
     }
 
@@ -299,8 +315,7 @@ async fn test_e2e_security_client_discovers_xdg_beardog() {
     let found = result.unwrap();
     assert!(
         found.contains("biomeos/neural-api.sock"),
-        "Should use XDG Neural API path, got: {}",
-        found
+        "Should use XDG Neural API path, got: {found}"
     );
 
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
@@ -332,7 +347,7 @@ async fn test_e2e_xdg_directory_structure_compliance() {
     for socket_name in &expected_sockets {
         let socket_path = biomeos_dir.join(socket_name);
         std::fs::write(&socket_path, "").unwrap();
-        assert!(socket_path.exists(), "Socket {} should exist in biomeos dir", socket_name);
+        assert!(socket_path.exists(), "Socket {socket_name} should exist in biomeos dir");
     }
 
     // Verify structure is correct

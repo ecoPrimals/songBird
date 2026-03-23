@@ -52,7 +52,7 @@
 use songbird_types::SongbirdResult;
 use std::time::Duration;
 
-fn test_port() -> u16 {
+const fn test_port() -> u16 {
     8080
 }
 
@@ -89,7 +89,7 @@ fn test_service_types() {
 
 #[test]
 fn test_service_id_generation() {
-    let service_ids: Vec<String> = (0..5).map(|i| format!("service-{}", i)).collect();
+    let service_ids: Vec<String> = (0..5).map(|i| format!("service-{i}")).collect();
 
     assert_eq!(service_ids.len(), 5);
 }
@@ -99,7 +99,7 @@ fn test_service_collection_operations() {
     let mut services = Vec::new();
 
     for i in 0..5 {
-        services.push((format!("service-{}", i), "compute"));
+        services.push((format!("service-{i}"), "compute"));
     }
 
     assert_eq!(services.len(), 5);

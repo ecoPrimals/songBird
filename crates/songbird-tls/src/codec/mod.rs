@@ -268,24 +268,24 @@ mod tests {
     #[test]
     fn test_write_read_u24() {
         let mut buf = Vec::new();
-        write_u24(&mut buf, 0x123456);
+        write_u24(&mut buf, 0x12_3456);
         assert_eq!(buf, vec![0x12, 0x34, 0x56]); // Big-endian, 3 bytes
 
         let mut offset = 0;
         let value = read_u24(&buf, &mut offset).unwrap();
-        assert_eq!(value, 0x123456);
+        assert_eq!(value, 0x12_3456);
         assert_eq!(offset, 3);
     }
 
     #[test]
     fn test_write_read_u32() {
         let mut buf = Vec::new();
-        write_u32(&mut buf, 0x12345678);
+        write_u32(&mut buf, 0x1234_5678);
         assert_eq!(buf, vec![0x12, 0x34, 0x56, 0x78]); // Big-endian
 
         let mut offset = 0;
         let value = read_u32(&buf, &mut offset).unwrap();
-        assert_eq!(value, 0x12345678);
+        assert_eq!(value, 0x1234_5678);
         assert_eq!(offset, 4);
     }
 

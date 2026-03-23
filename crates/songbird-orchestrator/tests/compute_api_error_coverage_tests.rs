@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Comprehensive error path tests for Compute API
 //!
 //! Tests error handling, edge cases, and failure scenarios in the compute API.
@@ -12,14 +36,14 @@ use std::error::Error;
 #[test]
 fn test_api_error_routing() {
     let error = ApiError::Routing("Service unavailable".to_string());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(display.contains("Routing error"));
     assert!(display.contains("Service unavailable"));
 }
 #[test]
 fn test_api_error_execution() {
     let error = ApiError::Execution("Task failed".to_string());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(display.contains("Execution error"));
     assert!(display.contains("Task failed"));
 }
@@ -27,7 +51,7 @@ fn test_api_error_execution() {
 #[test]
 fn test_api_error_invalid_request() {
     let error = ApiError::InvalidRequest("Missing parameter".to_string());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(display.contains("Invalid request"));
     assert!(display.contains("Missing parameter"));
 }
@@ -35,7 +59,7 @@ fn test_api_error_invalid_request() {
 #[test]
 fn test_api_error_not_found() {
     let error = ApiError::NotFound("Job abc123".to_string());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(display.contains("Not found"));
     assert!(display.contains("Job abc123"));
 }
@@ -46,10 +70,10 @@ fn test_api_error_trait_implementation() {
     // Test Error trait
     assert!(error.source().is_none());
     // Test Display
-    let display_str = format!("{}", error);
+    let display_str = format!("{error}");
     assert!(!display_str.is_empty());
     // Test Debug
-    let debug_str = format!("{:?}", error);
+    let debug_str = format!("{error:?}");
     assert!(debug_str.contains("Routing"));
 }
 
@@ -60,15 +84,15 @@ fn test_api_error_types_distinct() {
     let invalid = ApiError::InvalidRequest("i".to_string());
     let not_found = ApiError::NotFound("n".to_string());
     // Ensure different error types produce different messages
-    assert_ne!(format!("{}", routing), format!("{}", execution));
-    assert_ne!(format!("{}", invalid), format!("{}", not_found));
-    assert_ne!(format!("{}", routing), format!("{}", invalid));
+    assert_ne!(format!("{routing}"), format!("{}", execution));
+    assert_ne!(format!("{invalid}"), format!("{}", not_found));
+    assert_ne!(format!("{routing}"), format!("{}", invalid));
 }
 
 #[test]
 fn test_api_error_empty_message() {
     let error = ApiError::Routing(String::new());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(!display.is_empty());
 }
 
@@ -76,7 +100,7 @@ fn test_api_error_empty_message() {
 fn test_api_error_long_message() {
     let long_msg = "a".repeat(1000);
     let error = ApiError::Execution(long_msg.clone());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(display.contains(&long_msg));
 }
 
@@ -84,7 +108,7 @@ fn test_api_error_long_message() {
 fn test_api_error_special_characters() {
     let special = "Error: Failed with\n\ttab\rand \"quotes\"";
     let error = ApiError::InvalidRequest(special.to_string());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(display.contains(special));
 }
 
@@ -92,7 +116,7 @@ fn test_api_error_special_characters() {
 fn test_api_error_unicode() {
     let unicode = "错误: サービスが見つかりません 🚫";
     let error = ApiError::NotFound(unicode.to_string());
-    let display = format!("{}", error);
+    let display = format!("{error}");
     assert!(display.contains(unicode));
 }
 
@@ -155,11 +179,11 @@ mod edge_cases {
     fn test_concurrent_error_creation() {
         use std::thread;
         let handles: Vec<_> = (0..10)
-            .map(|i| thread::spawn(move || ApiError::Routing(format!("Error {}", i))))
+            .map(|i| thread::spawn(move || ApiError::Routing(format!("Error {i}"))))
             .collect();
         for handle in handles {
             let error = handle.join().expect("test precondition");
-            assert!(format!("{}", error).contains("Error"));
+            assert!(format!("{error}").contains("Error"));
         }
     }
 

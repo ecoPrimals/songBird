@@ -28,7 +28,7 @@ pub(super) fn jsonrpc_from_compute_error(e: crate::server::compute_api::ApiError
     }
 }
 
-pub(super) fn jsonrpc_code_from_http_status(status: StatusCode) -> i32 {
+pub(super) const fn jsonrpc_code_from_http_status(status: StatusCode) -> i32 {
     match status.as_u16() {
         404 => -32001,
         400..=499 => JsonRpcError::INVALID_PARAMS,

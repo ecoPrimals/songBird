@@ -65,6 +65,10 @@ impl Transcript {
     ///
     /// This enhanced version logs detailed information about each message
     /// to help diagnose transcript hash issues
+    #[expect(
+        clippy::cast_possible_wrap,
+        reason = "length mismatch diagnostic; sizes are bounded by handshake message parsing"
+    )]
     pub fn update_with_logging(&mut self, message: &[u8], message_type: &str, was_decrypted: bool) {
         let before = self.messages.len();
 
@@ -150,6 +154,7 @@ impl Transcript {
 
     /// Get reference to accumulated messages (for testing)
     #[cfg(test)]
+    #[must_use]
     pub fn messages(&self) -> &[u8] {
         &self.messages
     }

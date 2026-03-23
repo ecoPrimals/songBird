@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Peer Trust Evaluation
 //!
 //! Evaluates whether to trust discovered peers by consulting the security provider (security provider).
@@ -85,6 +89,9 @@ pub struct DiscoveredPeer {
 /// # Returns
 ///
 /// Decision on whether to trust the peer
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn evaluate_peer_trust(
     peer: &DiscoveredPeer,
     security_client: &SecurityCapabilityClient,

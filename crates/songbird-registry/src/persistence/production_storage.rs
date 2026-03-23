@@ -150,6 +150,7 @@ impl ProductionServicePersistence {
         let mut cache = self.cache.write().await;
         cache.services.insert(service_id.to_string(), entry.clone());
         cache.registration_times.insert(service_id.to_string(), Utc::now());
+        drop(cache);
 
         debug!("Cached service entry: {}", service_id);
         Ok(())
@@ -163,6 +164,7 @@ impl ProductionServicePersistence {
     ) -> SongbirdResult<()> {
         let mut cache = self.cache.write().await;
         cache.service_info.insert(service_id.to_string(), info.clone());
+        drop(cache);
 
         debug!("Cached service info: {}", service_id);
         Ok(())
@@ -189,6 +191,7 @@ impl ProductionServicePersistence {
         cache.services.remove(service_id);
         cache.service_info.remove(service_id);
         cache.registration_times.remove(service_id);
+        drop(cache);
 
         info!("Removed service from persistence: {}", service_id);
         Ok(())
@@ -226,6 +229,7 @@ impl ProductionServicePersistence {
 
         let mut cache = self.cache.write().await;
         cache.last_saved = Utc::now();
+        drop(cache);
 
         let duration_ms = u64::try_from(save_start.elapsed().as_millis()).unwrap_or(u64::MAX);
         self.update_save_stats(true, duration_ms).await;
@@ -322,8 +326,10 @@ impl ProductionServicePersistence {
 
         let mut cache = self.cache.write().await;
         *cache = data;
+        let loaded_count = cache.services.len();
+        drop(cache);
 
-        info!("Loaded {} services from persistent storage", cache.services.len());
+        info!("Loaded {} services from persistent storage", loaded_count);
         Ok(())
     }
 
@@ -354,6 +360,7 @@ impl ProductionServicePersistence {
 
         let mut auto_save_task = self.auto_save_task.write().await;
         *auto_save_task = Some(task);
+        drop(auto_save_task);
 
         info!("Auto-save started with interval: {:?}", interval);
         Ok(())
@@ -425,9 +432,12 @@ impl ProductionServicePersistence {
 
     /// Stop persistence (cleanup auto-save)
     pub async fn stop(&self) -> SongbirdResult<()> {
-        let mut task = self.auto_save_task.write().await;
-        if let Some(handle) = task.take() {
-            handle.abort();
+        let handle = {
+            let mut task = self.auto_save_task.write().await;
+            task.take()
+        };
+        if let Some(h) = handle {
+            h.abort();
         }
 
         self.save_to_storage().await?;

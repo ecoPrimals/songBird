@@ -611,6 +611,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::cast_possible_truncation, reason = "test: value masked to u8 range")]
     fn parse_record_rejects_oversized_length_field() {
         let mut record_layer = RecordLayer::new();
         let oversized = MAX_RECORD_SIZE + 1;
@@ -702,6 +703,7 @@ mod fuzz_style_record_parsing_tests {
     }
 
     #[test]
+    #[expect(clippy::cast_possible_truncation, reason = "test: MAX_RECORD_SIZE fits in u16")]
     fn parse_record_exact_max_length_succeeds_when_buffer_complete() {
         let mut rl = RecordLayer::new();
         let mut buf = vec![0x16u8, 0x03, 0x03];
@@ -716,6 +718,10 @@ mod fuzz_style_record_parsing_tests {
     }
 
     #[test]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "test: wire length encodes oversized record (truncation intentional)"
+    )]
     fn parse_record_length_max_plus_one_errors_even_with_enough_bytes() {
         let mut rl = RecordLayer::new();
         let len = MAX_RECORD_SIZE + 1;

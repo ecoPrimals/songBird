@@ -139,16 +139,11 @@ impl IgdHandler {
                             "suggestion": "Enable UPnP on your router or forward port manually"
                         });
                     }
-                    // Need to drop and re-acquire to avoid borrow issues
+                    let gw_owned = gw.clone();
                     drop(gateway);
-                    let gateway = self.gateway.read().await;
-                    let Some(gw) = gateway.as_ref() else {
-                        return json!({
-                            "error": "No gateway available after discovery",
-                            "suggestion": "Try igd.discover again or check network connectivity"
-                        });
-                    };
-                    return self.do_map_port(gw, external_port, internal_port, protocol, ttl).await;
+                    return self
+                        .do_map_port(&gw_owned, external_port, internal_port, protocol, ttl)
+                        .await;
                 }
                 None => {
                     return json!({"error": "Gateway discovery failed"});
@@ -294,7 +289,7 @@ impl IgdHandler {
         // Step 1: Discover
         let discover_result = self.handle_discover(Value::Null).await;
 
-        {
+        let gw = {
             let gateway = self.gateway.read().await;
             let Some(gw) = gateway.as_ref() else {
                 return json!({
@@ -319,38 +314,42 @@ impl IgdHandler {
                 });
             }
 
-            // Step 2: Map port
-            let map_result = self.do_map_port(gw, port, port, protocol, 86400).await;
+            let gw_owned = gw.clone();
+            drop(gateway);
+            gw_owned
+        };
 
-            if map_result["mapped"].as_bool() != Some(true) {
-                return json!({
-                    "configured": false,
-                    "reason": "mapping_failed",
-                    "gateway": gw.ip.to_string(),
-                    "protocol_used": match &gw.protocol {
-                        GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
-                        GatewayProtocol::NatPmp => "nat_pmp",
-                        GatewayProtocol::None => "none",
-                    },
-                    "error": map_result["error"],
-                    "recommendation": "Check if another device has the port mapped, or try a different port"
-                });
-            }
+        // Step 2: Map port
+        let map_result = self.do_map_port(&gw, port, port, protocol, 86400).await;
 
-            // Step 3: Return success
-            json!({
-                "configured": true,
+        if map_result["mapped"].as_bool() != Some(true) {
+            return json!({
+                "configured": false,
+                "reason": "mapping_failed",
                 "gateway": gw.ip.to_string(),
                 "protocol_used": match &gw.protocol {
                     GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
                     GatewayProtocol::NatPmp => "nat_pmp",
                     GatewayProtocol::None => "none",
                 },
-                "external_endpoint": map_result["external"],
-                "auto_renew_enabled": true,
-                "mapping": map_result
-            })
+                "error": map_result["error"],
+                "recommendation": "Check if another device has the port mapped, or try a different port"
+            });
         }
+
+        // Step 3: Return success
+        json!({
+            "configured": true,
+            "gateway": gw.ip.to_string(),
+            "protocol_used": match &gw.protocol {
+                GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
+                GatewayProtocol::NatPmp => "nat_pmp",
+                GatewayProtocol::None => "none",
+            },
+            "external_endpoint": map_result["external"],
+            "auto_renew_enabled": true,
+            "mapping": map_result
+        })
     }
 }
 

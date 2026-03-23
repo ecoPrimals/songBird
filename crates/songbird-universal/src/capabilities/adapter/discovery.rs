@@ -252,15 +252,12 @@ impl CapabilityDiscovery {
         })
         .await;
 
-        if let Ok(providers) = outcome {
-            providers
-        } else {
+        outcome.unwrap_or_else(|_| {
             warn!(
-                "Network capability discovery timed out after {:?} for capability {}",
-                timeout, capability_type
+                "Network capability discovery timed out after {timeout:?} for capability {capability_type}",
             );
             Vec::new()
-        }
+        })
     }
 
     /// Build orchestrator + discovery HTTP URLs (aligned with `UnifiedAdapterConfig` defaults).

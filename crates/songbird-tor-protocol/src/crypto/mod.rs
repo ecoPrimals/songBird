@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::json;
 
-fn map_crypto_err(e: CryptoProviderError) -> Error {
+fn map_crypto_err(e: &CryptoProviderError) -> Error {
     Error::Crypto(e.to_string())
 }
 
@@ -126,7 +126,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let client_public_b64 =
             result.get("client_public").and_then(|v| v.as_str()).ok_or_else(|| {
@@ -168,7 +168,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let key_seed_b64 = result.get("key_seed").and_then(|v| v.as_str()).ok_or_else(|| {
             Error::Crypto("Missing key_seed in ntor_client_finish response".to_string())
@@ -214,7 +214,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let derived_b64 = result
             .get("derived")
@@ -237,7 +237,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let ciphertext_b64 =
             result.get("ciphertext").and_then(|v| v.as_str()).ok_or_else(|| {
@@ -260,7 +260,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let plaintext_b64 = result.get("plaintext").and_then(|v| v.as_str()).ok_or_else(|| {
             Error::Crypto("Missing plaintext in tor_cell_decrypt response".to_string())
@@ -311,7 +311,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let sig_b64 = result.get("signature").and_then(|v| v.as_str()).ok_or_else(|| {
             Error::Crypto("Missing signature in ed25519_sign response".to_string())
@@ -345,7 +345,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         result
             .get("valid")
@@ -362,7 +362,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let public_b64 = result
             .get("public_key")
@@ -411,7 +411,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let shared_b64 = result
             .get("shared_secret")
@@ -439,7 +439,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let hash_b64 = result
             .get("hash")
@@ -468,7 +468,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let mac_b64 = result
             .get("mac")
@@ -505,7 +505,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let ciphertext_b64 =
             result.get("ciphertext").and_then(|v| v.as_str()).ok_or_else(|| {
@@ -535,7 +535,7 @@ impl TorProtocolCrypto for CryptoProvider {
                 }),
             )
             .await
-            .map_err(map_crypto_err)?;
+            .map_err(|e| map_crypto_err(&e))?;
 
         let plaintext_b64 = result.get("plaintext").and_then(|v| v.as_str()).ok_or_else(|| {
             Error::Crypto("Missing plaintext in chacha20_poly1305 response".to_string())

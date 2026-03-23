@@ -166,7 +166,7 @@ fn test_retry_policy_debug() {
         backoff_ms: 2000,
     };
 
-    let debug = format!("{:?}", policy);
+    let debug = format!("{policy:?}");
     assert!(debug.contains("RetryPolicy"));
     assert!(debug.contains('5'));
     assert!(debug.contains("2000"));

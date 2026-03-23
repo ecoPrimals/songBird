@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! # 📊 Performance Monitoring
 //!
 //! **MODERN PERFORMANCE MONITORING** ✅
@@ -47,6 +51,10 @@ impl PerformanceMonitor {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn initialize(&mut self) -> SongbirdResult<()> {
         // Initialize performance monitoring
         Ok(())
@@ -56,6 +64,10 @@ impl PerformanceMonitor {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start(&mut self) -> SongbirdResult<()> {
         // Start performance monitoring
         Ok(())
@@ -65,6 +77,10 @@ impl PerformanceMonitor {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn stop(&mut self) -> SongbirdResult<()> {
         // Stop performance monitoring
         Ok(())
@@ -74,6 +90,10 @@ impl PerformanceMonitor {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn health_check(&self) -> SongbirdResult<ComponentHealth> {
         Ok(ComponentHealth {
             status: HealthStatus::Healthy,
@@ -197,13 +217,13 @@ mod tests {
 
         let json = serde_json::to_string(&metrics).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
         let deserialized: PerformanceMetrics =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Parsing failed: {}", e),
+                message: format!("Parsing failed: {e}"),
                 debug_info: None,
             })?;
 
@@ -222,7 +242,7 @@ mod tests {
             error_rate: 0.5,
         };
 
-        let debug_string = format!("{:?}", metrics);
+        let debug_string = format!("{metrics:?}");
         assert!(debug_string.contains("PerformanceMetrics"));
         assert!(debug_string.contains("cpu_usage"));
         assert!(debug_string.contains("50"));

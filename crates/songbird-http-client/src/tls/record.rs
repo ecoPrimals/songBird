@@ -53,6 +53,14 @@ impl TlsRecordLayer {
     }
 
     /// Write application data
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if encryption or writing to the stream fails.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub async fn write_application_data(
         &mut self,
         stream: &mut TcpStream,
@@ -157,6 +165,14 @@ impl TlsRecordLayer {
     }
 
     /// Read application data
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the record cannot be read or decrypted.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "TLS protocol requires sequential state machine steps"
+    )]
     pub async fn read_application_data(&mut self, stream: &mut TcpStream) -> Result<Vec<u8>> {
         info!("📥 Reading HTTP application data (APPLICATION DATA phase)");
         debug!("  Read sequence number: {}", self.read_sequence_number);

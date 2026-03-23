@@ -18,6 +18,11 @@ use crate::tls::session::SessionKeys;
 use tracing::{debug, trace};
 
 impl TlsHandshake {
+    /// Encrypt application-layer data as a TLS 1.3 record.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the record is too large for the wire format or crypto fails.
     pub async fn encrypt_application_data(
         &self,
         plaintext: &[u8],
@@ -74,6 +79,12 @@ impl TlsHandshake {
 
         Ok(record)
     }
+
+    /// Decrypt application-layer data from a TLS 1.3 record.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if decryption or authentication fails.
     pub async fn decrypt_application_data(
         &self,
         record_header: &[u8; 5],

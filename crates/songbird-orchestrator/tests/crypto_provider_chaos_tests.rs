@@ -1,7 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Chaos Tests for CryptoProvider
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
+//! Chaos Tests for `CryptoProvider`
 //!
 //! Extreme load testing, stress testing, and resilience testing.
 
@@ -19,7 +43,7 @@ async fn test_chaos_1000_concurrent_operations() {
     for i in 0..1000 {
         let p = Arc::clone(&provider);
         tasks.spawn(async move {
-            let data = format!("chaos test {}", i);
+            let data = format!("chaos test {i}");
             p.blake3_hash(data.as_bytes()).await
         });
     }
@@ -35,10 +59,10 @@ async fn test_chaos_1000_concurrent_operations() {
         }
     }
 
-    println!("Chaos test: {} succeeded, {} failed", success_count, error_count);
+    println!("Chaos test: {success_count} succeeded, {error_count} failed");
 
     // Allow up to 1% failure rate under extreme load
-    assert!(success_count >= 990, "At least 99% should succeed (got {})", success_count);
+    assert!(success_count >= 990, "At least 99% should succeed (got {success_count})");
 }
 
 #[tokio::test]
@@ -52,7 +76,7 @@ async fn test_chaos_mixed_operations_concurrent() {
         let p = Arc::clone(&provider);
 
         tasks.spawn(async move {
-            let data = format!("test {}", i).into_bytes();
+            let data = format!("test {i}").into_bytes();
 
             match i % 5 {
                 0 => p.blake3_hash(&data).await.map(|_| ()),
@@ -86,7 +110,7 @@ async fn test_chaos_rapid_fire_sequential() {
     // Perform 1000 operations as fast as possible
     let mut success_count = 0;
     for i in 0..1000 {
-        let data = format!("rapid {}", i);
+        let data = format!("rapid {i}");
         if provider.blake3_hash(data.as_bytes()).await.is_ok() {
             success_count += 1;
         }
@@ -131,7 +155,7 @@ async fn test_chaos_encryption_round_trips() {
     for i in 0..200 {
         let p = Arc::clone(&provider);
         tasks.spawn(async move {
-            let plaintext = format!("round trip {}", i).into_bytes();
+            let plaintext = format!("round trip {i}").into_bytes();
             let key = [i as u8; 32];
 
             // Encrypt
@@ -165,7 +189,7 @@ async fn test_chaos_provider_drop_and_recreate() {
     // Test creating and dropping providers rapidly
     for i in 0..100 {
         let provider = discover_crypto_provider().await.unwrap();
-        let data = format!("drop test {}", i);
+        let data = format!("drop test {i}");
         let _hash = provider.blake3_hash(data.as_bytes()).await.unwrap();
         drop(provider);
     }
@@ -211,7 +235,7 @@ async fn test_chaos_sustained_load() {
     let mut error_count = 0;
 
     while start.elapsed() < duration {
-        let data = format!("sustained {}", operation_count);
+        let data = format!("sustained {operation_count}");
         match provider.blake3_hash(data.as_bytes()).await {
             Ok(_) => operation_count += 1,
             Err(_) => error_count += 1,
@@ -227,7 +251,7 @@ async fn test_chaos_sustained_load() {
     );
 
     // Should handle at least 100 ops/sec
-    assert!(operation_count >= 1000, "Should handle sustained load (got {} ops)", operation_count);
+    assert!(operation_count >= 1000, "Should handle sustained load (got {operation_count} ops)");
 
     // Error rate should be minimal
     assert!(error_count < operation_count / 100, "Error rate should be <1%");

@@ -10,6 +10,27 @@
 //! - Race conditions
 //! - Resource exhaustion
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 use serde_json::json;
 use songbird_orchestrator::trust::{
     EvaluatorInfo, UniversalDiscoveryContext, UniversalIdentityAttestation, UniversalTrustDecision,
@@ -211,10 +232,10 @@ fn chaos_concurrent_requests() {
         .map(|i| {
             thread::spawn(move || {
                 let request = UniversalTrustRequest::new(
-                    format!("tower{}", i),
+                    format!("tower{i}"),
                     vec![UniversalIdentityAttestation::tag_list(vec![format!("tag{}", i)])],
                 );
-                assert_eq!(request.evaluator.peer_id, format!("tower{}", i));
+                assert_eq!(request.evaluator.peer_id, format!("tower{i}"));
             })
         })
         .collect();
@@ -229,7 +250,7 @@ fn chaos_concurrent_requests() {
 fn chaos_serialization_roundtrip_stress() {
     for i in 0..1000 {
         let request = UniversalTrustRequest::new(
-            format!("tower{}", i),
+            format!("tower{i}"),
             vec![UniversalIdentityAttestation::tag_list(vec![format!("tag{}", i)])],
         );
 
@@ -237,7 +258,7 @@ fn chaos_serialization_roundtrip_stress() {
         let deserialized: UniversalTrustRequest =
             serde_json::from_str(&json).expect("Failed to deserialize");
 
-        assert_eq!(deserialized.evaluator.peer_id, format!("tower{}", i));
+        assert_eq!(deserialized.evaluator.peer_id, format!("tower{i}"));
     }
 }
 
@@ -246,7 +267,7 @@ fn chaos_serialization_roundtrip_stress() {
 fn chaos_large_metadata() {
     let mut metadata = std::collections::HashMap::new();
     for i in 0..10000 {
-        metadata.insert(format!("key{}", i), json!(format!("value{}", i)));
+        metadata.insert(format!("key{i}"), json!(format!("value{}", i)));
     }
 
     let response = UniversalTrustResponse {

@@ -1,18 +1,42 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Comprehensive tests for trust escalation and types
 //!
 //! Covers edge cases not hit by existing tests:
-//! - TrustLevel Display trait
-//! - TrustLevel description()
-//! - TrustRelationship can_perform() with expiration
-//! - TrustEscalationManager: role verification edge cases
-//! - TrustEscalationManager: get_all_relationships, get_trust_level_counts
-//! - BearDogClient creation and defaults
-//! - CapabilityProof verification edge cases
-//! - IdentityProof verification edge cases
-//! - PeerMetadata serde
+//! - `TrustLevel` Display trait
+//! - `TrustLevel` `description()`
+//! - `TrustRelationship` `can_perform()` with expiration
+//! - `TrustEscalationManager`: role verification edge cases
+//! - `TrustEscalationManager`: `get_all_relationships`, `get_trust_level_counts`
+//! - `BearDogClient` creation and defaults
+//! - `CapabilityProof` verification edge cases
+//! - `IdentityProof` verification edge cases
+//! - `PeerMetadata` serde
 
 use songbird_orchestrator::trust::escalation::BearDogClient;
 use songbird_orchestrator::trust::{
@@ -64,16 +88,12 @@ fn test_trust_level_can_perform_all_combinations() {
             if i >= j {
                 assert!(
                     level.can_perform(*required),
-                    "{:?} should be able to perform {:?}",
-                    level,
-                    required
+                    "{level:?} should be able to perform {required:?}"
                 );
             } else {
                 assert!(
                     !level.can_perform(*required),
-                    "{:?} should NOT be able to perform {:?}",
-                    level,
-                    required
+                    "{level:?} should NOT be able to perform {required:?}"
                 );
             }
         }
@@ -466,7 +486,7 @@ fn test_beardog_client_new_with_deprecated_url() {
 #[tokio::test]
 async fn test_trust_manager_debug() {
     let manager = TrustEscalationManager::with_defaults();
-    let debug = format!("{:?}", manager);
+    let debug = format!("{manager:?}");
     assert!(debug.contains("TrustEscalationManager"));
     assert!(debug.contains("trust_timeouts"));
 }

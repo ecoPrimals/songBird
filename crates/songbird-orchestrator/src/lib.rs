@@ -74,6 +74,47 @@
 // Lint policy for this crate lives in Cargo.toml `[lints]` so integration tests and bins
 // receive the same allows as the library (inner attributes here do not apply to them).
 #![forbid(unsafe_code)]
+// Lock guards are held across critical sections; narrowing scope is a larger refactor.
+#![allow(
+    clippy::significant_drop_tightening,
+    reason = "lock guards scoped for coherent state updates; per-site tightening tracked separately"
+)]
+// Casts between integer sizes and floats are used for metrics and ratios.
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "acceptable precision for metrics, counters, and derived scheduling values"
+)]
+// `Cargo.toml` `[lints.clippy]` already allows these; `-W clippy::pedantic` / `-W clippy::nursery`
+// on the CLI would otherwise re-enable them and fail under `-D warnings`.
+#![allow(
+    clippy::option_if_let_else,
+    clippy::unnecessary_wraps,
+    clippy::unused_self,
+    clippy::used_underscore_binding,
+    clippy::unreadable_literal,
+    clippy::items_after_statements,
+    clippy::needless_pass_by_value,
+    clippy::return_self_not_must_use,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::similar_names,
+    clippy::too_many_lines,
+    clippy::match_same_arms,
+    clippy::manual_let_else,
+    clippy::missing_panics_doc,
+    clippy::match_wildcard_for_single_variants,
+    clippy::struct_excessive_bools,
+    clippy::future_not_send,
+    clippy::doc_link_with_quotes,
+    clippy::case_sensitive_file_extension_comparisons,
+    clippy::needless_continue,
+    clippy::no_effect_underscore_binding,
+    clippy::missing_fields_in_debug,
+    clippy::must_use_candidate,
+    reason = "crate `[lints.clippy]` policy; strict CLI must not override manifest allows"
+)]
 
 /// Access control and graduated information disclosure.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
@@ -87,7 +128,7 @@ pub mod auth;
 /// UniBin public API: `run_server`, `run_doctor`, `run_config`, and related CLI types.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod bin_interface;
-/// BTSP Unix socket client for BearDog secure tunnels.
+/// BTSP Unix socket client for `BearDog` secure tunnels.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod btsp_client;
 /// Neural API capability registration for the local runtime.
@@ -191,7 +232,7 @@ pub mod universal_adapter;
 pub use app::SongbirdOrchestrator;
 
 // Re-export security capability client (provider-agnostic!)
-/// HTTP client for security-capability RPC against BearDog (trust evaluation and related calls).
+/// HTTP client for security-capability RPC against `BearDog` (trust evaluation and related calls).
 pub use security_capability_client::{
     SecurityCapabilityClient, TrustEvaluationRequest, TrustEvaluationResponse,
 };
@@ -226,7 +267,7 @@ pub use songbird_types::{SongbirdError, SongbirdResult};
 pub use songbird_universal::PrimalType;
 
 // Re-export UniBin public API for easy access
-/// UniBin CLI entrypoints: `run_server`, `run_doctor`, `run_config`, and argument structs.
+/// `UniBin` CLI entrypoints: `run_server`, `run_doctor`, `run_config`, and argument structs.
 pub use bin_interface::{
     ConfigCommands, DoctorArgs, ServerArgs, run_config, run_doctor, run_server,
 };

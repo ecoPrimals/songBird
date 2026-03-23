@@ -187,7 +187,7 @@ pub fn cache_dir() -> PathBuf {
 #[must_use]
 pub fn http_bind_address() -> String {
     std::env::var("SONGBIRD_HTTP_ADDR")
-        .unwrap_or_else(|_| format!("{}:{}", DEFAULT_BIND_ALL, DEFAULT_HTTP_PORT))
+        .unwrap_or_else(|_| format!("{DEFAULT_BIND_ALL}:{DEFAULT_HTTP_PORT}"))
 }
 
 /// Get HTTP server port (self-knowledge)
@@ -314,7 +314,7 @@ mod tests {
         let path = socket_path();
         let path_str = path.to_string_lossy();
         // Should end with .sock
-        assert!(path_str.ends_with(".sock"), "Expected .sock extension, got: {}", path_str);
+        assert!(path_str.ends_with(".sock"), "Expected .sock extension, got: {path_str}");
     }
 
     #[test]

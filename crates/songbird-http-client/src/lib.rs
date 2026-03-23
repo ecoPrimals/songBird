@@ -100,7 +100,7 @@ pub mod types;
 pub use client::SongbirdHttpClient;
 /// Error type and `Result` alias for this crate.
 pub use error::{Error, Result};
-/// IPC-backed HTTP client, request builder, and multipart types for BearDog channels.
+/// IPC-backed HTTP client, request builder, and multipart types for `BearDog` channels.
 pub use ipc_client::{Form, IpcHttpClient, Part, RequestBuilder, Response};
 /// Request and response value types used by [`SongbirdHttpClient`].
 pub use types::{HttpRequest, HttpResponse};
@@ -110,7 +110,7 @@ pub use types::{HttpRequest, HttpResponse};
 pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
-/// Crypto capability traits, TLS secret bags, and runtime discovery helpers for BearDog sockets.
+/// Crypto capability traits, TLS secret bags, and runtime discovery helpers for `BearDog` sockets.
 pub use crypto::{
     BearDogProvider, CryptoCapability, IpcEndpoint, TlsApplicationSecrets, TlsHandshakeSecrets,
     discover_beardog_socket, discover_crypto_capability, discover_ipc_endpoint,
@@ -118,7 +118,7 @@ pub use crypto::{
 };
 
 // Re-export BearDogClient and types
-/// Lower-level BearDog IPC client and TLS secret handles for advanced use.
+/// Lower-level `BearDog` IPC client and TLS secret handles for advanced use.
 pub use beardog_client::{BearDogClient, BearDogMode, TlsSecrets};
 
 // Re-export HTTP configuration types for adaptive behavior
@@ -149,6 +149,6 @@ mod tests {
     #[test]
     fn test_version() {
         // VERSION is set from CARGO_PKG_VERSION at compile time and is always non-empty
-        assert!(VERSION.contains('.'), "Version should be in semver format: {}", VERSION);
+        assert!(VERSION.contains('.'), "Version should be in semver format: {VERSION}");
     }
 }

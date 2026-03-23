@@ -49,6 +49,10 @@ pub async fn run_config(action: ConfigAction) -> Result<()> {
 }
 
 /// Show current configuration
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn show_config(show_secrets: bool, format: &str) -> Result<()> {
     match CanonicalSongbirdConfig::from_env() {
         Ok(config) => {
@@ -119,6 +123,10 @@ const fn mask_secrets_in_config(config: CanonicalSongbirdConfig) -> CanonicalSon
 }
 
 /// Validate configuration
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn validate_config() -> Result<()> {
     println!("🔍 Validating Songbird Configuration");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -154,6 +162,10 @@ async fn validate_config() -> Result<()> {
 }
 
 /// Initialize configuration template
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn init_config(output: &str, force: bool) -> Result<()> {
     println!("🔧 Generating Songbird Configuration Template");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

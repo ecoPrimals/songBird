@@ -40,7 +40,7 @@ pub struct ZeroTouchDeployment;
 
 impl ZeroTouchDeployment {
     #[must_use]
-    pub fn new(_config: ZeroTouchConfig) -> Self {
+    pub const fn new(_config: ZeroTouchConfig) -> Self {
         Self
     }
 

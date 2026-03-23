@@ -69,6 +69,9 @@ impl UniversalIpcBroker {
     ///
     /// This initializes the service handler, registers the songbird endpoint,
     /// and creates a Tower Atomic server for handling JSON-RPC requests.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new() -> Result<Self> {
         Self::with_discovery_listener(None).await
     }
@@ -84,6 +87,9 @@ impl UniversalIpcBroker {
     /// - No hardcoding: discovers peers at runtime
     /// - Capability-based: uses trait-based dependency injection
     /// - Smart refactoring: bridge pattern, not tight coupling
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn with_discovery_listener(
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
     ) -> Result<Self> {
@@ -162,6 +168,9 @@ impl UniversalIpcBroker {
     /// JSON-RPC requests from other primals.
     ///
     /// Runs indefinitely until the server is stopped or an error occurs.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn start(self) -> Result<()> {
         info!("🚀 Starting Universal IPC Broker");
         info!("   Listening on: {}", self.endpoint.path);
@@ -198,6 +207,9 @@ impl UniversalIpcBroker {
 ///     Ok(())
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_broker() -> Result<()> {
     start_broker_with_discovery(None).await
 }
@@ -206,6 +218,9 @@ pub async fn start_broker() -> Result<()> {
 ///
 /// Enables real-time peer discovery when a listener is provided.
 /// This is the recommended way to start the broker in production.
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_broker_with_discovery(
     discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
 ) -> Result<()> {
@@ -265,8 +280,7 @@ mod tests {
                 assert!(
                     err_msg.contains("already registered")
                         || err_msg.contains("Service already registered"),
-                    "Unexpected error: {}",
-                    err_msg
+                    "Unexpected error: {err_msg}"
                 );
             }
         }

@@ -33,10 +33,10 @@
     reason = "test assertions and harness ergonomics"
 )]
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Coverage tests for songbird_discovery::traits::feature_flags
+//! Coverage tests for `songbird_discovery::traits::feature_flags`
 //!
 //! Tests struct construction, defaults, serialization, and the
-//! ProviderCapabilities helper methods.
+//! `ProviderCapabilities` helper methods.
 
 use songbird_discovery::traits::feature_flags::{
     CacheConfig, DeviceInfo, EvaluationConfig, EvaluationContext, EvaluationRule, FeatureFlag,
@@ -98,7 +98,7 @@ fn test_provider_capability_clone_debug() {
     let cap = ProviderCapability::Updates;
     let cloned = cap.clone();
     assert_eq!(cap, cloned);
-    let debug = format!("{:?}", cap);
+    let debug = format!("{cap:?}");
     assert!(debug.contains("Updates"));
 }
 
@@ -255,7 +255,7 @@ fn test_flag_type_variants() {
     for ft in &types {
         let json = serde_json::to_string(ft).unwrap();
         let deserialized: FlagType = serde_json::from_str(&json).unwrap();
-        let debug = format!("{:?}", deserialized);
+        let debug = format!("{deserialized:?}");
         assert!(!debug.is_empty());
     }
 }
@@ -315,7 +315,7 @@ fn test_rule_operator_variants() {
     for op in &operators {
         let json = serde_json::to_string(op).unwrap();
         let deserialized: RuleOperator = serde_json::from_str(&json).unwrap();
-        let debug = format!("{:?}", deserialized);
+        let debug = format!("{deserialized:?}");
         assert!(!debug.is_empty());
     }
 }

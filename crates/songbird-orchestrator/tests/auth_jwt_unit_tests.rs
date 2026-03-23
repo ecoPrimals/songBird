@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Unit Tests for BearDog JWT Delegation
+//! Unit Tests for `BearDog` JWT Delegation
 //!
 //! Tests the JWT provisioning and capability discovery in isolation.
 //!

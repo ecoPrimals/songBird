@@ -301,7 +301,7 @@ fn fault_concurrent_env_changes() {
 /// Fault Test: Family ID without socket path override
 ///
 /// Tests default path construction with various family IDs.
-/// PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT included in socket path.
+/// `PRIMAL_DEPLOYMENT_STANDARD`: Family ID is NOT included in socket path.
 #[test]
 fn fault_family_id_path_construction() {
     let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);

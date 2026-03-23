@@ -10,6 +10,10 @@ use songbird_http_client::SongbirdHttpClient;
 use tracing::{error, info};
 
 #[tokio::main]
+#[expect(
+    clippy::too_many_lines,
+    reason = "example binary: argument parsing and logging-heavy self-test flow"
+)]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging (CRITICAL for transcript comparison!)
     tracing_subscriber::fmt()
@@ -29,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
     // Parse command-line arguments
     let args: Vec<String> = std::env::args().collect();
     let mut url = "https://localhost:8443".to_string();
-    let mut _skip_verify = false;
+    let mut skip_verify = false;
     let mut beardog_socket = "/tmp/beardog-test.sock".to_string();
 
     let mut i = 1;
@@ -45,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             "--skip-verify" => {
-                _skip_verify = true;
+                skip_verify = true;
                 i += 1;
             }
             "--beardog-socket" => {
@@ -85,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("📋 Configuration:");
     info!("   URL: {}", url);
-    info!("   Skip Verify: {}", _skip_verify);
+    info!("   Skip Verify: {}", skip_verify);
     info!("   BearDog Socket: {}", beardog_socket);
     info!("");
 
@@ -126,7 +130,7 @@ async fn main() -> anyhow::Result<()> {
             error!("═══════════════════════════════════════════════════════════════");
             error!("Error: {}", e);
             error!("");
-            return Err(anyhow::anyhow!("TLS handshake failed: {}", e));
+            return Err(anyhow::anyhow!("TLS handshake failed: {e}"));
         }
     }
 

@@ -27,7 +27,7 @@ use std::sync::Mutex;
 /// This is the correct pattern: env var tests serialize, everything else runs concurrent.
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
-/// Test socket path derivation with BiomeOS Neural API environment variables
+/// Test socket path derivation with `BiomeOS` Neural API environment variables
 #[test]
 fn test_biomeos_neural_api_socket_path_priority() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -143,7 +143,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
 }
 
 /// Test that socket path follows XDG or /tmp fallback
-/// PRIMAL_DEPLOYMENT_STANDARD: XDG_RUNTIME_DIR/biomeos/ is preferred, /tmp is fallback
+/// `PRIMAL_DEPLOYMENT_STANDARD`: `XDG_RUNTIME_DIR/biomeos`/ is preferred, /tmp is fallback
 #[test]
 fn test_default_socket_directory_is_tmp() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -165,13 +165,11 @@ fn test_default_socket_directory_is_tmp() {
     // Should be in XDG_RUNTIME_DIR/biomeos/ or /tmp/ fallback
     assert!(
         path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"),
-        "Default socket should be in XDG or /tmp, got: {}",
-        path_str
+        "Default socket should be in XDG or /tmp, got: {path_str}"
     );
     assert!(
         path_str.ends_with("songbird.sock"),
-        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD, got: {}",
-        path_str
+        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD, got: {path_str}"
     );
 }
 

@@ -18,6 +18,11 @@ impl TlsServer {
     ///
     /// Uses OS-provided CSPRNG via getrandom for 28 bytes of randomness,
     /// with first 4 bytes as Unix timestamp per RFC 8446 format.
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(super) fn generate_random(&self) -> Vec<u8> {
         let mut random = Vec::with_capacity(32);
 
@@ -51,12 +56,16 @@ impl TlsServer {
     }
 
     /// Build `ServerHello` message
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(super) fn build_server_hello(
         &self,
         server_random: &[u8],
         server_public_key: &[u8],
         cipher_suite: CipherSuite,
-    ) -> Result<Vec<u8>> {
+    ) -> Vec<u8> {
         let mut msg = Vec::new();
 
         // Handshake type: ServerHello
@@ -82,7 +91,7 @@ impl TlsServer {
         msg.push(0);
 
         // Extensions
-        let extensions = self.build_server_hello_extensions(server_public_key)?;
+        let extensions = self.build_server_hello_extensions(server_public_key);
         msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         msg.extend_from_slice(&extensions);
 
@@ -92,11 +101,16 @@ impl TlsServer {
         msg[length_pos + 1] = ((body_len >> 8) & 0xFF) as u8;
         msg[length_pos + 2] = (body_len & 0xFF) as u8;
 
-        Ok(msg)
+        msg
     }
 
     /// Build `ServerHello` extensions
-    fn build_server_hello_extensions(&self, server_public_key: &[u8]) -> Result<Vec<u8>> {
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
+    fn build_server_hello_extensions(&self, server_public_key: &[u8]) -> Vec<u8> {
         let mut ext = Vec::new();
 
         // 1. Supported versions (0x002b) - REQUIRED
@@ -112,11 +126,16 @@ impl TlsServer {
         ext.extend_from_slice(&(server_public_key.len() as u16).to_be_bytes());
         ext.extend_from_slice(server_public_key);
 
-        Ok(ext)
+        ext
     }
 
     /// Build `EncryptedExtensions` message
-    pub(super) fn build_encrypted_extensions(&self) -> Result<Vec<u8>> {
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
+    pub(super) fn build_encrypted_extensions(&self) -> Vec<u8> {
         let mut msg = Vec::new();
 
         // Handshake type: EncryptedExtensions
@@ -135,11 +154,15 @@ impl TlsServer {
         msg[length_pos + 1] = ((body_len >> 8) & 0xFF) as u8;
         msg[length_pos + 2] = (body_len & 0xFF) as u8;
 
-        Ok(msg)
+        msg
     }
 
     /// Build Certificate message
-    pub(super) fn build_certificate(&self) -> Result<Vec<u8>> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
+    pub(super) fn build_certificate(&self) -> Vec<u8> {
         let mut msg = Vec::new();
 
         // Handshake type: Certificate
@@ -169,7 +192,7 @@ impl TlsServer {
         msg[length_pos + 1] = ((body_len >> 8) & 0xFF) as u8;
         msg[length_pos + 2] = (body_len & 0xFF) as u8;
 
-        Ok(msg)
+        msg
     }
 
     /// Build `CertificateVerify` message
@@ -208,6 +231,10 @@ impl TlsServer {
     }
 
     /// Build Finished message
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(super) async fn build_finished(&self, handshake_secret: &[u8]) -> Result<Vec<u8>> {
         // Compute transcript hash
         let transcript_hash = self.transcript.compute_hash();
@@ -241,6 +268,11 @@ impl TlsServer {
     }
 
     /// Wrap data in TLS record (5-byte header + data)
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(super) fn wrap_in_tls_record(&self, content_type_byte: u8, data: &[u8]) -> Vec<u8> {
         let mut record = Vec::with_capacity(5 + data.len());
 

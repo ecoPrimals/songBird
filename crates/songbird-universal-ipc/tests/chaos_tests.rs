@@ -63,7 +63,7 @@ async fn test_chaos_rapid_register_unregister() {
     let cap = unique_id("rapid-cap");
     let iterations = 50;
     for i in 0..iterations {
-        let primal_id = format!("rapid-primal-{}-{}", cap, i);
+        let primal_id = format!("rapid-primal-{cap}-{i}");
 
         // Register
         let _endpoint =
@@ -117,7 +117,7 @@ async fn test_chaos_connection_storm() {
         let path = endpoint.path.clone();
         let handle = tokio::spawn(async move {
             if let Ok(Ok(mut stream)) = timeout(Duration::from_secs(2), ipc::connect(&path)).await {
-                let msg = format!("c{}", i);
+                let msg = format!("c{i}");
                 let _ = stream.write_all(msg.as_bytes()).await;
                 let mut buf = vec![0u8; 64];
                 let _ = stream.read(&mut buf).await;
@@ -135,7 +135,7 @@ async fn test_chaos_connection_storm() {
     tokio::task::yield_now().await;
 
     let final_count = connection_count.load(Ordering::SeqCst);
-    assert!(final_count >= 80, "Should handle most connections (got {})", final_count);
+    assert!(final_count >= 80, "Should handle most connections (got {final_count})");
 
     server_handle.abort();
 
@@ -268,7 +268,7 @@ async fn test_chaos_massive_capabilities() {
     let primal_id = unique_id("massive-cap-primal");
     // Use test-unique capability prefix to avoid cross-test pollution
     let cap_prefix = unique_id("mcap");
-    let capabilities: Vec<String> = (0..100).map(|i| format!("{}-{}", cap_prefix, i)).collect();
+    let capabilities: Vec<String> = (0..100).map(|i| format!("{cap_prefix}-{i}")).collect();
 
     let _endpoint = ipc::register(&primal_id, capabilities.clone())
         .await
@@ -277,7 +277,7 @@ async fn test_chaos_massive_capabilities() {
     // Verify all capabilities are discoverable
     for cap in &capabilities {
         let services = ipc::find_by_capability(cap).await;
-        assert_eq!(services.len(), 1, "Should find exactly one primal for {}", cap);
+        assert_eq!(services.len(), 1, "Should find exactly one primal for {cap}");
     }
 
     // Cleanup
@@ -294,7 +294,7 @@ async fn test_chaos_concurrent_discovery() {
     // Register primals with various capabilities
     let mut registered = vec![];
     for i in 0..10 {
-        let primal_id = format!("disco-primal-{}-{}", cap_prefix, i);
+        let primal_id = format!("disco-primal-{cap_prefix}-{i}");
         let cap = format!("{}-{}", cap_prefix, i % 3); // 3 different capabilities
         let _ = ipc::register(&primal_id, vec![cap]).await;
         registered.push(primal_id);
@@ -303,11 +303,11 @@ async fn test_chaos_concurrent_discovery() {
     // Concurrent discovery of all capabilities
     let mut handles = vec![];
     for i in 0..3 {
-        let cap = format!("{}-{}", cap_prefix, i);
+        let cap = format!("{cap_prefix}-{i}");
         let handle = tokio::spawn(async move {
             for _ in 0..20 {
                 let services = ipc::find_by_capability(&cap).await;
-                assert!(!services.is_empty(), "Should find providers for {}", cap);
+                assert!(!services.is_empty(), "Should find providers for {cap}");
             }
         });
         handles.push(handle);
@@ -372,7 +372,7 @@ async fn test_chaos_memory_pressure() {
     let mut handles = vec![];
     let mut primal_ids = vec![];
     for i in 0..100 {
-        let primal_id = format!("mem-primal-{}-{}", cap, i);
+        let primal_id = format!("mem-primal-{cap}-{i}");
         primal_ids.push(primal_id.clone());
         let c = cap.clone();
         let handle = tokio::spawn(async move {

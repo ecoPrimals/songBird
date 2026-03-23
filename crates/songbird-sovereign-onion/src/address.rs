@@ -12,7 +12,7 @@ use ed25519_dalek::VerifyingKey;
 #[cfg(feature = "standalone")]
 use sha3::{Digest, Sha3_256};
 
-/// Derive .onion address from an Ed25519 public key using delegated SHA3-256 (Neural API / BearDog).
+/// Derive .onion address from an Ed25519 public key using delegated SHA3-256 (Neural API / `BearDog`).
 pub(crate) async fn derive_onion_address_with_beardog(
     client: &BeardogCryptoClient,
     pubkey_bytes: &[u8; 32],
@@ -66,7 +66,7 @@ pub(crate) async fn derive_onion_address_with_beardog(
 ///
 /// # Errors
 ///
-/// Returns error if BearDog RPC fails or checksum computation fails.
+/// Returns error if `BearDog` RPC fails or checksum computation fails.
 pub async fn derive_onion_address_via_beardog(
     client: &BeardogCryptoClient,
     pubkey_bytes: &[u8; 32],
@@ -78,7 +78,7 @@ pub async fn derive_onion_address_via_beardog(
 ///
 /// # Errors
 ///
-/// Returns error if address format is invalid, checksum fails, or BearDog RPC fails.
+/// Returns error if address format is invalid, checksum fails, or `BearDog` RPC fails.
 pub async fn validate_onion_address_via_beardog(
     client: &BeardogCryptoClient,
     onion: &str,
@@ -156,6 +156,7 @@ pub async fn validate_onion_address_via_beardog(
 /// # }
 /// ```
 #[cfg(feature = "standalone")]
+#[must_use]
 pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
     let mut data = Vec::with_capacity(35);
 
@@ -201,6 +202,10 @@ pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
 /// assert_eq!(pubkey.as_bytes().len(), 32);
 /// # }
 /// ```
+///
+/// # Errors
+///
+/// Returns the same errors as [`validate_onion_address`].
 #[cfg(feature = "standalone")]
 pub fn parse_onion_address(onion: &str) -> Result<VerifyingKey> {
     validate_onion_address(onion)
@@ -281,7 +286,11 @@ mod tests {
         let onion = derive_onion_address(&public_key);
 
         // Check format
-        assert!(onion.ends_with(".onion"));
+        assert!(
+            std::path::Path::new(&onion)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("onion"))
+        );
         assert_eq!(onion.len(), 62); // 56 chars + ".onion"
 
         // Check lowercase

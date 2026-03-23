@@ -32,7 +32,7 @@
 //!
 //! Comprehensive test coverage for biomeOS integration fixes:
 //! - Issue 1: Standard methods (health, identity, rpc.discover)
-//! - Issue 2: BirdSong family_id passthrough
+//! - Issue 2: `BirdSong` `family_id` passthrough
 //! - Unit, E2E, Chaos, and Fault Injection tests
 //!
 //! Test categories:
@@ -235,7 +235,7 @@ async fn test_e2e_multiple_sequential_requests() {
 
     for method in methods {
         let result = handler.handle(method, json!({})).await;
-        assert!(result.is_ok(), "Method {} should succeed", method);
+        assert!(result.is_ok(), "Method {method} should succeed");
     }
 }
 
@@ -266,7 +266,7 @@ async fn test_chaos_concurrent_health_requests() {
         let handler_clone = Arc::clone(&handler);
         tasks.push(tokio::spawn(async move {
             let result = handler_clone.handle("health", json!({})).await;
-            assert!(result.is_ok(), "Concurrent request {} failed", i);
+            assert!(result.is_ok(), "Concurrent request {i} failed");
             result.unwrap()
         }));
     }
@@ -296,7 +296,7 @@ async fn test_chaos_rapid_sequential_requests() {
         };
 
         let result = handler.handle(method, json!({})).await;
-        assert!(result.is_ok(), "Rapid request {} failed", i);
+        assert!(result.is_ok(), "Rapid request {i} failed");
     }
 }
 
@@ -323,9 +323,9 @@ async fn test_chaos_interleaved_methods() {
 
     // All should succeed
     for (i, result) in results.iter().enumerate() {
-        assert!(result.is_ok(), "Task {} panicked", i);
+        assert!(result.is_ok(), "Task {i} panicked");
         let response = result.as_ref().unwrap();
-        assert!(response.is_ok(), "Request {} failed", i);
+        assert!(response.is_ok(), "Request {i} failed");
     }
 }
 
@@ -347,12 +347,13 @@ async fn test_chaos_concurrent_with_service_registration() {
         .map(|i| {
             let registry_clone = Arc::clone(&registry);
             tokio::spawn(async move {
-                let reg = registry_clone.write().await;
                 let endpoint =
-                    NativeEndpoint::UnixSocket(PathBuf::from(format!("/tmp/test-{}.sock", i)));
+                    NativeEndpoint::UnixSocket(PathBuf::from(format!("/tmp/test-{i}.sock")));
+                let reg = registry_clone.write().await;
                 let _ = reg
-                    .register(&format!("test-service-{}", i), endpoint, vec!["test".to_string()])
+                    .register(&format!("test-service-{i}"), endpoint, vec!["test".to_string()])
                     .await;
+                drop(reg);
             })
         })
         .collect();
@@ -422,7 +423,7 @@ async fn test_fault_method_with_special_characters() {
     for method in special_methods {
         let result = handler.handle(method, json!({})).await;
         // Should safely fail, not panic
-        assert!(result.is_err(), "Special char method should fail: {}", method);
+        assert!(result.is_err(), "Special char method should fail: {method}");
     }
 }
 
@@ -435,7 +436,7 @@ async fn test_fault_unicode_method_name() {
 
     for method in unicode_methods {
         let result = handler.handle(method, json!({})).await;
-        assert!(result.is_err(), "Unicode method should fail: {}", method);
+        assert!(result.is_err(), "Unicode method should fail: {method}");
     }
 }
 
@@ -449,7 +450,7 @@ async fn test_fault_case_sensitivity() {
 
     for method in variations {
         let result = handler.handle(method, json!({})).await;
-        assert!(result.is_err(), "Case variation should fail: {}", method);
+        assert!(result.is_err(), "Case variation should fail: {method}");
     }
 }
 
@@ -462,7 +463,7 @@ async fn test_fault_method_with_spaces() {
 
     for method in space_methods {
         let result = handler.handle(method, json!({})).await;
-        assert!(result.is_err(), "Method with spaces should fail: '{}'", method);
+        assert!(result.is_err(), "Method with spaces should fail: '{method}'");
     }
 }
 
@@ -476,7 +477,7 @@ async fn test_fault_concurrent_errors() {
         .map(|i| {
             let handler_clone = Arc::clone(&handler);
             tokio::spawn(async move {
-                handler_clone.handle(&format!("nonexistent_{}", i), json!({})).await
+                handler_clone.handle(&format!("nonexistent_{i}"), json!({})).await
             })
         })
         .collect();
@@ -485,9 +486,9 @@ async fn test_fault_concurrent_errors() {
 
     // All should return errors (not panic)
     for (i, result) in results.iter().enumerate() {
-        assert!(result.is_ok(), "Task {} should not panic", i);
+        assert!(result.is_ok(), "Task {i} should not panic");
         let handler_result = result.as_ref().unwrap();
-        assert!(handler_result.is_err(), "Request {} should error", i);
+        assert!(handler_result.is_err(), "Request {i} should error");
     }
 }
 

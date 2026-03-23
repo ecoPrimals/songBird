@@ -57,7 +57,7 @@ use std::sync::Arc;
 
 /// Mock encryption provider for testing Dark Forest beacons
 ///
-/// Simulates BearDog's beacon.* RPC methods with in-memory beacon seeds.
+/// Simulates `BearDog`'s `beacon.*` RPC methods with in-memory beacon seeds.
 struct MockDarkForestProvider {
     beacon_id: Vec<u8>,
     beacon_seed: [u8; 32],

@@ -47,7 +47,7 @@ pub struct TorHandler {
     /// Connection state
     state: Arc<RwLock<TorState>>,
     /// Circuit manager (initialized after consensus fetch)
-    circuit_manager: Arc<RwLock<Option<CircuitManager>>>,
+    circuit_manager: Arc<RwLock<Option<Arc<CircuitManager>>>>,
 }
 
 /// Tor connection state
@@ -118,17 +118,34 @@ impl TorHandler {
 
     /// Handle `tor.status` - Get Tor connection status
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
-        let state = self.state.read().await;
+        let (
+            initialized,
+            circuit_count,
+            consensus_valid,
+            relay_count,
+            service_running,
+            service_address,
+        ) = {
+            let state = self.state.read().await;
+            (
+                state.initialized,
+                state.circuit_count,
+                state.consensus_valid,
+                state.relay_count,
+                state.service_running,
+                state.service_address.clone(),
+            )
+        };
         let beardog_available = self.resolve_beardog_socket().await.is_some()
             || Self::get_beardog_socket_from_env().is_some();
 
         Ok(json!({
-            "initialized": state.initialized,
-            "circuit_count": state.circuit_count,
-            "consensus_valid": state.consensus_valid,
-            "relay_count": state.relay_count,
-            "service_running": state.service_running,
-            "service_address": state.service_address,
+            "initialized": initialized,
+            "circuit_count": circuit_count,
+            "consensus_valid": consensus_valid,
+            "relay_count": relay_count,
+            "service_running": service_running,
+            "service_address": service_address,
             "beardog_available": beardog_available,
             "comment": "Pure Rust Tor protocol (TRUE PRIMAL architecture)"
         }))
@@ -149,11 +166,10 @@ impl TorHandler {
         info!(address = address, port = port, "Connecting to .onion via pure Rust Tor");
 
         // Ensure we have a circuit manager
-        let manager = self.circuit_manager.read().await;
-        let manager = manager.as_ref().ok_or(
+        let manager = self.circuit_manager.read().await.as_ref().cloned().ok_or_else(|| {
             "Tor not initialized. Call tor.consensus.fetch first to build circuit manager."
-                .to_string(),
-        )?;
+                .to_string()
+        })?;
 
         // Build a rendezvous circuit for .onion connections
         let purpose = if address.to_ascii_lowercase().ends_with(".onion") {
@@ -276,13 +292,16 @@ impl TorHandler {
         let force = params.get("force").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
         // Check if we already have valid consensus
-        {
-            let state = self.state.read().await;
-            if state.consensus_valid && !force {
+        if !force {
+            let cached_relay_count = {
+                let state = self.state.read().await;
+                state.consensus_valid.then_some(state.relay_count)
+            };
+            if let Some(relay_count) = cached_relay_count {
                 return Ok(json!({
                     "fetched": false,
                     "cached": true,
-                    "relay_count": state.relay_count,
+                    "relay_count": relay_count,
                     "comment": "Using cached consensus (use force=true to refresh)"
                 }));
             }
@@ -308,7 +327,7 @@ impl TorHandler {
                 );
 
                 // Initialize circuit manager with fresh consensus
-                let manager = CircuitManager::new(CryptoProvider::from_env(), consensus);
+                let manager = Arc::new(CircuitManager::new(CryptoProvider::from_env(), consensus));
                 {
                     let mut cm = self.circuit_manager.write().await;
                     *cm = Some(manager);
@@ -363,10 +382,9 @@ impl TorHandler {
         info!(purpose = purpose_str, "Building Tor circuit");
 
         // Ensure circuit manager is initialized
-        let manager = self.circuit_manager.read().await;
-        let manager = manager.as_ref().ok_or(
-            "Circuit manager not initialized. Call tor.consensus.fetch first.".to_string(),
-        )?;
+        let manager = self.circuit_manager.read().await.as_ref().cloned().ok_or_else(|| {
+            "Circuit manager not initialized. Call tor.consensus.fetch first.".to_string()
+        })?;
 
         // Build real circuit
         match manager.build_circuit(purpose).await {
@@ -407,8 +425,8 @@ impl TorHandler {
         info!(circuit_id = circuit_id, "Closing Tor circuit");
 
         // Close via circuit manager if available
-        let manager = self.circuit_manager.read().await;
-        if let Some(ref mgr) = *manager
+        let mgr = self.circuit_manager.read().await.as_ref().cloned();
+        if let Some(mgr) = mgr
             && let Err(e) = mgr.close_circuit(circuit_id).await
         {
             warn!(error = %e, "Circuit close error (may already be closed)");
@@ -515,7 +533,10 @@ mod tests {
         let handler = TorHandler::new();
         handler.set_beardog_socket("/tmp/test-beardog.sock".to_string()).await;
 
-        let state = handler.state.read().await;
-        assert_eq!(state.beardog_socket, Some("/tmp/test-beardog.sock".to_string()));
+        let beardog = {
+            let state = handler.state.read().await;
+            state.beardog_socket.clone()
+        };
+        assert_eq!(beardog, Some("/tmp/test-beardog.sock".to_string()));
     }
 }

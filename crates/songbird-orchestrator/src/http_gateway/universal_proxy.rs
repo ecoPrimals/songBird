@@ -69,6 +69,9 @@ impl UniversalProxy {
     ///
     /// This is the ONLY method needed - no vendor-specific code!
     /// All provider differences are handled via configuration and transforms.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn proxy_request(
         &self,
         route: &Route,

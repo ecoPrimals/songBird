@@ -10,11 +10,16 @@
 use songbird_config::capability_endpoints;
 use songbird_types::SongbirdResult as Result;
 use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
+use std::sync::LazyLock;
 use tracing::{debug, warn};
 
-/// Development-only default AI primal URL when [`capability_endpoints::get_capability_endpoint`]
-/// fails and `SONGBIRD_AI_ENDPOINT` is unset.
-const DEFAULT_AI_ENDPOINT_URL: &str = "http://localhost:8002";
+fn default_ai_endpoint_url() -> &'static str {
+    static URL: LazyLock<String> = LazyLock::new(|| {
+        std::env::var("SONGBIRD_AI_ENDPOINT")
+            .unwrap_or_else(|_| "http://localhost:8002".to_string())
+    });
+    URL.as_str()
+}
 
 pub mod types;
 pub use types::*;
@@ -46,6 +51,9 @@ impl AIWorkloadClassificationDelegate {
     }
 
     /// Classify a workload by delegating to any AI-capable primal.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn classify_workload(
         &self,
         workload: &WorkloadRequest,
@@ -60,6 +68,9 @@ impl AIWorkloadClassificationDelegate {
     }
 
     /// Predict resource needs for a workload type.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn predict_resources(
         &self,
         workload_type: &WorkloadType,
@@ -74,6 +85,9 @@ impl AIWorkloadClassificationDelegate {
     }
 
     /// Assess risks for a workload given proposed resources.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn assess_risks(
         &self,
         workload: &WorkloadRequest,
@@ -106,11 +120,9 @@ impl AIWorkloadClassificationDelegate {
         }
 
         let provider_name = ai_providers.into_iter().next()?;
-        let endpoint =
-            capability_endpoints::get_capability_endpoint("ai").await.unwrap_or_else(|_| {
-                std::env::var("SONGBIRD_AI_ENDPOINT")
-                    .unwrap_or_else(|_| DEFAULT_AI_ENDPOINT_URL.to_string())
-            });
+        let endpoint = capability_endpoints::get_capability_endpoint("ai")
+            .await
+            .unwrap_or_else(|_| default_ai_endpoint_url().to_string());
         Some((provider_name, endpoint))
     }
 

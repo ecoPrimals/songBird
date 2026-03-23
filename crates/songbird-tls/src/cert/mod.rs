@@ -166,9 +166,8 @@ impl CertificateValidator {
             return Ok(());
         };
 
-        let eku_ext = match cert.extended_key_usage() {
-            Ok(e) => e,
-            Err(_) => return Ok(()),
+        let Ok(eku_ext) = cert.extended_key_usage() else {
+            return Ok(());
         };
 
         let Some(ext) = eku_ext else {

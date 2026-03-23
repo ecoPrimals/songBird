@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Resource Quota System
 //!
 //! Manages per-user resource quotas with:
@@ -59,6 +63,9 @@ impl ResourceQuota {
     }
 
     /// Check if requested resources are within quota
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn can_allocate(&self, requested: &HashMap<ResourceType, ResourceAmount>) -> Result<bool> {
         for (resource_type, amount) in requested {
             let limit = self
@@ -82,6 +89,9 @@ impl ResourceQuota {
     }
 
     /// Allocate resources (increases usage)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn allocate(&mut self, resources: &HashMap<ResourceType, ResourceAmount>) -> Result<()> {
         if !self.can_allocate(resources)? {
             anyhow::bail!("Resource allocation would exceed quota");
@@ -99,6 +109,9 @@ impl ResourceQuota {
     }
 
     /// Release resources (decreases usage)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn release(&mut self, resources: &HashMap<ResourceType, ResourceAmount>) -> Result<()> {
         for (resource_type, amount) in resources {
             if let Some(used) = self.used.get_mut(resource_type) {
@@ -161,6 +174,9 @@ impl QuotaManager {
     }
 
     /// Check if user can allocate resources
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn can_allocate(
         &self,
         user_id: &UserId,
@@ -171,6 +187,9 @@ impl QuotaManager {
     }
 
     /// Allocate resources for a user
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn allocate(
         &self,
         user_id: &UserId,
@@ -183,6 +202,9 @@ impl QuotaManager {
     }
 
     /// Release resources for a user
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn release(
         &self,
         user_id: &UserId,

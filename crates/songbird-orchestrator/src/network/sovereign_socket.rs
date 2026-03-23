@@ -217,6 +217,10 @@ impl SovereignBinder {
     }
 
     /// Try binding to IPv4 wildcard (0.0.0.0)
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn try_ipv4_wildcard(port: u16) -> Result<(TcpListener, SocketAddr)> {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
         let socket = SovereignSocket::new_tcp_v4()?;
@@ -228,6 +232,10 @@ impl SovereignBinder {
     }
 
     /// Try binding to IPv6 wildcard (::)
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn try_ipv6_wildcard(port: u16) -> Result<(TcpListener, SocketAddr)> {
         let addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port);
         let socket = SovereignSocket::new_tcp_v6()?;
@@ -239,6 +247,10 @@ impl SovereignBinder {
     }
 
     /// Try binding to localhost (fallback)
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn try_localhost(port: u16) -> Result<(TcpListener, SocketAddr)> {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
         let socket = SovereignSocket::new_tcp_v4()?;
@@ -268,7 +280,7 @@ mod tests {
 
         if let Ok((listener, addr)) = result {
             assert!(addr.port() > 0, "Should have assigned port");
-            println!("Sovereign bind successful: {}", addr);
+            println!("Sovereign bind successful: {addr}");
         }
     }
 

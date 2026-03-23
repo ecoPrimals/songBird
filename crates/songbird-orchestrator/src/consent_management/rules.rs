@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn clone_and_debug_do_not_panic() {
         let r = rule_named(&["a"], Some(1.0));
-        let _ = format!("{:?}", r);
+        let _ = format!("{r:?}");
     }
 
     #[test]

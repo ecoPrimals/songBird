@@ -343,7 +343,7 @@ mod tests {
         // Create multiple records for same user
         for i in 0..3 {
             let mut record = create_test_record();
-            record.id = format!("consent-{}", i).into();
+            record.id = format!("consent-{i}").into();
             record.user_id = user_id.clone();
             storage.save(&record).await.unwrap();
         }
@@ -363,7 +363,7 @@ mod tests {
         // Create multiple records for same task
         for i in 0..3 {
             let mut record = create_test_record();
-            record.id = format!("consent-{}", i).into();
+            record.id = format!("consent-{i}").into();
             record.task_id = task_id;
             storage.save(&record).await.unwrap();
         }
@@ -381,7 +381,7 @@ mod tests {
         // Create pending records
         for i in 0..2 {
             let mut record = create_test_record();
-            record.id = format!("pending-{}", i).into();
+            record.id = format!("pending-{i}").into();
             record.status = ConsentStatus::Pending;
             storage.save(&record).await.unwrap();
         }

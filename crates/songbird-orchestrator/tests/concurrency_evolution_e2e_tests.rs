@@ -80,7 +80,7 @@ async fn test_e2e_concurrent_invalid_commands() {
 
     for i in 0..10 {
         join_set.spawn(async move {
-            clean_cmd().arg(format!("invalid-command-{}", i)).assert().failure();
+            clean_cmd().arg(format!("invalid-command-{i}")).assert().failure();
         });
     }
 
@@ -161,8 +161,8 @@ async fn test_e2e_concurrent_environment_isolation() {
             let mut cmd = clean_cmd();
 
             // Each command gets unique environment
-            cmd.env("TEST_ID", format!("{}", i));
-            cmd.env("TEST_VAR", format!("value_{}", i));
+            cmd.env("TEST_ID", format!("{i}"));
+            cmd.env("TEST_VAR", format!("value_{i}"));
 
             // Command should succeed with its isolated environment
             cmd.arg("--version").assert().success();
@@ -186,7 +186,7 @@ async fn test_e2e_high_concurrency_stress() {
     for i in 0..100 {
         join_set.spawn(async move {
             let mut cmd = clean_cmd();
-            cmd.env("STRESS_ID", format!("{}", i));
+            cmd.env("STRESS_ID", format!("{i}"));
 
             // Mix of different commands
             if i % 3 == 0 {
@@ -244,8 +244,8 @@ async fn test_e2e_no_cross_contamination() {
             let mut cmd = clean_cmd();
 
             // Set unique env for this command
-            cmd.env("UNIQUE_ID", format!("{}", i));
-            cmd.env("UNIQUE_VALUE", format!("value_{}", i));
+            cmd.env("UNIQUE_ID", format!("{i}"));
+            cmd.env("UNIQUE_VALUE", format!("value_{i}"));
 
             // If there's cross-contamination, this would be flaky
             cmd.arg("--version").assert().success().stdout(predicate::str::contains("songbird"));
@@ -268,7 +268,7 @@ async fn test_e2e_environment_independence() {
             let mut cmd = clean_cmd();
 
             // All use the same env var name but different values
-            cmd.env("COMMON_VAR", format!("unique_value_{}", i));
+            cmd.env("COMMON_VAR", format!("unique_value_{i}"));
 
             // Should not interfere with each other
             cmd.arg("--version").assert().success();

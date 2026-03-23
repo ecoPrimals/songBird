@@ -32,6 +32,14 @@ impl TlsServer {
     /// {Finished}              -------->
     /// [Application Data]      <------->      [Application Data]
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any handshake step fails (I/O, crypto, or protocol validation).
+    #[expect(
+        clippy::too_many_lines,
+        reason = "TLS protocol requires sequential state machine steps"
+    )]
     pub async fn accept_connection(&mut self, stream: &mut TcpStream) -> Result<()> {
         info!("════════════════════════════════════════════════════════════");
         info!("🔒 TLS 1.3 SERVER: Accepting connection");
@@ -72,7 +80,7 @@ impl TlsServer {
         let server_random = self.generate_random();
 
         let server_hello =
-            self.build_server_hello(&server_random, &server_public_key, self.cipher_suite)?;
+            self.build_server_hello(&server_random, &server_public_key, self.cipher_suite);
 
         self.send_server_hello(stream, &server_hello).await?;
 
@@ -137,7 +145,7 @@ impl TlsServer {
         info!("📤 Step 6: Building encrypted handshake messages...");
 
         // 6a. EncryptedExtensions
-        let encrypted_extensions = self.build_encrypted_extensions()?;
+        let encrypted_extensions = self.build_encrypted_extensions();
         self.transcript_mut().update_with_logging(
             &encrypted_extensions,
             "EncryptedExtensions (server)",
@@ -147,7 +155,7 @@ impl TlsServer {
         info!("✅ EncryptedExtensions sent");
 
         // 6b. Certificate
-        let certificate = self.build_certificate()?;
+        let certificate = self.build_certificate();
         self.transcript_mut().update_with_logging(&certificate, "Certificate (server)", false);
         self.send_encrypted_handshake_message(stream, &certificate, 1).await?;
         info!("✅ Certificate sent");

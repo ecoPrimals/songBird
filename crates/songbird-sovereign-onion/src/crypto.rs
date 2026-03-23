@@ -30,7 +30,7 @@ use chacha20poly1305::{
 ///
 /// # Errors
 ///
-/// Returns error if BearDog encryption fails.
+/// Returns an error if `BearDog` encryption fails.
 pub async fn encrypt_data_via_beardog(
     client: &BeardogCryptoClient,
     key: &[u8; 32],
@@ -59,7 +59,7 @@ pub async fn encrypt_data_via_beardog(
 ///
 /// # Errors
 ///
-/// Returns error if BearDog decryption or MAC verification fails.
+/// Returns an error if `BearDog` decryption or MAC verification fails.
 pub async fn decrypt_data_via_beardog(
     client: &BeardogCryptoClient,
     key: &[u8; 32],
@@ -84,6 +84,10 @@ pub async fn decrypt_data_via_beardog(
 /// # Returns
 ///
 /// Ciphertext with 16-byte Poly1305 MAC tag appended
+///
+/// # Errors
+///
+/// Returns an error if encryption fails.
 #[cfg(feature = "standalone")]
 pub fn encrypt_data(key: &[u8; 32], sequence: u64, plaintext: &[u8]) -> Result<Vec<u8>> {
     let cipher = ChaCha20Poly1305::new(key.into());
@@ -109,6 +113,10 @@ pub fn encrypt_data(key: &[u8; 32], sequence: u64, plaintext: &[u8]) -> Result<V
 /// # Returns
 ///
 /// Decrypted plaintext (MAC verified)
+///
+/// # Errors
+///
+/// Returns an error if decryption or MAC verification fails.
 #[cfg(feature = "standalone")]
 pub fn decrypt_data(key: &[u8; 32], sequence: u64, ciphertext: &[u8]) -> Result<Vec<u8>> {
     let cipher = ChaCha20Poly1305::new(key.into());

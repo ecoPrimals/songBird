@@ -28,3 +28,6 @@ hostname = "0.4"
 songbird-config = { path = "../songbird-config" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+

@@ -123,18 +123,21 @@ impl OnionServiceManager {
     ///
     /// Currently creates introduction points with generated keys
     /// and prepares `ESTABLISH_INTRO` cells for when circuits are available.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `count` does not fit in `u8` indices or circuit IDs do not fit in `u32`.
     pub async fn setup_introduction_points(&self, count: usize) -> Result<()> {
         core::future::ready(()).await;
-        let mut intro_points = self
-            .intro_points
-            .write()
-            .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
+        let service_keys = {
+            let keys = self
+                .keys
+                .read()
+                .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
+            keys.clone()
+        };
 
-        let keys = self
-            .keys
-            .read()
-            .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
-
+        let mut batch = Vec::with_capacity(count);
         for i in 0..count {
             // Generate introduction point keys
             // In production: BearDog generates unique keys per intro point
@@ -142,7 +145,7 @@ impl OnionServiceManager {
             let mut relay_identity = [0u8; 32];
             relay_identity[0] = i_u8;
             // Mix with service identity for uniqueness
-            if let Some(ref k) = *keys {
+            if let Some(ref k) = service_keys {
                 for (j, byte) in relay_identity.iter_mut().enumerate().skip(1) {
                     let j_u8 = u8::try_from(j).expect("index fits u8");
                     *byte = k.identity_public[j] ^ i_u8.wrapping_add(j_u8);
@@ -165,21 +168,33 @@ impl OnionServiceManager {
             // Prepare the ESTABLISH_INTRO cell (ready to send when circuit is built)
             let _establish_cell = intro.create_establish_intro();
 
-            intro_points.push(intro);
+            batch.push(intro);
         }
+
+        let mut intro_points = self
+            .intro_points
+            .write()
+            .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
+        intro_points.extend(batch);
+        drop(intro_points);
 
         Ok(())
     }
 
     /// Publish descriptor to `HSDir`
-    pub async fn publish_descriptor(&self) -> Result<()> {
-        let keys = self
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if locks fail, the service is not initialized, or descriptor construction fails.
+    pub fn publish_descriptor(&self) -> Result<()> {
+        let keys_guard = self
             .keys
             .read()
             .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
 
-        let keys =
-            keys.as_ref().ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?;
+        let keys = keys_guard
+            .as_ref()
+            .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?;
 
         let intro_points = self
             .intro_points
@@ -188,6 +203,8 @@ impl OnionServiceManager {
 
         // Generate descriptor
         let descriptor = OnionServiceDescriptor::new(keys, &intro_points)?;
+        drop(intro_points);
+        drop(keys_guard);
 
         // HSDir upload is not performed; descriptor is built then discarded for this state machine step.
         let _ = descriptor; // Suppress unused warning
@@ -207,6 +224,11 @@ impl OnionServiceManager {
     ///
     /// Currently parses the cell and stores the rendezvous circuit.
     /// Circuit building requires relay connections (Phase 3).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the service state is not running, lock acquisition fails, or the
+    /// rendezvous cookie is already registered.
     pub async fn handle_introduction(&self, rendezvous_cookie: &[u8; 20]) -> Result<()> {
         core::future::ready(()).await;
         let state = self.state()?;
@@ -233,11 +255,16 @@ impl OnionServiceManager {
         let circuit_id = u32::from(rendezvous_cookie[0]) | u32::from(rendezvous_cookie[1]) << 8;
         let circuit = Circuit::new(circuit_id, crate::circuit::CircuitPurpose::Rendezvous);
         circuits.insert(*rendezvous_cookie, circuit);
+        drop(circuits);
 
         Ok(())
     }
 
     /// Get service state
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the state lock cannot be acquired.
     pub fn state(&self) -> Result<ServiceState> {
         let state = self
             .state
@@ -253,6 +280,7 @@ impl OnionServiceManager {
             .write()
             .map_err(|_| Error::Protocol("Failed to acquire state lock".to_string()))?;
         *state = new_state;
+        drop(state);
         Ok(())
     }
 
@@ -262,6 +290,10 @@ impl OnionServiceManager {
     /// 1. Set state to Stopped (rejects new introductions)
     /// 2. Clear all rendezvous circuits
     /// 3. Clear introduction points
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a lock cannot be acquired or state cannot be updated.
     pub async fn stop(&self) -> Result<()> {
         core::future::ready(()).await;
         self.set_state(ServiceState::Stopped)?;
@@ -274,6 +306,7 @@ impl OnionServiceManager {
                 .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
             let count = circuits.len();
             circuits.clear();
+            drop(circuits);
             if count > 0 {
                 tracing::info!("Closed {} rendezvous circuits", count);
             }
@@ -287,6 +320,7 @@ impl OnionServiceManager {
                 .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
             let count = intro_points.len();
             intro_points.clear();
+            drop(intro_points);
             if count > 0 {
                 tracing::info!("Closed {} introduction points", count);
             }

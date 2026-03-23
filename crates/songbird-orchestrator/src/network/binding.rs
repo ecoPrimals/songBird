@@ -61,6 +61,9 @@ impl NetworkBindingStrategy {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn auto_detect() -> Result<Self> {
         info!("🌐 Auto-detecting optimal network binding strategy...");
 
@@ -206,6 +209,10 @@ impl NetworkCapabilities {
     }
 
     /// Fast detection using UDP socket routing (doesn't actually send data)
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn detect_via_udp_socket() -> Result<Self> {
         use std::net::UdpSocket;
 
@@ -256,6 +263,10 @@ impl NetworkCapabilities {
 
     /// Fallback detection by enumerating network interfaces
     #[cfg(target_os = "linux")]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn detect_via_interfaces() -> Result<Self> {
         use std::process::Command;
 
@@ -327,7 +338,7 @@ mod tests {
         assert!(strategy.is_ok(), "Auto-detection should succeed");
 
         let strategy = strategy.unwrap();
-        println!("Detected strategy: {:?}", strategy);
+        println!("Detected strategy: {strategy:?}");
     }
 
     #[test]

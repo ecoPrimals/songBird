@@ -1,6 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(
     clippy::unwrap_used,
@@ -97,6 +120,7 @@ impl Default for MockTarpcServer {
 }
 
 impl MockTarpcServer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
@@ -163,7 +187,7 @@ async fn start_test_server() -> Result<(u16, tokio::task::JoinHandle<()>)> {
     let addr = "127.0.0.1:0";
     let listener = tarpc::serde_transport::tcp::listen(addr, Bincode::default)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to bind listener: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to bind listener: {e}"))?;
 
     let local_addr = listener.local_addr();
     let port = local_addr.port();
@@ -176,7 +200,7 @@ async fn start_test_server() -> Result<(u16, tokio::task::JoinHandle<()>)> {
                 match r {
                     Ok(conn) => Some(conn),
                     Err(e) => {
-                        eprintln!("Failed to accept connection: {}", e);
+                        eprintln!("Failed to accept connection: {e}");
                         None
                     }
                 }
@@ -207,7 +231,7 @@ async fn start_test_server() -> Result<(u16, tokio::task::JoinHandle<()>)> {
 
 /// Connect to a tarpc server
 async fn connect_client(port: u16) -> Result<SongbirdFederationClient> {
-    let addr = format!("127.0.0.1:{}", port);
+    let addr = format!("127.0.0.1:{port}");
     let transport = tarpc::serde_transport::tcp::connect(&addr, Bincode::default).await?;
     let client = SongbirdFederationClient::new(client::Config::default(), transport).spawn();
     Ok(client)
@@ -340,10 +364,10 @@ async fn test_performance_latency() -> Result<()> {
     let elapsed = start.elapsed();
     let avg_latency = elapsed.as_micros() / iterations;
 
-    println!("Average latency: {}μs per call", avg_latency);
+    println!("Average latency: {avg_latency}μs per call");
 
     // tarpc should be fast! Target: < 1000μs (1ms) for local connections
-    assert!(avg_latency < 1000, "Average latency should be < 1ms, got {}μs", avg_latency);
+    assert!(avg_latency < 1000, "Average latency should be < 1ms, got {avg_latency}μs");
 
     Ok(())
 }
@@ -366,7 +390,7 @@ async fn test_concurrent_requests() -> Result<()> {
     // Wait for all to complete
     for (i, handle) in handles {
         let result = handle.await?;
-        assert!(result.is_ok(), "Request {} should succeed", i);
+        assert!(result.is_ok(), "Request {i} should succeed");
     }
 
     Ok(())
@@ -419,7 +443,7 @@ async fn test_multiple_service_registrations() -> Result<()> {
     // Register 5 different services
     for i in 0..5 {
         let service = ServiceInfo {
-            name: format!("service-{}", i),
+            name: format!("service-{i}"),
             address: "localhost".to_string(),
             port: 8000 + i,
             capabilities: vec![format!("cap-{}", i)],
@@ -458,10 +482,10 @@ async fn test_throughput() -> Result<()> {
     }
 
     let requests_per_sec = count;
-    println!("Throughput: {} requests/second", requests_per_sec);
+    println!("Throughput: {requests_per_sec} requests/second");
 
     // Should handle at least 1000 requests/second locally
-    assert!(requests_per_sec >= 1000, "Should handle >= 1000 req/s, got {}", requests_per_sec);
+    assert!(requests_per_sec >= 1000, "Should handle >= 1000 req/s, got {requests_per_sec}");
 
     Ok(())
 }

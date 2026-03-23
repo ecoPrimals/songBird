@@ -66,16 +66,16 @@ fn create_test_service(id: &str, name: &str, service_type: &str, port: u16) -> S
         name: name.to_string(),
         version: "1.0.0".to_string(),
         service_type: service_type.to_string(),
-        description: Some(format!("Test service: {}", name)),
+        description: Some(format!("Test service: {name}")),
         endpoints: vec![],
-        health_check_endpoint: Some(format!("http://localhost:{}/health", port)),
+        health_check_endpoint: Some(format!("http://localhost:{port}/health")),
         metadata: HashMap::new(),
         tags: vec![],
         dependencies: vec![],
         status: ServiceStatus::Running,
         created_at: Utc::now(),
         updated_at: Utc::now(),
-        instance_id: format!("instance-{}", id),
+        instance_id: format!("instance-{id}"),
         host: "localhost".to_string(),
         port,
     }
@@ -515,8 +515,8 @@ async fn test_large_service_collection() {
 
     for i in 0..100 {
         let mut service = create_test_service(
-            &format!("srv-{}", i),
-            &format!("service-{}", i),
+            &format!("srv-{i}"),
+            &format!("service-{i}"),
             &format!("type-{}", i % 5),
             8000 + i,
         );
@@ -547,8 +547,8 @@ async fn test_service_tag_based_grouping() {
     let production_services: Vec<ServiceInfo> = (0..5)
         .map(|i| {
             let mut service = create_test_service(
-                &format!("prod-srv-{}", i),
-                &format!("prod-service-{}", i),
+                &format!("prod-srv-{i}"),
+                &format!("prod-service-{i}"),
                 "production",
                 8000 + i,
             );

@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Property-based tests for trust enforcement
 //!
 //! Uses quickcheck-style property testing to verify invariants
@@ -111,7 +135,7 @@ fn prop_timestamp_monotonic() {
 
     for i in 0..10 {
         let peer = DiscoveredPeer {
-            node_id: format!("tower{}", i),
+            node_id: format!("tower{i}"),
             tags: vec![],
             endpoint: "https://localhost:8080".to_string(),
             discovery_method: "udp_multicast".to_string(),

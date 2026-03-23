@@ -212,6 +212,9 @@ impl EventStreamManager {
     }
 
     /// Emit an event to all subscribers
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn emit(&self, event: TaskEvent) -> Result<(), String> {
         debug!("Emitting event: {:?} for task {}", event.event_type, event.task_id);
 
@@ -315,6 +318,9 @@ pub struct FilteredEventReceiver {
 
 impl FilteredEventReceiver {
     /// Receive next matching event
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn recv(&mut self) -> Result<TaskEvent, broadcast::error::RecvError> {
         loop {
             let event = self.receiver.recv().await?;
@@ -327,6 +333,9 @@ impl FilteredEventReceiver {
     }
 
     /// Try to receive without blocking
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn try_recv(&mut self) -> Result<TaskEvent, broadcast::error::TryRecvError> {
         loop {
             let event = self.receiver.try_recv()?;

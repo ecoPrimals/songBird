@@ -326,13 +326,15 @@ impl RelayServer {
                         packets_forwarded: 0,
                     };
 
-                    // Store session
+                    // Store session (drop sessions lock before updating stats)
                     {
                         let mut sessions_guard = sessions.write().await;
                         sessions_guard.insert(session_id, session);
+                        let active = sessions_guard.len() as u64;
+                        drop(sessions_guard);
 
                         let mut stats_guard = stats.write().await;
-                        stats_guard.sessions_active = sessions_guard.len() as u64;
+                        stats_guard.sessions_active = active;
                         stats_guard.sessions_total += 1;
                     }
 
@@ -343,9 +345,10 @@ impl RelayServer {
                     // Not authorized
                     warn!("🚫 Unauthorized relay request from {}", request.requester);
 
-                    let mut stats_guard = stats.write().await;
-                    stats_guard.authorization_failures += 1;
-
+                    {
+                        let mut stats_guard = stats.write().await;
+                        stats_guard.authorization_failures += 1;
+                    }
                     AllocationResponse::unauthorized("Lineage verification failed")
                 }
             }
@@ -353,9 +356,10 @@ impl RelayServer {
                 // Authorization check failed
                 warn!("⚠️  Authorization error: {}", e);
 
-                let mut stats_guard = stats.write().await;
-                stats_guard.authorization_failures += 1;
-
+                {
+                    let mut stats_guard = stats.write().await;
+                    stats_guard.authorization_failures += 1;
+                }
                 AllocationResponse::error(format!("Authorization failed: {e}"))
             }
         };
@@ -381,36 +385,44 @@ impl RelayServer {
         data: &[u8],
         src_addr: SocketAddr,
     ) -> Result<()> {
-        let mut sessions_guard = sessions.write().await;
+        let (dest_addr, masking_level, data_len) = {
+            let mut sessions_guard = sessions.write().await;
 
-        let session = sessions_guard.get_mut(&session_id).ok_or_else(|| {
-            LineageRelayError::SessionNotFound(format!("Session {session_id} not found"))
-        })?;
+            let session = sessions_guard.get_mut(&session_id).ok_or_else(|| {
+                LineageRelayError::SessionNotFound(format!("Session {session_id} not found"))
+            })?;
 
-        // Determine destination (the other peer)
-        let dest_addr = if src_addr == session.requester_addr {
-            // From requester → to target
-            session.target_addr
-        } else if src_addr.ip() == session.target_addr.ip() {
-            // From target → to requester
-            // Note: Port might differ due to NAT, but IP should match
-            session.requester_addr
-        } else {
-            // Unknown source - reject
-            warn!(
-                "🚫 Packet from unauthorized source {} (session {}, expected {} or {})",
-                src_addr, session_id, session.requester_addr, session.target_addr
-            );
-            return Ok(()); // Silently drop (don't error, just ignore)
+            // Determine destination (the other peer)
+            let dest_addr = if src_addr == session.requester_addr {
+                // From requester → to target
+                session.target_addr
+            } else if src_addr.ip() == session.target_addr.ip() {
+                // From target → to requester
+                // Note: Port might differ due to NAT, but IP should match
+                session.requester_addr
+            } else {
+                // Unknown source - reject
+                warn!(
+                    "🚫 Packet from unauthorized source {} (session {}, expected {} or {})",
+                    src_addr, session_id, session.requester_addr, session.target_addr
+                );
+                return Ok(()); // Silently drop (don't error, just ignore)
+            };
+
+            // Update session activity
+            session.last_activity = SystemTime::now();
+            session.bytes_forwarded += data.len() as u64;
+            session.packets_forwarded += 1;
+
+            let masking_level = session.masking_level;
+            let data_len = data.len();
+            drop(sessions_guard);
+
+            (dest_addr, masking_level, data_len)
         };
 
-        // Update session activity
-        session.last_activity = SystemTime::now();
-        session.bytes_forwarded += data.len() as u64;
-        session.packets_forwarded += 1;
-
         // Apply masking based on lineage relationship
-        let masked_data = Self::apply_masking(data, session.masking_level)?;
+        let masked_data = Self::apply_masking(data, masking_level)?;
 
         // Forward packet
         socket.send_to(&masked_data, dest_addr).await.map_err(|e| {
@@ -420,16 +432,13 @@ impl RelayServer {
         // Update global stats
         {
             let mut stats_guard = stats.write().await;
-            stats_guard.bytes_forwarded += data.len() as u64;
+            stats_guard.bytes_forwarded += data_len as u64;
             stats_guard.packets_forwarded += 1;
         }
 
         debug!(
             "📦 Forwarded {} bytes: {} → {} (session: {})",
-            data.len(),
-            src_addr,
-            dest_addr,
-            session_id
+            data_len, src_addr, dest_addr, session_id
         );
 
         Ok(())
@@ -488,15 +497,17 @@ impl RelayServer {
         session_id: Uuid,
         src_addr: SocketAddr,
     ) -> Result<()> {
-        let mut sessions_guard = sessions.write().await;
+        {
+            let mut sessions_guard = sessions.write().await;
 
-        if let Some(session) = sessions_guard.get_mut(&session_id) {
-            // Verify refresh comes from requester or target
-            if src_addr == session.requester_addr || src_addr.ip() == session.target_addr.ip() {
-                session.last_activity = SystemTime::now();
-                debug!("🔄 Refreshed session {}", session_id);
-            } else {
-                warn!("🚫 Refresh from unauthorized source: {}", src_addr);
+            if let Some(session) = sessions_guard.get_mut(&session_id) {
+                // Verify refresh comes from requester or target
+                if src_addr == session.requester_addr || src_addr.ip() == session.target_addr.ip() {
+                    session.last_activity = SystemTime::now();
+                    debug!("🔄 Refreshed session {}", session_id);
+                } else {
+                    warn!("🚫 Refresh from unauthorized source: {}", src_addr);
+                }
             }
         }
 
@@ -515,6 +526,7 @@ impl RelayServer {
             // Verify deallocation comes from requester
             if src_addr == session.requester_addr {
                 sessions_guard.remove(&session_id);
+                drop(sessions_guard);
                 info!("🛑 Deallocated session {}", session_id);
             } else {
                 warn!("🚫 Deallocation from unauthorized source: {}", src_addr);
@@ -575,7 +587,7 @@ impl RelayServer {
 
     /// Get bind address
     #[must_use]
-    pub fn bind_addr(&self) -> SocketAddr {
+    pub const fn bind_addr(&self) -> SocketAddr {
         self.bind_addr
     }
 
@@ -588,6 +600,7 @@ impl RelayServer {
         let mut sessions = self.sessions.write().await;
         let session_count = sessions.len();
         sessions.clear();
+        drop(sessions);
 
         info!("✅ Relay server shut down ({} sessions closed)", session_count);
 

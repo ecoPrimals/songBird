@@ -144,6 +144,9 @@ impl TrustEscalationManager {
     ///
     /// This is the entry point for all new connections.
     /// No verification is required - we simply record that we've seen this session.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn establish_anonymous(&self, session_id: String) -> Result<()> {
         let relationship =
             TrustRelationship::new_anonymous(session_id.clone(), self.trust_timeouts.anonymous);
@@ -157,6 +160,9 @@ impl TrustEscalationManager {
     /// Escalate to capability-verified
     ///
     /// Verifies cryptographic proof of capabilities and grants task coordination access.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn verify_capabilities(
         &self,
         session_id: &str,
@@ -200,6 +206,9 @@ impl TrustEscalationManager {
     /// 2. Checks prerequisites (must be capability-verified)
     /// 3. Future: Validate role against policy/RBAC system
     /// 4. Escalates trust level and grants access
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn verify_role(&self, session_id: &str, role: String) -> Result<()> {
         let mut store = self.trust_store.write().await;
         let relationship =
@@ -269,6 +278,9 @@ impl TrustEscalationManager {
     /// Escalate to identity-verified
     ///
     /// Verifies identity proof (JWT, certificate, etc.) and grants infrastructure access.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn verify_identity(
         &self,
         session_id: &str,
@@ -307,6 +319,9 @@ impl TrustEscalationManager {
     /// Escalate to hardware-verified (requires security provider)
     ///
     /// Verifies hardware key via security provider and grants full admin access.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn verify_hardware(
         &self,
         session_id: &str,
@@ -341,6 +356,9 @@ impl TrustEscalationManager {
     }
 
     /// Check if a session can perform an operation requiring a minimum trust level
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check_permission(
         &self,
         session_id: &str,
@@ -362,6 +380,9 @@ impl TrustEscalationManager {
     }
 
     /// Get current trust level for a session
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_trust_level(&self, session_id: &str) -> Result<TrustLevel> {
         let store = self.trust_store.read().await;
         let relationship =
@@ -382,6 +403,9 @@ impl TrustEscalationManager {
     }
 
     /// Remove a trust relationship (revoke trust)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn revoke_trust(&self, session_id: &str) -> Result<()> {
         let mut store = self.trust_store.write().await;
         store.remove(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;

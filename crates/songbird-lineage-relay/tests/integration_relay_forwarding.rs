@@ -309,9 +309,10 @@ async fn test_relay_session_deallocation() {
         if stats.sessions_active >= 1 {
             break;
         }
-        if start.elapsed() > Duration::from_secs(2) {
-            panic!("Timeout waiting for session to be active");
-        }
+        assert!(
+            start.elapsed() <= Duration::from_secs(2),
+            "Timeout waiting for session to be active"
+        );
         tokio::task::yield_now().await;
     }
     let stats = server_clone.stats().await;

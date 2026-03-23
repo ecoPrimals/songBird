@@ -219,6 +219,13 @@ impl AuditLog {
         Self
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn log(&self, entry: AuditEntry) -> Result<()> {
         info!(
             user = ?entry.identity,
@@ -251,6 +258,9 @@ impl AccessControl {
     }
 
     /// Check if token has required capability
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check_access(&self, token: &AccessToken, capability: &Capability) -> Result<bool> {
         // 1. Validate token
         let identity = self.token_validator.validate(token).await?;
@@ -280,6 +290,9 @@ impl AccessControl {
     }
 
     /// Get visible information for task based on token capabilities
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_visible_task_info(
         &self,
         token: &AccessToken,

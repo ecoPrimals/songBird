@@ -311,7 +311,7 @@ pub enum SecurityDecision {
     },
 }
 
-/// Coarse threat tier used when BearDog classifies a denial or elevated risk.
+/// Coarse threat tier used when `BearDog` classifies a denial or elevated risk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityLevel {
     /// Informational or best-effort checks only.
@@ -367,7 +367,7 @@ impl ConservativePolicy {
     }
 }
 
-/// Payload sent to BearDog when validating a remote execution before spawn.
+/// Payload sent to `BearDog` when validating a remote execution before spawn.
 #[derive(Debug, Clone)]
 pub struct ExecutionSecurityRequest {
     /// Shell or argv string to assess (never executed locally before approval).

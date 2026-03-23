@@ -175,6 +175,10 @@ impl ComputeAdapter {
     }
 
     /// Like [`Self::new_from_discovery`], but uses an explicit resolver (see [`songbird_config::capability_endpoints::CapabilityEndpointResolver::with_endpoint_overrides`]).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if capability endpoint resolution or adapter construction fails.
     pub async fn new_from_discovery_with_resolver(
         resolver: songbird_config::capability_endpoints::CapabilityEndpointResolver,
     ) -> SongbirdResult<Self> {

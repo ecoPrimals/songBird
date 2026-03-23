@@ -342,9 +342,11 @@ impl IpcServiceHandler {
             return Err(format!("Invalid endpoint format: {}", params.endpoint));
         };
 
-        // Register in registry
-        let registry = self.registry.write().await;
-        let virtual_endpoint = registry
+        // Register in registry (`register` takes `&self` and uses its own inner lock)
+        let virtual_endpoint = self
+            .registry
+            .read()
+            .await
             .register(&params.primal_id, native_endpoint, params.capabilities)
             .await
             .map_err(|e| format!("Registration failed: {e}"))?;
@@ -365,8 +367,10 @@ impl IpcServiceHandler {
         debug!("Resolving primal: {}", params.primal_id);
 
         // Get service entry from registry
-        let registry = self.registry.read().await;
-        let entry = registry
+        let entry = self
+            .registry
+            .read()
+            .await
             .get_service(&params.primal_id)
             .await
             .ok_or_else(|| format!("Primal not found: {}", params.primal_id))?;
@@ -567,17 +571,16 @@ impl IpcServiceHandler {
     /// Handle `health` method — requires uptime + registry info
     async fn handle_health(&self) -> Result<Value, String> {
         let uptime_secs = self.start_time.read().await.elapsed().as_secs();
-        let registry = self.registry.read().await;
-        let services = registry.list_services().await;
-        Ok(crate::introspection::health(uptime_secs, services.len()))
+        let service_count = self.registry.read().await.list_services().await.len();
+        Ok(crate::introspection::health(uptime_secs, service_count))
     }
 
     /// Handle `identity` method — canonical family-id lookup
     async fn handle_identity(&self) -> Result<Value, String> {
-        let family_id = match &self.family_id_env {
-            Some(f) => crate::introspection::canonical_family_id(|k| (f)(k)),
-            None => crate::introspection::canonical_family_id(|k| std::env::var(k)),
-        };
+        let family_id = self.family_id_env.as_ref().map_or_else(
+            || crate::introspection::canonical_family_id(|k| std::env::var(k)),
+            |f| crate::introspection::canonical_family_id(|k| (f)(k)),
+        );
         Ok(crate::introspection::identity(&family_id))
     }
 

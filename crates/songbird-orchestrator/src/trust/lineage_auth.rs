@@ -151,6 +151,9 @@ impl SecurityProviderClient {
     ///
     /// **EVOLVED**: Use `from_discovery()` for capability-based discovery
     /// **PURE RUST**: Async construction with crypto provider discovery (Jan 21, 2026)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new(endpoint: impl Into<String>) -> Result<Self> {
         let crypto_socket = crate::primal_discovery::discover_crypto_provider()
             .await
@@ -192,6 +195,9 @@ impl SecurityProviderClient {
     /// **EVOLVED (v3.22.1)**: Real implementation using discovered security provider
     ///
     /// Calls `POST /api/v1/lineage/verify` on the discovered security provider
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
         debug!("🔍 Verifying lineage proof via security provider: {}", self.endpoint);
 
@@ -229,6 +235,9 @@ impl SecurityProviderClient {
     /// **EVOLVED (v3.22.1)**: Real implementation using discovered security provider
     ///
     /// Calls `POST /api/v1/lineage/same_family` on the discovered security provider
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
         debug!("🔍 Checking if lineages share same genesis via security provider");
 
@@ -275,6 +284,9 @@ impl SecurityProviderClient {
     /// **EVOLVED (v3.22.1)**: Real implementation using discovered security provider
     ///
     /// Calls `GET /api/v1/lineage/current` on the discovered security provider
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
         debug!("🔍 Getting current lineage from security provider");
 
@@ -318,11 +330,19 @@ pub struct MockSecurityProviderClient;
 #[cfg(test)]
 impl MockSecurityProviderClient {
     /// Create mock client for testing
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Mock lineage verification (always succeeds)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
         Ok(VerificationResult {
             valid: true,
@@ -332,12 +352,26 @@ impl MockSecurityProviderClient {
         })
     }
 
-    /// Mock same_family check (compares tower IDs)
+    /// Mock `same_family` check (compares tower IDs)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
         Ok(lineage_a.tower_id() == lineage_b.tower_id())
     }
 
-    /// Mock get_current_lineage (returns None)
+    /// Mock `get_current_lineage` (returns None)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
         Ok(None)
     }
@@ -373,6 +407,9 @@ impl LineageAuthenticator {
     }
 
     /// Initialize with security capability client
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn initialize(&mut self, security_endpoint: &str) -> Result<()> {
         info!(
             "🔐 Initializing lineage authenticator with security provider: {}",
@@ -395,6 +432,9 @@ impl LineageAuthenticator {
     }
 
     /// Evaluate peer for auto-accept based on genetic lineage
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn evaluate_peer(
         &mut self,
         peer_node_id: &str,

@@ -43,6 +43,9 @@ use crate::ipc::types::{
 ///   "id": 4
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn register_service(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -99,6 +102,9 @@ pub async fn register_service(
 ///   "id": 5
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_by_capability(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -143,6 +149,9 @@ pub async fn discover_by_capability(
 ///   "id": 6
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn get_service_health(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -187,6 +196,13 @@ pub async fn get_service_health(
 ///   "id": 7
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn health_check(
     _handlers: &IpcHandlers,
     _params: serde_json::Value,
@@ -211,6 +227,9 @@ pub async fn health_check(
 // ============================================================================
 
 /// Service Registry: `register_service` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn register_service_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -258,6 +277,9 @@ pub async fn register_service_json(
 }
 
 /// Service Registry: `discover_by_capability` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_by_capability_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -297,6 +319,9 @@ pub async fn discover_by_capability_json(
 }
 
 /// Service Registry: `get_service_health` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn get_service_health_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -340,6 +365,13 @@ pub async fn get_service_health_json(
 }
 
 /// Service Registry: `health_check` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn health_check_json(
     _handlers: &IpcHandlers,
 ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {

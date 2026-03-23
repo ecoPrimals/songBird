@@ -698,7 +698,7 @@ pub struct CapabilityMetadata {
 /// Hold secrets or API keys for authentication flows.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credentials {
-    /// Credential kind (password, api_key, oauth_refresh, etc.).
+    /// Credential kind (password, `api_key`, `oauth_refresh`, etc.).
     pub credential_type: String,
     /// Opaque credential fields; never log verbatim.
     pub data: HashMap<String, serde_json::Value>,

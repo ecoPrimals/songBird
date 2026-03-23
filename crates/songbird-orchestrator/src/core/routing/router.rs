@@ -138,6 +138,9 @@ impl CapabilityRouter {
     /// let task = Task::builder("ml_training").with_gpu().build();
     /// let decision = router.route_task(&task).await?;
     /// ```
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn route_task(&self, task: &Task) -> SongbirdResult<RoutingDecision> {
         info!("Routing task: {}", task.task_type);
 
@@ -265,6 +268,9 @@ impl CapabilityRouter {
     /// Execute a task on an external provider
     ///
     /// Sends the task to the provider's execution endpoint and waits for results
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn execute_on_external_provider(
         &self,
         endpoint: &str,
@@ -400,6 +406,10 @@ impl CapabilityRouter {
     /// - Load average (system load)
     ///
     /// Priority: Medium (Week 4-5 optimization phase)
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn has_local_capacity(&self) -> bool {
         // SIMPLIFIED: Currently assumes capacity is always available
         // In production, this would check actual system resources

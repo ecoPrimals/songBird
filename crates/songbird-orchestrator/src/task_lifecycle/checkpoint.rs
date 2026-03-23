@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Task checkpointing
 //!
 //! Enable long-running tasks to save state and resume after failures.
@@ -77,6 +81,9 @@ impl Checkpoint {
     }
 
     /// Create a checkpoint with compression
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new_compressed(task_id: TaskId, progress: f32, state: Vec<u8>) -> Result<Self> {
         let compressed = Self::compress_state(&state)?;
         let size_bytes = compressed.len() as u64;
@@ -97,6 +104,9 @@ impl Checkpoint {
     }
 
     /// Verify checkpoint integrity
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn verify(&self) -> Result<()> {
         let calculated_checksum = Self::calculate_checksum(&self.state);
         if calculated_checksum != self.metadata.checksum.as_ref() {
@@ -106,6 +116,9 @@ impl Checkpoint {
     }
 
     /// Get decompressed state
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn get_state(&self) -> Result<Vec<u8>> {
         match self.metadata.compression {
             Some(CompressionAlgorithm::Gzip) => Self::decompress_gzip(&self.state),

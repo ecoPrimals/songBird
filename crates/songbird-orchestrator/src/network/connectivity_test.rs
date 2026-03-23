@@ -65,6 +65,9 @@ impl ConnectivityTester {
     }
 
     /// Test TCP connectivity to a target
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn test_tcp_connectivity(
         &self,
         target: SocketAddr,
@@ -112,6 +115,9 @@ impl ConnectivityTester {
     /// Test HTTPS connectivity to a target
     ///
     /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via `SongbirdHttpClient`
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn test_https_connectivity(
         &self,
         target: SocketAddr,
@@ -182,6 +188,9 @@ impl ConnectivityTester {
     }
 
     /// Run comprehensive connectivity tests
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn test_comprehensive(&self, target: SocketAddr) -> Result<ConnectivityTestResult> {
         info!("🔍 Running comprehensive connectivity test to {}", target);
 

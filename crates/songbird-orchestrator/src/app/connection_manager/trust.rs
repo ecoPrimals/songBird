@@ -38,6 +38,9 @@ impl TrustEvaluator {
         clippy::too_many_arguments,
         reason = "intentional pattern; clippy false positive for this API"
     )]
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn handle_decision(
         &self,
         peer_id: String,
@@ -127,6 +130,9 @@ impl TrustEvaluator {
         clippy::too_many_arguments,
         reason = "intentional pattern; clippy false positive for this API"
     )]
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn establish_connection(
         &self,
         peer_id: String,

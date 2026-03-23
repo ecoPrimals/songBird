@@ -47,7 +47,7 @@ use tracing::{debug, info};
 #[derive(Clone)]
 pub struct MeshHandler {
     /// Beacon mesh instance
-    mesh: Arc<RwLock<Option<BeaconMesh>>>,
+    mesh: Arc<RwLock<Option<Arc<BeaconMesh>>>>,
     /// Start time for uptime tracking
     start_time: Instant,
     /// Our node ID
@@ -56,9 +56,10 @@ pub struct MeshHandler {
 
 impl MeshHandler {
     /// Create a new mesh handler (uninitialized - call `initialize` first)
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            mesh: Arc::new(RwLock::new(None)),
+            mesh: Arc::new(RwLock::new(None::<Arc<BeaconMesh>>)),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(String::new())),
         }
@@ -67,7 +68,7 @@ impl MeshHandler {
     /// Create with an existing mesh instance
     pub fn with_mesh(mesh: BeaconMesh, node_id: String) -> Self {
         Self {
-            mesh: Arc::new(RwLock::new(Some(mesh))),
+            mesh: Arc::new(RwLock::new(Some(Arc::new(mesh)))),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(node_id)),
         }
@@ -108,7 +109,7 @@ impl MeshHandler {
         );
 
         let mesh = BeaconMesh::new(node_id.clone(), bootstrap_onions);
-        *self.mesh.write().await = Some(mesh);
+        *self.mesh.write().await = Some(Arc::new(mesh));
         *self.node_id.write().await = node_id.clone();
 
         Ok(json!({
@@ -120,8 +121,13 @@ impl MeshHandler {
     /// Handle `mesh.status` method - Get mesh network status
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
         let (reachable, direct_count, relay_count, onion_count, local_count) = {
-            let mesh_guard = self.mesh.read().await;
-            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+            let mesh = self
+                .mesh
+                .read()
+                .await
+                .as_ref()
+                .cloned()
+                .ok_or("Mesh not initialized (call mesh.init first)")?;
 
             let reachable = mesh.get_reachable_nodes().await;
 
@@ -179,8 +185,13 @@ impl MeshHandler {
         debug!("🔍 Finding path to {}", target_node_id);
 
         {
-            let mesh_guard = self.mesh.read().await;
-            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+            let mesh = self
+                .mesh
+                .read()
+                .await
+                .as_ref()
+                .cloned()
+                .ok_or("Mesh not initialized (call mesh.init first)")?;
 
             if let Some(path) = mesh.get_best_path(target_node_id).await {
                 return Ok(json::path_to_json(&path, true));
@@ -210,8 +221,13 @@ impl MeshHandler {
         }
 
         {
-            let mesh_guard = self.mesh.read().await;
-            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+            let mesh = self
+                .mesh
+                .read()
+                .await
+                .as_ref()
+                .cloned()
+                .ok_or("Mesh not initialized (call mesh.init first)")?;
             let _msg = mesh.announce_as_relay().await;
             Ok::<_, String>(())
         }?;
@@ -233,8 +249,13 @@ impl MeshHandler {
             params.get("include_offline").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
         let (peers, relay_count) = {
-            let mesh_guard = self.mesh.read().await;
-            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+            let mesh = self
+                .mesh
+                .read()
+                .await
+                .as_ref()
+                .cloned()
+                .ok_or("Mesh not initialized (call mesh.init first)")?;
 
             let reachable = mesh.get_reachable_nodes().await;
 
@@ -278,8 +299,13 @@ impl MeshHandler {
     /// Handle `mesh.health_check` method - Check peer health
     pub async fn handle_health_check(&self, params: Value) -> Result<Value, String> {
         let (results, all_healthy) = {
-            let mesh_guard = self.mesh.read().await;
-            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+            let mesh = self
+                .mesh
+                .read()
+                .await
+                .as_ref()
+                .cloned()
+                .ok_or("Mesh not initialized (call mesh.init first)")?;
 
             mesh.health_check().await;
 
@@ -349,8 +375,13 @@ impl MeshHandler {
         .await;
 
         let peers_found = {
-            let mesh_guard = self.mesh.read().await;
-            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+            let mesh = self
+                .mesh
+                .read()
+                .await
+                .as_ref()
+                .cloned()
+                .ok_or("Mesh not initialized (call mesh.init first)")?;
 
             let mut peers_found = Vec::new();
             for (peer_id, addr) in &discovered {

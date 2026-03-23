@@ -574,6 +574,9 @@ pub(crate) async fn deploy_binary_bytes(
 /// # Modern Idiomatic Pattern
 /// Generic over `HashMap` hasher for flexibility (accepts any `BuildHasher`)
 /// Requires Send for async execution across threads
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_service<S>(
     binary_path: &str,
     env_vars: &std::collections::HashMap<String, String, S>,

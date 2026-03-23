@@ -211,6 +211,21 @@ impl Default for AgnosticComputeCoordinator {
     }
 }
 
+#[cfg(test)]
+impl AgnosticComputeCoordinator {
+    /// Insert a provider into the in-memory map for unit tests.
+    ///
+    /// `request_compute_capability` reads the `"compute"` key after checking the
+    /// `CAPABILITY_COMPUTE_ENDPOINT` environment variable — cache-only tests assume it is unset.
+    pub(crate) async fn insert_provider_for_test(
+        &self,
+        capability_key: &str,
+        provider: ComputeProvider,
+    ) {
+        self.providers.write().await.insert(capability_key.to_string(), provider);
+    }
+}
+
 /// Workload description sent to a compute provider for deployment.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workload {
@@ -230,41 +245,86 @@ pub struct DeploymentId(pub String);
 pub use crate::error::ComputeError;
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_coordinator_creation() {
-        let coordinator = AgnosticComputeCoordinator::new();
-        assert!(coordinator.config.enable_cache);
-    }
-
-    #[tokio::test]
-    async fn test_environment_discovery() {
-        // Isolated test - doesn't mutate global state
-        // Tests that coordinator can be created
-        let coordinator = AgnosticComputeCoordinator::new();
-
-        // Coordinator should initialize successfully
-        assert!(coordinator.config.enable_cache);
-    }
-
-    #[tokio::test]
-    async fn test_workload_deployment() {
-        // Test workload deployment logic without global env mutation
-        let coordinator = AgnosticComputeCoordinator::new();
-        let workload = Workload {
+    fn workload_sample() -> Workload {
+        Workload {
             id: "test-workload-1".to_string(),
             service_type: "ml-inference".to_string(),
             requirements: HashMap::new(),
-        };
+        }
+    }
 
-        // Deploy workload - should succeed with discovery or fallback
-        let deployment_id = coordinator.deploy_workload(workload).await;
+    #[test]
+    fn compute_coordinator_config_defaults() {
+        let cfg = ComputeCoordinatorConfig::default();
+        assert_eq!(cfg.discovery_timeout_secs, 30);
+        assert!(cfg.enable_cache);
+        assert_eq!(cfg.cache_ttl_secs, 300);
+    }
 
-        // Note: In full evolution, we'd pass EnvOverride to coordinator
-        // For now, we test that deployment logic works
-        assert!(deployment_id.is_ok() || deployment_id.is_err());
-        // Either succeeds with discovery or fails gracefully
+    #[tokio::test]
+    async fn coordinator_new_matches_default_config() {
+        let coordinator = AgnosticComputeCoordinator::new();
+        assert!(coordinator.config.enable_cache);
+        assert_eq!(
+            coordinator.config.discovery_timeout_secs,
+            ComputeCoordinatorConfig::default().discovery_timeout_secs
+        );
+    }
+
+    #[tokio::test]
+    async fn request_compute_capability_returns_cached_provider_when_env_unset() {
+        if std::env::var("CAPABILITY_COMPUTE_ENDPOINT").is_ok() {
+            // Without mutating process env (unsafe under concurrency in Rust 2024), skip.
+            return;
+        }
+
+        let coordinator = AgnosticComputeCoordinator::new();
+        coordinator
+            .insert_provider_for_test(
+                "compute",
+                ComputeProvider {
+                    endpoint: "http://cached.compute.test:9000".to_string(),
+                    capabilities: vec!["compute".to_string()],
+                    metadata: HashMap::new(),
+                    healthy: true,
+                },
+            )
+            .await;
+
+        let provider = coordinator.request_compute_capability().await.unwrap();
+        assert_eq!(provider.endpoint, "http://cached.compute.test:9000");
+        assert!(provider.capabilities.contains(&"compute".to_string()));
+        assert!(provider.healthy);
+    }
+
+    #[tokio::test]
+    async fn deploy_workload_falls_back_to_local_id_when_http_unreachable() {
+        if std::env::var("CAPABILITY_COMPUTE_ENDPOINT").is_ok() {
+            return;
+        }
+
+        let coordinator = AgnosticComputeCoordinator::new();
+        coordinator
+            .insert_provider_for_test(
+                "compute",
+                ComputeProvider {
+                    endpoint: "http://127.0.0.1:1".to_string(),
+                    capabilities: vec!["compute".to_string()],
+                    metadata: HashMap::new(),
+                    healthy: true,
+                },
+            )
+            .await;
+
+        let deployment_id = coordinator.deploy_workload(workload_sample()).await.unwrap();
+        assert!(
+            deployment_id.0.starts_with("local-deployment-"),
+            "expected local fallback id, got {}",
+            deployment_id.0
+        );
     }
 }

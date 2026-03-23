@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Neural API / BearDog crypto delegation via [`songbird_crypto_provider::CryptoProvider`]
+//! Neural API / `BearDog` crypto delegation via [`songbird_crypto_provider::CryptoProvider`]
 //!
 //! All cryptographic operations are routed through `CryptoProvider::from_env()` (Neural API by
 //! default; set `BEARDOG_MODE=direct` for bootstrap). See `songbird-crypto-provider` for
@@ -36,7 +36,7 @@ impl BeardogCryptoClient {
 
     /// Wrap an existing provider (tests or custom wiring).
     #[must_use]
-    pub fn from_provider(provider: CryptoProvider) -> Self {
+    pub const fn from_provider(provider: CryptoProvider) -> Self {
         Self {
             provider,
         }
@@ -59,6 +59,10 @@ impl BeardogCryptoClient {
     // =========================================================================
 
     /// Generate Ed25519 keypair for .onion identity
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn ed25519_generate_keypair(&self) -> Result<Ed25519Keypair> {
         #[derive(Deserialize)]
         struct Response {
@@ -84,6 +88,10 @@ impl BeardogCryptoClient {
     }
 
     /// Sign data with Ed25519
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn ed25519_sign(&self, secret_key: &[u8; 32], message: &[u8]) -> Result<[u8; 64]> {
         #[derive(Deserialize)]
         struct Response {
@@ -108,6 +116,10 @@ impl BeardogCryptoClient {
     }
 
     /// Verify Ed25519 signature
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn ed25519_verify(
         &self,
         public_key: &[u8; 32],
@@ -137,6 +149,10 @@ impl BeardogCryptoClient {
     }
 
     /// Derive Ed25519 public key from secret key bytes via JSON-RPC delegation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn ed25519_public_from_secret(&self, secret_key: &[u8; 32]) -> Result<[u8; 32]> {
         #[derive(Deserialize)]
         struct Response {
@@ -169,6 +185,10 @@ impl BeardogCryptoClient {
     // =========================================================================
 
     /// Generate X25519 ephemeral keypair for session key exchange
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn x25519_generate_ephemeral(&self) -> Result<X25519Keypair> {
         #[derive(Deserialize)]
         struct Response {
@@ -196,6 +216,10 @@ impl BeardogCryptoClient {
     }
 
     /// Derive shared secret via X25519 ECDH
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn x25519_derive_secret(
         &self,
         our_secret: &[u8; 32],
@@ -230,6 +254,10 @@ impl BeardogCryptoClient {
     // =========================================================================
 
     /// Encrypt data with ChaCha20-Poly1305
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn chacha20_poly1305_encrypt(
         &self,
         key: &[u8; 32],
@@ -260,6 +288,10 @@ impl BeardogCryptoClient {
     }
 
     /// Decrypt data with ChaCha20-Poly1305
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn chacha20_poly1305_decrypt(
         &self,
         key: &[u8; 32],
@@ -294,6 +326,10 @@ impl BeardogCryptoClient {
     // =========================================================================
 
     /// Compute SHA3-256 hash (needed for .onion address checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn sha3_256(&self, data: &[u8]) -> Result<[u8; 32]> {
         #[derive(Deserialize)]
         struct Response {
@@ -321,6 +357,10 @@ impl BeardogCryptoClient {
     // =========================================================================
 
     /// Compute HMAC-SHA256 (for HKDF key derivation)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `BearDog` JSON-RPC call fails or the response cannot be decoded.
     pub async fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<[u8; 32]> {
         #[derive(Deserialize)]
         struct Response {

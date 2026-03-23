@@ -20,6 +20,9 @@ impl ExecutionClient {
     /// Create a new execution client
     ///
     /// ✅ EVOLVED: Async construction with crypto discovery
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new() -> Result<Self, ExecutionError> {
         let crypto_socket =
             crate::primal_discovery::discover_crypto_provider().await.map_err(|e| {
@@ -32,6 +35,9 @@ impl ExecutionClient {
     }
 
     /// Execute a command on a remote tower
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn execute_command(
         &self,
         tower_endpoint: &str,
@@ -58,6 +64,9 @@ impl ExecutionClient {
     }
 
     /// Get job status from a remote tower
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_job_status(
         &self,
         tower_endpoint: &str,
@@ -78,6 +87,9 @@ impl ExecutionClient {
     }
 
     /// Stop a running job on a remote tower
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn stop_job(
         &self,
         tower_endpoint: &str,

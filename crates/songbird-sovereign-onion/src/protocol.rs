@@ -162,6 +162,11 @@ impl WireMessage {
     /// Encode to wire format
     ///
     /// Format: \[length: 4 bytes BE\] \[type: 1 byte\] \[payload\]
+    ///
+    /// # Panics
+    ///
+    /// Panics if the encoded payload length does not fit in `u32`.
+    #[must_use]
     pub fn encode(&self) -> Vec<u8> {
         let (msg_type, payload) = match self {
             Self::KeyExchange(msg) => (MessageType::KeyExchange, msg.encode()),

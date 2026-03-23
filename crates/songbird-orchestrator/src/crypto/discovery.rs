@@ -4,7 +4,7 @@
 //! Crypto provider socket discovery
 //!
 //! Socket paths for crypto routing use the shared Neural API discovery from
-//! [`songbird_crypto_provider`]. For a full client (Neural API vs direct BearDog),
+//! [`songbird_crypto_provider`]. For a full client (Neural API vs direct `BearDog`),
 //! use [`songbird_crypto_provider::CryptoProvider::from_env`].
 
 use anyhow::Result;
@@ -26,6 +26,9 @@ pub async fn discover_crypto_socket() -> Result<String> {
 }
 
 /// Backward-compatible alias for [`discover_crypto_socket`].
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn get_beardog_crypto_socket() -> Result<String> {
     discover_crypto_socket().await
 }
@@ -57,6 +60,9 @@ pub async fn discover_crypto_socket_for_family(family_id: &str) -> Result<String
 }
 
 /// Backward-compatible alias for [`discover_crypto_socket_for_family`].
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn get_beardog_crypto_socket_for_family(family_id: &str) -> Result<String> {
     discover_crypto_socket_for_family(family_id).await
 }
@@ -114,6 +120,9 @@ pub async fn discover_crypto_socket_for_purpose(purpose: &str) -> Result<String>
 }
 
 /// Backward-compatible alias for [`discover_crypto_socket_for_purpose`].
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn get_beardog_crypto_socket_for_purpose(purpose: &str) -> Result<String> {
     discover_crypto_socket_for_purpose(purpose).await
 }
@@ -127,14 +136,14 @@ mod tests {
     #[test]
     fn test_xdg_path_construction_with_runtime_dir() {
         let xdg_base = "/run/user/1000";
-        let expected_path = format!("{}/biomeos/beardog.sock", xdg_base);
+        let expected_path = format!("{xdg_base}/biomeos/beardog.sock");
         assert_eq!(expected_path, "/run/user/1000/biomeos/beardog.sock");
     }
 
     #[test]
     fn test_xdg_fallback_path_construction() {
         let fallback_base = "/tmp/biomeos";
-        let expected_path = format!("{}/beardog.sock", fallback_base);
+        let expected_path = format!("{fallback_base}/beardog.sock");
         assert_eq!(expected_path, "/tmp/biomeos/beardog.sock");
     }
 
@@ -148,7 +157,7 @@ mod tests {
     #[test]
     fn test_family_socket_path_format() {
         let family_id = "nat0";
-        let expected = format!("/tmp/crypto-{}.sock", family_id);
+        let expected = format!("/tmp/crypto-{family_id}.sock");
         assert_eq!(expected, "/tmp/crypto-nat0.sock");
     }
 

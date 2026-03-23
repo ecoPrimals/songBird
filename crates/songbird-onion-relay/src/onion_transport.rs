@@ -105,6 +105,7 @@ impl OnionTransport {
     ///
     /// This address can be shared with peers for them to connect to us.
     /// Format: `<56 chars>.onion`
+    #[must_use]
     pub fn onion_address(&self) -> &str {
         &self.onion_address
     }
@@ -112,6 +113,7 @@ impl OnionTransport {
     /// Get our Ed25519 verifying (public) key
     ///
     /// This is the cryptographic identity behind the .onion address.
+    #[must_use]
     pub fn verifying_key_bytes(&self) -> &[u8] {
         &self.verifying_key_bytes
     }
@@ -120,7 +122,8 @@ impl OnionTransport {
     ///
     /// Allows callers to access peer storage and identity management
     /// directly when needed for relay coordination.
-    pub fn storage(&self) -> &OnionStorage {
+    #[must_use]
+    pub const fn storage(&self) -> &OnionStorage {
         &self.storage
     }
 }
@@ -141,7 +144,11 @@ mod tests {
             let address = transport.onion_address();
 
             // Verify .onion address format
-            assert!(address.ends_with(".onion"));
+            assert!(
+                std::path::Path::new(address)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("onion"))
+            );
             assert_eq!(address.len(), 62); // 56 chars + ".onion"
         }
     }

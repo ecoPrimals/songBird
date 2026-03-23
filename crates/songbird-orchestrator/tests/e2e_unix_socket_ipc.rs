@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! E2E Tests for Unix Socket JSON-RPC IPC
 //!
 //! v3.19.3: Integration tests with real Unix socket connections
@@ -9,9 +33,9 @@
 //!
 //! 1. Server lifecycle (start/stop)
 //! 2. Client connection
-//! 3. discover_by_family API
-//! 4. create_genetic_tunnel API
-//! 5. announce_capabilities API
+//! 3. `discover_by_family` API
+//! 4. `create_genetic_tunnel` API
+//! 5. `announce_capabilities` API
 //! 6. Error handling
 
 mod common;
@@ -41,7 +65,7 @@ impl UnixSocketClient {
     }
 
     /// Send JSON-RPC request and receive response
-    fn call(&mut self, method: &str, params: Value) -> Result<Value> {
+    fn call(&mut self, method: &str, params: &Value) -> Result<Value> {
         // Build JSON-RPC 2.0 request
         let request = json!({
             "jsonrpc": "2.0",
@@ -52,7 +76,7 @@ impl UnixSocketClient {
 
         // Send request
         let request_str = serde_json::to_string(&request)?;
-        writeln!(self.stream, "{}", request_str)?;
+        writeln!(self.stream, "{request_str}")?;
         self.stream.flush()?;
 
         // Read response
@@ -65,7 +89,7 @@ impl UnixSocketClient {
 
         // Check for error
         if let Some(error) = response.get("error") {
-            anyhow::bail!("JSON-RPC error: {}", error);
+            anyhow::bail!("JSON-RPC error: {error}");
         }
 
         // Return result
@@ -91,7 +115,7 @@ async fn test_unix_socket_connection() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 
     // Wait for socket to exist (server should be started manually)
-    println!("Waiting for socket: {}", socket_path);
+    println!("Waiting for socket: {socket_path}");
     wait_for_socket(socket_path, 5).await?;
 
     // Connect to Unix socket
@@ -115,7 +139,7 @@ async fn test_discover_by_family_api() -> Result<()> {
     println!("Calling discover_by_family...");
     let result = client.call(
         "discover_by_family",
-        json!({
+        &json!({
             "family_tags": ["nat0", "lan0"],
             "timeout_ms": 5000
         }),
@@ -152,7 +176,7 @@ async fn test_create_genetic_tunnel_api() -> Result<()> {
     println!("Calling create_genetic_tunnel...");
     let result = client.call(
         "create_genetic_tunnel",
-        json!({
+        &json!({
             "peer_node_id": "test-peer",
             "peer_endpoint": "https://localhost:8081",
             "genetic_proof": {
@@ -186,7 +210,7 @@ async fn test_announce_capabilities_api() -> Result<()> {
     println!("Calling announce_capabilities...");
     let result = client.call(
         "announce_capabilities",
-        json!({
+        &json!({
             "capabilities": ["storage", "compute"],
             "sub_federations": ["gaming"],
             "genetic_families": ["nat0"]
@@ -214,7 +238,7 @@ async fn test_invalid_method() -> Result<()> {
 
     // Call invalid method
     println!("Calling invalid method...");
-    let result = client.call("nonexistent_method", json!({}));
+    let result = client.call("nonexistent_method", &json!({}));
 
     // Should return error
     assert!(result.is_err());
@@ -236,7 +260,7 @@ async fn test_invalid_params() -> Result<()> {
     println!("Calling with invalid params...");
     let result = client.call(
         "discover_by_family",
-        json!({
+        &json!({
             "wrong_field": "wrong_value"
         }),
     );
@@ -265,12 +289,12 @@ async fn test_concurrent_connections() -> Result<()> {
             let mut client = UnixSocketClient::connect(&socket_path)?;
             let result = client.call(
                 "discover_by_family",
-                json!({
+                &json!({
                     "family_tags": ["nat0"],
                     "timeout_ms": 5000
                 }),
             )?;
-            println!("Client {} completed", i);
+            println!("Client {i} completed");
             Ok::<_, anyhow::Error>(result)
         });
         handles.push(handle);

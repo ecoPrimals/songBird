@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Chaos Tests for BearDog JWT Delegation
+//! Chaos Tests for `BearDog` JWT Delegation
 //!
 //! Tests JWT provisioning under chaotic conditions.
 //!
@@ -29,7 +29,7 @@ async fn test_chaos_jwt_provisioning_under_load() {
                 barrier.wait().await;
 
                 // All hit at once!
-                provision_jwt_secret(None, &format!("chaos_load_{}", i))
+                provision_jwt_secret(None, &format!("chaos_load_{i}"))
                     .await
                     .expect("Should succeed under load")
             })
@@ -44,7 +44,7 @@ async fn test_chaos_jwt_provisioning_under_load() {
         .collect();
     let elapsed = start.elapsed();
 
-    println!("✅ {} concurrent requests in {:?}", concurrent_requests, elapsed);
+    println!("✅ {concurrent_requests} concurrent requests in {elapsed:?}");
     println!("   Average: {}µs per request", elapsed.as_micros() / concurrent_requests as u128);
 
     // All should be valid and unique
@@ -72,7 +72,7 @@ async fn test_chaos_jwt_provisioning_with_varying_paths() {
 
                 // Test with various socket paths (will fall back to secure random)
                 let socket_path = if i % 3 == 0 {
-                    format!("/tmp/chaos-{}.sock", i)
+                    format!("/tmp/chaos-{i}.sock")
                 } else {
                     String::new()
                 };
@@ -83,7 +83,7 @@ async fn test_chaos_jwt_provisioning_with_varying_paths() {
                     Some(socket_path.as_str())
                 };
 
-                provision_jwt_secret(socket, &format!("chaos_path_{}", i))
+                provision_jwt_secret(socket, &format!("chaos_path_{i}"))
                     .await
                     .expect("Should succeed with varying paths")
             })
@@ -118,7 +118,7 @@ async fn test_chaos_jwt_provisioning_rapid_fire() {
         let batch_handles: Vec<_> = (0..100)
             .map(|i| {
                 tokio::spawn(async move {
-                    provision_jwt_secret(None, &format!("chaos_rapid_{}_{}", batch, i))
+                    provision_jwt_secret(None, &format!("chaos_rapid_{batch}_{i}"))
                         .await
                         .expect("Should succeed")
                 })
@@ -160,18 +160,18 @@ async fn test_chaos_jwt_provisioning_with_timeouts() {
     for i in 0..100 {
         let result = tokio::time::timeout(
             Duration::from_micros(100), // Very aggressive timeout
-            provision_jwt_secret(None, &format!("chaos_timeout_{}", i)),
+            provision_jwt_secret(None, &format!("chaos_timeout_{i}")),
         )
         .await;
 
         match result {
             Ok(Ok(_)) => successes += 1,
-            Ok(Err(e)) => panic!("Unexpected error: {}", e),
+            Ok(Err(e)) => panic!("Unexpected error: {e}"),
             Err(_) => timeouts += 1,
         }
     }
 
-    println!("✅ Successes: {}, Timeouts: {}", successes, timeouts);
+    println!("✅ Successes: {successes}, Timeouts: {timeouts}");
 
     // Should have some successes (JWT generation is fast)
     assert!(successes > 0, "Should have at least some successes");
@@ -197,7 +197,7 @@ async fn test_chaos_jwt_provisioning_memory_stress() {
     let provision_handles: Vec<_> = (0..100)
         .map(|i| {
             tokio::spawn(async move {
-                provision_jwt_secret(None, &format!("chaos_memory_{}", i))
+                provision_jwt_secret(None, &format!("chaos_memory_{i}"))
                     .await
                     .expect("Should succeed under memory stress")
             })

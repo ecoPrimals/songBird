@@ -55,6 +55,7 @@ impl HttpRequest {
     }
 
     /// Add a header
+    #[must_use]
     pub fn header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.insert(key.into(), value.into());
         self

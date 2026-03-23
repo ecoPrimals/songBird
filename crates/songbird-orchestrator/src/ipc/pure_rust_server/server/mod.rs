@@ -173,6 +173,9 @@ impl UnixSocketServer {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn start(self: Arc<Self>) -> Result<()> {
         info!("🔌 Starting IPC server (isomorphic mode)...");
         info!("   Socket path: {}", self.socket_path.display());
@@ -193,6 +196,13 @@ impl UnixSocketServer {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn stop(&self) -> Result<()> {
         info!("🛑 Stopping Unix socket JSON-RPC server...");
 
@@ -264,8 +274,8 @@ mod tests {
         ]));
         let path = UnixSocketServer::socket_path_with_env(env);
         let path_str = path.to_string_lossy();
-        assert!(path_str.ends_with(".sock"), "Expected .sock extension, got: {}", path_str);
-        assert!(path_str.contains("songbird"), "Expected songbird in path, got: {}", path_str);
+        assert!(path_str.ends_with(".sock"), "Expected .sock extension, got: {path_str}");
+        assert!(path_str.contains("songbird"), "Expected songbird in path, got: {path_str}");
     }
 
     #[test]
@@ -274,11 +284,10 @@ mod tests {
         let path = UnixSocketServer::socket_path_with_env(env);
         let path_str = path.to_string_lossy();
 
-        assert!(path_str.ends_with(".sock"), "Path should end with .sock, got: {}", path_str);
+        assert!(path_str.ends_with(".sock"), "Path should end with .sock, got: {path_str}");
         assert!(
             path_str.contains("songbird"),
-            "Path must contain primal name 'songbird', got: {}",
-            path_str
+            "Path must contain primal name 'songbird', got: {path_str}"
         );
     }
 
@@ -309,10 +318,10 @@ mod tests {
                 thread::spawn(move || {
                     let env = mock_env(HashMap::from([(
                         "SONGBIRD_SOCKET",
-                        Box::leak(format!("/sock-{}.sock", i).into_boxed_str()) as &str,
+                        Box::leak(format!("/sock-{i}.sock").into_boxed_str()) as &str,
                     )]));
                     let path = UnixSocketServer::socket_path_with_env(env);
-                    assert_eq!(path, PathBuf::from(format!("/sock-{}.sock", i)));
+                    assert_eq!(path, PathBuf::from(format!("/sock-{i}.sock")));
                 })
             })
             .collect();

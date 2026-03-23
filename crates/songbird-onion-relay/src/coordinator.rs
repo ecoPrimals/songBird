@@ -18,12 +18,56 @@ use crate::error::{OnionRelayError, Result};
 use crate::signaling::{NatType, PeerInfo, SignalingMessage};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::net::UdpSocket;
 use tokio::sync::{RwLock, mpsc};
 use tokio::time::{sleep, timeout};
 use tracing::{debug, info, warn};
+
+/// Converts current wall-clock time to milliseconds since [`UNIX_EPOCH`].
+/// Public STUN servers for discovery, from `BIOMEOS_STUN_SERVERS` or built-in defaults.
+///
+/// Parsed once per process; empty or whitespace-only env values use the defaults.
+fn stun_server_list() -> Vec<String> {
+    static SERVERS: LazyLock<Vec<String>> = LazyLock::new(|| {
+        std::env::var("BIOMEOS_STUN_SERVERS").map_or_else(
+            |_| default_stun_servers_fallback(),
+            |servers| {
+                let parsed: Vec<String> = servers
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(std::string::ToString::to_string)
+                    .collect();
+                if parsed.is_empty() {
+                    default_stun_servers_fallback()
+                } else {
+                    parsed
+                }
+            },
+        )
+    });
+    SERVERS.clone()
+}
+
+fn default_stun_servers_fallback() -> Vec<String> {
+    vec![
+        "stun.l.google.com:19302".to_string(),
+        "stun1.l.google.com:19302".to_string(),
+        "stun.cloudflare.com:3478".to_string(),
+    ]
+}
+
+fn unix_epoch_millis_u64() -> Result<u64> {
+    u64::try_from(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| OnionRelayError::Other("System time before UNIX epoch".to_string()))?
+            .as_millis(),
+    )
+    .map_err(|_| OnionRelayError::Other("System time millis overflow".to_string()))
+}
 
 /// Configuration for hole punch attempts
 ///
@@ -70,6 +114,7 @@ impl Default for HolePunchConfig {
 
 impl HolePunchConfig {
     /// Overrides the resolved STUN server list used for discovery and punching.
+    #[must_use]
     pub fn with_stun_servers(mut self, servers: Vec<String>) -> Self {
         self.stun_servers = servers;
         self
@@ -78,8 +123,8 @@ impl HolePunchConfig {
     /// Resolve STUN servers from environment or defaults
     ///
     /// Resolution order:
-    /// 1. BIOMEOS_STUN_SERVERS (comma-separated)
-    /// 2. BIOMEOS_STUN_SERVER (single self-hosted)
+    /// 1. `BIOMEOS_STUN_SERVERS` (comma-separated)
+    /// 2. `BIOMEOS_STUN_SERVER` (single self-hosted)
     /// 3. Default public servers
     fn resolve_stun_servers() -> Vec<String> {
         let mut servers = Vec::new();
@@ -105,11 +150,7 @@ impl HolePunchConfig {
 
     /// Default public STUN servers (fallback only)
     fn default_public_stun_servers() -> Vec<String> {
-        vec![
-            "stun.l.google.com:19302".to_string(),
-            "stun1.l.google.com:19302".to_string(),
-            "stun.cloudflare.com:3478".to_string(),
-        ]
+        stun_server_list()
     }
 }
 
@@ -152,6 +193,7 @@ pub struct HolePunchCoordinator {
 
 impl HolePunchCoordinator {
     /// Builds a coordinator plus inbound/outbound signaling channels wired to it.
+    #[must_use]
     pub fn new(
         my_node_id: String,
         config: HolePunchConfig,
@@ -257,10 +299,7 @@ impl HolePunchCoordinator {
         let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await?);
 
         // Wait until coordinated start time
-        let now_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| OnionRelayError::Other("System time before UNIX epoch".to_string()))?
-            .as_millis() as u64;
+        let now_ms = unix_epoch_millis_u64()?;
 
         if start_time > now_ms {
             sleep(Duration::from_millis(start_time - now_ms)).await;
@@ -277,21 +316,18 @@ impl HolePunchCoordinator {
         };
         let _ = self.signal_tx.send(result_msg).await;
 
-        match result {
-            Ok(latency) => {
-                info!("✅ Hole punch successful! Latency: {:?}", latency);
-                Ok(PunchResult::Direct {
-                    peer_addr: peer_info.public_addr,
-                    local_socket: socket,
-                    latency,
-                })
-            }
-            Err(_) => {
-                warn!("⚠️ Hole punch failed, falling back to relay");
-                Ok(PunchResult::Relay {
-                    attempts: self.config.max_attempts,
-                })
-            }
+        if let Ok(latency) = result {
+            info!("✅ Hole punch successful! Latency: {:?}", latency);
+            Ok(PunchResult::Direct {
+                peer_addr: peer_info.public_addr,
+                local_socket: socket,
+                latency,
+            })
+        } else {
+            warn!("⚠️ Hole punch failed, falling back to relay");
+            Ok(PunchResult::Relay {
+                attempts: self.config.max_attempts,
+            })
         }
     }
 
@@ -331,10 +367,13 @@ impl HolePunchCoordinator {
                     let my_info = self.my_info.read().await.clone();
                     if let Some(info) = my_info {
                         // Start in 100ms to allow network propagation
-                        let start_at_ms = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_millis() as u64
+                        let start_at_ms = u64::try_from(
+                            SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_millis(),
+                        )
+                        .unwrap_or(0)
                             + 100;
 
                         return Some(SignalingMessage::PunchAck {
@@ -399,11 +438,11 @@ impl HolePunchCoordinator {
         }
     }
 
-    /// Wait for PunchAck from peer via signaling channel
+    /// Wait for `PunchAck` from peer via signaling channel
     ///
     /// This is a real implementation that:
-    /// 1. Takes the signal_rx receiver
-    /// 2. Waits for matching PunchAck with timeout
+    /// 1. Takes the `signal_rx` receiver
+    /// 2. Waits for matching `PunchAck` with timeout
     /// 3. Returns coordinated start time from peer
     async fn wait_for_punch_ack(&self, nonce: &[u8; 16]) -> Result<u64> {
         // Take the receiver (one-shot per punch attempt)
@@ -415,11 +454,7 @@ impl HolePunchCoordinator {
         let Some(mut rx) = rx else {
             warn!("⚠️ No signal receiver available - using fallback timing");
             // Fallback: coordinate 100ms in future
-            return Ok(SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|_| OnionRelayError::Other("System time before UNIX epoch".to_string()))?
-                .as_millis() as u64
-                + 100);
+            return Ok(unix_epoch_millis_u64()? + 100);
         };
 
         // Wait for matching PunchAck with timeout
@@ -435,9 +470,8 @@ impl HolePunchCoordinator {
                         if &ack_nonce == nonce {
                             debug!("✅ Received PunchAck, start at {}ms", start_at_ms);
                             return Ok(start_at_ms);
-                        } else {
-                            debug!("⚠️ PunchAck nonce mismatch, continuing...");
                         }
+                        debug!("⚠️ PunchAck nonce mismatch, continuing...");
                     }
                     other => {
                         // Handle other messages through the coordinator
@@ -542,7 +576,7 @@ impl HolePunchCoordinator {
     /// 2. Coordinate timing via relay signaling channel
     /// 3. Spray predicted ports (± window for prediction error)
     /// 4. Listen for response — first valid reply = success
-    /// 5. Report result: Direct (drop relay) or KeepRelay (continue)
+    /// 5. Report result: Direct (drop relay) or `KeepRelay` (continue)
     ///
     /// # Arguments
     ///
@@ -551,6 +585,17 @@ impl HolePunchCoordinator {
     /// * `our_pattern` - Our NAT port allocation pattern
     /// * `peer_predicted_port` - Peer's predicted next port
     /// * `peer_public_ip` - Peer's public IP address
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OnionRelayError`] when wall-clock time cannot be represented as
+    /// milliseconds, UDP bind fails, coordination JSON encoding fails, or the relay
+    /// channel cannot send the coordination message.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
+    #[expect(clippy::too_many_lines, reason = "relay-assisted punch protocol state machine")]
     pub async fn coordinate_relay_punch(
         &self,
         peer_node_id: &str,
@@ -571,10 +616,7 @@ impl HolePunchCoordinator {
 
         // 2. Signal coordination timing via relay
         let start_delay_ms: u64 = 200; // Allow network propagation
-        let now_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("SystemTime before UNIX_EPOCH")
-            .as_millis() as u64;
+        let now_ms = unix_epoch_millis_u64()?;
         let start_at = now_ms + start_delay_ms;
 
         // Build coordination message
@@ -598,10 +640,7 @@ impl HolePunchCoordinator {
         debug!("📡 Sent coordination message via relay (start_at: {}ms)", start_at);
 
         // 3. Wait for start time
-        let current_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("SystemTime before UNIX_EPOCH")
-            .as_millis() as u64;
+        let current_ms = unix_epoch_millis_u64()?;
 
         if start_at > current_ms {
             sleep(Duration::from_millis(start_at - current_ms)).await;
@@ -614,7 +653,12 @@ impl HolePunchCoordinator {
         let start = Instant::now();
 
         for offset in -spray_window..=spray_window {
-            let target_port = (i32::from(peer_predicted_port) + offset).clamp(1, 65535) as u16;
+            let clamped = (i32::from(peer_predicted_port) + offset).clamp(1, 65535);
+            #[expect(
+                clippy::cast_sign_loss,
+                reason = "port clamped to 1..=65535 before cast to u16"
+            )]
+            let target_port = clamped as u16;
             let target_addr = SocketAddr::new(peer_public_ip, target_port);
 
             debug!("  🎯 Punch spray → {}:{}", peer_public_ip, target_port);
@@ -684,8 +728,7 @@ impl HolePunchCoordinator {
                 Ok(CoordinatedPunchResult::KeepRelay {
                     ports_tried,
                     reason: format!(
-                        "Timeout after {:?} ({} ports sprayed)",
-                        listen_timeout, ports_tried
+                        "Timeout after {listen_timeout:?} ({ports_tried} ports sprayed)",
                     ),
                 })
             }
@@ -700,7 +743,7 @@ fn rand_nonce() -> [u8; 16] {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
     nonce[..8].copy_from_slice(&now.to_le_bytes()[..8]);
     // Add some randomness from memory address
-    let ptr = &nonce as *const _ as usize;
+    let ptr = std::ptr::from_ref(&nonce) as usize;
     nonce[8..16].copy_from_slice(&ptr.to_le_bytes());
     nonce
 }
@@ -724,7 +767,6 @@ mod tests {
         let peer = PeerInfo::new("peer-1".to_string(), "1.2.3.4:5678".parse().unwrap());
         coord.register_peer(peer).await;
 
-        let peers = coord.peers.read().await;
-        assert!(peers.contains_key("peer-1"));
+        assert!(coord.peers.read().await.contains_key("peer-1"));
     }
 }

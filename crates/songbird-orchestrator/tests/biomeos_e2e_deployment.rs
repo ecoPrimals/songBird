@@ -18,10 +18,10 @@ use tempfile::TempDir;
 /// Serialize all env var tests in this file (async-safe).
 static ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-/// E2E Test: Complete BiomeOS NUCLEUS deployment simulation
+/// E2E Test: Complete `BiomeOS` NUCLEUS deployment simulation
 ///
 /// Simulates the full deployment flow:
-/// 1. BiomeOS sets environment variables
+/// 1. `BiomeOS` sets environment variables
 /// 2. Songbird starts and reads env vars
 /// 3. Socket created at correct location
 /// 4. Other primals can discover socket
@@ -110,10 +110,10 @@ async fn test_multi_family_deployment() {
     restore_env_state(original_vars);
 }
 
-/// E2E Test: Generic BiomeOS orchestrator compatibility
+/// E2E Test: Generic `BiomeOS` orchestrator compatibility
 ///
 /// Tests that Songbird works with generic BIOMEOS_* env vars,
-/// not just SONGBIRD_ORCHESTRATOR_* specific ones.
+/// not just `SONGBIRD_ORCHESTRATOR`_* specific ones.
 #[tokio::test]
 async fn test_generic_biomeos_orchestrator() {
     let _guard = ENV_LOCK.lock().await;

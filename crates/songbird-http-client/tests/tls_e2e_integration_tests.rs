@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::uninlined_format_args,
+    clippy::unused_async,
+    reason = "E2E TLS integration harness builds wire-format messages and mock servers"
+)]
+
 //! TLS End-to-End Integration Tests
 //!
 //! These tests verify complete TLS handshake flows with mock servers
@@ -85,7 +93,7 @@ async fn mock_tls_server(port: u16) -> tokio::task::JoinHandle<()> {
 }
 
 #[tokio::test]
-#[ignore] // Integration test - requires setup
+#[ignore = "integration test requires setup"]
 async fn test_complete_tls_handshake_flow() {
     let port = 18443;
     let _server = mock_tls_server(port).await;
@@ -135,7 +143,7 @@ async fn test_complete_tls_handshake_flow() {
 }
 
 #[tokio::test]
-#[ignore] // Integration test
+#[ignore = "integration test"]
 async fn test_client_hello_format_validation() {
     let client_hello = build_minimal_client_hello();
 
@@ -150,7 +158,7 @@ async fn test_client_hello_format_validation() {
 }
 
 #[tokio::test]
-#[ignore] // Integration test
+#[ignore = "integration test"]
 async fn test_multiple_handshakes_sequential() {
     let port = 18444;
 
@@ -171,7 +179,7 @@ async fn test_multiple_handshakes_sequential() {
     }
 }
 
-/// Helper: Build minimal valid ClientHello
+/// Helper: Build minimal valid `ClientHello`
 fn build_minimal_client_hello() -> Vec<u8> {
     let mut hello = vec![];
 

@@ -33,7 +33,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Coverage tests for songbird_discovery::traits::service and songbird_discovery::traits::discovery
+//! Coverage tests for `songbird_discovery::traits::service` and `songbird_discovery::traits::discovery`
 //!
 //! Tests struct construction, builder patterns, serialization, and defaults.
 
@@ -354,7 +354,7 @@ fn test_parameter_type_variants() {
     for pt in &types {
         let json = serde_json::to_string(pt).unwrap();
         let deserialized: ParameterType = serde_json::from_str(&json).unwrap();
-        let debug = format!("{:?}", deserialized);
+        let debug = format!("{deserialized:?}");
         assert!(!debug.is_empty());
     }
 }
@@ -453,7 +453,7 @@ fn test_discovery_backend_variants() {
     for backend in &backends {
         let json = serde_json::to_string(backend).unwrap();
         let deserialized: DiscoveryBackend = serde_json::from_str(&json).unwrap();
-        let debug = format!("{:?}", deserialized);
+        let debug = format!("{deserialized:?}");
         assert!(!debug.is_empty());
     }
 }
@@ -549,7 +549,7 @@ fn test_service_event_variants() {
     for event in &events {
         let json = serde_json::to_string(event).unwrap();
         let deserialized: ServiceEvent = serde_json::from_str(&json).unwrap();
-        let debug = format!("{:?}", deserialized);
+        let debug = format!("{deserialized:?}");
         assert!(!debug.is_empty());
     }
 }
@@ -570,7 +570,7 @@ fn test_service_health_status_serialization() {
     for status in &statuses {
         let json = serde_json::to_string(status).unwrap();
         let deserialized: ServiceHealthStatus = serde_json::from_str(&json).unwrap();
-        let debug = format!("{:?}", deserialized);
+        let debug = format!("{deserialized:?}");
         assert!(!debug.is_empty());
     }
 }

@@ -45,6 +45,9 @@ impl<T: Clone> DegradationStrategy<T> {
     }
 
     /// Execute with fallback, returning Result to handle missing fallback gracefully
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn try_execute_with_fallback<F, Fut>(
         &self,
         operation: F,
@@ -176,14 +179,14 @@ mod tests {
     #[test]
     fn test_no_fallback_error_display() {
         let err = NoFallbackError;
-        let display = format!("{}", err);
+        let display = format!("{err}");
         assert!(display.contains("No fallback"));
     }
 
     #[test]
     fn test_no_fallback_error_debug() {
         let err = NoFallbackError;
-        let debug = format!("{:?}", err);
+        let debug = format!("{err:?}");
         assert!(debug.contains("NoFallbackError"));
     }
 

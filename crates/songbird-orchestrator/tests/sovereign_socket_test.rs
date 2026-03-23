@@ -1,12 +1,36 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Comprehensive tests for Sovereign Socket implementation
 //!
 //! Tests cover:
 //! - Socket creation and configuration
 //! - Binding strategies (IPv4, IPv6, fallback)
-//! - SO_REUSEADDR and SO_REUSEPORT functionality
+//! - `SO_REUSEADDR` and `SO_REUSEPORT` functionality
 //! - Multi-strategy fallback
 //! - Integration with HTTP server
 //! - Concurrent connections
@@ -69,7 +93,7 @@ async fn test_sovereign_binder_ephemeral_port() {
 
     if let Ok((listener, addr)) = result {
         assert!(addr.port() > 0, "Should have assigned port");
-        println!("✅ Bound to ephemeral port: {}", addr);
+        println!("✅ Bound to ephemeral port: {addr}");
 
         // Verify we can get local address
         let local_addr = listener.local_addr().expect("Should have local address");
@@ -86,10 +110,10 @@ async fn test_sovereign_binder_specific_high_port() {
     if result.is_ok() {
         let (_listener, addr) = result.unwrap();
         assert_eq!(addr.port(), port, "Should bind to requested port");
-        println!("✅ Bound to specific port: {}", addr);
+        println!("✅ Bound to specific port: {addr}");
     } else {
         // Port might be in use, which is acceptable for testing
-        println!("⚠️  Port {} already in use (acceptable for test)", port);
+        println!("⚠️  Port {port} already in use (acceptable for test)");
     }
 }
 
@@ -101,7 +125,7 @@ async fn test_sovereign_binder_fallback_strategy() {
 
     if result.is_ok() {
         let (_listener, addr) = result.unwrap();
-        println!("✅ Fallback successful, bound to: {}", addr);
+        println!("✅ Fallback successful, bound to: {addr}");
         // Port should be > 1 (fallback occurred)
         assert!(addr.port() >= 1, "Should bind to original or fallback port");
     } else {
@@ -128,7 +152,7 @@ async fn test_so_reuseaddr_functionality() {
 
     if result2.is_ok() {
         let (_listener2, addr2) = result2.unwrap();
-        println!("✅ SO_REUSEADDR working - rebind to {} successful", addr2);
+        println!("✅ SO_REUSEADDR working - rebind to {addr2} successful");
     } else {
         println!("⚠️  SO_REUSEADDR might need more time for socket cleanup");
     }
@@ -152,7 +176,7 @@ async fn test_so_reuseport_multiple_binds() {
     if result2.is_ok() {
         let (_listener2, addr2) = result2.unwrap();
         assert_eq!(addr2.port(), actual_port, "Should bind to same port with SO_REUSEPORT");
-        println!("✅ SO_REUSEPORT working - multiple binds to port {}", actual_port);
+        println!("✅ SO_REUSEPORT working - multiple binds to port {actual_port}");
 
         // Both listeners should be active simultaneously
         // This enables zero-downtime deployments and load balancing
@@ -195,8 +219,8 @@ async fn test_concurrent_connections() {
         }
     }
 
-    assert!(successes >= 8, "Should handle most concurrent connections (got {})", successes);
-    println!("✅ Handled {}/10 concurrent connections", successes);
+    assert!(successes >= 8, "Should handle most concurrent connections (got {successes})");
+    println!("✅ Handled {successes}/10 concurrent connections");
 }
 
 #[tokio::test]
@@ -211,7 +235,7 @@ async fn test_bind_strategies_exhaustive() {
 
     if let Ok((_listener, addr)) = result {
         println!("✅ Binding strategy successful:");
-        println!("   Address: {}", addr);
+        println!("   Address: {addr}");
         println!("   IPv4: {}", addr.is_ipv4());
         println!("   IPv6: {}", addr.is_ipv6());
 
@@ -249,7 +273,7 @@ async fn test_buffer_sizes() {
     let local_addr = tokio_listener.local_addr().expect("Should have local address");
 
     println!("✅ Buffer sizes configured (verified by successful socket creation)");
-    println!("   Listening on: {}", local_addr);
+    println!("   Listening on: {local_addr}");
 
     // The fact that the socket was created with the buffer size calls
     // and didn't error means the configuration worked
@@ -269,7 +293,7 @@ async fn test_non_blocking_mode() {
 
     // If this doesn't panic, non-blocking mode is working with tokio
     let local_addr = tokio_listener.local_addr().expect("Should have local addr");
-    println!("✅ Non-blocking mode working: {}", local_addr);
+    println!("✅ Non-blocking mode working: {local_addr}");
 }
 
 #[tokio::test]
@@ -281,7 +305,7 @@ async fn test_ipv4_and_ipv6_both_available() {
     let ipv4_result = SovereignBinder::bind_sovereign(port).await;
     if ipv4_result.is_ok() {
         let (_listener, addr) = ipv4_result.unwrap();
-        println!("✅ IPv4 binding available: {}", addr);
+        println!("✅ IPv4 binding available: {addr}");
     }
 
     // Try IPv6 (might not be available on all systems)

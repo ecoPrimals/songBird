@@ -44,6 +44,9 @@ impl IntegrationManager {
     /// Start all services with integration
     ///
     /// v3.18.2: Updated for new `start_orchestrator` signature
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn start_integrated_services(&self) -> Result<()> {
         info!("🚀 Starting integrated services...");
 
@@ -71,6 +74,9 @@ impl IntegrationManager {
     }
 
     /// Initialize orchestrator with integration checks
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn initialize_orchestrator(&self) -> Result<SongbirdOrchestrator> {
         info!("🔧 Initializing orchestrator with integration checks...");
 
@@ -100,6 +106,10 @@ impl IntegrationManager {
     }
 
     /// Run integration checks
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn run_integration_checks(&self, orchestrator: &SongbirdOrchestrator) -> Result<()> {
         info!("🔍 Running integration checks...");
 
@@ -127,6 +137,9 @@ impl IntegrationManager {
     /// - Uses orchestrator's built-in shutdown channel
     /// - No arbitrary sleeps - services signal completion
     /// - Proper timeout handling with graceful degradation
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn shutdown_gracefully(&self, orchestrator: &mut SongbirdOrchestrator) -> Result<()> {
         info!("🛑 Initiating graceful shutdown...");
 
@@ -172,6 +185,13 @@ impl IntegrationManager {
     /// Shutdown without an orchestrator instance (for early failures)
     ///
     /// Use this when shutdown is needed before orchestrator is fully initialized
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn shutdown_without_orchestrator(&self) -> Result<()> {
         info!("🛑 Performing early shutdown (no orchestrator instance)");
         info!("   No services to clean up");
@@ -179,6 +199,9 @@ impl IntegrationManager {
     }
 
     /// Check service availability
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check_service_availability(&self) -> Result<bool> {
         info!("🔍 Checking service availability...");
 
@@ -196,18 +219,30 @@ impl IntegrationManager {
     }
 
     /// Check core services
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_core_services(&self) -> Result<bool> {
         tracing::debug!("Checking core services availability...");
         Ok(true)
     }
 
     /// Check gaming services
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_gaming_services(&self) -> Result<bool> {
         tracing::debug!("Gaming services availability check completed");
         Ok(true)
     }
 
     /// Check federation services
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn check_federation_services(&self) -> Result<bool> {
         tracing::debug!("Federation services availability check completed");
         Ok(true)

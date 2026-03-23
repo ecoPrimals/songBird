@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Task lifecycle types
 //!
 //! Modern Rust types with:
@@ -202,6 +206,9 @@ impl TaskLifecycle {
     }
 
     /// Transition to a new status
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn transition_to(&mut self, new_status: TaskStatus) -> Result<(), Arc<str>> {
         // Validate state transition
         if self.status.is_terminal() {
@@ -214,6 +221,9 @@ impl TaskLifecycle {
     }
 
     /// Start the task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn start(&mut self, tower: TowerId) -> Result<(), Arc<str>> {
         if !matches!(self.status, TaskStatus::Queued | TaskStatus::Paused { .. }) {
             return Err("Task can only start from Queued or Paused state".into());
@@ -228,6 +238,9 @@ impl TaskLifecycle {
     }
 
     /// Pause the task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn pause(&mut self) -> Result<(), Arc<str>> {
         if !self.status.can_pause() {
             return Err("Task cannot be paused in current state".into());
@@ -241,6 +254,9 @@ impl TaskLifecycle {
     }
 
     /// Resume the task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn resume(&mut self, tower: TowerId) -> Result<(), Arc<str>> {
         if !self.status.can_resume() {
             return Err("Task cannot be resumed in current state".into());
@@ -255,6 +271,9 @@ impl TaskLifecycle {
     }
 
     /// Complete the task successfully
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn complete(&mut self) -> Result<(), Arc<str>> {
         if !self.status.is_active() {
             return Err("Task must be active to complete".into());
@@ -269,6 +288,9 @@ impl TaskLifecycle {
     }
 
     /// Fail the task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn fail(&mut self, error: impl Into<Arc<str>>, retry_count: u32) -> Result<(), Arc<str>> {
         self.status = TaskStatus::Failed {
             failed_at: Utc::now(),
@@ -280,6 +302,9 @@ impl TaskLifecycle {
     }
 
     /// Cancel the task
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn cancel(&mut self, reason: Option<Arc<str>>) -> Result<(), Arc<str>> {
         if !self.cancellable {
             return Err("Task is not cancellable".into());

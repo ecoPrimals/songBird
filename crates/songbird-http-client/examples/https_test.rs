@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! HTTPS request example (requires BearDog running)
+//! HTTPS request example (requires `BearDog` running)
 
 use songbird_http_client::SongbirdHttpClient;
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let beardog_socket =
         std::env::var("BEARDOG_SOCKET").unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
 
-    println!("Using BearDog at: {}", beardog_socket);
+    println!("Using BearDog at: {beardog_socket}");
 
     let client = SongbirdHttpClient::new(beardog_socket);
 

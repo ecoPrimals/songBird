@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn test_error_class_debug() {
         let class = ErrorClass::Timeout;
-        let debug_str = format!("{:?}", class);
+        let debug_str = format!("{class:?}");
         assert!(debug_str.contains("Timeout"));
     }
 }

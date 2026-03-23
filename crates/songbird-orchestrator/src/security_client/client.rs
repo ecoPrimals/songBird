@@ -156,6 +156,9 @@ impl SecurityCapabilityClient {
     /// Get our identity from security provider
     ///
     /// **MODERNIZED v3.12.3**: Protocol-agnostic! Uses tarpc/JSON-RPC/HTTP automatically.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_identity(&mut self) -> Result<IdentityResponse> {
         // Return cached if available
         if let Some(ref identity) = self.cached_identity {
@@ -187,6 +190,9 @@ impl SecurityCapabilityClient {
     /// Evaluate trust for a discovered peer
     ///
     /// **MODERNIZED v3.12.3**: Protocol-agnostic! Uses tarpc/JSON-RPC/HTTP automatically.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn evaluate_trust(
         &self,
         request: &TrustEvaluationRequest,
@@ -356,6 +362,9 @@ impl SecurityCapabilityClient {
     }
 
     /// Evaluate trust using universal API format
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn evaluate_trust_universal(
         &self,
         request: &UniversalTrustRequest,
@@ -449,12 +458,18 @@ impl SecurityCapabilityClient {
     }
 
     /// Backward compatibility: alias for `from_endpoint`
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     #[deprecated(note = "Use from_endpoint instead for clarity")]
     pub async fn new(endpoint: impl Into<String>) -> Result<Self> {
         Self::from_endpoint(endpoint).await
     }
 
     /// Get our current genetic lineage from security provider
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
         let url = format!("{}/api/v1/lineage/current", self.adapter.endpoint());
         debug!("Querying security provider for current lineage: {}", url);
@@ -481,6 +496,9 @@ impl SecurityCapabilityClient {
     }
 
     /// Verify a peer's lineage proof
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
         let url = format!("{}/api/v1/lineage/verify", self.adapter.endpoint());
         debug!("Verifying lineage proof with security provider: {}", url);
@@ -523,6 +541,9 @@ impl SecurityCapabilityClient {
     }
 
     /// Check if two lineages are from the same genetic family
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
         let url = format!("{}/api/v1/lineage/same_family", self.adapter.endpoint());
         debug!("Checking if lineages are from same family: {} vs {}", lineage_a, lineage_b);

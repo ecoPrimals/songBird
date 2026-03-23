@@ -106,6 +106,9 @@ impl Connection {
     }
 
     /// Call peer operation
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         self.as_peer_connection().call(operation, request).await
     }

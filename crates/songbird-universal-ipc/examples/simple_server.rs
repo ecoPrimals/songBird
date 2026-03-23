@@ -39,12 +39,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match stream.read(&mut buf).await {
                         Ok(n) if n > 0 => {
                             let message = String::from_utf8_lossy(&buf[..n]);
-                            println!("📨 Received: {}", message);
+                            println!("📨 Received: {message}");
 
                             // Echo back
-                            let response = format!("Echo: {}", message);
+                            let response = format!("Echo: {message}");
                             if let Err(e) = stream.write_all(response.as_bytes()).await {
-                                eprintln!("❌ Failed to write response: {}", e);
+                                eprintln!("❌ Failed to write response: {e}");
                             } else {
                                 println!("📤 Sent response");
                             }
@@ -53,13 +53,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!("🔌 Client disconnected");
                         }
                         Err(e) => {
-                            eprintln!("❌ Failed to read: {}", e);
+                            eprintln!("❌ Failed to read: {e}");
                         }
                     }
                 });
             }
             Err(e) => {
-                eprintln!("❌ Failed to accept connection: {}", e);
+                eprintln!("❌ Failed to accept connection: {e}");
             }
         }
     }

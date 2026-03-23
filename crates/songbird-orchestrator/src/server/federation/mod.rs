@@ -167,10 +167,10 @@ mod tests {
 
         let response = app
             .oneshot(Request::builder().uri("/status").body(Body::empty()).map_err(|e| {
-                SongbirdError::configuration(format!("Failed to build request: {}", e))
+                SongbirdError::configuration(format!("Failed to build request: {e}"))
             })?)
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Failed to send request: {e}")))?;
 
         assert_eq!(response.status(), StatusCode::OK);
         Ok(())
@@ -184,10 +184,10 @@ mod tests {
 
         let response = app
             .oneshot(Request::builder().uri("/nodes").body(Body::empty()).map_err(|e| {
-                SongbirdError::configuration(format!("Failed to build request: {}", e))
+                SongbirdError::configuration(format!("Failed to build request: {e}"))
             })?)
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Failed to send request: {e}")))?;
 
         assert_eq!(response.status(), StatusCode::OK);
         Ok(())

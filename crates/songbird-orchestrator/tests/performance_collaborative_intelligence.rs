@@ -5,9 +5,9 @@
 //!
 //! Verifies that validation operations meet latency targets:
 //! - graph.validate: < 50ms (small graphs)
-//! - graph.check_availability: < 50ms
-//! - graph.suggest_alternatives: < 30ms
-//! - coordination.validate_pattern: < 100ms
+//! - `graph.check_availability`: < 50ms
+//! - `graph.suggest_alternatives`: < 30ms
+//! - `coordination.validate_pattern`: < 100ms
 
 use songbird_orchestrator::graph::{
     AvailabilityChecker, CoordinationValidator, Graph, GraphEdge, GraphMetadata, GraphNode,
@@ -23,7 +23,7 @@ fn create_small_graph(nodes: usize) -> Graph {
 
     for i in 0..nodes {
         graph_nodes.push(GraphNode {
-            id: format!("node{}", i),
+            id: format!("node{i}"),
             primal_name: None,
             capability: "compute".to_string(),
             inputs: if i == 0 {
@@ -40,7 +40,7 @@ fn create_small_graph(nodes: usize) -> Graph {
         if i > 0 {
             edges.push(GraphEdge {
                 from: format!("node{}", i - 1),
-                to: format!("node{}", i),
+                to: format!("node{i}"),
                 data_mapping: None,
             });
         }
@@ -65,8 +65,8 @@ async fn benchmark_graph_validation() {
     let duration = start.elapsed();
 
     assert!(result.valid, "Graph should be valid");
-    println!("✅ graph.validate: {:?} (target: < 50ms)", duration);
-    assert!(duration.as_millis() < 50, "Validation took {:?}, expected < 50ms", duration);
+    println!("✅ graph.validate: {duration:?} (target: < 50ms)");
+    assert!(duration.as_millis() < 50, "Validation took {duration:?}, expected < 50ms");
 }
 
 #[tokio::test]
@@ -92,8 +92,8 @@ async fn benchmark_availability_checking() {
     let _result = checker.check_availability(&graph).await.unwrap();
     let duration = start.elapsed();
 
-    println!("✅ graph.check_availability: {:?} (target: < 50ms)", duration);
-    assert!(duration.as_millis() < 50, "Availability check took {:?}, expected < 50ms", duration);
+    println!("✅ graph.check_availability: {duration:?} (target: < 50ms)");
+    assert!(duration.as_millis() < 50, "Availability check took {duration:?}, expected < 50ms");
 }
 
 #[tokio::test]
@@ -105,9 +105,9 @@ async fn benchmark_alternative_suggestions() {
     for i in 0..3 {
         registry
             .register_service(
-                format!("TestPrimal{}", i),
+                format!("TestPrimal{i}"),
                 vec!["compute".to_string()],
-                format!("/tmp/test{}.sock", i),
+                format!("/tmp/test{i}.sock"),
                 "json-rpc".to_string(),
                 30,
             )
@@ -130,12 +130,8 @@ async fn benchmark_alternative_suggestions() {
     let _result = checker.suggest_alternatives(&node).await.unwrap();
     let duration = start.elapsed();
 
-    println!("✅ graph.suggest_alternatives: {:?} (target: < 30ms)", duration);
-    assert!(
-        duration.as_millis() < 30,
-        "Alternative suggestion took {:?}, expected < 30ms",
-        duration
-    );
+    println!("✅ graph.suggest_alternatives: {duration:?} (target: < 30ms)");
+    assert!(duration.as_millis() < 30, "Alternative suggestion took {duration:?}, expected < 30ms");
 }
 
 #[tokio::test]
@@ -162,11 +158,10 @@ async fn benchmark_coordination_validation() {
     let duration = start.elapsed();
 
     assert!(result.valid, "Coordination should be valid");
-    println!("✅ coordination.validate_pattern: {:?} (target: < 100ms)", duration);
+    println!("✅ coordination.validate_pattern: {duration:?} (target: < 100ms)");
     assert!(
         duration.as_millis() < 100,
-        "Coordination validation took {:?}, expected < 100ms",
-        duration
+        "Coordination validation took {duration:?}, expected < 100ms"
     );
 }
 
@@ -178,9 +173,9 @@ async fn benchmark_full_validation_workflow() {
     for capability in &["input", "compute", "storage"] {
         registry
             .register_service(
-                format!("{}Primal", capability),
+                format!("{capability}Primal"),
                 vec![capability.to_string()],
-                format!("/tmp/{}.sock", capability),
+                format!("/tmp/{capability}.sock"),
                 "json-rpc".to_string(),
                 30,
             )
@@ -256,6 +251,6 @@ async fn benchmark_full_validation_workflow() {
 
     let duration = start.elapsed();
 
-    println!("✅ Full validation workflow: {:?} (target: < 200ms)", duration);
-    assert!(duration.as_millis() < 200, "Full workflow took {:?}, expected < 200ms", duration);
+    println!("✅ Full validation workflow: {duration:?} (target: < 200ms)");
+    assert!(duration.as_millis() < 200, "Full workflow took {duration:?}, expected < 200ms");
 }

@@ -3,19 +3,19 @@
 
 //! Sovereign Rendezvous for Symmetric NAT
 //!
-//! **Pure Rust | Self-Hosted | BearDog Crypto Delegation**
+//! **Pure Rust | Self-Hosted | `BearDog` Crypto Delegation**
 //!
 //! ## ARCHITECTURE EVOLUTION (Feb 6, 2026)
 //!
 //! Previously: Arti (full Tor client) - 5MB, 10-30s startup
-//! Now: Sovereign Onion Service - 200KB, instant startup, BearDog crypto
+//! Now: Sovereign Onion Service - 200KB, instant startup, `BearDog` crypto
 //!
 //! ## How It Works
 //!
 //! ```text
 //! 1. BOOTSTRAP (Sovereign Onion - signaling only)
 //!    Tower <──.onion──> Pixel
-//!    Exchange STUN addresses via encrypted BirdSong
+//!    Exchange STUN addresses via encrypted `BirdSong`
 //!    Crypto delegated to BearDog (TRUE PRIMAL pattern)
 //!
 //! 2. HOLE PUNCH (Direct UDP)
@@ -31,9 +31,9 @@
 //!
 //! ## Features
 //!
-//! - `onion`: Sovereign Onion Service (Pure Rust, BearDog crypto)
+//! - `onion`: Sovereign Onion Service (Pure Rust, `BearDog` crypto)
 //!
-//! See: biomeOS/docs/handoffs/SOVEREIGN_BEACON_MESH_HANDOFF_FEB06_2026.md
+//! See: `biomeOS/docs/handoffs/SOVEREIGN_BEACON_MESH_HANDOFF_FEB06_2026.md`
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 

@@ -83,6 +83,9 @@ impl ConnectionManager {
     ///
     /// **v3.21.0**: Refactored to domain modules
     /// **Capability-based**: Discovers peer capabilities at runtime
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn handle_trust_decision(
         &self,
         peer_id: String,
@@ -111,6 +114,9 @@ impl ConnectionManager {
     ///
     /// **v3.21.0**: Refactored to domain modules
     /// **Modern pattern**: Delegates to trust evaluator
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn establish_connection(
         &self,
         peer_id: String,
@@ -136,6 +142,9 @@ impl ConnectionManager {
     }
 
     /// Call peer with operation
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn call_peer(&self, peer_id: &str, operation: &str, request: Value) -> Result<Value> {
         let connections = self.connections.read().await;
         let connection = connections
@@ -177,6 +186,9 @@ impl ConnectionManager {
     }
 
     /// Close connection to peer
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn close_connection(&self, peer_id: &str) -> Result<()> {
         let mut connections = self.connections.write().await;
         connections.remove(peer_id);

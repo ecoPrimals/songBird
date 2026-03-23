@@ -38,6 +38,9 @@ use crate::node_identity::NodeIdentity;
 /// The federation uses capability-based discovery - nodes advertise their
 /// capabilities (compute, storage, AI, etc.) and other nodes discover them
 /// at runtime. No hardcoded node addresses or names.
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn initialize_federation() -> Result<(
     Option<Arc<FederationCoordinator>>,
     Option<FederationConfig>,

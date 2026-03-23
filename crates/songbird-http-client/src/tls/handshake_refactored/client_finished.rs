@@ -96,6 +96,10 @@ impl TlsHandshake {
     }
 
     /// Encrypt plaintext using handshake traffic keys with the given sequence number
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     async fn encrypt_with_handshake_keys(
         &self,
         plaintext: &[u8],
@@ -146,6 +150,10 @@ impl TlsHandshake {
     }
 
     /// Build a complete TLS record (header + ciphertext)
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     fn build_tls_record(ciphertext: &[u8]) -> Vec<u8> {
         let mut record = Vec::with_capacity(5 + ciphertext.len());
         record.push(0x17); // APPLICATION_DATA
@@ -260,7 +268,10 @@ mod tests {
         let rec = TlsHandshake::build_tls_record(&ct);
         assert_eq!(rec.len(), 5 + ct.len());
         assert_eq!(rec[0], 0x17);
-        assert_eq!(u16::from_be_bytes([rec[3], rec[4]]), ct.len() as u16);
+        assert_eq!(
+            u16::from_be_bytes([rec[3], rec[4]]),
+            u16::try_from(ct.len()).expect("test vector length fits in u16")
+        );
         assert_eq!(&rec[5..], &ct[..]);
     }
 }

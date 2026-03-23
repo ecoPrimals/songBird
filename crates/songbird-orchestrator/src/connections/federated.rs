@@ -44,6 +44,9 @@ pub struct FederatedConnection {
 
 impl FederatedConnection {
     /// Create a new federated connection (Pure Rust Unix socket)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new(
         peer_id: String,
         endpoint: String,
@@ -67,6 +70,9 @@ impl FederatedConnection {
     }
 
     /// Create with default Level 2 capabilities
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn with_defaults(peer_id: String, endpoint: String) -> Result<Self> {
         Self::new(peer_id, endpoint, TrustLevel::Elevated.default_allowed_capabilities())
     }

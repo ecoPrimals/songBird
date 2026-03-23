@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Chaos Tests: Squirrel Integration - Stress & Edge Cases
 //!
 //! Tests extreme conditions and stress scenarios:
@@ -9,7 +33,7 @@
 //! - Resource exhaustion
 //! - Race conditions
 //!
-//! **Evolution**: 10 sleeps → event-driven (ReadyNotifier)!
+//! **Evolution**: 10 sleeps → event-driven (`ReadyNotifier`)!
 
 mod common;
 use common::event_helpers::ReadyNotifier;
@@ -108,7 +132,7 @@ async fn test_chaos_request_storm() {
     }
 
     // At least 95% should succeed
-    assert!(success_count >= 95, "Only {} out of 100 requests succeeded", success_count);
+    assert!(success_count >= 95, "Only {success_count} out of 100 requests succeeded");
 
     server.abort();
     let _ = std::fs::remove_file(socket_path);
@@ -350,7 +374,7 @@ async fn test_chaos_connection_limit() {
     }
 
     // Most should succeed
-    assert!(success_count >= 150, "Only {} out of 200 connections succeeded", success_count);
+    assert!(success_count >= 150, "Only {success_count} out of 200 connections succeeded");
 
     server.abort();
     let _ = std::fs::remove_file(socket_path);
@@ -420,11 +444,11 @@ async fn test_chaos_rapid_method_switching() {
         });
 
         let result = stream.write_all(serde_json::to_string(&request).unwrap().as_bytes()).await;
-        assert!(result.is_ok(), "Write failed at iteration {}", i);
+        assert!(result.is_ok(), "Write failed at iteration {i}");
         let result = stream.write_all(b"\n").await;
-        assert!(result.is_ok(), "Newline write failed at iteration {}", i);
+        assert!(result.is_ok(), "Newline write failed at iteration {i}");
         let result = stream.flush().await;
-        assert!(result.is_ok(), "Flush failed at iteration {}", i);
+        assert!(result.is_ok(), "Flush failed at iteration {i}");
     }
 
     server.abort();

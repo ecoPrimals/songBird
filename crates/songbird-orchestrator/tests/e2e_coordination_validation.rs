@@ -106,9 +106,9 @@ async fn test_e2e_parallel_pattern_validation() {
     for i in 1..=3 {
         let service_id = registry
             .register_service(
-                format!("ComputeWorker{}", i),
+                format!("ComputeWorker{i}"),
                 vec!["compute".to_string()],
-                format!("/run/user/1000/compute{}.sock", i),
+                format!("/run/user/1000/compute{i}.sock"),
                 "json-rpc".to_string(),
                 30,
             )

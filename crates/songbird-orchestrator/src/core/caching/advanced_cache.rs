@@ -179,10 +179,13 @@ impl AdvancedCache {
     }
 
     #[must_use]
-    pub fn get_config(&self) -> &CacheConfig {
+    pub const fn get_config(&self) -> &CacheConfig {
         &self.config
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn set<V: Into<CacheValue>>(
         &self,
         key: CacheKey,
@@ -191,6 +194,9 @@ impl AdvancedCache {
         self.set_with_ttl(key, value, self.config.default_ttl)
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn set_with_ttl<V: Into<CacheValue>>(
         &self,
         key: CacheKey,
@@ -272,6 +278,9 @@ impl AdvancedCache {
         })
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn get(&self, key: &CacheKey) -> SongbirdResult<CacheOperationResult<Option<CacheValue>>> {
         let start = Instant::now();
         let lock_start = Instant::now();
@@ -332,6 +341,9 @@ impl AdvancedCache {
         })
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn remove(
         &self,
         key: &CacheKey,
@@ -385,6 +397,9 @@ impl AdvancedCache {
         self.storage.read().map(|s| s.current_size_bytes()).unwrap_or(0)
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn clear(&self) -> SongbirdResult<()> {
         let mut storage = self
             .storage
@@ -400,6 +415,9 @@ impl AdvancedCache {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn cleanup_expired(&self) -> SongbirdResult<usize> {
         let mut storage = self
             .storage
@@ -428,6 +446,9 @@ impl AdvancedCache {
         Ok(removed)
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn get_statistics(&self) -> SongbirdResult<CacheStatistics> {
         self.snapshot_statistics()
     }

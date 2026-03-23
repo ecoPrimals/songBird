@@ -19,6 +19,9 @@ impl ExecutionManager {
     /// Create a new execution manager
     ///
     /// ✅ EVOLVED: Now async due to `ExecutionClient` async construction
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new() -> Result<Self, String> {
         let client = ExecutionClient::new()
             .await
@@ -41,6 +44,9 @@ impl ExecutionManager {
     }
 
     /// Execute command on a single tower
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn execute_on_tower(
         &self,
         tower_endpoint: &str,

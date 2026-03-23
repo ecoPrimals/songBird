@@ -79,10 +79,7 @@ impl CapabilityDiscovery {
     }
 
     fn read_env(&self, key: &str) -> Result<String, std::env::VarError> {
-        match &self.env_reader {
-            Some(f) => f(key),
-            None => std::env::var(key),
-        }
+        self.env_reader.as_ref().map_or_else(|| std::env::var(key), |f| f(key))
     }
 
     /// Discover services providing a specific capability

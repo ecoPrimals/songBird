@@ -33,7 +33,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Coverage tests for songbird_discovery::discovery_stats
+//! Coverage tests for `songbird_discovery::discovery_stats`
 //!
 //! Tests the atomic stats, snapshot, status manager, and network info.
 

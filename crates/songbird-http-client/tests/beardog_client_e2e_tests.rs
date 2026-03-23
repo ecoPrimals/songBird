@@ -1,19 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::uninlined_format_args,
+    clippy::doc_markdown,
+    reason = "BearDog E2E tests use verbose RPC assertions and protocol names in module docs"
+)]
+
 //! End-to-End Integration Tests for BearDog Client
 //!
 //! These tests validate the complete RPC flow with Neural API integration.
-//! They are marked #[ignore] by default to avoid requiring a running Neural API.
+//! They are marked `#[ignore]` by default to avoid requiring a running Neural API.
 
 use songbird_http_client::beardog_client::BearDogClient;
 
 // ====================================================================
-// E2E TESTS - Full RPC Flow (marked #[ignore] - require Neural API)
+// E2E TESTS - Full RPC Flow (marked `#[ignore]` - require Neural API)
 // ====================================================================
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_tls_derive_application_secrets() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -50,7 +56,7 @@ async fn test_e2e_tls_derive_application_secrets() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_encrypt_decrypt_roundtrip() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -81,7 +87,7 @@ async fn test_e2e_encrypt_decrypt_roundtrip() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_generate_keypair() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -100,7 +106,7 @@ async fn test_e2e_generate_keypair() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_ecdh_derive() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -122,7 +128,7 @@ async fn test_e2e_ecdh_derive() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_multiple_sequential_calls() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -134,7 +140,7 @@ async fn test_e2e_multiple_sequential_calls() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_concurrent_calls() {
     use tokio::task::JoinSet;
 
@@ -160,7 +166,7 @@ async fn test_e2e_concurrent_calls() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_large_plaintext() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -185,7 +191,7 @@ async fn test_e2e_large_plaintext() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_empty_plaintext() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -210,7 +216,7 @@ async fn test_e2e_empty_plaintext() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_decrypt_authentication_failure() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -232,7 +238,7 @@ async fn test_e2e_decrypt_authentication_failure() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API + BearDog running
+#[ignore = "requires Neural API and BearDog"]
 async fn test_e2e_decrypt_wrong_aad() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -337,7 +343,7 @@ async fn test_fault_e2e_empty_socket_path() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API running
+#[ignore = "requires Neural API"]
 async fn test_fault_e2e_short_ciphertext() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -352,7 +358,7 @@ async fn test_fault_e2e_short_ciphertext() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API running
+#[ignore = "requires Neural API"]
 async fn test_fault_e2e_wrong_key_size() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -366,7 +372,7 @@ async fn test_fault_e2e_wrong_key_size() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API running
+#[ignore = "requires Neural API"]
 async fn test_fault_e2e_wrong_nonce_size() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -380,7 +386,7 @@ async fn test_fault_e2e_wrong_nonce_size() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API running
+#[ignore = "requires Neural API"]
 async fn test_fault_e2e_wrong_secret_size() {
     let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
 
@@ -405,7 +411,7 @@ async fn test_fault_e2e_wrong_secret_size() {
 }
 
 #[tokio::test]
-#[ignore] // Requires Neural API running
+#[ignore = "requires Neural API"]
 async fn test_fault_e2e_invalid_base64_response() {
     // This would only happen if BearDog or Neural API is buggy
     // We can't easily inject this in a real test, but it's here for documentation

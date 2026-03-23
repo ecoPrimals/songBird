@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -96,13 +100,13 @@ fn test_performance_config_serialization() -> Result<(), Box<dyn std::error::Err
     let config = PerformanceConfig::default();
     let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     let deserialized: PerformanceConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Parsing failed: {}", e),
+            message: format!("Parsing failed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(config.metrics_interval, deserialized.metrics_interval);
@@ -115,13 +119,13 @@ fn test_zero_touch_config_serialization() -> Result<(), Box<dyn std::error::Erro
     let config = ZeroTouchConfig::default();
     let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     let deserialized: ZeroTouchConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Parsing failed: {}", e),
+            message: format!("Parsing failed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(config.enable_auto_deployment, deserialized.enable_auto_deployment);
@@ -175,7 +179,7 @@ fn test_consolidated_orchestrator_new() {
     let config = ConsolidatedOrchestratorConfig::default();
     let orchestrator = ConsolidatedOrchestrator::new(config);
 
-    assert!(format!("{:?}", orchestrator).contains("ConsolidatedOrchestrator"));
+    assert!(format!("{orchestrator:?}").contains("ConsolidatedOrchestrator"));
 }
 
 #[test]
@@ -188,7 +192,7 @@ fn test_consolidated_orchestrator_new_with_custom_config() {
 
     let orchestrator = ConsolidatedOrchestrator::new(config);
 
-    assert!(format!("{:?}", orchestrator).contains("ConsolidatedOrchestrator"));
+    assert!(format!("{orchestrator:?}").contains("ConsolidatedOrchestrator"));
 }
 
 #[tokio::test]
@@ -278,13 +282,13 @@ fn test_consolidated_orchestrator_config_serialization() -> Result<(), Box<dyn s
     let config = ConsolidatedOrchestratorConfig::default();
     let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     let deserialized: ConsolidatedOrchestratorConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Parsing failed: {}", e),
+            message: format!("Parsing failed: {e}"),
             debug_info: None,
         })?;
 
@@ -417,7 +421,7 @@ fn test_component_health_with_message() {
 #[test]
 fn test_orchestrator_config_debug_format() {
     let config = ConsolidatedOrchestratorConfig::default();
-    let debug_string = format!("{:?}", config);
+    let debug_string = format!("{config:?}");
 
     assert!(debug_string.contains("ConsolidatedOrchestratorConfig"));
     assert!(debug_string.contains("load_balancing"));

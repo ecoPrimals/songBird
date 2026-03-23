@@ -125,6 +125,7 @@ impl StreamManager {
             .write()
             .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
         streams.insert(stream_id, stream);
+        drop(streams);
 
         Ok(stream_id)
     }
@@ -164,6 +165,7 @@ impl StreamManager {
             .ok_or_else(|| Error::Stream(format!("Stream {stream_id} not found")))?;
 
         f(stream);
+        drop(streams);
         Ok(())
     }
 
@@ -178,6 +180,7 @@ impl StreamManager {
             .write()
             .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
         streams.remove(&stream_id);
+        drop(streams);
         Ok(())
     }
 
@@ -205,6 +208,10 @@ impl StreamProtocol {
     ///
     /// # Returns
     /// * `RelayCell` with BEGIN command
+    ///
+    /// # Panics
+    ///
+    /// Panics if the address byte length does not fit in `u16`.
     #[must_use]
     pub fn create_begin(stream_id: u16, address: &str) -> RelayCell {
         let mut data = address.as_bytes().to_vec();
@@ -228,6 +235,10 @@ impl StreamProtocol {
     ///
     /// # Returns
     /// * `RelayCell` with DATA command
+    ///
+    /// # Panics
+    ///
+    /// Panics if the data length does not fit in `u16`.
     #[must_use]
     pub fn create_data(stream_id: u16, data: &[u8]) -> RelayCell {
         RelayCell {

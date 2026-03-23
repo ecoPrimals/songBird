@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Chaos and fault injection tests for service registry
 //!
 //! v3.20.0: Resilience testing for the service registry
@@ -24,9 +48,9 @@ async fn test_chaos_concurrent_register_unregister() {
             // Register
             let service_id = registry_clone
                 .register_service(
-                    format!("ChaosPrimal{}", i),
+                    format!("ChaosPrimal{i}"),
                     vec![format!("chaos{}", i)],
-                    format!("/tmp/chaos{}.sock", i),
+                    format!("/tmp/chaos{i}.sock"),
                     "json-rpc".to_string(),
                     30,
                 )
@@ -60,9 +84,9 @@ async fn test_chaos_rapid_capability_queries() {
     for i in 0..5 {
         registry
             .register_service(
-                format!("Primal{}", i),
+                format!("Primal{i}"),
                 vec!["shared_capability".to_string()],
-                format!("/tmp/primal{}.sock", i),
+                format!("/tmp/primal{i}.sock"),
                 "json-rpc".to_string(),
                 30,
             )
@@ -257,9 +281,9 @@ async fn test_chaos_massive_concurrent_operations() {
         handles.push(tokio::spawn(async move {
             registry_clone
                 .register_service(
-                    format!("Primal{}", i),
+                    format!("Primal{i}"),
                     vec![format!("cap{}", i % 5)], // 5 different capabilities
-                    format!("/tmp/primal{}.sock", i),
+                    format!("/tmp/primal{i}.sock"),
                     "json-rpc".to_string(),
                     30,
                 )
@@ -289,7 +313,7 @@ async fn test_chaos_massive_concurrent_operations() {
         let registry_clone: Arc<ServiceRegistry> = Arc::clone(&registry);
         handles.push(tokio::spawn(async move {
             // Query might fail if service doesn't exist yet, that's OK
-            let _ = registry_clone.get_service_health(&format!("primal-{}", i)).await;
+            let _ = registry_clone.get_service_health(&format!("primal-{i}")).await;
         }));
     }
 

@@ -1,12 +1,36 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Example: Using Genetic Lineage for Automatic Peer Trust
 //!
 //! This example demonstrates how to use genetic lineage to automatically
 //! establish trust with peers from the same cryptographic family.
 //!
-//! Run with: cargo run --example genetic_lineage_usage
+//! Run with: cargo run --example `genetic_lineage_usage`
 
 use anyhow::Result;
 use songbird_discovery::DiscoveryPacket;
@@ -43,7 +67,7 @@ async fn main() -> Result<()> {
         println!("   ℹ️  Node already has genetic lineage");
     } else {
         identity.set_lineage(lineage_id.clone(), lineage_proof.clone())?;
-        println!("   ✅ Genetic lineage set: {}", lineage_id);
+        println!("   ✅ Genetic lineage set: {lineage_id}");
     }
 
     // ========================================
@@ -154,10 +178,10 @@ async fn main() -> Result<()> {
 async fn create_example_lineage(node_id: &str) -> Result<(LineageId, LineageProof)> {
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
-    let lineage_id = LineageId::new(format!("lineage:tower1:{}:example", timestamp));
+    let lineage_id = LineageId::new(format!("lineage:tower1:{timestamp}:example"));
 
     let signature = LineageSignature {
-        signer_node_id: format!("signer-{}", node_id),
+        signer_node_id: format!("signer-{node_id}"),
         signature: "example_signature_0x1234567890abcdef".to_string(),
         signed_data_hash: "hash_0xfedcba0987654321".to_string(),
         timestamp,
@@ -179,7 +203,7 @@ fn create_peer_packet(
         vec!["compute".to_string()],
         format!("http://192.168.1.{}:8080", fastrand::u8(100..200)),
     )
-    .with_name(format!("Peer {}", node_id));
+    .with_name(format!("Peer {node_id}"));
 
     if let (Some(l), Some(p)) = (lineage, proof) {
         packet = packet.with_lineage(l, p);
@@ -210,8 +234,8 @@ async fn evaluate_and_handle_peer(
             confidence,
         } => {
             println!("      ✅ AUTO-ACCEPT");
-            println!("         Reason: {}", reason);
-            println!("         Lineage: {}", lineage_id);
+            println!("         Reason: {reason}");
+            println!("         Lineage: {lineage_id}");
             println!("         Confidence: {:.1}%", confidence * 100.0);
             println!("         → Establishing connection automatically...");
         }
@@ -232,16 +256,16 @@ async fn evaluate_and_handle_peer(
                     genesis_timestamp,
                 } => {
                     println!("         Status: Same genesis lineage");
-                    println!("         Lineage: {}", lineage_id);
-                    println!("         Genesis: {}", genesis_timestamp);
+                    println!("         Lineage: {lineage_id}");
+                    println!("         Genesis: {genesis_timestamp}");
                 }
                 LineageStatus::DifferentGenesis {
                     their_lineage,
                     our_lineage,
                 } => {
                     println!("         Status: Different genetic lineage");
-                    println!("         Their lineage: {}", their_lineage);
-                    println!("         Our lineage: {}", our_lineage);
+                    println!("         Their lineage: {their_lineage}");
+                    println!("         Our lineage: {our_lineage}");
                 }
                 LineageStatus::UnknownLineage => {
                     println!("         Status: No genetic lineage");
@@ -250,7 +274,7 @@ async fn evaluate_and_handle_peer(
                     error,
                 } => {
                     println!("         Status: Invalid proof");
-                    println!("         Error: {}", error);
+                    println!("         Error: {error}");
                 }
             }
 
@@ -274,8 +298,8 @@ async fn evaluate_and_handle_peer(
             severity,
         } => {
             println!("      ❌ REJECT");
-            println!("         Reason: {}", reason);
-            println!("         Severity: {:?}", severity);
+            println!("         Reason: {reason}");
+            println!("         Severity: {severity:?}");
             println!("         → Connection refused");
         }
     }

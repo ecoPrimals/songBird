@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! End-to-end tests for discovery + trust evaluation flow
 //!
 //! These tests verify the complete flow:
@@ -183,7 +207,7 @@ fn test_concurrent_discovery() {
 
     // All messages should have unique tags
     for (i, msg) in messages.iter().enumerate() {
-        assert_eq!(msg.tags.as_ref().unwrap()[0], format!("tag_{}", i));
+        assert_eq!(msg.tags.as_ref().unwrap()[0], format!("tag_{i}"));
     }
 }
 
@@ -209,7 +233,7 @@ fn test_many_tags() {
         8080,
     );
 
-    let tags: Vec<String> = (0..100).map(|i| format!("tag_{}", i)).collect();
+    let tags: Vec<String> = (0..100).map(|i| format!("tag_{i}")).collect();
 
     message.tags = Some(tags);
 

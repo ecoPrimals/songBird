@@ -76,11 +76,11 @@ impl SimpleIpcClient {
         let socket_path = std::env::var("SONGBIRD_IPC_SOCKET")
             .unwrap_or_else(|_| "/tmp/primal-songbird.sock".to_string());
 
-        println!("🔌 Connecting to Songbird IPC: {}", socket_path);
+        println!("🔌 Connecting to Songbird IPC: {socket_path}");
 
         let stream = UnixStream::connect(&socket_path)
             .await
-            .context(format!("Failed to connect to {}", socket_path))?;
+            .context(format!("Failed to connect to {socket_path}"))?;
 
         println!("✅ Connected to Songbird IPC service");
 

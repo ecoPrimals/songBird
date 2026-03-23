@@ -40,7 +40,7 @@ pub struct BirdSongPacket {
 impl BirdSongPacket {
     /// Create new `BirdSong` packet
     #[must_use]
-    pub fn new(version: String, family_id: String, encrypted_payload: String) -> Self {
+    pub const fn new(version: String, family_id: String, encrypted_payload: String) -> Self {
         Self {
             version,
             family_id,

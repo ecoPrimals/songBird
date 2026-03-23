@@ -22,6 +22,13 @@ use tracing::{debug, info};
 /// Handle `graph.validate` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0: Validates graph structure and relationships
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn validate_graph(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -41,6 +48,9 @@ pub async fn validate_graph(
 /// Handle `graph.check_availability` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0: Checks if required primals are available
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn check_availability(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -66,6 +76,9 @@ pub async fn check_availability(
 /// Handle `graph.suggest_alternatives` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0: Suggests alternative primals for unavailable nodes
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn suggest_alternatives(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -93,6 +106,9 @@ pub async fn suggest_alternatives(
 /// Handle `coordination.validate_pattern` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0 Week 3: Validates coordination patterns
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn validate_coordination_pattern(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -120,6 +136,13 @@ pub async fn validate_coordination_pattern(
 // ============================================================================
 
 /// Graph Intelligence: `validate_graph` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn validate_graph_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -135,6 +158,9 @@ pub async fn validate_graph_json(
 }
 
 /// Graph Intelligence: `check_availability` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn check_availability_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -154,6 +180,9 @@ pub async fn check_availability_json(
 }
 
 /// Graph Intelligence: `suggest_alternatives` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn suggest_alternatives_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -174,6 +203,9 @@ pub async fn suggest_alternatives_json(
 }
 
 /// Graph Intelligence: `validate_coordination_pattern` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn validate_coordination_pattern_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,

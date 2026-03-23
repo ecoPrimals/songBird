@@ -47,6 +47,10 @@ impl IntroductionPoint {
     /// SIG_LEN          [2 bytes]
     /// SIG              [64 bytes] - Ed25519 signature (placeholder until BearDog)
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the cell payload length does not fit in `u16`.
     #[must_use]
     pub fn create_establish_intro(&self) -> RelayCell {
         let mut data = Vec::with_capacity(136);

@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Comprehensive tests for genetic lineage integration
 //!
 //! Tests the full lineage flow:
@@ -27,12 +51,12 @@ async fn create_test_lineage(node_id: &str) -> (LineageId, LineageProof) {
 
     // Create a unique lineage ID for this node
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-    let lineage_id_str = format!("lineage:{}:{}", node_id, timestamp);
+    let lineage_id_str = format!("lineage:{node_id}:{timestamp}");
     let lineage_id = LineageId::new(lineage_id_str);
 
     // Create a mock signature for testing
     let signature = LineageSignature {
-        signer_node_id: format!("signer-{}", node_id),
+        signer_node_id: format!("signer-{node_id}"),
         signature: "mock_signature_hex_data_12345678".to_string(),
         signed_data_hash: "mock_hash_abcdef".to_string(),
         timestamp,
@@ -225,7 +249,7 @@ async fn test_registration_manager() {
     assert!(manager.current().unwrap().has_lineage());
 }
 
-/// NOTE: Ignored - requires BearDog running at localhost:9000
+/// NOTE: Ignored - requires `BearDog` running at localhost:9000
 #[tokio::test]
 #[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_same_lineage() -> Result<()> {
@@ -266,14 +290,14 @@ async fn test_lineage_authenticator_same_lineage() -> Result<()> {
             println!("✅ Auto-accepted peer with same lineage");
         }
         _ => {
-            println!("⚠️ Mock behavior may vary - decision: {:?}", decision);
+            println!("⚠️ Mock behavior may vary - decision: {decision:?}");
         }
     }
 
     Ok(())
 }
 
-/// NOTE: Ignored - requires BearDog running at localhost:9000
+/// NOTE: Ignored - requires `BearDog` running at localhost:9000
 #[tokio::test]
 #[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_different_lineage() -> Result<()> {
@@ -319,18 +343,18 @@ async fn test_lineage_authenticator_different_lineage() -> Result<()> {
                 println!("✅ Correctly prompting for different lineage");
             }
             _ => {
-                println!("⚠️ Mock may have different behavior: {:?}", lineage_status);
+                println!("⚠️ Mock may have different behavior: {lineage_status:?}");
             }
         },
         _ => {
-            println!("⚠️ Mock behavior: {:?}", decision);
+            println!("⚠️ Mock behavior: {decision:?}");
         }
     }
 
     Ok(())
 }
 
-/// NOTE: Ignored - requires BearDog running at localhost:9000
+/// NOTE: Ignored - requires `BearDog` running at localhost:9000
 #[tokio::test]
 #[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_no_lineage() -> Result<()> {
@@ -370,14 +394,14 @@ async fn test_lineage_authenticator_no_lineage() -> Result<()> {
             println!("✅ Correctly prompting for unknown lineage");
         }
         _ => {
-            println!("⚠️ Unexpected decision: {:?}", decision);
+            println!("⚠️ Unexpected decision: {decision:?}");
         }
     }
 
     Ok(())
 }
 
-/// NOTE: Ignored - requires BearDog running at localhost:9000
+/// NOTE: Ignored - requires `BearDog` running at localhost:9000
 #[tokio::test]
 #[ignore = "Requires BearDog at localhost:9000"]
 async fn test_lineage_authenticator_invalid_proof() -> Result<()> {
@@ -422,7 +446,7 @@ async fn test_lineage_authenticator_invalid_proof() -> Result<()> {
 
     // NOTE: In mock mode, this will still be accepted since BearDog mock always returns valid=true
     // In production with real BearDog, this would be rejected
-    println!("⚠️ Decision (mock mode): {:?}", decision);
+    println!("⚠️ Decision (mock mode): {decision:?}");
 
     Ok(())
 }
@@ -436,7 +460,7 @@ async fn test_full_lineage_integration_flow() -> Result<()> {
     let mut identity = NodeIdentity::new_or_load(Some("integration-test-node".to_string()))?;
     let (lineage_id, proof) = create_test_lineage("integration-test-node").await;
     identity.set_lineage(lineage_id.clone(), proof.clone())?;
-    println!("   ✅ Node identity with lineage: {}", lineage_id);
+    println!("   ✅ Node identity with lineage: {lineage_id}");
 
     // 2. Create registration from identity
     println!("\n2️⃣  Creating node registration...");
@@ -491,7 +515,7 @@ async fn test_full_lineage_integration_flow() -> Result<()> {
             parsed_discovery.lineage_proof.as_ref(),
         )
         .await?;
-    println!("   ✅ Decision: {:?}", decision);
+    println!("   ✅ Decision: {decision:?}");
 
     println!("\n🎉 Full integration flow complete!\n");
 

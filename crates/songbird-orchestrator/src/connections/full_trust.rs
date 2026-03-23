@@ -39,6 +39,9 @@ pub struct FullTrustConnection {
 
 impl FullTrustConnection {
     /// Create a new full trust connection (Pure Rust Unix socket)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn new(peer_id: String, endpoint: String) -> Result<Self> {
         // Convert endpoint to Unix socket path
         let socket_path = std::env::var(format!("{}_SOCKET_PATH", peer_id.to_uppercase()))

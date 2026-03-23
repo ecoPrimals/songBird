@@ -518,9 +518,8 @@ pub fn get_canonical_cors_origins() -> Vec<String> {
 pub fn get_canonical_cors_origins_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
 ) -> Vec<String> {
-    match env("SONGBIRD_CORS_ORIGINS") {
-        Ok(origins) => origins.split(',').map(|s| s.trim().to_string()).collect(),
-        Err(_) => {
+    env("SONGBIRD_CORS_ORIGINS").map_or_else(
+        |_| {
             if is_production_environment_with(env) {
                 // Production: No defaults - fail secure
                 tracing::warn!(
@@ -543,8 +542,9 @@ pub fn get_canonical_cors_origins_with(
                     })
                     .collect()
             }
-        }
-    }
+        },
+        |origins| origins.split(',').map(|s| s.trim().to_string()).collect(),
+    )
 }
 
 // ==================== PROTOCOL CONFIGURATION ====================

@@ -1,12 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! UniBin Unit Tests - Deep Testing Coverage
+//! `UniBin` Unit Tests - Deep Testing Coverage
 //!
 //! Comprehensive unit tests for individual functions and components
-//! in the UniBin implementation.
+//! in the `UniBin` implementation.
 //!
 //! Modern, idiomatic, async Rust with deep debt solutions.
+
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
 
 use anyhow::Result;
 use std::sync::Mutex;
@@ -93,7 +115,7 @@ mod helper_tests {
     fn test_string_formatting() {
         // Test string formatting for log messages
         let version = env!("CARGO_PKG_VERSION");
-        let formatted = format!("Songbird v{}", version);
+        let formatted = format!("Songbird v{version}");
         assert!(formatted.starts_with("Songbird v"));
     }
 
@@ -262,7 +284,7 @@ mod error_handling_tests {
     fn test_error_message() {
         // Test error message formatting
         let err = anyhow::anyhow!("configuration error");
-        let msg = format!("{}", err);
+        let msg = format!("{err}");
         assert_eq!(msg, "configuration error");
     }
 
@@ -270,7 +292,7 @@ mod error_handling_tests {
     fn test_error_context() {
         // Test error context propagation
         let result: Result<()> =
-            Err(anyhow::anyhow!("base error")).map_err(|e| anyhow::anyhow!("context: {}", e));
+            Err(anyhow::anyhow!("base error")).map_err(|e| anyhow::anyhow!("context: {e}"));
 
         assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
@@ -289,7 +311,7 @@ mod logging_tests {
     fn test_log_message_formatting() {
         // Test log message formatting
         let version = env!("CARGO_PKG_VERSION");
-        let msg = format!("🚀 Songbird v{} - Server Mode", version);
+        let msg = format!("🚀 Songbird v{version} - Server Mode");
         assert!(msg.starts_with("🚀 Songbird"));
         assert!(msg.contains(version));
     }
@@ -298,7 +320,7 @@ mod logging_tests {
     fn test_process_info_formatting() {
         // Test process info formatting
         let pid = std::process::id();
-        let msg = format!("Process ID: {}", pid);
+        let msg = format!("Process ID: {pid}");
         assert!(msg.starts_with("Process ID:"));
     }
 
@@ -319,7 +341,7 @@ mod logging_tests {
         // Test identity info logging
         let family = Some("nat0".to_string());
         if let Some(ref f) = family {
-            let msg = format!("Family ID: {}", f);
+            let msg = format!("Family ID: {f}");
             assert!(msg.contains("nat0"));
         }
     }

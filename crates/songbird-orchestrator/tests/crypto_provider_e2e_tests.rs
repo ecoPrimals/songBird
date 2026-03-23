@@ -1,10 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! End-to-End Tests for CryptoProvider
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
+//! End-to-End Tests for `CryptoProvider`
 //!
 //! Tests the complete flow from discovery to crypto operations.
-//! These tests require a running BearDog instance.
+//! These tests require a running `BearDog` instance.
 
 use songbird_orchestrator::crypto::discover_crypto_provider;
 
@@ -105,7 +129,7 @@ async fn test_e2e_multiple_operations_sequential() {
 
     // Perform 10 operations sequentially
     for i in 0..10 {
-        let data = format!("test data {}", i);
+        let data = format!("test data {i}");
         let hash = provider.blake3_hash(data.as_bytes()).await.unwrap();
         assert_eq!(hash.len(), 32);
     }
@@ -165,7 +189,7 @@ async fn test_e2e_concurrent_operations() {
     for i in 0..50 {
         let p = Arc::clone(&provider);
         tasks.spawn(async move {
-            let data = format!("concurrent test {}", i);
+            let data = format!("concurrent test {i}");
             p.blake3_hash(data.as_bytes()).await
         });
     }

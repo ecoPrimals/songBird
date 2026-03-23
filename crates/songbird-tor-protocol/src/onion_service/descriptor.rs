@@ -10,6 +10,7 @@ use crate::error::{Error, Result};
 use crate::onion_service::IntroductionPoint;
 use base32;
 use songbird_crypto_provider::CryptoProvider;
+use std::fmt::Write;
 
 /// Attempt to get key material from `BearDog` via capability discovery.
 ///
@@ -181,7 +182,6 @@ impl OnionServiceDescriptor {
         descriptor.push_str("hs-descriptor 3\n");
 
         // descriptor-lifetime (in minutes)
-        use std::fmt::Write;
         let _ = writeln!(descriptor, "descriptor-lifetime {}", self.lifetime_minutes);
 
         // descriptor-signing-key-cert (placeholder)

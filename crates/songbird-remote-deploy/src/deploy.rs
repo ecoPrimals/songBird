@@ -15,6 +15,13 @@
 //! - ✅ **No hardcoding:** Works with any service
 //! - ✅ **Federation-aware:** Queries Songbird for tower info
 //!
+//! ## Federation endpoint
+//!
+//! The base URL for federation discovery defaults to `http://localhost:8080`. Override it with
+//! the `SONGBIRD_FEDERATION_ENDPOINT` environment variable or `--songbird-endpoint`: Clap’s
+//! `env = "SONGBIRD_FEDERATION_ENDPOINT"` reads the variable when present; otherwise
+//! `default_value` supplies the local default.
+//!
 //! ## Usage
 //! ```bash
 //! # Deploy compute bridge to Tower B
@@ -44,6 +51,9 @@ pub struct Args {
     command: Commands,
 
     /// Base URL of the Songbird federation API (discovery and coordination).
+    ///
+    /// Resolved from `--songbird-endpoint`, then `SONGBIRD_FEDERATION_ENDPOINT`, then
+    /// `http://localhost:8080` (see module docs).
     #[arg(long, env = "SONGBIRD_FEDERATION_ENDPOINT", default_value = "http://localhost:8080")]
     songbird_endpoint: String,
 }
@@ -152,6 +162,10 @@ fn init_tracing() {
 }
 
 /// Run remote deploy CLI logic (standalone `songbird-deploy` or `songbird deploy`).
+///
+/// # Errors
+///
+/// Returns an error if CLI operations fail, including deployment, tower discovery, or HTTP/SSH I/O.
 pub async fn run(args: Args) -> Result<()> {
     init_tracing();
 

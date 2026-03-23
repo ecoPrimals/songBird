@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Coverage tests for songbird_http_client::error and songbird_http_client::crypto::capability
+//! Coverage tests for `songbird_http_client::error` and `songbird_http_client::crypto::capability`
 //!
 //! Tests error type construction, Display impls, From conversions,
 //! and TLS secret structs.
@@ -108,12 +108,12 @@ fn test_error_from_anyhow() {
 #[test]
 fn test_error_debug() {
     let err = Error::Timeout;
-    let debug = format!("{:?}", err);
+    let debug = format!("{err:?}");
     assert!(debug.contains("Timeout"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// TlsHandshakeSecrets
+// `TlsHandshakeSecrets`
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
@@ -164,12 +164,12 @@ fn test_tls_handshake_secrets_debug() {
         handshake_secret: vec![0u8; 32],
     };
 
-    let debug = format!("{:?}", secrets);
+    let debug = format!("{secrets:?}");
     assert!(debug.contains("TlsHandshakeSecrets"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// TlsApplicationSecrets
+// `TlsApplicationSecrets`
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
@@ -216,6 +216,6 @@ fn test_tls_application_secrets_debug() {
         server_write_iv: vec![0u8; 12],
     };
 
-    let debug = format!("{:?}", secrets);
+    let debug = format!("{secrets:?}");
     assert!(debug.contains("TlsApplicationSecrets"));
 }

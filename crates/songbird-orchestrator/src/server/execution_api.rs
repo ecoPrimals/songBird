@@ -27,6 +27,9 @@ impl ExecutionApiState {
     /// Create new execution API state
     ///
     /// ✅ EVOLVED: Now async due to `ExecutionManager` async construction
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new() -> Result<Self, String> {
         let manager = ExecutionManager::new()
             .await

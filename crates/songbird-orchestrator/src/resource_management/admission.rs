@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Admission Control
 //!
 //! Decides whether new tasks can be admitted based on:
@@ -61,6 +65,9 @@ impl AdmissionController {
     }
 
     /// Evaluate whether a task should be admitted
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn evaluate(&self, task: &TaskLifecycle) -> Result<AdmissionDecision> {
         // Check 1: System capacity
         let load = self.system_load.read().await;
@@ -107,6 +114,9 @@ impl AdmissionController {
     }
 
     /// Admit a task (update tracking)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn admit(&self, task: &TaskLifecycle) -> Result<()> {
         let mut load = self.system_load.write().await;
         load.active_tasks += 1;
@@ -119,6 +129,9 @@ impl AdmissionController {
     }
 
     /// Release a task (update tracking)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn release(&self, task: &TaskLifecycle) -> Result<()> {
         let mut load = self.system_load.write().await;
         load.active_tasks = load.active_tasks.saturating_sub(1);

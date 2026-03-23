@@ -14,9 +14,14 @@ use crate::address::derive_onion_address;
 #[cfg(feature = "standalone")]
 use ed25519_dalek::SigningKey;
 
+#[cfg(feature = "standalone")]
+const X25519_BASEPOINT_BYTES: [u8; 32] = [
+    9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+
 /// Onion service identity (Ed25519 keypair + derived .onion address)
 ///
-/// TRUE PRIMAL: Stores raw bytes, delegates crypto to BearDog
+/// TRUE PRIMAL: Stores raw bytes, delegates crypto to `BearDog`
 #[derive(Debug, Clone)]
 pub struct OnionIdentity {
     secret_key: [u8; 32],
@@ -57,7 +62,7 @@ impl OnionIdentity {
     ///
     /// # Errors
     ///
-    /// Returns error if BearDog key generation or address derivation fails.
+    /// Returns error if `BearDog` key generation or address derivation fails.
     ///
     /// # Panics
     ///
@@ -87,6 +92,13 @@ impl OnionIdentity {
     /// # Errors
     ///
     /// Returns error if key bytes are invalid
+    #[cfg_attr(
+        feature = "standalone",
+        expect(
+            clippy::unused_async,
+            reason = "awaits BearDog RPC only when not feature standalone"
+        )
+    )]
     pub async fn from_stored_via_beardog(
         client: &BeardogCryptoClient,
         bytes: &[u8],
@@ -128,9 +140,10 @@ impl OnionIdentity {
 
     /// Standalone generation (for testing/offline only)
     ///
-    /// This bypasses BearDog and uses local crypto. Only available in test builds
+    /// This bypasses `BearDog` and uses local crypto. Only available in test builds
     /// or with the `standalone` feature.
     #[cfg(feature = "standalone")]
+    #[must_use]
     pub fn generate() -> Self {
         // Generate random 32-byte secret key
         let mut secret_bytes = [0u8; 32];
@@ -150,6 +163,10 @@ impl OnionIdentity {
     }
 
     /// Standalone loading (for testing/offline only)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the secret key bytes are not a valid Ed25519 seed.
     #[cfg(feature = "standalone")]
     pub fn from_stored(secret_bytes: &[u8; 32], created_at: u64) -> Result<Self> {
         let signing_key = SigningKey::from_bytes(secret_bytes);
@@ -260,7 +277,7 @@ impl EphemeralKeypair {
     ///
     /// # Errors
     ///
-    /// Returns error if BearDog RPC fails.
+    /// Returns an error if `BearDog` RPC fails.
     pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
         let keypair = client.x25519_generate_ephemeral().await?;
         Ok(Self {
@@ -273,7 +290,7 @@ impl EphemeralKeypair {
     ///
     /// # Errors
     ///
-    /// Returns error if BearDog RPC fails.
+    /// Returns an error if `BearDog` RPC fails.
     pub async fn derive_shared_secret_via_beardog(
         self,
         client: &BeardogCryptoClient,
@@ -284,21 +301,18 @@ impl EphemeralKeypair {
 
     /// Standalone generation (for testing/offline only)
     #[cfg(feature = "standalone")]
+    #[must_use]
     pub fn generate() -> Self {
         // Generate random secret key bytes
         let mut secret_key = [0u8; 32];
         rand::Rng::fill(&mut rand::thread_rng(), &mut secret_key);
 
         // Clamp the secret key (X25519 requirement)
-        secret_key[0] &= 248;
+        secret_key[0] &= 0b1111_1000;
         secret_key[31] &= 127;
         secret_key[31] |= 64;
 
         // Derive public key using x25519 basepoint
-        const X25519_BASEPOINT_BYTES: [u8; 32] = [
-            9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ];
         let public_key = x25519_dalek::x25519(secret_key, X25519_BASEPOINT_BYTES);
 
         Self {
@@ -309,6 +323,7 @@ impl EphemeralKeypair {
 
     /// Standalone ECDH (for testing/offline only)
     #[cfg(feature = "standalone")]
+    #[must_use]
     pub fn derive_shared_secret(self, peer_public: &[u8; 32]) -> [u8; 32] {
         x25519_dalek::x25519(self.secret_key, *peer_public)
     }
@@ -336,7 +351,7 @@ impl SessionKeys {
     ///
     /// # Errors
     ///
-    /// Returns error if BearDog HMAC RPC fails.
+    /// Returns an error if `BearDog` HMAC RPC fails.
     pub async fn derive_via_beardog(
         client: &BeardogCryptoClient,
         shared_secret: &[u8; 32],
@@ -377,7 +392,12 @@ impl SessionKeys {
     }
 
     /// Standalone derivation (for testing/offline only)
+    ///
+    /// # Panics
+    ///
+    /// Panics if HMAC key construction fails for fixed-size keys (should not occur).
     #[cfg(feature = "standalone")]
+    #[must_use]
     pub fn derive(
         shared_secret: &[u8; 32],
         client_nonce: &[u8; 24],
@@ -436,7 +456,11 @@ mod tests {
         let identity = OnionIdentity::generate();
 
         // Check onion address format
-        assert!(identity.onion_address().ends_with(".onion"));
+        assert!(
+            std::path::Path::new(identity.onion_address())
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("onion"))
+        );
         assert_eq!(identity.onion_address().len(), 62);
 
         // Check timestamp

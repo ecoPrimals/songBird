@@ -46,6 +46,9 @@ impl Default for JwtHeader {
 ///
 /// # Returns
 /// JWT token string in format: `header.payload.signature`
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
     // Create header
     let header = JwtHeader::default();
@@ -82,6 +85,9 @@ pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
 ///
 /// # Returns
 /// Decoded claims if token is valid
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Result<T> {
     // Split token into parts
     let parts: Vec<&str> = token.split('.').collect();

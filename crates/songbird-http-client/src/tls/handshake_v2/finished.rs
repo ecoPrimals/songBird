@@ -51,6 +51,11 @@ use tracing::{debug, error, info};
 /// let verify_data = beardog.compute_finished_verify_data(base_key, transcript_hash).await?;
 /// let finished_msg = build_finished_message(&verify_data)?;
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if `verify_data` is empty or has an invalid length for TLS 1.3 Finished.
+#[expect(clippy::cast_possible_truncation, reason = "TLS wire format: values are masked/bounded")]
 pub fn build_finished_message(verify_data: &[u8]) -> Result<Vec<u8>> {
     // Validate verify_data length (should be 32 bytes for SHA-256, 48 for SHA-384)
     if verify_data.is_empty() {
@@ -100,6 +105,10 @@ pub fn build_finished_message(verify_data: &[u8]) -> Result<Vec<u8>> {
 /// let verify_data = parse_finished_message(&handshake_message)?;
 /// // Validate verify_data against expected value
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if the message is malformed or truncated.
 pub fn parse_finished_message(data: &[u8]) -> Result<Vec<u8>> {
     debug!("Parsing Finished message: {} bytes", data.len());
 
@@ -155,6 +164,10 @@ pub fn parse_finished_message(data: &[u8]) -> Result<Vec<u8>> {
 /// # Returns
 /// * `Ok(())` - If `verify_data` matches
 /// * `Err` - If `verify_data` doesn't match (handshake failure)
+///
+/// # Errors
+///
+/// Returns an error if lengths differ or the `verify_data` bytes do not match.
 pub fn validate_verify_data(received: &[u8], expected: &[u8]) -> Result<()> {
     if received.len() != expected.len() {
         error!(

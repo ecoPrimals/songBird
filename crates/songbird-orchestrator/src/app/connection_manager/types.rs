@@ -26,6 +26,9 @@ pub mod systemtime_as_secs {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn serialize<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -34,6 +37,9 @@ pub mod systemtime_as_secs {
         serializer.serialize_u64(duration.as_secs())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn deserialize<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
     where
         D: Deserializer<'de>,

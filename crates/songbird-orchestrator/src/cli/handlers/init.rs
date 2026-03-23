@@ -7,6 +7,9 @@ use crate::cli::utils::{print_info, print_success};
 use anyhow::Result;
 
 /// Initialize command handler
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn handle_init_command(directory: Option<String>, non_interactive: bool) -> Result<()> {
     let target_dir = directory.unwrap_or_else(|| ".".to_string());
     print_info(&format!("🚀 Initializing Songbird in directory: {target_dir}"));
@@ -31,6 +34,10 @@ pub async fn handle_init_command(directory: Option<String>, non_interactive: boo
 }
 
 /// Create default configuration files
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 async fn create_default_config(target_dir: &str) -> Result<()> {
     let config_dir = format!("{target_dir}/.songbird");
     std::fs::create_dir_all(&config_dir)?;

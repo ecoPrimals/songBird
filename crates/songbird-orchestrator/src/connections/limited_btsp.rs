@@ -151,6 +151,9 @@ impl LimitedBtspConnection {
     /// Create with default Level 1 capabilities
     ///
     /// Convenience constructor using standard Limited trust level capabilities.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn with_defaults(
         peer_id: String,
         peer_tags: Vec<String>,
@@ -349,7 +352,7 @@ mod tests {
 
         // Should fail (no real security provider), but validates API
         assert!(result.is_err());
-        assert!(format!("{:?}", result).contains("Failed to establish BTSP tunnel"));
+        assert!(format!("{result:?}").contains("Failed to establish BTSP tunnel"));
     }
 
     #[tokio::test]

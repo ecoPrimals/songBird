@@ -16,6 +16,10 @@ impl TlsServer {
     /// Encrypt handshake message with handshake traffic keys
     ///
     /// Reference: RFC 8446 Section 5.2 (Record Payload Protection)
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(super) async fn encrypt_handshake_message(
         &self,
         plaintext: &[u8],
@@ -84,6 +88,10 @@ impl TlsServer {
     /// Decrypt application data with application traffic keys
     ///
     /// Reference: RFC 8446 Section 5.2 (Record Payload Protection)
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub(super) async fn decrypt_application_data(
         &self,
         ciphertext: &[u8],

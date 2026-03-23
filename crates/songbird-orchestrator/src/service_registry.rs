@@ -326,6 +326,9 @@ impl ServiceRegistry {
     }
 
     /// Register a new service
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn register(&self, request: RegistrationRequest) -> Result<RegistrationResponse> {
         info!("📝 Registering service: {}", request.primal_name);
 
@@ -402,6 +405,9 @@ impl ServiceRegistry {
     }
 
     /// Process a heartbeat
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn heartbeat(&self, request: HeartbeatRequest) -> Result<HeartbeatResponse> {
         debug!("💓 Heartbeat from service {}", request.service_id);
 
@@ -435,6 +441,9 @@ impl ServiceRegistry {
     }
 
     /// Deregister a service
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn deregister(&self, request: DeregistrationRequest) -> Result<()> {
         info!("🛑 Deregistering service {}", request.service_id);
 

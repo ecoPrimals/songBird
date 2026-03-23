@@ -129,11 +129,11 @@ mod tests {
             Extension::KeyShare(vec![1, 2, 3, 4]),
         ];
 
-        let hello = ClientHello::new(random, cipher_suites.clone(), extensions.clone());
+        let hello = ClientHello::new(random, cipher_suites, extensions);
 
         assert_eq!(hello.legacy_version, 0x0303);
         assert_eq!(hello.random, random);
-        assert_eq!(hello.cipher_suites, cipher_suites);
+        assert_eq!(hello.cipher_suites, vec![0x1303]);
         assert_eq!(hello.extensions.len(), 2);
     }
 

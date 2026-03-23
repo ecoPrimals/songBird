@@ -85,6 +85,9 @@ struct JwtSecretResult {
 /// # Returns
 /// * `Ok(String)` - Base64-encoded JWT secret (512 bits / 88 characters)
 /// * `Err` - If `BearDog` is unavailable or request fails
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> Result<String> {
     info!("🔐 Fetching JWT secret from BearDog at: {}", socket_path);
     info!("   Purpose: {}", purpose);
@@ -173,6 +176,9 @@ pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> 
 ///
 /// # Returns
 /// * Base64-encoded random secret
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
     use rand::RngCore;
 
@@ -202,6 +208,9 @@ pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
 ///
 /// # Returns
 /// * JWT secret (base64-encoded, 512 bits minimum)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn provision_jwt_secret(beardog_socket: Option<&str>, purpose: &str) -> Result<String> {
     // Try BearDog first (preferred)
     if let Some(socket_path) = beardog_socket {

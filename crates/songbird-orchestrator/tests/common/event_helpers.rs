@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Modern event-driven test helpers
 //!
 //! **Philosophy**: "Sleeps in tests are technical debt. Events are the solution."
@@ -101,7 +125,7 @@ pub async fn bind_ephemeral() -> Result<(TcpListener, u16)> {
 /// Bind to an ephemeral TCP port with specific address
 pub async fn bind_ephemeral_addr(addr: &str) -> Result<(TcpListener, SocketAddr)> {
     let listener =
-        TcpListener::bind(format!("{}:0", addr)).await.context("Failed to bind ephemeral port")?;
+        TcpListener::bind(format!("{addr}:0")).await.context("Failed to bind ephemeral port")?;
     let sock_addr = listener.local_addr()?;
     debug!("🔌 Bound to ephemeral address: {}", sock_addr);
     Ok((listener, sock_addr))
@@ -306,7 +330,7 @@ pub fn response_channel<T>() -> (oneshot::Sender<T>, oneshot::Receiver<T>) {
 
 /// Concurrent event selector
 ///
-/// Wait for first of multiple events using tokio::select!
+/// Wait for first of multiple events using `tokio::select`!
 ///
 /// # Example
 ///
@@ -330,7 +354,7 @@ where
     }
 }
 
-/// Either type for select_first
+/// Either type for `select_first`
 pub enum Either<L, R> {
     Left(L),
     Right(R),

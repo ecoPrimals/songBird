@@ -61,6 +61,9 @@ pub struct SongbirdOrchestrator {
 // Moved from mod.rs in Phase 2 refactoring (Dec 25, 2025)
 impl SongbirdOrchestrator {
     /// Create new orchestrator instance
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn new(config: CanonicalSongbirdConfig) -> Result<Self> {
         let (shutdown_sender, shutdown_signal) = tokio::sync::broadcast::channel(1);
 
@@ -296,6 +299,9 @@ impl SongbirdOrchestrator {
     /// 7. Verify Connectivity - Post-startup verification
     ///
     /// **See**: `startup_orchestration.rs` for implementation details
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn start(&mut self) -> Result<()> {
         super::startup_orchestration::StartupOrchestrator::new(self).start().await
     }
@@ -499,6 +505,10 @@ impl SongbirdOrchestrator {
     /// Use IPC server (Unix sockets) for all primal-to-primal communication
     ///
     /// This method is kept for API compatibility but does nothing.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub(crate) async fn start_tarpc_server(&self) -> Result<()> {
         // Unix sockets ONLY - no TCP binding
         info!("🔒 Using IPC (Unix sockets) for primal-to-primal communication");
@@ -629,6 +639,10 @@ impl SongbirdOrchestrator {
     /// - TTL: 10 minutes (2x heartbeat interval)
     /// - Graceful cleanup with logging
     /// - Self-healing federation state
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub(crate) async fn start_session_ttl_cleanup(&self) -> Result<()> {
         let federation_state = Arc::clone(&self.federation_state);
 
@@ -665,6 +679,9 @@ impl SongbirdOrchestrator {
     }
 
     /// Stop the orchestrator
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn stop(&mut self) -> Result<()> {
         info!("🛑 Stopping Songbird Orchestrator");
 
@@ -687,6 +704,9 @@ impl SongbirdOrchestrator {
     /// Get discovered peers from the discovery listener (v3.19.1)
     ///
     /// Used by Unix socket IPC handlers to implement `discover_by_family` API
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_discovered_peers(
         &self,
     ) -> Result<Vec<songbird_discovery::anonymous::DiscoveredPeer>> {
@@ -701,6 +721,9 @@ impl SongbirdOrchestrator {
     /// Establish a connection to a peer (v3.19.1)
     ///
     /// Used by Unix socket IPC handlers to implement `create_genetic_tunnel` API
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn establish_connection(
         &mut self,
         peer_id: String,
@@ -741,11 +764,21 @@ impl SongbirdOrchestrator {
     /// **Deep Debt Evolution** (Feb 6, 2026): Extracted to `command_handler` module
     ///
     /// **See**: `command_handler.rs` for implementation details
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn handle_command(&self, command: String) -> Result<String> {
         super::command_handler::CommandHandler::new(self).handle(&command).await
     }
 
     /// Start web dashboard
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start_web_dashboard(&self) -> Result<()> {
         info!("🌐 Starting web dashboard...");
         info!(

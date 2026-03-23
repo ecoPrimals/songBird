@@ -539,7 +539,7 @@ mod tests {
             max_retries: 4,
             ..Default::default()
         };
-        let conn = HttpsConnection::new(crypto, cfg.clone(), None);
+        let conn = HttpsConnection::new(crypto, cfg, None);
         assert_eq!(conn.tls_config.max_retries, 4);
     }
 

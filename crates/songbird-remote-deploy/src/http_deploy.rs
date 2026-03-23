@@ -10,6 +10,7 @@ use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use songbird_http_client::{Form, IpcHttpClient, Part};
 use std::collections::HashMap;
+use std::hash::BuildHasher;
 use std::path::Path;
 use tokio::fs;
 use tracing::{debug, info, warn};
@@ -292,11 +293,11 @@ pub fn select_deployment_method(
 /// # Errors
 ///
 /// Propagates I/O, HTTP, and JSON errors from the underlying client and tower responses.
-pub async fn deploy_via_http_adaptive(
+pub async fn deploy_via_http_adaptive<S: BuildHasher>(
     tower_endpoint: &str,
     binary_path: &str,
     service_name: &str,
-    env_vars: HashMap<String, String>,
+    env_vars: HashMap<String, String, S>,
 ) -> Result<DeploymentResponse> {
     info!("📤 Adaptive deployment to {}", tower_endpoint);
 
@@ -356,11 +357,11 @@ pub async fn deploy_via_http_adaptive(
 }
 
 /// Deploy a binary via chunked upload
-async fn deploy_via_http_chunked(
+async fn deploy_via_http_chunked<S: BuildHasher>(
     tower_endpoint: &str,
     binary_path: &str,
     service_name: &str,
-    env_vars: HashMap<String, String>,
+    env_vars: HashMap<String, String, S>,
     chunk_size_mb: u32,
 ) -> Result<DeploymentResponse> {
     info!("🧩 Deploying '{}' via chunked upload ({}MB chunks)", service_name, chunk_size_mb);
@@ -486,18 +487,18 @@ async fn upload_chunk(
 }
 
 /// Finalize chunked upload
-async fn finalize_chunked_upload(
+async fn finalize_chunked_upload<S: BuildHasher>(
     client: &IpcHttpClient,
     tower_endpoint: &str,
     negotiation_id: &str,
     service_name: &str,
-    env_vars: HashMap<String, String>,
+    env_vars: HashMap<String, String, S>,
 ) -> Result<DeploymentResponse> {
     let url = format!("{tower_endpoint}/api/deployment/finalize/{negotiation_id}");
 
     let request = FinalizeRequest {
         service_name: service_name.to_string(),
-        env_vars,
+        env_vars: env_vars.into_iter().collect(),
         auto_start: true,
     };
 
@@ -526,11 +527,11 @@ async fn finalize_chunked_upload(
 /// # Errors
 ///
 /// Returns an error if the binary cannot be read, the multipart request fails, or the response is not success JSON.
-pub async fn deploy_via_http(
+pub async fn deploy_via_http<S: BuildHasher>(
     tower_endpoint: &str,
     binary_path: &str,
     service_name: &str,
-    env_vars: HashMap<String, String>,
+    env_vars: HashMap<String, String, S>,
 ) -> Result<DeploymentResponse> {
     info!("📤 Deploying '{}' to {} via HTTP", service_name, tower_endpoint);
 

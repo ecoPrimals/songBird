@@ -95,6 +95,10 @@ impl ServerProfiler {
     }
 
     /// Get profile for a server (or create new)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the profile lock is poisoned (bug condition).
     #[must_use]
     pub fn get_profile(&self, hostname: &str) -> Option<ServerProfile> {
         let profiles = self
@@ -105,6 +109,15 @@ impl ServerProfiler {
     }
 
     /// Record successful connection
+    ///
+    /// # Panics
+    ///
+    /// Panics if a profiler lock is poisoned (bug condition).
+    #[expect(clippy::cast_precision_loss, reason = "acceptable precision for metrics/profiling")]
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "write lock held for coherent ServerProfile update"
+    )]
     pub fn record_success(
         &self,
         hostname: &str,
@@ -169,6 +182,15 @@ impl ServerProfiler {
     }
 
     /// Record failed connection
+    ///
+    /// # Panics
+    ///
+    /// Panics if a profiler lock is poisoned (bug condition).
+    #[expect(clippy::cast_precision_loss, reason = "acceptable precision for metrics/profiling")]
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "write lock held for coherent ServerProfile update"
+    )]
     pub fn record_failure(
         &self,
         hostname: &str,
@@ -227,6 +249,10 @@ impl ServerProfiler {
     }
 
     /// Get recommended extension set for a server
+    ///
+    /// # Panics
+    ///
+    /// Panics if a profiler lock is poisoned (bug condition).
     #[must_use]
     pub fn recommend_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
         // Check if we have a profile for this server
@@ -238,12 +264,14 @@ impl ServerProfiler {
         }
 
         // Fall back to global best extension set
-        let stats = self
+        let best_extensions = self
             .stats
             .read()
-            .expect("BUG: TLS profiler stats lock poisoned - indicates panic during stats update");
-        if !stats.best_extension_set.is_empty() {
-            return stats.best_extension_set.clone();
+            .expect("BUG: TLS profiler stats lock poisoned - indicates panic during stats update")
+            .best_extension_set
+            .clone();
+        if !best_extensions.is_empty() {
+            return best_extensions;
         }
 
         // Fall back to standard set
@@ -251,6 +279,10 @@ impl ServerProfiler {
     }
 
     /// Get recommended cipher suite for a server
+    ///
+    /// # Panics
+    ///
+    /// Panics if a profiler lock is poisoned (bug condition).
     #[must_use]
     pub fn recommend_cipher(&self, hostname: &str) -> Option<u16> {
         // Check server profile
@@ -261,14 +293,17 @@ impl ServerProfiler {
         }
 
         // Fall back to global best cipher
-        let stats = self
-            .stats
+        self.stats
             .read()
-            .expect("BUG: TLS profiler stats lock poisoned - indicates panic during stats update");
-        stats.best_cipher
+            .expect("BUG: TLS profiler stats lock poisoned - indicates panic during stats update")
+            .best_cipher
     }
 
     /// Get global statistics
+    ///
+    /// # Panics
+    ///
+    /// Panics if the stats lock is poisoned (bug condition).
     #[must_use]
     pub fn get_stats(&self) -> GlobalStats {
         self.stats
@@ -278,6 +313,10 @@ impl ServerProfiler {
     }
 
     /// Get all profiles (for debugging/analysis)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the profile lock is poisoned (bug condition).
     #[must_use]
     pub fn get_all_profiles(&self) -> HashMap<String, ServerProfile> {
         self.profiles
@@ -287,6 +326,10 @@ impl ServerProfiler {
     }
 
     /// Clear all profiles (reset learning)
+    ///
+    /// # Panics
+    ///
+    /// Panics if a profiler lock is poisoned (bug condition).
     pub fn clear(&self) {
         self.profiles
             .write()
@@ -298,6 +341,10 @@ impl ServerProfiler {
     }
 
     /// Get profile count
+    ///
+    /// # Panics
+    ///
+    /// Panics if the profile lock is poisoned (bug condition).
     #[must_use]
     pub fn profile_count(&self) -> usize {
         self.profiles
@@ -327,6 +374,7 @@ impl ServerProfile {
 
     /// Get success rate (0.0 - 1.0)
     #[must_use]
+    #[expect(clippy::cast_precision_loss, reason = "acceptable precision for metrics/profiling")]
     pub fn success_rate(&self) -> f32 {
         let total = self.success_count + self.failure_count;
         if total == 0 {
@@ -365,6 +413,7 @@ impl Default for GlobalStats {
 impl GlobalStats {
     /// Get overall success rate
     #[must_use]
+    #[expect(clippy::cast_precision_loss, reason = "acceptable precision for metrics/profiling")]
     pub fn success_rate(&self) -> f32 {
         let total = self.total_successes + self.total_failures;
         if total == 0 {
@@ -403,13 +452,13 @@ mod tests {
         let extensions = ExtensionSet::standard().extensions;
         let cipher = 0x1301;
 
-        profiler.record_success(hostname, extensions.clone(), cipher, Duration::from_secs(1));
+        profiler.record_success(hostname, extensions, cipher, Duration::from_secs(1));
 
         let profile = profiler.get_profile(hostname).unwrap();
         assert_eq!(profile.success_count, 1);
         assert_eq!(profile.failure_count, 0);
         assert_eq!(profile.successful_cipher, Some(cipher));
-        assert_eq!(profile.reliability, 1.0);
+        assert!((profile.reliability - 1.0).abs() < 1e-5);
     }
 
     #[test]
@@ -442,7 +491,7 @@ mod tests {
         let profile = profiler.get_profile(hostname).unwrap();
         assert_eq!(profile.success_count, 8);
         assert_eq!(profile.failure_count, 2);
-        assert_eq!(profile.reliability, 0.8);
+        assert!((profile.reliability - 0.8).abs() < 1e-5);
         assert!(profile.is_reliable());
     }
 
@@ -452,11 +501,12 @@ mod tests {
         let hostname = "www.example.com";
         let extensions =
             vec![ExtensionType::Sni, ExtensionType::Alpn, ExtensionType::SupportedVersions];
+        let expected = extensions.clone();
 
-        profiler.record_success(hostname, extensions.clone(), 0x1303, Duration::from_secs(1));
+        profiler.record_success(hostname, extensions, 0x1303, Duration::from_secs(1));
 
         let recommended = profiler.recommend_extensions(hostname);
-        assert_eq!(recommended, extensions);
+        assert_eq!(recommended, expected);
 
         let recommended_cipher = profiler.recommend_cipher(hostname);
         assert_eq!(recommended_cipher, Some(0x1303));
@@ -489,7 +539,7 @@ mod tests {
         let stats = profiler.get_stats();
         assert_eq!(stats.total_successes, 2);
         assert_eq!(stats.total_failures, 1);
-        assert_eq!(stats.success_rate(), 2.0 / 3.0);
+        assert!((stats.success_rate() - (2.0_f32 / 3.0)).abs() < 1e-5);
     }
 
     #[test]

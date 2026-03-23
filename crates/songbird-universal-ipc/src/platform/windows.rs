@@ -59,16 +59,13 @@ impl PlatformIPC for WindowsIPC {
         // The \\.\pipe\ prefix is the Windows named pipe namespace
 
         // Allow override via environment variable (for testing, special deployments)
-        let pipe_name = if let Ok(custom_pipe) =
-            std::env::var(format!("{}_PIPE", primal_name.to_uppercase()))
-        {
-            custom_pipe
-        } else if let Ok(custom_dir) = std::env::var("BIOMEOS_PIPE_DIR") {
-            format!("{custom_dir}_biomeos_{primal_name}")
-        } else {
-            // Standard Windows named pipe path
-            format!(r"\\.\pipe\biomeos_{primal_name}")
-        };
+        let pipe_name = std::env::var(format!("{}_PIPE", primal_name.to_uppercase()))
+            .unwrap_or_else(|_| {
+                std::env::var("BIOMEOS_PIPE_DIR").map_or_else(
+                    |_| format!(r"\\.\pipe\biomeos_{primal_name}"),
+                    |custom_dir| format!("{custom_dir}_biomeos_{primal_name}"),
+                )
+            });
 
         debug!("Creating named pipe endpoint for '{}': {}", primal_name, pipe_name);
 

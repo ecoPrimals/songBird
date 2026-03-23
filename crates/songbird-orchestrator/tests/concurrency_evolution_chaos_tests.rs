@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Concurrency Evolution Chaos Tests
 //!
 //! Chaos engineering tests for concurrency improvements:
@@ -62,7 +86,7 @@ async fn chaos_test_extreme_concurrent_commands() {
     while let Some(_) = join_set.join_next().await {}
 
     let errors = error_count.load(Ordering::SeqCst);
-    assert!(errors < 10, "Too many errors under extreme load: {}", errors);
+    assert!(errors < 10, "Too many errors under extreme load: {errors}");
 }
 
 #[tokio::test]
@@ -95,7 +119,7 @@ async fn chaos_test_concurrent_environment_explosion() {
 
             // Each command gets 10 unique env vars
             for j in 0..10 {
-                cmd.env(format!("CHAOS_VAR_{}_{}", i, j), format!("value_{}_{}", i, j));
+                cmd.env(format!("CHAOS_VAR_{i}_{j}"), format!("value_{i}_{j}"));
             }
 
             cmd.arg("--version").assert().success();
@@ -132,7 +156,7 @@ async fn chaos_test_race_condition_detection() {
     while let Some(_) = join_set.join_next().await {}
 
     let successes = success_count.load(Ordering::SeqCst);
-    assert!(successes >= 95, "Too many failures due to race conditions: {}/100", successes);
+    assert!(successes >= 95, "Too many failures due to race conditions: {successes}/100");
 }
 
 #[tokio::test]
@@ -195,7 +219,7 @@ async fn chaos_test_environment_memory_pressure() {
             // Large environment (100 vars)
             for j in 0..100 {
                 cmd.env(
-                    format!("CHAOS_MEM_VAR_{}_{}", i, j),
+                    format!("CHAOS_MEM_VAR_{i}_{j}"),
                     format!("value_{}_{}_{}", i, j, "x".repeat(100)),
                 );
             }
@@ -362,7 +386,7 @@ async fn chaos_test_maximum_environment_stress() {
 
             // Maximum reasonable number of env vars
             for j in 0..500 {
-                cmd.env(format!("MAX_VAR_{}_{}", i, j), format!("val_{}", j));
+                cmd.env(format!("MAX_VAR_{i}_{j}"), format!("val_{j}"));
             }
 
             cmd.arg("--version").assert().success();
@@ -399,7 +423,7 @@ async fn chaos_test_system_limit_discovery() {
             }
         }
 
-        println!("Batch {}: Success: {}, Failed: {}", batch, successful, failed);
+        println!("Batch {batch}: Success: {successful}, Failed: {failed}");
     }
 
     // If we get here, system handled 1000 concurrent commands

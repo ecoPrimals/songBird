@@ -178,16 +178,20 @@ impl CanonicalProtocolRouter {
             .first()
             .map_or_else(|| self.default_protocol.clone(), |e| e.protocol.clone());
 
-        let handlers = self.handlers.read().await;
-        let handler = handlers
-            .get(&protocol)
-            .or_else(|| handlers.get(&protocol.to_lowercase()))
-            .ok_or_else(|| SongbirdError::Service {
-                service: format!("protocol:{protocol}"),
-                message: format!("Protocol '{protocol}' is not supported"),
-                suggested_alternatives: handlers.keys().cloned().collect(),
-                recovery_actions: vec![],
-            })?;
+        let handler = {
+            let handlers = self.handlers.read().await;
+            Arc::clone(
+                handlers
+                    .get(&protocol)
+                    .or_else(|| handlers.get(&protocol.to_lowercase()))
+                    .ok_or_else(|| SongbirdError::Service {
+                        service: format!("protocol:{protocol}"),
+                        message: format!("Protocol '{protocol}' is not supported"),
+                        suggested_alternatives: handlers.keys().cloned().collect(),
+                        recovery_actions: vec![],
+                    })?,
+            )
+        };
 
         handler.handle_request(service, request).await
     }

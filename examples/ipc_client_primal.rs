@@ -77,7 +77,7 @@ impl ExamplePrimal {
         Self {
             primal_id: primal_id.to_string(),
             capabilities: vec!["example".to_string(), "demo".to_string()],
-            socket_path: PathBuf::from(format!("/tmp/primal-{}.sock", primal_id)),
+            socket_path: PathBuf::from(format!("/tmp/primal-{primal_id}.sock")),
             songbird_socket: std::env::var("SONGBIRD_IPC_SOCKET")
                 .unwrap_or_else(|_| "/tmp/primal-songbird.sock".to_string()),
         }
@@ -153,12 +153,12 @@ impl ExamplePrimal {
                     Ok((stream, _addr)) => {
                         tokio::spawn(async move {
                             if let Err(e) = Self::handle_connection(stream).await {
-                                eprintln!("Connection error: {}", e);
+                                eprintln!("Connection error: {e}");
                             }
                         });
                     }
                     Err(e) => {
-                        eprintln!("Accept error: {}", e);
+                        eprintln!("Accept error: {e}");
                         break;
                     }
                 }
@@ -187,7 +187,7 @@ impl ExamplePrimal {
                     let request: JsonRpcRequest = match serde_json::from_str(&line) {
                         Ok(req) => req,
                         Err(e) => {
-                            eprintln!("Failed to parse request: {}", e);
+                            eprintln!("Failed to parse request: {e}");
                             continue;
                         }
                     };
@@ -209,7 +209,7 @@ impl ExamplePrimal {
                     writer.write_all(b"\n").await?;
                 }
                 Err(e) => {
-                    eprintln!("Read error: {}", e);
+                    eprintln!("Read error: {e}");
                     break;
                 }
             }
@@ -220,7 +220,7 @@ impl ExamplePrimal {
 
     /// Discover other services by capability
     async fn discover(&self, capability: &str) -> Result<Vec<String>> {
-        println!("🔍 Discovering services with capability: {}", capability);
+        println!("🔍 Discovering services with capability: {capability}");
 
         // Connect to Songbird
         let mut stream = UnixStream::connect(&self.songbird_socket)
@@ -285,7 +285,7 @@ async fn main() -> Result<()> {
     // Step 3: Discover other services
     println!("📋 Discovering other services...");
     let ipc_services = primal.discover("ipc").await?;
-    println!("   IPC services: {:?}", ipc_services);
+    println!("   IPC services: {ipc_services:?}");
 
     println!();
 

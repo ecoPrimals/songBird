@@ -463,17 +463,17 @@ impl RelayAuthority for BearDogRelayAuthority {
             "requester": requester.0
         });
 
-        match self.call_beardog("lineage.determine_masking", params).await {
-            Ok(result) => {
+        self.call_beardog("lineage.determine_masking", params).await.map_or_else(
+            |_| {
+                // BearDog unavailable — no masking (fail-secure: full visibility)
+                Ok(MaskingLevel::FullVisibility)
+            },
+            |result| {
                 let level =
                     Self::parse_masking_level(result.get("masking_level").and_then(|v| v.as_str()));
                 Ok(level)
-            }
-            Err(_) => {
-                // BearDog unavailable — no masking (fail-secure: full visibility)
-                Ok(MaskingLevel::FullVisibility)
-            }
-        }
+            },
+        )
     }
 }
 
@@ -553,7 +553,7 @@ pub struct MockBirdSongCrypto {
 impl MockBirdSongCrypto {
     /// Create new mock crypto
     #[must_use]
-    pub fn new(lineage_provider: Arc<MockLineageProvider>, my_id: String) -> Self {
+    pub const fn new(lineage_provider: Arc<MockLineageProvider>, my_id: String) -> Self {
         Self {
             lineage_provider,
             my_id,
@@ -594,7 +594,7 @@ pub struct MockRelayAuthority {
 impl MockRelayAuthority {
     /// Create new mock relay authority
     #[must_use]
-    pub fn new(lineage_provider: Arc<MockLineageProvider>) -> Self {
+    pub const fn new(lineage_provider: Arc<MockLineageProvider>) -> Self {
         Self {
             lineage_provider,
         }

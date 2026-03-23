@@ -84,6 +84,9 @@ impl CapabilityRegistry {
     /// # Returns
     /// * `Ok(registration_id)` - Unique registration ID on success
     /// * `Err(SongbirdError)` - If provider already registered or validation fails
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn register(&self, request: CapabilityRegistrationRequest) -> SongbirdResult<String> {
         let mut providers = self.providers.write().await;
 
@@ -183,6 +186,9 @@ impl CapabilityRegistry {
     /// # Returns
     /// * `Ok(())` - Heartbeat processed successfully
     /// * `Err(SongbirdError)` - If provider not found or `registration_id` mismatch
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn update_heartbeat(
         &self,
         provider_id: &str,
@@ -246,6 +252,9 @@ impl CapabilityRegistry {
     /// # Returns
     /// * `Ok(())` - Provider removed successfully
     /// * `Err(SongbirdError)` - If provider not found
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn unregister(&self, provider_id: &str) -> SongbirdResult<()> {
         let mut providers = self.providers.write().await;
 
@@ -270,6 +279,9 @@ impl CapabilityRegistry {
     ///
     /// # Returns
     /// * Vector of providers that support the capability and are healthy
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn find_providers_with_capability(
         &self,
         capability: &str,
@@ -297,6 +309,9 @@ impl CapabilityRegistry {
     }
 
     /// Get a specific provider by ID
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_provider(&self, provider_id: &str) -> SongbirdResult<RegisteredProvider> {
         let providers = self.providers.read().await;
         let result = providers.get(provider_id).cloned().ok_or_else(|| SongbirdError::Registry {

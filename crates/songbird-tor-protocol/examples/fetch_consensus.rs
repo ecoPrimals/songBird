@@ -3,7 +3,7 @@
 
 //! Fetch and parse Tor consensus
 //!
-//! Example: cargo run --example fetch_consensus
+//! Example: `cargo run --example fetch_consensus`
 
 use songbird_tor_protocol::{Consensus, CryptoProvider};
 
@@ -29,9 +29,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let middle = consensus.relays.iter().filter(|r| r.is_middle()).count();
     let hsdirs = consensus.relays.iter().filter(|r| r.is_hsdir()).count();
 
-    println!("   Guards: {}", guards);
-    println!("   Middle: {}", middle);
-    println!("   HSDir: {}", hsdirs);
+    println!("   Guards: {guards}");
+    println!("   Middle: {middle}");
+    println!("   HSDir: {hsdirs}");
 
     println!("\n🔍 Sample relays:");
     for relay in consensus.relays.iter().take(5) {
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 path.exit.nickname, path.exit.address, path.exit.or_port
             );
         }
-        Err(e) => println!("   ❌ Path selection failed: {}", e),
+        Err(e) => println!("   ❌ Path selection failed: {e}"),
     }
 
     println!("\n✨ Consensus is fresh: {}", consensus.is_fresh());

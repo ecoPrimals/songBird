@@ -3,7 +3,7 @@
 //!
 //! **Evolution**: Each test uses an isolated temp directory for its sled database,
 //! enabling fully concurrent execution without file lock contention.
-//! No sleep(), no serial — just isolated state.
+//! No `sleep()`, no serial — just isolated state.
 #![allow(clippy::unwrap_used)] // Tests may use unwrap for cleaner code
 #![allow(clippy::expect_used)] // Tests may use expect for cleaner code
 #![allow(clippy::float_cmp)] // Tests may compare floats for exact values

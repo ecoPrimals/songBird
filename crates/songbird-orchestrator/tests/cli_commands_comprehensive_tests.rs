@@ -1,6 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(
     clippy::unwrap_used,
@@ -31,7 +54,7 @@ fn test_status_commands_variants() -> SongbirdResult<()> {
 #[test]
 fn test_service_commands_list() -> SongbirdResult<()> {
     let cmd = ServiceCommands::List;
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.contains("List"));
     Ok(())
 }
@@ -41,7 +64,7 @@ fn test_service_commands_show() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Show {
         service_name: "test-service".to_string(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.contains("Show"));
     assert!(debug_str.contains("test-service"));
     Ok(())
@@ -52,7 +75,7 @@ fn test_service_commands_start() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Start {
         service_name: "api-gateway".to_string(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.contains("Start"));
     Ok(())
 }
@@ -62,7 +85,7 @@ fn test_service_commands_stop() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Stop {
         service_name: "worker-service".to_string(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.contains("Stop"));
     Ok(())
 }
@@ -72,7 +95,7 @@ fn test_service_commands_restart() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Restart {
         service_name: "database-service".to_string(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.contains("Restart"));
     Ok(())
 }
@@ -80,7 +103,7 @@ fn test_service_commands_restart() -> SongbirdResult<()> {
 #[test]
 fn test_status_commands_debug_format() -> SongbirdResult<()> {
     let cmd = StatusCommands::Overview;
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(!debug_str.is_empty());
     Ok(())
 }
@@ -90,7 +113,7 @@ fn test_service_commands_show_with_long_name() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Show {
         service_name: "very-long-service-name-with-many-hyphens".to_string(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.len() > 20);
     Ok(())
 }
@@ -100,7 +123,7 @@ fn test_service_commands_with_special_characters() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Start {
         service_name: "service_name_123".to_string(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.contains("service_name_123"));
     Ok(())
 }
@@ -148,7 +171,7 @@ fn test_service_commands_empty_service_name() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Show {
         service_name: String::new(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(debug_str.contains("Show"));
     Ok(())
 }
@@ -158,7 +181,7 @@ fn test_service_commands_unicode_service_name() -> SongbirdResult<()> {
     let cmd = ServiceCommands::Start {
         service_name: "service-™".to_string(),
     };
-    let debug_str = format!("{:?}", cmd);
+    let debug_str = format!("{cmd:?}");
     assert!(!debug_str.is_empty());
     Ok(())
 }
@@ -291,7 +314,7 @@ fn test_service_commands_with_prefixed_names() {
     let commands: Vec<ServiceCommands> = prefixes
         .iter()
         .map(|prefix| ServiceCommands::Start {
-            service_name: format!("{}service", prefix),
+            service_name: format!("{prefix}service"),
         })
         .collect();
 
@@ -353,12 +376,8 @@ fn test_service_commands_multiple_operations_same_service() -> SongbirdResult<()
         service_name,
     };
 
-    let debug_strs = [
-        format!("{:?}", show),
-        format!("{:?}", start),
-        format!("{:?}", stop),
-        format!("{:?}", restart),
-    ];
+    let debug_strs =
+        [format!("{show:?}"), format!("{start:?}"), format!("{stop:?}"), format!("{restart:?}")];
 
     assert!(debug_strs.iter().all(|s| s.contains("critical-service")));
     Ok(())
@@ -376,9 +395,9 @@ fn test_service_commands_case_sensitive_names() -> SongbirdResult<()> {
         service_name: "Service".to_string(),
     };
 
-    let lower_str = format!("{:?}", lower);
-    let upper_str = format!("{:?}", upper);
-    let mixed_str = format!("{:?}", mixed);
+    let lower_str = format!("{lower:?}");
+    let upper_str = format!("{upper:?}");
+    let mixed_str = format!("{mixed:?}");
 
     assert_ne!(lower_str, upper_str);
     assert_ne!(lower_str, mixed_str);
@@ -406,8 +425,8 @@ fn test_service_commands_service_name_lengths() -> SongbirdResult<()> {
         service_name: "very-long-service-name-with-many-parts-and-segments".to_string(),
     };
 
-    assert!(format!("{:?}", short).len() < format!("{:?}", medium).len());
-    assert!(format!("{:?}", medium).len() < format!("{:?}", long).len());
+    assert!(format!("{short:?}").len() < format!("{medium:?}").len());
+    assert!(format!("{medium:?}").len() < format!("{long:?}").len());
     Ok(())
 }
 
@@ -448,11 +467,11 @@ fn test_service_commands_with_environment_prefixes() -> SongbirdResult<()> {
 fn test_status_commands_move_semantics() -> SongbirdResult<()> {
     // StatusCommands moves since it doesn't implement Copy
     let cmd1 = StatusCommands::Overview;
-    let _debug1 = format!("{:?}", cmd1);
+    let _debug1 = format!("{cmd1:?}");
 
     // Create a new instance for second test
     let cmd2 = StatusCommands::Overview;
-    let _debug2 = format!("{:?}", cmd2);
+    let _debug2 = format!("{cmd2:?}");
     Ok(())
 }
 
@@ -502,7 +521,7 @@ fn test_status_commands_all_variants_exhaustive() -> SongbirdResult<()> {
     ];
 
     // Verify each variant is unique when formatted
-    let formatted: Vec<String> = all_variants.iter().map(|cmd| format!("{:?}", cmd)).collect();
+    let formatted: Vec<String> = all_variants.iter().map(|cmd| format!("{cmd:?}")).collect();
 
     let unique_count = formatted.iter().collect::<std::collections::HashSet<_>>().len();
     assert_eq!(unique_count, 4);

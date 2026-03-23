@@ -448,16 +448,14 @@ mod tests {
         for cipher in TLS_1_2_SECURE_CIPHERS {
             assert!(
                 !weak_ciphers.contains(cipher),
-                "Secure ciphers should not contain weak cipher 0x{:04x}",
-                cipher
+                "Secure ciphers should not contain weak cipher 0x{cipher:04x}",
             );
         }
 
         for cipher in TLS_1_2_EXTENDED_CIPHERS {
             assert!(
                 !weak_ciphers.contains(cipher),
-                "Extended ciphers should not contain weak cipher 0x{:04x}",
-                cipher
+                "Extended ciphers should not contain weak cipher 0x{cipher:04x}",
             );
         }
     }

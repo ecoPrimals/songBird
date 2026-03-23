@@ -30,6 +30,10 @@ impl RendezvousPoint {
     /// RENDEZVOUS_COOKIE  [20 bytes] - cookie from INTRODUCE2
     /// HANDSHAKE_INFO     [variable] - ntor handshake response (typically 64 bytes)
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the cell payload length does not fit in `u16`.
     #[must_use]
     pub fn create_rendezvous1(&self, handshake_data: &[u8]) -> RelayCell {
         let mut data = Vec::with_capacity(20 + handshake_data.len());
@@ -110,6 +114,10 @@ impl RendezvousPoint {
     ///   RENDEZVOUS_COOKIE[20 bytes]
     ///   CLIENT_PK        [32 bytes] - X25519 ephemeral
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the cell payload length does not fit in `u16`.
     #[must_use]
     pub fn create_introduce1(
         rendezvous_point: &[u8; 32],

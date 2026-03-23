@@ -50,6 +50,9 @@ impl BtspConnectionFactory {
     /// **v3.20.0**: Migrated to Unix socket (Jan 16, 2026)
     /// - Discovers `BearDog` via Unix socket at runtime
     /// - Gracefully handles absence of `BearDog`
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn get_or_init_client(&self) -> Result<Arc<BtspClient>> {
         self.client
             .get_or_try_init(|| async {
@@ -84,6 +87,9 @@ impl BtspConnectionFactory {
     ///
     /// **Modern pattern**: Delegates to specific connection types
     /// **Note**: `peer_tags` passed as endpoint was a bug in original, using `peer_tags` now
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn create_connection(
         &self,
         peer_id: String,

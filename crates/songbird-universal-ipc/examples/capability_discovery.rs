@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   ✅ TRUE PRIMAL self-knowledge");
         }
         Err(e) => {
-            println!("   ❌ No crypto provider found: {}", e);
+            println!("   ❌ No crypto provider found: {e}");
             println!("      This is expected if no provider is running");
             println!("      Demonstrates graceful fallback!");
         }

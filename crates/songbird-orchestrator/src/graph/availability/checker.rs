@@ -58,6 +58,9 @@ impl AvailabilityChecker {
     }
 
     /// Check availability of all nodes in a graph
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check_availability(&self, graph: &Graph) -> Result<AvailabilityReport> {
         debug!("Checking availability for graph: {}", graph.id);
 
@@ -208,6 +211,9 @@ impl AvailabilityChecker {
     }
 
     /// Suggest alternative primals for a node
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn suggest_alternatives(&self, node: &GraphNode) -> Result<AlternativeSuggestions> {
         debug!("Finding alternatives for node {} (capability: {})", node.id, node.capability);
 

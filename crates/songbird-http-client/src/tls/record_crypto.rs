@@ -15,7 +15,7 @@ use tracing::{debug, error};
 ///
 /// `nonce = iv XOR sequence_number` (sequence right-aligned in the IV length).
 #[must_use]
-pub(crate) fn build_nonce(iv: &[u8], sequence_number: u64) -> Vec<u8> {
+pub fn build_nonce(iv: &[u8], sequence_number: u64) -> Vec<u8> {
     let mut nonce = iv.to_vec();
     let seq_bytes = sequence_number.to_be_bytes();
 
@@ -30,7 +30,7 @@ pub(crate) fn build_nonce(iv: &[u8], sequence_number: u64) -> Vec<u8> {
 }
 
 /// Encrypt `plaintext` using the negotiated cipher suite.
-pub(crate) async fn cipher_encrypt(
+pub async fn cipher_encrypt(
     crypto: &Arc<dyn CryptoCapability>,
     cipher_suite: u16,
     key: &[u8],
@@ -59,7 +59,7 @@ pub(crate) async fn cipher_encrypt(
 }
 
 /// Decrypt `ciphertext` using the negotiated cipher suite.
-pub(crate) async fn cipher_decrypt(
+pub async fn cipher_decrypt(
     crypto: &Arc<dyn CryptoCapability>,
     cipher_suite: u16,
     key: &[u8],
@@ -89,7 +89,7 @@ pub(crate) async fn cipher_decrypt(
 
 /// Human-readable name for a cipher suite code
 #[must_use]
-pub(crate) const fn cipher_suite_name(code: u16) -> &'static str {
+pub const fn cipher_suite_name(code: u16) -> &'static str {
     match code {
         0x1301 => "TLS_AES_128_GCM_SHA256",
         0x1302 => "TLS_AES_256_GCM_SHA384",

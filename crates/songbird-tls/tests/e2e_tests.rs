@@ -3,7 +3,7 @@
 
 //! End-to-end tests for songbird-tls
 //!
-//! These tests validate the complete TLS handshake flow from ClientHello to application data.
+//! These tests validate the complete TLS handshake flow from `ClientHello` to application data.
 
 use songbird_tls::{
     HandshakeState, HandshakeStateMachine, TLS_CHACHA20_POLY1305_SHA256, TLS_VERSION_1_3,
@@ -15,7 +15,7 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-/// Helper: Create test ClientHello
+/// Helper: Create test `ClientHello`
 fn create_test_client_hello() -> ClientHello {
     let random = [42u8; 32];
     let cipher_suites = vec![TLS_CHACHA20_POLY1305_SHA256];
@@ -209,12 +209,12 @@ async fn e2e_error_type_display() {
         TlsError::HandshakeFailure("test handshake failure".to_string()),
         TlsError::IoError("test io error".to_string()),
         TlsError::RecordTooLarge {
-            size: 999999,
+            size: 999_999,
         },
     ];
 
     for error in errors {
-        let display = format!("{}", error);
+        let display = format!("{error}");
         assert!(!display.is_empty(), "Error should have display message");
         assert!(display.len() > 5, "Error message should be meaningful");
     }
@@ -257,7 +257,7 @@ async fn e2e_multiple_concurrent_connections() {
     for i in 0..10 {
         let client_handle = tokio::spawn(async move {
             if let Ok(mut socket) = TcpStream::connect(addr).await {
-                let data = format!("Client {}", i);
+                let data = format!("Client {i}");
                 let _ = socket.write_all(data.as_bytes()).await;
             }
         });

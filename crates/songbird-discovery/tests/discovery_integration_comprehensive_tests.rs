@@ -268,8 +268,8 @@ async fn test_scoped_discovery_instances() -> SongbirdResult<()> {
 async fn test_discovery_with_different_node_ids() -> SongbirdResult<()> {
     for i in 0..5 {
         let mut config = create_test_config();
-        config.node_id = Some(format!("node-{}", i));
-        assert_eq!(config.node_id, Some(format!("node-{}", i)));
+        config.node_id = Some(format!("node-{i}"));
+        assert_eq!(config.node_id, Some(format!("node-{i}")));
     }
     Ok(())
 }

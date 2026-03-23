@@ -29,12 +29,61 @@
 
 use anyhow::Result;
 use songbird_discovery::anonymous::TransportEndpointMessage;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
 use super::core::SongbirdOrchestrator;
 use super::network::detect_primary_ip;
 use crate::node_identity::NodeIdentity;
+
+/// Order of stages executed by [`StartupOrchestrator::start`].
+///
+/// Stage 2b runs after Stage 2 once the HTTPS port is known; it is best-effort and never fails
+/// startup. Keep this list aligned with the implementation of `start`.
+pub const STARTUP_PIPELINE_STAGE_ORDER: &[&str] = &[
+    "stage_1_provision_security",
+    "stage_2_start_servers",
+    "stage_2b_igd_auto_configure",
+    "stage_3_register_self",
+    "stage_4_start_discovery",
+    "stage_5_start_federation",
+    "stage_6_background_tasks",
+    "stage_7_verify_connectivity",
+];
+
+/// Capabilities advertised when re-registering this node in federation (Stage 3).
+pub(super) const STAGE_3_FEDERATION_SELF_CAPABILITIES: &[&str] =
+    &["orchestrator", "secure_http", "http.request", "tls.1.3"];
+
+/// Capabilities included in anonymous discovery beacons (Stage 4).
+pub(super) const STAGE_4_DISCOVERY_CAPABILITIES: &[&str] = &[
+    "orchestration",
+    "federation",
+    "secure_http",
+    "http.request",
+    "http.get",
+    "http.post",
+    "tls.1.3",
+];
+
+/// Interval for trust escalation cleanup spawned in Stage 5.
+pub(super) const TRUST_CLEANUP_INTERVAL_SECS: u64 = 300;
+
+/// Build the TCP bind address used for the HTTP server in Stage 2.
+///
+/// # Errors
+///
+/// Returns an error if `host:port` is not a valid [`SocketAddr`] string (e.g. invalid IP).
+pub(super) fn http_bind_socket_addr(host: &str, port: u16) -> Result<SocketAddr> {
+    format!("{host}:{port}").parse().map_err(|e| anyhow::anyhow!("Invalid bind address: {e}"))
+}
+
+/// Whether `SONGBIRD_IGD_ENABLED` enables IGD auto-configure (Stage 2b).
+#[must_use]
+pub(super) fn igd_enabled_from_env_value(value: &str) -> bool {
+    value == "1" || value.eq_ignore_ascii_case("true")
+}
 
 /// Startup orchestrator for clean, focused startup sequence
 pub struct StartupOrchestrator<'a> {
@@ -62,6 +111,9 @@ impl<'a> StartupOrchestrator<'a> {
     /// 5. Start Federation (coordinator, trust cleanup)
     /// 6. Start Background Tasks (health, cleanup)
     /// 7. Verify Connectivity (post-startup)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn start(mut self) -> Result<()> {
         info!("🚀 Starting Songbird Orchestrator");
         info!("   Mode: Production-ready with secure defaults");
@@ -144,13 +196,10 @@ impl<'a> StartupOrchestrator<'a> {
         // ✅ DISCOVERY FIX (Jan 28, 2026): Call actual HTTP server module (not stub)
         // The stub start_http_server() returns 0, which breaks discovery beacons
         info!("🌐 Starting HTTP server...");
-        let bind_address = format!(
-            "{}:{}",
-            self.orchestrator._config.network.bind_host,
-            self.orchestrator._config.network.base_port
-        )
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Invalid bind address: {e}"))?;
+        let bind_address = http_bind_socket_addr(
+            &self.orchestrator._config.network.bind_host,
+            self.orchestrator._config.network.base_port,
+        )?;
 
         let actual_https_port = crate::app::http_server::start_http_server(
             Arc::clone(&self.orchestrator.federation_state),
@@ -220,7 +269,7 @@ impl<'a> StartupOrchestrator<'a> {
     async fn stage_2b_igd_auto_configure(&self) {
         // Opt-in via environment variable (default: disabled)
         let enabled = std::env::var("SONGBIRD_IGD_ENABLED")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .map(|v| igd_enabled_from_env_value(&v))
             .unwrap_or(false);
 
         if !enabled {
@@ -310,12 +359,10 @@ impl<'a> StartupOrchestrator<'a> {
                         })
                         .collect(),
                 ),
-                capabilities: vec![
-                    "orchestrator".to_string(),
-                    "secure_http".to_string(), // Pure Rust HTTP/HTTPS client
-                    "http.request".to_string(), // JSON-RPC http.request
-                    "tls.1.3".to_string(),     // TLS 1.3 via Tower Atomic
-                ],
+                capabilities: STAGE_3_FEDERATION_SELF_CAPABILITIES
+                    .iter()
+                    .map(|s| (*s).to_string())
+                    .collect(),
                 cpu_cores: num_cpus::get(),
                 memory_gb: {
                     #[cfg(target_os = "linux")]
@@ -366,15 +413,8 @@ impl<'a> StartupOrchestrator<'a> {
             node_identity.detect_all_endpoints(actual_https_port)?;
 
             // Start discovery broadcaster (v3.0 with multi-endpoint)
-            let capabilities = vec![
-                "orchestration".to_string(),
-                "federation".to_string(),
-                "secure_http".to_string(), // Pure Rust HTTP/HTTPS client via Tower Atomic
-                "http.request".to_string(), // JSON-RPC http.request method
-                "http.get".to_string(),    // Convenience: GET requests
-                "http.post".to_string(),   // Convenience: POST requests
-                "tls.1.3".to_string(),     // TLS 1.3 via BearDog delegation
-            ];
+            let capabilities =
+                STAGE_4_DISCOVERY_CAPABILITIES.iter().map(|s| (*s).to_string()).collect::<Vec<_>>();
 
             // Convert endpoints to discovery message format
             // CRITICAL FIX (Dec 20, 2025): Include full address (IP:port) instead of just port
@@ -438,11 +478,17 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Initialize security provider integration (disabled)
     ///
     /// **Why Fifth**: Needs discovery system running to coordinate federation
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn stage_5_start_federation(&self) -> Result<()> {
         // Start trust escalation cleanup task
         let trust_manager_clone = Arc::clone(&self.orchestrator.trust_manager);
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // Every 5 minutes
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(
+                TRUST_CLEANUP_INTERVAL_SECS,
+            ));
             loop {
                 interval.tick().await;
                 let removed = trust_manager_clone.cleanup_expired().await;
@@ -518,5 +564,126 @@ impl<'a> StartupOrchestrator<'a> {
         self.orchestrator.verify_external_connectivity().await?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use crate::app::core::SongbirdOrchestrator;
+    use songbird_types::config::CanonicalSongbirdConfig;
+
+    #[test]
+    fn startup_pipeline_stage_order_is_sequential_and_includes_two_b() {
+        assert_eq!(STARTUP_PIPELINE_STAGE_ORDER.len(), 8);
+        assert_eq!(
+            STARTUP_PIPELINE_STAGE_ORDER,
+            &[
+                "stage_1_provision_security",
+                "stage_2_start_servers",
+                "stage_2b_igd_auto_configure",
+                "stage_3_register_self",
+                "stage_4_start_discovery",
+                "stage_5_start_federation",
+                "stage_6_background_tasks",
+                "stage_7_verify_connectivity",
+            ]
+        );
+        let pos_2 = STARTUP_PIPELINE_STAGE_ORDER
+            .iter()
+            .position(|s| *s == "stage_2_start_servers")
+            .unwrap();
+        let pos_2b = STARTUP_PIPELINE_STAGE_ORDER
+            .iter()
+            .position(|s| *s == "stage_2b_igd_auto_configure")
+            .unwrap();
+        let pos_3 = STARTUP_PIPELINE_STAGE_ORDER
+            .iter()
+            .position(|s| *s == "stage_3_register_self")
+            .unwrap();
+        assert!(pos_2 < pos_2b && pos_2b < pos_3);
+    }
+
+    #[test]
+    fn stage_3_federation_capabilities_match_expected_set() {
+        assert_eq!(
+            STAGE_3_FEDERATION_SELF_CAPABILITIES,
+            &["orchestrator", "secure_http", "http.request", "tls.1.3"]
+        );
+    }
+
+    #[test]
+    fn stage_4_discovery_capabilities_match_expected_set() {
+        assert_eq!(
+            STAGE_4_DISCOVERY_CAPABILITIES,
+            &[
+                "orchestration",
+                "federation",
+                "secure_http",
+                "http.request",
+                "http.get",
+                "http.post",
+                "tls.1.3",
+            ]
+        );
+    }
+
+    #[test]
+    fn trust_cleanup_interval_is_five_minutes() {
+        assert_eq!(TRUST_CLEANUP_INTERVAL_SECS, 300);
+    }
+
+    #[test]
+    fn http_bind_socket_addr_accepts_loopback_defaults() {
+        let addr = http_bind_socket_addr("127.0.0.1", 8080).unwrap();
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+        assert_eq!(addr.port(), 8080);
+    }
+
+    #[test]
+    fn http_bind_socket_addr_rejects_invalid_socket_form() {
+        let err = http_bind_socket_addr("not-a-valid-socket-addr", 1).unwrap_err();
+        assert!(err.to_string().contains("Invalid bind address"), "unexpected message: {err}");
+    }
+
+    #[test]
+    fn igd_enabled_from_env_value_parses_opt_in_cases() {
+        assert!(igd_enabled_from_env_value("1"));
+        assert!(igd_enabled_from_env_value("true"));
+        assert!(igd_enabled_from_env_value("TRUE"));
+        assert!(!igd_enabled_from_env_value("0"));
+        assert!(!igd_enabled_from_env_value("false"));
+        assert!(!igd_enabled_from_env_value(""));
+    }
+
+    #[test]
+    fn default_config_network_matches_stage_2_bind_inputs() {
+        let cfg = CanonicalSongbirdConfig::default();
+        assert_eq!(cfg.network.bind_host, "127.0.0.1");
+        assert_eq!(cfg.network.base_port, 8080);
+        let addr = http_bind_socket_addr(&cfg.network.bind_host, cfg.network.base_port).unwrap();
+        assert_eq!(addr.to_string(), "127.0.0.1:8080");
+    }
+
+    /// When Stage 2 cannot build a bind address, startup must not proceed (surfaced as `Err`).
+    #[test]
+    fn http_bind_failure_propagates_as_error() {
+        let res = http_bind_socket_addr("%%%invalid%%%", 80);
+        assert!(res.is_err());
+    }
+
+    /// Compile-time check: `start` returns a `Send` future (required for Tokio multi-thread).
+    #[allow(dead_code)]
+    fn _assert_start_returns_send_future(
+        orch: &mut SongbirdOrchestrator,
+    ) -> impl std::future::Future<Output = Result<()>> + Send {
+        StartupOrchestrator::new(orch).start()
+    }
+
+    /// Compile-time check: `StartupOrchestrator::new` remains usable from `&mut SongbirdOrchestrator`.
+    #[allow(dead_code)]
+    fn _assert_new_accepts_mutable_orchestrator(orch: &mut SongbirdOrchestrator) {
+        let _ = StartupOrchestrator::new(orch);
     }
 }

@@ -62,6 +62,9 @@ fn discovered_node_from_peer(
 /// Handle `discover_by_family` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.19.1: Returns discovered peers filtered by family tags
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_by_family(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -112,6 +115,9 @@ pub async fn discover_by_family(
 /// Handle `create_genetic_tunnel` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.19.1: Establishes BTSP tunnel with genetic lineage proof
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn create_genetic_tunnel(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -196,6 +202,13 @@ pub async fn create_genetic_tunnel(
 /// Handle `announce_capabilities` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.19.1: Updates broadcaster with new capabilities
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn announce_capabilities(
     handlers: &IpcHandlers,
     params: serde_json::Value,
@@ -232,6 +245,9 @@ pub async fn announce_capabilities(
 // ============================================================================
 
 /// P2P Discovery: `discover_by_family` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_by_family_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -273,6 +289,9 @@ pub async fn discover_by_family_json(
 }
 
 /// P2P Discovery: `create_genetic_tunnel` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn create_genetic_tunnel_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -343,6 +362,13 @@ pub async fn create_genetic_tunnel_json(
 }
 
 /// P2P Discovery: `announce_capabilities` (pure JSON adapter)
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn announce_capabilities_json(
     _handlers: &IpcHandlers,
     params: Option<serde_json::Value>,

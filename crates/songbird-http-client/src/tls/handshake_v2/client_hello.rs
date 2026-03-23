@@ -6,7 +6,6 @@
 //! This module handles building TLS 1.3 `ClientHello` messages with configurable
 //! extension strategies for optimal handshake performance.
 
-use crate::error::Result;
 use crate::tls::{CIPHER_SUITES, TLS_1_2, TLS_1_3, config::ExtensionStrategy};
 use tracing::debug;
 
@@ -33,12 +32,17 @@ impl ClientHelloBuilder {
     /// Build a complete `ClientHello` message including TLS record framing
     ///
     /// Returns the complete TLS record ready to send on the wire.
+    #[must_use]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
     pub fn build(
         &self,
         client_random: &[u8],
         client_public_key: &[u8],
         server_name: &str,
-    ) -> Result<Vec<u8>> {
+    ) -> Vec<u8> {
         let mut msg = Vec::new();
 
         // TLS Record header
@@ -72,7 +76,7 @@ impl ClientHelloBuilder {
         msg.push(0); // No compression
 
         // Extensions
-        let extensions = self.build_extensions(server_name, client_public_key)?;
+        let extensions = self.build_extensions(server_name, client_public_key);
         msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         msg.extend_from_slice(&extensions);
 
@@ -86,11 +90,11 @@ impl ClientHelloBuilder {
         msg[length_pos] = ((record_length >> 8) & 0xFF) as u8;
         msg[length_pos + 1] = (record_length & 0xFF) as u8;
 
-        Ok(msg)
+        msg
     }
 
     /// Build extensions based on strategy
-    fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         match &self.extension_strategy {
             ExtensionStrategy::Minimal => {
                 debug!("🎯 Building MINIMAL extensions (3 extensions, ~50ms handshake)");
@@ -118,7 +122,12 @@ impl ClientHelloBuilder {
 
     /// Build minimal extensions (fastest handshake, ~50ms)
     /// Only required extensions: SNI, Supported Versions, Key Share
-    fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
+    fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         let mut ext = Vec::new();
 
         // 1. SNI extension (0x0000) - REQUIRED for virtual hosting
@@ -139,12 +148,17 @@ impl ClientHelloBuilder {
         ext.extend_from_slice(&(key_share_data.len() as u16).to_be_bytes());
         ext.extend_from_slice(&key_share_data);
 
-        Ok(ext)
+        ext
     }
 
     /// Build standard extensions (balanced, ~80ms handshake)
     /// Current production-tested set
-    fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked/bounded"
+    )]
+    fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         let mut ext = Vec::new();
 
         // 1. SNI extension (0x0000)
@@ -198,13 +212,13 @@ impl ClientHelloBuilder {
         ext.extend_from_slice(&[0x01]);
         ext.extend_from_slice(&[0x01]); // psk_dhe_ke
 
-        Ok(ext)
+        ext
     }
 
     /// Build modern extensions (latest features, ~100ms handshake)
-    fn build_extensions_modern(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    fn build_extensions_modern(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         // Start with standard extensions
-        let mut ext = self.build_extensions_standard(server_name, public_key)?;
+        let mut ext = self.build_extensions_standard(server_name, public_key);
 
         // Add modern extensions
 
@@ -215,22 +229,18 @@ impl ClientHelloBuilder {
         ext.extend_from_slice(&[0x00, 0x00]); // responder_id_list: empty
         ext.extend_from_slice(&[0x00, 0x00]); // request_extensions: empty
 
-        Ok(ext)
+        ext
     }
 
     /// Build max compatibility extensions (exhaustive set)
-    fn build_extensions_maxcompat(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    fn build_extensions_maxcompat(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         // Start with modern extensions
-        let ext = self.build_extensions_modern(server_name, public_key)?;
-
-        // Add compatibility extensions
-        // (Add more here as needed for maximum compatibility)
-
-        Ok(ext)
+        self.build_extensions_modern(server_name, public_key)
     }
 }
 
 /// Build SNI (Server Name Indication) extension
+#[expect(clippy::cast_possible_truncation, reason = "TLS wire format: values are masked/bounded")]
 fn build_sni_extension(server_name: &str) -> Vec<u8> {
     let mut sni = Vec::new();
     let name_bytes = server_name.as_bytes();
@@ -244,6 +254,7 @@ fn build_sni_extension(server_name: &str) -> Vec<u8> {
 }
 
 /// Build key share extension
+#[expect(clippy::cast_possible_truncation, reason = "TLS wire format: values are masked/bounded")]
 fn build_key_share_extension(public_key: &[u8]) -> Vec<u8> {
     let mut ks = Vec::new();
 
@@ -260,6 +271,7 @@ fn build_key_share_extension(public_key: &[u8]) -> Vec<u8> {
 /// Uses timestamp + pseudo-random for now.
 /// In production, `BearDog` should provide cryptographically secure random.
 #[must_use]
+#[expect(clippy::cast_possible_truncation, reason = "TLS wire format: values are masked/bounded")]
 pub fn generate_random() -> Vec<u8> {
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -326,10 +338,7 @@ mod tests {
         let random = generate_random();
         let public_key = vec![0x42; 32];
 
-        let result = builder.build(&random, &public_key, "example.com");
-        assert!(result.is_ok());
-
-        let client_hello = result.unwrap();
+        let client_hello = builder.build(&random, &public_key, "example.com");
 
         // Should have TLS record header
         assert_eq!(client_hello[0], 0x16); // Handshake
@@ -346,14 +355,11 @@ mod tests {
         let random = generate_random();
         let public_key = vec![0x42; 32];
 
-        let result = builder.build(&random, &public_key, "example.com");
-        assert!(result.is_ok());
-
-        let client_hello = result.unwrap();
+        let client_hello = builder.build(&random, &public_key, "example.com");
 
         // Standard should be longer than minimal (more extensions)
         let minimal_builder = ClientHelloBuilder::new(ExtensionStrategy::Minimal);
-        let minimal = minimal_builder.build(&random, &public_key, "example.com").unwrap();
+        let minimal = minimal_builder.build(&random, &public_key, "example.com");
 
         assert!(client_hello.len() > minimal.len());
     }
@@ -365,7 +371,7 @@ mod tests {
         let public_key = vec![0x42; 32];
         let server_name = "test.example.com";
 
-        let client_hello = builder.build(&random, &public_key, server_name).unwrap();
+        let client_hello = builder.build(&random, &public_key, server_name);
 
         // Should contain the server name in SNI extension
         let name_bytes = server_name.as_bytes();
@@ -378,7 +384,7 @@ mod tests {
         let random = generate_random();
         let public_key = vec![0x42; 32];
 
-        let client_hello = builder.build(&random, &public_key, "example.com").unwrap();
+        let client_hello = builder.build(&random, &public_key, "example.com");
 
         // Should contain all cipher suites
         // TLS_AES_128_GCM_SHA256 = 0x1301

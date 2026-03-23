@@ -47,6 +47,9 @@ impl<'a> CommandHandler<'a> {
     /// - unknown - Return error message
     ///
     /// **Returns**: String response to display to user
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn handle(&self, command: &str) -> Result<String> {
         match command {
             "status" => self.handle_status().await,

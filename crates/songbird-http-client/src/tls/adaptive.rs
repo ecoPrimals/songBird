@@ -130,6 +130,7 @@ impl AdaptiveExtensions {
     }
 
     /// Maximum compatibility extension set
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     fn max_compatibility_extensions(&self) -> Vec<ExtensionType> {
         vec![
             ExtensionType::Sni,
@@ -143,6 +144,7 @@ impl AdaptiveExtensions {
     }
 
     /// Minimal extension set (required only)
+    #[expect(clippy::unused_self, reason = "method logically belongs on this type")]
     fn minimal_extensions(&self) -> Vec<ExtensionType> {
         vec![
             ExtensionType::Sni,

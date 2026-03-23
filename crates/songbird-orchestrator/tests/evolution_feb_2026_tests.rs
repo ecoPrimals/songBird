@@ -1,13 +1,38 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Evolution Tests - February 2026
 //!
 //! Comprehensive test coverage for the deep debt evolution work:
 //! - Sled/JSON serialization (migrated from bincode)
-//! - BirdSong family_id integration
-//! - Standard JSON-RPC methods (health, identity, beacon_exchange)
-//! - Socket discovery PRIMAL_DEPLOYMENT_STANDARD compliance
+//! - `BirdSong` `family_id` integration
+//! - Standard JSON-RPC methods (health, identity, `beacon_exchange`)
+//! - Socket discovery `PRIMAL_DEPLOYMENT_STANDARD` compliance
 //!
 //! Test categories:
 //! - Unit tests: Component-level validation
@@ -109,8 +134,7 @@ mod task_serialization_unit {
         // Externally tagged format should be "Queued" or {"Queued": null}
         assert!(
             json == "\"Queued\"" || json.contains("Queued"),
-            "Should use externally tagged format, got: {}",
-            json
+            "Should use externally tagged format, got: {json}"
         );
     }
 
@@ -253,7 +277,7 @@ mod family_id_unit {
         songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
-    /// Helper to get family_id using same logic as canonical env chain
+    /// Helper to get `family_id` using same logic as canonical env chain
     fn get_family_id_from_env() -> String {
         std::env::var("SONGBIRD_FAMILY_ID")
             .or_else(|_| std::env::var("FAMILY_ID"))
@@ -402,7 +426,7 @@ mod evolution_e2e {
 
         for primal in primals {
             // Expected socket name per PRIMAL_DEPLOYMENT_STANDARD
-            let expected_socket_name = format!("{}.sock", primal);
+            let expected_socket_name = format!("{primal}.sock");
 
             // Should NOT contain family_id variations
             assert!(!expected_socket_name.contains("nat0"));
@@ -411,7 +435,7 @@ mod evolution_e2e {
 
             // Should be simple primal.sock format
             assert!(expected_socket_name.ends_with(".sock"));
-            assert_eq!(expected_socket_name, format!("{}.sock", primal));
+            assert_eq!(expected_socket_name, format!("{primal}.sock"));
         }
 
         Ok(())
@@ -459,7 +483,7 @@ mod evolution_chaos {
                 priority: Priority::Standard,
             };
 
-            let task = TaskLifecycle::new(UserId::new(format!("chaos-{}", i)), spec);
+            let task = TaskLifecycle::new(UserId::new(format!("chaos-{i}")), spec);
             let json = serde_json::to_vec(&task).expect("Serialize should not fail");
             let _: TaskLifecycle =
                 serde_json::from_slice(&json).expect("Deserialize should not fail");
@@ -507,7 +531,7 @@ mod evolution_chaos {
                 priority: Priority::Standard,
             };
 
-            let task = TaskLifecycle::new(UserId::new(format!("large-{}", size)), spec);
+            let task = TaskLifecycle::new(UserId::new(format!("large-{size}")), spec);
             let json = serde_json::to_vec(&task).expect("Should handle large configs");
             let deserialized: TaskLifecycle = serde_json::from_slice(&json).unwrap();
             assert_eq!(task.id, deserialized.id);
@@ -521,10 +545,10 @@ mod evolution_chaos {
 
         let handles: Vec<_> = (0..10)
             .map(|i| {
-                let var_name = format!("CHAOS_VAR_{}", i);
+                let var_name = format!("CHAOS_VAR_{i}");
                 thread::spawn(move || {
                     for j in 0..100 {
-                        songbird_process_env::set_var(&var_name, format!("value-{}", j));
+                        songbird_process_env::set_var(&var_name, format!("value-{j}"));
                         let _ = std::env::var(&var_name);
                         songbird_process_env::remove_var(&var_name);
                     }
@@ -590,7 +614,7 @@ mod evolution_fault_injection {
 
         for invalid in invalid_jsons {
             let result: Result<TaskLifecycle, _> = serde_json::from_str(invalid);
-            assert!(result.is_err(), "Should reject invalid JSON: {}", invalid);
+            assert!(result.is_err(), "Should reject invalid JSON: {invalid}");
         }
     }
 
@@ -742,11 +766,7 @@ mod evolution_integration {
         });
 
         for field in expected_fields {
-            assert!(
-                health_response.get(field).is_some(),
-                "Health response missing field: {}",
-                field
-            );
+            assert!(health_response.get(field).is_some(), "Health response missing field: {field}");
         }
     }
 
@@ -774,7 +794,7 @@ mod evolution_integration {
         let primals = vec!["songbird", "beardog", "squirrel", "biome"];
 
         for primal in primals {
-            let socket_name = format!("{}.sock", primal);
+            let socket_name = format!("{primal}.sock");
 
             // Should not contain family_id
             assert!(!socket_name.contains("nat0"));
@@ -822,11 +842,9 @@ mod protocol_detection {
             assert_eq!(
                 method.as_bytes()[0],
                 first_byte,
-                "{} should start with 0x{:02X}",
-                method,
-                first_byte
+                "{method} should start with 0x{first_byte:02X}"
             );
-            assert!(!is_tls_record(first_byte), "{} should not be detected as TLS", method);
+            assert!(!is_tls_record(first_byte), "{method} should not be detected as TLS");
         }
     }
 
@@ -841,7 +859,7 @@ mod protocol_detection {
         // ASCII printable range (HTTP)
         for byte in 0x20..=0x7E {
             if byte != 0x16 {
-                assert!(!is_tls_record(byte), "ASCII byte 0x{:02X} should not be TLS", byte);
+                assert!(!is_tls_record(byte), "ASCII byte 0x{byte:02X} should not be TLS");
             }
         }
     }
@@ -874,16 +892,16 @@ mod protocol_detection {
         for (byte, name) in tls_record_types {
             // Only Handshake (0x16) should trigger TLS detection for initial connection
             if byte == 0x16 {
-                assert!(is_tls_record(byte), "{} should be detected as TLS handshake", name);
+                assert!(is_tls_record(byte), "{name} should be detected as TLS handshake");
             } else {
                 // Other record types wouldn't be the first byte of a new TLS connection
-                assert!(!is_tls_record(byte), "{} should not be first byte", name);
+                assert!(!is_tls_record(byte), "{name} should not be first byte");
             }
         }
     }
 
     /// Helper: Check if first byte indicates TLS record (handshake)
-    fn is_tls_record(byte: u8) -> bool {
+    const fn is_tls_record(byte: u8) -> bool {
         byte == 0x16 // TLS Handshake content type
     }
 }

@@ -157,6 +157,7 @@ impl SignalingMessage {
 
 impl PeerInfo {
     /// Create new peer info from STUN discovery
+    #[must_use]
     pub fn new(node_id: String, public_addr: SocketAddr) -> Self {
         Self {
             node_id,
@@ -169,12 +170,9 @@ impl PeerInfo {
     }
 
     /// Check if peer info is fresh (within last 60 seconds)
+    #[must_use]
     pub fn is_fresh(&self) -> bool {
-        if let Ok(elapsed) = self.timestamp.elapsed() {
-            elapsed.as_secs() < 60
-        } else {
-            false
-        }
+        self.timestamp.elapsed().is_ok_and(|elapsed| elapsed.as_secs() < 60)
     }
 }
 

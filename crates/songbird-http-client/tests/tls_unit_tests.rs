@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::cast_possible_truncation,
+    reason = "TLS wire-format test helpers use bounded length fields"
+)]
+
 //! Comprehensive TLS Unit Tests
 //!
 //! Testing all TLS components in isolation for correctness and edge cases.
@@ -126,7 +131,7 @@ mod handshake_tests {
         for (i, suite) in cipher_suites.iter().enumerate() {
             let offset = 2 + (i * 2);
             let encoded = u16::from_be_bytes([bytes[offset], bytes[offset + 1]]);
-            assert_eq!(encoded, *suite, "Cipher suite {} mismatch", i);
+            assert_eq!(encoded, *suite, "Cipher suite {i} mismatch");
         }
     }
 
@@ -283,11 +288,11 @@ mod record_layer_tests {
         let invalid_types = [0x00, 0x13, 0x18, 0xFF];
 
         for &t in &valid_types {
-            assert!(is_valid_record_type(t), "Type {:#04x} should be valid", t);
+            assert!(is_valid_record_type(t), "Type {t:#04x} should be valid");
         }
 
         for &t in &invalid_types {
-            assert!(!is_valid_record_type(t), "Type {:#04x} should be invalid", t);
+            assert!(!is_valid_record_type(t), "Type {t:#04x} should be invalid");
         }
     }
 

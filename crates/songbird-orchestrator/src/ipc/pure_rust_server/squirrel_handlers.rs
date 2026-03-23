@@ -40,6 +40,13 @@ use songbird_http_client::SongbirdHttpClient;
 ///   }
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpcError> {
     info!("🔍 Capability discovery request received");
 
@@ -88,6 +95,9 @@ pub async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpc
 ///   "body": { ... }
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn handle_http_request(
     params: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, JsonRpcError> {
@@ -145,6 +155,13 @@ pub async fn handle_http_request(
 ///   "version": "4.9.0"
 /// }
 /// ```
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn handle_health() -> Result<serde_json::Value, JsonRpcError> {
     Ok(serde_json::json!({
         "status": "healthy",

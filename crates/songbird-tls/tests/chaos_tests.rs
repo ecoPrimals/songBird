@@ -11,7 +11,7 @@ use songbird_tls::error::TlsError;
 use songbird_tls::messages::{ClientHello, ContentType, Extension};
 use tokio::time::{Duration, timeout};
 
-/// Test that ClientHello encoding/decoding is resilient
+/// Test that `ClientHello` encoding/decoding is resilient
 #[tokio::test]
 async fn chaos_malformed_client_hello() {
     // Test 1: Empty buffer
@@ -38,7 +38,7 @@ async fn chaos_malformed_client_hello() {
     // The validation happens in the validate() method
 }
 
-/// Test ContentType conversion with invalid values
+/// Test `ContentType` conversion with invalid values
 #[tokio::test]
 async fn chaos_invalid_content_type() {
     // Valid content types
@@ -134,7 +134,7 @@ async fn fault_oversized_data() {
 
     // Verify constants are reasonable
     assert_eq!(MAX_RECORD_SIZE, 16384);
-    assert_eq!(MAX_HANDSHAKE_SIZE, 262144);
+    assert_eq!(MAX_HANDSHAKE_SIZE, 262_144);
 
     // Test that we respect these limits
     // (Actual enforcement tested in record_layer tests)
@@ -155,7 +155,7 @@ async fn fault_error_handling() {
         TlsError::InternalError("test".to_string()),
         TlsError::InvalidParameter("test".to_string()),
         TlsError::RecordTooLarge {
-            size: 999999,
+            size: 999_999,
         },
         TlsError::UnexpectedMessage {
             expected: "A".to_string(),
@@ -164,7 +164,7 @@ async fn fault_error_handling() {
     ];
 
     for error in errors {
-        let error_string = format!("{}", error);
+        let error_string = format!("{error}");
         assert!(!error_string.is_empty(), "Error should have message");
     }
 }

@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! End-to-End Tests for Port Fallback Discovery
 //!
 //! These tests simulate real deployment scenarios including:
@@ -51,7 +75,7 @@ impl SimulatedTower {
                 for fallback_offset in 1..=10 {
                     let fallback_port = self.configured_port + fallback_offset;
                     if let Ok(fallback_listener) =
-                        tokio::net::TcpListener::bind(format!("127.0.0.1:{}", fallback_port)).await
+                        tokio::net::TcpListener::bind(format!("127.0.0.1:{fallback_port}")).await
                     {
                         self.actual_port = Some(fallback_port);
 

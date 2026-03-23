@@ -129,6 +129,10 @@ impl OnionStorage {
     ///
     /// ⚠️ **TRUE PRIMAL NOTE**: This method uses direct crypto and should ONLY be
     /// used for testing! Production code should use `load_or_generate_identity_via_beardog()`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if database access, deserialization, or persistence fails.
     #[cfg(feature = "standalone")]
     pub fn load_or_generate_identity(&self) -> Result<OnionIdentity> {
         const IDENTITY_KEY: &[u8] = b"identity/key";
@@ -201,7 +205,7 @@ impl OnionStorage {
     ///
     /// # Errors
     ///
-    /// Returns error if get_peer or store_peer fails.
+    /// Returns error if `get_peer` or `store_peer` fails.
     pub fn update_peer_last_seen(&self, onion_address: &str, timestamp: u64) -> Result<()> {
         if let Some(mut peer) = self.get_peer(onion_address)? {
             peer.last_seen = timestamp;

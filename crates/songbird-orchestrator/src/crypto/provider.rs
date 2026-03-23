@@ -279,6 +279,9 @@ impl CryptoProvider for UnixSocketCryptoProvider {
 ///
 /// * `Ok(provider)` - Discovered crypto provider
 /// * `Err` - No crypto provider found
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn discover_crypto_provider() -> Result<Arc<dyn CryptoProvider>> {
     // Use primal-agnostic discovery (TRUE PRIMAL)
     let socket_path = crate::primal_discovery::discover_crypto_provider().await?;

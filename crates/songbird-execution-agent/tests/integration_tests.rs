@@ -17,7 +17,7 @@ use songbird_execution_agent::{
 use std::sync::Arc;
 
 /// Helper: Create default resource limits for testing
-fn test_resource_limits() -> ResourceLimits {
+const fn test_resource_limits() -> ResourceLimits {
     ResourceLimits {
         max_memory_mb: Some(4096),
         max_cpu_time_seconds: Some(3600),
@@ -122,9 +122,8 @@ async fn test_job_manager_list_jobs() {
 
     // Create multiple jobs
     for i in 0..3 {
-        let request = ExecutionRequest::new(format!("echo 'job {}'", i))
-            .with_background(true)
-            .with_timeout(60);
+        let request =
+            ExecutionRequest::new(format!("echo 'job {i}'")).with_background(true).with_timeout(60);
 
         let job = executor.execute_background(request).await.expect("test precondition");
         job_manager.add_job(job).await.expect("test precondition");
@@ -142,7 +141,7 @@ async fn test_job_manager_concurrent_limit() {
 
     // Add 2 jobs (should succeed)
     for i in 0..2 {
-        let request = ExecutionRequest::new(format!("sleep 10 && echo '{}'", i))
+        let request = ExecutionRequest::new(format!("sleep 10 && echo '{i}'"))
             .with_background(true)
             .with_timeout(60);
 
@@ -229,7 +228,7 @@ async fn test_security_dangerous_command_blocked() {
         };
 
         let decision = validator.validate_request(&request).await.expect("test precondition");
-        assert!(!decision.allowed, "Command '{}' should be blocked", cmd);
+        assert!(!decision.allowed, "Command '{cmd}' should be blocked");
     }
 }
 
@@ -281,7 +280,7 @@ async fn test_security_safe_commands_allowed() {
         };
 
         let decision = validator.validate_request(&request).await.expect("test precondition");
-        assert!(decision.allowed, "Command '{}' should be allowed", cmd);
+        assert!(decision.allowed, "Command '{cmd}' should be allowed");
     }
 }
 
@@ -335,6 +334,6 @@ async fn test_security_multiple_tokens() {
         };
 
         let decision = validator.validate_request(&request).await.expect("test precondition");
-        assert!(decision.allowed, "Token {} should be valid", token);
+        assert!(decision.allowed, "Token {token} should be valid");
     }
 }

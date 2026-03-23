@@ -67,6 +67,9 @@ pub struct InitializedComponents {
 /// # Returns
 ///
 /// All initialized components ready for use by the orchestrator.
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn initialize_components(config: &CanonicalSongbirdConfig) -> Result<InitializedComponents> {
     info!("🔧 Initializing orchestrator components...");
 

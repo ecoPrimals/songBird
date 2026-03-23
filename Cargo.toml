@@ -170,7 +170,6 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["trace", "cors"] }
 
 # System
-sys-info = "0.9"
 num_cpus = "1.0"
 wasi = "0.14"
 dirs = "5.0"

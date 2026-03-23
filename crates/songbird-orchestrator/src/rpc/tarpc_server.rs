@@ -402,6 +402,9 @@ impl SongbirdRpc for TarpcServer {
 ///
 /// This is the production version that avoids `Arc<SongbirdOrchestrator>` complexity.
 /// The `TarpcServer` only needs `service_registry`, so this version is simpler and safer.
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_tarpc_server_simple(
     service_registry: Arc<FederatedServiceRegistry>,
     addr: SocketAddr,
@@ -462,6 +465,9 @@ pub async fn start_tarpc_server_simple(
 ///
 /// **Legacy**: This version requires `Arc<SongbirdOrchestrator>` but doesn't actually use it.
 /// Kept for backward compatibility. New code should use `start_tarpc_server_simple`.
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn start_tarpc_server(
     orchestrator: Arc<SongbirdOrchestrator>,
     service_registry: Arc<FederatedServiceRegistry>,

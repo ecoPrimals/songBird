@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Unit and E2E tests for Discovery Bridge
 //!
 //! Tests the Discovery→Federation bridge functionality, including:
 //! - Same-family peer detection
 //! - Connectivity check logic
 //! - Trust evaluation flow
-//! - Peer registration in ConnectionManager
+//! - Peer registration in `ConnectionManager`
 
 #[cfg(test)]
 mod unit_tests {
@@ -20,8 +24,8 @@ mod unit_tests {
             ["beardog:family:nat0:tower1".to_string(), "capability:encryption".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
-            tag.contains(&format!(":family:{}:", my_family))
-                || tag.contains(&format!("family_{}", my_family))
+            tag.contains(&format!(":family:{my_family}:"))
+                || tag.contains(&format!("family_{my_family}"))
         });
 
         assert!(same_family, "Should detect same family from tags");
@@ -34,8 +38,8 @@ mod unit_tests {
             ["beardog:family:nat1:tower1".to_string(), "capability:encryption".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
-            tag.contains(&format!(":family:{}:", my_family))
-                || tag.contains(&format!("family_{}", my_family))
+            tag.contains(&format!(":family:{my_family}:"))
+                || tag.contains(&format!("family_{my_family}"))
         });
 
         assert!(!same_family, "Should NOT detect different family");
@@ -47,8 +51,8 @@ mod unit_tests {
         let peer_tags: Vec<String> = vec![];
 
         let same_family = peer_tags.iter().any(|tag| {
-            tag.contains(&format!(":family:{}:", my_family))
-                || tag.contains(&format!("family_{}", my_family))
+            tag.contains(&format!(":family:{my_family}:"))
+                || tag.contains(&format!("family_{my_family}"))
         });
 
         assert!(!same_family, "Should return false for empty tags");
@@ -60,8 +64,8 @@ mod unit_tests {
         let peer_tags = ["family_nat0".to_string(), "capability:orchestrator".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
-            tag.contains(&format!(":family:{}:", my_family))
-                || tag.contains(&format!("family_{}", my_family))
+            tag.contains(&format!(":family:{my_family}:"))
+                || tag.contains(&format!("family_{my_family}"))
         });
 
         assert!(same_family, "Should detect alternate family format");
@@ -72,8 +76,8 @@ mod unit_tests {
         let my_family = "nat-0";
         let peer_tags = ["beardog:family:nat-0:tower1".to_string()];
         let same_family = peer_tags.iter().any(|tag| {
-            tag.contains(&format!(":family:{}:", my_family))
-                || tag.contains(&format!("family_{}", my_family))
+            tag.contains(&format!(":family:{my_family}:"))
+                || tag.contains(&format!("family_{my_family}"))
         });
         assert!(same_family);
     }
@@ -86,7 +90,7 @@ mod unit_tests {
 
         let same_family = my_family_env.is_some_and(|my_family| {
             peer_tags.as_ref().is_some_and(|tags| {
-                tags.iter().any(|tag| tag.contains(&format!(":family:{}:", my_family)))
+                tags.iter().any(|tag| tag.contains(&format!(":family:{my_family}:")))
             })
         });
 
@@ -100,7 +104,7 @@ mod unit_tests {
 
         let same_family = my_family_env.is_some_and(|my_family| {
             peer_tags.as_ref().is_some_and(|tags| {
-                tags.iter().any(|tag| tag.contains(&format!(":family:{}:", my_family)))
+                tags.iter().any(|tag| tag.contains(&format!(":family:{my_family}:")))
             })
         });
 
@@ -114,7 +118,7 @@ mod unit_tests {
 
         let same_family = my_family_env.is_some_and(|my_family| {
             peer_tags.as_ref().is_some_and(|tags| {
-                tags.iter().any(|tag| tag.contains(&format!(":family:{}:", my_family)))
+                tags.iter().any(|tag| tag.contains(&format!(":family:{my_family}:")))
             })
         });
 
@@ -325,8 +329,7 @@ mod integration_tests {
         // Allow for some timing variance (9.9s to 10.1s)
         assert!(
             elapsed >= Duration::from_millis(9900) && elapsed <= Duration::from_millis(10100),
-            "Bridge should poll every 10 seconds, got: {:?}",
-            elapsed
+            "Bridge should poll every 10 seconds, got: {elapsed:?}"
         );
     }
 
@@ -348,8 +351,7 @@ mod integration_tests {
         assert!(result.is_err(), "Should timeout after 3 seconds");
         assert!(
             elapsed >= Duration::from_millis(2900) && elapsed <= Duration::from_millis(3100),
-            "Timeout should be ~3 seconds, got: {:?}",
-            elapsed
+            "Timeout should be ~3 seconds, got: {elapsed:?}"
         );
     }
 }

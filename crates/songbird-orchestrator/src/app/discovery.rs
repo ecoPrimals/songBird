@@ -36,6 +36,9 @@ use crate::trust::{TrustEscalationManager, TrustTimeouts};
 /// 4. **Hardware**: Trust based on hardware attestation (highest trust, longest timeout)
 ///
 /// This allows flexible security - start with zero trust, escalate as needed.
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub fn initialize_discovery(
     config: &CanonicalSongbirdConfig,
 ) -> Result<(Arc<TrustEscalationManager>, Option<Arc<AnonymousDiscoveryListener>>)> {

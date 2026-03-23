@@ -528,11 +528,7 @@ impl IpcHttpClientBuilder {
     ///
     /// Returns error if socket path cannot be discovered or pool cannot be created.
     pub async fn build(self) -> Result<IpcHttpClient> {
-        let socket_path = if let Some(path) = self.socket_path {
-            path
-        } else {
-            IpcHttpClient::discover_socket_path()
-        };
+        let socket_path = self.socket_path.unwrap_or_else(IpcHttpClient::discover_socket_path);
 
         // Create connection pool if requested
         let connection_pool = if let Some(max_size) = self.pool_size {

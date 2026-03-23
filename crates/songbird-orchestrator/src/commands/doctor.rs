@@ -264,6 +264,13 @@ where
 }
 
 /// Check if a port is available
+/// # Errors
+///
+/// Returns an error if the operation fails.
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by Axum, trait objects, or future I/O"
+)]
 pub async fn check_port_availability(port: u16) -> Result<bool> {
     use std::net::TcpListener;
 

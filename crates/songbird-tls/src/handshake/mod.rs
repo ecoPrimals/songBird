@@ -500,7 +500,7 @@ mod tests {
         let state_clone = hsm1.state();
 
         // State should be cloneable
-        let _state_copy = state_clone;
+        assert_eq!(state_clone, HandshakeState::Start);
         assert_eq!(hsm1.state(), HandshakeState::Start);
     }
 

@@ -72,7 +72,7 @@ struct Provider {
 
 /// Discover services by capability (NO Songbird imports!)
 async fn discover_by_capability(capability: &str) -> Result<Vec<Provider>> {
-    println!("🔍 Discovering services with capability: {}", capability);
+    println!("🔍 Discovering services with capability: {capability}");
 
     // Connect to Songbird IPC service
     let socket_path = std::env::var("SONGBIRD_IPC_SOCKET")
@@ -80,7 +80,7 @@ async fn discover_by_capability(capability: &str) -> Result<Vec<Provider>> {
 
     let mut stream = UnixStream::connect(&socket_path)
         .await
-        .context(format!("Failed to connect to {}", socket_path))?;
+        .context(format!("Failed to connect to {socket_path}"))?;
 
     // Create JSON-RPC request
     let request = JsonRpcRequest {
@@ -120,11 +120,10 @@ async fn discover_by_capability(capability: &str) -> Result<Vec<Provider>> {
 
 /// Connect to a discovered service (NO Songbird imports!)
 async fn connect_to_service(endpoint: &str) -> Result<UnixStream> {
-    println!("🔌 Connecting to service: {}", endpoint);
+    println!("🔌 Connecting to service: {endpoint}");
 
-    let stream = UnixStream::connect(endpoint)
-        .await
-        .context(format!("Failed to connect to {}", endpoint))?;
+    let stream =
+        UnixStream::connect(endpoint).await.context(format!("Failed to connect to {endpoint}"))?;
 
     println!("✅ Connected to service");
 

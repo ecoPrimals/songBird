@@ -111,6 +111,11 @@ impl HandshakeMessage {
 ///     println!("Message: {} ({} bytes)", msg.type_name(), msg.data.len());
 /// }
 /// ```
+///
+/// # Errors
+///
+/// Currently always returns `Ok`; reserved for future strict validation failures.
+#[expect(clippy::too_many_lines, reason = "TLS protocol requires sequential state machine steps")]
 pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
     let mut messages = Vec::new();
     let mut offset = 0;
@@ -248,14 +253,19 @@ pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
 /// # Returns
 /// * `Ok(HandshakeMessage)` - Parsed message
 /// * `Err` - If parsing fails or multiple messages found
+///
+/// # Errors
+///
+/// Returns an error if zero or more than one handshake message is present after parsing.
 pub fn parse_single_handshake_message(data: &[u8]) -> Result<HandshakeMessage> {
     let messages = parse_handshake_messages(data)?;
 
     match messages.len() {
-        1 => {
-            // Safe: We just verified length is exactly 1
-            Ok(messages.into_iter().next().expect("BUG: messages.len() == 1 but no first element"))
-        }
+        1 => messages.into_iter().next().ok_or_else(|| {
+            crate::error::Error::TlsHandshake(
+                "Internal error: empty handshake message list".to_string(),
+            )
+        }),
         n => Err(crate::error::Error::TlsHandshake(format!(
             "Expected 1 handshake message, found {n}"
         ))),

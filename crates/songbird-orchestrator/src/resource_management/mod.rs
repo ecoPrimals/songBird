@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg_attr(
+    test,
+    expect(clippy::float_cmp, reason = "test: exact float comparison is intentional")
+)]
 //! Resource Management & Fairness
 //!
 //! Implements:
@@ -70,6 +74,9 @@ impl ResourceAmount {
     }
 
     /// Add two resource amounts (must have same unit)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn add(&self, other: &Self) -> Result<Self> {
         if self.unit != other.unit {
             anyhow::bail!("Cannot add resources with different units");
@@ -81,6 +88,9 @@ impl ResourceAmount {
     }
 
     /// Subtract two resource amounts (must have same unit)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn sub(&self, other: &Self) -> Result<Self> {
         if self.unit != other.unit {
             anyhow::bail!("Cannot subtract resources with different units");

@@ -1,6 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(
     clippy::unwrap_used,
@@ -25,7 +48,7 @@ fn test_circuit_breaker_creation() {
 #[test]
 fn test_circuit_breaker_debug() {
     let breaker = CircuitBreaker;
-    let debug = format!("{:?}", breaker);
+    let debug = format!("{breaker:?}");
     assert!(debug.contains("CircuitBreaker"));
 }
 
@@ -35,7 +58,7 @@ fn test_circuit_breaker_clone() {
     let _ = breaker;
     // Circuit breaker is Copy, so original still valid
     let breaker2 = CircuitBreaker;
-    assert!(format!("{:?}", breaker2).contains("CircuitBreaker"));
+    assert!(format!("{breaker2:?}").contains("CircuitBreaker"));
 }
 
 #[test]
@@ -43,8 +66,8 @@ fn test_multiple_circuit_breakers() {
     let breaker1 = CircuitBreaker;
     let breaker2 = CircuitBreaker;
     // Multiple circuit breakers can coexist
-    assert!(format!("{:?}", breaker1).contains("CircuitBreaker"));
-    assert!(format!("{:?}", breaker2).contains("CircuitBreaker"));
+    assert!(format!("{breaker1:?}").contains("CircuitBreaker"));
+    assert!(format!("{breaker2:?}").contains("CircuitBreaker"));
 }
 
 #[test]

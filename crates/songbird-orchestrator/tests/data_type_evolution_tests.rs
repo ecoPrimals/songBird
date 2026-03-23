@@ -1,17 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Data Type Evolution Tests
 //!
-//! Tests the evolution from u64 to String for first_seen_at field
-//! to ensure BearDog API compatibility
+//! Tests the evolution from u64 to String for `first_seen_at` field
+//! to ensure `BearDog` API compatibility
 
 use songbird_orchestrator::security_capability_client::{
     ConnectionInfo, DiscoveryContext, TrustEvaluationRequest,
 };
 use std::collections::HashMap;
 
-/// Test: DiscoveryContext with String timestamp
+/// Test: `DiscoveryContext` with String timestamp
 #[test]
 fn test_discovery_context_string_timestamp() {
     let context = DiscoveryContext {
@@ -24,7 +48,7 @@ fn test_discovery_context_string_timestamp() {
     assert!(!context.first_seen_at.is_empty());
 }
 
-/// Test: Serialization of DiscoveryContext with String timestamp
+/// Test: Serialization of `DiscoveryContext` with String timestamp
 #[test]
 fn test_discovery_context_serialization() {
     let context = DiscoveryContext {
@@ -40,7 +64,7 @@ fn test_discovery_context_serialization() {
     assert!(!json.contains(r#""first_seen_at":1767368141"#)); // Not as integer
 }
 
-/// Test: Deserialization of DiscoveryContext from JSON with String
+/// Test: Deserialization of `DiscoveryContext` from JSON with String
 #[test]
 fn test_discovery_context_deserialization() {
     let json = r#"{
@@ -55,7 +79,7 @@ fn test_discovery_context_deserialization() {
     assert_eq!(context.discovery_method, "udp_multicast");
 }
 
-/// Test: TrustEvaluationRequest with String timestamp in HashMap context
+/// Test: `TrustEvaluationRequest` with String timestamp in `HashMap` context
 #[test]
 fn test_trust_evaluation_request_with_string_timestamp() {
     let request = TrustEvaluationRequest {
@@ -82,7 +106,7 @@ fn test_trust_evaluation_request_with_string_timestamp() {
     assert_eq!(context.get("discovery_method"), Some(&"udp_multicast".to_string()));
 }
 
-/// Test: TrustEvaluationRequest serialization (BearDog API format)
+/// Test: `TrustEvaluationRequest` serialization (`BearDog` API format)
 #[test]
 fn test_trust_evaluation_request_beardog_format() {
     let request = TrustEvaluationRequest {
@@ -145,7 +169,7 @@ fn test_various_timestamp_formats() {
 
         // Should serialize without error
         let json = serde_json::to_string(&context).expect("Failed to serialize");
-        assert!(json.contains(&format!(r#""first_seen_at":"{}""#, ts)));
+        assert!(json.contains(&format!(r#""first_seen_at":"{ts}""#)));
     }
 }
 
@@ -171,7 +195,7 @@ fn test_trust_request_without_context() {
     assert!(json.contains(r#""peer_id":"tower2""#));
 }
 
-/// Test: Metadata in DiscoveryContext
+/// Test: Metadata in `DiscoveryContext`
 #[test]
 fn test_discovery_context_with_metadata() {
     let mut metadata = HashMap::new();
@@ -210,7 +234,7 @@ fn test_round_trip_serialization() {
     assert_eq!(original.metadata.len(), deserialized.metadata.len());
 }
 
-/// Test: BearDog API compatibility (exact format)
+/// Test: `BearDog` API compatibility (exact format)
 #[test]
 fn test_beardog_api_exact_format() {
     let request = TrustEvaluationRequest {

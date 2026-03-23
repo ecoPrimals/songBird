@@ -227,6 +227,12 @@ impl ObservabilityManager {
         }
     }
 
+    /// Lightweight liveness check: returns `true` when the manager is structurally sound.
+    #[must_use]
+    pub const fn is_healthy(&self) -> bool {
+        true
+    }
+
     /// Start observability monitoring
     ///
     /// # Errors

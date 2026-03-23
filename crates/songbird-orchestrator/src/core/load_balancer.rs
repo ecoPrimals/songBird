@@ -42,6 +42,10 @@ impl LoadBalancer {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn initialize(&mut self) -> SongbirdResult<()> {
         // Initialize load balancer
         Ok(())
@@ -51,6 +55,10 @@ impl LoadBalancer {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn start(&mut self) -> SongbirdResult<()> {
         // Start load balancing
         Ok(())
@@ -60,6 +68,10 @@ impl LoadBalancer {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn stop(&mut self) -> SongbirdResult<()> {
         // Stop load balancing
         Ok(())
@@ -69,6 +81,10 @@ impl LoadBalancer {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn health_check(&self) -> SongbirdResult<ComponentHealth> {
         Ok(ComponentHealth {
             status: HealthStatus::Healthy,
@@ -88,7 +104,7 @@ mod tests {
         let config = CanonicalLoadBalancerConfig::default();
         let lb = LoadBalancer::new(config);
 
-        assert!(format!("{:?}", lb).contains("LoadBalancer"));
+        assert!(format!("{lb:?}").contains("LoadBalancer"));
     }
 
     #[test]
@@ -104,8 +120,8 @@ mod tests {
 
         let lb = LoadBalancer::new(config);
 
-        assert!(format!("{:?}", lb).contains("LoadBalancer"));
-        assert!(format!("{:?}", lb).contains("LeastConnections"));
+        assert!(format!("{lb:?}").contains("LoadBalancer"));
+        assert!(format!("{lb:?}").contains("LeastConnections"));
     }
 
     #[tokio::test]
@@ -205,13 +221,13 @@ mod tests {
         let strategy = LoadBalancingStrategy::RoundRobin;
         let json = serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
         let deserialized: LoadBalancingStrategy =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Parsing failed: {}", e),
+                message: format!("Parsing failed: {e}"),
                 debug_info: None,
             })?;
 
@@ -239,7 +255,7 @@ mod tests {
             };
 
             let lb = LoadBalancer::new(config);
-            assert!(format!("{:?}", lb).contains("LoadBalancer"));
+            assert!(format!("{lb:?}").contains("LoadBalancer"));
         }
     }
 
@@ -267,7 +283,7 @@ mod tests {
         let config = CanonicalLoadBalancerConfig::default();
         let lb = LoadBalancer::new(config);
 
-        let debug_string = format!("{:?}", lb);
+        let debug_string = format!("{lb:?}");
         assert!(debug_string.contains("LoadBalancer"));
         assert!(debug_string.contains("config"));
         assert!(debug_string.contains("strategy"));

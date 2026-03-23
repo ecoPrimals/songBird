@@ -107,7 +107,7 @@ pub enum OnionError {
 #[cfg(feature = "standalone")]
 impl From<ed25519_dalek::SignatureError> for OnionError {
     fn from(e: ed25519_dalek::SignatureError) -> Self {
-        OnionError::Signature(e.to_string())
+        Self::Signature(e.to_string())
     }
 }
 

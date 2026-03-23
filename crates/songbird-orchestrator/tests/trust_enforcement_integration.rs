@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::ignore_without_reason,
+    clippy::unreadable_literal,
+    clippy::no_effect_underscore_binding,
+    clippy::float_cmp,
+    clippy::default_trait_access,
+    clippy::needless_collect,
+    clippy::unused_async,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::items_after_statements,
+    clippy::unnecessary_wraps,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::match_same_arms,
+    clippy::future_not_send,
+    reason = "integration tests: strict clippy matches crate [lints] policy"
+)]
+
 //! Integration tests for trust enforcement
 //!
 //! Tests the complete flow from discovery → trust evaluation → peer acceptance/rejection
@@ -61,7 +85,7 @@ async fn test_different_family_prompt() {
     // Different family should trigger user prompt
 }
 
-/// Test: PeerTrustDecision enum construction
+/// Test: `PeerTrustDecision` enum construction
 #[test]
 fn test_peer_trust_decision_auto_accept() {
     let decision = PeerTrustDecision::AutoAccept {
@@ -83,7 +107,7 @@ fn test_peer_trust_decision_auto_accept() {
     }
 }
 
-/// Test: PeerTrustDecision::PromptUser construction
+/// Test: `PeerTrustDecision::PromptUser` construction
 #[test]
 fn test_peer_trust_decision_prompt_user() {
     let decision = PeerTrustDecision::PromptUser {
@@ -106,7 +130,7 @@ fn test_peer_trust_decision_prompt_user() {
     }
 }
 
-/// Test: PeerTrustDecision::Reject construction
+/// Test: `PeerTrustDecision::Reject` construction
 #[test]
 fn test_peer_trust_decision_reject() {
     let decision = PeerTrustDecision::Reject {
@@ -126,7 +150,7 @@ fn test_peer_trust_decision_reject() {
     }
 }
 
-/// Test: DiscoveredPeer struct creation
+/// Test: `DiscoveredPeer` struct creation
 #[test]
 fn test_discovered_peer_creation() {
     let peer = DiscoveredPeer {
@@ -211,7 +235,7 @@ fn test_confidence_levels() {
     }
 }
 
-/// Test: Agnostic pattern - no hardcoded "BearDog" in peer struct
+/// Test: Agnostic pattern - no hardcoded "`BearDog`" in peer struct
 #[test]
 fn test_agnostic_pattern() {
     let peer = DiscoveredPeer {
@@ -225,7 +249,7 @@ fn test_agnostic_pattern() {
     };
 
     // Tags are generic - could be from any security provider
-    assert!(!format!("{:?}", peer).contains("BearDog"));
+    assert!(!format!("{peer:?}").contains("BearDog"));
     assert!(!peer.endpoint.contains("beardog"));
 
     // Only the tag content mentions the provider, which is opaque to Songbird
@@ -258,9 +282,9 @@ fn test_trust_decision_performance() {
 
     for i in 0..1000 {
         let decision = PeerTrustDecision::AutoAccept {
-            reason: format!("test_reason_{}", i),
+            reason: format!("test_reason_{i}"),
             confidence: 1.0,
-            encryption_tag: Some(format!("tag_{}", i)),
+            encryption_tag: Some(format!("tag_{i}")),
         };
 
         match decision {
@@ -272,6 +296,6 @@ fn test_trust_decision_performance() {
     }
 
     let duration = start.elapsed();
-    println!("1000 trust decisions in {:?}", duration);
+    println!("1000 trust decisions in {duration:?}");
     assert!(duration.as_millis() < 100, "Trust decisions should be fast");
 }

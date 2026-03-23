@@ -89,6 +89,9 @@ impl PrivilegeManager {
     /// 3. If not, explain clearly to user
     /// 4. Offer to help configure
     /// 5. Verify it worked
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn configure_firewall(&self, ports: &[u16]) -> Result<()> {
         info!("🔐 Checking firewall configuration...");
 

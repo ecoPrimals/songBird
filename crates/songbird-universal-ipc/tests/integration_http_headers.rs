@@ -85,10 +85,9 @@ async fn test_e2e_json_rpc_to_http_headers() {
             let error_msg = e.to_string();
             assert!(
                 !error_msg.contains("header") || !error_msg.contains("missing"),
-                "Should not have header-related errors: {}",
-                error_msg
+                "Should not have header-related errors: {error_msg}"
             );
-            println!("⚠️  E2E test: Network error (expected without live beardog): {}", error_msg);
+            println!("⚠️  E2E test: Network error (expected without live beardog): {error_msg}");
         }
     }
 }
@@ -133,13 +132,13 @@ async fn test_e2e_concurrent_requests_different_headers() {
         let handler_clone = handler.clone();
         let task = tokio::spawn(async move {
             let mut headers = HashMap::new();
-            headers.insert("X-Request-ID".to_string(), format!("req-{}", i));
-            headers.insert("X-Test-Value".to_string(), format!("test-{}", i));
+            headers.insert("X-Request-ID".to_string(), format!("req-{i}"));
+            headers.insert("X-Test-Value".to_string(), format!("test-{i}"));
 
             handler_clone
                 .handle_post(
                     "https://httpbin.org/post",
-                    &format!(r#"{{"request_num":{}}}"#, i),
+                    &format!(r#"{{"request_num":{i}}}"#),
                     Some("application/json"),
                     headers,
                 )
@@ -153,7 +152,7 @@ async fn test_e2e_concurrent_requests_different_headers() {
 
     // Verify all completed without panicking
     for (i, result) in results.iter().enumerate() {
-        assert!(result.is_ok(), "Request {} should not panic", i);
+        assert!(result.is_ok(), "Request {i} should not panic");
     }
 }
 
@@ -188,7 +187,7 @@ async fn test_e2e_stress_many_headers() {
     // Create 100 headers
     let mut headers = HashMap::new();
     for i in 0..100 {
-        headers.insert(format!("X-Header-{:03}", i), format!("value-{}", i));
+        headers.insert(format!("X-Header-{i:03}"), format!("value-{i}"));
     }
 
     let result = handler
@@ -203,7 +202,7 @@ async fn test_e2e_stress_many_headers() {
     // Should handle large number of headers
     match result {
         Ok(_) => println!("✅ Successfully handled 100 headers"),
-        Err(e) => println!("⚠️  Expected network error with 100 headers: {}", e),
+        Err(e) => println!("⚠️  Expected network error with 100 headers: {e}"),
     }
 }
 
@@ -244,15 +243,13 @@ async fn test_e2e_auth_header_patterns() {
 
         // Verify handler processes auth headers without error
         match result {
-            Ok(_) => println!("✅ {} auth pattern handled correctly", provider),
+            Ok(_) => println!("✅ {provider} auth pattern handled correctly"),
             Err(e) => {
                 // Should be network error, not auth header error
                 let error_msg = e.to_string();
                 assert!(
                     !error_msg.contains("auth") && !error_msg.contains("key"),
-                    "{} should not have auth errors: {}",
-                    provider,
-                    error_msg
+                    "{provider} should not have auth errors: {error_msg}"
                 );
             }
         }

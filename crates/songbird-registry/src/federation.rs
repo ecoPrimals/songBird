@@ -39,7 +39,7 @@ impl FederationState {
     }
 
     /// Mark the node as joined to the federation.
-    pub fn join(&mut self) {
+    pub const fn join(&mut self) {
         self.joined = true;
     }
 

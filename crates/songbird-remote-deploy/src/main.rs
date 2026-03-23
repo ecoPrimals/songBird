@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Thin entry point for the `songbird-deploy` binary.
-//! The UniBin `songbird deploy` delegates to [`songbird_remote_deploy::run`].
+//! The `UniBin` `songbird deploy` delegates to [`songbird_remote_deploy::run`].
 
 use clap::Parser;
 

@@ -172,6 +172,9 @@ impl AccessToken {
     }
 
     /// Encode as JWT string (✅ Pure Rust using `RustCrypto` hmac + sha2!)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn encode(&self, secret: &[u8]) -> Result<String> {
         let claims = Claims {
             sub: self.sub.clone(),
@@ -185,6 +188,9 @@ impl AccessToken {
     }
 
     /// Decode from JWT string (✅ Pure Rust using `RustCrypto` hmac + sha2!)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub fn decode(token_str: &str, secret: &[u8]) -> Result<Self> {
         let claims: Claims = pure_rust_jwt::decode(token_str, secret)?;
 
@@ -242,6 +248,13 @@ impl TokenValidator {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     pub async fn validate(&self, token: &AccessToken) -> Result<Identity> {
         // Check expiry
         if token.is_expired() {

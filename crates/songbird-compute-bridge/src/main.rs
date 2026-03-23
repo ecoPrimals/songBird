@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Thin entry point for the `songbird-compute-bridge` binary.
-//! The UniBin `songbird compute-bridge` delegates to [`songbird_compute_bridge::run`].
+//! The `UniBin` `songbird compute-bridge` delegates to [`songbird_compute_bridge::run`].
 
 use clap::Parser;
 

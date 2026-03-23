@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::uninlined_format_args,
+    clippy::unused_async,
+    reason = "chaos tests build synthetic TLS servers and timing-sensitive harness code"
+)]
+
 //! TLS Chaos Tests
 //!
 //! These tests verify TLS handshake behavior under chaotic conditions:
@@ -15,7 +22,7 @@ use tokio::time::{Duration, sleep};
 
 /// Test: Server that accepts connection but never responds
 #[tokio::test]
-#[ignore] // Chaos test - run explicitly
+#[ignore = "chaos test; run explicitly"]
 async fn test_server_silent_timeout() {
     // Bind to ephemeral port
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -47,7 +54,7 @@ async fn test_server_silent_timeout() {
 
 /// Test: Server that drops connection immediately after accept
 #[tokio::test]
-#[ignore] // Chaos test
+#[ignore = "chaos test"]
 async fn test_server_immediate_disconnect() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -70,7 +77,7 @@ async fn test_server_immediate_disconnect() {
 
 /// Test: Server that sends partial response then hangs
 #[tokio::test]
-#[ignore] // Chaos test
+#[ignore = "chaos test"]
 async fn test_server_partial_response() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -99,7 +106,7 @@ async fn test_server_partial_response() {
 
 /// Test: Server that sends slow byte-by-byte responses
 #[tokio::test]
-#[ignore] // Chaos test
+#[ignore = "chaos test"]
 async fn test_server_slow_byte_drip() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -132,7 +139,7 @@ async fn test_server_slow_byte_drip() {
 
 /// Test: Concurrent handshake attempts
 #[tokio::test]
-#[ignore] // Chaos test - resource intensive
+#[ignore = "chaos test; resource intensive"]
 async fn test_concurrent_handshakes() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -183,7 +190,7 @@ async fn test_concurrent_handshakes() {
 
 /// Test: Connection reset during handshake
 #[tokio::test]
-#[ignore] // Chaos test
+#[ignore = "chaos test"]
 async fn test_connection_reset_mid_handshake() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -223,7 +230,7 @@ async fn test_connection_reset_mid_handshake() {
 
 /// Test: Random delays between handshake steps
 #[tokio::test]
-#[ignore] // Chaos test
+#[ignore = "chaos test"]
 async fn test_random_delays_handshake() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -259,8 +266,8 @@ async fn test_random_delays_handshake() {
     let mut stream = TcpStream::connect(addr).await.unwrap();
 
     // Try handshake with patience
-    for i in 0..5 {
-        let data = vec![i as u8; 256];
+    for i in 0u8..5 {
+        let data = vec![i; 256];
         stream.write_all(&data).await.unwrap();
 
         let mut buf = vec![0u8; 10];
@@ -275,7 +282,7 @@ async fn test_random_delays_handshake() {
 
 /// Test: Memory pressure during handshake (large buffers)
 #[tokio::test]
-#[ignore] // Chaos test - memory intensive
+#[ignore = "chaos test; memory intensive"]
 async fn test_memory_pressure_handshake() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -306,9 +313,8 @@ async fn test_memory_pressure_handshake() {
     let result = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
             match stream.read(&mut buf).await {
-                Ok(0) => break,
-                Ok(n) => total_read += n,
-                Err(_) => break,
+                Ok(n) if n > 0 => total_read += n,
+                _ => break,
             }
             if total_read >= 100_000 {
                 break;

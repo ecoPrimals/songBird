@@ -40,7 +40,7 @@ async fn fault_test_concurrent_invalid_commands() {
 
     for i in 0..50 {
         join_set.spawn(async move {
-            clean_cmd().arg(format!("invalid-command-{}", i)).assert().failure();
+            clean_cmd().arg(format!("invalid-command-{i}")).assert().failure();
         });
     }
 
@@ -303,7 +303,7 @@ async fn fault_test_special_characters_in_env() {
         let value = value.to_string();
         join_set.spawn(async move {
             let mut cmd = clean_cmd();
-            cmd.env(format!("SPECIAL_{}", i), value);
+            cmd.env(format!("SPECIAL_{i}"), value);
             cmd.arg("--version").assert().success();
         });
     }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! IpcHttpClient Demo - First reqwest Elimination Example
+//! `IpcHttpClient` Demo - First reqwest Elimination Example
 //!
 //! This demonstrates the Tower Atomic self-delegation pattern in action.
 //! It shows how to migrate from `reqwest` to `IpcHttpClient` for TRUE ecoBin compliance.

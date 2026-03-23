@@ -13,12 +13,18 @@ use super::payload::{capability_registration_params, capability_unregister_param
 use super::transport::connect_platform;
 
 /// Register Songbird's capabilities with the Neural API
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn register_capabilities() -> Result<()> {
     let config = CapabilityRegistrationConfig::from_env()?;
     register_capabilities_with(&config).await
 }
 
 /// Register capabilities with explicit config (concurrent-safe, testable)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -> Result<()> {
     info!("🔄 Registering capabilities with Neural API...");
 
@@ -91,6 +97,9 @@ pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -
 }
 
 /// Unregister capabilities on shutdown (optional but recommended)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn unregister_capabilities() -> Result<()> {
     let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
         if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
@@ -106,6 +115,9 @@ pub async fn unregister_capabilities() -> Result<()> {
 }
 
 /// Unregister capabilities with explicit config (concurrent-safe, testable)
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn unregister_capabilities_with(neural_socket: &str, primal_id: &str) -> Result<()> {
     info!("🔄 Unregistering capabilities from Neural API...");
 

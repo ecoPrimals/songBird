@@ -144,6 +144,9 @@ impl RateLimiter {
     /// - Non-blocking: Uses `tokio::sync::RwLock`
     /// - Fair: Per-client limits
     /// - Automatic: Token refill
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn check(&self, client_id: &str) -> Result<()> {
         let mut buckets = self.buckets.write().await;
 
@@ -199,7 +202,7 @@ mod tests {
 
         // Should allow 10 requests
         for i in 0..10 {
-            assert!(limiter.check("test_client").await.is_ok(), "Request {} should be allowed", i);
+            assert!(limiter.check("test_client").await.is_ok(), "Request {i} should be allowed");
         }
     }
 

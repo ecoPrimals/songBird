@@ -52,6 +52,9 @@ pub struct Cli {
 }
 
 /// Handle CLI command execution - main entry point
+/// # Errors
+///
+/// Returns an error if the operation fails.
 pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()> {
     match command {
         Commands::Init {

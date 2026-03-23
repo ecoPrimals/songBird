@@ -101,6 +101,9 @@ impl EnhancedCapabilityRouter {
     /// - Maintaining backward compatibility
     /// - Clear fallback chain
     /// - Modern idiomatic Rust
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn route_task(&self, task: &Task) -> SongbirdResult<RoutingDecision> {
         info!("🎯 Routing task: {}", task.task_type);
 
@@ -267,6 +270,10 @@ impl EnhancedCapabilityRouter {
     /// 1. Prefer services with fewer active connections
     /// 2. Fall back to round-robin if load is equal
     /// 3. Consider service health scores
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn select_best_service<'a>(
         &self,
         services: &'a [crate::service_registry::RegisteredService],
@@ -285,6 +292,10 @@ impl EnhancedCapabilityRouter {
     /// - CPU usage below threshold (80%)
     /// - Memory available
     /// - Active task count below limit
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by Axum, trait objects, or future I/O"
+    )]
     async fn has_local_capacity(&self) -> bool {
         use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 
@@ -390,6 +401,9 @@ impl EnhancedCapabilityRouter {
     }
 
     /// Execute task on registered service (NEW)
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
     pub async fn execute_on_registered_service(
         &self,
         service_id: &str,

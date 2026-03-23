@@ -33,7 +33,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Coverage tests for songbird_discovery::primal_self_knowledge
+//! Coverage tests for `songbird_discovery::primal_self_knowledge`
 //!
 //! Tests the self-knowledge discovery architecture with env-safe patterns.
 
@@ -100,7 +100,7 @@ fn test_primal_identity_clone_debug() {
     };
     let cloned = identity.clone();
     assert_eq!(identity.name, cloned.name);
-    let debug = format!("{:?}", identity);
+    let debug = format!("{identity:?}");
     assert!(debug.contains("test"));
 }
 
@@ -139,7 +139,7 @@ fn test_primal_info_clone_debug() {
     };
     let cloned = info.clone();
     assert_eq!(info.name, cloned.name);
-    let debug = format!("{:?}", info);
+    let debug = format!("{info:?}");
     assert!(debug.contains("test-primal"));
 }
 
@@ -234,7 +234,7 @@ async fn test_discover_primal_not_found() {
         } => {
             assert!(reason.contains("nonexistent"));
         }
-        e => panic!("Expected DiscoveryFailed, got: {:?}", e),
+        e => panic!("Expected DiscoveryFailed, got: {e:?}"),
     }
 }
 
@@ -335,6 +335,6 @@ async fn test_dns_srv_discovery_fails_gracefully() {
         } => {
             assert!(reason.contains("DNS SRV"));
         }
-        e => panic!("Expected DiscoveryFailed, got: {:?}", e),
+        e => panic!("Expected DiscoveryFailed, got: {e:?}"),
     }
 }
