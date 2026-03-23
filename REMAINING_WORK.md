@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: March 22, 2026  
+**Date**: March 23, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 22, 2026 (Session 7 — Deep Coverage, Zero-Copy, Fuzz & Mock Evolution)
+**Last Deep Debt Audit**: March 23, 2026 (Session 9 — Stub Evolution, Smart Refactoring & Health Probe Modernization)
 
 ---
 
@@ -17,7 +17,7 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery + cargo`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` passes) |
-| **Files >1000 lines** | 0 (all source files verified under limit; max 977 lines after refactoring) |
+| **Files >1000 lines** | 0 (max 977; record.rs 911→454, hardcoded_elimination.rs 931→532 via smart refactor) |
 | **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[expect]`) |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining are in `#[cfg(test)]` modules — verified via line-by-line audit) |
@@ -26,7 +26,7 @@
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
 | **`#[allow()]` vs `#[expect()]`** | Fully correct: `#[expect(reason)]` only where lint fires, `#[allow(reason)]` everywhere else |
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
-| **Hardcoded elimination** | All ports env-driven (tarpc, CORS, BirdSong, network ports); hardcoded `localhost:8000`/`8002` replaced with env + const fallback |
+| **Hardcoded elimination** | All ports env-driven; DNS-SD/mDNS/broadcast discovery real implementations; security health via crypto-provider probe |
 | **JSON-RPC handlers** | 12 semantic methods: 10 wrapping REST + `health.liveness` + `capabilities.list` (wateringHole Nest Atomic) |
 | **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors with delegation paths |
 | **C dependencies** | `ring` opt-in only (`ring-crypto` feature); not default in any crate; QUIC tests gated behind `ring-crypto` |
@@ -48,6 +48,36 @@
 | **Total Rust lines** | ~406,455 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members (`songbird-crypto-provider` added) |
 | **TLS logging** | Diagnostic key material logging evolved to `trace!` level (was `info!` — security fix) |
+
+---
+
+## Completed (Mar 23, 2026 — Stub Evolution, Smart Refactoring & Health Probe Modernization Session 9)
+
+### Wave 62: CLI Discovery Stubs → Real Implementations
+- [x] `discover_via_subnet_scan` — real TCP probes on local /24 via `tokio::net::TcpStream`
+- [x] `discover_via_dns` — DNS-SD SRV lookup via `hickory-resolver::TokioAsyncResolver`
+- [x] `discover_via_mdns` — UDP multicast query to mDNS group with JSON response parsing
+- [x] `discover_via_broadcast` — UDP broadcast with `SO_BROADCAST` and response collection
+- [x] Fixed pre-existing `clap` missing `env` feature in `songbird-cli`
+
+### Wave 62: Smart Refactor — `tls/record.rs` (911 → 454 lines)
+- [x] Extracted `record_crypto.rs` (140 lines): `build_nonce()`, `cipher_encrypt()`/`cipher_decrypt()`, `cipher_suite_name()`
+- [x] Replaced duplicated inline alert tables with existing `TlsAlert::parse()` from `alert.rs`
+- [x] Consolidated verbose diagnostic trace blocks into concise structured logging
+
+### Wave 62: Smart Refactor — `canonical/hardcoded_elimination.rs` (931 → 532 lines)
+- [x] Extracted `port_config.rs` (340 lines): `PortConfig`, env-driven loading, validation, capability-registry bridge
+- [x] Transparent re-export — zero downstream API changes
+
+### Wave 62: Security Health Stubs → Real Crypto-Provider Probes
+- [x] `ServerManager::check_security_integration_health` — orchestrator status + `discover_crypto_provider()`
+- [x] `SongbirdOrchestrator::check_security_integration_health` — same real probe pattern
+
+### Wave 62: Debris Cleanup
+- [x] Removed stale plan files from crates (4 REFACTOR_PLAN.md files)
+- [x] Updated `specs/00_SPECIFICATIONS_INDEX.md` version/date alignment
+- [x] Fixed `examples/README.md` — removed references to nonexistent `legacy/` and `clients/rust/`
+- [x] Updated root docs (README.md, REMAINING_WORK.md) with current metrics
 
 ---
 

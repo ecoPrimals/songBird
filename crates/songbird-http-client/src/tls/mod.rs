@@ -28,6 +28,7 @@ pub mod handshake_v2; // Alternative modularized handshake
 pub mod negotiation;
 pub mod profiler;
 pub mod record;
+pub(crate) mod record_crypto;
 pub mod server; // ✅ REFACTORED: Modular TLS 1.3 server (6 focused modules)
 pub mod session;
 pub mod version; // ✅ NEW: TLS version config (1.3 + secure 1.2 fallback)

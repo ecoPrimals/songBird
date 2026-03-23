@@ -13,6 +13,8 @@ pub mod environment;
 pub mod hardcoded_elimination;
 /// Load balancer and traffic steering settings.
 pub mod load_balancing;
+/// Service port configuration (env-driven, validated, capability-bridged).
+pub mod port_config;
 // Network configuration - refactored into modular structure (Nov 10, 2025)
 // Previously: single 1,261-line file
 // Now: organized into domain modules with full backward compatibility

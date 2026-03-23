@@ -20,7 +20,6 @@ cargo run --example ipc_client_primal
 
 ### Client Libraries
 
-- `clients/rust/` — Rust tarpc client (standalone crate)
 - `clients/python/` — Python JSON-RPC + WebSocket clients
 - `clients/javascript/` — JavaScript JSON-RPC + WebSocket clients
 
@@ -32,7 +31,6 @@ cargo run --example ipc_client_primal
 
 - `config/` — Example TOML configurations for capability discovery, ecosystem integration, and BearDog delegation
 
-## Archived
+## Experimental
 
-- `legacy/` — Pre-ecoBin v2.0 examples (uses reqwest; historical reference only)
 - `future/` — Experimental/proposed API patterns (may not compile against current workspace)

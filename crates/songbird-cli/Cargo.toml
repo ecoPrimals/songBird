@@ -53,9 +53,10 @@ term_size = "0.3"
 # libc removed - not used, evolved to pure Rust alternatives
 tokio = { workspace = true }
 fastrand = { workspace = true }
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 colored = "2.0"
 songbird-http-client = { path = "../songbird-http-client" }
+hickory-resolver = { workspace = true }
 tracing = "0.1"
 dialoguer = "0.11"
 console = "0.15"

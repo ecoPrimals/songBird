@@ -182,20 +182,33 @@ impl ServerManager {
         true
     }
 
-    /// Check security integration health
+    /// Check security integration health via crypto-provider discovery
     async fn check_security_integration_health(&self, orchestrator: &SongbirdOrchestrator) -> bool {
-        // Security integration health validation
-        // let security_integration = orchestrator.security_integration(); // Temporarily disabled
-
-        // Check if security integration is operational
-        // match security_integration.get_security_health().await { // Temporarily disabled
-        match Ok::<bool, &str>(true) {
-            Ok(_) => {
-                tracing::debug!("Security integration responding to health check");
-                true
+        // Probe the orchestrator status first — if the core is unhealthy the
+        // security layer cannot be considered healthy either.
+        match orchestrator.get_status().await {
+            Ok(status) => {
+                tracing::debug!(
+                    gaming = status.gaming_active,
+                    federation = status.federation_connected,
+                    "Security: orchestrator status retrieved"
+                );
+                // Additionally verify the crypto provider is discoverable.
+                match crate::primal_discovery::discover_crypto_provider().await {
+                    Ok(_socket) => {
+                        tracing::debug!("Security: crypto provider discovered");
+                        true
+                    }
+                    Err(e) => {
+                        tracing::warn!("Security: crypto provider not available: {e}");
+                        // Degraded but not fatal — report unhealthy so the
+                        // health dashboard surfaces the gap.
+                        false
+                    }
+                }
             }
             Err(e) => {
-                tracing::warn!("Security integration health check failed: {}", e);
+                tracing::warn!("Security health check: get_status failed: {e}");
                 false
             }
         }

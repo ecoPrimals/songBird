@@ -1,8 +1,8 @@
 # Songbird Specifications Index
 
-**Last Updated:** February 8, 2026  
-**Version:** v3.36.0  
-**Status:** ✅ **WORLD-CLASS** - Multi-Protocol + IGD Router Evolution
+**Last Updated:** March 23, 2026  
+**Version:** v0.2.1  
+**Status:** Active Development — Stub Evolution, Smart Refactoring, Health Probes
 
 ---
 

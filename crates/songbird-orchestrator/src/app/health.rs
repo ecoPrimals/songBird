@@ -179,17 +179,15 @@ impl SongbirdOrchestrator {
         true
     }
 
-    /// Check security integration health
+    /// Check security integration health via crypto-provider discovery
     pub(crate) async fn check_security_integration_health(&self) -> bool {
-        // Validate security integration is operational
-        // Temporarily disabled security health check
-        match Ok::<bool, &str>(true) {
-            Ok(_) => {
-                debug!("Security integration health check completed");
+        match crate::primal_discovery::discover_crypto_provider().await {
+            Ok(_socket) => {
+                debug!("Security: crypto provider discovered and healthy");
                 true
             }
             Err(e) => {
-                warn!("Security integration health check failed: {}", e);
+                warn!("Security: crypto provider not reachable: {e}");
                 false
             }
         }
