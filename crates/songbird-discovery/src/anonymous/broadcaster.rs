@@ -658,12 +658,7 @@ mod tests {
             protocols: vec!["https".into()],
             preference: 1,
         }];
-        let msg = AnonymousDiscoveryMessage::new_v3(
-            "nid",
-            "nn",
-            endpoints,
-            vec!["cap".into()],
-        );
+        let msg = AnonymousDiscoveryMessage::new_v3("nid", "nn", endpoints, vec!["cap".into()]);
         let bytes = msg.to_bytes().expect("to_bytes");
         let back = AnonymousDiscoveryMessage::from_bytes(&bytes).expect("from_bytes");
         assert_eq!(back.version, "3.0");

@@ -10,14 +10,14 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 10,233 passed, 0 failed, 266 ignored |
+| **Tests** | 10,235 passed, 0 failed, 266 ignored |
 | **Line Coverage** | ~66.59% (llvm-cov measured; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max 959, test file; production max 578 `crypto.rs` after refactor) |
+| **Files >1000 lines** | 0 (max 959 test file; production max 915 `core.rs`) |
 | **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[expect]`) |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
@@ -49,7 +49,7 @@
 | **`#[warn(missing_docs)]`** | 30/30 crates (all library crates have the lint enabled) |
 | **Dependencies** | ~412 unique (`sysinfo`/`rayon`/`crossbeam` eliminated); duplicates aligned (base32→0.5, base64→0.22, hostname→0.4, thiserror→2.0) |
 | **Build time** | ~45s clean dev build, ~68s test suite |
-| **Total Rust lines** | ~391,757 (crates + src + tests + examples; dead code removal reduced count) |
+| **Total Rust lines** | ~390,564 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members |
 
 ---
@@ -501,10 +501,10 @@
 | `#[expect()]` with reasons | S+ | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled; zero unfulfilled expectations |
 | Runtime discovery | S+ | All socket paths: env → XDG → fallback; `find_primals_with_capability` capability-based |
 | Event-driven architecture | S+ | Zero polling anti-patterns in production code |
-| Concurrent-safe testing | S+ | Zero `#[serial_test::serial]`; injectable `_with` env readers across all crates; 10,023 tests fully concurrent |
+| Concurrent-safe testing | S+ | Zero `#[serial_test::serial]`; injectable `_with` env readers across all crates; 10,235 tests fully concurrent |
 | Self-knowledge only | S+ | Introspection describes only Songbird |
 | AGPL-3.0 license | S+ | `license.workspace = true` (all crates), `AGPL-3.0-only` SPDX headers, cargo-deny configured |
-| Capability-based discovery | S+ | No hardcoded primal names; env-driven capability filter |
+| Capability-based discovery | S+ | `primal_names` constants module; capability-first runtime discovery; env-driven filter |
 | Mock isolation | S+ | All mocks behind `#[cfg(test)]` or `feature = "test-mocks"` |
 | File size discipline | S+ | 0 files over 1000 lines; 5 near-limit files refactored into domain submodules |
 
@@ -591,7 +591,7 @@
 - [x] `cargo clippy --all-features --all-targets --workspace` → zero warnings
 - [x] `cargo test --all-features --workspace` → 9,983 passed, 0 failed
 - [x] Zero `.unwrap()` / `.expect()` in production code (all in test modules)
-- [x] Zero hardcoded primal names, ports, or URLs in production code
+- [x] Primal names centralized in `primal_names` constants module; capability-first discovery
 - [x] All mocks test-gated (`#[cfg(test)]` or `feature = "test-mocks"`)
 - [x] Zero files over 1000 lines
 - [x] 2 unsafe blocks: justified, startup-only, mutex-guarded, documented
@@ -847,7 +847,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Coverage Expansion (66.96% → 90% target)
+## Pending: Coverage Expansion (~66.59% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |
@@ -926,4 +926,4 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 4. **Deep documentation** — Fill `#[allow(missing_docs)]` internal modules with full doc coverage
 5. **Real hardware tests** (Tower + Pixel) — Validates cross-network
 6. **Platform backends** — Mobile pairing, iOS, WASM
-7. **Dependency pruning** — Reduce ~418 unique deps where possible
+7. **Dependency pruning** — Reduce ~412 unique deps where possible
