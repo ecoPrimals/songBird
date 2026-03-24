@@ -212,3 +212,176 @@ impl<T: Transport + 'static> GattClient<T> {
             .ok_or_else(|| BluetoothError::gatt(format!("Service not found: {uuid}")))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::Service;
+    use crate::device::{Address, DeviceInfo};
+    use crate::gatt::GattClient;
+    use crate::gatt::att::{att_opcode, att_uuid};
+    use crate::l2cap::L2capChannel;
+    use crate::transport::{Transport, TransportType};
+    use tokio::sync::Mutex;
+    use uuid::Uuid;
+
+    struct MockTransport;
+
+    #[async_trait::async_trait]
+    impl Transport for MockTransport {
+        fn transport_type(&self) -> TransportType {
+            TransportType::Usb
+        }
+
+        async fn send_command(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_event(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        async fn send_acl(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_acl(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        fn is_connected(&self) -> bool {
+            true
+        }
+
+        async fn close(&mut self) -> crate::error::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn sample_gatt_client() -> GattClient<MockTransport> {
+        let info = DeviceInfo::new(Address::from_bytes([1, 2, 3, 4, 5, 6]));
+        let device = std::sync::Arc::new(crate::device::Device::new(info, 0x0040));
+        let l2cap_channel = L2capChannel::new_att(0x0040);
+        let transport = std::sync::Arc::new(Mutex::new(MockTransport));
+        GattClient::new(device, l2cap_channel, transport)
+    }
+
+    #[test]
+    fn service_new_initializes_fields_and_empty_characteristics() {
+        let u = Uuid::from_u128(0x1234);
+        let s = Service::new(u, 0x0001, 0x000A);
+        assert_eq!(s.uuid, u);
+        assert_eq!(s.start_handle, 0x0001);
+        assert_eq!(s.end_handle, 0x000A);
+        assert!(s.characteristics.is_empty());
+    }
+
+    #[test]
+    fn primary_service_uuid_constant_matches_bluetooth_base() {
+        assert_eq!(att_uuid::PRIMARY_SERVICE, 0x2800);
+    }
+
+    #[test]
+    fn build_read_by_group_type_request_encodes_handles_and_group_type_le() {
+        let req = GattClient::<MockTransport>::build_read_by_group_type_request(
+            0x0001,
+            0xFFFF,
+            att_uuid::PRIMARY_SERVICE,
+        );
+        assert_eq!(req[0], att_opcode::READ_BY_GROUP_TYPE_REQ);
+        assert_eq!(&req[1..3], &[0x01, 0x00]);
+        assert_eq!(&req[3..5], &[0xFF, 0xFF]);
+        assert_eq!(&req[5..7], &[0x00, 0x28]);
+    }
+
+    #[test]
+    fn parse_read_by_group_type_response_rejects_empty() {
+        let err =
+            GattClient::<MockTransport>::parse_read_by_group_type_response(&[]).expect_err("empty");
+        assert!(err.to_string().contains("Empty") || format!("{err:?}").contains("Gatt"));
+    }
+
+    #[test]
+    fn parse_read_by_group_type_response_rejects_unexpected_opcode() {
+        let rsp = [0xFF, 6];
+        let err = GattClient::<MockTransport>::parse_read_by_group_type_response(&rsp)
+            .expect_err("bad opcode");
+        assert!(err.to_string().contains("Unexpected opcode") || err.to_string().contains("0xFF"));
+    }
+
+    #[test]
+    fn parse_read_by_group_type_response_error_rsp_attribute_not_found_yields_empty() {
+        // ERROR_RSP: opcode, request opcode, handle LE, error code 0x0A at index 4
+        let rsp = [att_opcode::ERROR_RSP, att_opcode::READ_BY_GROUP_TYPE_REQ, 0x01, 0x00, 0x0A];
+        let services =
+            GattClient::<MockTransport>::parse_read_by_group_type_response(&rsp).expect("ok");
+        assert!(services.is_empty());
+    }
+
+    #[test]
+    fn parse_read_by_group_type_response_error_rsp_other_code_fails() {
+        let rsp = [att_opcode::ERROR_RSP, 0, 0, 0, 0x03];
+        let err = GattClient::<MockTransport>::parse_read_by_group_type_response(&rsp)
+            .expect_err("att error");
+        assert!(err.to_string().contains("ATT error") || err.to_string().contains("0x03"));
+    }
+
+    #[test]
+    fn parse_read_by_group_type_response_parses_16_bit_service_uuid() {
+        // READ_BY_GROUP_TYPE_RSP, length=6 per record, one primary service 0x1800 (Battery)
+        let rsp = [att_opcode::READ_BY_GROUP_TYPE_RSP, 6, 0x01, 0x00, 0x05, 0x00, 0x00, 0x18];
+        let services =
+            GattClient::<MockTransport>::parse_read_by_group_type_response(&rsp).expect("parse");
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].start_handle, 0x0001);
+        assert_eq!(services[0].end_handle, 0x0005);
+        let expected = Uuid::from_u128(
+            0x0000_0000_1000_8000_8000_0080_5F9B_34FB | (u128::from(0x1800u16) << 96),
+        );
+        assert_eq!(services[0].uuid, expected);
+    }
+
+    #[test]
+    fn parse_read_by_group_type_response_parses_128_bit_service_uuid() {
+        let mut uuid_bytes = [
+            0x12u8, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+            0x77, 0x88,
+        ];
+        let mut rsp = vec![att_opcode::READ_BY_GROUP_TYPE_RSP, 20];
+        rsp.extend_from_slice(&[0x10, 0x00, 0x20, 0x00]);
+        rsp.extend_from_slice(&uuid_bytes);
+        let expected = Uuid::from_bytes_le(uuid_bytes);
+        let services =
+            GattClient::<MockTransport>::parse_read_by_group_type_response(&rsp).expect("parse");
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].uuid, expected);
+        assert_eq!(services[0].start_handle, 0x0010);
+        assert_eq!(services[0].end_handle, 0x0020);
+    }
+
+    #[test]
+    fn parse_read_by_group_type_response_truncated_after_opcode_fails() {
+        let rsp = [att_opcode::READ_BY_GROUP_TYPE_RSP];
+        let err = GattClient::<MockTransport>::parse_read_by_group_type_response(&rsp)
+            .expect_err("short");
+        assert!(err.to_string().contains("short") || err.to_string().contains("too"));
+    }
+
+    #[tokio::test]
+    async fn find_service_returns_matching_service() {
+        let mut client = sample_gatt_client();
+        let u = Uuid::from_u128(0xAAA);
+        client.services.push(Service::new(u, 1, 2));
+        let found = client.find_service(&u).await.expect("found");
+        assert_eq!(found.uuid, u);
+    }
+
+    #[tokio::test]
+    async fn find_service_missing_returns_error() {
+        let client = sample_gatt_client();
+        let u = Uuid::from_u128(0xBBB);
+        let err = client.find_service(&u).await.expect_err("missing");
+        assert!(err.to_string().contains("not found") || err.to_string().contains("Service"));
+    }
+}

@@ -463,3 +463,90 @@ fn determine_role(caps: &TowerCapabilities, requested_role: &str) -> String {
         "edge".to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{TowerCapabilities, determine_role};
+
+    fn caps(cpu: usize, mem: usize, storage: Option<usize>) -> TowerCapabilities {
+        TowerCapabilities {
+            hostname: "test-host".to_string(),
+            cpu_cores: cpu,
+            memory_gb: mem,
+            storage_gb: storage,
+            gpu_model: None,
+            network_interfaces: vec![],
+            architecture: "x86_64".to_string(),
+            os: "linux".to_string(),
+        }
+    }
+
+    #[test]
+    fn determine_role_respects_explicit_non_auto() {
+        let c = caps(4, 8, None);
+        assert_eq!(determine_role(&c, "orchestrator"), "orchestrator");
+        assert_eq!(determine_role(&c, "edge"), "edge");
+    }
+
+    #[test]
+    fn determine_role_auto_high_end_compute() {
+        let c = caps(32, 128, Some(500));
+        assert_eq!(determine_role(&c, "auto"), "compute");
+    }
+
+    #[test]
+    fn determine_role_auto_storage_when_tb_class_disk() {
+        let c = caps(4, 16, Some(1000));
+        assert_eq!(determine_role(&c, "auto"), "storage");
+    }
+
+    #[test]
+    fn determine_role_auto_orchestrator_when_enough_cpu_and_moderate_storage() {
+        let c = caps(8, 32, Some(100));
+        assert_eq!(determine_role(&c, "auto"), "orchestrator");
+    }
+
+    #[test]
+    fn determine_role_auto_edge_when_low_cpu_and_some_storage() {
+        let c = caps(4, 32, Some(100));
+        assert_eq!(determine_role(&c, "auto"), "edge");
+    }
+
+    #[test]
+    fn determine_role_auto_orchestrator_without_storage_and_enough_cpu() {
+        let c = caps(8, 32, None);
+        assert_eq!(determine_role(&c, "auto"), "orchestrator");
+    }
+
+    #[test]
+    fn determine_role_auto_edge_without_storage_low_cpu() {
+        let c = caps(4, 32, None);
+        assert_eq!(determine_role(&c, "auto"), "edge");
+    }
+
+    #[test]
+    fn determine_role_auto_not_compute_when_cpu_just_below_threshold() {
+        let c = caps(31, 128, Some(500));
+        assert_ne!(determine_role(&c, "auto"), "compute");
+    }
+
+    #[test]
+    fn determine_role_auto_not_compute_when_memory_just_below_threshold() {
+        let c = caps(32, 127, Some(500));
+        assert_ne!(determine_role(&c, "auto"), "compute");
+    }
+
+    #[test]
+    fn determine_role_auto_storage_at_exactly_1000_gb() {
+        let c = caps(16, 64, Some(1000));
+        assert_eq!(determine_role(&c, "auto"), "storage");
+    }
+
+    #[test]
+    fn determine_role_auto_orchestrator_at_999_gb_storage_and_high_cpu() {
+        let c = caps(8, 64, Some(999));
+        assert_eq!(determine_role(&c, "auto"), "orchestrator");
+    }
+}

@@ -25,6 +25,7 @@ songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rus
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
 tracing = "0.1"
 async-trait = "0.1"
 futures-util = "0.3"
@@ -43,10 +44,11 @@ socket2 = { workspace = true }  # For multicast socket configuration (aligned wi
 blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
 hostname = "0.4"  # For primal self-knowledge name introspection
 getrandom = { workspace = true }  # Cryptographically secure random nonce for beacon encryption
+rand = { workspace = true }
 
 [features]
 default = []
-tests-incomplete = []
+
 security = []
 storage = []
 compute = []

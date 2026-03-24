@@ -79,7 +79,7 @@ mod protocol_integration_tests {
     use tokio;
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_http_collect_metrics_success() {
         // Create mock HTTP server
         let mut server = mockito::Server::new_async().await;
@@ -114,7 +114,7 @@ mod protocol_integration_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_http_collect_metrics_error_status() {
         // Test HTTP error handling
         let mut server = mockito::Server::new_async().await;
@@ -136,7 +136,7 @@ mod protocol_integration_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_http_verify_auth_success() {
         // Test HTTP auth verification
         let mut server = mockito::Server::new_async().await;
@@ -159,7 +159,7 @@ mod protocol_integration_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_http_verify_auth_unauthorized() {
         // Test HTTP unauthorized response
         let mut server = mockito::Server::new_async().await;
@@ -174,7 +174,7 @@ mod protocol_integration_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_check_health_healthy() {
         // Test health check with healthy metrics
         let mut server = mockito::Server::new_async().await;
@@ -204,7 +204,7 @@ mod protocol_integration_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_check_health_warning() {
         // Test health check with warning metrics
         let mut server = mockito::Server::new_async().await;
@@ -234,7 +234,7 @@ mod protocol_integration_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_check_health_critical() {
         // Test health check with critical metrics
         let mut server = mockito::Server::new_async().await;
@@ -274,7 +274,7 @@ mod jsonrpc_e2e_tests {
     use tokio;
 
     #[tokio::test]
-    #[ignore] // Requires actual BearDog Unix socket server
+    #[ignore = "requires running BearDog crypto provider"] // Requires actual BearDog Unix socket server
     async fn test_jsonrpc_collect_metrics_e2e() {
         // E2E test: Connect to real BearDog Unix socket and collect metrics
         //
@@ -295,7 +295,7 @@ mod jsonrpc_e2e_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires actual BearDog Unix socket server
+    #[ignore = "requires running BearDog crypto provider"] // Requires actual BearDog Unix socket server
     async fn test_jsonrpc_verify_auth_e2e() {
         // E2E test: Verify authentication via JSON-RPC
         //
@@ -318,7 +318,7 @@ mod jsonrpc_e2e_tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires actual BearDog Unix socket server
+    #[ignore = "requires running BearDog crypto provider"] // Requires actual BearDog Unix socket server
     async fn test_genetic_lineage_trust_e2e() {
         // E2E test: Verify genetic lineage trust evaluation via JSON-RPC
         //
@@ -364,7 +364,7 @@ mod backward_compatibility_tests {
     use tokio; // Import from security module
 
     #[tokio::test]
-    #[ignore] // Requires Songbird IPC service for HTTP coordination
+    #[ignore = "requires running orchestrator"] // Requires Songbird IPC service for HTTP coordination
     async fn test_existing_http_endpoints_still_work() {
         // Regression test: Ensure existing HTTP endpoints still work after protocol detection
         let mut server = mockito::Server::new_async().await;

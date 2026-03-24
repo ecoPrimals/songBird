@@ -328,7 +328,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires network access
+    #[ignore = "requires network access"] // Requires network access
     async fn test_stun_discovery_with_public_servers() {
         let mut config = StunRelayConfig::default();
         config.public_stun.enabled = true;

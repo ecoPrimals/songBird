@@ -912,4 +912,110 @@ mod discover_broadcast_tests {
         songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
         assert!(addrs.len() >= 3);
     }
+
+    #[test]
+    fn discover_broadcast_env_first_token_invalid_second_valid() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::set_var(
+            "SONGBIRD_BROADCAST_ADDRESSES",
+            "not-a-socket,203.0.113.5:2300",
+        );
+        let addrs = SongbirdOrchestrator::discover_broadcast_addresses(&[]);
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        assert_eq!(addrs.len(), 1);
+        assert_eq!(addrs[0], parse("203.0.113.5:2300"));
+    }
+
+    #[test]
+    fn discover_broadcast_config_filters_invalid_entries() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        let addrs = SongbirdOrchestrator::discover_broadcast_addresses(&[
+            "not-valid".to_string(),
+            "172.16.0.255:2300".to_string(),
+            "".to_string(),
+        ]);
+        assert!(addrs.iter().any(|a| *a == parse("172.16.0.255:2300")));
+        assert!(
+            addrs.iter().any(|a| *a == parse("192.168.1.255:2300")),
+            "fallback merge: {addrs:?}"
+        );
+    }
+
+    #[test]
+    fn discover_broadcast_config_only_invalid_gets_fallbacks() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        let addrs = SongbirdOrchestrator::discover_broadcast_addresses(&[
+            ":::not-a-port".to_string(),
+            "99999.0.0.1:1".to_string(),
+        ]);
+        assert!(addrs.iter().any(|a| *a == parse("192.168.1.255:2300")));
+        assert!(addrs.iter().any(|a| *a == parse("10.0.0.255:2300")));
+    }
+
+    #[test]
+    fn discover_broadcast_preserves_config_order_before_fallbacks() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        let addrs = SongbirdOrchestrator::discover_broadcast_addresses(&[
+            "198.51.100.1:4000".to_string(),
+            "198.51.100.2:4001".to_string(),
+        ]);
+        assert_eq!(addrs[0], parse("198.51.100.1:4000"));
+        assert_eq!(addrs[1], parse("198.51.100.2:4001"));
+    }
+
+    #[test]
+    fn discover_broadcast_duplicate_192_168_0_skipped_once() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        let addrs =
+            SongbirdOrchestrator::discover_broadcast_addresses(&["192.168.0.255:2300".to_string()]);
+        let n = addrs.iter().filter(|a| a.ip().to_string() == "192.168.0.255").count();
+        assert_eq!(n, 1, "{addrs:?}");
+    }
+
+    #[test]
+    fn discover_broadcast_duplicate_10_subnet_skipped_once() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        let addrs =
+            SongbirdOrchestrator::discover_broadcast_addresses(&["10.0.0.255:2300".to_string()]);
+        let n = addrs.iter().filter(|a| a.ip().to_string() == "10.0.0.255").count();
+        assert_eq!(n, 1, "{addrs:?}");
+    }
+
+    #[test]
+    fn discover_broadcast_env_single_trailing_comma() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::set_var("SONGBIRD_BROADCAST_ADDRESSES", "239.1.1.1:1111,");
+        let addrs = SongbirdOrchestrator::discover_broadcast_addresses(&[]);
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        assert_eq!(addrs.len(), 1);
+        assert_eq!(addrs[0], parse("239.1.1.1:1111"));
+    }
+
+    #[test]
+    fn discover_broadcast_env_all_invalid_falls_through_to_config() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::set_var("SONGBIRD_BROADCAST_ADDRESSES", "bad, worse");
+        let addrs =
+            SongbirdOrchestrator::discover_broadcast_addresses(&["10.5.5.5:7777".to_string()]);
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        assert!(addrs.iter().any(|a| *a == parse("10.5.5.5:7777")));
+    }
+
+    #[test]
+    fn discover_broadcast_merges_unique_fallback_ips_only() {
+        let _g = BROADCAST_ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
+        let addrs =
+            SongbirdOrchestrator::discover_broadcast_addresses(&["172.20.0.1:2300".to_string()]);
+        let ips: Vec<_> = addrs.iter().map(|a| a.ip().to_string()).collect();
+        assert!(ips.contains(&"172.20.0.1".to_string()));
+        assert!(ips.contains(&"192.168.1.255".to_string()));
+        assert!(ips.contains(&"192.168.0.255".to_string()));
+        assert!(ips.contains(&"10.0.0.255".to_string()));
+    }
 }

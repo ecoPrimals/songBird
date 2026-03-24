@@ -64,7 +64,7 @@ impl RendezvousClient {
         info!("📡 Registering with rendezvous via RPC at {:?}", self.socket_path);
 
         // Get public key fingerprint (may involve BearDog call)
-        let public_key_fingerprint = self.get_public_key_fingerprint().await;
+        let public_key_fingerprint = self.get_public_key_fingerprint().await?;
 
         // Get signature (may involve BearDog call)
         let signature = self.sign_message_for_registration().await;
@@ -184,11 +184,18 @@ impl RendezvousClient {
         }
     }
 
-    /// Get public key fingerprint from `BearDog` or generate placeholder
+    /// Get public key fingerprint from `BearDog`, or a deterministic HMAC-based surrogate.
     ///
-    /// In production, this would fetch the actual public key from the `BearDog`
-    /// security service and compute its SHA-256 fingerprint.
-    async fn get_public_key_fingerprint(&self) -> String {
+    /// When `BEARDOG_SOCKET_PATH` is set and `crypto.get_public_key` succeeds, returns
+    /// `sha256:` + hex(SHA-256(pubkey)). Otherwise derives
+    /// `hmac-sha256:` + hex(HMAC-SHA256(key, `node_id`)) using a fixed domain key so the
+    /// value is stable per node without silently using a global placeholder string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when `BearDog` is unavailable or fails and there is no `node_id`
+    /// to derive a surrogate fingerprint from (`CryptoUnavailable`).
+    async fn get_public_key_fingerprint(&self) -> Result<String> {
         // Try to get from BearDog security service via RPC
         if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET_PATH") {
             // Attempt to fetch public key via JSON-RPC
@@ -198,24 +205,35 @@ impl RendezvousClient {
                         // Compute SHA-256 fingerprint
                         use sha2::{Digest, Sha256};
                         let hash = Sha256::digest(&key_data);
-                        return format!("sha256:{}", hex::encode(hash));
+                        return Ok(format!("sha256:{}", hex::encode(hash)));
                     }
-                    _ => {
-                        debug!("Failed to fetch public key from BearDog, using placeholder");
+                    Err(e) => {
+                        debug!(
+                            "Failed to fetch public key from BearDog: {e}; falling back to HMAC surrogate if node_id is set"
+                        );
                     }
                 }
             }
         }
 
-        // Fallback: Generate deterministic placeholder from node_id
-        self.node_info.as_ref().map_or_else(
-            || "sha256:placeholder".to_string(),
-            |node_info| {
-                use sha2::{Digest, Sha256};
-                let hash = Sha256::digest(node_info.node_id.as_bytes());
-                format!("sha256:{}", hex::encode(hash))
-            },
-        )
+        let node_info = self
+            .node_info
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires BearDog (BEARDOG_SOCKET_PATH + crypto.get_public_key) or node identity"))?;
+
+        // Deterministic surrogate: HMAC-SHA256(domain_key, node_id) — not a real pubkey hash.
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+
+        type HmacSha256 = Hmac<Sha256>;
+
+        const DOMAIN_KEY: &[u8] = b"songbird.rendezvous.pkfp.v1";
+        let mut mac = HmacSha256::new_from_slice(DOMAIN_KEY)
+            .map_err(|e| anyhow::anyhow!("HMAC key construction failed: {e}"))?;
+        mac.update(node_info.node_id.as_bytes());
+        let tag = mac.finalize().into_bytes();
+
+        Ok(format!("hmac-sha256:{}", hex::encode(tag)))
     }
 
     /// Sign registration message with `BearDog` or return None

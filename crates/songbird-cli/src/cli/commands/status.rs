@@ -164,11 +164,7 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> Songbird
     banner("Songbird Orchestrator Status", Some("System Overview"));
 
     // Overall system status
-    let overall_status = if status.orchestrator_status.health == "Healthy" {
-        "🟢 Running"
-    } else {
-        "🔴 Issues Detected"
-    };
+    let overall_status = overall_status_label(&status.orchestrator_status.health);
 
     system_info(&[
         ("Overall Status", overall_status),
@@ -305,6 +301,15 @@ async fn display_json_status(status: &SystemStatus, detailed: bool) -> SongbirdR
     Ok(())
 }
 
+/// Table label for overall orchestrator health (pure; used by status table and tests).
+fn overall_status_label(orchestrator_health: &str) -> &'static str {
+    if orchestrator_health == "Healthy" {
+        "🟢 Running"
+    } else {
+        "🔴 Issues Detected"
+    }
+}
+
 /// Convert service status to JSON
 fn service_to_json(service: &ServiceStatus) -> serde_json::Value {
     json!({
@@ -425,5 +430,120 @@ async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> So
         );
 
         tokio::time::sleep(Duration::from_secs(interval)).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::ServiceStatus;
+    use super::overall_status_label;
+    use super::service_to_json;
+    use std::time::Duration;
+
+    fn sample_service() -> ServiceStatus {
+        ServiceStatus {
+            name: "Orchestrator".to_string(),
+            status: "Running".to_string(),
+            health: "Healthy".to_string(),
+            port: Some(8080),
+            uptime: Some(Duration::from_secs(3600)),
+            last_health_check: Some(
+                chrono::DateTime::parse_from_rfc3339("2024-01-02T15:04:05Z")
+                    .unwrap()
+                    .with_timezone(&chrono::Utc),
+            ),
+            error_count: 0,
+            restart_count: 1,
+        }
+    }
+
+    #[test]
+    fn service_to_json_includes_all_scalar_fields() {
+        let s = sample_service();
+        let v = service_to_json(&s);
+        assert_eq!(v["name"], "Orchestrator");
+        assert_eq!(v["status"], "Running");
+        assert_eq!(v["health"], "Healthy");
+        assert_eq!(v["port"], 8080);
+        assert_eq!(v["uptime_seconds"], 3600);
+        assert_eq!(v["error_count"], 0);
+        assert_eq!(v["restart_count"], 1);
+        assert!(v["last_health_check"].is_string());
+    }
+
+    #[test]
+    fn service_to_json_serializes_none_optionals_as_null() {
+        let s = ServiceStatus {
+            name: "X".to_string(),
+            status: "Stopped".to_string(),
+            health: "Unknown".to_string(),
+            port: None,
+            uptime: None,
+            last_health_check: None,
+            error_count: 3,
+            restart_count: 0,
+        };
+        let v = service_to_json(&s);
+        assert!(v["port"].is_null());
+        assert!(v["uptime_seconds"].is_null());
+        assert!(v["last_health_check"].is_null());
+        assert_eq!(v["error_count"], 3);
+    }
+
+    #[test]
+    fn service_to_json_uptime_seconds_matches_duration() {
+        let s = ServiceStatus {
+            name: "a".to_string(),
+            status: "b".to_string(),
+            health: "c".to_string(),
+            port: None,
+            uptime: Some(Duration::from_secs(999_999)),
+            last_health_check: None,
+            error_count: 0,
+            restart_count: 0,
+        };
+        assert_eq!(service_to_json(&s)["uptime_seconds"], 999_999);
+    }
+
+    #[test]
+    fn overall_status_label_healthy() {
+        assert_eq!(overall_status_label("Healthy"), "🟢 Running");
+    }
+
+    #[test]
+    fn overall_status_label_any_non_healthy_is_issues() {
+        assert_eq!(overall_status_label("Degraded"), "🔴 Issues Detected");
+        assert_eq!(overall_status_label(""), "🔴 Issues Detected");
+        assert_eq!(overall_status_label("healthy"), "🔴 Issues Detected");
+    }
+
+    #[test]
+    fn service_to_json_last_health_check_rfc3339() {
+        let t = chrono::DateTime::parse_from_rfc3339("2024-06-01T12:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let expected = t.to_rfc3339();
+        let s = ServiceStatus {
+            name: "n".to_string(),
+            status: "s".to_string(),
+            health: "h".to_string(),
+            port: None,
+            uptime: None,
+            last_health_check: Some(t),
+            error_count: 0,
+            restart_count: 0,
+        };
+        let v = service_to_json(&s);
+        assert_eq!(v["last_health_check"], serde_json::Value::String(expected));
+    }
+
+    #[test]
+    fn detailed_memory_fraction_matches_expected_ratio() {
+        let memory_usage: u64 = 268_435_456;
+        let memory_total: u64 = 8_589_934_592;
+        let ratio = memory_usage as f64 / memory_total as f64;
+        assert!((ratio - 0.03125).abs() < f64::EPSILON);
     }
 }

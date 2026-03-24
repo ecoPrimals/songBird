@@ -196,3 +196,67 @@ impl TransportConfig {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{TransportConfig, TransportType};
+
+    #[test]
+    fn transport_type_display_usb_and_uart() {
+        assert_eq!(format!("{}", TransportType::Usb), "USB");
+        assert_eq!(format!("{}", TransportType::Uart), "UART");
+    }
+
+    #[test]
+    fn transport_type_equality_and_hash_consistency() {
+        assert_eq!(TransportType::Usb, TransportType::Usb);
+        assert_ne!(TransportType::Usb, TransportType::Uart);
+    }
+
+    #[test]
+    fn transport_config_default_prefers_usb_and_common_uart_baud() {
+        let c = TransportConfig::default();
+        assert_eq!(c.transport_type, TransportType::Usb);
+        assert!(c.vendor_id.is_none());
+        assert!(c.product_id.is_none());
+        assert!(c.serial_port.is_none());
+        assert_eq!(c.baud_rate, Some(115_200));
+    }
+
+    #[test]
+    fn transport_config_usb_constructor() {
+        let c = TransportConfig::usb();
+        assert_eq!(c.transport_type, TransportType::Usb);
+        assert_eq!(c.baud_rate, Some(115_200));
+    }
+
+    #[test]
+    fn transport_config_uart_sets_port_and_type() {
+        let c = TransportConfig::uart("/dev/ttyUSB0");
+        assert_eq!(c.transport_type, TransportType::Uart);
+        assert_eq!(c.serial_port.as_deref(), Some("/dev/ttyUSB0"));
+    }
+
+    #[test]
+    fn transport_config_usb_chain_vid_pid() {
+        let c = TransportConfig::usb().with_vendor_id(0x0A12).with_product_id(0x4010);
+        assert_eq!(c.vendor_id, Some(0x0A12));
+        assert_eq!(c.product_id, Some(0x4010));
+    }
+
+    #[test]
+    fn transport_config_uart_with_custom_baud() {
+        let c = TransportConfig::uart("COM3").with_baud_rate(921_600);
+        assert_eq!(c.baud_rate, Some(921_600));
+        assert_eq!(c.transport_type, TransportType::Uart);
+    }
+
+    #[test]
+    fn transport_config_debug_includes_key_fields() {
+        let c = TransportConfig::uart("/dev/rfcomm0").with_baud_rate(9600);
+        let s = format!("{c:?}");
+        assert!(s.contains("Uart") || s.contains("rfcomm"));
+    }
+}

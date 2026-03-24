@@ -421,6 +421,24 @@ impl AnonymousDiscoveryBroadcaster {
     // Dark Forest Beacon Broadcasting (NEW - Feb 3, 2026)
     // ═══════════════════════════════════════════════════════════════════════
 
+    /// 16-byte beacon ID when the encryption provider has not supplied one yet.
+    ///
+    /// Uses the first 16 bytes of SHA-256(`node_id`) when v3.0 identity is configured;
+    /// otherwise fills 16 bytes from [`rand::thread_rng`] (v2.1 / anonymous mode).
+    fn dark_forest_beacon_id_fallback(&self) -> Vec<u8> {
+        use rand::Rng;
+        use sha2::{Digest, Sha256};
+
+        if let Some(ref nid) = self.node_id {
+            let h = Sha256::digest(nid.as_bytes());
+            h[..16].to_vec()
+        } else {
+            let mut id = [0u8; 16];
+            rand::thread_rng().fill(&mut id[..]);
+            id.to_vec()
+        }
+    }
+
     /// Create and broadcast Dark Forest beacon (zero metadata leakage)
     ///
     /// Unlike legacy `BirdSongPacket` which has plaintext `family_id`,
@@ -450,15 +468,12 @@ impl AnonymousDiscoveryBroadcaster {
     ) -> Result<(), anyhow::Error> {
         use crate::dark_forest_beacon::BeaconPayload;
 
-        // Get our beacon ID (or generate placeholder if not available yet)
+        // Get our beacon ID (or derive from node identity / RNG if not yet available)
         let beacon_id = match birdsong.encryption_provider() {
             Some(enc) if enc.is_available() => {
-                enc.get_beacon_id().await?.unwrap_or_else(|| {
-                    // Placeholder if beacon ID not yet available
-                    vec![0u8; 16]
-                })
+                enc.get_beacon_id().await?.unwrap_or_else(|| self.dark_forest_beacon_id_fallback())
             }
-            _ => vec![0u8; 16], // Placeholder
+            _ => self.dark_forest_beacon_id_fallback(),
         };
 
         // Build endpoints list from our configuration

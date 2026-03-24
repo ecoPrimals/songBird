@@ -34,9 +34,6 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-#![cfg(feature = "tests-incomplete")]
-//! NOTE: Disabled - requires fixes
-
 #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
 #![allow(unused, reason = "test assertions and harness ergonomics")]
 

@@ -476,7 +476,10 @@ async fn test_unknown_method_returns_error() {
 
     assert!(result.is_err(), "Unknown methods should error");
     let error = result.unwrap_err();
-    assert!(error.contains("Unknown method"), "Should indicate unknown method: {error}");
+    assert!(
+        error.contains("unknown JSON-RPC method") || error.contains("Unknown method"),
+        "Should indicate unknown method: {error}"
+    );
 }
 
 #[tokio::test]
@@ -487,7 +490,11 @@ async fn test_method_case_sensitivity() {
     let result = handler.handle("STUN.GET_PUBLIC_ADDRESS", json!({})).await;
 
     assert!(result.is_err(), "Wrong case should error");
-    assert!(result.unwrap_err().contains("Unknown method"), "Should be unknown method");
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("unknown JSON-RPC method") || err.contains("Unknown method"),
+        "Should be unknown method: {err}"
+    );
 }
 
 // ============================================================================

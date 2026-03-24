@@ -46,3 +46,109 @@ impl<T: Transport + 'static> GattClient<T> {
         Err(BluetoothError::gatt(format!("Characteristic not found: {uuid}")))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::GattClient;
+    use crate::device::{Address, DeviceInfo};
+    use crate::gatt::{Characteristic, CharacteristicProperties, Service};
+    use crate::l2cap::L2capChannel;
+    use crate::transport::{Transport, TransportType};
+    use tokio::sync::Mutex;
+    use uuid::Uuid;
+
+    struct MockTransport;
+
+    #[async_trait::async_trait]
+    impl Transport for MockTransport {
+        fn transport_type(&self) -> TransportType {
+            TransportType::Usb
+        }
+
+        async fn send_command(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_event(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        async fn send_acl(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_acl(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        fn is_connected(&self) -> bool {
+            true
+        }
+
+        async fn close(&mut self) -> crate::error::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn client_with_characteristic(
+        char_uuid: Uuid,
+        props: CharacteristicProperties,
+    ) -> GattClient<MockTransport> {
+        let info = DeviceInfo::new(Address::from_bytes([1, 2, 3, 4, 5, 6]));
+        let device = std::sync::Arc::new(crate::device::Device::new(info, 0x0040));
+        let l2cap_channel = L2capChannel::new_att(0x0040);
+        let transport = std::sync::Arc::new(Mutex::new(MockTransport));
+        let mut client = GattClient::new(device, l2cap_channel, transport);
+        let svc_uuid = Uuid::from_u128(0x1111);
+        let mut svc = Service::new(svc_uuid, 1, 10);
+        svc.characteristics.push(Characteristic {
+            uuid: char_uuid,
+            handle: 3,
+            properties: props,
+        });
+        client.services.push(svc);
+        client
+    }
+
+    #[tokio::test]
+    async fn subscribe_notifications_ok_when_notify_supported() {
+        let u = Uuid::from_u128(0x180F);
+        let client = client_with_characteristic(u, CharacteristicProperties::new().with_notify());
+        client.subscribe_notifications(&u, |_v| {}).await.expect("subscribe");
+    }
+
+    #[tokio::test]
+    async fn subscribe_notifications_fails_without_notify_property() {
+        let u = Uuid::from_u128(0x1810);
+        let client = client_with_characteristic(u, CharacteristicProperties::new().with_read());
+        let err = client.subscribe_notifications(&u, |_v| {}).await.expect_err("no notify");
+        assert!(err.to_string().contains("notifications") || err.to_string().contains("notify"));
+    }
+
+    #[tokio::test]
+    async fn subscribe_notifications_fails_when_uuid_missing() {
+        let u = Uuid::from_u128(0xDEAD);
+        let client = client_with_characteristic(
+            Uuid::from_u128(0xBEEF),
+            CharacteristicProperties::new().with_notify(),
+        );
+        let err = client.subscribe_notifications(&u, |_v| {}).await.expect_err("missing");
+        assert!(
+            err.to_string().contains("not found") || err.to_string().contains("Characteristic")
+        );
+    }
+
+    #[tokio::test]
+    async fn subscribe_notifications_empty_services_list_fails() {
+        let info = DeviceInfo::new(Address::from_bytes([1, 2, 3, 4, 5, 6]));
+        let device = std::sync::Arc::new(crate::device::Device::new(info, 0x0040));
+        let l2cap_channel = L2capChannel::new_att(0x0040);
+        let transport = std::sync::Arc::new(Mutex::new(MockTransport));
+        let client = GattClient::new(device, l2cap_channel, transport);
+        let err =
+            client.subscribe_notifications(&Uuid::from_u128(1), |_v| {}).await.expect_err("empty");
+        assert!(err.to_string().contains("not found"));
+    }
+}

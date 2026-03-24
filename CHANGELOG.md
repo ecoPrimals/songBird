@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave71] - 2026-03-24 - JSON-RPC Enum Dispatch, Coverage Expansion, Stub Evolution
+
+### Added — JSON-RPC Enum Dispatch
+- New `songbird_types::json_rpc_method` module with `JsonRpcMethod` enum and 12 domain sub-enums
+- 50+ semantic methods parsed via `FromStr`/`Display`/`Serialize`/`Deserialize` for wire compatibility
+- `parse_ipc()` normalizes then parses (IPC broker and HTTP gateway path)
+- Migrated `IpcServiceHandler`, HTTP JSON-RPC gateway, and Unix IPC server to enum-based dispatch
+- Moved `normalize_json_rpc_method_name` from `songbird-universal-ipc` to `songbird-types`
+
+### Added — Coverage Expansion (+170 tests)
+- CLI commands: `status.rs`, `tower.rs`, `quick.rs`, `network.rs`, `federation.rs` (from 0% to tested)
+- Config: `discoverable_endpoint.rs`, `runtime_engine.rs`, `hosts_evolved.rs`, `paths.rs`, `infant_config.rs`
+- Bluetooth: `gatt/services.rs`, `gatt/descriptors.rs`, `transport/mod.rs`
+- Types: `errors.rs`, `canonical_types.rs`
+- Orchestrator: BTSP connections, `network/mod.rs`, `core/api.rs`
+- Test count: 10,517 → 10,687 (0 failed)
+
+### Changed — Stub Evolution
+- `runtime_engine.rs`: DNS-SD/Consul/etcd/Kubernetes stubs return `SongbirdError::not_implemented_with_detail`
+- `delegation.rs`: Provider delegation helpers use descriptive `not_implemented_with_detail`
+- BTSP connection files: Fixed clippy `needless_return` in error paths
+
+---
+
+## [v0.2.1-wave70] - 2026-03-24 - Deep Debt Evolution, Mock Isolation, Smart Refactoring
+
+### Changed — Smart File Refactoring (8 files)
+- Extracted domain-aligned submodules: `security_types.rs`, `host/scan.rs`, `config/security.rs`, `canonical_types.rs`
+- Extracted test modules: `tests_discovery_bridge_e2e.rs`, `adapter_tests.rs`, `tower_atomic_tests.rs`
+- Zero API changes — all public types re-exported via `pub use`
+
+### Changed — Mock Isolation and Placeholder Evolution
+- Rendezvous fingerprints: HMAC-SHA256 deterministic fallback (replaces `"sha256:placeholder"`)
+- XOR mock encryption isolated to `#[cfg(any(test, feature = "test-mocks"))]`
+- Beacon ID: SHA-256(node_id) first 16 bytes (replaces `vec![0u8; 16]`)
+
+### Changed — Hardcoding Evolution
+- Primal identifiers use `primal_names` constants in `introspection.rs`, `birdsong_handler.rs`, `onion_handler.rs`
+
+### Added — Coverage Expansion (+34 tests)
+- `discover_broadcast_addresses`, `AIFirstResponse`, `ConnectivityTester`, `Interface`/binding tests
+
+### Removed — Stale Test Scaffolding
+- Deleted `discovery_protocol_tests.rs`, `capability_discovery_comprehensive_tests.rs` (garbage placeholders)
+- Enabled 8 formerly-disabled test files (removed `tests-incomplete` feature gate)
+
+---
+
 ## [v0.2.1-wave69] - 2026-03-24 - Cross-Ecosystem Absorption, JSON-RPC Strict, Cast Deny
 
 ### Changed — JSON-RPC 2.0 Strict Compliance

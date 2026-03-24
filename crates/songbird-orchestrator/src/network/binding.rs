@@ -329,6 +329,8 @@ impl NetworkCapabilities {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -404,5 +406,46 @@ mod tests {
         let dual = NetworkBindingStrategy::DualStack;
         assert!(dual.supports_ipv4());
         assert!(dual.supports_ipv6());
+    }
+
+    #[test]
+    fn test_to_socket_addrs_interface_falls_back_to_ipv4_unspecified() {
+        let strategy = NetworkBindingStrategy::Interface("eth0".to_string());
+        let addrs = strategy.to_socket_addrs(9000);
+        assert_eq!(addrs.len(), 1);
+        assert_eq!(addrs[0], "0.0.0.0:9000".parse::<SocketAddr>().unwrap());
+    }
+
+    #[test]
+    fn test_primary_socket_addr_interface_matches_ipv4_all_shape() {
+        let strategy = NetworkBindingStrategy::Interface("wlan0".to_string());
+        assert_eq!(
+            strategy.primary_socket_addr(4444),
+            NetworkBindingStrategy::IPv4All.primary_socket_addr(4444)
+        );
+    }
+
+    #[test]
+    fn test_interface_strategy_supports_ipv4_not_ipv6() {
+        let strategy = NetworkBindingStrategy::Interface("tailscale0".to_string());
+        assert!(strategy.supports_ipv4());
+        assert!(!strategy.supports_ipv6());
+    }
+
+    #[test]
+    fn test_dual_stack_socket_addrs_distinct_families() {
+        let addrs = NetworkBindingStrategy::DualStack.to_socket_addrs(3030);
+        let v4: SocketAddr = "0.0.0.0:3030".parse().unwrap();
+        let v6: SocketAddr = "[::]:3030".parse().unwrap();
+        assert!(addrs.contains(&v4));
+        assert!(addrs.contains(&v6));
+        assert_ne!(addrs[0], addrs[1]);
+    }
+
+    #[test]
+    fn test_ipv6_all_single_wildcard() {
+        let addrs = NetworkBindingStrategy::IPv6All.to_socket_addrs(7);
+        assert_eq!(addrs.len(), 1);
+        assert!(addrs[0].ip().is_ipv6());
     }
 }

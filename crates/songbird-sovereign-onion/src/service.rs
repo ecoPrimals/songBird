@@ -79,7 +79,8 @@ impl OnionService {
             "Onion service created (STANDALONE - testing mode)"
         );
 
-        // Create dummy BearDog client (won't be used)
+        // Session handshakes and data-plane crypto (`ChaCha20Poly1305`, X25519 ephemeral)
+        // still delegate to this client; only long-lived identity material above is local.
         let beardog = BeardogCryptoClient::from_env();
 
         Ok(Self {

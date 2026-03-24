@@ -432,7 +432,7 @@ mod tests {
     use super::*;
 
     // NOTE: These tests require a running BearDog instance with crypto API
-    // They are marked #[ignore] to avoid CI failures
+    // They are marked #[ignore = "..."] to avoid CI failures without BearDog
     // Run with: cargo test --package songbird-orchestrator -- crypto::beardog_crypto_client --ignored
 
     #[tokio::test]

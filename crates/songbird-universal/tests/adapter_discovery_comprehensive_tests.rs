@@ -34,7 +34,6 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-#![cfg(feature = "tests-incomplete")]
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,

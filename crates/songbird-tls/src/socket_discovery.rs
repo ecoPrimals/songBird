@@ -19,7 +19,7 @@
 //! ## Concurrency
 //! - Thread-safe: Uses dependency injection for env var reading
 //! - No global mutable state in tests
-//! - Fully concurrent test execution (no `#[ignore]` needed)
+//! - Fully concurrent test execution (no `#[ignore = "..."]` needed)
 //!
 //! ## Compatibility
 //! This is a duplicate of the `socket_discovery` module from songbird-http-client,
@@ -339,7 +339,7 @@ mod tests {
     // These tests use dependency injection (MockEnv) instead of modifying global
     // environment variables, making them fully thread-safe and concurrent.
     //
-    // This is the idiomatic Rust approach: no shared mutable state, no #[ignore],
+    // This is the idiomatic Rust approach: no shared mutable state, no #[ignore = "..."],
     // no sleep(), no serial execution. Just pure concurrent correctness.
     // ============================================================================
 
@@ -479,7 +479,7 @@ mod tests {
 
     #[test]
     fn test_empty_env_var_ignored() {
-        // ✅ NO MORE #[ignore]! This test now runs concurrently!
+        // ✅ No ignored tests here — this suite runs concurrently without #[ignore = "..."].
         // Thread-safe test using MockEnv - no global state modification
         use std::sync::atomic::{AtomicU32, Ordering};
         static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);

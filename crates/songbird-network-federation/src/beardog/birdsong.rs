@@ -119,19 +119,25 @@ pub struct BroadcastKey {
 }
 
 impl BroadcastKey {
-    /// Encrypt broadcast data using this key (Phase 3 placeholder)
+    /// Encrypt broadcast data using this key.
     ///
-    /// **Status**: Phase 3 - Mock implementation for testing
-    /// Once `BearDog` integration is complete, this will use real genetic cryptography.
-    #[allow(
-        dead_code,
-        reason = "Phase 3: placeholder encrypt path until BearDog integration ships"
-    )]
-    #[must_use]
-    pub fn encrypt_broadcast(&self, data: &[u8]) -> Vec<u8> {
-        // Mock XOR encryption for testing
-        // Phase 3: Replace with real BirdSong encryption
-        self.key_data.iter().cycle().zip(data.iter()).map(|(k, d)| k ^ d).collect()
+    /// Production builds return an error until real `BirdSong` crypto is wired. Unit tests
+    /// and builds with the `test-mocks` feature use a **non-cryptographic** XOR with
+    /// `key_data` only to exercise framing code paths.
+    #[allow(dead_code, reason = "Phase 3: encrypt path until BearDog BirdSong integration ships")]
+    pub fn encrypt_broadcast(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
+        #[cfg(any(test, feature = "test-mocks"))]
+        {
+            // Test-only stand-in: not confidential; do not use as real encryption.
+            Ok(self.key_data.iter().cycle().zip(data.iter()).map(|(k, d)| k ^ d).collect())
+        }
+        #[cfg(not(any(test, feature = "test-mocks")))]
+        {
+            let _ = data;
+            Err(anyhow::anyhow!(
+                "CryptoUnavailable: BirdSong broadcast encryption requires BearDog integration (BroadcastKey::encrypt_broadcast)"
+            ))
+        }
     }
 
     /// Check if this key is currently valid

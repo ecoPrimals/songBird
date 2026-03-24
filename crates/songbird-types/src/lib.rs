@@ -100,6 +100,10 @@ pub mod zero_copy_service;
 // Centralized primal name constants
 pub mod primal_names;
 
+/// JSON-RPC 2.0 `domain.verb` method enums and wire parsing.
+pub mod json_rpc_method;
+pub use json_rpc_method::{JsonRpcMethod, JsonRpcMethodParseError, normalize_json_rpc_method_name};
+
 // Pure Rust system metrics (replaces sysinfo crate for ecoBin v3.0)
 pub mod sys_metrics;
 

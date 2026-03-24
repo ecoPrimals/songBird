@@ -34,9 +34,6 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-#![cfg(feature = "tests-incomplete")]
-//! NOTE: Disabled - requires unimplemented methods
-
 //! Comprehensive tests for Sovereignty-Aware Router
 //!
 //! Tests all routing, scoring, and sovereignty assessment functionality

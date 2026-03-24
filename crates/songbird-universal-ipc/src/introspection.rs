@@ -18,6 +18,7 @@
 //! - `identity` - Primal identity
 
 use serde_json::Value;
+use songbird_types::primal_names;
 
 /// Canonical capability tokens for [`capabilities_list`] (NEST / inter-primal discovery).
 ///
@@ -71,7 +72,7 @@ pub fn health_readiness() -> Value {
 pub fn health_check() -> Value {
     serde_json::json!({
         "status": "healthy",
-        "primal": "songbird",
+        "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
         "subsystems": {
             "ipc": "up",
@@ -108,13 +109,7 @@ pub fn capabilities_list() -> Value {
 /// Canonical names follow `SEMANTIC_METHOD_NAMING_STANDARD.md` (`domain.verb`).
 #[must_use]
 pub fn normalize_method(method: &str) -> &str {
-    match method {
-        "capability.list" => "capabilities.list",
-        "ping" => "health.liveness",
-        "status" | "check" => "health.check",
-        "health" => "health.check",
-        other => other,
-    }
+    songbird_types::normalize_json_rpc_method_name(method)
 }
 
 /// Resolve canonical `BirdSong` / biomeOS `family_id` from environment keys.
@@ -135,7 +130,7 @@ pub fn canonical_family_id(env: impl Fn(&str) -> Result<String, std::env::VarErr
 #[must_use]
 pub fn primal_info() -> Value {
     serde_json::json!({
-        "name": "songbird",
+        "name": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
         "description": "Network Orchestration & Discovery Primal",
         "capabilities": [
@@ -212,7 +207,7 @@ pub fn primal_capabilities() -> Value {
                 "description": "Dark Forest encrypted discovery (genetic lineage, family-only)",
                 "security": "genetic_lineage",
                 "encryption": "chacha20_poly1305",
-                "provider": "beardog"
+                "provider": primal_names::BEARDOG
             },
             {
                 "name": "relay",
@@ -235,7 +230,7 @@ pub fn primal_capabilities() -> Value {
                 "operations": ["start", "stop", "status", "connect", "address"],
                 "description": "Sovereign .onion service for NAT traversal",
                 "encryption": "x25519_chacha20poly1305",
-                "provider": "beardog"
+                "provider": primal_names::BEARDOG
             },
             {
                 "name": "tor",
@@ -243,7 +238,7 @@ pub fn primal_capabilities() -> Value {
                     "consensus.fetch", "circuit.build", "circuit.close"],
                 "description": "Pure Rust Tor protocol for symmetric NAT traversal",
                 "implementation": "from_scratch",
-                "provider": "beardog"
+                "provider": primal_names::BEARDOG
             }
         ]
     })
@@ -377,7 +372,7 @@ pub fn rpc_discover_standard() -> Value {
 #[must_use]
 pub fn discover_capabilities() -> Value {
     serde_json::json!({
-        "primal": "songbird",
+        "primal": primal_names::SELF_NAME,
         "capabilities": [
             "http.request",
             "http.get",
@@ -418,7 +413,7 @@ pub fn discover_capabilities() -> Value {
 pub fn health(uptime_secs: u64, service_count: usize) -> Value {
     serde_json::json!({
         "status": "healthy",
-        "primal": "songbird",
+        "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
         "uptime_seconds": uptime_secs,
         "services": service_count,
@@ -429,7 +424,7 @@ pub fn health(uptime_secs: u64, service_count: usize) -> Value {
 #[must_use]
 pub fn identity(family_id: &str) -> Value {
     serde_json::json!({
-        "primal": "songbird",
+        "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
         "family_id": family_id,
         "capabilities": [

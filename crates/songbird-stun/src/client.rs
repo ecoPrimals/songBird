@@ -637,7 +637,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires network access to public STUN server
+    #[ignore = "requires running STUN/TURN server"] // Requires network access to public STUN server
     async fn test_discover_public_address_live() {
         let client = StunClient::new();
 

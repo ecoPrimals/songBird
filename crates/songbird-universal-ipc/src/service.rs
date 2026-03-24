@@ -49,6 +49,11 @@ use serde_json::Value;
 use songbird_lineage_relay::beardog::BearDogRelayAuthority; // Production relay auth (Feb 8, 2026)
 use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
 use songbird_network_federation::state::FederationState;
+use songbird_types::json_rpc_method::{
+    BirdsongMethod, CapabilitiesMethod, DiscoveryMethod, FederationMethod, HealthMethod,
+    HttpMethod, IgdMethod, IpcMethod, JsonRpcMethod, MeshMethod, OnionMethod, PeerMethod,
+    PrimalMethod, PunchMethod, RelayMethod, RendezvousMethod, RpcMethod, StunMethod, TorMethod,
+};
 use std::env::VarError;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -631,125 +636,209 @@ impl IpcServiceHandler {
 
 #[async_trait]
 impl JsonRpcHandler for IpcServiceHandler {
+    #[allow(clippy::too_many_lines)]
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
-        let method = crate::introspection::normalize_method(method);
+        let method = match JsonRpcMethod::parse_ipc(method) {
+            Ok(m) => m,
+            Err(e) => return Err(e.to_string()),
+        };
         match method {
             // ── Introspection ────────────────────────────────────────
-            "primal.info" => Ok(crate::introspection::primal_info()),
-            "primal.capabilities" => Ok(crate::introspection::primal_capabilities()),
-            "rpc.methods" => Ok(crate::introspection::rpc_methods()),
-            "rpc.discover" => Ok(crate::introspection::rpc_discover_standard()),
-            "discover_capabilities" => Ok(crate::introspection::discover_capabilities()),
+            JsonRpcMethod::Primal(PrimalMethod::Info) => Ok(crate::introspection::primal_info()),
+            JsonRpcMethod::Primal(PrimalMethod::Capabilities) => {
+                Ok(crate::introspection::primal_capabilities())
+            }
+            JsonRpcMethod::Rpc(RpcMethod::Methods) => Ok(crate::introspection::rpc_methods()),
+            JsonRpcMethod::Rpc(RpcMethod::Discover) => {
+                Ok(crate::introspection::rpc_discover_standard())
+            }
+            JsonRpcMethod::DiscoverCapabilities => {
+                Ok(crate::introspection::discover_capabilities())
+            }
 
             // ── biomeOS / ecosystem standard ─────────────────────────
-            "health.liveness" => Ok(crate::introspection::health_liveness()),
-            "health.readiness" => Ok(crate::introspection::health_readiness()),
-            "health.check" => self.handle_health().await,
-            "capabilities.list" => Ok(crate::introspection::capabilities_list()),
-            "identity" => self.handle_identity().await,
+            JsonRpcMethod::Health(HealthMethod::Liveness) => {
+                Ok(crate::introspection::health_liveness())
+            }
+            JsonRpcMethod::Health(HealthMethod::Readiness) => {
+                Ok(crate::introspection::health_readiness())
+            }
+            JsonRpcMethod::Health(HealthMethod::Check) => self.handle_health().await,
+            JsonRpcMethod::Capabilities(CapabilitiesMethod::List) => {
+                Ok(crate::introspection::capabilities_list())
+            }
+            JsonRpcMethod::Identity => self.handle_identity().await,
 
             // ── IPC registry ─────────────────────────────────────────
-            "ipc.register" => self.handle_register(params).await,
-            "ipc.resolve" => self.handle_resolve(params).await,
-            "ipc.discover" => self.handle_discover(params).await,
-            "ipc.list" => self.handle_list(params).await,
+            JsonRpcMethod::Ipc(IpcMethod::Register) => self.handle_register(params).await,
+            JsonRpcMethod::Ipc(IpcMethod::Resolve) => self.handle_resolve(params).await,
+            JsonRpcMethod::Ipc(IpcMethod::Discover) => self.handle_discover(params).await,
+            JsonRpcMethod::Ipc(IpcMethod::List) => self.handle_list(params).await,
 
             // ── HTTP/HTTPS ───────────────────────────────────────────
-            "http.request" => self.handle_http_request(params).await,
-            "http.get" => self.handle_http_get(params).await,
-            "http.post" => self.handle_http_post(params).await,
+            JsonRpcMethod::Http(HttpMethod::Request) => self.handle_http_request(params).await,
+            JsonRpcMethod::Http(HttpMethod::Get) => self.handle_http_get(params).await,
+            JsonRpcMethod::Http(HttpMethod::Post) => self.handle_http_post(params).await,
 
             // ── STUN / NAT traversal ─────────────────────────────────
-            "stun.serve" => self.stun_handler.handle_serve(params).await,
-            "stun.stop" => self.stun_handler.handle_stop(params).await,
-            "stun.status" => self.stun_handler.handle_status(params).await,
-            "stun.get_public_address" => self.stun_handler.handle_get_public_address(params).await,
-            "stun.bind" => self.stun_handler.handle_bind(params).await,
-            "stun.probe_port_pattern" => self.stun_handler.handle_probe_port_pattern(params).await,
-            "stun.detect_nat_type" => self.stun_handler.handle_detect_nat_type(params).await,
+            JsonRpcMethod::Stun(StunMethod::Serve) => self.stun_handler.handle_serve(params).await,
+            JsonRpcMethod::Stun(StunMethod::Stop) => self.stun_handler.handle_stop(params).await,
+            JsonRpcMethod::Stun(StunMethod::Status) => {
+                self.stun_handler.handle_status(params).await
+            }
+            JsonRpcMethod::Stun(StunMethod::GetPublicAddress) => {
+                self.stun_handler.handle_get_public_address(params).await
+            }
+            JsonRpcMethod::Stun(StunMethod::Bind) => self.stun_handler.handle_bind(params).await,
+            JsonRpcMethod::Stun(StunMethod::ProbePortPattern) => {
+                self.stun_handler.handle_probe_port_pattern(params).await
+            }
+            JsonRpcMethod::Stun(StunMethod::DetectNatType) => {
+                self.stun_handler.handle_detect_nat_type(params).await
+            }
 
             // ── IGD router auto-configuration ────────────────────────
-            "igd.discover" => Ok(self.igd_handler.handle_discover(params).await),
-            "igd.map_port" => Ok(self.igd_handler.handle_map_port(params).await),
-            "igd.unmap_port" => Ok(self.igd_handler.handle_unmap_port(params).await),
-            "igd.status" => Ok(self.igd_handler.handle_status(params).await),
-            "igd.external_ip" => Ok(self.igd_handler.handle_external_ip(params).await),
-            "igd.auto_configure" => Ok(self.igd_handler.handle_auto_configure(params).await),
+            JsonRpcMethod::Igd(IgdMethod::Discover) => {
+                Ok(self.igd_handler.handle_discover(params).await)
+            }
+            JsonRpcMethod::Igd(IgdMethod::MapPort) => {
+                Ok(self.igd_handler.handle_map_port(params).await)
+            }
+            JsonRpcMethod::Igd(IgdMethod::UnmapPort) => {
+                Ok(self.igd_handler.handle_unmap_port(params).await)
+            }
+            JsonRpcMethod::Igd(IgdMethod::Status) => {
+                Ok(self.igd_handler.handle_status(params).await)
+            }
+            JsonRpcMethod::Igd(IgdMethod::ExternalIp) => {
+                Ok(self.igd_handler.handle_external_ip(params).await)
+            }
+            JsonRpcMethod::Igd(IgdMethod::AutoConfigure) => {
+                Ok(self.igd_handler.handle_auto_configure(params).await)
+            }
 
             // ── Relay server ─────────────────────────────────────────
-            "relay.serve" => self.relay_handler.handle_serve(params).await,
-            "relay.stop" => self.relay_handler.handle_stop(params).await,
-            "relay.status" => self.relay_handler.handle_status(params).await,
-            "relay.allocate" => self.relay_handler.handle_allocate(params).await,
+            JsonRpcMethod::Relay(RelayMethod::Serve) => {
+                self.relay_handler.handle_serve(params).await
+            }
+            JsonRpcMethod::Relay(RelayMethod::Stop) => self.relay_handler.handle_stop(params).await,
+            JsonRpcMethod::Relay(RelayMethod::Status) => {
+                self.relay_handler.handle_status(params).await
+            }
+            JsonRpcMethod::Relay(RelayMethod::Allocate) => {
+                self.relay_handler.handle_allocate(params).await
+            }
 
             // ── Discovery / rendezvous / peers ───────────────────────
-            "discovery.peers" | "discovery.find_primals" | "find_primals" => Self::wrap_result(
+            JsonRpcMethod::Discovery(DiscoveryMethod::Peers) => Self::wrap_result(
                 self.discovery_handler.handle_list_peers(params).await,
                 "Discovery peers failed",
             ),
-            "discovery.announce" | "announce_presence" => Self::wrap_result(
+            JsonRpcMethod::Discovery(DiscoveryMethod::Announce) => Self::wrap_result(
                 self.discovery_handler.handle_announce(params).await,
                 "Discovery announce failed",
             ),
-            "rendezvous.register" => Self::wrap_result(
+            JsonRpcMethod::Rendezvous(RendezvousMethod::Register) => Self::wrap_result(
                 self.rendezvous_handler.handle_register(params).await,
                 "Rendezvous register failed",
             ),
-            "rendezvous.lookup" => Self::wrap_result(
+            JsonRpcMethod::Rendezvous(RendezvousMethod::Lookup) => Self::wrap_result(
                 self.rendezvous_handler.handle_lookup(params).await,
                 "Rendezvous lookup failed",
             ),
-            "peer.connect" => Self::wrap_result(
+            JsonRpcMethod::Peer(PeerMethod::Connect) => Self::wrap_result(
                 self.peer_handler.handle_connect(params).await,
                 "Peer connect failed",
             ),
 
             // ── BirdSong encrypted discovery ─────────────────────────
-            "birdsong.generate_encrypted_beacon" => {
+            JsonRpcMethod::Birdsong(BirdsongMethod::GenerateEncryptedBeacon) => {
                 self.birdsong_handler.handle_generate_encrypted_beacon(params).await
             }
-            "birdsong.decrypt_beacon" => self.birdsong_handler.handle_decrypt_beacon(params).await,
-            "birdsong.verify_lineage" => self.birdsong_handler.handle_verify_lineage(params).await,
-            "birdsong.get_lineage" => self.birdsong_handler.handle_get_lineage(params).await,
-            "birdsong.advertise" => self.handle_birdsong_advertise(params).await,
+            JsonRpcMethod::Birdsong(BirdsongMethod::DecryptBeacon) => {
+                self.birdsong_handler.handle_decrypt_beacon(params).await
+            }
+            JsonRpcMethod::Birdsong(BirdsongMethod::VerifyLineage) => {
+                self.birdsong_handler.handle_verify_lineage(params).await
+            }
+            JsonRpcMethod::Birdsong(BirdsongMethod::GetLineage) => {
+                self.birdsong_handler.handle_get_lineage(params).await
+            }
+            JsonRpcMethod::Birdsong(BirdsongMethod::Advertise) => {
+                self.handle_birdsong_advertise(params).await
+            }
 
             // ── Mesh networking ──────────────────────────────────────
-            "mesh.init" => self.mesh_handler.handle_init(params).await,
-            "mesh.status" => self.mesh_handler.handle_status(params).await,
-            "mesh.find_path" => self.mesh_handler.handle_find_path(params).await,
-            "mesh.announce" => self.mesh_handler.handle_announce(params).await,
-            "mesh.peers" => self.mesh_handler.handle_peers(params).await,
-            "mesh.health_check" => self.mesh_handler.handle_health_check(params).await,
-            "mesh.auto_discover" => self.mesh_handler.handle_auto_discover(params).await,
+            JsonRpcMethod::Mesh(MeshMethod::Init) => self.mesh_handler.handle_init(params).await,
+            JsonRpcMethod::Mesh(MeshMethod::Status) => {
+                self.mesh_handler.handle_status(params).await
+            }
+            JsonRpcMethod::Mesh(MeshMethod::FindPath) => {
+                self.mesh_handler.handle_find_path(params).await
+            }
+            JsonRpcMethod::Mesh(MeshMethod::Announce) => {
+                self.mesh_handler.handle_announce(params).await
+            }
+            JsonRpcMethod::Mesh(MeshMethod::Peers) => self.mesh_handler.handle_peers(params).await,
+            JsonRpcMethod::Mesh(MeshMethod::HealthCheck) => {
+                self.mesh_handler.handle_health_check(params).await
+            }
+            JsonRpcMethod::Mesh(MeshMethod::AutoDiscover) => {
+                self.mesh_handler.handle_auto_discover(params).await
+            }
 
             // ── Hole punching ────────────────────────────────────────
-            "punch.request" => self.punch_handler.handle_request(params).await,
-            "punch.coordinate" => self.punch_handler.handle_coordinate(params).await,
-            "punch.status" => self.punch_handler.handle_status(params).await,
+            JsonRpcMethod::Punch(PunchMethod::Request) => {
+                self.punch_handler.handle_request(params).await
+            }
+            JsonRpcMethod::Punch(PunchMethod::Coordinate) => {
+                self.punch_handler.handle_coordinate(params).await
+            }
+            JsonRpcMethod::Punch(PunchMethod::Status) => {
+                self.punch_handler.handle_status(params).await
+            }
 
             // ── Sovereign onion ──────────────────────────────────────
-            "onion.start" => self.onion_handler.handle_start(params).await,
-            "onion.stop" => self.onion_handler.handle_stop(params).await,
-            "onion.status" => self.onion_handler.handle_status(params).await,
-            "onion.connect" => self.onion_handler.handle_connect(params).await,
-            "onion.address" => self.onion_handler.handle_address(params).await,
+            JsonRpcMethod::Onion(OnionMethod::Start) => {
+                self.onion_handler.handle_start(params).await
+            }
+            JsonRpcMethod::Onion(OnionMethod::Stop) => self.onion_handler.handle_stop(params).await,
+            JsonRpcMethod::Onion(OnionMethod::Status) => {
+                self.onion_handler.handle_status(params).await
+            }
+            JsonRpcMethod::Onion(OnionMethod::Connect) => {
+                self.onion_handler.handle_connect(params).await
+            }
+            JsonRpcMethod::Onion(OnionMethod::Address) => {
+                self.onion_handler.handle_address(params).await
+            }
 
             // ── Federation ─────────────────────────────────────────────
-            "songbird.federation.peers" | "federation.peers" => {
+            JsonRpcMethod::Federation(FederationMethod::Peers) => {
                 self.handle_federation_peers_rpc().await
             }
-            "songbird.federation.status" | "federation.status" => {
+            JsonRpcMethod::Federation(FederationMethod::Status) => {
                 self.handle_federation_status_rpc().await
             }
 
             // ── Pure Rust Tor ────────────────────────────────────────
-            "tor.status" => self.tor_handler.handle_status(params).await,
-            "tor.connect" => self.tor_handler.handle_connect(params).await,
-            "tor.service.start" => self.tor_handler.handle_service_start(params).await,
-            "tor.service.stop" => self.tor_handler.handle_service_stop(params).await,
-            "tor.consensus.fetch" => self.tor_handler.handle_consensus_fetch(params).await,
-            "tor.circuit.build" => self.tor_handler.handle_circuit_build(params).await,
-            "tor.circuit.close" => self.tor_handler.handle_circuit_close(params).await,
+            JsonRpcMethod::Tor(TorMethod::Status) => self.tor_handler.handle_status(params).await,
+            JsonRpcMethod::Tor(TorMethod::Connect) => self.tor_handler.handle_connect(params).await,
+            JsonRpcMethod::Tor(TorMethod::ServiceStart) => {
+                self.tor_handler.handle_service_start(params).await
+            }
+            JsonRpcMethod::Tor(TorMethod::ServiceStop) => {
+                self.tor_handler.handle_service_stop(params).await
+            }
+            JsonRpcMethod::Tor(TorMethod::ConsensusFetch) => {
+                self.tor_handler.handle_consensus_fetch(params).await
+            }
+            JsonRpcMethod::Tor(TorMethod::CircuitBuild) => {
+                self.tor_handler.handle_circuit_build(params).await
+            }
+            JsonRpcMethod::Tor(TorMethod::CircuitClose) => {
+                self.tor_handler.handle_circuit_close(params).await
+            }
 
             _ => Err(format!("Unknown method: {method}")),
         }

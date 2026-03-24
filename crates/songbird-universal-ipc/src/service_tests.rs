@@ -271,7 +271,10 @@ async fn unknown_rpc_method_returns_error() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
     let err = handler.handle("no.such.method", json!({})).await.expect_err("unknown method");
-    assert!(err.contains("Unknown method"));
+    assert!(
+        err.contains("unknown JSON-RPC method") || err.contains("Unknown method"),
+        "unexpected error: {err}"
+    );
 }
 
 #[tokio::test]

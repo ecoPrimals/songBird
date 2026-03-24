@@ -29,10 +29,10 @@
 
 use super::PeerConnection;
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
-use songbird_types::TrustLevel;
+use songbird_types::{SongbirdError, TrustLevel};
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
@@ -118,8 +118,8 @@ impl FullTrustBtspConnection {
     async fn send_rpc(&self, operation: &str, request: Value) -> Result<Value> {
         let tunnel_id = self.tunnel_id.read().await.clone();
 
-        // Create JSON-RPC 2.0 request
-        let rpc_request = serde_json::json!({
+        // Create JSON-RPC 2.0 request (serialized path reserved for Phase 2 tunnel I/O)
+        let _rpc_request = serde_json::json!({
             "jsonrpc": "2.0",
             "method": operation,
             "params": request,
@@ -131,10 +131,12 @@ impl FullTrustBtspConnection {
         // ROADMAP (Phase 2): Bidirectional BTSP Communication
         // Requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel()
         // See: BTSP_CONNECTION_EVOLUTION_V3_18_0.md for implementation plan
-        Err(anyhow!(
-            "BTSP bidirectional communication not yet implemented. \
-             Current implementation establishes tunnels only."
-        ))
+        Err(SongbirdError::not_implemented_with_detail(
+            "btsp_bidirectional_rpc",
+            "Requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(); \
+             current implementation establishes tunnels only.",
+        )
+        .into())
     }
 
     /// Get connection uptime
@@ -220,36 +222,71 @@ impl Drop for FullTrustBtspConnection {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::connections::check_operation_allowed;
 
     #[test]
     fn test_full_trust_allows_everything() {
-        // Full trust allows any operation
-        let conn_props = TrustLevel::Highest;
-
-        // At Level 3, everything is allowed
-        assert_eq!(conn_props.as_u8(), 3);
-    }
-
-    #[tokio::test]
-    async fn test_btsp_full_trust_connection_creation() {
-        // v3.20.0: Unix socket client auto-discovers from environment
-        let btsp_client = Arc::new(BtspClient::new());
-
-        let result = FullTrustBtspConnection::new(
-            "test_peer".to_string(),
-            vec!["btsp_enabled".to_string()],
-            btsp_client,
-        )
-        .await;
-
-        // Should fail (no real security provider), but validates API
-        assert!(result.is_err());
+        assert_eq!(TrustLevel::Highest.as_u8(), 3);
     }
 
     #[test]
-    fn test_trust_level_highest() {
-        assert_eq!(TrustLevel::Highest.as_u8(), 3);
+    fn test_highest_defaults_star_allow_empty_deny_matches_check_operation_allowed() {
+        let allowed = TrustLevel::Highest.default_allowed_capabilities();
+        let denied = TrustLevel::Highest.default_denied_capabilities();
+
+        assert_eq!(allowed, vec!["*".to_string()]);
+        assert!(denied.is_empty());
+        assert!(check_operation_allowed("data/write", &allowed, &denied));
+        assert!(check_operation_allowed("commands/sensitive/x", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_trust_level_highest_identity() {
         assert_eq!(TrustLevel::Highest.name(), "highest");
+        assert_eq!(TrustLevel::Highest.beardog_alias(), "explicit");
+        assert!(!TrustLevel::Highest.description().is_empty());
+    }
+
+    #[test]
+    fn test_trust_level_from_u8_roundtrip() {
+        assert_eq!(TrustLevel::from_u8(3), Some(TrustLevel::Highest));
+        assert_eq!(TrustLevel::Highest.as_u8(), 3);
+        assert_eq!(TrustLevel::from_u8(9), None);
+    }
+
+    #[test]
+    fn test_full_trust_ordering_relative_to_other_levels() {
+        assert!(TrustLevel::Highest > TrustLevel::Elevated);
+        assert!(TrustLevel::Elevated > TrustLevel::Limited);
+    }
+
+    #[test]
+    fn test_check_operation_allowed_star_with_no_deny() {
+        let allowed = vec!["*".to_string()];
+        let denied: Vec<String> = vec![];
+        assert!(check_operation_allowed("any/operation/at/all", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_explicit_deny_still_overrides_star_allow() {
+        let allowed = vec!["*".to_string()];
+        let denied = vec!["data/secret".to_string()];
+        assert!(!check_operation_allowed("data/secret", &allowed, &denied));
+        assert!(check_operation_allowed("data/public", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_highest_default_allowed_is_single_wildcard() {
+        let caps = TrustLevel::Highest.default_allowed_capabilities();
+        assert_eq!(caps.len(), 1);
+        assert_eq!(caps[0], "*");
+    }
+
+    #[test]
+    fn test_highest_default_denied_is_empty() {
+        assert!(TrustLevel::Highest.default_denied_capabilities().is_empty());
     }
 }

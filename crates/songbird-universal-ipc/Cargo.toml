@@ -64,6 +64,9 @@ base64 = "0.22"
 # Unix RPC client (re-export from songbird-universal)
 songbird-universal = { path = "../songbird-universal" }
 
+# Canonical primal identifiers
+songbird-types = { path = "../songbird-types" }
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }

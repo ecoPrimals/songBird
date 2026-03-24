@@ -335,6 +335,19 @@ impl Default for OnionHandler {
     }
 }
 
+/// Whether `msg` matches known BearDog/crypto-delegate connectivity failures (unit tests).
+#[cfg(test)]
+fn is_expected_crypto_delegate_connectivity_error(msg: &str) -> bool {
+    let m = msg.to_lowercase();
+    m.contains(songbird_types::primal_names::BEARDOG)
+        || m.contains("socket")
+        || m.contains("ipc")
+        || m.contains("rpc")
+        || m.contains("method not found")
+        || m.contains("connection refused")
+        || m.contains("failed to create")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -377,15 +390,8 @@ mod tests {
         // Either works (BearDog available) or fails with a relevant error
         // Valid errors include: socket not found, RPC method not found, connection refused
         if let Err(e) = result {
-            let e_lower = e.to_lowercase();
             assert!(
-                e_lower.contains("beardog")
-                    || e_lower.contains("socket")
-                    || e_lower.contains("ipc")
-                    || e_lower.contains("rpc")
-                    || e_lower.contains("method not found")
-                    || e_lower.contains("connection refused")
-                    || e_lower.contains("failed to create"),
+                super::is_expected_crypto_delegate_connectivity_error(&e),
                 "Error should be crypto/connection related: {e}"
             );
         }
@@ -403,15 +409,8 @@ mod tests {
             .await;
         // Either works or fails appropriately
         if let Err(e) = result {
-            let e_lower = e.to_lowercase();
             assert!(
-                e_lower.contains("beardog")
-                    || e_lower.contains("socket")
-                    || e_lower.contains("ipc")
-                    || e_lower.contains("rpc")
-                    || e_lower.contains("method not found")
-                    || e_lower.contains("connection refused")
-                    || e_lower.contains("failed to create"),
+                super::is_expected_crypto_delegate_connectivity_error(&e),
                 "Error should be crypto/connection related: {e}"
             );
         }

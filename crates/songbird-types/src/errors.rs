@@ -212,6 +212,15 @@ pub enum SongbirdError {
         /// Processing stage where error occurred
         processing_stage: Option<String>,
     },
+
+    /// Feature, integration, or code path not yet available
+    #[error("Not implemented: {feature}")]
+    NotImplemented {
+        /// Short identifier for the missing capability (e.g. `consul_discovery`, `btsp_bidirectional`)
+        feature: String,
+        /// Optional human-readable detail
+        detail: Option<String>,
+    },
 }
 
 /// Security-specific error details
@@ -337,6 +346,25 @@ impl SongbirdError {
             message: message.into(),
             event_type: None,
             processing_stage: None,
+        }
+    }
+
+    /// Not implemented: use when a deliberate stub or future phase has no implementation yet.
+    pub fn not_implemented(feature: impl Into<String>) -> Self {
+        Self::NotImplemented {
+            feature: feature.into(),
+            detail: None,
+        }
+    }
+
+    /// Not implemented with optional remediation or context.
+    pub fn not_implemented_with_detail(
+        feature: impl Into<String>,
+        detail: impl Into<String>,
+    ) -> Self {
+        Self::NotImplemented {
+            feature: feature.into(),
+            detail: Some(detail.into()),
         }
     }
 
@@ -479,6 +507,7 @@ impl From<std::io::Error> for SongbirdError {
 #[cfg(test)]
 #[allow(
     clippy::unwrap_used,
+    clippy::expect_used,
     clippy::unnecessary_wraps,
     clippy::field_reassign_with_default,
     clippy::uninlined_format_args,
@@ -492,7 +521,6 @@ impl From<std::io::Error> for SongbirdError {
     reason = "test assertions and harness ergonomics"
 )]
 mod tests {
-    #![allow(clippy::expect_used, reason = "test assertions")]
     #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
     #![allow(unused, reason = "unused bindings/imports in this compilation unit")]
 
@@ -647,5 +675,103 @@ mod tests {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
         let e: SongbirdError = io_err.into();
         assert!(e.to_string().contains("IO error") || e.to_string().contains("Network"));
+    }
+
+    #[test]
+    fn test_not_implemented_constructors_display() {
+        let e = SongbirdError::not_implemented("federation_mesh");
+        assert!(
+            e.to_string().contains("Not implemented") || e.to_string().contains("federation_mesh")
+        );
+
+        let e2 = SongbirdError::not_implemented_with_detail("btsp_bidirectional", "wire ATT first");
+        assert!(e2.to_string().contains("btsp_bidirectional"));
+        match e2 {
+            SongbirdError::NotImplemented {
+                detail,
+                ..
+            } => assert_eq!(detail.as_deref(), Some("wire ATT first")),
+            _ => panic!("expected NotImplemented"),
+        }
+    }
+
+    #[test]
+    fn test_rpc_event_discovery_protocol_runtime_constructors() {
+        let r = SongbirdError::rpc("method failed");
+        assert!(r.to_string().contains("RPC"));
+
+        let ev = SongbirdError::event("handler panicked");
+        assert!(ev.to_string().contains("Event"));
+
+        let d = SongbirdError::discovery("mdns timeout");
+        assert!(d.to_string().contains("Discovery"));
+
+        let p = SongbirdError::protocol("version skew");
+        assert!(p.to_string().contains("Protocol"));
+    }
+
+    #[test]
+    fn test_load_balancing_constructor_display() {
+        let e = SongbirdError::load_balancing("no backends", "round_robin");
+        assert!(e.to_string().contains("Load balancing") || e.to_string().contains("backends"));
+    }
+
+    #[test]
+    fn test_validation_with_suggestion_updates_field() {
+        let mut e = SongbirdError::validation("bad port");
+        e.with_suggestion("use 1024-65535");
+        match e {
+            SongbirdError::Validation {
+                suggestion,
+                ..
+            } => {
+                assert_eq!(suggestion.as_deref(), Some("use 1024-65535"));
+            }
+            _ => panic!("expected Validation"),
+        }
+    }
+
+    #[test]
+    fn test_with_context_is_no_op_for_service_variant() {
+        let mut e = SongbirdError::service("db", "down");
+        e.with_context("extra");
+        assert!(e.to_string().contains("db") || e.to_string().contains("down"));
+    }
+
+    #[test]
+    fn test_automation_hint_and_urgency_json_roundtrip() {
+        let hint = AutomationHint::RetryExponential {
+            max_attempts: 3,
+            base_delay_ms: 100,
+        };
+        let js = serde_json::to_string(&hint).expect("serde");
+        let back: AutomationHint = serde_json::from_str(&js).expect("de");
+        match back {
+            AutomationHint::RetryExponential {
+                max_attempts,
+                base_delay_ms,
+            } => {
+                assert_eq!(max_attempts, 3);
+                assert_eq!(base_delay_ms, 100);
+            }
+            _ => panic!("variant"),
+        }
+
+        // `Ord` follows enum declaration order (Critical < … < Low), not severity semantics.
+        assert!(Urgency::Critical < Urgency::Low);
+    }
+
+    #[test]
+    fn test_security_error_display_impl_path() {
+        let s = SecurityError {
+            message: "denied".into(),
+            operation: None,
+            required_permission: None,
+            context: None,
+            remediation: None,
+        };
+        assert_eq!(s.to_string(), "Security error: denied");
+        let err: &(dyn std::error::Error) = &s;
+        assert!(err.to_string().contains("denied"));
     }
 }

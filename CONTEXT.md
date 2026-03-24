@@ -33,17 +33,17 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 10,235 (0 failed) |
-| Coverage | ~66.59% (target 90%) |
+| Tests | 10,687 (0 failed, 271 ignored) |
+| Coverage | ~67% (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings |
-| Files >1000 LOC | 0 (max 959) |
+| Files >1000 LOC | 0 (max 948) |
 | Unsafe blocks | 2 (justified, in `songbird-process-env`) |
 | C dependencies | `ring` opt-in only (`ring-crypto` feature) |
 
 ## IPC Surface
 
-JSON-RPC 2.0 methods (ecosystem standard `domain.verb` naming):
+JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard `domain.verb` naming):
 
 - `health.liveness`, `health.readiness`, `health.check`
 - `capabilities.list`

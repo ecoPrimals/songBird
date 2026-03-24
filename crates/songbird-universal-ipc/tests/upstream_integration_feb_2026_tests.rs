@@ -258,7 +258,10 @@ async fn test_e2e_unknown_method_error() {
 
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(error.contains("Unknown method"));
+    assert!(
+        error.contains("unknown JSON-RPC method") || error.contains("Unknown method"),
+        "unexpected error: {error}"
+    );
 }
 
 // ============================================================================

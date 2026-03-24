@@ -50,6 +50,8 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use tracing::{debug, info, warn};
 
 /// iOS/macOS IPC implementation
 ///
@@ -60,7 +62,7 @@ pub struct iOSIPC;
 
 #[async_trait]
 impl PlatformIPC for iOSIPC {
-    async fn create_endpoint(&self, _primal_name: &str) -> IpcResult<NativeEndpoint> {
+    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         #[cfg(target_os = "macos")]
         {
             use std::path::PathBuf;
@@ -121,6 +123,7 @@ impl PlatformIPC for iOSIPC {
 
         #[cfg(not(any(target_os = "macos", target_os = "ios")))]
         {
+            let _ = primal_name;
             Err(IpcError::PlatformError("iOSIPC is for macOS/iOS only".to_string()))
         }
     }

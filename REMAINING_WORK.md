@@ -2,7 +2,7 @@
 
 **Date**: March 24, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 24, 2026 (Session 15 — sysinfo Elimination, Dead Code Removal, Coverage Push, Doc Cleanup)
+**Last Deep Debt Audit**: March 24, 2026 (Session 18 — JSON-RPC Enum Dispatch, Coverage Expansion, Stub Evolution)
 
 ---
 
@@ -10,14 +10,14 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 10,235 passed, 0 failed, 266 ignored |
-| **Line Coverage** | ~66.59% (llvm-cov measured; target 90%) |
+| **Tests** | 10,687 passed, 0 failed, 271 ignored |
+| **Line Coverage** | ~67% (llvm-cov; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max 959 test file; production max 915 `core.rs`) |
+| **Files >1000 lines** | 0 (max 948 test file; production max 915 `core.rs`) |
 | **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[expect]`) |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
@@ -29,10 +29,11 @@
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
 | **Hardcoded elimination** | All ports env-driven; `primal_names` constants module; DNS-SD/mDNS/broadcast discovery; capability-first |
 | **JSON-RPC handlers** | 14 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (ecosystem standard) |
-| **Method normalization** | `normalize_method()` handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
+| **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain (Discovery, Network, Stun, Relay, etc.) |
+| **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
-| **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors with delegation paths |
+| **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors; rendezvous fingerprints use HMAC-SHA256 fallback; XOR mock isolated to `#[cfg(test)]` |
 | **C dependencies** | `ring` opt-in only (`ring-crypto` feature); `sysinfo` fully eliminated — replaced by `sys_metrics` pure Rust `/proc` + `/sys` readers |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
@@ -40,7 +41,7 @@
 | **CI quality gate** | Coverage threshold ratcheted to 66%; `Swatinem/rust-cache`; `cargo-deny` job; `rustsec/audit-check` |
 | **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
 | **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) |
-| **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]` |
+| **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; XOR broadcast encryption isolated to test/mock builds; beacon ID uses SHA-256(node_id) fallback |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, `serde_json::to_vec` (no intermediate String) |
 | **Concurrent tests** | All tests fully concurrent; injectable `_with` env readers; `tokio::time::pause()` for deterministic timing |
 | **Event-driven** | Zero `sleep`-based polling in production |
@@ -51,6 +52,111 @@
 | **Build time** | ~45s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~390,564 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 24, 2026 — JSON-RPC Enum Dispatch, Coverage Expansion, Stub Evolution — Session 18)
+
+### Wave 71: JSON-RPC Enum-Based Dispatch
+- [x] Created `songbird_types::json_rpc_method` module with `JsonRpcMethod` enum and domain sub-enums (`PrimalMethod`, `StunMethod`, `DiscoveryMethod`, `NetworkMethod`, `HealthMethod`, `RelayMethod`, `FederationMethod`, `TorMethod`, etc.)
+- [x] Implemented `FromStr`, `Display`, `Serialize`/`Deserialize` for wire compatibility (JSON string on wire, not nested objects)
+- [x] `from_wire_str()` parses all 50+ semantic method names including aliases (`find_primals` → `DiscoveryMethod::Peers`, etc.)
+- [x] `parse_ipc()` normalizes then parses (IPC broker and HTTP gateway path)
+- [x] Migrated `IpcServiceHandler::handle` to match on `JsonRpcMethod` enum instead of string patterns
+- [x] Migrated HTTP JSON-RPC gateway to use `JsonRpcMethod::from_wire_str` for route dispatch
+- [x] Migrated Unix IPC server to use `JsonRpcMethod::from_wire_str` (preserving biomeOS `"health"` routing)
+- [x] Moved `normalize_json_rpc_method_name` from `songbird-universal-ipc` to `songbird-types` for reuse
+- [x] Updated 3 test files for new error message format (`"unknown JSON-RPC method"`)
+
+### Wave 71: Coverage Expansion — CLI Commands
+- [x] `status.rs`: Extracted `overall_status_label` helper, added ~9 tests (health labeling, JSON formatting, memory reporting)
+- [x] `tower.rs`: Added 11 tests (CPU/memory/storage boundary conditions for `determine_role`)
+- [x] `quick.rs`: Extracted `capabilities_for_contribute_type`, added 12 tests (all variants, config defaults, next-steps generation)
+- [x] `network.rs`: Added 10 tests (optimize/test/diagnose with minimal and maximal parameters)
+- [x] `federation.rs`: Added 11 tests (init, join, lobby, matchmaking, metrics)
+
+### Wave 71: Coverage Expansion — Config, Bluetooth, Types
+- [x] `discoverable_endpoint.rs`: Added HTTPS default port, dev fallback, IPv6 socket addr tests
+- [x] `runtime_engine.rs`: Added discover-by-capability sort order, env-prefix stripping, invalid-endpoint fallback tests
+- [x] `hosts_evolved.rs`: Added AdvertiseConfig, detect_with, BindConfig, Environment serde round-trip tests
+- [x] `config/paths.rs`: Added service path, development config nesting tests
+- [x] `zero_touch/infant_config.rs`: Added security level aliases, fallback modes, bind/discovery method tests
+- [x] `gatt/services.rs`: Added GATT service, UUID, read-by-group-type parsing, find-service tests
+- [x] `gatt/descriptors.rs`: Added notification subscription tests
+- [x] `transport/mod.rs`: Added TransportType Display/Eq, TransportConfig builder tests
+- [x] `songbird-types/errors.rs`: Added not_implemented, rpc, event, discovery, validation, AutomationHint, Urgency ordering tests
+- [x] `traits/canonical_types.rs`: Added DeploymentStatus, PrimalResponse, SystemHealth, SpanContext, ServiceType JSON round-trip tests
+
+### Wave 71: Coverage Expansion — Orchestrator
+- [x] `limited_btsp.rs`: Added 10 tests for check_operation_allowed, TrustLevel::Limited defaults, allow/deny list logic
+- [x] `full_trust_btsp.rs`: Added 9 tests for TrustLevel::Highest, wildcard allow, deny override
+- [x] `federated_btsp.rs`: Added 9 tests for Elevated defaults, custom allow/deny
+- [x] `network/mod.rs`: Added 6 tests for binding strategy, connectivity result, sovereign binder
+- [x] `core/api.rs`: Added 7 tests for ApiConfig defaults/serde, CoreApi/ApiHandler debug
+
+### Wave 71: Not-Yet-Implemented Stub Evolution
+- [x] `runtime_engine.rs`: DNS-SD, Consul, etcd, Kubernetes discovery stubs now return `SongbirdError::not_implemented_with_detail` instead of empty-list no-ops
+- [x] `runtime_engine.rs`: mDNS, DNS-SD, Consul, etcd registration stubs now return proper typed errors instead of silent `Ok(())`
+- [x] `delegation.rs`: Provider delegation helpers now use `not_implemented_with_detail` with descriptive messages
+- [x] BTSP connection files: Fixed clippy `needless_return` in 3 files (`federated_btsp.rs`, `full_trust_btsp.rs`, `limited_btsp.rs`)
+
+### Wave 71: Metrics
+- Total: +170 new tests across 20+ modules
+- 10,687 tests passing (up from 10,517), 0 failed, 271 ignored
+- All 30 crates: `cargo fmt` clean, `cargo clippy -D warnings` clean, `cargo doc` clean
+
+---
+
+## Completed (Mar 24, 2026 — Deep Debt Evolution, Mock Isolation, Smart Refactoring, Coverage Expansion — Session 17)
+
+### Wave 70: Deep Debt Evolution — Test File Evolution
+- [x] Deleted 2 garbage scaffolding test files (`discovery_protocol_tests.rs`, `capability_discovery_comprehensive_tests.rs`)
+- [x] Enabled 8 formerly-disabled test files (removed `#![cfg(feature = "tests-incomplete")]` gates) — +179 tests
+- [x] Removed stale `tests-incomplete` feature from `songbird-universal` and `songbird-discovery` Cargo.toml
+- [x] All 8 test files compile and pass without modification (APIs already existed)
+
+### Wave 70: Smart File Refactoring (domain-aligned extraction)
+- [x] `tests_discovery_bridge.rs` 959→400 lines: extracted E2E tests to `tests_discovery_bridge_e2e.rs`
+- [x] `security.rs` 868→699 lines: extracted `SecurityMetrics`/`SecurityHealth`/`AuthResult` to `security_types.rs` + tests to `security_types_tests.rs`
+- [x] `host.rs` 833→560 lines: split into `host/mod.rs` + `host/scan.rs` (BLE scanning domain)
+- [x] `config/mod.rs` 824→647 lines: extracted `SecurityConfig` cluster to `config/security.rs`
+- [x] `canonical.rs` 888→342 lines: extracted canonical data types to `canonical_types.rs`
+- [x] `capability_based_runtime_discovery.rs` 822→478 lines: extracted tests to separate file
+- [x] `sovereignty/adapter.rs` 816→355 lines: extracted tests to `adapter_tests.rs`
+- [x] `tower_atomic.rs` 810→501 lines: split tests into `tower_atomic_tests.rs` + fuzz-style tests
+- [x] Zero API changes — all public types re-exported
+
+### Wave 70: Coverage Expansion
+- [x] Added 9 `discover_broadcast_addresses` edge-case tests (env parsing, config fallbacks, dedup)
+- [x] Added 14 `AIFirstResponse` / `AIFirstError` unit tests (constructors, serde roundtrips, error helpers)
+- [x] Added 6 async `ConnectivityTester` tests (defaults, refused connections, comprehensive checks)
+- [x] Added 5 `Interface` / network binding tests (IPv4/IPv6, dual-stack, fallbacks)
+- [x] Total: +34 new tests in songbird-orchestrator
+
+### Wave 70: Hardcoding Evolution
+- [x] `songbird-universal-ipc` now depends on `songbird-types` (added dep)
+- [x] `introspection.rs`: primal identifiers use `primal_names::SELF_NAME` and `primal_names::BEARDOG` constants
+- [x] `birdsong_handler.rs`: BearDog socket paths use `primal_names::BEARDOG` in format strings
+- [x] `onion_handler.rs` / `birdsong_handler.rs`: error heuristics extracted to `is_expected_crypto_delegate_connectivity_error` helpers using `primal_names` constants
+
+### Wave 70: Production Mock/Placeholder Evolution
+- [x] `rendezvous/client.rs`: `"sha256:placeholder"` → HMAC-SHA256 deterministic fingerprint from node_id (domain key `songbird.rendezvous.pkfp.v1`), or `CryptoUnavailable` error if no node_info
+- [x] `beardog/birdsong.rs`: XOR "mock encryption" isolated to `#[cfg(any(test, feature = "test-mocks"))]`; production path returns `CryptoUnavailable` error
+- [x] `anonymous/broadcaster.rs`: `vec![0u8; 16]` placeholder → SHA-256(node_id) first 16 bytes, or random 16 bytes if no node_id
+- [x] `sovereign-onion/service.rs`: misleading "dummy BearDog" comment → accurate documentation of session crypto usage
+- [x] Added `hmac = "0.12"` dependency to `songbird-network-federation`
+
+### Wave 70: Dependency Analysis
+- [x] Confirmed: zero `openssl`, `ring`, `native-tls`, `sqlite`, `libgit2`, `curl` in production tree
+- [x] Confirmed: `blake3` already using `pure` feature (no C compilation at runtime)
+- [x] Confirmed: `cc` build-dep artifact from blake3 but not invoked with pure feature
+- [x] Only `-sys` crates: `dirs-sys` (libc for XDG paths), `netlink-sys` (interface discovery) — both essential for OS interaction
+- [x] `deny.toml` already blocks `openssl` and `native-tls`
+
+### Wave 70: Unsafe Code Analysis
+- [x] Confirmed: 2 unsafe blocks in `songbird-process-env` are optimal for Rust 2024 edition on rustc 1.94.0
+- [x] `std::env::set_var`/`remove_var` have no safe alternative in `std` — the `parking_lot::Mutex` guard pattern is best practice
+- [x] `#![deny(unsafe_code)]` + per-fn `#[expect(unsafe_code, reason = "...")]` — maximum visibility
 
 ---
 

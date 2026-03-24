@@ -198,7 +198,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore] // Requires USB Bluetooth dongle
+    #[ignore = "requires Bluetooth hardware"] // Requires USB Bluetooth dongle
     async fn test_pure_bluetooth_channel_creation() {
         if let Ok(transport) = UsbTransport::new().await {
             let result = PureRustBluetoothChannel::new(transport).await;
@@ -207,7 +207,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires USB Bluetooth dongle and witness device
+    #[ignore = "requires Bluetooth hardware"] // Requires USB Bluetooth dongle and witness device
     async fn test_genesis_ceremony_flow() {
         if let Ok(transport) = UsbTransport::new().await {
             let mut channel = PureRustBluetoothChannel::new(transport).await.unwrap();

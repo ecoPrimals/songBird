@@ -18,7 +18,7 @@
 //! End-to-End TLS Handshake Tests
 //!
 //! These tests verify the complete TLS 1.3 handshake flow with real servers.
-//! They are marked `#[ignore]` by default and can be run with: cargo test -- --ignored
+//! They are marked `#[ignore = "..."]` by default and can be run with: cargo test -- --ignored
 
 use songbird_http_client::SongbirdHttpClient;
 use std::time::Duration;

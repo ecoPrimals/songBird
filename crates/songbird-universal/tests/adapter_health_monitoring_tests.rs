@@ -34,15 +34,12 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-#![cfg(feature = "tests-incomplete")]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"
 )]
-
-//! NOTE: Disabled - requires unimplemented methods
 
 //! Comprehensive tests for adapter health monitoring and metrics
 //!

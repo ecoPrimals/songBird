@@ -12,7 +12,7 @@
 //!
 //! # Running Integration Tests
 //!
-//! Integration tests are marked with `#[ignore]` and require external services:
+//! Integration tests are marked with `#[ignore = "..."]` and require external services:
 //!
 //! ```bash
 //! # Run specific integration test suite

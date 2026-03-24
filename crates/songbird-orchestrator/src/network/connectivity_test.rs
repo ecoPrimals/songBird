@@ -414,12 +414,21 @@ impl ConnectivityRemediator {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
     async fn test_connectivity_tester_creation() {
         let tester = ConnectivityTester::new();
         assert_eq!(tester.test_timeout, Duration::from_secs(5));
+    }
+
+    #[tokio::test]
+    async fn test_connectivity_tester_default_matches_new() {
+        let a = ConnectivityTester::default();
+        let b = ConnectivityTester::new();
+        assert_eq!(a.test_timeout, b.test_timeout);
     }
 
     #[tokio::test]
@@ -460,5 +469,60 @@ mod tests {
 
         assert!(!result.tcp_reachable);
         assert!(result.error.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_tcp_refused_error_message_for_diagnostics_path() {
+        let addr: SocketAddr = "127.0.0.1:1".parse().unwrap();
+        let tester = ConnectivityTester::with_timeout(Duration::from_millis(200));
+        let result = tester.test_tcp_connectivity(addr).await.unwrap();
+        assert!(!result.tcp_reachable);
+        let err = result.error.expect("err");
+        assert!(
+            err.to_lowercase().contains("refused")
+                || err.to_lowercase().contains("connection refused"),
+            "unexpected error for closed port: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_comprehensive_skips_https_when_tcp_fails() {
+        let addr: SocketAddr = "127.0.0.1:1".parse().unwrap();
+        let tester = ConnectivityTester::with_timeout(Duration::from_millis(150));
+        let result = tester.test_comprehensive(addr).await.unwrap();
+        assert!(!result.tcp_reachable);
+        assert!(!result.https_reachable);
+    }
+
+    #[tokio::test]
+    async fn test_diagnose_connectivity_lists_tcp_failure_when_port_closed() {
+        let addr: SocketAddr = "127.0.0.1:1".parse().unwrap();
+        let tester = ConnectivityTester::with_timeout(Duration::from_millis(200));
+        let lines = tester.diagnose_connectivity_issues(addr).await;
+        assert!(
+            lines.iter().any(|l| l.contains("TCP connectivity failed")),
+            "expected TCP failure line, got: {lines:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_diagnose_connectivity_refused_includes_ss_hint() {
+        let addr: SocketAddr = "127.0.0.1:1".parse().unwrap();
+        let tester = ConnectivityTester::with_timeout(Duration::from_millis(200));
+        let lines = tester.diagnose_connectivity_issues(addr).await;
+        let joined = lines.join("\n");
+        assert!(
+            joined.contains("refused") || joined.contains("Connection refused"),
+            "expected refused diagnostics: {joined}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_test_result_fields_for_failed_tcp() {
+        let addr: SocketAddr = "127.0.0.1:1".parse().unwrap();
+        let tester = ConnectivityTester::with_timeout(Duration::from_millis(100));
+        let result = tester.test_tcp_connectivity(addr).await.unwrap();
+        assert_eq!(result.target, addr);
+        assert!(!result.https_reachable);
     }
 }

@@ -98,7 +98,7 @@ async fn test_fault_discover_without_provider() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_fault_wrong_key_decrypt() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -117,7 +117,7 @@ async fn test_fault_wrong_key_decrypt() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_fault_corrupted_ciphertext() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -140,7 +140,7 @@ async fn test_fault_corrupted_ciphertext() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_fault_wrong_aad() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -160,7 +160,7 @@ async fn test_fault_wrong_aad() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_fault_invalid_nonce_size() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -207,7 +207,7 @@ async fn test_fault_rapid_provider_creation() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_fault_operation_timeout() {
     use std::time::Duration;
     use tokio::time::timeout;
@@ -244,7 +244,7 @@ async fn test_fault_unicode_in_paths() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_fault_zero_length_encryption() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -264,7 +264,7 @@ async fn test_fault_zero_length_encryption() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_fault_repeated_operations_same_data() {
     let provider = discover_crypto_provider().await.unwrap();
 

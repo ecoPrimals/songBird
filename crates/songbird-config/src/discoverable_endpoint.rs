@@ -316,26 +316,20 @@ impl DiscoverableEndpoint {
                 consul_addr: _,
             } => {
                 // For now, return error - full consul integration would go here
-                Err(SongbirdError::Configuration {
-                    message: "Consul discovery not yet implemented".to_string(),
-                    field: Some("consul".to_string()),
-                    suggestion: Some(
-                        "Use environment variables or static configuration instead".to_string(),
-                    ),
-                })
+                Err(SongbirdError::not_implemented_with_detail(
+                    "consul_service_discovery",
+                    "Use environment variables or static configuration instead",
+                ))
             }
 
             DiscoveryMethod::DnsServiceDiscovery {
                 service_name: _,
             } => {
                 // For now, return error - full DNS-SD would go here
-                Err(SongbirdError::Configuration {
-                    message: "DNS-SD not yet implemented".to_string(),
-                    field: Some("dns_sd".to_string()),
-                    suggestion: Some(
-                        "Use environment variables or static configuration instead".to_string(),
-                    ),
-                })
+                Err(SongbirdError::not_implemented_with_detail(
+                    "dns_sd_discovery",
+                    "Use environment variables or static configuration instead",
+                ))
             }
         }
     }
@@ -361,7 +355,7 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
                         suggestion: Some("Provide a URL with a hostname".to_string()),
                     })?
                     .to_string(),
-                port: url.port().unwrap_or(80),
+                port: url.port_or_known_default().unwrap_or(80),
                 protocol: Some(url.scheme().to_string()),
                 path: Some(url.path().to_string()),
             })
@@ -406,11 +400,10 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
 
         EndpointParser::Pattern(_pattern) => {
             // Custom pattern parsing would go here
-            Err(SongbirdError::Configuration {
-                message: "Custom patterns not yet implemented".to_string(),
-                field: Some("pattern".to_string()),
-                suggestion: Some("Use Url or HostPort parser instead".to_string()),
-            })
+            Err(SongbirdError::not_implemented_with_detail(
+                "endpoint_parser_pattern",
+                "Use Url or HostPort parser instead",
+            ))
         }
     }
 }
@@ -495,8 +488,9 @@ impl Default for DiscoverableEndpoint {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -567,7 +561,10 @@ mod tests {
     #[test]
     fn parse_pattern_returns_not_implemented() {
         let err = parse_endpoint("x", &EndpointParser::Pattern("p".into())).expect_err("pattern");
-        assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+        assert!(
+            matches!(err, SongbirdError::NotImplemented { ref feature, .. } if feature == "endpoint_parser_pattern"),
+            "{err:?}"
+        );
     }
 
     #[test]
@@ -692,5 +689,121 @@ mod tests {
             .await
             .expect_err("not in k8s");
         assert!(matches!(err, SongbirdError::Configuration { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn from_env_sets_environment_discovery_and_var_name() {
+        let ep = DiscoverableEndpoint::from_env("MY_SERVICE_URL");
+        assert!(matches!(
+            ep.discovery_method,
+            DiscoveryMethod::Environment {
+                ref var_name,
+                parser: EndpointParser::Url,
+            } if var_name == "MY_SERVICE_URL"
+        ));
+        assert!(ep.cache_discovery);
+        assert!(ep.dev_fallback.is_some());
+    }
+
+    #[test]
+    fn from_k8s_service_sets_cluster_host_and_port() {
+        let ep = DiscoverableEndpoint::from_k8s_service("payments", "prod", 9090);
+        match &ep.discovery_method {
+            DiscoveryMethod::KubernetesService {
+                service_name,
+                namespace,
+                port: PortSpec::Number(p),
+            } => {
+                assert_eq!(service_name, "payments");
+                assert_eq!(namespace, "prod");
+                assert_eq!(*p, 9090);
+            }
+            _ => panic!("expected KubernetesService"),
+        }
+        let fb = ep.dev_fallback.as_ref().expect("dev fallback");
+        assert_eq!(fb.host, "payments.prod.svc.cluster.local");
+        assert_eq!(fb.port, 9090);
+    }
+
+    #[test]
+    fn from_consul_service_has_no_dev_fallback() {
+        let ep = DiscoverableEndpoint::from_consul_service("auth");
+        assert!(matches!(
+            ep.discovery_method,
+            DiscoveryMethod::ConsulService {
+                ref service_name,
+                consul_addr: None,
+            } if service_name == "auth"
+        ));
+        assert!(ep.dev_fallback.is_none());
+    }
+
+    #[test]
+    fn default_uses_service_endpoint_var() {
+        let ep = DiscoverableEndpoint::default();
+        assert!(matches!(
+            ep.discovery_method,
+            DiscoveryMethod::Environment {
+                ref var_name,
+                ..
+            } if var_name == "SERVICE_ENDPOINT"
+        ));
+    }
+
+    #[test]
+    fn parse_url_default_port_80_when_omitted() {
+        let spec = parse_endpoint("http://example.com/path", &EndpointParser::Url).expect("url");
+        assert_eq!(spec.port, 80);
+        assert_eq!(spec.path.as_deref(), Some("/path"));
+    }
+
+    #[test]
+    fn parse_url_https_default_port_443_when_omitted() {
+        let spec =
+            parse_endpoint("https://secure.example.com/", &EndpointParser::Url).expect("url");
+        assert_eq!(spec.port, 443);
+        assert_eq!(spec.protocol.as_deref(), Some("https"));
+    }
+
+    #[tokio::test]
+    async fn discover_dev_fallback_when_rust_env_dev() {
+        let ep = DiscoverableEndpoint {
+            discovery_method: DiscoveryMethod::ConsulService {
+                service_name: "x".into(),
+                consul_addr: None,
+            },
+            fallback_methods: vec![],
+            dev_fallback: Some(EndpointSpec {
+                host: "rust-dev.local".into(),
+                port: 5000,
+                protocol: Some("http".into()),
+                path: None,
+            }),
+            cache_discovery: false,
+        };
+        let got = ep
+            .discover_with(|k| {
+                if k == "RUST_ENV" {
+                    Ok("dev".into())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            })
+            .await
+            .expect("dev fallback via RUST_ENV");
+        assert_eq!(got.host, "rust-dev.local");
+    }
+
+    #[test]
+    fn to_socket_addr_accepts_ipv6_literal() {
+        let spec = EndpointSpec {
+            host: "::1".to_string(),
+            port: 8080,
+            protocol: None,
+            path: None,
+        };
+        let sa = spec.to_socket_addr().expect("ipv6 loopback");
+        assert!(sa.ip().is_loopback());
+        assert_eq!(sa.port(), 8080);
     }
 }

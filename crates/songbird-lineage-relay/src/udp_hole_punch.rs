@@ -247,7 +247,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires two processes for real hole punch test
+    #[ignore = "requires multi-process setup for real hole punch"] // Requires two processes for real hole punch test
     async fn test_udp_hole_punch_loopback() {
         // This test demonstrates the hole punch logic but won't actually
         // punch through NAT since it's loopback. Use for logic verification only.

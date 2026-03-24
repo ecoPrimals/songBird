@@ -215,14 +215,7 @@ pub async fn execute_quick_setup_api(
     });
 
     // Generate type-safe configuration based on request and discovered resources
-    let capabilities = match request.contribute_type {
-        ContributeType::Compute => vec!["compute".to_string()],
-        ContributeType::Storage => vec!["storage".to_string()],
-        ContributeType::Data => vec!["data".to_string()],
-        ContributeType::All => {
-            vec!["compute".to_string(), "storage".to_string(), "data".to_string()]
-        }
-    };
+    let capabilities = capabilities_for_contribute_type(&request.contribute_type);
 
     let discovery_endpoints: Vec<String> =
         discovered_networks.iter().map(|n| n.endpoint.clone()).collect();
@@ -268,6 +261,18 @@ pub async fn execute_quick_setup_api(
         setup_status: SetupStatus::SystemReady,
         next_steps,
     })
+}
+
+/// Capability strings for a contribute type (pure mapping for config generation).
+fn capabilities_for_contribute_type(contribute_type: &ContributeType) -> Vec<String> {
+    match contribute_type {
+        ContributeType::Compute => vec!["compute".to_string()],
+        ContributeType::Storage => vec!["storage".to_string()],
+        ContributeType::Data => vec!["data".to_string()],
+        ContributeType::All => {
+            vec!["compute".to_string(), "storage".to_string(), "data".to_string()]
+        }
+    }
 }
 
 /// Generate next steps based on setup results
@@ -365,5 +370,131 @@ pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> 
             suggestion: Some("Check API response for details".to_string()),
         }
         .into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{
+        ContributeType, DiscoveredNetwork, OrchestratorConfig, capabilities_for_contribute_type,
+        generate_next_steps,
+    };
+
+    fn net(name: &str, score: f64, endpoint: &str) -> DiscoveredNetwork {
+        DiscoveredNetwork {
+            name: name.to_string(),
+            node_count: 1,
+            network_type: "test".to_string(),
+            institution: None,
+            endpoint: endpoint.to_string(),
+            compatibility_score: score,
+        }
+    }
+
+    #[test]
+    fn generate_next_steps_zero_networks_includes_bootstrap_steps() {
+        let steps = generate_next_steps(&[], &ContributeType::Compute);
+        assert!(steps.iter().any(|s| s.contains("Start a new Songbird network")));
+        assert!(steps.iter().any(|s| s.contains("firewall")));
+        assert!(steps.iter().any(|s| s.contains("compute")));
+        assert!(steps.iter().any(|s| s.contains("Monitor system status")));
+    }
+
+    #[test]
+    fn generate_next_steps_single_network_mentions_name() {
+        let nets = [net("alpha-net", 0.5, "http://a")];
+        let steps = generate_next_steps(&nets, &ContributeType::Storage);
+        assert!(steps.iter().any(|s| s.contains("alpha-net")));
+        assert!(steps.iter().any(|s| s.contains("storage")));
+    }
+
+    #[test]
+    fn generate_next_steps_picks_highest_compatibility() {
+        let nets = [
+            net("low", 0.2, "http://l"),
+            net("best", 0.95, "http://b"),
+            net("mid", 0.5, "http://m"),
+        ];
+        let steps = generate_next_steps(&nets, &ContributeType::Data);
+        assert!(steps.iter().any(|s| s.contains("best")));
+        assert!(steps.iter().any(|s| s.contains("data")));
+    }
+
+    #[test]
+    fn generate_next_steps_tied_scores_still_recommend_one() {
+        let nets = [net("a", 0.5, "http://a"), net("b", 0.5, "http://b")];
+        let steps = generate_next_steps(&nets, &ContributeType::All);
+        assert!(steps.iter().any(|s| s.contains("Recommended: Join")));
+        assert!(steps.iter().any(|s| s.contains("resource sharing")));
+    }
+
+    #[test]
+    fn contribute_type_compute_appends_distinct_step() {
+        let steps = generate_next_steps(&[], &ContributeType::Compute);
+        assert!(steps.iter().any(|s| s.contains("compute sharing")));
+    }
+
+    #[test]
+    fn contribute_type_all_appends_all_types_step() {
+        let steps = generate_next_steps(&[], &ContributeType::All);
+        assert!(steps.iter().any(|s| s.contains("all types")));
+    }
+
+    #[test]
+    fn generate_next_steps_two_networks_includes_alternative_hint() {
+        let nets = [net("n1", 0.1, "e1"), net("n2", 0.2, "e2")];
+        let steps = generate_next_steps(&nets, &ContributeType::Compute);
+        assert!(steps.iter().any(|s| s.contains("Alternative networks")));
+    }
+
+    #[test]
+    fn capabilities_for_contribute_type_compute_storage_data() {
+        assert_eq!(
+            capabilities_for_contribute_type(&ContributeType::Compute),
+            vec!["compute".to_string()]
+        );
+        assert_eq!(
+            capabilities_for_contribute_type(&ContributeType::Storage),
+            vec!["storage".to_string()]
+        );
+        assert_eq!(
+            capabilities_for_contribute_type(&ContributeType::Data),
+            vec!["data".to_string()]
+        );
+    }
+
+    #[test]
+    fn capabilities_for_contribute_type_all_ordering() {
+        assert_eq!(
+            capabilities_for_contribute_type(&ContributeType::All),
+            vec!["compute".to_string(), "storage".to_string(), "data".to_string()]
+        );
+    }
+
+    #[test]
+    fn orchestrator_config_default_has_expected_keys_and_security() {
+        let c = OrchestratorConfig::default();
+        assert_eq!(c.node_name, "songbird-node");
+        assert!(c.ports.contains_key("api"));
+        assert!(c.ports.contains_key("metrics"));
+        assert!(c.security.require_tls);
+        assert!(c.security.enable_audit_logging);
+        assert!(!c.security.allow_insecure_networks);
+        assert_eq!(c.resource_limits.max_cpu_percent, 80);
+    }
+
+    #[test]
+    fn generate_next_steps_single_network_verify_connectivity_step() {
+        let nets = [net("solo", 1.0, "http://solo")];
+        let steps = generate_next_steps(&nets, &ContributeType::Compute);
+        assert!(steps.iter().any(|s| s.contains("Verify network connectivity")));
+    }
+
+    #[test]
+    fn generate_next_steps_empty_networks_storage_contribute_appends_storage_step() {
+        let steps = generate_next_steps(&[], &ContributeType::Storage);
+        assert!(steps.iter().any(|s| s.contains("storage allocation")));
     }
 }

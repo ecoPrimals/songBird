@@ -42,7 +42,7 @@ async fn chaos_test_timestamp_consistency() -> Result<(), Box<dyn std::error::Er
 }
 
 #[tokio::test]
-#[ignore] // Requires multi-node setup for full clock skew simulation
+#[ignore = "requires multi-node setup for full clock skew simulation"] // Requires multi-node setup for full clock skew simulation
 async fn chaos_test_clock_skew() {
     // Test behavior when system clocks diverge
     // This test demonstrates clock skew detection capabilities

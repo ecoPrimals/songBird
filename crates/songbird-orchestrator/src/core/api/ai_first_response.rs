@@ -1,757 +1,671 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! AI-First Response Format Implementation Implementation
+//! AI-first universal response envelope for orchestrator APIs.
 //!
-//! Universal response format for all Songbird endpoints that enables
-//! seamless human-AI collaboration across the ecosystem.
+//! Endpoints return [`AIFirstResponse`] so automation and humans share the same structured
+//! outcome, timing, and optional follow-up actions.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
-/// Universal AI-first response format - MANDATORY for all Songbird endpoints
+use uuid::Uuid;
+
+/// Universal AI-first response format for Songbird orchestrator endpoints.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
-pub struct AIFirstResponse<T>  {/// Operation success status (machine-readable)
-    /// Success field
-
+#[must_use = "This type represents an outcome that must be handled"]
+pub struct AIFirstResponse<T> {
+    /// Operation success status (machine-readable)
     pub success: bool,
-
     /// Strongly-typed response data
-        pub data: T,
+    pub data: T,
     /// AI-optimized error information
-        pub error: Option<AIFirstError>,
-
+    pub error: Option<AIFirstError>,
     /// Unique request identifier for tracing and correlation
-        pub request_id: Uuid,
+    pub request_id: Uuid,
     /// Processing time in milliseconds for performance monitoring
-    /// Processing Time Ms field
-
     pub processing_time_ms: u64,
-
     /// AI-specific metadata for decision making
     pub ai_metadata: AIResponseMetadata,
     /// Human interaction context (when applicable)
-    /// Human Context field
-
     pub human_context: Option<HumanInteractionContext>,
-
     /// Confidence score for AI decision making (0.0 - 1.0)
-    /// Confidence Score field
-
     pub confidence_score: f64,
     /// Suggested next actions for AI agents
-    /// Suggested Actions field
+    pub suggested_actions: Vec<SuggestedAction>,
+}
 
-    pub suggested_actions: Vec<SuggestedAction>);}
-
-impl<T> AIFirstResponse<T>  {/// Create a successful AI-first response
-    pub fn success(data: T,
-    request_id: Uuid,
-    processing_time_ms: u64,
-        confidence_score: f64) -> Self  {Self { success: true,
-            data)
+impl<T> AIFirstResponse<T> {
+    /// Create a successful AI-first response.
+    #[must_use]
+    pub fn success(
+        data: T,
+        request_id: Uuid,
+        processing_time_ms: u64,
+        confidence_score: f64,
+    ) -> Self {
+        Self {
+            success: true,
+            data,
             error: None,
-    request_id)
-            processing_time_ms)
+            request_id,
+            processing_time_ms,
             ai_metadata: AIResponseMetadata::default(),
             human_context: None,
-    confidence_score)
-            suggested_actions: Vec::new();}}
+            confidence_score,
+            suggested_actions: Vec::new(),
+        }
+    }
 
-    /// Create a failed AI-first response
-    pub fn error(data: T, error: AIFirstError, request_id: Uuid, processing_time_ms: u64) -> Self  {Self {success: false,
-            data)
-            error: Some(error))
-            request_id)
-            processing_time_ms)
+    /// Create a failed AI-first response (still carries `data`, often partial or placeholder).
+    #[must_use]
+    pub fn error(data: T, error: AIFirstError, request_id: Uuid, processing_time_ms: u64) -> Self {
+        Self {
+            success: false,
+            data,
+            error: Some(error),
+            request_id,
+            processing_time_ms,
             ai_metadata: AIResponseMetadata::default(),
             human_context: None,
-    confidence_score: 0.0,
-            suggested_actions: Vec::new();}}
+            confidence_score: 0.0,
+            suggested_actions: Vec::new(),
+        }
+    }
 
-    /// Check if the response indicates success
-    pub const fn is_success() -> bool  {
-     self.success
+    /// Whether the response indicates success.
+    #[must_use]
+    pub const fn is_success(&self) -> bool {
+        self.success
+    }
 
-}
+    /// Whether the response indicates an error.
+    #[must_use]
+    pub const fn is_error(&self) -> bool {
+        !self.success
+    }
 
-    /// Check if the response indicates an error
-    pub fn is_error(&self)self, -> bool { !self.success;};
-    /// Unwrap the data from a successful response
-    pub fn unwrap_data() -> T  {
-     self.data
+    /// Consume the response and return the payload.
+    #[must_use]
+    pub fn into_data(self) -> T {
+        self.data
+    }
 
-}
-    /// Add human interaction context
-    #[must_use = "Builder methods must be chained - ignoring breaks fluent API"];"
-    pub fn with_human_context() -> Self  {
-     self.human_context = Some(context);
-        self ;
+    /// Attach human interaction context (builder).
+    #[must_use = "Builder methods must be chained - ignoring breaks fluent API"]
+    pub fn with_human_context(mut self, context: HumanInteractionContext) -> Self {
+        self.human_context = Some(context);
+        self
+    }
 
-}
-
-    /// Add AI metadata
-    #[must_use = "Builder methods must be chained - ignoring breaks fluent API"];"
-    pub fn with_ai_metadata(mut self, metadata: AIResponseMetadata) -> Self {;
+    /// Replace AI metadata (builder).
+    #[must_use = "Builder methods must be chained - ignoring breaks fluent API"]
+    pub fn with_ai_metadata(mut self, metadata: AIResponseMetadata) -> Self {
         self.ai_metadata = metadata;
-        self;};
-    /// Add suggested actions
-    #[must_use = "Builder methods must be chained - ignoring breaks fluent API"];"
-    pub fn with_suggested_actions(mut self, actions: Vec<SuggestedAction>) -> Self {;
-        self.suggested_actions = actions;
-        self;}}
+        self
+    }
 
-/// AI-optimized error structure with automation hints
+    /// Attach suggested follow-up actions (builder).
+    #[must_use = "Builder methods must be chained - ignoring breaks fluent API"]
+    pub fn with_suggested_actions(mut self, actions: Vec<SuggestedAction>) -> Self {
+        self.suggested_actions = actions;
+        self
+    }
+}
+
+/// AI-optimized error structure with automation hints.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
+#[must_use = "This type represents an outcome that must be handled"]
 pub struct AIFirstError {
     /// Machine-readable error code (UPPER_SNAKE_CASE)
-    /// Code field
-
     pub code: String,
     /// Human-readable message (for logging/debugging)
-    /// Message field
-
     pub message: String,
     /// Error category for AI classification
-        pub retry_strategy: RetryStrategy,
+    pub category: AIErrorCategory,
+    /// Retry guidance
+    pub retry_strategy: RetryStrategy,
     /// Actionable hints for AI automation
-    /// Automation Hints field
-
     pub automation_hints: Vec<String>,
-
     /// Severity level for prioritization
-        pub severity: ErrorSeverity,
+    pub severity: ErrorSeverity,
     /// Whether human intervention is required
-    /// Requires Human Intervention field
-
     pub requires_human_intervention: bool,
     /// Related error context for debugging
-    pub context: HashMap<String, serde_json::Value>,;};
-#[derive(Debug, Clone, Serialize, Deserialize)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
+    pub context: HashMap<String, serde_json::Value>,
+}
+
+impl AIFirstError {
+    /// Service mesh / routing style failure with retry defaults.
+    #[must_use]
+    pub fn service_mesh_failure(service: &str, message: impl Into<String>) -> Self {
+        Self {
+            code: "SERVICE_MESH_FAILURE".to_string(),
+            message: message.into(),
+            category: AIErrorCategory::ServiceMeshFailure,
+            retry_strategy: RetryStrategy {
+                should_retry: true,
+                delay_ms: 1000,
+                max_attempts: 3,
+                backoff_strategy: BackoffType::Exponential {
+                    base: 2.0,
+                },
+                retry_conditions: vec!["service_available".to_string()],
+                success_probability: 0.7,
+            },
+            automation_hints: vec![
+                "Check service health".to_string(),
+                "Try alternative service endpoint".to_string(),
+            ],
+            severity: ErrorSeverity::High,
+            requires_human_intervention: false,
+            context: {
+                let mut ctx = HashMap::new();
+                ctx.insert(
+                    "failed_service".to_string(),
+                    serde_json::Value::String(service.to_string()),
+                );
+                ctx
+            },
+        }
+    }
+
+    /// Human approval or manual step required.
+    #[must_use]
+    pub fn human_intervention_required(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
+        Self {
+            code: "HUMAN_INTERVENTION_REQUIRED".to_string(),
+            message: format!("Human intervention required: {reason}"),
+            category: AIErrorCategory::HumanInterventionRequired,
+            retry_strategy: RetryStrategy {
+                should_retry: false,
+                delay_ms: 0,
+                max_attempts: 0,
+                backoff_strategy: BackoffType::Linear,
+                retry_conditions: vec!["human_approval_received".to_string()],
+                success_probability: 1.0,
+            },
+            automation_hints: vec![
+                "Escalate to human operator".to_string(),
+                "Provide context for decision".to_string(),
+            ],
+            severity: ErrorSeverity::Medium,
+            requires_human_intervention: true,
+            context: {
+                let mut ctx = HashMap::new();
+                ctx.insert("intervention_reason".to_string(), serde_json::Value::String(reason));
+                ctx
+            },
+        }
+    }
+}
+
+/// High-level classification for automation.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[must_use = "This type represents an outcome that must be handled"]
 pub enum AIErrorCategory {
-    /// Service mesh routing issues
-    /// ServiceMeshFailure, ServiceMeshFailure,
-    /// Service discovery problems
-    /// ServiceDiscoveryFailure, ServiceDiscoveryFailure,
-    /// Load balancing failures
-    /// LoadBalancingFailure, LoadBalancingFailure,
-    /// Configuration or parameter issues
-    /// ConfigurationIssue, ConfigurationIssue,
-    /// Authentication or authorization failures
-    /// SecurityViolation, SecurityViolation,
-    /// Network connectivity problems
-    /// NetworkFailure, NetworkFailure,
-    /// Requires human decision or input
-    /// HumanInterventionRequired, HumanInterventionRequired,
-    /// External service dependency failures
-    /// DependencyFailure, DependencyFailure,
-    /// Rate limiting or throttling
-    /// RateLimiting, RateLimiting,
-    /// Resource exhaustion
-    /// ResourceExhaustion, ResourceExhaustion,
-    /// Circuit breaker activation
-    /// CircuitBreakerOpen, CircuitBreakerOpen,
-    /// Primal integration failures
-    /// PrimalIntegrationFailure, PrimalIntegrationFailure,
-    /// System-level errors
-    /// SystemError, SystemError,
-    Unknown,;};
-#[derive(Debug, Clone, Serialize, Deserialize)]
+    ServiceMeshFailure,
+    ServiceDiscoveryFailure,
+    LoadBalancingFailure,
+    ConfigurationIssue,
+    SecurityViolation,
+    NetworkFailure,
+    HumanInterventionRequired,
+    DependencyFailure,
+    RateLimiting,
+    ResourceExhaustion,
+    CircuitBreakerOpen,
+    PrimalIntegrationFailure,
+    SystemError,
+    Unknown,
+}
+
+/// Retry policy attached to errors.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RetryStrategy {
     /// Whether automatic retry is recommended
-        pub should_retry: bool,
-
+    pub should_retry: bool,
     /// Initial delay in milliseconds
-    /// Fixed delay in milliseconds between attempts
-
     pub delay_ms: u64,
-
     /// Maximum retry attempts
-    /// Maximum number of retry attempts
-
     pub max_attempts: u32,
-
     /// Backoff strategy type
-        pub backoff_strategy: BackoffType,
+    pub backoff_strategy: BackoffType,
     /// Conditions that must be met for retry
-    /// Retry Conditions field
-
     pub retry_conditions: Vec<String>,
-
     /// Estimated success probability for retry
-        pub success_probability: f64 ,
- )
+    pub success_probability: f64,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum BackoffType {
-    /// Linear, Linear,
-    Exponential { base: f64 }})
-    /// Fibonacci, Fibonacci,
-    Custom { formula: String;}}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
-pub enum ErrorSeverity {
-    /// Low, Low,
-    /// Medium, Medium)
-    /// High, High,
-    Critical  }
 
-/// Metadata specifically designed for AI decision making
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
+/// Backoff strategy for retries.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum BackoffType {
+    Linear,
+    Exponential {
+        base: f64,
+    },
+    Fibonacci,
+    Custom {
+        formula: String,
+    },
+}
+
+/// Severity for triage.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[must_use = "This type represents an outcome that must be handled"]
+pub enum ErrorSeverity {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+/// Metadata block for AI-facing consumers.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[must_use = "This type represents an outcome that must be handled"]
 pub struct AIResponseMetadata {
     /// Performance characteristics
-    /// Performance field
-
     pub performance: PerformanceMetrics,
     /// Resource utilization
-        pub resource_usage: ResourceUsage,
+    pub resource_usage: ResourceUsage,
     /// Quality indicators
-        pub quality_metrics: QualityMetrics,
+    pub quality_metrics: QualityMetrics,
     /// Caching information
-    /// Cache Info field
-
     pub cache_info: CacheInfo,
     /// Rate limiting status
-        pub rate_limit_status: RateLimitStatus,
+    pub rate_limit_status: RateLimitStatus,
     /// Related operations or dependencies
-    /// Dependencies field
-
     pub dependencies: Vec<String>,
     /// Service mesh routing information
-    /// Routing Metadata field
+    pub routing_metadata: RoutingMetadata,
+}
 
-    pub routing_metadata: RoutingMetadata,;};
+/// Performance slice of [`AIResponseMetadata`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
     /// Request processing latency
-    /// Latency Ms field
-
     pub latency_ms: f64,
-
     /// Service mesh routing time
-    /// Routing Time Ms field
-
     pub routing_time_ms: f64,
-
     /// Backend service response time
-    /// Backend Response Time Ms field
-
     pub backend_response_time_ms: f64,
-
     /// Network overhead
     pub network_overhead_ms: f64,
-
     /// Throughput metrics
-    pub throughput_rps: f64 ,
- )
+    pub throughput_rps: f64,
 }
 
-impl Default for PerformanceMetrics  {fn default() -> Self  {Self { latency_ms: 0.0,
+impl Default for PerformanceMetrics {
+    fn default() -> Self {
+        Self {
+            latency_ms: 0.0,
             routing_time_ms: 0.0,
             backend_response_time_ms: 0.0,
             network_overhead_ms: 0.0,
-            throughput_rps: 0.0;}}}
+            throughput_rps: 0.0,
+        }
+    }
+}
+
+/// Resource usage slice of [`AIResponseMetadata`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceUsage {
     /// CPU utilization percentage
-    /// Cpu Percent field
-
     pub cpu_percent: f64,
-
     /// Memory usage in bytes
-        pub memory_bytes: u64,
-
+    pub memory_bytes: u64,
     /// Disk usage in bytes
-        pub disk_bytes: u64,
-
+    pub disk_bytes: u64,
     /// Network bandwidth usage in bytes per second
-        pub network_bytes_per_sec: u64,
-
+    pub network_bytes_per_sec: u64,
     /// Custom resource usage metrics
-    pub custom_metrics: HashMap<String, f64> )
- )
+    pub custom_metrics: HashMap<String, f64>,
 }
 
-impl Default for ResourceUsage  {fn default() -> Self  {Self { cpu_percent: 0.0,
+impl Default for ResourceUsage {
+    fn default() -> Self {
+        Self {
+            cpu_percent: 0.0,
             memory_bytes: 0,
             disk_bytes: 0,
             network_bytes_per_sec: 0,
-            custom_metrics: HashMap::new();}}}
+            custom_metrics: HashMap::new(),
+        }
+    }
+}
+
+/// Quality slice of [`AIResponseMetadata`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityMetrics {
     /// Accuracy score (0.0 - 1.0)
-    /// Accuracy field
-
     pub accuracy: f64,
-
     /// Completeness score (0.0 - 1.0)
-    /// Completeness field
-
     pub completeness: f64,
-
     /// Consistency score (0.0 - 1.0)
-    /// Consistency field
-
     pub consistency: f64,
-
     /// Data freshness (seconds since last update)
-    /// Freshness Seconds field
-
     pub freshness_seconds: u64,
-
     /// Service reliability score (0.0 - 1.0)
-    /// Reliability field
-
-    pub reliability: f64 ,
- )
+    pub reliability: f64,
 }
 
-impl Default for QualityMetrics  {fn default() -> Self  {Self { accuracy: 1.0,
+impl Default for QualityMetrics {
+    fn default() -> Self {
+        Self {
+            accuracy: 1.0,
             completeness: 1.0,
             consistency: 1.0,
             freshness_seconds: 0,
-            reliability: 1.0;}}}
+            reliability: 1.0,
+        }
+    }
+}
+
+/// Cache slice of [`AIResponseMetadata`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheInfo {
     /// Whether response is cached
-        pub hit_ratio: f64,
-
+    pub is_cached: bool,
+    /// Hit ratio when cached
+    pub hit_ratio: f64,
     /// Time to live for cached data
-    /// Ttl Seconds field
-
     pub ttl_seconds: Option<u64>,
-
     /// Cache key used
-        pub cache_key: Option<String>,
-
+    pub cache_key: Option<String>,
     /// Cache generation timestamp
-        pub cached_at: Option<DateTime<Utc>> ,
- )
+    pub cached_at: Option<DateTime<Utc>>,
 }
 
-impl Default for CacheInfo  {fn default() -> Self  {Self { is_cached: false,
+impl Default for CacheInfo {
+    fn default() -> Self {
+        Self {
+            is_cached: false,
             hit_ratio: 0.0,
             ttl_seconds: None,
-    cache_key: None,
-    cached_at: None;}}}
+            cache_key: None,
+            cached_at: None,
+        }
+    }
+}
+
+/// Rate limit slice of [`AIResponseMetadata`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
 pub struct RateLimitStatus {
     /// Whether rate limiting is active
-        pub is_rate_limited: bool,
-
+    pub is_rate_limited: bool,
     /// Requests remaining in current window
-    /// Requests Remaining field
-
     pub requests_remaining: Option<u32>,
-
     /// Rate limit window reset time
-        pub reset_time: Option<DateTime<Utc>>,
-
-    /// Rate limit window duration
-    /// Window Duration field
-
+    pub reset_time: Option<DateTime<Utc>>,
+    /// Rate limit window duration (not serialized; wire format uses other fields)
+    #[serde(skip)]
     pub window_duration: Option<Duration>,
-
     /// Current request rate (requests per second)
-    /// Current Rate field
-
-    pub current_rate: f64 ,
- )
+    pub current_rate: f64,
 }
 
-impl Default for RateLimitStatus  {fn default() -> Self  {Self { is_rate_limited: false,
+impl Default for RateLimitStatus {
+    fn default() -> Self {
+        Self {
+            is_rate_limited: false,
             requests_remaining: None,
-    reset_time: None,
-    window_duration: None,
-    current_rate: 0.0;}}}
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+            reset_time: None,
+            window_duration: None,
+            current_rate: 0.0,
+        }
+    }
+}
+
+/// Routing slice of [`AIResponseMetadata`].
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RoutingMetadata {
     /// Selected service endpoint
-    /// Selected Endpoint field
-
     pub selected_endpoint: Option<String>,
-
     /// Number of available endpoints
-    /// Available Endpoints field
-
     pub available_endpoints: u32,
-
     /// Load balancing algorithm used
-    /// Load Balancing Algorithm field
-
     pub load_balancing_algorithm: Option<String>,
-
     /// Service health scores
-    pub service_health_scores: HashMap<String, f64>)
-
+    pub service_health_scores: HashMap<String, f64>,
     /// Routing decision factors
-    /// Decision Factors field
-
-    pub decision_factors: Vec<RoutingDecisionFactor> ,
- )
+    pub decision_factors: Vec<RoutingDecisionFactor>,
 }
+
+/// Single routing decision factor for observability.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutingDecisionFactor {
     /// Factor name
-    /// Name identifier
-
     pub name: String,
     /// Factor weight in decision (0.0 - 1.0)
-    /// Weight field
-
     pub weight: f64,
-
     /// Factor value
-        pub value: serde_json::Value,
-
+    pub value: serde_json::Value,
     /// Impact on routing decision
-        pub impact: String ,
- )
+    pub impact: String,
 }
 
-/// Context for human-AI collaborative operations in service mesh
+/// Human–AI collaboration context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HumanInteractionContext {
     /// Human user identifier (when applicable)
     pub user_id: Option<String>,
-
-    /// Current interaction mode
-    /// Interaction Mode field
-
-    pub interaction_mode: InteractionMode,
-    /// User preferences for AI operations
-    /// Preferences field
-
-    pub preferences: AIUserPreferences,
     /// Whether human approval is required for this operation
     pub approval_required: bool,
-
     /// Confidence threshold for auto-execution
-    /// Confidence Threshold field
-
     pub confidence_threshold: f64,
-
-    /// Escalation configuration
-    /// Escalation Config field
-
-    pub escalation_config: EscalationConfig,
-    /// Session context for multi-step operations
-    /// Session Context field
-
-    pub session_context: Option<SessionContext>,
-
-    /// Service mesh specific context
-    /// Service Mesh Context field
-
-    pub service_mesh_context: ServiceMeshContext ,
- )
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum InteractionMode {
-    /// AI operates completely autonomously
-    FullyAutonomous,
-    /// AI suggests actions, human approves before execution
-    HumanApproval,
-    /// Real-time collaboration between human and AI
-// AI
-    /// Collaborative, Collaborative,
-    /// Human directs strategy, AI executes tactics
-    /// HumanDirected, HumanDirected,
-    /// AI monitors and alerts, human makes key decisions
-    /// HumanSupervised, HumanSupervised,
-    /// Emergency mode - AI acts immediately, notifies human
-    Emergency  }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AIUserPreferences {
-    /// Preferred AI models for different operation types
-    pub model_preferences: HashMap<String, String>)
 
-    /// Auto-approval thresholds by operation category
-    pub auto_approval_thresholds: HashMap<String, f64>)
-
-    /// Notification preferences
-    /// Notifications field
-
-    pub notifications: NotificationPreferences,
-    /// Resource usage limits and preferences
-    /// Resource limitation configurations
-
-    pub resource_limits: AIResourceLimits,
-    /// Risk tolerance levels
-    /// Risk Tolerance field
-
-    pub risk_tolerance: RiskTolerance,
-    /// Learning preferences (whether AI should learn from user behavior)
-    /// Learning Enabled field
-
-    pub learning_enabled: bool ,
- )
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NotificationPreferences {
-    /// Email notifications enabled
-    /// Email Enabled field
-
-    pub email_enabled: bool,
-
-    /// Slack notifications enabled
-    /// Slack Enabled field
-
-    pub slack_enabled: bool,
-
-    /// Webhook notifications enabled
-    /// Webhook Enabled field
-
-    pub webhook_enabled: bool,
-
-    /// Minimum severity for notifications
-    /// Minimum Severity field
-
-    pub minimum_severity: ErrorSeverity,
-    /// Notification channels by category
-    pub channels_by_category: HashMap<String, Vec<String>> )
- )
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AIResourceLimits {
-    /// Maximum CPU usage percentage
-    /// Max Cpu Percent field
-
-    pub max_cpu_percent: f64,
-
-    /// Maximum memory usage in bytes
-        pub max_memory_bytes: u64,
-
-    /// Maximum execution time
-    /// Max Execution Time field
-
-    pub max_execution_time: Duration,
-    /// Maximum cost per operation
-    /// Max Cost Per Operation field
-
-    pub max_cost_per_operation: f64 ,
- )
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RiskTolerance {
-    /// Risk tolerance level (0.0 - 1.0, higher = more risk tolerant)
-    /// Level field
-
-    pub level: f64,
-
-    /// Risk categories and their specific tolerances
-    pub category_tolerances: HashMap<String, f64>)
-
-    /// Whether to allow experimental features
-    /// Allow Experimental field
-
-    pub allow_experimental: bool ,
- )
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EscalationConfig {
-    /// Service mesh specific escalation triggers
-    /// Escalation Triggers field
-
-    pub escalation_triggers: Vec<ServiceMeshEscalationTrigger>,
-
-    /// Maximum time to wait for human response
-    /// Human Response Timeout field
-
-    pub human_response_timeout: Duration,
-    /// Action to take if human doesn't respond in time
-    /// Timeout Action field
-
-    pub timeout_action: TimeoutAction,
-    /// Escalation chain (who to contact in order)
-    /// Escalation Chain field
-
-    pub escalation_chain: Vec<String> ,
- )
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ServiceMeshEscalationTrigger { /// Service discovery failures
-    ServiceDiscoveryFailure { failure_rate: f64 }})
-
-    /// Load balancing issues
-    LoadBalancingDegradation { threshold: f64 }})
-
-    /// Circuit breaker activations
-    CircuitBreakerActivation { service_pattern: String }})
-
-    /// Cross-primal communication failures
-    CrossPrimalFailure  {primal_type: String,
-    failure_rate: f64 }})
-
-    /// Security concerns in service mesh
-    ServiceMeshSecurityConcern { severity: String }})
-
-    /// Unknown service behavior
-    UnknownServiceBehavior { anomaly_score: f64 }})
-
-    /// Critical service impact
-    CriticalServiceImpact { affected_services: Vec<String>;}}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum TimeoutAction {
-    /// Proceed with default action
-    /// ProceedWithDefault, ProceedWithDefault,
-    /// Cancel operation
-    /// Cancel, Cancel,
-    /// Escalate to next level
-    /// Escalate, Escalate,
-    ExecuteReducedConfidence  }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionContext {
-    /// Session identifier
-    /// Session Id field
-
-    pub session_id: Uuid,
-    /// Session start time
-        pub started_at: DateTime<Utc>,
-
-    /// Session expiration time
-        pub expires_at: Option<DateTime<Utc>>,
-
-    /// Session state data
-    pub state: HashMap<String, serde_json: :Value>,
-    /// Previous operations in session
-    /// Operation History field
-
-    pub operation_history: Vec<OperationHistoryItem> ,
- )
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OperationHistoryItem {
-    /// Operation timestamp
-    /// Timestamp when this was created or last updated
-
-    pub timestamp: DateTime<Utc>,
-
-    /// Operation type
-    /// Operation Type field
-
-    pub operation_type: String,
-    /// Operation result
-        pub result: String,
-    /// Human involvement level
-    /// Human Involvement field
-
-    pub human_involvement: Option<String> ,
- )
-}
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceMeshContext {
-    /// Preferred service routing strategies
-    /// Routing Preferences field
-
-    pub routing_preferences: Vec<String>,
-
-    /// Load balancing preferences
-    pub load_balancing_preferences: HashMap<String, String>)
-
-    /// Circuit breaker tolerance
-    /// Circuit Breaker Tolerance field
-
-    pub circuit_breaker_tolerance: f64,
-
-    /// Human notification preferences for service issues
-    pub service_notification_preferences: NotificationPreferences ,
- )
-}
+/// Suggested follow-up for an AI agent.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuggestedAction {
     /// Action type for AI agents
-    /// Action Type field
-
     pub action_type: String,
     /// Action parameters
-    pub parameters: HashMap<String, serde_json: :Value>,
+    pub parameters: HashMap<String, serde_json::Value>,
     /// Priority for execution
-        pub priority: ActionPriority,
+    pub priority: ActionPriority,
     /// Expected outcome
-        pub expected_outcome: String,
+    pub expected_outcome: String,
     /// Confidence in suggestion
-    /// Confidence field
-
     pub confidence: f64,
-
     /// Human approval required for this action
-    /// Requires Human Approval field
-
     pub requires_human_approval: bool,
-
-    /// Estimated execution time
-    /// Estimated Execution Time field
-
-    pub estimated_execution_time: Option<Duration> ,
- )
+    /// Estimated execution time (not serialized; keep in-memory for agents)
+    #[serde(skip)]
+    pub estimated_execution_time: Option<Duration>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+
+/// Relative priority for suggested actions.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ActionPriority {
-    /// Low, Low,
-    /// Medium, Medium)
-    /// High, High,
-    Urgent};
-/// Helper functions for creating common AI-first responses
-impl AIFirstError {
-    /// Create a service mesh failure error
-    pub fn service_mesh_failure() -> Self    {Self { code: "SERVICE_MESH_FAILURE".to_string(),
-            message: message.to_string(),
-            category: AIErrorCategory::ServiceMeshFailure,
-            retry_strategy: RetryStrategy { should_retry: true,
-                delay_ms: 1000,
-                max_attempts: 3,
-                backoff_strategy: BackoffType::Exponential { base: 2.0  ;
+    Low,
+    Medium,
+    High,
+    Urgent,
+}
 
-  ;
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
-})
-                retry_conditions: vec!["service_available".to_string()],"
-                success_probability: 0.7;})
-            automation_hints: vec![
-                "Check service health".to_string()
-                "Try alternative service endpoint".to_string()
-            ])
-            severity: ErrorSeverity::High,
-            requires_human_intervention: false,
-            context:  {let mut ctx = HashMap::new,
-                ctx.insert()
-                    "failed_service".to_string(),
-                    serde_json::Value::String(service.to_string();
-                ctx;}}}
+    use super::*;
+    use serde_json::json;
 
-    /// Create a human intervention required error
-    pub fn human_intervention_required() -> Self   {Self { code: "HUMAN_INTERVENTION_REQUIRED".to_string(),
-            message: format!("Human intervention required: {}", reason ;"
- ;
-),
-            category: AIErrorCategory::HumanInterventionRequired,
-            retry_strategy: RetryStrategy  {should_retry: false,
+    fn rid() -> Uuid {
+        Uuid::nil()
+    }
+
+    #[test]
+    fn success_sets_flags_and_default_metadata() {
+        let r = AIFirstResponse::success("payload", rid(), 12, 0.88);
+        assert!(r.is_success());
+        assert!(!r.is_error());
+        assert_eq!(r.data, "payload");
+        assert!(r.error.is_none());
+        assert_eq!(r.processing_time_ms, 12);
+        assert_eq!(r.confidence_score, 0.88);
+        assert!(r.suggested_actions.is_empty());
+    }
+
+    #[test]
+    fn error_sets_failure_and_zero_confidence() {
+        let err = AIFirstError {
+            code: "E".to_string(),
+            message: "m".to_string(),
+            category: AIErrorCategory::SystemError,
+            retry_strategy: RetryStrategy {
+                should_retry: false,
                 delay_ms: 0,
                 max_attempts: 0,
                 backoff_strategy: BackoffType::Linear,
-                retry_conditions: vec!["human_approval_received".to_string()],"
-                success_probability: 1.0} ;})
-            automation_hints: vec![
-                "Escalate to human operato" .to_string()
-                "Provide context for decision".to_string()
-            ])
-            severity: ErrorSeverity::Medium,
-            requires_human_intervention: true,
-            context:  {let mut ctx = HashMap::new,
-                ctx.insert()
-                    "intervention_reason".to_string(),
-                    serde_json::Value::String(reason.to_string();
-                ctx;}}}}
+                retry_conditions: vec![],
+                success_probability: 0.0,
+            },
+            automation_hints: vec![],
+            severity: ErrorSeverity::Low,
+            requires_human_intervention: false,
+            context: HashMap::new(),
+        };
+        let r = AIFirstResponse::error(42_i32, err, rid(), 5);
+        assert!(r.is_error());
+        assert!(!r.is_success());
+        assert_eq!(r.confidence_score, 0.0);
+        assert_eq!(r.error.as_ref().expect("err").code, "E");
+    }
+
+    #[test]
+    fn into_data_consumes_envelope() {
+        let r = AIFirstResponse::success("x".to_string(), rid(), 1, 1.0);
+        assert_eq!(r.into_data(), "x");
+    }
+
+    #[test]
+    fn with_human_context_round_trips() {
+        let ctx = HumanInteractionContext {
+            user_id: Some("u1".to_string()),
+            approval_required: true,
+            confidence_threshold: 0.7,
+        };
+        let r = AIFirstResponse::success((), rid(), 0, 1.0).with_human_context(ctx.clone());
+        assert_eq!(r.human_context.as_ref().expect("ctx").user_id, ctx.user_id);
+    }
+
+    #[test]
+    fn with_ai_metadata_replaces_block() {
+        let mut m = AIResponseMetadata::default();
+        m.dependencies.push("dep".to_string());
+        let r = AIFirstResponse::success(0_u8, rid(), 2, 0.5).with_ai_metadata(m.clone());
+        assert_eq!(r.ai_metadata.dependencies, m.dependencies);
+    }
+
+    #[test]
+    fn with_suggested_actions_preserves_vec() {
+        let actions = vec![SuggestedAction {
+            action_type: "retry".to_string(),
+            parameters: HashMap::from([("k".to_string(), json!("v"))]),
+            priority: ActionPriority::High,
+            expected_outcome: "ok".to_string(),
+            confidence: 0.9,
+            requires_human_approval: false,
+            estimated_execution_time: Some(Duration::from_secs(1)),
+        }];
+        let r = AIFirstResponse::success((), rid(), 0, 1.0).with_suggested_actions(actions.clone());
+        assert_eq!(r.suggested_actions.len(), 1);
+        assert_eq!(r.suggested_actions[0].action_type, "retry");
+    }
+
+    #[test]
+    fn builder_chain_order_independent_for_metadata_and_actions() {
+        let mut meta = AIResponseMetadata::default();
+        meta.performance.latency_ms = 3.0;
+        let actions = vec![SuggestedAction {
+            action_type: "a".to_string(),
+            parameters: HashMap::new(),
+            priority: ActionPriority::Low,
+            expected_outcome: "".to_string(),
+            confidence: 1.0,
+            requires_human_approval: false,
+            estimated_execution_time: None,
+        }];
+        let r = AIFirstResponse::success(1_i32, rid(), 9, 0.5)
+            .with_ai_metadata(meta.clone())
+            .with_suggested_actions(actions.clone());
+        assert_eq!(r.ai_metadata.performance.latency_ms, 3.0);
+        assert_eq!(r.suggested_actions.len(), 1);
+        let r2 = AIFirstResponse::success(1_i32, rid(), 9, 0.5)
+            .with_suggested_actions(actions)
+            .with_ai_metadata(meta);
+        assert_eq!(r2.suggested_actions.len(), 1);
+        assert_eq!(r2.ai_metadata.performance.latency_ms, 3.0);
+    }
+
+    #[test]
+    fn service_mesh_failure_sets_category_and_context() {
+        let e = AIFirstError::service_mesh_failure("payments", "upstream timeout");
+        assert_eq!(e.category, AIErrorCategory::ServiceMeshFailure);
+        assert_eq!(e.context.get("failed_service").and_then(|v| v.as_str()), Some("payments"));
+        assert!(e.retry_strategy.should_retry);
+        assert_eq!(
+            e.retry_strategy.backoff_strategy,
+            BackoffType::Exponential {
+                base: 2.0
+            }
+        );
+    }
+
+    #[test]
+    fn human_intervention_required_sets_flags_and_linear_backoff() {
+        let e = AIFirstError::human_intervention_required("quota");
+        assert_eq!(e.category, AIErrorCategory::HumanInterventionRequired);
+        assert!(e.requires_human_intervention);
+        assert!(!e.retry_strategy.should_retry);
+        assert_eq!(e.retry_strategy.backoff_strategy, BackoffType::Linear);
+        assert!(e.message.contains("quota"));
+    }
+
+    #[test]
+    fn serde_roundtrip_ai_first_response() {
+        let r = AIFirstResponse::success(json!({"a": 1}), rid(), 4, 0.33);
+        let s = serde_json::to_string(&r).expect("serialize");
+        let back: AIFirstResponse<serde_json::Value> =
+            serde_json::from_str(&s).expect("deserialize");
+        assert!(back.is_success());
+        assert_eq!(back.data, json!({"a": 1}));
+    }
+
+    #[test]
+    fn error_serde_preserves_code_and_category() {
+        let e = AIFirstError::human_intervention_required("x");
+        let r = AIFirstResponse::error((), e, rid(), 1);
+        let s = serde_json::to_string(&r).expect("serialize");
+        let back: AIFirstResponse<()> = serde_json::from_str(&s).expect("deserialize");
+        assert!(back.is_error());
+        assert_eq!(back.error.expect("e").category, AIErrorCategory::HumanInterventionRequired);
+    }
+
+    #[test]
+    fn default_quality_metrics_are_sane() {
+        let q = QualityMetrics::default();
+        assert_eq!(q.accuracy, 1.0);
+        assert_eq!(q.reliability, 1.0);
+    }
+
+    #[test]
+    fn default_routing_metadata_empty_maps() {
+        let r = RoutingMetadata::default();
+        assert!(r.service_health_scores.is_empty());
+        assert!(r.decision_factors.is_empty());
+    }
+
+    #[test]
+    fn backoff_type_custom_roundtrip() {
+        let b = BackoffType::Custom {
+            formula: "x^2".to_string(),
+        };
+        let s = serde_json::to_string(&b).expect("serialize");
+        let back: BackoffType = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(back, b);
+    }
+}

@@ -38,6 +38,11 @@ use handlers::{
 };
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
+use songbird_types::json_rpc_method::{
+    CapabilitiesMethod, ComputeMethod, ConsentMethod, DeploymentMethod, FederationMethod,
+    HealthMethod, JsonRpcMethod, NetworkMethod, ProtocolMethod, RegistryMethod,
+    SongbirdComputeMethod, SongbirdMethod, SongbirdServicesMethod, TaskMethod,
+};
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
 use std::time::Instant;
@@ -138,45 +143,87 @@ async fn handle_jsonrpc_request(
         request.method
     );
 
-    let result = match canonical {
-        "compute.route" => handle_compute_route(&state, request.params.clone()).await,
-        "deployment.create" => handle_deployment_create(&state, request.params.clone()).await,
-        "deployment.status" => handle_deployment_status(&state, request.params.clone()).await,
-        "task.create" => handle_task_create(&state, request.params.clone()).await,
-        "task.list" => handle_task_list(&state, request.params.clone()).await,
-        "consent.check" => handle_consent_check(&state, request.params.clone()).await,
-        "consent.grant" => handle_consent_grant(&state, request.params.clone()).await,
-        "registry.register" => handle_registry_register(&state, request.params.clone()).await,
-        "registry.discover" => handle_registry_discover(&state, request.params.clone()).await,
-        "protocol.negotiate" => {
+    let parsed = JsonRpcMethod::from_wire_str(canonical);
+
+    let result = match parsed {
+        Ok(JsonRpcMethod::Compute(ComputeMethod::Route)) => {
+            handle_compute_route(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Deployment(DeploymentMethod::Create)) => {
+            handle_deployment_create(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Deployment(DeploymentMethod::Status)) => {
+            handle_deployment_status(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Task(TaskMethod::Create)) => {
+            handle_task_create(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Task(TaskMethod::List)) => {
+            handle_task_list(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Consent(ConsentMethod::Check)) => {
+            handle_consent_check(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Consent(ConsentMethod::Grant)) => {
+            handle_consent_grant(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Registry(RegistryMethod::Register)) => {
+            handle_registry_register(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Registry(RegistryMethod::Discover)) => {
+            handle_registry_discover(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::Protocol(ProtocolMethod::Negotiate)) => {
             handle_protocol_negotiate_semantic(&state, request.params.clone()).await
         }
 
-        "songbird.services.list" => handle_services_list(&state).await,
-        "songbird.services.get" => handle_service_get(&state, request.params).await,
-        "songbird.services.register" => handle_service_register(&state, request.params).await,
+        Ok(JsonRpcMethod::SongbirdServices(SongbirdServicesMethod::List)) => {
+            handle_services_list(&state).await
+        }
+        Ok(JsonRpcMethod::SongbirdServices(SongbirdServicesMethod::Get)) => {
+            handle_service_get(&state, request.params).await
+        }
+        Ok(JsonRpcMethod::SongbirdServices(SongbirdServicesMethod::Register)) => {
+            handle_service_register(&state, request.params).await
+        }
 
-        "songbird.compute.schedule" => handle_compute_route(&state, request.params.clone()).await,
-        "songbird.compute.status" => {
+        Ok(JsonRpcMethod::SongbirdCompute(SongbirdComputeMethod::Schedule)) => {
+            handle_compute_route(&state, request.params.clone()).await
+        }
+        Ok(JsonRpcMethod::SongbirdCompute(SongbirdComputeMethod::Status)) => {
             handle_compute_job_status(&state, request.params.clone()).await
         }
 
-        "songbird.federation.peers" => handle_federation_peers(&state).await,
-        "songbird.federation.join" => handle_federation_join(&state, request.params).await,
+        Ok(JsonRpcMethod::Federation(FederationMethod::Peers)) => {
+            handle_federation_peers(&state).await
+        }
+        Ok(JsonRpcMethod::Federation(FederationMethod::Join)) => {
+            handle_federation_join(&state, request.params).await
+        }
 
-        "songbird.protocol.capabilities" => handle_protocol_capabilities().await,
+        Ok(JsonRpcMethod::Protocol(ProtocolMethod::Capabilities)) => {
+            handle_protocol_capabilities().await
+        }
 
-        "songbird.health" => handle_health(&state).await,
-        "songbird.version" => handle_version().await,
+        Ok(JsonRpcMethod::Songbird(SongbirdMethod::Health)) => handle_health(&state).await,
+        Ok(JsonRpcMethod::Songbird(SongbirdMethod::Version)) => handle_version().await,
 
-        "health.liveness" => Ok(songbird_universal_ipc::introspection::health_liveness()),
-        "health.readiness" => Ok(songbird_universal_ipc::introspection::health_readiness()),
-        "health.check" => handle_health_standard(&state).await,
-        "capabilities.list" => Ok(songbird_universal_ipc::introspection::capabilities_list()),
-        "identity" => handle_identity().await,
-        "network.beacon_exchange" => handle_beacon_exchange(request.params).await,
+        Ok(JsonRpcMethod::Health(HealthMethod::Liveness)) => {
+            Ok(songbird_universal_ipc::introspection::health_liveness())
+        }
+        Ok(JsonRpcMethod::Health(HealthMethod::Readiness)) => {
+            Ok(songbird_universal_ipc::introspection::health_readiness())
+        }
+        Ok(JsonRpcMethod::Health(HealthMethod::Check)) => handle_health_standard(&state).await,
+        Ok(JsonRpcMethod::Capabilities(CapabilitiesMethod::List)) => {
+            Ok(songbird_universal_ipc::introspection::capabilities_list())
+        }
+        Ok(JsonRpcMethod::Identity) => handle_identity().await,
+        Ok(JsonRpcMethod::Network(NetworkMethod::BeaconExchange)) => {
+            handle_beacon_exchange(request.params).await
+        }
 
-        _ => {
+        Ok(_) | Err(_) => {
             if let Some(ref ipc_handler) = state.ipc_handler {
                 debug!(
                     "📡 Forwarding '{}' to universal-ipc handler (TCP→IPC bridge)",

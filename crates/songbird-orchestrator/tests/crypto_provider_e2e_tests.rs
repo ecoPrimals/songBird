@@ -33,7 +33,7 @@
 use songbird_orchestrator::crypto::discover_crypto_provider;
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_discover_and_hash() {
     let provider = discover_crypto_provider()
         .await
@@ -46,7 +46,7 @@ async fn test_e2e_discover_and_hash() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_complete_crypto_flow() {
     let provider = discover_crypto_provider().await.expect("Failed to discover crypto provider");
 
@@ -89,7 +89,7 @@ async fn test_e2e_complete_crypto_flow() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_ed25519_sign_verify() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -103,7 +103,7 @@ async fn test_e2e_ed25519_sign_verify() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_performance_single_operation() {
     use std::time::Instant;
 
@@ -123,7 +123,7 @@ async fn test_e2e_performance_single_operation() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_multiple_operations_sequential() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -136,7 +136,7 @@ async fn test_e2e_multiple_operations_sequential() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_large_data_hash() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -148,7 +148,7 @@ async fn test_e2e_large_data_hash() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_encryption_with_aad() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -176,7 +176,7 @@ async fn test_e2e_encryption_with_aad() {
 }
 
 #[tokio::test]
-#[ignore] // Requires BearDog running
+#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
 async fn test_e2e_concurrent_operations() {
     use std::sync::Arc;
     use tokio::task::JoinSet;

@@ -43,7 +43,7 @@ use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_websocket_connection() {
     // Connect to WebSocket server
     let url = "ws://localhost:8080/api/ws/ws";
@@ -68,7 +68,7 @@ async fn test_websocket_connection() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_ping_pong() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
@@ -98,7 +98,7 @@ async fn test_ping_pong() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_query_status() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
@@ -129,7 +129,7 @@ async fn test_query_status() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_query_services() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
@@ -159,7 +159,7 @@ async fn test_query_services() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_subscription() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
@@ -188,7 +188,7 @@ async fn test_subscription() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_unsubscribe() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
@@ -225,7 +225,7 @@ async fn test_unsubscribe() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_invalid_message() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
@@ -250,7 +250,7 @@ async fn test_invalid_message() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_binary_message_rejected() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
@@ -275,7 +275,7 @@ async fn test_binary_message_rejected() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_multiple_clients() {
     let url = "ws://localhost:8080/api/ws/ws";
 
@@ -318,7 +318,7 @@ async fn test_multiple_clients() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore] // Requires running server
+#[ignore = "requires running orchestrator"] // Requires running server
 async fn test_connection_close() {
     let url = "ws://localhost:8080/api/ws/ws";
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");

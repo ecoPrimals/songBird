@@ -9,11 +9,13 @@
 
 #![allow(missing_docs, reason = "discovery backend enum covers multiple transports")]
 
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
+use tracing::debug;
 
 type EnvReader = Arc<dyn Fn(&str) -> Result<String, std::env::VarError> + Send + Sync>;
 
@@ -208,7 +210,7 @@ impl CapabilityDiscoveryEngine {
         &self,
         backend: &DiscoveryBackend,
         capability: &str,
-    ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<Vec<DiscoveredService>> {
         match backend {
             DiscoveryBackend::Environment => self.discover_from_environment(capability).await,
             DiscoveryBackend::MDNS => self.discover_from_mdns(capability).await,
@@ -229,7 +231,7 @@ impl CapabilityDiscoveryEngine {
     async fn discover_from_environment(
         &self,
         capability: &str,
-    ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<Vec<DiscoveredService>> {
         let env_key = format!("{}_ENDPOINT", capability.to_uppercase());
 
         if let Ok(endpoint) = self.read_env(&env_key) {
@@ -238,7 +240,7 @@ impl CapabilityDiscoveryEngine {
                 .trim_start_matches("http://")
                 .trim_start_matches("https://")
                 .parse()
-                .map_err(|e| format!("Invalid endpoint format: {e}"))?;
+                .map_err(|e| SongbirdError::validation(format!("Invalid endpoint format: {e}")))?;
 
             let service = DiscoveredService {
                 address: addr,
@@ -257,17 +259,15 @@ impl CapabilityDiscoveryEngine {
     }
 
     /// Discover from mDNS (local network)
-    async fn discover_from_mdns(
-        &self,
-        capability: &str,
-    ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn discover_from_mdns(&self, capability: &str) -> SongbirdResult<Vec<DiscoveredService>> {
         // Use our production mDNS implementation
         use super::mdns::MdnsDiscovery;
 
-        let mdns = MdnsDiscovery::new()?;
+        let mdns = MdnsDiscovery::new().map_err(|e| SongbirdError::discovery(e.to_string()))?;
         let services = mdns
             .discover_by_capability(capability, Some(std::time::Duration::from_secs(5)))
-            .await?;
+            .await
+            .map_err(|e| SongbirdError::discovery(e.to_string()))?;
 
         // Convert to DiscoveredService format
         let discovered: Vec<DiscoveredService> = services
@@ -285,64 +285,88 @@ impl CapabilityDiscoveryEngine {
 
     /// Discover from DNS-SD
     ///
-    /// **Status**: Not yet implemented - returns empty list
-    /// **Fallback**: Uses environment variables and defaults instead
+    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
+    /// backends and merges results from others.
     async fn discover_from_dnssd(
         &self,
-        _capability: &str,
-    ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
-        // NOTE: DNS-SD discovery not yet implemented
-        // Query DNS for SRV records like _<capability>._tcp.example.com
-        // For now, falls back to environment-based discovery
-
-        Ok(Vec::new())
+        capability: &str,
+    ) -> SongbirdResult<Vec<DiscoveredService>> {
+        debug!(
+            target: "songbird_config::discovery",
+            backend = "dnssd",
+            %capability,
+            "DNS-SD discovery backend not implemented; returning NotImplemented"
+        );
+        Err(SongbirdError::not_implemented_with_detail(
+            "discovery_backend_dnssd",
+            "Use mDNS, environment variables, or static configuration until DNS-SD is wired",
+        ))
     }
 
     /// Discover from Consul
     ///
-    /// **Status**: Not yet implemented - returns empty list
-    /// **Fallback**: Uses environment variables and defaults instead
+    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
+    /// backends and merges results from others.
     async fn discover_from_consul(
         &self,
-        _endpoint: &str,
-        _capability: &str,
-    ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
-        // NOTE: Consul service discovery not yet implemented
-        // Query Consul API for services tagged with capability
-        // For now, falls back to environment-based discovery
-
-        Ok(Vec::new())
+        endpoint: &str,
+        capability: &str,
+    ) -> SongbirdResult<Vec<DiscoveredService>> {
+        debug!(
+            target: "songbird_config::discovery",
+            backend = "consul",
+            endpoint,
+            %capability,
+            "Consul discovery backend not implemented; returning NotImplemented"
+        );
+        Err(SongbirdError::not_implemented_with_detail(
+            "discovery_backend_consul",
+            format!("Consul at {endpoint} is not integrated; use environment or mDNS discovery"),
+        ))
     }
 
     /// Discover from etcd
     ///
-    /// **Status**: Not yet implemented - returns empty list
-    /// **Fallback**: Uses environment variables and defaults instead
+    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
+    /// backends and merges results from others.
     async fn discover_from_etcd(
         &self,
-        _endpoints: &[String],
-        _capability: &str,
-    ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
-        // NOTE: etcd service discovery not yet implemented
-        // Query etcd for services with capability key
-
-        Ok(Vec::new())
+        endpoints: &[String],
+        capability: &str,
+    ) -> SongbirdResult<Vec<DiscoveredService>> {
+        debug!(
+            target: "songbird_config::discovery",
+            backend = "etcd",
+            endpoints = ?endpoints,
+            %capability,
+            "etcd discovery backend not implemented; returning NotImplemented"
+        );
+        Err(SongbirdError::not_implemented_with_detail(
+            "discovery_backend_etcd",
+            "etcd service discovery is not wired; use environment or mDNS discovery",
+        ))
     }
 
     /// Discover from Kubernetes
     ///
-    /// **Status**: Not yet implemented - returns empty list
-    /// **Fallback**: Uses environment variables and defaults instead
+    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
+    /// backends and merges results from others.
     async fn discover_from_kubernetes(
         &self,
-        _namespace: Option<&str>,
-        _capability: &str,
-    ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
-        // NOTE: Kubernetes service discovery not yet implemented
-        // Query K8s API for services with capability label
-        // For now, falls back to environment-based discovery
-
-        Ok(Vec::new())
+        namespace: Option<&str>,
+        capability: &str,
+    ) -> SongbirdResult<Vec<DiscoveredService>> {
+        debug!(
+            target: "songbird_config::discovery",
+            backend = "kubernetes",
+            ?namespace,
+            %capability,
+            "Kubernetes discovery backend not implemented; returning NotImplemented"
+        );
+        Err(SongbirdError::not_implemented_with_detail(
+            "discovery_backend_kubernetes",
+            "In-cluster Kubernetes API discovery is not wired; use environment or mDNS",
+        ))
     }
 
     /// Get from cache if not expired
@@ -380,7 +404,7 @@ impl CapabilityDiscoveryEngine {
         &self,
         capabilities: &[String],
         address: SocketAddr,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         // Register with each backend
         for backend in &self.backends {
             if let Err(e) = self.register_with_backend(backend, capabilities, address).await {
@@ -400,37 +424,63 @@ impl CapabilityDiscoveryEngine {
         backend: &DiscoveryBackend,
         capabilities: &[String],
         address: SocketAddr,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         match backend {
             DiscoveryBackend::Environment => {
                 // Environment-based doesn't support registration
                 Ok(())
             }
             DiscoveryBackend::MDNS => {
-                // NOTE: mDNS service advertisement not yet implemented
-                // Would broadcast service availability via multicast DNS
-                Ok(())
+                debug!(
+                    target: "songbird_config::discovery",
+                    backend = "mdns",
+                    "mDNS service advertisement not implemented; returning NotImplemented"
+                );
+                Err(SongbirdError::not_implemented_with_detail(
+                    "discovery_registration_mdns",
+                    "mDNS advertisement is not wired; use environment-based announcement for local dev",
+                ))
             }
             DiscoveryBackend::DNSSD => {
-                // NOTE: DNS-SD registration not yet implemented
-                // Would register service via DNS-SD protocol
-                Ok(())
+                debug!(
+                    target: "songbird_config::discovery",
+                    backend = "dnssd",
+                    "DNS-SD registration not implemented; returning NotImplemented"
+                );
+                Err(SongbirdError::not_implemented_with_detail(
+                    "discovery_registration_dnssd",
+                    "DNS-SD registration requires platform mDNS integration",
+                ))
             }
             DiscoveryBackend::Consul {
                 endpoint,
             } => {
-                // NOTE: Consul registration not yet implemented
-                // Would register service capabilities with Consul API
-                let _ = (endpoint, capabilities, address);
-                Ok(())
+                debug!(
+                    target: "songbird_config::discovery",
+                    backend = "consul",
+                    endpoint,
+                    "Consul registration not implemented; returning NotImplemented"
+                );
+                let _ = (capabilities, address);
+                Err(SongbirdError::not_implemented_with_detail(
+                    "discovery_registration_consul",
+                    format!("Consul registration at {endpoint} is not integrated"),
+                ))
             }
             DiscoveryBackend::Etcd {
                 endpoints,
             } => {
-                // NOTE: etcd registration not yet implemented
-                // Would register service capabilities in etcd
-                let _ = (endpoints, capabilities, address);
-                Ok(())
+                debug!(
+                    target: "songbird_config::discovery",
+                    backend = "etcd",
+                    endpoints = ?endpoints,
+                    "etcd registration not implemented; returning NotImplemented"
+                );
+                let _ = (capabilities, address);
+                Err(SongbirdError::not_implemented_with_detail(
+                    "discovery_registration_etcd",
+                    "etcd registration is not wired",
+                ))
             }
             DiscoveryBackend::Kubernetes {
                 ..
@@ -444,8 +494,7 @@ impl CapabilityDiscoveryEngine {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -546,5 +595,111 @@ mod tests {
     #[test]
     fn test_with_defaults_constructed() {
         let _ = CapabilityDiscoveryEngine::with_defaults();
+    }
+
+    #[test]
+    fn discovery_backend_equality_and_clone() {
+        let a = DiscoveryBackend::Consul {
+            endpoint: "http://127.0.0.1:8500".into(),
+        };
+        let b = a.clone();
+        assert_eq!(a, b);
+        assert_ne!(a, DiscoveryBackend::Environment);
+    }
+
+    #[tokio::test]
+    async fn discover_from_environment_strips_https_prefix() {
+        let engine = CapabilityDiscoveryEngine::new_with_env_reader(
+            vec![DiscoveryBackend::Environment],
+            Duration::from_secs(60),
+            |k| {
+                if k == "STORAGE_ENDPOINT" {
+                    Ok("https://127.0.0.1:9000".into())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
+        let addrs = engine.discover_by_capability("storage").await;
+        assert_eq!(addrs.len(), 1);
+        assert_eq!(addrs[0].port(), 9000);
+    }
+
+    #[tokio::test]
+    async fn discover_deduplicates_same_address() {
+        let engine = CapabilityDiscoveryEngine::new_with_env_reader(
+            vec![DiscoveryBackend::Environment, DiscoveryBackend::Environment],
+            Duration::from_secs(60),
+            |k| {
+                if k == "AI_ENDPOINT" {
+                    Ok("127.0.0.1:7777".into())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
+        let addrs = engine.discover_by_capability("ai").await;
+        assert_eq!(addrs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn discover_returns_empty_when_env_endpoint_missing() {
+        let engine = CapabilityDiscoveryEngine::new_with_env_reader(
+            vec![DiscoveryBackend::Environment],
+            Duration::from_secs(60),
+            |_| Err(std::env::VarError::NotPresent),
+        );
+        let cap = format!("sb_missing_env_{}", std::process::id());
+        let addrs = engine.discover_by_capability(&cap).await;
+        assert!(addrs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn discover_ignores_invalid_env_endpoint_without_panic() {
+        let engine = CapabilityDiscoveryEngine::new_with_env_reader(
+            vec![DiscoveryBackend::Environment],
+            Duration::from_secs(60),
+            |k| {
+                if k == "BROKEN_ENDPOINT" {
+                    Ok("not-a-socket-addr".into())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
+        let addrs = engine.discover_by_capability("broken").await;
+        assert!(addrs.is_empty());
+    }
+
+    #[test]
+    fn discover_by_capability_sort_key_orders_ip_then_port() {
+        // Mirrors `discover_by_capability`: dedupe then `sort_by_key(|a| (a.ip(), a.port()))`
+        let mut addrs: Vec<SocketAddr> = vec![
+            "10.0.0.2:9000".parse().expect("addr"),
+            "10.0.0.1:1".parse().expect("addr"),
+            "10.0.0.1:9000".parse().expect("addr"),
+        ];
+        addrs.sort_by_key(|addr| (addr.ip(), addr.port()));
+        assert_eq!(addrs[0].to_string(), "10.0.0.1:1");
+        assert_eq!(addrs[1].to_string(), "10.0.0.1:9000");
+        assert_eq!(addrs[2].to_string(), "10.0.0.2:9000");
+    }
+
+    #[tokio::test]
+    async fn discover_strips_http_prefix_from_env_endpoint() {
+        let engine = CapabilityDiscoveryEngine::new_with_env_reader(
+            vec![DiscoveryBackend::Environment],
+            Duration::from_secs(60),
+            |k| {
+                if k == "WEB_ENDPOINT" {
+                    Ok("http://192.0.2.1:4444".into())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            },
+        );
+        let addrs = engine.discover_by_capability("web").await;
+        assert_eq!(addrs.len(), 1);
+        assert_eq!(addrs[0].port(), 4444);
     }
 }

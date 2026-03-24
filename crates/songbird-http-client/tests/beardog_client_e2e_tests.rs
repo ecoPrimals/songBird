@@ -18,12 +18,12 @@
 //! End-to-End Integration Tests for BearDog Client
 //!
 //! These tests validate the complete RPC flow with Neural API integration.
-//! They are marked `#[ignore]` by default to avoid requiring a running Neural API.
+//! They are marked `#[ignore = "..."]` by default to avoid requiring a running Neural API.
 
 use songbird_http_client::beardog_client::BearDogClient;
 
 // ====================================================================
-// E2E TESTS - Full RPC Flow (marked `#[ignore]` - require Neural API)
+// E2E TESTS - Full RPC Flow (marked `#[ignore = "..."]` - require Neural API)
 // ====================================================================
 
 #[tokio::test]

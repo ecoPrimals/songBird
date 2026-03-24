@@ -35,7 +35,7 @@ use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16,
 use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use serde_json::Value;
-use songbird_types::TrustLevel;
+use songbird_types::{SongbirdError, TrustLevel};
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
@@ -148,8 +148,8 @@ impl FederatedBtspConnection {
     async fn send_rpc(&self, operation: &str, request: Value) -> Result<Value> {
         let tunnel_id = self.tunnel_id.read().await.clone();
 
-        // Create JSON-RPC 2.0 request
-        let rpc_request = serde_json::json!({
+        // Create JSON-RPC 2.0 request (serialized path reserved for Phase 2 tunnel I/O)
+        let _rpc_request = serde_json::json!({
             "jsonrpc": "2.0",
             "method": operation,
             "params": request,
@@ -160,11 +160,12 @@ impl FederatedBtspConnection {
 
         // ROADMAP (Phase 2): Bidirectional BTSP Communication
         // See: BTSP_CONNECTION_EVOLUTION_V3_18_0.md
-        Err(anyhow!(
-            "BTSP bidirectional communication not yet implemented. \
-             This requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(). \
-             Current implementation establishes tunnels only."
-        ))
+        Err(SongbirdError::not_implemented_with_detail(
+            "btsp_bidirectional_rpc",
+            "Requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(); \
+             current implementation establishes tunnels only.",
+        )
+        .into())
     }
 
     /// Get connection uptime
@@ -259,6 +260,8 @@ impl Drop for FederatedBtspConnection {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -266,11 +269,8 @@ mod tests {
         let allowed = TrustLevel::Elevated.default_allowed_capabilities();
         let denied = TrustLevel::Elevated.default_denied_capabilities();
 
-        // Level 1 operations
         assert!(check_operation_allowed("birdsong/sync", &allowed, &denied));
         assert!(check_operation_allowed("health", &allowed, &denied));
-
-        // Level 2 operations
         assert!(check_operation_allowed("federation/join", &allowed, &denied));
         assert!(check_operation_allowed("data/read", &allowed, &denied));
     }
@@ -285,28 +285,61 @@ mod tests {
         assert!(!check_operation_allowed("keys/access", &allowed, &denied));
     }
 
-    #[tokio::test]
-    async fn test_btsp_federated_connection_creation() {
-        // v3.20.0: Unix socket client auto-discovers from environment
-        let btsp_client = Arc::new(BtspClient::new());
-
-        let result = FederatedBtspConnection::with_defaults(
-            "test_peer".to_string(),
-            vec!["btsp_enabled".to_string()],
-            btsp_client,
-        )
-        .await;
-
-        // Should fail (no real security provider), but validates API
-        assert!(result.is_err());
+    #[test]
+    fn test_elevated_trust_level_identity() {
+        assert_eq!(TrustLevel::Elevated.as_u8(), 2);
+        assert_eq!(TrustLevel::Elevated.name(), "elevated");
+        assert!(!TrustLevel::Elevated.description().is_empty());
     }
 
     #[test]
-    fn test_trust_level() {
+    fn test_keys_wildcard_denies_nested_key_ops() {
         let allowed = TrustLevel::Elevated.default_allowed_capabilities();
         let denied = TrustLevel::Elevated.default_denied_capabilities();
 
-        assert!(!allowed.is_empty());
-        assert!(!denied.is_empty());
+        assert!(!check_operation_allowed("keys/export", &allowed, &denied));
+        assert!(!check_operation_allowed("keys/", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_federation_wildcard_allows_subpaths() {
+        let allowed = TrustLevel::Elevated.default_allowed_capabilities();
+        let denied = TrustLevel::Elevated.default_denied_capabilities();
+
+        assert!(check_operation_allowed("federation/status/sync", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_data_read_allowed_but_not_write() {
+        let allowed = TrustLevel::Elevated.default_allowed_capabilities();
+        let denied = TrustLevel::Elevated.default_denied_capabilities();
+
+        assert!(check_operation_allowed("data/read", &allowed, &denied));
+        assert!(!check_operation_allowed("data/write", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_explicit_deny_overrides_federation_style_allow() {
+        let allowed = vec!["federation/*".to_string(), "data/write".to_string()];
+        let denied = vec!["federation/block".to_string()];
+
+        assert!(check_operation_allowed("federation/ok", &allowed, &denied));
+        assert!(!check_operation_allowed("federation/block", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_elevated_default_lists_include_federation_and_discovery() {
+        let allowed = TrustLevel::Elevated.default_allowed_capabilities();
+        assert!(allowed.iter().any(|c| c == "federation/*"));
+        assert!(allowed.iter().any(|c| c == "discovery"));
+    }
+
+    #[test]
+    fn test_commands_sensitive_denied_when_commands_wildcard_allowed() {
+        let allowed = vec!["commands/*".to_string()];
+        let denied = vec!["commands/sensitive".to_string()];
+
+        assert!(check_operation_allowed("commands/ok", &allowed, &denied));
+        assert!(!check_operation_allowed("commands/sensitive", &allowed, &denied));
     }
 }

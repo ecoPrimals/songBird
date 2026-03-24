@@ -35,9 +35,10 @@
 
 use super::{PeerConnection, check_operation_allowed};
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
+use songbird_types::SongbirdError;
 use songbird_types::TrustLevel;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -186,7 +187,7 @@ impl LimitedBtspConnection {
         debug!("📡 Sending RPC over BTSP tunnel {}: {}", tunnel_id, operation);
 
         // Serialize request
-        let request_bytes =
+        let _request_bytes =
             serde_json::to_vec(&rpc_request).context("Failed to serialize RPC request")?;
 
         // Send over tunnel
@@ -202,12 +203,12 @@ impl LimitedBtspConnection {
         // self.btsp_client.send_data_over_tunnel(&tunnel_id, &request_bytes).await?;
 
         // For v3.18.0, return error indicating Phase 2 feature
-        Err(anyhow!(
-            "BTSP bidirectional communication not yet implemented. \
-             This requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(). \
-             Current implementation establishes tunnels only. \
-             See BTSP_CONNECTION_EVOLUTION_V3_18_0.md for roadmap."
-        ))
+        Err(SongbirdError::not_implemented_with_detail(
+            "btsp_bidirectional_rpc",
+            "Requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(); \
+             current code establishes tunnels only. See BTSP_CONNECTION_EVOLUTION_V3_18_0.md.",
+        )
+        .into())
     }
 
     /// Get connection uptime
@@ -242,7 +243,7 @@ impl PeerConnection for LimitedBtspConnection {
                 "🔒 Operation '{}' denied for peer '{}' at trust level 1 (Limited) via BTSP",
                 operation, self.peer_id
             );
-            return Err(anyhow!(
+            return Err(anyhow::anyhow!(
                 "Operation '{}' not allowed at trust level 1 (Limited). \
                  Allowed: {:?}. \
                  To enable this operation, elevate trust to level 2 (Elevated) via user approval.",
@@ -309,11 +310,12 @@ impl Drop for LimitedBtspConnection {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
     fn test_limited_allows_birdsong() {
-        // Capability checking doesn't require async or BTSP client
         let allowed = TrustLevel::Limited.default_allowed_capabilities();
         let denied = TrustLevel::Limited.default_denied_capabilities();
 
@@ -321,6 +323,14 @@ mod tests {
         assert!(check_operation_allowed("coordination/state", &allowed, &denied));
         assert!(check_operation_allowed("health", &allowed, &denied));
         assert!(check_operation_allowed("capabilities", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_limited_allows_discovery_prefix() {
+        let allowed = TrustLevel::Limited.default_allowed_capabilities();
+        let denied = TrustLevel::Limited.default_denied_capabilities();
+
+        assert!(check_operation_allowed("discovery", &allowed, &denied));
     }
 
     #[test]
@@ -335,45 +345,54 @@ mod tests {
         assert!(!check_operation_allowed("keys/access", &allowed, &denied));
     }
 
-    #[tokio::test]
-    async fn test_btsp_connection_creation() {
-        // Test connection creation (will fail without real security provider)
-        // This validates the API, not the end-to-end flow
+    #[test]
+    fn test_explicit_deny_overrides_allow_for_limited_style_lists() {
+        let allowed = vec!["birdsong/*".to_string(), "data/read".to_string()];
+        let denied = vec!["data/read".to_string()];
 
-        // v3.20.0: Unix socket client auto-discovers from environment
-        let btsp_client = Arc::new(BtspClient::new());
-
-        let result = LimitedBtspConnection::with_defaults(
-            "test_peer".to_string(),
-            vec!["btsp_enabled".to_string()],
-            btsp_client,
-        )
-        .await;
-
-        // Should fail (no real security provider), but validates API
-        assert!(result.is_err());
-        assert!(format!("{result:?}").contains("Failed to establish BTSP tunnel"));
-    }
-
-    #[tokio::test]
-    async fn test_endpoint_shows_btsp() {
-        // LimitedBtspConnection doesn't have traditional HTTP endpoints
-        // It should return a descriptive BTSP indicator
-
-        // We can't create a real connection without a security provider,
-        // but we can test the pattern is correct by checking the trait contract
-        let allowed = TrustLevel::Limited.default_allowed_capabilities();
-        assert!(!allowed.is_empty(), "Limited trust should have some allowed capabilities");
+        assert!(check_operation_allowed("birdsong/x", &allowed, &denied));
+        assert!(!check_operation_allowed("data/read", &allowed, &denied));
     }
 
     #[test]
-    fn test_trust_level() {
-        // Trust level is constant, no async needed
+    fn test_empty_allow_list_denies_everything_even_if_not_in_denied() {
+        let allowed: Vec<String> = vec![];
+        let denied = TrustLevel::Limited.default_denied_capabilities();
+
+        assert!(!check_operation_allowed("health", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_custom_allow_exact_only_requires_full_match() {
+        let allowed = vec!["health".to_string()];
+        let denied: Vec<String> = vec![];
+
+        assert!(check_operation_allowed("health", &allowed, &denied));
+        assert!(!check_operation_allowed("health/status", &allowed, &denied));
+    }
+
+    #[test]
+    fn test_limited_trust_level_identity() {
+        assert_eq!(TrustLevel::Limited.as_u8(), 1);
+        assert_eq!(TrustLevel::Limited.name(), "limited");
+        assert!(!TrustLevel::Limited.description().is_empty());
+    }
+
+    #[test]
+    fn test_limited_default_capability_lists_nonempty() {
         let allowed = TrustLevel::Limited.default_allowed_capabilities();
         let denied = TrustLevel::Limited.default_denied_capabilities();
 
-        // Verify Level 1 capabilities are defined
-        assert!(!allowed.is_empty(), "Limited trust should allow some operations");
-        assert!(!denied.is_empty(), "Limited trust should deny some operations");
+        assert!(!allowed.is_empty());
+        assert!(!denied.is_empty());
+        assert!(allowed.iter().any(|c| c.contains("birdsong")));
+    }
+
+    #[test]
+    fn test_federation_wildcard_in_denied_blocks_nested_paths() {
+        let allowed = TrustLevel::Limited.default_allowed_capabilities();
+        let denied = TrustLevel::Limited.default_denied_capabilities();
+
+        assert!(!check_operation_allowed("federation/sync/extra", &allowed, &denied));
     }
 }

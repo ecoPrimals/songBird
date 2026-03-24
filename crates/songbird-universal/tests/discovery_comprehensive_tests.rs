@@ -34,10 +34,7 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-#![cfg(feature = "tests-incomplete")]
-//! NOTE: Disabled - requires unimplemented methods
-
-//! # Comprehensive Discovery Tests
+//! Comprehensive Discovery Tests
 #![allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
 #![allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
 #![allow(clippy::useless_vec, reason = "test assertions and harness ergonomics")]

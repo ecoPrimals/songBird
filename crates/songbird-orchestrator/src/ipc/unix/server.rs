@@ -30,6 +30,10 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{Notify, RwLock};
 use tracing::{debug, error, info, warn};
 
+use songbird_types::json_rpc_method::{
+    DiscoveryMethod, EncryptionDiscoveryMethod, HttpMethod, JsonRpcMethod, NetworkMethod,
+    PeerMethod, PrimalMethod, RpcMethod,
+};
 use super::handlers;
 use super::jsonrpc::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use crate::app::connection_manager::ConnectionManager;
@@ -367,59 +371,72 @@ async fn handle_request(
         };
     }
     
-    // Route to appropriate handler
-    let result = match request.method.as_str() {
+    // Route to appropriate handler (raw wire names; bare `"health"` stays distinct from `health.check`)
+    let method = match JsonRpcMethod::from_wire_str(request.method.as_str()) {
+        Ok(m) => m,
+        Err(_) => {
+            warn!("⚠️  Unknown method: {}", request.method);
+            return JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: None,
+                error: Some(JsonRpcError::method_not_found(&request.method)),
+                id: request.id.unwrap_or(Value::Null),
+            };
+        }
+    };
+
+    let result = match method {
         // ========================================================================
         // biomeOS Standard Methods (Feb 4, 2026)
         // ========================================================================
-        "health" => handlers::handle_health_standard(Arc::clone(&registry), connection_manager.clone(), Some(Arc::clone(&start_time))).await,
-        "identity" => handlers::handle_identity().await,
-        "rpc.discover" => handlers::handle_rpc_discover().await,
+        JsonRpcMethod::BiomeOsHealth => handlers::handle_health_standard(Arc::clone(&registry), connection_manager.clone(), Some(Arc::clone(&start_time))).await,
+        JsonRpcMethod::Identity => handlers::handle_identity().await,
+        JsonRpcMethod::Rpc(RpcMethod::Discover) => handlers::handle_rpc_discover().await,
         
         // ========================================================================
         // Primal registration methods
         // ========================================================================
-        "primal.register" => handlers::handle_primal_register(registry, request.params).await,
-        "primal.unregister" => handlers::handle_primal_unregister(registry, request.params).await,
-        "primal.get_provider" => handlers::handle_get_provider(registry, request.params).await,
-        "primal.list_providers" => handlers::handle_list_providers(registry, request.params).await,
-        "primal.list_all" => handlers::handle_list_all_primals(registry).await,
+        JsonRpcMethod::Primal(PrimalMethod::Register) => handlers::handle_primal_register(registry, request.params).await,
+        JsonRpcMethod::Primal(PrimalMethod::Unregister) => handlers::handle_primal_unregister(registry, request.params).await,
+        JsonRpcMethod::Primal(PrimalMethod::GetProvider) => handlers::handle_get_provider(registry, request.params).await,
+        JsonRpcMethod::Primal(PrimalMethod::ListProviders) => handlers::handle_list_providers(registry, request.params).await,
+        JsonRpcMethod::Primal(PrimalMethod::ListAll) => handlers::handle_list_all_primals(registry).await,
         
         // Health and diagnostics (legacy)
-        "primal.health" => handlers::handle_health(registry).await,
-        "primal.ping" => handlers::handle_ping().await,
+        JsonRpcMethod::Primal(PrimalMethod::Health) => handlers::handle_health(registry).await,
+        JsonRpcMethod::Primal(PrimalMethod::Ping) => handlers::handle_ping().await,
         
         // ========================================================================
         // Discovery methods
         // ========================================================================
-        "discovery.list_peers" => handlers::handle_discovery_list_peers(connection_manager, request.params).await,
-        "discovery.peer_count" => handlers::handle_discovery_peer_count(connection_manager).await,
-        "discovery.rejected_peers" => handlers::handle_discovery_rejected_peers(connection_manager).await,
-        "discovery.status" => handlers::handle_discovery_status(discovery_status_manager).await,
-        "peer.ping" => handlers::handle_peer_ping(connection_manager, request.params).await,
+        JsonRpcMethod::Discovery(DiscoveryMethod::ListPeers) => handlers::handle_discovery_list_peers(connection_manager, request.params).await,
+        JsonRpcMethod::Discovery(DiscoveryMethod::PeerCount) => handlers::handle_discovery_peer_count(connection_manager).await,
+        JsonRpcMethod::Discovery(DiscoveryMethod::RejectedPeers) => handlers::handle_discovery_rejected_peers(connection_manager).await,
+        JsonRpcMethod::Discovery(DiscoveryMethod::Status) => handlers::handle_discovery_status(discovery_status_manager).await,
+        JsonRpcMethod::Peer(PeerMethod::Ping) => handlers::handle_peer_ping(connection_manager, request.params).await,
         
         // ========================================================================
         // Capability discovery (legacy - backward compat)
         // ========================================================================
-        "discover_capabilities" => handlers::handle_discover_capabilities().await,
+        JsonRpcMethod::DiscoverCapabilities => handlers::handle_discover_capabilities().await,
         
         // ========================================================================
         // Encryption wrappers (biomeOS integration - Feb 4, 2026)
         // ========================================================================
-        "encrypt_discovery" => handlers::handle_encrypt_discovery(request.params).await,
-        "decrypt_discovery" => handlers::handle_decrypt_discovery(request.params).await,
+        JsonRpcMethod::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt) => handlers::handle_encrypt_discovery(request.params).await,
+        JsonRpcMethod::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt) => handlers::handle_decrypt_discovery(request.params).await,
         
         // ========================================================================
         // Network methods (biomeOS integration - Feb 4, 2026)
         // ========================================================================
-        "network.beacon_exchange" => handlers::handle_beacon_exchange(connection_manager.clone(), request.params).await,
-        "network.broadcast" => handlers::handle_network_broadcast(request.params).await,
-        "network.listen" => handlers::handle_network_listen(request.params).await,
+        JsonRpcMethod::Network(NetworkMethod::BeaconExchange) => handlers::handle_beacon_exchange(connection_manager.clone(), request.params).await,
+        JsonRpcMethod::Network(NetworkMethod::Broadcast) => handlers::handle_network_broadcast(request.params).await,
+        JsonRpcMethod::Network(NetworkMethod::Listen) => handlers::handle_network_listen(request.params).await,
         
         // ========================================================================
         // HTTP delegation (for Squirrel's Anthropic adapter - Jan 20, 2026)
         // ========================================================================
-        "http.request" => handlers::handle_http_request(request.params).await,
+        JsonRpcMethod::Http(HttpMethod::Request) => handlers::handle_http_request(request.params).await,
         
         // Unknown method
         _ => {

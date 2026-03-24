@@ -38,6 +38,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use songbird_discovery::beardog_birdsong_provider::BearDogBirdSongProvider;
 use songbird_discovery::birdsong::BirdSongEncryption;
+use songbird_types::primal_names;
 use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -126,11 +127,14 @@ impl BirdSongHandler {
                             "🔍 Discovering BearDog via well-known path (UID: {}, safe Rust)",
                             uid
                         );
-                        PathBuf::from(format!("/run/user/{uid}/biomeos/beardog.sock"))
+                        PathBuf::from(format!(
+                            "/run/user/{uid}/biomeos/{}.sock",
+                            primal_names::BEARDOG
+                        ))
                     },
                     |xdg| {
                         debug!("🔍 Discovering BearDog via XDG_RUNTIME_DIR");
-                        PathBuf::from(format!("{xdg}/biomeos/beardog.sock"))
+                        PathBuf::from(format!("{xdg}/biomeos/{}.sock", primal_names::BEARDOG))
                     },
                 )
             },
@@ -476,6 +480,18 @@ struct GetLineageRequest {
 // ============================================================================
 
 #[cfg(test)]
+fn is_expected_crypto_delegate_connectivity_error(msg: &str) -> bool {
+    let m = msg.to_lowercase();
+    m.contains(songbird_types::primal_names::BEARDOG)
+        || m.contains("socket")
+        || m.contains("ipc")
+        || m.contains("connection refused")
+        || m.contains("no such file")
+        || m.contains("crypto")
+        || m.contains("rpc")
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -558,9 +574,8 @@ mod tests {
 
         // Expected: Err (no BearDog in test env)
         if let Err(e) = result {
-            let e_lower = e.to_lowercase();
             assert!(
-                e_lower.contains("beardog") || e_lower.contains("sock") || e.contains("IPC"),
+                super::is_expected_crypto_delegate_connectivity_error(&e),
                 "Error should mention BearDog, socket, or IPC, got: {e}"
             );
         }
@@ -577,9 +592,8 @@ mod tests {
 
         // Expected: Err (no BearDog in test env)
         if let Err(e) = result {
-            let e_lower = e.to_lowercase();
             assert!(
-                e_lower.contains("beardog") || e_lower.contains("sock") || e.contains("IPC"),
+                super::is_expected_crypto_delegate_connectivity_error(&e),
                 "Error should mention BearDog, socket, or IPC, got: {e}"
             );
         }

@@ -199,7 +199,7 @@ async fn test_discovery_federation_bridge_polls_peers() -> Result<()> {
 
 /// Integration test: Full orchestrator startup with discovery
 #[tokio::test]
-#[ignore] // Ignore by default as it requires network and time
+#[ignore = "requires running orchestrator"] // Ignore by default as it requires network and time
 async fn test_full_orchestrator_startup_with_discovery() -> Result<()> {
     let _ = tracing_subscriber::fmt::try_init();
 

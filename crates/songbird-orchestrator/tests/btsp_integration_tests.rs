@@ -182,7 +182,7 @@ async fn test_btsp_ping_when_beardog_unavailable() {
 }
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_btsp_ping_with_live_beardog() {
     setup_test_env();
 
@@ -203,7 +203,7 @@ async fn test_btsp_ping_with_live_beardog() {
 // ====================
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_establish_tunnel_basic() -> Result<()> {
     if !beardog_available().await {
         println!("⚠️  Skipping test: BearDog not available");
@@ -231,7 +231,7 @@ async fn test_establish_tunnel_basic() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_establish_tunnel_with_capabilities() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -284,7 +284,7 @@ async fn test_establish_tunnel_fails_when_beardog_unavailable() {
 // ====================
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_tunnel_encrypt_decrypt_roundtrip() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -321,7 +321,7 @@ async fn test_tunnel_encrypt_decrypt_roundtrip() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_tunnel_encrypt_large_data() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -356,7 +356,7 @@ async fn test_tunnel_encrypt_large_data() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_tunnel_encrypt_empty_data() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -390,7 +390,7 @@ async fn test_tunnel_encrypt_empty_data() -> Result<()> {
 // ====================
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_tunnel_close() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -423,7 +423,7 @@ async fn test_tunnel_close() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_multiple_tunnels_concurrent() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -482,7 +482,7 @@ async fn test_invalid_socket_path() {
 }
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_malformed_request_handling() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -500,7 +500,7 @@ async fn test_malformed_request_handling() -> Result<()> {
 // ====================
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live
+#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
 async fn test_connection_manager_btsp_integration() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -524,7 +524,7 @@ async fn test_connection_manager_btsp_integration() -> Result<()> {
 // ====================
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live + stress testing
+#[ignore = "requires running BearDog crypto provider; stress test"] // Only run when BearDog is live + stress testing
 async fn test_btsp_rapid_tunnel_creation() -> Result<()> {
     if !beardog_available().await {
         return Ok(());
@@ -555,7 +555,7 @@ async fn test_btsp_rapid_tunnel_creation() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Only run when BearDog is live + stress testing
+#[ignore = "requires running BearDog crypto provider; stress test"] // Only run when BearDog is live + stress testing
 async fn test_btsp_high_throughput_encryption() -> Result<()> {
     if !beardog_available().await {
         return Ok(());

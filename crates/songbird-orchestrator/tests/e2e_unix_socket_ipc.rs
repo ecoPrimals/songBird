@@ -110,7 +110,7 @@ async fn wait_for_socket(socket_path: &str, timeout_secs: u64) -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Requires server to be running
+#[ignore = "requires Unix domain socket"] // Requires server to be running
 async fn test_unix_socket_connection() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 
@@ -127,7 +127,7 @@ async fn test_unix_socket_connection() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Requires server to be running
+#[ignore = "requires Unix domain socket"] // Requires server to be running
 async fn test_discover_by_family_api() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 
@@ -164,7 +164,7 @@ async fn test_discover_by_family_api() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Requires server to be running
+#[ignore = "requires Unix domain socket"] // Requires server to be running
 async fn test_create_genetic_tunnel_api() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 
@@ -198,7 +198,7 @@ async fn test_create_genetic_tunnel_api() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Requires server to be running
+#[ignore = "requires Unix domain socket"] // Requires server to be running
 async fn test_announce_capabilities_api() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 
@@ -228,7 +228,7 @@ async fn test_announce_capabilities_api() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Requires server to be running
+#[ignore = "requires Unix domain socket"] // Requires server to be running
 async fn test_invalid_method() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 
@@ -248,7 +248,7 @@ async fn test_invalid_method() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Requires server to be running
+#[ignore = "requires Unix domain socket"] // Requires server to be running
 async fn test_invalid_params() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 
@@ -273,7 +273,7 @@ async fn test_invalid_params() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore] // Manual test
+#[ignore = "manual concurrent connection test; requires Unix domain socket"] // Manual test
 async fn test_concurrent_connections() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
 

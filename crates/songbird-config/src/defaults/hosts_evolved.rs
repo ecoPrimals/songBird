@@ -16,6 +16,7 @@
 //! - Runtime discovery over static configuration
 
 use serde::{Deserialize, Serialize};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 
@@ -532,7 +533,7 @@ impl ServiceLocator {
     ///
     /// # Errors
     /// Returns error if registration fails (network, permissions, etc.)
-    pub fn register_self(&self, capabilities: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn register_self(&self, capabilities: &[&str]) -> SongbirdResult<()> {
         // Get our advertise address
         let advertise_addr = self.self_config.advertise_address();
 
@@ -563,8 +564,10 @@ impl ServiceLocator {
     fn register_with_http_registry(
         capabilities: &[&str],
         advertise_addr: &SocketAddr,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let registry_url = std::env::var("SONGBIRD_REGISTRY_URL")?;
+    ) -> SongbirdResult<()> {
+        if std::env::var("SONGBIRD_REGISTRY_URL").is_err() {
+            return Err(SongbirdError::configuration("SONGBIRD_REGISTRY_URL not set"));
+        }
 
         // Build registration payload
         let service_info = serde_json::json!({
@@ -578,9 +581,11 @@ impl ServiceLocator {
         });
 
         // POST to registry (requires reqwest)
-        // For now, return error - full implementation requires HTTP client
-        let _ = (registry_url, service_info); // Suppress unused warning
-        Err("HTTP registry not yet implemented".into())
+        let _ = service_info; // Suppress unused warning until HTTP client is integrated
+        Err(SongbirdError::not_implemented_with_detail(
+            "http_service_registry",
+            "Full implementation requires HTTP client integration",
+        ))
     }
 
     /// Register via DNS-SD (RFC 6763)
@@ -590,10 +595,12 @@ impl ServiceLocator {
     fn register_with_dns_sd(
         _capabilities: &[&str],
         _advertise_addr: &SocketAddr,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<()> {
         // DNS-SD registration requires platform-specific APIs (Avahi on Linux, Bonjour on macOS)
-        // For now, return error - full implementation requires mdns crate
-        Err("DNS-SD registration not yet implemented".into())
+        Err(SongbirdError::not_implemented_with_detail(
+            "dns_sd_registration",
+            "Full implementation requires platform mDNS/DNS-SD integration",
+        ))
     }
 
     /// Announce service via environment (for local development/testing)
@@ -686,6 +693,8 @@ fn default_host() -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -756,5 +765,161 @@ mod tests {
         let locator = ServiceLocator::new();
         // Should not panic
         let _services = locator.discover_by_capability("compute");
+    }
+
+    #[test]
+    fn detect_with_explicit_production() {
+        let e = Environment::detect_with(&|k| {
+            if k == "SONGBIRD_ENVIRONMENT" {
+                Ok("production".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Production);
+    }
+
+    #[test]
+    fn detect_with_explicit_staging_alias() {
+        let e = Environment::detect_with(&|k| {
+            if k == "SONGBIRD_ENVIRONMENT" {
+                Ok("stage".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Staging);
+    }
+
+    #[test]
+    fn detect_with_explicit_test() {
+        let e = Environment::detect_with(&|k| {
+            if k == "SONGBIRD_ENVIRONMENT" {
+                Ok("test".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Test);
+    }
+
+    #[test]
+    fn detect_with_unknown_songbird_env_defaults_to_development() {
+        let e = Environment::detect_with(&|k| {
+            if k == "SONGBIRD_ENVIRONMENT" {
+                Ok("experimental-lab".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Development);
+    }
+
+    #[test]
+    fn detect_with_kubernetes_host_is_production() {
+        let e = Environment::detect_with(&|k| {
+            if k == "KUBERNETES_SERVICE_HOST" {
+                Ok("10.0.0.1".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Production);
+    }
+
+    #[test]
+    fn detect_with_rust_test_threads_is_test() {
+        let e = Environment::detect_with(&|k| {
+            if k == "RUST_TEST_THREADS" {
+                Ok("8".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Test);
+    }
+
+    #[test]
+    fn bind_config_for_test_uses_ephemeral_port() {
+        let b = BindConfig::for_environment(&Environment::Test);
+        assert!(b.ip.is_loopback());
+        assert_eq!(b.port, 0);
+    }
+
+    #[test]
+    fn bind_config_for_staging_binds_unspecified() {
+        let b = BindConfig::for_environment(&Environment::Staging);
+        assert_eq!(b.ip, IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+    }
+
+    #[test]
+    fn self_aware_config_bind_and_advertise_consistent_in_development() {
+        let c = SelfAwareConfig::from_environment_with(&|k| {
+            if k == "SONGBIRD_ENVIRONMENT" {
+                Ok("development".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(c.bind_address(), c.advertise_address());
+    }
+
+    #[test]
+    fn advertise_config_for_development_is_loopback() {
+        let a = AdvertiseConfig::for_environment(&Environment::Development);
+        assert!(a.ip.is_loopback());
+        assert_eq!(a.port, 8080);
+    }
+
+    #[test]
+    fn advertise_config_for_test_uses_loopback_ephemeral_port() {
+        let a = AdvertiseConfig::for_environment(&Environment::Test);
+        assert!(a.ip.is_loopback());
+        assert_eq!(a.port, 0);
+    }
+
+    #[test]
+    fn detect_with_explicit_prod_alias() {
+        let e = Environment::detect_with(&|k| {
+            if k == "SONGBIRD_ENVIRONMENT" {
+                Ok("prod".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Production);
+    }
+
+    #[test]
+    fn detect_with_ecs_metadata_uri_implies_production() {
+        let e = Environment::detect_with(&|k| {
+            if k == "ECS_CONTAINER_METADATA_URI" {
+                Ok("http://169.254.170.2/v3/abc".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        });
+        assert_eq!(e, Environment::Production);
+    }
+
+    #[test]
+    fn bind_config_socket_addr_round_trips() {
+        let b = BindConfig::for_environment(&Environment::Development);
+        assert_eq!(b.socket_addr().port(), 8080);
+        assert!(b.socket_addr().ip().is_loopback());
+    }
+
+    #[test]
+    fn environment_serialization_round_trip() {
+        for env in [
+            Environment::Development,
+            Environment::Test,
+            Environment::Staging,
+            Environment::Production,
+        ] {
+            let json = serde_json::to_string(&env).expect("serialize");
+            let back: Environment = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(env, back);
+        }
     }
 }

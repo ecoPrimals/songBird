@@ -403,7 +403,7 @@ async fn chaos_test_maximum_environment_stress() {
 // ====================
 
 #[tokio::test]
-#[ignore] // Expensive test, run manually
+#[ignore = "expensive chaos evolution test; run manually"] // Expensive test, run manually
 async fn chaos_test_system_limit_discovery() {
     // CHAOS: Find the system limits (how many concurrent commands?)
     let mut successful = 0;
