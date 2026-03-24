@@ -8,6 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_types::SafeEnv;
+use songbird_types::primal_names::SELF_NAME;
 use std::collections::HashMap;
 
 /// Core unified configuration structure
@@ -39,10 +40,10 @@ pub struct ServiceConfig {
 impl Default for ServiceConfig {
     fn default() -> Self {
         Self {
-            name: "songbird".to_string(),
+            name: SELF_NAME.to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
             instance_id: format!("instance-{}", std::process::id()),
-            tags: vec!["songbird".to_owned()],
+            tags: vec![SELF_NAME.to_owned()],
         }
     }
 }

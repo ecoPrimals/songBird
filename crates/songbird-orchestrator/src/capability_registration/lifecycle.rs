@@ -4,6 +4,7 @@
 //! Register, unregister, and probe Neural API availability.
 
 use anyhow::Result;
+use songbird_types::primal_names;
 use std::env;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{info, warn};
@@ -110,7 +111,7 @@ pub async fn unregister_capabilities() -> Result<()> {
     });
     let primal_id = env::var("PRIMAL_ID")
         .or_else(|_| env::var("SONGBIRD_PRIMAL_ID"))
-        .unwrap_or_else(|_| "songbird".to_string());
+        .unwrap_or_else(|_| primal_names::SELF_NAME.to_string());
     unregister_capabilities_with(&neural_socket, &primal_id).await
 }
 

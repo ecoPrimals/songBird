@@ -11,7 +11,7 @@
 | Metric | Value |
 |--------|-------|
 | **Tests** | 10,233 passed, 0 failed, 266 ignored |
-| **Line Coverage** | 66.96% (llvm-cov measured; target 90%) |
+| **Line Coverage** | ~66.59% (llvm-cov measured; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
@@ -27,7 +27,7 @@
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
 | **`#[allow()]` vs `#[expect()]`** | Fully correct: `#[expect(reason)]` only where lint fires, `#[allow(reason)]` everywhere else |
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
-| **Hardcoded elimination** | All ports env-driven; DNS-SD/mDNS/broadcast discovery; health check uses capability-based crypto provider discovery (no primal names) |
+| **Hardcoded elimination** | All ports env-driven; `primal_names` constants module; DNS-SD/mDNS/broadcast discovery; capability-first |
 | **JSON-RPC handlers** | 14 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (ecosystem standard) |
 | **Method normalization** | `normalize_method()` handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
@@ -51,6 +51,42 @@
 | **Build time** | ~45s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~391,757 (crates + src + tests + examples; dead code removal reduced count) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 24, 2026 — Cross-Ecosystem Absorption, JSON-RPC Strict, Cast Deny, Constants, Ergonomics — Session 16)
+
+### Wave 69: Strict JSON-RPC 2.0 Compliance
+- [x] `JsonRpcRequest.id` → `Option<Value>` across all 3 type definitions (tower_atomic, jsonrpc_api, unix_listener)
+- [x] Notification suppression in 5 connection handlers (tower_atomic, HTTP gateway, unix_listener, ipc/unix/server, pure_rust_server, bin_interface×2)
+- [x] Serialization-safe fallback in `write_response()` — hard-coded internal-error JSON on serialization failure
+- [x] Version validation already present — verified across all handlers
+
+### Wave 69: Cast Lint Discipline
+- [x] Added `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` as `"deny"` at workspace level
+- [x] Removed per-crate `allow` overrides from `songbird-orchestrator/Cargo.toml` (were masking nothing)
+- [x] Fixed `unused_async` lint in `songbird-genesis` coordination bridge with `#[expect(reason)]`
+- [x] Zero cast violations across all 30 crates (all existing code already used safe conversions or `#[expect]`)
+
+### Wave 69: Ecosystem Hygiene
+- [x] Created `SECURITY.md` (aligned with BearDog/groundSpring/airSpring patterns)
+- [x] `rustfmt.toml` already present — verified current
+
+### Wave 69: Primal Name Constants
+- [x] Created `songbird_types::primal_names` module (`SELF_NAME`, `APP_DIR`, `BEARDOG`, `SQUIRREL`, `TOADSTOOL`, `NESTGATE`)
+- [x] Replaced ~15 raw `"songbird"` literals across env_config, primal_discovery, capability_registration, config modules, unified core, paths, system config
+- [x] Replaced `"beardog"` in socket_discovery with `primal_names::BEARDOG`
+- [x] Platform endpoint maps left as-is (need deeper architectural change to capability-based)
+
+### Wave 69: `impl Into<String>` Ergonomics
+- [x] `ServiceInstance::new` + `with_capability` + `with_health_status` + `with_metadata` (songbird-discovery)
+- [x] `ServiceRequest::new` + `with_header` + `with_query_param` (songbird-discovery)
+- [x] `ServiceResponse::success` + `error` + `with_header` (songbird-discovery)
+- [x] `Provider::new` (songbird-universal-ipc)
+- [x] `AnonymousDiscoveryMessage::new_v3` node_id/node_name (songbird-discovery)
+
+### Wave 69: CONTRIBUTING.md
+- [x] Updated coverage reference to ~66.59%
 
 ---
 

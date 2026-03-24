@@ -36,12 +36,15 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info, trace, warn};
 
 /// JSON-RPC 2.0 Request
+///
+/// Per spec, `id` is omitted for notifications (server MUST NOT reply).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
     pub method: String,
     pub params: serde_json::Value,
-    pub id: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<serde_json::Value>,
 }
 
 /// JSON-RPC 2.0 Response
@@ -265,13 +268,17 @@ impl UnixSocketListener {
                 }
             };
 
-            trace!("Received request: method={}, id={:?}", request.method, request.id);
+            let is_notification = request.id.is_none();
+            trace!(
+                "Received request: method={}, id={:?}, notification={}",
+                request.method, request.id, is_notification
+            );
 
-            // Handle the request
             let response = self.handle_request(request).await;
 
-            // Send response
-            self.send_response_to_writer(&mut writer, response).await?;
+            if !is_notification {
+                self.send_response_to_writer(&mut writer, response).await?;
+            }
         }
 
         Ok(())
@@ -279,17 +286,17 @@ impl UnixSocketListener {
 
     /// Handle a JSON-RPC request
     async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
-        // Validate JSON-RPC version
+        let id = request.id.clone().unwrap_or(serde_json::Value::Null);
+
         if request.jsonrpc != "2.0" {
             return JsonRpcResponse {
                 jsonrpc: "2.0".to_string(),
                 result: None,
                 error: Some(JsonRpcError::invalid_request()),
-                id: request.id,
+                id,
             };
         }
 
-        // Route based on method
         match request.method.as_str() {
             "proxy" | "http.proxy" => self.handle_proxy_request(request).await,
             "ping" => self.handle_ping_request(request).await,
@@ -298,14 +305,15 @@ impl UnixSocketListener {
                 jsonrpc: "2.0".to_string(),
                 result: None,
                 error: Some(JsonRpcError::method_not_found()),
-                id: request.id,
+                id,
             },
         }
     }
 
     /// Handle a proxy request (the main functionality)
     async fn handle_proxy_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
-        // Extract parameters
+        let id = request.id.unwrap_or(serde_json::Value::Null);
+
         let params = match request.params.as_object() {
             Some(obj) => obj,
             None => {
@@ -313,23 +321,18 @@ impl UnixSocketListener {
                     jsonrpc: "2.0".to_string(),
                     result: None,
                     error: Some(JsonRpcError::invalid_params()),
-                    id: request.id,
+                    id,
                 };
             }
         };
 
-        // Get capability ID (use our listener's capability if not specified)
         let capability_id =
             params.get("capability").and_then(|v| v.as_str()).unwrap_or(&self.config.capability_id);
-
-        // Get request method and payload
         let http_method = params.get("method").and_then(|v| v.as_str()).unwrap_or("POST");
-
         let payload = params.get("payload").cloned();
 
         debug!("Proxy request: capability='{}', method='{}'", capability_id, http_method);
 
-        // Route to appropriate provider
         let route = match self.router.route(capability_id).await {
             Ok(r) => r,
             Err(e) => {
@@ -338,23 +341,21 @@ impl UnixSocketListener {
                     jsonrpc: "2.0".to_string(),
                     result: None,
                     error: Some(JsonRpcError::server_error(-32000, format!("Routing failed: {e}"))),
-                    id: request.id,
+                    id,
                 };
             }
         };
 
-        // Check rate limits
         if let Err(e) = self.rate_limiter.check(&route.provider.id).await {
             warn!("Rate limit exceeded for provider '{}': {}", route.provider.id, e);
             return JsonRpcResponse {
                 jsonrpc: "2.0".to_string(),
                 result: None,
                 error: Some(JsonRpcError::server_error(-32001, "Rate limit exceeded")),
-                id: request.id,
+                id,
             };
         }
 
-        // Check cache
         let cache_key =
             format!("{}:{}", capability_id, serde_json::to_string(&payload).unwrap_or_default());
         if let Some(cached) = self.cache.get(&cache_key).await {
@@ -363,26 +364,19 @@ impl UnixSocketListener {
                 jsonrpc: "2.0".to_string(),
                 result: Some(cached),
                 error: None,
-                id: request.id,
+                id,
             };
         }
 
-        // Make the actual HTTP request to external API
         let result = self.make_external_request(&route, http_method, payload.as_ref()).await;
 
         match result {
-            Ok(response_data) => {
-                // Cache the response
-                // FUTURE (Phase 2): Implement response caching with configurable TTL
-                // Current: Direct proxy mode (no caching) is safer and simpler
-
-                JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    result: Some(response_data),
-                    error: None,
-                    id: request.id,
-                }
-            }
+            Ok(response_data) => JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: Some(response_data),
+                error: None,
+                id,
+            },
             Err(e) => {
                 error!("External request failed: {}", e);
                 JsonRpcResponse {
@@ -391,7 +385,7 @@ impl UnixSocketListener {
                     error: Some(JsonRpcError::internal_error(format!(
                         "External request failed: {e}"
                     ))),
-                    id: request.id,
+                    id,
                 }
             }
         }
@@ -451,7 +445,6 @@ impl UnixSocketListener {
         Ok(body)
     }
 
-    /// Handle a ping request
     async fn handle_ping_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
@@ -462,11 +455,10 @@ impl UnixSocketListener {
                 "active_connections": *self.active_connections.read().await,
             })),
             error: None,
-            id: request.id,
+            id: request.id.unwrap_or(serde_json::Value::Null),
         }
     }
 
-    /// Handle a capabilities request
     async fn handle_capabilities_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         let capabilities = self.router.list_capabilities().await;
 
@@ -476,7 +468,7 @@ impl UnixSocketListener {
                 "capabilities": capabilities,
             })),
             error: None,
-            id: request.id,
+            id: request.id.unwrap_or(serde_json::Value::Null),
         }
     }
 
@@ -528,7 +520,7 @@ mod tests {
             jsonrpc: "2.0".to_string(),
             method: "proxy".to_string(),
             params: serde_json::json!({"capability": "ai:text-generation"}),
-            id: serde_json::json!(1),
+            id: Some(serde_json::json!(1)),
         };
 
         let json = serde_json::to_string(&request).unwrap();

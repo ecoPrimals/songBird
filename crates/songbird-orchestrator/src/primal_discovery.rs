@@ -34,6 +34,7 @@
 //! ```
 
 use anyhow::Result;
+use songbird_types::primal_names;
 use std::path::Path;
 use tracing::{debug, info, warn};
 
@@ -388,7 +389,7 @@ pub fn get_family_id() -> String {
 /// Get primal name from environment (self-knowledge)
 #[must_use]
 pub fn get_primal_name() -> String {
-    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| "songbird".to_string())
+    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| primal_names::SELF_NAME.to_string())
 }
 
 #[cfg(test)]

@@ -59,6 +59,7 @@
 use crate::PerformanceConfig;
 use serde::{Deserialize, Serialize};
 use songbird_types::SafeEnv;
+use songbird_types::primal_names::SELF_NAME;
 use std::collections::HashMap;
 // use songbird_config; // FIXED: Circular import removed
 
@@ -560,8 +561,8 @@ impl Default for RegistrationConfig {
     fn default() -> Self {
         Self {
             auto_register: true,
-            service_name: SafeEnv::get_or_default("SONGBIRD_SERVICE_NAME", "songbird"),
-            tags: vec!["songbird".to_string(), "primal".to_string()],
+            service_name: SafeEnv::get_or_default("SONGBIRD_SERVICE_NAME", SELF_NAME),
+            tags: vec![SELF_NAME.to_string(), "primal".to_string()],
             metadata: HashMap::new(),
         }
     }

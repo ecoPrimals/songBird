@@ -9,6 +9,7 @@
 #![allow(missing_docs, reason = "network matrix types; pair with `NetworkConfig` module docs")]
 
 use serde::{Deserialize, Serialize};
+use songbird_types::primal_names::SELF_NAME;
 
 // ============================================================================
 // SERVICE ENDPOINTS AND DISCOVERY
@@ -83,7 +84,7 @@ impl Default for SelfAwareConfig {
     fn default() -> Self {
         use std::env;
         Self {
-            id: env::var("SONGBIRD_PRIMAL_ID").unwrap_or_else(|_| "songbird".to_string()),
+            id: env::var("SONGBIRD_PRIMAL_ID").unwrap_or_else(|_| SELF_NAME.to_string()),
             endpoint: ServiceEndpoint::from_env("SONGBIRD_SELF")
                 .unwrap_or_else(|| ServiceEndpoint::new("127.0.0.1", 8080, "http")),
             capabilities: env::var("SONGBIRD_CAPABILITIES")

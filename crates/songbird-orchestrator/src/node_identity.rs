@@ -8,7 +8,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use songbird_types::{LineageId, LineageProof};
+use songbird_types::{LineageId, LineageProof, primal_names};
 use std::fs;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
@@ -240,7 +240,7 @@ impl NodeIdentity {
                 |node_id| format!("node_identity-{node_id}.json"),
             );
 
-        data_dir.join("songbird").join(filename)
+        data_dir.join(primal_names::APP_DIR).join(filename)
     }
 
     /// Save identity to disk

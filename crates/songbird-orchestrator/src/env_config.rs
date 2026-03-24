@@ -32,11 +32,12 @@
 use std::path::PathBuf;
 
 use songbird_types::defaults::{hosts::DEFAULT_BIND_ALL, ports::DEFAULT_HTTP_PORT};
+use songbird_types::primal_names;
 
 /// Get this primal's name (self-knowledge)
 #[must_use]
 pub fn primal_name() -> String {
-    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| "songbird".to_string())
+    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| primal_names::SELF_NAME.to_string())
 }
 
 /// Get family/biome ID (self-knowledge)

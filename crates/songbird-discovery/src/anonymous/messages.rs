@@ -163,11 +163,14 @@ impl AnonymousDiscoveryMessage {
     /// Receivers can coalesce multiple endpoints under the same `node_id`.
     #[must_use]
     pub fn new_v3(
-        node_id: String,
-        node_name: String,
+        node_id: impl Into<String>,
+        node_name: impl Into<String>,
         endpoints: Vec<TransportEndpointMessage>,
         capabilities: Vec<String>,
     ) -> Self {
+        let node_id = node_id.into();
+        let node_name = node_name.into();
+
         // Get primary endpoint for backward compatibility
         let primary_endpoint = endpoints.first();
 

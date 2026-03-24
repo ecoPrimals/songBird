@@ -55,7 +55,7 @@ fn test_jsonrpc_request_new() {
     let req = JsonRpcRequest::new("test.method", Some(serde_json::json!({"key": "val"})), 42);
     assert_eq!(req.jsonrpc, "2.0");
     assert_eq!(req.method, "test.method");
-    assert_eq!(req.id, serde_json::json!(42));
+    assert_eq!(req.id, Some(serde_json::json!(42)));
     assert!(req.params.is_some());
 }
 
@@ -75,7 +75,7 @@ fn test_jsonrpc_request_serialization() {
 
     let de: JsonRpcRequest = serde_json::from_str(&json).unwrap();
     assert_eq!(de.method, "test");
-    assert_eq!(de.id, serde_json::json!(99));
+    assert_eq!(de.id, Some(serde_json::json!(99)));
 }
 
 #[test]

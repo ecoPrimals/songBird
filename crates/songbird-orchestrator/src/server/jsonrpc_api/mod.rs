@@ -131,8 +131,12 @@ async fn handle_jsonrpc_request(
         }));
     }
 
+    let is_notification = request.id.is_none();
     let canonical = songbird_universal_ipc::introspection::normalize_method(&request.method);
-    debug!("📞 JSON-RPC request: method={} (canonical={canonical})", request.method);
+    debug!(
+        "JSON-RPC request: method={} (canonical={canonical}, notification={is_notification})",
+        request.method
+    );
 
     let result = match canonical {
         "compute.route" => handle_compute_route(&state, request.params.clone()).await,
@@ -195,18 +199,23 @@ async fn handle_jsonrpc_request(
         }
     };
 
+    if is_notification {
+        return Err(StatusCode::NO_CONTENT);
+    }
+
+    let id = request.id.unwrap_or(Value::Null);
     let response = match result {
         Ok(value) => JsonRpcResponse {
             jsonrpc: JSONRPC_VERSION.to_string(),
             result: Some(value),
             error: None,
-            id: request.id.unwrap_or(Value::Null),
+            id,
         },
         Err(error) => JsonRpcResponse {
             jsonrpc: JSONRPC_VERSION.to_string(),
             result: None,
             error: Some(error),
-            id: request.id.unwrap_or(Value::Null),
+            id,
         },
     };
 

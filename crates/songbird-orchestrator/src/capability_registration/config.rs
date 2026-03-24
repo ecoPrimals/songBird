@@ -4,6 +4,7 @@
 //! Configuration for Neural API capability registration.
 
 use anyhow::{Context, Result};
+use songbird_types::primal_names;
 use std::env;
 
 /// Configuration for capability registration (supports dependency injection)
@@ -40,7 +41,7 @@ impl CapabilityRegistrationConfig {
 
         let primal_id = env::var("PRIMAL_ID")
             .or_else(|_| env::var("SONGBIRD_PRIMAL_ID"))
-            .unwrap_or_else(|_| "songbird".to_string());
+            .unwrap_or_else(|_| primal_names::SELF_NAME.to_string());
 
         Ok(Self {
             neural_socket,

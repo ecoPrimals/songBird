@@ -330,11 +330,12 @@ async fn handle_connection(
                     }
                 };
                 
-                // Handle request
+                let is_notification = request.id.is_none();
                 let response = handle_request(request, Arc::clone(&registry), connection_manager.clone(), discovery_status_manager.clone(), Arc::clone(&start_time)).await;
                 
-                // Send response
-                send_response(&mut writer, &response).await?;
+                if !is_notification {
+                    send_response(&mut writer, &response).await?;
+                }
             }
             Err(e) => {
                 error!("❌ Error reading from stream: {}", e);

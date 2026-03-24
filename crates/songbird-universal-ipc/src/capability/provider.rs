@@ -70,11 +70,15 @@ pub enum HealthStatus {
 impl Provider {
     /// Create a new provider
     #[must_use]
-    pub fn new(id: String, capabilities: Vec<String>, virtual_endpoint: String) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        capabilities: Vec<String>,
+        virtual_endpoint: impl Into<String>,
+    ) -> Self {
         Self {
-            id,
+            id: id.into(),
             capabilities,
-            virtual_endpoint,
+            virtual_endpoint: virtual_endpoint.into(),
             metadata: ProviderMetadata::default(),
             discovered_at: SystemTime::now(),
         }

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave69] - 2026-03-24 - Cross-Ecosystem Absorption, JSON-RPC Strict, Cast Deny
+
+### Changed — JSON-RPC 2.0 Strict Compliance
+- `JsonRpcRequest.id` is now `Option<Value>` across all type definitions (spec: notifications omit `id`)
+- Notification suppression in 5 connection handlers (server MUST NOT reply to notifications)
+- `write_response()` serialization fallback — hard-coded internal-error JSON on failure
+- Version validation verified across all handlers
+
+### Changed — Cast Lint Discipline
+- `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide
+- Removed per-crate `allow` overrides from `songbird-orchestrator/Cargo.toml`
+- Fixed `unused_async` lint in genesis coordination bridge
+
+### Added — Ecosystem Hygiene
+- Created `SECURITY.md` (aligned with BearDog/groundSpring/airSpring patterns)
+
+### Added — Primal Name Constants
+- New `songbird_types::primal_names` module (`SELF_NAME`, `APP_DIR`, `BEARDOG`, `SQUIRREL`, `TOADSTOOL`, `NESTGATE`)
+- Replaced ~15 raw `"songbird"` literals across production code with constants
+
+### Changed — `impl Into<String>` Ergonomics
+- `ServiceInstance`, `ServiceRequest`, `ServiceResponse`, `Provider`, `AnonymousDiscoveryMessage`
+  constructors now accept `impl Into<String>` (eliminates `.to_string()` at call sites)
+
+---
+
 ## [v0.2.1-wave68] - 2026-03-24 - sysinfo Elimination, Dead Code Removal, Coverage Push
 
 ### Removed — sysinfo Dependency (ecoBin v3.0)

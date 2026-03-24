@@ -106,24 +106,34 @@ use tokio::sync::Mutex;
 use tracing::{debug, error};
 
 /// JSON-RPC 2.0 Request
+///
+/// Per <https://www.jsonrpc.org/specification#request_object>, `id` is
+/// omitted for notifications (the server MUST NOT reply).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
     pub method: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
-    pub id: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<Value>,
 }
 
 impl JsonRpcRequest {
-    /// Create a new JSON-RPC request
+    /// Create a new JSON-RPC request (with numeric id).
     pub fn new(method: impl Into<String>, params: Option<Value>, id: u64) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
             method: method.into(),
             params,
-            id: Value::Number(id.into()),
+            id: Some(Value::Number(id.into())),
         }
+    }
+
+    /// Returns `true` when this is a notification (no `id` field).
+    #[must_use]
+    pub const fn is_notification(&self) -> bool {
+        self.id.is_none()
     }
 }
 
@@ -283,31 +293,34 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
                         continue;
                     }
 
-                    // Parse JSON-RPC request
-                    let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
-                        Ok(request) => {
-                            debug!("JSON-RPC request: {}", request.method);
-                            Self::handle_request(request, &*handler).await
+                    let request = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                        Ok(req) => req,
+                        Err(e) => {
+                            let resp = JsonRpcResponse::error(
+                                JsonRpcError {
+                                    code: JsonRpcError::PARSE_ERROR,
+                                    message: format!("Failed to parse request: {e}"),
+                                    data: None,
+                                },
+                                Value::Null,
+                            );
+                            Self::write_response(&mut writer, &resp).await?;
+                            continue;
                         }
-                        Err(e) => JsonRpcResponse::error(
-                            JsonRpcError {
-                                code: JsonRpcError::PARSE_ERROR,
-                                message: format!("Failed to parse request: {e}"),
-                                data: None,
-                            },
-                            Value::Null,
-                        ),
                     };
 
-                    // Send response
-                    let response_json = serde_json::to_string(&response)
-                        .map_err(|e| IpcError::Other(e.to_string()))?;
+                    let is_notification = request.is_notification();
+                    debug!(
+                        "JSON-RPC request: {} (notification={})",
+                        request.method, is_notification
+                    );
+                    let response = Self::handle_request(request, &*handler).await;
 
-                    writer
-                        .write_all(response_json.as_bytes())
-                        .await
-                        .map_err(|e| IpcError::Other(e.to_string()))?;
-                    writer.write_all(b"\n").await.map_err(|e| IpcError::Other(e.to_string()))?;
+                    if is_notification {
+                        continue;
+                    }
+
+                    Self::write_response(&mut writer, &response).await?;
                 }
                 Err(e) => {
                     error!("Failed to read from socket: {}", e);
@@ -316,6 +329,31 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
             }
         }
 
+        Ok(())
+    }
+
+    /// Serialize and write a JSON-RPC response with safe fallback.
+    ///
+    /// If serialization fails (should never happen for our types), a
+    /// hard-coded internal-error JSON is written so the client always
+    /// sees a valid frame rather than a dropped connection.
+    async fn write_response<W: tokio::io::AsyncWrite + Unpin>(
+        writer: &mut W,
+        response: &JsonRpcResponse,
+    ) -> IpcResult<()> {
+        const FALLBACK: &[u8] =
+            b"{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal serialization error\"},\"id\":null}\n";
+
+        match serde_json::to_vec(response) {
+            Ok(mut buf) => {
+                buf.push(b'\n');
+                writer.write_all(&buf).await.map_err(|e| IpcError::Other(e.to_string()))?;
+            }
+            Err(e) => {
+                error!("JSON-RPC response serialization failed: {e}");
+                writer.write_all(FALLBACK).await.map_err(|e| IpcError::Other(e.to_string()))?;
+            }
+        }
         Ok(())
     }
 
@@ -328,7 +366,8 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
             id,
         } = request;
 
-        // Validate JSON-RPC version
+        let id = id.unwrap_or(Value::Null);
+
         if jsonrpc != "2.0" {
             return JsonRpcResponse::error(
                 JsonRpcError {
@@ -340,7 +379,6 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
             );
         }
 
-        // Call handler
         let params = params.unwrap_or(Value::Null);
         match handler.handle(&method, params).await {
             Ok(result) => JsonRpcResponse::success(result, id),
@@ -488,7 +526,7 @@ mod tests {
         let req = JsonRpcRequest::new("test_method", Some(json!({"key": "value"})), 1);
         assert_eq!(req.jsonrpc, "2.0");
         assert_eq!(req.method, "test_method");
-        assert_eq!(req.id, json!(1));
+        assert_eq!(req.id, Some(json!(1)));
     }
 
     #[tokio::test]
@@ -536,7 +574,7 @@ mod tests {
         let back: JsonRpcRequest = serde_json::from_str(&s).expect("deserialize request");
         assert_eq!(back.jsonrpc, "2.0");
         assert_eq!(back.method, "echo");
-        assert_eq!(back.id, json!(42));
+        assert_eq!(back.id, Some(json!(42)));
     }
 
     #[test]
@@ -586,7 +624,7 @@ mod tests {
             jsonrpc: "1.0".into(),
             method: "x".into(),
             params: None,
-            id: json!(1),
+            id: Some(json!(1)),
         };
         let resp = TowerAtomicServer::handle_request_for_test(req, &handler).await;
         let err = resp.error.expect("error response");
@@ -632,7 +670,7 @@ mod tests {
             jsonrpc: "2.0".into(),
             method: "m".into(),
             params: None,
-            id: json!(99),
+            id: Some(json!(99)),
         };
         let resp = TowerAtomicServer::handle_request_for_test(req, &NullCheck).await;
         assert_eq!(resp.result, Some(json!(true)));
@@ -648,7 +686,7 @@ mod tests {
     #[test]
     fn json_rpc_request_new_uses_numeric_id() {
         let r = JsonRpcRequest::new("ping", None, 1001);
-        assert_eq!(r.id, json!(1001));
+        assert_eq!(r.id, Some(json!(1001)));
         assert!(r.params.is_none());
     }
 
@@ -665,7 +703,7 @@ mod tests {
             jsonrpc: "2.1".into(),
             method: "m".into(),
             params: Some(json!({})),
-            id: json!("abc"),
+            id: Some(json!("abc")),
         };
         let resp = TowerAtomicServer::handle_request_for_test(req, &X).await;
         let e = resp.error.expect("err");
@@ -703,17 +741,33 @@ mod jsonrpc_parse_fuzz_style_tests {
     #[test]
     fn deserialize_accepts_various_id_types() {
         let cases = [
-            r#"{"jsonrpc":"2.0","method":"a","id":null}"#,
             r#"{"jsonrpc":"2.0","method":"a","id":"s"}"#,
             r#"{"jsonrpc":"2.0","method":"a","id":true}"#,
             r#"{"jsonrpc":"2.0","method":"a","id":[1,2]}"#,
             r#"{"jsonrpc":"2.0","method":"a","id":{"x":1}}"#,
+            r#"{"jsonrpc":"2.0","method":"a","id":42}"#,
         ];
         for s in cases {
             let r: JsonRpcRequest = serde_json::from_str(s).unwrap();
             assert_eq!(r.jsonrpc, "2.0");
             assert_eq!(r.method, "a");
+            assert!(r.id.is_some(), "id should be present for: {s}");
         }
+    }
+
+    #[test]
+    fn deserialize_null_id_treated_as_notification() {
+        let s = r#"{"jsonrpc":"2.0","method":"a","id":null}"#;
+        let r: JsonRpcRequest = serde_json::from_str(s).unwrap();
+        assert!(r.is_notification(), "null id is indistinguishable from absent id via serde");
+    }
+
+    #[test]
+    fn deserialize_notification_omits_id() {
+        let s = r#"{"jsonrpc":"2.0","method":"notify.event"}"#;
+        let r: JsonRpcRequest = serde_json::from_str(s).unwrap();
+        assert!(r.is_notification());
+        assert!(r.id.is_none());
     }
 
     #[test]

@@ -95,6 +95,10 @@ impl GenesisCoordinationBridge {
     /// # Errors
     ///
     /// Returns an error indicating coordination is not available
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature for API compatibility with coordination-enabled builds"
+    )]
     pub async fn execute_genesis(&self, _node_id_str: String) -> Result<()> {
         Err(GenesisError::CoordinationFailed("Coordination feature not enabled".to_string()))
     }

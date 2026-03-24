@@ -226,11 +226,11 @@ pub struct ServiceMetrics {
 impl ServiceRequest {
     /// Create a new service request
     #[must_use]
-    pub fn new(method: String, path: String) -> Self {
+    pub fn new(method: impl Into<String>, path: impl Into<String>) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
-            method,
-            path,
+            method: method.into(),
+            path: path.into(),
             headers: HashMap::new(),
             body: None,
             query_params: HashMap::new(),
@@ -245,8 +245,8 @@ impl ServiceRequest {
 
     /// Add a header to the request
     #[must_use]
-    pub fn with_header(mut self, key: String, value: String) -> Self {
-        self.headers.insert(key, value);
+    pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.insert(key.into(), value.into());
         self
     }
 
@@ -259,8 +259,8 @@ impl ServiceRequest {
 
     /// Add a query parameter
     #[must_use]
-    pub fn with_query_param(mut self, key: String, value: String) -> Self {
-        self.query_params.insert(key, value);
+    pub fn with_query_param(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.query_params.insert(key.into(), value.into());
         self
     }
 
@@ -282,9 +282,9 @@ impl ServiceRequest {
 impl ServiceResponse {
     /// Create a successful response
     #[must_use]
-    pub fn success(request_id: String) -> Self {
+    pub fn success(request_id: impl Into<String>) -> Self {
         Self {
-            request_id,
+            request_id: request_id.into(),
             status: ResponseStatus::Success,
             headers: HashMap::new(),
             body: None,
@@ -297,23 +297,23 @@ impl ServiceResponse {
 
     /// Create an error response
     #[must_use]
-    pub fn error(request_id: String, message: String) -> Self {
+    pub fn error(request_id: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
-            request_id,
+            request_id: request_id.into(),
             status: ResponseStatus::Error,
             headers: HashMap::new(),
             body: None,
             timestamp: Utc::now(),
             processing_time: Duration::from_millis(0),
-            error_message: Some(message),
+            error_message: Some(message.into()),
             metadata: HashMap::new(),
         }
     }
 
     /// Add a response header
     #[must_use]
-    pub fn with_header(mut self, key: String, value: String) -> Self {
-        self.headers.insert(key, value);
+    pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.insert(key.into(), value.into());
         self
     }
 

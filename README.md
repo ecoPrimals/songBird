@@ -14,14 +14,16 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across 29/30 crates; `process-env` isolated with `Mutex` + SAFETY docs) |
 | Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); `sysinfo` eliminated (replaced by `sys_metrics` `/proc` reader); all application code is pure Rust |
 | Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
-| Runtime Discovery | All config: env → XDG → smart defaults. Capability-only (zero primal names in discovery) |
+| Runtime Discovery | All config: env → XDG → smart defaults. `primal_names` constants module; capability-first discovery |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent via injectable `_with` env readers |
 | Tests | 10,233 total, 0 failed |
-| Line Coverage | 66.96% (llvm-cov measured; target 90%) |
+| Line Coverage | ~66.59% (llvm-cov measured; target 90%) |
+| Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
+| JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings, ~45s dev) |
 | Formatting | Clean (`cargo fmt --check`) |

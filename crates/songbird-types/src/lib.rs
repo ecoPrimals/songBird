@@ -97,6 +97,9 @@ pub mod zero_copy;
 pub mod zero_copy_request;
 pub mod zero_copy_service;
 
+// Centralized primal name constants
+pub mod primal_names;
+
 // Pure Rust system metrics (replaces sysinfo crate for ecoBin v3.0)
 pub mod sys_metrics;
 

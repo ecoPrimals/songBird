@@ -48,6 +48,7 @@
 
 use anyhow::{Context, Result};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
+use songbird_types::primal_names;
 use songbird_universal_ipc::endpoint::VirtualEndpoint;
 use songbird_universal_ipc::handlers::{DiscoveryListenerBridge, PeerRegistry};
 use songbird_universal_ipc::ipc;
@@ -104,7 +105,7 @@ impl UniversalIpcBroker {
         // Register Songbird as an IPC service provider
         // Note: If already registered, this will return an error which we handle gracefully
         let endpoint = match ipc::register(
-            "songbird",
+            primal_names::SELF_NAME,
             vec![
                 "ipc".to_string(),
                 "discovery".to_string(),

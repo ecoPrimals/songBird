@@ -294,38 +294,50 @@ async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()>
                                     continue;
                                 }
 
-                                // Parse JSON-RPC request
-                                let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
-                                    Ok(request) => {
-                                        tracing::debug!("IPC JSON-RPC request: {}", request.method);
-                                        match handler_clone
-                                            .handle(
-                                                &request.method,
-                                                request.params.unwrap_or(serde_json::Value::Null),
-                                            )
-                                            .await
-                                        {
-                                            Ok(result) => {
-                                                JsonRpcResponse::success(result, request.id)
-                                            }
-                                            Err(message) => JsonRpcResponse::error(
-                                                JsonRpcError::internal_error(message),
-                                                request.id,
-                                            ),
+                                let request = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                                    Ok(req) => req,
+                                    Err(e) => {
+                                        let resp = JsonRpcResponse::error(
+                                            JsonRpcError {
+                                                code: JsonRpcError::PARSE_ERROR,
+                                                message: format!("Failed to parse request: {e}"),
+                                                data: None,
+                                            },
+                                            serde_json::Value::Null,
+                                        );
+                                        if let Ok(json) = serde_json::to_string(&resp) {
+                                            let _ = writer.write_all(json.as_bytes()).await;
+                                            let _ = writer.write_all(b"\n").await;
                                         }
+                                        continue;
                                     }
-                                    Err(e) => JsonRpcResponse::error(
-                                        JsonRpcError {
-                                            code: JsonRpcError::PARSE_ERROR,
-                                            message: format!("Failed to parse request: {e}"),
-                                            data: None,
-                                        },
-                                        serde_json::Value::Null,
+                                };
+
+                                let is_notification = request.id.is_none();
+                                let id = request.id.unwrap_or(serde_json::Value::Null);
+                                tracing::debug!(
+                                    "IPC JSON-RPC request: {} (notification={})",
+                                    request.method,
+                                    is_notification
+                                );
+
+                                let response = match handler_clone
+                                    .handle(
+                                        &request.method,
+                                        request.params.unwrap_or(serde_json::Value::Null),
+                                    )
+                                    .await
+                                {
+                                    Ok(result) => JsonRpcResponse::success(result, id),
+                                    Err(message) => JsonRpcResponse::error(
+                                        JsonRpcError::internal_error(message),
+                                        id,
                                     ),
                                 };
 
-                                // Send response
-                                if let Ok(response_json) = serde_json::to_string(&response) {
+                                if !is_notification
+                                    && let Ok(response_json) = serde_json::to_string(&response)
+                                {
                                     let _ = writer.write_all(response_json.as_bytes()).await;
                                     let _ = writer.write_all(b"\n").await;
                                 }
@@ -401,41 +413,50 @@ async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Resul
                                     continue;
                                 }
 
-                                // Parse JSON-RPC request
-                                let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
-                                    Ok(request) => {
-                                        tracing::debug!(
-                                            "TCP IPC JSON-RPC request: {}",
-                                            request.method
+                                let request = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                                    Ok(req) => req,
+                                    Err(e) => {
+                                        let resp = JsonRpcResponse::error(
+                                            JsonRpcError {
+                                                code: JsonRpcError::PARSE_ERROR,
+                                                message: format!("Failed to parse request: {e}"),
+                                                data: None,
+                                            },
+                                            serde_json::Value::Null,
                                         );
-                                        match handler_clone
-                                            .handle(
-                                                &request.method,
-                                                request.params.unwrap_or(serde_json::Value::Null),
-                                            )
-                                            .await
-                                        {
-                                            Ok(result) => {
-                                                JsonRpcResponse::success(result, request.id)
-                                            }
-                                            Err(message) => JsonRpcResponse::error(
-                                                JsonRpcError::internal_error(message),
-                                                request.id,
-                                            ),
+                                        if let Ok(json) = serde_json::to_string(&resp) {
+                                            let _ = writer.write_all(json.as_bytes()).await;
+                                            let _ = writer.write_all(b"\n").await;
                                         }
+                                        continue;
                                     }
-                                    Err(e) => JsonRpcResponse::error(
-                                        JsonRpcError {
-                                            code: JsonRpcError::PARSE_ERROR,
-                                            message: format!("Failed to parse request: {e}"),
-                                            data: None,
-                                        },
-                                        serde_json::Value::Null,
+                                };
+
+                                let is_notification = request.id.is_none();
+                                let id = request.id.unwrap_or(serde_json::Value::Null);
+                                tracing::debug!(
+                                    "TCP IPC JSON-RPC request: {} (notification={})",
+                                    request.method,
+                                    is_notification
+                                );
+
+                                let response = match handler_clone
+                                    .handle(
+                                        &request.method,
+                                        request.params.unwrap_or(serde_json::Value::Null),
+                                    )
+                                    .await
+                                {
+                                    Ok(result) => JsonRpcResponse::success(result, id),
+                                    Err(message) => JsonRpcResponse::error(
+                                        JsonRpcError::internal_error(message),
+                                        id,
                                     ),
                                 };
 
-                                // Send response
-                                if let Ok(response_json) = serde_json::to_string(&response) {
+                                if !is_notification
+                                    && let Ok(response_json) = serde_json::to_string(&response)
+                                {
                                     let _ = writer.write_all(response_json.as_bytes()).await;
                                     let _ = writer.write_all(b"\n").await;
                                 }

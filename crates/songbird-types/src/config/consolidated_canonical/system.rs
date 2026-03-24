@@ -7,6 +7,7 @@
 //!
 //! This module provides system-wide configuration structures for the Songbird ecosystem.
 
+use crate::primal_names::SELF_NAME;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -161,9 +162,9 @@ impl Default for CanonicalSystemConfig {
         Self {
             environment: "development".to_string(),
             system_id: "songbird-1".to_string(),
-            app_name: "songbird".to_string(),
+            app_name: SELF_NAME.to_string(),
             version: "0.1.0".to_string(),
-            instance_id: format!("songbird-{}", std::process::id()),
+            instance_id: format!("{}-{}", SELF_NAME, std::process::id()),
             data_dir: format!("{home}/.local/share/songbird"),
             config_dir: format!("{home}/.config/songbird"),
             cache_dir: format!("{home}/.cache/songbird"),

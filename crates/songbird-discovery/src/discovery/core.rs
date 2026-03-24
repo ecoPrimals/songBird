@@ -106,11 +106,15 @@ pub struct ServiceInstance {
 impl ServiceInstance {
     /// Create a new service instance
     #[must_use]
-    pub fn new(id: String, name: String, endpoint: String) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        endpoint: impl Into<String>,
+    ) -> Self {
         Self {
-            id,
-            name,
-            endpoint,
+            id: id.into(),
+            name: name.into(),
+            endpoint: endpoint.into(),
             capabilities: Vec::new(),
             health_status: "unknown".to_string(),
             metadata: HashMap::new(),
@@ -119,21 +123,21 @@ impl ServiceInstance {
 
     /// Add a capability to the service
     #[must_use = "Builder methods must be chained - ignoring breaks fluent API"]
-    pub fn with_capability(mut self, capability: String) -> Self {
-        self.capabilities.push(capability);
+    pub fn with_capability(mut self, capability: impl Into<String>) -> Self {
+        self.capabilities.push(capability.into());
         self
     }
     /// Set health status
     #[must_use = "Builder methods must be chained - ignoring breaks fluent API"]
-    pub fn with_health_status(mut self, status: String) -> Self {
-        self.health_status = status;
+    pub fn with_health_status(mut self, status: impl Into<String>) -> Self {
+        self.health_status = status.into();
         self
     }
 
     /// Add metadata
     #[must_use = "Builder methods must be chained - ignoring breaks fluent API"]
-    pub fn with_metadata(mut self, key: String, value: String) -> Self {
-        self.metadata.insert(key, value);
+    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
         self
     }
     /// Check if service has a specific capability

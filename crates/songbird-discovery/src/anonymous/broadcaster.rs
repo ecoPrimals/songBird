@@ -659,8 +659,8 @@ mod tests {
             preference: 1,
         }];
         let msg = AnonymousDiscoveryMessage::new_v3(
-            "nid".into(),
-            "nn".into(),
+            "nid",
+            "nn",
             endpoints,
             vec!["cap".into()],
         );

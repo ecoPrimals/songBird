@@ -29,6 +29,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use songbird_discovery::anonymous::TransportEndpointMessage;
+use songbird_types::primal_names;
 
 /// Discover our own node ID (persistent identity)
 ///
@@ -38,7 +39,7 @@ use songbird_discovery::anonymous::TransportEndpointMessage;
 /// Returns an error if the operation fails.
 pub fn discover_node_id() -> Result<Uuid> {
     let config_dir = config_dir().context("Failed to get config directory")?;
-    let identity_path = config_dir.join("songbird").join("node_id");
+    let identity_path = config_dir.join(primal_names::APP_DIR).join("node_id");
 
     if identity_path.exists() {
         let node_id_str = fs::read_to_string(&identity_path)

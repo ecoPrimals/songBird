@@ -254,27 +254,39 @@ impl UnixSocketServer {
                         continue;
                     }
 
-                    let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
-                        Ok(request) => {
-                            debug!("📨 JSON-RPC request: {}", request.method);
-                            self.handle_jsonrpc_request(request).await
+                    let request = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                        Ok(req) => req,
+                        Err(e) => {
+                            let resp = JsonRpcResponse {
+                                jsonrpc: "2.0".to_string(),
+                                result: None,
+                                error: Some(JsonRpcError::parse_error(format!(
+                                    "Failed to parse JSON-RPC request: {e}"
+                                ))),
+                                id: serde_json::Value::Null,
+                            };
+                            let resp_json = serde_json::to_string(&resp)?;
+                            writer.write_all(resp_json.as_bytes()).await?;
+                            writer.write_all(b"\n").await?;
+                            writer.flush().await?;
+                            break;
                         }
-                        Err(e) => JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            result: None,
-                            error: Some(JsonRpcError::parse_error(format!(
-                                "Failed to parse JSON-RPC request: {e}"
-                            ))),
-                            id: serde_json::Value::Null,
-                        },
                     };
 
-                    let response_json = serde_json::to_string(&response)?;
-                    writer.write_all(response_json.as_bytes()).await?;
-                    writer.write_all(b"\n").await?;
-                    writer.flush().await?;
+                    let is_notification = request.id.is_none();
+                    debug!(
+                        "JSON-RPC request: {} (notification={})",
+                        request.method, is_notification
+                    );
+                    let response = self.handle_jsonrpc_request(request).await;
 
-                    debug!("✅ Response sent, closing connection");
+                    if !is_notification {
+                        let response_json = serde_json::to_string(&response)?;
+                        writer.write_all(response_json.as_bytes()).await?;
+                        writer.write_all(b"\n").await?;
+                        writer.flush().await?;
+                    }
+
                     break;
                 }
                 Err(e) => {

@@ -26,6 +26,7 @@ use songbird_types::defaults::paths::{
     BEARDOG_SOCKET_LEGACY, BIOMEOS_RUNTIME_SUBDIR, IPC_DISCOVERY_TMP_DIR,
     NEURAL_API_SOCKET_LEGACY_PATTERN,
 };
+use songbird_types::primal_names::BEARDOG;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
@@ -336,7 +337,7 @@ pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> S
 /// 3. `/tmp/beardog.sock` (legacy)
 #[must_use]
 pub fn discover_beardog_socket() -> String {
-    discover_socket("BEARDOG_SOCKET", "beardog", BEARDOG_SOCKET_LEGACY)
+    discover_socket("BEARDOG_SOCKET", BEARDOG, BEARDOG_SOCKET_LEGACY)
 }
 
 /// Discover Neural API socket with full fallback chain

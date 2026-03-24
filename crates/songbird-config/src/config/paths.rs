@@ -15,6 +15,7 @@ use crate::canonical::constants::{
     get_cache_dir_with, get_config_dir_with, get_data_dir_with, get_log_dir_with,
 };
 use serde::{Deserialize, Serialize};
+use songbird_types::primal_names::APP_DIR;
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -99,11 +100,11 @@ impl PathConfig {
             suggestion: Some("Check if HOME environment variable is set".to_string()),
         })?;
 
-        let config_dir = home_dir.join(".config").join("songbird");
-        let data_dir = home_dir.join(".local").join("share").join("songbird");
-        let log_dir = home_dir.join(".local").join("log").join("songbird");
-        let cache_dir = home_dir.join(".cache").join("songbird");
-        let runtime_dir = std::env::temp_dir().join("songbird");
+        let config_dir = home_dir.join(".config").join(APP_DIR);
+        let data_dir = home_dir.join(".local").join("share").join(APP_DIR);
+        let log_dir = home_dir.join(".local").join("log").join(APP_DIR);
+        let cache_dir = home_dir.join(".cache").join(APP_DIR);
+        let runtime_dir = std::env::temp_dir().join(APP_DIR);
 
         // ZERO-COPY OPTIMIZATION: Use config_dir reference to avoid repeated cloning
         let service_data_dirs = ServiceDataDirs {
@@ -209,11 +210,11 @@ impl PathConfig {
             suggestion: Some("Check if HOME environment variable is set".to_string()),
         })?;
 
-        let config_dir = home_dir.join(".config").join("songbird");
-        let data_dir = home_dir.join(".local").join("share").join("songbird");
-        let log_dir = home_dir.join(".local").join("log").join("songbird");
-        let cache_dir = home_dir.join(".cache").join("songbird");
-        let runtime_dir = std::env::temp_dir().join("songbird");
+        let config_dir = home_dir.join(".config").join(APP_DIR);
+        let data_dir = home_dir.join(".local").join("share").join(APP_DIR);
+        let log_dir = home_dir.join(".local").join("log").join(APP_DIR);
+        let cache_dir = home_dir.join(".cache").join(APP_DIR);
+        let runtime_dir = std::env::temp_dir().join(APP_DIR);
 
         let paths = Self {
             config_dir: config_dir.clone(),
