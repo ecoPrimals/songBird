@@ -113,12 +113,5 @@ pub use types::{
 
 pub use registry::{Composable, PluginRegistry, Query, Registry};
 
-// Note: Old modules (health, scaling, plugin, service) are temporarily disabled
-// during the rebuild. They will be replaced with modern implementations.
-
-// Note: Service module functionality integrated into main registry module
-// pub mod service;
-// pub use service::{ServiceInstance, ServiceMetrics};
-
-// Production modules remain for reference
-// pub mod production;
+// Legacy modules (health, scaling, service, production) removed — replaced by
+// health_new and scaling_new above.

@@ -19,6 +19,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 mod enforcement;
+#[cfg(test)]
+mod enforcement_tests;
 mod preferences;
 mod request;
 mod rules;
@@ -269,6 +271,25 @@ impl ConsentManager {
 impl Default for ConsentManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+impl ConsentManager {
+    /// Test-only: set a consent record status directly (e.g. `Expired`) for enforcement unit tests.
+    pub(crate) async fn test_set_consent_status(
+        &self,
+        consent_id: &str,
+        status: ConsentStatus,
+    ) -> bool {
+        let mut records = self.records.write().await;
+        if let Some(record) = records.get_mut(consent_id) {
+            record.status = status;
+            self.decision_notify.notify_waiters();
+            true
+        } else {
+            false
+        }
     }
 }
 

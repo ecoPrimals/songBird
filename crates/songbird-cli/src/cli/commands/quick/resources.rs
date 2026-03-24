@@ -80,42 +80,12 @@ pub async fn detect_resources_with_params(
 }
 
 fn detect_available_memory() -> f64 {
-    // Use sysinfo crate instead of sys_info
-    use sysinfo::System;
-    let sys = System::new_all();
-    sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0) // Convert bytes to GB
+    songbird_types::sys_metrics::memory_info().map_or(16.0, |m| m.available_gb())
 }
 
-/// Safe disk space query using sysinfo crate
-///
-/// ## Safety Evolution
-/// This has been refactored from raw FFI (`libc::statvfs/GetDiskFreeSpaceExW`) to use
-/// the `sysinfo` crate which handles all platform differences and FFI safely.
-///
-/// Benefits:
-/// - 100% safe code - no unsafe blocks
-/// - Cross-platform - works on Unix, Windows, macOS, FreeBSD, etc.
-/// - Well-tested - sysinfo is widely used and maintained
-/// - More features - easy to add more disk metrics if needed
+/// Pure Rust disk space query via `/sys/block/` (ecoBin v3.0).
 fn get_available_disk_space_safe() -> Option<f64> {
-    // SAFE: sysinfo uses safe abstractions over platform-specific APIs
-    // It handles all the FFI complexity internally with proper safety checks
-    use sysinfo::Disks;
-
-    let disks = Disks::new_with_refreshed_list();
-
-    // Find the disk containing current directory
-    let current_dir = std::env::current_dir().ok()?;
-
-    // Find the disk that contains our current directory
-    // (or use the first disk as fallback)
-    let disk = disks
-        .iter()
-        .find(|d| current_dir.starts_with(d.mount_point()))
-        .or_else(|| disks.first())?;
-
-    // Convert from bytes to GB
-    Some(disk.available_space() as f64 / (1024.0 * 1024.0 * 1024.0))
+    songbird_types::sys_metrics::total_disk_gb().map(|gb| gb as f64)
 }
 
 /// Get available storage space in GB

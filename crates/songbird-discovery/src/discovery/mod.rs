@@ -56,7 +56,7 @@ pub mod types;
 // - Include federation capabilities (multi-node coordination, sovereignty)
 //
 // Security and federation discovery operations are handled by:
-// - songbird-security crate for trust verification and certificate validation
+// - BearDog crypto primal for trust verification (via capability discovery)
 // - Enhanced discovery system for multi-node coordination and federation
 // - songbird-universal crate for universal capability adapters
 

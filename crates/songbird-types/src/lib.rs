@@ -97,6 +97,9 @@ pub mod zero_copy;
 pub mod zero_copy_request;
 pub mod zero_copy_service;
 
+// Pure Rust system metrics (replaces sysinfo crate for ecoBin v3.0)
+pub mod sys_metrics;
+
 // Modern safe buffer - 100% safe Rust (RECOMMENDED)
 //
 // Use `modern_safe_buffer::ModernSafeBuffer` for zero-copy operations.

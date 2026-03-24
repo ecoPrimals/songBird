@@ -400,7 +400,7 @@ impl CapabilityRouter {
     /// FUTURE ENHANCEMENT: Implement resource-aware capacity checking
     ///
     /// Planned metrics:
-    /// - Current CPU usage (via sysinfo crate)
+    /// - Current CPU usage (via `/proc/stat`)
     /// - Available memory (RAM check)
     /// - Active task count (from job manager)
     /// - Load average (system load)

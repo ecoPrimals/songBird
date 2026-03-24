@@ -86,6 +86,18 @@ impl BearDogBirdSongProvider {
         }
     }
 
+    /// Test-only accessors (see `beardog_tests` module; submodules could read fields inline).
+    #[cfg(test)]
+    pub(crate) fn test_socket_path(&self) -> &PathBuf {
+        &self.socket_path
+    }
+
+    /// Test-only accessor for configured family id.
+    #[cfg(test)]
+    pub(crate) fn test_family_id(&self) -> Option<&String> {
+        self.family_id.as_ref()
+    }
+
     /// Call `BearDog` JSON-RPC method via Unix socket
     ///
     /// Pure Rust implementation using tokio `UnixStream`.
@@ -640,109 +652,5 @@ impl RelayAuthority for MockRelayAuthority {
         } else {
             MaskingLevel::FullVisibility
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_beardog_provider_creation() {
-        let provider =
-            BearDogBirdSongProvider::new("/tmp/beardog.sock", Some("test-family".to_string()));
-
-        assert_eq!(provider.socket_path.to_str().unwrap(), "/tmp/beardog.sock");
-        assert_eq!(provider.family_id, Some("test-family".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_mock_lineage_provider() {
-        let provider = MockLineageProvider::new();
-
-        // Create lineage: child → parent → grandparent
-        provider.add_lineage("child", "parent").await;
-        provider.add_lineage("parent", "grandparent").await;
-
-        assert!(provider.is_ancestor("child", "parent").await);
-        assert!(provider.is_ancestor("child", "grandparent").await);
-        assert!(!provider.is_ancestor("parent", "child").await);
-
-        assert!(provider.is_descendant("parent", "child").await);
-        assert!(provider.is_descendant("grandparent", "child").await);
-    }
-
-    #[tokio::test]
-    async fn test_mock_birdsong_crypto() {
-        let provider = Arc::new(MockLineageProvider::new());
-        provider.add_lineage("child", "parent").await;
-
-        let crypto = MockBirdSongCrypto::new(provider.clone(), "parent".to_string());
-
-        let message = b"test message";
-        let encrypted =
-            crypto.encrypt_for_lineage(message, LineageHint::DirectAncestors).await.unwrap();
-
-        // Parent should be able to decrypt child's message
-        let decrypted = crypto.decrypt_birdsong(&encrypted, &NodeId::from("child")).await.unwrap();
-        assert_eq!(decrypted, Some(message.to_vec()));
-
-        // Unrelated node cannot decrypt
-        let crypto_unrelated = MockBirdSongCrypto::new(provider, "unrelated".to_string());
-        let decrypted_unrelated =
-            crypto_unrelated.decrypt_birdsong(&encrypted, &NodeId::from("child")).await.unwrap();
-        assert_eq!(decrypted_unrelated, None);
-    }
-
-    #[tokio::test]
-    async fn test_mock_relay_authority() {
-        let provider = Arc::new(MockLineageProvider::new());
-        provider.add_lineage("child", "parent").await;
-
-        let authority = MockRelayAuthority::new(provider);
-
-        // Parent should be authorized to relay for child
-        let auth = authority
-            .authorize_relay(&NodeId::from("parent"), &NodeId::from("child"))
-            .await
-            .unwrap();
-        assert!(auth.authorized);
-
-        // Child should NOT be authorized to relay for parent
-        let auth = authority
-            .authorize_relay(&NodeId::from("child"), &NodeId::from("parent"))
-            .await
-            .unwrap();
-        assert!(!auth.authorized);
-    }
-
-    #[test]
-    fn beardog_birdsong_provider_constructed_without_panicking() {
-        let _p = BearDogBirdSongProvider::new("/tmp/beardog-unit.sock", Some("fam".into()));
-    }
-
-    #[test]
-    fn beardog_relay_authority_with_explicit_path_constructed() {
-        let _a = BearDogRelayAuthority::with_socket_path("/tmp/relay-auth.sock");
-    }
-
-    #[tokio::test]
-    async fn mock_lineage_is_ancestor_chain() {
-        let p = MockLineageProvider::new();
-        p.add_lineage("c", "b").await;
-        p.add_lineage("b", "a").await;
-        assert!(p.is_ancestor("c", "a").await);
-    }
-
-    #[tokio::test]
-    async fn mock_birdsong_rejects_unknown_prefix() {
-        let lp = Arc::new(MockLineageProvider::new());
-        lp.add_lineage("child", "parent").await;
-        let crypto = MockBirdSongCrypto::new(lp, "parent".into());
-        let dec =
-            crypto.decrypt_birdsong(b"not-lineage-prefix", &NodeId::from("child")).await.unwrap();
-        assert!(dec.is_none());
     }
 }

@@ -338,3 +338,179 @@ impl PortConfig {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+
+    fn empty_env(_key: &str) -> Result<String, std::env::VarError> {
+        Err(std::env::VarError::NotPresent)
+    }
+
+    fn env_with(overrides: &[(&str, &str)]) -> impl Fn(&str) -> Result<String, std::env::VarError> {
+        let map: HashMap<String, String> =
+            overrides.iter().map(|(k, v)| ((*k).to_string(), (*v).to_string())).collect();
+        move |key: &str| map.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+    }
+
+    #[test]
+    fn default_config_has_expected_ports() {
+        let config = PortConfig::default();
+        assert_eq!(config.orchestrator(), 8080);
+        assert_eq!(config.discovery(), 8500);
+        assert_eq!(config.registry(), 8600);
+        assert_eq!(config.security(), 8443);
+        assert_eq!(config.storage(), 9000);
+        assert_eq!(config.compute(), 9100);
+        assert_eq!(config.ai(), 9200);
+        assert_eq!(config.gaming(), 9300);
+        assert_eq!(config.dashboard(), 3000);
+        assert_eq!(config.metrics(), 9090);
+        assert_eq!(config.health(), 8081);
+        assert_eq!(config.dynamic_range(), (10000, 20000));
+    }
+
+    #[test]
+    fn default_config_validates_cleanly() {
+        let config = PortConfig::default();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn from_env_reader_uses_defaults_when_no_env() {
+        let config = PortConfig::from_env_reader(&empty_env).unwrap();
+        assert_eq!(config, PortConfig::default());
+    }
+
+    #[test]
+    fn from_env_reader_overrides_individual_ports() {
+        let env = env_with(&[("SONGBIRD_ORCHESTRATOR_PORT", "4000"), ("SONGBIRD_AI_PORT", "5555")]);
+        let config = PortConfig::from_env_reader(&env).unwrap();
+        assert_eq!(config.orchestrator(), 4000);
+        assert_eq!(config.ai(), 5555);
+        assert_eq!(config.discovery(), 8500);
+    }
+
+    #[test]
+    fn from_env_reader_rejects_non_numeric_port() {
+        let env = env_with(&[("SONGBIRD_ORCHESTRATOR_PORT", "not_a_port")]);
+        let err = PortConfig::from_env_reader(&env).unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Invalid port"), "got: {msg}");
+    }
+
+    #[test]
+    fn from_env_reader_rejects_port_overflow() {
+        let env = env_with(&[("SONGBIRD_STORAGE_PORT", "99999")]);
+        let err = PortConfig::from_env_reader(&env).unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Invalid port"), "got: {msg}");
+    }
+
+    #[test]
+    fn validate_detects_duplicate_ports() {
+        let mut config = PortConfig::default();
+        config.orchestrator = 8443;
+        config.security = 8443;
+        let err = config.validate().unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Port conflict"), "got: {msg}");
+        assert!(msg.contains("8443"), "got: {msg}");
+    }
+
+    #[test]
+    fn validate_detects_invalid_dynamic_range() {
+        let mut config = PortConfig::default();
+        config.dynamic_range_start = 20000;
+        config.dynamic_range_end = 10000;
+        let err = config.validate().unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Invalid port range"), "got: {msg}");
+    }
+
+    #[test]
+    fn validate_detects_equal_dynamic_range() {
+        let mut config = PortConfig::default();
+        config.dynamic_range_start = 15000;
+        config.dynamic_range_end = 15000;
+        let err = config.validate().unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Invalid port range"), "got: {msg}");
+    }
+
+    #[test]
+    fn to_socket_addr_produces_valid_address() {
+        let config = PortConfig::default();
+        let addr = config.to_socket_addr(8080, "127.0.0.1").unwrap();
+        assert_eq!(addr.port(), 8080);
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+    }
+
+    #[test]
+    fn to_socket_addr_supports_ipv6() {
+        let config = PortConfig::default();
+        let addr = config.to_socket_addr(9090, "[::1]").unwrap();
+        assert_eq!(addr.port(), 9090);
+    }
+
+    #[test]
+    fn to_socket_addr_rejects_invalid_host() {
+        let config = PortConfig::default();
+        let err = config.to_socket_addr(8080, "not-an-ip").unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Invalid socket address"), "got: {msg}");
+    }
+
+    #[test]
+    fn to_capability_registry_builds_all_services() {
+        use crate::capability_port_config::CapabilityId;
+        let config = PortConfig::default();
+        let registry = config.to_capability_registry().unwrap();
+        assert!(registry.get_port(&CapabilityId::new("orchestrator")).is_ok());
+        assert!(registry.get_port(&CapabilityId::new("discovery")).is_ok());
+        assert!(registry.get_port(&CapabilityId::new("security")).is_ok());
+        assert!(registry.get_port(&CapabilityId::new("health")).is_ok());
+    }
+
+    #[test]
+    fn serde_roundtrip() {
+        let config = PortConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let back: PortConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config, back);
+    }
+
+    #[test]
+    fn env_overrides_for_all_ports() {
+        let env = env_with(&[
+            ("SONGBIRD_ORCHESTRATOR_PORT", "1001"),
+            ("SONGBIRD_DISCOVERY_PORT", "1002"),
+            ("SONGBIRD_REGISTRY_PORT", "1003"),
+            ("SONGBIRD_SECURITY_PORT", "1004"),
+            ("SONGBIRD_STORAGE_PORT", "1005"),
+            ("SONGBIRD_COMPUTE_PORT", "1006"),
+            ("SONGBIRD_AI_PORT", "1007"),
+            ("SONGBIRD_GAMING_PORT", "1008"),
+            ("SONGBIRD_DASHBOARD_PORT", "1009"),
+            ("SONGBIRD_METRICS_PORT", "1010"),
+            ("SONGBIRD_HEALTH_PORT", "1011"),
+            ("SONGBIRD_PORT_RANGE_START", "2000"),
+            ("SONGBIRD_PORT_RANGE_END", "3000"),
+        ]);
+        let config = PortConfig::from_env_reader(&env).unwrap();
+        assert_eq!(config.orchestrator(), 1001);
+        assert_eq!(config.discovery(), 1002);
+        assert_eq!(config.registry(), 1003);
+        assert_eq!(config.security(), 1004);
+        assert_eq!(config.storage(), 1005);
+        assert_eq!(config.compute(), 1006);
+        assert_eq!(config.ai(), 1007);
+        assert_eq!(config.gaming(), 1008);
+        assert_eq!(config.dashboard(), 1009);
+        assert_eq!(config.metrics(), 1010);
+        assert_eq!(config.health(), 1011);
+        assert_eq!(config.dynamic_range(), (2000, 3000));
+    }
+}

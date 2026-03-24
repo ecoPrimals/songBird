@@ -9,8 +9,8 @@
 
 use clap::{Args, Subcommand};
 use serde::{Deserialize, Serialize};
+use songbird_types::sys_metrics;
 use std::process::Command; // Still needed for GPU/storage detection
-use sysinfo::System;
 
 use crate::errors::SongbirdResult;
 
@@ -337,12 +337,7 @@ async fn detect_capabilities(args: &TowerStartArgs) -> SongbirdResult<TowerCapab
     // CPU cores
     let cpu_cores = args.cpu_cores.unwrap_or_else(num_cpus::get);
 
-    // Memory (using sysinfo)
-    let mut sys = System::new_all();
-    sys.refresh_memory();
-
-    let memory_bytes = sys.total_memory();
-    let memory_gb = args.memory_gb.unwrap_or((memory_bytes / 1024 / 1024 / 1024) as usize);
+    let memory_gb = args.memory_gb.unwrap_or_else(|| sys_metrics::total_memory_gb().max(16));
 
     // Storage (approximate available)
     let storage_gb = detect_storage_gb();

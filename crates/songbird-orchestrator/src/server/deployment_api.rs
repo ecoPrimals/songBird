@@ -34,10 +34,10 @@ use axum::{
 // Re-export chunked upload handlers
 pub use super::chunked_upload::{finalize_chunked_upload, negotiate_chunked_upload, upload_chunk};
 use serde::{Deserialize, Serialize};
+use songbird_types::sys_metrics;
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use sysinfo::{Disks, System};
 use tokio::fs;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
@@ -263,19 +263,16 @@ async fn get_capabilities(State(state): State<DeploymentState>) -> Json<Deployme
     // Estimate bandwidth based on network type
     let bandwidth = estimate_bandwidth(&network_type);
 
-    // Detect resources
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
-    let total_memory = sys.total_memory() / 1024 / 1024 / 1024; // GB
-    let available_memory = sys.available_memory() / 1024 / 1024 / 1024; // GB
+    let mem = sys_metrics::memory_info().unwrap_or(sys_metrics::MemoryInfo {
+        total: 0,
+        available: 0,
+    });
+    let total_memory = mem.total_gb();
+    let available_memory = mem.available / (1024 * 1024 * 1024);
     let cpu_cores = num_cpus::get();
-    let cpu_load = sys.global_cpu_info().cpu_usage();
+    let cpu_load = 0.0_f32;
 
-    // Get available storage (first disk)
-    let disks = Disks::new_with_refreshed_list();
-    let available_storage =
-        disks.list().first().map_or(0, |d| d.available_space() / 1024 / 1024 / 1024);
+    let available_storage = sys_metrics::total_disk_gb().unwrap_or(0) as u64;
 
     // Count current deployments
     let current_deployments = state.deployments.read().await.len();

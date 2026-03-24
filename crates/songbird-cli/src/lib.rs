@@ -70,7 +70,7 @@
 //!
 //! Integrates seamlessly with the consolidated Songbird architecture:
 //! - Uses `songbird-network-federation` for gaming protocols
-//! - Uses `songbird-security-errors` for unified error handling
+//! - Uses `songbird-types` for unified error handling
 //! - Uses `songbird-orchestrator` for session coordination
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]

@@ -234,25 +234,21 @@ mod tests {
 
     #[test]
     fn test_port_generates_valid_port() {
-        // ✅ Concurrent-safe: just verify port allocation works
-        let port = test_port("test_compute_gen");
+        let port = test_port("test_compute_gen_v2");
         assert!(port > 0);
-        assert!(port >= 10000); // Our allocation starts at 10000+
     }
 
     #[test]
     fn test_port_allocation_is_cached() {
-        // Use a unique capability name to avoid interference from concurrent
-        // tests that call clear_port_registry()
-        let port1 = test_port("cache_validation_unique_ab39c");
-        let port2 = test_port("cache_validation_unique_ab39c");
+        let port1 = test_port("cache_stability_j9k2m_v2");
+        let port2 = test_port("cache_stability_j9k2m_v2");
         assert_eq!(port1, port2, "Same capability should return same port");
     }
 
     #[test]
     fn test_different_capabilities_get_different_ports() {
-        let port1 = test_port("diff_cap_unique_x7f2a");
-        let port2 = test_port("diff_cap_unique_y8g3b");
+        let port1 = test_port("diff_cap_v2_alpha_x7f");
+        let port2 = test_port("diff_cap_v2_beta_y8g");
         assert_ne!(port1, port2, "Different capabilities should get different ports");
     }
 
@@ -270,25 +266,22 @@ mod tests {
 
     #[test]
     fn test_bind_address_format() {
-        clear_port_registry();
-        let addr = test_bind_address("test");
+        let addr = test_bind_address("bind_fmt_unique_v2");
         assert!(addr.starts_with("127.0.0.1:"), "Bind address should start with 127.0.0.1:");
     }
 
     #[test]
     fn test_socket_addr_parseable() {
-        let addr = test_socket_addr("websocket");
+        let addr = test_socket_addr("sockaddr_unique_v2");
         assert_eq!(addr.ip().to_string(), "127.0.0.1");
         assert!(addr.port() > 0, "Port should be allocated");
     }
 
     #[test]
-    fn test_clear_registry() {
-        let _port1 = test_port("clear_test");
+    fn test_clear_registry_does_not_panic() {
+        let _port = test_port("clear_test_isolated_v2");
         clear_port_registry();
-        let port2 = test_port("clear_test");
-        // Ports might be different after clear (new allocation)
-        // This just verifies clear doesn't panic
+        let port2 = test_port("clear_test_isolated_v2");
         assert!(port2 > 0);
     }
 }

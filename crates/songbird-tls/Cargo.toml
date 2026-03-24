@@ -41,6 +41,8 @@ workspace = true
 tokio-test = "0.4"
 criterion = "0.5"
 rcgen = "0.13"
+hmac = "0.12"
+sha2 = "0.10"
 
 [features]
 default = ["local-certs"]  # Include local-certs for backward compat
@@ -53,4 +55,3 @@ local-certs = ["ed25519-dalek", "rand", "chrono"]  # ⚠️ Self-signed cert gen
 [lib]
 name = "songbird_tls"
 path = "src/lib.rs"
-

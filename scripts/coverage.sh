@@ -13,7 +13,7 @@ case "$MODE" in
     echo "📊 Generating HTML coverage report..."
     cargo llvm-cov --all-features --workspace --html
     echo "✅ HTML report generated: target/llvm-cov/html/index.html"
-    echo "📖 Open with: open target/llvm-cov/html/index.html"
+    echo "📖 Open with: xdg-open target/llvm-cov/html/index.html"
     ;;
   
   text)
@@ -38,7 +38,7 @@ case "$MODE" in
       crate_name=$(basename "$crate")
       echo ""
       echo "📦 $crate_name:"
-      cargo llvm-cov --all-features -p "songbird-${crate_name#songbird-}" --summary-only 2>/dev/null || echo "  (no tests or coverage)"
+      cargo llvm-cov --all-features -p "$crate_name" --summary-only 2>/dev/null || echo "  (no tests or coverage)"
     done
     ;;
   

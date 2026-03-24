@@ -12,7 +12,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across 29/30 crates; `process-env` isolated with `Mutex` + SAFETY docs) |
-| Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); `blake3` compiled in pure mode; all application code is pure Rust |
+| Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); `sysinfo` eliminated (replaced by `sys_metrics` `/proc` reader); all application code is pure Rust |
 | Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
 | Runtime Discovery | All config: env → XDG → smart defaults. Capability-only (zero primal names in discovery) |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
@@ -20,7 +20,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent via injectable `_with` env readers |
-| Tests | 10,366 total, 0 failed |
+| Tests | 10,233 total, 0 failed |
 | Line Coverage | 66.96% (llvm-cov measured; target 90%) |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings, ~45s dev) |
@@ -34,9 +34,9 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Method Normalization | `normalize_method()` handles ecosystem naming drift (aliases for `ping`, `status`, `check`, `capability.list`) |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
-| Dependencies | ~418 unique; duplicates aligned; `kube`/`k8s-openapi`/`bollard` feature-gated |
+| Dependencies | ~412 unique (`sysinfo`/`rayon`/`crossbeam` eliminated); `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~405,736 lines across 30 crates |
+| Total Rust | ~391,757 lines across 30 crates |
 
 ## Architecture
 

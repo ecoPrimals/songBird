@@ -133,7 +133,6 @@ rand = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
 socket2 = { workspace = true }
 serde_yaml = "0.9.34"
-sysinfo = "0.30"
 hostname = "0.4"
 dirs = "5.0"
 md5 = "0.7"

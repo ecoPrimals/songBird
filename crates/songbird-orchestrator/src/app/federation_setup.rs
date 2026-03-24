@@ -243,18 +243,9 @@ pub async fn setup_federation(
     })
 }
 
-/// Detect available memory in GB
-///
-/// Platform-specific detection with safe fallback.
+/// Detect available memory in GB via `/proc/meminfo` (pure Rust).
 fn detect_memory_gb() -> usize {
-    #[cfg(target_os = "linux")]
-    {
-        (sysinfo::System::new_all().total_memory() / (1024 * 1024 * 1024)) as usize
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        16 // Fallback for non-Linux systems
-    }
+    songbird_types::sys_metrics::total_memory_gb().max(16)
 }
 
 #[cfg(test)]

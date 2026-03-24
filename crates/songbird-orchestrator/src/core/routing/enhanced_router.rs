@@ -297,41 +297,18 @@ impl EnhancedCapabilityRouter {
         reason = "async signature required by Axum, trait objects, or future I/O"
     )]
     async fn has_local_capacity(&self) -> bool {
-        use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
+        let Some(mem) = songbird_types::sys_metrics::memory_info() else {
+            debug!("Local capacity check: memory info unavailable, assuming capacity");
+            return true;
+        };
 
-        // Refresh system information
-        let mut sys = System::new_with_specifics(
-            RefreshKind::new()
-                .with_cpu(CpuRefreshKind::everything())
-                .with_memory(MemoryRefreshKind::everything()),
-        );
-
-        // Wait a bit for CPU measurement to be accurate
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        sys.refresh_cpu();
-
-        // Check CPU usage (average across all cores)
-        let cpu_usage = sys.global_cpu_info().cpu_usage();
-        if cpu_usage > 80.0 {
-            debug!("Local capacity check: CPU usage too high ({:.1}%)", cpu_usage);
-            return false;
-        }
-
-        // Check memory usage (require at least 10% free)
-        let total_memory = sys.total_memory();
-        let available_memory = sys.available_memory();
-        let memory_usage_percent =
-            ((total_memory - available_memory) as f64 / total_memory as f64) * 100.0;
-
+        let memory_usage_percent = mem.usage_percent();
         if memory_usage_percent > 90.0 {
             debug!("Local capacity check: Memory usage too high ({:.1}%)", memory_usage_percent);
             return false;
         }
 
-        debug!(
-            "Local capacity available: CPU {:.1}%, Memory {:.1}% used",
-            cpu_usage, memory_usage_percent
-        );
+        debug!("Local capacity available: Memory {:.1}% used", memory_usage_percent);
         true
     }
 

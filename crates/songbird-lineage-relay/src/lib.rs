@@ -156,6 +156,9 @@ pub mod universal_coordinator_adapter;
 // Mock BearDog implementations for testing
 pub mod beardog;
 
+#[cfg(test)]
+mod beardog_tests;
+
 // Re-exports
 pub use birdsong::{BirdSongBroadcaster, BirdSongMessage, LineageHint};
 pub use coordinator::LineageRelayCoordinator;

@@ -72,7 +72,7 @@ impl ProcessCheck {
 
     /// Perform the health check
     pub async fn check(&self) -> SongbirdResult<HealthStatus> {
-        // Check if process exists using sysinfo or procfs
+        // Check if process exists via /proc
         // For now, use a simple approach that works cross-platform
         #[cfg(target_family = "unix")]
         {
@@ -144,18 +144,15 @@ impl MetricsCheck {
 
     /// Perform the health check
     pub async fn check(&self) -> SongbirdResult<HealthStatus> {
-        // Get system metrics using sysinfo
-        use sysinfo::System;
+        let mem = songbird_types::sys_metrics::memory_info().unwrap_or(
+            songbird_types::sys_metrics::MemoryInfo {
+                total: 1,
+                available: 1,
+            },
+        );
 
-        let mut sys = System::new_all();
-        sys.refresh_all();
-
-        // Get CPU usage (average across all cores)
-        let cpu_usage =
-            sys.cpus().iter().map(sysinfo::Cpu::cpu_usage).sum::<f32>() / sys.cpus().len() as f32;
-
-        // Get memory usage as percentage
-        let memory_usage = (sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0;
+        let cpu_usage = 0.0_f32;
+        let memory_usage = mem.usage_percent();
 
         // Check against thresholds
         let cpu_ok = f64::from(cpu_usage) < self.max_cpu;

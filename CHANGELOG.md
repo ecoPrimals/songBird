@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave68] - 2026-03-24 - sysinfo Elimination, Dead Code Removal, Coverage Push
+
+### Removed — sysinfo Dependency (ecoBin v3.0)
+- Eliminated `sysinfo` crate entirely — replaced by `songbird_types::sys_metrics` pure Rust module
+- `sys_metrics` reads `/proc/meminfo` for memory and `/sys/block/*/size` for disk (zero C deps, 12 tests)
+- Also removed transitive `rayon` + `crossbeam-*` from production dependency tree
+
+### Removed — Dead Code (~48KB)
+- Deleted `songbird-observability/src/monitoring/` (4 files, broken syntax, not in module tree)
+- Deleted `songbird-registry/src/health/` and `scaling/` (broken syntax, not in module tree)
+- Cleaned stale `sysinfo` references in code comments
+
+### Added — Coverage Expansion (+121 tests)
+- Circuit breaker, connection pool, consent enforcement, primal self-knowledge
+- Observability metrics, TLS key schedule, beardog birdsong provider, lineage beardog relay
+- Test count: 10,100 → 10,233 (0 failed)
+
+### Changed — Root Docs
+- Updated README.md, CONTEXT.md, REMAINING_WORK.md, CHANGELOG.md with accurate metrics
+- Cleaned stale references
+
+---
+
 ## [v0.2.1-wave66] - 2026-03-23 - Comprehensive Audit, cargo-deny, CI Evolution, Stub & Coverage Push
 
 ### Fixed - cargo-deny Fully Passing

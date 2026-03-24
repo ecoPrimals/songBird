@@ -364,16 +364,7 @@ impl<'a> StartupOrchestrator<'a> {
                     .map(|s| (*s).to_string())
                     .collect(),
                 cpu_cores: num_cpus::get(),
-                memory_gb: {
-                    #[cfg(target_os = "linux")]
-                    {
-                        (sysinfo::System::new_all().total_memory() / (1024 * 1024 * 1024)) as usize
-                    }
-                    #[cfg(not(target_os = "linux"))]
-                    {
-                        16
-                    }
-                },
+                memory_gb: songbird_types::sys_metrics::total_memory_gb().max(16),
                 gpu_model: SongbirdOrchestrator::detect_gpu(),
                 storage_gb: SongbirdOrchestrator::detect_storage_capacity(),
                 status: songbird_network_federation::state::NodeStatus::Active,

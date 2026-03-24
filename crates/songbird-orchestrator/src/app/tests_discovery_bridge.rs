@@ -317,30 +317,30 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_bridge_poll_interval() {
-        // Test that bridge polling uses correct interval
-        let expected_interval = Duration::from_secs(10);
-        let mut interval = tokio::time::interval(expected_interval);
+        tokio::time::pause();
 
-        let start = std::time::Instant::now();
-        interval.tick().await; // First tick is immediate
-        interval.tick().await; // Second tick waits for interval
+        let expected = Duration::from_secs(10);
+        let mut interval = tokio::time::interval(expected);
+
+        let start = tokio::time::Instant::now();
+        interval.tick().await;
+        interval.tick().await;
         let elapsed = start.elapsed();
 
-        // Allow for some timing variance (9.9s to 10.1s)
         assert!(
-            elapsed >= Duration::from_millis(9900) && elapsed <= Duration::from_millis(10100),
+            elapsed >= expected && elapsed <= expected + Duration::from_millis(50),
             "Bridge should poll every 10 seconds, got: {elapsed:?}"
         );
     }
 
     #[tokio::test]
     async fn test_connectivity_timeout() {
-        // Test that connectivity check has proper timeout
-        let timeout_duration = Duration::from_secs(3);
+        tokio::time::pause();
 
-        let start = std::time::Instant::now();
-        let result = tokio::time::timeout(timeout_duration, async {
-            // Simulate a long-running operation
+        let timeout = Duration::from_secs(3);
+
+        let start = tokio::time::Instant::now();
+        let result = tokio::time::timeout(timeout, async {
             tokio::time::sleep(Duration::from_secs(5)).await;
             "never_reached"
         })
@@ -350,7 +350,7 @@ mod integration_tests {
 
         assert!(result.is_err(), "Should timeout after 3 seconds");
         assert!(
-            elapsed >= Duration::from_millis(2900) && elapsed <= Duration::from_millis(3100),
+            elapsed >= timeout && elapsed <= timeout + Duration::from_millis(50),
             "Timeout should be ~3 seconds, got: {elapsed:?}"
         );
     }

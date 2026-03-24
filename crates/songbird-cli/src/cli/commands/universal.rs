@@ -13,10 +13,7 @@ use clap::{Parser, Subcommand};
 use colored::*;
 use songbird_types::SongbirdResult;
 // use songbird_security::accessibility::{convenience, UniversalAccessManager}; // Temporarily disabled
-// use songbird_security::security::UniversalSecurityManager; // Temporarily disabled
-
-// MIGRATED: Using capability-based discovery for universal module implementations
-// These implementations will be replaced when songbird-security is re-enabled
+// Security operations delegated to BearDog via capability discovery at runtime
 mod convenience {
     use songbird_types::SongbirdResult;
 

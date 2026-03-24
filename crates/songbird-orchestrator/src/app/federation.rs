@@ -113,7 +113,7 @@ async fn create_federation_coordinator(
 ///
 /// Uses runtime detection to discover:
 /// - CPU cores (via `num_cpus`)
-/// - Memory (via `sysinfo` on Linux, fallback on other platforms)
+/// - Memory (via `/proc/meminfo` on Linux, fallback on other platforms)
 /// - GPU model (runtime detection)
 /// - Storage capacity (runtime detection)
 ///
@@ -147,20 +147,9 @@ fn build_self_registration(node_identity: &NodeIdentity) -> Result<NodeRegistrat
     })
 }
 
-/// Detect available memory in GB
-///
-/// Uses platform-specific detection:
-/// - Linux: `sysinfo` crate (accurate)
-/// - Other: Fallback to 16GB estimate
+/// Detect available memory in GB via `/proc/meminfo` (pure Rust).
 fn detect_memory_gb() -> usize {
-    #[cfg(target_os = "linux")]
-    {
-        (sysinfo::System::new_all().total_memory() / (1024 * 1024 * 1024)) as usize
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        16 // Conservative fallback for non-Linux
-    }
+    songbird_types::sys_metrics::total_memory_gb().max(16)
 }
 
 /// Detect GPU model (runtime capability discovery)
@@ -212,21 +201,13 @@ fn detect_gpu() -> Option<String> {
     None
 }
 
-/// Detect storage capacity in GB (runtime capability discovery)
-///
-/// Uses `sysinfo` crate for cross-platform storage detection.
-/// Returns total available storage across all disks in gigabytes.
+/// Detect storage capacity in GB via `/sys/block/` (pure Rust).
 fn detect_storage_capacity() -> Option<usize> {
-    use sysinfo::Disks;
-
-    let disks = Disks::new_with_refreshed_list();
-
-    // Sum total space across all disks
-    let total_bytes: u64 = disks.iter().map(sysinfo::Disk::total_space).sum();
+    let disks = songbird_types::sys_metrics::disk_info();
+    let total_bytes: u64 = disks.iter().map(|d| d.total_bytes).sum();
 
     if total_bytes > 0 {
-        // Convert bytes to GB (using 1000^3, not 1024^3 for consistency with disk manufacturers)
-        let total_gb = (total_bytes / 1_000_000_000) as usize;
+        let total_gb = (total_bytes / (1024 * 1024 * 1024)) as usize;
         tracing::debug!("Detected storage capacity: {} GB across {} disks", total_gb, disks.len());
         Some(total_gb)
     } else {
