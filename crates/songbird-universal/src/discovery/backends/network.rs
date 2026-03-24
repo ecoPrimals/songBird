@@ -110,35 +110,105 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
     }
 }
 
-/// **Production Implementation**: Real mDNS query with timeout and error handling
+/// Real mDNS query using raw multicast UDP.
 ///
-/// Currently returns empty - stub for future mDNS library integration.
-/// Kept async for API consistency with future implementation.
+/// Sends an mDNS `PTR` query for `{service_type}.local` over the link-local
+/// multicast group `224.0.0.251:5353`, collects any responses within `timeout`,
+/// and returns them as `DiscoveredPrimal` entries. This is a pure-Rust
+/// implementation — no C bindings or Avahi/Bonjour dependency.
 #[cfg(feature = "mdns")]
-#[allow(
-    clippy::unused_async,
-    reason = "async signature required for consistent mDNS query API and future library integration"
-)]
 async fn query_mdns_services(
     service_type: &str,
     timeout: std::time::Duration,
 ) -> Result<Vec<DiscoveredPrimal>, Box<dyn std::error::Error>> {
-    // Note: Actual mDNS library integration would go here
-    // For now, this is a placeholder that shows the proper structure
-    // Real implementation would use crates like `mdns` or `zeroconf`
+    use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+    use tokio::net::UdpSocket;
 
     debug!("Querying mDNS for service type: {}", service_type);
-    debug!("Timeout: {:?}", timeout);
 
-    // In production, this would:
-    // 1. Create mDNS responder/client
-    // 2. Query for _songbird._tcp.local services
-    // 3. Collect responses with timeout
-    // 4. Parse each response into DiscoveredPrimal
+    let mdns_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(224, 0, 0, 251), 5353));
+    let socket = UdpSocket::bind("0.0.0.0:0").await?;
+    socket.set_broadcast(true)?;
 
-    let discovered = Vec::new();
+    let query = build_mdns_ptr_query(service_type);
+    socket.send_to(&query, mdns_addr).await?;
 
+    let mut discovered = Vec::new();
+    let mut buf = [0u8; 4096];
+
+    let deadline = tokio::time::Instant::now() + timeout;
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+
+        match tokio::time::timeout(remaining, socket.recv_from(&mut buf)).await {
+            Ok(Ok((len, src))) => {
+                debug!("mDNS response from {src} ({len} bytes)");
+                if let Some(primal) = parse_mdns_ptr_response(&buf[..len], src) {
+                    discovered.push(primal);
+                }
+            }
+            Ok(Err(e)) => {
+                debug!("mDNS recv error: {e}");
+                break;
+            }
+            Err(_) => break,
+        }
+    }
+
+    info!("mDNS query complete: {} primals discovered", discovered.len());
     Ok(discovered)
+}
+
+/// Build a minimal DNS PTR query packet for `{service_type}.local`.
+#[cfg(feature = "mdns")]
+fn build_mdns_ptr_query(service_type: &str) -> Vec<u8> {
+    let mut packet = Vec::with_capacity(64);
+
+    // Header: ID=0, QR=0 (query), QDCOUNT=1
+    packet.extend_from_slice(&[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]);
+
+    // QNAME: encode each label
+    for label in service_type.split('.') {
+        let len = u8::try_from(label.len()).unwrap_or(63);
+        packet.push(len);
+        packet.extend_from_slice(label.as_bytes());
+    }
+    // Append ".local"
+    packet.push(5);
+    packet.extend_from_slice(b"local");
+    packet.push(0); // root label
+
+    // QTYPE=PTR(12), QCLASS=IN(1)
+    packet.extend_from_slice(&[0, 12, 0, 1]);
+
+    packet
+}
+
+/// Best-effort parse of an mDNS response, extracting a `DiscoveredPrimal`
+/// from the source address. Full SRV/TXT parsing is deferred to a future
+/// dedicated mDNS crate; for now we register the responder as a discovered peer.
+#[cfg(feature = "mdns")]
+fn parse_mdns_ptr_response(data: &[u8], src: std::net::SocketAddr) -> Option<DiscoveredPrimal> {
+    use super::super::types::{DiscoveryMethod, PrimalHealth};
+    use crate::types::PrimalType;
+
+    // Minimal validation: DNS header must be at least 12 bytes and QR bit set (response)
+    if data.len() < 12 || data[2] & 0x80 == 0 {
+        return None;
+    }
+
+    Some(DiscoveredPrimal {
+        name: format!("mdns-{}", src.ip()),
+        endpoint: format!("http://{}:{}", src.ip(), src.port()),
+        primal_type: PrimalType::default(),
+        capabilities: Vec::new(),
+        discovery_method: DiscoveryMethod::MDNS,
+        health: PrimalHealth::Unknown,
+        metadata: std::collections::HashMap::new(),
+    })
 }
 
 /// Parse mDNS response into `DiscoveredPrimal`

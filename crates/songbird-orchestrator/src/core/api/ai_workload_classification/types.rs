@@ -378,3 +378,178 @@ pub enum SecurityOperationType {
     AuditLogging,
     Compliance,
 }
+
+#[cfg(test)]
+mod workload_classification_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use std::collections::HashMap;
+
+    use super::*;
+
+    fn sample_request(workload_type: &str) -> WorkloadRequest {
+        WorkloadRequest {
+            id: "t1".to_string(),
+            workload_type: workload_type.to_string(),
+            metadata: HashMap::new(),
+            payload: serde_json::json!({}),
+        }
+    }
+
+    #[test]
+    fn parsed_workload_type_standard_and_aliases() {
+        assert_eq!(sample_request("STANDARD").parsed_workload_type(), WorkloadType::Standard);
+        assert_eq!(sample_request("web").parsed_workload_type(), WorkloadType::WebService);
+        assert_eq!(sample_request("WEB_SERVICE").parsed_workload_type(), WorkloadType::WebService);
+        assert_eq!(sample_request("gaming").parsed_workload_type(), WorkloadType::Gaming);
+        assert_eq!(sample_request("ML").parsed_workload_type(), WorkloadType::MachineLearning);
+        assert_eq!(
+            sample_request("machine_learning").parsed_workload_type(),
+            WorkloadType::MachineLearning
+        );
+    }
+
+    #[test]
+    fn parsed_workload_type_compute_storage_security_streaming() {
+        assert_eq!(sample_request("compute").parsed_workload_type(), WorkloadType::Compute);
+        assert_eq!(sample_request("storage").parsed_workload_type(), WorkloadType::Storage);
+        assert_eq!(sample_request("Security").parsed_workload_type(), WorkloadType::Security);
+        assert_eq!(sample_request("streaming").parsed_workload_type(), WorkloadType::Streaming);
+    }
+
+    #[test]
+    fn parsed_workload_type_unknown_is_generic() {
+        assert_eq!(
+            sample_request("totally-unknown-workload").parsed_workload_type(),
+            WorkloadType::Generic
+        );
+    }
+
+    #[test]
+    fn resource_pressure_score_clamped_high_inputs() {
+        let mut r = ResourceRequirements::default();
+        r.cpu_cores = 256;
+        r.memory_mb = 600 * 1024;
+        r.network_bandwidth_mbps = 100_000;
+        let p = r.resource_pressure_score();
+        assert!(p <= 1.0);
+        assert!(p >= 0.0);
+    }
+
+    #[test]
+    fn resource_pressure_score_zero_is_zero() {
+        let r = ResourceRequirements {
+            cpu_cores: 0,
+            memory_mb: 0,
+            storage_mb: 0,
+            network_bandwidth_mbps: 0,
+            priority: ResourcePriority::Low,
+        };
+        assert_eq!(r.resource_pressure_score(), 0.0);
+    }
+
+    #[test]
+    fn basic_estimation_machine_learning() {
+        let r = ResourceRequirements::basic_estimation(&WorkloadType::MachineLearning);
+        assert_eq!(r.cpu_cores, 8);
+        assert_eq!(r.memory_mb, 16 * 1024);
+        assert_eq!(r.priority, ResourcePriority::High);
+    }
+
+    #[test]
+    fn basic_estimation_ai_computation_variant() {
+        let wt = WorkloadType::AIComputation {
+            computation_type: "inference".to_string(),
+        };
+        let r = ResourceRequirements::basic_estimation(&wt);
+        assert!(r.cpu_cores >= 8);
+        assert_eq!(r.priority, ResourcePriority::High);
+    }
+
+    #[test]
+    fn basic_estimation_gaming_and_realtime() {
+        let r = ResourceRequirements::basic_estimation(&WorkloadType::Gaming);
+        assert_eq!(r.cpu_cores, 4);
+        assert_eq!(r.memory_mb, 8192);
+
+        let wt = WorkloadType::RealTimeInteractive {
+            expected_response_ms: 10.0,
+            interaction_pattern: "fps".to_string(),
+        };
+        let r2 = ResourceRequirements::basic_estimation(&wt);
+        assert_eq!(r2.cpu_cores, 4);
+    }
+
+    #[test]
+    fn basic_estimation_batch_processing_scales_with_batch_size() {
+        let wt = WorkloadType::BatchProcessing {
+            batch_size: 5000,
+            priority_level: BatchPriority::Medium,
+        };
+        let r = ResourceRequirements::basic_estimation(&wt);
+        assert_eq!(r.cpu_cores, 7);
+        assert_eq!(r.memory_mb, 4096 + 5000 * 2);
+    }
+
+    #[test]
+    fn performance_prediction_from_resources_monotonic_with_pressure() {
+        let low = ResourceRequirements {
+            cpu_cores: 1,
+            memory_mb: 1024,
+            storage_mb: 1024,
+            network_bandwidth_mbps: 10,
+            priority: ResourcePriority::Low,
+        };
+        let high = ResourceRequirements {
+            cpu_cores: 64,
+            memory_mb: 200 * 1024,
+            storage_mb: 1024,
+            network_bandwidth_mbps: 10_000,
+            priority: ResourcePriority::Critical,
+        };
+        let p_low = PerformancePrediction::from_resource_requirements(&low);
+        let p_high = PerformancePrediction::from_resource_requirements(&high);
+        assert!(p_high.expected_latency_ms >= p_low.expected_latency_ms);
+        assert!(p_high.confidence_score <= p_low.confidence_score);
+    }
+
+    #[test]
+    fn risk_assessment_from_pressure_bounds() {
+        let req = ResourceRequirements::default();
+        let r = RiskAssessment::from_pressure(&req, &["factor a".to_string()]);
+        assert!(r.overall_risk_score >= 0.0 && r.overall_risk_score <= 1.0);
+        assert!(r.confidence >= 0.4 && r.confidence <= 0.95);
+        assert_eq!(r.risk_factors.len(), 1);
+        assert_eq!(r.mitigation_strategies.len(), 2);
+    }
+
+    #[test]
+    fn workload_classification_basic_fallback_pipeline() {
+        let w = sample_request("ml");
+        let c = WorkloadClassification::basic_fallback(&w);
+        assert_eq!(c.workload_type, WorkloadType::MachineLearning);
+        assert_eq!(c.confidence_score, 0.45);
+        assert!(c.resource_requirements.cpu_cores >= 8);
+        assert!(!c.risk_assessment.risk_factors.is_empty());
+    }
+
+    #[test]
+    fn workload_classification_basic_fallback_generic() {
+        let w = sample_request("unknown-label");
+        let c = WorkloadClassification::basic_fallback(&w);
+        assert_eq!(c.workload_type, WorkloadType::Generic);
+        let d = ResourceRequirements::default();
+        assert_eq!(c.resource_requirements.cpu_cores, d.cpu_cores);
+        assert_eq!(c.resource_requirements.memory_mb, d.memory_mb);
+        assert_eq!(c.resource_requirements.storage_mb, d.storage_mb);
+        assert_eq!(c.resource_requirements.network_bandwidth_mbps, d.network_bandwidth_mbps);
+        assert_eq!(c.resource_requirements.priority, d.priority);
+    }
+
+    #[test]
+    fn risk_assessment_basic_assessment_is_default_shape() {
+        let r = RiskAssessment::basic_assessment();
+        assert_eq!(r.overall_risk_score, 0.3);
+        assert_eq!(r.confidence, 0.8);
+    }
+}

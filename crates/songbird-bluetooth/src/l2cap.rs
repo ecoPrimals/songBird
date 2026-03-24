@@ -312,7 +312,10 @@ mod tests {
             0x0A, 0x01, 0x00, // ATT Read Request
         ];
 
-        let payload = channel.parse_acl_packet(&packet).unwrap();
+        let payload = match channel.parse_acl_packet(&packet) {
+            Ok(p) => p,
+            Err(e) => panic!("parse_acl_packet: {e:?}"),
+        };
 
         assert_eq!(payload.len(), 3);
         assert_eq!(payload[0], 0x0A); // ATT Read Request opcode
@@ -350,12 +353,18 @@ mod tests {
         let manager = L2capManager::new();
 
         // Create channel
-        let channel = manager.create_att_channel(0x0040).await.unwrap();
+        let channel = match manager.create_att_channel(0x0040).await {
+            Ok(c) => c,
+            Err(e) => panic!("create_att_channel: {e:?}"),
+        };
         assert_eq!(channel.connection_handle, 0x0040);
         assert_eq!(channel.channel_id, ATT_CHANNEL_ID);
 
         // Get channel
-        let retrieved = manager.get_att_channel(0x0040).await.unwrap();
+        let retrieved = match manager.get_att_channel(0x0040).await {
+            Ok(c) => c,
+            Err(e) => panic!("get_att_channel: {e:?}"),
+        };
         assert_eq!(retrieved.connection_handle, 0x0040);
 
         // Remove channel
@@ -368,7 +377,10 @@ mod tests {
     async fn test_duplicate_channel() {
         let manager = L2capManager::new();
 
-        manager.create_att_channel(0x0040).await.unwrap();
+        match manager.create_att_channel(0x0040).await {
+            Ok(_channel) => {}
+            Err(e) => panic!("create_att_channel: {e:?}"),
+        }
         let result = manager.create_att_channel(0x0040).await;
         assert!(result.is_err());
     }

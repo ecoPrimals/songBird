@@ -533,13 +533,14 @@ mod tests {
 /// Hand-crafted edge cases for [`StunMessage::decode`] (fuzz-style, no external harness).
 #[cfg(test)]
 mod fuzz_style_stun_decode_tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::{MAGIC_COOKIE, MessageType, StunMessage};
 
     #[test]
     fn decode_random_short_inputs_never_panic() {
         for len in 0..20usize {
+            #[allow(clippy::cast_possible_truncation, reason = "fuzz test: intentional truncation")]
             let buf: Vec<u8> = (0..len).map(|i| (i * 7 + 13) as u8).collect();
             let _ = StunMessage::decode(&buf);
         }

@@ -1,9 +1,0 @@
-# Documentation build artifacts
-target/doc/
-*.swp
-*.swo
-*~
-
-# Temporary documentation
-*.tmp.md
-.DS_Store

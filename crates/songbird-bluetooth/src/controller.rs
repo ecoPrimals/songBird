@@ -145,7 +145,10 @@ mod tests {
 
         let result = adapter.receive_event().await;
         assert!(result.is_ok());
-        let event = result.unwrap();
+        let event = match result {
+            Ok(e) => e,
+            Err(e) => panic!("receive_event: {e:?}"),
+        };
         assert!(!event.is_empty());
     }
 }

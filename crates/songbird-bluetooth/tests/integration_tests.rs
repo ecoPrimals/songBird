@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::needless_pass_by_value,
+    clippy::single_char_pattern,
+    clippy::redundant_clone,
+    reason = "test assertions and setup"
+)]
+
 //! Integration tests for Bluetooth stack
 //!
 //! These tests verify the full flow of operations using mock transports.

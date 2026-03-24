@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave66] - 2026-03-23 - Comprehensive Audit, cargo-deny, CI Evolution, Stub & Coverage Push
+
+### Fixed - cargo-deny Fully Passing
+- Added `MPL-2.0` and `Zlib` to license allowlist for transitive deps (`colored`, `option-ext`)
+- Corrected all advisory ignore IDs to actual RUSTSEC identifiers
+- Evolved wildcards policy from `deny` to `allow` (workspace member deps)
+- Added skip list for known transitive duplicate crates
+
+### Changed - CI Modernization
+- Ratcheted coverage threshold from 58% to 66% (target 90%)
+- Replaced `actions/cache@v3` with `Swatinem/rust-cache@v2` across all jobs
+- Added dedicated `cargo-deny` and `rustsec/audit-check` jobs to quality pipeline
+- Added `--all-features` to build/test/coverage/doc CI jobs
+- Upgraded `codecov/codecov-action` v3 → v4
+
+### Fixed - SPDX Header Compliance
+- Added license headers to 37 files missing them (100% `.rs` coverage)
+
+### Changed - Lint Evolution
+- Migrated `songbird-bluetooth` from `clippy::all = "allow"` to workspace lints
+- Removed blanket lint suppressions from `songbird-stun/src/lib.rs`
+- Fixed production `expect()` in STUN client (evolved to `let-else`)
+- 30/30 crates on workspace lints; only 2 justified custom tables remain
+
+### Changed - Production Stub Evolution
+- Evolved mDNS `query_mdns_services` from empty stub to real multicast UDP
+- Evolved compute-bridge no-backend mock to proper `SERVICE_UNAVAILABLE` error
+- Evolved IGD `get_local_ip()` from hardcoded `8.8.8.8:53` to gateway-based detection
+
+### Fixed - tarpaulin.toml
+- Removed references to 8 nonexistent crates in exclude-files
+
+### Added - Coverage Expansion (+65 tests)
+- TLS crypto.rs: JSON-RPC loopback, chacha20/ed25519/hmac/x25519 paths
+- Orchestrator: broadcast discovery (7), workload classification (14), env config (8)
+- Config: providers, capability discovery, hardcoded_elimination, universal_primals
+- Coverage: 66.20% → 66.96% (10,301 → 10,366 tests)
+
+---
+
 ## [v0.2.1-wave64] - 2026-03-23 - Cross-Ecosystem Absorption, Naming Convergence & Lint Unification
 
 ### Added - Ecosystem Method Naming Convergence

@@ -483,14 +483,12 @@ async fn submit_workload_handler(
             }
         }
     } else {
-        // No backend - return mock response
-        let workload_id = Uuid::new_v4().to_string();
+        warn!("No compute backend configured — rejecting workload submission");
         (
-            StatusCode::ACCEPTED,
+            StatusCode::SERVICE_UNAVAILABLE,
             Json(serde_json::json!({
-                "workload_id": workload_id,
-                "status": "accepted",
-                "message": "Workload accepted (no backend configured - would be queued)"
+                "error": "no_backend",
+                "message": "No compute backend configured. Set COMPUTE_BACKEND_URL or register a compute capability provider."
             })),
         )
     }
@@ -498,8 +496,11 @@ async fn submit_workload_handler(
 
 async fn get_workload_handler() -> (StatusCode, Json<serde_json::Value>) {
     (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(serde_json::json!({"error": "Workload status not implemented"})),
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(serde_json::json!({
+            "error": "no_backend",
+            "message": "Workload status requires a compute backend. Register a compute capability provider."
+        })),
     )
 }
 
@@ -731,7 +732,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn submit_workload_without_backend_returns_accepted_shape() {
+    async fn submit_workload_without_backend_returns_service_unavailable() {
         let app = bridge_router(sample_bridge_state().await);
         let res = app
             .oneshot(
@@ -744,10 +745,9 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(res.status(), StatusCode::ACCEPTED);
+        assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
         let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
         let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(v["status"], "accepted");
-        assert!(v["workload_id"].as_str().is_some());
+        assert_eq!(v["error"], "no_backend");
     }
 }

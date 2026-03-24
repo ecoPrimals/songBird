@@ -468,3 +468,59 @@ impl CapabilityDiscovery {
         endpoints
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::CapabilityDiscovery;
+    use crate::capability_discovery::DiscoveryMethod;
+
+    #[test]
+    fn parse_toml_config_extracts_matching_capability() {
+        let toml = r#"
+[services.compute-a]
+url = "http://10.0.0.1:8000"
+capabilities = ["compute", "batch"]
+"#;
+        let eps = CapabilityDiscovery::parse_toml_config(toml, "compute").expect("parse");
+        assert_eq!(eps.len(), 1);
+        assert_eq!(eps[0].url, "http://10.0.0.1:8000");
+        assert!(eps[0].capabilities.contains(&"compute".to_string()));
+    }
+
+    #[test]
+    fn parse_json_config_extracts_matching_capability() {
+        let json = r#"{"services":{"s1":{"url":"http://x:1","capabilities":["storage"]}}}"#;
+        let eps = CapabilityDiscovery::parse_json_config(json, "storage").expect("parse");
+        assert_eq!(eps.len(), 1);
+        assert_eq!(eps[0].id, "s1");
+    }
+
+    #[test]
+    fn parse_yaml_config_extracts_matching_capability() {
+        let yaml = r"
+services:
+  y1:
+    url: http://y:2
+    capabilities: [ai]
+";
+        let eps = CapabilityDiscovery::parse_yaml_config(yaml, "ai").expect("parse");
+        assert_eq!(eps.len(), 1);
+        assert_eq!(eps[0].url, "http://y:2");
+    }
+
+    #[tokio::test]
+    async fn find_providers_by_capability_hits_environment_only() {
+        let disc =
+            CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
+                if k == "WIDGET_ENDPOINT" {
+                    Ok("http://widget:1".to_string())
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            });
+        let eps = disc.find_providers_by_capability("widget").await.expect("found");
+        assert_eq!(eps.len(), 1);
+    }
+}

@@ -42,18 +42,8 @@ exclude = [
     "handoffToPrimals/*"
 ]
 
-# Exclude specific files with known issues
-exclude-files = [
-    # Files with compilation issues that need fixing
-    "crates/songbird-cli/src/cli/commands/gaming/mod.rs",
-    "crates/songbird-federation/src/deployment/mod.rs",
-    "crates/songbird-network/src/communication/mod.rs",
-    "crates/songbird-orchestrator/src/app/mod.rs",
-    "crates/songbird-registry/src/health/mod.rs",
-    "crates/songbird-security/src/accessibility/universal_access.rs",
-    "crates/songbird-universal/src/self_discovery.rs",
-    "crates/songbird-universal-primals/src/config.rs"
-]
+# Per-file exclusions (only list files that exist and have known issues)
+exclude-files = []
 
 # Engine settings
 engine = "llvm"

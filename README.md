@@ -20,8 +20,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent via injectable `_with` env readers |
-| Tests | 10,020 total, 0 failed |
-| Line Coverage | 62.27% (llvm-cov measured; target 90%) |
+| Tests | 10,366 total, 0 failed |
+| Line Coverage | 66.96% (llvm-cov measured; target 90%) |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings, ~45s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
@@ -32,7 +32,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | JSON-RPC Gateway | 14 semantic methods (10 REST wrappers + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list`) |
 | Nest Atomic | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (14 capability tokens) |
 | Method Normalization | `normalize_method()` handles ecosystem naming drift (aliases for `ping`, `status`, `check`, `capability.list`) |
-| Lint Inheritance | 30/30 crates inherit workspace lints; 3 with justified custom tables |
+| Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
+| cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | Dependencies | ~418 unique; duplicates aligned; `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
 | Total Rust | ~405,736 lines across 30 crates |

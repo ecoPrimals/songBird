@@ -2,7 +2,7 @@
 
 **Date**: March 23, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 23, 2026 (Session 12 — Doc Cleanup, CI Evolution, Handoffs & Debris Removal)
+**Last Deep Debt Audit**: March 23, 2026 (Session 13 — Comprehensive Audit, cargo-deny, CI, Coverage, Stub Evolution)
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 10,020 total, 0 failed |
-| **Line Coverage** | 62.27% (llvm-cov measured; target 90%) |
+| **Tests** | 10,366 total, 0 failed |
+| **Line Coverage** | 66.96% (llvm-cov measured; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
@@ -30,12 +30,14 @@
 | **Hardcoded elimination** | All ports env-driven; DNS-SD/mDNS/broadcast discovery; health check uses capability-based crypto provider discovery (no primal names) |
 | **JSON-RPC handlers** | 14 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (ecosystem standard) |
 | **Method normalization** | `normalize_method()` handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
-| **Lint inheritance** | 30/30 crates inherit workspace lints (15 migrated this session); 3 crates have justified custom `[lints]` tables |
+| **Lint inheritance** | 30/30 crates inherit workspace lints (songbird-bluetooth migrated this session); 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
 | **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors with delegation paths |
 | **C dependencies** | `ring` opt-in only (`ring-crypto` feature); not default in any crate; QUIC tests gated behind `ring-crypto` |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
-| **cargo-deny** | Config updated for cargo-deny 0.19+ |
+| **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
+| **SPDX headers** | 100% coverage across all `.rs` files |
+| **CI quality gate** | Coverage threshold ratcheted to 66%; `Swatinem/rust-cache`; `cargo-deny` job; `rustsec/audit-check` |
 | **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
 | **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]` |
@@ -49,6 +51,53 @@
 | **Build time** | ~45s clean dev build, ~84s test suite |
 | **Total Rust lines** | ~405,736 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 23, 2026 — Comprehensive Audit, cargo-deny, CI, Coverage, Stub Evolution Session 13)
+
+### Wave 66: cargo-deny Evolution
+- [x] Fixed license allowlist: added `MPL-2.0`, `Zlib` for transitive dependencies (`colored`, `option-ext`)
+- [x] Evolved wildcards policy from `deny` to `allow` (workspace member deps are inherently wildcarded)
+- [x] Added `skip` list for known transitive duplicate crates (windows-sys, syn, parking_lot, etc.)
+- [x] Corrected all advisory IDs to actual RUSTSEC identifiers (RUSTSEC-2026-0007, -0009, -2025-0141, etc.)
+- [x] cargo-deny now fully passing: `advisories ok, bans ok, licenses ok, sources ok`
+
+### Wave 66: CI Modernization
+- [x] Ratcheted coverage threshold from 58% to 66% (current actual; target 90%)
+- [x] Replaced `actions/cache@v3` with `Swatinem/rust-cache@v2` across all CI jobs
+- [x] Added dedicated `cargo-deny` job to quality-checks pipeline
+- [x] Replaced `cargo audit` + `continue-on-error` with `rustsec/audit-check@v2` (gates PRs)
+- [x] Added `--all-features` to build/test/coverage/doc CI jobs
+- [x] Upgraded `codecov/codecov-action` from v3 to v4
+
+### Wave 66: SPDX Header Compliance
+- [x] Added `// SPDX-License-Identifier: AGPL-3.0-only` + copyright to 37 files missing headers
+- [x] All `.rs` files under crates/, src/, tests/ now have SPDX headers (100% compliance)
+
+### Wave 66: Lint Evolution
+- [x] Migrated `songbird-bluetooth` from `clippy::all = "allow"` to `[lints] workspace = true`
+- [x] Fixed 3 clippy errors in bluetooth src (Arc::clone, unfulfilled expect)
+- [x] Removed blanket lint suppressions from `songbird-stun/src/lib.rs`
+- [x] Fixed production `expect()` in stun client (evolved to `let-else`)
+- [x] Added proper `#![allow(reason)]` to all stun test modules
+- [x] 30/30 crates now use workspace lints; only 2 justified custom tables remain
+
+### Wave 66: Production Stub Evolution
+- [x] Evolved mDNS `query_mdns_services` from empty stub to real multicast UDP implementation
+- [x] Evolved compute-bridge no-backend mock response to proper `SERVICE_UNAVAILABLE` error
+- [x] Evolved `get_workload_handler` from `NOT_IMPLEMENTED` mock to capability-required error
+- [x] Evolved IGD `get_local_ip()` from hardcoded `8.8.8.8:53` to gateway-based local detection
+- [x] Updated test to match new compute-bridge behavior
+
+### Wave 66: tarpaulin.toml Cleanup
+- [x] Removed references to 8 nonexistent crates in `exclude-files` (songbird-federation, -network, -security, -universal-primals, etc.)
+
+### Wave 66: Coverage Expansion (+65 tests)
+- [x] TLS crypto.rs: JSON-RPC loopback tests, chacha20/ed25519/hmac/x25519 helpers, platform connect
+- [x] Orchestrator: broadcast address discovery (7), workload classification (14), env config (8)
+- [x] Config: providers.rs, capability discovery types/impl, hardcoded_elimination, universal_primals (~22)
+- [x] Coverage: 66.20% → 66.96% (10,301 → 10,366 tests, 0 failed)
 
 ---
 
@@ -694,7 +743,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Coverage Expansion (62.27% → 90% target)
+## Pending: Coverage Expansion (66.96% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |

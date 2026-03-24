@@ -76,16 +76,5 @@ serialport = ["dep:serialport"]
 # Any unsafe MUST be documented with SAFETY comments
 doctest = true
 
-[lints.rust]
-unsafe_code = "forbid"
-missing_docs = "warn"
-unused_must_use = "deny"
-
-[lints.clippy]
-# TEMPORARY: Allow warnings while in experimental phase (Phase 2)
-# This crate will be evolved to full production quality during Genesis implementation
-# See DEEP_DEBT_EVOLUTION_PLAN.md Section "Phase 2" for evolution roadmap
-all = "allow"
-# Still enforce critical safety lints
-correctness = "deny"
-suspicious = "deny"
+[lints]
+workspace = true

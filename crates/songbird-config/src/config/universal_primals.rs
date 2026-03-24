@@ -591,3 +591,56 @@ impl LegacyConfigMigrator {
         registry
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn primal_registry_register_and_get() {
+        let mut reg = PrimalRegistry::new();
+        let mut p = PrimalConfiguration::new_template("beardog", "BD");
+        p.enabled = true;
+        reg.register_primal(p);
+        assert!(reg.get_primal("beardog").is_some());
+        assert_eq!(reg.get_enabled_primals().len(), 1);
+    }
+
+    #[test]
+    fn find_primals_with_capability_filters_enabled() {
+        let mut reg = PrimalRegistry::new();
+        let mut sec = PrimalRegistry::create_security_primal_config();
+        sec.enabled = true;
+        reg.register_primal(sec);
+        let found = reg.find_primals_with_capability("authentication");
+        assert_eq!(found.len(), 1);
+    }
+
+    #[test]
+    fn has_capability_detects_registered_capability() {
+        let p = PrimalRegistry::create_compute_primal_config();
+        assert!(p.has_capability("processing"));
+        assert!(!p.has_capability("storage"));
+    }
+
+    #[test]
+    fn primal_configuration_serde_roundtrip_minimal() {
+        let p = PrimalConfiguration::new_template("test", "Test");
+        let json = serde_json::to_string(&p).expect("ser");
+        let back: PrimalConfiguration = serde_json::from_str(&json).expect("de");
+        assert_eq!(back.primal_type, "test");
+        assert_eq!(back.display_name, "Test");
+    }
+
+    #[test]
+    fn legacy_migrator_populates_three_primals() {
+        use crate::config::SongbirdConfig;
+        let legacy = SongbirdConfig::test_defaults();
+        let reg = LegacyConfigMigrator::migrate_legacy_config(&legacy);
+        assert!(reg.get_primal("security").is_some());
+        assert!(reg.get_primal("compute").is_some());
+        assert!(reg.get_primal("storage").is_some());
+    }
+}

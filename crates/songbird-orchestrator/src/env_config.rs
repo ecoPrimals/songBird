@@ -288,7 +288,16 @@ pub fn dual_broadcast() -> bool {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use std::sync::Mutex;
+
+    use songbird_process_env;
+    use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+
     use super::*;
+
+    static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     // Note: These tests validate default behavior when env vars are NOT set.
     // We avoid set_var/remove_var where possible to prevent concurrent test pollution.
@@ -351,5 +360,78 @@ mod tests {
         let _dark = dark_forest_enabled();
         let _legacy = accept_legacy_birdsong();
         let _dual = dual_broadcast();
+    }
+
+    #[test]
+    fn http_port_reads_songbird_http_port() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::set_var("SONGBIRD_HTTP_PORT", "9443");
+        songbird_process_env::remove_var("SONGBIRD_HTTP_ADDR");
+        assert_eq!(http_port(), 9443);
+        songbird_process_env::remove_var("SONGBIRD_HTTP_PORT");
+    }
+
+    #[test]
+    fn http_port_invalid_falls_back_to_default() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::set_var("SONGBIRD_HTTP_PORT", "not-a-number");
+        songbird_process_env::remove_var("SONGBIRD_HTTP_ADDR");
+        assert_eq!(http_port(), DEFAULT_HTTP_PORT);
+        songbird_process_env::remove_var("SONGBIRD_HTTP_PORT");
+    }
+
+    #[test]
+    fn http_port_parsed_from_bind_addr_when_port_env_unset() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_HTTP_PORT");
+        songbird_process_env::set_var("SONGBIRD_HTTP_ADDR", "0.0.0.0:18080");
+        assert_eq!(http_port(), 18080);
+        songbird_process_env::remove_var("SONGBIRD_HTTP_ADDR");
+    }
+
+    #[test]
+    fn http_bind_address_respects_override() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::set_var("SONGBIRD_HTTP_ADDR", "10.0.0.2:9000");
+        assert_eq!(http_bind_address(), "10.0.0.2:9000");
+        songbird_process_env::remove_var("SONGBIRD_HTTP_ADDR");
+    }
+
+    #[test]
+    fn is_production_true_when_songbird_env_set() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::set_var("SONGBIRD_ENV", "production");
+        songbird_process_env::remove_var("RUST_ENV");
+        assert!(is_production());
+        songbird_process_env::remove_var("SONGBIRD_ENV");
+    }
+
+    #[test]
+    fn is_production_checks_rust_env_when_songbird_unset() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_ENV");
+        songbird_process_env::set_var("RUST_ENV", "production");
+        assert!(is_production());
+        songbird_process_env::remove_var("RUST_ENV");
+    }
+
+    #[test]
+    fn primal_name_env_override() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::set_var("PRIMAL_NAME", "custom-primal");
+        assert_eq!(primal_name(), "custom-primal");
+        songbird_process_env::remove_var("PRIMAL_NAME");
+    }
+
+    #[test]
+    fn family_id_prefers_songbird_orchestrator_family_id() {
+        let _g = ENV_TEST_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+        songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
+        songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+        songbird_process_env::remove_var("FAMILY_ID");
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "orch-family");
+        assert_eq!(family_id(), "orch-family");
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     }
 }

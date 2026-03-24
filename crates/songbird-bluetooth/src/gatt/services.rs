@@ -46,7 +46,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if service discovery fails
-    #[expect(
+    #[allow(
         clippy::cognitive_complexity,
         reason = "ATT primary service discovery kept as one loop for clarity"
     )]

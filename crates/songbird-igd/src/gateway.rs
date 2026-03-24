@@ -395,13 +395,15 @@ impl Gateway {
     }
 
     /// Get local IP address (the one facing the gateway)
+    ///
+    /// Uses the discovered gateway IP as the routing target rather than a
+    /// hardcoded external address, keeping the detection fully local.
     fn get_local_ip() -> Result<IpAddr> {
-        // Connect a UDP socket to the gateway to determine our local IP
-        let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(IgdError::Io)?;
+        let gateway =
+            Self::get_default_gateway().unwrap_or(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)));
 
-        // Connect to a well-known address to determine local interface
-        // This doesn't actually send data, just determines the route
-        socket.connect("8.8.8.8:53").map_err(IgdError::Io)?;
+        let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(IgdError::Io)?;
+        socket.connect(std::net::SocketAddr::new(gateway, 80)).map_err(IgdError::Io)?;
 
         let local_addr = socket.local_addr().map_err(IgdError::Io)?;
         Ok(local_addr.ip())

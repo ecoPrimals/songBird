@@ -27,7 +27,9 @@ fn infer_port_pattern_from_mapped_ports(ports: &[u16]) -> PortPattern {
         / f64::from(u32::try_from(deltas.len()).unwrap_or(1));
 
     if consistency >= 0.7 && first_delta.unsigned_abs() <= 100 {
-        let last_port = *ports.last().expect("ports is non-empty (len >= 2)");
+        let Some(&last_port) = ports.last() else {
+            return PortPattern::Unknown;
+        };
         let predicted = i32::from(last_port) + first_delta;
         let predicted_next = u16::try_from(predicted.clamp(1, 65535)).unwrap_or(last_port);
 
@@ -528,7 +530,12 @@ impl Default for StunClient {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::ignore_without_reason,
+        reason = "test assertions"
+    )]
 
     use super::*;
     use crate::message::{MAGIC_COOKIE, MessageType, StunAttribute};

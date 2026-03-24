@@ -593,13 +593,11 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     pub async fn disconnect(&mut self, address: Address) -> Result<()> {
         info!("Disconnecting from {}", address);
 
-        // Get device and connection handle
         let device = {
             let connections = self.connections.read().await;
-            connections
-                .get(&address)
-                .ok_or_else(|| BluetoothError::device(format!("Device not connected: {address}")))?
-                .clone()
+            Arc::clone(connections.get(&address).ok_or_else(|| {
+                BluetoothError::device(format!("Device not connected: {address}"))
+            })?)
         };
 
         let handle = device.handle();
@@ -696,13 +694,10 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     ///
     /// Returns error if device not connected
     pub async fn gatt_client(&self, address: Address) -> Result<GattClient<T>> {
-        let device = self
-            .connections
-            .read()
-            .await
-            .get(&address)
-            .ok_or_else(|| BluetoothError::device(format!("Device not connected: {address}")))?
-            .clone();
+        let device =
+            Arc::clone(self.connections.read().await.get(&address).ok_or_else(|| {
+                BluetoothError::device(format!("Device not connected: {address}"))
+            })?);
 
         // Create or get L2CAP ATT channel for this connection
         let l2cap_channel = match self.l2cap_manager.get_att_channel(device.handle()).await {
@@ -815,7 +810,10 @@ mod tests {
     #[tokio::test]
     async fn test_host_scanning() {
         let transport = MockTransport::new();
-        let mut host = BluetoothHost::new(transport).unwrap();
+        let mut host = match BluetoothHost::new(transport) {
+            Ok(h) => h,
+            Err(e) => panic!("BluetoothHost::new: {e:?}"),
+        };
 
         let result = host.scan_devices(Duration::from_millis(100)).await;
         assert!(result.is_ok());
@@ -824,7 +822,10 @@ mod tests {
     #[tokio::test]
     async fn test_host_shutdown() {
         let transport = MockTransport::new();
-        let host = BluetoothHost::new(transport).unwrap();
+        let host = match BluetoothHost::new(transport) {
+            Ok(h) => h,
+            Err(e) => panic!("BluetoothHost::new: {e:?}"),
+        };
 
         let result = host.shutdown().await;
         assert!(result.is_ok());

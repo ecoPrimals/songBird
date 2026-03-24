@@ -192,7 +192,10 @@ mod tests {
 
     #[test]
     fn test_address_parsing() {
-        let addr = "AA:BB:CC:DD:EE:FF".parse::<Address>().unwrap();
+        let addr = match "AA:BB:CC:DD:EE:FF".parse::<Address>() {
+            Ok(a) => a,
+            Err(e) => panic!("parse address: {e:?}"),
+        };
         assert_eq!(addr.0, [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
         assert_eq!(addr.to_string(), "AA:BB:CC:DD:EE:FF");
     }

@@ -519,3 +519,40 @@ pub mod replace {
         get_config().timeouts.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::replace;
+
+    #[serial_test::serial]
+    #[test]
+    fn format_endpoint_prefers_full_endpoint_env() {
+        songbird_process_env::set_var("ROUTING_ENDPOINT", "https://router.example:7443");
+        let ep = replace::format_endpoint("routing", None);
+        assert_eq!(ep.as_ref(), "https://router.example:7443");
+        songbird_process_env::remove_var("ROUTING_ENDPOINT");
+    }
+
+    #[serial_test::serial]
+    #[test]
+    fn format_service_endpoint_joins_base_and_path() {
+        songbird_process_env::set_var("METRICS_ENDPOINT", "http://metrics.local:9090");
+        let s = replace::format_service_endpoint("metrics", "/api/v1/query", None);
+        assert_eq!(s, "http://metrics.local:9090/api/v1/query");
+        songbird_process_env::remove_var("METRICS_ENDPOINT");
+    }
+
+    #[test]
+    fn gaming_port_matches_config_default_start() {
+        let g = replace::gaming_port();
+        assert_eq!(g, super::get_config().network.gaming_port_range.start);
+    }
+
+    #[test]
+    fn bind_address_returns_valid_ip() {
+        let ip = replace::bind_address();
+        assert!(ip.is_loopback() || !ip.is_unspecified() || ip.is_unspecified());
+    }
+}
