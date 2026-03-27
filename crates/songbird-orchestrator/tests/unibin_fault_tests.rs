@@ -24,7 +24,7 @@ use tempfile::tempdir;
 
 /// Create a clean command with isolated environment (no global state mutation!)
 fn clean_cmd() -> Command {
-    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
     // ✅ Clear environment for this command only (not global!)
     cmd.env_clear();
     // ✅ Set minimal required env vars for test isolation

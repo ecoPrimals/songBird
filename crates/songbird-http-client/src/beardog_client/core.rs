@@ -138,11 +138,11 @@ impl BearDogClient {
         let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         if mode.to_lowercase() == "direct" {
-            // Direct mode: Discover BearDog endpoint
+            // Direct mode: Discover crypto provider endpoint via capability
             let endpoint = socket_discovery::discover_ipc_endpoint(
-                "BEARDOG_SOCKET",
-                "beardog",
-                "/tmp/beardog.sock",
+                "CRYPTO_PROVIDER_SOCKET",
+                "crypto",
+                "/tmp/crypto.sock",
             );
             info!("🔧 BearDog mode from env: DIRECT → {:?}", endpoint);
             Self::new_direct_with_endpoint(endpoint)

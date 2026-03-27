@@ -665,7 +665,7 @@ mod tests {
     }
 
     /// Compile-time check: `start` returns a `Send` future (required for Tokio multi-thread).
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "compile-time Send bound assertion — never called at runtime")]
     fn _assert_start_returns_send_future(
         orch: &mut SongbirdOrchestrator,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
@@ -673,7 +673,7 @@ mod tests {
     }
 
     /// Compile-time check: `StartupOrchestrator::new` remains usable from `&mut SongbirdOrchestrator`.
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "compile-time API usability assertion — never called at runtime")]
     fn _assert_new_accepts_mutable_orchestrator(orch: &mut SongbirdOrchestrator) {
         let _ = StartupOrchestrator::new(orch);
     }

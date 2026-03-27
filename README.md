@@ -29,7 +29,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings, ~45s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (max 948 test; max 915 production `core.rs`) |
+| Files >1000 lines | 0 (max 925 `hosts_evolved.rs`; `core.rs` 816, `infant_config.rs` 697 after test extraction) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` |
 | JSON-RPC Gateway | 50+ semantic methods across 12 domains (health, discovery, stun, relay, federation, tor, etc.) |

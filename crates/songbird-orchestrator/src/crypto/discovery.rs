@@ -136,21 +136,21 @@ mod tests {
     #[test]
     fn test_xdg_path_construction_with_runtime_dir() {
         let xdg_base = "/run/user/1000";
-        let expected_path = format!("{xdg_base}/biomeos/beardog.sock");
-        assert_eq!(expected_path, "/run/user/1000/biomeos/beardog.sock");
+        let expected_path = format!("{xdg_base}/biomeos/crypto.sock");
+        assert_eq!(expected_path, "/run/user/1000/biomeos/crypto.sock");
     }
 
     #[test]
     fn test_xdg_fallback_path_construction() {
         let fallback_base = "/tmp/biomeos";
-        let expected_path = format!("{fallback_base}/beardog.sock");
-        assert_eq!(expected_path, "/tmp/biomeos/beardog.sock");
+        let expected_path = format!("{fallback_base}/crypto.sock");
+        assert_eq!(expected_path, "/tmp/biomeos/crypto.sock");
     }
 
     #[test]
     fn test_legacy_fallback_path_construction() {
-        let legacy_path = "/tmp/beardog.sock";
-        assert!(legacy_path.ends_with("beardog.sock"));
+        let legacy_path = "/tmp/crypto.sock";
+        assert!(legacy_path.ends_with("crypto.sock"));
         assert!(!legacy_path.contains("biomeos"));
     }
 

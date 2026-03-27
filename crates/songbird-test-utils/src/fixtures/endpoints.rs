@@ -240,15 +240,20 @@ mod tests {
 
     #[test]
     fn test_port_allocation_is_cached() {
-        let port1 = test_port("cache_stability_j9k2m_v2");
-        let port2 = test_port("cache_stability_j9k2m_v2");
-        assert_eq!(port1, port2, "Same capability should return same port");
+        // Verify caching by checking the registry directly — avoids TOCTOU
+        // race with test_clear_registry_does_not_panic running concurrently
+        let capability = "cache_stability_isolated_v4";
+        let port1 = test_port(capability);
+        let registry = super::PORT_REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+        let cached = registry.get(capability).copied();
+        drop(registry);
+        assert_eq!(cached, Some(port1), "Port should be cached in registry after allocation");
     }
 
     #[test]
     fn test_different_capabilities_get_different_ports() {
-        let port1 = test_port("diff_cap_v2_alpha_x7f");
-        let port2 = test_port("diff_cap_v2_beta_y8g");
+        let port1 = test_port("diff_cap_v3_alpha_x7f");
+        let port2 = test_port("diff_cap_v3_beta_y8g");
         assert_ne!(port1, port2, "Different capabilities should get different ports");
     }
 

@@ -12,16 +12,17 @@ use std::path::PathBuf;
 pub const BIOMEOS_RUNTIME_SUBDIR: &str = "biomeos";
 
 /// Crypto/security provider socket basenames (XDG scan order: crypto first)
-pub const CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG: &[&str] =
-    &["crypto.sock", "security.sock", "beardog.sock"];
+///
+/// Capability-only names — no primal identities. Primals advertise by capability.
+pub const CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG: &[&str] = &["crypto.sock", "security.sock"];
 
 /// Crypto/security provider socket basenames (UID scan order: security first)
-pub const CRYPTO_PROVIDER_SOCKET_FILENAMES_UID: &[&str] =
-    &["security.sock", "crypto.sock", "beardog.sock"];
+pub const CRYPTO_PROVIDER_SOCKET_FILENAMES_UID: &[&str] = &["security.sock", "crypto.sock"];
 
 /// Neural / AI capability socket basenames (XDG and UID scan use the same order)
-pub const NEURAL_API_CAPABILITY_SOCKET_FILENAMES: &[&str] =
-    &["ai.sock", "neural-api.sock", "squirrel.sock"];
+///
+/// Capability-only names — no primal identities.
+pub const NEURAL_API_CAPABILITY_SOCKET_FILENAMES: &[&str] = &["ai.sock", "neural-api.sock"];
 
 /// `/run/user/{uid}/biomeos/{socket_filename}` for UID-based socket discovery
 #[must_use]

@@ -23,7 +23,7 @@ use tempfile::{TempDir, tempdir};
 // ====================
 
 fn clean_cmd() -> Command {
-    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd
@@ -306,7 +306,7 @@ async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::E
 
     for _ in 0..3 {
         let handle = tokio::spawn(async {
-            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+            let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
             cmd.arg("doctor").assert().success();
         });
         handles.push(handle);
@@ -328,11 +328,11 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
     // Full lifecycle: check version -> init config -> validate -> doctor -> show config
 
     // 1. Check version
-    Command::new(assert_cmd::cargo_bin!("songbird")).arg("--version").assert().success();
+    Command::new(assert_cmd::cargo::cargo_bin("songbird")).arg("--version").assert().success();
 
     // 2. Initialize config
     let config_path = temp_dir.path().join("lifecycle-config.toml");
-    Command::new(assert_cmd::cargo_bin!("songbird"))
+    Command::new(assert_cmd::cargo::cargo_bin("songbird"))
         .arg("config")
         .arg("init")
         .arg("--output")
@@ -342,17 +342,21 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
         .success();
 
     // 3. Validate config (reads from env or default)
-    Command::new(assert_cmd::cargo_bin!("songbird"))
+    Command::new(assert_cmd::cargo::cargo_bin("songbird"))
         .arg("config")
         .arg("validate")
         .assert()
         .success();
 
     // 4. Run doctor
-    Command::new(assert_cmd::cargo_bin!("songbird")).arg("doctor").assert().success();
+    Command::new(assert_cmd::cargo::cargo_bin("songbird")).arg("doctor").assert().success();
 
     // 5. Show config (reads from env or default)
-    Command::new(assert_cmd::cargo_bin!("songbird")).arg("config").arg("show").assert().success();
+    Command::new(assert_cmd::cargo::cargo_bin("songbird"))
+        .arg("config")
+        .arg("show")
+        .assert()
+        .success();
 
     Ok(())
 }

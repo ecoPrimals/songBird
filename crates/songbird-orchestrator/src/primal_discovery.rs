@@ -201,8 +201,7 @@ where
 
 /// Scan socket directories for sockets matching capability.
 ///
-/// Searches using capability terms first (e.g., "crypto"), then
-/// known provider names as secondary hints (e.g., "beardog").
+/// Searches using capability terms (e.g., "crypto", "security", "ai").
 ///
 /// Scan priority: `$XDG_RUNTIME_DIR/biomeos/` → `/tmp/biomeos/` → `/tmp/`
 fn scan_sockets(capability: Capability) -> Option<String> {
@@ -261,8 +260,7 @@ where
 /// Discover TCP endpoint for a capability (isomorphic fallback support).
 ///
 /// Checks TCP discovery files for primals that provide this capability.
-/// Searches capability-named files first (e.g., `crypto-ipc-port`),
-/// then known-provider files (e.g., `beardog-ipc-port`).
+/// Searches capability-named TCP discovery files (e.g., `crypto-ipc-port`).
 ///
 /// # Discovery File Format
 ///
@@ -304,7 +302,7 @@ fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
 ///
 /// # Arguments
 ///
-/// * `primal_name` - Primal name (e.g., "beardog", "squirrel")
+/// * `primal_name` - Capability name (e.g., "crypto", "security")
 ///
 /// # Returns
 ///

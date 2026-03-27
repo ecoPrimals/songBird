@@ -45,7 +45,7 @@ use tokio::task::JoinSet;
 
 /// Create a clean command with isolated environment (no global state mutation!)
 fn clean_cmd() -> Command {
-    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
     // ✅ Clear environment for this command only (not global!)
     cmd.env_clear();
     // ✅ Set minimal required env vars for test isolation
@@ -246,7 +246,7 @@ async fn test_concurrent_test_pattern() {
     // #[serial]
     // async fn test() {
     //     clear_env();
-    //     let cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+    //     let cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
     // }
 
     // ✅ NEW (concurrent):
@@ -289,7 +289,7 @@ fn test_clean_cmd_pattern_documentation() {
 fn test_anti_pattern_documentation() {
     // ❌ ANTI-PATTERN (don't do this):
     // songbird_process_env::set_var("MY_VAR", "value");  // Mutates global state!
-    // let cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+    // let cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
 
     // ✅ CORRECT PATTERN (do this):
     let mut cmd = clean_cmd();

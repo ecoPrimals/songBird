@@ -23,7 +23,7 @@ use tokio::task::JoinSet;
 
 /// Create a clean command with isolated environment
 fn clean_cmd() -> Command {
-    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd
@@ -104,7 +104,7 @@ async fn fault_test_missing_path_env() {
 
     for _ in 0..20 {
         join_set.spawn(async {
-            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+            let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
             cmd.env_clear();
             // Deliberately NO PATH set (unlike clean_cmd)
 
@@ -252,7 +252,7 @@ async fn fault_test_zero_environment_variables() {
 
     for _ in 0..20 {
         join_set.spawn(async {
-            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
+            let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
             cmd.env_clear();
             // Absolutely nothing in environment
 

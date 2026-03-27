@@ -85,10 +85,6 @@ new_without_default = "allow"
 module_inception = "allow"
 unnecessary_literal_unwrap = "allow"
 
-[[bin]]
-name = "songbird"  # ✅ UniBin Architecture Compliant (Jan 16, 2026)
-path = "src/main.rs"
-
 [dependencies]
 # All workspace crates (songbird-core consolidated into this crate)
 songbird-types = { path = "../songbird-types" }

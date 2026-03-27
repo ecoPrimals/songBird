@@ -26,15 +26,22 @@ pub fn neural_api_socket_path_in_biomeos_runtime(
     PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(socket_name)
 }
 
-/// `BearDog` socket path under `xdg_runtime_dir`/`biomeos`/ (matches discovery rules).
+/// Crypto provider socket path under `xdg_runtime_dir`/`biomeos`/ (matches discovery rules).
 #[must_use]
-pub fn beardog_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: &str) -> PathBuf {
+pub fn crypto_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: &str) -> PathBuf {
     let socket_name = if family_id.is_empty() {
-        "beardog.sock".to_string()
+        "crypto.sock".to_string()
     } else {
-        format!("beardog-{family_id}.sock")
+        format!("crypto-{family_id}.sock")
     };
     PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(socket_name)
+}
+
+/// Deprecated alias for [`crypto_socket_path_in_biomeos_runtime`].
+#[deprecated(note = "Use crypto_socket_path_in_biomeos_runtime (capability-based naming)")]
+#[must_use]
+pub fn beardog_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: &str) -> PathBuf {
+    crypto_socket_path_in_biomeos_runtime(xdg_runtime_dir, family_id)
 }
 
 /// Discover the Neural API socket (preferred for all crypto routing).
@@ -117,7 +124,7 @@ where
 
     if let Some(xdg_dir) = get_var("XDG_RUNTIME_DIR") {
         let family_id = get_var("FAMILY_ID").unwrap_or_default();
-        let socket_path = beardog_socket_path_in_biomeos_runtime(&xdg_dir, &family_id);
+        let socket_path = crypto_socket_path_in_biomeos_runtime(&xdg_dir, &family_id);
         if path_exists(&socket_path) {
             return socket_path.to_string_lossy().to_string();
         }
@@ -145,15 +152,15 @@ mod tests {
     }
 
     #[test]
-    fn beardog_socket_path_in_biomeos_runtime_empty_family() {
-        let p = beardog_socket_path_in_biomeos_runtime("/run/user/1000", "");
-        assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    fn crypto_socket_path_in_biomeos_runtime_empty_family() {
+        let p = crypto_socket_path_in_biomeos_runtime("/run/user/1000", "");
+        assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/crypto.sock"));
     }
 
     #[test]
-    fn beardog_socket_path_in_biomeos_runtime_with_family() {
-        let p = beardog_socket_path_in_biomeos_runtime("/run/user/1000", "beta");
-        assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/beardog-beta.sock"));
+    fn crypto_socket_path_in_biomeos_runtime_with_family() {
+        let p = crypto_socket_path_in_biomeos_runtime("/run/user/1000", "beta");
+        assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/crypto-beta.sock"));
     }
 
     #[test]
@@ -209,7 +216,7 @@ mod tests {
     #[test]
     fn discover_beardog_uses_xdg_when_file_exists() {
         let xdg = "/run/user/8888";
-        let expected = beardog_socket_path_in_biomeos_runtime(xdg, "");
+        let expected = crypto_socket_path_in_biomeos_runtime(xdg, "");
         let map: HashMap<&str, String> =
             std::iter::once(("XDG_RUNTIME_DIR", xdg.to_string())).collect();
         let out =

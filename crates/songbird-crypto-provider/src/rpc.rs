@@ -112,7 +112,7 @@ impl CryptoProvider {
                 if self.mode == RoutingMode::NeuralApi {
                     "Neural API"
                 } else {
-                    "BearDog"
+                    "crypto provider"
                 },
                 self.socket_path,
                 e

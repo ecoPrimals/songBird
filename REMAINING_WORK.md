@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: March 24, 2026  
+**Date**: March 27, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 24, 2026 (Session 18 — JSON-RPC Enum Dispatch, Coverage Expansion, Stub Evolution)
+**Last Deep Debt Audit**: March 27, 2026 (Session 19 — Comprehensive Audit, Flaky Test Fix, File Refactoring, Binary Collision, License Reconciliation)
 
 ---
 
@@ -17,7 +17,7 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max 948 test file; production max 915 `core.rs`) |
+| **Files >1000 lines** | 0 (max 925 `hosts_evolved.rs`; production max 878 `paths.rs`; `core.rs` 816, `infant_config.rs` 697 after test extraction) |
 | **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[expect]`) |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
@@ -52,6 +52,48 @@
 | **Build time** | ~45s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~390,564 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 27, 2026 — Comprehensive Audit, Flaky Test Fix, File Refactoring, Binary Collision, License — Session 19)
+
+### Wave 73: Hardcoded Primal Name Elimination — Capability-First Discovery
+- [x] `songbird-types/src/defaults/paths.rs`: Removed `"beardog.sock"` and `"squirrel.sock"` from socket scan lists — capability names only (`crypto.sock`, `security.sock`, `ai.sock`, `neural-api.sock`)
+- [x] `songbird-orchestrator/src/app/core.rs`: Evolved crypto socket discovery from `BEARDOG_SOCKET`/`beardog-{family}.sock` to `CRYPTO_PROVIDER_SOCKET`/`crypto-{family}.sock`
+- [x] `songbird-http-client/src/beardog_client/core.rs`: Evolved direct-mode fallback from `"/tmp/beardog.sock"` to `"/tmp/crypto.sock"`
+- [x] `songbird-crypto-provider/src/socket_discovery.rs`: Renamed `beardog_socket_path_in_biomeos_runtime` → `crypto_socket_path_in_biomeos_runtime` (deprecated alias kept for compat)
+- [x] `songbird-crypto-provider/src/rpc.rs`: Evolved error message from "BearDog" to "crypto provider"
+- [x] `songbird-lineage-relay/src/beardog.rs`: Removed `"beardog.sock"` from XDG scan list
+- [x] `songbird-nfc/src/config.rs`: Removed `"beardog.sock"` from XDG scan list
+- [x] `songbird-orchestrator/src/crypto/discovery.rs`: Updated tests from `beardog.sock` to `crypto.sock`
+- [x] `songbird-test-utils/src/fixtures/endpoints.rs`: Fixed flaky `test_port_allocation_is_cached` (race with `clear_port_registry`)
+
+### Wave 72: Flaky Test Fix — port_fallback_test.rs
+- [x] Rewrote all 13 tests to use OS-assigned ports (port 0) — zero hardcoded port numbers
+- [x] Eliminated `PortOccupier::occupy(9100)` / `occupy(9101)` / `occupy(9102)` pattern
+- [x] Tests now fully concurrent-safe — no `AddrInUse` failures in parallel runs
+- [x] Removed `anyhow::Result` dependency from test file (unnecessary)
+
+### Wave 72: File Size Discipline — Two Files Over 1000 Lines
+- [x] `songbird-orchestrator/src/app/core.rs` (1021→816): Extracted `discover_broadcast_tests` (18 tests) to `core_broadcast_tests.rs` via `#[path]` module
+- [x] `songbird-config/src/zero_touch/infant_config.rs` (1036→697): Extracted 18 tests to `infant_config_tests.rs` via `#[path]` module
+- [x] Zero API changes — all public types re-exported
+
+### Wave 72: Binary Name Collision Fix
+- [x] Removed `[[bin]]` section from `songbird-orchestrator/Cargo.toml` — root `songbird` crate is the sole UniBin entry point
+- [x] Migrated 8 integration test files from compile-time `assert_cmd::cargo_bin!("songbird")` to runtime `assert_cmd::cargo::cargo_bin("songbird")`
+- [x] Eliminates Cargo warning: "output filename collision: two packages both produce binary `songbird`"
+
+### Wave 72: License SPDX Reconciliation
+- [x] Updated `LICENSE` body from "either version 3 of the License, or (at your option) any later version" to "version 3 of the License only"
+- [x] Now consistent: `LICENSE` body, `Cargo.toml` (`AGPL-3.0-only`), SPDX headers (`AGPL-3.0-only`), and `STANDARDS_AND_EXPECTATIONS.md` all say `-only`
+
+### Wave 72: Compiler Warning Fix
+- [x] Removed unnecessary `mut` from `uuid_bytes` in `songbird-bluetooth/src/gatt/services.rs:347`
+
+### Wave 72: Documentation Accuracy
+- [x] Updated `REMAINING_WORK.md` date, session, file size metrics
+- [x] Updated `CONTEXT.md` file size metric
 
 ---
 

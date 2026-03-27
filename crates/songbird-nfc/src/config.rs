@@ -102,8 +102,8 @@ impl NfcConfig {
         if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
             let biomeos = PathBuf::from(&xdg_runtime).join("biomeos");
 
-            // Capability-named sockets first, provider hints last
-            for socket_name in &["security.sock", "crypto.sock", "beardog.sock"] {
+            // Capability-named sockets only — no primal identities
+            for socket_name in &["security.sock", "crypto.sock"] {
                 let socket = biomeos.join(socket_name);
                 if socket.exists() {
                     return socket;

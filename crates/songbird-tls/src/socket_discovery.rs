@@ -8,9 +8,9 @@
 //!
 //! ## Discovery Order
 //! 1. Explicitly provided path (e.g., from CLI arguments)
-//! 2. Environment variable (e.g., `BEARDOG_SOCKET`, `NEURAL_API_SOCKET`)
-//! 3. `XDG_RUNTIME_DIR` (e.g., `/run/user/1000/biomeos/beardog-nat0.sock`)
-//! 4. Fallback to `/tmp` (e.g., `/tmp/beardog-nat0.sock`)
+//! 2. Environment variable (e.g., `CRYPTO_PROVIDER_SOCKET`, `NEURAL_API_SOCKET`)
+//! 3. `XDG_RUNTIME_DIR` (e.g., `/run/user/1000/biomeos/crypto.sock`)
+//! 4. Fallback to `/tmp` (e.g., `/tmp/crypto.sock`)
 //!
 //! ## Zero Hardcoding
 //! - No hardcoded paths, only fallback defaults.
@@ -308,9 +308,9 @@ fn discover_neural_api_socket_with_env(
 /// 1. `explicit_path` (from CLI)
 /// 2. `NEURAL_API_SOCKET` or `NEURALS_SOCKET` env vars
 /// 3. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family_id}.sock` (if `FAMILY_ID` set)
-/// 4. `$XDG_RUNTIME_DIR/biomeos/beardog.sock` (biomeOS standard)
-/// 5. `/run/user/$UID/biomeos/beardog.sock` (UID fallback)
-/// 6. `/tmp/beardog.sock` (legacy fallback)
+/// 4. `$XDG_RUNTIME_DIR/biomeos/crypto.sock` (biomeOS standard, capability-based)
+/// 5. `/run/user/$UID/biomeos/crypto.sock` (UID fallback)
+/// 6. `/tmp/crypto.sock` (legacy fallback)
 #[must_use]
 pub fn discover_neural_api_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_neural_api_socket_with_env(explicit_path, &SystemEnv)
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_xdg_standard_without_family_id() {
-        // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (no family ID needed)
+        // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/crypto.sock (capability-based)
         use std::sync::atomic::{AtomicU32, Ordering};
         static COUNTER: AtomicU32 = AtomicU32::new(0);
         let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -465,7 +465,7 @@ mod tests {
         let test_dir = format!("/tmp/test_xdg_standard_{test_id}");
         let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
 
-        let xdg_path = PathBuf::from(format!("{test_dir}/biomeos/beardog.sock"));
+        let xdg_path = PathBuf::from(format!("{test_dir}/biomeos/crypto.sock"));
         create_dummy_socket(&xdg_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);

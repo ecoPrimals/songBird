@@ -636,7 +636,10 @@ impl IpcServiceHandler {
 
 #[async_trait]
 impl JsonRpcHandler for IpcServiceHandler {
-    #[allow(clippy::too_many_lines)]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "JSON-RPC dispatch table — single match over all methods"
+    )]
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         let method = match JsonRpcMethod::parse_ipc(method) {
             Ok(m) => m,

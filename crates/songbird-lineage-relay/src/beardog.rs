@@ -313,8 +313,8 @@ impl BearDogRelayAuthority {
         if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
             let biomeos = PathBuf::from(&xdg).join("biomeos");
 
-            // Capability-named sockets first
-            for socket_name in &["security.sock", "crypto.sock", "beardog.sock"] {
+            // Capability-named sockets only — no primal identities
+            for socket_name in &["security.sock", "crypto.sock"] {
                 let path = biomeos.join(socket_name);
                 if path.exists() {
                     return path;
