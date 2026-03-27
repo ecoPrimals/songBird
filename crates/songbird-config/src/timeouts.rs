@@ -316,7 +316,7 @@ impl TimeoutConfig {
 /// Parses environment variable as seconds (integer). Invalid values
 /// log a warning and return the default.
 fn env_duration(var: &str, default: Duration) -> Duration {
-    std::env::var(var).map_or(default, |val| {
+    songbird_process_env::var(var).map_or(default, |val| {
         val.parse::<u64>().map_or_else(
             |_| {
                 tracing::warn!(

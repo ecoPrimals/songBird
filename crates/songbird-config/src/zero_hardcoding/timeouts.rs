@@ -105,7 +105,7 @@ impl TimeoutConfig {
     
     /// Parse duration from environment variable (in seconds)
     fn parse_duration_env(key: &str, default_secs: u64) -> Duration {
-        std::env::var(key)
+        songbird_process_env::var(key)
             .ok()
             .and_then(|v| v.parse().ok())
             .map(Duration::from_secs)
@@ -139,23 +139,23 @@ impl RetryConfig {
     /// Create configuration from environment variables
     pub fn from_env() -> Self {
         Self {
-            max_attempts: std::env::var("RETRY_MAX_ATTEMPTS")
+            max_attempts: songbird_process_env::var("RETRY_MAX_ATTEMPTS")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(3),
             initial_backoff: Duration::from_millis(
-                std::env::var("RETRY_INITIAL_BACKOFF_MS")
+                songbird_process_env::var("RETRY_INITIAL_BACKOFF_MS")
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(100)
             ),
             max_backoff: Duration::from_secs(
-                std::env::var("RETRY_MAX_BACKOFF_SECS")
+                songbird_process_env::var("RETRY_MAX_BACKOFF_SECS")
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(30)
             ),
-            multiplier: std::env::var("RETRY_MULTIPLIER")
+            multiplier: songbird_process_env::var("RETRY_MULTIPLIER")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(2),

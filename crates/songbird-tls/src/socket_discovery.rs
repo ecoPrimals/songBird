@@ -50,7 +50,7 @@ pub struct SystemEnv;
 
 impl EnvReader for SystemEnv {
     fn var(&self, key: &str) -> Result<String, std::env::VarError> {
-        std::env::var(key)
+        songbird_process_env::var(key)
     }
 }
 

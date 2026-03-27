@@ -39,7 +39,6 @@ async-trait = "0.1"
 futures-util = "0.3"
 rand = { workspace = true }
 dirs = "5.0"
-num_cpus = "1.16"
 chrono = { version = "0.4", features = ["serde"] }
 url = "2.5"
 gethostname = "0.4"

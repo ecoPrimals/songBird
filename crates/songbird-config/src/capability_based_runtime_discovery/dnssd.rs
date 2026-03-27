@@ -56,8 +56,8 @@ impl DnsSDDiscovery {
     /// # Errors
     /// Returns error if environment variable is not set
     pub fn from_env() -> SongbirdResult<Self> {
-        let domain =
-            std::env::var("SONGBIRD_DNSSD_DOMAIN").unwrap_or_else(|_| "songbird.local".to_string());
+        let domain = songbird_process_env::var("SONGBIRD_DNSSD_DOMAIN")
+            .unwrap_or_else(|_| "songbird.local".to_string());
 
         Ok(Self::new(domain))
     }

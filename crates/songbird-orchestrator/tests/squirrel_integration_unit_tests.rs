@@ -243,11 +243,13 @@ async fn test_family_id_environment_variable() {
     // Test that family_id can be customized via environment
 
     songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "test-family");
-    let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
+    let family_id =
+        songbird_process_env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
     assert_eq!(family_id, "test-family");
 
     songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
-    let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
+    let family_id =
+        songbird_process_env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
     assert_eq!(family_id, "nat0");
 }
 

@@ -106,22 +106,22 @@ impl UniversalDiscoveryFactory {
         }
 
         // Check for Kubernetes environment variables
-        std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
+        songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok()
     }
 
     /// Detect Consul environment (replaces hardcoded `ConsulServiceDiscovery`)
     async fn detect_consul_environment() -> bool {
         // Check for Consul environment variables
-        std::env::var("CONSUL_HTTP_ADDR").is_ok()
-            || std::env::var("CONSUL_ADDR").is_ok()
+        songbird_process_env::var("CONSUL_HTTP_ADDR").is_ok()
+            || songbird_process_env::var("CONSUL_ADDR").is_ok()
             || std::path::Path::new("/etc/consul").exists()
     }
 
     /// Detect container environment
     async fn detect_container_environment() -> bool {
-        std::env::var("DOCKER_HOST").is_ok()
+        songbird_process_env::var("DOCKER_HOST").is_ok()
             || std::path::Path::new("/.dockerenv").exists()
-            || std::env::var("CONTAINER_ID").is_ok()
+            || songbird_process_env::var("CONTAINER_ID").is_ok()
     }
 
     /// Create Kubernetes-aware universal adapter (zero-cost)

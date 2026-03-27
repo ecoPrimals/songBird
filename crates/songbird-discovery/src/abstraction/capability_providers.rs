@@ -221,11 +221,11 @@ pub async fn discover_capability_vendor(
     let vendor_name = match capability {
         CapabilityType::ContainerOrchestration => {
             // Check for kubernetes
-            if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {
+            if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
                 "kubernetes".to_string()
             }
             // Check for docker
-            else if std::env::var("DOCKER_HOST").is_ok() {
+            else if songbird_process_env::var("DOCKER_HOST").is_ok() {
                 "docker".to_string()
             }
             // Default to kubernetes
@@ -235,11 +235,11 @@ pub async fn discover_capability_vendor(
         }
         CapabilityType::ServiceRegistry => {
             // Check for consul
-            if std::env::var("CONSUL_HTTP_ADDR").is_ok() {
+            if songbird_process_env::var("CONSUL_HTTP_ADDR").is_ok() {
                 "consul".to_string()
             }
             // Check for etcd
-            else if std::env::var("ETCD_ENDPOINTS").is_ok() {
+            else if songbird_process_env::var("ETCD_ENDPOINTS").is_ok() {
                 "etcd".to_string()
             }
             // Default to consul

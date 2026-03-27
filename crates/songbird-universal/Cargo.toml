@@ -48,6 +48,7 @@ tokio-util = { version = "0.7.17", features = ["codec"] }
 tokio-serde = { version = "0.8.0", features = ["bincode"] }
 
 # Internal dependencies
+songbird-process-env.workspace = true
 songbird-config = { path = "../songbird-config" }
 songbird-types = { path = "../songbird-types" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!

@@ -129,7 +129,7 @@ async fn handle_jsonrpc_request(
 ) -> Result<Json<JsonRpcResponse>, StatusCode> {
     if request.jsonrpc != JSONRPC_VERSION {
         return Ok(Json(JsonRpcResponse {
-            jsonrpc: JSONRPC_VERSION.to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: None,
             error: Some(JsonRpcError::invalid_request("jsonrpc must be '2.0'")),
             id: request.id.unwrap_or(Value::Null),
@@ -145,60 +145,55 @@ async fn handle_jsonrpc_request(
 
     let parsed = JsonRpcMethod::from_wire_str(canonical);
 
+    let params = request.params;
     let result = match parsed {
-        Ok(JsonRpcMethod::Compute(ComputeMethod::Route)) => {
-            handle_compute_route(&state, request.params.clone()).await
-        }
+        Ok(
+            JsonRpcMethod::Compute(ComputeMethod::Route)
+            | JsonRpcMethod::SongbirdCompute(SongbirdComputeMethod::Schedule),
+        ) => handle_compute_route(&state, params).await,
         Ok(JsonRpcMethod::Deployment(DeploymentMethod::Create)) => {
-            handle_deployment_create(&state, request.params.clone()).await
+            handle_deployment_create(&state, params).await
         }
         Ok(JsonRpcMethod::Deployment(DeploymentMethod::Status)) => {
-            handle_deployment_status(&state, request.params.clone()).await
+            handle_deployment_status(&state, params).await
         }
-        Ok(JsonRpcMethod::Task(TaskMethod::Create)) => {
-            handle_task_create(&state, request.params.clone()).await
-        }
-        Ok(JsonRpcMethod::Task(TaskMethod::List)) => {
-            handle_task_list(&state, request.params.clone()).await
-        }
+        Ok(JsonRpcMethod::Task(TaskMethod::Create)) => handle_task_create(&state, params).await,
+        Ok(JsonRpcMethod::Task(TaskMethod::List)) => handle_task_list(&state, params).await,
         Ok(JsonRpcMethod::Consent(ConsentMethod::Check)) => {
-            handle_consent_check(&state, request.params.clone()).await
+            handle_consent_check(&state, params).await
         }
         Ok(JsonRpcMethod::Consent(ConsentMethod::Grant)) => {
-            handle_consent_grant(&state, request.params.clone()).await
+            handle_consent_grant(&state, params).await
         }
         Ok(JsonRpcMethod::Registry(RegistryMethod::Register)) => {
-            handle_registry_register(&state, request.params.clone()).await
+            handle_registry_register(&state, params).await
         }
         Ok(JsonRpcMethod::Registry(RegistryMethod::Discover)) => {
-            handle_registry_discover(&state, request.params.clone()).await
+            handle_registry_discover(&state, params).await
         }
         Ok(JsonRpcMethod::Protocol(ProtocolMethod::Negotiate)) => {
-            handle_protocol_negotiate_semantic(&state, request.params.clone()).await
+            handle_protocol_negotiate_semantic(&state, params).await
         }
 
         Ok(JsonRpcMethod::SongbirdServices(SongbirdServicesMethod::List)) => {
             handle_services_list(&state).await
         }
         Ok(JsonRpcMethod::SongbirdServices(SongbirdServicesMethod::Get)) => {
-            handle_service_get(&state, request.params).await
+            handle_service_get(&state, params).await
         }
         Ok(JsonRpcMethod::SongbirdServices(SongbirdServicesMethod::Register)) => {
-            handle_service_register(&state, request.params).await
+            handle_service_register(&state, params).await
         }
 
-        Ok(JsonRpcMethod::SongbirdCompute(SongbirdComputeMethod::Schedule)) => {
-            handle_compute_route(&state, request.params.clone()).await
-        }
         Ok(JsonRpcMethod::SongbirdCompute(SongbirdComputeMethod::Status)) => {
-            handle_compute_job_status(&state, request.params.clone()).await
+            handle_compute_job_status(&state, params).await
         }
 
         Ok(JsonRpcMethod::Federation(FederationMethod::Peers)) => {
             handle_federation_peers(&state).await
         }
         Ok(JsonRpcMethod::Federation(FederationMethod::Join)) => {
-            handle_federation_join(&state, request.params).await
+            handle_federation_join(&state, params).await
         }
 
         Ok(JsonRpcMethod::Protocol(ProtocolMethod::Capabilities)) => {
@@ -220,27 +215,24 @@ async fn handle_jsonrpc_request(
         }
         Ok(JsonRpcMethod::Identity) => handle_identity().await,
         Ok(JsonRpcMethod::Network(NetworkMethod::BeaconExchange)) => {
-            handle_beacon_exchange(request.params).await
+            handle_beacon_exchange(params).await
         }
 
         Ok(_) | Err(_) => {
             if let Some(ref ipc_handler) = state.ipc_handler {
                 debug!(
-                    "📡 Forwarding '{}' to universal-ipc handler (TCP→IPC bridge)",
+                    "Forwarding '{}' to universal-ipc handler (TCP to IPC bridge)",
                     request.method
                 );
-                match ipc_handler
-                    .handle(&request.method, request.params.clone().unwrap_or(Value::Null))
-                    .await
-                {
+                match ipc_handler.handle(&request.method, params.unwrap_or(Value::Null)).await {
                     Ok(value) => Ok(value),
                     Err(e) => {
-                        warn!("⚠️  IPC handler error for '{}': {}", request.method, e);
+                        warn!("IPC handler error for '{}': {}", request.method, e);
                         Err(JsonRpcError::method_not_found(format!("{}: {}", request.method, e)))
                     }
                 }
             } else {
-                warn!("⚠️  Unknown JSON-RPC method: {} (no IPC handler attached)", request.method);
+                warn!("Unknown JSON-RPC method: {} (no IPC handler attached)", request.method);
                 Err(JsonRpcError::method_not_found(&request.method))
             }
         }
@@ -253,13 +245,13 @@ async fn handle_jsonrpc_request(
     let id = request.id.unwrap_or(Value::Null);
     let response = match result {
         Ok(value) => JsonRpcResponse {
-            jsonrpc: JSONRPC_VERSION.to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: Some(value),
             error: None,
             id,
         },
         Err(error) => JsonRpcResponse {
-            jsonrpc: JSONRPC_VERSION.to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: None,
             error: Some(error),
             id,

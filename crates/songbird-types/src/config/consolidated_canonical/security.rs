@@ -8,7 +8,6 @@
 //! This module provides security and authentication configuration structures for the Songbird ecosystem.
 
 use serde::{Deserialize, Serialize};
-use std::env;
 
 // ============================================================================
 // SECURITY CONFIGURATION - Secure by Default
@@ -111,7 +110,7 @@ pub enum TrustLevel {
 impl Default for CanonicalSecurityConfig {
     fn default() -> Self {
         // Parse security level from environment
-        let security_level = env::var("SONGBIRD_SECURITY_LEVEL")
+        let security_level = songbird_process_env::var("SONGBIRD_SECURITY_LEVEL")
             .ok()
             .and_then(|v| match v.to_lowercase().as_str() {
                 "minimal" => Some(SecurityLevel::Minimal),
@@ -123,7 +122,8 @@ impl Default for CanonicalSecurityConfig {
 
         Self {
             security_level,
-            auth_method: env::var("SONGBIRD_AUTH_METHOD").unwrap_or_else(|_| "jwt".to_string()),
+            auth_method: songbird_process_env::var("SONGBIRD_AUTH_METHOD")
+                .unwrap_or_else(|_| "jwt".to_string()),
             tls: TlsConfig::default(),
             initial_trust_level: TrustLevel::Anonymous,
         }
@@ -133,7 +133,7 @@ impl Default for CanonicalSecurityConfig {
 impl Default for TlsConfig {
     fn default() -> Self {
         // Parse certificate policy from environment
-        let cert_policy = env::var("SONGBIRD_TLS_CERT_POLICY")
+        let cert_policy = songbird_process_env::var("SONGBIRD_TLS_CERT_POLICY")
             .ok()
             .and_then(|v| match v.to_lowercase().as_str() {
                 "provided" => Some(TlsCertPolicy::ProvidedOnly),
@@ -145,9 +145,9 @@ impl Default for TlsConfig {
 
         Self {
             cert_policy,
-            cert_path: env::var("SONGBIRD_TLS_CERT").ok(),
-            key_path: env::var("SONGBIRD_TLS_KEY").ok(),
-            additional_sans: env::var("SONGBIRD_TLS_SANS")
+            cert_path: songbird_process_env::var("SONGBIRD_TLS_CERT").ok(),
+            key_path: songbird_process_env::var("SONGBIRD_TLS_KEY").ok(),
+            additional_sans: songbird_process_env::var("SONGBIRD_TLS_SANS")
                 .ok()
                 .and_then(|s| {
                     let sans: Vec<String> = s.split(',').map(|s| s.trim().to_string()).collect();
@@ -158,7 +158,7 @@ impl Default for TlsConfig {
                     }
                 })
                 .unwrap_or_default(),
-            require_valid_certs: env::var("SONGBIRD_TLS_REQUIRE_VALID")
+            require_valid_certs: songbird_process_env::var("SONGBIRD_TLS_REQUIRE_VALID")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(false), // False for LAN federation

@@ -91,7 +91,7 @@ impl Capability {
     /// 3. `/tmp/biomeos/{capability}.sock` (fallback)
     /// 4. `/tmp/{provider}.sock` (legacy)
     fn socket_patterns(&self) -> Vec<String> {
-        self.socket_patterns_with_env(&|k| std::env::var(k).ok())
+        self.socket_patterns_with_env(&|k| songbird_process_env::var(k).ok())
     }
 
     /// Same as [`Self::socket_patterns`], but `XDG_RUNTIME_DIR` (and any future lookups)
@@ -142,7 +142,7 @@ impl Capability {
 ///
 /// Returns an error if the operation fails.
 pub async fn discover(capability: Capability) -> Result<String> {
-    discover_with(capability, |name| std::env::var(name).ok()).await
+    discover_with(capability, |name| songbird_process_env::var(name).ok()).await
 }
 
 /// Discover a primal by capability with injectable env reader (concurrent-safe, testable)
@@ -205,7 +205,7 @@ where
 ///
 /// Scan priority: `$XDG_RUNTIME_DIR/biomeos/` → `/tmp/biomeos/` → `/tmp/`
 fn scan_sockets(capability: Capability) -> Option<String> {
-    scan_sockets_with_env(capability, &|k| std::env::var(k).ok())
+    scan_sockets_with_env(capability, &|k| songbird_process_env::var(k).ok())
 }
 
 fn scan_sockets_with_env<F>(capability: Capability, env_reader: &F) -> Option<String>
@@ -312,12 +312,12 @@ fn check_tcp_discovery_file(primal_name: &str) -> Option<String> {
     let mut candidates = Vec::new();
 
     // Priority 1: XDG_RUNTIME_DIR (preferred)
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
         candidates.push(std::path::PathBuf::from(runtime_dir).join(&filename));
     }
 
     // Priority 2: HOME/.local/share (fallback)
-    if let Ok(home) = std::env::var("HOME") {
+    if let Ok(home) = songbird_process_env::var("HOME") {
         candidates.push(std::path::PathBuf::from(home).join(".local/share").join(&filename));
     }
 
@@ -387,7 +387,7 @@ pub fn get_family_id() -> String {
 /// Get primal name from environment (self-knowledge)
 #[must_use]
 pub fn get_primal_name() -> String {
-    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| primal_names::SELF_NAME.to_string())
+    songbird_process_env::var("PRIMAL_NAME").unwrap_or_else(|_| primal_names::SELF_NAME.to_string())
 }
 
 #[cfg(test)]

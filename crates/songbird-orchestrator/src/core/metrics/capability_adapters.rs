@@ -15,8 +15,9 @@ use tracing::{info, warn};
 
 fn default_orchestrator_url() -> &'static str {
     static URL: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("SONGBIRD_ORCHESTRATOR_URL")
-            .unwrap_or_else(|_| "http://localhost:8000".to_string())
+        use songbird_types::constants::{DEFAULT_ORCHESTRATOR_PORT, LOCALHOST};
+        songbird_process_env::var("SONGBIRD_ORCHESTRATOR_URL")
+            .unwrap_or_else(|_| format!("http://{LOCALHOST}:{DEFAULT_ORCHESTRATOR_PORT}"))
     });
     URL.as_str()
 }
@@ -176,36 +177,36 @@ impl UniversalMetricsAdapter {
 
         match capability {
             "compute" => {
-                if let Ok(endpoint) = std::env::var("COMPUTE_ENDPOINT") {
+                if let Ok(endpoint) = songbird_process_env::var("COMPUTE_ENDPOINT") {
                     endpoints.push(endpoint);
-                } else if let Ok(endpoint) = std::env::var("compute_endpoint") {
+                } else if let Ok(endpoint) = songbird_process_env::var("compute_endpoint") {
                     endpoints.push(endpoint);
                 }
             }
             "security" => {
-                if let Ok(endpoint) = std::env::var("SECURITY_ENDPOINT") {
+                if let Ok(endpoint) = songbird_process_env::var("SECURITY_ENDPOINT") {
                     endpoints.push(endpoint);
-                } else if let Ok(endpoint) = std::env::var("security_endpoint") {
+                } else if let Ok(endpoint) = songbird_process_env::var("security_endpoint") {
                     endpoints.push(endpoint);
                 }
             }
             "storage" => {
-                if let Ok(endpoint) = std::env::var("STORAGE_ENDPOINT") {
+                if let Ok(endpoint) = songbird_process_env::var("STORAGE_ENDPOINT") {
                     endpoints.push(endpoint);
-                } else if let Ok(endpoint) = std::env::var("storage_endpoint") {
+                } else if let Ok(endpoint) = songbird_process_env::var("storage_endpoint") {
                     endpoints.push(endpoint);
                 }
             }
             "ai" => {
-                if let Ok(endpoint) = std::env::var("AI_ENDPOINT") {
+                if let Ok(endpoint) = songbird_process_env::var("AI_ENDPOINT") {
                     endpoints.push(endpoint);
-                } else if let Ok(endpoint) = std::env::var("ai_endpoint") {
+                } else if let Ok(endpoint) = songbird_process_env::var("ai_endpoint") {
                     endpoints.push(endpoint);
                 }
             }
             _ => {
                 let env_var = format!("{}_ENDPOINT", capability.to_uppercase());
-                if let Ok(endpoint) = std::env::var(&env_var) {
+                if let Ok(endpoint) = songbird_process_env::var(&env_var) {
                     endpoints.push(endpoint);
                 }
             }

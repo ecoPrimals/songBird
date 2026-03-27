@@ -137,14 +137,14 @@ Unregister-ScheduledTask -TaskName "Songbird" -Confirm:$false
 
 ```powershell
 # Allow inbound (if needed for P2P)
-New-NetFirewallRule -DisplayName "Songbird Gaming Bridge" `
+New-NetFirewallRule -DisplayName "Songbird Network Orchestrator" `
   -Direction Inbound `
   -Program "C:\Program Files\Songbird\songbird.exe" `
   -Action Allow `
   -Profile Any
 
 # Allow outbound
-New-NetFirewallRule -DisplayName "Songbird Gaming Bridge" `
+New-NetFirewallRule -DisplayName "Songbird Network Orchestrator" `
   -Direction Outbound `
   -Program "C:\Program Files\Songbird\songbird.exe" `
   -Action Allow `

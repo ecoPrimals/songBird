@@ -6,6 +6,7 @@
 // Module declarations
 pub mod command_handler; // v4.0.0 (Feb 6): Deep Debt - command handling extraction
 pub mod connection_manager; // Progressive trust connection management (Jan 2026)
+pub mod connectivity; // v5.30.0 (Mar 27): Extracted connectivity verification + auto-remediation
 pub mod core;
 pub mod discovery;
 pub mod discovery_bridge; // Discovery→Federation bridge (v3.10.0 refactoring)

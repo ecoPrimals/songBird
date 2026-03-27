@@ -48,8 +48,30 @@ pub const DEFAULT_DASHBOARD_PORT: u16 = 8003;
 /// Default metrics port
 pub const DEFAULT_METRICS_PORT: u16 = 8004;
 
+/// Default orchestrator API port (self-referencing for internal metrics)
+pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8000;
+
+/// Default crypto provider transport port (BearDog TCP transport fallback)
+pub const DEFAULT_CRYPTO_TRANSPORT_PORT: u16 = 9876;
+
+/// Default security vault port (capability-based security provider, dev only)
+pub const DEFAULT_SECURITY_VAULT_PORT: u16 = 8200;
+
+/// Default federation bind port
+pub const DEFAULT_FEDERATION_BIND_PORT: u16 = 7000;
+
 /// Localhost IPv4 address
 pub const LOCALHOST: &str = "127.0.0.1";
+
+/// Builds a `http://localhost:{port}` development fallback URL.
+///
+/// Only available in debug builds — production code must resolve endpoints
+/// through environment variables or capability-based discovery.
+#[cfg(debug_assertions)]
+#[must_use]
+pub fn dev_localhost_url(port: u16) -> String {
+    format!("http://{LOCALHOST}:{port}")
+}
 
 /// Production bind address (all interfaces)
 pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";

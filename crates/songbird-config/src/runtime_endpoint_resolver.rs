@@ -146,7 +146,7 @@ impl RuntimeEndpointResolver {
     /// - `{CAPABILITY}_ENDPOINT` (e.g., `COMPUTE_ENDPOINT`)
     /// - `SONGBIRD_{CAPABILITY}_URL` (e.g., `SONGBIRD_COMPUTE_URL`)
     fn try_env_resolution(capability: &str) -> Option<String> {
-        Self::try_env_resolution_with(capability, |k| std::env::var(k))
+        Self::try_env_resolution_with(capability, |k| songbird_process_env::var(k))
     }
 
     /// Injectable version for testing without global env mutation

@@ -40,10 +40,10 @@ fn compute_offset(&self) -> usize { /* ... */ }
 
 ### Unsafe Code
 
-`#![forbid(unsafe_code)]` across all crates. The sole exception is
-`songbird-process-env` (Rust 2024 `set_var`/`remove_var`), which uses
-`#![deny(unsafe_code)]` with per-fn `#[allow]`, a `parking_lot::Mutex` serialization
-guard, and `// SAFETY:` documentation on every `unsafe` block.
+`#![forbid(unsafe_code)]` across all 30 crates with zero exceptions.
+`songbird-process-env` uses an in-memory overlay (`std::sync::Mutex<HashMap>`)
+instead of calling `std::env::set_var`/`remove_var`, eliminating the Rust 2024
+`unsafe` requirement entirely.
 
 ### SPDX Headers
 
@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: ~67% (llvm-cov measured, Mar 24 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: ~67% (llvm-cov measured, Mar 27 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html
@@ -99,7 +99,10 @@ cargo llvm-cov --workspace --lib --html
 
 ### Concurrent-Safe Tests (CRITICAL)
 
-Tests **must not** use `std::env::set_var`. Use injectable `_with` variants:
+Tests **must not** use `std::env::set_var` (unsafe in Rust 2024). Use
+`songbird_process_env::set_var` for overlay mutation, and injectable `_with`
+variants where available. Mark tests that mutate the shared overlay with
+`#[serial_test::serial]` to prevent interference:
 
 ```rust
 #[tokio::test]

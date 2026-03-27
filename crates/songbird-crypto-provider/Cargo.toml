@@ -11,6 +11,7 @@ categories = ["cryptography"]
 readme = "README.md"
 
 [dependencies]
+songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 tokio = { workspace = true, features = ["net", "io-util"] }
 serde = { workspace = true, features = ["derive"] }

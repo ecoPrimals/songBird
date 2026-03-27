@@ -6,6 +6,10 @@
 //! Tests for Songbird `UniBin` architecture compliance and functionality
 //! Modern, idiomatic, async Rust tests
 
+// `cargo_bin!` only applies to binaries in *this* package; the `songbird` executable is built
+// by the workspace root crate. The deprecated `cargo_bin` function resolves the path at runtime.
+#![allow(deprecated)]
+
 use assert_cmd::Command;
 use predicates::prelude::*;
 

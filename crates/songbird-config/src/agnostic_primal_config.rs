@@ -137,7 +137,7 @@ impl AgnosticPrimalConfig {
 
         for capability in &capabilities {
             let env_var = format!("CAPABILITY_{}_ENDPOINT", capability.to_uppercase());
-            if let Ok(endpoint) = std::env::var(&env_var) {
+            if let Ok(endpoint) = songbird_process_env::var(&env_var) {
                 tracing::info!("Discovered {} capability at: {}", capability, endpoint);
                 endpoints.insert((*capability).to_string(), endpoint);
             }
@@ -166,7 +166,7 @@ impl AgnosticPrimalConfig {
 
     /// Create discovery configuration from environment
     fn create_discovery_config() -> CapabilityDiscoveryConfig {
-        let enabled = std::env::var("CAPABILITY_DISCOVERY_ENABLED")
+        let enabled = songbird_process_env::var("CAPABILITY_DISCOVERY_ENABLED")
             .map(|v| v == "true" || v == "1")
             .unwrap_or(true);
 
@@ -176,48 +176,52 @@ impl AgnosticPrimalConfig {
         methods.push(DiscoveryMethod::Environment);
 
         // Add other methods based on environment
-        if std::env::var("ENABLE_DNS_SRV_DISCOVERY").is_ok() {
+        if songbird_process_env::var("ENABLE_DNS_SRV_DISCOVERY").is_ok() {
             methods.push(DiscoveryMethod::DnsSrv);
         }
-        if std::env::var("SERVICE_REGISTRY_ENDPOINT").is_ok() {
+        if songbird_process_env::var("SERVICE_REGISTRY_ENDPOINT").is_ok() {
             methods.push(DiscoveryMethod::HttpRegistry);
         }
-        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {
+        if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
             methods.push(DiscoveryMethod::ContainerMetadata);
         }
-        if std::env::var("ENABLE_MDNS_DISCOVERY").is_ok() {
+        if songbird_process_env::var("ENABLE_MDNS_DISCOVERY").is_ok() {
             methods.push(DiscoveryMethod::Mdns);
         }
 
-        let timeout_secs = std::env::var("CAPABILITY_DISCOVERY_TIMEOUT")
+        let timeout_secs = songbird_process_env::var("CAPABILITY_DISCOVERY_TIMEOUT")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(30);
 
-        let cache_ttl_secs =
-            std::env::var("CAPABILITY_CACHE_TTL").ok().and_then(|s| s.parse().ok()).unwrap_or(300);
+        let cache_ttl_secs = songbird_process_env::var("CAPABILITY_CACHE_TTL")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(300);
 
         CapabilityDiscoveryConfig {
             enabled,
             methods,
             timeout_secs,
-            enable_cache: std::env::var("DISABLE_CAPABILITY_CACHE").is_err(),
+            enable_cache: songbird_process_env::var("DISABLE_CAPABILITY_CACHE").is_err(),
             cache_ttl_secs,
         }
     }
 
     /// Create service mesh configuration
     fn create_service_mesh_config() -> ServiceMeshConfig {
-        let enabled =
-            std::env::var("SERVICE_MESH_ENABLED").map(|v| v == "true" || v == "1").unwrap_or(true);
+        let enabled = songbird_process_env::var("SERVICE_MESH_ENABLED")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(true);
 
-        let protocol =
-            std::env::var("SERVICE_MESH_PROTOCOL").unwrap_or_else(|_| "tarpc".to_string());
+        let protocol = songbird_process_env::var("SERVICE_MESH_PROTOCOL")
+            .unwrap_or_else(|_| "tarpc".to_string());
 
-        let enable_tls =
-            std::env::var("SERVICE_MESH_TLS").map(|v| v == "true" || v == "1").unwrap_or(true);
+        let enable_tls = songbird_process_env::var("SERVICE_MESH_TLS")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(true);
 
-        let discovery_interval_secs = std::env::var("SERVICE_MESH_DISCOVERY_INTERVAL")
+        let discovery_interval_secs = songbird_process_env::var("SERVICE_MESH_DISCOVERY_INTERVAL")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(60);
@@ -317,8 +321,8 @@ impl PrimalConfigMigration {
         ];
 
         for (legacy_var, capability_var) in &migrations {
-            if let Ok(value) = std::env::var(legacy_var)
-                && std::env::var(capability_var).is_err()
+            if let Ok(value) = songbird_process_env::var(legacy_var)
+                && songbird_process_env::var(capability_var).is_err()
             {
                 tracing::warn!(
                     "🔄 Migrating {} to {} (value: {})",

@@ -560,4 +560,164 @@ mod tests {
         let stats = profiler.get_stats();
         assert_eq!(stats.total_successes, 0);
     }
+
+    #[test]
+    fn server_profile_success_rate_zero_total() {
+        let profile = ServerProfile::new("empty.com");
+        assert!((profile.success_rate() - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn server_profile_success_rate_all_success() {
+        let mut profile = ServerProfile::new("good.com");
+        profile.success_count = 10;
+        profile.failure_count = 0;
+        assert!((profile.success_rate() - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn server_profile_success_rate_mixed() {
+        let mut profile = ServerProfile::new("mixed.com");
+        profile.success_count = 3;
+        profile.failure_count = 7;
+        assert!((profile.success_rate() - 0.3).abs() < 1e-5);
+    }
+
+    #[test]
+    fn should_retry_with_fallback_insufficient_data() {
+        let mut profile = ServerProfile::new("new.com");
+        profile.success_count = 0;
+        profile.failure_count = 2;
+        profile.reliability = 0.0;
+        assert!(!profile.should_retry_with_fallback(), "total < 3 → no retry");
+    }
+
+    #[test]
+    fn should_retry_with_fallback_low_reliability() {
+        let mut profile = ServerProfile::new("bad.com");
+        profile.success_count = 1;
+        profile.failure_count = 4;
+        profile.reliability = 0.2;
+        assert!(profile.should_retry_with_fallback());
+    }
+
+    #[test]
+    fn should_retry_with_fallback_high_reliability() {
+        let mut profile = ServerProfile::new("good.com");
+        profile.success_count = 9;
+        profile.failure_count = 1;
+        profile.reliability = 0.9;
+        assert!(!profile.should_retry_with_fallback());
+    }
+
+    #[test]
+    fn should_retry_with_fallback_boundary() {
+        let mut profile = ServerProfile::new("edge.com");
+        profile.success_count = 1;
+        profile.failure_count = 2;
+        profile.reliability = 0.5;
+        assert!(!profile.should_retry_with_fallback(), "reliability == 0.5 → no (< 0.5 required)");
+
+        profile.reliability = 0.499;
+        assert!(profile.should_retry_with_fallback());
+    }
+
+    #[test]
+    fn global_stats_success_rate_zero_total() {
+        let stats = GlobalStats::default();
+        assert!((stats.success_rate() - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn most_problematic_extensions_empty() {
+        let stats = GlobalStats::default();
+        let result = stats.most_problematic_extensions(5);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn most_problematic_extensions_sorted_and_truncated() {
+        let mut stats = GlobalStats::default();
+        stats.problematic_extensions.insert(ExtensionType::Sni, 3);
+        stats.problematic_extensions.insert(ExtensionType::Alpn, 10);
+        stats.problematic_extensions.insert(ExtensionType::SupportedVersions, 7);
+
+        let top2 = stats.most_problematic_extensions(2);
+        assert_eq!(top2.len(), 2);
+        assert_eq!(top2[0], (ExtensionType::Alpn, 10));
+        assert_eq!(top2[1], (ExtensionType::SupportedVersions, 7));
+    }
+
+    #[test]
+    fn most_problematic_extensions_count_exceeds_entries() {
+        let mut stats = GlobalStats::default();
+        stats.problematic_extensions.insert(ExtensionType::Sni, 1);
+        let result = stats.most_problematic_extensions(100);
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn get_all_profiles_returns_snapshot() {
+        let profiler = ServerProfiler::new();
+        profiler.record_success(
+            "a.com",
+            ExtensionSet::standard().extensions,
+            0x1301,
+            Duration::from_secs(1),
+        );
+        profiler.record_success("b.com", vec![ExtensionType::Sni], 0x1302, Duration::from_secs(2));
+
+        let all = profiler.get_all_profiles();
+        assert_eq!(all.len(), 2);
+        assert!(all.contains_key("a.com"));
+        assert!(all.contains_key("b.com"));
+        assert_eq!(all["a.com"].success_count, 1);
+    }
+
+    #[test]
+    fn is_reliable_boundary() {
+        let mut profile = ServerProfile::new("test.com");
+        profile.reliability = 0.79;
+        assert!(!profile.is_reliable());
+
+        profile.reliability = 0.80;
+        assert!(profile.is_reliable());
+    }
+
+    #[test]
+    fn global_stats_default_has_standard_extensions() {
+        let stats = GlobalStats::default();
+        assert!(!stats.best_extension_set.is_empty());
+        assert_eq!(stats.best_cipher, Some(0x1301));
+    }
+
+    #[test]
+    fn record_success_promotes_extension_set() {
+        let profiler = ServerProfiler::new();
+        let small_set = vec![ExtensionType::Sni];
+        let large_set = vec![
+            ExtensionType::Sni,
+            ExtensionType::Alpn,
+            ExtensionType::SupportedVersions,
+            ExtensionType::KeyShare,
+            ExtensionType::SignatureAlgorithms,
+            ExtensionType::PskKeyExchangeModes,
+            ExtensionType::SupportedGroups,
+            ExtensionType::SessionTicket,
+            ExtensionType::StatusRequest,
+            ExtensionType::Sct,
+        ];
+
+        profiler.record_success("a.com", small_set, 0x1301, Duration::from_secs(1));
+        let stats_after_small = profiler.get_stats();
+
+        profiler.record_success("b.com", large_set.clone(), 0x1302, Duration::from_secs(1));
+        let stats_after_large = profiler.get_stats();
+
+        assert!(
+            stats_after_large.best_extension_set.len()
+                >= stats_after_small.best_extension_set.len(),
+            "larger successful extension set should be promoted"
+        );
+    }
 }

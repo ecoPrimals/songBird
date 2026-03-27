@@ -11,6 +11,7 @@ categories = ["network-programming", "development-tools::testing"]  # Removed "c
 
 [dependencies]
 # Core dependencies (all Pure Rust!)
+songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 getrandom = { workspace = true }
 tokio = { version = "1", features = ["full", "net"] }

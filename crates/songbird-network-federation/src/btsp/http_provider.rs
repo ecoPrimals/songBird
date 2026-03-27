@@ -44,8 +44,8 @@ impl HttpBtspProvider {
     pub fn new(_base_url: String, provider_name: String) -> SongbirdResult<Self> {
         // Convert base_url to socket path or use env var
         let socket_path =
-            std::env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
-                .or_else(|_| std::env::var("BTSP_SOCKET_PATH"))
+            songbird_process_env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
+                .or_else(|_| songbird_process_env::var("BTSP_SOCKET_PATH"))
                 .map_or_else(
                     |_| PathBuf::from(format!("/tmp/{provider_name}_btsp.sock")),
                     PathBuf::from,

@@ -55,7 +55,7 @@ pub struct UnixIPC;
 ///
 /// **Pure Rust**: No unsafe code, no `libc::getuid()`. Uses environment variables.
 fn get_socket_path(primal_name: &str) -> PathBuf {
-    resolve_socket_path(primal_name, |key| std::env::var(key))
+    resolve_socket_path(primal_name, |key| songbird_process_env::var(key))
 }
 
 /// Resolve socket path using an injectable env reader (concurrent-safe, testable)
@@ -302,7 +302,9 @@ mod tests {
                 assert!(path.to_str().unwrap().contains("test-primal"));
                 assert!(path.to_str().unwrap().ends_with(".sock"));
                 // Should NOT hardcode /tmp (unless all XDG vars missing)
-                if std::env::var("XDG_RUNTIME_DIR").is_ok() || std::env::var("UID").is_ok() {
+                if songbird_process_env::var("XDG_RUNTIME_DIR").is_ok()
+                    || songbird_process_env::var("UID").is_ok()
+                {
                     assert!(!path.to_str().unwrap().starts_with("/tmp/"));
                 }
             }

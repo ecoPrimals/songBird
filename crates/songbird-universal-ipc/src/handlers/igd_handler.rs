@@ -364,12 +364,48 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_igd_handler_creation() {
+    async fn handler_creation_has_no_gateway() {
         let handler = IgdHandler::new();
-
-        // Status should show no gateway initially
         let status = handler.handle_status(Value::Null).await;
         assert_eq!(status["protocol"], "not_discovered");
         assert_eq!(status["mapping_count"], 0);
+    }
+
+    #[test]
+    fn default_trait_creates_same_as_new() {
+        let handler = IgdHandler::default();
+        let debug_str = format!("{handler:?}");
+        assert!(debug_str.contains("IgdHandler"));
+    }
+
+    #[tokio::test]
+    async fn status_without_discovery_suggests_discover_first() {
+        let handler = IgdHandler::new();
+        let status = handler.handle_status(Value::Null).await;
+        assert_eq!(status["note"], "Call igd.discover first");
+        assert!(status["mappings"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn external_ip_without_discovery_returns_error() {
+        let handler = IgdHandler::new();
+        let result = handler.handle_external_ip(Value::Null).await;
+        assert!(result["error"].as_str().unwrap().contains("No gateway discovered"));
+    }
+
+    #[tokio::test]
+    async fn unmap_port_without_discovery_returns_error() {
+        let handler = IgdHandler::new();
+        let params = serde_json::json!({"external_port": 3492, "protocol": "TCP"});
+        let result = handler.handle_unmap_port(params).await;
+        assert_eq!(result["unmapped"], false);
+        assert!(result["error"].as_str().unwrap().contains("No gateway discovered"));
+    }
+
+    #[tokio::test]
+    async fn status_gateway_ip_is_null_without_discovery() {
+        let handler = IgdHandler::new();
+        let status = handler.handle_status(Value::Null).await;
+        assert!(status["gateway_ip"].is_null());
     }
 }

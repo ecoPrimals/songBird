@@ -41,7 +41,7 @@ pub struct LineageRelayConfig {
 
 impl Default for LineageRelayConfig {
     fn default() -> Self {
-        let birdsong_port = std::env::var("SONGBIRD_BIRDSONG_PORT")
+        let birdsong_port = songbird_process_env::var("SONGBIRD_BIRDSONG_PORT")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(DEFAULT_BIRDSONG_PORT);

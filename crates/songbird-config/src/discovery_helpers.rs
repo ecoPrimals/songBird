@@ -7,7 +7,6 @@
 
 use crate::capability_discovery::{CapabilityDiscovery, ServiceEndpoint};
 use anyhow::{Context, Result};
-use std::env;
 use tracing::{debug, info, warn};
 
 /// Discover a primal by capability with intelligent fallbacks
@@ -54,7 +53,7 @@ pub async fn discover_primal(
 
     // 2. Try environment variable
     let env_var = format!("{}_URL", capability.to_uppercase().replace('-', "_"));
-    if let Ok(url) = env::var(&env_var) {
+    if let Ok(url) = songbird_process_env::var(&env_var) {
         info!("Found {} via environment variable {} = {}", primal_type, env_var, url);
         return Ok(ServiceEndpoint {
             id: format!("{capability}-from-env"),
@@ -67,7 +66,7 @@ pub async fn discover_primal(
 
     // 3. Try alternative environment variable (PRIMAL_TYPE_URL format)
     let alt_env_var = format!("{}_PRIMAL_URL", primal_type.to_string().to_uppercase());
-    if let Ok(url) = env::var(&alt_env_var) {
+    if let Ok(url) = songbird_process_env::var(&alt_env_var) {
         info!("Found {} via environment variable {} = {}", primal_type, alt_env_var, url);
         return Ok(ServiceEndpoint {
             id: format!("{capability}-from-env-alt"),

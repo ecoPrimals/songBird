@@ -180,7 +180,7 @@ fn pool_error_shutting_down_display() {
 #[test]
 fn pool_result_ok_maps_value() {
     let r: PoolResult<i32> = Ok(7);
-    assert_eq!(r.unwrap(), 7);
+    assert_eq!(r, Ok(7));
 }
 
 #[tokio::test]
@@ -303,7 +303,7 @@ fn pool_stats_clone_debug() {
     let c = s.clone();
     assert_eq!(c.total_connections, 2);
     let dbg = format!("{s:?}");
-    assert!(dbg.contains("2") || dbg.contains("5"));
+    assert!(dbg.contains('2') || dbg.contains('5'));
 }
 
 #[tokio::test]

@@ -57,7 +57,7 @@ impl ServiceRegistryDiscovery {
     /// # Errors
     /// Returns error if environment variable is not set
     pub fn from_env() -> SongbirdResult<Self> {
-        let endpoint = std::env::var("SONGBIRD_REGISTRY_ENDPOINT")
+        let endpoint = songbird_process_env::var("SONGBIRD_REGISTRY_ENDPOINT")
             .map_err(|_| SongbirdError::configuration("SONGBIRD_REGISTRY_ENDPOINT not set"))?;
 
         Ok(Self::new(endpoint))

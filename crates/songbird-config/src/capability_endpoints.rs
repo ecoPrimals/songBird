@@ -37,7 +37,6 @@ use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::env;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -164,8 +163,10 @@ impl CapabilityEndpointResolver {
     /// Create new resolver
     #[must_use]
     pub fn new() -> Self {
-        let cache_ttl_secs =
-            env::var("DISCOVERY_CACHE_TTL_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(300);
+        let cache_ttl_secs = songbird_process_env::var("DISCOVERY_CACHE_TTL_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(300);
 
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
@@ -238,7 +239,7 @@ impl CapabilityEndpointResolver {
         }
 
         // Method 1: Environment variable (highest priority)
-        if let Ok(endpoint) = env::var(capability.env_var_name()) {
+        if let Ok(endpoint) = songbird_process_env::var(capability.env_var_name()) {
             info!("Found {} endpoint in environment: {}", capability.as_str(), endpoint);
             return Ok(CapabilityEndpoint {
                 capability: capability.clone(),
@@ -286,7 +287,7 @@ impl CapabilityEndpointResolver {
         capability: &CapabilityType,
     ) -> SongbirdResult<Option<CapabilityEndpoint>> {
         // Check if service registry is configured
-        let Ok(registry_endpoint) = env::var("SERVICE_REGISTRY_ENDPOINT") else {
+        let Ok(registry_endpoint) = songbird_process_env::var("SERVICE_REGISTRY_ENDPOINT") else {
             return Ok(None);
         };
 
@@ -358,7 +359,7 @@ impl CapabilityEndpointResolver {
         capability: &CapabilityType,
     ) -> SongbirdResult<Option<CapabilityEndpoint>> {
         // Check if container metadata API is available
-        let Ok(metadata_api) = env::var("CONTAINER_METADATA_API") else {
+        let Ok(metadata_api) = songbird_process_env::var("CONTAINER_METADATA_API") else {
             return Ok(None);
         };
 
@@ -423,7 +424,7 @@ impl CapabilityEndpointResolver {
         capability: &CapabilityType,
     ) -> SongbirdResult<Option<CapabilityEndpoint>> {
         // Check if DNS discovery domain is configured
-        let Ok(dns_domain) = env::var("SERVICE_DISCOVERY_DOMAIN") else {
+        let Ok(dns_domain) = songbird_process_env::var("SERVICE_DISCOVERY_DOMAIN") else {
             return Ok(None);
         };
 

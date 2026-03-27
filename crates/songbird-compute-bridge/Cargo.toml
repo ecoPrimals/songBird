@@ -21,10 +21,10 @@ uuid = { version = "1.7", features = ["v4", "serde"] }
 clap = { version = "4.4", features = ["derive", "env"] }
 anyhow = "1.0"
 thiserror = { workspace = true }
-num_cpus = "1.16"
 hostname = "0.4"
 
 # Internal dependencies
+songbird-process-env.workspace = true
 songbird-config = { path = "../songbird-config" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 

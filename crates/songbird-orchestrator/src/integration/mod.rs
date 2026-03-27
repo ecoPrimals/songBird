@@ -98,7 +98,7 @@ impl IntegrationManager {
         info!("🔍 Validating configuration...");
 
         // Validate gaming configuration via environment
-        if std::env::var("GAMING_PORT").is_err() {
+        if songbird_process_env::var("GAMING_PORT").is_err() {
             warn!("⚠️  Gaming port not configured via GAMING_PORT environment variable");
         }
 

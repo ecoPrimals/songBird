@@ -571,7 +571,7 @@ mod tests {
             requires_human_approval: false,
             estimated_execution_time: Some(Duration::from_secs(1)),
         }];
-        let r = AIFirstResponse::success((), rid(), 0, 1.0).with_suggested_actions(actions.clone());
+        let r = AIFirstResponse::success((), rid(), 0, 1.0).with_suggested_actions(actions);
         assert_eq!(r.suggested_actions.len(), 1);
         assert_eq!(r.suggested_actions[0].action_type, "retry");
     }
@@ -584,7 +584,7 @@ mod tests {
             action_type: "a".to_string(),
             parameters: HashMap::new(),
             priority: ActionPriority::Low,
-            expected_outcome: "".to_string(),
+            expected_outcome: String::new(),
             confidence: 1.0,
             requires_human_approval: false,
             estimated_execution_time: None,

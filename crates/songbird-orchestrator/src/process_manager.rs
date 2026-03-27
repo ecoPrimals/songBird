@@ -82,11 +82,12 @@ impl ProcessManager {
 
     /// Get node identity from environment (for error messages)
     fn get_node_identity() -> Option<String> {
-        let family =
-            std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
-        let node = std::env::var("SONGBIRD_NODE_ID")
-            .or_else(|_| std::env::var("NODE_ID"))
-            .or_else(|_| std::env::var("SPORE_ID"))
+        let family = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| songbird_process_env::var("FAMILY_ID"))
+            .ok();
+        let node = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
+            .or_else(|_| songbird_process_env::var("SPORE_ID"))
             .ok();
 
         match (family, node) {
@@ -113,11 +114,12 @@ impl ProcessManager {
     /// 3. ~/.local/share/songbird/songbird-{family}-{node}.pid (user-specific)
     fn default_pid_file() -> Result<PathBuf> {
         // Get FAMILY_ID and NODE_ID from environment
-        let family_id =
-            std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
-        let node_id = std::env::var("SONGBIRD_NODE_ID")
-            .or_else(|_| std::env::var("NODE_ID"))
-            .or_else(|_| std::env::var("SPORE_ID"))
+        let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| songbird_process_env::var("FAMILY_ID"))
+            .ok();
+        let node_id = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
+            .or_else(|_| songbird_process_env::var("SPORE_ID"))
             .ok();
 
         // Build filename suffix based on available IDs
@@ -131,7 +133,7 @@ impl ProcessManager {
         let filename = format!("songbird{filename_suffix}.pid");
 
         // Priority 1: Explicit override via SONGBIRD_PID_DIR (for Android/restricted environments)
-        if let Ok(pid_dir) = std::env::var("SONGBIRD_PID_DIR") {
+        if let Ok(pid_dir) = songbird_process_env::var("SONGBIRD_PID_DIR") {
             let custom_path = PathBuf::from(&pid_dir).join(&filename);
             if let Some(parent) = custom_path.parent()
                 && fs::create_dir_all(parent).is_ok()

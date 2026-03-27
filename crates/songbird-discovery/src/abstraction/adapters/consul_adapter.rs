@@ -77,15 +77,15 @@ impl ProviderFactory for ConsulProviderFactory {
         use songbird_config::canonical::constants;
        
         // Get configurable defaults from environment
-        let consul_host = std::env::var("CONSUL_HOST")
+        let consul_host = songbird_process_env::var("CONSUL_HOST")
             .unwrap_or_else(|_| constants::network::DEFAULT_HOST.to_string());
-        let consul_port = std::env::var("CONSUL_PORT")
+        let consul_port = songbird_process_env::var("CONSUL_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(8500); // Standard Consul port
-        let consul_datacenter = std::env::var("CONSUL_DATACENTER")
+        let consul_datacenter = songbird_process_env::var("CONSUL_DATACENTER")
             .unwrap_or_else(|_| "dc1".to_string());
-        let consul_protocol = std::env::var("CONSUL_PROTOCOL")
+        let consul_protocol = songbird_process_env::var("CONSUL_PROTOCOL")
             .unwrap_or_else(|_| "http".to_string());
         
         let consul_url = format!("{}://{}:{}", consul_protocol, consul_host, consul_port);
@@ -139,7 +139,7 @@ impl ConsulProviderAdapter {
         }.to_string();
         
         // Get version from environment or use crate version
-        let version = std::env::var("SONGBIRD_VERSION")
+        let version = songbird_process_env::var("SONGBIRD_VERSION")
             .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string());
         
         let metadata = ProviderMetadata {

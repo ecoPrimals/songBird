@@ -4,8 +4,8 @@
 //! Register, unregister, and probe Neural API availability.
 
 use anyhow::Result;
+use songbird_process_env as env;
 use songbird_types::primal_names;
-use std::env;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{info, warn};
 

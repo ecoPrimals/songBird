@@ -17,10 +17,9 @@
 //!
 //! ## Federation endpoint
 //!
-//! The base URL for federation discovery defaults to `http://localhost:8080`. Override it with
-//! the `SONGBIRD_FEDERATION_ENDPOINT` environment variable or `--songbird-endpoint`: Clap’s
-//! `env = "SONGBIRD_FEDERATION_ENDPOINT"` reads the variable when present; otherwise
-//! `default_value` supplies the local default.
+//! The base URL for federation discovery defaults to the local development
+//! endpoint built from `songbird_types::constants`. Override with
+//! `SONGBIRD_FEDERATION_ENDPOINT` or `--songbird-endpoint`.
 //!
 //! ## Usage
 //! ```bash
@@ -38,9 +37,14 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde::Deserialize;
 use songbird_http_client::IpcHttpClient;
+use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use tracing::{debug, info, warn};
+
+fn default_federation_endpoint() -> String {
+    format!("http://{LOCALHOST}:{DEFAULT_HTTP_PORT}")
+}
 
 /// CLI arguments for `songbird-deploy` (SSH, HTTP, list, and status subcommands).
 #[derive(Parser, Debug)]
@@ -53,8 +57,8 @@ pub struct Args {
     /// Base URL of the Songbird federation API (discovery and coordination).
     ///
     /// Resolved from `--songbird-endpoint`, then `SONGBIRD_FEDERATION_ENDPOINT`, then
-    /// `http://localhost:8080` (see module docs).
-    #[arg(long, env = "SONGBIRD_FEDERATION_ENDPOINT", default_value = "http://localhost:8080")]
+    /// the default `http://127.0.0.1:8080` (see module docs).
+    #[arg(long, env = "SONGBIRD_FEDERATION_ENDPOINT", default_value_t = default_federation_endpoint())]
     songbird_endpoint: String,
 }
 
@@ -156,7 +160,7 @@ struct NodeInfo {
 }
 
 fn init_tracing() {
-    let filter = std::env::var("RUST_LOG")
+    let filter = songbird_process_env::var("RUST_LOG")
         .unwrap_or_else(|_| "info,songbird_remote_deploy=debug".to_string());
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 }
@@ -180,7 +184,7 @@ pub async fn run(args: Args) -> Result<()> {
             auto_start,
         } => {
             let effective_user = ssh_user
-                .or_else(|| std::env::var("USER").ok())
+                .or_else(|| songbird_process_env::var("USER").ok())
                 .unwrap_or_else(|| "root".to_string());
             deploy_service(DeploymentConfig {
                 songbird_endpoint: &args.songbird_endpoint,

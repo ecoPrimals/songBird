@@ -47,7 +47,8 @@ impl BearDogProvider {
         use super::socket_discovery;
         use tracing::info;
 
-        let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
+        let mode =
+            songbird_process_env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         if mode.as_str() == "direct" {
             let socket = socket_discovery::discover_beardog_socket();

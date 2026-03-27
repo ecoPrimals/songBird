@@ -194,15 +194,10 @@ fn test_port_fallback_logging() {
 async fn test_port_fallback_with_ipv6() {
     let result = tokio::net::TcpListener::bind("[::1]:0").await;
 
-    match result {
-        Ok(listener) => {
-            let addr = listener.local_addr().unwrap();
-            assert!(addr.is_ipv6(), "Should be IPv6 address");
-            assert!(addr.port() > 0, "Should get a valid port");
-        }
-        Err(_) => {
-            // IPv6 not available on this system
-        }
+    if let Ok(listener) = result {
+        let addr = listener.local_addr().unwrap();
+        assert!(addr.is_ipv6(), "Should be IPv6 address");
+        assert!(addr.port() > 0, "Should get a valid port");
     }
 }
 

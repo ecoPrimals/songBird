@@ -336,7 +336,7 @@ impl Default for FederationConfig {
 }
 
 fn env_or_default(key: &str, default: &str) -> String {
-    std::env::var(key).unwrap_or_else(|_| default.to_string())
+    songbird_process_env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
 /// Thread-safe global configuration using `OnceLock` (idiomatic Rust,
@@ -442,7 +442,7 @@ pub mod replace {
     /// Get production-ready bind address (0.0.0.0 vs `crate::constants::network::DEFAULT_HOST`)
     #[must_use]
     pub fn production_bind_address() -> IpAddr {
-        if std::env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {
+        if songbird_process_env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {
             get_config().network.production_bind_address
         } else {
             get_config().network.bind_address
@@ -470,13 +470,15 @@ pub mod replace {
     pub fn format_endpoint(capability: &str, port_override: Option<u16>) -> Arc<str> {
         // Check for full endpoint override first
         let env_key_endpoint = format!("{}_ENDPOINT", capability.to_uppercase());
-        if let Ok(endpoint) = std::env::var(&env_key_endpoint) {
+        if let Ok(endpoint) = songbird_process_env::var(&env_key_endpoint) {
             return Arc::from(endpoint);
         }
 
         // Otherwise construct from IP and port
         let config = get_config();
-        let ip = if std::env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {
+        let ip = if songbird_process_env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default()
+            == "production"
+        {
             config.network.production_bind_address
         } else {
             config.network.bind_address
@@ -485,7 +487,7 @@ pub mod replace {
         // Get port from environment or use override or auto-select
         let env_key_port = format!("{}_PORT", capability.to_uppercase());
         let port = port_override
-            .or_else(|| std::env::var(&env_key_port).ok().and_then(|p| p.parse().ok()))
+            .or_else(|| songbird_process_env::var(&env_key_port).ok().and_then(|p| p.parse().ok()))
             .unwrap_or(0); // 0 = auto-select dynamic port
 
         let protocol = if port == 8443 || capability == "security" {

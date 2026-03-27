@@ -75,7 +75,7 @@ impl PrivilegeManager {
     /// Check if running with elevated privileges
     fn check_elevated() -> bool {
         // Check effective UID via environment variable (safe alternative to libc)
-        std::env::var("EUID")
+        songbird_process_env::var("EUID")
             .ok()
             .and_then(|euid| euid.parse::<u32>().ok())
             .is_some_and(|euid| euid == 0)

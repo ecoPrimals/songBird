@@ -90,7 +90,7 @@ impl AgnosticComputeCoordinator {
     /// Returns an error if no compute provider is available
     pub async fn request_compute_capability(&self) -> Result<ComputeProvider, ComputeError> {
         // Check environment first
-        if let Ok(endpoint) = std::env::var("CAPABILITY_COMPUTE_ENDPOINT") {
+        if let Ok(endpoint) = songbird_process_env::var("CAPABILITY_COMPUTE_ENDPOINT") {
             tracing::info!("Discovered compute capability at: {}", endpoint);
             return Ok(ComputeProvider {
                 endpoint,

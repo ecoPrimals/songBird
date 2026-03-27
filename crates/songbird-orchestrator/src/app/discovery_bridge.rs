@@ -182,8 +182,9 @@ impl SongbirdOrchestrator {
 
                             // Check if same family for trust decisions (Jan 5, 2026)
                             // Tags format: ["beardog:family:FAMILY_ID:NODE_ID", ...]
-                            let same_family =
-                                std::env::var("SONGBIRD_FAMILY_ID").ok().is_some_and(|my_family| {
+                            let same_family = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+                                .ok()
+                                .is_some_and(|my_family| {
                                     peer.tags.as_ref().is_some_and(|tags| {
                                         tags.iter().any(|tag| {
                                             tag.contains(&format!(":family:{my_family}:"))

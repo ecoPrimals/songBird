@@ -10,6 +10,10 @@
 //!
 //! Modern, idiomatic, async Rust with true concurrency.
 
+// `cargo_bin!` only applies to binaries in *this* package; the `songbird` executable is built
+// by the workspace root crate. The deprecated `cargo_bin` function resolves the path at runtime.
+#![allow(deprecated)]
+
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::sync::Arc;

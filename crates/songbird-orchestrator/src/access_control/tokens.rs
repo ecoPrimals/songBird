@@ -228,7 +228,7 @@ impl TokenValidator {
     /// **SECURITY**: In production, ALWAYS set `SONGBIRD_JWT_SECRET` to a strong secret
     #[must_use]
     pub fn new() -> Self {
-        let secret = std::env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
+        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
             tracing::warn!(
                 "SONGBIRD_JWT_SECRET not set. Using development secret. \
                      DO NOT USE IN PRODUCTION. Set SONGBIRD_JWT_SECRET environment variable."

@@ -201,7 +201,8 @@ impl Default for ErrorHandlingConfig  {fn default() -> Self  {Self { max_retry_a
             enable_auto_recovery: true;}}}
 
 impl Default for AsyncRuntimeConfig  {fn default() -> Self  {Self { custom_scheduler: true,
-            worker_threads: num_cpus::get(,
+            worker_threads: std::thread::available_parallelism()
+                .map_or(1, std::num::NonZero::get),
             blocking_threads: 512,
             task_queue_size: 1024,
             work_stealing: true;}}}

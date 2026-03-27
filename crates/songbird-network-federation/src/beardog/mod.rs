@@ -123,7 +123,7 @@ impl BearDogProviderFactory {
 
     async fn discover_via_env() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
         // Check BEARDOG_SOCKET first (preferred for Unix sockets)
-        if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET") {
+        if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET") {
             tracing::info!("Using BearDog socket from BEARDOG_SOCKET: {}", socket_path);
             match crate::beardog::production::ProductionBearDogProvider::new(&socket_path).await {
                 Ok(provider) => return Ok(Some(Box::new(provider))),
@@ -132,7 +132,7 @@ impl BearDogProviderFactory {
         }
 
         // Check SECURITY_SOCKET (generic)
-        if let Ok(socket_path) = std::env::var("SECURITY_SOCKET") {
+        if let Ok(socket_path) = songbird_process_env::var("SECURITY_SOCKET") {
             tracing::info!("Using BearDog socket from SECURITY_SOCKET: {}", socket_path);
             match crate::beardog::production::ProductionBearDogProvider::new(&socket_path).await {
                 Ok(provider) => return Ok(Some(Box::new(provider))),
@@ -141,8 +141,11 @@ impl BearDogProviderFactory {
         }
 
         // Legacy: Check URL-based env vars (convert to socket if possible)
-        if std::env::var("BEARDOG_URL").is_ok() || std::env::var("SECURITY_URL").is_ok() {
-            let url = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL"))?;
+        if songbird_process_env::var("BEARDOG_URL").is_ok()
+            || songbird_process_env::var("SECURITY_URL").is_ok()
+        {
+            let url = songbird_process_env::var("BEARDOG_URL")
+                .or_else(|_| songbird_process_env::var("SECURITY_URL"))?;
             tracing::info!("Found BearDog via environment at: {}", url);
 
             // Try to extract Unix socket path from URL

@@ -100,13 +100,13 @@ impl TorHandler {
 
     /// Get `BearDog` socket path from environment (capability-based discovery)
     fn get_beardog_socket_from_env() -> Option<String> {
-        std::env::var("BEARDOG_SOCKET")
-            .or_else(|_| std::env::var("BEARDOG_CRYPTO_SOCKET"))
-            .or_else(|_| std::env::var("SONGBIRD_SECURITY_PROVIDER"))
+        songbird_process_env::var("BEARDOG_SOCKET")
+            .or_else(|_| songbird_process_env::var("BEARDOG_CRYPTO_SOCKET"))
+            .or_else(|_| songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER"))
             .ok()
             .or_else(|| {
                 // XDG standard path
-                if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+                if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
                     let path = format!("{xdg}/biomeos/beardog.sock");
                     if std::path::Path::new(&path).exists() {
                         return Some(path);

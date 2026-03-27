@@ -95,7 +95,7 @@ impl CliArgs {
     /// Parse CLI arguments from environment (stub implementation)
     #[must_use]
     pub fn parse_from_env() -> Self {
-        Self::parse_with(|name| std::env::var(name).ok())
+        Self::parse_with(|name| songbird_process_env::var(name).ok())
     }
 
     /// Parse CLI arguments with injectable env reader (concurrent-safe, testable)

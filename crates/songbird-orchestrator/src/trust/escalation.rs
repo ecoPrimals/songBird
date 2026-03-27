@@ -87,10 +87,10 @@ impl BearDogClient {
     /// Full async discovery is available in async methods.
     pub fn new() -> Self {
         // EVOLVED: Use generic capability env vars (sync version)
-        let endpoint = std::env::var("SONGBIRD_SECURITY_PROVIDER")
-            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
+        let endpoint = songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER")
+            .or_else(|_| songbird_process_env::var("SECURITY_ENDPOINT"))
             .or_else(|_| {
-                if let Ok(url) = std::env::var("BEARDOG_URL") {
+                if let Ok(url) = songbird_process_env::var("BEARDOG_URL") {
                     tracing::warn!("⚠️  DEPRECATED: BEARDOG_URL is deprecated");
                     tracing::warn!("   Use SONGBIRD_SECURITY_PROVIDER instead");
                     Ok(url)

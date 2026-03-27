@@ -152,7 +152,7 @@ impl IpcHttpClient {
     ///
     /// Uses environment-aware discovery with sensible defaults.
     fn discover_socket_path() -> PathBuf {
-        Self::discover_socket_path_with(|name| std::env::var(name).ok())
+        Self::discover_socket_path_with(|name| songbird_process_env::var(name).ok())
     }
 
     /// Discover socket path with injectable env reader (concurrent-safe, testable)

@@ -11,7 +11,10 @@ pub struct ResourceDetector;
 
 impl ResourceDetector  {#[must_use]
     pub fn detect_local_resources() -> ComputeResources  {ComputeResources {
-            cpu_cores: u32::try_from(num_cpus::get().unwrap_or(u32::MAX,
+            cpu_cores: u32::try_from(
+                std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
+            )
+            .unwrap_or(u32::MAX),
             cpu_architecture: std::env::consts::ARCH.to_string(),
             memory_total_gb: Self::detect_total_memory_gb(,
             memory_available_gb: Self::detect_available_memory_gb(,
@@ -285,7 +288,8 @@ impl ResourceDetector  {#[must_use]
             if let Ok(loadavg) = std::fs::read_to_string("/proc/loadavg") {"
                 if let Some(load_str) = loadavg.split_whitespace().next() {
                     if let Ok(load) = load_str.parse::<f32>() {
-                        let cpu_count = num_cpus::get() as f32;
+                        let cpu_count = std::thread::available_parallelism()
+                            .map_or(1, std::num::NonZero::get) as f32;
                         return ((load / cpu_count) * 100.0).min(100.0);
                     }
                 }

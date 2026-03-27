@@ -51,6 +51,7 @@ uuid = { version = "1.6", features = ["v4"] }
 songbird-sovereign-onion = { path = "../songbird-sovereign-onion", optional = true }
 
 # Internal crates
+songbird-process-env.workspace = true
 songbird-stun = { path = "../songbird-stun" }
 songbird-lineage-relay = { path = "../songbird-lineage-relay" }
 

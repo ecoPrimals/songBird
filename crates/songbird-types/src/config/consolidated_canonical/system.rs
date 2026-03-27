@@ -158,7 +158,7 @@ pub struct CanonicalShutdownConfig {
 
 impl Default for CanonicalSystemConfig {
     fn default() -> Self {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let home = songbird_process_env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         Self {
             environment: "development".to_string(),
             system_id: "songbird-1".to_string(),

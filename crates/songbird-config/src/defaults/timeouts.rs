@@ -13,7 +13,6 @@
 //! - `SONGBIRD_DISCOVERY_TIMEOUT_MS` - Service discovery timeout (default: 5000ms)
 
 use std::collections::HashMap;
-use std::env;
 use std::time::Duration;
 
 /// Get standard timeout from environment or default
@@ -30,7 +29,10 @@ use std::time::Duration;
 /// ```
 #[must_use]
 pub fn standard_timeout() -> Duration {
-    let ms = env::var("SONGBIRD_TIMEOUT_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(5000);
+    let ms = songbird_process_env::var("SONGBIRD_TIMEOUT_MS")
+        .ok()
+        .and_then(|t| t.parse().ok())
+        .unwrap_or(5000);
     Duration::from_millis(ms)
 }
 
@@ -47,8 +49,10 @@ pub fn standard_timeout_from_map(env: &HashMap<String, String>) -> Duration {
 /// `SONGBIRD_LONG_TIMEOUT_MS` (default: 30000ms / 30 seconds)
 #[must_use]
 pub fn long_timeout() -> Duration {
-    let ms =
-        env::var("SONGBIRD_LONG_TIMEOUT_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(30000);
+    let ms = songbird_process_env::var("SONGBIRD_LONG_TIMEOUT_MS")
+        .ok()
+        .and_then(|t| t.parse().ok())
+        .unwrap_or(30000);
     Duration::from_millis(ms)
 }
 
@@ -65,8 +69,10 @@ pub fn long_timeout_from_map(env: &HashMap<String, String>) -> Duration {
 /// `SONGBIRD_REQUEST_TIMEOUT_MS` (default: 30000ms / 30 seconds)
 #[must_use]
 pub fn request_timeout() -> Duration {
-    let ms =
-        env::var("SONGBIRD_REQUEST_TIMEOUT_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(30000);
+    let ms = songbird_process_env::var("SONGBIRD_REQUEST_TIMEOUT_MS")
+        .ok()
+        .and_then(|t| t.parse().ok())
+        .unwrap_or(30000);
     Duration::from_millis(ms)
 }
 
@@ -83,8 +89,10 @@ pub fn request_timeout_from_map(env: &HashMap<String, String>) -> Duration {
 /// `SONGBIRD_CACHE_EXPIRY_MS` (default: 300000ms / 5 minutes)
 #[must_use]
 pub fn cache_expiry() -> Duration {
-    let ms =
-        env::var("SONGBIRD_CACHE_EXPIRY_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(300_000);
+    let ms = songbird_process_env::var("SONGBIRD_CACHE_EXPIRY_MS")
+        .ok()
+        .and_then(|t| t.parse().ok())
+        .unwrap_or(300_000);
     Duration::from_millis(ms)
 }
 
@@ -101,7 +109,7 @@ pub fn cache_expiry_from_map(env: &HashMap<String, String>) -> Duration {
 /// `SONGBIRD_HEARTBEAT_INTERVAL_MS` (default: 60000ms / 1 minute)
 #[must_use]
 pub fn heartbeat_interval() -> Duration {
-    let ms = env::var("SONGBIRD_HEARTBEAT_INTERVAL_MS")
+    let ms = songbird_process_env::var("SONGBIRD_HEARTBEAT_INTERVAL_MS")
         .ok()
         .and_then(|t| t.parse().ok())
         .unwrap_or(60000);
@@ -122,8 +130,10 @@ pub fn heartbeat_interval_from_map(env: &HashMap<String, String>) -> Duration {
 /// `SONGBIRD_DISCOVERY_TIMEOUT_MS` (default: 5000ms / 5 seconds)
 #[must_use]
 pub fn discovery_timeout() -> Duration {
-    let ms =
-        env::var("SONGBIRD_DISCOVERY_TIMEOUT_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(5000);
+    let ms = songbird_process_env::var("SONGBIRD_DISCOVERY_TIMEOUT_MS")
+        .ok()
+        .and_then(|t| t.parse().ok())
+        .unwrap_or(5000);
     Duration::from_millis(ms)
 }
 
@@ -140,7 +150,7 @@ pub fn discovery_timeout_from_map(env: &HashMap<String, String>) -> Duration {
 /// `SONGBIRD_CONNECTION_TIMEOUT_MS` (default: 10000ms / 10 seconds)
 #[must_use]
 pub fn connection_timeout() -> Duration {
-    let ms = env::var("SONGBIRD_CONNECTION_TIMEOUT_MS")
+    let ms = songbird_process_env::var("SONGBIRD_CONNECTION_TIMEOUT_MS")
         .ok()
         .and_then(|t| t.parse().ok())
         .unwrap_or(10000);
@@ -161,8 +171,10 @@ pub fn connection_timeout_from_map(env: &HashMap<String, String>) -> Duration {
 /// `SONGBIRD_RETRY_BACKOFF_MS` (default: 1000ms / 1 second)
 #[must_use]
 pub fn retry_backoff() -> Duration {
-    let ms =
-        env::var("SONGBIRD_RETRY_BACKOFF_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(1000);
+    let ms = songbird_process_env::var("SONGBIRD_RETRY_BACKOFF_MS")
+        .ok()
+        .and_then(|t| t.parse().ok())
+        .unwrap_or(1000);
     Duration::from_millis(ms)
 }
 
@@ -188,7 +200,7 @@ pub fn retry_backoff_from_map(env: &HashMap<String, String>) -> Duration {
 #[must_use]
 pub fn operation_timeout(operation_name: &str, default: Duration) -> Duration {
     let env_var = format!("SONGBIRD_{}_TIMEOUT_MS", operation_name.to_uppercase());
-    let ms = env::var(env_var)
+    let ms = songbird_process_env::var(env_var)
         .ok()
         .and_then(|t| t.parse().ok())
         .unwrap_or_else(|| u64::try_from(default.as_millis()).unwrap_or(u64::MAX));

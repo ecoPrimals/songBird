@@ -295,7 +295,7 @@ fn circuit_breaker_error_display_and_debug() {
     let open = CircuitBreakerError::Open;
     assert!(open.to_string().contains("open") || open.to_string().contains("Open"));
     let op = CircuitBreakerError::OperationFailed("x".into());
-    assert!(format!("{op}").contains("x"));
+    assert!(format!("{op}").contains('x'));
     let to = CircuitBreakerError::Timeout(Duration::from_secs(1));
     assert!(format!("{to}").contains("1s") || format!("{to}").contains("sec"));
 }

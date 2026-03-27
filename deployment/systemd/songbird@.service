@@ -17,7 +17,7 @@
 #   - Log identifier: songbird@%i
 
 [Unit]
-Description=Songbird Network Gaming Bridge (Family: %i)
+Description=Songbird Network Orchestrator (Family: %i)
 Documentation=https://github.com/ecoPrimals/songbird
 After=network-online.target
 Wants=network-online.target

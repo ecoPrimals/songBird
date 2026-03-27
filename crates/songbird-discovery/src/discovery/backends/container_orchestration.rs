@@ -326,33 +326,36 @@ impl UniversalContainerOrchestration {
         use songbird_config::canonical::constants;
 
         // Get configurable defaults
-        let k8s_protocol = std::env::var("K8S_PROTOCOL").unwrap_or_else(|_| "https".to_string());
+        let k8s_protocol =
+            songbird_process_env::var("K8S_PROTOCOL").unwrap_or_else(|_| "https".to_string());
         let k8s_default_port =
-            std::env::var("K8S_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(443); // Standard HTTPS port for Kubernetes
-        let k8s_api_port =
-            std::env::var("K8S_API_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(6443); // Standard Kubernetes API port
+            songbird_process_env::var("K8S_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(443); // Standard HTTPS port for Kubernetes
+        let k8s_api_port = songbird_process_env::var("K8S_API_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(6443); // Standard Kubernetes API port
 
         let potential_endpoints = vec![
-            std::env::var("KUBERNETES_SERVICE_HOST")
+            songbird_process_env::var("KUBERNETES_SERVICE_HOST")
                 .ok()
                 .map(|host| {
-                    let port = std::env::var("KUBERNETES_SERVICE_PORT")
+                    let port = songbird_process_env::var("KUBERNETES_SERVICE_PORT")
                         .unwrap_or_else(|_| k8s_default_port.to_string());
                     format!("{k8s_protocol}://{host}:{port}")
                 })
                 .unwrap_or_default(),
-            std::env::var("KUBECONFIG").unwrap_or_default(),
-            std::env::var("K8S_CLUSTER_ENDPOINT").unwrap_or_else(|_| {
+            songbird_process_env::var("KUBECONFIG").unwrap_or_default(),
+            songbird_process_env::var("K8S_CLUSTER_ENDPOINT").unwrap_or_else(|_| {
                 format!("{k8s_protocol}://kubernetes.default.svc.cluster.local")
             }),
-            std::env::var("K8S_LOCAL_ENDPOINT").unwrap_or_else(|_| {
+            songbird_process_env::var("K8S_LOCAL_ENDPOINT").unwrap_or_else(|_| {
                 format!("{k8s_protocol}://{}:{k8s_api_port}", constants::network::default_host())
             }),
         ];
 
         for endpoint in potential_endpoints {
             if !endpoint.is_empty() && self.test_kubernetes_endpoint(&endpoint).await {
-                let namespace = std::env::var("KUBERNETES_NAMESPACE").ok();
+                let namespace = songbird_process_env::var("KUBERNETES_NAMESPACE").ok();
                 debug!("Detected Kubernetes API: {} (namespace: {:?})", endpoint, namespace);
 
                 self.orchestration_methods.push(OrchestrationMethod::KubernetesApi {
@@ -362,13 +365,13 @@ impl UniversalContainerOrchestration {
                 self.orchestration_endpoints.push(endpoint.clone());
 
                 // Get API version from environment or default
-                let k8s_api_version =
-                    std::env::var("K8S_API_VERSION").unwrap_or_else(|_| "v1".to_string());
-                let k8s_timeout_secs = std::env::var("K8S_TIMEOUT_SECS")
+                let k8s_api_version = songbird_process_env::var("K8S_API_VERSION")
+                    .unwrap_or_else(|_| "v1".to_string());
+                let k8s_timeout_secs = songbird_process_env::var("K8S_TIMEOUT_SECS")
                     .ok()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(10);
-                let k8s_verify_tls = std::env::var("K8S_VERIFY_TLS")
+                let k8s_verify_tls = songbird_process_env::var("K8S_VERIFY_TLS")
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(true);
@@ -382,12 +385,13 @@ impl UniversalContainerOrchestration {
                         verify_tls: k8s_verify_tls,
                     }),
                     auth_method: Some(AuthenticationMethod::ServiceAccount {
-                        token_path: std::env::var("KUBECONFIG")
-                            .or_else(|_| std::env::var("K8S_TOKEN_PATH"))
+                        token_path: songbird_process_env::var("KUBECONFIG")
+                            .or_else(|_| songbird_process_env::var("K8S_TOKEN_PATH"))
                             .unwrap_or_else(|_| {
                                 format!(
                                     "{}/.kube/config",
-                                    std::env::var("HOME").unwrap_or_else(|_| "/root".to_string())
+                                    songbird_process_env::var("HOME")
+                                        .unwrap_or_else(|_| "/root".to_string())
                                 )
                             }),
                     }),
@@ -430,7 +434,7 @@ impl UniversalContainerOrchestration {
     /// Detect Docker-compatible APIs
     async fn detect_docker_apis(&mut self) {
         let potential_endpoints = vec![
-            std::env::var("DOCKER_HOST").unwrap_or_default(),
+            songbird_process_env::var("DOCKER_HOST").unwrap_or_default(),
             "unix:///var/run/docker.sock".to_string(),
             "tcp://songbird_config::canonical::constants::network::DEFAULT_HOST:2376".to_string(), // Docker daemon default
         ];
@@ -466,7 +470,7 @@ impl UniversalContainerOrchestration {
         // Check for Docker socket or environment indicators
         std::path::Path::new("/var/run/docker.sock").exists()
             || std::path::Path::new("/.dockerenv").exists()
-            || std::env::var("DOCKER_HOST").is_ok()
+            || songbird_process_env::var("DOCKER_HOST").is_ok()
     }
 
     /// Detect container environment
@@ -479,7 +483,7 @@ impl UniversalContainerOrchestration {
         ];
 
         for (env_var, runtime) in container_indicators {
-            if std::env::var(env_var).is_ok() {
+            if songbird_process_env::var(env_var).is_ok() {
                 debug!("Detected container environment: {} ({})", runtime, env_var);
                 if self
                     .orchestration_methods

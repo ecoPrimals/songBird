@@ -9,7 +9,6 @@
 )]
 
 use serde::{Deserialize, Serialize};
-use std::env;
 use std::net::SocketAddr;
 
 /// Unified federation configuration
@@ -43,7 +42,7 @@ pub struct UnifiedFederationConfig {
 impl Default for UnifiedFederationConfig {
     fn default() -> Self {
         Self {
-            enabled: env::var("SONGBIRD_FEDERATION_ENABLED").is_ok(),
+            enabled: songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED").is_ok(),
             node: NodeConfig::default(),
             cluster: ClusterConfig::default(),
             cluster_discovery: ClusterDiscoveryConfig::default(),
@@ -78,22 +77,22 @@ pub struct NodeConfig {
 
 impl Default for NodeConfig {
     fn default() -> Self {
-        let default_port =
-            env::var("SONGBIRD_FEDERATION_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(7000);
+        use songbird_types::constants::DEFAULT_FEDERATION_BIND_PORT;
+
+        let default_port = songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(DEFAULT_FEDERATION_BIND_PORT);
 
         Self {
-            node_id: env::var("SONGBIRD_NODE_ID")
+            node_id: songbird_process_env::var("SONGBIRD_NODE_ID")
                 .unwrap_or_else(|_| format!("node_{}", std::process::id())),
-            name: env::var("SONGBIRD_NODE_NAME").unwrap_or_else(|_| "songbird-node".to_string()),
+            name: songbird_process_env::var("SONGBIRD_NODE_NAME")
+                .unwrap_or_else(|_| "songbird-node".to_string()),
             node_type: NodeType::Standard,
-            listen_addresses: vec![
-                format!("0.0.0.0:{default_port}")
-                    .parse()
-                    .or_else(|_| "0.0.0.0:7000".parse())
-                    .unwrap_or_else(|_| std::net::SocketAddr::from(([0, 0, 0, 0], 7000))),
-            ],
+            listen_addresses: vec![std::net::SocketAddr::from(([0, 0, 0, 0], default_port))],
             public_addresses: Vec::new(),
-            location: env::var("SONGBIRD_NODE_LOCATION").ok(),
+            location: songbird_process_env::var("SONGBIRD_NODE_LOCATION").ok(),
         }
     }
 }
@@ -133,18 +132,18 @@ pub struct ClusterConfig {
 impl Default for ClusterConfig {
     fn default() -> Self {
         Self {
-            cluster_id: env::var("SONGBIRD_CLUSTER_ID")
+            cluster_id: songbird_process_env::var("SONGBIRD_CLUSTER_ID")
                 .unwrap_or_else(|_| format!("cluster_{}", std::process::id())),
-            cluster_name: env::var("SONGBIRD_CLUSTER_NAME").ok(),
-            cluster_endpoints: env::var("SONGBIRD_CLUSTER_ENDPOINTS")
+            cluster_name: songbird_process_env::var("SONGBIRD_CLUSTER_NAME").ok(),
+            cluster_endpoints: songbird_process_env::var("SONGBIRD_CLUSTER_ENDPOINTS")
                 .ok()
                 .map(|endpoints| endpoints.split(',').map(|s| s.trim().to_string()).collect())
                 .unwrap_or_default(),
-            max_retries: env::var("SONGBIRD_FEDERATION_MAX_RETRIES")
+            max_retries: songbird_process_env::var("SONGBIRD_FEDERATION_MAX_RETRIES")
                 .ok()
                 .and_then(|r| r.parse().ok())
                 .unwrap_or(3),
-            connection_timeout: env::var("SONGBIRD_FEDERATION_TIMEOUT")
+            connection_timeout: songbird_process_env::var("SONGBIRD_FEDERATION_TIMEOUT")
                 .ok()
                 .and_then(|t| t.parse().ok())
                 .unwrap_or(30),
@@ -168,15 +167,15 @@ pub struct FederationNetworkConfig {
 impl Default for FederationNetworkConfig {
     fn default() -> Self {
         Self {
-            discovery_port: env::var("SONGBIRD_DISCOVERY_PORT")
+            discovery_port: songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(7000),
-            port: env::var("SONGBIRD_FEDERATION_PORT")
+            port: songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(7001),
-            bind_address: env::var("SONGBIRD_FEDERATION_BIND")
+            bind_address: songbird_process_env::var("SONGBIRD_FEDERATION_BIND")
                 .unwrap_or_else(|_| "0.0.0.0".to_string()),
         }
     }
@@ -201,18 +200,18 @@ pub struct ClusterDiscoveryConfig {
 impl Default for ClusterDiscoveryConfig {
     fn default() -> Self {
         Self {
-            auto_discovery: env::var("SONGBIRD_AUTO_DISCOVERY")
+            auto_discovery: songbird_process_env::var("SONGBIRD_AUTO_DISCOVERY")
                 .map(|v| v.to_lowercase() == "true")
                 .unwrap_or(true),
-            discovery_interval_secs: env::var("SONGBIRD_DISCOVERY_INTERVAL")
+            discovery_interval_secs: songbird_process_env::var("SONGBIRD_DISCOVERY_INTERVAL")
                 .ok()
                 .and_then(|i| i.parse().ok())
                 .unwrap_or(30),
-            heartbeat_interval_secs: env::var("SONGBIRD_HEARTBEAT_INTERVAL")
+            heartbeat_interval_secs: songbird_process_env::var("SONGBIRD_HEARTBEAT_INTERVAL")
                 .ok()
                 .and_then(|i| i.parse().ok())
                 .unwrap_or(10),
-            max_cluster_size: env::var("SONGBIRD_MAX_CLUSTER_SIZE")
+            max_cluster_size: songbird_process_env::var("SONGBIRD_MAX_CLUSTER_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(100),
@@ -249,7 +248,7 @@ pub struct ReplicationConfig {
 impl Default for ReplicationConfig {
     fn default() -> Self {
         Self {
-            enabled: env::var("SONGBIRD_REPLICATION_ENABLED").is_ok(),
+            enabled: songbird_process_env::var("SONGBIRD_REPLICATION_ENABLED").is_ok(),
             replication_factor: 3,
             consistency_level: "eventual".to_string(),
         }

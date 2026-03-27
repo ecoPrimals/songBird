@@ -117,7 +117,7 @@ impl DiscoveryStrategy for EnvironmentStrategy {
     }
 
     async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
-        Self::discover_with(capability, |k| std::env::var(k)).await
+        Self::discover_with(capability, |k| songbird_process_env::var(k)).await
     }
 }
 
@@ -139,7 +139,7 @@ impl FilesystemStrategy {
         let mut search_paths = vec![PathBuf::from("/tmp")];
 
         // Add user runtime directory if available
-        if let Ok(uid) = std::env::var("UID") {
+        if let Ok(uid) = songbird_process_env::var("UID") {
             search_paths.push(PathBuf::from(format!("/run/user/{uid}")));
         }
 

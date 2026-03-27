@@ -48,7 +48,6 @@ dirs = "5.0"
 whoami = "1.4"
 hostname = "0.4"
 rand = "0.8"
-num_cpus = "1.16"
 term_size = "0.3"
 # libc removed - not used, evolved to pure Rust alternatives
 tokio = { workspace = true }

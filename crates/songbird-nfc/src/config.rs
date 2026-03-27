@@ -93,13 +93,13 @@ impl NfcConfig {
             "SONGBIRD_SECURITY_PROVIDER",
             "BEARDOG_SOCKET", // backward compatibility
         ] {
-            if let Ok(socket) = std::env::var(env_var) {
+            if let Ok(socket) = songbird_process_env::var(env_var) {
                 return PathBuf::from(socket);
             }
         }
 
         // 2. XDG runtime directory (capability names first, then provider hints)
-        if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
+        if let Ok(xdg_runtime) = songbird_process_env::var("XDG_RUNTIME_DIR") {
             let biomeos = PathBuf::from(&xdg_runtime).join("biomeos");
 
             // Capability-named sockets only — no primal identities

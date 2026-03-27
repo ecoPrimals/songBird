@@ -60,7 +60,7 @@ pub async fn discover_from_containers() -> Result<Vec<DiscoveredPrimal>, Discove
 fn is_kubernetes_environment() -> bool {
     // Check for Kubernetes service account
     std::path::Path::new("/var/run/secrets/kubernetes.io/serviceaccount/token").exists()
-        || std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
+        || songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok()
 }
 
 /// Discover services from Kubernetes
@@ -86,8 +86,8 @@ pub async fn discover_kubernetes_services() -> Result<Vec<DiscoveredPrimal>, Dis
         })?;
 
         // Get namespace from environment or default
-        let namespace =
-            std::env::var("KUBERNETES_NAMESPACE").unwrap_or_else(|_| "default".to_string());
+        let namespace = songbird_process_env::var("KUBERNETES_NAMESPACE")
+            .unwrap_or_else(|_| "default".to_string());
 
         let api: Api<Service> = Api::namespaced(client, &namespace);
 

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(missing_docs)]
-#![allow(clippy::too_many_lines)]
-// `as_wire_str` / `from_wire_str` are mechanical tables
-// Exhaustive wire-method tables: variant names mirror `domain.verb` strings.
+#![allow(missing_docs, reason = "variant names mirror `domain.verb` wire strings")]
+#![allow(
+    clippy::too_many_lines,
+    reason = "`as_wire_str` / `from_wire_str` are exhaustive mechanical dispatch tables"
+)]
 
 //! Typed JSON-RPC 2.0 method names (`domain.verb`) for Songbird dispatch.
 //!
@@ -621,6 +622,8 @@ impl<'de> Deserialize<'de> for JsonRpcMethod {
 
 #[cfg(test)]
 mod json_rpc_method_tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]

@@ -130,7 +130,7 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     }
 
     // 1. Try modern COMPUTE_ENDPOINT from environment
-    if let Ok(endpoint) = std::env::var("COMPUTE_ENDPOINT") {
+    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_ENDPOINT") {
         debug!("Using COMPUTE_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
@@ -142,7 +142,7 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     }
 
     // 3. Try legacy TOADSTOOL_ENDPOINT from environment (backwards compatibility)
-    if let Ok(endpoint) = std::env::var("TOADSTOOL_ENDPOINT") {
+    if let Ok(endpoint) = songbird_process_env::var("TOADSTOOL_ENDPOINT") {
         warn!("Using deprecated TOADSTOOL_ENDPOINT - migrate to COMPUTE_ENDPOINT");
         return Ok(endpoint);
     }
@@ -181,7 +181,7 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
 /// - No `STORAGE_ENDPOINT` or `NESTGATE_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a storage provider
 pub async fn get_storage_endpoint() -> SongbirdResult<String> {
-    get_storage_endpoint_with(|k| std::env::var(k)).await
+    get_storage_endpoint_with(|k| songbird_process_env::var(k)).await
 }
 
 /// Same as [`get_storage_endpoint`] with an injectable env reader.
@@ -234,7 +234,7 @@ where
 /// - No `SECURITY_ENDPOINT` or `BEARDOG_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a security provider
 pub async fn get_security_endpoint() -> SongbirdResult<String> {
-    get_security_endpoint_with(|k| std::env::var(k)).await
+    get_security_endpoint_with(|k| songbird_process_env::var(k)).await
 }
 
 /// Same as [`get_security_endpoint`] with an injectable env reader.
@@ -287,7 +287,7 @@ where
 /// - No `AI_ENDPOINT` or `SQUIRREL_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find an AI provider
 pub async fn get_ai_endpoint() -> SongbirdResult<String> {
-    get_ai_endpoint_with(|k| std::env::var(k)).await
+    get_ai_endpoint_with(|k| songbird_process_env::var(k)).await
 }
 
 /// Same as [`get_ai_endpoint`] with an injectable env reader.
@@ -350,7 +350,7 @@ where
 /// - No `{CAPABILITY}_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a provider with the requested capability
 pub async fn get_endpoint_by_capability(capability: &str) -> SongbirdResult<String> {
-    get_endpoint_by_capability_with(capability, |key| std::env::var(key)).await
+    get_endpoint_by_capability_with(capability, |key| songbird_process_env::var(key)).await
 }
 
 /// Get endpoint by capability with injectable env reader (concurrent-safe)
@@ -419,7 +419,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_endpoint_legacy_fallback() {
         // Skip if another test leaked COMPUTE_ENDPOINT into the process env
-        if std::env::var("COMPUTE_ENDPOINT").is_ok() {
+        if songbird_process_env::var("COMPUTE_ENDPOINT").is_ok() {
             return;
         }
 

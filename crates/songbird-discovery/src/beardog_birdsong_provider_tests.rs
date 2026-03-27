@@ -117,12 +117,11 @@ fn test_base64_serde_roundtrip() {
 async fn test_health_check_unavailable() {
     let invalid_socket = "/tmp/nonexistent_beardog_test.sock";
     let _ = std::fs::remove_file(invalid_socket);
-    match BearDogBirdSongProvider::new(invalid_socket, Some("test-family".to_string())).await {
-        Ok(provider) => {
-            let is_healthy = provider.check_health().await;
-            assert!(!is_healthy, "Health check should fail for invalid socket");
-        }
-        Err(_) => {}
+    if let Ok(provider) =
+        BearDogBirdSongProvider::new(invalid_socket, Some("test-family".to_string())).await
+    {
+        let is_healthy = provider.check_health().await;
+        assert!(!is_healthy, "Health check should fail for invalid socket");
     }
 }
 

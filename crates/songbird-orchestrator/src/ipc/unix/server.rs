@@ -462,13 +462,13 @@ async fn handle_request(
     }
 }
 
-/// Send a JSON-RPC response to the client
+/// Send a JSON-RPC response to the client (zero intermediate String allocation).
 async fn send_response(
     writer: &mut tokio::net::unix::OwnedWriteHalf,
     response: &JsonRpcResponse,
 ) -> Result<()> {
-    let json = serde_json::to_string(response)?;
-    writer.write_all(json.as_bytes()).await?;
+    let bytes = serde_json::to_vec(response)?;
+    writer.write_all(&bytes).await?;
     writer.write_all(b"\n").await?;
     writer.flush().await?;
     Ok(())

@@ -43,11 +43,11 @@ async fn create_default_config(target_dir: &str) -> Result<()> {
     std::fs::create_dir_all(&config_dir)?;
 
     // Get configurable defaults for config template
-    let bind_port = std::env::var("SONGBIRD_PORT")
+    let bind_port = songbird_process_env::var("SONGBIRD_PORT")
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or_else(|| songbird_config::defaults::ports::orchestrator_port());
-    let discovery_port = std::env::var("SONGBIRD_DISCOVERY_PORT")
+    let discovery_port = songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or_else(|| songbird_config::defaults::ports::discovery_port());

@@ -30,7 +30,7 @@ use std::time::Duration;
 
 /// Process environment lookup (function pointer satisfies HRTB for injectable env readers).
 pub(crate) fn read_process_env(key: &str) -> Result<String, std::env::VarError> {
-    std::env::var(key)
+    songbird_process_env::var(key)
 }
 
 pub(crate) fn env_parse_with<T: std::str::FromStr>(

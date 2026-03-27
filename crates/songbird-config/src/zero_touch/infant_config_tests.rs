@@ -132,8 +132,7 @@ fn optional_capabilities_use_default_quality_and_local_fallback() {
 fn create_bootstrap_config_respects_infant_and_fail_flags() {
     let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
         "SERVICE_PORT" => Ok("8080".into()),
-        "ENABLE_INFANT_DISCOVERY" => Ok("false".into()),
-        "FAIL_ON_MISSING_CAPABILITIES" => Ok("false".into()),
+        "ENABLE_INFANT_DISCOVERY" | "FAIL_ON_MISSING_CAPABILITIES" => Ok("false".into()),
         "MAX_BOOTSTRAP_SECS" => Ok("120".into()),
         _ => Err(std::env::VarError::NotPresent),
     })

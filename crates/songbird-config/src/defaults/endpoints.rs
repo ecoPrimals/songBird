@@ -14,7 +14,6 @@
 //! - `SONGBIRD_CORS_ORIGINS` - Comma-separated CORS allowed origins
 
 use super::{hosts, ports};
-use std::env;
 
 /// Get orchestrator endpoint URL from environment or construct from defaults
 ///
@@ -30,7 +29,7 @@ use std::env;
 /// ```
 #[must_use]
 pub fn orchestrator_endpoint() -> String {
-    env::var("SONGBIRD_ORCHESTRATOR_URL").unwrap_or_else(|_| {
+    songbird_process_env::var("SONGBIRD_ORCHESTRATOR_URL").unwrap_or_else(|_| {
         format!("http://{}:{}", hosts::orchestrator_host(), ports::orchestrator_port())
     })
 }
@@ -41,7 +40,7 @@ pub fn orchestrator_endpoint() -> String {
 /// `SONGBIRD_DISCOVERY_URL` (default: constructed from host and port)
 #[must_use]
 pub fn discovery_endpoint() -> String {
-    env::var("SONGBIRD_DISCOVERY_URL").unwrap_or_else(|_| {
+    songbird_process_env::var("SONGBIRD_DISCOVERY_URL").unwrap_or_else(|_| {
         format!("http://{}:{}", hosts::discovery_host(), ports::discovery_port())
     })
 }
@@ -52,7 +51,7 @@ pub fn discovery_endpoint() -> String {
 /// `SONGBIRD_DASHBOARD_URL` (default: constructed from host and port)
 #[must_use]
 pub fn dashboard_url() -> String {
-    env::var("SONGBIRD_DASHBOARD_URL")
+    songbird_process_env::var("SONGBIRD_DASHBOARD_URL")
         .unwrap_or_else(|_| format!("http://{}:{}", hosts::default_host(), ports::dashboard_port()))
 }
 
@@ -62,7 +61,7 @@ pub fn dashboard_url() -> String {
 /// `SONGBIRD_METRICS_URL` (default: constructed from host and port)
 #[must_use]
 pub fn metrics_url() -> String {
-    env::var("SONGBIRD_METRICS_URL")
+    songbird_process_env::var("SONGBIRD_METRICS_URL")
         .unwrap_or_else(|_| format!("http://{}:{}", hosts::default_host(), ports::metrics_port()))
 }
 
@@ -72,7 +71,7 @@ pub fn metrics_url() -> String {
 /// `SONGBIRD_WEBSOCKET_URL` (default: constructed from host and port)
 #[must_use]
 pub fn websocket_url() -> String {
-    env::var("SONGBIRD_WEBSOCKET_URL")
+    songbird_process_env::var("SONGBIRD_WEBSOCKET_URL")
         .unwrap_or_else(|_| format!("ws://{}:{}", hosts::default_host(), ports::websocket_port()))
 }
 
@@ -91,7 +90,7 @@ pub fn websocket_url() -> String {
 /// ```
 #[must_use]
 pub fn cors_origins() -> Vec<String> {
-    env::var("SONGBIRD_CORS_ORIGINS").ok().map_or_else(
+    songbird_process_env::var("SONGBIRD_CORS_ORIGINS").ok().map_or_else(
         // Test uses localhost - acceptable for unit tests
         || vec![format!("http://localhost:{}", ports::dashboard_port())],
         |s| s.split(',').map(|o| o.trim().to_string()).collect(),
@@ -112,7 +111,7 @@ pub fn cors_origins() -> Vec<String> {
 #[must_use]
 pub fn service_endpoint(service_name: &str) -> String {
     let env_var = format!("SONGBIRD_{}_URL", service_name.to_uppercase());
-    env::var(env_var).unwrap_or_else(|_| {
+    songbird_process_env::var(env_var).unwrap_or_else(|_| {
         let host = hosts::service_host(service_name);
         let port = ports::service_port(service_name, 8080);
         format!("http://{host}:{port}")

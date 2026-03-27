@@ -140,10 +140,12 @@ impl Default for HealthCheckConfig {
     fn default() -> Self {
         use songbird_config::canonical::constants;
 
-        let health_host = std::env::var("HEALTH_CHECK_HOST")
+        let health_host = songbird_process_env::var("HEALTH_CHECK_HOST")
             .unwrap_or_else(|_| constants::network::default_host());
-        let health_port =
-            std::env::var("HEALTH_CHECK_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+        let health_port = songbird_process_env::var("HEALTH_CHECK_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
 
         Self {
             check_type: HealthCheckType::HttpEndpoint {

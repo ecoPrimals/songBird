@@ -64,7 +64,7 @@ mod path_config_tests {
         let _guard = ENV_LOCK.lock().unwrap();
         let result = PathConfig::new();
         // Should succeed on most systems (needs HOME set)
-        if std::env::var("HOME").is_ok() {
+        if songbird_process_env::var("HOME").is_ok() {
             assert!(result.is_ok(), "PathConfig::new() should succeed when HOME is set");
             let config = result.unwrap();
             assert!(!config.data_dir.as_os_str().is_empty());

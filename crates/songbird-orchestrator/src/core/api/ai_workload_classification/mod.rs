@@ -15,8 +15,9 @@ use tracing::{debug, warn};
 
 fn default_ai_endpoint_url() -> &'static str {
     static URL: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("SONGBIRD_AI_ENDPOINT")
-            .unwrap_or_else(|_| "http://localhost:8002".to_string())
+        use songbird_types::constants::{DEFAULT_HEALTH_PORT, LOCALHOST};
+        songbird_process_env::var("SONGBIRD_AI_ENDPOINT")
+            .unwrap_or_else(|_| format!("http://{LOCALHOST}:{DEFAULT_HEALTH_PORT}"))
     });
     URL.as_str()
 }

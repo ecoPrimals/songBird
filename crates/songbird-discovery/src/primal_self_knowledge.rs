@@ -57,7 +57,7 @@ impl PrimalSelfKnowledge {
     ///
     /// No assumptions, pure self-discovery.
     pub fn discover_self() -> Result<Self> {
-        Self::discover_self_with(|k| std::env::var(k))
+        Self::discover_self_with(|k| songbird_process_env::var(k))
     }
 
     /// Same as [`discover_self`](Self::discover_self) with an injectable env reader (tests).
@@ -91,7 +91,7 @@ impl PrimalSelfKnowledge {
     /// Introspect own name from environment
     #[must_use]
     pub fn introspect_name() -> String {
-        Self::introspect_name_with(|k| std::env::var(k))
+        Self::introspect_name_with(|k| songbird_process_env::var(k))
     }
 
     fn introspect_name_with(env: impl Fn(&str) -> std::result::Result<String, VarError>) -> String {
@@ -117,7 +117,7 @@ impl PrimalSelfKnowledge {
     /// No hardcoding - discovers what this binary can do.
     #[must_use]
     pub fn introspect_capabilities() -> Vec<String> {
-        Self::introspect_capabilities_with(|k| std::env::var(k))
+        Self::introspect_capabilities_with(|k| songbird_process_env::var(k))
     }
 
     fn introspect_capabilities_with(
@@ -338,7 +338,7 @@ impl DiscoveryMechanism for EnvironmentDiscovery {
     }
 
     async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
-        Self::discover_with(capability, |k| std::env::var(k)).await
+        Self::discover_with(capability, |k| songbird_process_env::var(k)).await
     }
 }
 

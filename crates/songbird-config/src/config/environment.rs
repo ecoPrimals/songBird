@@ -47,7 +47,6 @@ use crate::canonical::constants::{
     get_worker_threads,
 };
 use serde::{Deserialize, Serialize};
-use std::env;
 use std::time::Duration;
 
 // ✅ CONSOLIDATED: Re-export from canonical location
@@ -118,49 +117,49 @@ impl Default for ServiceEndpoints {
             // ZERO HARDCODING: Use environment variables for explicit configuration
             // Discovery happens at runtime via RuntimeDiscoveryEngine
             // No hardcoded fallback endpoints - fail fast if not configured
-            beardog_endpoint: env::var("SECURITY_PROVIDER_ENDPOINT")
-                .or_else(|_| env::var("BEARDOG_ENDPOINT"))
+            beardog_endpoint: songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("BEARDOG_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
                         "BEARDOG_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"security\") for dynamic discovery"
                     );
                     String::new() // Empty string signals discovery needed
                 }),
-            nestgate_endpoint: env::var("STORAGE_PROVIDER_ENDPOINT")
-                .or_else(|_| env::var("NESTGATE_ENDPOINT"))
+            nestgate_endpoint: songbird_process_env::var("STORAGE_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("NESTGATE_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
                         "NESTGATE_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"storage\") for dynamic discovery"
                     );
                     String::new()
                 }),
-            toadstool_endpoint: env::var("COMPUTE_PROVIDER_ENDPOINT")
-                .or_else(|_| env::var("TOADSTOOL_ENDPOINT"))
+            toadstool_endpoint: songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("TOADSTOOL_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
                         "TOADSTOOL_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"compute\") for dynamic discovery"
                     );
                     String::new()
                 }),
-            squirrel_endpoint: env::var("AI_PROVIDER_ENDPOINT")
-                .or_else(|_| env::var("SQUIRREL_ENDPOINT"))
+            squirrel_endpoint: songbird_process_env::var("AI_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("SQUIRREL_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
                         "SQUIRREL_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"ai\") for dynamic discovery"
                     );
                     String::new()
                 }),
-            discovery_endpoint: env::var("DISCOVERY_ENDPOINT")
+            discovery_endpoint: songbird_process_env::var("DISCOVERY_ENDPOINT")
                 .unwrap_or_else(|_| {
                     tracing::debug!("DISCOVERY_ENDPOINT not set, will use mDNS/registry discovery");
                     String::new()
                 }),
-            health_endpoint: env::var("HEALTH_ENDPOINT")
+            health_endpoint: songbird_process_env::var("HEALTH_ENDPOINT")
                 .unwrap_or_else(|_| {
                     tracing::debug!("HEALTH_ENDPOINT not set");
                     String::new()
                 }),
-            metrics_endpoint: env::var("METRICS_ENDPOINT")
+            metrics_endpoint: songbird_process_env::var("METRICS_ENDPOINT")
                 .unwrap_or_else(|_| {
                     tracing::debug!("METRICS_ENDPOINT not set");
                     String::new()
@@ -259,10 +258,10 @@ pub struct EnvironmentConfig {
 /// Get current environment from multiple sources
 #[must_use]
 pub fn get_environment() -> String {
-    env::var("SONGBIRD_ENV")
-        .or_else(|_| env::var("NODE_ENV"))
-        .or_else(|_| env::var("RAILS_ENV"))
-        .or_else(|_| env::var("ENVIRONMENT"))
+    songbird_process_env::var("SONGBIRD_ENV")
+        .or_else(|_| songbird_process_env::var("NODE_ENV"))
+        .or_else(|_| songbird_process_env::var("RAILS_ENV"))
+        .or_else(|_| songbird_process_env::var("ENVIRONMENT"))
         .unwrap_or_else(|_| {
             // Detect environment from system characteristics
             detect_environment_from_system()
@@ -272,26 +271,26 @@ pub fn get_environment() -> String {
 /// Detect environment from system characteristics and context
 fn detect_environment_from_system() -> String {
     // Check for container/orchestration environments
-    if env::var("KUBERNETES_SERVICE_HOST").is_ok() {
+    if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
         return "production".to_string();
     }
 
-    if env::var("DOCKER_CONTAINER").is_ok() || env::var("CONTAINER").is_ok() {
+    if songbird_process_env::var("DOCKER_CONTAINER").is_ok() || songbird_process_env::var("CONTAINER").is_ok() {
         return "staging".to_string();
     }
 
     // Check for CI/CD environments
-    if env::var("CI").is_ok()
-        || env::var("GITHUB_ACTIONS").is_ok()
-        || env::var("GITLAB_CI").is_ok()
-        || env::var("JENKINS_URL").is_ok()
+    if songbird_process_env::var("CI").is_ok()
+        || songbird_process_env::var("GITHUB_ACTIONS").is_ok()
+        || songbird_process_env::var("GITLAB_CI").is_ok()
+        || songbird_process_env::var("JENKINS_URL").is_ok()
     {
         return "testing".to_string();
     }
 
     // Check for development indicators
-    if env::var("HOME").map(|h| h.contains("dev") || h.contains("developer")).unwrap_or(false)
-        || env::var("USER").map(|u| u == "root").unwrap_or(false)
+    if songbird_process_env::var("HOME").map(|h| h.contains("dev") || h.contains("developer")).unwrap_or(false)
+        || songbird_process_env::var("USER").map(|u| u == "root").unwrap_or(false)
     {
         return "development".to_string();
     }
@@ -309,7 +308,7 @@ fn detect_environment_from_system() -> String {
 /// Determine if TLS should be required based on environment and security context
 #[must_use]
 pub fn should_require_tls() -> bool {
-    env::var("SONGBIRD_REQUIRE_TLS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
+    songbird_process_env::var("SONGBIRD_REQUIRE_TLS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         match get_environment().as_str() {
             "production" | "staging" => true, // Always require TLS in production and staging
             "testing" | "development" => false, // Optional in testing and development for flexibility
@@ -330,14 +329,14 @@ fn detect_tls_requirement() -> bool {
     }
 
     // Require TLS if running with elevated privileges
-    if env::var("USER").map(|u| u == "root").unwrap_or(false) || env::var("SUDO_USER").is_ok() {
+    if songbird_process_env::var("USER").map(|u| u == "root").unwrap_or(false) || songbird_process_env::var("SUDO_USER").is_ok() {
         return true;
     }
 
     // Require TLS if external services are configured
-    if env::var("DATABASE_URL").is_ok()
-        || env::var("REDIS_URL").is_ok()
-        || env::var("EXTERNAL_API_KEY").is_ok()
+    if songbird_process_env::var("DATABASE_URL").is_ok()
+        || songbird_process_env::var("REDIS_URL").is_ok()
+        || songbird_process_env::var("EXTERNAL_API_KEY").is_ok()
     {
         return true;
     }
@@ -348,7 +347,7 @@ fn detect_tls_requirement() -> bool {
 /// Get memory limit from system or container constraints
 fn get_memory_limit() -> Option<u64> {
     // Check container memory limits first
-    if let Ok(limit) = env::var("MEMORY_LIMIT") {
+    if let Ok(limit) = songbird_process_env::var("MEMORY_LIMIT") {
         if let Ok(mb) = limit.parse::<u64>() {
             return Some(mb);
         }
@@ -383,7 +382,7 @@ fn get_memory_limit() -> Option<u64> {
 /// Get CPU limit from system or container constraints
 fn get_cpu_limit() -> Option<f64> {
     // Check container CPU limits
-    if let Ok(limit) = env::var("CPU_LIMIT") {
+    if let Ok(limit) = songbird_process_env::var("CPU_LIMIT") {
         if let Ok(cores) = limit.parse::<f64>() {
             return Some(cores);
         }

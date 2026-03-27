@@ -279,8 +279,8 @@ mod family_id_unit {
 
     /// Helper to get `family_id` using same logic as canonical env chain
     fn get_family_id_from_env() -> String {
-        std::env::var("SONGBIRD_FAMILY_ID")
-            .or_else(|_| std::env::var("FAMILY_ID"))
+        songbird_process_env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| songbird_process_env::var("FAMILY_ID"))
             .unwrap_or_else(|_| "default".to_string())
     }
 }
@@ -409,7 +409,7 @@ mod evolution_e2e {
         songbird_process_env::set_var("SONGBIRD_FAMILY_ID", &test_family);
 
         // Verify it's readable
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID")?;
+        let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")?;
         assert_eq!(family_id, test_family);
 
         // Clean up
@@ -549,7 +549,7 @@ mod evolution_chaos {
                 thread::spawn(move || {
                     for j in 0..100 {
                         songbird_process_env::set_var(&var_name, format!("value-{j}"));
-                        let _ = std::env::var(&var_name);
+                        let _ = songbird_process_env::var(&var_name);
                         songbird_process_env::remove_var(&var_name);
                     }
                 })
@@ -646,8 +646,8 @@ mod evolution_fault_injection {
         songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
         songbird_process_env::remove_var("FAMILY_ID");
 
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID")
-            .or_else(|_| std::env::var("FAMILY_ID"))
+        let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| songbird_process_env::var("FAMILY_ID"))
             .unwrap_or_else(|_| "default".to_string());
 
         assert_eq!(family_id, "default", "Should default to 'default'");

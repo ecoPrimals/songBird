@@ -17,7 +17,7 @@ use super::SongbirdOrchestrator;
 static BROADCAST_ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    BROADCAST_ENV_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    BROADCAST_ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn parse(s: &str) -> SocketAddr {
@@ -123,7 +123,7 @@ fn discover_broadcast_config_filters_invalid_entries() {
     let addrs = SongbirdOrchestrator::discover_broadcast_addresses(&[
         "not-valid".to_string(),
         "172.16.0.255:2300".to_string(),
-        "".to_string(),
+        String::new(),
     ]);
     assert!(addrs.iter().any(|a| *a == parse("172.16.0.255:2300")));
     assert!(addrs.iter().any(|a| *a == parse("192.168.1.255:2300")), "fallback merge: {addrs:?}");

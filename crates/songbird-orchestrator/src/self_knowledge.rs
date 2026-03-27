@@ -72,7 +72,7 @@ pub fn discover_node_id() -> Result<Uuid> {
 /// Returns an error if the operation fails.
 pub fn discover_node_name() -> Result<String> {
     // Prefer NODE_ID env var (for multi-instance deployments)
-    if let Ok(node_id) = std::env::var("NODE_ID") {
+    if let Ok(node_id) = songbird_process_env::var("NODE_ID") {
         debug!("Using NODE_ID from environment: {}", node_id);
         return Ok(node_id);
     }
@@ -116,7 +116,7 @@ pub fn discover_capabilities() -> Vec<String> {
 /// This is **self-knowledge** - we only know our own tags, not what they mean!
 #[must_use]
 pub fn discover_identity_tags() -> Vec<String> {
-    discover_identity_tags_with(|key| std::env::var(key).ok())
+    discover_identity_tags_with(|key| songbird_process_env::var(key).ok())
 }
 
 /// Discover identity tags with injectable environment reader (concurrent-safe)

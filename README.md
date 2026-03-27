@@ -11,7 +11,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 
 | Metric | Value |
 |--------|-------|
-| Safe Rust | 100% (`#![forbid(unsafe_code)]` across 29/30 crates; `process-env` isolated with `Mutex` + SAFETY docs) |
+| Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
 | Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); `sysinfo` eliminated (replaced by `sys_metrics` `/proc` reader); all application code is pure Rust |
 | Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
 | Runtime Discovery | All config: env → XDG → smart defaults. `primal_names` constants module; capability-first discovery |
@@ -19,7 +19,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
-| Concurrent Tests | Zero `#[serial_test::serial]`; all tests fully concurrent via injectable `_with` env readers |
+| Concurrent Tests | Injectable `_with` env readers; `#[serial_test::serial]` only for overlay-mutating tests |
 | Tests | 10,687 total, 0 failed, 271 ignored |
 | Line Coverage | ~67% (llvm-cov measured; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
@@ -29,7 +29,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings, ~45s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (max 925 `hosts_evolved.rs`; `core.rs` 816, `infant_config.rs` 697 after test extraction) |
+| Files >1000 lines | 0 (max prod 797 `gateway.rs`; all 6 files 800+ refactored via domain extraction) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` |
 | JSON-RPC Gateway | 50+ semantic methods across 12 domains (health, discovery, stun, relay, federation, tor, etc.) |

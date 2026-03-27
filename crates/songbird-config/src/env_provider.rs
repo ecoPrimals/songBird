@@ -8,7 +8,7 @@
 //!
 //! ## Architecture Pattern
 //!
-//! **Problem**: Direct `std::env::var()` calls couple code to global state
+//! **Problem**: Direct `songbird_process_env::var()` calls couple code to global state
 //! **Solution**: Abstract environment access behind a trait
 //!
 //! ## Design Principles
@@ -50,19 +50,20 @@ pub trait EnvironmentProvider: Send + Sync {
 
 /// Real environment provider - uses actual process environment
 ///
-/// This is the production implementation that reads from `std::env`.
+/// This is the production implementation that reads via [`songbird_process_env::var`]
+/// (overlay first, then the OS environment).
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RealEnvironment;
 
 impl EnvironmentProvider for RealEnvironment {
     #[inline]
     fn get(&self, key: &str) -> Option<String> {
-        std::env::var(key).ok()
+        songbird_process_env::var(key).ok()
     }
 
     #[inline]
     fn contains_key(&self, key: &str) -> bool {
-        std::env::var(key).is_ok()
+        songbird_process_env::var(key).is_ok()
     }
 }
 

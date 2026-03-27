@@ -73,9 +73,10 @@ pub struct AvailableProtocols {
 impl Default for AvailableProtocols {
     fn default() -> Self {
         // ✅ MIGRATED: Use environment-based configuration
-        let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
-        let tarpc_port =
-            std::env::var("SONGBIRD_TARPC_PORT").unwrap_or_else(|_| DEFAULT_TARPC_PORT.to_string());
+        let port =
+            songbird_process_env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
+        let tarpc_port = songbird_process_env::var("SONGBIRD_TARPC_PORT")
+            .unwrap_or_else(|_| DEFAULT_TARPC_PORT.to_string());
         let base_url = format!("http://[::]:{port}");
 
         Self {

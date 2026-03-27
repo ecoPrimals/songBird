@@ -38,8 +38,8 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Coverage | ~67% line coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >1000 LOC | 0 (max 925 `hosts_evolved.rs`) |
-| Unsafe blocks | 2 (justified, in `songbird-process-env` with `#![deny(unsafe_code)]` + `#[expect]`) |
+| Files >1000 LOC | 0 (max prod 797 `gateway.rs`; all 6 files 800+ refactored) |
+| Unsafe blocks | 0 (`songbird-process-env` evolved to BearDog in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | `ring` transitive via `quinn-proto`/`rcgen`; `ring-crypto` feature opt-in for `rustls/ring` |
 | Hardcoded primal names | 0 in production discovery paths (capability-first: `crypto.sock`, not `beardog.sock`) |
 | Production panics/unwrap/todo | 0 |

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+// `cargo_bin!` only applies to binaries in *this* package; the `songbird` executable is built
+// by the workspace root crate. The deprecated `cargo_bin` function resolves the path at runtime.
+
 #![allow(
+    deprecated,
     clippy::ignore_without_reason,
     clippy::unreadable_literal,
     clippy::no_effect_underscore_binding,

@@ -2,7 +2,7 @@
 
 **Date**: March 27, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 27, 2026 (Session 19 — Comprehensive Audit, Flaky Test Fix, File Refactoring, Binary Collision, License Reconciliation)
+**Last Deep Debt Audit**: March 27, 2026 (Session 20 — Zero-Unsafe Overlay + Smart File Refactoring)
 
 ---
 
@@ -17,8 +17,8 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max 925 `hosts_evolved.rs`; production max 878 `paths.rs`; `core.rs` 816, `infant_config.rs` 697 after test extraction) |
-| **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[expect]`) |
+| **Files >1000 lines** | 0 (max prod 797 `gateway.rs`; test max 948 `security_tests.rs`; all 6 files 800+ refactored via domain extraction) |
+| **Unsafe blocks** | **0** — `songbird-process-env` evolved to BearDog overlay pattern; workspace `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
 | **Production `panic!()`** | 0 |
@@ -52,6 +52,75 @@
 | **Build time** | ~45s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~390,564 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 27, 2026 — Coverage Expansion Wave — Session 20, Wave 77)
+
+### Wave 77: Targeted Coverage Expansion
+
+Systematic test expansion across 6 crates, adding **58 new tests** covering previously untested pure functions, DTOs, error paths, and edge cases:
+
+| Crate | File | Before | After | Focus |
+|-------|------|--------|-------|-------|
+| `songbird-process-env` | `lib.rs` | 6 | 22 | `var_os`, `vars` merge/exclude, reset, unicode, edge cases |
+| `songbird-types` | `error_helpers.rs` | 6 | 32 | All `UnwrapElimination` variants, `OptionElimination`, `SafeEnv` bool/port/usize, `SafeParse` edge cases |
+| `songbird-universal-ipc` | `service_types.rs` | 0 | 13 | Full DTO serialization/deserialization, missing field rejection |
+| `songbird-universal-ipc` | `igd_handler.rs` | 1 | 6 | Error paths (no gateway), Default trait, status shape |
+| `songbird-http-client` | `tls/profiler.rs` | 7 | 22 | `should_retry_with_fallback`, `success_rate`, `most_problematic_extensions`, `get_all_profiles`, boundary cases |
+| `songbird-orchestrator` | `service_registry_tests.rs` | 14 | 23 | `cleanup_stale_services`, heartbeat unknown, query capability, port release, config defaults |
+
+Additional fixes:
+- **Removed unused `Deserialize` import** from `service.rs` (stale after DTO extraction to `service_types.rs`)
+- All **clippy pedantic** clean across all 5 modified crates
+- **Zero test failures** across entire test suite
+
+---
+
+## Completed (Mar 27, 2026 — Smart File Refactoring — Session 20, Wave 76)
+
+### Wave 76: Smart Domain-Based File Refactoring
+
+All 6 production files exceeding 800 lines refactored via domain extraction (not mechanical splitting):
+
+| File | Before | After | Extraction |
+|------|--------|-------|------------|
+| `hosts_evolved.rs` | 927 | 304 | `network_detection.rs` (99), `service_locator.rs` (192), tests (228) |
+| `paths.rs` | 878 | 600 | `paths_tests.rs` (281) |
+| `service.rs` (IPC) | 853 | 779 | `service_types.rs` (89) — wire DTOs |
+| `core.rs` (orch.) | 831 | 726 | `connectivity.rs` (107) — verification + auto-remediation |
+| `discoverable_endpoint.rs` | 809 | 492 | `discoverable_endpoint_tests.rs` (314) |
+| `errors.rs` | 777 | 509 | `errors_tests.rs` (251) |
+
+Key domain extractions:
+- **Network detection** — cloud metadata, Linux `/proc/net/route`, hostname DNS resolution → standalone module
+- **ServiceLocator** — capability-based discovery/registration → own module (different domain from self-config)
+- **Connectivity verification** — post-startup HTTPS reachability + auto-remediation → standalone module
+- **Wire DTOs** — JSON-RPC request/response types → `service_types.rs` (stable API surface)
+- All tests extracted via `#[path]` attribute → zero code duplication, zero re-export changes
+
+Backwards compatibility maintained via re-exports (`ServiceLocator` still accessible at old path).
+
+---
+
+## Completed (Mar 27, 2026 — Zero-Unsafe Overlay Migration — Session 20)
+
+### Wave 75: Zero-Unsafe Process-Env Overlay (BearDog Pattern)
+
+**The deep debt: eliminated the last 2 `unsafe` blocks in the codebase.**
+
+| Change | Impact |
+|--------|--------|
+| **songbird-process-env rewrite** | Replaced `unsafe { std::env::set_var }` / `remove_var` with in-memory `HashMap` overlay. Zero `unsafe`. Zero external deps (dropped `parking_lot`). `#![forbid(unsafe_code)]` via workspace lints. |
+| **Added `var()`, `var_os()`, `vars()`** | Overlay-first readers that fall back to OS env. Same `Result<String, VarError>` API as `std::env::var`. |
+| **SafeEnv migrated** | `songbird-types::SafeEnv` now reads via overlay. All ~200+ SafeEnv callers automatically benefit. |
+| **env_config.rs migrated** | All 27 `std::env::var` calls in `songbird-orchestrator::env_config` replaced. |
+| **Codebase-wide migration** | ~350+ `std::env::var` calls across **30+ crates** migrated to `songbird_process_env::var`. Covers: config, discovery, universal-ipc, orchestrator, CLI, crypto, federation, compute-bridge, onion-relay, genesis, registry, TLS, NFC, QUIC, lineage-relay, http-client, universal. |
+| **Test suite migrated** | `ScopedEnv`, `test_utils`, integration tests all updated to overlay-aware reads. All env test assertions use `songbird_process_env::var`. |
+| **Subprocess inheritance** | Documented: overlay values are NOT inherited by child processes. Use `Command::env()` explicitly. Songbird already does this. |
+| **Dependencies** | `parking_lot` removed from `songbird-process-env` (still used by orchestrator/discovery). `songbird-process-env` promoted from dev-dep to regular dep in: types, config, orchestrator, discovery, universal-ipc, crypto-provider, TLS, NFC, http-client, lineage-relay, network-federation, compute-bridge, remote-deploy, onion-relay, execution-agent, genesis, registry, QUIC, universal. |
+
+**Result**: `0 unsafe blocks`, `0 clippy warnings`, `0 test failures`, all 30 crates compile with `forbid(unsafe_code)`.
 
 ---
 

@@ -188,7 +188,7 @@ impl CapabilityResolver {
     ) -> SongbirdResult<CapabilityProvider> {
         match mechanism {
             DiscoveryMechanism::Environment => {
-                self.discover_from_environment_with(request, &|k| std::env::var(k))
+                self.discover_from_environment_with(request, &|k| songbird_process_env::var(k))
             }
             DiscoveryMechanism::ServiceRegistry => self.discover_from_registry(request).await,
             DiscoveryMechanism::MDNS => self.discover_from_mdns(request).await,
@@ -209,7 +209,7 @@ impl CapabilityResolver {
         &self,
         request: &CapabilityRequest,
     ) -> SongbirdResult<CapabilityProvider> {
-        self.discover_from_environment_with(request, &|k| std::env::var(k))
+        self.discover_from_environment_with(request, &|k| songbird_process_env::var(k))
     }
 
     #[allow(

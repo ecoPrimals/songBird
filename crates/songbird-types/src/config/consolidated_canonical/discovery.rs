@@ -9,7 +9,6 @@
 //! Uses idiomatic Rust patterns: enums for state, bitflags for features.
 
 use serde::{Deserialize, Serialize};
-use std::env;
 
 // ============================================================================
 // DISCOVERY CONFIGURATION - Secure Anonymous Discovery
@@ -83,7 +82,7 @@ pub struct CanonicalDiscoveryConfig {
 impl Default for CanonicalDiscoveryConfig {
     fn default() -> Self {
         // Parse discovery mode from environment
-        let mode = env::var("SONGBIRD_DISCOVERY_MODE")
+        let mode = songbird_process_env::var("SONGBIRD_DISCOVERY_MODE")
             .ok()
             .and_then(|v| match v.to_lowercase().as_str() {
                 "disabled" => Some(DiscoveryMode::Disabled),
@@ -96,13 +95,13 @@ impl Default for CanonicalDiscoveryConfig {
 
         Self {
             mode,
-            backend: env::var("SONGBIRD_DISCOVERY_BACKEND")
+            backend: songbird_process_env::var("SONGBIRD_DISCOVERY_BACKEND")
                 .unwrap_or_else(|_| "universal".to_string()),
-            port: env::var("SONGBIRD_DISCOVERY_PORT")
+            port: songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(2300),
-            broadcast_addresses: env::var("SONGBIRD_BROADCAST_ADDRESSES")
+            broadcast_addresses: songbird_process_env::var("SONGBIRD_BROADCAST_ADDRESSES")
                 .ok()
                 .and_then(|s| {
                     let addrs: Vec<String> = s.split(',').map(|s| s.trim().to_string()).collect();
@@ -116,7 +115,7 @@ impl Default for CanonicalDiscoveryConfig {
                     // Use multicast by default (224.0.0.251 is mDNS multicast group)
                     vec!["224.0.0.251:2300".to_string()]
                 }),
-            known_peers: env::var("SONGBIRD_KNOWN_PEERS")
+            known_peers: songbird_process_env::var("SONGBIRD_KNOWN_PEERS")
                 .ok()
                 .and_then(|s| {
                     let addrs: Vec<String> = s.split(',').map(|s| s.trim().to_string()).collect();

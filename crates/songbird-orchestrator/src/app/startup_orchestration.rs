@@ -268,7 +268,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// **Non-blocking**: Failure here does NOT prevent startup
     async fn stage_2b_igd_auto_configure(&self) {
         // Opt-in via environment variable (default: disabled)
-        let enabled = std::env::var("SONGBIRD_IGD_ENABLED")
+        let enabled = songbird_process_env::var("SONGBIRD_IGD_ENABLED")
             .map(|v| igd_enabled_from_env_value(&v))
             .unwrap_or(false);
 
@@ -363,7 +363,8 @@ impl<'a> StartupOrchestrator<'a> {
                     .iter()
                     .map(|s| (*s).to_string())
                     .collect(),
-                cpu_cores: num_cpus::get(),
+                cpu_cores: std::thread::available_parallelism()
+                    .map_or(1, std::num::NonZero::get),
                 memory_gb: songbird_types::sys_metrics::total_memory_gb().max(16),
                 gpu_model: SongbirdOrchestrator::detect_gpu(),
                 storage_gb: SongbirdOrchestrator::detect_storage_capacity(),
@@ -665,7 +666,7 @@ mod tests {
     }
 
     /// Compile-time check: `start` returns a `Send` future (required for Tokio multi-thread).
-    #[expect(dead_code, reason = "compile-time Send bound assertion — never called at runtime")]
+    #[allow(dead_code, reason = "compile-time Send bound assertion — never called at runtime")]
     fn _assert_start_returns_send_future(
         orch: &mut SongbirdOrchestrator,
     ) -> impl std::future::Future<Output = Result<()>> + Send {
@@ -673,7 +674,7 @@ mod tests {
     }
 
     /// Compile-time check: `StartupOrchestrator::new` remains usable from `&mut SongbirdOrchestrator`.
-    #[expect(dead_code, reason = "compile-time API usability assertion — never called at runtime")]
+    #[allow(dead_code, reason = "compile-time API usability assertion — never called at runtime")]
     fn _assert_new_accepts_mutable_orchestrator(orch: &mut SongbirdOrchestrator) {
         let _ = StartupOrchestrator::new(orch);
     }

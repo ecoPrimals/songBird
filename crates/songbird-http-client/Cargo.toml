@@ -12,6 +12,7 @@ categories = ["network-programming", "web-programming::http-client"]
 
 [dependencies]
 # Core songbird types (defaults for socket discovery)
+songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 # HTTP protocol (Pure Rust)
 hyper = { version = "1.0", features = ["client", "http1", "http2"] }

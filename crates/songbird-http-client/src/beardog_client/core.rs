@@ -135,7 +135,8 @@ impl BearDogClient {
     pub fn from_env() -> Self {
         use crate::crypto::socket_discovery;
 
-        let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
+        let mode =
+            songbird_process_env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         if mode.to_lowercase() == "direct" {
             // Direct mode: Discover crypto provider endpoint via capability

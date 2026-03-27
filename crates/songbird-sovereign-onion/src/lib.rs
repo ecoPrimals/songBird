@@ -3,9 +3,11 @@
 
 #![allow(
     clippy::clone_on_ref_ptr,
-    clippy::unwrap_used,
-    clippy::expect_used,
-    reason = "Historical patterns in this crate (locks, tests); inherited workspace pedantic lints."
+    reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
+)]
+#![cfg_attr(
+    test,
+    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
 )]
 //! # Songbird Sovereign Onion
 //!

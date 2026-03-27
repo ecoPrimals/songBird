@@ -33,7 +33,6 @@
 //! MUST serialize. The static mutex ensures mutual exclusion within this binary.
 
 use std::collections::HashMap;
-use std::env;
 use std::sync::{Mutex, MutexGuard};
 
 /// Global lock for env var serialization within this test binary.
@@ -65,10 +64,9 @@ impl ScopedEnv {
     pub fn set(mut self, key: &str, value: &str) -> Self {
         // Save current value for restoration
         if !self.restore.contains_key(key) {
-            self.restore.insert(key.to_string(), env::var(key).ok());
+            self.restore.insert(key.to_string(), songbird_process_env::var(key).ok());
         }
 
-        // Rust 2024: use façade (workspace forbids `unsafe` in tests).
         songbird_process_env::set_var(key, value);
 
         self
@@ -78,9 +76,8 @@ impl ScopedEnv {
     ///
     /// Returns self for method chaining.
     pub fn remove(mut self, key: &str) -> Self {
-        // Save current value for restoration
         if !self.restore.contains_key(key) {
-            self.restore.insert(key.to_string(), env::var(key).ok());
+            self.restore.insert(key.to_string(), songbird_process_env::var(key).ok());
         }
 
         songbird_process_env::remove_var(key);

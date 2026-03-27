@@ -27,7 +27,7 @@ use tracing::{debug, info, warn};
 /// Parsed once per process; empty or whitespace-only env values use the defaults.
 fn stun_server_list() -> Vec<String> {
     static SERVERS: LazyLock<Vec<String>> = LazyLock::new(|| {
-        std::env::var("BIOMEOS_STUN_SERVERS").map_or_else(
+        songbird_process_env::var("BIOMEOS_STUN_SERVERS").map_or_else(
             |_| default_stun_servers_fallback(),
             |servers| {
                 let parsed: Vec<String> = servers

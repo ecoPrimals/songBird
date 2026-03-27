@@ -2,9 +2,11 @@
 
 #![allow(
     clippy::clone_on_ref_ptr,
-    clippy::unwrap_used,
-    clippy::expect_used,
-    reason = "Historical patterns in this crate (singleton init, Arc); inherited workspace pedantic lints."
+    reason = "Arc::clone() is idiomatic for shared ownership in IPC service contexts"
+)]
+#![cfg_attr(
+    test,
+    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
 )]
 #![warn(missing_docs)]
 
@@ -196,6 +198,9 @@ pub mod registry;
 /// Songbird IPC JSON-RPC broker and `IpcServiceHandler` entrypoints.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service;
+/// Wire-protocol DTOs for JSON-RPC requests and responses.
+#[allow(missing_docs, reason = "DTO struct fields are self-documenting via field names")]
+pub mod service_types;
 /// JSON-RPC over universal IPC (Tower Atomic integration).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod tower_atomic;

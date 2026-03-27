@@ -72,15 +72,15 @@ pub async fn get_beardog_crypto_socket_for_family(family_id: &str) -> Result<Str
 /// Quick check without logging — suitable for conditional logic.
 /// Aligns with Neural API env vars and on-disk socket paths (no logging side effects).
 pub async fn is_crypto_available() -> bool {
-    if std::env::var("NEURAL_API_SOCKET").map(|s| !s.is_empty()).unwrap_or(false) {
+    if songbird_process_env::var("NEURAL_API_SOCKET").map(|s| !s.is_empty()).unwrap_or(false) {
         return true;
     }
-    if std::env::var("NEURALS_SOCKET").map(|s| !s.is_empty()).unwrap_or(false) {
+    if songbird_process_env::var("NEURALS_SOCKET").map(|s| !s.is_empty()).unwrap_or(false) {
         return true;
     }
 
-    if let Ok(xdg_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        let family_id = std::env::var("FAMILY_ID").unwrap_or_default();
+    if let Ok(xdg_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+        let family_id = songbird_process_env::var("FAMILY_ID").unwrap_or_default();
         let socket_name = if family_id.is_empty() {
             "neural-api.sock".to_string()
         } else {
@@ -97,7 +97,8 @@ pub async fn is_crypto_available() -> bool {
         return true;
     }
 
-    let family_id = std::env::var("FAMILY_ID").unwrap_or_else(|_| "default".to_string());
+    let family_id =
+        songbird_process_env::var("FAMILY_ID").unwrap_or_else(|_| "default".to_string());
     let legacy = format!("{NEURAL_API_SOCKET_LEGACY_PATTERN}{family_id}.sock");
     std::path::Path::new(&legacy).exists()
 }

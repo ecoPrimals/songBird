@@ -82,7 +82,7 @@ pub struct PerformanceConfig {
 
 impl Default for PerformanceConfig {
     fn default() -> Self {
-        Self::from_env_reader(|k| std::env::var(k))
+        Self::from_env_reader(|k| songbird_process_env::var(k))
     }
 }
 
@@ -152,7 +152,7 @@ pub struct ObjectPoolSizes {
 
 impl Default for ObjectPoolSizes {
     fn default() -> Self {
-        Self::from_env_reader(|k| std::env::var(k))
+        Self::from_env_reader(|k| songbird_process_env::var(k))
     }
 }
 
@@ -211,7 +211,7 @@ pub struct CacheConfig {
 
 impl Default for CacheConfig {
     fn default() -> Self {
-        Self::from_env_reader(|k| std::env::var(k))
+        Self::from_env_reader(|k| songbird_process_env::var(k))
     }
 }
 
@@ -270,7 +270,7 @@ pub struct MetricsConfig {
 
 impl Default for MetricsConfig {
     fn default() -> Self {
-        Self::from_env_reader(|k| std::env::var(k))
+        Self::from_env_reader(|k| songbird_process_env::var(k))
     }
 }
 
@@ -338,7 +338,7 @@ pub struct BenchmarkConfig {
 
 impl Default for BenchmarkConfig {
     fn default() -> Self {
-        Self::from_env_reader(|k| std::env::var(k))
+        Self::from_env_reader(|k| songbird_process_env::var(k))
     }
 }
 

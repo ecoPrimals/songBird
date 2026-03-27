@@ -302,8 +302,8 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
         let resolver =
             TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
 
-        let service_domain =
-            std::env::var("SONGBIRD_SERVICE_DOMAIN").unwrap_or_else(|_| "local".to_string());
+        let service_domain = songbird_process_env::var("SONGBIRD_SERVICE_DOMAIN")
+            .unwrap_or_else(|_| "local".to_string());
 
         let mut primals = Vec::new();
 

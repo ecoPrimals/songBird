@@ -34,10 +34,15 @@ use std::path::PathBuf;
 use songbird_types::defaults::{hosts::DEFAULT_BIND_ALL, ports::DEFAULT_HTTP_PORT};
 use songbird_types::primal_names;
 
+/// Convenience alias — reads from overlay first, then OS.
+fn env(key: &str) -> Result<String, std::env::VarError> {
+    songbird_process_env::var(key)
+}
+
 /// Get this primal's name (self-knowledge)
 #[must_use]
 pub fn primal_name() -> String {
-    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| primal_names::SELF_NAME.to_string())
+    env("PRIMAL_NAME").unwrap_or_else(|_| primal_names::SELF_NAME.to_string())
 }
 
 /// Get family/biome ID (self-knowledge)
@@ -51,20 +56,18 @@ pub fn primal_name() -> String {
 /// 6. Default: `"default"` (seed-derived family ID should be set via env)
 #[must_use]
 pub fn family_id() -> String {
-    std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
-        .or_else(|_| std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY"))
-        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-        .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
-        .or_else(|_| std::env::var("FAMILY_ID"))
+    env("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+        .or_else(|_| env("SONGBIRD_ORCHESTRATOR_FAMILY"))
+        .or_else(|_| env("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| env("SONGBIRD_FAMILY_ID"))
+        .or_else(|_| env("FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string())
 }
 
 /// Get node ID (self-knowledge)
 #[must_use]
 pub fn node_id() -> String {
-    std::env::var("SONGBIRD_NODE_ID")
-        .or_else(|_| std::env::var("NODE_ID"))
-        .unwrap_or_else(|_| "default".to_string())
+    env("SONGBIRD_NODE_ID").or_else(|_| env("NODE_ID")).unwrap_or_else(|_| "default".to_string())
 }
 
 /// Get this primal's IPC socket path (self-knowledge)
@@ -85,16 +88,15 @@ pub fn node_id() -> String {
 #[must_use]
 pub fn socket_path() -> PathBuf {
     // Priority 1: Explicit SONGBIRD_SOCKET override
-    if let Ok(path) = std::env::var("SONGBIRD_SOCKET") {
+    if let Ok(path) = env("SONGBIRD_SOCKET") {
         return PathBuf::from(path);
     }
 
     let sock_name = socket_name();
 
     // Priority 2: BIOMEOS_SOCKET_DIR + socket name
-    if let Ok(socket_dir) = std::env::var("BIOMEOS_SOCKET_DIR") {
+    if let Ok(socket_dir) = env("BIOMEOS_SOCKET_DIR") {
         let path = PathBuf::from(socket_dir).join(&sock_name);
-        // Ensure directory exists
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
@@ -102,10 +104,9 @@ pub fn socket_path() -> PathBuf {
     }
 
     // Priority 3: XDG-compliant default (/run/user/$UID/biomeos/)
-    // Extract UID from XDG_RUNTIME_DIR (Pure Rust, no unsafe!)
-    let xdg_socket = std::env::var("XDG_RUNTIME_DIR").map_or_else(
+    let xdg_socket = env("XDG_RUNTIME_DIR").map_or_else(
         |_| {
-            std::env::var("UID").map_or_else(
+            env("UID").map_or_else(
                 |_| PathBuf::from(format!("/tmp/{sock_name}")),
                 |uid_str| PathBuf::from(format!("/run/user/{uid_str}/biomeos/{sock_name}")),
             )
@@ -137,8 +138,8 @@ pub fn socket_path() -> PathBuf {
 /// ecosystem families coexist, each with their own Songbird instance.
 #[must_use]
 pub fn socket_name() -> String {
-    let multi_family = std::env::var("SONGBIRD_MULTI_FAMILY")
-        .or_else(|_| std::env::var("SONGBIRD_FAMILY_SOCKET"))
+    let multi_family = env("SONGBIRD_MULTI_FAMILY")
+        .or_else(|_| env("SONGBIRD_FAMILY_SOCKET"))
         .map(|v| v == "true" || v == "1")
         .unwrap_or(false);
 
@@ -156,8 +157,7 @@ pub fn socket_name() -> String {
 /// 1. `SONGBIRD_DATA_DIR` (explicit override)
 /// 2. `/tmp/songbird-data` (default)
 pub fn data_dir() -> PathBuf {
-    std::env::var("SONGBIRD_DATA_DIR")
-        .map_or_else(|_| PathBuf::from("/tmp/songbird-data"), PathBuf::from)
+    env("SONGBIRD_DATA_DIR").map_or_else(|_| PathBuf::from("/tmp/songbird-data"), PathBuf::from)
 }
 
 /// Get deployment directory (self-knowledge)
@@ -166,7 +166,7 @@ pub fn data_dir() -> PathBuf {
 /// 1. `SONGBIRD_DEPLOY_DIR` (explicit override)
 /// 2. `/tmp/songbird-deployments` (default)
 pub fn deployment_dir() -> PathBuf {
-    std::env::var("SONGBIRD_DEPLOY_DIR")
+    env("SONGBIRD_DEPLOY_DIR")
         .map_or_else(|_| PathBuf::from("/tmp/songbird-deployments"), PathBuf::from)
 }
 
@@ -176,8 +176,7 @@ pub fn deployment_dir() -> PathBuf {
 /// 1. `SONGBIRD_CACHE_DIR` (explicit override)
 /// 2. `/tmp/songbird-cache` (default)
 pub fn cache_dir() -> PathBuf {
-    std::env::var("SONGBIRD_CACHE_DIR")
-        .map_or_else(|_| PathBuf::from("/tmp/songbird-cache"), PathBuf::from)
+    env("SONGBIRD_CACHE_DIR").map_or_else(|_| PathBuf::from("/tmp/songbird-cache"), PathBuf::from)
 }
 
 /// Get HTTP server bind address (self-knowledge)
@@ -187,8 +186,7 @@ pub fn cache_dir() -> PathBuf {
 /// 2. `DEFAULT_BIND_ALL`:`DEFAULT_HTTP_PORT` from `songbird_types::defaults` (bind all interfaces)
 #[must_use]
 pub fn http_bind_address() -> String {
-    std::env::var("SONGBIRD_HTTP_ADDR")
-        .unwrap_or_else(|_| format!("{DEFAULT_BIND_ALL}:{DEFAULT_HTTP_PORT}"))
+    env("SONGBIRD_HTTP_ADDR").unwrap_or_else(|_| format!("{DEFAULT_BIND_ALL}:{DEFAULT_HTTP_PORT}"))
 }
 
 /// Get HTTP server port (self-knowledge)
@@ -199,12 +197,11 @@ pub fn http_bind_address() -> String {
 /// 3. `DEFAULT_HTTP_PORT` from `songbird_types::defaults` (default)
 #[must_use]
 pub fn http_port() -> u16 {
-    if let Ok(port_str) = std::env::var("SONGBIRD_HTTP_PORT") {
+    if let Ok(port_str) = env("SONGBIRD_HTTP_PORT") {
         return port_str.parse().unwrap_or(DEFAULT_HTTP_PORT);
     }
 
-    // Try to extract from bind address
-    if let Ok(addr) = std::env::var("SONGBIRD_HTTP_ADDR")
+    if let Ok(addr) = env("SONGBIRD_HTTP_ADDR")
         && let Some(port_part) = addr.split(':').nth(1)
         && let Ok(port) = port_part.parse()
     {
@@ -222,10 +219,7 @@ pub fn http_port() -> u16 {
 /// 3. `false` (default to development)
 #[must_use]
 pub fn is_production() -> bool {
-    std::env::var("SONGBIRD_ENV")
-        .or_else(|_| std::env::var("RUST_ENV"))
-        .map(|v| v == "production")
-        .unwrap_or(false)
+    env("SONGBIRD_ENV").or_else(|_| env("RUST_ENV")).map(|v| v == "production").unwrap_or(false)
 }
 
 /// Get log level (self-knowledge)
@@ -236,9 +230,7 @@ pub fn is_production() -> bool {
 /// 3. `"info"` (default)
 #[must_use]
 pub fn log_level() -> String {
-    std::env::var("SONGBIRD_LOG")
-        .or_else(|_| std::env::var("RUST_LOG"))
-        .unwrap_or_else(|_| "info".to_string())
+    env("SONGBIRD_LOG").or_else(|_| env("RUST_LOG")).unwrap_or_else(|_| "info".to_string())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -255,7 +247,7 @@ pub fn log_level() -> String {
 /// **Default**: `false` (opt-in for privacy, requires `BearDog` beacon.* RPC)
 #[must_use]
 pub fn dark_forest_enabled() -> bool {
-    std::env::var("SONGBIRD_DARK_FOREST").ok().and_then(|v| v.parse().ok()).unwrap_or(false)
+    env("SONGBIRD_DARK_FOREST").ok().and_then(|v| v.parse().ok()).unwrap_or(false)
 }
 
 /// Check if legacy `BirdSongPacket` format should be accepted
@@ -268,10 +260,7 @@ pub fn dark_forest_enabled() -> bool {
 /// **Default**: `true` (backward compatible during migration)
 #[must_use]
 pub fn accept_legacy_birdsong() -> bool {
-    std::env::var("SONGBIRD_ACCEPT_LEGACY_BIRDSONG")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(true)
+    env("SONGBIRD_ACCEPT_LEGACY_BIRDSONG").ok().and_then(|v| v.parse().ok()).unwrap_or(true)
 }
 
 /// Check if dual broadcast is enabled (both formats)
@@ -284,7 +273,7 @@ pub fn accept_legacy_birdsong() -> bool {
 /// **Default**: `false` (minimize network overhead)
 #[must_use]
 pub fn dual_broadcast() -> bool {
-    std::env::var("SONGBIRD_DUAL_BROADCAST").ok().and_then(|v| v.parse().ok()).unwrap_or(false)
+    env("SONGBIRD_DUAL_BROADCAST").ok().and_then(|v| v.parse().ok()).unwrap_or(false)
 }
 
 #[cfg(test)]

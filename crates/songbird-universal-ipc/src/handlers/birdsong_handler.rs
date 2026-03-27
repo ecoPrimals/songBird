@@ -99,9 +99,9 @@ impl BirdSongHandler {
         }
 
         // Discover at runtime (no hardcoding)
-        let socket_path = std::env::var("BEARDOG_SOCKET").map_or_else(
+        let socket_path = songbird_process_env::var("BEARDOG_SOCKET").map_or_else(
             |_| {
-                std::env::var("XDG_RUNTIME_DIR").map_or_else(
+                songbird_process_env::var("XDG_RUNTIME_DIR").map_or_else(
                     |_| {
                         // Well-known fallback (safe Rust - read from /proc)
                         // Deep debt: Evolved from unsafe libc::getuid() to safe Rust
@@ -187,9 +187,9 @@ impl BirdSongHandler {
 
         // Discover family_id from environment (matches biomeOS pattern)
         // Priority: FAMILY_ID > SONGBIRD_FAMILY_ID > NODE_FAMILY_ID
-        let family_id = std::env::var("FAMILY_ID")
-            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
-            .or_else(|_| std::env::var("NODE_FAMILY_ID"))
+        let family_id = songbird_process_env::var("FAMILY_ID")
+            .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
+            .or_else(|_| songbird_process_env::var("NODE_FAMILY_ID"))
             .ok();
 
         if family_id.is_some() {

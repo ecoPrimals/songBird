@@ -69,11 +69,11 @@ impl BtspClient {
 
     /// Discover `BearDog` socket path from environment
     fn discover_socket_path() -> PathBuf {
-        let path = std::env::var("BEARDOG_SOCKET")
-            .or_else(|_| std::env::var("BIOMEOS_SOCKET_PATH"))
+        let path = songbird_process_env::var("BEARDOG_SOCKET")
+            .or_else(|_| songbird_process_env::var("BIOMEOS_SOCKET_PATH"))
             .or_else(|_| {
                 // Try XDG runtime directory (capability-based, primal-agnostic)
-                std::env::var("XDG_RUNTIME_DIR").map(|dir| {
+                songbird_process_env::var("XDG_RUNTIME_DIR").map(|dir| {
                     let family_id = crate::env_config::family_id();
                     format!("{dir}/security-{family_id}.sock")
                 })

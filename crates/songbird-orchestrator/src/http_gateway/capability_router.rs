@@ -322,13 +322,13 @@ impl CapabilityRouter {
         info!("🔍 Discovering providers from environment...");
 
         // Check for provider registry file
-        if let Ok(registry_path) = std::env::var("SONGBIRD_PROVIDER_REGISTRY") {
+        if let Ok(registry_path) = songbird_process_env::var("SONGBIRD_PROVIDER_REGISTRY") {
             info!("Loading providers from registry: {}", registry_path);
             self.load_registry_file(&registry_path).await?;
         }
 
         // Check for individual provider configs
-        if let Ok(config_dir) = std::env::var("SONGBIRD_PROVIDER_CONFIG_DIR") {
+        if let Ok(config_dir) = songbird_process_env::var("SONGBIRD_PROVIDER_CONFIG_DIR") {
             info!("Loading providers from config directory: {}", config_dir);
             self.load_config_directory(&config_dir).await?;
         }

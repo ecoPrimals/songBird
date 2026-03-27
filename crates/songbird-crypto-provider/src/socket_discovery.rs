@@ -53,7 +53,7 @@ pub fn beardog_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: 
 /// 4. `/tmp/neural-api-{family}.sock` (legacy)
 #[must_use]
 pub fn discover_neural_api_socket() -> String {
-    discover_neural_api_socket_with(|k| std::env::var(k).ok(), Path::exists)
+    discover_neural_api_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
 }
 
 /// Like [`discover_neural_api_socket`], but with injectable env and path checks (tests / embedding).
@@ -106,7 +106,7 @@ where
 /// 3. `/tmp/beardog.sock` (legacy)
 #[must_use]
 pub fn discover_beardog_socket() -> String {
-    discover_beardog_socket_with(|k| std::env::var(k).ok(), Path::exists)
+    discover_beardog_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
 }
 
 /// Like [`discover_beardog_socket`], but with injectable env and path checks (tests / embedding).

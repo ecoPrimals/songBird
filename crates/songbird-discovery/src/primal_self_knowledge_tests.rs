@@ -275,13 +275,13 @@ fn primal_identity_empty_capabilities_serializes() {
 
 #[test]
 fn environment_discovery_default_matches_new() {
-    let _ = EnvironmentDiscovery::default();
+    let _ = EnvironmentDiscovery;
     let _ = EnvironmentDiscovery::new();
 }
 
 #[test]
 fn dns_srv_discovery_default_matches_new() {
-    let _ = DnsSrvDiscovery::default();
+    let _ = DnsSrvDiscovery;
     let _ = DnsSrvDiscovery::new();
 }
 

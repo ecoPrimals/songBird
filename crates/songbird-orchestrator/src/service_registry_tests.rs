@@ -252,3 +252,169 @@ fn service_endpoint_new_url() {
     assert_eq!(e.full_url, "https://127.0.0.1:8443");
     assert_eq!(e.port, 8443);
 }
+
+#[tokio::test]
+async fn heartbeat_unknown_service_returns_error() {
+    let registry = ServiceRegistry::new();
+    let result = registry
+        .heartbeat(HeartbeatRequest {
+            service_id: "nonexistent-service-id".to_string(),
+            token: "some-token".to_string(),
+            status: "operational".to_string(),
+            current_load: None,
+            capabilities_changed: false,
+        })
+        .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("not found"));
+}
+
+#[tokio::test]
+async fn cleanup_stale_services_removes_expired() {
+    let config = RegistryConfig {
+        service_ttl_sec: 0,
+        ..RegistryConfig::default()
+    };
+    let registry = ServiceRegistry::with_config(config);
+
+    registry
+        .register(RegistrationRequest {
+            primal_name: "Stale".to_string(),
+            primal_version: "1.0".to_string(),
+            capabilities: vec![],
+            protocols: vec!["https".to_string()],
+            preferred_protocol: "https".to_string(),
+            health_check_path: None,
+            metadata: None,
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(registry.list_services().await.len(), 1);
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    let removed = registry.cleanup_stale_services().await;
+    assert_eq!(removed, 1);
+    assert!(registry.list_services().await.is_empty());
+}
+
+#[tokio::test]
+async fn cleanup_stale_services_no_removal_when_fresh() {
+    let registry = ServiceRegistry::new();
+
+    registry
+        .register(RegistrationRequest {
+            primal_name: "Fresh".to_string(),
+            primal_version: "1.0".to_string(),
+            capabilities: vec![],
+            protocols: vec!["https".to_string()],
+            preferred_protocol: "https".to_string(),
+            health_check_path: None,
+            metadata: None,
+        })
+        .await
+        .unwrap();
+
+    let removed = registry.cleanup_stale_services().await;
+    assert_eq!(removed, 0);
+    assert_eq!(registry.list_services().await.len(), 1);
+}
+
+#[test]
+fn registry_config_default_port_range_valid() {
+    let config = RegistryConfig::default();
+    assert!(config.port_range_start < config.port_range_end);
+    assert!(config.max_missed_heartbeats > 0);
+    assert!(config.service_ttl_sec > 0);
+    assert!(config.default_heartbeat_interval > 0);
+}
+
+#[tokio::test]
+async fn query_by_capability_empty_when_no_match() {
+    let registry = ServiceRegistry::new();
+
+    registry
+        .register(RegistrationRequest {
+            primal_name: "NoMatch".to_string(),
+            primal_version: "1.0".to_string(),
+            capabilities: vec![ServiceCapability {
+                name: "crypto".to_string(),
+                capability_type: "provider".to_string(),
+                metadata: std::collections::HashMap::new(),
+            }],
+            protocols: vec!["https".to_string()],
+            preferred_protocol: "https".to_string(),
+            health_check_path: None,
+            metadata: None,
+        })
+        .await
+        .unwrap();
+
+    let result = registry.query_by_capability("nonexistent").await;
+    assert!(result.is_empty());
+}
+
+#[tokio::test]
+async fn query_by_capability_returns_matching() {
+    let registry = ServiceRegistry::new();
+
+    registry
+        .register(RegistrationRequest {
+            primal_name: "CryptoService".to_string(),
+            primal_version: "1.0".to_string(),
+            capabilities: vec![ServiceCapability {
+                name: "crypto.encrypt".to_string(),
+                capability_type: "provider".to_string(),
+                metadata: std::collections::HashMap::new(),
+            }],
+            protocols: vec!["https".to_string()],
+            preferred_protocol: "https".to_string(),
+            health_check_path: None,
+            metadata: None,
+        })
+        .await
+        .unwrap();
+
+    let result = registry.query_by_capability("crypto.encrypt").await;
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].service_name, "CryptoService");
+}
+
+#[tokio::test]
+async fn cleanup_releases_ports() {
+    let config = RegistryConfig {
+        service_ttl_sec: 0,
+        ..RegistryConfig::default()
+    };
+    let registry = ServiceRegistry::with_config(config);
+
+    registry
+        .register(RegistrationRequest {
+            primal_name: "PortUser".to_string(),
+            primal_version: "1.0".to_string(),
+            capabilities: vec![],
+            protocols: vec!["https".to_string()],
+            preferred_protocol: "https".to_string(),
+            health_check_path: None,
+            metadata: None,
+        })
+        .await
+        .unwrap();
+
+    let stats_before = registry.get_stats().await;
+    assert!(stats_before.allocated_ports >= 1);
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    registry.cleanup_stale_services().await;
+
+    let stats_after = registry.get_stats().await;
+    assert!(stats_after.allocated_ports < stats_before.allocated_ports);
+}
+
+#[tokio::test]
+async fn default_trait_creates_new_registry() {
+    let registry = ServiceRegistry::default();
+    let stats = registry.get_stats().await;
+    assert_eq!(stats.total_services, 0);
+    assert_eq!(stats.allocated_ports, 0);
+}

@@ -7,7 +7,6 @@
 //! and network discovery across the Songbird ecosystem.
 
 use serde::{Deserialize, Serialize};
-use std::env;
 
 // ============================================================================
 // DISCOVERY CONFIGURATION
@@ -55,17 +54,17 @@ impl Default for DiscoveryConfig {
             service_discovery: ServiceDiscoveryConfig::default(),
             capability_discovery: CapabilityDiscoveryConfig::default(),
             network_discovery: NetworkDiscoveryConfig::default(),
-            auto_discovery: env::var("SONGBIRD_AUTO_DISCOVERY")
+            auto_discovery: songbird_process_env::var("SONGBIRD_AUTO_DISCOVERY")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
-            common_ports: env::var("SONGBIRD_COMMON_PORTS")
+            common_ports: songbird_process_env::var("SONGBIRD_COMMON_PORTS")
                 .ok()
                 .and_then(|s| {
                     s.split(',').filter_map(|p| p.trim().parse().ok()).collect::<Vec<u16>>().into()
                 })
                 .unwrap_or_else(|| vec![22, 80, 443, 8080, 8443, 3000, 5000, 9090]),
-            scan_timeout_secs: env::var("SONGBIRD_SCAN_TIMEOUT_SECS")
+            scan_timeout_secs: songbird_process_env::var("SONGBIRD_SCAN_TIMEOUT_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(5),
@@ -112,19 +111,21 @@ pub struct ServiceDiscoveryConfig {
 impl Default for ServiceDiscoveryConfig {
     fn default() -> Self {
         Self {
-            enabled: env::var("SONGBIRD_SERVICE_DISCOVERY_ENABLED")
+            enabled: songbird_process_env::var("SONGBIRD_SERVICE_DISCOVERY_ENABLED")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
-            discovery_interval_secs: env::var("SONGBIRD_DISCOVERY_INTERVAL_SECS")
+            discovery_interval_secs: songbird_process_env::var("SONGBIRD_DISCOVERY_INTERVAL_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(30),
-            max_concurrent_discoveries: env::var("SONGBIRD_MAX_CONCURRENT_DISCOVERIES")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(10),
-            discovery_timeout_secs: env::var("SONGBIRD_DISCOVERY_TIMEOUT_SECS")
+            max_concurrent_discoveries: songbird_process_env::var(
+                "SONGBIRD_MAX_CONCURRENT_DISCOVERIES",
+            )
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10),
+            discovery_timeout_secs: songbird_process_env::var("SONGBIRD_DISCOVERY_TIMEOUT_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(30),
@@ -171,19 +172,19 @@ pub struct CapabilityDiscoveryConfig {
 impl Default for CapabilityDiscoveryConfig {
     fn default() -> Self {
         Self {
-            enabled: env::var("SONGBIRD_CAPABILITY_DISCOVERY_ENABLED")
+            enabled: songbird_process_env::var("SONGBIRD_CAPABILITY_DISCOVERY_ENABLED")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
-            cache_ttl_secs: env::var("SONGBIRD_CAPABILITY_CACHE_TTL_SECS")
+            cache_ttl_secs: songbird_process_env::var("SONGBIRD_CAPABILITY_CACHE_TTL_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(300),
-            discovery_batch_size: env::var("SONGBIRD_DISCOVERY_BATCH_SIZE")
+            discovery_batch_size: songbird_process_env::var("SONGBIRD_DISCOVERY_BATCH_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(10),
-            max_retry_attempts: env::var("SONGBIRD_MAX_RETRY_ATTEMPTS")
+            max_retry_attempts: songbird_process_env::var("SONGBIRD_MAX_RETRY_ATTEMPTS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(3),
@@ -230,24 +231,26 @@ pub struct NetworkDiscoveryConfig {
 impl Default for NetworkDiscoveryConfig {
     fn default() -> Self {
         Self {
-            enabled: env::var("SONGBIRD_NETWORK_DISCOVERY_ENABLED")
+            enabled: songbird_process_env::var("SONGBIRD_NETWORK_DISCOVERY_ENABLED")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(false),
-            scan_local_network: env::var("SONGBIRD_SCAN_LOCAL_NETWORK")
+            scan_local_network: songbird_process_env::var("SONGBIRD_SCAN_LOCAL_NETWORK")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(false),
-            scan_ports: env::var("SONGBIRD_SCAN_PORTS")
+            scan_ports: songbird_process_env::var("SONGBIRD_SCAN_PORTS")
                 .ok()
                 .and_then(|s| {
                     s.split(',').filter_map(|p| p.trim().parse().ok()).collect::<Vec<u16>>().into()
                 })
                 .unwrap_or_else(|| vec![8080, 8443, 9090, 3000]),
-            discovery_protocols: env::var("SONGBIRD_DISCOVERY_PROTOCOLS").ok().map_or_else(
-                || vec!["http".to_string(), "https".to_string()],
-                |s| s.split(',').map(|p| p.trim().to_string()).collect(),
-            ),
+            discovery_protocols: songbird_process_env::var("SONGBIRD_DISCOVERY_PROTOCOLS")
+                .ok()
+                .map_or_else(
+                    || vec!["http".to_string(), "https".to_string()],
+                    |s| s.split(',').map(|p| p.trim().to_string()).collect(),
+                ),
         }
     }
 }

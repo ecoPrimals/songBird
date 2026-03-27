@@ -31,8 +31,8 @@ pub(super) async fn udp_multicast_discover(
         return discovered;
     }
 
-    let jsonrpc_port: u16 = std::env::var("SONGBIRD_HTTP_PORT")
-        .or_else(|_| std::env::var("SONGBIRD_PORT"))
+    let jsonrpc_port: u16 = songbird_process_env::var("SONGBIRD_HTTP_PORT")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_PORT"))
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8080);

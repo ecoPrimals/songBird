@@ -17,7 +17,7 @@ const MAX_DISCOVERY_TIMEOUT_MS: u64 = 5000;
 
 /// Resolve the discovery HTTP port from environment or canonical defaults
 fn discovery_http_port() -> u16 {
-    std::env::var("SONGBIRD_DISCOVERY_PORT")
+    songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or_else(songbird_config::canonical::constants::network::default_orchestrator_port)

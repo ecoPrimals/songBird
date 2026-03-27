@@ -85,8 +85,8 @@ impl NodeIdentity {
         // CRITICAL FIX (Jan 5, 2026): Prefer SONGBIRD_NODE_ID over hostname
         // This ensures multi-instance deployments have unique discoverable names
         let node_name = node_name.unwrap_or_else(|| {
-            std::env::var("SONGBIRD_NODE_ID")
-                .or_else(|_| std::env::var("NODE_ID"))
+            songbird_process_env::var("SONGBIRD_NODE_ID")
+                .or_else(|_| songbird_process_env::var("NODE_ID"))
                 .ok()
                 .or_else(|| hostname::get().ok().and_then(|h| h.into_string().ok()))
                 .unwrap_or_else(|| "songbird-node".to_string())
@@ -148,8 +148,9 @@ impl NodeIdentity {
     /// 4. Generate random UUID and persist (last resort)
     fn generate_stable_id() -> Result<Uuid> {
         // Get NODE_ID if available for multi-instance support
-        let node_id_suffix =
-            std::env::var("SONGBIRD_NODE_ID").or_else(|_| std::env::var("NODE_ID")).ok();
+        let node_id_suffix = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
+            .ok();
 
         // Try machine-id (most stable)
         if let Ok(machine_id) = fs::read_to_string("/etc/machine-id") {
@@ -224,7 +225,7 @@ impl NodeIdentity {
     /// 2. dirs::data_local_dir()/songbird/node_identity-{node}.json (standard)
     fn identity_path() -> PathBuf {
         // Priority 1: Explicit override via SONGBIRD_DATA_DIR (for Android/restricted environments)
-        let data_dir = if let Ok(custom_dir) = std::env::var("SONGBIRD_DATA_DIR") {
+        let data_dir = if let Ok(custom_dir) = songbird_process_env::var("SONGBIRD_DATA_DIR") {
             PathBuf::from(custom_dir)
         } else {
             dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."))
@@ -232,8 +233,8 @@ impl NodeIdentity {
 
         // CRITICAL FIX (Jan 5, 2026): Support multiple instances on same machine
         // Use SONGBIRD_NODE_ID or NODE_ID to create unique identity files
-        let filename = std::env::var("SONGBIRD_NODE_ID")
-            .or_else(|_| std::env::var("NODE_ID"))
+        let filename = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
             .ok()
             .map_or_else(
                 || "node_identity.json".to_string(),

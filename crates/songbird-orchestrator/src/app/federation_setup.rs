@@ -200,7 +200,7 @@ pub async fn setup_federation(
         node_address: format!("{node_address}:{port}"),
         endpoints: None, // Will be populated in start() after we know the actual port
         capabilities: vec!["orchestrator".to_string()],
-        cpu_cores: num_cpus::get(),
+        cpu_cores: std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
         memory_gb: detect_memory_gb(),
         gpu_model: SongbirdOrchestrator::detect_gpu(),
         storage_gb: SongbirdOrchestrator::detect_storage_capacity(),

@@ -85,9 +85,9 @@ pub struct CanonicalPrimalInstanceConfig {
 
 impl Default for CanonicalPrimalInstanceConfig {
     fn default() -> Self {
-        let base_host =
-            std::env::var("DEFAULT_PRIMAL_HOST").unwrap_or_else(|_| "localhost".to_string());
-        let base_port = std::env::var("DEFAULT_PRIMAL_PORT")
+        let base_host = songbird_process_env::var("DEFAULT_PRIMAL_HOST")
+            .unwrap_or_else(|_| "localhost".to_string());
+        let base_port = songbird_process_env::var("DEFAULT_PRIMAL_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8080);

@@ -12,7 +12,6 @@
 // A static Mutex ensures they don't race with each other within this binary.
 
 use songbird_orchestrator::ipc::UnixSocketServer;
-use std::env;
 use tempfile::TempDir;
 
 /// Serialize all env var tests in this file (async-safe).
@@ -59,7 +58,7 @@ async fn test_complete_biomeos_deployment_flow() {
 
     // Step 4: Verify other primals can discover this socket path
     // (In real deployment, they'd read from same env vars or use UPA discovery)
-    let discoverable_path = env::var("SONGBIRD_ORCHESTRATOR_SOCKET")
+    let discoverable_path = songbird_process_env::var("SONGBIRD_ORCHESTRATOR_SOCKET")
         .expect("Socket path should be discoverable via env var");
     assert_eq!(discoverable_path, socket_path.to_str().unwrap());
 
@@ -300,7 +299,7 @@ fn save_env_state() -> Vec<(String, Option<String>)> {
         "SONGBIRD_FAMILY_ID",
     ];
 
-    keys.iter().map(|key| (key.to_string(), env::var(key).ok())).collect()
+    keys.iter().map(|key| (key.to_string(), songbird_process_env::var(key).ok())).collect()
 }
 
 /// Restore environment variable state

@@ -48,6 +48,7 @@ hex = "0.4"
 base64 = "0.22"
 
 # Internal dependencies
+songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-universal = { path = "../songbird-universal" }

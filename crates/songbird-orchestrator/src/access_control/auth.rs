@@ -38,7 +38,7 @@ where
 
         // Decode and validate JWT using production-ready implementation
         let validator = crate::access_control::tokens::TokenValidator::new();
-        let secret = std::env::var("SONGBIRD_JWT_SECRET")
+        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET")
             .unwrap_or_else(|_| "songbird-dev-secret-change-in-production".to_string());
 
         let token = AccessToken::decode(token_str, secret.as_bytes())
@@ -142,7 +142,7 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
     };
 
     // Encode token with production secret
-    let secret = std::env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
+    let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
         tracing::warn!(
             "SONGBIRD_JWT_SECRET not set. Using development secret. \
                  DO NOT USE IN PRODUCTION."
@@ -166,7 +166,7 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
 /// configured authentication backend.
 async fn validate_credentials(req: &LoginRequest) -> Result<(), AuthError> {
     // Check for development mode (allows testing without real auth backend)
-    if std::env::var("SONGBIRD_DEV_MODE").is_ok() {
+    if songbird_process_env::var("SONGBIRD_DEV_MODE").is_ok() {
         tracing::warn!(
             "Development mode enabled. Accepting all credentials. \
              DO NOT USE IN PRODUCTION."
@@ -181,12 +181,12 @@ async fn validate_credentials(req: &LoginRequest) -> Result<(), AuthError> {
     })?;
 
     // Try SSO authentication first
-    if let Ok(sso_endpoint) = std::env::var("SONGBIRD_SSO_ENDPOINT") {
+    if let Ok(sso_endpoint) = songbird_process_env::var("SONGBIRD_SSO_ENDPOINT") {
         return validate_sso_credential(&req.user_id, credential, &sso_endpoint).await;
     }
 
     // Try local database authentication
-    if let Ok(auth_db) = std::env::var("SONGBIRD_AUTH_DB") {
+    if let Ok(auth_db) = songbird_process_env::var("SONGBIRD_AUTH_DB") {
         return validate_db_credential(&req.user_id, credential, &auth_db).await;
     }
 
@@ -379,7 +379,7 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     // EVOLVED (v3.15.0): Try authentication provider validation first
     // ✅ EVOLUTION COMPLETE (Jan 21, 2026): Now using SongbirdHttpClient (100% Pure Rust)
     // Note: BEARDOG_2FA_ENDPOINT is deprecated - use SONGBIRD_SECURITY_PROVIDER
-    if let Ok(_auth_endpoint) = std::env::var("BEARDOG_2FA_ENDPOINT") {
+    if let Ok(_auth_endpoint) = songbird_process_env::var("BEARDOG_2FA_ENDPOINT") {
         tracing::warn!("⚠️  DEPRECATED: BEARDOG_2FA_ENDPOINT is deprecated");
         tracing::warn!("   Use SONGBIRD_SECURITY_PROVIDER instead");
         tracing::warn!("   2FA via authentication provider not yet fully implemented");
@@ -387,13 +387,13 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     }
 
     // Try TOTP validation (standard authenticator apps)
-    if let Ok(totp_secret) = std::env::var(format!("SONGBIRD_TOTP_SECRET_{user_id}")) {
+    if let Ok(totp_secret) = songbird_process_env::var(format!("SONGBIRD_TOTP_SECRET_{user_id}")) {
         tracing::debug!("Attempting TOTP validation for user '{}'", user_id);
         return validate_totp_token(user_id, token, &totp_secret);
     }
 
     // Try external 2FA service (SMS, Email, etc.)
-    if let Ok(twofa_endpoint) = std::env::var("SONGBIRD_2FA_SERVICE") {
+    if let Ok(twofa_endpoint) = songbird_process_env::var("SONGBIRD_2FA_SERVICE") {
         tracing::debug!("Attempting external 2FA service validation for user '{}'", user_id);
         return validate_external_2fa(user_id, token, &twofa_endpoint).await;
     }

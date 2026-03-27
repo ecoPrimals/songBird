@@ -35,7 +35,6 @@
 //! - Edge cases
 
 use songbird_config::canonical::constants;
-use std::env;
 
 // =============================================================================
 // Environment Variable Tests
@@ -171,21 +170,21 @@ fn test_default_values_are_safe() {
 fn test_env_var_override_behavior() {
     // Test that we can read environment variables
     songbird_process_env::set_var("TEST_CONFIG_VAR", "test_value");
-    let value = env::var("TEST_CONFIG_VAR").expect("test precondition");
+    let value = songbird_process_env::var("TEST_CONFIG_VAR").expect("test precondition");
     assert_eq!(value, "test_value");
     songbird_process_env::remove_var("TEST_CONFIG_VAR");
 }
 
 #[test]
 fn test_env_var_missing_returns_error() {
-    let result = env::var("NONEXISTENT_CONFIG_VAR_12345");
+    let result = songbird_process_env::var("NONEXISTENT_CONFIG_VAR_12345");
     assert!(result.is_err(), "Should error for missing var");
 }
 
 #[test]
 fn test_env_var_empty_string() {
     songbird_process_env::set_var("EMPTY_VAR", "");
-    let value = env::var("EMPTY_VAR").expect("test precondition");
+    let value = songbird_process_env::var("EMPTY_VAR").expect("test precondition");
     assert_eq!(value, "", "Should handle empty string");
     songbird_process_env::remove_var("EMPTY_VAR");
 }
@@ -193,7 +192,7 @@ fn test_env_var_empty_string() {
 #[test]
 fn test_env_var_whitespace() {
     songbird_process_env::set_var("WHITESPACE_VAR", "  value  ");
-    let value = env::var("WHITESPACE_VAR").expect("test precondition");
+    let value = songbird_process_env::var("WHITESPACE_VAR").expect("test precondition");
     assert_eq!(value.trim(), "value");
     songbird_process_env::remove_var("WHITESPACE_VAR");
 }
@@ -416,7 +415,7 @@ fn test_parse_error_contains_context() {
 
 #[test]
 fn test_env_var_error_message() {
-    let result = env::var("NONEXISTENT_VAR_XYZ123");
+    let result = songbird_process_env::var("NONEXISTENT_VAR_XYZ123");
 
     if let Err(e) = result {
         let error_msg = e.to_string();

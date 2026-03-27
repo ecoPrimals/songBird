@@ -91,7 +91,9 @@ impl RuntimeDiscoveryEngine {
         }
 
         // 1. Try environment variable (highest priority)
-        if let Ok(service) = Self::from_environment_with(capability, &|k| std::env::var(k)) {
+        if let Ok(service) =
+            Self::from_environment_with(capability, &|k| songbird_process_env::var(k))
+        {
             self.update_cache(capability, &service).await;
             return Ok(service);
         }
@@ -213,7 +215,7 @@ impl RuntimeDiscoveryEngine {
         use tracing::{debug, info};
 
         // Check if registry endpoint is configured
-        let Ok(registry_endpoint) = std::env::var("REGISTRY_ENDPOINT") else {
+        let Ok(registry_endpoint) = songbird_process_env::var("REGISTRY_ENDPOINT") else {
             return Err(SongbirdError::configuration(
                 "No registry endpoint configured (REGISTRY_ENDPOINT not set)",
             ));

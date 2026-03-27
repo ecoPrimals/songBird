@@ -131,13 +131,13 @@ pub async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonR
     let uptime_seconds = start_time.elapsed().as_secs();
 
     let crypto_provider_available = {
-        let socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
-            .or_else(|_| std::env::var("CRYPTO_SIGN_PROVIDER_SOCKET"))
+        let socket = songbird_process_env::var("CRYPTO_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("CRYPTO_SIGN_PROVIDER_SOCKET"))
             .ok();
         if let Some(path) = socket {
             std::path::Path::new(&path).exists()
         } else {
-            let xdg = std::env::var("XDG_RUNTIME_DIR").unwrap_or_default();
+            let xdg = songbird_process_env::var("XDG_RUNTIME_DIR").unwrap_or_default();
             if xdg.is_empty() {
                 false
             } else {

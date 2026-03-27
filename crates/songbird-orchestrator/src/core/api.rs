@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn core_api_new_and_default_equivalent() {
         let a = CoreApi::new();
-        let b = CoreApi::default();
+        let b = CoreApi;
         assert_eq!(format!("{a:?}"), format!("{b:?}"));
     }
 

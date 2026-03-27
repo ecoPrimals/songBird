@@ -178,7 +178,7 @@ pub async fn handle_network_broadcast(params: Option<Value>) -> Result<Value, Js
     
     // Deep Debt Principle: No Hardcoding
     // Discover multicast address from environment or use standard mDNS multicast
-    let multicast_addr = std::env::var("SONGBIRD_MULTICAST_ADDR")
+    let multicast_addr = songbird_process_env::var("SONGBIRD_MULTICAST_ADDR")
         .unwrap_or_else(|_| "224.0.0.251:5353".to_string());
     
     let multicast_target: SocketAddr = multicast_addr.parse()
@@ -287,9 +287,9 @@ pub async fn handle_network_listen(params: Option<Value>) -> Result<Value, JsonR
     
     // Deep Debt Principle: No Hardcoding
     // Discover multicast group from environment or use standard mDNS multicast
-    let multicast_group = std::env::var("SONGBIRD_MULTICAST_GROUP")
+    let multicast_group = songbird_process_env::var("SONGBIRD_MULTICAST_GROUP")
         .unwrap_or_else(|_| "224.0.0.251".to_string());
-    let listen_port = std::env::var("SONGBIRD_DISCOVERY_PORT")
+    let listen_port = songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(5353u16);

@@ -193,7 +193,7 @@ fn parse_kb_value(s: &str) -> Option<u64> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -252,7 +252,7 @@ Buffers:          500000 kB
             total: 0,
             available: 0,
         };
-        assert_eq!(info.usage_percent(), 0.0);
+        assert!((info.usage_percent() - 0.0).abs() < f64::EPSILON);
         assert_eq!(info.used(), 0);
     }
 

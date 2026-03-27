@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 # Internal dependencies
+songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-universal = { path = "../songbird-universal" }  # Includes UnixRpcClient (Pure Rust!)
@@ -35,7 +36,6 @@ uuid = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 hickory-resolver = { workspace = true }
-num_cpus = { workspace = true }
 sha2 = "0.10"  # For session ID generation in anonymous discovery
 anyhow = "1.0"  # For lineage discovery error handling
 hex = "0.4"  # For discovery packet hashing
@@ -58,6 +58,5 @@ orchestration = []
 dns-srv = []
 
 [dev-dependencies]
-songbird-process-env.workspace = true
 tracing-subscriber = "0.3"
 

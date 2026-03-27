@@ -275,7 +275,8 @@ pub async fn check_port_availability(port: u16) -> Result<bool> {
     use std::net::TcpListener;
 
     // Use configurable bind address instead of hardcoded 127.0.0.1
-    let bind_addr = std::env::var("SONGBIRD_BIND_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let bind_addr =
+        songbird_process_env::var("SONGBIRD_BIND_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
     match TcpListener::bind((bind_addr.as_str(), port)) {
         Ok(_) => Ok(true),

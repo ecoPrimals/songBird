@@ -61,7 +61,7 @@ use tokio::sync::{RwLock, Semaphore};
 use tracing::{debug, info, warn};
 
 /// Connection pool error types
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum PoolError {
     #[error("Pool is at maximum capacity ({0})")]
     PoolFull(usize),

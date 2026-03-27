@@ -53,8 +53,8 @@ pub struct CanonicalLocalNodeConfig {
 impl Default for CanonicalLocalNodeConfig {
     fn default() -> Self {
         Self {
-            name: std::env::var("HOSTNAME")
-                .or_else(|_| std::env::var("COMPUTERNAME"))
+            name: songbird_process_env::var("HOSTNAME")
+                .or_else(|_| songbird_process_env::var("COMPUTERNAME"))
                 .unwrap_or_else(|_| "songbird-node".to_string()),
             node_type: CanonicalNodeType::default(),
             listen_addresses: vec![std::net::SocketAddr::new(
@@ -132,7 +132,10 @@ pub struct CanonicalTowerCapabilities {
 impl Default for CanonicalTowerCapabilities {
     fn default() -> Self {
         Self {
-            cpu_cores: u32::try_from(num_cpus::get()).unwrap_or(4),
+            cpu_cores: u32::try_from(
+                std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
+            )
+            .unwrap_or(4),
             memory_gb: 8, // Conservative default
             storage_tb: 1,
             gpus: vec![],

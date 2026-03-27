@@ -112,7 +112,7 @@ async fn create_federation_coordinator(
 /// Build self-registration with node capabilities
 ///
 /// Uses runtime detection to discover:
-/// - CPU cores (via `num_cpus`)
+/// - CPU cores (via `std::thread::available_parallelism`)
 /// - Memory (via `/proc/meminfo` on Linux, fallback on other platforms)
 /// - GPU model (runtime detection)
 /// - Storage capacity (runtime detection)
@@ -137,7 +137,7 @@ fn build_self_registration(node_identity: &NodeIdentity) -> Result<NodeRegistrat
         node_address,
         endpoints: None, // Will be populated after we know actual port
         capabilities: vec!["orchestrator".to_string()],
-        cpu_cores: num_cpus::get(),
+        cpu_cores: std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
         memory_gb: detect_memory_gb(),
         gpu_model: detect_gpu(),
         storage_gb: detect_storage_capacity(),

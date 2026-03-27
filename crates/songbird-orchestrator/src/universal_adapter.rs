@@ -232,7 +232,7 @@ impl UniversalAdapter {
         reason = "async signature required by Axum, trait objects, or future I/O"
     )]
     async fn discover_from_environment(&self, capability: &str) -> Result<Vec<DiscoveredProvider>> {
-        let Some(env_var) = std::env::var("CAPABILITY_PROVIDERS").ok() else {
+        let Some(env_var) = songbird_process_env::var("CAPABILITY_PROVIDERS").ok() else {
             return Ok(vec![]);
         };
 

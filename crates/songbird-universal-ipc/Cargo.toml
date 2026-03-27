@@ -67,6 +67,8 @@ songbird-universal = { path = "../songbird-universal" }
 # Canonical primal identifiers
 songbird-types = { path = "../songbird-types" }
 
+songbird-process-env.workspace = true
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }
@@ -75,7 +77,6 @@ tokio = { workspace = true, features = ["net"] }
 workspace = true
 
 [dev-dependencies]
-songbird-process-env.workspace = true
 serial_test = "3.0"
 tokio-test = "0.4"
 tempfile = "3.0"

@@ -31,7 +31,7 @@ use tracing::{debug, info, warn};
 /// Parsed once per process; empty or whitespace-only env values use the defaults.
 fn stun_server_list() -> Vec<String> {
     static SERVERS: LazyLock<Vec<String>> = LazyLock::new(|| {
-        std::env::var("BIOMEOS_STUN_SERVERS").map_or_else(
+        songbird_process_env::var("BIOMEOS_STUN_SERVERS").map_or_else(
             |_| default_stun_servers_fallback(),
             |servers| {
                 let parsed: Vec<String> = servers
@@ -130,18 +130,18 @@ impl HolePunchConfig {
         let mut servers = Vec::new();
 
         // 1. Self-hosted first (highest priority, maximum sovereignty)
-        if let Ok(self_hosted) = std::env::var("BIOMEOS_STUN_SERVER") {
+        if let Ok(self_hosted) = songbird_process_env::var("BIOMEOS_STUN_SERVER") {
             servers.push(self_hosted);
         }
 
         // 2. Custom servers from env
-        if let Ok(custom) = std::env::var("BIOMEOS_STUN_SERVERS") {
+        if let Ok(custom) = songbird_process_env::var("BIOMEOS_STUN_SERVERS") {
             servers
                 .extend(custom.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()));
         }
 
         // 3. Public fallback (only if no custom servers)
-        if servers.is_empty() && std::env::var("BIOMEOS_NO_PUBLIC_STUN").is_err() {
+        if servers.is_empty() && songbird_process_env::var("BIOMEOS_NO_PUBLIC_STUN").is_err() {
             servers.extend(Self::default_public_stun_servers());
         }
 

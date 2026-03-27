@@ -36,7 +36,7 @@ use songbird_types::SafeEnv;
 #[must_use]
 pub fn detect_gpu() -> Option<String> {
     // Priority 1: Check environment variable override (for testing/configuration)
-    if let Ok(gpu_model) = std::env::var("GPU_MODEL")
+    if let Ok(gpu_model) = songbird_process_env::var("GPU_MODEL")
         && !gpu_model.is_empty()
     {
         return Some(gpu_model);
@@ -94,7 +94,7 @@ pub fn detect_gpu() -> Option<String> {
 #[must_use]
 pub fn detect_storage_capacity() -> Option<usize> {
     // Priority 1: Check environment variable override (for testing/configuration)
-    if let Ok(storage_gb) = std::env::var("STORAGE_GB")
+    if let Ok(storage_gb) = songbird_process_env::var("STORAGE_GB")
         && let Ok(storage) = storage_gb.parse::<usize>()
     {
         return Some(storage);

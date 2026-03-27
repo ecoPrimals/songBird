@@ -174,7 +174,7 @@ impl PortAllocator {
         capability: &str,
     ) -> Result<TcpListener, std::io::Error> {
         // Try environment variable first
-        if let Ok(port_str) = std::env::var(env_var)
+        if let Ok(port_str) = songbird_process_env::var(env_var)
             && let Ok(port) = port_str.parse::<u16>()
         {
             return TcpListener::bind(("0.0.0.0", port));

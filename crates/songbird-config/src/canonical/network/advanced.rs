@@ -58,9 +58,9 @@ impl ServiceEndpoint {
         let port_env = format!("{env_prefix}_PORT");
         let scheme_env = format!("{env_prefix}_SCHEME");
 
-        let host = std::env::var(&host_env).ok()?;
-        let port = std::env::var(&port_env).ok()?.parse().ok()?;
-        let scheme = std::env::var(&scheme_env).unwrap_or_else(|_| "http".to_string());
+        let host = songbird_process_env::var(&host_env).ok()?;
+        let port = songbird_process_env::var(&port_env).ok()?.parse().ok()?;
+        let scheme = songbird_process_env::var(&scheme_env).unwrap_or_else(|_| "http".to_string());
 
         Some(Self::new(&host, port, &scheme))
     }
@@ -68,7 +68,8 @@ impl ServiceEndpoint {
 
 impl Default for ServiceEndpoint {
     fn default() -> Self {
-        Self::new("127.0.0.1", 8080, "http")
+        use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
+        Self::new(LOCALHOST, DEFAULT_HTTP_PORT, "http")
     }
 }
 
@@ -82,12 +83,11 @@ pub struct SelfAwareConfig {
 
 impl Default for SelfAwareConfig {
     fn default() -> Self {
-        use std::env;
         Self {
-            id: env::var("SONGBIRD_PRIMAL_ID").unwrap_or_else(|_| SELF_NAME.to_string()),
-            endpoint: ServiceEndpoint::from_env("SONGBIRD_SELF")
-                .unwrap_or_else(|| ServiceEndpoint::new("127.0.0.1", 8080, "http")),
-            capabilities: env::var("SONGBIRD_CAPABILITIES")
+            id: songbird_process_env::var("SONGBIRD_PRIMAL_ID")
+                .unwrap_or_else(|_| SELF_NAME.to_string()),
+            endpoint: ServiceEndpoint::from_env("SONGBIRD_SELF").unwrap_or_default(),
+            capabilities: songbird_process_env::var("SONGBIRD_CAPABILITIES")
                 .unwrap_or_else(|_| "orchestration,service_discovery,load_balancing".to_string())
                 .split(',')
                 .map(|s| s.trim().to_string())
@@ -106,10 +106,9 @@ pub struct UniversalDiscoveryConfig {
 
 impl Default for UniversalDiscoveryConfig {
     fn default() -> Self {
-        use std::env;
         Self {
-            enabled: env::var("SONGBIRD_UNIVERSAL_DISCOVERY_ENABLED").is_ok(),
-            discovery_methods: env::var("SONGBIRD_DISCOVERY_METHODS")
+            enabled: songbird_process_env::var("SONGBIRD_UNIVERSAL_DISCOVERY_ENABLED").is_ok(),
+            discovery_methods: songbird_process_env::var("SONGBIRD_DISCOVERY_METHODS")
                 .unwrap_or_else(|_| "network_scan,service_registry,mdns".to_string())
                 .split(',')
                 .map(|s| s.trim().to_string())
@@ -181,12 +180,11 @@ pub struct SslConfig {
 
 impl Default for SslConfig {
     fn default() -> Self {
-        use std::env;
         Self {
-            enabled: env::var("SONGBIRD_SSL_ENABLED").is_ok(),
-            cert_path: env::var("SONGBIRD_SSL_CERT").ok(),
-            key_path: env::var("SONGBIRD_SSL_KEY").ok(),
-            ca_path: env::var("SONGBIRD_SSL_CA").ok(),
+            enabled: songbird_process_env::var("SONGBIRD_SSL_ENABLED").is_ok(),
+            cert_path: songbird_process_env::var("SONGBIRD_SSL_CERT").ok(),
+            key_path: songbird_process_env::var("SONGBIRD_SSL_KEY").ok(),
+            ca_path: songbird_process_env::var("SONGBIRD_SSL_CA").ok(),
         }
     }
 }
@@ -205,24 +203,26 @@ pub struct ProxyConfig {
 
 impl Default for ProxyConfig {
     fn default() -> Self {
-        use std::env;
+        use songbird_types::constants::{
+            DEFAULT_HTTP_PORT, DEFAULT_ORCHESTRATOR_PORT, LOCALHOST, PRODUCTION_BIND_ADDRESS,
+        };
         Self {
-            enabled: env::var("SONGBIRD_PROXY_ENABLED")
+            enabled: songbird_process_env::var("SONGBIRD_PROXY_ENABLED")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(false),
-            bind_address: env::var("SONGBIRD_PROXY_BIND_ADDRESS")
-                .unwrap_or_else(|_| "0.0.0.0".to_string()),
-            bind_port: env::var("SONGBIRD_PROXY_BIND_PORT")
+            bind_address: songbird_process_env::var("SONGBIRD_PROXY_BIND_ADDRESS")
+                .unwrap_or_else(|_| PRODUCTION_BIND_ADDRESS.to_string()),
+            bind_port: songbird_process_env::var("SONGBIRD_PROXY_BIND_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(8080),
-            target_address: env::var("SONGBIRD_PROXY_TARGET_ADDRESS")
-                .unwrap_or_else(|_| "127.0.0.1".to_string()),
-            target_port: env::var("SONGBIRD_PROXY_TARGET_PORT")
+                .unwrap_or(DEFAULT_HTTP_PORT),
+            target_address: songbird_process_env::var("SONGBIRD_PROXY_TARGET_ADDRESS")
+                .unwrap_or_else(|_| LOCALHOST.to_string()),
+            target_port: songbird_process_env::var("SONGBIRD_PROXY_TARGET_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(8000),
+                .unwrap_or(DEFAULT_ORCHESTRATOR_PORT),
             connection_timeout_ms: 5000,
         }
     }
@@ -239,11 +239,11 @@ pub struct DomainConfig {
 
 impl Default for DomainConfig {
     fn default() -> Self {
-        use std::env;
         Self {
-            domain_name: env::var("SONGBIRD_DOMAIN").unwrap_or_else(|_| "localhost".to_string()),
-            tls_enabled: env::var("SONGBIRD_TLS_ENABLED").is_ok(),
-            certificate_path: env::var("SONGBIRD_TLS_CERT").ok(),
+            domain_name: songbird_process_env::var("SONGBIRD_DOMAIN")
+                .unwrap_or_else(|_| songbird_types::constants::LOCALHOST.to_string()),
+            tls_enabled: songbird_process_env::var("SONGBIRD_TLS_ENABLED").is_ok(),
+            certificate_path: songbird_process_env::var("SONGBIRD_TLS_CERT").ok(),
         }
     }
 }
@@ -444,7 +444,7 @@ pub struct NetworkInterfaceConfig {
 impl Default for NetworkInterfaceConfig {
     fn default() -> Self {
         Self {
-            bind_address: "0.0.0.0".to_string(),
+            bind_address: songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string(),
             interface_name: None,
             ipv6_enabled: true,
         }

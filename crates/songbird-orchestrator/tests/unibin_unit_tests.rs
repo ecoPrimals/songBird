@@ -53,7 +53,7 @@ mod helper_tests {
         let _g = lock_env();
         // Test that env var parsing works correctly
         songbird_process_env::set_var("TEST_PORT", "9000");
-        let port = std::env::var("TEST_PORT").unwrap();
+        let port = songbird_process_env::var("TEST_PORT").unwrap();
         assert_eq!(port, "9000");
         songbird_process_env::remove_var("TEST_PORT");
     }
@@ -131,9 +131,9 @@ mod helper_tests {
         let _g = lock_env();
         // Test node identity environment variable priority
         songbird_process_env::set_var("SONGBIRD_NODE_ID", "test-node-1");
-        let node_id = std::env::var("SONGBIRD_NODE_ID")
-            .or_else(|_| std::env::var("NODE_ID"))
-            .or_else(|_| std::env::var("SPORE_ID"))
+        let node_id = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
+            .or_else(|_| songbird_process_env::var("SPORE_ID"))
             .ok();
 
         assert!(node_id.is_some());
@@ -147,8 +147,9 @@ mod helper_tests {
         let _g = lock_env();
         // Test family identity environment variable priority
         songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-        let family_id =
-            std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
+        let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| songbird_process_env::var("FAMILY_ID"))
+            .ok();
 
         assert!(family_id.is_some());
         assert_eq!(family_id.unwrap(), "nat0");
@@ -164,9 +165,9 @@ mod helper_tests {
         songbird_process_env::remove_var("NODE_ID");
         songbird_process_env::set_var("SPORE_ID", "fallback-spore");
 
-        let node_id = std::env::var("SONGBIRD_NODE_ID")
-            .or_else(|_| std::env::var("NODE_ID"))
-            .or_else(|_| std::env::var("SPORE_ID"))
+        let node_id = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
+            .or_else(|_| songbird_process_env::var("SPORE_ID"))
             .ok();
 
         assert!(node_id.is_some());

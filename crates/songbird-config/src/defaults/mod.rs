@@ -18,11 +18,13 @@ pub mod endpoints;
 pub mod health;
 pub mod hosts;
 pub mod hosts_evolved;
+pub mod network_detection;
 pub mod performance;
 pub mod ports;
 pub mod ports_evolved;
 pub mod resources;
 pub mod scaling;
+pub mod service_locator;
 pub mod timeouts;
 
 pub use cache::*;

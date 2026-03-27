@@ -76,7 +76,7 @@ impl CredentialManager {
     /// - Flexible: Multiple naming conventions supported
     #[must_use]
     pub fn get_api_key(&self, service: &str) -> Option<String> {
-        self.get_api_key_with(service, |name| std::env::var(name).ok())
+        self.get_api_key_with(service, |name| songbird_process_env::var(name).ok())
     }
 
     /// Get API key with injectable env reader (concurrent-safe, testable)

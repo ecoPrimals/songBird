@@ -227,13 +227,13 @@ impl SecurityCapabilityClient {
     /// Discover `BearDog` endpoint using multiple strategies
     async fn discover_endpoint() -> Result<String> {
         // Strategy 1: BEARDOG_ENDPOINT environment variable
-        if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT") {
+        if let Ok(endpoint) = songbird_process_env::var("BEARDOG_ENDPOINT") {
             tracing::info!("🐻 Using BearDog endpoint from BEARDOG_ENDPOINT: {}", endpoint);
             return Ok(endpoint);
         }
 
         // Strategy 2: SECURITY_ENDPOINT environment variable
-        if let Ok(endpoint) = std::env::var("SECURITY_ENDPOINT") {
+        if let Ok(endpoint) = songbird_process_env::var("SECURITY_ENDPOINT") {
             tracing::info!("🐻 Using BearDog endpoint from SECURITY_ENDPOINT: {}", endpoint);
             return Ok(endpoint);
         }

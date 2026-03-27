@@ -87,6 +87,7 @@ unnecessary_literal_unwrap = "allow"
 
 [dependencies]
 # All workspace crates (songbird-core consolidated into this crate)
+songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-execution-agent = { path = "../songbird-execution-agent" }  # For CommandExecutor integration
@@ -119,7 +120,6 @@ base64 = "0.22"
 
 colored = "2.0"
 parking_lot = "0.12"
-num_cpus = "1.16"
 fastrand = "2.0"
 rand = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
@@ -156,7 +156,6 @@ tokio-serde = { version = "0.8.0", features = ["bincode"] }
 netdev = "0.40.0"
 
 [dev-dependencies]
-songbird-process-env.workspace = true
 songbird-test-utils = { path = "../songbird-test-utils" }
 tokio-tungstenite = "0.24"
 assert_cmd = "2.0"  # UniBin CLI testing

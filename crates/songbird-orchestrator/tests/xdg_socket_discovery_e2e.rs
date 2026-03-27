@@ -53,7 +53,6 @@
 //! - neural-api.sock (NOT neural-api-nat0.sock)
 //! ```
 
-use std::env;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -102,10 +101,10 @@ fn run_mock_jsonrpc_server(
 
 #[tokio::test]
 async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Setup: Create sockets at all three locations
-    let temp_dir = env::temp_dir().join("test-xdg-priority-e2e");
+    let temp_dir = std::env::temp_dir().join("test-xdg-priority-e2e");
     let xdg_biomeos = temp_dir.join("biomeos");
     let tmp_biomeos = PathBuf::from("/tmp/biomeos");
 
@@ -145,7 +144,7 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
 
 #[tokio::test]
 async fn test_e2e_fallback_to_tmp_biomeos_when_no_xdg() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
     let tmp_biomeos = PathBuf::from("/tmp/biomeos");
     std::fs::create_dir_all(&tmp_biomeos).unwrap();
@@ -170,9 +169,9 @@ async fn test_e2e_fallback_to_tmp_biomeos_when_no_xdg() {
 
 #[tokio::test]
 async fn test_e2e_socket_naming_no_family_suffix() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
-    let temp_dir = env::temp_dir().join("test-socket-naming-e2e");
+    let temp_dir = std::env::temp_dir().join("test-socket-naming-e2e");
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
@@ -208,9 +207,9 @@ async fn test_e2e_socket_naming_no_family_suffix() {
 
 #[tokio::test]
 async fn test_e2e_discover_all_primals_at_xdg() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
-    let temp_dir = env::temp_dir().join("test-all-primals-e2e");
+    let temp_dir = std::env::temp_dir().join("test-all-primals-e2e");
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
@@ -257,9 +256,9 @@ async fn test_e2e_discover_all_primals_at_xdg() {
 
 #[tokio::test]
 async fn test_e2e_capability_registration_discovers_xdg_neural_api() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
-    let temp_dir = env::temp_dir().join("test-cap-reg-e2e");
+    let temp_dir = std::env::temp_dir().join("test-cap-reg-e2e");
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
@@ -293,9 +292,9 @@ async fn test_e2e_capability_registration_discovers_xdg_neural_api() {
 
 #[tokio::test]
 async fn test_e2e_security_client_discovers_xdg_beardog() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
-    let temp_dir = env::temp_dir().join("test-sec-client-e2e");
+    let temp_dir = std::env::temp_dir().join("test-sec-client-e2e");
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
@@ -328,7 +327,7 @@ async fn test_e2e_security_client_discovers_xdg_beardog() {
 
 #[tokio::test]
 async fn test_e2e_xdg_directory_structure_compliance() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Verify expected directory structure
     // /run/user/$UID/biomeos/
@@ -337,7 +336,7 @@ async fn test_e2e_xdg_directory_structure_compliance() {
     // ├── neural-api.sock
     // └── ...
 
-    let temp_dir = env::temp_dir().join("test-dir-structure-e2e");
+    let temp_dir = std::env::temp_dir().join("test-dir-structure-e2e");
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
@@ -377,9 +376,9 @@ async fn test_e2e_xdg_directory_structure_compliance() {
 
 #[tokio::test]
 async fn test_e2e_env_var_overrides_xdg() {
-    let _guard = ENV_MUTEX.lock().unwrap();
+    let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
-    let temp_dir = env::temp_dir().join("test-env-override-e2e");
+    let temp_dir = std::env::temp_dir().join("test-env-override-e2e");
     let biomeos_dir = temp_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 

@@ -117,7 +117,7 @@ impl EndpointConfig {
     
     /// Parse port from environment variable
     fn parse_port_env(key: &str, default: u16) -> u16 {
-        std::env::var(key)
+        songbird_process_env::var(key)
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(default)
@@ -125,7 +125,7 @@ impl EndpointConfig {
     
     /// Parse IP address from environment variable
     fn parse_addr_env(key: &str, default: IpAddr) -> IpAddr {
-        std::env::var(key)
+        songbird_process_env::var(key)
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(default)
@@ -162,10 +162,10 @@ impl CapabilityEndpoints {
     /// Returns None for each capability if not set - will be discovered at runtime.
     pub fn from_env() -> Self {
         Self {
-            security: std::env::var("SECURITY_ENDPOINT").ok(),
-            storage: std::env::var("STORAGE_ENDPOINT").ok(),
-            compute: std::env::var("COMPUTE_ENDPOINT").ok(),
-            ai: std::env::var("AI_ENDPOINT").ok(),
+            security: songbird_process_env::var("SECURITY_ENDPOINT").ok(),
+            storage: songbird_process_env::var("STORAGE_ENDPOINT").ok(),
+            compute: songbird_process_env::var("COMPUTE_ENDPOINT").ok(),
+            ai: songbird_process_env::var("AI_ENDPOINT").ok(),
         }
     }
     

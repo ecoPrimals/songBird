@@ -37,7 +37,7 @@ const SECURITY_SEARCH_TERMS: &[&str] = &["security", "auth", "encryption"];
 /// 7. `None` if not found (triggers secure fallback)
 #[must_use]
 pub fn discover_security_socket() -> Option<PathBuf> {
-    discover_security_socket_with(|key| std::env::var(key))
+    discover_security_socket_with(|key| songbird_process_env::var(key))
 }
 
 /// Backward-compatible alias for [`discover_security_socket`].
@@ -131,7 +131,7 @@ where
 /// Scan socket directories for sockets matching security search terms.
 fn scan_security_sockets() -> Option<PathBuf> {
     let mut dirs = Vec::with_capacity(3);
-    if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
         dirs.push(format!("{xdg}/biomeos"));
     }
     dirs.push("/tmp/biomeos".to_string());
@@ -159,7 +159,7 @@ fn scan_security_sockets() -> Option<PathBuf> {
 /// Discover security provider socket for a specific family.
 #[must_use]
 pub fn discover_security_socket_for_family(family_id: &str) -> Option<PathBuf> {
-    discover_security_socket_for_family_with(family_id, |key| std::env::var(key))
+    discover_security_socket_for_family_with(family_id, |key| songbird_process_env::var(key))
 }
 
 /// Backward-compatible alias for [`discover_security_socket_for_family`].

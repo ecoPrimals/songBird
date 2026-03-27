@@ -51,7 +51,7 @@ impl EnvOverride {
     #[must_use]
     pub fn get(&self, key: &str) -> Option<String> {
         let vars = self.vars.read().unwrap_or_else(std::sync::PoisonError::into_inner);
-        vars.get(key).cloned().or_else(|| std::env::var(key).ok())
+        vars.get(key).cloned().or_else(|| songbird_process_env::var(key).ok())
     }
 
     /// Remove a variable from this override
@@ -76,7 +76,7 @@ impl EnvOverride {
     #[must_use]
     pub fn contains_key(&self, key: &str) -> bool {
         let vars = self.vars.read().unwrap_or_else(std::sync::PoisonError::into_inner);
-        vars.contains_key(key) || std::env::var(key).is_ok()
+        vars.contains_key(key) || songbird_process_env::var(key).is_ok()
     }
 }
 

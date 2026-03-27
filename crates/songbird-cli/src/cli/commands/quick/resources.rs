@@ -48,7 +48,8 @@ pub struct ResourceDetectionRequest {
 pub async fn detect_resources_with_params(
     request: ResourceDetectionRequest,
 ) -> SongbirdResult<SystemResources> {
-    let cpu_cores = num_cpus::get();
+    let cpu_cores =
+        std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
     let memory_gb = detect_available_memory();
     let storage_gb = if request.detect_storage {
         get_available_storage()
@@ -127,7 +128,7 @@ fn detect_gpu_availability() -> bool {
 }
 
 async fn detect_network_speed() -> NetworkSpeed {
-    if let Ok(speed_str) = std::env::var("SONGBIRD_NETWORK_SPEED") {
+    if let Ok(speed_str) = songbird_process_env::var("SONGBIRD_NETWORK_SPEED") {
         match speed_str.to_lowercase().as_str() {
             "fast" => return NetworkSpeed::Fast,
             "slow" => return NetworkSpeed::Slow,

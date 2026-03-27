@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![forbid(unsafe_code)]
+
 //! Shared CLI entry types and helpers for the `songbird` binary.
 //!
 //! Kept in the library target so integration tests can exercise parsing

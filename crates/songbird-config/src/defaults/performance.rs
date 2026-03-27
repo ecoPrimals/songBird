@@ -7,7 +7,7 @@
 //!
 //! # Environment Variables
 //!
-//! - `SONGBIRD_THREAD_POOL_SIZE` - Thread pool size (default: `num_cpus` or 4)
+//! - `SONGBIRD_THREAD_POOL_SIZE` - Thread pool size (default: available parallelism or 4)
 //! - `SONGBIRD_THREAD_POOL_SIZE_SMALL` - Small thread pool (default: 4)
 //! - `SONGBIRD_THREAD_POOL_SIZE_MIN` - Minimal thread pool (default: 2)
 //! - `SONGBIRD_THREAD_POOL_SIZE_LARGE` - Large thread pool (default: 10)
@@ -20,7 +20,10 @@ use songbird_types::SafeEnv;
 /// Get default thread pool size (uses CPU count if available)
 #[must_use]
 pub fn thread_pool_size() -> usize {
-    SafeEnv::get_usize("SONGBIRD_THREAD_POOL_SIZE", num_cpus::get())
+    SafeEnv::get_usize(
+        "SONGBIRD_THREAD_POOL_SIZE",
+        std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
+    )
 }
 
 /// Get small thread pool size

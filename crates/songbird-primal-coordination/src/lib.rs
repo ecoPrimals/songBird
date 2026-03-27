@@ -3,10 +3,15 @@
 
 #![allow(
     clippy::clone_on_ref_ptr,
-    clippy::unwrap_used,
-    clippy::expect_used,
+    reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
+)]
+#![allow(
     clippy::ignore_without_reason,
-    reason = "Historical patterns in this crate (locks, tests); inherited workspace pedantic lints."
+    reason = "Historical patterns in this crate; inherited workspace pedantic lints."
+)]
+#![cfg_attr(
+    test,
+    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
 )]
 //! # 🌳 Songbird Primal Coordination - Universal Signal and Coordinator
 //!

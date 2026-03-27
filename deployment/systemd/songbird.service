@@ -12,7 +12,7 @@
 #   journalctl -u songbird -f
 
 [Unit]
-Description=Songbird Network Gaming Bridge (ecoPrimals)
+Description=Songbird Network Orchestrator (ecoPrimals)
 Documentation=https://github.com/ecoPrimals/songbird
 After=network-online.target
 Wants=network-online.target

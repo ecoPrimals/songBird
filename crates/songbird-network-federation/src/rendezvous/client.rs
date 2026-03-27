@@ -38,7 +38,7 @@ impl RendezvousClient {
     /// Create a new rendezvous client (Pure Rust Unix socket)
     pub fn new(_server_url: String) -> Result<Self> {
         // Convert server_url to socket path or use env var
-        let socket_path = std::env::var("RENDEZVOUS_SOCKET_PATH")
+        let socket_path = songbird_process_env::var("RENDEZVOUS_SOCKET_PATH")
             .map_or_else(|_| PathBuf::from("/tmp/rendezvous.sock"), PathBuf::from);
 
         let rpc_client = UnixRpcClient::new(&socket_path)?;
@@ -197,7 +197,7 @@ impl RendezvousClient {
     /// to derive a surrogate fingerprint from (`CryptoUnavailable`).
     async fn get_public_key_fingerprint(&self) -> Result<String> {
         // Try to get from BearDog security service via RPC
-        if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET_PATH") {
+        if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET_PATH") {
             // Attempt to fetch public key via JSON-RPC
             if let Ok(beardog_client) = UnixRpcClient::new(PathBuf::from(socket_path)) {
                 match beardog_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
@@ -242,7 +242,7 @@ impl RendezvousClient {
     /// cryptographically sign the registration message.
     async fn sign_message_for_registration(&self) -> Option<String> {
         // Try to sign with BearDog security service
-        if let Ok(beardog_url) = std::env::var("BEARDOG_ENDPOINT") {
+        if let Ok(beardog_url) = songbird_process_env::var("BEARDOG_ENDPOINT") {
             // In production, would serialize msg and send to BearDog for signing
             // For now, return None to indicate unsigned (but ready for integration)
             debug!("BearDog endpoint configured at {}, signature integration pending", beardog_url);

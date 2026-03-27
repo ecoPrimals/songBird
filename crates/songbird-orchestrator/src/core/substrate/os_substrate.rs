@@ -318,7 +318,7 @@ fn parse_system_info_response() -> Result<SystemInfo, SubstrateError>    {// Ok
 
 fn get_local_system_info() -> SystemInfo  {SystemInfo  {platform: std::env::consts::OS.to_string(),
         architecture: std::env::consts::ARCH.to_string(),
-        cpu_cores: num_cpus::get() as u32;}}
+        cpu_cores: std::thread::available_parallelism().map_or(1, std::num::NonZero::get) as u32;}}
 
 fn handle_request_locally() -> serde_json::Value  {
      serde_json::json!({ "result": "processed_locally",

@@ -79,13 +79,13 @@ pub async fn discover_security_endpoint(
     universal_adapter: Option<&mut crate::universal_adapter::UniversalAdapter>,
 ) -> Result<String> {
     // Priority 1: NEW - Generic capability env var (v3.15.0)
-    if let Ok(endpoint) = std::env::var("SONGBIRD_SECURITY_PROVIDER") {
+    if let Ok(endpoint) = songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER") {
         info!("🔐 Security provider: {} (via SONGBIRD_SECURITY_PROVIDER)", endpoint);
         return Ok(endpoint);
     }
 
     // Priority 2: EXISTING - Generic security endpoint
-    if let Ok(endpoint) = std::env::var("SECURITY_ENDPOINT") {
+    if let Ok(endpoint) = songbird_process_env::var("SECURITY_ENDPOINT") {
         info!("🔐 Security provider: {} (via SECURITY_ENDPOINT)", endpoint);
         return Ok(endpoint);
     }
@@ -109,7 +109,7 @@ pub async fn discover_security_endpoint(
     }
 
     // Priority 5: Legacy fallback (for backward compat)
-    if let Ok(endpoint) = std::env::var("CAPABILITY_SECURITY_ENDPOINT") {
+    if let Ok(endpoint) = songbird_process_env::var("CAPABILITY_SECURITY_ENDPOINT") {
         warn!("⚠️  Using legacy CAPABILITY_SECURITY_ENDPOINT");
         warn!("   Please use SONGBIRD_SECURITY_PROVIDER instead");
         return Ok(endpoint);

@@ -244,7 +244,8 @@ mod tests {
         // race with test_clear_registry_does_not_panic running concurrently
         let capability = "cache_stability_isolated_v4";
         let port1 = test_port(capability);
-        let registry = super::PORT_REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+        let registry =
+            super::PORT_REGISTRY.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let cached = registry.get(capability).copied();
         drop(registry);
         assert_eq!(cached, Some(port1), "Port should be cached in registry after allocation");

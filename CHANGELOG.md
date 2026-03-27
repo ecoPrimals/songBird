@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave77] - 2026-03-27 - Coverage Expansion, Domain Refactoring, Zero-Unsafe Overlay
+
+### Added — Coverage Expansion (+58 tests, Wave 77)
+- `songbird-process-env`: 6 → 22 tests (var_os, vars merge/exclude, reset, unicode, edge cases)
+- `songbird-types` error_helpers: 6 → 32 tests (all UnwrapElimination variants, SafeEnv bool/port/usize, SafeParse edge cases)
+- `songbird-universal-ipc` service_types: 0 → 13 tests (full DTO serialization/deserialization)
+- `songbird-universal-ipc` igd_handler: 1 → 6 tests (error paths without gateway)
+- `songbird-http-client` TLS profiler: 7 → 22 tests (should_retry_with_fallback, success_rate, most_problematic_extensions, get_all_profiles)
+- `songbird-orchestrator` service_registry: 14 → 23 tests (cleanup_stale_services, heartbeat unknown, query capability, port release)
+
+### Changed — Smart Domain-Based File Refactoring (Wave 76)
+- `hosts_evolved.rs` 927 → 304: extracted `network_detection.rs`, `service_locator.rs`, tests
+- `paths.rs` 878 → 600: extracted `paths_tests.rs`
+- `service.rs` (IPC) 853 → 779: extracted `service_types.rs` (wire DTOs)
+- `core.rs` (orchestrator) 831 → 726: extracted `connectivity.rs`
+- `discoverable_endpoint.rs` 809 → 492: extracted tests
+- `errors.rs` 777 → 509: extracted `errors_tests.rs`
+
+### Changed — Zero-Unsafe Process-Env Overlay (Wave 75)
+- Rewrote `songbird-process-env` to BearDog in-memory overlay pattern — zero `unsafe`, zero external deps
+- Dropped `parking_lot` dependency; `std::sync::Mutex` + `OnceLock` only
+- Migrated all `std::env::var` callers to `songbird_process_env::var` (19 crates)
+- `forbid(unsafe_code)` now enforced across all 30 workspace crates
+
+### Fixed
+- Removed stale `Deserialize` import from `service.rs` (leftover from DTO extraction)
+- Updated root docs (README, SECURITY, CONTRIBUTING, CONTEXT) to reflect zero-unsafe status
+
+---
+
 ## [v0.2.1-wave71] - 2026-03-24 - JSON-RPC Enum Dispatch, Coverage Expansion, Stub Evolution
 
 ### Added — JSON-RPC Enum Dispatch

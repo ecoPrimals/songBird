@@ -204,10 +204,10 @@ impl BirdSongCrypto for ProductionBearDogProvider {
             .family_id
             .clone()
             .or_else(|| {
-                std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
-                    .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-                    .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
-                    .or_else(|_| std::env::var("FAMILY_ID"))
+                songbird_process_env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+                    .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
+                    .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
+                    .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .ok()
             })
             .unwrap_or_else(|| "default".to_string());
@@ -228,10 +228,10 @@ impl BirdSongCrypto for ProductionBearDogProvider {
             .family_id
             .clone()
             .or_else(|| {
-                std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
-                    .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-                    .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
-                    .or_else(|_| std::env::var("FAMILY_ID"))
+                songbird_process_env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+                    .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
+                    .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
+                    .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .ok()
             })
             .unwrap_or_else(|| "default".to_string());

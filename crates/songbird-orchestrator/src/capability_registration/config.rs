@@ -4,8 +4,8 @@
 //! Configuration for Neural API capability registration.
 
 use anyhow::{Context, Result};
+use songbird_process_env as env;
 use songbird_types::primal_names;
-use std::env;
 
 /// Configuration for capability registration (supports dependency injection)
 #[derive(Debug, Clone)]

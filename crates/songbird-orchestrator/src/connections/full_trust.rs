@@ -44,9 +44,10 @@ impl FullTrustConnection {
     /// Returns an error if the operation fails.
     pub fn new(peer_id: String, endpoint: String) -> Result<Self> {
         // Convert endpoint to Unix socket path
-        let socket_path = std::env::var(format!("{}_SOCKET_PATH", peer_id.to_uppercase()))
-            .or_else(|_| std::env::var("PEER_SOCKET_PATH"))
-            .map_or_else(|_| PathBuf::from(format!("/tmp/{peer_id}.sock")), PathBuf::from);
+        let socket_path =
+            songbird_process_env::var(format!("{}_SOCKET_PATH", peer_id.to_uppercase()))
+                .or_else(|_| songbird_process_env::var("PEER_SOCKET_PATH"))
+                .map_or_else(|_| PathBuf::from(format!("/tmp/{peer_id}.sock")), PathBuf::from);
 
         let rpc_client = UnixRpcClient::new(&socket_path)
             .context(format!("Failed to create RPC client for peer {peer_id}"))?;

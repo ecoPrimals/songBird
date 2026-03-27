@@ -77,7 +77,7 @@ impl SovereignSecurityValidator {
         // let beardog_services = songbird_discovery.discover_capability("enhanced_security").await?;
 
         // For now, check environment or config
-        let beardog_available = std::env::var("BEARDOG_SECURITY_ENDPOINT").is_ok();
+        let beardog_available = songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT").is_ok();
 
         if beardog_available {
             info!("✅ BearDog discovered - enabling enhanced security network effect");
@@ -226,16 +226,35 @@ impl BearDogIntegration {
     ///
     /// Discovers `BearDog` endpoint via:
     /// 1. `BEARDOG_SECURITY_ENDPOINT` environment variable
-    /// 2. `SONGBIRD_SECURITY_ENDPOINT` environment variable  
-    /// 3. Fallback to localhost:8443 (development)
+    /// 2. `SONGBIRD_SECURITY_ENDPOINT` environment variable
+    /// 3. Development-only fallback to `localhost:DEFAULT_HTTPS_PORT`
     ///
     /// # Errors
     ///
-    /// Returns an error if HTTP client cannot be created
+    /// Returns an error if HTTP client cannot be created, or if no endpoint
+    /// is configured in release builds.
     async fn connect() -> SongbirdResult<Self> {
-        let endpoint = std::env::var("BEARDOG_SECURITY_ENDPOINT")
-            .or_else(|_| std::env::var("SONGBIRD_SECURITY_ENDPOINT"))
-            .unwrap_or_else(|_| "http://localhost:8443".to_string());
+        let endpoint = songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT")
+            .or_else(|_| songbird_process_env::var("SONGBIRD_SECURITY_ENDPOINT"))
+            .or_else(|_| -> Result<String, std::env::VarError> {
+                #[cfg(debug_assertions)]
+                {
+                    use songbird_types::constants::{DEFAULT_HTTPS_PORT, LOCALHOST};
+                    let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
+                    warn!("⚠️ Using development fallback for BearDog security: {fallback}");
+                    Ok(fallback)
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    Err(std::env::VarError::NotPresent)
+                }
+            })
+            .map_err(|_| {
+                SongbirdError::configuration(
+                    "BearDog security endpoint not configured. \
+                     Set BEARDOG_SECURITY_ENDPOINT or SONGBIRD_SECURITY_ENDPOINT.",
+                )
+            })?;
 
         // Create HTTP client
         let client = IpcHttpClient::new().await.map_err(|e| {

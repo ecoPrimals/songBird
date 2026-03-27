@@ -83,14 +83,20 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![allow(
+    clippy::clone_on_ref_ptr,
+    reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
+)]
+#![cfg_attr(
+    test,
+    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
+)]
+#![allow(
     clippy::module_name_repetitions,
     clippy::items_after_statements,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::unused_async,
-    clippy::clone_on_ref_ptr,
-    clippy::expect_used,
-    reason = "unused bindings/imports in this compilation unit; Arc::clone and invariant expects in relay paths"
+    reason = "unused bindings/imports in this compilation unit; doc and style exceptions for relay paths"
 )]
 #![cfg_attr(
     test,

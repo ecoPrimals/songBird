@@ -18,7 +18,7 @@ pub struct EnvCryptoDiscovery;
 #[async_trait]
 impl CryptoCapabilityDiscovery for EnvCryptoDiscovery {
     async fn discover(&self, capability: &str) -> IpcResult<String> {
-        Self::discover_with(capability, |key| std::env::var(key).ok())
+        Self::discover_with(capability, |key| songbird_process_env::var(key).ok())
     }
 }
 

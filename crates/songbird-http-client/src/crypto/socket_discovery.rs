@@ -91,7 +91,9 @@ impl IpcEndpoint {
 /// - ✅ **Primal Autonomy**: Self-discovers optimal transport
 #[must_use]
 pub fn discover_ipc_endpoint(env_var: &str, primal_name: &str, legacy_path: &str) -> IpcEndpoint {
-    discover_ipc_endpoint_with(env_var, primal_name, legacy_path, |key| std::env::var(key))
+    discover_ipc_endpoint_with(env_var, primal_name, legacy_path, |key| {
+        songbird_process_env::var(key)
+    })
 }
 
 /// Injectable version for concurrent-safe testing
@@ -214,12 +216,12 @@ fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
     let filename = format!("{primal_name}-ipc-port");
 
     // Priority 1: XDG_RUNTIME_DIR (preferred, user-specific, volatile)
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
         candidates.push(PathBuf::from(runtime_dir).join(&filename));
     }
 
     // Priority 2: HOME/.local/share (persistent, user-specific)
-    if let Ok(home) = std::env::var("HOME") {
+    if let Ok(home) = songbird_process_env::var("HOME") {
         candidates.push(PathBuf::from(home).join(".local/share").join(&filename));
     }
 
@@ -253,7 +255,7 @@ fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
 /// ```
 fn discover_xdg_socket(primal_name: &str) -> Option<String> {
     // Get XDG_RUNTIME_DIR (standard Unix location)
-    let runtime_dir = match std::env::var("XDG_RUNTIME_DIR") {
+    let runtime_dir = match songbird_process_env::var("XDG_RUNTIME_DIR") {
         Ok(dir) if !dir.is_empty() => dir,
         _ => {
             debug!("   XDG_RUNTIME_DIR not set");
@@ -262,7 +264,7 @@ fn discover_xdg_socket(primal_name: &str) -> Option<String> {
     };
 
     // Get FAMILY_ID (ecoPrimals family identifier)
-    let family_id = match std::env::var("FAMILY_ID") {
+    let family_id = match songbird_process_env::var("FAMILY_ID") {
         Ok(id) if !id.is_empty() => id,
         _ => {
             debug!("   FAMILY_ID not set, trying common defaults");
@@ -348,14 +350,14 @@ pub fn discover_beardog_socket() -> String {
 /// 3. `/tmp/neural-api-{family_id}.sock` (legacy fallback with env-derived family)
 pub fn discover_neural_api_socket() -> String {
     // Check both NEURAL_API_SOCKET and NEURALS_SOCKET
-    if let Ok(socket) = std::env::var("NEURAL_API_SOCKET")
+    if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET")
         && !socket.is_empty()
     {
         info!("✅ Socket discovered via $NEURAL_API_SOCKET: {}", socket);
         return socket;
     }
 
-    if let Ok(socket) = std::env::var("NEURALS_SOCKET")
+    if let Ok(socket) = songbird_process_env::var("NEURALS_SOCKET")
         && !socket.is_empty()
     {
         info!("✅ Socket discovered via $NEURALS_SOCKET: {}", socket);
@@ -368,10 +370,10 @@ pub fn discover_neural_api_socket() -> String {
     }
 
     // Legacy fallback — use env-derived family ID (canonical chain)
-    let family_id = std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
-        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-        .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
-        .or_else(|_| std::env::var("FAMILY_ID"))
+    let family_id = songbird_process_env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+        .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
+        .or_else(|_| songbird_process_env::var("FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string());
     let socket = format!("{NEURAL_API_SOCKET_LEGACY_PATTERN}{family_id}.sock");
     warn!("⚠️  Using legacy /tmp socket: {}", socket);

@@ -119,11 +119,14 @@ pub struct JsonRpcRequest {
     pub id: Option<Value>,
 }
 
+/// JSON-RPC protocol version string.
+pub const JSONRPC_VERSION: &str = "2.0";
+
 impl JsonRpcRequest {
     /// Create a new JSON-RPC request (with numeric id).
     pub fn new(method: impl Into<String>, params: Option<Value>, id: u64) -> Self {
         Self {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             method: method.into(),
             params,
             id: Some(Value::Number(id.into())),
@@ -153,7 +156,7 @@ impl JsonRpcResponse {
     #[must_use]
     pub fn success(result: Value, id: Value) -> Self {
         Self {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: Some(result),
             error: None,
             id,
@@ -164,7 +167,7 @@ impl JsonRpcResponse {
     #[must_use]
     pub fn error(error: JsonRpcError, id: Value) -> Self {
         Self {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: None,
             error: Some(error),
             id,

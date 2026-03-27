@@ -496,14 +496,15 @@ async fn test_fault_family_id_edge_cases() {
     // Test edge cases for family_id environment variable
 
     songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "");
-    let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
+    let family_id =
+        songbird_process_env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
     assert_eq!(family_id, "");
 
     songbird_process_env::set_var(
         "SONGBIRD_FAMILY_ID",
         "very-long-family-id-".to_string() + &"x".repeat(100),
     );
-    let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap();
+    let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID").unwrap();
     assert!(family_id.len() > 100);
 
     songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");

@@ -16,8 +16,9 @@ use songbird_types::{SongbirdError, SongbirdResult};
 
 fn default_upa_endpoint_base() -> &'static str {
     static URL: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("SONGBIRD_UPA_ENDPOINT")
-            .unwrap_or_else(|_| "http://localhost:8080".to_string())
+        use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
+        songbird_process_env::var("SONGBIRD_UPA_ENDPOINT")
+            .unwrap_or_else(|_| format!("http://{LOCALHOST}:{DEFAULT_HTTP_PORT}"))
     });
     URL.as_str()
 }
@@ -182,7 +183,7 @@ impl BtspProviderFactory {
         }
 
         // Strategy 2: Check environment variable (explicit override)
-        if let Ok(endpoint) = std::env::var("SONGBIRD_SECURITY_PROVIDER_ENDPOINT") {
+        if let Ok(endpoint) = songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER_ENDPOINT") {
             debug!("✅ Found security provider via env var: {}", endpoint);
             return self.connect_to_security_provider(&endpoint).await;
         }

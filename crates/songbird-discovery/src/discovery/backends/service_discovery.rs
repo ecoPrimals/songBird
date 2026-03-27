@@ -234,27 +234,27 @@ impl UniversalServiceDiscovery {
         use songbird_config::canonical::constants;
 
         // Get configurable protocol
-        let registry_protocol =
-            std::env::var("SERVICE_REGISTRY_PROTOCOL").unwrap_or_else(|_| "http".to_string());
+        let registry_protocol = songbird_process_env::var("SERVICE_REGISTRY_PROTOCOL")
+            .unwrap_or_else(|_| "http".to_string());
 
         // Build default endpoints using constants
         let consul_default = format!(
             "{}://{}:{}",
             registry_protocol,
             constants::network::default_host(),
-            std::env::var("CONSUL_PORT").unwrap_or_else(|_| "8500".to_string())
+            songbird_process_env::var("CONSUL_PORT").unwrap_or_else(|_| "8500".to_string())
         );
         let eureka_default = format!(
             "{}://{}:{}",
             registry_protocol,
             constants::network::default_host(),
-            std::env::var("EUREKA_PORT").unwrap_or_else(|_| "8761".to_string())
+            songbird_process_env::var("EUREKA_PORT").unwrap_or_else(|_| "8761".to_string())
         );
 
         let potential_endpoints = vec![
-            std::env::var("SERVICE_REGISTRY_URL").unwrap_or_default(),
-            std::env::var("CONSUL_HTTP_ADDR").unwrap_or_default(),
-            std::env::var("EUREKA_SERVER_URL").unwrap_or_default(),
+            songbird_process_env::var("SERVICE_REGISTRY_URL").unwrap_or_default(),
+            songbird_process_env::var("CONSUL_HTTP_ADDR").unwrap_or_default(),
+            songbird_process_env::var("EUREKA_SERVER_URL").unwrap_or_default(),
             consul_default, // Configurable Consul default
             eureka_default, // Configurable Eureka default
         ];
@@ -325,8 +325,8 @@ impl UniversalServiceDiscovery {
     /// Detect network-based service discovery
     fn detect_network_services(&mut self) {
         // Check if we're in a container environment (Kubernetes, Docker, etc.)
-        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
-            || std::env::var("CONTAINER").is_ok()
+        if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok()
+            || songbird_process_env::var("CONTAINER").is_ok()
             || std::path::Path::new("/.dockerenv").exists()
         {
             debug!("Detected container environment - enabling network scanning");

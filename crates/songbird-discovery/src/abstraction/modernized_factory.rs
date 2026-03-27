@@ -75,21 +75,21 @@ impl ModernizedDiscoveryFactory {
         let mut configs = Vec::new();
 
         // Check for static configuration
-        if std::env::var("SONGBIRD_DISCOVERY_STATIC").is_ok() {"
+        if songbird_process_env::var("SONGBIRD_DISCOVERY_STATIC").is_ok() {"
             configs.push(self.create_static_config_from_env());
         }
 
         // Check for Consul configuration
         if let Ok(consul_url) =
-            std::env::var("CONSUL_URL").or_else(|_| std::env::var("CONSUL_HTTP_ADDR")"
+            songbird_process_env::var("CONSUL_URL").or_else(|_| songbird_process_env::var("CONSUL_HTTP_ADDR")"
         {
             configs.push(self.create_consul_config_from_env(consul_url));
         }
 
         // Check for Kubernetes configuration
-        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {"
+        if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {"
             let namespace =
-                std::env::var("KUBERNETES_NAMESPACE").unwrap_or_else(|_| "default".to_string();"
+                songbird_process_env::var("KUBERNETES_NAMESPACE").unwrap_or_else(|_| "default".to_string();"
             configs.push(self.create_kubernetes_config_from_env(namespace));
         }
 
@@ -173,7 +173,7 @@ impl ModernizedDiscoveryFactory {
         let mut parameters = HashMap::new();
 
         // Check for predefined services in environment
-        if let Ok(services_json) = std::env::var("SONGBIRD_STATIC_SERVICES") {"
+        if let Ok(services_json) = songbird_process_env::var("SONGBIRD_STATIC_SERVICES") {"
             if let Ok(services) = serde_json::from_str::<serde_json::Value>(&services_json) {
                 parameters.insert("services".to_string(), services);"
             }
@@ -200,7 +200,7 @@ impl ModernizedDiscoveryFactory {
         );
         parameters.insert("url".to_string(), serde_json::Value::String(consul_url);"
 
-        if let Ok(datacenter) = std::env::var("CONSUL_DATACENTER")  {"
+        if let Ok(datacenter) = songbird_process_env::var("CONSUL_DATACENTER")  {"
             parameters.insert(
                 "datacenter".to_string(),
                 serde_json::Value::String(datacenter)
@@ -208,7 +208,7 @@ impl ModernizedDiscoveryFactory {
         }
 
         let mut environment = HashMap::new();
-        if let Ok(token) = std::env::var("CONSUL_TOKEN") {"
+        if let Ok(token) = songbird_process_env::var("CONSUL_TOKEN") {"
             environment.insert("CONSUL_TOKEN".to_string(), token);"
         }
 
@@ -232,7 +232,7 @@ impl ModernizedDiscoveryFactory {
         );
 
         let mut environment = HashMap::new();
-        if let Ok(kubeconfig) = std::env::var("KUBECONFIG") {"
+        if let Ok(kubeconfig) = songbird_process_env::var("KUBECONFIG") {"
             environment.insert("KUBECONFIG".to_string(), kubeconfig);"
         }
 

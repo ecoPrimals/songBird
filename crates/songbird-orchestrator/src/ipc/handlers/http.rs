@@ -238,11 +238,11 @@ impl HttpHandler {
 
         // 3. Create HTTP client with BearDog crypto provider
         // Note: SongbirdHttpClient::new takes a socket path string
-        let beardog_socket_path = std::env::var("BEARDOG_SOCKET")
-            .or_else(|_| std::env::var("SONGBIRD_BEARDOG_SOCKET"))
+        let beardog_socket_path = songbird_process_env::var("BEARDOG_SOCKET")
+            .or_else(|_| songbird_process_env::var("SONGBIRD_BEARDOG_SOCKET"))
             .unwrap_or_else(|_| {
-                let family_id = std::env::var("SONGBIRD_FAMILY_ID")
-                    .or_else(|_| std::env::var("FAMILY_ID"))
+                let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+                    .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .unwrap_or_else(|_| "default".to_string());
                 format!("/tmp/beardog-{family_id}.sock")
             });

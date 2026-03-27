@@ -96,7 +96,7 @@ impl ScopedEnv {
     /// Set an environment variable for the scope
     pub fn new(key: impl Into<String>, value: impl AsRef<str>) -> Self {
         let key = key.into();
-        let original = std::env::var(&key).ok();
+        let original = songbird_process_env::var(&key).ok();
         songbird_process_env::set_var(&key, value.as_ref());
         Self {
             key,
@@ -127,10 +127,10 @@ mod tests {
 
         {
             let _env = ScopedEnv::new(key, "test_value");
-            assert_eq!(std::env::var(key).unwrap(), "test_value");
+            assert_eq!(songbird_process_env::var(key).unwrap(), "test_value");
         }
 
-        assert!(std::env::var(key).is_err());
+        assert!(songbird_process_env::var(key).is_err());
     }
 
     #[test]
@@ -140,10 +140,10 @@ mod tests {
 
         {
             let _env = ScopedEnv::new(key, "temporary");
-            assert_eq!(std::env::var(key).unwrap(), "temporary");
+            assert_eq!(songbird_process_env::var(key).unwrap(), "temporary");
         }
 
-        assert_eq!(std::env::var(key).unwrap(), "original");
+        assert_eq!(songbird_process_env::var(key).unwrap(), "original");
         songbird_process_env::remove_var(key);
     }
 

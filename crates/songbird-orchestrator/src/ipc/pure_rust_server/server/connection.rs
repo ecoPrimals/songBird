@@ -211,9 +211,9 @@ impl UnixSocketServer {
     }
 
     fn write_tcp_discovery_file(&self, port: u16) -> Result<()> {
-        let port_file = if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+        let port_file = if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
             PathBuf::from(runtime_dir).join("songbird-ipc-port")
-        } else if let Ok(home) = std::env::var("HOME") {
+        } else if let Ok(home) = songbird_process_env::var("HOME") {
             let share_dir = PathBuf::from(home).join(".local/share");
             if let Err(e) = std::fs::create_dir_all(&share_dir) {
                 warn!("⚠️  Failed to create {:?}: {}", share_dir, e);

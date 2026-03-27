@@ -9,7 +9,6 @@
 //! Uses idiomatic Rust patterns: enums for policies, bitflags for features.
 
 use serde::{Deserialize, Serialize};
-use std::env;
 
 // ============================================================================
 // FEDERATION CONFIGURATION - Zero-Trust Federation
@@ -77,7 +76,7 @@ pub struct TrustTimeouts {
 impl Default for CanonicalFederationConfig {
     fn default() -> Self {
         // Parse trust escalation policy from environment
-        let trust_escalation_policy = env::var("SONGBIRD_TRUST_ESCALATION_POLICY")
+        let trust_escalation_policy = songbird_process_env::var("SONGBIRD_TRUST_ESCALATION_POLICY")
             .ok()
             .and_then(|v| match v.to_lowercase().as_str() {
                 "disabled" => Some(TrustEscalationPolicy::Disabled),
@@ -88,7 +87,7 @@ impl Default for CanonicalFederationConfig {
             .unwrap_or_default();
 
         // Parse acceptance policy from environment
-        let acceptance_policy = env::var("SONGBIRD_FEDERATION_ACCEPTANCE")
+        let acceptance_policy = songbird_process_env::var("SONGBIRD_FEDERATION_ACCEPTANCE")
             .ok()
             .and_then(|v| match v.to_lowercase().as_str() {
                 "manual" => Some(FederationAcceptancePolicy::ManualOnly),
@@ -99,15 +98,17 @@ impl Default for CanonicalFederationConfig {
             .unwrap_or_default();
 
         Self {
-            cluster_name: env::var("SONGBIRD_CLUSTER_NAME")
+            cluster_name: songbird_process_env::var("SONGBIRD_CLUSTER_NAME")
                 .ok()
                 .or_else(|| hostname::get().ok().and_then(|h| h.into_string().ok())),
             trust_escalation_policy,
             initial_trust_level: "anonymous".to_string(),
-            require_hardware_for_admin: env::var("SONGBIRD_REQUIRE_HARDWARE_ADMIN")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(true),
+            require_hardware_for_admin: songbird_process_env::var(
+                "SONGBIRD_REQUIRE_HARDWARE_ADMIN",
+            )
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(true),
             acceptance_policy,
             trust_timeouts: TrustTimeouts::default(),
         }

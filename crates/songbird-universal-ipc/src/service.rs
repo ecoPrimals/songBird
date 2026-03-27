@@ -44,7 +44,7 @@ use crate::handlers::udp_peer_connector::UdpPeerConnector;
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use songbird_lineage_relay::beardog::BearDogRelayAuthority; // Production relay auth (Feb 8, 2026)
 use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
@@ -62,84 +62,10 @@ use tracing::{debug, info};
 /// Injectable environment reader (for concurrent-safe tests without global mutation).
 type EnvReader = dyn Fn(&str) -> Result<String, VarError> + Send + Sync;
 
-/// IPC service request parameters for registration
-#[derive(Debug, Clone, Deserialize)]
-pub struct RegisterParams {
-    pub primal_id: String,
-    pub capabilities: Vec<String>,
-    pub endpoint: String,
-}
-
-/// IPC service request parameters for resolution
-#[derive(Debug, Clone, Deserialize)]
-pub struct ResolveParams {
-    pub primal_id: String,
-}
-
-/// IPC service request parameters for discovery
-#[derive(Debug, Clone, Deserialize)]
-pub struct DiscoverParams {
-    pub capability: String,
-}
-
-/// IPC service response for registration
-#[derive(Debug, Clone, Serialize)]
-pub struct RegisterResult {
-    pub virtual_endpoint: String,
-    pub registered_at: String,
-}
-
-/// IPC service response for resolution
-#[derive(Debug, Clone, Serialize)]
-pub struct ResolveResult {
-    pub virtual_endpoint: String,
-    pub native_endpoint: String,
-    pub capabilities: Vec<String>,
-}
-
-/// IPC service response for discovery
-#[derive(Debug, Clone, Serialize)]
-pub struct DiscoverResult {
-    pub providers: Vec<ProviderInfo>,
-}
-
-/// Provider information
-#[derive(Debug, Clone, Serialize)]
-pub struct ProviderInfo {
-    pub primal_id: String,
-    pub virtual_endpoint: String,
-    pub native_endpoint: String,
-    pub capabilities: Vec<String>,
-}
-
-/// IPC service response for listing
-#[derive(Debug, Clone, Serialize)]
-pub struct ListResult {
-    pub services: Vec<ServiceInfo>,
-}
-
-/// Service information
-#[derive(Debug, Clone, Serialize)]
-pub struct ServiceInfo {
-    pub primal_id: String,
-    pub virtual_endpoint: String,
-    pub capabilities: Vec<String>,
-}
-
-/// JSON-RPC result for `songbird.federation.peers` / `federation.peers`
-#[derive(Debug, Clone, Serialize)]
-pub struct FederationPeersResponse {
-    pub peers: Vec<String>,
-    pub total_count: usize,
-    pub federation_enabled: bool,
-}
-
-/// JSON-RPC result for `songbird.federation.status` / `federation.status`
-#[derive(Debug, Clone, Serialize)]
-pub struct FederationStatusResponse {
-    pub enabled: bool,
-    pub active_connections: usize,
-}
+pub use crate::service_types::{
+    DiscoverParams, DiscoverResult, FederationPeersResponse, FederationStatusResponse, ListResult,
+    ProviderInfo, RegisterParams, RegisterResult, ResolveParams, ResolveResult, ServiceInfo,
+};
 
 /// Songbird IPC Service Handler
 ///
@@ -150,7 +76,7 @@ pub struct FederationStatusResponse {
 /// **TRUE PRIMAL**: Zero code embedding, pure service protocol!
 pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
-    /// When set, used instead of [`std::env::var`] for identity `family_id` resolution (tests).
+    /// When set, used instead of [`songbird_process_env::var`] for identity `family_id` resolution (tests).
     family_id_env: Option<Arc<EnvReader>>,
     http_handler: Arc<HttpHandler>,
     stun_handler: Arc<StunHandler>,
@@ -199,8 +125,8 @@ impl IpcServiceHandler {
         let onion_handler = Arc::new(OnionHandler::new());
 
         // Create a real HolePunchCoordinator so punch.request works
-        let node_id = std::env::var("SONGBIRD_NODE_ID")
-            .or_else(|_| std::env::var("NODE_ID"))
+        let node_id = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
             .unwrap_or_else(|_| "songbird-default".to_string());
         let punch_config = songbird_onion_relay::coordinator::HolePunchConfig::default();
         let (coordinator, _signal_tx, _signal_rx) =
@@ -312,7 +238,7 @@ impl IpcServiceHandler {
     }
 
     /// Same as [`new`](Self::new) but resolves `family_id` for `identity` via `env` instead of
-    /// [`std::env::var`] (for tests and injected configuration).
+    /// [`songbird_process_env::var`] (for tests and injected configuration).
     #[must_use]
     pub fn with_family_id_env<F>(registry: Arc<RwLock<ServiceRegistry>>, env: F) -> Self
     where
@@ -583,7 +509,7 @@ impl IpcServiceHandler {
     /// Handle `identity` method — canonical family-id lookup
     async fn handle_identity(&self) -> Result<Value, String> {
         let family_id = self.family_id_env.as_ref().map_or_else(
-            || crate::introspection::canonical_family_id(|k| std::env::var(k)),
+            || crate::introspection::canonical_family_id(|k| songbird_process_env::var(k)),
             |f| crate::introspection::canonical_family_id(|k| (f)(k)),
         );
         Ok(crate::introspection::identity(&family_id))

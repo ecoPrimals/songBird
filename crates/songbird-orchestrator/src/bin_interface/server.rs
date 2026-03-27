@@ -70,13 +70,14 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("   Instance Lock: ✅ Acquired (PID file active)");
 
     // Get node identity for logging
-    let node_identity = std::env::var("SONGBIRD_NODE_ID")
-        .or_else(|_| std::env::var("NODE_ID"))
-        .or_else(|_| std::env::var("SPORE_ID"))
+    let node_identity = songbird_process_env::var("SONGBIRD_NODE_ID")
+        .or_else(|_| songbird_process_env::var("NODE_ID"))
+        .or_else(|_| songbird_process_env::var("SPORE_ID"))
         .ok();
 
-    let family_identity =
-        std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
+    let family_identity = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+        .or_else(|_| songbird_process_env::var("FAMILY_ID"))
+        .ok();
 
     if let Some(ref family) = family_identity {
         tracing::info!("   Family ID: {}", family);

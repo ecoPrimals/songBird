@@ -12,7 +12,6 @@ use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
 use songbird_network_federation::{FederationConfig, FederationCoordinator};
 use songbird_observability::ObservabilityManager;
-use songbird_types::SafeEnv;
 use songbird_types::config::CanonicalSongbirdConfig;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
@@ -20,9 +19,6 @@ use tracing::{debug, error, info, warn};
 use super::connection_manager::ConnectionManager;
 
 use crate::trust::TrustEscalationManager;
-
-// Import from sibling modules
-use super::network::get_local_ip_for_connectivity_test;
 
 /// Main orchestrator application
 ///
@@ -335,7 +331,7 @@ impl SongbirdOrchestrator {
         use std::net::SocketAddr;
 
         // Priority 1: Environment variable (runtime override)
-        if let Ok(env_addrs) = std::env::var("SONGBIRD_BROADCAST_ADDRESSES")
+        if let Ok(env_addrs) = songbird_process_env::var("SONGBIRD_BROADCAST_ADDRESSES")
             && !env_addrs.is_empty()
         {
             info!("🌐 Using broadcast addresses from SONGBIRD_BROADCAST_ADDRESSES");
@@ -412,7 +408,8 @@ impl SongbirdOrchestrator {
         info!("🎧 Starting Unix Socket IPC server (v3.20.0 - Service Registry Mode)");
         info!(
             "   Family ID: {}",
-            std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string())
+            songbird_process_env::var("SONGBIRD_FAMILY_ID")
+                .unwrap_or_else(|_| "default".to_string())
         );
         info!("   Protocol: JSON-RPC 2.0");
 
@@ -425,12 +422,12 @@ impl SongbirdOrchestrator {
 
         // v5.28.0: Discover crypto provider via capability-based discovery (zero identity hardcoding)
         // Priority: explicit env → capability env → family-scoped fallback
-        let crypto_socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
-            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
-            .or_else(|_| std::env::var("SONGBIRD_BEARDOG_SOCKET"))
+        let crypto_socket = songbird_process_env::var("CRYPTO_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
+            .or_else(|_| songbird_process_env::var("SONGBIRD_BEARDOG_SOCKET"))
             .unwrap_or_else(|_| {
-                let family_id = std::env::var("SONGBIRD_FAMILY_ID")
-                    .or_else(|_| std::env::var("FAMILY_ID"))
+                let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+                    .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .unwrap_or_else(|_| "default".to_string());
                 format!("/tmp/crypto-{family_id}.sock")
             });
@@ -500,130 +497,42 @@ impl SongbirdOrchestrator {
         ))
     }
 
-    /// tarpc server removed - Unix sockets ONLY
+    /// Start the tarpc binary RPC server for high-performance primal-to-primal communication.
     ///
-    /// Deep Debt Solution: Completely removed tarpc TCP binding
-    /// Use IPC server (Unix sockets) for all primal-to-primal communication
-    ///
-    /// This method is kept for API compatibility but does nothing.
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
+    /// Binds on the port from `SONGBIRD_TARPC_PORT` (default 8091). Opt-out by setting
+    /// `SONGBIRD_TARPC_ENABLED=false`. JSON-RPC over IPC remains the primary transport;
+    /// tarpc provides a low-latency binary hot path for Rust-to-Rust calls.
     pub(crate) async fn start_tarpc_server(&self) -> Result<()> {
-        // Unix sockets ONLY - no TCP binding
-        info!("🔒 Using IPC (Unix sockets) for primal-to-primal communication");
+        let enabled = songbird_process_env::var("SONGBIRD_TARPC_ENABLED")
+            .map(|v| !matches!(v.to_lowercase().as_str(), "false" | "0" | "no"))
+            .unwrap_or(true);
 
-        Ok(())
-    }
-
-    /// Verify external connectivity after startup (Deep Debt Fix - Dec 20, 2025)
-    ///
-    /// This function tests whether the HTTPS server is reachable from external IPs.
-    /// It helps catch common issues like:
-    /// - Firewall rules blocking the port
-    /// - Network isolation (VLANs)
-    /// - TLS configuration issues
-    ///
-    /// If issues are detected, it provides diagnostics and attempts auto-remediation.
-    pub(crate) async fn verify_external_connectivity(&self) -> Result<()> {
-        use crate::network::{ConnectivityRemediator, ConnectivityTester};
-
-        info!("🔍 Verifying external connectivity...");
-
-        let port = SafeEnv::get_port(
-            "SONGBIRD_PORT",
-            songbird_config::defaults::ports::orchestrator_port(),
-        );
-
-        // Get our local IP
-        let local_ip = match get_local_ip_for_connectivity_test().await {
-            Ok(ip) => ip,
-            Err(e) => {
-                warn!("⚠️  Could not determine local IP for connectivity test: {}", e);
-                warn!("   Skipping external connectivity verification");
-                return Ok(());
-            }
-        };
-
-        let target: std::net::SocketAddr = format!("{local_ip}:{port}")
-            .parse()
-            .map_err(|e| anyhow::anyhow!("Failed to parse socket address: {e}"))?;
-
-        // Run connectivity test
-        let tester = ConnectivityTester::new();
-        let result = tester.test_comprehensive(target).await?;
-
-        if result.https_reachable {
-            info!("✅ External connectivity verified: https://{}", target);
-            if let Some(rtt) = result.rtt_ms {
-                info!("   Round-trip time: {}ms", rtt);
-            }
+        if !enabled {
+            info!("tarpc server disabled via SONGBIRD_TARPC_ENABLED=false");
             return Ok(());
         }
 
-        // Connectivity failed - provide diagnostics
-        warn!("⚠️  External connectivity test failed for https://{}", target);
-        warn!("   This may prevent federation with other towers");
+        let bind_host = &self._config.network.bind_host;
+        let port = songbird_config::defaults::ports::tarpc_port();
 
-        let diagnostics = tester.diagnose_connectivity_issues(target).await;
-        for diagnostic in &diagnostics {
-            warn!("   {}", diagnostic);
-        }
+        crate::app::http_server::start_tarpc_server(
+            Arc::clone(&self.federation_state),
+            Arc::clone(&self.federated_service_registry),
+            bind_host,
+            port,
+        )
+        .await?;
 
-        // Attempt auto-remediation (requires root privileges)
-        warn!("🔧 Attempting auto-remediation...");
-        match ConnectivityRemediator::attempt_remediation(target).await {
-            Ok(actions) => {
-                for action in actions {
-                    warn!("   {}", action);
-                }
-
-                // Test again after remediation
-                warn!("🔍 Re-testing connectivity after remediation...");
-                let retest_result = tester.test_comprehensive(target).await?;
-
-                if retest_result.https_reachable {
-                    info!("✅ Connectivity restored after auto-remediation!");
-                    return Ok(());
-                }
-                warn!("⚠️  Connectivity still failing after auto-remediation");
-                warn!("   Manual intervention may be required");
-            }
-            Err(e) => {
-                warn!("❌ Auto-remediation failed: {}", e);
-            }
-        }
-
-        // Connectivity is not critical for startup, so don't fail
-        // Just log comprehensive guidance
-        warn!("");
-        warn!("╔═══════════════════════════════════════════════════════════════════╗");
-        warn!("║ ⚠️  EXTERNAL CONNECTIVITY ISSUE DETECTED                          ║");
-        warn!("╚═══════════════════════════════════════════════════════════════════╝");
-        warn!("");
-        warn!("Local connections work, but external connections may be blocked.");
-        warn!("");
-        warn!("Common Causes:");
-        warn!("  • Firewall rules (iptables, ufw, firewalld)");
-        warn!("  • Network isolation (VLANs, separate subnets)");
-        warn!("  • Router/switch port filtering");
-        warn!("");
-        warn!("Quick Fixes:");
-        warn!("  1. Allow port {} in firewall:", port);
-        warn!("     sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT", port);
-        warn!("     sudo iptables -I INPUT -p udp --dport 2300 -j ACCEPT");
-        warn!("");
-        warn!("  2. Save iptables rules (persist across reboots):");
-        warn!("     sudo iptables-save > /etc/iptables/rules.v4");
-        warn!("");
-        warn!("  3. Or disable firewall temporarily (testing only):");
-        warn!("     sudo ufw disable");
-        warn!("");
-        warn!("If issues persist, check network routing and VLANs.");
-        warn!("╚═══════════════════════════════════════════════════════════════════╝");
-
+        info!("tarpc binary RPC listening on {bind_host}:{port}");
         Ok(())
+    }
+
+    /// Verify external connectivity after startup.
+    ///
+    /// Delegates to [`connectivity::verify_external_connectivity`](super::connectivity)
+    /// which tests HTTPS reachability, provides diagnostics, and attempts auto-remediation.
+    pub(crate) async fn verify_external_connectivity(&self) -> Result<()> {
+        super::connectivity::verify_external_connectivity().await
     }
 
     // Discovery bridge implementation moved to discovery_bridge.rs (v3.10.0 refactoring)

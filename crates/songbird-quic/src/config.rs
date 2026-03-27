@@ -54,7 +54,7 @@ impl Default for QuicConfig {
             enable_0rtt: true,
             enable_migration: true,
             max_mtu: 1200,
-            tls_domain: std::env::var("SONGBIRD_TLS_DOMAIN")
+            tls_domain: songbird_process_env::var("SONGBIRD_TLS_DOMAIN")
                 .unwrap_or_else(|_| "songbird.local".to_string()),
         }
     }

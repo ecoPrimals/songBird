@@ -76,7 +76,7 @@ impl UnixSocketServer {
 
     #[must_use]
     pub fn socket_path_from_env() -> PathBuf {
-        Self::socket_path_with_env(|key| std::env::var(key))
+        Self::socket_path_with_env(|key| songbird_process_env::var(key))
     }
 
     pub fn socket_path_with_env<F>(env_reader: F) -> PathBuf
@@ -111,7 +111,7 @@ impl UnixSocketServer {
 
     #[must_use]
     pub fn get_family_id() -> String {
-        Self::get_family_id_with_env(|key| std::env::var(key))
+        Self::get_family_id_with_env(|key| songbird_process_env::var(key))
     }
 
     /// Same priority as [`Self::get_family_id`], with injectable env (tests, embedders).

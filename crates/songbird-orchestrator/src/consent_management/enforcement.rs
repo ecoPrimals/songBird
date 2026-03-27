@@ -102,16 +102,17 @@ impl ConsentEnforcer {
         }
     }
 
-    /// Check if consent is required for a task
+    /// Check if consent is required for a task.
+    ///
+    /// Evaluates three layers: explicit allowlist, cost threshold, and dignity principles.
     pub fn requires_consent(&self, task: &TaskLifecycle, estimated_cost: Option<f64>) -> bool {
-        // Check if operation type always requires consent
         let operation_type = task.spec.task_type.as_ref();
+
         if self.config.always_require_consent.iter().any(|op| op.as_ref() == operation_type) {
             debug!("Operation {} always requires consent", operation_type);
             return true;
         }
 
-        // Check if cost exceeds threshold
         if let Some(cost) = estimated_cost
             && cost > self.config.consent_required_above_cost
         {
@@ -122,19 +123,30 @@ impl ConsentEnforcer {
             return true;
         }
 
+        let dignity_violations =
+            DignityChecker::check_operation(operation_type, estimated_cost, false);
+        if !dignity_violations.is_empty() {
+            debug!(
+                "Operation {} has {} dignity violation(s), consent required",
+                operation_type,
+                dignity_violations.len()
+            );
+            return true;
+        }
+
         false
     }
 
-    /// Enforce consent before task execution
+    /// Enforce consent before task execution, including dignity checks.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
+    /// Returns an error if the consent workflow itself fails.
     pub async fn enforce(
         &self,
         task: &TaskLifecycle,
         estimated_cost: Option<f64>,
     ) -> Result<EnforcementResult> {
-        // Check if consent required
         if !self.requires_consent(task, estimated_cost) {
             info!("Task {} does not require consent, allowing execution", task.id);
             return Ok(EnforcementResult::Allowed {
@@ -142,9 +154,20 @@ impl ConsentEnforcer {
             });
         }
 
+        let operation_type = task.spec.task_type.as_ref();
+        let dignity_violations =
+            DignityChecker::check_operation(operation_type, estimated_cost, false);
+        if !dignity_violations.is_empty() {
+            warn!(
+                "Task {} has {} dignity concern(s): {}",
+                task.id,
+                dignity_violations.len(),
+                dignity_violations.iter().map(AsRef::as_ref).collect::<Vec<_>>().join("; ")
+            );
+        }
+
         info!("Task {} requires consent from user {}", task.id, task.owner);
 
-        // Request consent
         let consent_id = self
             .consent_manager
             .request_consent(
@@ -155,7 +178,6 @@ impl ConsentEnforcer {
             )
             .await;
 
-        // Check if auto-approved
         if let Some(status) = self.consent_manager.get_status(&consent_id).await
             && status == ConsentStatus::Approved
         {
@@ -165,7 +187,6 @@ impl ConsentEnforcer {
             });
         }
 
-        // Return pending status
         Ok(EnforcementResult::Pending {
             consent_id,
             timeout: self.config.default_timeout,

@@ -53,7 +53,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
     info!("🔍 Discovering crypto capability provider...");
 
     // 1. Try CRYPTO_CAPABILITY_SOCKET env var
-    if let Ok(socket_path) = std::env::var("CRYPTO_CAPABILITY_SOCKET") {
+    if let Ok(socket_path) = songbird_process_env::var("CRYPTO_CAPABILITY_SOCKET") {
         info!("   Found CRYPTO_CAPABILITY_SOCKET: {}", socket_path);
         let provider = BearDogProvider::new(&socket_path);
         if provider.is_available().await {
@@ -64,7 +64,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
     }
 
     // 2. Try BEARDOG_SOCKET env var (backward compatibility)
-    if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET") {
+    if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET") {
         info!("   Found BEARDOG_SOCKET: {}", socket_path);
         let provider = BearDogProvider::new(&socket_path);
         if provider.is_available().await {

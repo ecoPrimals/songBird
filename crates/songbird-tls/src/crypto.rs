@@ -211,25 +211,29 @@ impl BeardogCryptoClient {
             tracing::warn!("⚠️  Windows: Using TCP localhost fallback for BearDog crypto");
 
             // Try environment variables first
-            if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
+            if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
                 return Ok(socket);
             }
-            if let Ok(socket) = std::env::var("NEURAL_API_SOCKET") {
+            if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET") {
                 return Ok(socket);
             }
 
-            // Default to TCP localhost (port from env or default)
-            let port =
-                std::env::var("BEARDOG_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(9876);
+            let port = songbird_process_env::var("BEARDOG_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);
 
-            Ok(format!("127.0.0.1:{}", port))
+            Ok(format!("{}:{port}", songbird_types::constants::LOCALHOST))
         }
 
         #[cfg(not(any(unix, windows)))]
         {
-            // Other platforms: TCP fallback
             tracing::warn!("⚠️  Platform: Using TCP localhost fallback for BearDog crypto");
-            Ok("127.0.0.1:9876".to_string())
+            let port = songbird_process_env::var("BEARDOG_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);
+            Ok(format!("{}:{port}", songbird_types::constants::LOCALHOST))
         }
     }
 

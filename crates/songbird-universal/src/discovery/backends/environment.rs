@@ -59,8 +59,8 @@ pub async fn discover_from_environment() -> Result<Vec<DiscoveredPrimal>, Discov
         let endpoint_key = format!("{cap_type}_PROVIDER_ENDPOINT");
         let name_key = format!("{cap_type}_PROVIDER_NAME");
 
-        if let Ok(endpoint) = std::env::var(&endpoint_key) {
-            let name = std::env::var(&name_key)
+        if let Ok(endpoint) = songbird_process_env::var(&endpoint_key) {
+            let name = songbird_process_env::var(&name_key)
                 .unwrap_or_else(|_| format!("{}-provider", cap_type.to_lowercase()));
 
             let primal = DiscoveredPrimal {

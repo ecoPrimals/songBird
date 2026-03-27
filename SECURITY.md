@@ -1,6 +1,6 @@
 # Songbird Security
 
-**Last Updated**: March 24, 2026
+**Last Updated**: March 27, 2026
 **Status**: Active Development (v0.2.1)
 
 ---
@@ -10,7 +10,7 @@
 | Metric | Status |
 |--------|--------|
 | **Pure Rust** | ✅ Application code — `ring` opt-in via feature gate |
-| **Unsafe Code** | ✅ `forbid(unsafe_code)` workspace-wide; 1 justified crate (`songbird-process-env`) |
+| **Unsafe Code** | ✅ `forbid(unsafe_code)` across all 30 crates; zero `unsafe` blocks (`songbird-process-env` evolved to in-memory overlay) |
 | **Cast Safety** | ✅ `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | **Panic Paths** | ✅ `unwrap_used`/`expect_used` warn workspace-wide |
 | **JSON-RPC 2.0** | ✅ Strict version validation, notification suppression, serialization fallbacks |
@@ -22,7 +22,7 @@
 
 ### Code Safety
 
-- **Zero unsafe code** — `forbid(unsafe_code)` at workspace level; only `songbird-process-env` uses `deny(unsafe_code)` with justified `#[expect]` blocks for `std::env::set_var`/`remove_var` (Rust 2024 requirement)
+- **Zero unsafe code** — `forbid(unsafe_code)` across all 30 crates; `songbird-process-env` evolved to BearDog in-memory overlay pattern (zero calls to `std::env::set_var`/`remove_var`)
 - **Cast discipline** — All four cast lints denied at workspace level; justified sites use `#[expect(reason)]`
 - **Result-based errors** — All fallible operations return `Result<T, E>`
 - **Strict linting** — `clippy::pedantic` + `clippy::nursery` workspace-wide

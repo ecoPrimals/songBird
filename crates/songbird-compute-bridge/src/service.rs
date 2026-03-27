@@ -144,7 +144,7 @@ struct ServiceRegistration {
 }
 
 fn init_tracing() {
-    let filter = std::env::var("RUST_LOG")
+    let filter = songbird_process_env::var("RUST_LOG")
         .unwrap_or_else(|_| "info,songbird_compute_bridge=debug".to_string());
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 }
@@ -173,8 +173,11 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
     // Build configuration
     let node_id = args.node_id.unwrap_or_else(|| format!("compute-{}", Uuid::new_v4()));
 
-    let tower_id =
-        args.tower_id.clone().or_else(|| std::env::var("SERVICE_ID").ok()).unwrap_or_else(|| {
+    let tower_id = args
+        .tower_id
+        .clone()
+        .or_else(|| songbird_process_env::var("SERVICE_ID").ok())
+        .unwrap_or_else(|| {
             hostname::get().map_or_else(
                 |_| format!("tower-unknown-{}", Uuid::new_v4()),
                 |h| format!("tower-{}", h.to_string_lossy()),
@@ -270,7 +273,8 @@ async fn detect_resources() -> ServiceInfo {
     tokio::task::yield_now().await;
 
     // Detect CPU cores
-    let cpu_cores = num_cpus::get();
+    let cpu_cores =
+        std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
 
     // Detect memory (Linux-specific, fallback to estimate)
     let memory_gb = std::fs::read_to_string("/proc/meminfo")

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![forbid(unsafe_code)]
+
 //! Shared crypto provider for all Songbird crates.
 //!
 //! Extracted from `songbird-http-client` so that `songbird-tor-protocol`,
@@ -74,7 +76,7 @@ impl CryptoProvider {
     /// the Neural API (bootstrap only).
     #[must_use]
     pub fn from_env() -> Self {
-        Self::from_env_with(|key| std::env::var(key).ok())
+        Self::from_env_with(|key| songbird_process_env::var(key).ok())
     }
 
     /// Create a provider using a custom environment lookup (for testing and embedding).

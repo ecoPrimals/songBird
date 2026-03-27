@@ -18,8 +18,6 @@
 //! # } // MY_VAR is automatically cleaned up when _env drops
 //! ```
 
-use std::env;
-
 // ⚠️ CRITICAL FIX: Use tokio::sync::Mutex for async-safety!
 // Using std::sync::Mutex caused deadlocks in async tests because:
 // 1. Synchronous Mutex::lock() is a BLOCKING operation
@@ -42,11 +40,11 @@ fn get_env_lock() -> &'static Mutex<()> {
 // Mutating the process environment is only sound when no other thread reads it concurrently.
 // All call sites here hold `ENV_LOCK` (or, in unit tests below, acquire it around direct cleanup).
 fn env_set_var(key: impl AsRef<str>, value: impl AsRef<str>) {
-    songbird_process_env::set_var(key, value);
+    songbird_process_env::set_var(key.as_ref(), value.as_ref());
 }
 
 fn env_remove_var(key: impl AsRef<str>) {
-    songbird_process_env::remove_var(key);
+    songbird_process_env::remove_var(key.as_ref());
 }
 
 /// Scoped environment variable that automatically cleans up on drop
@@ -91,7 +89,7 @@ impl ScopedEnv {
         let guard = get_env_lock().lock().await;
 
         // Store old value (if any) for restoration
-        let old_value = env::var(&key).ok();
+        let old_value = songbird_process_env::var(&key).ok();
 
         // Set new value
         env_set_var(&key, value.as_ref());
@@ -131,7 +129,7 @@ impl ScopedEnv {
         let mut restorations = Vec::new();
         for (key, value) in vars {
             let key_string = key.into();
-            let old_value = env::var(&key_string).ok();
+            let old_value = songbird_process_env::var(&key_string).ok();
             env_set_var(&key_string, value.as_ref());
             restorations.push((key_string, old_value));
         }
@@ -163,7 +161,7 @@ impl ScopedEnv {
         let guard = get_env_lock().lock().await;
 
         // Store old value for restoration
-        let old_value = env::var(&key).ok();
+        let old_value = songbird_process_env::var(&key).ok();
 
         // Remove variable
         env_remove_var(&key);
@@ -205,7 +203,7 @@ impl ScopedEnv {
         let mut restorations = Vec::new();
         for key in keys {
             let key_string = key.into();
-            let old_value = env::var(&key_string).ok();
+            let old_value = songbird_process_env::var(&key_string).ok();
             env_remove_var(&key_string);
             restorations.push((key_string, old_value));
         }
@@ -270,11 +268,11 @@ mod tests {
 
         {
             let _env = ScopedEnv::set(test_key, "test_value").await;
-            assert_eq!(env::var(test_key).unwrap(), "test_value");
+            assert_eq!(songbird_process_env::var(test_key).unwrap(), "test_value");
         }
 
         // Should be cleaned up
-        assert!(env::var(test_key).is_err());
+        assert!(songbird_process_env::var(test_key).is_err());
     }
 
     #[tokio::test]
@@ -292,11 +290,11 @@ mod tests {
 
         {
             let _env = ScopedEnv::set(test_key, "temporary").await;
-            assert_eq!(env::var(test_key).unwrap(), "temporary");
+            assert_eq!(songbird_process_env::var(test_key).unwrap(), "temporary");
         }
 
         // Should restore original
-        assert_eq!(env::var(test_key).unwrap(), "original");
+        assert_eq!(songbird_process_env::var(test_key).unwrap(), "original");
 
         // Cleanup
         {
@@ -313,11 +311,11 @@ mod tests {
 
         {
             let _env = ScopedEnv::remove(test_key).await;
-            assert!(env::var(test_key).is_err());
+            assert!(songbird_process_env::var(test_key).is_err());
         }
 
         // Should restore original
-        assert_eq!(env::var(test_key).unwrap(), "value");
+        assert_eq!(songbird_process_env::var(test_key).unwrap(), "value");
 
         // Cleanup
         {
@@ -337,13 +335,13 @@ mod tests {
         {
             let _envs = ScopedEnv::set_multiple([(keys[0], "value1"), (keys[1], "value2")]).await;
 
-            assert_eq!(env::var(keys[0]).unwrap(), "value1");
-            assert_eq!(env::var(keys[1]).unwrap(), "value2");
+            assert_eq!(songbird_process_env::var(keys[0]).unwrap(), "value1");
+            assert_eq!(songbird_process_env::var(keys[1]).unwrap(), "value2");
         }
 
         // All should be cleaned up
         for key in &keys {
-            assert!(env::var(key).is_err());
+            assert!(songbird_process_env::var(key).is_err());
         }
     }
 
@@ -355,7 +353,7 @@ mod tests {
 
         let result = tokio::task::spawn(async move {
             let _env = ScopedEnv::set(test_key, "value").await;
-            assert_eq!(env::var(test_key).unwrap(), "value");
+            assert_eq!(songbird_process_env::var(test_key).unwrap(), "value");
             panic!("Intentional panic for testing");
         })
         .await;

@@ -146,7 +146,7 @@ pub fn discover_multiple_ports_in_range(
 pub fn get_service_port(service_name: &str) -> u16 {
     let env_var = format!("SONGBIRD_{}_PORT", service_name.to_uppercase());
 
-    std::env::var(&env_var).ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
+    songbird_process_env::var(&env_var).ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         debug!("No port in {env_var}, discovering available port");
         discover_available_port()
     })
@@ -176,10 +176,11 @@ pub fn is_safe_port(port: u16) -> bool {
 #[must_use]
 pub fn get_recommended_port_range() -> (u16, u16) {
     // Check if we can use privileged ports
-    let can_use_privileged = std::env::var("SONGBIRD_ALLOW_PRIVILEGED_PORTS").is_ok();
+    let can_use_privileged = songbird_process_env::var("SONGBIRD_ALLOW_PRIVILEGED_PORTS").is_ok();
 
     // Check environment
-    let env = std::env::var("SONGBIRD_ENV").unwrap_or_else(|_| "development".to_string());
+    let env =
+        songbird_process_env::var("SONGBIRD_ENV").unwrap_or_else(|_| "development".to_string());
 
     match (can_use_privileged, env.as_str()) {
         (true, "production") => (80, 100),     // HTTP range

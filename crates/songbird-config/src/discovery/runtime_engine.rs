@@ -104,7 +104,7 @@ impl CapabilityDiscoveryEngine {
     }
 
     fn read_env(&self, key: &str) -> Result<String, std::env::VarError> {
-        self.env_reader.as_ref().map_or_else(|| std::env::var(key), |f| f(key))
+        self.env_reader.as_ref().map_or_else(|| songbird_process_env::var(key), |f| f(key))
     }
 
     /// Create engine with default backends (auto-detects environment)
@@ -122,21 +122,21 @@ impl CapabilityDiscoveryEngine {
         backends.push(DiscoveryBackend::Environment);
 
         // Check for Kubernetes
-        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {
+        if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
             backends.push(DiscoveryBackend::Kubernetes {
-                namespace: std::env::var("KUBERNETES_NAMESPACE").ok(),
+                namespace: songbird_process_env::var("KUBERNETES_NAMESPACE").ok(),
             });
         }
 
         // Check for Consul
-        if let Ok(consul_endpoint) = std::env::var("CONSUL_HTTP_ADDR") {
+        if let Ok(consul_endpoint) = songbird_process_env::var("CONSUL_HTTP_ADDR") {
             backends.push(DiscoveryBackend::Consul {
                 endpoint: consul_endpoint,
             });
         }
 
         // Check for etcd
-        if let Ok(etcd_endpoints) = std::env::var("ETCD_ENDPOINTS") {
+        if let Ok(etcd_endpoints) = songbird_process_env::var("ETCD_ENDPOINTS") {
             let endpoints: Vec<String> =
                 etcd_endpoints.split(',').map(|s| s.trim().to_string()).collect();
             backends.push(DiscoveryBackend::Etcd {
@@ -145,7 +145,7 @@ impl CapabilityDiscoveryEngine {
         }
 
         // Try mDNS for local discovery (if not in container)
-        if std::env::var("CONTAINER").is_err() {
+        if songbird_process_env::var("CONTAINER").is_err() {
             backends.push(DiscoveryBackend::MDNS);
         }
 
