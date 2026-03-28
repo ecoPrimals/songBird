@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 11,184 passed, 0 failed, 269 ignored |
-| **Line Coverage** | ~68.80% (llvm-cov; target 90%) |
+| **Tests** | 11,356 passed, 0 failed, 269 ignored |
+| **Line Coverage** | ~69.33% (llvm-cov; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
@@ -52,6 +52,40 @@
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 28, 2026 — primalSpring Debt + birdsong.schema + Coverage Push — Session 24, Wave 82)
+
+### Wave 82: primalSpring Debt Resolution + birdsong.schema + Aggregate Validation + Coverage Push
+
+**primalSpring debt resolution (2 HARD items):**
+- `birdsong.schema` introspection endpoint: returns beacon request schema (field names, types, required/optional, defaults, descriptions, related methods)
+- Aggregate missing-field serde errors: `validate_required_fields()` pre-validates all required fields and reports every missing field in a single error message (eliminates one-at-a-time serde debugging)
+- Applied `validate_required_fields` to all birdsong handlers: `generate_encrypted_beacon`, `decrypt_beacon`, `verify_lineage`
+
+**`BirdsongMethod::Schema` wiring:**
+- Added `Schema` variant to `BirdsongMethod` enum in `songbird-types`
+- Wire string: `birdsong.schema`
+- Dispatch arm in `IpcServiceHandler::handle` (service.rs)
+- Added to `rpc_methods()`, `rpc_discover_standard()`, and `primal_capabilities` in introspection.rs
+
+**Coverage expansion (+172 tests, 11,356 total):**
+- songbird-types: federation.rs (15), adapters.rs (13), communication.rs (10), network.rs (10), api.rs (8), security.rs (8), system.rs (6), discovery.rs (5) — 75 tests
+- songbird-canonical: adapters.rs (9), environment.rs (8), migration.rs (9), metadata.rs (8), ai_first.rs (7), orchestration.rs (7) — 48 tests
+- songbird-config: validation.rs (12) — 12 tests
+- songbird-discovery: federation_detectors_impl.rs (7) — 7 tests
+- songbird-orchestrator: deployment_api/types.rs (9) — 9 tests
+- songbird-registry: service_data.rs (3) — 3 tests
+- songbird-universal-ipc: birdsong_handler (18 new: 6 schema + 7 validate + 5 aggregate missing) — 18 tests
+
+**Metrics:**
+- Tests: 11,184 → 11,356 (+172)
+- Line coverage: 68.80% → 69.33% (+0.53pp)
+- Clippy pedantic: zero warnings (30/30 crates)
+- Format: clean
+- Docs: clean
+- Build: zero errors, zero warnings
 
 ---
 

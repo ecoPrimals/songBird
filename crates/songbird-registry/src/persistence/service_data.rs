@@ -68,3 +68,82 @@ pub struct RegistryServiceEntry {
     /// Persisted utilization metrics for scaling heuristics.
     pub metrics: RegistryServiceMetrics,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use songbird_discovery::traits::service::{ServiceInfo, ServiceStatus};
+    use std::collections::HashMap;
+
+    fn minimal_service_info() -> ServiceInfo {
+        let now = Utc::now();
+        ServiceInfo {
+            service_id: "id-1".to_string(),
+            name: "svc".to_string(),
+            version: "1.0.0".to_string(),
+            service_type: "test".to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: now,
+            updated_at: now,
+            instance_id: "inst-1".to_string(),
+            host: "127.0.0.1".to_string(),
+            port: 8080,
+        }
+    }
+
+    fn assert_json_roundtrip<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let j = serde_json::to_string(value).unwrap();
+        let back: T = serde_json::from_str(&j).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), j);
+    }
+
+    #[test]
+    fn registry_health_status_roundtrip() {
+        for s in [
+            RegistryHealthStatus::Unknown,
+            RegistryHealthStatus::Healthy,
+            RegistryHealthStatus::Degraded,
+            RegistryHealthStatus::Unhealthy,
+        ] {
+            assert_json_roundtrip(&s);
+        }
+    }
+
+    #[test]
+    fn registry_service_metrics_default_and_roundtrip() {
+        let m = RegistryServiceMetrics::default();
+        assert_eq!(m.cpu_utilization, 0.0);
+        assert_json_roundtrip(&m);
+    }
+
+    #[test]
+    fn registry_service_entry_roundtrip() {
+        let entry = RegistryServiceEntry {
+            service_info: minimal_service_info(),
+            instance_count: 2,
+            max_instances: 10,
+            min_instances: 1,
+            health_status: RegistryHealthStatus::Healthy,
+            metrics: RegistryServiceMetrics {
+                cpu_utilization: 0.42,
+                memory_utilization: 0.5,
+                request_rate: 100.0,
+                response_time_ms: 12.0,
+                error_rate: 0.01,
+                active_connections: 3,
+                queue_depth: 0,
+            },
+        };
+        assert_json_roundtrip(&entry);
+    }
+}

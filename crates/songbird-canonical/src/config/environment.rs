@@ -243,3 +243,86 @@ impl Default for EnvironmentSecurityConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json;
+
+    fn assert_json_roundtrip<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_string(value).unwrap();
+        let back: T = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn environment_config_default_non_trivial() {
+        let c = EnvironmentConfig::default();
+        assert!(matches!(c.environment, Environment::Development));
+        assert_eq!(c.ports.dynamic_port_range, (9000, 9999));
+        assert_eq!(c.logging.level, "info");
+        assert!(c.observability.enable_metrics);
+        assert_eq!(c.network.bind_address, "0.0.0.0");
+        assert!(c.security.enable_cors);
+    }
+
+    #[test]
+    fn environment_config_roundtrip() {
+        let mut c = EnvironmentConfig::default();
+        c.environment = Environment::Custom("edge".to_string());
+        c.observability.custom_tags.insert("k".to_string(), "v".to_string());
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn environment_variants_roundtrip() {
+        for env in [
+            Environment::Development,
+            Environment::Staging,
+            Environment::Production,
+            Environment::Testing,
+            Environment::Custom("lab".to_string()),
+        ] {
+            assert_json_roundtrip(&env);
+        }
+    }
+
+    #[test]
+    fn port_config_default_and_roundtrip() {
+        let p = PortConfig::default();
+        assert!(p.discovery_port > 0);
+        assert_json_roundtrip(&p);
+    }
+
+    #[test]
+    fn logging_config_default_and_roundtrip() {
+        let l = LoggingConfig::default();
+        assert_eq!(l.format, "json");
+        assert_eq!(l.max_files, 10);
+        assert_json_roundtrip(&l);
+    }
+
+    #[test]
+    fn observability_config_default_and_roundtrip() {
+        let o = ObservabilityConfig::default();
+        assert!((o.trace_sampling_rate - 0.1).abs() < f64::EPSILON);
+        assert_json_roundtrip(&o);
+    }
+
+    #[test]
+    fn network_config_default_and_roundtrip() {
+        let n = NetworkConfig::default();
+        assert_eq!(n.max_connections, 1000);
+        assert_json_roundtrip(&n);
+    }
+
+    #[test]
+    fn environment_security_config_default_and_roundtrip() {
+        let s = EnvironmentSecurityConfig::default();
+        assert_eq!(s.auth_method, "bearer");
+        assert_json_roundtrip(&s);
+    }
+}

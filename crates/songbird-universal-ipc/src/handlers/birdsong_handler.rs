@@ -11,6 +11,7 @@
 //! - `birdsong.decrypt_beacon` - Decrypt beacon (family gate)
 //! - `birdsong.verify_lineage` - Verify peer lineage via challenge-response
 //! - `birdsong.get_lineage` - Get own lineage info
+//! - `birdsong.schema` - Introspect beacon request schema (fields, types, required/optional)
 //!
 //! # Architecture
 //!
@@ -218,6 +219,8 @@ impl BirdSongHandler {
     pub async fn handle_generate_encrypted_beacon(&self, params: Value) -> Result<Value, String> {
         debug!("🌲 RPC: birdsong.generate_encrypted_beacon");
 
+        validate_required_fields(&params, &["node_id"])?;
+
         let request: GenerateBeaconRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
@@ -276,6 +279,8 @@ impl BirdSongHandler {
     /// Deep debt: Family gate, graceful failure, no information leakage
     pub async fn handle_decrypt_beacon(&self, params: Value) -> Result<Value, String> {
         debug!("🔐 RPC: birdsong.decrypt_beacon");
+
+        validate_required_fields(&params, &["encrypted_beacon"])?;
 
         let request: DecryptBeaconRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
@@ -359,6 +364,8 @@ impl BirdSongHandler {
     pub async fn handle_verify_lineage(&self, params: Value) -> Result<Value, String> {
         debug!("🔍 RPC: birdsong.verify_lineage");
 
+        validate_required_fields(&params, &["peer_node_id", "our_node_id"])?;
+
         let request: VerifyLineageRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
@@ -434,6 +441,83 @@ impl BirdSongHandler {
             "encryption": "chacha20_poly1305",
             "lineage_type": "genetic",
         }))
+    }
+
+    /// Handle `birdsong.schema`
+    ///
+    /// Returns the beacon request schema: field names, types, required/optional.
+    /// Clients can use this to generate beacon requests programmatically
+    /// without hardcoding field lists.
+    pub async fn handle_schema(&self, _params: Value) -> Result<Value, String> {
+        debug!("🌲 RPC: birdsong.schema");
+
+        Ok(json!({
+            "method": "birdsong.generate_encrypted_beacon",
+            "description": "Generate a family-encrypted discovery beacon for Dark Forest broadcast",
+            "fields": [
+                {
+                    "name": "node_id",
+                    "type": "string",
+                    "required": true,
+                    "description": "Unique node identifier for this primal instance"
+                },
+                {
+                    "name": "capabilities",
+                    "type": "array<string>",
+                    "required": false,
+                    "default": "[]",
+                    "description": "Capability tokens this node advertises (e.g. network.discovery, crypto.delegate)"
+                },
+                {
+                    "name": "onion_endpoint",
+                    "type": "string | null",
+                    "required": false,
+                    "default": "null",
+                    "description": "Sovereign Onion endpoint (e.g. abc123...xyz.onion:3492). Dark Forest: only visible to family members"
+                },
+                {
+                    "name": "endpoint_hints",
+                    "type": "object | null",
+                    "required": false,
+                    "default": "null",
+                    "description": "Additional endpoint hints (LAN IP, port, relay addresses, etc.)"
+                }
+            ],
+            "related_methods": [
+                "birdsong.decrypt_beacon",
+                "birdsong.verify_lineage",
+                "birdsong.get_lineage",
+                "birdsong.advertise"
+            ],
+            "version": env!("CARGO_PKG_VERSION")
+        }))
+    }
+}
+
+// ============================================================================
+// Validation Helpers
+// ============================================================================
+
+/// Pre-validate that all required fields are present in the JSON params,
+/// reporting **all** missing fields in a single error message.
+///
+/// Standard serde deserialization reports one missing field at a time,
+/// requiring multiple round-trips during integration debugging. This
+/// pre-validation collects every missing field into one diagnostic.
+fn validate_required_fields(params: &Value, required: &[&str]) -> Result<(), String> {
+    let Some(obj) = params.as_object() else {
+        return Err("Invalid params: expected JSON object".to_string());
+    };
+
+    let missing: Vec<&str> =
+        required.iter().filter(|&&field| !obj.contains_key(field)).copied().collect();
+
+    if missing.is_empty() {
+        Ok(())
+    } else if missing.len() == 1 {
+        Err(format!("Missing required field: {}", missing[0]))
+    } else {
+        Err(format!("Missing required fields: {}", missing.join(", ")))
     }
 }
 
@@ -593,6 +677,178 @@ mod tests {
                 "Error should mention BearDog, socket, or IPC, got: {e}"
             );
         }
+    }
+
+    // ── birdsong.schema ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_schema_returns_all_fields() {
+        let handler = BirdSongHandler::new();
+        let result = handler.handle_schema(json!({})).await.unwrap();
+
+        let fields = result["fields"].as_array().unwrap();
+        assert_eq!(fields.len(), 4, "beacon schema should expose 4 fields");
+
+        let names: Vec<&str> = fields.iter().filter_map(|f| f["name"].as_str()).collect();
+        assert!(names.contains(&"node_id"));
+        assert!(names.contains(&"capabilities"));
+        assert!(names.contains(&"onion_endpoint"));
+        assert!(names.contains(&"endpoint_hints"));
+    }
+
+    #[tokio::test]
+    async fn test_schema_required_fields() {
+        let handler = BirdSongHandler::new();
+        let result = handler.handle_schema(json!({})).await.unwrap();
+
+        let fields = result["fields"].as_array().unwrap();
+
+        let required: Vec<&str> = fields
+            .iter()
+            .filter(|f| f["required"].as_bool() == Some(true))
+            .filter_map(|f| f["name"].as_str())
+            .collect();
+        assert_eq!(required, vec!["node_id"], "only node_id should be required");
+
+        let optional: Vec<&str> = fields
+            .iter()
+            .filter(|f| f["required"].as_bool() == Some(false))
+            .filter_map(|f| f["name"].as_str())
+            .collect();
+        assert_eq!(optional.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_schema_includes_related_methods() {
+        let handler = BirdSongHandler::new();
+        let result = handler.handle_schema(json!({})).await.unwrap();
+
+        let related = result["related_methods"].as_array().unwrap();
+        assert!(!related.is_empty());
+        let names: Vec<&str> = related.iter().filter_map(|v| v.as_str()).collect();
+        assert!(names.contains(&"birdsong.decrypt_beacon"));
+        assert!(names.contains(&"birdsong.verify_lineage"));
+    }
+
+    #[tokio::test]
+    async fn test_schema_includes_types() {
+        let handler = BirdSongHandler::new();
+        let result = handler.handle_schema(json!({})).await.unwrap();
+
+        let fields = result["fields"].as_array().unwrap();
+        for field in fields {
+            assert!(field["type"].is_string(), "field {} should have a type string", field["name"]);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_schema_includes_version() {
+        let handler = BirdSongHandler::new();
+        let result = handler.handle_schema(json!({})).await.unwrap();
+        assert!(result["version"].is_string());
+    }
+
+    #[tokio::test]
+    async fn test_schema_method_name() {
+        let handler = BirdSongHandler::new();
+        let result = handler.handle_schema(json!({})).await.unwrap();
+        assert_eq!(result["method"].as_str().unwrap(), "birdsong.generate_encrypted_beacon");
+    }
+
+    // ── validate_required_fields ─────────────────────────────────
+
+    #[test]
+    fn test_validate_all_present() {
+        let params = json!({"node_id": "test"});
+        assert!(validate_required_fields(&params, &["node_id"]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_single_missing() {
+        let params = json!({});
+        let err = validate_required_fields(&params, &["node_id"]).unwrap_err();
+        assert_eq!(err, "Missing required field: node_id");
+    }
+
+    #[test]
+    fn test_validate_multiple_missing_aggregated() {
+        let params = json!({});
+        let err = validate_required_fields(&params, &["peer_node_id", "our_node_id"]).unwrap_err();
+        assert!(
+            err.contains("peer_node_id") && err.contains("our_node_id"),
+            "should list all missing fields: {err}"
+        );
+        assert!(err.starts_with("Missing required fields:"));
+    }
+
+    #[test]
+    fn test_validate_partial_missing() {
+        let params = json!({"peer_node_id": "a"});
+        let err = validate_required_fields(&params, &["peer_node_id", "our_node_id"]).unwrap_err();
+        assert!(err.contains("our_node_id"), "should report missing field");
+        assert!(!err.contains("peer_node_id"), "should not list present field");
+    }
+
+    #[test]
+    fn test_validate_non_object_params() {
+        let params = json!("not an object");
+        let err = validate_required_fields(&params, &["node_id"]).unwrap_err();
+        assert!(err.contains("expected JSON object"));
+    }
+
+    #[test]
+    fn test_validate_null_params() {
+        let params = Value::Null;
+        let err = validate_required_fields(&params, &["node_id"]).unwrap_err();
+        assert!(err.contains("expected JSON object"));
+    }
+
+    #[test]
+    fn test_validate_empty_required_list() {
+        let params = json!({});
+        assert!(validate_required_fields(&params, &[]).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_generate_beacon_missing_node_id() {
+        let handler = BirdSongHandler::new();
+        let params = json!({"capabilities": ["test"]});
+        let err = handler.handle_generate_encrypted_beacon(params).await.unwrap_err();
+        assert!(
+            err.contains("Missing required field: node_id"),
+            "should report missing node_id: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_decrypt_missing_encrypted_beacon() {
+        let handler = BirdSongHandler::new();
+        let params = json!({});
+        let err = handler.handle_decrypt_beacon(params).await.unwrap_err();
+        assert!(
+            err.contains("Missing required field: encrypted_beacon"),
+            "should report missing encrypted_beacon: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_verify_lineage_missing_both_fields() {
+        let handler = BirdSongHandler::new();
+        let params = json!({});
+        let err = handler.handle_verify_lineage(params).await.unwrap_err();
+        assert!(
+            err.contains("peer_node_id") && err.contains("our_node_id"),
+            "should aggregate both missing fields: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_verify_lineage_missing_one_field() {
+        let handler = BirdSongHandler::new();
+        let params = json!({"peer_node_id": "peer1"});
+        let err = handler.handle_verify_lineage(params).await.unwrap_err();
+        assert!(err.contains("our_node_id"), "should report missing our_node_id: {err}");
+        assert!(!err.contains("peer_node_id"), "should not list present field: {err}");
     }
 
     // Integration tests with real BearDog in tests/birdsong_integration_test.rs

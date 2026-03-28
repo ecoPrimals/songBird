@@ -264,3 +264,93 @@ impl Default for AdapterSettings {
 }
 
 // Default implementation now provided by songbird_config::canonical::resilience
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_json_roundtrip<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_string(value).unwrap();
+        let back: T = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn universal_adapter_config_default_and_roundtrip() {
+        let c = UniversalAdapterConfig::default();
+        assert!(c.security_adapters.enabled);
+        assert_eq!(c.security_adapters.discovery_mode, "auto");
+        assert_eq!(c.settings.default_timeout_ms, 30_000);
+        assert_eq!(c.settings.max_concurrent_requests, 100);
+        assert!(c.settings.enable_standalone_failover);
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn security_adapter_config_default_and_roundtrip() {
+        let c = SecurityAdapterConfig::default();
+        assert!(c.enabled);
+        assert_eq!(c.timeout_ms, 30_000);
+        assert_eq!(c.retry_count, 3);
+        assert_eq!(c.security_provider_config.priority, 100);
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn compute_adapter_config_default_and_roundtrip() {
+        let c = ComputeAdapterConfig::default();
+        assert!(c.enabled);
+        assert_eq!(c.compute_provider_config.priority, 100);
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn storage_adapter_config_default_and_roundtrip() {
+        let c = StorageAdapterConfig::default();
+        assert!(c.storage_provider.enabled);
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn storage_provider_config_serde_roundtrip() {
+        let c = StorageProviderConfig {
+            enabled: true,
+            endpoint: Some("https://store.example".to_string()),
+            health_check: HealthCheckConfig::default(),
+            priority: 7,
+        };
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn security_provider_config_security_default_and_roundtrip() {
+        let c = SecurityProviderConfigSecurityConfig::default();
+        assert!(c.enabled);
+        assert_eq!(c.priority, 100);
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn compute_provider_config_compute_default_and_roundtrip() {
+        let c = ComputeProviderConfigComputeConfig::default();
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn storage_provider_config_storage_default_and_roundtrip() {
+        let c = StorageProviderConfigStorageConfig::default();
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn adapter_settings_default_and_roundtrip() {
+        let s = AdapterSettings::default();
+        assert_eq!(s.default_timeout_ms, 30_000);
+        assert_eq!(s.max_concurrent_requests, 100);
+        assert!(s.circuit_breaker.enabled);
+        assert_json_roundtrip(&s);
+    }
+}

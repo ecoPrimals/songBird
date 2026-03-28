@@ -312,3 +312,190 @@ impl NetworkEffectsDetector {
         Ok(effects)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::federation_aware_discovery::{
+        DiscoveryMetadata, FederationAwareServiceInfo, FederationCapabilities, PrimalPattern,
+    };
+    use crate::traits::service::{ServiceInfo, ServiceStatus};
+    use chrono::Utc;
+    use std::collections::HashMap;
+    use std::time::SystemTime;
+
+    fn sample_service(
+        tags: Vec<String>,
+        metadata: HashMap<String, serde_json::Value>,
+    ) -> ServiceInfo {
+        let now = Utc::now();
+        ServiceInfo {
+            service_id: "fed-1".to_string(),
+            name: "n".to_string(),
+            version: "1.0.0".to_string(),
+            service_type: "t".to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata,
+            tags,
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: now,
+            updated_at: now,
+            instance_id: "i".to_string(),
+            host: "127.0.0.1".to_string(),
+            port: 9000,
+        }
+    }
+
+    fn fed_aware_shell(
+        base: ServiceInfo,
+        caps: Option<FederationCapabilities>,
+    ) -> FederationAwareServiceInfo {
+        FederationAwareServiceInfo {
+            base_info: base,
+            federation_capabilities: caps,
+            sovereignty_assessment: SovereigntyAssessment::default(),
+            network_effects: vec![],
+            discovery_metadata: DiscoveryMetadata {
+                discovered_at: SystemTime::UNIX_EPOCH,
+                discovery_method: "unit".to_string(),
+                last_health_check: None,
+                discovery_confidence: 1.0,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn pattern_recognizer_empty_service_no_match() {
+        let r = FederationPatternRecognizer::new();
+        let s = sample_service(vec![], HashMap::new());
+        let out = r.detect_federation_capabilities(&s).await.unwrap();
+        assert!(out.is_none());
+    }
+
+    #[tokio::test]
+    async fn pattern_recognizer_security_genetic_high_confidence() {
+        let r = FederationPatternRecognizer::new();
+        let s = sample_service(
+            vec![
+                "genetic-spawning".to_string(),
+                "hsm-integration".to_string(),
+                "entropy-assessment".to_string(),
+            ],
+            HashMap::new(),
+        );
+        let out = r.detect_federation_capabilities(&s).await.unwrap().unwrap();
+        assert!(out.supports_entropy_hierarchy);
+        assert_eq!(out.detected_pattern.likely_category, PrimalCategory::SecurityFocused);
+        assert!(out.pattern_confidence > 0.6);
+    }
+
+    #[tokio::test]
+    async fn pattern_recognizer_capabilities_from_metadata_array() {
+        let r = FederationPatternRecognizer::new();
+        let mut meta = HashMap::new();
+        meta.insert(
+            "capabilities".to_string(),
+            serde_json::json!([
+                "genetic-spawning",
+                "hsm-integration",
+                "entropy-assessment",
+                "quantum-security"
+            ]),
+        );
+        let s = sample_service(vec![], meta);
+        let out = r.detect_federation_capabilities(&s).await.unwrap().unwrap();
+        assert_eq!(out.pattern_confidence, 1.0);
+    }
+
+    #[tokio::test]
+    async fn sovereignty_security_focused_with_entropy_hierarchy() {
+        let assessor = SovereigntyAssessor::new();
+        let caps = FederationCapabilities {
+            supports_sovereign_federation: false,
+            supports_entropy_hierarchy: true,
+            supports_quorum_sensing: false,
+            detected_pattern: PrimalPattern {
+                pattern_signature: "security-genetic".to_string(),
+                characteristic_capabilities: vec![],
+                behavioral_indicators: vec![],
+                likely_category: PrimalCategory::SecurityFocused,
+            },
+            pattern_confidence: 0.88,
+        };
+        let s = sample_service(vec![], HashMap::new());
+        let a = assessor.assess_sovereignty(&s, &Some(caps)).await.unwrap();
+        assert!(matches!(a.sovereignty_level, SovereigntyLevel::High));
+        assert!(matches!(a.hierarchy_position, Some(HierarchyPosition::HumanSupervised)));
+        assert!(matches!(a.override_capabilities, OverrideCapabilities::MachineOnly));
+        assert!((a.confidence - 0.88).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn sovereignty_no_caps_stays_unknown() {
+        let assessor = SovereigntyAssessor::new();
+        let s = sample_service(vec![], HashMap::new());
+        let a = assessor.assess_sovereignty(&s, &None).await.unwrap();
+        assert!(matches!(a.sovereignty_level, SovereigntyLevel::Unknown));
+    }
+
+    #[tokio::test]
+    async fn network_effects_multiplicative_and_emergent() {
+        let d = NetworkEffectsDetector::new();
+        let caps = FederationCapabilities {
+            supports_sovereign_federation: true,
+            supports_entropy_hierarchy: true,
+            supports_quorum_sensing: true,
+            detected_pattern: PrimalPattern {
+                pattern_signature: "federation-sovereign".to_string(),
+                characteristic_capabilities: vec![],
+                behavioral_indicators: vec![],
+                likely_category: PrimalCategory::FederationFocused,
+            },
+            pattern_confidence: 0.8,
+        };
+        let s = sample_service(vec![], HashMap::new());
+        let effects = d.detect_potential_effects(&s, &Some(caps)).await.unwrap();
+        assert_eq!(effects.len(), 2);
+        assert!((effects[0].benefit_multiplier - 2.5).abs() < f64::EPSILON);
+        assert!((effects[1].benefit_multiplier - 1.8).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn network_effects_pairwise_security_and_federation() {
+        let d = NetworkEffectsDetector::new();
+        let sec = FederationCapabilities {
+            supports_sovereign_federation: false,
+            supports_entropy_hierarchy: true,
+            supports_quorum_sensing: false,
+            detected_pattern: PrimalPattern {
+                pattern_signature: "security-genetic".to_string(),
+                characteristic_capabilities: vec![],
+                behavioral_indicators: vec![],
+                likely_category: PrimalCategory::SecurityFocused,
+            },
+            pattern_confidence: 0.7,
+        };
+        let fed = FederationCapabilities {
+            supports_sovereign_federation: true,
+            supports_entropy_hierarchy: true,
+            supports_quorum_sensing: true,
+            detected_pattern: PrimalPattern {
+                pattern_signature: "federation-sovereign".to_string(),
+                characteristic_capabilities: vec![],
+                behavioral_indicators: vec![],
+                likely_category: PrimalCategory::FederationFocused,
+            },
+            pattern_confidence: 0.8,
+        };
+        let s1 = sample_service(vec![], HashMap::new());
+        let s2 = sample_service(vec![], HashMap::new());
+        let fa1 = fed_aware_shell(s1, Some(sec));
+        let fa2 = fed_aware_shell(s2, Some(fed));
+        let pair = d.detect_pairwise_effects(&fa1, &fa2).await.unwrap();
+        assert_eq!(pair.len(), 1);
+        assert!((pair[0].benefit_multiplier - 3.0).abs() < f64::EPSILON);
+    }
+}

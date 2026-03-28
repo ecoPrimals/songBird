@@ -410,3 +410,107 @@ impl Default for WebSocketConfig {
 }
 
 // JsonRpcConfig is defined in communication.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn default_canonical_network_config() {
+        let c = CanonicalNetworkConfig::default();
+        assert_eq!(c.core.bind_address, IpAddr::V4(Ipv4Addr::LOCALHOST));
+        assert_eq!(c.ports.orchestrator, 8080);
+        assert_eq!(c.ports.gaming, 6112);
+        assert!(c.security.tls_enabled);
+    }
+
+    #[test]
+    fn default_gaming_network_virtual_bridge_protocol() {
+        let g = GamingNetworkConfig::default();
+        assert!(!g.virtual_network.enabled);
+        assert_eq!(g.protocols.default_protocol, "udp");
+        assert!(!g.bridge.enabled);
+    }
+
+    #[test]
+    fn default_network_performance_security_gaming() {
+        let p = NetworkPerformanceConfig::default();
+        assert_eq!(p.connection_timeout, 30);
+        assert!(p.keep_alive);
+        assert_eq!(p.buffer_sizes.receive_buffer, 8192);
+        let s = NetworkSecurityConfig::default();
+        assert!(s.allowed_ips.iter().any(|x| x == "127.0.0.1"));
+        let gs = GamingSecurityConfig::default();
+        assert_eq!(gs.max_players_per_session, 16);
+        let pm = PlayerManagementConfig::default();
+        assert_eq!(pm.max_players, 10000);
+    }
+
+    #[test]
+    fn default_production_lan_config_port_range() {
+        let p = ProductionLanConfig::default();
+        assert_eq!(p.game_port_range, (7000, 7999));
+        assert_eq!(p.max_packet_size, 1500);
+        assert_eq!(p.max_sessions, 1000);
+    }
+
+    #[test]
+    fn default_core_ports_connection_discovery_websocket() {
+        assert_eq!(NetworkCoreConfig::default().enable_ipv6, false);
+        assert_eq!(NetworkPortConfig::default().discovery, 8081);
+        assert_eq!(ConnectionConfig::default().max_connections, 1000);
+        assert!(NetworkDiscoveryConfig::default().enabled);
+        assert_eq!(WebSocketConfig::default().max_connections, 1000);
+    }
+
+    #[test]
+    fn roundtrip_canonical_network_and_gaming() {
+        assert_json_roundtrip(&CanonicalNetworkConfig::default());
+        assert_json_roundtrip(&GamingNetworkConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_virtual_bridge_protocol_performance() {
+        assert_json_roundtrip(&VirtualNetworkConfig::default());
+        assert_json_roundtrip(&GamingBridgeConfig::default());
+        assert_json_roundtrip(&GamingProtocolConfig::default());
+        assert_json_roundtrip(&NetworkPerformanceConfig::default());
+        assert_json_roundtrip(&BufferSizeConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_security_gaming_security_player() {
+        assert_json_roundtrip(&NetworkSecurityConfig::default());
+        assert_json_roundtrip(&GamingSecurityConfig::default());
+        assert_json_roundtrip(&PlayerManagementConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_core_ports_connection_discovery_websocket() {
+        assert_json_roundtrip(&NetworkCoreConfig::default());
+        assert_json_roundtrip(&NetworkPortConfig::default());
+        assert_json_roundtrip(&ConnectionConfig::default());
+        assert_json_roundtrip(&NetworkDiscoveryConfig::default());
+        assert_json_roundtrip(&WebSocketConfig::default());
+    }
+
+    #[test]
+    fn network_ports_serde_extreme_values() {
+        let mut ports = NetworkPortConfig::default();
+        ports.orchestrator = 0;
+        ports.gaming = u16::MAX;
+        assert_json_roundtrip(&ports);
+    }
+}

@@ -209,3 +209,95 @@ pub enum CompilationStatus {
     /// Not tested yet
     NotTested,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn migrator_default_matches_new() {
+        let a = CanonicalMigrator::new();
+        let b = CanonicalMigrator::default();
+        let src = "SongbirdResult<T>>";
+        assert_eq!(
+            a.migrate_file(Path::new("x.rs"), src).migrated_content,
+            b.migrate_file(Path::new("x.rs"), src).migrated_content
+        );
+    }
+
+    #[test]
+    fn migrate_file_empty_no_changes() {
+        let m = CanonicalMigrator::new();
+        let r = m.migrate_file(Path::new("x.rs"), "");
+        assert!(r.migrated_content.is_empty());
+        assert!(r.changes_made.is_empty());
+        assert_eq!(r.original_content, "");
+        assert_eq!(r.compilation_status, CompilationStatus::Unknown);
+    }
+
+    #[test]
+    fn migrate_file_return_type_double_angle_bracket() {
+        let m = CanonicalMigrator::new();
+        let src = "fn f() -> SongbirdResult<T>> { }";
+        let r = m.migrate_file(Path::new("a.rs"), src);
+        assert!(r.migrated_content.contains("SongbirdResult<T>"));
+        assert!(!r.migrated_content.contains(">>"));
+        assert!(r.changes_made.iter().any(|c| c.change_type == ChangeType::ReturnType));
+    }
+
+    #[test]
+    fn migrate_file_error_pattern() {
+        let m = CanonicalMigrator::new();
+        let src = r#"fn x() { service_error!("oops"); }"#;
+        let r = m.migrate_file(Path::new("b.rs"), src);
+        assert!(r.migrated_content.contains("SongbirdError::service_error("));
+        assert!(r.changes_made.iter().any(|c| c.change_type == ChangeType::ErrorHandling));
+    }
+
+    #[test]
+    fn migrate_file_ok_unit() {
+        let m = CanonicalMigrator::new();
+        let src = "fn y() { Ok(()); }";
+        let r = m.migrate_file(Path::new("c.rs"), src);
+        assert!(r.migrated_content.contains("Ok(SongbirdResult::unit()"));
+    }
+
+    #[test]
+    fn migrate_file_config_fields() {
+        let m = CanonicalMigrator::new();
+        let src = "enable_connection_reuse: true, max_batch_size: 3, batch_timeout: 1";
+        let r = m.migrate_file(Path::new("d.rs"), src);
+        assert!(r.migrated_content.contains("enable_async_batching"));
+        assert!(r.migrated_content.contains("batch_size"));
+        assert!(r.migrated_content.contains("batch_timeout_ms"));
+        assert_eq!(
+            r.changes_made.iter().filter(|c| c.change_type == ChangeType::ConfigField).count(),
+            3
+        );
+    }
+
+    #[test]
+    fn migrate_file_idempotent_no_extra_passes() {
+        let m = CanonicalMigrator::new();
+        let src = "// nothing to migrate";
+        let once = m.migrate_file(Path::new("e.rs"), src);
+        let twice = m.migrate_file(Path::new("e.rs"), &once.migrated_content);
+        assert_eq!(once.migrated_content, twice.migrated_content);
+        assert!(twice.changes_made.is_empty());
+    }
+
+    #[test]
+    fn analyze_codebase_returns_empty_report() {
+        let r = CanonicalMigrator::analyze_codebase(Path::new("."));
+        assert_eq!(r.files_analyzed, 0);
+        assert!(r.patterns_found.is_empty());
+        assert!(r.suggested_changes.is_empty());
+    }
+
+    #[test]
+    fn change_type_and_compilation_status_eq() {
+        assert_eq!(ChangeType::ReturnType, ChangeType::ReturnType);
+        assert_eq!(CompilationStatus::Unknown, CompilationStatus::Unknown);
+    }
+}

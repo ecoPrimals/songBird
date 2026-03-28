@@ -231,3 +231,67 @@ impl Default for CanonicalShutdownConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn default_canonical_system_config() {
+        let c = CanonicalSystemConfig::default();
+        assert_eq!(c.environment, "development");
+        assert_eq!(c.version, "0.1.0");
+        assert!(c.data_dir.contains("songbird"));
+        assert_eq!(c.logging.level, "info");
+        assert_eq!(c.resources.max_memory_bytes, 1_073_741_824);
+    }
+
+    #[test]
+    fn default_logging_resource_cleanup_shutdown() {
+        assert_eq!(CanonicalLoggingConfig::default().format, "json");
+        assert_eq!(CanonicalResourceConfig::default().cpu_limit_percent, 80.0);
+        assert!(CanonicalResourceCleanup::default().enabled);
+        assert_eq!(CanonicalShutdownConfig::default().timeout, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn roundtrip_canonical_system_config() {
+        assert_json_roundtrip(&CanonicalSystemConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_logging_log_output_rotation() {
+        assert_json_roundtrip(&CanonicalLoggingConfig::default());
+        assert_json_roundtrip(&CanonicalLogOutput::default());
+        let rot = CanonicalLogRotation {
+            max_size_mb: u64::MAX,
+            max_files: u32::MAX,
+            frequency: "daily".into(),
+        };
+        assert_json_roundtrip(&rot);
+    }
+
+    #[test]
+    fn roundtrip_resource_config_and_cleanup() {
+        assert_json_roundtrip(&CanonicalResourceConfig::default());
+        assert_json_roundtrip(&CanonicalResourceCleanup::default());
+    }
+
+    #[test]
+    fn roundtrip_shutdown_config() {
+        let mut s = CanonicalShutdownConfig::default();
+        s.hooks.push("hook1".into());
+        assert_json_roundtrip(&s);
+    }
+}

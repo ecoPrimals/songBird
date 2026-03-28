@@ -292,6 +292,7 @@ pub fn rpc_methods() -> Value {
             {"name": "birdsong.verify_lineage", "description": "Verify peer lineage via challenge-response", "params": ["peer_node_id", "our_node_id"]},
             {"name": "birdsong.get_lineage", "description": "Get own lineage info", "params": []},
             {"name": "birdsong.advertise", "description": "Generate beacon with onion endpoint", "params": ["node_id", "capabilities"]},
+            {"name": "birdsong.schema", "description": "Introspect beacon request schema (fields, types, required/optional)", "params": []},
             // Relay
             {"name": "relay.serve", "description": "Start relay server", "params": ["bind_addr?"]},
             {"name": "relay.stop", "description": "Stop relay server", "params": []},
@@ -347,6 +348,7 @@ pub fn rpc_discover_standard() -> Value {
             "relay.serve", "relay.stop", "relay.status", "relay.allocate",
             "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
             "birdsong.verify_lineage", "birdsong.get_lineage", "birdsong.advertise",
+            "birdsong.schema",
             "mesh.init", "mesh.status", "mesh.find_path",
             "mesh.announce", "mesh.peers", "mesh.health_check",
             "mesh.auto_discover",
@@ -403,7 +405,8 @@ pub fn discover_capabilities() -> Value {
             "igd.map_port",
             "igd.auto_configure",
             "birdsong.advertise",
-            "birdsong.verify_lineage"
+            "birdsong.verify_lineage",
+            "birdsong.schema"
         ]
     })
 }
@@ -436,7 +439,7 @@ pub fn identity(family_id: &str) -> Value {
             "igd.discover", "igd.map_port", "igd.auto_configure",
             "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
             "birdsong.verify_lineage", "birdsong.get_lineage",
-            "birdsong.advertise",
+            "birdsong.advertise", "birdsong.schema",
             "relay.serve", "relay.status", "relay.allocate",
             "mesh.status", "mesh.find_path", "mesh.peers",
             "mesh.auto_discover",

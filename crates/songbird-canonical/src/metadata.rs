@@ -188,3 +188,80 @@ impl QualityMetrics {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn assert_json_roundtrip<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let j = serde_json::to_string(value).unwrap();
+        let back: T = serde_json::from_str(&j).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), j);
+    }
+
+    #[test]
+    fn ai_response_metadata_default() {
+        let m = AIResponseMetadata::default();
+        assert!(m.automation_capabilities.is_empty());
+        assert!(m.custom_fields.is_empty());
+        assert_eq!(m.decision_context.risk_level, RiskLevel::Low);
+    }
+
+    #[test]
+    fn ai_response_metadata_builders_and_roundtrip() {
+        let cap = AutomationCapability::new("deploy", "roll out", 1.5).with_prerequisite("git");
+        assert_eq!(cap.confidence_threshold, 1.0);
+
+        let m = AIResponseMetadata::default()
+            .with_automation_capability(cap)
+            .with_custom_field("k", json!("v"));
+        assert_eq!(m.automation_capabilities.len(), 1);
+        assert_eq!(m.custom_fields.get("k"), Some(&json!("v")));
+        assert_json_roundtrip(&m);
+    }
+
+    #[test]
+    fn decision_context_default_and_roundtrip() {
+        let d = DecisionContext::default();
+        assert!(d.influencing_factors.is_empty());
+        assert_json_roundtrip(&d);
+    }
+
+    #[test]
+    fn risk_level_roundtrip() {
+        for level in [RiskLevel::Low, RiskLevel::Medium, RiskLevel::High, RiskLevel::Critical] {
+            assert_json_roundtrip(&level);
+        }
+    }
+
+    #[test]
+    fn automation_capability_roundtrip() {
+        let a = AutomationCapability::new("x", "y", 0.5);
+        assert_json_roundtrip(&a);
+    }
+
+    #[test]
+    fn quality_metrics_calculate_overall_averages_present_fields() {
+        let m = QualityMetrics::default().with_accuracy(0.2).with_completeness(0.4);
+        assert!((m.overall_quality.unwrap() - 0.3).abs() < 1e-9);
+    }
+
+    #[test]
+    fn quality_metrics_calculate_overall_empty_leaves_overall_none() {
+        let mut m = QualityMetrics::default();
+        m.calculate_overall();
+        assert!(m.overall_quality.is_none());
+    }
+
+    #[test]
+    fn quality_metrics_setters_clamp_and_roundtrip() {
+        let m = QualityMetrics::default().with_relevance(2.0).with_timeliness(-1.0);
+        assert_eq!(m.relevance, Some(1.0));
+        assert_eq!(m.timeliness, Some(0.0));
+        assert_json_roundtrip(&m);
+    }
+}

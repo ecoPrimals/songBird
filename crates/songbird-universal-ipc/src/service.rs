@@ -710,6 +710,9 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Birdsong(BirdsongMethod::Advertise) => {
                 self.handle_birdsong_advertise(params).await
             }
+            JsonRpcMethod::Birdsong(BirdsongMethod::Schema) => {
+                self.birdsong_handler.handle_schema(params).await
+            }
 
             // ── Mesh networking ──────────────────────────────────────
             JsonRpcMethod::Mesh(MeshMethod::Init) => self.mesh_handler.handle_init(params).await,

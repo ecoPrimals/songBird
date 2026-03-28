@@ -281,3 +281,81 @@ impl Default for CanonicalMonitoringConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn default_canonical_api_config() {
+        let c = CanonicalApiConfig::default();
+        assert_eq!(c.session.max_concurrent_sessions, 1000);
+        assert_eq!(c.connection.pool_size, 100);
+        assert!(c.mesh.enable_mesh);
+        assert!(c.service_registration.auto_registration);
+    }
+
+    #[test]
+    fn default_session_connection_mesh_service_registration() {
+        assert_eq!(CanonicalSessionConfig::default().buffer_size, 8192);
+        assert!(CanonicalConnectionConfig::default().enable_pooling);
+        assert_eq!(CanonicalMeshConfig::default().max_nodes, 100);
+        let sr = CanonicalServiceRegistrationConfig::default();
+        assert_eq!(sr.registration_timeout, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn default_health_performance_circuit_monitoring() {
+        let h = CanonicalHealthMonitoringConfig::default();
+        assert_eq!(h.failure_threshold, 3);
+        let p = CanonicalPerformanceAnalysisConfig::default();
+        assert!(p.enabled);
+        let cb = CanonicalCircuitBreakerConfig::default();
+        assert!(cb.enabled);
+        let m = CanonicalMonitoringConfig::default();
+        assert_eq!(m.log_level, "info");
+    }
+
+    #[test]
+    fn roundtrip_canonical_api_config() {
+        assert_json_roundtrip(&CanonicalApiConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_session_connection_mesh() {
+        assert_json_roundtrip(&CanonicalSessionConfig::default());
+        assert_json_roundtrip(&CanonicalConnectionConfig::default());
+        assert_json_roundtrip(&CanonicalMeshConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_health_performance_service_registration() {
+        assert_json_roundtrip(&CanonicalHealthMonitoringConfig::default());
+        assert_json_roundtrip(&CanonicalPerformanceAnalysisConfig::default());
+        assert_json_roundtrip(&CanonicalServiceRegistrationConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_circuit_breaker_monitoring() {
+        assert_json_roundtrip(&CanonicalCircuitBreakerConfig::default());
+        assert_json_roundtrip(&CanonicalMonitoringConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_mesh_max_nodes_edge() {
+        let mut m = CanonicalMeshConfig::default();
+        m.max_nodes = 0;
+        assert_json_roundtrip(&m);
+    }
+}

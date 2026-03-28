@@ -508,3 +508,138 @@ impl Default for CanonicalHealthMonitoringConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+    use std::collections::HashMap;
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn default_universal_adapter_config() {
+        let c = CanonicalUniversalAdapterConfig::default();
+        assert!(c.auto_discovery);
+        assert!(c.primal_instances.is_empty());
+        assert_eq!(c.multi_instance.max_instances_per_type, 10);
+        assert_eq!(c.port_management.reserved_ports.len(), 5);
+        assert_eq!(c.security.encryption.key_size, 256);
+        assert_eq!(c.monitoring.log_level, "info");
+    }
+
+    #[test]
+    fn default_primal_instance_and_multi_instance() {
+        let p = CanonicalPrimalInstanceConfig::default();
+        assert!(p.base_url.starts_with("http://"));
+        assert_eq!(p.timeout_seconds, 30);
+        let m = CanonicalMultiInstanceConfig::default();
+        assert!(m.enabled);
+        assert_eq!(m.load_balancing_strategy, CanonicalLoadBalancingStrategy::HealthBased);
+    }
+
+    #[test]
+    fn default_lifecycle_port_pool_security_timeouts() {
+        assert!(CanonicalInstanceLifecycleConfig::default().auto_start);
+        let pm = CanonicalPortManagementConfig::default();
+        assert_eq!(pm.port_range.start, 20000);
+        assert_eq!(pm.allocation_strategy, CanonicalPortAllocationStrategy::Sequential);
+        let sec = CanonicalAdapterSecurityConfig::default();
+        assert!(sec.tls_enabled && sec.verify_certificates);
+        let t = CanonicalTimeoutConfig::default();
+        assert_eq!(t.default_request_timeout, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn default_connection_failover_scaling_circuit_breaker() {
+        let cp = CanonicalConnectionPoolConfig::default();
+        assert_eq!(cp.max_connections, 10);
+        assert_eq!(cp.min_connections, 1);
+        let f = CanonicalFailoverConfig::default();
+        assert!(f.enabled);
+        assert!(CanonicalCircuitBreakerConfig::default().enabled);
+        let s = CanonicalScalingConfig::default();
+        assert!(!s.enabled);
+        assert_eq!(s.cpu_scale_up_threshold, 80.0);
+    }
+
+    #[test]
+    fn default_monitoring_health() {
+        let h = CanonicalHealthMonitoringConfig::default();
+        assert_eq!(h.failure_threshold, 3);
+        assert_eq!(h.success_threshold, 2);
+    }
+
+    #[test]
+    fn derive_clone_partialeq_load_balancing_and_port_strategy() {
+        let a = CanonicalLoadBalancingStrategy::HealthBased;
+        let b = a.clone();
+        assert_eq!(a, b);
+        assert_eq!(
+            CanonicalPortAllocationStrategy::HashBased,
+            CanonicalPortAllocationStrategy::HashBased
+        );
+    }
+
+    #[test]
+    fn roundtrip_canonical_universal_adapter_config() {
+        assert_json_roundtrip(&CanonicalUniversalAdapterConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_primal_instance_with_map() {
+        let mut c = CanonicalPrimalInstanceConfig::default();
+        c.headers.insert("h".into(), "v".into());
+        assert_json_roundtrip(&c);
+    }
+
+    #[test]
+    fn roundtrip_multi_instance_and_lifecycle() {
+        assert_json_roundtrip(&CanonicalMultiInstanceConfig::default());
+        assert_json_roundtrip(&CanonicalInstanceLifecycleConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_port_management_and_range() {
+        assert_json_roundtrip(&CanonicalPortManagementConfig::default());
+        assert_json_roundtrip(&CanonicalPortRange::default());
+    }
+
+    #[test]
+    fn roundtrip_security_encryption_connection_pool() {
+        assert_json_roundtrip(&CanonicalAdapterSecurityConfig::default());
+        assert_json_roundtrip(&CanonicalEncryptionConfig::default());
+        assert_json_roundtrip(&CanonicalConnectionPoolConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_failover_circuit_breaker_scaling_timeouts_monitoring() {
+        assert_json_roundtrip(&CanonicalFailoverConfig::default());
+        assert_json_roundtrip(&CanonicalCircuitBreakerConfig::default());
+        assert_json_roundtrip(&CanonicalScalingConfig::default());
+        assert_json_roundtrip(&CanonicalTimeoutConfig::default());
+        assert_json_roundtrip(&CanonicalAdapterMonitoringConfig::default());
+        assert_json_roundtrip(&CanonicalHealthMonitoringConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_load_balancing_strategies() {
+        assert_json_roundtrip(&CanonicalLoadBalancingStrategy::RoundRobin);
+        assert_json_roundtrip(&CanonicalPortAllocationStrategy::Random);
+    }
+
+    #[test]
+    fn roundtrip_empty_hashmap_primal_instances() {
+        let mut cfg = CanonicalUniversalAdapterConfig::default();
+        cfg.primal_instances = HashMap::new();
+        assert_json_roundtrip(&cfg);
+    }
+}

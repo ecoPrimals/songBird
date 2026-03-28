@@ -15,7 +15,8 @@ use crate::config::SongbirdConfig;
 
 /// Configuration validation results with detailed feedback
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationResult  {/// Critical errors that prevent system startup
+pub struct ValidationResult {
+    /// Critical errors that prevent system startup
     pub errors: Vec<ValidationError>,
     /// Non-critical warnings that should be addressed
     pub warnings: Vec<ValidationWarning>,
@@ -27,7 +28,8 @@ pub struct ValidationResult  {/// Critical errors that prevent system startup
 
 /// Configuration validation error
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationError  {/// Field path where error occurred
+pub struct ValidationError {
+    /// Field path where error occurred
     pub field: String,
     /// Human-readable error message
     pub message: String,
@@ -43,7 +45,8 @@ pub struct ValidationError  {/// Field path where error occurred
 
 /// Configuration validation warning
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationWarning  {/// Field path where warning occurred
+pub struct ValidationWarning {
+    /// Field path where warning occurred
     pub field: String,
     /// Human-readable warning message
     pub message: String,
@@ -58,15 +61,19 @@ pub struct ValidationWarning  {/// Field path where warning occurred
 }
 
 /// Validation severity levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ValidationSeverity  {Critical,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ValidationSeverity {
+    Critical,
     High,
     Medium,
     Low,
 }
 
-impl ValidationResult  {/// Create a new validation result
-    pub fn new() -> Self  {Self {
+impl ValidationResult {
+    /// Create a new validation result
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
             errors: Vec::new(),
             warnings: Vec::new(),
             recommendations: Vec::new(),
@@ -75,11 +82,13 @@ impl ValidationResult  {/// Create a new validation result
     }
 
     /// Check if validation passed (no critical errors)
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.errors.is_empty()
     }
 
     /// Get total issue count
+    #[must_use]
     pub fn total_issues(&self) -> usize {
         self.errors.len() + self.warnings.len()
     }
@@ -94,6 +103,10 @@ impl Default for ValidationResult {
 /// Configuration validation implementation
 impl SongbirdConfig {
     /// Validate the entire configuration
+    #[expect(
+        deprecated,
+        reason = "`SongbirdConfig::primal_registry` remains the validated surface until migration completes"
+    )]
     pub fn validate(&self) -> Result<ValidationResult> {
         let mut result = ValidationResult::new();
 
@@ -102,16 +115,16 @@ impl SongbirdConfig {
             for (primal_name, primal_config) in &registry.primals {
                 if primal_config.enabled {
                     debug!("Validating universal primal: {}", primal_name);
-                    self.validate_universal_primal_config(primal_name, primal_config, &mut result)?;
+                    Self::validate_universal_primal_config(primal_name, primal_config, &mut result);
                 }
             }
         }
 
         // Basic network validation
-        self.validate_network_basic(&mut result)?;
+        self.validate_network_basic(&mut result);
 
         // Security validation
-        self.validate_security_basic(&mut result)?;
+        self.validate_security_basic(&mut result);
 
         // Set overall validation status
         result.is_valid = result.errors.is_empty();
@@ -121,11 +134,10 @@ impl SongbirdConfig {
 
     /// Universal primal configuration validation
     fn validate_universal_primal_config(
-        &self,
         primal_name: &str,
-        primal_config: &crate::config::universal_primals::PrimalConfiguration,
+        primal_config: &crate::canonical::primals::PrimalConfiguration,
         result: &mut ValidationResult,
-    ) -> Result<()> {
+    ) {
         // Validate primal endpoint
         if primal_config.endpoint.primary_url.is_empty() {
             result.errors.push(ValidationError {
@@ -153,12 +165,7 @@ impl SongbirdConfig {
         }
 
         // Validate connection settings
-        if primal_config
-            .connection_settings
-            .connection_timeout
-            .as_secs()
-            == 0
-        {
+        if primal_config.connection_settings.connection_timeout.as_secs() == 0 {
             result.errors.push(ValidationError {
                 field: format!(
                     "primal_registry.{primal_name}.connection_settings.connection_timeout"
@@ -170,13 +177,13 @@ impl SongbirdConfig {
                 suggestion: format!("Set a positive connection timeout for primal '{primal_name}'"),
             });
         }
-
-        Ok(()),
     }
 
     /// Basic network configuration validation
-    fn validate_network_basic(&self, result: &mut ValidationResult) -> Result<()>  {// Validate bind address is not empty
-        if self.network.bind_address.is_empty()  {result.errors.push(ValidationError {
+    fn validate_network_basic(&self, result: &mut ValidationResult) {
+        // Validate bind address is not empty
+        if self.network.bind_address.is_empty() {
+            result.errors.push(ValidationError {
                 field: "network.bind_address".to_string(),
                 message: "Network bind address cannot be empty".to_string(),
                 current_value: Some("empty".to_string()),
@@ -187,24 +194,24 @@ impl SongbirdConfig {
         }
 
         // Validate port range
-        if self.network.port_range.start >= self.network.port_range.end  {result.errors.push(ValidationError  {field: "network.port_range".to_string(),
+        if self.network.port_range.start >= self.network.port_range.end {
+            result.errors.push(ValidationError {
+                field: "network.port_range".to_string(),
                 message: "Port range start must be less than end".to_string(),
                 current_value: Some(format!(
-                    "{}-{}")
+                    "{}-{}",
                     self.network.port_range.start, self.network.port_range.end
-                ),
+                )),
                 expected_value: Some("start < end".to_string()),
                 severity: ValidationSeverity::High,
                 suggestion: "Ensure port range start is less than port range end".to_string(),
             });
         }
-
-        Ok(()),
     }
 
     /// Basic security configuration validation
-    fn validate_security_basic(&self, result: &mut ValidationResult) -> Result<()>  {// Security configuration validation
-        if self.security.enabled  {// Use the universal authentication system
+    fn validate_security_basic(&self, result: &mut ValidationResult) {
+        if self.security.enabled {
             if !self.security.authentication.enabled {
                 result.warnings.push(ValidationWarning {
                     field: "security.authentication.enabled".to_string(),
@@ -217,7 +224,9 @@ impl SongbirdConfig {
             }
 
             // Validate encryption settings
-            if !self.security.encryption.at_rest && !self.security.encryption.in_transit  {result.warnings.push(ValidationWarning  {field: "security.encryption".to_string(),
+            if !self.security.encryption.at_rest && !self.security.encryption.in_transit {
+                result.warnings.push(ValidationWarning {
+                    field: "security.encryption".to_string(),
                     message: "Security enabled but no encryption configured".to_string(),
                     current_value: Some("no encryption".to_string()),
                     recommended_value: Some("at_rest or in_transit encryption enabled".to_string()),
@@ -226,7 +235,171 @@ impl SongbirdConfig {
                 });
             }
         }
+    }
+}
 
-        Ok(()),
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::SongbirdConfig;
+    use std::time::Duration;
+
+    fn assert_json_roundtrip<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_string(value).unwrap();
+        let back: T = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn validation_result_roundtrip_and_default() {
+        let r = ValidationResult::default();
+        assert!(r.errors.is_empty());
+        assert_json_roundtrip(&r);
+    }
+
+    #[test]
+    fn validation_error_and_warning_roundtrip() {
+        let err = ValidationError {
+            field: "network.bind_address".to_string(),
+            message: "empty".to_string(),
+            current_value: Some("".to_string()),
+            expected_value: Some("0.0.0.0".to_string()),
+            severity: ValidationSeverity::Critical,
+            suggestion: "set bind".to_string(),
+        };
+        assert_json_roundtrip(&err);
+
+        let warn = ValidationWarning {
+            field: "cap".to_string(),
+            message: "empty capabilities".to_string(),
+            current_value: Some("[]".to_string()),
+            recommended_value: Some("non-empty".to_string()),
+            severity: ValidationSeverity::Medium,
+            suggestion: "add capabilities".to_string(),
+        };
+        assert_json_roundtrip(&warn);
+    }
+
+    #[test]
+    fn validation_severity_roundtrip() {
+        for s in [
+            ValidationSeverity::Critical,
+            ValidationSeverity::High,
+            ValidationSeverity::Medium,
+            ValidationSeverity::Low,
+        ] {
+            assert_json_roundtrip(&s);
+        }
+    }
+
+    #[test]
+    fn test_defaults_passes_validation() {
+        let r = SongbirdConfig::test_defaults().validate().unwrap();
+        assert!(r.errors.is_empty());
+        assert!(r.is_valid);
+    }
+
+    #[test]
+    fn empty_bind_address_fails() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.network.bind_address = String::new();
+        let r = c.validate().unwrap();
+        assert!(
+            r.errors.iter().any(|e| e.field == "network.bind_address"),
+            "expected bind_address error"
+        );
+        assert!(!r.is_valid);
+    }
+
+    #[test]
+    fn invalid_port_range_fails() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.network.port_range.end = c.network.port_range.start;
+        let r = c.validate().unwrap();
+        assert!(
+            r.errors.iter().any(|e| e.field == "network.port_range"),
+            "expected port_range error"
+        );
+    }
+
+    #[test]
+    fn enabled_primal_empty_url_errors() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.enable_primal("p1", "http://localhost:1");
+        if let Some(reg) = &mut c.primal_registry {
+            if let Some(p) = reg.primals.get_mut("p1") {
+                p.endpoint.primary_url.clear();
+            }
+        }
+        let r = c.validate().unwrap();
+        assert!(
+            r.errors.iter().any(|e| e.field.contains("primary_url")),
+            "expected empty URL error"
+        );
+    }
+
+    #[test]
+    fn enabled_primal_zero_connection_timeout_errors() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.enable_primal("p2", "http://localhost:2");
+        if let Some(reg) = &mut c.primal_registry {
+            if let Some(p) = reg.primals.get_mut("p2") {
+                p.connection_settings.connection_timeout = Duration::ZERO;
+            }
+        }
+        let r = c.validate().unwrap();
+        assert!(
+            r.errors.iter().any(|e| e.field.contains("connection_timeout")),
+            "expected zero timeout error"
+        );
+    }
+
+    #[test]
+    fn enabled_primal_empty_capabilities_warns() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.enable_primal("p3", "http://localhost:3");
+        let r = c.validate().unwrap();
+        assert!(
+            r.warnings.iter().any(|w| w.field.contains("capabilities")),
+            "expected capabilities warning"
+        );
+    }
+
+    #[test]
+    fn security_enabled_without_auth_warns() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.security.enabled = true;
+        c.security.authentication.enabled = false;
+        let r = c.validate().unwrap();
+        assert!(
+            r.warnings.iter().any(|w| w.field == "security.authentication.enabled"),
+            "expected auth warning"
+        );
+    }
+
+    #[test]
+    fn security_enabled_without_encryption_warns() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.security.enabled = true;
+        c.security.encryption.at_rest = false;
+        c.security.encryption.in_transit = false;
+        let r = c.validate().unwrap();
+        assert!(
+            r.warnings.iter().any(|w| w.field == "security.encryption"),
+            "expected encryption warning"
+        );
+    }
+
+    #[test]
+    fn disabled_primals_skip_validation() {
+        let c = SongbirdConfig::test_defaults();
+        let r = c.validate().unwrap();
+        assert!(
+            !r.errors.iter().any(|e| e.field.contains("primal_registry")),
+            "no primal errors when none enabled"
+        );
     }
 }

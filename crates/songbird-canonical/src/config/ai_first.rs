@@ -157,3 +157,64 @@ impl Default for StreamingInterfaceConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_json_roundtrip<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let j = serde_json::to_string(value).unwrap();
+        let back: T = serde_json::from_str(&j).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), j);
+    }
+
+    #[test]
+    fn ai_first_config_default_non_trivial() {
+        let c = AIFirstConfig::default();
+        assert!(c.enable_ai_responses);
+        assert!(c.confidence_scoring.enabled);
+        assert!((c.confidence_scoring.min_threshold - 0.7).abs() < f64::EPSILON);
+        assert_eq!(c.workload_classification.model_update_interval, 24);
+        assert_eq!(c.streaming_interface.buffer_size, 8192);
+    }
+
+    #[test]
+    fn ai_first_config_roundtrip() {
+        assert_json_roundtrip(&AIFirstConfig::default());
+    }
+
+    #[test]
+    fn confidence_scoring_default_and_roundtrip() {
+        assert_json_roundtrip(&ConfidenceScoringConfig::default());
+    }
+
+    #[test]
+    fn human_collaboration_default_and_roundtrip() {
+        assert_json_roundtrip(&HumanCollaborationConfig::default());
+    }
+
+    #[test]
+    fn workload_classification_default_and_roundtrip() {
+        assert_json_roundtrip(&WorkloadClassificationConfig::default());
+    }
+
+    #[test]
+    fn streaming_interface_default_and_roundtrip() {
+        assert_json_roundtrip(&StreamingInterfaceConfig::default());
+    }
+
+    #[test]
+    fn classification_strategy_variants_roundtrip() {
+        for s in [
+            ClassificationStrategy::RuleBased,
+            ClassificationStrategy::MachineLearning,
+            ClassificationStrategy::Hybrid,
+            ClassificationStrategy::Custom("ml-v2".to_string()),
+        ] {
+            assert_json_roundtrip(&s);
+        }
+    }
+}

@@ -80,8 +80,7 @@ mod security;
 // pub mod network; // ✅ REMOVED: Fully consolidated into canonical::network (Nov 9, 2025)
 pub mod paths;
 pub mod providers;
-// TEMPORARY: Disabled due to syntax errors - fix in next session
-// pub mod validation;
+pub mod validation;
 
 // Re-export commonly used types
 #[expect(deprecated, reason = "migration to evolved config API planned")]

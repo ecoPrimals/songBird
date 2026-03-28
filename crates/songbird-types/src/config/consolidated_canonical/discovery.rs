@@ -131,3 +131,59 @@ impl Default for CanonicalDiscoveryConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn default_canonical_discovery_config() {
+        let c = CanonicalDiscoveryConfig::default();
+        assert_eq!(c.protocol_version, "2.0");
+        assert_eq!(c.session_rotation_interval, 3600);
+        assert!(c.port > 0);
+    }
+
+    #[test]
+    fn discovery_mode_helpers() {
+        assert!(!DiscoveryMode::Disabled.is_enabled());
+        assert!(DiscoveryMode::Anonymous.is_enabled());
+        assert!(DiscoveryMode::Anonymous.is_anonymous());
+        assert!(!DiscoveryMode::CapabilityAware.is_anonymous());
+        assert!(DiscoveryMode::CapabilityAware.shares_capabilities());
+        assert!(!DiscoveryMode::CapabilityAware.shares_identity());
+        assert!(DiscoveryMode::FullDisclosure.shares_identity());
+    }
+
+    #[test]
+    fn roundtrip_discovery_mode_variants() {
+        assert_json_roundtrip(&DiscoveryMode::Disabled);
+        assert_json_roundtrip(&DiscoveryMode::Anonymous);
+        assert_json_roundtrip(&DiscoveryMode::CapabilityAware);
+        assert_json_roundtrip(&DiscoveryMode::FullDisclosure);
+    }
+
+    #[test]
+    fn roundtrip_canonical_discovery_config() {
+        assert_json_roundtrip(&CanonicalDiscoveryConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_discovery_config_edge_port() {
+        let mut c = CanonicalDiscoveryConfig::default();
+        c.port = u16::MAX;
+        c.session_rotation_interval = 0;
+        assert_json_roundtrip(&c);
+    }
+}

@@ -162,6 +162,7 @@ pub enum BirdsongMethod {
     VerifyLineage,
     GetLineage,
     Advertise,
+    Schema,
 }
 
 /// `mesh.*`
@@ -399,6 +400,7 @@ impl JsonRpcMethod {
             Self::Birdsong(BirdsongMethod::VerifyLineage) => "birdsong.verify_lineage",
             Self::Birdsong(BirdsongMethod::GetLineage) => "birdsong.get_lineage",
             Self::Birdsong(BirdsongMethod::Advertise) => "birdsong.advertise",
+            Self::Birdsong(BirdsongMethod::Schema) => "birdsong.schema",
             Self::Mesh(MeshMethod::Init) => "mesh.init",
             Self::Mesh(MeshMethod::Status) => "mesh.status",
             Self::Mesh(MeshMethod::FindPath) => "mesh.find_path",
@@ -525,6 +527,7 @@ impl JsonRpcMethod {
             "birdsong.verify_lineage" => Self::Birdsong(BirdsongMethod::VerifyLineage),
             "birdsong.get_lineage" => Self::Birdsong(BirdsongMethod::GetLineage),
             "birdsong.advertise" => Self::Birdsong(BirdsongMethod::Advertise),
+            "birdsong.schema" => Self::Birdsong(BirdsongMethod::Schema),
             "mesh.init" => Self::Mesh(MeshMethod::Init),
             "mesh.status" => Self::Mesh(MeshMethod::Status),
             "mesh.find_path" => Self::Mesh(MeshMethod::FindPath),

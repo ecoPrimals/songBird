@@ -240,7 +240,7 @@ pub enum TransportType {
 }
 
 /// Serialization format for /// Tarpc
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SerializationFormat {
     /// Bincode serialization (fastest)
     Bincode,
@@ -317,7 +317,7 @@ impl Default for HyperClientConfig {
 }
 
 /// HTTP version preference
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HttpVersion {
     /// HTTP/1.1
     Http1,
@@ -448,7 +448,7 @@ impl Default for CachingConfig {
 }
 
 /// Cache eviction policy
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EvictionPolicy {
     /// Least Recently
     Lru,
@@ -495,5 +495,113 @@ impl Default for ConnectionPoolConfig {
             max_lifetime: Duration::from_secs(3600),
             health_check_interval: Duration::from_secs(30),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn default_canonical_communication_config() {
+        let c = CanonicalCommunicationConfig::default();
+        assert!(c.http.http2_enabled);
+        assert_eq!(c.grpc.max_message_size, 4 * 1024 * 1024);
+        assert_eq!(c.jsonrpc.version, "2.0");
+        assert!(c.performance.enabled);
+        assert_eq!(c.circuit_breaker.failure_threshold, 5);
+    }
+
+    #[test]
+    fn default_http_grpc_websocket_subconfigs() {
+        let h = HttpClientConfig::default();
+        assert_eq!(h.user_agent, "songbird/1.0");
+        assert_eq!(h.max_redirects, 10);
+        let g = GrpcConfig::default();
+        assert!(g.tls_enabled);
+        assert_eq!(g.max_concurrent_streams, 100);
+        let w = WebSocketConfig::default();
+        assert_eq!(w.max_frame_size, 64 * 1024);
+        assert!(w.compression_enabled);
+    }
+
+    #[test]
+    fn default_tarpc_hyper_jsonrpc_circuit_performance() {
+        let t = TarpcConfig::default();
+        assert_eq!(t.serialization, SerializationFormat::Bincode);
+        let h = HyperClientConfig::default();
+        assert_eq!(h.http_version, HttpVersion::Http2);
+        let j = JsonRpcConfig::default();
+        assert!(j.batch_enabled);
+        let cb = CircuitBreakerConfig::default();
+        assert!(cb.enabled);
+        let p = PerformanceConfig::default();
+        assert!(p.enabled);
+    }
+
+    #[test]
+    fn default_batching_caching_connection_pool() {
+        let b = RequestBatchingConfig::default();
+        assert!(b.enabled);
+        assert_eq!(b.max_batch_size, 10);
+        let c = CachingConfig::default();
+        assert_eq!(c.eviction_policy, EvictionPolicy::Lru);
+        let cp = ConnectionPoolConfig::default();
+        assert_eq!(cp.max_connections, 100);
+    }
+
+    #[test]
+    fn roundtrip_canonical_communication_config() {
+        assert_json_roundtrip(&CanonicalCommunicationConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_http_grpc_websocket() {
+        assert_json_roundtrip(&HttpClientConfig::default());
+        assert_json_roundtrip(&GrpcConfig::default());
+        assert_json_roundtrip(&WebSocketConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_tarpc_transport_and_enums() {
+        assert_json_roundtrip(&TarpcConfig::default());
+        assert_json_roundtrip(&TarpcTransportConfig::default());
+        assert_json_roundtrip(&TransportType::Unix);
+        assert_json_roundtrip(&SerializationFormat::MessagePack);
+    }
+
+    #[test]
+    fn roundtrip_jsonrpc_hyper_circuit_performance() {
+        assert_json_roundtrip(&JsonRpcConfig::default());
+        assert_json_roundtrip(&HyperClientConfig::default());
+        assert_json_roundtrip(&CircuitBreakerConfig::default());
+        assert_json_roundtrip(&PerformanceConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_batching_caching_eviction_connection_pool() {
+        assert_json_roundtrip(&RequestBatchingConfig::default());
+        assert_json_roundtrip(&CachingConfig::default());
+        assert_json_roundtrip(&EvictionPolicy::Fifo);
+        assert_json_roundtrip(&ConnectionPoolConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_grpc_edge_zero_max_streams() {
+        let mut g = GrpcConfig::default();
+        g.max_concurrent_streams = 0;
+        g.max_message_size = usize::MAX;
+        assert_json_roundtrip(&g);
     }
 }

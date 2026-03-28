@@ -160,7 +160,7 @@ impl Default for SecurityProviderConfig {
 }
 
 /// Multi-factor authentication method
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub enum MfaMethod {
     /// Time-based One-Time Password
     #[default]
@@ -191,5 +191,80 @@ impl Default for MfaSettings {
             required_for_admin: true,
             methods: vec![MfaMethod::Totp],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn default_canonical_security_config() {
+        let c = CanonicalSecurityConfig::default();
+        assert!(c.authentication.enabled);
+        assert!(c.authorization.rbac_enabled);
+        assert_eq!(c.encryption.algorithm, "AES-256-GCM");
+        assert_eq!(c.encryption.key_size, 256);
+    }
+
+    #[test]
+    fn default_auth_authorization_encryption_provider_integration() {
+        assert_eq!(AuthenticationConfig::default().session_timeout, Duration::from_secs(3600));
+        assert_eq!(AuthorizationConfig::default().default_role, "user");
+        assert!(SecurityProviderIntegrationConfig::default().providers.is_empty());
+        let p = SecurityProviderConfig::default();
+        assert!(p.endpoint.contains("://"));
+    }
+
+    #[test]
+    fn default_mfa_settings() {
+        let m = MfaSettings::default();
+        assert!(!m.enabled);
+        assert_eq!(m.methods, vec![MfaMethod::Totp]);
+    }
+
+    #[test]
+    fn roundtrip_canonical_security_config() {
+        assert_json_roundtrip(&CanonicalSecurityConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_authentication_authorization_encryption() {
+        assert_json_roundtrip(&AuthenticationConfig::default());
+        assert_json_roundtrip(&AuthenticationMethod::Jwt);
+        assert_json_roundtrip(&AuthorizationConfig::default());
+        assert_json_roundtrip(&EncryptionConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_security_provider_integration_and_config() {
+        assert_json_roundtrip(&SecurityProviderIntegrationConfig::default());
+        assert_json_roundtrip(&SecurityProviderConfig::default());
+    }
+
+    #[test]
+    fn roundtrip_mfa_method_and_settings() {
+        assert_json_roundtrip(&MfaMethod::Hardware);
+        let mut s = MfaSettings::default();
+        s.methods.push(MfaMethod::Sms);
+        assert_json_roundtrip(&s);
+    }
+
+    #[test]
+    fn roundtrip_provider_with_credentials() {
+        let mut p = SecurityProviderConfig::default();
+        p.credentials.insert("k".into(), "v".into());
+        assert_json_roundtrip(&p);
     }
 }

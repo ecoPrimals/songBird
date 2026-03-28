@@ -148,3 +148,62 @@ impl Default for ScalingConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_json_roundtrip<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let j = serde_json::to_string(value).unwrap();
+        let back: T = serde_json::from_str(&j).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), j);
+    }
+
+    #[test]
+    fn orchestration_config_default_non_trivial() {
+        let c = OrchestrationConfig::default();
+        assert!(c.discovery.enabled);
+        assert!(matches!(c.load_balancing.strategy, LoadBalancingStrategy::RoundRobin));
+        assert!(!c.scaling.enabled);
+        assert!((c.scaling.target_cpu_percent - 70.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn orchestration_config_roundtrip() {
+        assert_json_roundtrip(&OrchestrationConfig::default());
+    }
+
+    #[test]
+    fn service_discovery_config_default_and_roundtrip() {
+        assert_json_roundtrip(&ServiceDiscoveryConfig::default());
+    }
+
+    #[test]
+    fn load_balancing_config_default_and_roundtrip() {
+        assert_json_roundtrip(&LoadBalancingConfig::default());
+    }
+
+    #[test]
+    fn load_balancing_strategy_variants_roundtrip() {
+        for s in [
+            LoadBalancingStrategy::RoundRobin,
+            LoadBalancingStrategy::LeastConnections,
+            LoadBalancingStrategy::HealthBased,
+        ] {
+            assert_json_roundtrip(&s);
+        }
+    }
+
+    #[test]
+    fn health_config_default_and_roundtrip() {
+        assert_json_roundtrip(&HealthConfig::default());
+    }
+
+    #[test]
+    fn scaling_config_default_and_roundtrip() {
+        assert_json_roundtrip(&ScalingConfig::default());
+    }
+}
