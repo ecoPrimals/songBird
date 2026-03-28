@@ -66,7 +66,7 @@ fn ttl_expires_on_get() {
     let mut cfg = tiny_config();
     cfg.default_ttl = None;
     let c = AdvancedCache::with_config(cfg);
-    c.set_with_ttl(CacheKey::from("t"), "v", Some(Duration::from_millis(1))).unwrap();
+    c.set_with_ttl(CacheKey::from("t"), "v", Some(StdDuration::from_millis(1))).unwrap();
     thread::sleep(StdDuration::from_millis(20));
     let got = c.get(&CacheKey::from("t")).unwrap().value;
     assert!(got.is_none());
@@ -77,7 +77,7 @@ fn cleanup_expired_removes_stale_entries() {
     let mut cfg = tiny_config();
     cfg.default_ttl = None;
     let c = AdvancedCache::with_config(cfg);
-    c.set_with_ttl(CacheKey::from("e"), "v", Some(Duration::from_millis(1))).unwrap();
+    c.set_with_ttl(CacheKey::from("e"), "v", Some(StdDuration::from_millis(1))).unwrap();
     thread::sleep(StdDuration::from_millis(15));
     let n = c.cleanup_expired().unwrap();
     assert_eq!(n, 1);

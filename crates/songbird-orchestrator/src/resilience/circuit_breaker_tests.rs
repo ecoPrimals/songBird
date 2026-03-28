@@ -421,6 +421,9 @@ async fn circuit_breaker_builder_build_rejects_invalid_config() {
     let result = CircuitBreaker::builder().failure_threshold(0).build();
     match result {
         Ok(_) => panic!("expected invalid config to be rejected"),
-        Err(s) => assert!(s.contains("failure_threshold") || s.contains("threshold")),
+        Err(e) => {
+            let msg = e.to_string();
+            assert!(msg.contains("failure_threshold") || msg.contains("threshold"));
+        }
     }
 }

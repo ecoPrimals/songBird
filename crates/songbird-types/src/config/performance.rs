@@ -5,10 +5,11 @@
 //!
 //! **CANONICAL**: Consolidated performance configuration - Single Source of Truth Truth
 //!
-//! This module consolidates all performance configurations from across the codebase: //! - songbird-config `PerformanceConfig`
-//! - songbird-core `PerformanceConfig`
-//! - songbird-network `PerformanceConfig`
-//! - And 15+ other scattered performance configs
+//! This module consolidates all performance configurations from across the codebase:
+//! - `songbird-config` `PerformanceConfig`
+//! - `songbird-orchestrator` (runtime/orchestration performance settings)
+//! - `songbird-network-federation` and other networking crates
+//! - And other scattered performance configs
 
 use serde::{Deserialize, Serialize};
 
@@ -313,7 +314,7 @@ impl Default for BufferConfig {
         }
     }
 }
-/// Caching configuration - consolidated from songbird-network
+/// Caching configuration - consolidated from network-layer crates (e.g. federation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachingConfig {
     /// Enable caching

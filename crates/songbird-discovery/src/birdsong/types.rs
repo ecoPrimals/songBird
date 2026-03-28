@@ -66,3 +66,45 @@ impl BirdSongPacket {
         &self.encrypted_payload
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn new_and_accessors() {
+        let p =
+            BirdSongPacket::new("1.0".to_string(), "fam".to_string(), "cGF5bG9hZA==".to_string());
+        assert_eq!(p.version(), "1.0");
+        assert_eq!(p.family_id(), "fam");
+        assert_eq!(p.encrypted_payload(), "cGF5bG9hZA==");
+    }
+
+    #[test]
+    fn serde_uses_birdsong_field_name() {
+        let p = BirdSongPacket::new("1.0".to_string(), "fam".to_string(), "x".to_string());
+        let v: serde_json::Value = serde_json::to_value(&p).unwrap();
+        assert_eq!(v.get("birdsong").and_then(|x| x.as_str()), Some("1.0"));
+        assert_eq!(v.get("family_id").and_then(|x| x.as_str()), Some("fam"));
+    }
+
+    #[test]
+    fn serde_roundtrip() {
+        let p = BirdSongPacket::new("1.0".to_string(), "iidn".to_string(), "payload".to_string());
+        let json = serde_json::to_string(&p).unwrap();
+        let back: BirdSongPacket = serde_json::from_str(&json).unwrap();
+        assert_eq!(p.version, back.version);
+        assert_eq!(p.family_id, back.family_id);
+        assert_eq!(p.encrypted_payload, back.encrypted_payload);
+    }
+
+    #[test]
+    fn debug_clone_cover() {
+        let p = BirdSongPacket::new("1.0".into(), "f".into(), "e".into());
+        let _ = format!("{p:?}");
+        let q = p.clone();
+        assert_eq!(q.family_id, p.family_id);
+    }
+}

@@ -446,6 +446,8 @@ fn generate_negotiation_id() -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -519,5 +521,125 @@ mod tests {
         // Tokens should start with "upgrade_"
         assert!(token1.starts_with("upgrade_"));
         assert!(token2.starts_with("upgrade_"));
+    }
+
+    #[test]
+    fn negotiate_request_deserializes_capabilities_defaults() {
+        let json = r#"{"client_id":"c1","client_protocols":["http"],"preferred":"http"}"#;
+        let req: NegotiateRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.client_id, "c1");
+        assert!(!req.capabilities.supports_tls);
+        assert!(!req.capabilities.ipv6);
+        assert!(req.capabilities.max_connections.is_none());
+    }
+
+    #[test]
+    fn negotiate_request_deserializes_full_capabilities() {
+        let json = r#"{"client_id":"edge","client_protocols":["tarpc","http"],"preferred":"tarpc","capabilities":{"max_connections":100,"supports_tls":true,"ipv6":true}}"#;
+        let req: NegotiateRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.client_id, "edge");
+        assert_eq!(req.capabilities.max_connections, Some(100));
+        assert!(req.capabilities.supports_tls && req.capabilities.ipv6);
+    }
+
+    #[test]
+    fn capabilities_response_serializes_expected_keys() {
+        let mut protocols = HashMap::new();
+        protocols.insert("http".to_string(), AvailableProtocols::default().http.clone());
+        let resp = CapabilitiesResponse {
+            songbird_version: "0.0.1".to_string(),
+            protocols,
+            preferred_protocol: "tarpc".to_string(),
+            fallback_protocol: "http".to_string(),
+        };
+        let v = serde_json::to_value(&resp).unwrap();
+        assert_eq!(v["preferred_protocol"], "tarpc");
+        assert_eq!(v["fallback_protocol"], "http");
+        assert!(v["protocols"].get("http").is_some());
+    }
+
+    #[test]
+    fn upgrade_request_deserializes_and_response_serializes() {
+        let json = r#"{"upgrade_token":"t1","target_protocol":"tarpc"}"#;
+        let up: UpgradeRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(up.upgrade_token, "t1");
+        assert_eq!(up.target_protocol, "tarpc");
+
+        let resp = UpgradeResponse {
+            success: false,
+            message: "pending".to_string(),
+            upgraded_endpoint: None,
+        };
+        let s = serde_json::to_string(&resp).unwrap();
+        assert!(s.contains("pending"));
+    }
+
+    #[test]
+    fn select_best_protocol_empty_client_prefers_http() {
+        let server = vec!["http".to_string(), "tarpc".to_string()];
+        assert_eq!(select_best_protocol(&[], &server, "tarpc"), "http");
+    }
+
+    #[test]
+    fn select_best_protocol_websocket_only_when_both_support() {
+        let client = vec!["http".to_string(), "websocket".to_string()];
+        let server = vec!["http".to_string(), "websocket".to_string()];
+        assert_eq!(select_best_protocol(&client, &server, "http"), "websocket");
+    }
+
+    #[test]
+    fn select_best_protocol_preferred_json_rpc_must_be_in_client_list() {
+        let client = vec!["http".to_string(), "tarpc".to_string()];
+        let server = vec!["http".to_string(), "json-rpc".to_string(), "tarpc".to_string()];
+        // preferred json-rpc but client doesn't list it → fall through to tarpc
+        assert_eq!(select_best_protocol(&client, &server, "json-rpc"), "tarpc");
+    }
+
+    #[test]
+    fn protocol_negotiate_result_prefers_tarpc_when_available() {
+        let state = ProtocolApiState::new();
+        let req = NegotiateRequest {
+            client_id: "x".to_string(),
+            client_protocols: vec!["http".to_string(), "tarpc".to_string()],
+            preferred: "http".to_string(),
+            capabilities: ClientCapabilities::default(),
+        };
+        let out = protocol_negotiate_result(&state, &req);
+        assert_eq!(out.selected_protocol, "tarpc");
+        assert!(out.upgrade_available);
+        assert!(out.upgrade_token.is_some());
+        assert!(out.endpoints.is_some());
+        assert!(out.reinforcement.is_some());
+    }
+
+    #[test]
+    fn protocol_negotiate_result_http_only_when_no_high_perf_overlap() {
+        let state = ProtocolApiState::new();
+        let req = NegotiateRequest {
+            client_id: "x".to_string(),
+            client_protocols: vec!["http".to_string()],
+            preferred: "http".to_string(),
+            capabilities: ClientCapabilities::default(),
+        };
+        let out = protocol_negotiate_result(&state, &req);
+        assert_eq!(out.selected_protocol, "http");
+        assert!(!out.upgrade_available);
+        assert!(out.upgrade_token.is_none());
+        assert!(out.reinforcement.is_none());
+    }
+
+    #[test]
+    fn protocol_info_and_performance_serialize() {
+        let p = ProtocolInfo {
+            version: "1".to_string(),
+            endpoints: HashMap::from([("a".to_string(), "b".to_string())]),
+            features: vec!["f".to_string()],
+            performance: Some(PerformanceInfo {
+                latency_us: 1,
+                throughput_mbps: 2,
+            }),
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(json.contains("latency_us"));
     }
 }

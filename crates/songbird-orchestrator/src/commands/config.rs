@@ -313,3 +313,95 @@ fn display_config_formatted(config: &CanonicalSongbirdConfig, _show_secrets: boo
         println!();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use songbird_types::config::CanonicalSongbirdConfig;
+
+    #[test]
+    fn mask_secrets_is_identity_for_default_config() {
+        let c = CanonicalSongbirdConfig::default();
+        let m = mask_secrets_in_config(c.clone());
+        assert_eq!(m.system.system_id, c.system.system_id);
+        assert_eq!(m.network.base_port, c.network.base_port);
+    }
+
+    #[test]
+    fn mask_secrets_preserves_custom_map() {
+        let mut c = CanonicalSongbirdConfig::default();
+        c.custom.insert("k".to_string(), serde_json::json!("v"));
+        let m = mask_secrets_in_config(c.clone());
+        assert_eq!(m.custom.get("k"), c.custom.get("k"));
+    }
+
+    #[test]
+    fn config_action_show_variants_distinct() {
+        let a = ConfigAction::Show {
+            show_secrets: true,
+            format: "json".to_string(),
+        };
+        let b = ConfigAction::Show {
+            show_secrets: false,
+            format: "text".to_string(),
+        };
+        match (a, b) {
+            (
+                ConfigAction::Show {
+                    format: fa,
+                    ..
+                },
+                ConfigAction::Show {
+                    format: fb,
+                    ..
+                },
+            ) => {
+                assert_ne!(fa, fb);
+            }
+            _ => panic!("expected Show variants"),
+        }
+    }
+
+    #[test]
+    fn config_action_validate_is_unit() {
+        assert!(matches!(ConfigAction::Validate, ConfigAction::Validate));
+    }
+
+    #[test]
+    fn config_action_init_fields() {
+        let a = ConfigAction::Init {
+            output: "/tmp/out".to_string(),
+            force: true,
+        };
+        match a {
+            ConfigAction::Init {
+                output,
+                force,
+            } => {
+                assert_eq!(output, "/tmp/out");
+                assert!(force);
+            }
+            _ => panic!("expected Init"),
+        }
+    }
+
+    #[test]
+    fn canonical_config_roundtrips_json_through_mask() {
+        let c = CanonicalSongbirdConfig::default();
+        let json_before = serde_json::to_value(&c).unwrap();
+        let m = mask_secrets_in_config(c);
+        let json_after = serde_json::to_value(&m).unwrap();
+        assert_eq!(json_before, json_after);
+    }
+
+    #[test]
+    fn canonical_config_roundtrips_yaml_through_mask() {
+        let c = CanonicalSongbirdConfig::default();
+        let yaml_before = serde_yaml::to_string(&c).unwrap();
+        let m = mask_secrets_in_config(c);
+        let yaml_after = serde_yaml::to_string(&m).unwrap();
+        assert_eq!(yaml_before, yaml_after);
+    }
+}

@@ -47,7 +47,7 @@ impl HttpBtspProvider {
             songbird_process_env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
                 .or_else(|_| songbird_process_env::var("BTSP_SOCKET_PATH"))
                 .map_or_else(
-                    |_| PathBuf::from(format!("/tmp/{provider_name}_btsp.sock")),
+                    |_| std::env::temp_dir().join(format!("{provider_name}_btsp.sock")),
                     PathBuf::from,
                 );
 

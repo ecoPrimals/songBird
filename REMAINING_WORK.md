@@ -2,7 +2,7 @@
 
 **Date**: March 28, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 28, 2026 (Session 21 — primalSpring Fixes + Coverage + Hardcoding Evolution + Idiomatic Rust)
+**Last Deep Debt Audit**: March 28, 2026 (Session 23 — Dead Code Pruning + Typed Errors + Smart Refactoring + Coverage Expansion + Hardcoding Evolution)
 
 ---
 
@@ -10,14 +10,14 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 10,836 passed, 0 failed, 269 ignored |
-| **Line Coverage** | ~67.55% (llvm-cov; target 90%) |
+| **Tests** | 11,184 passed, 0 failed, 269 ignored |
+| **Line Coverage** | ~68.80% (llvm-cov; target 90%) |
 | **Edition** | Rust 2024 |
-| **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
+| **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max prod 797 `gateway.rs`; test max 948 `security_tests.rs`; all 6 files 800+ refactored via domain extraction) |
+| **Files >1000 lines** | 0 (max prod ~484 `gateway/mod.rs` post-refactor; test max 948 `security_tests.rs`; all large files domain-refactored) |
 | **Unsafe blocks** | **0** — `songbird-process-env` evolved to BearDog overlay pattern; workspace `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
@@ -49,9 +49,104 @@
 | **Binary size** | 20MB release |
 | **`#[warn(missing_docs)]`** | 30/30 crates (all library crates have the lint enabled) |
 | **Dependencies** | ~412 unique (`sysinfo`/`rayon`/`crossbeam` eliminated); duplicates aligned (base32→0.5, base64→0.22, hostname→0.4, thiserror→2.0) |
-| **Build time** | ~45s clean dev build, ~68s test suite |
-| **Total Rust lines** | ~390,564 (crates + src + tests + examples) |
+| **Build time** | ~43s clean dev build, ~68s test suite |
+| **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 28, 2026 — Dead Code Pruning + Deep Debt Evolution — Session 23, Wave 80)
+
+### Wave 80: Dead Code Pruning + Typed Errors + Smart Refactoring + Coverage + Hardcoding
+
+**Dead code pruning (~19,000 lines removed):**
+- Deleted 10 orphaned directory trees from `songbird-orchestrator/src/core/`: `substrate/`, `structural_improvements/`, `scalability/`, `traits/`, `biomeos/`, `canonical/`, `robustness/` (dir), `orchestrator/` (dir), `load_balancer/` (dir)
+- Deleted 8 orphaned files/dirs from `core/api/`: `ai_optimized/`, `real_time_ai_streaming/`, `ai_mesh/`, `core/` (subdir), `universal_service_registration/`, `byob.rs`, `ai_first_complete.rs`, `ai_enhanced_service_mesh.rs`, `core.rs`
+- Deleted orphaned `songbird-config/src/zero_hardcoding/` directory
+- Build time improved: ~55s → ~43s clean dev build
+
+**Typed error evolution (Box<dyn Error> and Result<_,String> → typed):**
+- `rpc/tarpc_server.rs`: `Box<dyn Error>` → `anyhow::Result` on both tarpc entry points
+- `resilience/circuit_breaker.rs`: `Result<_,String>` → `SongbirdResult` with `SongbirdError::configuration` (validate, new, build)
+- `server/execution_api.rs`, `core/execution/manager.rs`, `core/execution/broadcast.rs`: → `SongbirdResult`
+- `observability/events.rs`: `emit` → `SongbirdResult`
+- `monitoring/btsp_health.rs`: → `SongbirdResult` with `discovery`/`network` variants
+
+**Smart domain-based refactoring (4 large files):**
+- `server/deployment_api.rs` (615→239): Extracted `types.rs`, `capabilities.rs`, `binary.rs`
+- `trust/peer_trust.rs` (602→22): Extracted `types.rs`, `evaluation.rs`, `peer_trust_tests.rs`
+- `core/api/ai_first_response.rs` (620→120): Extracted `types.rs`, `ai_first_response_tests.rs`
+- `core/caching/advanced_cache.rs` (593→223): Extracted `types.rs`, `helpers.rs`, `operations.rs`
+
+**Hardcoding evolution:**
+- `/tmp` socket paths → `std::env::temp_dir()` in: rendezvous client, unix IPC platform, BTSP http_provider
+- `"127.0.0.1"` literals → `songbird_types::constants::LOCALHOST` in: federation setup, doctor command, capability discovery
+- STUN handler: extracted `DEFAULT_PRIMARY_STUN_SERVER` constant for default server
+
+**Coverage expansion (+117 tests, 11,184 total):**
+- songbird-discovery: service_discovery, container_orchestration, resources, network, monitoring backends
+- songbird-network-federation: gaming, state
+- songbird-onion-relay: coordinator, onion_transport
+- songbird-orchestrator: chunked_upload, deployment_api, execution_api, load_balancer, robustness, ai_first_response, discovery_bridge, ipc/types, bin_interface/server, bin_interface/doctor
+- songbird-universal-ipc: stun_handler, tor_handler, onion_handler, mesh_handler, punch_handler
+- songbird-registry, songbird-compute-bridge, songbird-primal-coordination
+
+**Discovery module repair:**
+- Rewired `discovery/resources/mod.rs`, `discovery/network/mod.rs`, `discovery/monitoring/mod.rs` — were orphaned broken files, now valid and wired into `discovery/mod.rs`
+
+**Metrics:**
+- Tests: 11,067 → 11,184 (+117)
+- Line coverage: 68.38% → 68.80% (+0.42pp)
+- Dead code removed: ~19,000 lines (~9,000 net including new code)
+- Total Rust lines: ~390K → ~381K
+- Clippy pedantic: zero warnings (30/30 crates)
+- Format: clean
+- Docs: clean
+- Build: zero errors, zero warnings, ~43s
+
+---
+
+## Completed (Mar 28, 2026 — Comprehensive Audit + Deep Debt Evolution — Session 22, Wave 79)
+
+### Wave 79: Comprehensive Audit + Typed Errors + Coverage + Smart Refactoring
+
+**Lint / build fixes:**
+- `songbird-cli/discovery.rs`: `#[expect(dead_code)]` → `#[allow(dead_code)]` (unfulfilled expectation warning)
+- `songbird-universal/lib.rs`: `pub mod trust_types_phase1_tests` → `#[cfg(test)] mod` (was exposing empty test module in non-test builds)
+
+**Production stub evolution + typed errors:**
+- `songbird-sovereign-onion/service.rs`: Hardcoded `"./data/sovereign-onion"` → env-configurable via `SONGBIRD_ONION_DATA_DIR` with XDG/dirs fallback
+- `songbird-sovereign-onion/service.rs`: `try_into().expect("known size")` → direct array indexing (zero-expect data path)
+- `songbird-config/service_locator.rs`: `Box<dyn Error>` → `SongbirdResult` on discovery methods
+- `songbird-config/service_locator.rs`: DNS-SD stub now logs with `tracing::debug` instead of silent empty return
+- `songbird-config/environment.rs`: `validate() → Result<(), String>` → `SongbirdResult<()>` with `SongbirdError::validation`
+- `songbird-universal-ipc/service.rs`: Endpoint parsing evolved from fragile `contains(':')` heuristic to explicit protocol-aware parser (`unix://`, `tcp://`, localhost allowlist)
+
+**Smart domain-based refactoring (4 large files):**
+- `songbird-igd/gateway.rs` (797→484): Extracted `upnp_device_description.rs` (HTTP fetch + XML parsing)
+- `songbird-lineage-relay/relay_server.rs` (747→338): Extracted `packet_handler.rs` (packet parsing + forwarding)
+- `songbird-discovery/federation_aware_discovery.rs` (730→435): Extracted `federation_detectors_impl.rs` (pattern recognition + sovereignty assessment)
+- `songbird-network-federation/multi_federation.rs` (722→smaller): Extracted `discovery_routing.rs` (routing rules + matchers)
+
+**Coverage expansion (+231 tests, 11,067 total):**
+- `songbird-stun`: types.rs + error.rs tests (serde roundtrips, Display, From impls)
+- `songbird-igd`: lib.rs constants validation tests
+- `songbird-tor-protocol`: error.rs variant construction + Display tests
+- `songbird-sovereign-onion`: onion_data_dir() environment tests
+- `songbird-network-federation`: rendezvous types serde roundtrips, discovery_mode, integration, beardog noop/lineage, network discovery/management, BTSP types
+- `songbird-discovery`: feature_flags, service traits, discovery traits/types/config, birdsong types/config
+- `songbird-orchestrator`: protocol_api, websocket_api, commands/doctor, commands/config, consent enforcement, auth JWT
+- `songbird-http-client`: TLS handshake_flow, server/handshake/transport/crypto_ops, redirect, multipart
+- `songbird-tls`: record_layer, socket_discovery, handshake, codec, messages
+
+**Metrics:**
+- Tests: 10,836 → 11,067 (+231)
+- Line coverage: 67.55% → 68.38% (+0.83pp)
+- Clippy pedantic: zero warnings (30/30 crates)
+- Format: clean
+- Docs: clean
+- Build: zero errors, zero warnings
+- Files >1000 lines: 0
 
 ---
 
@@ -1100,7 +1195,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Coverage Expansion (~66.59% → 90% target)
+## Pending: Coverage Expansion (~68.80% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |

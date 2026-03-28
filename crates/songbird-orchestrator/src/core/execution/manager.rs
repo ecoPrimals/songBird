@@ -5,6 +5,7 @@
 
 use super::broadcast::{BroadcastExecutor, BroadcastOptions, BroadcastResult};
 use super::client::{ExecutionClient, ExecutionRequest, ExecutionResponse};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;
@@ -22,14 +23,12 @@ impl ExecutionManager {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub async fn new() -> Result<Self, String> {
-        let client = ExecutionClient::new()
-            .await
-            .map_err(|e| format!("Failed to create ExecutionClient: {e}"))?;
+    pub async fn new() -> SongbirdResult<Self> {
+        let client = ExecutionClient::new().await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to create ExecutionClient: {e}"))
+        })?;
 
-        let broadcast = BroadcastExecutor::new()
-            .await
-            .map_err(|e| format!("Failed to create BroadcastExecutor: {e}"))?;
+        let broadcast = BroadcastExecutor::new().await?;
 
         Ok(Self {
             client,

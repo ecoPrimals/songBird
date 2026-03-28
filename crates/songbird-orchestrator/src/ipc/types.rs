@@ -584,4 +584,126 @@ mod tests {
         assert_eq!(h.message, back.message);
         assert_eq!(h.service_id, back.service_id);
     }
+
+    #[test]
+    fn discover_by_family_response_roundtrip() {
+        let r = DiscoverByFamilyResponse {
+            nodes: vec![DiscoveredNode {
+                node_id: "n1".to_string(),
+                node_name: Some("name".to_string()),
+                genetic_families: vec!["f1".to_string()],
+                sub_federations: vec![],
+                capabilities: vec!["c".to_string()],
+                btsp_endpoint: None,
+                https_endpoint: "https://h".to_string(),
+                last_seen: "2026-01-01T00:00:00Z".to_string(),
+            }],
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: DiscoverByFamilyResponse = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.nodes.len(), 1);
+        assert_eq!(back.nodes[0].node_id, "n1");
+    }
+
+    #[test]
+    fn create_genetic_tunnel_request_optional_fields_omit() {
+        let r = CreateGeneticTunnelRequest {
+            peer_node_id: "peer".to_string(),
+            peer_endpoint: None,
+            genetic_proof: None,
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        assert!(!j.contains("peer_endpoint"));
+        let back: CreateGeneticTunnelRequest = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.peer_node_id, "peer");
+        assert!(back.genetic_proof.is_none());
+    }
+
+    #[test]
+    fn create_genetic_tunnel_response_roundtrip() {
+        let r = CreateGeneticTunnelResponse {
+            tunnel_id: "t1".to_string(),
+            status: "established".to_string(),
+            local_endpoint: Some("127.0.0.1:1".to_string()),
+            peer_endpoint: Some("r".to_string()),
+            encryption: Some("aes-gcm".to_string()),
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: CreateGeneticTunnelResponse = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.tunnel_id, r.tunnel_id);
+        assert_eq!(back.status, "established");
+    }
+
+    #[test]
+    fn announce_capabilities_request_empty_defaults() {
+        let j = r#"{"capabilities":["x"]}"#;
+        let r: AnnounceCapabilitiesRequest = serde_json::from_str(j).unwrap();
+        assert!(r.sub_federations.is_empty());
+        assert!(r.genetic_families.is_empty());
+    }
+
+    #[test]
+    fn announce_capabilities_response_roundtrip() {
+        let r = AnnounceCapabilitiesResponse {
+            status: "updated".to_string(),
+            broadcasting: true,
+            updated_at: "t".to_string(),
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: AnnounceCapabilitiesResponse = serde_json::from_str(&j).unwrap();
+        assert!(back.broadcasting);
+    }
+
+    #[test]
+    fn register_service_response_roundtrip() {
+        let r = RegisterServiceResponse {
+            service_id: "svc-1".to_string(),
+            status: "registered".to_string(),
+            registered_at: "t".to_string(),
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: RegisterServiceResponse = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.service_id, "svc-1");
+    }
+
+    #[test]
+    fn discover_by_capability_response_roundtrip() {
+        let r = DiscoverByCapabilityResponse {
+            primals: vec![PrimalEndpoint {
+                service_id: "s".to_string(),
+                primal_name: "p".to_string(),
+                capabilities: vec![],
+                endpoint: "/sock".to_string(),
+                protocol: "json-rpc".to_string(),
+                last_health_check: "t".to_string(),
+                health_status: "unknown".to_string(),
+            }],
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: DiscoverByCapabilityResponse = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.primals.len(), 1);
+    }
+
+    #[test]
+    fn get_service_health_request_response_roundtrip() {
+        let req = GetServiceHealthRequest {
+            service_id: "abc".to_string(),
+        };
+        let j = serde_json::to_string(&req).unwrap();
+        let back: GetServiceHealthRequest = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.service_id, "abc");
+
+        let resp = GetServiceHealthResponse {
+            health: HealthStatus {
+                service_id: "abc".to_string(),
+                status: "healthy".to_string(),
+                message: None,
+                timestamp: "ts".to_string(),
+            },
+        };
+        let j2 = serde_json::to_string(&resp).unwrap();
+        let back2: GetServiceHealthResponse = serde_json::from_str(&j2).unwrap();
+        assert_eq!(back2.health.status, "healthy");
+    }
 }

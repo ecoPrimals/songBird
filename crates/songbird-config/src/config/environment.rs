@@ -47,6 +47,7 @@ use crate::canonical::constants::{
     get_worker_threads,
 };
 use serde::{Deserialize, Serialize};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 // ✅ CONSOLIDATED: Re-export from canonical location
@@ -475,7 +476,7 @@ impl EnvironmentConfig {
     /// # Errors
     ///
     /// Returns an error if there are port conflicts or configuration inconsistencies
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> SongbirdResult<()> {
         // Validate port ranges don't conflict
         let endpoints = &self.service_endpoints;
         let mut ports = Vec::new();
@@ -494,13 +495,17 @@ impl EnvironmentConfig {
                     let port_only = &port_str[..path_start];
                     if let Ok(port) = port_only.parse::<u16>() {
                         if ports.contains(&port) {
-                            return Err(format!("Port conflict detected: {port}"));
+                            return Err(SongbirdError::validation(format!(
+                                "Port conflict detected: {port}"
+                            )));
                         }
                         ports.push(port);
                     }
                 } else if let Ok(port) = port_str.parse::<u16>() {
                     if ports.contains(&port) {
-                        return Err(format!("Port conflict detected: {port}"));
+                        return Err(SongbirdError::validation(format!(
+                            "Port conflict detected: {port}"
+                        )));
                     }
                     ports.push(port);
                 }
@@ -509,15 +514,15 @@ impl EnvironmentConfig {
 
         // Validate resource limits are reasonable
         if self.resource_limits.max_connections == 0 {
-            return Err("max_connections cannot be zero".to_string());
+            return Err(SongbirdError::validation("max_connections cannot be zero"));
         }
 
         if self.performance_config.worker_threads == 0 {
-            return Err("worker_threads cannot be zero".to_string());
+            return Err(SongbirdError::validation("worker_threads cannot be zero"));
         }
 
         if self.performance_config.buffer_pool_size == 0 {
-            return Err("buffer_pool_size cannot be zero".to_string());
+            return Err(SongbirdError::validation("buffer_pool_size cannot be zero"));
         }
 
         Ok(())

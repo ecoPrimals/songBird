@@ -22,6 +22,10 @@ use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, warn};
 
+/// Primary default STUN server (first in [`default_stun_servers_fallback`]; used when
+/// `BIOMEOS_STUN_SERVERS` is unset and as a last-resort single server).
+const DEFAULT_PRIMARY_STUN_SERVER: &str = "stun.nextcloud.com:3478";
+
 /// Default STUN servers for IPC handlers, from `BIOMEOS_STUN_SERVERS` or built-in defaults.
 ///
 /// Parsed once per process; empty or whitespace-only env values use the defaults.
@@ -49,7 +53,7 @@ fn stun_server_list() -> Vec<String> {
 
 fn default_stun_servers_fallback() -> Vec<String> {
     vec![
-        "stun.nextcloud.com:3478".to_string(),
+        DEFAULT_PRIMARY_STUN_SERVER.to_string(),
         "stun.cloudflare.com:3478".to_string(),
         "stun.l.google.com:19302".to_string(),
     ]
@@ -382,7 +386,7 @@ impl StunHandler {
                 stun_server_list()
                     .into_iter()
                     .next()
-                    .unwrap_or_else(|| "stun.nextcloud.com:3478".to_string())
+                    .unwrap_or_else(|| DEFAULT_PRIMARY_STUN_SERVER.to_string())
             },
             str::to_owned,
         );
@@ -450,7 +454,7 @@ impl StunHandler {
                 stun_server_list()
                     .into_iter()
                     .next()
-                    .unwrap_or_else(|| "stun.nextcloud.com:3478".to_string())
+                    .unwrap_or_else(|| DEFAULT_PRIMARY_STUN_SERVER.to_string())
             },
             str::to_owned,
         );
@@ -591,7 +595,59 @@ impl Default for StunHandler {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
+
+    #[tokio::test]
+    async fn stun_handler_default_matches_new() {
+        let a = StunHandler::new();
+        let b = StunHandler::default();
+        assert_eq!(a.handle_status(json!({})).await.unwrap()["running"], false);
+        assert_eq!(b.handle_status(json!({})).await.unwrap()["running"], false);
+    }
+
+    #[tokio::test]
+    async fn get_public_address_empty_servers_errors() {
+        let handler = StunHandler::new();
+        let err = handler
+            .handle_get_public_address(json!({ "servers": [] }))
+            .await
+            .expect_err("empty servers");
+        assert!(err.contains("No STUN servers"));
+    }
+
+    #[tokio::test]
+    async fn get_public_address_invalid_servers_parameter_errors() {
+        let handler = StunHandler::new();
+        let err = handler
+            .handle_get_public_address(json!({ "servers": "not-an-array" }))
+            .await
+            .expect_err("invalid servers");
+        assert!(err.contains("Invalid 'servers'"));
+    }
+
+    #[tokio::test]
+    async fn detect_nat_type_too_few_servers_errors() {
+        let handler = StunHandler::new();
+        let err = handler
+            .handle_detect_nat_type(json!({
+                "servers": ["stun.example.com:3478"]
+            }))
+            .await
+            .expect_err("need 2 servers");
+        assert!(err.contains("at least 2"));
+    }
+
+    #[tokio::test]
+    async fn detect_nat_type_invalid_servers_json_errors() {
+        let handler = StunHandler::new();
+        let err = handler
+            .handle_detect_nat_type(json!({ "servers": 12345 }))
+            .await
+            .expect_err("bad json");
+        assert!(err.contains("Invalid 'servers'"));
+    }
 
     #[tokio::test]
     async fn test_handler_creation() {

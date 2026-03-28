@@ -39,7 +39,7 @@ impl RendezvousClient {
     pub fn new(_server_url: String) -> Result<Self> {
         // Convert server_url to socket path or use env var
         let socket_path = songbird_process_env::var("RENDEZVOUS_SOCKET_PATH")
-            .map_or_else(|_| PathBuf::from("/tmp/rendezvous.sock"), PathBuf::from);
+            .map_or_else(|_| std::env::temp_dir().join("rendezvous.sock"), PathBuf::from);
 
         let rpc_client = UnixRpcClient::new(&socket_path)?;
 
@@ -346,4 +346,79 @@ pub struct PeerInfo {
     pub protocols: Vec<String>,
     pub network_context: NetworkContext,
     pub last_heartbeat: chrono::DateTime<Utc>,
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::{NetworkContext, PeerInfo, PeerQuery};
+    use chrono::Utc;
+    use serde_json::{from_value, to_value};
+
+    #[test]
+    fn network_context_serde_roundtrip() {
+        let ctx = NetworkContext {
+            nat_type: "full_cone".to_string(),
+            reachability: "direct".to_string(),
+            connection_quality: "excellent".to_string(),
+        };
+        let v = to_value(&ctx).unwrap();
+        let back: NetworkContext = from_value(v).unwrap();
+        assert_eq!(ctx.nat_type, back.nat_type);
+        assert_eq!(ctx.reachability, back.reachability);
+        assert_eq!(ctx.connection_quality, back.connection_quality);
+    }
+
+    #[test]
+    fn peer_info_serde_roundtrip() {
+        let ts = Utc::now();
+        let info = PeerInfo {
+            ephemeral_session_id: "sess-1".to_string(),
+            public_key_fingerprint: "sha256:abc".to_string(),
+            capabilities: vec!["a".to_string()],
+            protocols: vec!["https".to_string()],
+            network_context: NetworkContext {
+                nat_type: "unknown".to_string(),
+                reachability: "unknown".to_string(),
+                connection_quality: "unknown".to_string(),
+            },
+            last_heartbeat: ts,
+        };
+        let v = to_value(&info).unwrap();
+        let back: PeerInfo = from_value(v).unwrap();
+        assert_eq!(info.ephemeral_session_id, back.ephemeral_session_id);
+        assert_eq!(info.public_key_fingerprint, back.public_key_fingerprint);
+        assert_eq!(info.capabilities, back.capabilities);
+        assert_eq!(info.protocols, back.protocols);
+        assert_eq!(info.network_context.nat_type, back.network_context.nat_type);
+        assert_eq!(info.last_heartbeat, back.last_heartbeat);
+    }
+
+    #[test]
+    fn peer_query_serde_roundtrip() {
+        let q = PeerQuery {
+            capabilities_required: vec!["btsp".to_string()],
+            capabilities_optional: vec![],
+            exclude_node_ids: vec!["self".to_string()],
+            max_results: 25,
+        };
+        let v = to_value(&q).unwrap();
+        let back: PeerQuery = from_value(v).unwrap();
+        assert_eq!(q.capabilities_required, back.capabilities_required);
+        assert_eq!(q.capabilities_optional, back.capabilities_optional);
+        assert_eq!(q.exclude_node_ids, back.exclude_node_ids);
+        assert_eq!(q.max_results, back.max_results);
+    }
+
+    #[test]
+    fn network_context_debug_includes_fields() {
+        let ctx = NetworkContext {
+            nat_type: "n".to_string(),
+            reachability: "r".to_string(),
+            connection_quality: "c".to_string(),
+        };
+        let s = format!("{ctx:?}");
+        assert!(s.contains("n") && s.contains("r") && s.contains("c"));
+    }
 }

@@ -97,7 +97,8 @@ pub mod tarpc_client;
 pub mod tarpc_types;
 pub mod traits;
 pub mod trust_types;
-pub mod trust_types_phase1_tests;
+#[cfg(test)]
+mod trust_types_phase1_tests;
 pub mod types;
 pub mod unified_adapter;
 pub mod unix_rpc_client; // Pure Rust Unix socket JSON-RPC client (v3.35.0)

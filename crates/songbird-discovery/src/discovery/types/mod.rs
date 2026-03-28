@@ -362,3 +362,164 @@ pub struct StorageUsage {
     pub write_bytes_per_sec: u64,
     pub queue_depth: f32,
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::traits::discovery::ServiceHealthStatus;
+    use chrono::Utc;
+
+    fn minimal_compute() -> ComputeResources {
+        ComputeResources {
+            cpu_cores: 4,
+            cpu_architecture: "x86_64".to_string(),
+            memory_total_gb: 16,
+            memory_available_gb: 8,
+            gpu_info: vec![],
+            storage_devices: vec![],
+            network_bandwidth_mbps: 1000.0,
+        }
+    }
+
+    fn minimal_node_info(id: &str) -> NodeInfo {
+        NodeInfo {
+            id: id.to_string(),
+            node_type: NodeType::Compute,
+            institution: None,
+            address: "10.0.0.1".to_string(),
+            resources: minimal_compute(),
+            current_load: ResourceUsage::default(),
+            available_datasets: vec![],
+            storage_capacity: StorageInfo {
+                total_capacity_gb: 100,
+                available_capacity_gb: 50,
+                performance_tier_breakdown: HashMap::new(),
+            },
+            trust_level: TrustLevel::Basic,
+            reputation_score: 0.5,
+            bandwidth_measurements: HashMap::new(),
+            latency_measurements: HashMap::new(),
+            last_seen: Utc::now(),
+            health_status: ServiceHealthStatus::Healthy,
+            services: vec![],
+        }
+    }
+
+    #[test]
+    fn node_type_and_trust_level_ordering() {
+        assert_eq!(NodeType::Compute, NodeType::Compute);
+        assert!(TrustLevel::Consortium > TrustLevel::Basic);
+        assert_eq!(TrustLevel::default(), TrustLevel::Unknown);
+    }
+
+    #[test]
+    fn resource_usage_default() {
+        let r = ResourceUsage::default();
+        assert_eq!(r.cpu_utilization_percent, 0.0);
+        assert_eq!(r.active_jobs, 0);
+    }
+
+    #[test]
+    fn federation_stats_default_serde() {
+        let s = FederationStats::default();
+        let json = serde_json::to_string(&s).unwrap();
+        let back: FederationStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(s.total_nodes, back.total_nodes);
+    }
+
+    #[test]
+    fn federation_message_heartbeat_roundtrip() {
+        let msg = FederationMessage::Heartbeat {
+            node_id: "n1".to_string(),
+            resource_usage: ResourceUsage::default(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let back: FederationMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn federation_message_node_discovery_request_roundtrip() {
+        let msg = FederationMessage::NodeDiscoveryRequest {
+            sender_id: "a".to_string(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let back: FederationMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn dataset_type_other_roundtrip() {
+        let dt = DatasetType::Other("custom".to_string());
+        let json = serde_json::to_string(&dt).unwrap();
+        let back: DatasetType = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn storage_performance_tier_serde_roundtrip() {
+        let t = StoragePerformanceTier::HighPerformance;
+        let json = serde_json::to_string(&t).unwrap();
+        let back: StoragePerformanceTier = serde_json::from_str(&json).unwrap();
+        assert_eq!(t, back);
+    }
+
+    #[test]
+    fn node_info_roundtrip_json() {
+        let n = minimal_node_info("node-a");
+        let json = serde_json::to_string(&n).unwrap();
+        let back: NodeInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(n.id, back.id);
+        assert_eq!(n.node_type, back.node_type);
+    }
+
+    #[test]
+    fn network_topology_roundtrip() {
+        let mut by_region = HashMap::new();
+        by_region.insert("us-east".to_string(), 3u32);
+        let topo = NetworkTopology {
+            nodes_by_region: by_region,
+            average_latencies: HashMap::new(),
+            network_partitions: vec![],
+            bandwidth_measurements: HashMap::new(),
+        };
+        let json = serde_json::to_string(&topo).unwrap();
+        let back: NetworkTopology = serde_json::from_str(&json).unwrap();
+        assert_eq!(topo.nodes_by_region.keys().next(), back.nodes_by_region.keys().next());
+    }
+
+    #[test]
+    fn interaction_result_variants_are_distinct() {
+        assert!(matches!(InteractionResult::Success, InteractionResult::Success));
+        assert!(!matches!(InteractionResult::Success, InteractionResult::Timeout));
+    }
+
+    #[test]
+    fn resource_query_default() {
+        let q = ResourceQuery::default();
+        assert!(q.min_cpu_cores.is_none());
+        assert_eq!(q.min_trust_level, TrustLevel::Unknown);
+    }
+
+    #[test]
+    fn partition_severity_and_network_measurement_serde() {
+        let p = PartitionSeverity::Major;
+        let json = serde_json::to_string(&p).unwrap();
+        let back: PartitionSeverity = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+
+        let m = NetworkMeasurement {
+            target_node_id: "t".to_string(),
+            latency_ms: 1.0,
+            bandwidth_mbps: 100.0,
+            packet_loss_percent: 0.0,
+            jitter_ms: 0.1,
+            measured_at: Utc::now(),
+        };
+        let json = serde_json::to_string(&m).unwrap();
+        let back: NetworkMeasurement = serde_json::from_str(&json).unwrap();
+        assert_eq!(m.target_node_id, back.target_node_id);
+    }
+}

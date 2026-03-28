@@ -239,6 +239,8 @@ pub mod bytes {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::bytes::*;
 
     #[test]
@@ -358,5 +360,52 @@ mod tests {
         let mut offset = 0;
         let result = read_vec8(&buf, &mut offset);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn write_vec16_rejects_oversized_payload() {
+        let mut buf = Vec::new();
+        let data = vec![0u8; 65536];
+        assert!(write_vec16(&mut buf, &data).is_err());
+    }
+
+    #[test]
+    fn write_vec24_rejects_oversized_payload() {
+        let mut buf = Vec::new();
+        let data = vec![0u8; 0x01_00_00_00];
+        assert!(write_vec24(&mut buf, &data).is_err());
+    }
+
+    #[test]
+    fn read_vec16_truncated_payload_errors() {
+        let mut buf = vec![0x00, 0x05];
+        buf.extend_from_slice(&[1, 2, 3]); // need 5, have 3
+        let mut offset = 0;
+        assert!(read_vec16(&buf, &mut offset).is_err());
+    }
+
+    #[test]
+    fn read_vec24_truncated_payload_errors() {
+        let mut buf = vec![0x00, 0x00, 0x04];
+        buf.extend_from_slice(&[1, 2]); // need 4, have 2
+        let mut offset = 0;
+        assert!(read_vec24(&buf, &mut offset).is_err());
+    }
+
+    #[test]
+    fn write_u24_max_three_byte_value() {
+        let mut buf = Vec::new();
+        write_u24(&mut buf, 0xFF_FFFF);
+        assert_eq!(buf, vec![0xff, 0xff, 0xff]);
+        let mut off = 0;
+        assert_eq!(read_u24(&buf, &mut off).unwrap(), 0xFF_FFFF);
+    }
+
+    #[test]
+    fn read_u32_at_buffer_end() {
+        let buf = [0x12, 0x34, 0x56, 0x78];
+        let mut off = 0;
+        assert_eq!(read_u32(&buf, &mut off).unwrap(), 0x1234_5678);
+        assert_eq!(off, 4);
     }
 }

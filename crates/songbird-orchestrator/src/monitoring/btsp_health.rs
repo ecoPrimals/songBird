@@ -14,6 +14,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use songbird_types::{SongbirdError, SongbirdResult};
 use tokio::sync::RwLock;
 use tokio::time::interval;
 use tracing::{debug, info, warn};
@@ -59,10 +61,12 @@ impl BtspHealthMonitor {
     /// Create a new BTSP health monitor
     /// 
     /// ✅ EVOLVED: Async construction with crypto discovery
-    pub async fn new(check_interval_secs: u64, alert_threshold_ms: u64) -> Result<Self, String> {
+    pub async fn new(check_interval_secs: u64, alert_threshold_ms: u64) -> SongbirdResult<Self> {
         let crypto_socket = crate::primal_discovery::discover_crypto_provider()
             .await
-            .map_err(|e| format!("Failed to discover crypto provider: {}", e))?;
+            .map_err(|e| {
+                SongbirdError::discovery(format!("Failed to discover crypto provider: {e}"))
+            })?;
         
         Ok(Self {
             client: songbird_http_client::SongbirdHttpClient::new(crypto_socket),
@@ -120,21 +124,21 @@ impl BtspHealthMonitor {
     async fn query_btsp_providers(
         &self,
         songbird_url: &str,
-    ) -> Result<Vec<BtspProviderInfo>, String> {
+    ) -> SongbirdResult<Vec<BtspProviderInfo>> {
         let url = format!("{}/api/v1/services?capability=btsp", songbird_url);
 
         let response = self
             .client
             .get(&url)
             .await
-            .map_err(|e| format!("Request failed: {}", e))?;
+            .map_err(|e| SongbirdError::network(format!("Request failed: {e}")))?;
 
         if response.status < 200 || response.status >= 300 {
-            return Err(format!("HTTP {}", response.status));
+            return Err(SongbirdError::network(format!("HTTP {}", response.status)));
         }
 
-        let providers: Vec<serde_json::Value> = serde_json::from_value(response.body)
-            .map_err(|e| format!("JSON parse failed: {}", e))?;
+        let providers: Vec<serde_json::Value> =
+            serde_json::from_value(response.body).map_err(SongbirdError::from)?;
 
         Ok(providers
             .into_iter()

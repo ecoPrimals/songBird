@@ -234,7 +234,10 @@ pub async fn provision_jwt_secret(beardog_socket: Option<&str>, purpose: &str) -
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
+    use base64::Engine;
 
     #[test]
     fn test_generate_secure_random_jwt() {
@@ -248,6 +251,56 @@ mod tests {
         assert_ne!(secret, secret2);
     }
 
+    #[test]
+    fn generate_secure_random_jwt_16_bytes_decodes() {
+        let secret = generate_secure_random_jwt(16).unwrap();
+        let raw = base64::engine::general_purpose::STANDARD.decode(secret.as_bytes()).unwrap();
+        assert_eq!(raw.len(), 16);
+    }
+
+    #[test]
+    fn generate_secure_random_jwt_zero_bytes_empty_payload() {
+        let secret = generate_secure_random_jwt(0).unwrap();
+        assert!(
+            base64::engine::general_purpose::STANDARD.decode(secret.as_bytes()).unwrap().is_empty()
+        );
+    }
+
+    #[test]
+    fn jwt_secret_response_parses_success_payload() {
+        let json = r#"{"jsonrpc":"2.0","result":{"secret":"c2VjcmV0","purpose":"p","strength":"high","byte_length":64,"algorithm":"HS512"},"error":null,"id":1}"#;
+        let r: JwtSecretResponse = serde_json::from_str(json).unwrap();
+        assert!(r.error.is_none());
+        let res = r.result.unwrap();
+        assert_eq!(res.secret, "c2VjcmV0");
+        assert_eq!(res.strength, "high");
+        assert_eq!(res.byte_length, 64);
+    }
+
+    #[test]
+    fn jwt_secret_response_parses_jsonrpc_error() {
+        let json = r#"{"jsonrpc":"2.0","result":null,"error":{"code":-1,"message":"fail"},"id":1}"#;
+        let r: JwtSecretResponse = serde_json::from_str(json).unwrap();
+        assert!(r.result.is_none());
+        assert_eq!(r.error.as_ref().unwrap().code, -1);
+    }
+
+    #[test]
+    fn jwt_secret_request_serializes_expected_method() {
+        let req = JwtSecretRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "crypto.generate.jwt_secret".to_string(),
+            params: JwtSecretParams {
+                purpose: "nestgate_authentication".to_string(),
+                strength: "high".to_string(),
+            },
+            id: 42,
+        };
+        let v = serde_json::to_value(&req).unwrap();
+        assert_eq!(v["method"], "crypto.generate.jwt_secret");
+        assert_eq!(v["params"]["purpose"], "nestgate_authentication");
+    }
+
     #[tokio::test]
     async fn test_provision_jwt_secret_fallback() {
         // No BearDog available, should fall back to secure random
@@ -255,5 +308,11 @@ mod tests {
 
         assert!(secret.len() >= 85);
         assert!(!secret.is_empty());
+    }
+
+    #[tokio::test]
+    async fn provision_jwt_with_socket_path_falls_back_when_unavailable() {
+        let secret = provision_jwt_secret(Some("/nonexistent/beardog.sock"), "p").await.unwrap();
+        assert!(secret.len() >= 32);
     }
 }

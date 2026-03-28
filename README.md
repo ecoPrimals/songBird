@@ -19,17 +19,17 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
-| Concurrent Tests | Injectable `_with` env readers; `#[serial_test::serial]` only for overlay-mutating tests |
-| Tests | 10,836 total, 0 failed, 269 ignored |
-| Line Coverage | ~67.55% (llvm-cov measured; target 90%) |
+| Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent (`#[serial_test::serial]` eliminated) |
+| Tests | 11,184 total, 0 failed, 269 ignored |
+| Line Coverage | ~68.80% (llvm-cov measured; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (50+ methods, 12 domain sub-enums) — zero string matching in dispatch |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
-| Build | Clean (zero errors, zero warnings, ~45s dev) |
+| Build | Clean (zero errors, zero warnings, ~43s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (max prod 797 `gateway.rs`; all 6 files 800+ refactored via domain extraction) |
+| Files >1000 lines | 0 (max prod ~484 `gateway/mod.rs`; all large files domain-refactored) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` |
 | JSON-RPC Gateway | 50+ semantic methods across 12 domains (health, discovery, stun, relay, federation, tor, etc.) |
@@ -39,7 +39,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | Dependencies | ~412 unique (`sysinfo`/`rayon`/`crossbeam` eliminated); `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~390,564 lines across 30 crates |
+| Total Rust | ~381,498 lines across 30 crates |
 
 ## Architecture
 

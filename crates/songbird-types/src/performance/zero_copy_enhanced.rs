@@ -6,7 +6,8 @@
 //! **ADVANCED ZERO-COST ABSTRACTIONS** 🚀
 //!
 //! This module provides enhanced zero-copy optimizations for critical performance paths
-//! in the Songbird ecosystem, building on the foundation established in songbird-core.
+//! in the Songbird ecosystem, building on patterns consolidated in `songbird-types` and
+//! related orchestrator performance code (`songbird-orchestrator`).
 
 use std::borrow::Cow;
 use std::collections::HashMap;

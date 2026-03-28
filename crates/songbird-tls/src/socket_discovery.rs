@@ -545,4 +545,27 @@ mod tests {
         let p = discover_beardog_socket_with_env(None, &env);
         assert_eq!(p, "/run/crypto.sock");
     }
+
+    #[test]
+    fn security_provider_socket_matches_capability_second_priority() {
+        let env = MockEnv::new().set("SECURITY_PROVIDER_SOCKET", "/run/sec.sock");
+        let p = discover_beardog_socket_with_env(None, &env);
+        assert_eq!(p, "/run/sec.sock");
+    }
+
+    #[test]
+    fn crypto_provider_wins_over_security_provider_when_both_set() {
+        let env = MockEnv::new()
+            .set("CRYPTO_PROVIDER_SOCKET", "/run/c.sock")
+            .set("SECURITY_PROVIDER_SOCKET", "/run/s.sock");
+        let p = discover_beardog_socket_with_env(None, &env);
+        assert_eq!(p, "/run/c.sock");
+    }
+
+    #[test]
+    fn neural_env_order_ai_before_neural_api() {
+        let env =
+            MockEnv::new().set("AI_PROVIDER_SOCKET", "/a.sock").set("NEURAL_API_SOCKET", "/n.sock");
+        assert_eq!(discover_neural_api_socket_with_env(None, &env), "/a.sock");
+    }
 }

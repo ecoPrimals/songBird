@@ -180,3 +180,78 @@ impl BirdSongConfig {
         self.accept_legacy_format || !self.dark_forest_enabled
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn default_is_conservative() {
+        let c = BirdSongConfig::default();
+        assert!(!c.enabled);
+        assert!(c.fallback_to_plaintext);
+        assert!(c.mixed_mode);
+        assert!(!c.dark_forest_enabled);
+        assert!(c.accept_legacy_format);
+        assert!(!c.dual_broadcast);
+    }
+
+    #[test]
+    fn dark_forest_preset_enables_encryption_flags() {
+        let c = BirdSongConfig::dark_forest();
+        assert!(c.is_dark_forest_active());
+        assert!(c.enabled && c.dark_forest_enabled);
+    }
+
+    #[test]
+    fn migration_mode_sets_dual_broadcast() {
+        let c = BirdSongConfig::migration_mode();
+        assert!(c.dual_broadcast);
+        assert!(c.is_dark_forest_active());
+    }
+
+    #[test]
+    fn legacy_only_disables_dark_forest() {
+        let c = BirdSongConfig::legacy_only();
+        assert!(c.enabled);
+        assert!(!c.dark_forest_enabled);
+        assert!(!c.is_dark_forest_active());
+    }
+
+    #[test]
+    fn dark_forest_only_rejects_legacy_acceptance() {
+        let c = BirdSongConfig::dark_forest_only();
+        assert!(!c.accept_legacy_format);
+        assert!(!c.fallback_to_plaintext);
+        assert!(c.is_dark_forest_active());
+    }
+
+    #[test]
+    fn accepts_legacy_when_dark_forest_disabled_even_if_accept_false() {
+        let mut c = BirdSongConfig::default();
+        c.dark_forest_enabled = false;
+        c.accept_legacy_format = false;
+        assert!(c.accepts_legacy());
+    }
+
+    #[test]
+    fn serde_roundtrip() {
+        let c = BirdSongConfig::migration_mode();
+        let json = serde_json::to_string(&c).unwrap();
+        let back: BirdSongConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(c.dual_broadcast, back.dual_broadcast);
+        assert_eq!(c.security_endpoint, back.security_endpoint);
+    }
+
+    #[test]
+    fn is_dark_forest_active_requires_both_flags() {
+        let mut c = BirdSongConfig::default();
+        assert!(!c.is_dark_forest_active());
+        c.enabled = true;
+        assert!(!c.is_dark_forest_active());
+        c.dark_forest_enabled = true;
+        assert!(c.is_dark_forest_active());
+    }
+}

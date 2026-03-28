@@ -5,6 +5,7 @@
 
 use super::client::{ExecutionClient, ExecutionRequest, ExecutionStatus};
 use serde::{Deserialize, Serialize};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use tracing::{error, info, warn};
 
@@ -21,10 +22,10 @@ impl BroadcastExecutor {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub async fn new() -> Result<Self, String> {
-        let client = ExecutionClient::new()
-            .await
-            .map_err(|e| format!("Failed to create ExecutionClient: {e}"))?;
+    pub async fn new() -> SongbirdResult<Self> {
+        let client = ExecutionClient::new().await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to create ExecutionClient: {e}"))
+        })?;
 
         Ok(Self {
             client,

@@ -265,3 +265,64 @@ impl TlsServer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use crate::crypto::BearDogProvider;
+    use crate::tls::server::TlsServer;
+    use crate::tls::{CIPHER_SUITES, TLS_1_2, TLS_1_3, content_type, handshake_type};
+    use std::sync::Arc;
+
+    #[test]
+    fn tls12_legacy_record_version_for_handshake_records() {
+        assert_eq!(TLS_1_2.to_be_bytes(), [0x03, 0x03]);
+    }
+
+    #[test]
+    fn tls13_negotiated_version_constant() {
+        assert_eq!(TLS_1_3, 0x0304);
+    }
+
+    #[test]
+    fn handshake_wire_types_for_server_flight() {
+        assert_eq!(handshake_type::SERVER_HELLO, 2);
+        assert_eq!(handshake_type::ENCRYPTED_EXTENSIONS, 8);
+        assert_eq!(handshake_type::CERTIFICATE, 11);
+        assert_eq!(handshake_type::FINISHED, 20);
+    }
+
+    #[test]
+    fn record_content_types_in_accept_flow() {
+        assert_eq!(content_type::HANDSHAKE, 22);
+        assert_eq!(content_type::APPLICATION_DATA, 23);
+        assert_eq!(content_type::ALERT, 21);
+    }
+
+    #[test]
+    fn server_cipher_preferences_are_tls13_aeaad() {
+        assert_eq!(CIPHER_SUITES.len(), 3);
+        assert!(CIPHER_SUITES.contains(&0x1301));
+        assert!(CIPHER_SUITES.contains(&0x1302));
+        assert!(CIPHER_SUITES.contains(&0x1303));
+    }
+
+    #[test]
+    fn tls_server_constructed_with_cert_material() {
+        let crypto = Arc::new(BearDogProvider::new("/tmp/songbird-tls-accept-test.sock"))
+            as Arc<dyn crate::crypto::CryptoCapability>;
+        let cert = vec![0x30, 0x81, 0xff];
+        let key = vec![0x04, 0x20];
+        let server = TlsServer::new(crypto, cert.clone(), key.clone());
+        assert_eq!(server.cert_chain, cert);
+        assert_eq!(server.private_key, key);
+    }
+
+    #[test]
+    fn cipher_suite_order_matches_server_selection_logic() {
+        assert_eq!(CIPHER_SUITES[0], 0x1301);
+        assert_eq!(CIPHER_SUITES[1], 0x1302);
+        assert_eq!(CIPHER_SUITES[2], 0x1303);
+    }
+}

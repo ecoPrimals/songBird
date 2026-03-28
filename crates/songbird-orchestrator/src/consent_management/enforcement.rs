@@ -303,3 +303,99 @@ impl DignityChecker {
         violations
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::consent_management::ConsentManager;
+    use crate::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
+    use crate::task_lifecycle::{TaskLifecycle, UserId};
+    use std::sync::Arc;
+
+    fn task(task_type: &str, user: &str) -> TaskLifecycle {
+        TaskLifecycle::new(
+            UserId::from(user),
+            TaskSpec {
+                task_type: task_type.into(),
+                config: serde_json::json!({}),
+                required_capabilities: vec![],
+                resources: ResourceRequirements::default(),
+                priority: Priority::Standard,
+            },
+        )
+    }
+
+    #[test]
+    fn dignity_no_violation_for_benign_operation() {
+        assert!(DignityChecker::check_operation("hello", None, false).is_empty());
+    }
+
+    #[test]
+    fn dignity_expensive_without_transparency() {
+        let v = DignityChecker::check_operation("x", Some(101.0), false);
+        assert_eq!(v.len(), 1);
+        assert!(v[0].contains("transparent"));
+    }
+
+    #[test]
+    fn dignity_expensive_with_transparency_ok() {
+        assert!(DignityChecker::check_operation("x", Some(200.0), true).is_empty());
+    }
+
+    #[test]
+    fn dignity_expensive_exactly_100_no_extra_rule() {
+        assert!(DignityChecker::check_operation("x", Some(100.0), false).is_empty());
+    }
+
+    #[test]
+    fn dignity_sensitive_stops_at_first_match() {
+        let v = DignityChecker::check_operation("user_export_data_job", None, false);
+        assert_eq!(v.len(), 1);
+        assert!(v[0].contains("export"));
+    }
+
+    #[test]
+    fn dignity_gpu_substring_triggers() {
+        let v = DignityChecker::check_operation("run_gpu_job", None, false);
+        assert_eq!(v.len(), 1);
+        assert!(v[0].contains("gpu"));
+    }
+
+    #[test]
+    fn enforcement_config_default_thresholds() {
+        let c = EnforcementConfig::default();
+        assert_eq!(c.consent_required_above_cost, 50.0);
+        assert_eq!(c.timeout_behavior, TimeoutBehavior::Deny);
+        assert_eq!(c.always_require_consent.len(), 3);
+    }
+
+    #[test]
+    fn requires_consent_cost_strictly_above_threshold() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let t = task("low_cost_op", "u1");
+        assert!(!enforcer.requires_consent(&t, Some(50.0)));
+        assert!(enforcer.requires_consent(&t, Some(50.01)));
+    }
+
+    #[test]
+    fn requires_consent_always_list_matches_exact_task_type() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let t = task("export_data", "u1");
+        assert!(enforcer.requires_consent(&t, None));
+    }
+
+    #[test]
+    fn requires_consent_dignity_forces_even_when_cheap() {
+        let enforcer = ConsentEnforcer::new(Arc::new(ConsentManager::new()));
+        let t = task("bulk_delete", "u1");
+        assert!(enforcer.requires_consent(&t, Some(1.0)));
+    }
+
+    #[test]
+    fn timeout_behavior_copy_eq() {
+        assert_eq!(TimeoutBehavior::Deny, TimeoutBehavior::Deny);
+        assert_ne!(TimeoutBehavior::Deny, TimeoutBehavior::Proceed);
+    }
+}

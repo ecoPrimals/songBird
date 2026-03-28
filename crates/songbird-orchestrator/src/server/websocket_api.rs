@@ -531,3 +531,124 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
 
     info!("🔌 Task events WebSocket connection closed");
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    fn assert_ws_roundtrip(msg: &WsMessage) {
+        let json = serde_json::to_string(msg).unwrap();
+        let back: WsMessage = serde_json::from_str(&json).unwrap();
+        let json2 = serde_json::to_string(&back).unwrap();
+        assert_eq!(json, json2);
+    }
+
+    #[test]
+    fn ws_message_subscribe_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::Subscribe {
+            events: vec!["a".to_string(), "b".to_string()],
+        });
+    }
+
+    #[test]
+    fn ws_message_unsubscribe_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::Unsubscribe {
+            events: vec!["x".to_string()],
+        });
+    }
+
+    #[test]
+    fn ws_message_ping_pong_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::Ping {
+            data: Some("d".to_string()),
+        });
+        assert_ws_roundtrip(&WsMessage::Pong {
+            data: None,
+        });
+    }
+
+    #[test]
+    fn ws_message_query_status_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::QueryStatus);
+    }
+
+    #[test]
+    fn ws_message_query_services_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::QueryServices {
+            capabilities: vec!["compute".to_string()],
+        });
+    }
+
+    #[test]
+    fn ws_message_service_update_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::ServiceUpdate {
+            service_name: "n".to_string(),
+            status: "up".to_string(),
+            address: "127.0.0.1".to_string(),
+        });
+    }
+
+    #[test]
+    fn ws_message_health_update_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::HealthUpdate {
+            service_name: "n".to_string(),
+            healthy: true,
+            message: Some("ok".to_string()),
+        });
+    }
+
+    #[test]
+    fn ws_message_federation_status_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::FederationStatus {
+            total_services: 3,
+            total_peers: 2,
+            uptime_seconds: 99,
+        });
+    }
+
+    #[test]
+    fn ws_message_service_list_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::ServiceList {
+            services: vec![ServiceSummary {
+                name: "svc".to_string(),
+                address: "127.0.0.1".to_string(),
+                port: 8080,
+                capabilities: vec!["c".to_string()],
+            }],
+        });
+    }
+
+    #[test]
+    fn ws_message_error_ack_task_events_roundtrip() {
+        assert_ws_roundtrip(&WsMessage::Error {
+            message: "e".to_string(),
+            code: Some("E".to_string()),
+        });
+        assert_ws_roundtrip(&WsMessage::Ack {
+            message: Some("m".to_string()),
+        });
+        assert_ws_roundtrip(&WsMessage::TaskEventReady {
+            message: "ready".to_string(),
+        });
+        assert_ws_roundtrip(&WsMessage::TaskEvent {
+            task_id: "t".to_string(),
+            user_id: "u".to_string(),
+            event_type: "Started".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
+        });
+    }
+
+    #[test]
+    fn ws_message_unknown_type_fails() {
+        let err = serde_json::from_str::<WsMessage>(r#"{"type":"not_a_real_variant"}"#);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn ws_message_tag_is_snake_case_in_json() {
+        let s = serde_json::to_string(&WsMessage::QueryStatus).unwrap();
+        assert!(s.contains("query_status"));
+    }
+}

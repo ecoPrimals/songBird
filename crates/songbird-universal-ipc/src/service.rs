@@ -249,6 +249,20 @@ impl IpcServiceHandler {
         h
     }
 
+    fn parse_tcp_port(addr: &str) -> Result<u16, String> {
+        addr.split(':')
+            .next_back()
+            .and_then(|p| p.parse().ok())
+            .ok_or_else(|| format!("Invalid TCP address: {addr}"))
+    }
+
+    fn parse_local_tcp_endpoint(endpoint: &str) -> Option<u16> {
+        let (host, port_str) = endpoint.rsplit_once(':')?;
+        let port: u16 = port_str.parse().ok()?;
+        let is_local = matches!(host, "127.0.0.1" | "0.0.0.0" | "localhost" | "::1" | "[::1]");
+        is_local.then_some(port)
+    }
+
     /// Handle `ipc.register` method
     async fn handle_register(&self, params: Value) -> Result<Value, String> {
         let params: RegisterParams =
@@ -258,19 +272,19 @@ impl IpcServiceHandler {
 
         // Parse native endpoint
         let native_endpoint = if params.endpoint.starts_with('/') {
-            // Unix socket path
             NativeEndpoint::UnixSocket(params.endpoint.into())
-        } else if params.endpoint.starts_with("127.0.0.1:") || params.endpoint.contains(':') {
-            // TCP localhost
-            let port: u16 = params
-                .endpoint
-                .split(':')
-                .nth(1)
-                .and_then(|p| p.parse().ok())
-                .ok_or_else(|| "Invalid TCP port".to_string())?;
+        } else if let Some(stripped) = params.endpoint.strip_prefix("unix://") {
+            NativeEndpoint::UnixSocket(stripped.into())
+        } else if let Some(stripped) = params.endpoint.strip_prefix("tcp://") {
+            let port = Self::parse_tcp_port(stripped)?;
+            NativeEndpoint::TcpLocal(port)
+        } else if let Some(port) = Self::parse_local_tcp_endpoint(&params.endpoint) {
             NativeEndpoint::TcpLocal(port)
         } else {
-            return Err(format!("Invalid endpoint format: {}", params.endpoint));
+            return Err(format!(
+                "Invalid endpoint format: '{}'. Expected unix socket path, unix://<path>, tcp://<host>:<port>, or <localhost>:<port>",
+                params.endpoint
+            ));
         };
 
         // Register in registry (`register` takes `&self` and uses its own inner lock)

@@ -14,6 +14,7 @@ use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::{FederationState, NodeRegistration, NodeStatus};
 use songbird_network_federation::{FederationConfig, FederationCoordinator};
 use songbird_types::SafeEnv;
+use songbird_types::constants::LOCALHOST;
 use std::sync::Arc;
 use tracing::info;
 
@@ -123,7 +124,7 @@ fn build_self_registration(node_identity: &NodeIdentity) -> Result<NodeRegistrat
         "{}:{}",
         SafeEnv::get_or_default(
             "SONGBIRD_NODE_ADDRESS",
-            network::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string())
+            network::detect_primary_ip().unwrap_or_else(|| LOCALHOST.to_string())
         ),
         SafeEnv::get_or_default(
             "SONGBIRD_PORT",

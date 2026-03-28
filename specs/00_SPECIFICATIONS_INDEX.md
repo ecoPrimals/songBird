@@ -289,9 +289,7 @@
     - Multi-tower federation
     - Cross-tower communication
 
-24. **[FRACTAL_FEDERATION_SPECIFICATION.md](FRACTAL_FEDERATION_SPECIFICATION.md)**
-    - Fractal federation architecture
-    - Hierarchical scaling
+24. **Archived** — [FRACTAL_FEDERATION_SPECIFICATION.md](archive/FRACTAL_FEDERATION_SPECIFICATION.md) (stale; obsolete crate references)
 
 25. **[SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md](SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md)**
     - Sovereignty-preserving federation
@@ -333,25 +331,17 @@
 
 ## 🧪 TESTING & QUALITY
 
-32. **[COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md](COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md)**
-    - Unit, integration, E2E tests
-    - Test organization
+32. **Archived** — [COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md](archive/COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md) (stale)
 
-33. **[UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md](UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md)**
-    - Modern testing framework
-    - Best practices
+33. **Archived** — [UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md](archive/UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md) (stale)
 
 ---
 
 ## ⚡ PERFORMANCE & OPTIMIZATION
 
-34. **[ZERO_COST_ARCHITECTURE_SPECIFICATION.md](ZERO_COST_ARCHITECTURE_SPECIFICATION.md)**
-    - Zero-cost abstractions
-    - No runtime overhead
+34. **Archived** — [ZERO_COST_ARCHITECTURE_SPECIFICATION.md](archive/ZERO_COST_ARCHITECTURE_SPECIFICATION.md) (stale)
 
-35. **[ZERO_COST_PERFORMANCE_SPECIFICATION.md](ZERO_COST_PERFORMANCE_SPECIFICATION.md)**
-    - Performance benchmarks
-    - Optimization techniques
+35. **Archived** — [ZERO_COST_PERFORMANCE_SPECIFICATION.md](archive/ZERO_COST_PERFORMANCE_SPECIFICATION.md) (stale)
 
 ---
 
@@ -371,9 +361,7 @@
 
 ### Error Handling
 
-38. **[UNIFIED_ERROR_HANDLING_SPECIFICATION.md](UNIFIED_ERROR_HANDLING_SPECIFICATION.md)**
-    - Unified error types
-    - Error recovery
+38. **Archived** — [UNIFIED_ERROR_HANDLING_SPECIFICATION.md](archive/UNIFIED_ERROR_HANDLING_SPECIFICATION.md) (stale)
 
 39. **[ERROR_RECOVERY.md](ERROR_RECOVERY.md)**
     - Recovery strategies
@@ -395,9 +383,7 @@
 
 ### API Specifications
 
-43. **[AI_FIRST_CITIZEN_API_SPECIFICATION.md](AI_FIRST_CITIZEN_API_SPECIFICATION.md)**
-    - AI-first API design
-    - LLM-friendly endpoints
+43. **Archived** — [AI_FIRST_CITIZEN_API_SPECIFICATION.md](archive/AI_FIRST_CITIZEN_API_SPECIFICATION.md) (stale)
 
 44. **[REMOTE_EXECUTION_API_SPEC.md](REMOTE_EXECUTION_API_SPEC.md)**
     - Remote execution API
@@ -411,9 +397,7 @@
     - async/await patterns
     - Trait migration
 
-46. **[MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md](MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md)**
-    - Crate consolidation
-    - Dependency cleanup
+46. **Archived** — [MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md](archive/MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md) (stale; obsolete crate references)
 
 ---
 
@@ -448,6 +432,32 @@
 
 - `archive/deprecated-protocols/GRPC_GATEWAY_ADAPTER_SPECIFICATION.md.deprecated`
 
+### Stale specifications (March 2026)
+
+Moved from `specs/` or `docs/architecture/` for historical reference (obsolete or non-existent crate names such as songbird-core, songbird-network, songbird-errors, songbird-security, songbird-lib):
+
+- `archive/ZERO_COST_ARCHITECTURE_SPECIFICATION.md`
+- `archive/MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md`
+- `archive/UNIVERSAL_PROVIDER_ARCHITECTURE_COMPLETE_SPECIFICATION.md`
+- `archive/UNIVERSAL_ECOSYSTEM_INTEGRATION_SPEC.md`
+- `archive/UNIVERSAL_STANDARDS_IMPLEMENTATION_ROADMAP.md`
+- `archive/PHASE_2_HUMAN_AI_COLLABORATION_COMPLETE.md`
+- `archive/HISTORIC_TEST_COVERAGE_BREAKTHROUGH_SPECIFICATION.md`
+- `archive/PHASE_3_OPTIMIZATION_INFRASTRUCTURE_SPECIFICATION.md`
+- `archive/ECOSYSTEM_COMPLIANCE_ROADMAP.md`
+- `archive/ARCHITECTURAL_CONSOLIDATION_SPECIFICATION.md`
+- `archive/ZERO_COST_PERFORMANCE_SPECIFICATION.md`
+- `archive/SERVICE_REGISTRY_AI_FIRST_ENHANCEMENT_SPEC.md`
+- `archive/AI_FIRST_CITIZEN_API_SPECIFICATION.md`
+- `archive/COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md`
+- `archive/UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md`
+- `archive/UNIFIED_ERROR_HANDLING_SPECIFICATION.md`
+- `archive/NETWORK_PACKAGE_MODERNIZATION_COMPLETE.md`
+- `archive/FRACTAL_FEDERATION_SPECIFICATION.md`
+- `archive/COMPREHENSIVE_TEST_COVERAGE_ACHIEVEMENT_STATUS.md`
+- `archive/RUSTLS_CRYPTO_PROVIDER_RESEARCH.md` (from `docs/architecture/`)
+- `archive/PURE_RUST_TLS_EXECUTION_PLAN.md` (from `docs/architecture/`)
+
 ---
 
 ## 🎯 NAVIGATION
@@ -460,7 +470,7 @@
 | **Architecture** | PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md |
 | **Discovery** | CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md |
 | **Federation** | FEDERATION_IMPLEMENTATION_SPECIFICATION.md |
-| **Testing** | COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md |
+| **Testing** | `CONTRIBUTING.md`, crate `tests/`; superseded specs in `specs/archive/` |
 | **BearDog** | SONGBIRD_BEARDOG_INTEGRATION.md |
 
 ### By Priority
@@ -475,8 +485,8 @@
 
 | Category | Count |
 |----------|-------|
-| **Active Specs** | 51 |
-| **Archived** | 3 |
+| **Active Specs** | 43 |
+| **Archived** | 24 |
 | **Current Focus** | IGD Router Configuration (cross-network blocker) |
 | **Status** | QUIC + NFC Complete, IGD Implementing |
 

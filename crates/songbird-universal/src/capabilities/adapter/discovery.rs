@@ -12,6 +12,7 @@
 
 use chrono::Utc;
 use songbird_types::SafeEnv;
+use songbird_types::constants::LOCALHOST;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
@@ -61,7 +62,7 @@ impl CapabilityDiscovery {
         // This is a fallback - real deployment uses capability discovery
         let capability_host = SafeEnv::get_or_default(
             "UNIVERSAL_CAPABILITY_HOST",
-            "127.0.0.1", // Fallback for local development only
+            LOCALHOST, // Fallback for local development only
         );
         let capability_port = SafeEnv::get_port(
             "UNIVERSAL_CAPABILITY_PORT",

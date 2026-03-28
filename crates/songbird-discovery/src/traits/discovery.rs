@@ -295,3 +295,142 @@ impl Default for DiscoveryConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn service_query_new_and_default_align() {
+        let a = ServiceQuery::new();
+        let b = ServiceQuery::default();
+        assert_eq!(a.name, b.name);
+        assert_eq!(a.service_id, b.service_id);
+        assert!(a.tags.is_empty());
+    }
+
+    #[test]
+    fn service_query_builder_chain() {
+        let q = ServiceQuery::new()
+            .with_service_id("svc-1")
+            .with_service_type("http")
+            .with_version("1.0.0")
+            .with_tag("a")
+            .with_metadata("k", serde_json::json!(1))
+            .with_health_status(HealthStatus::Healthy)
+            .with_limit(10)
+            .sort_by(SortBy::LastSeen);
+        assert_eq!(q.service_id.as_deref(), Some("svc-1"));
+        assert_eq!(q.service_type.as_deref(), Some("http"));
+        assert_eq!(q.version.as_deref(), Some("1.0.0"));
+        assert_eq!(q.tags, vec!["a"]);
+        assert_eq!(q.metadata.get("k"), Some(&serde_json::json!(1)));
+        assert_eq!(q.health_status, Some(HealthStatus::Healthy));
+        assert_eq!(q.limit, Some(10));
+        assert_eq!(q.sort_by, Some(SortBy::LastSeen));
+    }
+
+    #[test]
+    fn service_registration_new_and_with_ttl() {
+        use crate::traits::service::{ServiceInfo, ServiceStatus};
+        use chrono::Utc;
+
+        let info = ServiceInfo {
+            service_id: "s".to_string(),
+            name: "n".to_string(),
+            version: "1".to_string(),
+            service_type: "t".to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: "i".to_string(),
+            host: "127.0.0.1".to_string(),
+            port: 8080,
+        };
+
+        let reg = ServiceRegistration::new(info.clone())
+            .with_ttl(std::time::Duration::from_secs(60))
+            .with_health_check_interval(std::time::Duration::from_secs(10));
+        assert_eq!(reg.service_info.service_id, info.service_id);
+        assert_eq!(reg.ttl, Some(std::time::Duration::from_secs(60)));
+        assert_eq!(reg.health_check_interval, Some(std::time::Duration::from_secs(10)));
+    }
+
+    #[test]
+    fn discovery_config_default() {
+        let c = DiscoveryConfig::default();
+        assert!(matches!(c.backend, DiscoveryBackend::Static));
+        assert_eq!(c.retry_attempts, 3);
+    }
+
+    #[test]
+    fn discovery_backend_variants_roundtrip_json() {
+        let b = DiscoveryBackend::Songbird {
+            federation_enabled: true,
+            trust_verification: false,
+            attribution_tracking: true,
+        };
+        let json = serde_json::to_string(&b).unwrap();
+        let back: DiscoveryBackend = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+
+        let etcd = DiscoveryBackend::Etcd {
+            endpoints: vec!["http://e:2379".to_string()],
+            username: Some("u".to_string()),
+            password: None,
+        };
+        let json = serde_json::to_string(&etcd).unwrap();
+        let back: DiscoveryBackend = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn service_event_serde_roundtrip() {
+        let ev = ServiceEvent::ServiceUnregistered {
+            service_id: "gone".to_string(),
+        };
+        let json = serde_json::to_string(&ev).unwrap();
+        let back: ServiceEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn health_status_and_sort_by_serde_roundtrip() {
+        let h = HealthStatus::Degraded;
+        let json = serde_json::to_string(&h).unwrap();
+        let back: HealthStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(h, back);
+
+        let s = SortBy::CreatedAt;
+        let json = serde_json::to_string(&s).unwrap();
+        let back: SortBy = serde_json::from_str(&json).unwrap();
+        assert_eq!(s, back);
+    }
+
+    #[test]
+    fn service_query_serde_roundtrip() {
+        let q = ServiceQuery {
+            name: Some("svc-*".to_string()),
+            service_id: None,
+            service_type: Some("grpc".to_string()),
+            version: None,
+            tags: vec!["t".to_string()],
+            metadata: HashMap::new(),
+            health_status: Some(HealthStatus::Unknown),
+            limit: Some(5),
+            sort_by: Some(SortBy::Name),
+        };
+        let json = serde_json::to_string(&q).unwrap();
+        let back: ServiceQuery = serde_json::from_str(&json).unwrap();
+        assert_eq!(q.name, back.name);
+        assert_eq!(q.sort_by, back.sort_by);
+    }
+}

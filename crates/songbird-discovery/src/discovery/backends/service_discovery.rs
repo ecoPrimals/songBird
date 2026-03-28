@@ -590,3 +590,88 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::traits::service::{ServiceInfo, ServiceStatus};
+    use chrono::Utc;
+
+    fn sample_service(name: &str) -> ServiceInfo {
+        ServiceInfo {
+            service_id: format!("{name}-id"),
+            name: name.to_string(),
+            version: "1.0.0".to_string(),
+            service_type: "test".to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: std::collections::HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: format!("{name}-inst"),
+            host: "127.0.0.1".to_string(),
+            port: 8080,
+        }
+    }
+
+    #[test]
+    fn cache_config_and_cache_stats_defaults() {
+        let cfg = CacheConfig {
+            default_ttl: std::time::Duration::from_secs(30),
+            max_cache_size: 100,
+            enabled: true,
+        };
+        assert!(cfg.enabled);
+        assert_eq!(cfg.max_cache_size, 100);
+    }
+
+    #[test]
+    fn cached_service_info_holds_ttl() {
+        let si = sample_service("alpha");
+        let c = CachedServiceInfo {
+            service_info: si.clone(),
+            cached_at: std::time::Instant::now(),
+            ttl: std::time::Duration::from_secs(60),
+        };
+        assert_eq!(c.service_info.name, "alpha");
+        assert_eq!(c.ttl.as_secs(), 60);
+    }
+
+    #[tokio::test]
+    async fn universal_service_discovery_new_and_cache_roundtrip() {
+        let mut d = UniversalServiceDiscovery::new().await.unwrap();
+        d.cache_service("svc1", sample_service("svc1"));
+        let got = d.get_cached_service("svc1");
+        assert!(got.is_some());
+        assert_eq!(got.unwrap().name, "svc1");
+        let stats = d.get_cache_stats();
+        assert_eq!(stats.total_entries, 1);
+        assert_eq!(stats.valid_entries, 1);
+        assert_eq!(stats.expired_entries, 0);
+        assert_eq!(stats.max_capacity, 1000);
+        d.cleanup_cache();
+    }
+
+    #[test]
+    fn service_info_serde_roundtrip() {
+        let s = sample_service("serde");
+        let json = serde_json::to_string(&s).unwrap();
+        let back: ServiceInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.service_id, s.service_id);
+        assert_eq!(back.name, s.name);
+    }
+
+    #[tokio::test]
+    async fn list_all_via_trait_succeeds() {
+        use crate::traits::ServiceDiscovery;
+        let d = UniversalServiceDiscovery::new().await.unwrap();
+        let list = ServiceDiscovery::list_all(&d).await.unwrap();
+        let _ = list;
+    }
+}

@@ -14,7 +14,7 @@
 //! - Priority 2: `BIOMEOS_SOCKET_DIR/{primal}.sock` (shared directory)
 //! - Priority 3: `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` (XDG standard)
 //! - Priority 4: `/run/user/$UID/biomeos/{primal}.sock` (fallback XDG)
-//! - Priority 5: `/tmp/{primal}.sock` (legacy fallback)
+//! - Priority 5: `{system temp dir}/{primal}.sock` (legacy fallback)
 //!
 //! **No hardcoded paths!** All paths derived from environment or XDG standards.
 //!
@@ -51,7 +51,7 @@ pub struct UnixIPC;
 /// 2. `BIOMEOS_SOCKET_DIR/{primal}.sock` - Shared socket directory
 /// 3. `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` - XDG standard
 /// 4. `/run/user/$UID/biomeos/{primal}.sock` - Fallback XDG (Pure Rust!)
-/// 5. `/tmp/{primal}.sock` - Legacy fallback
+/// 5. `{system temp dir}/{primal}.sock` - Legacy fallback
 ///
 /// **Pure Rust**: No unsafe code, no `libc::getuid()`. Uses environment variables.
 fn get_socket_path(primal_name: &str) -> PathBuf {
@@ -84,9 +84,12 @@ where
         return PathBuf::from(format!("/run/user/{uid_str}/biomeos/{primal_name}.sock"));
     }
 
-    // Priority 5: Legacy /tmp fallback (if all else fails)
-    warn!("No XDG_RUNTIME_DIR or UID found, using legacy /tmp for primal '{}'", primal_name);
-    PathBuf::from(format!("/tmp/{primal_name}.sock"))
+    // Priority 5: Legacy temp-dir fallback (if all else fails)
+    warn!(
+        "No XDG_RUNTIME_DIR or UID found, using legacy temp directory for primal '{}'",
+        primal_name
+    );
+    std::env::temp_dir().join(format!("{primal_name}.sock"))
 }
 
 #[async_trait]

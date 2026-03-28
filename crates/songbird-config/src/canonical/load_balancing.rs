@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// **CANONICAL**: Load balancing strategy
 ///
 /// Unified from multiple definitions across:
-/// - `songbird-core/src/load_balancer/strategies.rs`
+/// - `crates/songbird-orchestrator/src/core/load_balancer.rs`
 /// - `songbird-network/src/balancing/mod.rs`
 /// - `songbird-universal/src/load_balancing.rs`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]

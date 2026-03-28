@@ -115,6 +115,8 @@ impl From<HandshakeType> for u8 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -135,5 +137,45 @@ mod tests {
 
         assert_eq!(HandshakeType::try_from(2).unwrap(), HandshakeType::ServerHello);
         assert_eq!(u8::from(HandshakeType::ServerHello), 2);
+    }
+
+    #[test]
+    fn content_type_change_cipher_spec_roundtrip() {
+        assert_eq!(ContentType::from(20), ContentType::ChangeCipherSpec);
+        assert_eq!(u8::from(ContentType::ChangeCipherSpec), 20);
+    }
+
+    #[test]
+    fn content_type_alert_roundtrip() {
+        assert_eq!(ContentType::from(21), ContentType::Alert);
+        assert_eq!(u8::from(ContentType::Alert), 21);
+    }
+
+    #[test]
+    fn handshake_type_all_rfc8446_variants() {
+        assert_eq!(HandshakeType::try_from(4).unwrap(), HandshakeType::NewSessionTicket);
+        assert_eq!(HandshakeType::try_from(5).unwrap(), HandshakeType::EndOfEarlyData);
+        assert_eq!(HandshakeType::try_from(8).unwrap(), HandshakeType::EncryptedExtensions);
+        assert_eq!(HandshakeType::try_from(13).unwrap(), HandshakeType::CertificateRequest);
+        assert_eq!(HandshakeType::try_from(15).unwrap(), HandshakeType::CertificateVerify);
+        assert_eq!(HandshakeType::try_from(24).unwrap(), HandshakeType::KeyUpdate);
+        assert_eq!(HandshakeType::try_from(254).unwrap(), HandshakeType::MessageHash);
+    }
+
+    #[test]
+    fn handshake_type_invalid_returns_protocol_error() {
+        let err = HandshakeType::try_from(99).unwrap_err();
+        assert!(matches!(err, crate::error::TlsError::ProtocolError(_)));
+    }
+
+    #[test]
+    fn handshake_type_byte_tags_differ() {
+        assert_ne!(u8::from(HandshakeType::ClientHello), u8::from(HandshakeType::ServerHello));
+    }
+
+    #[test]
+    fn content_type_eq_matches_discriminant() {
+        assert_eq!(ContentType::Handshake, ContentType::Handshake);
+        assert_ne!(ContentType::Handshake, ContentType::ApplicationData);
     }
 }

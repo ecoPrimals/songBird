@@ -339,3 +339,70 @@ async fn check_beardog_connectivity() -> Result<bool> {
         Err(_) => Ok(false),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::check_primal_status;
+    use crate::bin_interface::DoctorArgs;
+    use clap::Parser;
+    use futures::future::ready;
+
+    #[derive(Parser)]
+    #[command(name = "songbird-doctor")]
+    struct DoctorCli {
+        #[command(flatten)]
+        args: DoctorArgs,
+    }
+
+    #[test]
+    fn doctor_args_default_format_is_text() {
+        let cli = DoctorCli::try_parse_from(["songbird-doctor"]).unwrap();
+        assert_eq!(cli.args.format, "text");
+        assert!(!cli.args.comprehensive);
+    }
+
+    #[test]
+    fn doctor_args_json_and_comprehensive() {
+        let cli =
+            DoctorCli::try_parse_from(["songbird-doctor", "--format", "json", "--comprehensive"])
+                .unwrap();
+        assert_eq!(cli.args.format, "json");
+        assert!(cli.args.comprehensive);
+    }
+
+    #[tokio::test]
+    async fn primal_status_connected() {
+        let s = check_primal_status("crypto", ready(Ok(true))).await;
+        assert_eq!(s.status, "connected");
+        assert_eq!(s.name, "crypto");
+        assert!(s.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn primal_status_not_reachable() {
+        let s = check_primal_status("ai", ready(Ok(false))).await;
+        assert_eq!(s.status, "not_reachable");
+    }
+
+    #[tokio::test]
+    async fn primal_status_error_from_check() {
+        let s =
+            check_primal_status("storage", ready(Err(anyhow::anyhow!("connection refused")))).await;
+        assert_eq!(s.status, "error");
+        assert!(s.error.as_ref().is_some_and(|e| e.contains("refused")));
+    }
+
+    #[tokio::test]
+    async fn check_port_availability_localhost_free_port() {
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+
+        let available = super::check_port_availability(port).await.expect("check");
+        assert!(available);
+    }
+}

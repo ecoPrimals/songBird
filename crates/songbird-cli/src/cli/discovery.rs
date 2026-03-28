@@ -284,10 +284,7 @@ impl NetworkScanner {
     }
 
     /// Extract version from API response
-    #[expect(
-        dead_code,
-        reason = "reserved for version parsing when discovery HTTP client is wired"
-    )]
+    #[allow(dead_code, reason = "reserved for version parsing when discovery HTTP client is wired")]
     fn extract_version_from_response(&self, response: &str) -> Option<String> {
         // Try to parse JSON response for version
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(response) {

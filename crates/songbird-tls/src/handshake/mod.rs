@@ -504,6 +504,56 @@ mod tests {
         assert_eq!(hsm1.state(), HandshakeState::Start);
     }
 
+    #[test]
+    fn handshake_state_enum_exhaustive_equality() {
+        let all = [
+            HandshakeState::Start,
+            HandshakeState::ReceivedClientHello,
+            HandshakeState::SentServerHello,
+            HandshakeState::Connected,
+            HandshakeState::Error,
+        ];
+        for (i, a) in all.iter().enumerate() {
+            for (j, b) in all.iter().enumerate() {
+                assert_eq!(i == j, a == b);
+            }
+        }
+    }
+
+    #[test]
+    fn is_connected_only_when_state_connected() {
+        let mut hsm = HandshakeStateMachine::new();
+        assert!(!hsm.is_connected());
+        let ch = create_test_client_hello();
+        hsm.process_client_hello(ch).unwrap();
+        assert!(!hsm.is_connected());
+    }
+
+    #[test]
+    fn key_schedule_accessor_returns_non_empty_new_instance() {
+        let hsm = HandshakeStateMachine::new();
+        let _ = hsm.key_schedule();
+        let mut hsm2 = HandshakeStateMachine::new();
+        let _ = hsm2.key_schedule_mut();
+    }
+
+    #[test]
+    fn process_client_hello_rejects_when_not_start_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        let ch = create_test_client_hello();
+        hsm.process_client_hello(ch).unwrap();
+        let ch2 = create_test_client_hello();
+        let err = hsm.process_client_hello(ch2).unwrap_err();
+        assert!(matches!(err, TlsError::UnexpectedMessage { .. }));
+    }
+
+    #[test]
+    fn default_matches_new_handshake_state_machine() {
+        let a = HandshakeStateMachine::new();
+        let b = HandshakeStateMachine::default();
+        assert_eq!(a.state(), b.state());
+    }
+
     // Helper function for creating test ClientHello
     fn create_test_client_hello() -> ClientHello {
         let random = [42u8; 32];

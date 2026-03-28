@@ -8,6 +8,7 @@
 
 use anyhow::Result;
 use songbird_types::config::CanonicalSongbirdConfig;
+use songbird_types::constants::LOCALHOST;
 
 use crate::process_manager::ProcessManager;
 
@@ -274,9 +275,9 @@ where
 pub async fn check_port_availability(port: u16) -> Result<bool> {
     use std::net::TcpListener;
 
-    // Use configurable bind address instead of hardcoded 127.0.0.1
+    // Use configurable bind address; default matches canonical localhost constant
     let bind_addr =
-        songbird_process_env::var("SONGBIRD_BIND_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        songbird_process_env::var("SONGBIRD_BIND_HOST").unwrap_or_else(|_| LOCALHOST.to_string());
 
     match TcpListener::bind((bind_addr.as_str(), port)) {
         Ok(_) => Ok(true),
@@ -349,4 +350,68 @@ struct PrimalStatus {
     status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[tokio::test]
+    async fn check_port_available_when_free() {
+        let port = {
+            use std::net::TcpListener;
+            let l = TcpListener::bind("127.0.0.1:0").unwrap();
+            l.local_addr().unwrap().port()
+        };
+        assert!(check_port_availability(port).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn check_port_unavailable_when_bound() {
+        use std::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        assert!(!check_port_availability(port).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn check_primal_status_connected() {
+        let s = check_primal_status("crypto", futures::future::ready(Ok(true))).await;
+        assert_eq!(s.name, "crypto");
+        assert_eq!(s.status, "connected");
+        assert!(s.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn check_primal_status_not_reachable() {
+        let s = check_primal_status("ai", futures::future::ready(Ok(false))).await;
+        assert_eq!(s.status, "not_reachable");
+    }
+
+    #[tokio::test]
+    async fn check_primal_status_error_string() {
+        let s =
+            check_primal_status("messaging", futures::future::ready(Err(anyhow::anyhow!("boom"))))
+                .await;
+        assert_eq!(s.status, "error");
+        assert_eq!(s.error.as_deref(), Some("boom"));
+    }
+
+    #[tokio::test]
+    async fn check_primal_status_preserves_name() {
+        let s = check_primal_status("custom-cap", futures::future::ready(Ok(false))).await;
+        assert_eq!(s.name, "custom-cap");
+    }
+
+    #[tokio::test]
+    async fn check_port_two_different_ephemeral_ports_both_available() {
+        use std::net::TcpListener;
+        let p1 = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let p2 = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        assert_ne!(p1, p2);
+        assert!(check_port_availability(p1).await.unwrap());
+        assert!(check_port_availability(p2).await.unwrap());
+    }
 }

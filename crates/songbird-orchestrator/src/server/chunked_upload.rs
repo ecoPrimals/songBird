@@ -323,3 +323,76 @@ pub async fn finalize_chunked_upload(
 
     Ok((StatusCode::CREATED, Json(response)))
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    /// Mirrors `negotiate_chunked_upload` chunk count (10 MiB chunks, at least 1).
+    fn total_chunks_for_binary_mb(binary_size_mb: f64, chunk_size_mb: u32) -> usize {
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "test: same cast as production negotiate_chunked_upload"
+        )]
+        #[expect(clippy::cast_sign_loss, reason = "test: positive MB inputs match production")]
+        let n = ((binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
+        n
+    }
+
+    #[test]
+    fn total_chunks_single_chunk_when_under_one_chunk() {
+        assert_eq!(total_chunks_for_binary_mb(5.0, 10), 1);
+        assert_eq!(total_chunks_for_binary_mb(10.0, 10), 1);
+    }
+
+    #[test]
+    fn total_chunks_ceils_partial_chunk() {
+        assert_eq!(total_chunks_for_binary_mb(10.1, 10), 2);
+        assert_eq!(total_chunks_for_binary_mb(25.0, 10), 3);
+    }
+
+    #[test]
+    fn total_chunks_never_zero() {
+        assert_eq!(total_chunks_for_binary_mb(0.0, 10), 1);
+        assert_eq!(total_chunks_for_binary_mb(0.001, 10), 1);
+    }
+
+    #[test]
+    fn chunk_index_invalid_when_gte_total() {
+        let total_chunks = 5usize;
+        let invalid_index = total_chunks;
+        assert!(invalid_index >= total_chunks);
+        let last_valid = total_chunks - 1;
+        assert!(last_valid < total_chunks);
+    }
+
+    #[test]
+    fn negotiation_request_deserializes() {
+        use crate::server::deployment_api::NegotiationRequest;
+
+        let j = r#"{"binary_size_mb":12.5,"service_name":"svc","compression":"gzip"}"#;
+        let req: NegotiationRequest = serde_json::from_str(j).unwrap();
+        assert!((req.binary_size_mb - 12.5).abs() < f64::EPSILON);
+        assert_eq!(req.service_name, "svc");
+        assert_eq!(req.compression.as_deref(), Some("gzip"));
+    }
+
+    #[test]
+    fn finalize_request_roundtrip() {
+        use crate::server::deployment_api::FinalizeRequest;
+
+        let mut env = std::collections::HashMap::new();
+        env.insert("PORT".to_string(), "8443".to_string());
+        env.insert("COMPUTE_HOST".to_string(), "127.0.0.1".to_string());
+        let req = FinalizeRequest {
+            service_name: "my-svc".to_string(),
+            env_vars: env,
+            auto_start: false,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let back: FinalizeRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.service_name, req.service_name);
+        assert!(!back.auto_start);
+        assert_eq!(back.env_vars.get("PORT"), Some(&"8443".to_string()));
+    }
+}

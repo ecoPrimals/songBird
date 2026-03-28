@@ -46,6 +46,13 @@ pub mod factory;
 pub mod config;
 pub mod types;
 
+/// CPU/memory/GPU/storage sampling for monitoring loops.
+pub mod monitoring;
+/// Network measurement and locality helpers.
+pub mod network;
+/// Host resource detection (`ComputeResources`, storage, GPU hints).
+pub mod resources;
+
 // UNIVERSAL DISCOVERY ARCHITECTURE:
 // =================================
 // Discovery services now use universal capability-based adapters that can:

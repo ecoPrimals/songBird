@@ -63,3 +63,44 @@ impl std::fmt::Display for DiscoveryMode {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn default_is_plaintext() {
+        assert_eq!(DiscoveryMode::default(), DiscoveryMode::Plaintext);
+    }
+
+    #[test]
+    fn display_and_description() {
+        assert_eq!(format!("{}", DiscoveryMode::Plaintext), "plaintext");
+        assert_eq!(format!("{}", DiscoveryMode::BirdSong), "birdsong");
+        assert!(DiscoveryMode::Plaintext.description().contains("Plaintext"));
+        assert!(DiscoveryMode::BirdSong.description().contains("BirdSong"));
+    }
+
+    #[test]
+    fn requires_beardog_and_privacy_only_for_birdsong() {
+        assert!(!DiscoveryMode::Plaintext.requires_beardog());
+        assert!(!DiscoveryMode::Plaintext.is_private());
+        assert!(DiscoveryMode::BirdSong.requires_beardog());
+        assert!(DiscoveryMode::BirdSong.is_private());
+    }
+
+    #[test]
+    fn serde_roundtrip() {
+        let m = DiscoveryMode::BirdSong;
+        let json = serde_json::to_string(&m).unwrap();
+        let back: DiscoveryMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(m, back);
+    }
+
+    #[test]
+    fn variants_are_distinct() {
+        assert_ne!(DiscoveryMode::Plaintext, DiscoveryMode::BirdSong);
+    }
+}

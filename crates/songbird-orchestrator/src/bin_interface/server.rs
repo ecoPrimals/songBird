@@ -476,3 +476,59 @@ async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Resul
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use crate::bin_interface::ServerArgs;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    #[command(name = "songbird")]
+    struct Cli {
+        #[command(flatten)]
+        args: ServerArgs,
+    }
+
+    fn effective_external_port(args: &ServerArgs) -> u16 {
+        args.federation_port.unwrap_or(args.port)
+    }
+
+    #[test]
+    fn federation_port_takes_precedence_over_port() {
+        let cli = Cli::try_parse_from(["songbird", "--port", "8080", "--federation-port", "9090"])
+            .unwrap();
+        assert_eq!(cli.args.port, 8080);
+        assert_eq!(cli.args.federation_port, Some(9090));
+        assert_eq!(effective_external_port(&cli.args), 9090);
+    }
+
+    #[test]
+    fn port_used_when_federation_port_absent() {
+        let cli = Cli::try_parse_from(["songbird", "--port", "7777"]).unwrap();
+        assert_eq!(effective_external_port(&cli.args), 7777);
+    }
+
+    #[test]
+    fn daemon_and_verbose_flags_parse() {
+        let cli =
+            Cli::try_parse_from(["songbird", "--port", "80", "--daemon", "--verbose"]).unwrap();
+        assert!(cli.args.daemon);
+        assert!(cli.args.verbose);
+    }
+
+    #[test]
+    fn socket_and_listen_optional() {
+        let cli = Cli::try_parse_from(["songbird"]).unwrap();
+        assert!(cli.args.socket.is_none());
+        assert!(cli.args.listen.is_none());
+    }
+
+    #[test]
+    fn tcp_listen_address_accepts_host_port() {
+        let cli = Cli::try_parse_from(["songbird", "--listen", "127.0.0.1:9901", "--port", "3000"])
+            .unwrap();
+        assert_eq!(cli.args.listen.as_deref(), Some("127.0.0.1:9901"));
+    }
+}

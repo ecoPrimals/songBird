@@ -750,6 +750,8 @@ fn rand_nonce() -> [u8; 16] {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -768,5 +770,37 @@ mod tests {
         coord.register_peer(peer).await;
 
         assert!(coord.peers.read().await.contains_key("peer-1"));
+    }
+
+    #[test]
+    fn hole_punch_config_default_has_stun_servers() {
+        let c = HolePunchConfig::default();
+        assert!(!c.stun_servers.is_empty());
+        assert_eq!(c.max_attempts, 20);
+        assert!(c.total_timeout >= c.attempt_timeout);
+    }
+
+    #[test]
+    fn hole_punch_config_with_stun_servers_override() {
+        let c = HolePunchConfig::default().with_stun_servers(vec!["stun.example:3478".into()]);
+        assert_eq!(c.stun_servers, vec!["stun.example:3478".to_string()]);
+    }
+
+    #[test]
+    fn default_stun_servers_fallback_lists_google() {
+        let v = default_stun_servers_fallback();
+        assert!(v.iter().any(|s| s.contains("google")));
+    }
+
+    #[test]
+    fn unix_epoch_millis_u64_ok() {
+        let m = unix_epoch_millis_u64().unwrap();
+        assert!(m > 1_000_000_000);
+    }
+
+    #[test]
+    fn rand_nonce_is_sixteen_bytes() {
+        let n = rand_nonce();
+        assert_eq!(n.len(), 16);
     }
 }

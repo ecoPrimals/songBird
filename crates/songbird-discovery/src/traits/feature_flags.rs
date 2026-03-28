@@ -484,3 +484,166 @@ impl Default for EvaluationContext {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn feature_flag_config_default_matches_documented_memory_provider() {
+        let cfg = FeatureFlagConfig::default();
+        assert_eq!(cfg.default_user.provider_type, "memory");
+        assert_eq!(cfg.default_user.timeout_ms, 5000);
+        assert!(cfg.cache.enabled);
+        assert_eq!(cfg.evaluation.max_rule_depth, 10);
+        assert!(cfg.monitoring.enabled);
+    }
+
+    #[test]
+    fn evaluation_context_default_clears_optional_fields() {
+        let ctx = EvaluationContext::default();
+        assert!(ctx.user_id.is_none());
+        assert!(ctx.service_id.is_none());
+        assert!(ctx.attributes.is_empty());
+    }
+
+    #[test]
+    fn provider_capabilities_helpers_reflect_vec_contents() {
+        let empty = ProviderCapabilities::new(vec![]);
+        assert!(!empty.supports_updates());
+        assert!(!empty.supports_history());
+
+        let full = ProviderCapabilities::new(vec![
+            ProviderCapability::Updates,
+            ProviderCapability::History,
+            ProviderCapability::Targeting,
+            ProviderCapability::PercentageRollout,
+        ]);
+        assert!(full.supports_updates());
+        assert!(full.supports_history());
+        assert!(full.supports_targeting());
+        assert!(full.supports_percentage_rollout());
+    }
+
+    #[test]
+    fn flag_type_variant_roundtrips_json() {
+        let ft = FlagType::Variant {
+            variants: vec!["a".to_string(), "b".to_string()],
+        };
+        let json = serde_json::to_string(&ft).unwrap();
+        let back: FlagType = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn feature_flag_roundtrips_json() {
+        let now = Utc::now();
+        let flag = FeatureFlag {
+            name: "rollout-x".to_string(),
+            description: "test".to_string(),
+            category: "net".to_string(),
+            default_value: serde_json::json!(true),
+            flag_type: FlagType::Boolean,
+            rules: vec![],
+            metadata: HashMap::new(),
+            created_at: now,
+            modified_at: now,
+            enabled: true,
+            tags: vec!["t".to_string()],
+        };
+        let json = serde_json::to_string(&flag).unwrap();
+        let back: FeatureFlag = serde_json::from_str(&json).unwrap();
+        assert_eq!(flag.name, back.name);
+        assert_eq!(flag.default_value, back.default_value);
+        assert_eq!(flag.tags, back.tags);
+    }
+
+    #[test]
+    fn rule_operator_custom_roundtrips_json() {
+        let op = RuleOperator::Custom {
+            function_name: "geo_match".to_string(),
+        };
+        let json = serde_json::to_string(&op).unwrap();
+        let back: RuleOperator = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+    }
+
+    #[test]
+    fn flag_evaluation_roundtrips_json() {
+        let ctx = EvaluationContext::default();
+        let eval = FlagEvaluation {
+            feature_name: "f".to_string(),
+            value: serde_json::json!({"k": 1}),
+            matched_rule: Some("r1".to_string()),
+            context: ctx,
+            timestamp: Utc::now(),
+            duration_ms: 12,
+            used_default: false,
+            errors: vec![],
+        };
+        let json = serde_json::to_string(&eval).unwrap();
+        let back: FlagEvaluation = serde_json::from_str(&json).unwrap();
+        assert_eq!(eval.feature_name, back.feature_name);
+        assert_eq!(eval.used_default, back.used_default);
+    }
+
+    #[test]
+    fn manager_status_roundtrips_json() {
+        let s = ManagerStatus {
+            providers_count: 2,
+            flags_count: 10,
+            evaluations_per_second: 100.0,
+            cache_hit_rate: 0.9,
+            last_refresh: Some(Utc::now()),
+            healthy: true,
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        let back: ManagerStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(s.providers_count, back.providers_count);
+        assert_eq!(s.healthy, back.healthy);
+    }
+
+    #[test]
+    fn flag_stats_roundtrips_json() {
+        let mut dist = HashMap::new();
+        dist.insert("rule-a".to_string(), 5u64);
+        let stats = FlagStats {
+            total_evaluations: 100,
+            true_evaluations: 60,
+            false_evaluations: 40,
+            default_usages: 2,
+            avg_evaluation_time_ms: 1.5,
+            unique_contexts: 10,
+            last_evaluation: Some(Utc::now()),
+            rule_distribution: dist,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        let back: FlagStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(stats.total_evaluations, back.total_evaluations);
+        assert_eq!(stats.rule_distribution.get("rule-a"), Some(&5));
+    }
+
+    #[test]
+    fn evaluation_rule_with_condition_roundtrips_json() {
+        let rule = EvaluationRule {
+            id: "r".to_string(),
+            description: "d".to_string(),
+            conditions: vec![RuleCondition {
+                attribute: "env".to_string(),
+                operator: RuleOperator::Equals,
+                value: serde_json::json!("prod"),
+                negate: false,
+            }],
+            value: serde_json::json!(true),
+            priority: 1,
+            enabled: true,
+            traffic_percentage: Some(50.0),
+        };
+        let json = serde_json::to_string(&rule).unwrap();
+        let back: EvaluationRule = serde_json::from_str(&json).unwrap();
+        assert_eq!(rule.id, back.id);
+        assert_eq!(rule.conditions.len(), back.conditions.len());
+    }
+}

@@ -115,3 +115,44 @@ pub use registry::{Composable, PluginRegistry, Query, Registry};
 
 // Legacy modules (health, scaling, service, production) removed — replaced by
 // health_new and scaling_new above.
+
+#[cfg(test)]
+mod lib_smoke_tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use crate::federation::FederationState;
+    use crate::{Plugin, PluginRegistry, Registry};
+
+    #[tokio::test]
+    async fn registry_default_register_and_list_roundtrip() {
+        let mut reg = Registry::default();
+        let p = Plugin::new("lib-smoke-plugin", "Lib Smoke", "0.0.1");
+        let id = reg.register(p).await.unwrap();
+        assert_eq!(id.as_str(), "lib-smoke-plugin");
+        let plugins = reg.list().await;
+        assert_eq!(plugins.len(), 1);
+        assert_eq!(plugins[0].name, "Lib Smoke");
+    }
+
+    #[test]
+    fn federation_state_default_join_and_peer_roundtrip() {
+        let mut s = FederationState::default();
+        assert!(!s.is_joined());
+        s.join();
+        assert!(s.register_peer("peer-a"));
+        assert!(s.has_peer("peer-a"));
+        s.leave();
+        assert!(!s.is_joined());
+        assert_eq!(s.peer_count(), 0);
+    }
+
+    #[test]
+    fn plugin_id_display_and_serde_roundtrip() {
+        use crate::PluginId;
+        let id = PluginId::new("pid-1");
+        assert_eq!(id.to_string(), "pid-1");
+        let json = serde_json::to_string(&id).unwrap();
+        let back: PluginId = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.as_str(), "pid-1");
+    }
+}

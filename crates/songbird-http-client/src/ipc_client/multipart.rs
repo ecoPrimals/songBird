@@ -370,6 +370,8 @@ fn generate_boundary() -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -479,5 +481,58 @@ mod tests {
         let json = form.serialize_for_ipc();
         assert!(json.is_object());
         assert!(json.get("parts").is_some());
+    }
+
+    #[test]
+    fn form_serde_json_roundtrip() {
+        let form = Form::new().text("a", "x").part(
+            "b",
+            Part::bytes(vec![10, 20]).file_name("f.bin").mime_str("application/octet-stream"),
+        );
+        let json = serde_json::to_string(&form).unwrap();
+        let back: Form = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.parts.len(), 2);
+        assert_eq!(back.parts[0].name, "a");
+        assert_eq!(back.parts[1].name, "b");
+    }
+
+    #[test]
+    fn encode_empty_form_still_has_final_boundary() {
+        let form = Form::new();
+        let (body, boundary) = form.encode();
+        let s = String::from_utf8_lossy(&body);
+        assert!(s.contains(&boundary));
+        assert!(s.ends_with("--\r\n"));
+    }
+
+    #[test]
+    fn part_text_stores_plain_string() {
+        let p = Part::text("hello");
+        match p.content {
+            PartContent::Text {
+                value,
+            } => assert_eq!(value, "hello"),
+            PartContent::Bytes {
+                ..
+            } => panic!("expected text"),
+        }
+    }
+
+    #[test]
+    fn encode_preserves_multiline_text_field() {
+        let form = Form::new().text("body", "line1\nline2\r\nline3");
+        let (body, _) = form.encode();
+        let s = String::from_utf8_lossy(&body);
+        assert!(s.contains("line1\nline2\r\nline3"));
+    }
+
+    #[test]
+    fn bytes_part_base64_roundtrips_through_encode() {
+        let raw = vec![0u8, 255, 128];
+        let form = Form::new().part("bin", Part::bytes(raw.clone()));
+        let (body, _) = form.encode();
+        let s = String::from_utf8_lossy(&body);
+        assert!(s.contains("Content-Type: application/octet-stream"));
+        assert!(body.windows(raw.len()).any(|w| w == raw.as_slice()));
     }
 }

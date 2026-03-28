@@ -42,7 +42,11 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Internal dependencies
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
+songbird-process-env = { workspace = true }
 songbird-types = { path = "../songbird-types" }
+
+# System paths
+dirs = { workspace = true }
 
 [lints]
 workspace = true

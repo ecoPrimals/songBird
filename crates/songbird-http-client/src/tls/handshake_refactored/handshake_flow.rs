@@ -440,3 +440,92 @@ impl TlsHandshake {
         msg
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::crypto::BearDogProvider;
+    use crate::tls::config::TlsConfig;
+    use crate::tls::{CIPHER_SUITES, TLS_1_2, content_type, handshake_type};
+    use std::sync::Arc;
+
+    fn test_handshake() -> TlsHandshake {
+        let crypto = Arc::new(BearDogProvider::new("/tmp/songbird-handshake-flow-test.sock"))
+            as Arc<dyn crate::crypto::CryptoCapability>;
+        TlsHandshake::new(crypto)
+    }
+
+    #[test]
+    fn build_client_hello_tls_record_header() {
+        let h = test_handshake();
+        let random = [0x5au8; 32];
+        let key = [0x3cu8; 32];
+        let msg = h.build_client_hello(&random, &key, "example.com");
+
+        assert_eq!(msg[0], content_type::HANDSHAKE);
+        assert_eq!(&msg[1..3], &TLS_1_2.to_be_bytes());
+        let record_len = u16::from_be_bytes([msg[3], msg[4]]) as usize;
+        assert_eq!(record_len, msg.len() - 5);
+    }
+
+    #[test]
+    fn build_client_hello_contains_client_hello_handshake_type() {
+        let h = test_handshake();
+        let random = [0u8; 32];
+        let key = [1u8; 32];
+        let msg = h.build_client_hello(&random, &key, "test.local");
+
+        assert_eq!(msg[5], handshake_type::CLIENT_HELLO);
+    }
+
+    #[test]
+    fn build_client_hello_embeds_client_random_and_cipher_suites() {
+        let h = test_handshake();
+        let mut random = [0u8; 32];
+        random[0] = 0x7e;
+        let key = [9u8; 32];
+        let msg = h.build_client_hello(&random, &key, "svc.example");
+
+        // After record header (5) + handshake type (1) + handshake length (3) + legacy version (2)
+        let body_start = 5 + 1 + 3;
+        assert_eq!(&msg[body_start..body_start + 2], &TLS_1_2.to_be_bytes());
+        assert_eq!(&msg[body_start + 2..body_start + 34], random.as_slice());
+
+        let cs_len_pos = body_start + 34 + 1; // + legacy session id len byte (0)
+        let cs_len = u16::from_be_bytes([msg[cs_len_pos], msg[cs_len_pos + 1]]) as usize;
+        assert_eq!(cs_len, CIPHER_SUITES.len() * 2);
+    }
+
+    #[test]
+    fn handshake_with_config_preserves_cipher_list_in_client_hello() {
+        let crypto = Arc::new(BearDogProvider::new("/tmp/songbird-tls-config-test.sock"))
+            as Arc<dyn crate::crypto::CryptoCapability>;
+        let h = TlsHandshake::with_config(crypto, TlsConfig::default(), None);
+        let msg = h.build_client_hello(&[0xee; 32], &[0xdd; 32], "h.example");
+
+        assert!(msg.len() > 40);
+        assert_eq!(msg[0], content_type::HANDSHAKE);
+    }
+
+    #[test]
+    fn build_client_hello_sni_extension_present_for_non_empty_host() {
+        let h = test_handshake();
+        let msg = h.build_client_hello(&[0x01; 32], &[0x02; 32], "api.github.com");
+        let host = b"api.github.com";
+        assert!(
+            msg.windows(host.len()).any(|w| w == host),
+            "expected SNI hostname bytes in ClientHello extensions"
+        );
+    }
+
+    #[test]
+    fn build_client_hello_record_length_matches_payload() {
+        let h = test_handshake();
+        let msg = h.build_client_hello(&[0xab; 32], &[0xcd; 32], "x");
+
+        let rl = u16::from_be_bytes([msg[3], msg[4]]) as usize;
+        assert_eq!(msg.len(), 5 + rl);
+    }
+}

@@ -130,6 +130,8 @@ impl OnionTransport {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use tempfile::TempDir;
 
@@ -183,5 +185,21 @@ mod tests {
             let _storage = transport.storage();
             // Storage is accessible for relay coordination
         }
+    }
+
+    #[test]
+    fn verifying_key_length_matches_ed25519_public() {
+        let temp_dir = TempDir::new().unwrap();
+        let t = OnionTransport::new(temp_dir.path()).unwrap();
+        assert_eq!(t.verifying_key_bytes().len(), 32);
+    }
+
+    #[test]
+    fn onion_address_suffix_and_accessor() {
+        let temp_dir = TempDir::new().unwrap();
+        let t = OnionTransport::new(temp_dir.path()).unwrap();
+        let addr = t.onion_address();
+        assert!(addr.ends_with(".onion"));
+        assert_eq!(addr, t.onion_address());
     }
 }

@@ -571,7 +571,7 @@ impl Args {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use axum::body::{Body, to_bytes};
@@ -759,6 +759,82 @@ mod tests {
         assert_eq!(v["memory_gb"], 8);
         assert_eq!(v["gpu_count"], 0);
         assert_eq!(v["platform"], "linux-x86_64");
+    }
+
+    #[test]
+    fn service_registration_serde_roundtrip() {
+        let mut metadata = HashMap::new();
+        metadata.insert("cpu_cores".into(), "4".into());
+        let reg = ServiceRegistration {
+            service_id: "svc-1".into(),
+            service_name: "N".into(),
+            service_type: "compute".into(),
+            tower_id: "t1".into(),
+            tower_name: "t1".into(),
+            endpoint: "http://127.0.0.1:9000".into(),
+            capabilities: vec!["compute".into(), "cpu".into()],
+            metadata,
+            health_status: "healthy".into(),
+            registered_at: "2025-01-01T00:00:00Z".into(),
+            last_seen: "2025-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_string(&reg).unwrap();
+        let back: ServiceRegistration = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.service_id, reg.service_id);
+        assert_eq!(back.capabilities, reg.capabilities);
+    }
+
+    #[test]
+    fn workload_request_serde_roundtrip() {
+        let w = WorkloadRequest {
+            name: "job".into(),
+            payload: serde_json::json!({ "x": 1 }),
+        };
+        let json = serde_json::to_string(&w).unwrap();
+        let back: WorkloadRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.name, w.name);
+        assert_eq!(back.payload, w.payload);
+    }
+
+    #[test]
+    fn detect_capabilities_edge_cpu_only() {
+        let info = ServiceInfo {
+            cpu_cores: 4,
+            memory_gb: 8,
+            gpu_count: 0,
+            gpu_model: None,
+            storage_gb: None,
+            platform: "linux-x86_64".into(),
+        };
+        let s = detect_capabilities(&info);
+        assert!(s.contains("compute"));
+        assert!(!s.contains("batch-processing"));
+    }
+
+    #[tokio::test]
+    async fn capabilities_endpoint_returns_config_capabilities() {
+        let app = bridge_router(sample_bridge_state().await);
+        let res = app
+            .oneshot(Request::builder().uri("/capabilities").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(v["capabilities"].as_array().unwrap().contains(&serde_json::json!("compute")));
+    }
+
+    #[tokio::test]
+    async fn get_workload_returns_no_backend() {
+        let app = bridge_router(sample_bridge_state().await);
+        let res = app
+            .oneshot(Request::builder().uri("/api/v1/workloads/job-1").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["error"], "no_backend");
     }
 
     #[tokio::test]

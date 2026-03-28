@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::unwrap_used, reason = "test assertions")]
+
 use super::*;
 use serde_json::json;
 
@@ -292,6 +294,12 @@ async fn mesh_announce_as_relay_false_short_circuits() {
 
     let v = handler.handle_announce(json!({ "as_relay": false })).await.expect("announce response");
     assert_eq!(v["announced"], false);
+}
+
+#[test]
+fn mesh_handler_default_matches_new() {
+    let _a = MeshHandler::new();
+    let _b = MeshHandler::default();
 }
 
 #[test]

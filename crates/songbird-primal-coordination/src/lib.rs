@@ -81,3 +81,72 @@ pub use bridge::{PrimalBridge, PrimalConnection};
 pub use coordinator::PrimalCoordinator;
 pub use error::{PrimalCoordinationError, Result};
 pub use types::*;
+
+#[cfg(test)]
+mod lib_smoke_tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use crate::{
+        CapabilityType, DeploymentId, NodeId, PrimalCapabilities, PrimalCoordinationError,
+        PrimalRequest, ServiceQuality,
+    };
+    use std::collections::HashMap;
+
+    #[test]
+    fn capability_type_display_matches_as_str() {
+        assert_eq!(CapabilityType::Orchestration.to_string(), "orchestration");
+        assert_eq!(format!("{}", CapabilityType::Networking), "networking");
+    }
+
+    #[test]
+    fn primal_capabilities_supports_workload_and_default_quality() {
+        let caps = PrimalCapabilities {
+            services: vec!["batch".into()],
+            resources: HashMap::new(),
+            metadata: HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let w = crate::Workload {
+            id: "1".into(),
+            service_type: "batch".into(),
+            requirements: HashMap::new(),
+            payload: serde_json::json!({}),
+        };
+        assert!(caps.supports_workload(&w));
+    }
+
+    #[test]
+    fn node_id_and_deployment_id_display() {
+        let n = NodeId("nid".into());
+        let d = DeploymentId("did".into());
+        assert_eq!(n.to_string(), "nid");
+        assert_eq!(d.to_string(), "did");
+    }
+
+    #[test]
+    fn primal_request_sign_lineage_roundtrip() {
+        let req = PrimalRequest::SignLineage {
+            keys: crate::GeneratedKeys {
+                public_key: vec![1, 2],
+                private_key_handle: "h".into(),
+            },
+            proof: crate::WitnessProof {
+                data: vec![9],
+            },
+            node_id: NodeId("n".into()),
+        };
+        let v = serde_json::to_value(&req).unwrap();
+        let back: PrimalRequest = serde_json::from_value(v).unwrap();
+        assert!(matches!(back, PrimalRequest::SignLineage { .. }));
+    }
+
+    #[test]
+    fn primal_coordination_error_display_variants() {
+        let e = PrimalCoordinationError::UnexpectedResponse("bad".into());
+        assert!(e.to_string().contains("Unexpected"));
+        let e2 = PrimalCoordinationError::PrimalError("p".into());
+        assert!(e2.to_string().contains("Primal error"));
+        let e3 = PrimalCoordinationError::DiscoveryFailed("d".into());
+        assert!(e3.to_string().contains("Discovery"));
+    }
+}

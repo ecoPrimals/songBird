@@ -80,15 +80,14 @@ impl ServiceLocator {
     /// Discover from environment variables.
     ///
     /// Pattern: `SONGBIRD_CAPABILITY_<CAPABILITY>_ENDPOINTS`=host1:port1,host2:port2
-    fn discover_from_environment(
-        capability: &str,
-    ) -> Result<Vec<SocketAddr>, Box<dyn std::error::Error>> {
+    fn discover_from_environment(capability: &str) -> SongbirdResult<Vec<SocketAddr>> {
         let env_var = format!(
             "SONGBIRD_CAPABILITY_{}_ENDPOINTS",
             capability.to_uppercase().replace('-', "_")
         );
 
-        let endpoints_str = songbird_process_env::var(&env_var)?;
+        let endpoints_str = songbird_process_env::var(&env_var)
+            .map_err(|_| SongbirdError::configuration(format!("{env_var} not set")))?;
 
         let endpoints =
             endpoints_str.split(',').filter_map(|s| s.trim().parse::<SocketAddr>().ok()).collect();
@@ -100,16 +99,15 @@ impl ServiceLocator {
     ///
     /// Pending hickory-resolver integration.
     fn discover_from_dns_sd(capability: &str) -> Vec<SocketAddr> {
-        let service_name = format!("_{}._tcp.local", capability.to_lowercase());
-        let _ = service_name;
+        let _service_name = format!("_{}._tcp.local", capability.to_lowercase());
+        tracing::debug!(capability, "DNS-SD discovery not yet implemented; returning empty");
         Vec::new()
     }
 
     /// Discover from HTTP registry (Consul, Eureka, custom).
-    fn discover_from_registry(
-        capability: &str,
-    ) -> Result<Vec<SocketAddr>, Box<dyn std::error::Error>> {
-        let registry_url = songbird_process_env::var("SONGBIRD_REGISTRY_URL")?;
+    fn discover_from_registry(capability: &str) -> SongbirdResult<Vec<SocketAddr>> {
+        let registry_url = songbird_process_env::var("SONGBIRD_REGISTRY_URL")
+            .map_err(|_| SongbirdError::configuration("SONGBIRD_REGISTRY_URL not set"))?;
         let query_url = format!("{registry_url}/v1/services?capability={capability}");
         let _ = query_url;
         Ok(Vec::new())

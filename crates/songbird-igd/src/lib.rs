@@ -109,3 +109,61 @@ pub const IGD_DEVICE_TYPE: &str = "urn:schemas-upnp-org:device:InternetGatewayDe
 
 /// `UPnP` `WANIPConnection` service type
 pub const WANIP_SERVICE_TYPE: &str = "urn:schemas-upnp-org:service:WANIPConnection:1";
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use crate::{
+        DEFAULT_MAPPING_TTL, IGD_DEVICE_TYPE, NAT_PMP_PORT, PortMappingRequest, Protocol,
+        SSDP_MULTICAST_ADDR, VERSION, WANIP_SERVICE_TYPE,
+    };
+    use serde_json::{from_value, to_value};
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[test]
+    fn ssdp_multicast_addr_parseable() {
+        let addr: std::net::SocketAddr = SSDP_MULTICAST_ADDR.parse().unwrap();
+        assert_eq!(addr.port(), 1900);
+    }
+
+    #[test]
+    fn urn_constants_non_empty_and_well_formed() {
+        assert!(!IGD_DEVICE_TYPE.is_empty());
+        assert!(!WANIP_SERVICE_TYPE.is_empty());
+        assert!(IGD_DEVICE_TYPE.starts_with("urn:"));
+        assert!(WANIP_SERVICE_TYPE.starts_with("urn:"));
+    }
+
+    #[test]
+    fn nat_pmp_port_and_default_ttl() {
+        assert_eq!(NAT_PMP_PORT, 5351);
+        assert!(DEFAULT_MAPPING_TTL > 0);
+    }
+
+    #[test]
+    fn version_is_non_empty() {
+        assert!(!VERSION.is_empty());
+    }
+
+    #[test]
+    fn protocol_serde_roundtrip() {
+        for p in [Protocol::Tcp, Protocol::Udp] {
+            let v = to_value(&p).unwrap();
+            let back: Protocol = from_value(v).unwrap();
+            assert_eq!(p, back);
+            assert_eq!(p.as_str(), back.as_str());
+        }
+    }
+
+    #[test]
+    fn port_mapping_request_new_sets_expected_fields() {
+        let req = PortMappingRequest::new(80, 8080, IpAddr::V4(Ipv4Addr::LOCALHOST), Protocol::Tcp);
+        assert_eq!(req.external_port, 80);
+        assert_eq!(req.internal_port, 8080);
+        assert_eq!(req.internal_client, IpAddr::V4(Ipv4Addr::LOCALHOST));
+        assert_eq!(req.protocol, Protocol::Tcp);
+        assert_eq!(req.lease_duration, DEFAULT_MAPPING_TTL);
+        assert!(req.description.contains("TCP"));
+    }
+}

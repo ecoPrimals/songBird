@@ -7,6 +7,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave81] - 2026-03-28 - Root Doc Refresh, Spec Archival, Debris Cleanup
+
+### Changed — Root Doc Refresh
+- README.md, CONTEXT.md, CONTRIBUTING.md: synced metrics to 11,184 tests, 68.80% coverage, ~381,498 lines, ~43s build
+- CHANGELOG.md: added Wave 78–81 entries
+
+### Removed — Stale Spec Archival (21 files → specs/archive/)
+- Archived 19 specs referencing non-existent crates (songbird-core, songbird-network, songbird-errors, songbird-security)
+- Archived 2 stale architecture docs (RUSTLS_CRYPTO_PROVIDER_RESEARCH, PURE_RUST_TLS_EXECUTION_PLAN)
+- Updated `specs/00_SPECIFICATIONS_INDEX.md` with archived status
+
+### Fixed — Debris Cleanup
+- Removed empty directory `crates/songbird-universal-ipc/data/sovereign-onion/blobs`
+- Fixed stale `songbird-core` references in code comments (load_balancing.rs, zero_copy_enhanced.rs, performance.rs)
+- Cleaned stale tarpaulin.toml exclude entries (songbird-unwrap-migrator, handoffToPrimals, tools)
+- Updated `specs/README.md` with current workspace context note
+
+---
+
+## [v0.2.1-wave80] - 2026-03-28 - Dead Code Pruning, Typed Errors, Smart Refactoring, Coverage
+
+### Removed — Dead Code Pruning (~19,000 lines)
+- Deleted 10 orphaned directory trees from `songbird-orchestrator/src/core/` (substrate, structural_improvements, scalability, traits, biomeos, canonical, etc.)
+- Deleted 8 orphaned files/dirs from `core/api/` (ai_optimized, real_time_ai_streaming, ai_mesh, etc.)
+- Deleted orphaned `songbird-config/src/zero_hardcoding/` directory
+- Build time improved: ~55s → ~43s clean dev build
+
+### Changed — Typed Error Evolution
+- `rpc/tarpc_server.rs`: `Box<dyn Error>` → `anyhow::Result` on both tarpc entry points
+- `resilience/circuit_breaker.rs`: `Result<_, String>` → `SongbirdResult` with `SongbirdError::configuration`
+- `server/execution_api.rs`, `core/execution/manager.rs`, `core/execution/broadcast.rs` → `SongbirdResult`
+- `observability/events.rs`: `emit` → `SongbirdResult`
+- `monitoring/btsp_health.rs` → `SongbirdResult` with `discovery`/`network` variants
+
+### Changed — Smart Domain-Based File Refactoring (4 files)
+- `server/deployment_api.rs` (615→239): Extracted `types.rs`, `capabilities.rs`, `binary.rs`
+- `trust/peer_trust.rs` (602→22): Extracted `types.rs`, `evaluation.rs`, `peer_trust_tests.rs`
+- `core/api/ai_first_response.rs` (620→120): Extracted `types.rs`, `ai_first_response_tests.rs`
+- `core/caching/advanced_cache.rs` (593→223): Extracted `types.rs`, `helpers.rs`, `operations.rs`
+
+### Changed — Hardcoding Evolution
+- `/tmp` socket paths → `std::env::temp_dir()` in rendezvous client, unix IPC, BTSP http_provider
+- `"127.0.0.1"` literals → `songbird_types::constants::LOCALHOST`
+- STUN handler: extracted `DEFAULT_PRIMARY_STUN_SERVER` constant
+
+### Added — Coverage Expansion (+117 tests, 11,184 total)
+- songbird-discovery, songbird-network-federation, songbird-onion-relay, songbird-orchestrator
+- songbird-universal-ipc, songbird-registry, songbird-compute-bridge, songbird-primal-coordination
+
+### Fixed
+- Discovery module repair: rewired orphaned `resources/`, `network/`, `monitoring/` into `discovery/mod.rs`
+
+---
+
+## [v0.2.1-wave79] - 2026-03-28 - Comprehensive Audit, Typed Errors, Coverage, Smart Refactoring
+
+### Fixed — Lint / Build Fixes
+- `songbird-cli/discovery.rs`: `#[expect(dead_code)]` → `#[allow(dead_code)]` (unfulfilled expectation)
+- `songbird-universal/lib.rs`: `pub mod trust_types_phase1_tests` → `#[cfg(test)] mod`
+
+### Changed — Production Stub Evolution + Typed Errors
+- `songbird-sovereign-onion/service.rs`: Hardcoded data dir → env-configurable via `SONGBIRD_ONION_DATA_DIR` with XDG fallback
+- `songbird-sovereign-onion/service.rs`: `try_into().expect()` → direct array indexing
+- `songbird-config/service_locator.rs`: `Box<dyn Error>` → `SongbirdResult`
+- `songbird-config/environment.rs`: `Result<(), String>` → `SongbirdResult<()>` with `SongbirdError::validation`
+- `songbird-universal-ipc/service.rs`: Fragile endpoint parser → explicit protocol-aware parser
+
+### Changed — Smart Domain-Based File Refactoring (4 files)
+- `songbird-igd/gateway.rs` (797→484): Extracted `upnp_device_description.rs`
+- `songbird-lineage-relay/relay_server.rs` (747→338): Extracted `packet_handler.rs`
+- `songbird-discovery/federation_aware_discovery.rs` (730→435): Extracted `federation_detectors_impl.rs`
+- `songbird-network-federation/multi_federation.rs`: Extracted `discovery_routing.rs`
+
+### Added — Coverage Expansion (+231 tests, 11,067 total)
+- songbird-stun, songbird-igd, songbird-tor-protocol, songbird-sovereign-onion
+- songbird-network-federation, songbird-discovery, songbird-orchestrator
+- songbird-http-client, songbird-tls
+
+---
+
+## [v0.2.1-wave78] - 2026-03-28 - primalSpring Deep Debt Evolution
+
+### Fixed — primalSpring Phase 17 Fixes
+- `#[serde(default)]` added to `GenerateBeaconRequest::capabilities`
+- Sovereign Beacon Mesh documented in README.md with call sequence and spec link
+- BearDog discovery error messages now list all tried paths
+
+### Added — Coverage Expansion (+149 tests)
+- sovereignty/adapter.rs, src/lib.rs, security.rs, container.rs, storage.rs
+
+### Changed — Hardcoding Evolution
+- `songbird-compute-bridge`: storage detection → real `df`-based + env override
+- `songbird-cli/discovery.rs`: stub `simulate_http_check` → real TCP HTTP/1.0 probe
+- `TorService::onion_address()`: `"placeholder.onion"` → `Option<&str>`
+- Genesis `mock_lineage` → `synthetic_lineage` with degradation logging
+
+### Changed — Idiomatic Rust
+- `register_with_songbird`: `Box<dyn Error>` → `anyhow::Result`
+- TLS `generate_random`: `SystemTime` panic → `unwrap_or_default()`
+- mDNS discovery: `Box<dyn Error>` → typed `DiscoveryError`
+
+### Removed — Debris Cleanup
+- Moved session/archive fossil to `ecoPrimals/archive/`
+- Moved `docs/DEEP_DEBT_SOLUTIONS.md` to fossil record
+
+---
+
 ## [v0.2.1-wave77] - 2026-03-27 - Coverage Expansion, Domain Refactoring, Zero-Unsafe Overlay
 
 ### Added — Coverage Expansion (+58 tests, Wave 77)

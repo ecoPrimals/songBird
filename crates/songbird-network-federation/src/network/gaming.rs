@@ -590,4 +590,57 @@ mod tests {
         m.insert(GameProtocolType::Custom("z".into()), 1u8);
         assert_eq!(m[&GameProtocolType::Custom("z".into())], 1);
     }
+
+    #[test]
+    fn game_protocol_type_serde_roundtrip() {
+        let p = GameProtocolType::DirectPlay;
+        let json = serde_json::to_string(&p).unwrap();
+        let back: GameProtocolType = serde_json::from_str(&json).unwrap();
+        assert_eq!(p, back);
+        let c = GameProtocolType::Custom("lobby".into());
+        let json = serde_json::to_string(&c).unwrap();
+        let back: GameProtocolType = serde_json::from_str(&json).unwrap();
+        assert_eq!(c, back);
+    }
+
+    #[test]
+    fn session_config_default_and_serde() {
+        let c = SessionConfig::default();
+        assert!(c.public);
+        let json = serde_json::to_string(&c).unwrap();
+        let back: SessionConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.max_players, c.max_players);
+    }
+
+    #[test]
+    fn session_status_variants() {
+        assert_ne!(SessionStatus::Active, SessionStatus::Ended);
+    }
+
+    #[tokio::test]
+    async fn tcp_protocol_handler_echoes() {
+        let mut h = TcpProtocolHandler::new();
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2);
+        let out = h.handle_packet(b"data", addr).await.unwrap();
+        assert_eq!(out, b"data");
+        assert_eq!(h.protocol_type(), GameProtocolType::TCP);
+    }
+
+    #[tokio::test]
+    async fn gaming_manager_create_session() {
+        let mut mgr = GamingManager::new(GamingConfig {
+            protocols: vec![GameProtocolType::UDP],
+            ..GamingConfig::default()
+        });
+        mgr.initialize().await.unwrap();
+        let id = mgr.create_session(GameProtocolType::UDP, SessionConfig::default()).await.unwrap();
+        assert!(mgr.get_session(&id).is_some());
+    }
+
+    #[test]
+    fn ipx_handler_protocol_type() {
+        use super::ProtocolHandler;
+        let h = IpxProtocolHandler::new();
+        assert_eq!(h.protocol_type(), GameProtocolType::IPX);
+    }
 }

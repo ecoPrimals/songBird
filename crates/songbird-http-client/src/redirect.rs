@@ -360,4 +360,39 @@ mod tests {
         let host = RedirectHandler::extract_host("%%%", "https://fallback.example");
         assert_eq!(host, Some("fallback.example".to_string()));
     }
+
+    #[test]
+    fn resolve_absolute_preserves_query_and_fragment() {
+        let url =
+            RedirectHandler::resolve_url("https://a.com/x", "https://b.com/path?y=1#frag").unwrap();
+        assert_eq!(url, "https://b.com/path?y=1#frag");
+    }
+
+    #[test]
+    fn should_follow_respects_max_minus_one() {
+        let handler = RedirectHandler::new(3);
+        let mut headers = HashMap::new();
+        headers.insert("location".to_string(), "/n".to_string());
+        let response = HttpResponse {
+            status: 302,
+            headers,
+            body: serde_json::json!({}),
+        };
+        assert!(handler.should_follow(&response, 2, RedirectMode::Follow));
+        assert!(!handler.should_follow(&response, 3, RedirectMode::Follow));
+    }
+
+    #[test]
+    fn is_same_origin_ignores_path_and_query() {
+        assert!(
+            RedirectHandler::is_same_origin("https://ex.com/a?x=1", "https://ex.com/b#z",).unwrap()
+        );
+    }
+
+    #[test]
+    fn is_redirect_status_excludes_temporary_non_redirect_codes() {
+        assert!(!RedirectHandler::is_redirect_status(300));
+        assert!(!RedirectHandler::is_redirect_status(304));
+        assert!(!RedirectHandler::is_redirect_status(399));
+    }
 }

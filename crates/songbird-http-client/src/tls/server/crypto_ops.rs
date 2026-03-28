@@ -199,3 +199,86 @@ impl TlsServer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use crate::tls::handshake_v2::keys::CipherSuite;
+
+    /// Nonce construction matches `encrypt_handshake_message` / `decrypt_application_data` (IV XOR seq).
+    fn apply_iv_xor_sequence(iv: &[u8], sequence_number: u64) -> Vec<u8> {
+        let mut nonce = iv.to_vec();
+        let seq_bytes = sequence_number.to_be_bytes();
+        if nonce.len() >= 8 {
+            for (i, &byte) in seq_bytes.iter().enumerate() {
+                let nonce_idx = nonce.len() - 8 + i;
+                nonce[nonce_idx] ^= byte;
+            }
+        }
+        nonce
+    }
+
+    /// AAD bytes match TLS 1.3 compatibility record header used for AEAD.
+    fn tls13_compat_aad(ciphertext_length: usize) -> [u8; 5] {
+        let record_type = 0x17u8;
+        let version = [0x03u8, 0x03u8];
+        [
+            record_type,
+            version[0],
+            version[1],
+            ((ciphertext_length >> 8) & 0xFF) as u8,
+            (ciphertext_length & 0xFF) as u8,
+        ]
+    }
+
+    #[test]
+    fn iv_xor_sequence_zero_leaves_iv_tail() {
+        let iv = [0u8; 12];
+        let n = apply_iv_xor_sequence(&iv, 0);
+        assert_eq!(n, iv);
+    }
+
+    #[test]
+    fn iv_xor_sequence_one_flips_last_byte_of_tail() {
+        let iv = vec![0u8; 12];
+        let n = apply_iv_xor_sequence(&iv, 1);
+        let mut expect = iv.clone();
+        expect[11] ^= 1;
+        assert_eq!(n, expect);
+    }
+
+    #[test]
+    fn iv_xor_sequence_max_u64_xors_all_eight_tail_bytes() {
+        let iv = [0xffu8; 12];
+        let n = apply_iv_xor_sequence(&iv, u64::MAX);
+        let mut expect = iv.to_vec();
+        for i in 0..8 {
+            expect[4 + i] ^= 0xff;
+        }
+        assert_eq!(n, expect);
+    }
+
+    #[test]
+    fn aad_length_field_matches_ciphertext_size() {
+        let ct_len = 42usize;
+        let aad = tls13_compat_aad(ct_len);
+        let encoded = u16::from_be_bytes([aad[3], aad[4]]) as usize;
+        assert_eq!(encoded, ct_len);
+        assert_eq!(aad[0], 0x17);
+        assert_eq!(&aad[1..3], &[0x03, 0x03]);
+    }
+
+    #[test]
+    fn cipher_suite_variants_cover_tls13_suite_ids() {
+        assert_eq!(CipherSuite::Aes128GcmSha256.to_u16(), 0x1301);
+        assert_eq!(CipherSuite::Aes256GcmSha384.to_u16(), 0x1302);
+        assert_eq!(CipherSuite::ChaCha20Poly1305Sha256.to_u16(), 0x1303);
+    }
+
+    #[test]
+    fn aad_zero_length_encodes() {
+        let aad = tls13_compat_aad(0);
+        assert_eq!(aad[3..5], [0, 0]);
+    }
+}

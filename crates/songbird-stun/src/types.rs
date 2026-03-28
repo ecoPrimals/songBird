@@ -135,3 +135,102 @@ impl std::fmt::Display for NatType {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use serde_json::{from_value, to_value};
+    use std::net::{Ipv4Addr, SocketAddr};
+
+    #[test]
+    fn public_endpoint_roundtrip_serde() {
+        let ep = PublicEndpoint {
+            address: SocketAddr::from((Ipv4Addr::LOCALHOST, 3478)),
+            nat_type: NatType::FullCone,
+        };
+        let v = to_value(&ep).unwrap();
+        let back: PublicEndpoint = from_value(v).unwrap();
+        assert_eq!(ep, back);
+    }
+
+    #[test]
+    fn nat_type_default_is_unknown() {
+        assert_eq!(NatType::default(), NatType::Unknown);
+    }
+
+    #[test]
+    fn nat_type_display() {
+        assert_eq!(NatType::None.to_string(), "None (no NAT)");
+        assert_eq!(NatType::FullCone.to_string(), "Full Cone");
+        assert_eq!(NatType::RestrictedCone.to_string(), "Restricted Cone");
+        assert_eq!(NatType::PortRestrictedCone.to_string(), "Port-Restricted Cone");
+        assert_eq!(NatType::Symmetric.to_string(), "Symmetric");
+        assert_eq!(NatType::Unknown.to_string(), "Unknown");
+    }
+
+    #[test]
+    fn port_pattern_sequential_predict_and_confidence() {
+        let p = PortPattern::Sequential {
+            step: 1,
+            last_port: 1000,
+            predicted_next: 1001,
+            confidence: 0.9,
+        };
+        assert_eq!(p.predict_next(), Some(1001));
+        assert!((p.confidence() - 0.9).abs() < f64::EPSILON);
+        assert!(p.supports_coordinated_punch());
+    }
+
+    #[test]
+    fn port_pattern_sequential_low_confidence_no_punch() {
+        let p = PortPattern::Sequential {
+            step: 2,
+            last_port: 1000,
+            predicted_next: 1002,
+            confidence: 0.4,
+        };
+        assert!(!p.supports_coordinated_punch());
+    }
+
+    #[test]
+    fn port_pattern_random_unknown_no_predict() {
+        let r = PortPattern::Random {
+            observed: vec![1, 2, 3],
+        };
+        assert_eq!(r.predict_next(), None);
+        assert_eq!(r.confidence(), 0.0);
+        assert!(!r.supports_coordinated_punch());
+
+        let u = PortPattern::Unknown;
+        assert_eq!(u.predict_next(), None);
+        assert_eq!(u.confidence(), 0.0);
+        assert!(!u.supports_coordinated_punch());
+    }
+
+    #[test]
+    fn port_pattern_serde_roundtrip_variants() {
+        let seq = PortPattern::Sequential {
+            step: 1,
+            last_port: 5000,
+            predicted_next: 5001,
+            confidence: 0.75,
+        };
+        let v = to_value(&seq).unwrap();
+        let back: PortPattern = from_value(v).unwrap();
+        assert_eq!(seq, back);
+
+        let rand = PortPattern::Random {
+            observed: vec![4000, 4001],
+        };
+        let v = to_value(&rand).unwrap();
+        let back: PortPattern = from_value(v).unwrap();
+        assert_eq!(rand, back);
+
+        let unk = PortPattern::Unknown;
+        let v = to_value(&unk).unwrap();
+        let back: PortPattern = from_value(v).unwrap();
+        assert_eq!(unk, back);
+    }
+}

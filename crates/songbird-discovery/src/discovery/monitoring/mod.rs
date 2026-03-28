@@ -2,7 +2,8 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use crate::discovery::config::MonitoringConfig;
-use crate::discovery::types::{CpuUsage, GpuUsage, MemoryUsage, NetworkUsage, ResourceUpdate, StorageUsage,
+use crate::discovery::types::{
+    CpuUsage, GpuUsage, MemoryUsage, NetworkUsage, ResourceUpdate, StorageUsage,
 };
 
 /// Resource monitoring utilities
@@ -71,7 +72,7 @@ impl ResourceMonitor {
                 for line in meminfo.lines() {
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() >= 2 {
-                        if let Ok(kb) = parts[1].parse::<u64>(), {
+                        if let Ok(kb) = parts[1].parse::<u64>() {
                             let gb = kb / 1024 / 1024;
                             match parts[0] {
                                 "MemTotal:" => total_gb = gb,
@@ -98,7 +99,8 @@ impl ResourceMonitor {
         }
 
         // Default fallback
-        MemoryUsage {total_gb: 16,
+        MemoryUsage {
+            total_gb: 16,
             used_gb: 8,
             cached_gb: 2,
             buffer_gb: 1,
@@ -119,13 +121,15 @@ impl ResourceMonitor {
     }
 
     #[must_use]
-    pub fn collect_network_usage() -> NetworkUsage {// Network monitoring is delegated to external system monitoring APIs
+    pub fn collect_network_usage() -> NetworkUsage {
+        // Network monitoring is delegated to external system monitoring APIs
         // Production implementations should integrate with:
         // - System network interfaces (/proc/net/dev on Linux,
         // - Platform-specific network APIs
         // - SNMP for network equipment monitoring
         // For now, return zero values (no network activity detected)
-        NetworkUsage {bytes_sent_per_sec: 0,
+        NetworkUsage {
+            bytes_sent_per_sec: 0,
             bytes_received_per_sec: 0,
             packets_sent_per_sec: 0,
             packets_received_per_sec: 0,
@@ -170,13 +174,15 @@ impl ResourceMonitor {
     pub async fn start_monitoring(
         node_id: String,
         config: MonitoringConfig,
-        mut shutdown_rx: tokio::sync::mpsc::Receiver<(),>,
-    )  {let mut interval = tokio::time::interval(std::time::Duration::from_secs(
-            config.resource_update_interval_secs)
-        );
+        mut shutdown_rx: tokio::sync::mpsc::Receiver<()>,
+    ) {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+            config.resource_update_interval_secs,
+        ));
 
-        loop { tokio::select! {
-                _ = interval.tick(), => {
+        loop {
+            tokio::select! {
+                _ = interval.tick() => {
                     let update = Self::collect_resource_update(&node_id, &config).await;
 
                     // Log the resource update
@@ -189,11 +195,61 @@ impl ResourceMonitor {
 
                     // In a real implementation, this would be sent to a monitoring system
                 }
-                _ = shutdown_rx.recv(), => {
+                _ = shutdown_rx.recv() => {
                     tracing::info!("Resource monitoring stopped for node: {}", node_id);
                     break;
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::discovery::config::MonitoringConfig;
+
+    #[tokio::test]
+    async fn collect_cpu_usage_returns_sane_percent() {
+        let c = ResourceMonitor::collect_cpu_usage().await;
+        assert!(c.overall_percent >= 0.0 && c.overall_percent <= 100.0);
+    }
+
+    #[tokio::test]
+    async fn collect_memory_usage_nonzero_total() {
+        let m = ResourceMonitor::collect_memory_usage().await;
+        assert!(m.total_gb > 0);
+    }
+
+    #[test]
+    fn collect_network_and_storage_usage() {
+        let n = ResourceMonitor::collect_network_usage();
+        assert_eq!(n.errors_per_sec, 0);
+        let s = ResourceMonitor::collect_storage_usage();
+        assert_eq!(s.len(), 1);
+        assert_eq!(s[0].device_name, "sda");
+    }
+
+    #[tokio::test]
+    async fn collect_resource_update_respects_gpu_flag() {
+        let mut cfg = MonitoringConfig::default();
+        cfg.gpu_monitoring_enabled = false;
+        let u = ResourceMonitor::collect_resource_update("node-1", &cfg).await;
+        assert_eq!(u.node_id, "node-1");
+        assert!(u.gpu_usage.is_empty());
+
+        cfg.gpu_monitoring_enabled = true;
+        let u2 = ResourceMonitor::collect_resource_update("node-1", &cfg).await;
+        assert_eq!(u2.gpu_usage.len(), ResourceMonitor::collect_gpu_usage().len());
+    }
+
+    #[test]
+    fn monitoring_config_default_serde() {
+        let c = MonitoringConfig::default();
+        let json = serde_json::to_string(&c).unwrap();
+        let back: MonitoringConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.resource_update_interval_secs, c.resource_update_interval_secs);
     }
 }

@@ -27,3 +27,23 @@ impl NetworkFederationBridge {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn new_and_default_construct_same() {
+        let a = NetworkFederationBridge::new();
+        let b = NetworkFederationBridge::default();
+        let _ = (a, b);
+    }
+
+    #[tokio::test]
+    async fn initialize_succeeds() {
+        let mut b = NetworkFederationBridge::new();
+        b.initialize().await.unwrap();
+    }
+}

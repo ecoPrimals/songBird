@@ -456,8 +456,30 @@ impl Default for TorHandler {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn tor_handler_default_matches_new() {
+        let _ = TorHandler::default();
+    }
+
+    #[tokio::test]
+    async fn handle_status_includes_expected_keys() {
+        let handler = TorHandler::new();
+        let status = handler.handle_status(json!({})).await.unwrap();
+        assert_eq!(status["comment"], "Pure Rust Tor protocol (TRUE PRIMAL architecture)");
+        assert!(status.get("beardog_available").is_some());
+    }
+
+    #[tokio::test]
+    async fn circuit_close_missing_circuit_id_errors() {
+        let handler = TorHandler::new();
+        let err = handler.handle_circuit_close(json!({})).await.expect_err("missing id");
+        assert!(err.contains("circuit_id"));
+    }
 
     #[tokio::test]
     async fn test_tor_handler_new() {
@@ -513,10 +535,11 @@ mod tests {
     #[tokio::test]
     async fn test_tor_circuit_build_invalid_purpose() {
         let handler = TorHandler::new();
-        // Even with no manager, invalid purpose should error first
-        // But actually the manager check happens first, so test that
-        let result = handler.handle_circuit_build(json!({"purpose": "invalid"})).await;
-        assert!(result.is_err());
+        let err = handler
+            .handle_circuit_build(json!({ "purpose": "invalid" }))
+            .await
+            .expect_err("unknown purpose");
+        assert!(err.contains("Unknown circuit purpose"));
     }
 
     #[tokio::test]
@@ -529,14 +552,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_set_beardog_socket() {
+    async fn test_set_beardog_socket_reflected_in_status_path() {
         let handler = TorHandler::new();
         handler.set_beardog_socket("/tmp/test-beardog.sock".to_string()).await;
-
-        let beardog = {
-            let state = handler.state.read().await;
-            state.beardog_socket.clone()
-        };
-        assert_eq!(beardog, Some("/tmp/test-beardog.sock".to_string()));
+        let status = handler.handle_status(json!({})).await.unwrap();
+        assert_eq!(status["beardog_available"], true);
     }
 }

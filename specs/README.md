@@ -5,6 +5,8 @@
 **Scope**: Production-Grade Universal Orchestration with Unified Architecture  
 **Achievement Level**: **🚀 COMPREHENSIVE ARCHITECTURAL CONSOLIDATION COMPLETE**
 
+**Workspace (2026):** The Songbird repo is a **30-member-crate** workspace (see root `Cargo.toml`). There is no `songbird-core` package; orchestration and related behavior live in crates such as `songbird-orchestrator`, `songbird-network-federation`, `songbird-types`, and `songbird-config`. References below to `songbird-core`, `songbird-network`, `songbird-errors`, and `songbird-security` reflect the **September 2025** layout and are **historical** unless a path still exists—prefer current crate names when integrating.
+
 ---
 
 ## 🎉 **MAJOR ACHIEVEMENT: PROVIDER TRAIT UNIFICATION COMPLETE**

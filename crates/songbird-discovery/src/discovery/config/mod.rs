@@ -190,3 +190,68 @@ impl Default for SongbirdDiscoveryConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn songbird_discovery_config_default_roundtrip_json() {
+        let c = SongbirdDiscoveryConfig::default();
+        assert_eq!(c.node_type, NodeType::Orchestrator);
+        assert_eq!(c.max_federation_nodes, 1000);
+        let json = serde_json::to_string(&c).unwrap();
+        let back: SongbirdDiscoveryConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(c.node_type, back.node_type);
+        assert_eq!(c.network.multicast_address, back.network.multicast_address);
+    }
+
+    #[test]
+    fn network_config_default_values() {
+        let n = NetworkConfig::default();
+        assert_eq!(n.multicast_address, "224.0.0.251");
+        assert_eq!(n.federation_port, 8765);
+        assert_eq!(n.max_packet_size, 65536);
+    }
+
+    #[test]
+    fn monitoring_config_default_values() {
+        let m = MonitoringConfig::default();
+        assert!(m.process_scan_enabled);
+        assert_eq!(m.resource_update_interval_secs, 15);
+    }
+
+    #[test]
+    fn trust_config_and_thresholds_defaults() {
+        let t = TrustConfig::default();
+        assert_eq!(t.institutional_base_score, 40);
+        let th = TrustThresholds::default();
+        assert_eq!(th.consortium, 80);
+        let p = InteractionPenalties::default();
+        assert!(p.malicious_penalty < 0.0);
+    }
+
+    #[test]
+    fn network_timing_config_default_serde() {
+        let c = NetworkTimingConfig::default();
+        assert_eq!(c.partition_detection_timeout_secs, 300);
+        let json = serde_json::to_string(&c).unwrap();
+        let back: NetworkTimingConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(c.same_subnet_latency_ms, back.same_subnet_latency_ms);
+    }
+
+    #[test]
+    fn custom_config_serializes_institution_and_node_type() {
+        let mut c = SongbirdDiscoveryConfig::default();
+        c.node_id = Some("nid".to_string());
+        c.institution = Some("inst".to_string());
+        c.node_type = NodeType::Gateway;
+        c.federation_enabled = true;
+        let json = serde_json::to_string(&c).unwrap();
+        let back: SongbirdDiscoveryConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.node_id.as_deref(), Some("nid"));
+        assert_eq!(back.node_type, NodeType::Gateway);
+    }
+}

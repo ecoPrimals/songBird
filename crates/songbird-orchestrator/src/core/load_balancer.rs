@@ -96,6 +96,8 @@ impl LoadBalancer {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use songbird_types::SongbirdError;
 
@@ -191,10 +193,12 @@ mod tests {
             LoadBalancingStrategy::RoundRobin,
             LoadBalancingStrategy::LeastConnections,
             LoadBalancingStrategy::WeightedRoundRobin,
+            LoadBalancingStrategy::Random,
             LoadBalancingStrategy::IpHash,
+            LoadBalancingStrategy::CapabilityBased,
         ];
 
-        assert_eq!(strategies.len(), 4);
+        assert_eq!(strategies.len(), 6);
     }
 
     #[test]
@@ -233,6 +237,44 @@ mod tests {
 
         assert_eq!(strategy, deserialized);
         Ok(())
+    }
+
+    #[test]
+    fn weighted_round_robin_strategy_serde_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
+        let s = LoadBalancingStrategy::WeightedRoundRobin;
+        let json = serde_json::to_string(&s)?;
+        let back: LoadBalancingStrategy = serde_json::from_str(&json)?;
+        assert_eq!(back, LoadBalancingStrategy::WeightedRoundRobin);
+        Ok(())
+    }
+
+    #[test]
+    fn round_robin_config_selects_round_robin_algorithm() {
+        let config = CanonicalLoadBalancerConfig {
+            algorithm: LoadBalancingAlgorithm::RoundRobin,
+            sticky_sessions: true,
+            session_timeout_secs: 120,
+            max_connections_per_backend: 50,
+            connection_timeout_ms: 10_000,
+            fail_fast: true,
+        };
+        let lb = LoadBalancer::new(config);
+        let dbg = format!("{lb:?}");
+        assert!(dbg.contains("RoundRobin"), "{dbg}");
+    }
+
+    #[test]
+    fn weighted_config_debug_contains_weighted() {
+        let config = CanonicalLoadBalancerConfig {
+            algorithm: LoadBalancingAlgorithm::WeightedRoundRobin,
+            sticky_sessions: false,
+            session_timeout_secs: 300,
+            max_connections_per_backend: 100,
+            connection_timeout_ms: 60000,
+            fail_fast: false,
+        };
+        let lb = LoadBalancer::new(config);
+        assert!(format!("{lb:?}").contains("WeightedRoundRobin"));
     }
 
     #[test]

@@ -44,3 +44,56 @@ pub enum StunError {
     #[error("All STUN servers failed: {0}")]
     AllServersFailed(String),
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::StunError;
+    use std::io;
+
+    #[test]
+    fn io_error_from_displays() {
+        let e: StunError = io::Error::new(io::ErrorKind::NotFound, "missing").into();
+        assert!(e.to_string().contains("IO error"));
+        assert!(e.to_string().contains("missing"));
+    }
+
+    #[test]
+    fn addr_parse_from_displays() {
+        let inner: std::net::AddrParseError = "not-an-ip".parse::<std::net::IpAddr>().unwrap_err();
+        let e: StunError = inner.into();
+        assert!(e.to_string().contains("Address parse"));
+    }
+
+    #[test]
+    fn timeout_displays() {
+        let e = StunError::Timeout(std::time::Duration::from_secs(5));
+        assert!(e.to_string().contains("timeout"));
+        assert!(e.to_string().contains("5s") || e.to_string().contains("5"));
+    }
+
+    #[test]
+    fn invalid_response_displays() {
+        let e = StunError::InvalidResponse("bad".to_string());
+        assert!(e.to_string().contains("Invalid STUN response"));
+        assert!(e.to_string().contains("bad"));
+    }
+
+    #[test]
+    fn server_error_displays() {
+        let e = StunError::ServerError("code 500".to_string());
+        assert!(e.to_string().contains("STUN server error"));
+    }
+
+    #[test]
+    fn config_network_all_servers_displays() {
+        assert!(StunError::Config("x".into()).to_string().contains("Configuration"));
+        assert!(StunError::Network("n".into()).to_string().contains("Network"));
+        assert!(
+            StunError::AllServersFailed("all".into())
+                .to_string()
+                .contains("All STUN servers failed")
+        );
+    }
+}

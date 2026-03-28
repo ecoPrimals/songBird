@@ -35,11 +35,6 @@ exclude = [
     "examples/*",
     # Exclude benchmark code
     "benches/*",
-    # Exclude migration tools (these are utilities, not core functionality)
-    "tools/*",
-    "songbird-unwrap-migrator/*",
-    # Exclude handoff directory (temporary)
-    "handoffToPrimals/*"
 ]
 
 # Per-file exclusions (only list files that exist and have known issues)

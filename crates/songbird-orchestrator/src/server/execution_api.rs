@@ -14,6 +14,7 @@ use axum::{
     routing::post,
 };
 use serde::{Deserialize, Serialize};
+use songbird_types::SongbirdResult;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -30,10 +31,8 @@ impl ExecutionApiState {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub async fn new() -> Result<Self, String> {
-        let manager = ExecutionManager::new()
-            .await
-            .map_err(|e| format!("Failed to create ExecutionManager: {e}"))?;
+    pub async fn new() -> SongbirdResult<Self> {
+        let manager = ExecutionManager::new().await?;
 
         Ok(Self {
             manager: Arc::new(RwLock::new(manager)),
@@ -143,11 +142,105 @@ impl IntoResponse for ApiError {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
+    use crate::core::execution::client::{ExecutionRequest, ExecutionStatus};
+    use axum::response::IntoResponse;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::time::SystemTime;
+
+    fn sample_request() -> ExecutionRequest {
+        ExecutionRequest {
+            id: Some("job-1".to_string()),
+            command: "echo hi".to_string(),
+            working_dir: Some(PathBuf::from("/tmp")),
+            env: HashMap::from([("PATH".to_string(), "/usr/bin".to_string())]),
+            background: false,
+            timeout_seconds: Some(60),
+            capture_output: true,
+        }
+    }
 
     #[test]
-    fn test_execution_api_state_creation() {
-        let state = ExecutionApiState::new();
-        assert!(true); // Just verify construction
+    fn single_tower_request_serde_roundtrip() {
+        let req = SingleTowerRequest {
+            tower_endpoint: "https://tower.example/api".to_string(),
+            request: sample_request(),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let back: SingleTowerRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.tower_endpoint, req.tower_endpoint);
+        assert_eq!(back.request.command, req.request.command);
+    }
+
+    #[test]
+    fn broadcast_request_optional_fields_default_in_handler_logic() {
+        let req = BroadcastRequest {
+            tower_ids: vec!["a".to_string()],
+            request: sample_request(),
+            fail_fast: None,
+            min_success_rate: None,
+            wait_for_completion: None,
+        };
+        let fail_fast = req.fail_fast.unwrap_or(false);
+        let min_sr = req.min_success_rate.unwrap_or(1.0);
+        let wait = req.wait_for_completion.unwrap_or(true);
+        assert!(!fail_fast);
+        assert!((min_sr - 1.0).abs() < f64::EPSILON);
+        assert!(wait);
+    }
+
+    #[test]
+    fn broadcast_request_explicit_options_roundtrip() {
+        let req = BroadcastRequest {
+            tower_ids: vec!["t1".to_string(), "t2".to_string()],
+            request: sample_request(),
+            fail_fast: Some(true),
+            min_success_rate: Some(0.5),
+            wait_for_completion: Some(false),
+        };
+        let j = serde_json::to_string(&req).unwrap();
+        let back: BroadcastRequest = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.fail_fast, Some(true));
+        assert!((back.min_success_rate.unwrap() - 0.5).abs() < f64::EPSILON);
+        assert_eq!(back.wait_for_completion, Some(false));
+    }
+
+    #[test]
+    fn api_error_display() {
+        let e = ApiError::Execution("boom".to_string());
+        assert!(format!("{e}").contains("boom"));
+        let i = ApiError::InvalidRequest("bad".to_string());
+        assert!(format!("{i}").contains("bad"));
+    }
+
+    #[test]
+    fn api_error_into_response_status() {
+        use axum::http::StatusCode;
+
+        let r = ApiError::Execution("e".to_string()).into_response();
+        assert_eq!(r.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let r2 = ApiError::InvalidRequest("i".to_string()).into_response();
+        assert_eq!(r2.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn execution_response_serde_shape() {
+        let resp = ExecutionResponse {
+            job_id: "j1".to_string(),
+            status: ExecutionStatus::Completed,
+            pid: Some(7),
+            exit_code: Some(0),
+            stdout: "out".to_string(),
+            stderr: String::new(),
+            started_at: SystemTime::UNIX_EPOCH,
+            completed_at: Some(SystemTime::UNIX_EPOCH),
+            duration_ms: Some(10),
+        };
+        let j = serde_json::to_string(&resp).unwrap();
+        assert!(j.contains("j1"));
+        assert!(j.contains("completed"));
     }
 }

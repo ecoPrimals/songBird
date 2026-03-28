@@ -14,6 +14,7 @@
 use crate::task_lifecycle::{TaskId, TaskStatus, UserId};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, broadcast};
@@ -215,7 +216,7 @@ impl EventStreamManager {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub async fn emit(&self, event: TaskEvent) -> Result<(), String> {
+    pub async fn emit(&self, event: TaskEvent) -> SongbirdResult<()> {
         debug!("Emitting event: {:?} for task {}", event.event_type, event.task_id);
 
         // Broadcast to subscribers

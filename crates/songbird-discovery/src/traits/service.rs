@@ -331,3 +331,157 @@ impl ServiceResponse {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[test]
+    fn service_request_new_sets_method_path_and_timeout() {
+        let req = ServiceRequest::new("GET", "/health");
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.path, "/health");
+        assert_eq!(req.timeout, Some(Duration::from_secs(30)));
+        assert!(!req.id.is_empty());
+    }
+
+    #[test]
+    fn service_request_builder_chain() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9_000);
+        let req = ServiceRequest::new("POST", "/api")
+            .with_header("X-Test", "1")
+            .with_query_param("q", "x")
+            .with_body(serde_json::json!({"a": 1}))
+            .with_client_info(ClientInfo {
+                ip: Some(addr),
+                user_agent: Some("ua".to_string()),
+                client_id: None,
+                session_id: None,
+                request_count: None,
+            })
+            .with_auth_info(AuthInfo {
+                user_id: Some("u".to_string()),
+                roles: vec!["r".to_string()],
+                permissions: vec![],
+                token_type: None,
+                expires_at: None,
+                scopes: vec![],
+            });
+        assert_eq!(req.headers.get("X-Test"), Some(&"1".to_string()));
+        assert_eq!(req.query_params.get("q"), Some(&"x".to_string()));
+        assert_eq!(req.body, Some(serde_json::json!({"a": 1})));
+        assert!(req.client_info.is_some());
+        assert!(req.auth_info.is_some());
+    }
+
+    #[test]
+    fn service_response_success_and_error() {
+        let ok = ServiceResponse::success("rid-1");
+        assert_eq!(ok.status, ResponseStatus::Success);
+        assert!(ok.error_message.is_none());
+
+        let err = ServiceResponse::error("rid-2", "boom");
+        assert_eq!(err.status, ResponseStatus::Error);
+        assert_eq!(err.error_message.as_deref(), Some("boom"));
+    }
+
+    #[test]
+    fn service_response_with_header_body_processing_time() {
+        let r = ServiceResponse::success("r")
+            .with_header("H", "v")
+            .with_body(serde_json::json!([]))
+            .with_processing_time(Duration::from_millis(42));
+        assert_eq!(r.headers.get("H"), Some(&"v".to_string()));
+        assert_eq!(r.processing_time, Duration::from_millis(42));
+    }
+
+    #[test]
+    fn response_status_and_service_status_serde_roundtrip() {
+        let rs = ResponseStatus::Unauthorized;
+        let json = serde_json::to_string(&rs).unwrap();
+        let back: ResponseStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(rs, back);
+
+        let ss = ServiceStatus::Maintenance;
+        let json = serde_json::to_string(&ss).unwrap();
+        let back: ServiceStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(ss, back);
+    }
+
+    #[test]
+    fn health_status_serde_roundtrip() {
+        let h = HealthStatus::Degraded;
+        let json = serde_json::to_string(&h).unwrap();
+        let back: HealthStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(h, back);
+    }
+
+    #[test]
+    fn parameter_type_and_rate_limit_serde_roundtrip() {
+        let pt = ParameterType::DateTime;
+        let json = serde_json::to_string(&pt).unwrap();
+        let back: ParameterType = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+
+        let rl = RateLimit {
+            requests_per_minute: 60,
+            burst_size: Some(10),
+            window_size: Duration::from_secs(60),
+        };
+        let json = serde_json::to_string(&rl).unwrap();
+        let back: RateLimit = serde_json::from_str(&json).unwrap();
+        assert_eq!(rl.requests_per_minute, back.requests_per_minute);
+    }
+
+    #[test]
+    fn service_metrics_serde_roundtrip() {
+        let m = ServiceMetrics {
+            request_count: 1,
+            error_count: 0,
+            average_response_time: 0.1,
+            uptime: Duration::from_secs(1),
+            memory_usage: Some(100),
+            cpu_usage: Some(0.5),
+            active_connections: 2,
+            custom_metrics: HashMap::new(),
+            queue_depth: 0,
+            throughput_rps: 10.0,
+            error_rate: 0.0,
+            uptime_seconds: 1,
+            last_updated: chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+        };
+        let json = serde_json::to_string(&m).unwrap();
+        let back: ServiceMetrics = serde_json::from_str(&json).unwrap();
+        assert_eq!(m.request_count, back.request_count);
+        assert_eq!(m.throughput_rps, back.throughput_rps);
+    }
+
+    #[test]
+    fn service_endpoint_serde_roundtrip() {
+        let ep = ServiceEndpoint {
+            path: "/x".to_string(),
+            method: "GET".to_string(),
+            description: None,
+            parameters: vec![EndpointParameter {
+                name: "id".to_string(),
+                param_type: ParameterType::String,
+                required: true,
+                description: None,
+                default_value: None,
+                validation: None,
+            }],
+            response_schema: None,
+            auth_required: false,
+            rate_limit: None,
+        };
+        let json = serde_json::to_string(&ep).unwrap();
+        let back: ServiceEndpoint = serde_json::from_str(&json).unwrap();
+        assert_eq!(ep.path, back.path);
+        assert_eq!(ep.parameters.len(), back.parameters.len());
+    }
+}

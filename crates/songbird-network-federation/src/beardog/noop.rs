@@ -169,3 +169,115 @@ impl BearDogProvider for NoOpBearDogProvider {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::NoOpBearDogProvider;
+    use crate::beardog::{
+        AccessLevel, BearDogProvider, BirdSongCrypto, EncryptedBirdSong, LineageChain, LineageHint,
+        LineageProof, LineageProvider, LineageRelay, RelaySession,
+    };
+
+    #[test]
+    fn default_same_as_new() {
+        let a = NoOpBearDogProvider::default();
+        let b = NoOpBearDogProvider::new();
+        let _ = (a, b);
+    }
+
+    #[tokio::test]
+    async fn lineage_methods_return_bear_dog_unavailable() {
+        let p = NoOpBearDogProvider::new();
+        assert!(LineageProvider::generate_lineage(&p, "n", "p").await.is_err());
+        let proof = LineageProof {
+            chain: LineageChain {
+                root_id: "r".to_string(),
+                node_id: "n".to_string(),
+                links: vec![],
+                depth: 0,
+            },
+            claimer_signature: vec![],
+        };
+        assert!(LineageProvider::verify_lineage(&p, &proof).await.is_err());
+        assert!(LineageProvider::get_descendants(&p, "r").await.is_err());
+        assert!(LineageProvider::get_lineage_depth(&p, "a", "b").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn birdsong_crypto_methods_return_bear_dog_unavailable() {
+        let p = NoOpBearDogProvider::new();
+        assert!(
+            BirdSongCrypto::encrypt_for_lineage(&p, b"hi", LineageHint::Universal).await.is_err()
+        );
+        let enc = EncryptedBirdSong {
+            version: 1,
+            ciphertext: vec![],
+            lineage_hint: LineageHint::Universal,
+            timestamp: chrono::Utc::now(),
+            signature: vec![],
+            genesis_witness: None,
+        };
+        assert!(BirdSongCrypto::decrypt_birdsong(&p, &enc).await.is_err());
+        let proof = LineageProof {
+            chain: LineageChain {
+                root_id: "r".into(),
+                node_id: "n".into(),
+                links: vec![],
+                depth: 0,
+            },
+            claimer_signature: vec![],
+        };
+        assert!(BirdSongCrypto::request_key(&p, &LineageHint::Universal, proof).await.is_err());
+        assert!(BirdSongCrypto::request_keys_batch(&p, vec![]).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn relay_errors_except_visibility_mapping() {
+        let p = NoOpBearDogProvider::new();
+        let proof = LineageProof {
+            chain: LineageChain {
+                root_id: "r".into(),
+                node_id: "n".into(),
+                links: vec![],
+                depth: 0,
+            },
+            claimer_signature: vec![],
+        };
+        assert!(LineageRelay::offer_relay(&p, "a", "b", proof).await.is_err());
+        assert!(
+            LineageRelay::relay_packet(
+                &p,
+                &RelaySession {
+                    session_id: "s".into(),
+                    requester_id: "a".into(),
+                    target_id: "b".into(),
+                    relay_id: "c".into(),
+                    access_level: AccessLevel::Transport,
+                    created_at: chrono::Utc::now(),
+                    expires_at: chrono::Utc::now(),
+                },
+                b"x"
+            )
+            .await
+            .is_err()
+        );
+        assert!(LineageRelay::revoke_relay(&p, "s").await.is_err());
+    }
+
+    #[test]
+    fn get_visibility_level_maps_depth() {
+        let p = NoOpBearDogProvider::new();
+        assert_eq!(LineageRelay::get_visibility_level(&p, 0), AccessLevel::FullLineage);
+        assert_eq!(LineageRelay::get_visibility_level(&p, 5), AccessLevel::Masked);
+    }
+
+    #[tokio::test]
+    async fn beardog_provider_metadata() {
+        let p = NoOpBearDogProvider::new();
+        assert!(!BearDogProvider::is_available(&p).await);
+        assert_eq!(BearDogProvider::version(&p), "0.0.0-noop");
+        BearDogProvider::shutdown(&p).await.unwrap();
+    }
+}

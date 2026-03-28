@@ -584,13 +584,49 @@ impl Default for PunchHandler {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use serde_json::json;
 
     #[tokio::test]
-    async fn test_punch_handler_new() {
+    async fn punch_handler_default_matches_new_behavior() {
+        let a = PunchHandler::new();
+        let b = PunchHandler::default();
+        let ra = a.handle_request(json!({ "target_node_id": "node-a" })).await.unwrap();
+        let rb = b.handle_request(json!({ "target_node_id": "node-b" })).await.unwrap();
+        assert_eq!(ra["reason"], rb["reason"]);
+    }
+
+    #[tokio::test]
+    async fn handle_request_missing_target_errors() {
         let handler = PunchHandler::new();
-        assert_eq!(handler.default_max_attempts, 20);
+        let err = handler.handle_request(json!({})).await.expect_err("target");
+        assert!(err.contains("target_node_id"));
+    }
+
+    #[tokio::test]
+    async fn handle_status_missing_target_errors() {
+        let handler = PunchHandler::new();
+        let err = handler.handle_status(json!({})).await.expect_err("target");
+        assert!(err.contains("target_node_id"));
+    }
+
+    #[tokio::test]
+    async fn handle_coordinate_missing_fields_errors_or_relay() {
+        let handler = PunchHandler::new();
+        let err = handler
+            .handle_coordinate(json!({ "target_node_id": "peer-1" }))
+            .await
+            .expect_err("peer_predicted_port");
+        assert!(err.contains("peer_predicted_port"));
+    }
+
+    #[tokio::test]
+    async fn test_punch_handler_new_uses_default_max_attempts_in_request() {
+        let handler = PunchHandler::new();
+        let r = handler.handle_request(json!({ "target_node_id": "z" })).await.unwrap();
+        assert_eq!(r["reason"], "hole_punch_coordinator_not_initialized");
     }
 
     #[tokio::test]

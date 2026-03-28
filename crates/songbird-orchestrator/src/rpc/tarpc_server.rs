@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_universal::tarpc_types::{
@@ -408,7 +409,7 @@ impl SongbirdRpc for TarpcServer {
 pub async fn start_tarpc_server_simple(
     service_registry: Arc<FederatedServiceRegistry>,
     addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     use futures::StreamExt;
 
     info!("🚀 Starting tarpc server (simplified, zero unsafe) on {}", addr);
@@ -472,7 +473,7 @@ pub async fn start_tarpc_server(
     orchestrator: Arc<SongbirdOrchestrator>,
     service_registry: Arc<FederatedServiceRegistry>,
     addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     use futures::StreamExt;
 
     info!("🚀 Starting tarpc server on {}", addr);

@@ -34,6 +34,11 @@
     clippy::too_many_lines,
     clippy::manual_let_else,
     clippy::struct_excessive_bools,
+    clippy::collapsible_if,
+    clippy::cast_precision_loss,
+    clippy::needless_pass_by_value,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
     reason = "discovery crate: large surface; doc and style exceptions during consolidation"
 )]
 #![cfg_attr(

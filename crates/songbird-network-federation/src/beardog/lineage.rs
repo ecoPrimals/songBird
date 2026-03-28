@@ -197,3 +197,100 @@ impl LineageChain {
         self.links.iter().any(|link| link.parent_id == ancestor_id)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use chrono::Utc;
+
+    fn sample_link(parent_id: &str, child_id: &str) -> LineageLink {
+        LineageLink {
+            parent_id: parent_id.to_string(),
+            child_id: child_id.to_string(),
+            signature: vec![],
+            created_at: Utc::now(),
+        }
+    }
+
+    #[tokio::test]
+    async fn verify_integrity_rejects_depth_mismatch() {
+        let chain = LineageChain {
+            root_id: "a".into(),
+            node_id: "b".into(),
+            links: vec![sample_link("a", "b")],
+            depth: 2,
+        };
+        assert!(!chain.verify_integrity().await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn verify_integrity_rejects_broken_continuity() {
+        let chain = LineageChain {
+            root_id: "a".into(),
+            node_id: "c".into(),
+            links: vec![sample_link("a", "b"), sample_link("x", "c")],
+            depth: 2,
+        };
+        assert!(!chain.verify_integrity().await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn verify_integrity_accepts_root_only_chain() {
+        let chain = LineageChain {
+            root_id: "a".into(),
+            node_id: "a".into(),
+            links: vec![],
+            depth: 0,
+        };
+        assert!(chain.verify_integrity().await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn verify_integrity_rejects_final_node_mismatch() {
+        let chain = LineageChain {
+            root_id: "a".into(),
+            node_id: "wrong".into(),
+            links: vec![sample_link("a", "b")],
+            depth: 1,
+        };
+        assert!(!chain.verify_integrity().await.unwrap());
+    }
+
+    #[test]
+    fn is_descendant_of_detects_root_and_intermediate() {
+        let chain = LineageChain {
+            root_id: "root".into(),
+            node_id: "leaf".into(),
+            links: vec![sample_link("root", "mid"), sample_link("mid", "leaf")],
+            depth: 2,
+        };
+        assert!(chain.is_descendant_of("root"));
+        assert!(chain.is_descendant_of("mid"));
+        assert!(!chain.is_descendant_of("leaf"));
+        assert!(!chain.is_descendant_of("other"));
+    }
+
+    #[test]
+    fn lineage_chain_link_and_proof_serde_roundtrip() {
+        let chain = LineageChain {
+            root_id: "r".into(),
+            node_id: "n".into(),
+            links: vec![sample_link("r", "n")],
+            depth: 1,
+        };
+        let json = serde_json::to_string(&chain).unwrap();
+        let back: LineageChain = serde_json::from_str(&json).unwrap();
+        assert_eq!(chain.root_id, back.root_id);
+        assert_eq!(chain.links.len(), back.links.len());
+
+        let proof = LineageProof {
+            chain: chain.clone(),
+            claimer_signature: vec![1, 2, 3],
+        };
+        let json = serde_json::to_string(&proof).unwrap();
+        let back: LineageProof = serde_json::from_str(&json).unwrap();
+        assert_eq!(proof.claimer_signature, back.claimer_signature);
+    }
+}

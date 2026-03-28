@@ -611,4 +611,82 @@ mod tests {
         assert_eq!(n, 1);
         assert_eq!(state.nodes.read().await.len(), 0);
     }
+
+    #[tokio::test]
+    async fn federation_state_default_creates_empty() {
+        let state = FederationState::default();
+        assert_eq!(state.nodes.read().await.len(), 0);
+    }
+
+    #[test]
+    fn node_status_display() {
+        assert_eq!(NodeStatus::Active.to_string(), "active");
+        assert_eq!(NodeStatus::Inactive.to_string(), "inactive");
+    }
+
+    #[tokio::test]
+    async fn get_stats_aggregates_resources() {
+        let state = FederationState::new("fed".into());
+        let mut r = make_registration("n1", "https://a:1");
+        r.cpu_cores = 4;
+        r.memory_gb = 8;
+        r.storage_gb = Some(100);
+        state.register_node(r).await;
+        let stats = state.get_stats().await;
+        assert_eq!(stats.total_nodes, 1);
+        assert_eq!(stats.active_nodes, 1);
+        assert_eq!(stats.total_cpu_cores, 4);
+        assert_eq!(stats.total_memory_gb, 8);
+        assert_eq!(stats.total_storage_gb, 100);
+    }
+
+    #[tokio::test]
+    async fn get_best_endpoint_prefers_https_wrapped_preferred() {
+        let state = FederationState::new("test".into());
+        let mut r = make_registration("node-x", "https://primary:443");
+        r.endpoints = Some(vec![TransportEndpointInfo {
+            interface_type: "eth".into(),
+            address: "10.0.0.5:8443".into(),
+            protocols: vec!["https".into()],
+            preference: 200,
+            status: EndpointStatus::Active,
+            last_check: Utc::now(),
+        }]);
+        state.register_node(r).await;
+        let best = state.get_best_endpoint("node-x").await.unwrap();
+        assert!(best.contains("10.0.0.5:8443"));
+    }
+
+    #[tokio::test]
+    async fn get_all_endpoints_includes_primary() {
+        let state = FederationState::new("test".into());
+        let mut r = make_registration("n", "https://only:1");
+        r.endpoints = Some(vec![TransportEndpointInfo {
+            interface_type: "eth".into(),
+            address: "192.168.1.1:1".into(),
+            protocols: vec![],
+            preference: 10,
+            status: EndpointStatus::Active,
+            last_check: Utc::now(),
+        }]);
+        state.register_node(r).await;
+        let eps = state.get_all_endpoints("n").await;
+        assert!(eps.iter().any(|e| e.contains("192.168.1.1")));
+    }
+
+    #[test]
+    fn federation_status_serde_roundtrip() {
+        let s = FederationStatus {
+            federation_id: "fid".into(),
+            active_nodes: 1,
+            nodes: vec![],
+            total_cpu_cores: 2,
+            total_memory_gb: 4,
+            total_storage_gb: 8,
+            uptime_seconds: 60,
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        let back: FederationStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.active_nodes, 1);
+    }
 }

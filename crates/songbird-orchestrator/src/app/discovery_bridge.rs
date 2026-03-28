@@ -617,3 +617,34 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    /// Mirrors same-family tag matching used when evaluating discovered peers (colon + legacy forms).
+    fn tag_indicates_same_family(my_family: &str, tag: &str) -> bool {
+        tag.contains(&format!(":family:{my_family}:"))
+            || tag.contains(&format!("family_{my_family}"))
+    }
+
+    #[test]
+    fn family_tag_colon_form_matches() {
+        assert!(tag_indicates_same_family("nat0", "beardog:family:nat0:node-aaaaaaaa"));
+    }
+
+    #[test]
+    fn family_tag_legacy_underscore_form_matches() {
+        assert!(tag_indicates_same_family("nat0", "prefix_family_nat0_suffix"));
+    }
+
+    #[test]
+    fn family_tag_other_family_does_not_match() {
+        assert!(!tag_indicates_same_family("nat0", "beardog:family:other:node-1"));
+    }
+
+    #[test]
+    fn empty_tag_never_matches() {
+        assert!(!tag_indicates_same_family("x", ""));
+    }
+}

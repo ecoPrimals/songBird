@@ -76,6 +76,8 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use songbird_types::{SongbirdError, SongbirdResult};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -150,15 +152,15 @@ impl CircuitBreakerConfig {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> SongbirdResult<()> {
         if self.failure_threshold == 0 {
-            return Err("failure_threshold must be greater than 0".to_string());
+            return Err(SongbirdError::configuration("failure_threshold must be greater than 0"));
         }
         if self.success_threshold == 0 {
-            return Err("success_threshold must be greater than 0".to_string());
+            return Err(SongbirdError::configuration("success_threshold must be greater than 0"));
         }
         if self.timeout.is_zero() {
-            return Err("timeout cannot be zero".to_string());
+            return Err(SongbirdError::configuration("timeout cannot be zero"));
         }
         Ok(())
     }
@@ -222,7 +224,7 @@ impl CircuitBreaker {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub fn new(config: CircuitBreakerConfig) -> Result<Self, String> {
+    pub fn new(config: CircuitBreakerConfig) -> SongbirdResult<Self> {
         config.validate()?;
 
         Ok(Self {
@@ -461,7 +463,7 @@ impl CircuitBreakerBuilder {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub fn build(self) -> Result<CircuitBreaker, String> {
+    pub fn build(self) -> SongbirdResult<CircuitBreaker> {
         let config = self.config.build();
         CircuitBreaker::new(config)
     }

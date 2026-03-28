@@ -15,6 +15,15 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, error, info};
 
+fn onion_data_dir() -> String {
+    songbird_process_env::var("SONGBIRD_ONION_DATA_DIR").unwrap_or_else(|_| {
+        dirs::data_local_dir().map_or_else(
+            || "./data/sovereign-onion".to_string(),
+            |d| d.join("songbird").join("sovereign-onion").to_string_lossy().into_owned(),
+        )
+    })
+}
+
 /// Onion service (creates reachable .onion address)
 ///
 /// **Status**: Phase 3 - Complete implementation with `BearDog` delegation
@@ -34,7 +43,7 @@ impl OnionService {
     ///
     /// Returns an error if storage open, identity load/generate, or persistence fails.
     pub async fn new_via_beardog(port: u16, beardog: BeardogCryptoClient) -> Result<Self> {
-        let storage = OnionStorage::open("./data/sovereign-onion")?;
+        let storage = OnionStorage::open(onion_data_dir())?;
 
         // Load or generate identity via BearDog
         let identity = if let Some(stored) = storage.load_identity()? {
@@ -70,7 +79,7 @@ impl OnionService {
     /// Returns an error if storage open or identity load/generate fails.
     #[cfg(feature = "standalone")]
     pub fn new_standalone(port: u16) -> Result<Self> {
-        let storage = OnionStorage::open("./data/sovereign-onion")?;
+        let storage = OnionStorage::open(onion_data_dir())?;
         let identity = storage.load_or_generate_identity()?;
 
         info!(
@@ -223,10 +232,12 @@ impl OnionService {
                     let mut header = [0u8; 12];
                     stream.read_exact(&mut header).await?;
 
-                    let msg_sequence =
-                        u64::from_be_bytes(header[0..8].try_into().expect("known size"));
+                    let msg_sequence = u64::from_be_bytes([
+                        header[0], header[1], header[2], header[3], header[4], header[5],
+                        header[6], header[7],
+                    ]);
                     let payload_len =
-                        u32::from_be_bytes(header[8..12].try_into().expect("known size")) as usize;
+                        u32::from_be_bytes([header[8], header[9], header[10], header[11]]) as usize;
 
                     // Read encrypted payload
                     let mut encrypted = vec![0u8; payload_len];
@@ -271,5 +282,20 @@ impl OnionService {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    #[test]
+    fn onion_data_dir_returns_non_empty_path() {
+        let dir = super::onion_data_dir();
+        assert!(!dir.is_empty());
+        assert!(
+            dir.contains("sovereign-onion") || dir.ends_with("sovereign-onion"),
+            "expected default or env-based path segment: {dir:?}"
+        );
     }
 }

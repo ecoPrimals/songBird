@@ -59,3 +59,33 @@ pub enum Error {
     #[error("Not found: {0}")]
     NotFound(String),
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::Error;
+    use std::io;
+
+    #[test]
+    fn io_from_displays() {
+        let e: Error = io::Error::new(io::ErrorKind::PermissionDenied, "denied").into();
+        assert!(e.to_string().contains("I/O error"));
+        assert!(e.to_string().contains("denied"));
+    }
+
+    #[test]
+    fn string_variants_display() {
+        assert!(Error::Http("h".into()).to_string().contains("HTTP"));
+        assert!(Error::Network("n".into()).to_string().contains("Network"));
+        assert!(Error::Parse("p".into()).to_string().contains("Parse"));
+        assert!(Error::Crypto("c".into()).to_string().contains("Crypto"));
+        assert!(Error::CryptoUnavailable("u".into()).to_string().contains("BearDog"));
+        assert!(Error::Protocol("pr".into()).to_string().contains("Protocol"));
+        assert!(Error::Consensus("co".into()).to_string().contains("Consensus"));
+        assert!(Error::Circuit("ci".into()).to_string().contains("Circuit"));
+        assert!(Error::Stream("st".into()).to_string().contains("Stream"));
+        assert_eq!(Error::Timeout.to_string(), "Operation timed out");
+        assert!(Error::NotFound("nf".into()).to_string().contains("Not found"));
+    }
+}

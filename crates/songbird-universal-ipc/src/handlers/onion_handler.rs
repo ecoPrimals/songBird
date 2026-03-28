@@ -350,8 +350,23 @@ fn is_expected_crypto_delegate_connectivity_error(msg: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn onion_handler_default_matches_new() {
+        let _a = OnionHandler::new();
+        let _b = OnionHandler::default();
+    }
+
+    #[tokio::test]
+    async fn handle_connect_missing_address_errors() {
+        let handler = OnionHandler::new();
+        let err = handler.handle_connect(json!({ "port": 3492 })).await.expect_err("address");
+        assert!(err.contains("address"));
+    }
 
     #[tokio::test]
     async fn test_onion_handler_new() {
