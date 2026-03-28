@@ -2,3 +2,4 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 pub mod production_analytics;
+pub mod types;

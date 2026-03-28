@@ -42,13 +42,14 @@ pub trait SecurityProvider {
 
 #### **🟡 NEEDS ENVIRONMENT CONFIGURATION (Not Removal)**
 ```rust
-// crates/songbird-security/src/security/universal_security_provider.rs
+// Historical reference: was crates/songbird-security/ (Sept 2025 layout)
+// Current: BearDog crypto delegation via songbird-crypto-provider + songbird-network-federation/beardog
 std::env::var("BEARDOG_ENDPOINT")
     .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
     .unwrap_or_else(|_| "http://localhost:8443".to_string())
 ```
 
-**Status**: ✅ **COMPLETED** - Now uses environment variables with fallbacks
+**Status**: ✅ **COMPLETED** - Now uses environment variables with fallbacks. `songbird-security` crate was removed; crypto delegation lives in `songbird-crypto-provider` and `songbird-network-federation::beardog`.
 
 ### **💾 Storage Capabilities → NestGate (`../nestgate/`)**
 

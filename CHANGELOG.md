@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave83] - 2026-03-28 - Deep Debt Execution, Typed Errors, Hardcoding Evolution, Smart Refactoring
+
+### Fixed — Broken Syntax
+- `songbird-cli/src/cli/commands/logs.rs`: Complete rewrite — file was syntactically corrupt throughout; rebuilt with XDG/env-based log path discovery, 8 new tests
+
+### Changed — Typed Error Evolution
+- `songbird-canonical/errors.rs`: `unit_success()` → `Result<(), SongbirdError>`
+- `songbird-execution-agent/server.rs`: `serve()` → `anyhow::Result<()>`
+- `songbird-registry/plugin/mod.rs`: 4 plugin trait methods → `anyhow::Result`
+
+### Changed — Hardcoding Evolution
+- `socket_discovery.rs`: `/tmp/biomeos/neural-api.sock`, `/tmp/beardog.sock` → `std::env::temp_dir()`
+- `beardog/mod.rs`: debug `/tmp/beardog.sock` → `std::env::temp_dir()`
+- `hardcoded_elimination.rs`: `/etc/ssl/...` → env-driven `SONGBIRD_TLS_CERT`/`SSL_CERT_FILE`/XDG
+- `paths.rs`: `/tmp/songbird/...` → `std::env::temp_dir().join("songbird")`
+
+### Changed — Smart Refactoring
+- `compute-bridge/service.rs` (859→164 mod.rs): extracted `types.rs`, `detection.rs`, `federation.rs`, `handlers.rs`, `service_tests.rs`
+
+### Fixed — Module Repair
+- `songbird-observability/analytics/production_analytics.rs`: rewritten from broken orphan to valid module
+
+### Added — Coverage Expansion (+115 tests, 11,471 total)
+- songbird-types: gaming.rs (42), performance.rs (22), canonical_types.rs (16), unified.rs (11), service.rs (7)
+- songbird-observability: production_analytics.rs (18)
+
+---
+
+## [v0.2.1-wave82] - 2026-03-28 - birdsong.schema Introspection, Aggregate Validation, Coverage Push
+
+### Added — birdsong.schema Introspection Endpoint
+- New `birdsong.schema` JSON-RPC method: returns beacon request schema (fields, types, required/optional, related methods)
+- `BirdsongMethod::Schema` variant, dispatch arm, introspection list entries
+
+### Added — Aggregate Missing-Field Validation
+- `validate_required_fields()`: pre-validates all required fields, reports every missing field in a single error
+- Applied to `generate_encrypted_beacon`, `decrypt_beacon`, `verify_lineage`
+
+### Added — Coverage Expansion (+172 tests, 11,356 total)
+- songbird-types: 75 tests across 8 config modules
+- songbird-canonical: 48 tests across 6 modules
+- songbird-config: 12 validation tests
+- songbird-discovery, songbird-orchestrator, songbird-registry, songbird-universal-ipc: 37 tests
+
+---
+
 ## [v0.2.1-wave81] - 2026-03-28 - Root Doc Refresh, Spec Archival, Debris Cleanup
 
 ### Changed — Root Doc Refresh

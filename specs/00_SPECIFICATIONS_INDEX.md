@@ -457,6 +457,15 @@ Moved from `specs/` or `docs/architecture/` for historical reference (obsolete o
 - `archive/COMPREHENSIVE_TEST_COVERAGE_ACHIEVEMENT_STATUS.md`
 - `archive/RUSTLS_CRYPTO_PROVIDER_RESEARCH.md` (from `docs/architecture/`)
 - `archive/PURE_RUST_TLS_EXECUTION_PLAN.md` (from `docs/architecture/`)
+- `archive/SPECS_README_SEPT2025.md` (original specs/README.md from September 2025 layout)
+- `archive/UNIVERSAL_PROVIDER_MIGRATION_GUIDE.md` (references `songbird-security` / `songbird-core`)
+- `archive/ASYNC_TRAIT_MIGRATION_SPECIFICATION.md` (references `songbird-core`)
+- `archive/FEDERATION_IMPLEMENTATION_SPECIFICATION.md` (references `songbird-core` / `songbird-network`)
+- `archive/PRODUCTION_READINESS_ACHIEVEMENT_REPORT.md` (Jan 2025 achievement report — historical)
+- `archive/DOCUMENTATION_UPDATE_SUMMARY.md` (Jan 2025 cleanup summary — historical)
+- `archive/ORGANIZATION_SUMMARY.md` (Jan 2025 simplification summary — historical)
+- `archive/TEAM_HANDOFF_SUMMARY.md` (Nov 2025 handoff — historical; current handoffs in wateringHole)
+- `archive/PROVIDER_TRAIT_UNIFICATION_ACHIEVEMENT_SPEC.md` (Sept 2025 achievement — historical)
 
 ---
 

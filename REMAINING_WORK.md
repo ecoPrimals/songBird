@@ -2,7 +2,7 @@
 
 **Date**: March 28, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 28, 2026 (Session 23 — Dead Code Pruning + Typed Errors + Smart Refactoring + Coverage Expansion + Hardcoding Evolution)
+**Last Deep Debt Audit**: March 28, 2026 (Sessions 24+25 — birdsong.schema + Aggregate Validation + Coverage Push + Deep Debt Evolution + Smart Refactoring)
 
 ---
 
@@ -17,7 +17,7 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max prod ~484 `gateway/mod.rs` post-refactor; test max 948 `security_tests.rs`; all large files domain-refactored) |
+| **Files >1000 lines** | 0 (max prod ~790 `production_analytics.rs` post-type-extraction; test max 950 `security_tests.rs`) |
 | **Unsafe blocks** | **0** — `songbird-process-env` evolved to BearDog overlay pattern; workspace `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
@@ -52,6 +52,28 @@
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 28, 2026 — Doc Refresh + Spec Archival + Type Extraction — Session 26, Wave 84)
+
+### Wave 84: Root Doc Refresh + Stale Spec Archival + Smart Refactoring
+
+**Root doc updates:**
+- README.md, CONTEXT.md, CONTRIBUTING.md: synced to 11,471 tests, 69.33% coverage
+- CHANGELOG.md: added Wave 82 + Wave 83 entries
+
+**Spec cleanup (8 files archived):**
+- `specs/README.md`: Archived Sept 2025 version to `archive/SPECS_README_SEPT2025.md`; wrote fresh README with current 30-crate workspace layout
+- `specs/ECOSYSTEM_DELEGATION_SPECIFICATION.md`: Fixed stale `songbird-security` reference with historical note
+- Archived: `UNIVERSAL_PROVIDER_MIGRATION_GUIDE.md`, `ASYNC_TRAIT_MIGRATION_SPECIFICATION.md`, `FEDERATION_IMPLEMENTATION_SPECIFICATION.md` (stale crate refs)
+- Archived: `PRODUCTION_READINESS_ACHIEVEMENT_REPORT.md`, `DOCUMENTATION_UPDATE_SUMMARY.md`, `ORGANIZATION_SUMMARY.md`, `TEAM_HANDOFF_SUMMARY.md`, `PROVIDER_TRAIT_UNIFICATION_ACHIEVEMENT_SPEC.md` (historical)
+
+**Smart refactoring:**
+- `production_analytics.rs` (1048→790 lines): Extracted types into `analytics/types.rs` (253 lines)
+
+**wateringHole handoff:**
+- Created `SONGBIRD_V021_WAVE82_83_INTROSPECTION_TYPED_ERRORS_COVERAGE_HANDOFF_MAR28_2026.md`
 
 ---
 
@@ -1265,7 +1287,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Coverage Expansion (~68.80% → 90% target)
+## Pending: Coverage Expansion (~69.33% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |
