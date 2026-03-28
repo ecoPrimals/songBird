@@ -205,7 +205,7 @@ impl TorHandler {
                     "connected": false,
                     "target_address": format!("{}:{}", address, port),
                     "status": "circuit_failed",
-                    "error": format!("{}", e),
+                    "error": format!("{e}"),
                     "comment": "Circuit build failed — check relay reachability and BearDog availability"
                 }))
             }
@@ -236,7 +236,7 @@ impl TorHandler {
         // Create Tor service
         match songbird_tor_protocol::TorService::new(beardog, port).await {
             Ok(service) => {
-                let onion_address = service.onion_address().to_string();
+                let onion_address = service.onion_address().unwrap_or("pending").to_string();
 
                 // Update state
                 {

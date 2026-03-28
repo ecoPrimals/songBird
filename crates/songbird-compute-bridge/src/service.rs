@@ -273,8 +273,7 @@ async fn detect_resources() -> ServiceInfo {
     tokio::task::yield_now().await;
 
     // Detect CPU cores
-    let cpu_cores =
-        std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    let cpu_cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
 
     // Detect memory (Linux-specific, fallback to estimate)
     let memory_gb = std::fs::read_to_string("/proc/meminfo")
@@ -308,14 +307,38 @@ async fn detect_resources() -> ServiceInfo {
         (0, None)
     };
 
+    let storage_gb = songbird_process_env::var("COMPUTE_STORAGE_GB")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .or_else(|| detect_disk_gb());
+
     ServiceInfo {
         cpu_cores,
         memory_gb,
         gpu_count,
         gpu_model,
-        storage_gb: Some(100), // Placeholder - would need proper detection
+        storage_gb,
         platform: format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH),
     }
+}
+
+/// Detect available disk space in GB from the filesystem (Linux `statvfs`-based, with fallback).
+fn detect_disk_gb() -> Option<usize> {
+    std::fs::read_to_string("/proc/mounts").ok().and_then(|mounts| {
+        let root_mount =
+            mounts.lines().find(|l| l.split_whitespace().nth(1).is_some_and(|mp| mp == "/"));
+        root_mount.and_then(|_| {
+            let stat = std::process::Command::new("df")
+                .args(["--output=avail", "-B1G", "/"])
+                .output()
+                .ok()?;
+            if !stat.status.success() {
+                return None;
+            }
+            let out = String::from_utf8_lossy(&stat.stdout);
+            out.lines().nth(1).and_then(|line| line.trim().parse::<usize>().ok())
+        })
+    })
 }
 
 /// Auto-detect capabilities based on resources
@@ -342,7 +365,7 @@ fn detect_capabilities(info: &ServiceInfo) -> String {
 async fn register_with_songbird(
     state: &BridgeState,
     songbird_endpoint: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<()> {
     let config = &state.config;
     let info = &state.service_info;
 
@@ -384,7 +407,7 @@ async fn register_with_songbird(
     } else {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        Err(format!("Registration failed ({status}): {body}").into())
+        anyhow::bail!("Registration failed ({status}): {body}")
     }
 }
 
@@ -639,7 +662,10 @@ mod tests {
         assert!(info.memory_gb >= 1);
         assert!(info.gpu_count < 1_000);
         assert!(info.platform.contains('-'));
-        assert_eq!(info.storage_gb, Some(100));
+        assert!(
+            info.storage_gb.is_some(),
+            "storage_gb should be detected from disk or COMPUTE_STORAGE_GB env"
+        );
     }
 
     #[test]

@@ -67,9 +67,9 @@ impl NetworkScanner {
                 "DISCOVERY_PORT_3",
                 songbird_config::defaults::ports::dashboard_port(),
             ),
-            4000, // External service port
-            5000, // External service port
-            8000, // External service port
+            SafeEnv::get_port("DISCOVERY_PORT_4", 4000),
+            SafeEnv::get_port("DISCOVERY_PORT_5", 5000),
+            SafeEnv::get_port("DISCOVERY_PORT_6", 8000),
         ];
 
         // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)"
@@ -199,18 +199,18 @@ impl NetworkScanner {
         address: IpAddr,
         port: u16,
     ) -> SongbirdResult<Option<(String, Option<String>, NodeType)>> {
-        // Try common Songbird endpoints
-        let endpoints = ["/health", "/api/v1/health", "/status", "/api/status", "/songbird/health"];
+        let endpoints = ["/health", "/api/v1/health", "/status"];
 
         for endpoint in &endpoints {
             let url = format!("http://{address}:{port}{endpoint}");
 
-            // For now, we'll simulate the HTTP check since we don't have the HTTP client implemented
-            // In a real implementation, you would use an HTTP client here
-            if let Ok(_response) = self.simulate_http_check(&url).await {
-                let node_type = NodeType::ServiceNode;
-                let version = Some("1.0.0".to_string());
-
+            if let Ok(body) = self.http_probe(&url).await {
+                let version = self.extract_version_from_response(&body);
+                let node_type = if body.contains("orchestrator") {
+                    NodeType::Orchestrator
+                } else {
+                    NodeType::ServiceNode
+                };
                 return Ok(Some((format!("Songbird-{address}"), version, node_type)));
             }
         }
@@ -218,15 +218,69 @@ impl NetworkScanner {
         Ok(None)
     }
 
-    /// Simulate HTTP check for now
-    async fn simulate_http_check(&self, _url: &str) -> SongbirdResult<()> {
-        // This is a placeholder - in real implementation would use HTTP client
-        Err(CliError::Network {
-            message: "HTTP client not implemented".to_string(),
-            interface: Some("http_client".to_string()),
-            suggestion: Some("This feature is not yet implemented".to_string()),
+    /// Probe a URL with a short GET and return the response body on success.
+    async fn http_probe(&self, url: &str) -> SongbirdResult<String> {
+        let stream = tokio::time::timeout(
+            self.timeout,
+            TcpStream::connect(url.trim_start_matches("http://").split('/').next().unwrap_or("")),
+        )
+        .await
+        .map_err(|_| CliError::Network {
+            message: "HTTP probe timed out".to_string(),
+            interface: Some(url.to_string()),
+            suggestion: None,
+        })?
+        .map_err(|e| CliError::Network {
+            message: format!("HTTP probe connection failed: {e}"),
+            interface: Some(url.to_string()),
+            suggestion: None,
+        })?;
+
+        let path = url.find("://").and_then(|i| url[i + 3..].find('/')).map_or("/", |i| {
+            let offset = url.find("://").unwrap_or(0) + 3;
+            &url[offset + i..]
+        });
+
+        let host_part = url.trim_start_matches("http://").split('/').next().unwrap_or("localhost");
+        let request =
+            format!("GET {path} HTTP/1.0\r\nHost: {host_part}\r\nConnection: close\r\n\r\n");
+
+        stream.writable().await.map_err(|e| CliError::Network {
+            message: format!("socket not writable: {e}"),
+            interface: Some(url.to_string()),
+            suggestion: None,
+        })?;
+        stream.try_write(request.as_bytes()).map_err(|e| CliError::Network {
+            message: format!("write failed: {e}"),
+            interface: Some(url.to_string()),
+            suggestion: None,
+        })?;
+
+        let mut buf = vec![0u8; 4096];
+        stream.readable().await.map_err(|e| CliError::Network {
+            message: format!("socket not readable: {e}"),
+            interface: Some(url.to_string()),
+            suggestion: None,
+        })?;
+        let n = stream.try_read(&mut buf).map_err(|e| CliError::Network {
+            message: format!("read failed: {e}"),
+            interface: Some(url.to_string()),
+            suggestion: None,
+        })?;
+
+        let raw = String::from_utf8_lossy(&buf[..n]);
+        let body = raw.split_once("\r\n\r\n").map_or(raw.as_ref(), |(_, b)| b).to_string();
+
+        if raw.starts_with("HTTP/") && raw.contains(" 200") {
+            Ok(body)
+        } else {
+            Err(CliError::Network {
+                message: format!("non-200 response from {url}"),
+                interface: Some(url.to_string()),
+                suggestion: None,
+            }
+            .into())
         }
-        .into())
     }
 
     /// Extract version from API response

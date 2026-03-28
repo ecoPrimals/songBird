@@ -4,10 +4,11 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in IPC service contexts"
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
+#![allow(
+    clippy::expect_used,
+    reason = "IPC initialization invariants use expect() for startup-critical paths"
 )]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 #![warn(missing_docs)]
 
 //! # 🌍 Songbird Universal IPC

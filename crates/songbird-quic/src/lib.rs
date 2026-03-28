@@ -5,10 +5,11 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in QUIC connection contexts"
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
+#![allow(
+    clippy::expect_used,
+    reason = "QUIC config construction uses expect() for known-valid parameters"
 )]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # Songbird QUIC Protocol
 //!
 //! Pure Rust QUIC implementation with `BearDog` crypto delegation.

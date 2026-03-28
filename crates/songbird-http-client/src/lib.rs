@@ -5,10 +5,11 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async service contexts"
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
+#![allow(
+    clippy::expect_used,
+    reason = "TLS protocol invariants use expect() for panic-on-violation semantics"
 )]
+#![cfg_attr(test, allow(clippy::unwrap_used, reason = "test assertions"))]
 #![warn(missing_docs)]
 
 //! # Songbird HTTP Client - Pure Rust Tower Atomic

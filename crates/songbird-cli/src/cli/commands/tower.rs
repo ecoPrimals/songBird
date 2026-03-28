@@ -335,9 +335,9 @@ async fn detect_capabilities(args: &TowerStartArgs) -> SongbirdResult<TowerCapab
     });
 
     // CPU cores
-    let cpu_cores = args.cpu_cores.unwrap_or_else(|| {
-        std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
-    });
+    let cpu_cores = args
+        .cpu_cores
+        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, std::num::NonZero::get));
 
     let memory_gb = args.memory_gb.unwrap_or_else(|| sys_metrics::total_memory_gb().max(16));
 

@@ -9,10 +9,7 @@
     clippy::ignore_without_reason,
     reason = "Historical patterns in this crate; inherited workspace pedantic lints."
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
-)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # 🔐 Songbird Genesis Bootstrap
 //!
 //! **Physical Proximity Genesis** - "Never let a bird be alone in the dark forest"

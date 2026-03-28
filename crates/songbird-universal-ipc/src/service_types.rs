@@ -228,7 +228,7 @@ mod tests {
         };
         let cloned = original.clone();
         assert_eq!(original.primal_id, cloned.primal_id);
-        assert_eq!(format!("{:?}", original), format!("{:?}", cloned));
+        assert_eq!(format!("{original:?}"), format!("{cloned:?}"));
     }
 
     #[test]

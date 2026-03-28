@@ -99,50 +99,43 @@ impl BirdSongHandler {
         }
 
         // Discover at runtime (no hardcoding)
-        let socket_path = songbird_process_env::var("BEARDOG_SOCKET").map_or_else(
-            |_| {
-                songbird_process_env::var("XDG_RUNTIME_DIR").map_or_else(
-                    |_| {
-                        // Well-known fallback (safe Rust - read from /proc)
-                        // Deep debt: Evolved from unsafe libc::getuid() to safe Rust
-                        let uid = std::fs::read_to_string("/proc/self/loginuid")
-                            .ok()
-                            .and_then(|s| s.trim().parse::<u32>().ok())
-                            .or_else(|| {
-                                // Fallback: Parse from /proc/self/status
-                                std::fs::read_to_string("/proc/self/status").ok().and_then(
-                                    |content| {
-                                        content
-                                            .lines()
-                                            .find(|line| line.starts_with("Uid:"))
-                                            .and_then(|line| {
-                                                line.split_whitespace().nth(1)?.parse::<u32>().ok()
-                                            })
-                                    },
-                                )
-                            })
-                            .unwrap_or(1000); // Default UID if all else fails
+        // Discovery order: env BEARDOG_SOCKET → XDG_RUNTIME_DIR → well-known /run/user/{uid}
+        let mut tried_paths: Vec<String> = Vec::new();
 
-                        debug!(
-                            "🔍 Discovering BearDog via well-known path (UID: {}, safe Rust)",
-                            uid
-                        );
-                        PathBuf::from(format!(
-                            "/run/user/{uid}/biomeos/{}.sock",
-                            primal_names::BEARDOG
-                        ))
-                    },
-                    |xdg| {
-                        debug!("🔍 Discovering BearDog via XDG_RUNTIME_DIR");
-                        PathBuf::from(format!("{xdg}/biomeos/{}.sock", primal_names::BEARDOG))
-                    },
-                )
-            },
-            |path| {
-                debug!("🔍 Discovering BearDog via BEARDOG_SOCKET env: {}", path);
-                PathBuf::from(path)
-            },
-        );
+        let env_socket = songbird_process_env::var("BEARDOG_SOCKET");
+        let socket_path = if let Ok(path) = env_socket {
+            debug!("🔍 Discovering BearDog via BEARDOG_SOCKET env: {}", path);
+            PathBuf::from(path)
+        } else {
+            tried_paths.push("BEARDOG_SOCKET env (not set)".to_string());
+            if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+                debug!("🔍 Discovering BearDog via XDG_RUNTIME_DIR");
+                let p = PathBuf::from(format!("{xdg}/biomeos/{}.sock", primal_names::BEARDOG));
+                tried_paths.push(format!("{} (XDG_RUNTIME_DIR)", p.display()));
+                p
+            } else {
+                tried_paths.push("XDG_RUNTIME_DIR env (not set)".to_string());
+                let uid = std::fs::read_to_string("/proc/self/loginuid")
+                    .ok()
+                    .and_then(|s| s.trim().parse::<u32>().ok())
+                    .or_else(|| {
+                        std::fs::read_to_string("/proc/self/status").ok().and_then(|content| {
+                            content.lines().find(|line| line.starts_with("Uid:")).and_then(|line| {
+                                line.split_whitespace().nth(1)?.parse::<u32>().ok()
+                            })
+                        })
+                    })
+                    .unwrap_or(1000);
+
+                debug!("🔍 Discovering BearDog via well-known path (UID: {uid}, safe Rust)");
+                let p = PathBuf::from(format!(
+                    "/run/user/{uid}/biomeos/{}.sock",
+                    primal_names::BEARDOG
+                ));
+                tried_paths.push(format!("{} (well-known)", p.display()));
+                p
+            }
+        };
 
         // Check if this is a TCP socket (tcp:host:port format)
         let path_str = socket_path.to_string_lossy();
@@ -150,9 +143,11 @@ impl BirdSongHandler {
 
         // Verify socket exists (skip for TCP - can't check file existence for network sockets)
         if !is_tcp && !socket_path.exists() {
+            let tried = tried_paths.join(", ");
             return Err(format!(
-                "BearDog socket not found at {}. Is BearDog running? Try: BEARDOG_SOCKET=/path/to/beardog.sock or BEARDOG_SOCKET=tcp:host:port",
-                socket_path.display()
+                "BearDog socket not found. Tried: {tried}. \
+                 Is BearDog running? Set BEARDOG_SOCKET=/path/to/beardog.sock \
+                 or BEARDOG_SOCKET=tcp:host:port for cross-gate deployments"
             ));
         }
 
@@ -449,6 +444,7 @@ impl BirdSongHandler {
 #[derive(Debug, Deserialize)]
 struct GenerateBeaconRequest {
     node_id: String,
+    #[serde(default)]
     capabilities: Vec<String>,
     /// Sovereign Onion endpoint (e.g., "abc123...xyz.onion:3492")
     /// Dark Forest: Only visible to family members (beacon is encrypted)

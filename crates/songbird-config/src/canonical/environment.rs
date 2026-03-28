@@ -267,8 +267,7 @@ impl ResourceLimits {
             max_memory_mb: env("MAX_MEMORY_MB").ok().and_then(|s| s.parse().ok()),
             max_cpu_cores: env("MAX_CPU_CORES").ok().and_then(|s| s.parse().ok()),
             max_file_descriptors: env("MAX_FILE_DESCRIPTORS").ok().and_then(|s| s.parse().ok()),
-            max_threads: std::thread::available_parallelism().map_or(1, std::num::NonZero::get)
-                * 2,
+            max_threads: std::thread::available_parallelism().map_or(1, std::num::NonZero::get) * 2,
         }
     }
 }
@@ -301,8 +300,7 @@ impl PerformanceParameters {
     #[must_use]
     pub fn from_env_reader(env: impl Fn(&str) -> Result<String, std::env::VarError>) -> Self {
         Self {
-            worker_threads: std::thread::available_parallelism()
-                .map_or(1, std::num::NonZero::get),
+            worker_threads: std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
             buffer_pool_size: env_get_port(&env, "BUFFER_POOL_SIZE", 1024) as usize,
             batch_size: env_get_port(&env, "BATCH_SIZE", 100) as usize,
             enable_zero_copy: env_get_bool(&env, "ENABLE_ZERO_COPY", true),

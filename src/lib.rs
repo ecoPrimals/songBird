@@ -366,4 +366,110 @@ mod tests {
         let _ = Cli::try_parse_from(["songbird", "deploy", "list"]).unwrap();
         let _ = Cli::try_parse_from(["songbird", "rendezvous"]).unwrap();
     }
+
+    #[test]
+    fn run_interactive_cli_reader_empty_then_exit() {
+        let input = b"\n\n\nexit\n";
+        let mut reader = BufReader::new(Cursor::new(input));
+        run_interactive_cli_reader(&mut reader).unwrap();
+    }
+
+    #[test]
+    fn run_interactive_cli_reader_quit_variant() {
+        let input = b"quit\n";
+        let mut reader = BufReader::new(Cursor::new(input));
+        run_interactive_cli_reader(&mut reader).unwrap();
+    }
+
+    #[test]
+    fn run_interactive_cli_reader_question_mark_help() {
+        let input = b"?\nexit\n";
+        let mut reader = BufReader::new(Cursor::new(input));
+        run_interactive_cli_reader(&mut reader).unwrap();
+    }
+
+    #[test]
+    fn run_interactive_cli_reader_eof_without_exit() {
+        let input = b"help\n";
+        let mut reader = BufReader::new(Cursor::new(input));
+        run_interactive_cli_reader(&mut reader).unwrap();
+    }
+
+    #[test]
+    fn run_interactive_cli_reader_whitespace_only_lines() {
+        let input = b"   \n\t\nexit\n";
+        let mut reader = BufReader::new(Cursor::new(input));
+        run_interactive_cli_reader(&mut reader).unwrap();
+    }
+
+    #[test]
+    fn rendezvous_run_error_debug_format() {
+        let err = RendezvousRunError::BinaryNotFound;
+        let dbg = format!("{err:?}");
+        assert!(dbg.contains("BinaryNotFound"));
+
+        let err = RendezvousRunError::NonZeroExit(42);
+        let dbg = format!("{err:?}");
+        assert!(dbg.contains("42"));
+    }
+
+    #[test]
+    fn try_parse_delegated_no_subcommand() {
+        let err = try_parse_delegated::<Cli>("songbird", vec![]).unwrap_err();
+        assert!(
+            err.kind() == clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+                || err.kind() == clap::error::ErrorKind::MissingSubcommand
+        );
+    }
+
+    #[test]
+    fn try_parse_delegated_compute_bridge_with_trailing_args() {
+        let cli = try_parse_delegated::<Cli>(
+            "songbird",
+            vec!["compute-bridge".into(), "--port".into(), "8080".into()],
+        )
+        .unwrap();
+        match cli.command {
+            Commands::ComputeBridge {
+                args,
+            } => {
+                assert_eq!(args, vec!["--port", "8080"]);
+            }
+            _ => panic!("expected ComputeBridge variant"),
+        }
+    }
+
+    #[test]
+    fn try_parse_delegated_deploy_with_trailing_args() {
+        let cli = try_parse_delegated::<Cli>(
+            "songbird",
+            vec!["deploy".into(), "status".into(), "--json".into()],
+        )
+        .unwrap();
+        match cli.command {
+            Commands::Deploy {
+                args,
+            } => {
+                assert_eq!(args, vec!["status", "--json"]);
+            }
+            _ => panic!("expected Deploy variant"),
+        }
+    }
+
+    #[test]
+    fn try_parse_delegated_cli_with_trailing_args() {
+        let cli = try_parse_delegated::<Cli>(
+            "songbird",
+            vec!["cli".into(), "extra".into(), "tokens".into()],
+        )
+        .unwrap();
+        match cli.command {
+            Commands::Cli {
+                args,
+            } => {
+                assert_eq!(args, vec!["extra", "tokens"]);
+            }
+            _ => panic!("expected Cli variant"),
+        }
+    }
 }

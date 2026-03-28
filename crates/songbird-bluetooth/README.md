@@ -18,7 +18,7 @@ This crate is **under active development** for Phase 2 (Genesis Implementation):
 
 ## Evolution Plan
 
-See `/DEEP_DEBT_EVOLUTION_PLAN.md` for the full roadmap:
+See `REMAINING_WORK.md` at repository root for the current roadmap:
 
 ### Phase 2 Goals (Weeks 7-10):
 1. Fix all 63+ clippy violations

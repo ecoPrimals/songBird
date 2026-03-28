@@ -349,27 +349,133 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_is_kubernetes_environment() {
-        // Test detection logic
-        let in_k8s = is_kubernetes_environment();
-        // Result depends on runtime environment
-        assert!(in_k8s || !in_k8s);
+    fn test_is_kubernetes_environment_returns_bool() {
+        let result = is_kubernetes_environment();
+        assert!(result || !result);
+    }
+
+    #[test]
+    fn test_is_kubernetes_when_env_not_set() {
+        songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
+        let result = is_kubernetes_environment();
+        if !std::path::Path::new("/var/run/secrets/kubernetes.io/serviceaccount/token").exists() {
+            assert!(!result);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_discover_from_containers_returns_ok() {
+        let result = discover_from_containers().await;
+        assert!(result.is_ok(), "container discovery should not panic");
+    }
+
+    #[tokio::test]
+    async fn test_discover_kubernetes_services_not_enabled() {
+        let result = discover_kubernetes_services().await;
+        #[cfg(not(feature = "k8s"))]
+        assert!(result.is_err());
+        #[cfg(feature = "k8s")]
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_discover_docker_containers_not_enabled() {
+        let result = discover_docker_containers().await;
+        #[cfg(not(feature = "docker"))]
+        assert!(result.is_err());
+        #[cfg(feature = "docker")]
+        let _ = result;
+    }
+
+    #[tokio::test]
+    async fn test_discover_kubernetes_error_message() {
+        let result = discover_kubernetes_services().await;
+        if let Err(e) = result {
+            let msg = format!("{e}");
+            assert!(
+                msg.contains("not enabled") || msg.contains("failed"),
+                "error should explain why: {msg}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_discover_docker_error_message() {
+        let result = discover_docker_containers().await;
+        if let Err(e) = result {
+            let msg = format!("{e}");
+            assert!(
+                msg.contains("not enabled") || msg.contains("failed"),
+                "error should explain why: {msg}"
+            );
+        }
     }
 
     #[test]
     #[cfg(any(feature = "k8s", feature = "docker"))]
-    fn test_infer_capabilities_from_name() {
+    fn test_infer_capabilities_from_name_security() {
         assert_eq!(infer_capabilities_from_name("my-security-service"), vec!["security"]);
         assert_eq!(infer_capabilities_from_name("crypto-provider"), vec!["security"]);
-        assert_eq!(infer_capabilities_from_name("ai-inference-service"), vec!["ai"]);
-        assert_eq!(infer_capabilities_from_name("task-orchestrator"), vec!["orchestration"]);
-        assert!(infer_capabilities_from_name("unknown-service").is_empty());
+        assert_eq!(infer_capabilities_from_name("auth-gateway"), vec!["security"]);
     }
 
-    #[tokio::test]
-    async fn test_discover_from_containers() {
-        // Should not panic, may return empty if not in container env
-        let result = discover_from_containers().await;
-        assert!(result.is_ok() || result.is_err());
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_from_name_ai() {
+        assert_eq!(infer_capabilities_from_name("ai-inference-service"), vec!["ai"]);
+        assert_eq!(infer_capabilities_from_name("ml-pipeline"), vec!["ai"]);
+    }
+
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_from_name_discovery() {
+        assert_eq!(infer_capabilities_from_name("service-discovery"), vec!["discovery"]);
+        assert_eq!(infer_capabilities_from_name("registry-service"), vec!["discovery"]);
+    }
+
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_from_name_storage() {
+        assert_eq!(infer_capabilities_from_name("storage-backend"), vec!["storage"]);
+        assert_eq!(infer_capabilities_from_name("data-lake"), vec!["storage"]);
+        assert_eq!(infer_capabilities_from_name("persist-service"), vec!["storage"]);
+    }
+
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_from_name_orchestration() {
+        assert_eq!(infer_capabilities_from_name("task-orchestrator"), vec!["orchestration"]);
+        assert_eq!(infer_capabilities_from_name("coordinator-service"), vec!["orchestration"]);
+    }
+
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_from_name_compute() {
+        assert_eq!(infer_capabilities_from_name("compute-node"), vec!["compute"]);
+        assert_eq!(infer_capabilities_from_name("worker-pool"), vec!["compute"]);
+        assert_eq!(infer_capabilities_from_name("exec-engine"), vec!["compute"]);
+    }
+
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_from_name_empty_for_unknown() {
+        assert!(infer_capabilities_from_name("unknown-service").is_empty());
+        assert!(infer_capabilities_from_name("foobar").is_empty());
+    }
+
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_from_name_multiple() {
+        let caps = infer_capabilities_from_name("ai-security-orchestrator");
+        assert!(caps.contains(&"security".to_string()));
+        assert!(caps.contains(&"ai".to_string()));
+        assert!(caps.contains(&"orchestration".to_string()));
+    }
+
+    #[test]
+    #[cfg(any(feature = "k8s", feature = "docker"))]
+    fn test_infer_capabilities_case_insensitive() {
+        assert_eq!(infer_capabilities_from_name("SECURITY-SERVICE"), vec!["security"]);
+        assert_eq!(infer_capabilities_from_name("AI-Inference"), vec!["ai"]);
     }
 }

@@ -452,3 +452,250 @@ fn test_select_best_path_tie_prefers_one() -> Result<(), Box<dyn std::error::Err
     assert_eq!(selected.combined_score, 0.75);
     Ok(())
 }
+
+// ========== Coverage: routing, execution, and decision creation ==========
+
+fn make_request(id: &str) -> crate::types::UniversalRequest {
+    crate::types::UniversalRequest {
+        request_id: id.to_string(),
+        source: "test-client".to_string(),
+        target: "compute-service".to_string(),
+        action: "process".to_string(),
+        parameters: std::collections::HashMap::new(),
+        security_context: None,
+    }
+}
+
+#[tokio::test]
+async fn test_route_request_no_services_returns_no_paths_error()
+-> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+    let request = make_request("sov-routing-1");
+
+    let result = adapter.route_request(request).await;
+    assert!(result.is_err(), "should error when no services are discoverable");
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("No valid routing paths"),
+        "error should mention no paths, got: {err_msg}"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_route_request_sovereignty_disabled_no_services_errors()
+-> Result<(), Box<dyn std::error::Error>> {
+    let config = SovereigntyAdapterConfig {
+        enable_sovereignty_routing: false,
+        enable_federation_routing: false,
+        enable_network_optimization: false,
+        sovereignty_timeout: std::time::Duration::from_secs(5),
+        sovereignty_preference_weight: 0.7,
+    };
+    let adapter = SovereigntyAwareAdapter::with_config(config).await?;
+    let request = make_request("basic-routing-1");
+
+    let result = adapter.route_request(request).await;
+    assert!(result.is_err(), "basic routing with no services should also error");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_route_request_borrowed_no_services_errors() -> Result<(), Box<dyn std::error::Error>>
+{
+    let adapter = SovereigntyAwareAdapter::new().await?;
+    let request = make_request("borrowed-1");
+
+    let result = adapter.route_request_borrowed(&request).await;
+    assert!(result.is_err());
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_execute_request_no_services_errors() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+    let request = make_request("exec-1");
+
+    let result = adapter.execute_request(request).await;
+    assert!(result.is_err(), "execute_request should fail when no services available");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_create_routing_decision_metadata() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+
+    let path = RoutingPath {
+        segments: vec![],
+        sovereignty_score: 0.85,
+        efficiency_score: 0.9,
+        combined_score: 0.87,
+        security_level: super::super::types::SecurityLevel::High,
+    };
+
+    let decision = adapter.create_routing_decision(path.clone(), &[path]).await?;
+
+    assert_eq!(decision.decision_metadata.algorithm_version, "sovereignty-aware-v1.0");
+    assert_eq!(decision.decision_metadata.alternative_paths_count, 0);
+    assert!(!decision.decision_metadata.decision_factors.is_empty());
+    assert_eq!(decision.decision_metadata.decision_factors[0].factor_name, "sovereignty_score");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_create_routing_decision_sovereignty_assessment()
+-> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+
+    let path = RoutingPath {
+        segments: vec![],
+        sovereignty_score: 0.95,
+        efficiency_score: 0.9,
+        combined_score: 0.92,
+        security_level: super::super::types::SecurityLevel::Maximum,
+    };
+
+    let decision = adapter.create_routing_decision(path.clone(), &[path]).await?;
+
+    assert_eq!(decision.sovereignty_assessment.overall_score, 0.95);
+    assert!(matches!(
+        decision.sovereignty_assessment.compliance_level,
+        super::super::types::SovereigntyComplianceLevel::FullyCompliant
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_create_routing_decision_federation_capabilities()
+-> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+
+    let path = RoutingPath {
+        segments: vec![],
+        sovereignty_score: 0.8,
+        efficiency_score: 0.8,
+        combined_score: 0.8,
+        security_level: super::super::types::SecurityLevel::High,
+    };
+
+    let decision = adapter.create_routing_decision(path.clone(), &[path]).await?;
+
+    assert!(!decision.federation_capabilities.is_empty());
+    assert_eq!(decision.federation_capabilities[0].capability_id, "cross_node_comm");
+    assert!(decision.federation_capabilities[0].availability_score > 0.0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_create_routing_decision_alternative_count() -> Result<(), Box<dyn std::error::Error>>
+{
+    let adapter = SovereigntyAwareAdapter::new().await?;
+
+    let path1 = RoutingPath {
+        segments: vec![],
+        sovereignty_score: 0.8,
+        efficiency_score: 0.8,
+        combined_score: 0.8,
+        security_level: super::super::types::SecurityLevel::High,
+    };
+    let path2 = RoutingPath {
+        segments: vec![],
+        sovereignty_score: 0.6,
+        efficiency_score: 0.7,
+        combined_score: 0.65,
+        security_level: super::super::types::SecurityLevel::Medium,
+    };
+
+    let decision = adapter.create_routing_decision(path1.clone(), &[path1, path2]).await?;
+
+    assert_eq!(decision.decision_metadata.alternative_paths_count, 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_execute_through_path_response_shape() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+    let request = make_request("through-path-1");
+    let path = RoutingPath {
+        segments: vec![],
+        sovereignty_score: 0.8,
+        efficiency_score: 0.8,
+        combined_score: 0.8,
+        security_level: super::super::types::SecurityLevel::High,
+    };
+
+    let response = adapter.execute_through_path(request, &path).await?;
+    assert_eq!(response.request_id, "through-path-1");
+    assert!(response.error.is_none());
+    let data = response.data.expect("should have data");
+    assert_eq!(data["sovereignty"], "routed");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_generate_basic_paths_multiple_services() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+
+    let services = vec![
+        ServiceInfo {
+            name: "svc-a".to_string(),
+            primal_type: PrimalType::new("compute"),
+            endpoint: "http://a:9000".to_string(),
+            capabilities: vec![],
+            health: HealthStatus::Healthy,
+            metadata: std::collections::HashMap::new(),
+        },
+        ServiceInfo {
+            name: "svc-b".to_string(),
+            primal_type: PrimalType::new("storage"),
+            endpoint: "http://b:9001".to_string(),
+            capabilities: vec![],
+            health: HealthStatus::Healthy,
+            metadata: std::collections::HashMap::new(),
+        },
+    ];
+
+    let paths = adapter.generate_basic_paths(&services).await?;
+    assert_eq!(paths.len(), 2);
+    for p in &paths {
+        assert_eq!(p.segments.len(), 1);
+        assert_eq!(p.sovereignty_score, 0.6);
+        assert_eq!(p.efficiency_score, 0.7);
+        assert_eq!(p.combined_score, 0.65);
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_adapter_stats_clone_and_debug() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new().await?;
+    let stats = adapter.get_stats().await?;
+    let cloned = stats.clone();
+
+    assert_eq!(stats.sovereignty_routing_enabled, cloned.sovereignty_routing_enabled);
+    assert_eq!(stats.base_adapter_healthy, cloned.base_adapter_healthy);
+
+    let dbg = format!("{stats:?}");
+    assert!(dbg.contains("AdapterStats"));
+    Ok(())
+}
+
+#[test]
+fn test_determine_compliance_level_negative_score() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+        .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+
+    let level = adapter.determine_compliance_level(-0.1);
+    assert!(matches!(level, super::super::types::SovereigntyComplianceLevel::NonCompliant));
+    Ok(())
+}
+
+#[test]
+fn test_determine_compliance_level_above_one() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+        .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+
+    let level = adapter.determine_compliance_level(1.5);
+    assert!(matches!(level, super::super::types::SovereigntyComplianceLevel::FullyCompliant));
+    Ok(())
+}

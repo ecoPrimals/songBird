@@ -5,10 +5,7 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
-)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # Songbird Execution Agent
 //!
 //! Remote command execution agent that runs on each tower in the federation.

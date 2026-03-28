@@ -86,10 +86,11 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
+#![allow(
+    clippy::expect_used,
+    reason = "relay protocol invariants use expect() for panic-on-violation semantics"
 )]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 #![allow(
     clippy::module_name_repetitions,
     clippy::items_after_statements,

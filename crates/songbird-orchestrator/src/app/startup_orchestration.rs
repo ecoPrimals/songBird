@@ -363,8 +363,7 @@ impl<'a> StartupOrchestrator<'a> {
                     .iter()
                     .map(|s| (*s).to_string())
                     .collect(),
-                cpu_cores: std::thread::available_parallelism()
-                    .map_or(1, std::num::NonZero::get),
+                cpu_cores: std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
                 memory_gb: songbird_types::sys_metrics::total_memory_gb().max(16),
                 gpu_model: SongbirdOrchestrator::detect_gpu(),
                 storage_gb: SongbirdOrchestrator::detect_storage_capacity(),

@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 //! Tests for Security Capability Adapter
 //!
 //! Separated from security.rs for file size compliance (1000-line policy)
 
 use super::*;
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 #[test]

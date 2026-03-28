@@ -48,8 +48,7 @@ pub struct ResourceDetectionRequest {
 pub async fn detect_resources_with_params(
     request: ResourceDetectionRequest,
 ) -> SongbirdResult<SystemResources> {
-    let cpu_cores =
-        std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    let cpu_cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
     let memory_gb = detect_available_memory();
     let storage_gb = if request.detect_storage {
         get_available_storage()

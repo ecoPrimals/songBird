@@ -188,7 +188,7 @@ lto = "fat"                # Full Link Time Optimization (slower build, faster r
 codegen-units = 1          # Single codegen unit (better optimization, slower build)
 strip = false              # Keep symbols for now (can strip later)
 panic = "abort"            # Smaller binary, faster panics
-overflow-checks = false    # Release mode default, explicit for clarity
+overflow-checks = true     # Security-first: detect integer overflow in release builds
 
 [profile.release-with-debug]
 inherits = "release"

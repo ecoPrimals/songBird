@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: March 27, 2026  
+**Date**: March 28, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 27, 2026 (Session 20 — Zero-Unsafe Overlay + Smart File Refactoring)
+**Last Deep Debt Audit**: March 28, 2026 (Session 21 — primalSpring Fixes + Coverage + Hardcoding Evolution + Idiomatic Rust)
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 10,687 passed, 0 failed, 271 ignored |
-| **Line Coverage** | ~67% (llvm-cov; target 90%) |
+| **Tests** | 10,836 passed, 0 failed, 269 ignored |
+| **Line Coverage** | ~67.55% (llvm-cov; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~45s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
@@ -52,6 +52,42 @@
 | **Build time** | ~45s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~390,564 (crates + src + tests + examples) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 28, 2026 — primalSpring Deep Debt Evolution — Session 21, Wave 78)
+
+### Wave 78: primalSpring Fixes + Coverage + Hardcoding Evolution + Idiomatic Rust
+
+**primalSpring Phase 17 fixes (3 concrete issues):**
+- `#[serde(default)]` added to `GenerateBeaconRequest::capabilities` in `birdsong_handler.rs`
+- Sovereign Beacon Mesh documented in README.md with call sequence and spec link
+- BearDog discovery error messages now list all tried paths (env → XDG → well-known)
+
+**Coverage expansion (+149 tests net):**
+- `sovereignty/adapter.rs`: 15 new tests (routing, execution, decision creation, edge cases)
+- `src/lib.rs`: 9 new tests (REPL edge cases, error debug, CLI parsing edges)
+- `security.rs`: smart refactored 1209→950+263 line split, added protocol/discovery/trait tests
+- `container.rs`: expanded from 3 to 18 tests
+- `storage.rs`: added 10 protocol detection + trait tests
+
+**Hardcoding evolution:**
+- `songbird-compute-bridge`: storage detection evolved from hardcoded `100` to actual `df`-based detection + `COMPUTE_STORAGE_GB` env override
+- `songbird-cli/discovery.rs`: stub `simulate_http_check` replaced with real TCP HTTP/1.0 probe
+- Discovery ports centralized behind `SafeEnv::get_port`
+- `TorService::onion_address()`: `"placeholder.onion"` → `Option<&str>` (None until BearDog descriptor published)
+- Genesis `mock_lineage` → `synthetic_lineage` with error-level degradation logging
+
+**Idiomatic Rust improvements:**
+- `register_with_songbird`: `Box<dyn Error>` → `anyhow::Result` with `bail!`
+- TLS `generate_random`: `SystemTime` panic → `unwrap_or_default()` (clock-skew safe)
+- mDNS discovery: `Box<dyn Error>` → typed `DiscoveryError` with `?` propagation
+- Inline format args: `format!("{}", e)` → `format!("{e}")`
+
+**Cleanup:**
+- Moved `ecoPrimals/` (51MB, ~1023 files of session/archive fossil) to parent `ecoPrimals/archive/`
+- Moved `docs/DEEP_DEBT_SOLUTIONS.md` to fossil (historical; `REMAINING_WORK.md` is the live tracker)
+- Updated README.md, CONTEXT.md, REMAINING_WORK.md with current metrics
 
 ---
 

@@ -20,8 +20,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Injectable `_with` env readers; `#[serial_test::serial]` only for overlay-mutating tests |
-| Tests | 10,687 total, 0 failed, 271 ignored |
-| Line Coverage | ~67% (llvm-cov measured; target 90%) |
+| Tests | 10,836 total, 0 failed, 269 ignored |
+| Line Coverage | ~67.55% (llvm-cov measured; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (50+ methods, 12 domain sub-enums) — zero string matching in dispatch |
@@ -144,6 +144,21 @@ export SONGBIRD_FAMILY_ID=myfamily
 - `songbird-test-utils` - Test utilities
 - `songbird-process-env` - Safe env var facade for Rust 2024 (`unsafe` isolation)
 
+## Sovereign Beacon Mesh
+
+Songbird provides a sovereign beacon mesh for encrypted peer discovery and relay coordination. The validated call sequence:
+
+```
+mesh.init            → Initialize mesh with node_id, family_id, listen endpoints
+mesh.announce        → Announce presence as relay (advertise capabilities)
+mesh.peers           → List reachable peers (direct, relay, onion, LAN)
+mesh.status          → Mesh topology, reachable count, path types
+```
+
+Additional methods: `mesh.find_path` (best route to peer), `mesh.health_check` (probe peer connections), `mesh.auto_discover` (scan for new peers).
+
+See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md) for the full protocol specification.
+
 ## Testing
 
 ```bash
@@ -160,8 +175,9 @@ cargo llvm-cov --workspace --html
 | [`REMAINING_WORK.md`](REMAINING_WORK.md) | Current status and pending work |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
+| [`CONTEXT.md`](CONTEXT.md) | AI-ingestible project context |
 | [`specs/`](specs/) | Technical specifications |
-| [`docs/`](docs/) | Architecture guides |
+| [`docs/architecture/`](docs/architecture/) | Architecture guides |
 
 ## License
 

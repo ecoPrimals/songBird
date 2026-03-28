@@ -395,8 +395,8 @@ All infrastructure exists in `songbird-stun` crate.
 ### Implementation References
 
 - **Existing Code**: `crates/songbird-stun/src/` (1,030 lines, 80% complete)
-- **Investigation**: `ecoPrimals/sessions/2026-02-february/STUN_SERVER_INVESTIGATION_FEB_05_2026.md`
-- **Handoff**: `ecoPrimals/handoffs/PURE_RUST_STUN_SERVER_HANDOFF.md`
+- **Investigation**: (archived to `ecoPrimals/archive/songbird-sessions-fossil-mar28-2026/`)
+- **Handoff**: (archived to `ecoPrimals/archive/songbird-sessions-fossil-mar28-2026/`)
 
 ---
 

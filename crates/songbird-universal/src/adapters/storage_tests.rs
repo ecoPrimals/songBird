@@ -564,3 +564,92 @@ fn test_storage_metrics_max_values() {
     assert!(metrics.is_high_latency());
     assert_eq!(metrics.health_status(), StorageHealth::Critical);
 }
+
+// ========== Protocol detection and adapter construction ==========
+
+fn assert_protocol_debug(adapter: &StorageAdapter, expected: &str) {
+    let dbg = format!("{adapter:?}");
+    assert!(dbg.contains(expected), "expected Debug to contain {expected:?}, got {dbg}");
+}
+
+#[tokio::test]
+async fn test_new_selects_tarpc_protocol() -> SongbirdResult<()> {
+    let adapter = StorageAdapter::new("tarpc://127.0.0.1:9200".to_string()).await?;
+    assert_eq!(adapter.endpoint(), "tarpc://127.0.0.1:9200");
+    assert_protocol_debug(&adapter, "Tarpc");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_new_selects_jsonrpc_for_unix() -> SongbirdResult<()> {
+    let adapter = StorageAdapter::new("unix:///tmp/songbird-storage-test.sock".to_string()).await?;
+    assert_eq!(adapter.endpoint(), "unix:///tmp/songbird-storage-test.sock");
+    assert_protocol_debug(&adapter, "JsonRpc");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_new_selects_http_for_http() -> SongbirdResult<()> {
+    let adapter = StorageAdapter::new("http://storage:8082".to_string()).await?;
+    assert_protocol_debug(&adapter, "Http");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_new_selects_http_for_https() -> SongbirdResult<()> {
+    let adapter = StorageAdapter::new("https://storage.example:8443".to_string()).await?;
+    assert_protocol_debug(&adapter, "Http");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_new_unknown_scheme_falls_back_to_http() -> SongbirdResult<()> {
+    let adapter = StorageAdapter::new("ftp://example:21".to_string()).await?;
+    assert_protocol_debug(&adapter, "Http");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_protocol_debug_formatting() -> SongbirdResult<()> {
+    let adapter = StorageAdapter::new("tarpc://localhost:9300".to_string()).await?;
+    let dbg = format!("{adapter:?}");
+    assert!(dbg.contains("StorageAdapter"));
+    assert!(dbg.contains("tarpc://localhost:9300"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_with_timeout_preserves_protocol() -> SongbirdResult<()> {
+    let adapter = StorageAdapter::new("tarpc://127.0.0.1:9400".to_string())
+        .await?
+        .with_timeout(Duration::from_millis(500));
+    assert_eq!(adapter.endpoint(), "tarpc://127.0.0.1:9400");
+    assert_eq!(adapter.timeout, Duration::from_millis(500));
+    assert_protocol_debug(&adapter, "Tarpc");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_storage_provider_trait_impl() -> SongbirdResult<()> {
+    struct StaticStorage(StorageMetrics);
+
+    impl StorageProvider for StaticStorage {
+        async fn collect_storage_metrics(&self) -> SongbirdResult<StorageMetrics> {
+            Ok(self.0.clone())
+        }
+    }
+
+    let metrics = StorageMetrics {
+        total_capacity_bytes: 1_000_000_000_000,
+        used_bytes: 250_000_000_000,
+        available_bytes: 750_000_000_000,
+        object_count: 1_500,
+        avg_read_latency_ms: 15.0,
+        avg_write_latency_ms: 25.0,
+        timestamp: chrono::Utc::now(),
+    };
+    let provider = StaticStorage(metrics.clone());
+    let health = provider.check_storage_health().await?;
+    assert_eq!(health, metrics.health_status());
+    Ok(())
+}

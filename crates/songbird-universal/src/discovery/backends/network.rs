@@ -90,16 +90,9 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
         let service_type = "_songbird._tcp";
         let timeout = Duration::from_secs(5);
 
-        match query_mdns_services(service_type, timeout).await {
-            Ok(primals) => {
-                info!("✅ Discovered {} primals via mDNS", primals.len());
-                Ok(primals)
-            }
-            Err(e) => {
-                debug!("❌ mDNS discovery failed: {}", e);
-                Err(DiscoveryError::NetworkError(format!("mDNS query failed: {e}")))
-            }
-        }
+        let primals = query_mdns_services(service_type, timeout).await?;
+        info!("✅ Discovered {} primals via mDNS", primals.len());
+        Ok(primals)
     }
 
     #[cfg(not(feature = "mdns"))]
@@ -120,18 +113,25 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
 async fn query_mdns_services(
     service_type: &str,
     timeout: std::time::Duration,
-) -> Result<Vec<DiscoveredPrimal>, Box<dyn std::error::Error>> {
+) -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
     use tokio::net::UdpSocket;
 
     debug!("Querying mDNS for service type: {}", service_type);
 
     let mdns_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(224, 0, 0, 251), 5353));
-    let socket = UdpSocket::bind("0.0.0.0:0").await?;
-    socket.set_broadcast(true)?;
+    let socket = UdpSocket::bind("0.0.0.0:0")
+        .await
+        .map_err(|e| DiscoveryError::NetworkError(format!("mDNS bind failed: {e}")))?;
+    socket
+        .set_broadcast(true)
+        .map_err(|e| DiscoveryError::NetworkError(format!("mDNS broadcast set failed: {e}")))?;
 
     let query = build_mdns_ptr_query(service_type);
-    socket.send_to(&query, mdns_addr).await?;
+    socket
+        .send_to(&query, mdns_addr)
+        .await
+        .map_err(|e| DiscoveryError::NetworkError(format!("mDNS send failed: {e}")))?;
 
     let mut discovered = Vec::new();
     let mut buf = [0u8; 4096];

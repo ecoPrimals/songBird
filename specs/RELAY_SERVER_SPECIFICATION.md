@@ -858,7 +858,7 @@ Traditional TURN:          Lineage Relay:
 
 ### Documentation
 
-- Investigation: `ecoPrimals/sessions/2026-02-february/RELAY_SERVER_INVESTIGATION_FEB_05_2026.md`
+- Investigation: (archived to `ecoPrimals/archive/songbird-sessions-fossil-mar28-2026/`)
 - Upstream Tracker: `UPSTREAM_EVOLUTION_TRACKER.md`
 
 ---

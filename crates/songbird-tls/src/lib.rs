@@ -5,10 +5,7 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async TLS contexts"
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
-)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # Songbird TLS - Pure Rust TLS 1.3 Implementation
 //!
 //! A 100% Pure Rust implementation of TLS 1.3 designed for the biomeOS ecosystem.

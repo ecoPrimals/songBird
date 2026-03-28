@@ -5,10 +5,11 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
+#![allow(
+    clippy::expect_used,
+    reason = "Tor protocol invariants use expect() for panic-on-violation semantics"
 )]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # songbird-tor-protocol
 //!
 //! Pure Rust Tor protocol implementation for Songbird.
@@ -84,9 +85,12 @@ impl TorService {
         })
     }
 
-    /// Get onion address (placeholder)
+    /// Get onion address.
+    ///
+    /// Returns `None` until the service has published a descriptor via BearDog.
+    /// Callers should treat `None` as "service not yet reachable on the Tor network."
     #[must_use]
-    pub const fn onion_address(&self) -> &'static str {
-        "placeholder.onion"
+    pub const fn onion_address(&self) -> Option<&str> {
+        None
     }
 }

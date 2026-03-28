@@ -29,8 +29,7 @@ impl TlsServer {
         // First 4 bytes: Unix time (seconds since epoch)
         // Note: In TLS 1.3, this is optional but helps prevent replay attacks
         let time =
-            SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs()
-                as u32;
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as u32;
         random.extend_from_slice(&time.to_be_bytes());
 
         // Remaining 28 bytes: cryptographically secure random from OS

@@ -23,6 +23,14 @@ pub use security_types::{AuthResult, SecurityHealth, SecurityMetrics};
 #[path = "security_types_tests.rs"]
 mod security_types_tests;
 
+#[cfg(test)]
+#[path = "security_tests.rs"]
+mod security_tests;
+
+#[cfg(test)]
+#[path = "security_adapter_tests.rs"]
+mod security_adapter_tests;
+
 /// Protocol used for communication with security provider (v3.12.0 - tarpc PRIMARY)
 #[derive(Debug, Clone)]
 enum SecurityProtocol {

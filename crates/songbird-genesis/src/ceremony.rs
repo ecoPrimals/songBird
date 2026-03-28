@@ -238,11 +238,12 @@ impl PrimalCoordinator {
                 if let Some(lineage) = Self::try_beardog_lineage(self, node_id, witness).await {
                     return Ok(lineage);
                 }
-                tracing::warn!(
-                    "Using mock lineage for {} (development/test mode)",
-                    self.primal_name
+                tracing::error!(
+                    primal = %self.primal_name,
+                    "DEGRADED: Generating synthetic lineage — primal unreachable and BearDog unavailable. \
+                     This node will have reduced trust until re-genesis with live primals."
                 );
-                Ok(Self::mock_lineage(self, node_id))
+                Ok(Self::synthetic_lineage(self, node_id))
             }
         }
     }
@@ -317,11 +318,11 @@ impl PrimalCoordinator {
         })
     }
 
-    fn mock_lineage(coordinator: &Self, node_id: &str) -> PrimalLineage {
+    fn synthetic_lineage(coordinator: &Self, node_id: &str) -> PrimalLineage {
         PrimalLineage {
             primal_name: coordinator.primal_name.clone(),
-            lineage_data: format!("lineage_for_{node_id}").into_bytes(),
-            signature: format!("sig_from_{}", coordinator.primal_name).into_bytes(),
+            lineage_data: format!("synthetic_lineage_{node_id}").into_bytes(),
+            signature: format!("unsigned_synthetic_{}", coordinator.primal_name).into_bytes(),
             timestamp: Utc::now(),
         }
     }

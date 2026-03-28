@@ -183,7 +183,7 @@
    - Pure Rust STUN server for NAT traversal
    - Eliminates coturn C dependency
    - 3-5 days for Phase 1 MVP
-   - Investigation: `ecoPrimals/sessions/2026-02-february/STUN_SERVER_INVESTIGATION_FEB_05_2026.md`
+   - Investigation: (archived to `ecoPrimals/archive/songbird-sessions-fossil-mar28-2026/`)
 
 7. **[SECURE_COMMUNICATIONS_PROTOCOL.md](SECURE_COMMUNICATIONS_PROTOCOL.md)** ✅ COMPLETE (Jan 27, 2026)
    - BearDog policy delegation architecture

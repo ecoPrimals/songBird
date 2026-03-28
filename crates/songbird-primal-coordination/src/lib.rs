@@ -9,10 +9,7 @@
     clippy::ignore_without_reason,
     reason = "Historical patterns in this crate; inherited workspace pedantic lints."
 )]
-#![cfg_attr(
-    test,
-    allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")
-)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # 🌳 Songbird Primal Coordination - Universal Signal and Coordinator
 //!
 //! **MISSION**: Songbird is the nervous system, not the organs
