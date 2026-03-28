@@ -6,9 +6,7 @@
 //! After Gate 5.2, songbird crates only need to find the Neural API socket.
 //! `BearDog` discovery is kept for `BEARDOG_MODE=direct` bootstrap.
 
-use songbird_types::defaults::paths::{
-    BEARDOG_SOCKET_LEGACY, BIOMEOS_RUNTIME_SUBDIR, NEURAL_API_SOCKET_LEGACY_PATTERN,
-};
+use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, NEURAL_API_SOCKET_LEGACY_PATTERN};
 use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
@@ -49,7 +47,7 @@ pub fn beardog_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: 
 /// Priority:
 /// 1. `$NEURAL_API_SOCKET` / `$NEURALS_SOCKET`
 /// 2. `$XDG_RUNTIME_DIR/biomeos/neural-api.sock` (with optional family suffix)
-/// 3. `/tmp/biomeos/neural-api.sock`
+/// 3. `{std::env::temp_dir()}/biomeos/neural-api.sock`
 /// 4. `/tmp/neural-api-{family}.sock` (legacy)
 #[must_use]
 pub fn discover_neural_api_socket() -> String {
@@ -87,8 +85,8 @@ where
         }
     }
 
-    let biomeos_path = Path::new("/tmp/biomeos/neural-api.sock");
-    if path_exists(biomeos_path) {
+    let biomeos_path = std::env::temp_dir().join("biomeos").join("neural-api.sock");
+    if path_exists(&biomeos_path) {
         return biomeos_path.to_string_lossy().to_string();
     }
 
@@ -102,8 +100,8 @@ where
 ///
 /// Priority:
 /// 1. `$BEARDOG_SOCKET`
-/// 2. `$XDG_RUNTIME_DIR/biomeos/beardog.sock`
-/// 3. `/tmp/beardog.sock` (legacy)
+/// 2. `$XDG_RUNTIME_DIR/biomeos/crypto.sock` (with optional family suffix)
+/// 3. `{std::env::temp_dir()}/beardog.sock` (legacy)
 #[must_use]
 pub fn discover_beardog_socket() -> String {
     discover_beardog_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
@@ -130,8 +128,9 @@ where
         }
     }
 
-    warn!("⚠️  Using legacy BearDog path: {}", BEARDOG_SOCKET_LEGACY);
-    BEARDOG_SOCKET_LEGACY.to_string()
+    let legacy = std::env::temp_dir().join("beardog.sock");
+    warn!("⚠️  Using legacy BearDog path: {}", legacy.display());
+    legacy.to_string_lossy().into_owned()
 }
 
 #[cfg(test)]
@@ -228,6 +227,7 @@ mod tests {
     fn discover_beardog_legacy_when_no_match() {
         let map: HashMap<&str, String> = HashMap::new();
         let out = discover_beardog_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, BEARDOG_SOCKET_LEGACY);
+        let expected = std::env::temp_dir().join("beardog.sock");
+        assert_eq!(PathBuf::from(out), expected);
     }
 }

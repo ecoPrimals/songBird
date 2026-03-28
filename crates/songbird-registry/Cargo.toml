@@ -37,6 +37,7 @@ dashmap = "5.0"
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust, ecoBin compliant!
 
 # Internal dependencies
+anyhow = { workspace = true }
 songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }

@@ -666,3 +666,310 @@ pub enum GameProtocolClass {
     /// Custom protocol
     Custom(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    fn roundtrip<T>(v: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let a: Value = serde_json::to_value(v).expect("serialize");
+        let back: T = serde_json::from_value(a.clone()).expect("deserialize");
+        assert_eq!(serde_json::to_value(&back).expect("serialize again"), a);
+    }
+
+    #[test]
+    fn default_canonical_gaming_config() {
+        let c = CanonicalGamingConfig::default();
+        assert!(c.core.enabled);
+        assert!(matches!(c.core.mode, GamingMode::Performance));
+        assert!(matches!(c.core.default_game_type, GameType::Fps));
+        assert!(c.network.optimization.enabled);
+        assert!(c.security.settings.enabled);
+        assert!(c.performance.settings.low_latency);
+        assert!(c.auto.enabled);
+        assert!(c.one_touch.enabled);
+    }
+
+    #[test]
+    fn default_gaming_core_config() {
+        let c = GamingCoreConfig::default();
+        assert!(c.enabled);
+        assert!(matches!(c.mode, GamingMode::Performance));
+        assert!(matches!(c.default_game_type, GameType::Fps));
+    }
+
+    #[test]
+    fn default_gaming_network_config() {
+        let c = GamingNetworkConfig::default();
+        assert!(c.optimization.enabled);
+        assert!(c.protocols.supported.contains(&"udp".to_string()));
+        assert_eq!(c.ports.base_port, 6112);
+    }
+
+    #[test]
+    fn default_protocol_config() {
+        let c = ProtocolConfig::default();
+        assert_eq!(c.default, "udp");
+        assert_eq!(c.supported.len(), 2);
+    }
+
+    #[test]
+    fn default_gaming_port_config() {
+        let c = GamingPortConfig::default();
+        assert_eq!(c.port_range, (6112, 6200));
+        assert_eq!(c.reserved_ports.len(), 3);
+    }
+
+    #[test]
+    fn default_gaming_security_config() {
+        let c = GamingSecurityConfig::default();
+        assert!(c.settings.anti_cheat);
+        assert_eq!(c.auth.method, "jwt");
+    }
+
+    #[test]
+    fn default_gaming_security_settings() {
+        let c = GamingSecuritySettings::default();
+        assert!(c.enabled && c.encryption);
+    }
+
+    #[test]
+    fn default_gaming_auth_config() {
+        let c = GamingAuthConfig::default();
+        assert_eq!(c.session_timeout, 3600);
+    }
+
+    #[test]
+    fn default_gaming_performance_config() {
+        let c = GamingPerformanceConfig::default();
+        assert_eq!(c.settings.target_fps, 60);
+        assert!(c.optimization.enabled);
+    }
+
+    #[test]
+    fn default_gaming_performance_settings() {
+        let c = GamingPerformanceSettings::default();
+        assert_eq!(c.buffer_size, 8192);
+    }
+
+    #[test]
+    fn default_gaming_optimization_config() {
+        let c = GamingOptimizationConfig::default();
+        assert!(c.cpu_optimization && c.memory_optimization);
+    }
+
+    #[test]
+    fn default_gaming_auto_config() {
+        let c = GamingAutoConfig::default();
+        assert!(c.detection.enabled);
+        assert!(c.optimization.buffer_optimization);
+    }
+
+    #[test]
+    fn default_security_provider_integration_config() {
+        let c = SecurityProviderIntegrationConfig::default();
+        assert!(!c.enabled);
+        assert_eq!(c.endpoint, None);
+        assert!(c.auth.enabled);
+    }
+
+    #[test]
+    fn default_security_provider_monitoring_config() {
+        let c = SecurityProviderMonitoringConfig::default();
+        assert_eq!(c.metrics_interval, 60);
+    }
+
+    #[test]
+    fn default_auto_detection_config() {
+        let c = AutoDetectionConfig::default();
+        assert_eq!(c.timeout_seconds, 10);
+    }
+
+    #[test]
+    fn default_network_optimization_config() {
+        let c = NetworkOptimizationConfig::default();
+        assert!(c.connection_pooling);
+    }
+
+    #[test]
+    fn default_one_touch_config() {
+        let c = OneTouchConfig::default();
+        assert_eq!(c.default_profile.name, "default");
+        assert!(c.templates.is_empty());
+    }
+
+    #[test]
+    fn default_gaming_profile() {
+        let p = GamingProfile::default();
+        assert_eq!(p.protocol_preference.len(), 1);
+    }
+
+    #[test]
+    fn default_encryption_config() {
+        let c = EncryptionConfig::default();
+        assert_eq!(c.key_size, 256);
+    }
+
+    #[test]
+    fn default_authentication_config() {
+        let c = AuthenticationConfig::default();
+        assert_eq!(c.token_lifetime, std::time::Duration::from_secs(3600));
+    }
+
+    #[test]
+    fn default_privilege_config() {
+        let c = PrivilegeConfig::default();
+        assert_eq!(c.max_level, 10);
+    }
+
+    #[test]
+    fn default_benchmark_config() {
+        let c = BenchmarkConfig::default();
+        assert!(!c.enabled);
+        assert_eq!(c.iterations, 10);
+    }
+
+    #[test]
+    fn default_qos_config() {
+        let c = QoSConfig::default();
+        assert_eq!(c.priority_levels, 3);
+    }
+
+    #[test]
+    fn default_protocol_detection_config() {
+        let c = ProtocolDetectionConfig::default();
+        assert_eq!(c.detection_rules.len(), 0);
+        assert_eq!(c.supported_protocols.len(), 2);
+    }
+
+    #[test]
+    fn default_nat_traversal_config() {
+        let c = NatTraversalConfig::default();
+        assert!(c.stun_servers[0].enabled);
+    }
+
+    #[test]
+    fn serde_roundtrip_gaming_mode() {
+        roundtrip(&GamingMode::Balanced);
+    }
+
+    #[test]
+    fn serde_roundtrip_game_type_variants() {
+        roundtrip(&GameType::Moba);
+        roundtrip(&GameType::Custom("x".to_string()));
+    }
+
+    #[test]
+    fn serde_roundtrip_canonical_gaming_config() {
+        roundtrip(&CanonicalGamingConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_gaming_core_config() {
+        roundtrip(&GamingCoreConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_gaming_network_config() {
+        roundtrip(&GamingNetworkConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_protocol_and_ports() {
+        roundtrip(&ProtocolConfig::default());
+        roundtrip(&GamingPortConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_security_stack() {
+        roundtrip(&GamingSecurityConfig::default());
+        roundtrip(&GamingSecuritySettings::default());
+        roundtrip(&GamingAuthConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_performance_stack() {
+        roundtrip(&GamingPerformanceConfig::default());
+        roundtrip(&GamingPerformanceSettings::default());
+        roundtrip(&GamingOptimizationConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_auto_and_provider() {
+        roundtrip(&GamingAutoConfig::default());
+        roundtrip(&SecurityProviderIntegrationConfig::default());
+        roundtrip(&SecurityProviderMonitoringConfig::default());
+        roundtrip(&AutoDetectionConfig::default());
+        roundtrip(&NetworkOptimizationConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_one_touch_and_profile() {
+        roundtrip(&OneTouchConfig::default());
+        roundtrip(&GamingProfile::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_gaming_template() {
+        let t = GamingTemplate {
+            name: "arena".to_string(),
+            ports: vec![6112, 6113],
+            protocols: vec![GameProtocolClass::FirstPersonShooter],
+        };
+        roundtrip(&t);
+    }
+
+    #[test]
+    fn serde_roundtrip_encryption_authentication_privilege() {
+        roundtrip(&EncryptionConfig::default());
+        roundtrip(&AuthenticationConfig::default());
+        roundtrip(&PrivilegeConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_performance_mode() {
+        roundtrip(&PerformanceMode::PowerSaver);
+    }
+
+    #[test]
+    fn serde_roundtrip_benchmark_qos_protocol_detection() {
+        roundtrip(&BenchmarkConfig::default());
+        roundtrip(&QoSConfig::default());
+        roundtrip(&ProtocolDetectionConfig::default());
+    }
+
+    #[test]
+    fn serde_roundtrip_detection_rule() {
+        let r = DetectionRule {
+            name: "q3".to_string(),
+            signature: Some(vec![0xFF, 0x00]),
+            protocol_class: GameProtocolClass::Custom("c".to_string()),
+        };
+        roundtrip(&r);
+    }
+
+    #[test]
+    fn serde_roundtrip_nat_and_servers() {
+        roundtrip(&NatTraversalConfig::default());
+        roundtrip(&StunServerConfig {
+            address: "stun:3478".to_string(),
+            enabled: true,
+        });
+        roundtrip(&TurnServerConfig {
+            address: "turn:3478".to_string(),
+            username: Some("u".to_string()),
+            password: None,
+            enabled: true,
+        });
+    }
+
+    #[test]
+    fn serde_roundtrip_game_protocol_class_variants() {
+        roundtrip(&GameProtocolClass::Sports);
+        roundtrip(&GameProtocolClass::Custom("mod".to_string()));
+    }
+}

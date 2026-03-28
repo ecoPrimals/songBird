@@ -12,6 +12,7 @@ use crate::{
         StopJobResponse,
     },
 };
+use anyhow::Result;
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -66,7 +67,7 @@ impl ExecutionServer {
     /// # Errors
     ///
     /// Returns an error if binding to the address fails
-    pub async fn serve(self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn serve(self) -> Result<()> {
         let state = ServerState {
             job_manager: self.job_manager.clone(),
             executor: self.executor.clone(),

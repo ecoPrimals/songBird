@@ -117,6 +117,8 @@
     )
 )]
 
+/// Production analytics engine and related types.
+pub mod analytics;
 /// Aggregated health-check types and the [`health::HealthMonitor`] trait for custom probes.
 pub mod health;
 /// Core metrics, dashboards, and the [`observability::ObservabilityManager`] facade.

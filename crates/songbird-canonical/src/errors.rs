@@ -3,6 +3,8 @@
 
 //! Canonical error types for the Songbird ecosystem
 
+use songbird_types::SongbirdError;
+
 #[cfg(test)]
 #[path = "errors_tests.rs"]
 mod errors_tests;
@@ -88,6 +90,6 @@ pub const fn success_result<T>(data: T) -> T {
 ///
 /// # Errors
 /// This function never returns an error - it always succeeds with `Ok(()`
-pub fn unit_success() -> Result<(), Box<dyn std::error::Error>> {
+pub fn unit_success() -> Result<(), SongbirdError> {
     Ok(())
 }

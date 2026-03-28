@@ -296,7 +296,7 @@ impl PluginRegistry for DynamicPluginRegistry {
         plugin_id: String,
         capabilities: Vec<PluginCapability>,
         _requirements: Vec<PluginRequirement>,
-    ) -> std::result::Result<String, Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<String> {
         // Store capabilities directly
         let mut caps = self.capabilities.write().await;
         let current_len = caps.len();
@@ -310,35 +310,35 @@ impl PluginRegistry for DynamicPluginRegistry {
         Ok(plugin_id)
     }
 
-    async fn discover_plugins(&self, requirements: Vec<PluginRequirement>) -> std::result::Result<Vec<String>, Box<dyn std::error::Error>> {
+    async fn discover_plugins(&self, requirements: Vec<PluginRequirement>) -> anyhow::Result<Vec<String>> {
         // Convert requirements to capabilities for discovery
         let capabilities: Vec<PluginCapability> =
-            requirements.iter().map(|req| self.requirement_to_capability(req).collect();
+            requirements.iter().map(|req| self.requirement_to_capability(req)).collect();
 
         self.find_plugins_by_capabilities(&capabilities)
             .await
-            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+            .map_err(|e: SongbirdError| anyhow::Error::from(e))
     }
 
     async fn auto_compose(
         &self,
         target_capabilities: Vec<PluginCapability>,
-    ) -> std::result::Result<CompositionPlan, Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<CompositionPlan> {
         let constraints = CompositionConstraints::default();
         let plans = self
             .discover_optimal_composition("auto-compose ", target_capabilities, constraints)
             .await
-            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+            .map_err(|e: SongbirdError| anyhow::Error::from(e))?;
 
         plans.into_iter().next().ok_or_else(|| {
-            Box::new(SongbirdError::service(
+            anyhow::Error::from(SongbirdError::service(
                 "plugin-registry ",
                 "No viable composition found ".to_string(),
-            )) as Box<dyn std::error::Error>
+            ))
         })
     }
 
-    async fn execute_composition(&self, plan: CompositionPlan) -> std::result::Result<ComposedSystem, Box<dyn std::error::Error>> {
+    async fn execute_composition(&self, plan: CompositionPlan) -> anyhow::Result<ComposedSystem> {
         let system_id = Uuid::new_v4().to_string();
 
         let system = ComposedSystem {

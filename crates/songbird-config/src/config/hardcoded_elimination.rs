@@ -120,7 +120,7 @@ impl Default for SecurityConfig {
                     &crate::canonical::constants::get_bind_address()
                 ),
             ),
-            tls_cert_path: env_or_default("SONGBIRD_TLS_CERT", "/etc/ssl/certs/songbird.crt"),
+            tls_cert_path: default_tls_cert_path(),
         }
     }
 }
@@ -337,6 +337,26 @@ impl Default for FederationConfig {
 
 fn env_or_default(key: &str, default: &str) -> String {
     songbird_process_env::var(key).unwrap_or_else(|_| default.to_string())
+}
+
+fn default_tls_cert_path() -> String {
+    songbird_process_env::var("SONGBIRD_TLS_CERT")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| songbird_process_env::var("SSL_CERT_FILE").ok().filter(|s| !s.is_empty()))
+        .unwrap_or_else(|| {
+            std::env::var("HOME").map_or_else(
+                |_| {
+                    std::env::temp_dir()
+                        .join("songbird")
+                        .join("certs")
+                        .join("songbird.crt")
+                        .to_string_lossy()
+                        .into_owned()
+                },
+                |h| format!("{h}/.songbird/certs/songbird.crt"),
+            )
+        })
 }
 
 /// Thread-safe global configuration using `OnceLock` (idiomatic Rust,

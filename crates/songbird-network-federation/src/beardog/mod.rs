@@ -168,9 +168,12 @@ impl BearDogProviderFactory {
         // Development fallback: Try /tmp/beardog.sock (only in debug builds)
         #[cfg(debug_assertions)]
         {
-            let default_socket = "/tmp/beardog.sock";
-            if std::path::Path::new(default_socket).exists() {
-                tracing::warn!("Using development fallback for BearDog: {}", default_socket);
+            let default_socket = std::env::temp_dir().join("beardog.sock");
+            if default_socket.exists() {
+                tracing::warn!(
+                    "Using development fallback for BearDog: {}",
+                    default_socket.display()
+                );
                 tracing::warn!("Set BEARDOG_SOCKET or SECURITY_SOCKET for production");
                 match crate::beardog::production::ProductionBearDogProvider::new(default_socket)
                     .await

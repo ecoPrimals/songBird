@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 11,356 passed, 0 failed, 269 ignored |
-| **Line Coverage** | ~69.33% (llvm-cov; target 90%) |
+| **Tests** | 11,471 passed, 0 failed, 269 ignored |
+| **Line Coverage** | ~69.33% (llvm-cov; target 90%; measuring pending) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
@@ -52,6 +52,42 @@
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 28, 2026 — Deep Debt Evolution + Hardcoding + Typed Errors + Coverage — Session 25, Wave 83)
+
+### Wave 83: Deep Debt Audit Execution + Typed Errors + Hardcoding Evolution + Smart Refactoring + Coverage
+
+**Broken syntax fix:**
+- `songbird-cli/src/cli/commands/logs.rs`: Complete rewrite — file was syntactically corrupt throughout (stray quotes, broken parens, invalid Rust). Rewrote with proper Rust, XDG/env-based log path discovery (no hardcoded `/var/log/` or `/tmp/`), and 8 tests
+
+**Typed error evolution (Box<dyn Error> → typed):**
+- `songbird-canonical/src/errors.rs`: `unit_success()` → `Result<(), SongbirdError>`
+- `songbird-execution-agent/src/server.rs`: `serve()` → `anyhow::Result<()>`
+- `songbird-registry/src/plugin/mod.rs`: Plugin trait methods → `anyhow::Result` (4 methods)
+
+**Hardcoding evolution (/tmp paths → env/XDG):**
+- `songbird-crypto-provider/src/socket_discovery.rs`: `/tmp/biomeos/neural-api.sock` → `std::env::temp_dir()`, `/tmp/beardog.sock` → `std::env::temp_dir()`
+- `songbird-network-federation/src/beardog/mod.rs`: Debug `/tmp/beardog.sock` → `std::env::temp_dir()`
+- `songbird-config/src/config/hardcoded_elimination.rs`: `/etc/ssl/...` → env-driven `SONGBIRD_TLS_CERT` / `SSL_CERT_FILE` / XDG fallback
+- `songbird-config/src/config/paths.rs`: `/tmp/songbird/...` → `std::env::temp_dir().join("songbird")`
+
+**Smart refactoring:**
+- `songbird-compute-bridge/src/service.rs` (859→164 mod.rs): Extracted `types.rs`, `detection.rs`, `federation.rs`, `handlers.rs`, `service_tests.rs`
+
+**Observability module repair:**
+- `songbird-observability/src/analytics/production_analytics.rs`: Rewrote broken/orphaned module into valid Rust with full clippy compliance. Wired into `lib.rs` via `pub mod analytics`
+
+**Coverage expansion (+115 tests, 11,471 total):**
+- songbird-types: gaming.rs (42), performance.rs (22), canonical_types.rs (16), unified.rs (11), service.rs (7) — 98 tests
+- songbird-observability: production_analytics.rs (18) — 18 tests
+
+**Metrics:**
+- Tests: 11,356 → 11,471 (+115)
+- Clippy pedantic: zero warnings (30/30 crates)
+- Format: clean
+- Build: zero errors, zero warnings
 
 ---
 

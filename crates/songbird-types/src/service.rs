@@ -241,11 +241,15 @@ pub enum AllowedValues {
 #[allow(clippy::unreadable_literal, reason = "test module: clippy noise in unit tests")]
 #[allow(clippy::items_after_statements, reason = "test module: clippy noise in unit tests")]
 #[allow(clippy::cast_precision_loss, reason = "test module: clippy noise in unit tests")]
-#[allow(clippy::cast_possible_truncation, reason = "test module: clippy noise in unit tests")]
-#[allow(clippy::cast_sign_loss, reason = "test module: clippy noise in unit tests")]
+#[cfg(test)]
 mod tests {
-    #![allow(clippy::all, reason = "test module: broad clippy suppression for assertions")]
-    #![allow(unused, reason = "test module: unused imports/bindings in tests")]
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "test assertions"
+    )]
 
     use super::*;
     use crate::SongbirdError;
@@ -637,5 +641,60 @@ mod tests {
             .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
         assert!(json.contains("Running"));
         Ok(())
+    }
+
+    fn assert_json_roundtrip<T>(v: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        use serde_json::Value;
+        let a: Value = serde_json::to_value(v).unwrap();
+        let back: T = serde_json::from_value(a.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&back).unwrap(), a);
+    }
+
+    #[test]
+    fn serde_json_roundtrip_canonical_service_info() {
+        assert_json_roundtrip(&CanonicalServiceInfo::new("svc", "2.0.0"));
+    }
+
+    #[test]
+    fn serde_json_roundtrip_service_metrics() {
+        assert_json_roundtrip(&ServiceMetrics::default());
+    }
+
+    #[test]
+    fn serde_json_roundtrip_canonical_service_type_variants() {
+        assert_json_roundtrip(&CanonicalServiceType::MessageQueue);
+        assert_json_roundtrip(&CanonicalServiceType::Custom("x".to_string()));
+    }
+
+    #[test]
+    fn serde_json_roundtrip_canonical_service_status_variants() {
+        assert_json_roundtrip(&CanonicalServiceStatus::Stopped);
+    }
+
+    #[test]
+    fn serde_json_roundtrip_canonical_service_config() {
+        assert_json_roundtrip(&CanonicalServiceConfig::default());
+    }
+
+    #[test]
+    fn serde_json_roundtrip_canonical_service_config_parameter_and_allowed_values() {
+        let param = CanonicalServiceConfigParameter {
+            name: "p".to_string(),
+            value: "v".to_string(),
+            description: None,
+            required: true,
+            default_value: None,
+            allowed_values: AllowedValues::Specific(vec!["a".to_string()]),
+        };
+        assert_json_roundtrip(&param);
+        assert_json_roundtrip(&AllowedValues::Any);
+        assert_json_roundtrip(&AllowedValues::Range {
+            min: 0.0,
+            max: 1.0,
+        });
+        assert_json_roundtrip(&AllowedValues::Pattern(".*".to_string()));
     }
 }

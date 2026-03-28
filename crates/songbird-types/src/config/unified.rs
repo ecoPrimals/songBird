@@ -245,3 +245,101 @@ impl UnifiedSongbirdConfig {
             || SafeEnv::get_required("CI").is_ok()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+    use std::collections::HashMap;
+
+    fn roundtrip<T>(v: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let a: Value = serde_json::to_value(v).expect("serialize");
+        let back: T = serde_json::from_value(a.clone()).expect("deserialize");
+        assert_eq!(serde_json::to_value(&back).expect("serialize again"), a);
+    }
+
+    #[test]
+    fn unified_songbird_config_default() {
+        let c = UnifiedSongbirdConfig::default();
+        assert!(!c.system.system_id.is_empty());
+        assert!(!c.system.environment.is_empty());
+        assert!(c.network.ports.orchestrator > 0);
+    }
+
+    #[test]
+    fn unified_new_matches_default() {
+        let a = UnifiedSongbirdConfig::new("h", 1, "p");
+        let b = UnifiedSongbirdConfig::default();
+        assert_eq!(serde_json::to_value(&a).unwrap(), serde_json::to_value(&b).unwrap());
+    }
+
+    #[test]
+    fn validate_ok_for_default() {
+        assert!(UnifiedSongbirdConfig::default().validate().is_ok());
+    }
+
+    #[test]
+    fn validate_errors_on_empty_environment() {
+        let mut c = UnifiedSongbirdConfig::default();
+        c.system.environment.clear();
+        assert_eq!(c.validate(), Err("System environment cannot be empty".to_string()));
+    }
+
+    #[test]
+    fn validate_errors_on_empty_system_id() {
+        let mut c = UnifiedSongbirdConfig::default();
+        c.system.system_id.clear();
+        assert_eq!(c.validate(), Err("System ID cannot be empty".to_string()));
+    }
+
+    #[test]
+    fn validate_errors_on_zero_orchestrator_port() {
+        let mut c = UnifiedSongbirdConfig::default();
+        c.network.ports.orchestrator = 0;
+        assert_eq!(
+            c.validate(),
+            Err("Network orchestrator port must be greater than 0".to_string())
+        );
+    }
+
+    #[test]
+    fn get_bind_address_from_env_override() {
+        let c = UnifiedSongbirdConfig::default();
+        let mut env = HashMap::new();
+        env.insert("SONGBIRD_BIND_ADDRESS".to_string(), "10.0.0.1".to_string());
+        assert_eq!(c.get_bind_address_from_env(&env), "10.0.0.1");
+    }
+
+    #[test]
+    fn get_data_dir_from_env_non_prod_uses_home() {
+        let c = UnifiedSongbirdConfig::default();
+        let mut env = HashMap::new();
+        env.insert("HOME".to_string(), "/home/u".to_string());
+        assert_eq!(c.get_data_dir_from_env(&env), "/home/u/.local/share/songbird");
+    }
+
+    #[test]
+    fn get_config_cache_log_dirs_from_env_non_prod() {
+        let c = UnifiedSongbirdConfig::default();
+        let mut env = HashMap::new();
+        env.insert("HOME".to_string(), "/home/u".to_string());
+        assert_eq!(c.get_config_dir_from_env(&env), "/home/u/.config/songbird");
+        assert_eq!(c.get_cache_dir_from_env(&env), "/home/u/.cache/songbird");
+        assert_eq!(c.get_log_dir_from_env(&env), "/home/u/.local/share/songbird/logs");
+    }
+
+    #[test]
+    fn is_test_from_env_detects_ci() {
+        let mut env = HashMap::new();
+        env.insert("CI".to_string(), "1".to_string());
+        assert!(UnifiedSongbirdConfig::is_test_from_env(&env));
+    }
+
+    #[test]
+    fn serde_roundtrip_unified_songbird_config() {
+        roundtrip(&UnifiedSongbirdConfig::default());
+    }
+}

@@ -133,12 +133,14 @@ impl PathConfig {
         warn!("🔄 Using fallback path configuration (substrate unavailable)");
 
         let base_data_dir = Self::get_fallback_data_dir().unwrap_or_else(|_| {
-            warn!("Unable to determine data directory, using /tmp/songbird/data");
-            PathBuf::from("/tmp/songbird/data")
+            let p = std::env::temp_dir().join("songbird").join("data");
+            warn!("Unable to determine data directory, using {}", p.display());
+            p
         });
         let base_config_dir = Self::get_fallback_config_dir().unwrap_or_else(|_| {
-            warn!("Unable to determine config directory, using /tmp/songbird/config");
-            PathBuf::from("/tmp/songbird/config")
+            let p = std::env::temp_dir().join("songbird").join("config");
+            warn!("Unable to determine config directory, using {}", p.display());
+            p
         });
         let base_log_dir = Self::get_fallback_log_dir();
         let base_cache_dir = Self::get_fallback_cache_dir();
@@ -540,9 +542,9 @@ pub fn get_path_config() -> PathConfig {
 ///
 /// Returns an error if:
 /// - Failed to create service directory
-/// - Insufficient write permissions for /`tmp/songbird/{service_name`}
+/// - Insufficient write permissions under `{temp_dir}/songbird/{service_name}` (see [`std::env::temp_dir`])
 pub fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
-    let base_dir = PathBuf::from(format!("/tmp/songbird/{service_name}"));
+    let base_dir = std::env::temp_dir().join("songbird").join(service_name);
 
     let service_dirs = ServiceDataDirs {
         orchestrator: base_dir.join("orchestrator"),
