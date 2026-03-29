@@ -239,7 +239,9 @@ async fn initialize_birdsong_processor(
                     fallback_to_plaintext: true,
                     security_endpoint: Some(endpoint.clone()),
                     mixed_mode: true,
-                    ..Default::default()
+                    dark_forest_enabled: crate::env_config::dark_forest_enabled(),
+                    accept_legacy_format: crate::env_config::accept_legacy_birdsong(),
+                    dual_broadcast: crate::env_config::dual_broadcast(),
                 };
                 let processor = songbird_discovery::BirdSongProcessor::new(None, config);
                 info!(
@@ -257,7 +259,9 @@ async fn initialize_birdsong_processor(
             fallback_to_plaintext: true,
             security_endpoint: Some(endpoint.clone()),
             mixed_mode: true,
-            ..Default::default()
+            dark_forest_enabled: crate::env_config::dark_forest_enabled(),
+            accept_legacy_format: crate::env_config::accept_legacy_birdsong(),
+            dual_broadcast: crate::env_config::dual_broadcast(),
         };
 
         let processor =
@@ -271,7 +275,9 @@ async fn initialize_birdsong_processor(
             fallback_to_plaintext: true,
             security_endpoint: Some(endpoint.clone()),
             mixed_mode: true,
-            ..Default::default()
+            dark_forest_enabled: crate::env_config::dark_forest_enabled(),
+            accept_legacy_format: crate::env_config::accept_legacy_birdsong(),
+            dual_broadcast: crate::env_config::dual_broadcast(),
         };
         let processor = songbird_discovery::BirdSongProcessor::new(None, config);
         info!("📡 BirdSong processor initialized (plaintext fallback): {}", processor.status());
