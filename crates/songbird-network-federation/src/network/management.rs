@@ -50,7 +50,7 @@ mod tests {
     #[test]
     fn network_management_new_default() {
         let a = NetworkManagement::new();
-        let b = NetworkManagement::default();
+        let b = NetworkManagement;
         let _ = (a, b);
     }
 

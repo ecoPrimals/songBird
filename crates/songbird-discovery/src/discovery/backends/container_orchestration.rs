@@ -812,7 +812,7 @@ mod tests {
             status: "running".to_string(),
             ports: vec!["8080/tcp".to_string()],
         };
-        assert_eq!(c.clone().name, "n1");
+        assert_eq!(c.name, "n1");
     }
 
     #[tokio::test]

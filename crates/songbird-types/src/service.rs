@@ -235,21 +235,21 @@ pub enum AllowedValues {
     Pattern(String),
 }
 
-#[allow(clippy::uninlined_format_args, reason = "test module: clippy noise in unit tests")]
-#[allow(clippy::float_cmp, reason = "test module: clippy noise in unit tests")]
-#[allow(clippy::useless_vec, reason = "test module: clippy noise in unit tests")]
-#[allow(clippy::unreadable_literal, reason = "test module: clippy noise in unit tests")]
-#[allow(clippy::items_after_statements, reason = "test module: clippy noise in unit tests")]
-#[allow(clippy::cast_precision_loss, reason = "test module: clippy noise in unit tests")]
 #[cfg(test)]
+#[allow(
+    clippy::uninlined_format_args,
+    clippy::float_cmp,
+    clippy::useless_vec,
+    clippy::unreadable_literal,
+    clippy::items_after_statements,
+    clippy::cast_precision_loss,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "test module"
+)]
 mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test assertions"
-    )]
 
     use super::*;
     use crate::SongbirdError;

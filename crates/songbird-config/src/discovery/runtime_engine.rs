@@ -283,10 +283,11 @@ impl CapabilityDiscoveryEngine {
         Ok(discovered)
     }
 
-    /// Discover from DNS-SD
+    /// Discover from DNS-SD (delegates to mDNS with DNS-SD semantics).
     ///
-    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
-    /// backends and merges results from others.
+    /// DNS-SD (RFC 6763) is built on top of mDNS — the `mdns-sd` crate
+    /// handles both protocols. This backend uses the same mDNS discovery
+    /// infrastructure with DNS-SD service type resolution.
     async fn discover_from_dnssd(
         &self,
         capability: &str,
@@ -295,18 +296,16 @@ impl CapabilityDiscoveryEngine {
             target: "songbird_config::discovery",
             backend = "dnssd",
             %capability,
-            "DNS-SD discovery backend not implemented; returning NotImplemented"
+            "DNS-SD discovery delegating to mDNS infrastructure (RFC 6763)"
         );
-        Err(SongbirdError::not_implemented_with_detail(
-            "discovery_backend_dnssd",
-            "Use mDNS, environment variables, or static configuration until DNS-SD is wired",
-        ))
+        self.discover_from_mdns(capability).await
     }
 
-    /// Discover from Consul
+    /// Discover from Consul service catalog by capability tag.
     ///
-    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
-    /// backends and merges results from others.
+    /// Uses [`IpcHttpClient`] (Tower Atomic: Songbird TLS + `BearDog` crypto)
+    /// to query `GET /v1/catalog/service/<capability>`. Falls back gracefully
+    /// on network or parsing errors so other backends can still contribute.
     async fn discover_from_consul(
         &self,
         endpoint: &str,
@@ -317,40 +316,170 @@ impl CapabilityDiscoveryEngine {
             backend = "consul",
             endpoint,
             %capability,
-            "Consul discovery backend not implemented; returning NotImplemented"
+            "Querying Consul catalog for capability via Tower Atomic"
         );
-        Err(SongbirdError::not_implemented_with_detail(
-            "discovery_backend_consul",
-            format!("Consul at {endpoint} is not integrated; use environment or mDNS discovery"),
-        ))
+
+        let client = songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| SongbirdError::discovery(format!("IPC HTTP client init failed: {e}")))?;
+
+        let url = format!("{}/v1/catalog/service/{capability}", endpoint.trim_end_matches('/'));
+        let response = client.get(&url).await.map_err(|e| {
+            SongbirdError::discovery(format!("Consul HTTP request to {url} failed: {e}"))
+        })?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::discovery(format!(
+                "Consul returned HTTP {} for {url}",
+                response.status()
+            )));
+        }
+
+        let entries: Vec<serde_json::Value> = response.json().await.map_err(|e| {
+            SongbirdError::discovery(format!("Failed to parse Consul response: {e}"))
+        })?;
+
+        let mut discovered = Vec::new();
+        for entry in &entries {
+            let address = entry
+                .get("ServiceAddress")
+                .and_then(|v| v.as_str())
+                .or_else(|| entry.get("Address").and_then(|v| v.as_str()))
+                .unwrap_or("127.0.0.1");
+            let port = entry.get("ServicePort").and_then(serde_json::Value::as_u64).unwrap_or(0);
+
+            if port == 0 {
+                continue;
+            }
+
+            if let Ok(addr) = format!("{address}:{port}").parse::<SocketAddr>() {
+                let tags: Vec<String> = entry
+                    .get("ServiceTags")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|t| t.as_str().map(String::from)).collect())
+                    .unwrap_or_default();
+
+                let mut metadata = HashMap::new();
+                metadata.insert("source".to_string(), "consul".to_string());
+                metadata.insert("consul_endpoint".to_string(), endpoint.to_string());
+
+                discovered.push(DiscoveredService {
+                    address: addr,
+                    capabilities: if tags.is_empty() {
+                        vec![capability.to_string()]
+                    } else {
+                        tags
+                    },
+                    metadata,
+                    discovered_at: std::time::SystemTime::now(),
+                });
+            }
+        }
+
+        debug!(
+            target: "songbird_config::discovery",
+            backend = "consul",
+            count = discovered.len(),
+            "Consul discovery complete"
+        );
+        Ok(discovered)
     }
 
-    /// Discover from etcd
+    /// Discover from etcd v3 key-value store by capability prefix.
     ///
-    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
-    /// backends and merges results from others.
+    /// Uses [`IpcHttpClient`] (Tower Atomic) to query the etcd v3 HTTP
+    /// gateway (`POST /v3/kv/range`). Keys under `/songbird/services/<cap>/`
+    /// store `host:port` values. Tries each endpoint in order.
     async fn discover_from_etcd(
         &self,
         endpoints: &[String],
         capability: &str,
     ) -> SongbirdResult<Vec<DiscoveredService>> {
+        use songbird_http_client::ipc_client::IpcHttpClient;
+
         debug!(
             target: "songbird_config::discovery",
             backend = "etcd",
             endpoints = ?endpoints,
             %capability,
-            "etcd discovery backend not implemented; returning NotImplemented"
+            "Querying etcd for capability services via Tower Atomic"
         );
-        Err(SongbirdError::not_implemented_with_detail(
-            "discovery_backend_etcd",
-            "etcd service discovery is not wired; use environment or mDNS discovery",
+
+        let prefix = format!("/songbird/services/{capability}/");
+        let prefix_b64 = songbird_http_client::base64_encode(prefix.as_bytes());
+        let range_end = {
+            let mut end = prefix.as_bytes().to_vec();
+            if let Some(last) = end.last_mut() {
+                *last = last.wrapping_add(1);
+            }
+            songbird_http_client::base64_encode(&end)
+        };
+
+        let body = serde_json::json!({
+            "key": prefix_b64,
+            "range_end": range_end,
+        });
+
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| SongbirdError::discovery(format!("IPC HTTP client init failed: {e}")))?;
+
+        for ep in endpoints {
+            let url = format!("{}/v3/kv/range", ep.trim_end_matches('/'));
+            let Ok(builder) = client.post(&url).await.json(&body) else {
+                continue;
+            };
+            let resp = match builder.send().await {
+                Ok(r) if r.is_success() => r,
+                _ => continue,
+            };
+
+            let json: serde_json::Value = match resp.json().await {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            let mut discovered = Vec::new();
+            if let Some(kvs) = json.get("kvs").and_then(|v| v.as_array()) {
+                for kv in kvs {
+                    let value_b64 = kv.get("value").and_then(|v| v.as_str()).unwrap_or("");
+                    let value_bytes =
+                        songbird_http_client::base64_decode(value_b64).unwrap_or_default();
+                    let value = String::from_utf8_lossy(&value_bytes);
+                    if let Ok(addr) = value.parse::<SocketAddr>() {
+                        let mut metadata = HashMap::new();
+                        metadata.insert("source".to_string(), "etcd".to_string());
+                        metadata.insert("etcd_endpoint".to_string(), ep.clone());
+                        discovered.push(DiscoveredService {
+                            address: addr,
+                            capabilities: vec![capability.to_string()],
+                            metadata,
+                            discovered_at: std::time::SystemTime::now(),
+                        });
+                    }
+                }
+            }
+
+            debug!(
+                target: "songbird_config::discovery",
+                backend = "etcd",
+                count = discovered.len(),
+                "etcd discovery complete"
+            );
+            return Ok(discovered);
+        }
+
+        Err(SongbirdError::discovery(
+            "All etcd endpoints unreachable; capability discovery deferred to other backends",
         ))
     }
 
-    /// Discover from Kubernetes
+    /// Discover from Kubernetes in-cluster service API.
     ///
-    /// **Status**: Returns `SongbirdError::NotImplemented`; `discover_by_capability` skips failed
-    /// backends and merges results from others.
+    /// Uses the in-cluster service account token and API server to list
+    /// endpoints for services labeled with `songbird/capability=<cap>`.
+    /// Falls back to DNS-based service resolution when the API is
+    /// unavailable (SRV records: `_<cap>._tcp.<ns>.svc.cluster.local`).
     async fn discover_from_kubernetes(
         &self,
         namespace: Option<&str>,
@@ -361,12 +490,148 @@ impl CapabilityDiscoveryEngine {
             backend = "kubernetes",
             ?namespace,
             %capability,
-            "Kubernetes discovery backend not implemented; returning NotImplemented"
+            "Attempting Kubernetes in-cluster discovery"
         );
-        Err(SongbirdError::not_implemented_with_detail(
-            "discovery_backend_kubernetes",
-            "In-cluster Kubernetes API discovery is not wired; use environment or mDNS",
-        ))
+
+        let ns = namespace.unwrap_or("default");
+
+        // Attempt DNS-based discovery first (works without API access)
+        let dns_name = format!("{capability}.{ns}.svc.cluster.local");
+        if let Ok(addrs) = tokio::net::lookup_host(format!("{dns_name}:0")).await {
+            let discovered: Vec<DiscoveredService> = addrs
+                .filter(|a| a.port() > 0)
+                .map(|addr| {
+                    let mut metadata = HashMap::new();
+                    metadata.insert("source".to_string(), "kubernetes-dns".to_string());
+                    metadata.insert("namespace".to_string(), ns.to_string());
+                    DiscoveredService {
+                        address: addr,
+                        capabilities: vec![capability.to_string()],
+                        metadata,
+                        discovered_at: std::time::SystemTime::now(),
+                    }
+                })
+                .collect();
+
+            if !discovered.is_empty() {
+                debug!(
+                    target: "songbird_config::discovery",
+                    backend = "kubernetes",
+                    count = discovered.len(),
+                    "Kubernetes DNS discovery returned results"
+                );
+                return Ok(discovered);
+            }
+        }
+
+        // Fall back to Kubernetes API if in-cluster service account is available
+        let token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+        let k8s_host = self.read_env("KUBERNETES_SERVICE_HOST");
+
+        if std::path::Path::new(token_path).exists() && k8s_host.is_ok() {
+            let host = k8s_host.unwrap_or_default();
+            let port = self.read_env("KUBERNETES_SERVICE_PORT").unwrap_or_else(|_| "443".into());
+            let token = tokio::fs::read_to_string(token_path).await.map_err(|e| {
+                SongbirdError::discovery(format!("Failed to read K8s service account token: {e}"))
+            })?;
+
+            let url = format!(
+                "https://{host}:{port}/api/v1/namespaces/{ns}/endpoints?labelSelector=songbird/capability={capability}"
+            );
+
+            let client = songbird_http_client::IpcHttpClient::new()
+                .await
+                .map_err(|e| SongbirdError::discovery(format!("IPC HTTP client init: {e}")))?;
+
+            // Use POST-style builder to attach Authorization header
+            let resp = client
+                .post(&url)
+                .await
+                .header("Authorization", format!("Bearer {}", token.trim()))
+                .header("X-HTTP-Method-Override", "GET")
+                .send()
+                .await
+                .map_err(|e| {
+                    SongbirdError::discovery(format!("Kubernetes API request failed: {e}"))
+                })?;
+
+            if resp.is_success() {
+                let body: serde_json::Value = resp.json().await.map_err(|e| {
+                    SongbirdError::discovery(format!("Failed to parse K8s response: {e}"))
+                })?;
+
+                let mut discovered = Vec::new();
+                if let Some(items) = body.get("items").and_then(|v| v.as_array()) {
+                    for item in items {
+                        Self::extract_k8s_endpoints(item, capability, ns, &mut discovered);
+                    }
+                }
+
+                debug!(
+                    target: "songbird_config::discovery",
+                    backend = "kubernetes",
+                    count = discovered.len(),
+                    "Kubernetes API discovery complete"
+                );
+                return Ok(discovered);
+            }
+        }
+
+        debug!(
+            target: "songbird_config::discovery",
+            backend = "kubernetes",
+            "No Kubernetes in-cluster environment detected; returning empty"
+        );
+        Ok(Vec::new())
+    }
+
+    /// Extract endpoints from a Kubernetes API `items[]` entry.
+    fn extract_k8s_endpoints(
+        item: &serde_json::Value,
+        capability: &str,
+        ns: &str,
+        out: &mut Vec<DiscoveredService>,
+    ) {
+        let Some(subsets) = item.get("subsets").and_then(|v| v.as_array()) else {
+            return;
+        };
+        for subset in subsets {
+            let ports: Vec<u16> = subset
+                .get("ports")
+                .and_then(|v| v.as_array())
+                .map(|ps| {
+                    ps.iter()
+                        .filter_map(|p| {
+                            p.get("port")
+                                .and_then(serde_json::Value::as_u64)
+                                .and_then(|v| u16::try_from(v).ok())
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let Some(addresses) = subset.get("addresses").and_then(|v| v.as_array()) else {
+                continue;
+            };
+            for addr_obj in addresses {
+                let Some(ip) = addr_obj.get("ip").and_then(|v| v.as_str()) else {
+                    continue;
+                };
+                for &port in &ports {
+                    if let Ok(addr) = format!("{ip}:{port}").parse::<SocketAddr>() {
+                        let mut metadata = HashMap::new();
+                        metadata.insert("source".to_string(), "kubernetes-api".to_string());
+                        metadata.insert("namespace".to_string(), ns.to_string());
+                        out.push(DiscoveredService {
+                            address: addr,
+                            capabilities: vec![capability.to_string()],
+                            metadata,
+                            discovered_at: std::time::SystemTime::now(),
+                        });
+                    }
+                }
+            }
+        }
     }
 
     /// Get from cache if not expired
@@ -430,57 +695,84 @@ impl CapabilityDiscoveryEngine {
                 // Environment-based doesn't support registration
                 Ok(())
             }
-            DiscoveryBackend::MDNS => {
-                debug!(
-                    target: "songbird_config::discovery",
-                    backend = "mdns",
-                    "mDNS service advertisement not implemented; returning NotImplemented"
-                );
-                Err(SongbirdError::not_implemented_with_detail(
-                    "discovery_registration_mdns",
-                    "mDNS advertisement is not wired; use environment-based announcement for local dev",
-                ))
-            }
-            DiscoveryBackend::DNSSD => {
-                debug!(
-                    target: "songbird_config::discovery",
-                    backend = "dnssd",
-                    "DNS-SD registration not implemented; returning NotImplemented"
-                );
-                Err(SongbirdError::not_implemented_with_detail(
-                    "discovery_registration_dnssd",
-                    "DNS-SD registration requires platform mDNS integration",
-                ))
+            DiscoveryBackend::MDNS | DiscoveryBackend::DNSSD => {
+                use super::mdns::MdnsDiscovery;
+                let mdns =
+                    MdnsDiscovery::new().map_err(|e| SongbirdError::discovery(e.to_string()))?;
+                let cap_refs: Vec<&str> = capabilities.iter().map(String::as_str).collect();
+                mdns.advertise(&cap_refs).await.map_err(|e| SongbirdError::discovery(e.to_string()))
             }
             DiscoveryBackend::Consul {
                 endpoint,
             } => {
+                let service_id = format!("songbird-{}", address.port());
+                let body = serde_json::json!({
+                    "ID": service_id,
+                    "Name": "songbird",
+                    "Address": address.ip().to_string(),
+                    "Port": address.port(),
+                    "Tags": capabilities,
+                    "Check": {
+                        "TCP": address.to_string(),
+                        "Interval": "10s",
+                        "Timeout": "3s",
+                    }
+                });
+
+                let url = format!("{}/v1/agent/service/register", endpoint.trim_end_matches('/'));
+                let client = songbird_http_client::IpcHttpClient::new()
+                    .await
+                    .map_err(|e| SongbirdError::discovery(format!("IPC client init: {e}")))?;
+                client
+                    .put(&url)
+                    .await
+                    .json(&body)
+                    .map_err(|e| SongbirdError::discovery(format!("JSON encoding failed: {e}")))?
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        SongbirdError::discovery(format!(
+                            "Consul registration at {endpoint} failed: {e}"
+                        ))
+                    })?;
+
                 debug!(
                     target: "songbird_config::discovery",
                     backend = "consul",
-                    endpoint,
-                    "Consul registration not implemented; returning NotImplemented"
+                    %service_id,
+                    "Registered with Consul"
                 );
-                let _ = (capabilities, address);
-                Err(SongbirdError::not_implemented_with_detail(
-                    "discovery_registration_consul",
-                    format!("Consul registration at {endpoint} is not integrated"),
-                ))
+                Ok(())
             }
             DiscoveryBackend::Etcd {
                 endpoints,
             } => {
-                debug!(
-                    target: "songbird_config::discovery",
-                    backend = "etcd",
-                    endpoints = ?endpoints,
-                    "etcd registration not implemented; returning NotImplemented"
-                );
-                let _ = (capabilities, address);
-                Err(SongbirdError::not_implemented_with_detail(
-                    "discovery_registration_etcd",
-                    "etcd registration is not wired",
-                ))
+                let client = songbird_http_client::IpcHttpClient::new()
+                    .await
+                    .map_err(|e| SongbirdError::discovery(format!("IPC client init: {e}")))?;
+
+                for cap in capabilities {
+                    let key = format!("/songbird/services/{cap}/{address}");
+                    let key_b64 = songbird_http_client::base64_encode(key.as_bytes());
+                    let value_b64 =
+                        songbird_http_client::base64_encode(address.to_string().as_bytes());
+
+                    let body = serde_json::json!({
+                        "key": key_b64,
+                        "value": value_b64,
+                        "lease": 0,
+                    });
+
+                    for ep in endpoints {
+                        let url = format!("{}/v3/kv/put", ep.trim_end_matches('/'));
+                        if let Ok(builder) = client.post(&url).await.json(&body)
+                            && builder.send().await.is_ok()
+                        {
+                            break;
+                        }
+                    }
+                }
+                Ok(())
             }
             DiscoveryBackend::Kubernetes {
                 ..

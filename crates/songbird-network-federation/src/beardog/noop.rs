@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn default_same_as_new() {
-        let a = NoOpBearDogProvider::default();
+        let a = NoOpBearDogProvider;
         let b = NoOpBearDogProvider::new();
         let _ = (a, b);
     }

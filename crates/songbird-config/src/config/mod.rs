@@ -51,8 +51,6 @@
 //!
 //! ## 📚 See Also
 //! - `crate::canonical` - **Single source of truth** for all config types
-//! - `CONFIG_CONSOLIDATION_ROADMAP.md` - Detailed 6-phase consolidation plan
-//! - `UNIFICATION_AUDIT_REPORT_NOV_8_2025.md` - Complete analysis
 
 #![allow(missing_docs, reason = "deprecated legacy module; migrate callers to `canonical`")]
 

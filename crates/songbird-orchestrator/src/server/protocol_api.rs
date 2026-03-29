@@ -545,7 +545,7 @@ mod tests {
     #[test]
     fn capabilities_response_serializes_expected_keys() {
         let mut protocols = HashMap::new();
-        protocols.insert("http".to_string(), AvailableProtocols::default().http.clone());
+        protocols.insert("http".to_string(), AvailableProtocols::default().http);
         let resp = CapabilitiesResponse {
             songbird_version: "0.0.1".to_string(),
             protocols,

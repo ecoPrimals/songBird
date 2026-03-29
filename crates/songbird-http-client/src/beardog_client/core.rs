@@ -6,6 +6,7 @@
 //! Client struct, mode enum, and constructors.
 
 use crate::crypto::socket_discovery::IpcEndpoint;
+use songbird_types::primal_names::NEURAL_API;
 use std::sync::atomic::AtomicU64;
 use tracing::info;
 
@@ -151,8 +152,8 @@ impl BearDogClient {
             // Default to Neural API (TRUE PRIMAL pattern)
             let endpoint = socket_discovery::discover_ipc_endpoint(
                 "NEURAL_API_SOCKET",
-                "neural-api",
-                "/tmp/neural-api-nat0.sock",
+                NEURAL_API,
+                &format!("{}/neural-api-nat0.sock", std::env::temp_dir().display()),
             );
             info!("🌐 BearDog mode from env: NEURAL API → {:?}", endpoint);
             Self::new_neural_api_with_endpoint(endpoint)

@@ -9,7 +9,7 @@
     clippy::expect_used,
     reason = "relay mesh invariants use expect() for panic-on-violation semantics"
 )]
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
+#![cfg_attr(test, allow(clippy::unwrap_used, reason = "test assertions"))]
 //! Sovereign Rendezvous for Symmetric NAT
 //!
 //! **Pure Rust | Self-Hosted | `BearDog` Crypto Delegation**

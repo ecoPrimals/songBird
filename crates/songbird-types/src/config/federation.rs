@@ -685,7 +685,7 @@ mod tests {
         assert_eq!(CanonicalFederationLimits::default().max_message_size, 1024 * 1024);
         assert_eq!(CanonicalRateLimits::default().burst_size, 200);
         assert_eq!(CanonicalResourceLimits::default().cpu_percentage, 0.8);
-        assert_eq!(CanonicalFederationSecurityConfig::default().enable_tls, true);
+        assert!(CanonicalFederationSecurityConfig::default().enable_tls);
         assert_eq!(CanonicalFederationPerformanceConfig::default().max_connections, 1000);
         assert_eq!(CanonicalBufferSizes::default().message_queue, 1000);
         assert_eq!(

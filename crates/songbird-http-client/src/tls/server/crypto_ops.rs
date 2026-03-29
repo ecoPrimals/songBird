@@ -223,13 +223,17 @@ mod tests {
     fn tls13_compat_aad(ciphertext_length: usize) -> [u8; 5] {
         let record_type = 0x17u8;
         let version = [0x03u8, 0x03u8];
-        [
-            record_type,
-            version[0],
-            version[1],
-            ((ciphertext_length >> 8) & 0xFF) as u8,
-            (ciphertext_length & 0xFF) as u8,
-        ]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS record length is masked to single-byte range (& 0xFF)"
+        )]
+        let len_hi = ((ciphertext_length >> 8) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS record length is masked to single-byte range (& 0xFF)"
+        )]
+        let len_lo = (ciphertext_length & 0xFF) as u8;
+        [record_type, version[0], version[1], len_hi, len_lo]
     }
 
     #[test]
@@ -243,7 +247,7 @@ mod tests {
     fn iv_xor_sequence_one_flips_last_byte_of_tail() {
         let iv = vec![0u8; 12];
         let n = apply_iv_xor_sequence(&iv, 1);
-        let mut expect = iv.clone();
+        let mut expect = iv;
         expect[11] ^= 1;
         assert_eq!(n, expect);
     }

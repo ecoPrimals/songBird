@@ -1,4 +1,9 @@
 # Ultra-pedantic cargo-deny configuration for maximum security and hygiene
+#
+# Bluetooth `*-sys` / platform bindings: any such crates (e.g. from optional
+# `legacy-bluetooth` / btleplug in songbird-genesis) are only pulled when those
+# optional features are enabled — default builds use pure-Rust paths (e.g.
+# `pure-bluetooth` / songbird-bluetooth).
 
 [bans]
 multiple-versions = "warn"
@@ -14,7 +19,15 @@ deny = [
     { name = "hyper", version = "<0.14" },
     { name = "tokio", version = "<1.20" },
     { name = "serde_json", version = "<1.0.85" },
+    # ecoBin: `ring` pulls C/ASM via `cc`. `wrappers` = only crates allowed to depend on it directly
+    # (see audit: rustls, quinn-proto, rcgen, rustls-webpki — expand wrappers if the graph gains new parents).
+    { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust.", wrappers = ["rcgen"] },
 ]
+# Note: no `[[bans.skip]]` entry for `ring` — `skip` only applies to duplicate-version
+# detection; with a single `ring` in the graph, `{ name = "ring", … }` triggers
+# unmatched-skip. Tolerance for transitive `ring` is via `deny` + `wrappers` above
+# (rcgen today; add rustls/quinn-proto/rustls-webpki if the resolved graph needs them)
+# until rustls-rustcrypto is ubiquitous. If two `ring` versions appear, add `ring` here.
 skip = [
     # Transitive duplicates from upstream — tracked for elimination
     { name = "windows-sys" },
@@ -47,6 +60,7 @@ allow = [
     "Unicode-3.0",
     "Zlib",
     "AGPL-3.0-only",
+    "AGPL-3.0-or-later",
 ]
 
 [advisories]
@@ -57,7 +71,8 @@ ignore = [
     # serde_json: stack exhaustion on deeply nested input — mitigated by
     # bounded input sizes in our JSON-RPC handlers
     "RUSTSEC-2026-0009",
-    # bincode: unmaintained — transitive via tarpc; tracking tarpc upstream
+    # bincode 1.x unmaintained (RUSTSEC-2025-0141) — transitive via tarpc /
+    # tokio-serde. Migration: tarpc on bincode 2.x, or serde formats like postcard.
     "RUSTSEC-2025-0141",
     # fxhash: unmaintained — transitive dependency; no known vulnerabilities
     "RUSTSEC-2025-0057",

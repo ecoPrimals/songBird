@@ -4,8 +4,8 @@
 **Role**: Network Orchestration & Discovery Primal
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
-**License**: AGPL-3.0-only (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: March 28, 2026
+**License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
+**Last Updated**: March 29, 2026
 
 ## What It Does
 
@@ -38,7 +38,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Coverage | ~69.33% line coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >1000 LOC | 0 (max prod ~484 `gateway/mod.rs`; all large files domain-refactored) |
+| Files >1000 LOC | 0 (max prod ~484 `gateway/mod.rs`; `gaming.rs` → `gaming/` 8 modules, `canonical_types.rs` → `canonical_types/` 11 modules) |
 | Unsafe blocks | 0 (`songbird-process-env` evolved to BearDog in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | `ring` transitive via `quinn-proto`/`rcgen`; `ring-crypto` feature opt-in for `rustls/ring` |
 | Hardcoded primal names | 0 in production discovery paths (capability-first: `crypto.sock`, not `beardog.sock`) |
@@ -50,11 +50,14 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 
 - `health.liveness`, `health.readiness`, `health.check`
 - `capabilities.list`
-- `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`
+- `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`
 - `http.request`, `http.get`, `http.post`
 - `stun.*`, `igd.*`, `relay.*`, `mesh.*`, `punch.*`
 - `birdsong.*`, `onion.*`, `tor.*`
 - `compute.route`, `registry.*`, `consent.*`, `task.*`
+- `songbird.federation.*`, `songbird.compute.*`, `songbird.services.*`, `songbird.health`, `songbird.version`
+- `network.beacon_exchange`, `network.broadcast`, `network.listen`
+- `deployment.create`, `deployment.status`, `protocol.negotiate`
 
 ## Capabilities (14 tokens)
 

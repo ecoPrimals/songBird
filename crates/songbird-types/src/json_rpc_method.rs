@@ -87,6 +87,8 @@ pub enum IpcMethod {
     Resolve,
     Discover,
     List,
+    FindCapability,
+    Heartbeat,
 }
 
 /// `http.*`
@@ -363,6 +365,8 @@ impl JsonRpcMethod {
             Self::Ipc(IpcMethod::Resolve) => "ipc.resolve",
             Self::Ipc(IpcMethod::Discover) => "ipc.discover",
             Self::Ipc(IpcMethod::List) => "ipc.list",
+            Self::Ipc(IpcMethod::FindCapability) => "ipc.find_capability",
+            Self::Ipc(IpcMethod::Heartbeat) => "ipc.heartbeat",
             Self::Http(HttpMethod::Request) => "http.request",
             Self::Http(HttpMethod::Get) => "http.get",
             Self::Http(HttpMethod::Post) => "http.post",
@@ -486,6 +490,8 @@ impl JsonRpcMethod {
             "ipc.resolve" => Self::Ipc(IpcMethod::Resolve),
             "ipc.discover" => Self::Ipc(IpcMethod::Discover),
             "ipc.list" => Self::Ipc(IpcMethod::List),
+            "ipc.find_capability" => Self::Ipc(IpcMethod::FindCapability),
+            "ipc.heartbeat" => Self::Ipc(IpcMethod::Heartbeat),
             "http.request" => Self::Http(HttpMethod::Request),
             "http.get" => Self::Http(HttpMethod::Get),
             "http.post" => Self::Http(HttpMethod::Post),
@@ -665,5 +671,31 @@ mod json_rpc_method_tests {
             JsonRpcMethod::from_wire_str("health.check").unwrap(),
             JsonRpcMethod::Health(HealthMethod::Check)
         );
+    }
+
+    #[test]
+    fn ipc_find_capability_roundtrip_wire_and_serde() {
+        let wire = "ipc.find_capability";
+        let m = JsonRpcMethod::from_wire_str(wire).unwrap();
+        assert_eq!(m, JsonRpcMethod::Ipc(IpcMethod::FindCapability));
+        assert_eq!(m.as_wire_str(), wire);
+        assert_eq!(m.to_string(), wire);
+        let v = serde_json::to_string(&m).unwrap();
+        assert_eq!(v, "\"ipc.find_capability\"");
+        let back: JsonRpcMethod = serde_json::from_str(&v).unwrap();
+        assert_eq!(back, m);
+    }
+
+    #[test]
+    fn ipc_heartbeat_roundtrip_wire_and_serde() {
+        let wire = "ipc.heartbeat";
+        let m = JsonRpcMethod::from_wire_str(wire).unwrap();
+        assert_eq!(m, JsonRpcMethod::Ipc(IpcMethod::Heartbeat));
+        assert_eq!(m.as_wire_str(), wire);
+        assert_eq!(m.to_string(), wire);
+        let v = serde_json::to_string(&m).unwrap();
+        assert_eq!(v, "\"ipc.heartbeat\"");
+        let back: JsonRpcMethod = serde_json::from_str(&v).unwrap();
+        assert_eq!(back, m);
     }
 }

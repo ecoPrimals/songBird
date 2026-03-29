@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn new_and_default_construct_same() {
         let a = NetworkFederationBridge::new();
-        let b = NetworkFederationBridge::default();
+        let b = NetworkFederationBridge;
         let _ = (a, b);
     }
 

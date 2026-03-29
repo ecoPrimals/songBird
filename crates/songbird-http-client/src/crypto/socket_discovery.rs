@@ -26,7 +26,7 @@ use songbird_types::defaults::paths::{
     BEARDOG_SOCKET_LEGACY, BIOMEOS_RUNTIME_SUBDIR, IPC_DISCOVERY_TMP_DIR,
     NEURAL_API_SOCKET_LEGACY_PATTERN,
 };
-use songbird_types::primal_names::BEARDOG;
+use songbird_types::primal_names::{BEARDOG, NEURAL_API};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
@@ -365,7 +365,7 @@ pub fn discover_neural_api_socket() -> String {
     }
 
     // Try XDG discovery
-    if let Some(xdg_socket) = discover_xdg_socket("neural-api") {
+    if let Some(xdg_socket) = discover_xdg_socket(NEURAL_API) {
         return xdg_socket;
     }
 

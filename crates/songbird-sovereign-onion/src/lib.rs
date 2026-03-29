@@ -9,7 +9,7 @@
     clippy::expect_used,
     reason = "onion protocol invariants use expect() for panic-on-violation semantics"
 )]
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
+#![cfg_attr(test, allow(clippy::unwrap_used, reason = "test assertions"))]
 //! # Songbird Sovereign Onion
 //!
 //! Pure Rust minimal onion service protocol for sovereign device-to-device communication.

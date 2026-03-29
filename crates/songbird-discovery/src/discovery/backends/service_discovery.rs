@@ -635,7 +635,7 @@ mod tests {
     fn cached_service_info_holds_ttl() {
         let si = sample_service("alpha");
         let c = CachedServiceInfo {
-            service_info: si.clone(),
+            service_info: si,
             cached_at: std::time::Instant::now(),
             ttl: std::time::Duration::from_secs(60),
         };

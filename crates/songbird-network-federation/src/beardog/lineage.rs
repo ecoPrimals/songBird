@@ -286,7 +286,7 @@ mod tests {
         assert_eq!(chain.links.len(), back.links.len());
 
         let proof = LineageProof {
-            chain: chain.clone(),
+            chain,
             claimer_signature: vec![1, 2, 3],
         };
         let json = serde_json::to_string(&proof).unwrap();

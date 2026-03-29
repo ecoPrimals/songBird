@@ -419,6 +419,6 @@ mod tests {
             connection_quality: "c".to_string(),
         };
         let s = format!("{ctx:?}");
-        assert!(s.contains("n") && s.contains("r") && s.contains("c"));
+        assert!(s.contains('n') && s.contains('r') && s.contains('c'));
     }
 }

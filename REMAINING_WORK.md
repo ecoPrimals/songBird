@@ -35,7 +35,7 @@
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
 | **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors; rendezvous fingerprints use HMAC-SHA256 fallback; XOR mock isolated to `#[cfg(test)]` |
 | **C dependencies** | `ring` opt-in only (`ring-crypto` feature); `sysinfo` fully eliminated — replaced by `sys_metrics` pure Rust `/proc` + `/sys` readers |
-| **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
+| **License** | `AGPL-3.0-or-later` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | **SPDX headers** | 100% coverage across all `.rs` files |
 | **CI quality gate** | Coverage threshold ratcheted to 66%; `Swatinem/rust-cache`; `cargo-deny` job; `rustsec/audit-check` |

@@ -2,7 +2,7 @@
 
 **Version**: v0.2.1  
 **Status**: Production Ready - Deep Debt S+ Tier  
-**License**: AGPL-3.0-only (scyBorg provenance trio)  
+**License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to BearDog via JSON-RPC IPC at runtime through capability discovery.
@@ -24,15 +24,15 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Line Coverage | ~69.33% (llvm-cov measured; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
-| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (51+ methods, 12 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
+| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings, ~43s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (max prod ~484 `gateway/mod.rs`; all large files domain-refactored) |
-| License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
-| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` |
-| JSON-RPC Gateway | 51+ semantic methods across 12 domains (health, discovery, stun, relay, federation, tor, birdsong, etc.) |
+| Files >1000 lines | 0 (max prod ~484 `gateway/mod.rs`; `gaming.rs` → `gaming/` 8 modules; `canonical_types.rs` → `canonical_types/` 11 modules) |
+| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` |
+| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` (alignment to `-or-later` deferred) |
+| JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
 | Nest Atomic | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (14 capability tokens) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
@@ -181,6 +181,6 @@ cargo llvm-cov --workspace --html
 
 ## License
 
-AGPL-3.0-only (scyBorg provenance trio: AGPL-3.0 + ORC + CC-BY-SA 4.0)
+AGPL-3.0-or-later (scyBorg provenance trio: AGPL-3.0-or-later + ORC + CC-BY-SA 4.0)
 
 See `LICENSE`, `LICENSE-ORC`, and `LICENSE-CC-BY-SA` at repository root.

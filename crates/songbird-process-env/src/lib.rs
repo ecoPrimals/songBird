@@ -148,6 +148,10 @@ pub fn reset_overlay() {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
+#[allow(
+    clippy::items_after_statements,
+    reason = "test KEY constants declared after lock() guard for clarity"
+)]
 mod tests {
     use super::*;
     use std::ffi::OsStr;
@@ -318,8 +322,8 @@ mod tests {
 
     #[test]
     fn overlay_is_singleton() {
-        let a = overlay() as *const _;
-        let b = overlay() as *const _;
+        let a = std::ptr::from_ref(overlay());
+        let b = std::ptr::from_ref(overlay());
         assert_eq!(a, b, "overlay should return the same static instance");
     }
 

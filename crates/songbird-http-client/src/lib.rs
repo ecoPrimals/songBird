@@ -139,6 +139,23 @@ pub use http_config::{
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Base64-encode bytes using standard alphabet (re-exports `base64` for ecosystem use).
+#[must_use]
+pub fn base64_encode(input: &[u8]) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(input)
+}
+
+/// Base64-decode a string using standard alphabet.
+///
+/// # Errors
+///
+/// Returns error if the input is not valid base64.
+pub fn base64_decode(input: &str) -> std::result::Result<Vec<u8>, base64::DecodeError> {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.decode(input)
+}
+
 /// Check if this is a Pure Rust build (always true)
 #[must_use]
 pub const fn is_pure_rust() -> bool {
@@ -159,5 +176,13 @@ mod tests {
     fn test_version() {
         // VERSION is set from CARGO_PKG_VERSION at compile time and is always non-empty
         assert!(VERSION.contains('.'), "Version should be in semver format: {VERSION}");
+    }
+
+    #[test]
+    fn base64_encode_decode_roundtrip() {
+        let bytes: &[u8] = b"hello songbird \x00\xff";
+        let encoded = base64_encode(bytes);
+        let decoded = base64_decode(&encoded).expect("valid base64 from encode");
+        assert_eq!(decoded, bytes);
     }
 }

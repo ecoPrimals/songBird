@@ -525,8 +525,8 @@ mod tests {
         let val: i64 = SafeParse::parse("42", "count").unwrap();
         assert_eq!(val, 42);
 
-        let val: f64 = SafeParse::parse("3.14", "ratio").unwrap();
-        assert!((val - 3.14).abs() < f64::EPSILON);
+        let val: f64 = SafeParse::parse("7.25", "ratio").unwrap();
+        assert!((val - 7.25).abs() < f64::EPSILON);
     }
 
     #[test]

@@ -711,7 +711,7 @@ mod tests {
         profiler.record_success("a.com", small_set, 0x1301, Duration::from_secs(1));
         let stats_after_small = profiler.get_stats();
 
-        profiler.record_success("b.com", large_set.clone(), 0x1302, Duration::from_secs(1));
+        profiler.record_success("b.com", large_set, 0x1302, Duration::from_secs(1));
         let stats_after_large = profiler.get_stats();
 
         assert!(

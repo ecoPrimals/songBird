@@ -6,6 +6,16 @@
 //! **CANONICAL**: Core types and configurations for the Songbird ecosystem
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
+#![cfg_attr(
+    test,
+    allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::float_cmp,
+        clippy::field_reassign_with_default,
+        reason = "test assertions use unwrap/expect/float_cmp/field_reassign for clarity"
+    )
+)]
 
 // Re-export all configuration modules
 pub use config::*;

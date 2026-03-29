@@ -104,10 +104,10 @@ mod tests {
     use crate::tls::{content_type, handshake_type};
 
     /// Mirrors `receive_client_hello` header parsing (type, legacy version, length).
-    fn parse_record_header(header: &[u8; 5]) -> (u8, u16, usize) {
+    fn parse_record_header(header: [u8; 5]) -> (u8, u16, usize) {
         let record_type = header[0];
         let tls_version = u16::from_be_bytes([header[1], header[2]]);
-        let length = u16::from_be_bytes([header[3], header[4]]) as usize;
+        let length = usize::from(u16::from_be_bytes([header[3], header[4]]));
         (record_type, tls_version, length)
     }
 
@@ -117,9 +117,14 @@ mod tests {
         let mut header = [0u8; 5];
         header[0] = content_type::HANDSHAKE;
         header[1..3].copy_from_slice(&TLS_1_2.to_be_bytes());
-        header[3..5].copy_from_slice(&(payload_len as u16).to_be_bytes());
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS record payload is bounded to u16::MAX by the protocol"
+        )]
+        let payload_len_u16 = payload_len as u16;
+        header[3..5].copy_from_slice(&payload_len_u16.to_be_bytes());
 
-        let (rt, ver, len) = parse_record_header(&header);
+        let (rt, ver, len) = parse_record_header(header);
         assert_eq!(rt, content_type::HANDSHAKE);
         assert_eq!(ver, TLS_1_2);
         assert_eq!(len, payload_len);
@@ -132,7 +137,7 @@ mod tests {
 
     #[test]
     fn client_hello_handshake_first_byte() {
-        let mut payload = vec![0u8; 4];
+        let mut payload = [0u8; 4];
         payload[0] = handshake_type::CLIENT_HELLO;
         assert_eq!(payload[0], 1);
     }
@@ -145,14 +150,14 @@ mod tests {
     #[test]
     fn record_payload_length_zero() {
         let header = [content_type::HANDSHAKE, 0x03, 0x03, 0x00, 0x00];
-        let (_, _, len) = parse_record_header(&header);
+        let (_, _, len) = parse_record_header(header);
         assert_eq!(len, 0);
     }
 
     #[test]
     fn record_payload_length_max_u16() {
         let header = [0x17, 0x03, 0x03, 0xff, 0xff];
-        let (_, _, len) = parse_record_header(&header);
+        let (_, _, len) = parse_record_header(header);
         assert_eq!(len, 65535);
     }
 

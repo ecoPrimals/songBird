@@ -150,7 +150,7 @@ mod tests {
             address: SocketAddr::from((Ipv4Addr::LOCALHOST, 3478)),
             nat_type: NatType::FullCone,
         };
-        let v = to_value(&ep).unwrap();
+        let v = to_value(ep).unwrap();
         let back: PublicEndpoint = from_value(v).unwrap();
         assert_eq!(ep, back);
     }
@@ -200,12 +200,12 @@ mod tests {
             observed: vec![1, 2, 3],
         };
         assert_eq!(r.predict_next(), None);
-        assert_eq!(r.confidence(), 0.0);
+        assert!(r.confidence().abs() < f64::EPSILON);
         assert!(!r.supports_coordinated_punch());
 
         let u = PortPattern::Unknown;
         assert_eq!(u.predict_next(), None);
-        assert_eq!(u.confidence(), 0.0);
+        assert!(u.confidence().abs() < f64::EPSILON);
         assert!(!u.supports_coordinated_punch());
     }
 

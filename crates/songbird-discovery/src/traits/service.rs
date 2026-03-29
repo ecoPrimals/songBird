@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn service_request_builder_chain() {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9_000);
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9_000);
         let req = ServiceRequest::new("POST", "/api")
             .with_header("X-Test", "1")
             .with_query_param("q", "x")

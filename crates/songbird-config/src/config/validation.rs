@@ -265,7 +265,7 @@ mod tests {
         let err = ValidationError {
             field: "network.bind_address".to_string(),
             message: "empty".to_string(),
-            current_value: Some("".to_string()),
+            current_value: Some(String::new()),
             expected_value: Some("0.0.0.0".to_string()),
             severity: ValidationSeverity::Critical,
             suggestion: "set bind".to_string(),
@@ -329,10 +329,10 @@ mod tests {
     fn enabled_primal_empty_url_errors() {
         let mut c = SongbirdConfig::test_defaults();
         c.enable_primal("p1", "http://localhost:1");
-        if let Some(reg) = &mut c.primal_registry {
-            if let Some(p) = reg.primals.get_mut("p1") {
-                p.endpoint.primary_url.clear();
-            }
+        if let Some(reg) = &mut c.primal_registry
+            && let Some(p) = reg.primals.get_mut("p1")
+        {
+            p.endpoint.primary_url.clear();
         }
         let r = c.validate().unwrap();
         assert!(
@@ -345,10 +345,10 @@ mod tests {
     fn enabled_primal_zero_connection_timeout_errors() {
         let mut c = SongbirdConfig::test_defaults();
         c.enable_primal("p2", "http://localhost:2");
-        if let Some(reg) = &mut c.primal_registry {
-            if let Some(p) = reg.primals.get_mut("p2") {
-                p.connection_settings.connection_timeout = Duration::ZERO;
-            }
+        if let Some(reg) = &mut c.primal_registry
+            && let Some(p) = reg.primals.get_mut("p2")
+        {
+            p.connection_settings.connection_timeout = Duration::ZERO;
         }
         let r = c.validate().unwrap();
         assert!(

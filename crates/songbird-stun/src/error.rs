@@ -70,7 +70,7 @@ mod tests {
     fn timeout_displays() {
         let e = StunError::Timeout(std::time::Duration::from_secs(5));
         assert!(e.to_string().contains("timeout"));
-        assert!(e.to_string().contains("5s") || e.to_string().contains("5"));
+        assert!(e.to_string().contains("5s") || e.to_string().contains('5'));
     }
 
     #[test]

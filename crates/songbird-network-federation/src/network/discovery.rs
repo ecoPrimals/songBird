@@ -47,7 +47,7 @@ mod tests {
     #[test]
     fn network_discovery_new_default() {
         let a = NetworkDiscovery::new();
-        let b = NetworkDiscovery::default();
+        let b = NetworkDiscovery;
         let _ = (a, b);
     }
 

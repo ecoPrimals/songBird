@@ -468,7 +468,7 @@ mod tests {
 
     #[test]
     fn default_core_ports_connection_discovery_websocket() {
-        assert_eq!(NetworkCoreConfig::default().enable_ipv6, false);
+        assert!(!NetworkCoreConfig::default().enable_ipv6);
         assert_eq!(NetworkPortConfig::default().discovery, 8081);
         assert_eq!(ConnectionConfig::default().max_connections, 1000);
         assert!(NetworkDiscoveryConfig::default().enabled);

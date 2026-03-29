@@ -77,7 +77,7 @@ mod tests {
     fn tunnel_handle_with_id_and_security_context_serde() {
         let h = TunnelHandle::with_id("tid".to_string());
         let ctx = SecurityContext {
-            tunnel_id: h.id.clone(),
+            tunnel_id: h.id,
             peer_id: "peer".to_string(),
             nonce: Some(vec![0, 1]),
             aad: Some(b"aad".to_vec()),

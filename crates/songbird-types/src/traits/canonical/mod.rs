@@ -33,7 +33,6 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 
-#[path = "canonical_types.rs"]
 mod canonical_types;
 
 // Re-export core error types
@@ -338,5 +337,5 @@ pub trait ObservabilityProvider: Provider {
 }
 
 #[cfg(test)]
-#[path = "canonical_tests.rs"]
+#[path = "../canonical_tests.rs"]
 mod tests;

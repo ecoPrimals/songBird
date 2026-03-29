@@ -1,6 +1,6 @@
 # Contributing to Songbird
 
-**License**: AGPL-3.0-only (scyBorg provenance trio)  
+**License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024
 
 ---

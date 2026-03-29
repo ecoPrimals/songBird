@@ -9,7 +9,7 @@
     clippy::expect_used,
     reason = "QUIC config construction uses expect() for known-valid parameters"
 )]
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
+#![cfg_attr(test, allow(clippy::unwrap_used, reason = "test assertions"))]
 //! # Songbird QUIC Protocol
 //!
 //! Pure Rust QUIC implementation with `BearDog` crypto delegation.

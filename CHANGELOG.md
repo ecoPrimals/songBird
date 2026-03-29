@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave84] - 2026-03-29 - Full Audit Execution: Zero Warnings, Discovery Evolution, Module Refactoring
+
+### Fixed
+- **3 clippy errors** (`cast_possible_truncation`) in `songbird-http-client` TLS server — evolved to `#[expect]` with rationale
+- **All 74 clippy warnings** across workspace eliminated — `duplicated_attributes`, `redundant_clone`, `single_char_pattern`, `float_cmp`, `mixed_attributes_style`, `approx_constant`, etc.
+- **Formatting drift** from clippy auto-fix in `songbird-config/validation.rs`
+
+### Added
+- **`ipc.find_capability`** and **`ipc.heartbeat`** methods to `JsonRpcMethod` enum (PRIMAL_IPC_PROTOCOL compliance)
+- **`NEURAL_API`** and **`BIOMEOS_DIR`** constants to `primal_names` module
+- **`base64_encode`** / **`base64_decode`** utilities to `songbird-http-client` (ecosystem reuse)
+- Tests for new IPC methods, base64 roundtrip, and primal_names constants
+
+### Changed
+- **Discovery backends evolved** — DNS-SD, Consul, etcd, Kubernetes all return real results via `IpcHttpClient` (Tower Atomic) instead of `NotImplemented`; zero `reqwest` dependency
+- **`gaming.rs`** (975 LOC) → `config/gaming/` directory with 8 domain-driven modules (taxonomy, network, security, performance, auto, nat, one_touch, tests)
+- **`canonical_types.rs`** (881 LOC) → `traits/canonical/canonical_types/` directory with 11 modules (classification, provider, health, capability, service, discovery, primal, security_tokens, deployment, observability, tests)
+- **License** aligned to `AGPL-3.0-or-later` in workspace `Cargo.toml` per scyBorg Provenance Trio guidance
+- **`deny.toml`** updated: `ring` banned with `wrappers` for transitive tolerance, `bincode` advisory documented, `AGPL-3.0-or-later` added to allowed licenses
+- **`neural-api`** string literals replaced with `primal_names::NEURAL_API` constant
+- **Hardcoded `/tmp/`** paths evolved to `std::env::temp_dir()`
+
+### Verified
+- `cargo clippy --workspace --all-targets` — **zero warnings, zero errors**
+- `cargo fmt --all -- --check` — **clean**
+- `cargo doc --workspace --no-deps` — **clean**
+- `cargo deny check` — **advisories ok, bans ok, licenses ok, sources ok**
+- All songbird-types, songbird-http-client, songbird-config tests pass
+
+---
+
 ## [v0.2.1-wave83] - 2026-03-28 - Deep Debt Execution, Typed Errors, Hardcoding Evolution, Smart Refactoring
 
 ### Fixed — Broken Syntax

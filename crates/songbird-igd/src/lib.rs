@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn nat_pmp_port_and_default_ttl() {
         assert_eq!(NAT_PMP_PORT, 5351);
-        assert!(DEFAULT_MAPPING_TTL > 0);
+        const { assert!(DEFAULT_MAPPING_TTL > 0) };
     }
 
     #[test]
@@ -149,7 +149,7 @@ mod tests {
     #[test]
     fn protocol_serde_roundtrip() {
         for p in [Protocol::Tcp, Protocol::Udp] {
-            let v = to_value(&p).unwrap();
+            let v = to_value(p).unwrap();
             let back: Protocol = from_value(v).unwrap();
             assert_eq!(p, back);
             assert_eq!(p.as_str(), back.as_str());
