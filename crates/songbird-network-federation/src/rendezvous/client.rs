@@ -196,22 +196,40 @@ impl RendezvousClient {
     /// Returns an error when `BearDog` is unavailable or fails and there is no `node_id`
     /// to derive a surrogate fingerprint from (`CryptoUnavailable`).
     async fn get_public_key_fingerprint(&self) -> Result<String> {
-        // Try to get from BearDog security service via RPC
-        if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET_PATH") {
-            // Attempt to fetch public key via JSON-RPC
-            if let Ok(beardog_client) = UnixRpcClient::new(PathBuf::from(socket_path)) {
-                match beardog_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
-                    Ok(key_data) => {
-                        // Compute SHA-256 fingerprint
-                        use sha2::{Digest, Sha256};
-                        let hash = Sha256::digest(&key_data);
-                        return Ok(format!("sha256:{}", hex::encode(hash)));
-                    }
-                    Err(e) => {
-                        debug!(
-                            "Failed to fetch public key from BearDog: {e}; falling back to HMAC surrogate if node_id is set"
-                        );
-                    }
+        // Primary path: CryptoProvider (handles socket discovery via Neural API / BearDog)
+        let crypto = songbird_crypto_provider::CryptoProvider::from_env();
+        match crypto.call("crypto.get_public_key", serde_json::json!({})).await {
+            Ok(result) => {
+                use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+                let key_b64 = result
+                    .as_str()
+                    .or_else(|| result.get("key").and_then(serde_json::Value::as_str))
+                    .unwrap_or("");
+                if let Ok(key_data) = BASE64.decode(key_b64) {
+                    use sha2::{Digest, Sha256};
+                    let hash = Sha256::digest(&key_data);
+                    return Ok(format!("sha256:{}", hex::encode(hash)));
+                }
+            }
+            Err(e) => {
+                debug!(
+                    "CryptoProvider failed to fetch public key: {e}; falling back to HMAC surrogate"
+                );
+            }
+        }
+
+        // Legacy path: direct BEARDOG_SOCKET_PATH (for bootstrapping without Neural API)
+        if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET_PATH")
+            && let Ok(beardog_client) = UnixRpcClient::new(PathBuf::from(socket_path))
+        {
+            match beardog_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
+                Ok(key_data) => {
+                    use sha2::{Digest, Sha256};
+                    let hash = Sha256::digest(&key_data);
+                    return Ok(format!("sha256:{}", hex::encode(hash)));
+                }
+                Err(e) => {
+                    debug!("Legacy BearDog path failed: {e}; falling back to HMAC surrogate");
                 }
             }
         }
@@ -219,9 +237,8 @@ impl RendezvousClient {
         let node_info = self
             .node_info
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires BearDog (BEARDOG_SOCKET_PATH + crypto.get_public_key) or node identity"))?;
+            .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires BearDog (CryptoProvider or BEARDOG_SOCKET_PATH) or node identity"))?;
 
-        // Deterministic surrogate: HMAC-SHA256(domain_key, node_id) — not a real pubkey hash.
         use hmac::{Hmac, Mac};
         use sha2::Sha256;
 

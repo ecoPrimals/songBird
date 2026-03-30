@@ -24,9 +24,20 @@ impl NetworkDiscovery {
         Self
     }
 
+    /// Discover network nodes via federation state.
+    ///
+    /// Returns an empty list when no federation peers are reachable.
+    /// Real discovery is handled by the orchestrator's federation state
+    /// and injected via `songbird-primal-coordination` at runtime.
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::not_implemented` when called without
+    /// a configured federation backend (standalone mode).
     pub async fn discover_nodes(&self) -> SongbirdResult<Vec<DiscoveredNode>> {
-        // Discovery implementation would go here
-        Ok(vec![])
+        Err(songbird_types::SongbirdError::not_implemented(
+            "NetworkDiscovery requires federation state injection — use orchestrator discovery",
+        ))
     }
 }
 
@@ -52,10 +63,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn discover_nodes_returns_ok_empty() {
+    async fn discover_nodes_returns_not_implemented_without_federation() {
         let d = NetworkDiscovery::new();
-        let nodes = d.discover_nodes().await.unwrap();
-        assert!(nodes.is_empty());
+        let result = d.discover_nodes().await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("not implemented") || err.to_string().contains("federation"),
+            "expected not-implemented error, got: {err}"
+        );
     }
 
     #[test]

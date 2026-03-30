@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: March 28, 2026  
+**Date**: March 30, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 28, 2026 (Sessions 24+25 — birdsong.schema + Aggregate Validation + Coverage Push + Deep Debt Evolution + Smart Refactoring)
+**Last Deep Debt Audit**: March 30, 2026 (Session 28, Wave 86 — Ring Removal + BearDog Wiring + Live Test Harness)
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 11,471 passed, 0 failed, 269 ignored |
-| **Line Coverage** | ~69.33% (llvm-cov; target 90%; measuring pending) |
+| **Tests** | 11,831 listed, 0 failed (~269 ignored) |
+| **Line Coverage** | ~68.48% (llvm-cov `--workspace --all-features`; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
@@ -33,9 +33,10 @@
 | **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
-| **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors; rendezvous fingerprints use HMAC-SHA256 fallback; XOR mock isolated to `#[cfg(test)]` |
-| **C dependencies** | `ring` opt-in only (`ring-crypto` feature); `sysinfo` fully eliminated — replaced by `sys_metrics` pure Rust `/proc` + `/sys` readers |
-| **License** | `AGPL-3.0-or-later` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
+| **BearDog crypto** | 6 `CryptoUnavailable` stubs wired to `CryptoProvider::call()` (JSON-RPC to BearDog); rendezvous fingerprints use `CryptoProvider` primary + HMAC-SHA256 fallback; XOR mock isolated to `#[cfg(test)]` |
+| **C dependencies** | `ring` only via `quinn` (upstream blocker: no `rustls-rustcrypto` feature); `rcgen` removed from production deps; `sysinfo` eliminated |
+| **Live BearDog testing** | `BearDogFixture` in `songbird-test-utils`; `scripts/test-with-beardog.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
+| **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | **SPDX headers** | 100% coverage across all `.rs` files |
 | **CI quality gate** | Coverage threshold ratcheted to 66%; `Swatinem/rust-cache`; `cargo-deny` job; `rustsec/audit-check` |
@@ -52,6 +53,92 @@
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 30, 2026 — Ring Removal + BearDog Wiring + Live Test Harness — Session 28, Wave 86)
+
+### Wave 86: Ring Removal + BearDog Wiring + Live Test Harness
+
+**Track 1: Ring removal from production dependency graph:**
+- `songbird-quic/Cargo.toml`: Removed `rcgen` production dependency entirely (was pulling `ring` transitively)
+- Created `cert_gen.rs` (pure-Rust DER construction): self-signed Ed25519 certificates via `ed25519-dalek` + manual ASN.1
+- Added `ed25519-dalek = "2.1"` + `rand = { workspace = true }` for pure-Rust key generation
+- `quinn` minimized: `default-features = false, features = ["runtime-tokio", "rustls-ring"]` (removes `platform-verifier`, `bloom`, `log`)
+- **Result**: `cargo tree -i ring -e normal` shows ring only from `quinn` → `quinn-proto` → `rustls` chain
+- **Upstream blocker documented**: quinn lacks `rustls-rustcrypto` feature; runtime already uses `rustls-rustcrypto` (ring compiled but unused)
+- `songbird-tls` `rcgen` remains as dev-dependency only (ring only during `cargo test`, never in production builds)
+
+**Track 2: Wire `CryptoUnavailable` stubs to BearDog JSON-RPC:**
+- `songbird-tor-protocol/descriptor.rs`: `request_beardog_key()` now async, calls `CryptoProvider::call()`; `OnionServiceDescriptor::new()` async with `&CryptoProvider`
+- `songbird-http-client/tls/server/messages.rs`: `build_certificate_verify()` wired to `CryptoProvider::call("crypto.sign.ed25519", ...)` via `songbird-crypto-provider`; builds RFC 8446 §4.4.3 signing context
+- `songbird-network-federation/beardog/birdsong.rs`: `encrypt_broadcast()` now async; production path calls `crypto.encrypt_chacha20_poly1305` via `CryptoProvider`; test path retains XOR stand-in
+- `songbird-network-federation/rendezvous/client.rs`: `get_public_key_fingerprint()` primary path via `CryptoProvider::from_env()`, legacy `BEARDOG_SOCKET_PATH` fallback, HMAC-SHA256 surrogate last
+- Added `songbird-crypto-provider` as dependency to `songbird-http-client` and `songbird-network-federation`
+
+**Track 3: Live BearDog test harness (plasmidBin integration):**
+- Created `songbird-test-utils/src/fixtures/beardog.rs`: `BearDogFixture` struct discovers binary (`$BEARDOG_BIN` → `$ECOPRIMALS_PLASMID_BIN` → workspace walk), spawns on temp Unix socket, waits for readiness, kills on Drop
+- Created `scripts/test-with-beardog.sh`: fetches beardog from `plasmidBin/fetch.sh`, starts on temp socket, exports `BEARDOG_SOCKET` / `NEURAL_API_SOCKET`, runs full `cargo test --workspace --all-features`
+
+**Metrics:**
+- 11,831 tests listed (0 failed, +6 from cert_gen tests)
+- `cargo clippy --workspace --all-features` clean (0 errors, 1 pre-existing doc warning)
+- `cargo fmt --check` clean
+
+---
+
+## Completed (Mar 29, 2026 — Comprehensive Audit + License + Sovereignty + Stubs + CI — Session 27, Wave 85)
+
+### Wave 85: Comprehensive Audit Execution
+
+**License reconciliation (AGPL-3.0-only alignment):**
+- Cargo.toml: `AGPL-3.0-or-later` → `AGPL-3.0-only` (aligns with wateringHole `STANDARDS_AND_EXPECTATIONS.md`, LICENSE body, and all SPDX headers)
+- README.md, CONTRIBUTING.md, REMAINING_WORK.md: all updated to `-only`
+
+**Sovereignty — Google STUN elimination:**
+- Removed all Google STUN server references (`stun.l.google.com`, `stun1.l.google.com`) from production code
+- Replaced with sovereign alternatives: `stun.nextcloud.com:3478`, `stun.cloudflare.com:3478`, `stun.sip.us:3478`
+- Files: `nat.rs`, `hardcoded_elimination.rs`, `coordinator.rs`, `stun_handler.rs`, `client.rs` (doc example)
+- Updated test `default_stun_servers_fallback_lists_google` → `_lists_sovereign_servers` with assertion that no Google servers remain
+
+**Sovereignty — `8.8.8.8` elimination:**
+- `discovery/network/mod.rs`: replaced `8.8.8.8:53` (Google DNS) with `192.0.2.1:80` (RFC 5737 documentation address) for default-route detection
+
+**Production stub evolution:**
+- `network/discovery.rs`: empty `Ok(vec![])` → explicit `SongbirdError::not_implemented` with guidance to use orchestrator discovery
+- `websocket_api.rs` `QueryStatus`: `uptime_seconds = 0` placeholder → real `federation_stats.uptime_seconds` from `FederationState::created_at`
+- `websocket_api.rs` `QueryServices`: empty `vec![]` → real `get_all_services()` filtered by capability match
+- `FederationStats`: added `uptime_seconds: Option<u64>` field computed from federation creation time
+- `execution-agent/server.rs`: removed placeholder comment, simplified to status-tracked log
+
+**Hardcoding evolution:**
+- `tarpc_server.rs`: hardcoded port `8081` → `SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081)`
+- `tarpc_server.rs` `protocols()`: hardcoded ports → env-backed `SafeEnv::get_port` for HTTP, HTTPS, tarpc
+- `federation_setup.rs`, `startup_orchestration.rs`: raw `"127.0.0.1"` → `songbird_types::constants::LOCALHOST`
+- `canonical/environment.rs`: raw `"127.0.0.1"` defaults → `songbird_types::constants::LOCALHOST` constant
+
+**Smart refactoring:**
+- `runtime_engine.rs` (997→789 lines): Extracted tests to `runtime_engine_tests.rs` (200 lines) via `#[path]` module
+
+**CI modernization:**
+- `ci.yml`: `cargo test --workspace` → `cargo test --workspace --all-features` (was only running ~150 of 11,825 tests)
+- `production-deploy.yml`: consolidated 3 separate test commands → single `--all-features`; tarpaulin → llvm-cov; clippy with `--workspace`; actions/upload-artifact v3→v4
+- `coverage.yml`: actions/cache@v3 (3 separate cache steps) → `Swatinem/rust-cache@v2`; codecov v3→v4; upload-artifact v3→v4
+
+**Clippy fix:**
+- `onion_transport.rs`: `.ends_with(".onion")` → `Path::extension().is_some_and()` (case-insensitive file extension comparison)
+
+**Specs cleanup:**
+- `specs/README.md`: Fixed 3 broken links to archived files (`UNIVERSAL_ECOSYSTEM_INTEGRATION_SPEC.md`, `UNIFIED_ERROR_HANDLING_SPECIFICATION.md`, `COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md`) — pointed to `archive/` with note
+
+**Metrics:**
+- Tests: 11,825 listed (0 failed)
+- Clippy pedantic: zero warnings (30/30 crates, `--all-targets --all-features`)
+- Format: clean
+- Docs: clean (`RUSTDOCFLAGS="-D warnings"`)
+- Build: zero errors, zero warnings
+- Files >1000 lines: 0 (max prod 789 `runtime_engine.rs` post-extraction)
+- Google/sovereignty violations: 0
 
 ---
 

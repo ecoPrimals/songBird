@@ -460,6 +460,7 @@ fn test_federation_stats_serde_roundtrip() {
         total_cpu_cores: 64,
         total_memory_gb: 256,
         total_storage_gb: 4000,
+        uptime_seconds: Some(120),
     };
     let json = serde_json::to_string(&stats).expect("serialize");
     let deserialized: FederationStats = serde_json::from_str(&json).expect("deserialize");

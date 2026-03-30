@@ -186,7 +186,7 @@ impl OnionServiceManager {
     /// # Errors
     ///
     /// Returns an error if locks fail, the service is not initialized, or descriptor construction fails.
-    pub fn publish_descriptor(&self) -> Result<()> {
+    pub async fn publish_descriptor(&self) -> Result<()> {
         let keys_guard = self
             .keys
             .read()
@@ -194,22 +194,22 @@ impl OnionServiceManager {
 
         let keys = keys_guard
             .as_ref()
-            .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?;
+            .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?
+            .clone();
 
         let intro_points = self
             .intro_points
             .read()
-            .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
+            .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?
+            .clone();
 
-        // Generate descriptor
-        let descriptor = OnionServiceDescriptor::new(keys, &intro_points)?;
-        drop(intro_points);
         drop(keys_guard);
 
-        // HSDir upload is not performed; descriptor is built then discarded for this state machine step.
-        let _ = descriptor; // Suppress unused warning
+        let descriptor = OnionServiceDescriptor::new(&keys, &intro_points, &self.beardog).await?;
 
-        // Update state
+        // HSDir upload is not performed; descriptor is built then discarded for this state machine step.
+        let _ = descriptor;
+
         self.set_state(ServiceState::Running)?;
 
         Ok(())

@@ -36,7 +36,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run Clippy lints
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features --workspace -- -D warnings
 
       - name: Security audit
         uses: rustsec/audit-check@v1.4.1
@@ -78,27 +78,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Run unit tests
-        run: cargo test --workspace --lib
-
-      - name: Run integration tests
-        run: cargo test --workspace --test '*'
-
-      - name: Run doc tests
-        run: cargo test --workspace --doc
+      - name: Run all tests
+        run: cargo test --workspace --all-features
 
       - name: Generate test coverage
         if: matrix.rust-version == 'stable'
         run: |
-          cargo install cargo-tarpaulin
-          cargo tarpaulin --workspace --out xml --output-dir coverage-report/
+          cargo install cargo-llvm-cov
+          cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
         if: matrix.rust-version == 'stable'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
-          file: coverage-report/cobertura.xml
-          fail_ci_if_error: true
+          files: lcov.info
+          fail_ci_if_error: false
 
   # Quality Gate 3: Performance Benchmarks
   benchmarks:
@@ -137,7 +131,7 @@ jobs:
           cat benchmark-results.txt
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
           path: benchmark-results.txt

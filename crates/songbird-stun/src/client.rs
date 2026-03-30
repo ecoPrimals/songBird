@@ -215,8 +215,8 @@ impl StunClient {
     ///
     /// let servers = &[
     ///     "stun.nextcloud.com:3478",
-    ///     "stun.l.google.com:19302",
     ///     "stun.cloudflare.com:3478",
+    ///     "stun.sip.us:3478",
     /// ];
     ///
     /// // Race all 3 servers, return first success

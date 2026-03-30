@@ -43,6 +43,9 @@ hex = "0.4"
 getrandom = { workspace = true }  # OS-provided CSPRNG
 fastrand = { workspace = true }    # Fast fallback RNG
 
+# Crypto delegation (BearDog IPC)
+songbird-crypto-provider = { path = "../songbird-crypto-provider" }
+
 [lints]
 workspace = true
 [dev-dependencies]

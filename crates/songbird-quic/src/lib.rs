@@ -70,6 +70,7 @@
     reason = "intentional pattern; clippy false positive for this API"
 )]
 
+mod cert_gen;
 mod client;
 mod config;
 mod connection;

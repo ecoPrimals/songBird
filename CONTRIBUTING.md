@@ -1,6 +1,6 @@
 # Contributing to Songbird
 
-**License**: AGPL-3.0-or-later (scyBorg provenance trio)  
+**License**: AGPL-3.0-only (scyBorg provenance trio)  
 **Edition**: Rust 2024
 
 ---
@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: ~69.33% (llvm-cov measured, Mar 28 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: ~68.48% (llvm-cov measured, Mar 30 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html
@@ -162,4 +162,4 @@ See `specs/INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md`.
 ## License
 
 By contributing, you agree that your contributions will be licensed under
-AGPL-3.0-only (scyBorg provenance trio: AGPL-3.0 + ORC + CC-BY-SA 4.0).
+AGPL-3.0-only (scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0).

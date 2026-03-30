@@ -173,7 +173,7 @@ async fn try_quic_connection(&self, target: &PrimalAddress) -> Result<Connection
 - **Default**: `rustls-rustcrypto` (pure Rust) for TLS handshake crypto
 - **`ring-crypto` feature**: Opt-in `ring` for standalone testing
 - **Production**: BearDog/Tower Atomic delegates crypto via IPC; TLS provider used only for handshake
-- **Note**: `quinn` and `rcgen` still pull `ring` transitively; our code uses rustls-rustcrypto by default
+- **Note**: `rcgen` removed from production deps (replaced by `cert_gen.rs` using `ed25519-dalek`); `quinn` still pulls `ring` transitively (upstream blocker: no `rustls-rustcrypto` feature in quinn)
 
 ### Current (Temporary)
 

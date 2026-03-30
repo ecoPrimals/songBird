@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave86] - 2026-03-30 - Ring Removal, BearDog Wiring, Live Test Harness
+
+### Changed — Ring Removal (Track 1)
+- Removed `rcgen` from `songbird-quic` production dependencies entirely
+- Created `cert_gen.rs`: pure-Rust DER certificate construction using `ed25519-dalek` (replaces rcgen + ring)
+- Minimized `quinn` features: `default-features = false, features = ["runtime-tokio", "rustls-ring"]`
+- `ring` now only enters production through `quinn` → `quinn-proto` → `rustls` chain (upstream blocker documented)
+
+### Changed — BearDog Wiring (Track 2)
+- `songbird-tor-protocol/descriptor.rs`: `request_beardog_key()` async via `CryptoProvider::call()`; `OnionServiceDescriptor::new()` async + `&CryptoProvider`
+- `songbird-http-client/tls/server/messages.rs`: `build_certificate_verify()` wired to BearDog Ed25519 signing (RFC 8446 §4.4.3)
+- `songbird-network-federation/birdsong.rs`: `encrypt_broadcast()` async via BearDog ChaCha20-Poly1305
+- `songbird-network-federation/rendezvous/client.rs`: fingerprint primary via `CryptoProvider`, legacy fallback, HMAC surrogate
+
+### Added — Live BearDog Test Harness (Track 3)
+- `songbird-test-utils/src/fixtures/beardog.rs`: `BearDogFixture` — discovers, spawns, manages live beardog from plasmidBin
+- `scripts/test-with-beardog.sh`: automated fetch, launch, and full workspace test with live BearDog
+- Added `songbird-crypto-provider` as dependency to `songbird-http-client` and `songbird-network-federation`
+
+### Verified
+- 11,831 tests listed, 0 failed
+- `cargo clippy --workspace --all-features` — clean
+- `cargo tree -i ring -e normal` — ring only from quinn, not rcgen
+
+---
+
+## [v0.2.1-wave85] - 2026-03-29 - Comprehensive Audit: License, Sovereignty, Stubs, CI
+
+### Fixed
+- License reconciled to `AGPL-3.0-only` across Cargo.toml, README, CONTRIBUTING, REMAINING_WORK
+- Google STUN servers replaced with sovereign alternatives (Nextcloud, Cloudflare, sip.us)
+- Hardcoded `8.8.8.8:53` (Google DNS) replaced with RFC 5737 `192.0.2.1:80`
+- `FederationStats` missing `uptime_seconds` field
+- `clippy::case_sensitive_file_extension_comparisons` in onion_transport
+- `clippy::needless_borrows_for_generic_args` in environment.rs
+
+### Changed
+- CI: `cargo test --workspace` → `--all-features` (11,825 tests exposed)
+- Coverage/deploy workflows: `actions/cache@v3` → `Swatinem/rust-cache@v2`, codecov/upload-artifact → `v4`
+- Production stubs evolved: `discover_nodes()`, `QueryStatus`, `QueryServices`, `establish_connection`
+- tarpc ports → `SafeEnv::get_port`; `"127.0.0.1"` literals → `LOCALHOST` constant
+- `runtime_engine.rs` test module extracted to separate file (997→789 lines)
+
+---
+
 ## [v0.2.1-wave84] - 2026-03-29 - Full Audit Execution: Zero Warnings, Discovery Evolution, Module Refactoring
 
 ### Fixed

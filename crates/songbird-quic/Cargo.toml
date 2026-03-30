@@ -11,8 +11,10 @@ keywords = ["quic", "protocol", "songbird", "beardog", "pure-rust"]
 categories = ["network-programming", "asynchronous"]
 
 [dependencies]
-# QUIC implementation - pure Rust
-quinn = "0.11"
+# QUIC — default-features off removes platform-verifier/bloom/log we don't need.
+# rustls-ring is still required: quinn gates quinn::crypto::rustls behind it.
+# Upstream blocker: quinn has no rustls-rustcrypto feature (tracked in REMAINING_WORK.md).
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -38,13 +40,14 @@ chrono = "0.4"
 # Types
 bytes = "1"
 
-# TLS/Certificate generation (temporary - will be replaced with BearDog provider)
-# Quinn 0.11 uses rustls 0.23. Production: rustls-rustcrypto (pure Rust).
-# ring-crypto feature: ring + rcgen for standalone testing.
+# TLS — Quinn 0.11 uses rustls 0.23. Production: rustls-rustcrypto (pure Rust).
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 rustls-rustcrypto = "0.0.2-alpha"
 rustls-pemfile = "2"
-rcgen = "0.13"
+
+# Pure-Rust Ed25519 for self-signed inter-primal certs (replaces rcgen + ring)
+ed25519-dalek = "2.1"
+rand = { workspace = true }
 
 # Songbird internal
 songbird-process-env.workspace = true
@@ -62,6 +65,8 @@ anyhow = "1.0"
 # ring: reliable QUIC cipher suites with quinn/rustls 0.23 (rustls-rustcrypto alone may lack QUIC suites).
 # Default is empty (ecoBin forbids ring in application code). Enable `ring-crypto` only for local/standalone testing.
 default = []
-# Opt-in for standalone testing with ring (quinn/rcgen still pull ring transitively).
+# Opt-in for standalone testing with ring.
+# rcgen removed — self-signed certs now use ed25519-dalek (pure Rust).
+# quinn still pulls ring transitively via rustls-ring (upstream blocker: no rustls-rustcrypto feature in quinn).
 # Production builds use BearDog/Tower Atomic for crypto via IPC.
 ring-crypto = ["rustls/ring"]

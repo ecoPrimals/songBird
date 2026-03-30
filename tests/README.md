@@ -40,25 +40,26 @@ cargo test --workspace
 ## Running Tests
 
 ```bash
-cargo test --workspace                           # all tests
+cargo test --workspace --all-features            # full suite (11,831 tests)
 cargo test --workspace --lib                     # unit tests only
 cargo test -p songbird-orchestrator              # single crate
-cargo test -p songbird-quic --features ring-crypto  # feature-gated QUIC tests
-cargo llvm-cov --workspace --html                # coverage report
+./scripts/test-with-beardog.sh                   # with live BearDog from plasmidBin
+./scripts/coverage.sh                            # llvm-cov HTML report
 ```
 
 ## Test Principles
 
-- **Zero serial tests** — all 10,020 tests run fully concurrent (`--test-threads=16`)
+- **Zero serial tests** — all tests run fully concurrent (`--test-threads=16`)
 - **Injectable env readers** — `_with` variants replace `std::env::set_var` for isolation
 - **No production mocks** — all mocks behind `#[cfg(test)]` or `feature = "test-mocks"`
 - **No sleep-based synchronization** — `tokio::sync::Notify` and `oneshot` channels
+- **`--all-features`** — many tests are feature-gated; always use `--all-features` for full coverage
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 10,020 |
+| Total tests | 11,831 |
 | Failed | 0 |
-| Coverage | 62.27% (llvm-cov, target 90%) |
-| `#[ignore]` | 191 (100% with reason strings) |
+| Coverage | ~68.48% (llvm-cov, target 90%) |
+| `#[ignore]` | ~269 (100% with reason strings) |

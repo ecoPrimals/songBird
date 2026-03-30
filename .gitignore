@@ -192,3 +192,7 @@ primalBins/
 
 # Coverage artifacts (llvm-cov)
 **/llvm-cov-target/
+
+# Runtime socket files
+*.sock
+songbird-nat*

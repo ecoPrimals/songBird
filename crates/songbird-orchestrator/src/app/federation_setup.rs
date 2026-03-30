@@ -178,7 +178,7 @@ pub async fn setup_federation(
     let node_address = options.node_address.unwrap_or_else(|| {
         SafeEnv::get_or_default(
             "SONGBIRD_NODE_ADDRESS",
-            detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
+            detect_primary_ip().unwrap_or_else(|| songbird_types::constants::LOCALHOST.to_string()),
         )
     });
 

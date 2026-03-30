@@ -3,6 +3,7 @@
 
 //! QUIC configuration with Neural API socket discovery (crypto routing)
 
+use crate::cert_gen::generate_self_signed_ed25519;
 use crate::error::{QuicError, Result};
 use songbird_crypto_provider::socket_discovery;
 use std::path::PathBuf;
@@ -107,14 +108,9 @@ impl QuicConfig {
             let _ = rustls_rustcrypto::provider().install_default();
         }
 
-        // Generate self-signed certificate for inter-primal QUIC
-        // Self-signed is correct for inter-primal: identity verified via BearDog lineage
-        // When BearDog cert generation is available, it can provide lineage-tagged certs
-        let cert = rcgen::generate_simple_self_signed(vec![self.tls_domain.clone()])
-            .map_err(|e| QuicError::Config(format!("Failed to generate cert: {e}")))?;
-
-        let cert_der = cert.cert.der().to_vec();
-        let priv_key_der = cert.key_pair.serialize_der();
+        // Generate self-signed Ed25519 certificate for inter-primal QUIC (pure Rust, no ring).
+        // Self-signed is correct for inter-primal: identity verified via BearDog lineage.
+        let (cert_der, priv_key_der) = generate_self_signed_ed25519(&self.tls_domain)?;
 
         let cert_chain = vec![rustls::pki_types::CertificateDer::from(cert_der)];
         let priv_key = rustls::pki_types::PrivateKeyDer::try_from(priv_key_der)

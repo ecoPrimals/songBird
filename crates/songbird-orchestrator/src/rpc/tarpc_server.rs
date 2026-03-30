@@ -367,29 +367,34 @@ impl SongbirdRpc for TarpcServer {
 
     async fn protocols(self, _context: Context) -> Vec<ProtocolInfo> {
         debug!("tarpc: protocols()");
+        use songbird_types::error_helpers::SafeEnv;
+
+        let http_port = SafeEnv::get_port("SONGBIRD_HTTP_PORT", 8080);
+        let https_port = SafeEnv::get_port("SONGBIRD_HTTPS_PORT", 8443);
+        let tarpc_port = SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081);
 
         vec![
             ProtocolInfo {
                 name: "HTTP".to_string(),
-                port: 8080,
+                port: http_port,
                 enabled: true,
                 info: HashMap::new(),
             },
             ProtocolInfo {
                 name: "HTTPS".to_string(),
-                port: 8443,
+                port: https_port,
                 enabled: true,
                 info: HashMap::new(),
             },
             ProtocolInfo {
                 name: "JSON-RPC".to_string(),
-                port: 8443,
+                port: https_port,
                 enabled: true,
                 info: HashMap::from([("path".to_string(), "/jsonrpc".to_string())]),
             },
             ProtocolInfo {
                 name: "tarpc".to_string(),
-                port: 8081,
+                port: tarpc_port,
                 enabled: true,
                 info: HashMap::new(),
             },
@@ -542,9 +547,9 @@ pub struct TarpcConfig {
 impl Default for TarpcConfig {
     fn default() -> Self {
         use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+        let port = songbird_types::error_helpers::SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081);
         Self {
-            // Use direct SocketAddr construction - zero unwraps
-            addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 8081),
+            addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port),
             tls_enabled: false,
             max_connections: 1000,
         }

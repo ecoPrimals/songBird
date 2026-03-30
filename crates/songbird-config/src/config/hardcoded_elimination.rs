@@ -183,8 +183,8 @@ impl Default for NetworkConfig {
                     })
                 }),
             stun_servers: vec![
-                env_or_default("SONGBIRD_STUN_SERVER_1", "stun.l.google.com:19302"),
-                env_or_default("SONGBIRD_STUN_SERVER_2", "stun1.l.google.com:19302"),
+                env_or_default("SONGBIRD_STUN_SERVER_1", "stun.nextcloud.com:3478"),
+                env_or_default("SONGBIRD_STUN_SERVER_2", "stun.cloudflare.com:3478"),
             ],
             port_ranges: {
                 let mut ranges = HashMap::new();

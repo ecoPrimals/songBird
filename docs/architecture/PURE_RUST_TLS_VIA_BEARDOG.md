@@ -1,8 +1,13 @@
-# 🐦 Songbird Pure Rust TLS via BearDog - Implementation Plan
+# Songbird Pure Rust TLS via BearDog - Implementation Plan
 
 **Date**: January 18, 2026  
-**Status**: 🎯 **APPROVED - READY TO EXECUTE!**  
+**Status**: Partially Achieved (March 2026)  
 **Goal**: Achieve 100% Pure Rust (100% ecoBin) via BearDog crypto delegation
+
+> **March 2026 update**: `rcgen` removed from production deps (replaced by pure-Rust `cert_gen.rs`
+> using `ed25519-dalek`). `ring` now only enters via `quinn` (upstream blocker: no `rustls-rustcrypto`
+> feature). Runtime already uses `rustls-rustcrypto`. 6 `CryptoUnavailable` stubs wired to BearDog
+> via `CryptoProvider::call()`. See `REMAINING_WORK.md` Wave 86 for details.
 
 ---
 

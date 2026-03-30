@@ -178,7 +178,9 @@ impl ServiceEndpoints {
         default_port: u16,
     ) -> String {
         let key = format!("{}_ENDPOINT", capability_type.to_uppercase());
-        env(&key).unwrap_or_else(|_| format!("http://127.0.0.1:{default_port}"))
+        env(&key).unwrap_or_else(|_| {
+            format!("http://{}:{default_port}", songbird_types::constants::LOCALHOST)
+        })
     }
 
     /// Build from environment using an injectable reader.
@@ -188,15 +190,23 @@ impl ServiceEndpoints {
             orchestrator_endpoint: env_get_or_default(
                 &env,
                 "SONGBIRD_ENDPOINT",
-                "http://127.0.0.1:8080",
+                format!("http://{}:8080", songbird_types::constants::LOCALHOST),
             ),
             discovery_endpoint: env_get_or_default(
                 &env,
                 "DISCOVERY_ENDPOINT",
-                "http://127.0.0.1:8001",
+                format!("http://{}:8001", songbird_types::constants::LOCALHOST),
             ),
-            health_endpoint: env_get_or_default(&env, "HEALTH_ENDPOINT", "http://127.0.0.1:8002"),
-            metrics_endpoint: env_get_or_default(&env, "METRICS_ENDPOINT", "http://127.0.0.1:8004"),
+            health_endpoint: env_get_or_default(
+                &env,
+                "HEALTH_ENDPOINT",
+                format!("http://{}:8002", songbird_types::constants::LOCALHOST),
+            ),
+            metrics_endpoint: env_get_or_default(
+                &env,
+                "METRICS_ENDPOINT",
+                format!("http://{}:8004", songbird_types::constants::LOCALHOST),
+            ),
         }
     }
 }

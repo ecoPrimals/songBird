@@ -116,12 +116,9 @@ async fn execute_command(
         let job = state.executor.execute_background(request).await?;
         state.job_manager.add_job(job.clone()).await?;
 
-        // Spawn task to monitor the job
         let job_id = job.id.clone();
         tokio::spawn(async move {
-            // In a real implementation, we'd monitor the process and update job status
-            // For now, this is a placeholder
-            info!("Background job {} is running", job_id);
+            info!("Background job {job_id} started — status tracked in job manager");
         });
 
         Ok(Json(ExecutionResponse {

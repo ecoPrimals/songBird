@@ -2,7 +2,7 @@
 
 **Version**: v0.2.1  
 **Status**: Production Ready - Deep Debt S+ Tier  
-**License**: AGPL-3.0-or-later (scyBorg provenance trio)  
+**License**: AGPL-3.0-only (scyBorg provenance trio)  
 **Edition**: Rust 2024
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to BearDog via JSON-RPC IPC at runtime through capability discovery.
@@ -12,16 +12,16 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
-| Pure Rust | `ring` opt-in only (`ring-crypto` feature, not default); `sysinfo` eliminated (replaced by `sys_metrics` `/proc` reader); all application code is pure Rust |
-| Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
+| Pure Rust | `ring` only via `quinn` (upstream blocker); `rcgen` removed from production deps; `sysinfo` eliminated; all application code is pure Rust |
+| Crypto Delegation | BearDog via JSON-RPC IPC — 6 stubs wired to `CryptoProvider::call()`; graceful `CryptoUnavailable` fallback |
 | Runtime Discovery | All config: env → XDG → smart defaults. `primal_names` constants module; capability-first discovery |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent (`#[serial_test::serial]` eliminated) |
-| Tests | 11,471 total, 0 failed, 269 ignored |
-| Line Coverage | ~69.33% (llvm-cov measured; target 90%) |
+| Tests | 11,831 total, 0 failed, ~269 ignored |
+| Line Coverage | ~68.48% (llvm-cov measured; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
@@ -30,8 +30,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >1000 lines | 0 (max prod ~484 `gateway/mod.rs`; `gaming.rs` → `gaming/` 8 modules; `canonical_types.rs` → `canonical_types/` 11 modules) |
-| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` |
-| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` (alignment to `-or-later` deferred) |
+| License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
+| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
 | Nest Atomic | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (14 capability tokens) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
@@ -162,10 +162,10 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ## Testing
 
 ```bash
-cargo test --workspace
-cargo test -p songbird-tor-protocol --lib
-cargo test -p songbird-sovereign-onion --features standalone
-cargo llvm-cov --workspace --html
+cargo test --workspace --all-features          # Full suite (11,831 tests)
+cargo test -p songbird-tor-protocol --lib      # Single crate
+./scripts/test-with-beardog.sh                 # With live BearDog from plasmidBin
+./scripts/coverage.sh                          # llvm-cov HTML report
 ```
 
 ## Documentation
@@ -181,6 +181,6 @@ cargo llvm-cov --workspace --html
 
 ## License
 
-AGPL-3.0-or-later (scyBorg provenance trio: AGPL-3.0-or-later + ORC + CC-BY-SA 4.0)
+AGPL-3.0-only (scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0)
 
 See `LICENSE`, `LICENSE-ORC`, and `LICENSE-CC-BY-SA` at repository root.

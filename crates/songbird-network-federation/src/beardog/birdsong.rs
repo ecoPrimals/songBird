@@ -119,24 +119,52 @@ pub struct BroadcastKey {
 }
 
 impl BroadcastKey {
-    /// Encrypt broadcast data using this key.
+    /// Encrypt broadcast data using this key via BearDog ChaCha20-Poly1305.
     ///
-    /// Production builds return an error until real `BirdSong` crypto is wired. Unit tests
-    /// and builds with the `test-mocks` feature use a **non-cryptographic** XOR with
-    /// `key_data` only to exercise framing code paths.
-    #[allow(dead_code, reason = "Phase 3: encrypt path until BearDog BirdSong integration ships")]
-    pub fn encrypt_broadcast(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
+    /// Production builds delegate to `CryptoProvider` for real AEAD encryption.
+    /// Test/mock builds use a non-cryptographic XOR stand-in for framing tests.
+    #[allow(dead_code, reason = "Phase 3: encrypt path until BirdSong integration ships")]
+    pub async fn encrypt_broadcast(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
         #[cfg(any(test, feature = "test-mocks"))]
         {
-            // Test-only stand-in: not confidential; do not use as real encryption.
             Ok(self.key_data.iter().cycle().zip(data.iter()).map(|(k, d)| k ^ d).collect())
         }
         #[cfg(not(any(test, feature = "test-mocks")))]
         {
-            let _ = data;
-            Err(anyhow::anyhow!(
-                "CryptoUnavailable: BirdSong broadcast encryption requires BearDog integration (BroadcastKey::encrypt_broadcast)"
-            ))
+            use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+
+            let crypto = songbird_crypto_provider::CryptoProvider::from_env();
+
+            // 12-byte nonce derived from key_id for deterministic replay detection
+            let mut nonce = [0u8; 12];
+            let id_bytes = self.key_id.as_bytes();
+            for (i, b) in id_bytes.iter().take(12).enumerate() {
+                nonce[i] = *b;
+            }
+
+            let result = crypto
+                .call(
+                    "crypto.encrypt_chacha20_poly1305",
+                    serde_json::json!({
+                        "key": BASE64.encode(&self.key_data),
+                        "nonce": BASE64.encode(nonce),
+                        "plaintext": BASE64.encode(data),
+                        "aad": BASE64.encode(b"birdsong"),
+                    }),
+                )
+                .await
+                .map_err(|e| {
+                    anyhow::anyhow!("CryptoUnavailable: BirdSong encrypt via BearDog: {e}")
+                })?;
+
+            let ct_b64 = result
+                .as_str()
+                .or_else(|| result.get("ciphertext").and_then(serde_json::Value::as_str))
+                .unwrap_or("");
+
+            BASE64.decode(ct_b64).map_err(|e| {
+                anyhow::anyhow!("BirdSong encrypt: failed to decode BearDog response: {e}")
+            })
         }
     }
 

@@ -347,9 +347,7 @@ async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<
             let registry_stats = state.service_registry.get_stats().await;
             let total_services = registry_stats.total_services;
 
-            // Uptime is tracked by federation state uptime (in seconds)
-            // For now, use 0 as placeholder - could add to FederationState in future
-            let uptime_seconds = 0; // Future: Add to FederationState
+            let uptime_seconds = federation_stats.uptime_seconds.unwrap_or(0);
 
             Some(WsMessage::FederationStatus {
                 total_services,
@@ -361,11 +359,25 @@ async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<
         WsMessage::QueryServices {
             capabilities,
         } => {
-            // Query services by capability
-            // For now, return empty list (would integrate with service registry)
-            info!("Querying services with capabilities: {:?}", capabilities);
+            info!("Querying services with capabilities: {capabilities:?}");
+            let all_services = state.service_registry.get_all_services().await;
+            let filtered: Vec<ServiceSummary> = all_services
+                .into_iter()
+                .filter(|svc| {
+                    capabilities.is_empty()
+                        || capabilities
+                            .iter()
+                            .any(|cap| svc.capabilities.iter().any(|c| c.contains(cap.as_str())))
+                })
+                .map(|svc| ServiceSummary {
+                    name: svc.service_name.clone(),
+                    address: svc.endpoint.clone(),
+                    port: svc.endpoint.rsplit(':').next().and_then(|p| p.parse().ok()).unwrap_or(0),
+                    capabilities: svc.capabilities.clone(),
+                })
+                .collect();
             Some(WsMessage::ServiceList {
-                services: vec![],
+                services: filtered,
             })
         }
 

@@ -342,7 +342,8 @@ impl<'a> StartupOrchestrator<'a> {
                 node_name: node_identity.node_name.clone(),
                 node_address: format!(
                     "https://{}:{}",
-                    detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
+                    detect_primary_ip()
+                        .unwrap_or_else(|| songbird_types::constants::LOCALHOST.to_string()),
                     actual_https_port
                 ),
                 endpoints: Some(

@@ -4,8 +4,8 @@
 **Role**: Network Orchestration & Discovery Primal
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
-**License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: March 29, 2026
+**License**: AGPL-3.0-only (scyBorg triple: AGPL + ORC + CC-BY-SA)
+**Last Updated**: March 30, 2026
 
 ## What It Does
 
@@ -34,13 +34,13 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 11,471 (0 failed, 269 ignored) |
-| Coverage | ~69.33% line coverage via llvm-cov (target 90%) |
+| Tests | 11,831 (0 failed, ~269 ignored) |
+| Coverage | ~68.48% line coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
 | Files >1000 LOC | 0 (max prod ~484 `gateway/mod.rs`; `gaming.rs` → `gaming/` 8 modules, `canonical_types.rs` → `canonical_types/` 11 modules) |
 | Unsafe blocks | 0 (`songbird-process-env` evolved to BearDog in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
-| C dependencies | `ring` transitive via `quinn-proto`/`rcgen`; `ring-crypto` feature opt-in for `rustls/ring` |
+| C dependencies | `ring` only via `quinn` (upstream blocker: no `rustls-rustcrypto` feature); `rcgen` removed from production deps; `ring-crypto` feature opt-in for `rustls/ring` |
 | Hardcoded primal names | 0 in production discovery paths (capability-first: `crypto.sock`, not `beardog.sock`) |
 | Production panics/unwrap/todo | 0 |
 

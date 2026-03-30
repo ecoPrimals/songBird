@@ -9,17 +9,28 @@ use crate::crypto::TorProtocolCrypto;
 use crate::error::{Error, Result};
 use crate::onion_service::IntroductionPoint;
 use base32;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STD};
 use songbird_crypto_provider::CryptoProvider;
 use std::fmt::Write;
 
-/// Attempt to get key material from `BearDog` via capability discovery.
+/// Request key material from BearDog via JSON-RPC (`CryptoProvider`).
 ///
-/// When wired, this will perform JSON-RPC to `BearDog` over the Unix socket.
-/// Until then, returns a clear error instead of silent zeroed key material.
-fn request_beardog_key(method: &str) -> Result<Vec<u8>> {
-    Err(Error::CryptoUnavailable(format!(
-        "BearDog crypto delegation required for {method} - not yet connected"
-    )))
+/// Returns decoded bytes from BearDog's base64-encoded response.
+/// Falls back to `CryptoUnavailable` when the provider is unreachable.
+async fn request_beardog_key(crypto: &CryptoProvider, method: &str) -> Result<Vec<u8>> {
+    let result = crypto.call(method, serde_json::json!({})).await.map_err(|e| {
+        Error::CryptoUnavailable(format!("BearDog crypto delegation for {method}: {e}"))
+    })?;
+
+    let key_b64 = result
+        .as_str()
+        .or_else(|| result.get("key").and_then(serde_json::Value::as_str))
+        .or_else(|| result.get("data").and_then(serde_json::Value::as_str))
+        .unwrap_or("");
+
+    BASE64_STD
+        .decode(key_b64)
+        .map_err(|e| Error::Crypto(format!("Failed to decode BearDog response for {method}: {e}")))
 }
 
 /// Onion service keys (Ed25519 + X25519)
@@ -46,9 +57,7 @@ impl OnionServiceKeys {
     ///
     /// Returns error if key generation or address derivation fails.
     pub async fn generate(beardog: &CryptoProvider) -> Result<Self> {
-        core::future::ready(()).await;
-        // Ed25519 identity keypair: single BearDog RPC when wired (`secret || public`, 64 bytes)
-        let identity_pair = request_beardog_key("crypto.ed25519.generate_onion_service_identity")?;
+        let identity_pair = request_beardog_key(beardog, "crypto.ed25519.generate_keypair").await?;
         if identity_pair.len() != 64 {
             return Err(Error::Crypto(format!(
                 "BearDog onion identity keypair: expected 64 bytes, got {}",
@@ -125,20 +134,20 @@ pub struct OnionServiceDescriptor {
 }
 
 impl OnionServiceDescriptor {
-    /// Create new descriptor
+    /// Create and sign a new descriptor via BearDog.
     ///
     /// # Errors
     ///
-    /// Returns error if descriptor creation fails.
-    pub fn new(keys: &OnionServiceKeys, intro_points: &[IntroductionPoint]) -> Result<Self> {
-        // Descriptor signing uses the identity public key until blinded signing keys are modeled.
+    /// Returns error if BearDog signing is unavailable or returns invalid data.
+    pub async fn new(
+        keys: &OnionServiceKeys,
+        intro_points: &[IntroductionPoint],
+        crypto: &CryptoProvider,
+    ) -> Result<Self> {
         let signing_key = keys.identity_public;
-
-        // Default lifetime: 3 hours
         let lifetime_minutes = 180;
 
-        // Descriptor Ed25519 signature: BearDog JSON-RPC when wired (64 bytes)
-        let signature = request_beardog_key("crypto.sign.ed25519_onion_descriptor")?;
+        let signature = request_beardog_key(crypto, "crypto.sign.ed25519").await?;
         if signature.len() != 64 {
             return Err(Error::Crypto(format!(
                 "BearDog onion descriptor signature: expected 64 bytes, got {}",
@@ -298,9 +307,9 @@ mod tests {
         assert_eq!(address.len(), 56);
     }
 
-    #[test]
-    fn test_descriptor_new_requires_beardog_signing() {
-        let _beardog = CryptoProvider::from_env();
+    #[tokio::test]
+    async fn test_descriptor_new_requires_beardog_signing() {
+        let beardog = CryptoProvider::from_env();
 
         let keys = OnionServiceKeys {
             identity_secret: [0u8; 32],
@@ -311,7 +320,7 @@ mod tests {
         };
 
         assert!(matches!(
-            OnionServiceDescriptor::new(&keys, &[]),
+            OnionServiceDescriptor::new(&keys, &[], &beardog).await,
             Err(Error::CryptoUnavailable(_))
         ));
     }

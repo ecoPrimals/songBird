@@ -194,39 +194,54 @@ impl TlsServer {
         msg
     }
 
-    /// Build `CertificateVerify` message
+    /// Build `CertificateVerify` message via BearDog Ed25519 signing.
     ///
-    /// # Current Status (January 2026)
+    /// Per RFC 8446 Section 4.4.3, signs:
+    /// - 64 spaces (0x20) + context string + 0x00 separator + transcript hash
     ///
-    /// **BLOCKED**: Requires `BearDog` signing API integration
-    ///
-    /// Per RFC 8446 Section 4.4.3, `CertificateVerify` contains a signature over:
-    /// - 64 spaces (0x20)
-    /// - Context string ("TLS 1.3, server `CertificateVerify`")
-    /// - 0x00 separator
-    /// - Transcript hash up to this point
-    ///
-    /// ## Required `BearDog` API
-    ///
-    /// Need `crypto.sign_ecdsa_p256_sha256` or `crypto.sign_ed25519` method:
-    /// ```json
-    /// {
-    ///   "method": "crypto.sign",
-    ///   "params": {
-    ///     "algorithm": "ecdsa_secp256r1_sha256",
-    ///     "private_key": "<base64>",
-    ///     "data": "<base64-transcript-context>"
-    ///   }
-    /// }
-    /// ```
-    ///
-    /// Until `BearDog` exposes signing for this transcript, returns
-    /// [`Error::CryptoUnavailable`] (no placeholder signature).
+    /// Falls back to [`Error::CryptoUnavailable`] when BearDog is unreachable.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: signature length bounded to u16"
+    )]
     pub(super) async fn build_certificate_verify(&self) -> Result<Vec<u8>> {
-        tokio::task::yield_now().await;
-        Err(Error::CryptoUnavailable(
-            "BearDog signing integration required for CertificateVerify".into(),
-        ))
+        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+
+        let transcript_hash = self.transcript.compute_hash();
+
+        // RFC 8446 §4.4.3: signing context
+        let mut context = Vec::with_capacity(64 + 34 + 1 + transcript_hash.len());
+        context.extend_from_slice(&[0x20u8; 64]);
+        context.extend_from_slice(b"TLS 1.3, server CertificateVerify");
+        context.push(0x00);
+        context.extend_from_slice(&transcript_hash);
+
+        let data_b64 = BASE64.encode(&context);
+
+        let crypto = songbird_crypto_provider::CryptoProvider::from_env();
+        let result = crypto
+            .call("crypto.sign.ed25519", serde_json::json!({ "data": data_b64 }))
+            .await
+            .map_err(|e| {
+                Error::CryptoUnavailable(format!("BearDog signing for CertificateVerify: {e}"))
+            })?;
+
+        let sig_b64 = result
+            .as_str()
+            .or_else(|| result.get("signature").and_then(serde_json::Value::as_str))
+            .unwrap_or("");
+
+        let signature = BASE64.decode(sig_b64).map_err(|e| {
+            Error::CryptoUnavailable(format!("Failed to decode BearDog signature: {e}"))
+        })?;
+
+        // CertificateVerify message: SignatureScheme(2) + length(2) + signature
+        let mut msg = Vec::with_capacity(4 + signature.len());
+        msg.extend_from_slice(&[0x08, 0x07]); // ed25519 (0x0807)
+        msg.extend_from_slice(&(signature.len() as u16).to_be_bytes());
+        msg.extend_from_slice(&signature);
+
+        Ok(msg)
     }
 
     /// Build Finished message

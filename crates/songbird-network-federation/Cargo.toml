@@ -53,6 +53,7 @@ songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-universal = { path = "../songbird-universal" }
 songbird-discovery = { path = "../songbird-discovery" }
+songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 # ⚠️ TRUE PRIMAL: Crypto for local BTSP testing only (optional)
 aes-gcm = { version = "0.10.3", optional = true }
 generic-array = { version = "1.0", optional = true }

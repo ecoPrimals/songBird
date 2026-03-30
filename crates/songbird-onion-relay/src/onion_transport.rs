@@ -199,7 +199,11 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let t = OnionTransport::new(temp_dir.path()).unwrap();
         let addr = t.onion_address();
-        assert!(addr.ends_with(".onion"));
+        assert!(
+            std::path::Path::new(addr)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("onion"))
+        );
         assert_eq!(addr, t.onion_address());
     }
 }

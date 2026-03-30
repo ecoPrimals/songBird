@@ -54,7 +54,7 @@ jobs:
         key: test-${{ matrix.rust }}
 
     - name: Run tests
-      run: cargo test --workspace
+      run: cargo test --workspace --all-features
 
   build-release:
     name: Build Release

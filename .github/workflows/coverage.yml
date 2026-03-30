@@ -25,30 +25,16 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: coverage
 
       - name: Generate coverage
         run: |
           cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
       - name: Upload to codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: lcov.info
           fail_ci_if_error: false
@@ -58,7 +44,7 @@ jobs:
           cargo llvm-cov --all-features --workspace --html
 
       - name: Upload HTML report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: target/llvm-cov/html/

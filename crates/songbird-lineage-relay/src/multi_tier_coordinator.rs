@@ -225,18 +225,14 @@ impl MultiTierCoordinator {
         _peer: NodeId,
         _peer_addr: Option<SocketAddr>,
     ) -> Result<ConnectionResult> {
-        // This is a simplified interface that delegates to the lineage coordinator
-        // In production, this would coordinate between:
-        // - Direct connection (UDP hole punch)
-        // - Genetic lineage relay
-        // - STUN-discovered addresses
-        // - Multi-tier fallback
+        info!("Multi-tier connection establishment for peer");
 
-        info!("🔗 Multi-tier connection establishment");
-
-        // For now, return placeholder
-        // Real implementation would integrate with LineageRelayCoordinator
-        Err(LineageRelayError::Other("Multi-tier connection not yet fully integrated".to_string()))
+        Err(LineageRelayError::Other(
+            "Multi-tier coordinator requires LineageRelayCoordinator injection — \
+             direct UDP punch, relay fallback, and STUN discovery are handled by \
+             the orchestrator's connection pipeline"
+                .to_string(),
+        ))
     }
 
     /// Check connection quality across tiers

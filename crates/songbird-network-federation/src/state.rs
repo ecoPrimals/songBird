@@ -192,12 +192,15 @@ impl FederationState {
         let active_nodes: Vec<_> =
             nodes.values().filter(|n| matches!(n.status, NodeStatus::Active)).collect();
 
+        let uptime = u64::try_from((Utc::now() - self.created_at).num_seconds().max(0)).ok();
+
         FederationStats {
             total_nodes: nodes.len(),
             active_nodes: active_nodes.len(),
             total_cpu_cores: active_nodes.iter().map(|n| n.cpu_cores).sum(),
             total_memory_gb: active_nodes.iter().map(|n| n.memory_gb).sum(),
             total_storage_gb: active_nodes.iter().filter_map(|n| n.storage_gb).sum(),
+            uptime_seconds: uptime,
         }
     }
 
@@ -425,6 +428,9 @@ pub struct FederationStats {
 
     /// Total storage in GB across active nodes
     pub total_storage_gb: usize,
+
+    /// Federation uptime in seconds since creation
+    pub uptime_seconds: Option<u64>,
 }
 
 /// Federation status response
@@ -595,6 +601,7 @@ mod tests {
             total_cpu_cores: 4,
             total_memory_gb: 8,
             total_storage_gb: 16,
+            uptime_seconds: Some(42),
         };
         let json = serde_json::to_string(&s).unwrap();
         let back: FederationStats = serde_json::from_str(&json).unwrap();

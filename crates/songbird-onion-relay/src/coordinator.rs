@@ -53,9 +53,9 @@ fn stun_server_list() -> Vec<String> {
 
 fn default_stun_servers_fallback() -> Vec<String> {
     vec![
-        "stun.l.google.com:19302".to_string(),
-        "stun1.l.google.com:19302".to_string(),
+        "stun.nextcloud.com:3478".to_string(),
         "stun.cloudflare.com:3478".to_string(),
+        "stun.sip.us:3478".to_string(),
     ]
 }
 
@@ -787,9 +787,17 @@ mod tests {
     }
 
     #[test]
-    fn default_stun_servers_fallback_lists_google() {
+    fn default_stun_servers_fallback_lists_sovereign_servers() {
         let v = default_stun_servers_fallback();
-        assert!(v.iter().any(|s| s.contains("google")));
+        assert!(!v.is_empty());
+        assert!(
+            v.iter().any(|s| s.contains("nextcloud") || s.contains("cloudflare")),
+            "fallback list should contain sovereign STUN servers"
+        );
+        assert!(
+            !v.iter().any(|s| s.contains("google")),
+            "fallback list must not contain Google STUN servers"
+        );
     }
 
     #[test]

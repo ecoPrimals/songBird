@@ -55,7 +55,7 @@ fn default_stun_servers_fallback() -> Vec<String> {
     vec![
         DEFAULT_PRIMARY_STUN_SERVER.to_string(),
         "stun.cloudflare.com:3478".to_string(),
-        "stun.l.google.com:19302".to_string(),
+        "stun.sip.us:3478".to_string(),
     ]
 }
 
