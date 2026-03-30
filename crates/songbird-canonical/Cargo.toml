@@ -38,7 +38,6 @@ validator = "0.20"  # Updated to latest version to fix idna vulnerability
 chrono = { version = "0.4", features = ["serde"] }
 
 # Internal dependencies
-# Note: SongbirdResponse moved to songbird-errors to break circular dependency
 songbird-config = { path = "../songbird-config" }
 
 [features]

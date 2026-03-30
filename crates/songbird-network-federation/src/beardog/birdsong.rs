@@ -119,7 +119,7 @@ pub struct BroadcastKey {
 }
 
 impl BroadcastKey {
-    /// Encrypt broadcast data using this key via BearDog ChaCha20-Poly1305.
+    /// Encrypt broadcast data using this key via `BearDog` `ChaCha20-Poly1305`.
     ///
     /// Production builds delegate to `CryptoProvider` for real AEAD encryption.
     /// Test/mock builds use a non-cryptographic XOR stand-in for framing tests.

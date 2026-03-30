@@ -69,9 +69,9 @@ impl KeyExchangeMessage {
     ///
     /// Returns error if bytes are too short or version is unsupported.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if byte slice lengths are incorrect (caller must ensure valid input).
+    /// Returns error if bytes are too short or version is unsupported.
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 57 {
             return Err(OnionError::InvalidMessage("KeyExchange too short".into()));
@@ -84,8 +84,12 @@ impl KeyExchangeMessage {
             )));
         }
 
-        let pubkey: [u8; 32] = bytes[1..33].try_into().expect("slice length is 32");
-        let nonce: [u8; 24] = bytes[33..57].try_into().expect("slice length is 24");
+        let pubkey: [u8; 32] = bytes[1..33]
+            .try_into()
+            .map_err(|_| OnionError::InvalidMessage("pubkey slice mismatch".into()))?;
+        let nonce: [u8; 24] = bytes[33..57]
+            .try_into()
+            .map_err(|_| OnionError::InvalidMessage("nonce slice mismatch".into()))?;
 
         Ok(Self {
             version,
@@ -129,15 +133,18 @@ impl DataMessage {
     ///
     /// Returns error if bytes are too short.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if byte slice is too short for sequence (caller must ensure valid input).
+    /// Returns error if bytes are too short for decoding.
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 8 {
             return Err(OnionError::InvalidMessage("Data message too short".into()));
         }
 
-        let sequence = u64::from_be_bytes(bytes[..8].try_into().expect("slice length is 8"));
+        let seq_bytes: [u8; 8] = bytes[..8]
+            .try_into()
+            .map_err(|_| OnionError::InvalidMessage("sequence slice mismatch".into()))?;
+        let sequence = u64::from_be_bytes(seq_bytes);
         let encrypted_payload = bytes[8..].to_vec();
 
         Ok(Self {
@@ -163,24 +170,28 @@ impl WireMessage {
     ///
     /// Format: \[length: 4 bytes BE\] \[type: 1 byte\] \[payload\]
     ///
-    /// # Panics
+    /// Encode to wire format
     ///
-    /// Panics if the encoded payload length does not fit in `u32`.
-    #[must_use]
-    pub fn encode(&self) -> Vec<u8> {
+    /// Format: \[length: 4 bytes BE\] \[type: 1 byte\] \[payload\]
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the payload length exceeds `u32::MAX`.
+    pub fn encode(&self) -> Result<Vec<u8>> {
         let (msg_type, payload) = match self {
             Self::KeyExchange(msg) => (MessageType::KeyExchange, msg.encode()),
             Self::Data(msg) => (MessageType::Data, msg.encode()),
             Self::Close => (MessageType::Close, vec![]),
         };
 
-        let length = u32::try_from(1 + payload.len()).expect("payload length fits in u32"); // type byte + payload
+        let length = u32::try_from(1 + payload.len())
+            .map_err(|_| OnionError::InvalidMessage("payload exceeds u32 length limit".into()))?;
         let mut buf = Vec::with_capacity(4 + 1 + payload.len());
         buf.extend_from_slice(&length.to_be_bytes());
         buf.push(msg_type as u8);
         buf.extend_from_slice(&payload);
 
-        buf
+        Ok(buf)
     }
 
     /// Decode from wire format
@@ -189,15 +200,18 @@ impl WireMessage {
     ///
     /// Returns error if bytes are too short, length mismatch, or payload decode fails.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if length header slice is wrong size (caller must ensure valid input).
+    /// Returns error if bytes are too short, length mismatch, or payload decode fails.
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 5 {
             return Err(OnionError::InvalidMessage("Wire message too short".into()));
         }
 
-        let length = u32::from_be_bytes(bytes[..4].try_into().expect("slice length is 4")) as usize;
+        let len_bytes: [u8; 4] = bytes[..4]
+            .try_into()
+            .map_err(|_| OnionError::InvalidMessage("length header slice mismatch".into()))?;
+        let length = u32::from_be_bytes(len_bytes) as usize;
         let msg_type = MessageType::try_from(bytes[4])?;
         let payload = &bytes[5..];
 
@@ -284,16 +298,13 @@ mod tests {
         let ke_msg = KeyExchangeMessage::new(pubkey, nonce);
 
         let wire_msg = WireMessage::KeyExchange(ke_msg.clone());
-        let encoded = wire_msg.encode();
+        let encoded = wire_msg.encode().unwrap();
         let decoded = WireMessage::decode(&encoded).unwrap();
 
-        match decoded {
-            WireMessage::KeyExchange(msg) => {
-                assert_eq!(msg.pubkey, ke_msg.pubkey);
-                assert_eq!(msg.nonce, ke_msg.nonce);
-            }
-            _ => panic!("Expected KeyExchange message"),
-        }
+        assert!(
+            matches!(&decoded, WireMessage::KeyExchange(msg) if msg.pubkey == ke_msg.pubkey && msg.nonce == ke_msg.nonce),
+            "Expected KeyExchange message"
+        );
     }
 
     #[test]
@@ -301,24 +312,66 @@ mod tests {
         let data_msg = DataMessage::new(123, vec![1, 2, 3]);
 
         let wire_msg = WireMessage::Data(data_msg.clone());
-        let encoded = wire_msg.encode();
+        let encoded = wire_msg.encode().unwrap();
         let decoded = WireMessage::decode(&encoded).unwrap();
 
-        match decoded {
-            WireMessage::Data(msg) => {
-                assert_eq!(msg.sequence, data_msg.sequence);
-                assert_eq!(msg.encrypted_payload, data_msg.encrypted_payload);
-            }
-            _ => panic!("Expected Data message"),
-        }
+        assert!(
+            matches!(&decoded, WireMessage::Data(msg) if msg.sequence == data_msg.sequence && msg.encrypted_payload == data_msg.encrypted_payload),
+            "Expected Data message"
+        );
     }
 
     #[test]
     fn test_wire_message_close() {
         let wire_msg = WireMessage::Close;
-        let encoded = wire_msg.encode();
+        let encoded = wire_msg.encode().unwrap();
         let decoded = WireMessage::decode(&encoded).unwrap();
 
         assert!(matches!(decoded, WireMessage::Close));
+    }
+
+    #[test]
+    fn key_exchange_decode_bad_version() {
+        let mut buf = vec![0x02]; // unsupported version
+        buf.extend_from_slice(&[0u8; 56]); // pad to required length
+        let result = KeyExchangeMessage::decode(&buf);
+        assert!(matches!(result, Err(OnionError::InvalidMessage(_))));
+    }
+
+    #[test]
+    fn key_exchange_decode_valid() {
+        let mut buf = vec![0x01];
+        buf.extend_from_slice(&[0xAA; 32]); // pubkey
+        buf.extend_from_slice(&[0xBB; 24]); // nonce
+        let msg = KeyExchangeMessage::decode(&buf).unwrap();
+        assert_eq!(msg.version, 0x01);
+        assert_eq!(msg.pubkey, [0xAA; 32]);
+        assert_eq!(msg.nonce, [0xBB; 24]);
+    }
+
+    #[test]
+    fn data_message_roundtrip_empty_payload() {
+        let msg = DataMessage::new(0, vec![]);
+        let encoded = msg.encode();
+        let decoded = DataMessage::decode(&encoded).unwrap();
+        assert_eq!(decoded.sequence, 0);
+        assert!(decoded.encrypted_payload.is_empty());
+    }
+
+    #[test]
+    fn wire_decode_length_mismatch() {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&100u32.to_be_bytes()); // claim 100 bytes
+        buf.push(MessageType::Close as u8);
+        // no payload but claimed 100
+        let result = WireMessage::decode(&buf);
+        assert!(matches!(result, Err(OnionError::InvalidMessage(_))));
+    }
+
+    #[test]
+    fn message_type_all_variants() {
+        assert_eq!(MessageType::try_from(0x01).unwrap(), MessageType::KeyExchange);
+        assert_eq!(MessageType::try_from(0x02).unwrap(), MessageType::Data);
+        assert_eq!(MessageType::try_from(0x03).unwrap(), MessageType::Close);
     }
 }

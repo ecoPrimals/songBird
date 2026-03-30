@@ -76,7 +76,7 @@ impl TorConnection {
         info!("Connecting to relay {} at {}", self.relay.nickname, addr);
 
         // 1. TLS connect
-        let connector = TlsConnector::new()?;
+        let connector = TlsConnector::new();
         let stream = connector.connect(addr).await?;
         self.stream = Some(stream);
         self.state = ConnectionState::TlsConnected;

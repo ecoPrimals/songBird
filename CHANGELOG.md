@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave87] - 2026-03-30 - Deep Debt Audit, Expect Evolution, Clippy Clean
+
+### Fixed
+- **Clippy regression** in `songbird-tor-protocol/onion_service/mod.rs`: `await_holding_lock` + `future_not_send` — scoped `RwLockReadGuard` in block before `.await`
+- **Pre-existing clippy errors** in `songbird-quic/cert_gen.rs` (doc_markdown, redundant_pub_crate, unnecessary_wraps, cast_possible_truncation)
+- **Pre-existing clippy errors** in `songbird-network-federation/beardog/birdsong.rs`, `songbird-test-utils/fixtures/beardog.rs` (doc_markdown, or_fun_call)
+
+### Changed — Production `.expect()` Evolution (Safe Rust)
+- `songbird-tor-protocol/connection/tls.rs`: `TlsConnector::new()` infallible (returns `Self` directly)
+- `songbird-tor-protocol/onion_service/mod.rs`: `setup_introduction_points()` `.expect()` → `map_err()` with typed errors
+- `songbird-sovereign-onion/protocol.rs`: All decode methods evolved from `.expect()` to `.map_err()` with `OnionError`
+- `songbird-sovereign-onion/protocol.rs`: `WireMessage::encode()` → `Result<Vec<u8>>` with proper error propagation
+- `songbird-quic/cert_gen.rs`: `generate_self_signed_ed25519()` → infallible tuple return (removed unnecessary `Result`)
+- `songbird-genesis/ceremony.rs`: "Using mock" → "Falling back to synthetic lineage" (wateringHole-compliant language)
+
+### Added
+- 12 new tests: onion service lifecycle (publish_descriptor, handle_introduction, stop, duplicate cookie, onion_address), sovereign-onion protocol edge cases, TLS connector
+
+### Verified
+- Clippy: 30/30 crates clean (`--workspace --all-targets --all-features -D warnings`)
+- Format: clean
+- Docs: clean
+- Tests: 0 failed
+- Coverage: 69.11% regions (up from 68.74%)
+
+---
+
 ## [v0.2.1-wave86] - 2026-03-30 - Ring Removal, BearDog Wiring, Live Test Harness
 
 ### Changed — Ring Removal (Track 1)

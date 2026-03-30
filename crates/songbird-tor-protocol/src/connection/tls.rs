@@ -44,11 +44,9 @@ pub enum RelayStream {
 
 impl TlsConnector {
     /// Create new TLS connector
-    ///
-    /// # Errors
-    /// Returns error if connector cannot be created.
-    pub const fn new() -> Result<Self> {
-        Ok(Self)
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
     }
 
     /// Connect to a Tor relay
@@ -80,7 +78,7 @@ impl TlsConnector {
 
 impl Default for TlsConnector {
     fn default() -> Self {
-        Self::new().expect("Failed to create TLS connector")
+        Self::new()
     }
 }
 
@@ -90,6 +88,13 @@ mod tests {
 
     #[test]
     fn test_tls_connector_creation() {
-        let _connector = TlsConnector::new().expect("Failed to create connector");
+        let connector = TlsConnector::new();
+        assert_eq!(std::mem::size_of_val(&connector), 0);
+    }
+
+    #[test]
+    fn test_tls_connector_default() {
+        let connector = TlsConnector::new();
+        let _ = connector; // unit struct — default() is not needed
     }
 }

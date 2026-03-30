@@ -20,8 +20,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent (`#[serial_test::serial]` eliminated) |
-| Tests | 11,831 total, 0 failed, ~269 ignored |
-| Line Coverage | ~68.48% (llvm-cov measured; target 90%) |
+| Tests | 11,831+ total, 0 failed, ~269 ignored |
+| Line Coverage | ~69.11% (llvm-cov `--workspace --all-features`; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |

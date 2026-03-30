@@ -5,9 +5,8 @@
 //!
 //! Replaces `rcgen` (which pulled `ring` transitively) with direct DER construction
 //! using `ed25519-dalek`. The certificates are self-signed and minimal — real identity
-//! verification happens via BearDog lineage at the application layer.
+//! verification happens via `BearDog` lineage at the application layer.
 
-use crate::error::Result;
 use ed25519_dalek::{Signer, SigningKey};
 use rand::RngCore;
 
@@ -23,7 +22,7 @@ const OID_SAN: &[u8] = &[0x55, 0x1d, 0x11];
 /// Generate a self-signed Ed25519 certificate and PKCS#8 private key.
 ///
 /// Returns `(cert_der, private_key_pkcs8_der)`.
-pub(crate) fn generate_self_signed_ed25519(domain: &str) -> Result<(Vec<u8>, Vec<u8>)> {
+pub fn generate_self_signed_ed25519(domain: &str) -> (Vec<u8>, Vec<u8>) {
     let mut seed = [0u8; 32];
     rand::rngs::OsRng.fill_bytes(&mut seed);
     let signing_key = SigningKey::from_bytes(&seed);
@@ -43,7 +42,7 @@ pub(crate) fn generate_self_signed_ed25519(domain: &str) -> Result<(Vec<u8>, Vec
 
     let priv_key_der = ed25519_pkcs8_der(signing_key.as_bytes());
 
-    Ok((cert_der, priv_key_der))
+    (cert_der, priv_key_der)
 }
 
 fn build_tbs_certificate(serial: &[u8], domain: &str, public_key: &[u8; 32]) -> Vec<u8> {
@@ -140,21 +139,23 @@ fn der_generalized_time(s: &str) -> Vec<u8> {
     der_tag_length_value(0x18, s.as_bytes())
 }
 
-/// Context-specific EXPLICIT tag: [tag_num] EXPLICIT
+/// Context-specific EXPLICIT tag: `[tag_num]` EXPLICIT
 fn der_explicit(tag_num: u8, content: &[u8]) -> Vec<u8> {
     der_tag_length_value(0xa0 | tag_num, content)
 }
 
-/// Context-specific IMPLICIT tag: [tag_num] IMPLICIT (replaces the inner tag)
+/// Context-specific IMPLICIT tag: `[tag_num]` IMPLICIT (replaces the inner tag)
 fn der_implicit(tag_num: u8, content: &[u8]) -> Vec<u8> {
     der_tag_length_value(0x80 | tag_num, content)
 }
 
 fn push_length(out: &mut Vec<u8>, len: usize) {
     if len < 0x80 {
+        #[expect(clippy::cast_possible_truncation, reason = "guarded by < 0x80")]
         out.push(len as u8);
     } else if len <= 0xff {
         out.push(0x81);
+        #[expect(clippy::cast_possible_truncation, reason = "guarded by <= 0xff")]
         out.push(len as u8);
     } else {
         out.push(0x82);
@@ -191,7 +192,7 @@ mod tests {
 
     #[test]
     fn generate_produces_valid_der() {
-        let (cert_der, key_der) = generate_self_signed_ed25519("songbird.local").unwrap();
+        let (cert_der, key_der) = generate_self_signed_ed25519("songbird.local");
         assert!(cert_der.len() > 100, "cert too short: {}", cert_der.len());
         assert_eq!(key_der.len(), 48, "PKCS#8 Ed25519 key should be 48 bytes");
         assert_eq!(cert_der[0], 0x30, "cert must start with SEQUENCE tag");
@@ -225,7 +226,7 @@ mod tests {
 
     #[test]
     fn rustls_accepts_generated_cert() {
-        let (cert_der, key_der) = generate_self_signed_ed25519("test.primal").unwrap();
+        let (cert_der, key_der) = generate_self_signed_ed25519("test.primal");
 
         let cert = rustls::pki_types::CertificateDer::from(cert_der);
         let key = rustls::pki_types::PrivateKeyDer::try_from(key_der);

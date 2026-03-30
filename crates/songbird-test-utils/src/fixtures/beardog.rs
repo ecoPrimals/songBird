@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Live BearDog process fixture for integration testing.
+//! Live `BearDog` process fixture for integration testing.
 //!
 //! Discovers the beardog binary from `plasmidBin/`, starts it on a temporary
 //! Unix socket, waits for `health.liveness`, and tears it down on drop.
@@ -20,14 +20,14 @@ use std::time::Duration;
 /// How long to wait for beardog to respond to health.liveness
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Live BearDog process managed for the lifetime of a test.
+/// Live `BearDog` process managed for the lifetime of a test.
 pub struct BearDogFixture {
     process: Child,
     socket_path: PathBuf,
 }
 
 impl BearDogFixture {
-    /// Start a BearDog instance on a temporary socket.
+    /// Start a `BearDog` instance on a temporary socket.
     ///
     /// # Errors
     ///
@@ -203,7 +203,7 @@ mod tests {
         }
         eprintln!(
             "beardog binary: {}",
-            available.map_or("not found".to_string(), |p| p.display().to_string())
+            available.map_or_else(|| "not found".to_string(), |p| p.display().to_string())
         );
     }
 }

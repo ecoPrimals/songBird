@@ -110,7 +110,7 @@ impl QuicConfig {
 
         // Generate self-signed Ed25519 certificate for inter-primal QUIC (pure Rust, no ring).
         // Self-signed is correct for inter-primal: identity verified via BearDog lineage.
-        let (cert_der, priv_key_der) = generate_self_signed_ed25519(&self.tls_domain)?;
+        let (cert_der, priv_key_der) = generate_self_signed_ed25519(&self.tls_domain);
 
         let cert_chain = vec![rustls::pki_types::CertificateDer::from(cert_der)];
         let priv_key = rustls::pki_types::PrivateKeyDer::try_from(priv_key_der)

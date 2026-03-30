@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: ~68.48% (llvm-cov measured, Mar 30 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: ~69.11% (llvm-cov measured, Mar 30 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html

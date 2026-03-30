@@ -124,9 +124,10 @@ impl OnionServiceManager {
     /// Currently creates introduction points with generated keys
     /// and prepares `ESTABLISH_INTRO` cells for when circuits are available.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `count` does not fit in `u8` indices or circuit IDs do not fit in `u32`.
+    /// Returns error if `count` exceeds `u8::MAX`, circuit IDs overflow `u32`,
+    /// or lock acquisition fails.
     pub async fn setup_introduction_points(&self, count: usize) -> Result<()> {
         core::future::ready(()).await;
         let service_keys = {
@@ -139,15 +140,14 @@ impl OnionServiceManager {
 
         let mut batch = Vec::with_capacity(count);
         for i in 0..count {
-            // Generate introduction point keys
-            // In production: BearDog generates unique keys per intro point
-            let i_u8 = u8::try_from(i).expect("count fits u8");
+            let i_u8 = u8::try_from(i).map_err(|_| {
+                Error::Protocol(format!("Introduction point count {count} exceeds u8 limit"))
+            })?;
             let mut relay_identity = [0u8; 32];
             relay_identity[0] = i_u8;
-            // Mix with service identity for uniqueness
             if let Some(ref k) = service_keys {
                 for (j, byte) in relay_identity.iter_mut().enumerate().skip(1) {
-                    let j_u8 = u8::try_from(j).expect("index fits u8");
+                    let j_u8 = u8::try_from(j).unwrap_or(u8::MAX);
                     *byte = k.identity_public[j] ^ i_u8.wrapping_add(j_u8);
                 }
             }
@@ -158,11 +158,14 @@ impl OnionServiceManager {
             let mut service_key = [0u8; 32];
             service_key[0] = i_u8.wrapping_add(0x20);
 
+            let circuit_id = u32::try_from(i + 1)
+                .map_err(|_| Error::Protocol(format!("Circuit ID overflow at index {i}")))?;
+
             let intro = IntroductionPoint {
                 relay_identity,
                 onion_key,
                 service_key,
-                circuit_id: u32::try_from(i + 1).expect("circuit id fits u32"),
+                circuit_id,
             };
 
             // Prepare the ESTABLISH_INTRO cell (ready to send when circuit is built)
@@ -187,23 +190,24 @@ impl OnionServiceManager {
     ///
     /// Returns an error if locks fail, the service is not initialized, or descriptor construction fails.
     pub async fn publish_descriptor(&self) -> Result<()> {
-        let keys_guard = self
-            .keys
-            .read()
-            .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
+        let keys = {
+            let guard = self
+                .keys
+                .read()
+                .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
+            guard
+                .as_ref()
+                .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?
+                .clone()
+        };
 
-        let keys = keys_guard
-            .as_ref()
-            .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?
-            .clone();
-
-        let intro_points = self
-            .intro_points
-            .read()
-            .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?
-            .clone();
-
-        drop(keys_guard);
+        let intro_points = {
+            let guard = self
+                .intro_points
+                .read()
+                .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
+            guard.clone()
+        };
 
         let descriptor = OnionServiceDescriptor::new(&keys, &intro_points, &self.beardog).await?;
 
@@ -372,5 +376,55 @@ mod tests {
     fn test_service_states() {
         assert_eq!(ServiceState::Initializing, ServiceState::Initializing);
         assert_ne!(ServiceState::Initializing, ServiceState::Running);
+    }
+
+    #[tokio::test]
+    async fn test_publish_descriptor_without_init() {
+        let beardog = CryptoProvider::from_env();
+        let manager = OnionServiceManager::new(beardog, 8080);
+        let result = manager.publish_descriptor().await;
+        assert!(result.is_err(), "publish_descriptor should fail when service not initialized");
+    }
+
+    #[tokio::test]
+    async fn test_handle_introduction_wrong_state() {
+        let beardog = CryptoProvider::from_env();
+        let manager = OnionServiceManager::new(beardog, 8080);
+        let cookie = [0xABu8; 20];
+        let result = manager.handle_introduction(&cookie).await;
+        assert!(result.is_err(), "handle_introduction should fail when not in Running state");
+    }
+
+    #[tokio::test]
+    async fn test_stop_service() {
+        let beardog = CryptoProvider::from_env();
+        let manager = OnionServiceManager::new(beardog, 8080);
+
+        manager.setup_introduction_points(2).await.expect("setup failed");
+        assert_eq!(manager.intro_point_count(), 2);
+
+        manager.stop().await.expect("stop failed");
+        assert_eq!(manager.state().expect("state lock"), ServiceState::Stopped);
+        assert_eq!(manager.intro_point_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_duplicate_rendezvous_cookie_rejected() {
+        let beardog = CryptoProvider::from_env();
+        let manager = OnionServiceManager::new(beardog, 8080);
+        manager.set_state(ServiceState::Running).expect("set state failed");
+
+        let cookie = [0x42u8; 20];
+        manager.handle_introduction(&cookie).await.expect("first introduction failed");
+        let dup = manager.handle_introduction(&cookie).await;
+        assert!(dup.is_err(), "duplicate cookie should be rejected");
+    }
+
+    #[tokio::test]
+    async fn test_onion_address_before_init() {
+        let beardog = CryptoProvider::from_env();
+        let manager = OnionServiceManager::new(beardog, 8080);
+        let result = manager.onion_address();
+        assert!(result.is_err(), "onion_address should fail before init");
     }
 }

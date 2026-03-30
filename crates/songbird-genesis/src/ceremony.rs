@@ -119,17 +119,21 @@ impl GenesisCeremony {
                     }
                     Err(e) => {
                         // BearDog request failed, use fallback
-                        tracing::warn!("BearDog signing request failed: {}. Using fallback.", e);
+                        tracing::warn!(
+                            "BearDog signing request failed: {e}. Using deterministic fallback signature."
+                        );
                     }
                 }
             }
             Err(e) => {
                 // BearDog not available, use fallback
-                tracing::warn!("BearDog not available: {}. Using fallback signature.", e);
+                tracing::warn!(
+                    "BearDog not available: {e}. Using deterministic fallback signature."
+                );
             }
         }
 
-        // Fallback: Create deterministic signature (graceful degradation for testing/development)
+        // Degraded mode: deterministic signature when BearDog is unavailable
         Ok(format!("witness_sig_{}_{}", self.witness.device_id, creds.len()).into_bytes())
     }
 
@@ -288,7 +292,7 @@ impl PrimalCoordinator {
         let security_client = match SecurityCapabilityClient::new().await {
             Ok(c) => c,
             Err(e) => {
-                tracing::warn!("BearDog not available: {e}. Using fallback signature.");
+                tracing::warn!("BearDog not available: {e}. Falling back to synthetic lineage.");
                 return None;
             }
         };
@@ -298,14 +302,16 @@ impl PrimalCoordinator {
         {
             Ok(d) => d,
             Err(e) => {
-                tracing::warn!("BearDog lineage creation failed: {e}. Using mock.");
+                tracing::warn!(
+                    "BearDog lineage creation failed: {e}. Falling back to synthetic lineage."
+                );
                 return None;
             }
         };
         let signature = match security_client.sign_data(node_id, &lineage_data).await {
             Ok(s) => s,
             Err(e) => {
-                tracing::warn!("BearDog signing failed: {e}. Using mock.");
+                tracing::warn!("BearDog signing failed: {e}. Falling back to synthetic lineage.");
                 return None;
             }
         };
