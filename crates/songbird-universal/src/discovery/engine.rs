@@ -197,4 +197,52 @@ mod tests {
         let result = engine.discover_all_primals().await;
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    async fn discover_all_environment_branch_completes() {
+        let _guard = env_discovery_lock();
+        let config = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: true,
+                enable_network_scanning: false,
+                enable_container_discovery: false,
+            },
+            timeout: tokio::time::Duration::from_secs(5),
+        };
+        let mut engine = UniversalPrimalDiscovery::new(config);
+        let result = engine.discover_all_primals().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn discover_all_all_mechanisms_enabled() {
+        let _guard = env_discovery_lock();
+        let config = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: true,
+                enable_network_scanning: true,
+                enable_container_discovery: true,
+            },
+            timeout: tokio::time::Duration::from_secs(5),
+        };
+        let mut engine = UniversalPrimalDiscovery::new(config);
+        let result = engine.discover_all_primals().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn discover_caches_and_deduplicates() {
+        let config = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: false,
+                enable_network_scanning: false,
+                enable_container_discovery: false,
+            },
+            timeout: tokio::time::Duration::from_secs(5),
+        };
+        let mut engine = UniversalPrimalDiscovery::new(config);
+        let _ = engine.discover_all_primals().await;
+        let cached = engine.get_discovered_primals();
+        assert!(cached.is_empty());
+    }
 }

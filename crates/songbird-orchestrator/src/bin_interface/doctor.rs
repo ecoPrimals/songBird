@@ -94,27 +94,38 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
     }
     println!();
 
-    // Check 5: Comprehensive checks
+    // Check 5: Comprehensive checks — capability-based primal discovery
     if comprehensive {
         println!("🔍 Comprehensive Checks");
-        println!("   Checking primal connectivity...");
+        println!("   Discovering primals by capability...");
         println!();
 
-        println!("   🐻 BearDog (Security & Crypto)");
+        println!("   🔐 Crypto Provider (capability: crypto)");
         match check_beardog_connectivity().await {
             Ok(true) => println!("      Status: ✅ Connected"),
             Ok(false) => println!("      Status: ⚠️  Not reachable"),
             Err(e) => println!("      Status: ❌ Error: {e}"),
         }
 
-        println!("   🐿️  Squirrel (AI & MCP)");
-        println!("      Status: ⏳ Not yet integrated");
-
-        println!("   🍄 ToadStool (Storage)");
-        println!("      Status: ⏳ Not yet integrated");
-
-        println!("   🏠 NestGate (Sovereign Storage)");
-        println!("      Status: ⏳ Not yet integrated");
+        for (capability, label) in [
+            ("ai", "AI / MCP Provider"),
+            ("storage", "Storage Provider"),
+            ("sovereign-storage", "Sovereign Storage Provider"),
+            ("messaging", "Messaging Provider"),
+        ] {
+            println!("   🔎 {label} (capability: {capability})");
+            match discover_capability_provider(capability).await {
+                DiscoveryResult::Found(path) => {
+                    println!("      Status: ✅ Discovered at {path}");
+                }
+                DiscoveryResult::NotFound => {
+                    println!("      Status: ⚠️  No provider discovered");
+                }
+                DiscoveryResult::Error(e) => {
+                    println!("      Status: ❌ Discovery error: {e}");
+                }
+            }
+        }
 
         println!();
     }
@@ -205,15 +216,15 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
         available: socket_path.parent().is_some_and(|p: &std::path::Path| p.exists()),
     };
 
-    // Comprehensive checks — discover primals at runtime rather than hardcoding names
+    // Comprehensive checks — discover primals at runtime by capability
     let primal_checks = if comprehensive {
         let mut discovered = std::collections::HashMap::new();
-        // Check known capability providers discovered at runtime
         let crypto_status = check_primal_status("crypto", check_beardog_connectivity()).await;
         discovered.insert("crypto".to_string(), crypto_status);
-        // Scan for other primals via socket directory
-        for capability in &["ai", "storage", "messaging"] {
-            let status = check_primal_status(capability, futures::future::ready(Ok(false))).await;
+        for capability in &["ai", "storage", "sovereign-storage", "messaging"] {
+            let found =
+                matches!(discover_capability_provider(capability).await, DiscoveryResult::Found(_));
+            let status = check_primal_status(capability, futures::future::ready(Ok(found))).await;
             discovered.insert((*capability).to_string(), status);
         }
         Some(discovered)
@@ -337,6 +348,52 @@ async fn check_beardog_connectivity() -> Result<bool> {
     match client.ping().await {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
+    }
+}
+
+/// Result of runtime capability discovery
+enum DiscoveryResult {
+    Found(String),
+    NotFound,
+    Error(String),
+}
+
+/// Discover a primal by capability via XDG runtime socket scanning.
+///
+/// Scans `$XDG_RUNTIME_DIR/biomeos/` for sockets matching the capability
+/// pattern, then falls back to well-known environment variables. No primal
+/// names are hardcoded — only capability identifiers.
+async fn discover_capability_provider(capability: &str) -> DiscoveryResult {
+    let env_key =
+        format!("SONGBIRD_{}_PROVIDER_SOCKET", capability.to_uppercase().replace('-', "_"));
+    if let Ok(path) = songbird_process_env::var(&env_key)
+        && std::path::Path::new(&path).exists()
+    {
+        return DiscoveryResult::Found(path);
+    }
+
+    let xdg = songbird_process_env::var("XDG_RUNTIME_DIR").unwrap_or_default();
+    if xdg.is_empty() {
+        return DiscoveryResult::NotFound;
+    }
+    let scan_dir = std::path::PathBuf::from(&xdg).join("biomeos");
+    if !scan_dir.is_dir() {
+        return DiscoveryResult::NotFound;
+    }
+
+    let pattern = format!("{capability}-provider");
+    match std::fs::read_dir(&scan_dir) {
+        Ok(entries) => {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+                if name_str.contains(&pattern) && name_str.ends_with(".sock") {
+                    return DiscoveryResult::Found(entry.path().to_string_lossy().into_owned());
+                }
+            }
+            DiscoveryResult::NotFound
+        }
+        Err(e) => DiscoveryResult::Error(e.to_string()),
     }
 }
 

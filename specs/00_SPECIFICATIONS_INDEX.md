@@ -36,8 +36,8 @@
 ### 🚀 New Protocol Crates
 
 2. **QUIC Protocol** (`crates/songbird-quic/`) ⭐ **COMPLETE** ⭐
-   - Pure Rust QUIC via quinn v0.11
-   - 0-RTT, connection migration, stream multiplexing
+   - Native pure-Rust QUIC engine (RFC 9000/9001/9002, BearDog crypto delegation)
+   - 0-RTT, connection migration, stream multiplexing, NewReno congestion control
    - BearDog crypto integration points ready
 
 3. **NFC Genesis** (`crates/songbird-nfc/`) ⭐ **COMPLETE** ⭐

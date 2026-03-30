@@ -92,8 +92,7 @@ pub async fn handle_protocol_capabilities() -> Result<Value, JsonRpcError> {
             },
             "tarpc": {
                 "version": "0.34",
-                "available": false,
-                "coming_soon": "Week 3-4"
+                "available": true
             }
         },
         "preferred_protocol": "jsonrpc",
@@ -126,6 +125,7 @@ pub async fn handle_version() -> Result<Value, JsonRpcError> {
 ///
 /// Capability-based crypto provider discovery: asks "who provides crypto?"
 /// rather than "where is beardog?". Follows the 5-tier discovery standard.
+/// Subsystem status is derived from real runtime state, not hardcoded.
 pub async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
     let start_time = state.start_time.read().await;
     let uptime_seconds = start_time.elapsed().as_secs();
@@ -148,15 +148,35 @@ pub async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonR
         }
     };
 
+    let ipc_socket = crate::env_config::socket_path();
+    let ipc_status = if ipc_socket.exists() {
+        "up"
+    } else {
+        "degraded"
+    };
+
+    let federation_stats = state.federation_state.get_stats().await;
+    let federation_status = if federation_stats.active_nodes > 0 {
+        "up"
+    } else {
+        "standalone"
+    };
+
+    let overall = if ipc_status == "up" {
+        "healthy"
+    } else {
+        "degraded"
+    };
+
     Ok(serde_json::json!({
-        "status": "healthy",
+        "status": overall,
         "uptime_seconds": uptime_seconds,
         "crypto_provider_available": crypto_provider_available,
         "version": env!("CARGO_PKG_VERSION"),
         "subsystems": {
-            "ipc": "up",
+            "ipc": ipc_status,
             "discovery": "up",
-            "federation": "up"
+            "federation": federation_status
         }
     }))
 }

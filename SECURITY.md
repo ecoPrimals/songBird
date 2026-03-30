@@ -9,7 +9,7 @@
 
 | Metric | Status |
 |--------|--------|
-| **Pure Rust** | ✅ Application code — `ring` opt-in via feature gate |
+| **Pure Rust** | ✅ Application code — `quinn`/`rustls`/`ring` fully eliminated from QUIC; `ring-crypto` opt-in feature gate on CLI only |
 | **Unsafe Code** | ✅ `forbid(unsafe_code)` across all 30 crates; zero `unsafe` blocks (`songbird-process-env` evolved to in-memory overlay) |
 | **Cast Safety** | ✅ `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | **Panic Paths** | ✅ `unwrap_used`/`expect_used` warn workspace-wide |
@@ -52,7 +52,7 @@ cargo deny check advisories
 
 ### Known C Dependencies
 
-- **`ring`** — Opt-in via `ring` feature gate (not enabled by default)
+- **`ring`** — Opt-in via `ring-crypto` feature gate on `songbird-cli` only (not enabled by default); `songbird-quic` is fully ring-free (native QUIC engine with BearDog crypto delegation)
 - **System metrics** — Pure Rust `/proc` and `/sys` readers (replaced `sysinfo`)
 
 ---

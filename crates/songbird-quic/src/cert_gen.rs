@@ -225,18 +225,10 @@ mod tests {
     }
 
     #[test]
-    fn rustls_accepts_generated_cert() {
-        let (cert_der, key_der) = generate_self_signed_ed25519("test.primal");
-
-        let cert = rustls::pki_types::CertificateDer::from(cert_der);
-        let key = rustls::pki_types::PrivateKeyDer::try_from(key_der);
-        assert!(key.is_ok(), "rustls must accept PKCS#8 key");
-
-        // Verify rustls can build a ServerConfig with our cert
-        let _ = rustls_rustcrypto::provider().install_default();
-        let result = rustls::ServerConfig::builder()
-            .with_no_client_auth()
-            .with_single_cert(vec![cert], key.unwrap());
-        assert!(result.is_ok(), "rustls ServerConfig must accept cert: {:?}", result.err());
+    fn different_calls_produce_different_certs() {
+        let (cert1, key1) = generate_self_signed_ed25519("a.primal");
+        let (cert2, key2) = generate_self_signed_ed25519("b.primal");
+        assert_ne!(cert1, cert2);
+        assert_ne!(key1, key2);
     }
 }

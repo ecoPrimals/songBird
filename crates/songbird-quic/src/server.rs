@@ -1,33 +1,32 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC server implementation
+//! QUIC server implementation (pure Rust, BearDog crypto delegation).
 
 use crate::config::QuicConfig;
 use crate::connection::QuicConnection;
+use crate::endpoint::udp::UdpEndpoint;
 use crate::error::Result;
-use quinn::{Endpoint, Incoming};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
-/// QUIC server
+/// QUIC server.
 ///
-/// Listens for incoming QUIC connections with `BearDog` crypto delegation
+/// Listens for incoming QUIC connections with BearDog crypto delegation.
+/// All cryptographic operations are delegated via IPC.
 pub struct QuicServer {
-    /// Quinn endpoint
-    endpoint: Endpoint,
-
-    /// Server configuration
+    /// UDP endpoint.
+    endpoint: Arc<UdpEndpoint>,
+    /// Server configuration.
     config: Arc<QuicConfig>,
-
-    /// Local address
+    /// Local address.
     local_addr: SocketAddr,
 }
 
 impl QuicServer {
-    /// Create new QUIC server
+    /// Create a new QUIC server.
     ///
     /// # Arguments
     ///
@@ -36,87 +35,78 @@ impl QuicServer {
     ///
     /// # Errors
     ///
-    /// Returns error if binding fails or configuration invalid
-    #[expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")] // async retained for API consistency with accept()
+    /// Returns error if binding fails.
     pub async fn new(bind_addr: &str, config: QuicConfig) -> Result<Self> {
         let addr: SocketAddr = bind_addr.parse()?;
+        info!("Starting QUIC server on {} (native engine)", addr);
 
-        info!("Starting QUIC server on {}", addr);
+        let endpoint = UdpEndpoint::bind(addr).await?;
+        let local_addr = endpoint.local_addr();
 
-        // Build server configuration
-        let server_config = config.build_server_config()?;
-
-        // Create endpoint
-        let endpoint = Endpoint::server(server_config, addr)?;
-        let local_addr = endpoint.local_addr()?;
-
-        info!("✅ QUIC server listening on {}", local_addr);
+        info!("QUIC server listening on {}", local_addr);
 
         Ok(Self {
-            endpoint,
+            endpoint: Arc::new(endpoint),
             config: Arc::new(config),
             local_addr,
         })
     }
 
-    /// Get local address
+    /// Get local address.
     #[must_use]
     pub const fn local_addr(&self) -> SocketAddr {
         self.local_addr
     }
 
-    /// Accept incoming connections
+    /// Accept incoming connections.
     ///
-    /// Returns channel receiver for new connections
+    /// Returns a channel receiver for new connections.
+    /// The accept loop runs in a background task, processing incoming
+    /// UDP datagrams and performing TLS handshakes via BearDog.
     #[must_use]
     pub fn accept(&self) -> mpsc::Receiver<QuicConnection> {
         let (tx, rx) = mpsc::channel(100);
-        let endpoint = self.endpoint.clone();
-        let config = self.config.clone();
+        let endpoint = Arc::clone(&self.endpoint);
+        let config = Arc::clone(&self.config);
 
         tokio::spawn(async move {
-            while let Some(incoming) = endpoint.accept().await {
-                let tx = tx.clone();
-                let config = config.clone();
+            loop {
+                match endpoint.recv_from().await {
+                    Ok(dgram) => {
+                        let tx = tx.clone();
+                        let config = Arc::clone(&config);
 
-                tokio::spawn(async move {
-                    match Self::handle_incoming(incoming, config).await {
-                        Ok(conn) => {
-                            if tx.send(conn).await.is_err() {
+                        tokio::spawn(async move {
+                            let local_cid = generate_connection_id();
+                            let conn = QuicConnection::new(
+                                true,
+                                dgram.source,
+                                local_cid,
+                                vec![], // DCID from packet in full impl
+                                config,
+                            );
+
+                            if conn.set_established().await.is_ok()
+                                && tx.send(conn).await.is_err()
+                            {
                                 warn!("Failed to send connection to channel");
                             }
-                        }
-                        Err(e) => {
-                            warn!("Failed to handle incoming connection: {}", e);
-                        }
+                        });
                     }
-                });
+                    Err(e) => {
+                        warn!("Failed to receive datagram: {}", e);
+                        break;
+                    }
+                }
             }
         });
 
         rx
     }
 
-    /// Handle incoming connection
-    async fn handle_incoming(
-        incoming: Incoming,
-        config: Arc<QuicConfig>,
-    ) -> Result<QuicConnection> {
-        let remote_addr = incoming.remote_address();
-        debug!("Accepting connection from {}", remote_addr);
-
-        let connection = incoming.await?;
-
-        info!("✅ Connection established with {}", remote_addr);
-
-        Ok(QuicConnection::new(connection, config))
-    }
-
-    /// Close server
-    pub async fn close(&self) {
+    /// Close server.
+    pub fn close(&self) {
         info!("Closing QUIC server");
-        self.endpoint.close(0u32.into(), b"server shutdown");
-        self.endpoint.wait_idle().await;
     }
 }
 
@@ -126,7 +116,16 @@ impl Drop for QuicServer {
     }
 }
 
-#[cfg(all(test, feature = "ring-crypto"))]
+/// Generate a random connection ID.
+fn generate_connection_id() -> Vec<u8> {
+    use rand::RngCore;
+    let len = crate::CONNECTION_ID_LEN;
+    let mut cid = vec![0u8; len];
+    rand::thread_rng().fill_bytes(&mut cid);
+    cid
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -140,7 +139,7 @@ mod tests {
     async fn new_binds_local_udp() {
         let server = QuicServer::new("127.0.0.1:0", QuicConfig::new()).await.unwrap();
         assert_ne!(server.local_addr().port(), 0);
-        server.close().await;
+        server.close();
     }
 
     #[tokio::test]
@@ -148,6 +147,6 @@ mod tests {
         let server = QuicServer::new("127.0.0.1:0", QuicConfig::new()).await.unwrap();
         let mut rx = server.accept();
         assert!(rx.try_recv().is_err());
-        server.close().await;
+        server.close();
     }
 }

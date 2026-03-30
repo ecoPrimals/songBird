@@ -59,14 +59,12 @@ pub async fn handle_health_standard(
         std::path::Path::new(&beardog_socket).exists()
     };
     
-    // Calculate actual uptime (Phase 5A Evolution - Feb 4, 2026)
     let uptime_seconds = if let Some(start_time_arc) = start_time {
         let start_time_guard = start_time_arc.read().await;
         start_time_guard.elapsed().as_secs()
     } else {
-        // Fallback if start_time not available (shouldn't happen in production)
-        warn!("⚠️  Start time not available, using estimated uptime");
-        3600
+        warn!("Start time not available; reporting zero uptime");
+        0
     };
     
     Ok(serde_json::json!({

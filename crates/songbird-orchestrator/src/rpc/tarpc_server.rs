@@ -66,16 +66,17 @@ impl SongbirdRpc for TarpcServerSimple {
     async fn discover(self, _context: Context, capability: String) -> Vec<ServiceInfo> {
         debug!("tarpc: discover(capability={})", capability);
 
-        // Use real capability-based discovery (EVOLVED from mock)
         let services = self.service_registry.find_by_capability(&capability).await;
         debug!("Discovered {} services for capability '{}'", services.len(), capability);
+
+        let cap: Arc<str> = Arc::from(capability);
         services
             .into_iter()
             .map(|svc| ServiceInfo {
                 id: svc.service_id,
-                capability: capability.clone(),
+                capability: (*cap).to_string(),
                 endpoint: svc.endpoint,
-                status: "healthy".to_string(),
+                status: svc.health_status.to_string(),
                 metadata: None,
             })
             .collect()
@@ -84,7 +85,6 @@ impl SongbirdRpc for TarpcServerSimple {
     async fn discover_all(self, _context: Context) -> Vec<ServiceInfo> {
         debug!("tarpc: discover_all()");
 
-        // Use real service registry (EVOLVED from mock)
         let services = self.service_registry.get_all_services().await;
         debug!("Discovered {} total services", services.len());
         services
@@ -93,7 +93,7 @@ impl SongbirdRpc for TarpcServerSimple {
                 id: svc.service_id,
                 capability: svc.service_type,
                 endpoint: svc.endpoint,
-                status: "healthy".to_string(),
+                status: svc.health_status.to_string(),
                 metadata: None,
             })
             .collect()
@@ -106,16 +106,20 @@ impl SongbirdRpc for TarpcServerSimple {
     ) -> RegistrationResult {
         debug!("tarpc: register({}, {})", registration.service_id, registration.capability);
 
-        // Convert to FederatedServiceRegistry format and register
+        let reg_id = registration.service_id;
+        let reg_name = registration.service_name;
+        let reg_cap = registration.capability;
+        let capabilities = vec![reg_cap.clone()];
+
         let service_registration =
             songbird_network_federation::service_registry::ServiceRegistration {
-                service_id: registration.service_id.clone(),
-                service_name: registration.service_name.clone(),
-                service_type: registration.capability.clone(),
+                service_id: reg_id.clone(),
+                service_name: reg_name.clone(),
+                service_type: reg_cap,
                 tower_id: registration.tower_id.unwrap_or_else(|| "unknown".to_string()),
                 tower_name: registration.tower_name.unwrap_or_else(|| "Unknown Tower".to_string()),
                 endpoint: registration.endpoint,
-                capabilities: vec![registration.capability.clone()],
+                capabilities,
                 metadata: registration.metadata,
                 health_status:
                     songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
@@ -125,11 +129,11 @@ impl SongbirdRpc for TarpcServerSimple {
 
         self.service_registry.register_local(service_registration).await;
 
-        info!("✅ Service registered: {} ({})", registration.service_name, registration.service_id);
+        info!("Service registered: {} ({})", reg_name, reg_id);
 
         RegistrationResult {
             success: true,
-            message: format!("Service {} registered successfully", registration.service_id),
+            message: format!("Service {reg_id} registered successfully"),
         }
     }
 
@@ -189,24 +193,30 @@ impl SongbirdRpc for TarpcServerSimple {
     }
 
     async fn protocols(self, _context: Context) -> Vec<ProtocolInfo> {
+        use songbird_types::error_helpers::SafeEnv;
+
         debug!("tarpc: protocols()");
+
+        let tarpc_port = SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081);
+        let http_port = SafeEnv::get_port("SONGBIRD_HTTP_PORT", 8080);
+        let ipc_path = std::env::temp_dir().join("songbird.sock").to_string_lossy().into_owned();
 
         vec![
             ProtocolInfo {
                 name: "tarpc".to_string(),
-                port: 9001,
+                port: tarpc_port,
                 enabled: true,
                 info: HashMap::new(),
             },
             ProtocolInfo {
                 name: "jsonrpc".to_string(),
-                port: 0, // Unix socket
+                port: 0,
                 enabled: true,
-                info: HashMap::from([("path".to_string(), "/tmp/songbird.sock".to_string())]),
+                info: HashMap::from([("path".to_string(), ipc_path)]),
             },
             ProtocolInfo {
                 name: "http".to_string(),
-                port: 8080,
+                port: http_port,
                 enabled: true,
                 info: HashMap::new(),
             },
@@ -243,16 +253,17 @@ impl SongbirdRpc for TarpcServer {
     async fn discover(self, _context: Context, capability: String) -> Vec<ServiceInfo> {
         debug!("tarpc: discover(capability={})", capability);
 
-        // Use real capability-based discovery (EVOLVED from mock)
         let services = self.service_registry.find_by_capability(&capability).await;
         debug!("Discovered {} services for capability '{}'", services.len(), capability);
+
+        let cap: Arc<str> = Arc::from(capability);
         services
             .into_iter()
             .map(|svc| ServiceInfo {
                 id: svc.service_id,
-                capability: capability.clone(),
+                capability: (*cap).to_string(),
                 endpoint: svc.endpoint,
-                status: "healthy".to_string(),
+                status: svc.health_status.to_string(),
                 metadata: None,
             })
             .collect()
@@ -261,7 +272,6 @@ impl SongbirdRpc for TarpcServer {
     async fn discover_all(self, _context: Context) -> Vec<ServiceInfo> {
         debug!("tarpc: discover_all()");
 
-        // Use real service registry (EVOLVED from mock)
         let services = self.service_registry.get_all_services().await;
         debug!("Discovered {} total services", services.len());
         services
@@ -270,7 +280,7 @@ impl SongbirdRpc for TarpcServer {
                 id: svc.service_id,
                 capability: svc.service_type,
                 endpoint: svc.endpoint,
-                status: "healthy".to_string(),
+                status: svc.health_status.to_string(),
                 metadata: None,
             })
             .collect()
@@ -283,16 +293,20 @@ impl SongbirdRpc for TarpcServer {
     ) -> RegistrationResult {
         debug!("tarpc: register({}, {})", registration.service_id, registration.capability);
 
-        // Convert to FederatedServiceRegistry format and register
+        let reg_id = registration.service_id;
+        let reg_name = registration.service_name;
+        let reg_cap = registration.capability;
+        let capabilities = vec![reg_cap.clone()];
+
         let service_registration =
             songbird_network_federation::service_registry::ServiceRegistration {
-                service_id: registration.service_id.clone(),
-                service_name: registration.service_name.clone(),
-                service_type: registration.capability.clone(),
+                service_id: reg_id.clone(),
+                service_name: reg_name.clone(),
+                service_type: reg_cap,
                 tower_id: registration.tower_id.unwrap_or_else(|| "unknown".to_string()),
                 tower_name: registration.tower_name.unwrap_or_else(|| "Unknown Tower".to_string()),
                 endpoint: registration.endpoint,
-                capabilities: vec![registration.capability.clone()],
+                capabilities,
                 metadata: registration.metadata,
                 health_status:
                     songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
@@ -302,30 +316,29 @@ impl SongbirdRpc for TarpcServer {
 
         self.service_registry.register_local(service_registration).await;
 
-        info!("✅ Service registered: {} ({})", registration.service_name, registration.service_id);
+        info!("Service registered: {} ({})", reg_name, reg_id);
 
         RegistrationResult {
             success: true,
-            message: format!("Service {} registered successfully", registration.service_id),
+            message: format!("Service {reg_id} registered successfully"),
         }
     }
 
     async fn unregister(self, _context: Context, service_id: String) -> RegistrationResult {
         debug!("tarpc: unregister({})", service_id);
 
-        // Check if service exists before unregistering
         let service_exists = self.service_registry.find_by_id(&service_id).await.is_some();
 
         if service_exists {
             self.service_registry.deregister_local(&service_id).await;
-            info!("✅ Service unregistered: {}", service_id);
+            info!("Service unregistered: {}", service_id);
 
             RegistrationResult {
                 success: true,
                 message: format!("Service {service_id} unregistered successfully"),
             }
         } else {
-            debug!("⚠️  Service not found for unregistration: {}", service_id);
+            debug!("Service not found for unregistration: {}", service_id);
 
             RegistrationResult {
                 success: false,

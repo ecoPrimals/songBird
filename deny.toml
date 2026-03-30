@@ -19,15 +19,11 @@ deny = [
     { name = "hyper", version = "<0.14" },
     { name = "tokio", version = "<1.20" },
     { name = "serde_json", version = "<1.0.85" },
-    # ecoBin: `ring` pulls C/ASM via `cc`. `wrappers` = only crates allowed to depend on it directly
-    # (see audit: rustls, quinn-proto, rcgen, rustls-webpki — expand wrappers if the graph gains new parents).
-    { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust.", wrappers = ["rcgen"] },
+    # ecoBin: `ring` pulls C/ASM via `cc`. quinn/rustls/ring fully eliminated from songbird-quic
+    # (Wave 89: native QUIC engine). `ring` may still appear via `songbird-cli` `ring-crypto` feature
+    # gate (opt-in only). `wrappers` lists crates allowed to transitively pull ring in dev/feature builds.
+    { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust.", wrappers = ["rcgen", "rustls"] },
 ]
-# Note: no `[[bans.skip]]` entry for `ring` — `skip` only applies to duplicate-version
-# detection; with a single `ring` in the graph, `{ name = "ring", … }` triggers
-# unmatched-skip. Tolerance for transitive `ring` is via `deny` + `wrappers` above
-# (rcgen today; add rustls/quinn-proto/rustls-webpki if the resolved graph needs them)
-# until rustls-rustcrypto is ubiquitous. If two `ring` versions appear, add `ring` here.
 skip = [
     # Transitive duplicates from upstream — tracked for elimination
     { name = "windows-sys" },

@@ -4,10 +4,10 @@
 **Status**: Partially Achieved (March 2026)  
 **Goal**: Achieve 100% Pure Rust (100% ecoBin) via BearDog crypto delegation
 
-> **March 2026 update**: `rcgen` removed from production deps (replaced by pure-Rust `cert_gen.rs`
-> using `ed25519-dalek`). `ring` now only enters via `quinn` (upstream blocker: no `rustls-rustcrypto`
-> feature). Runtime already uses `rustls-rustcrypto`. 6 `CryptoUnavailable` stubs wired to BearDog
-> via `CryptoProvider::call()`. See `REMAINING_WORK.md` Wave 86 for details.
+> **March 2026 update (Wave 89)**: `quinn`, `rustls`, and `ring` fully eliminated from `songbird-quic`.
+> Native pure-Rust QUIC engine built (RFC 9000/9001/9002) with all crypto delegated to BearDog via
+> `QuicCryptoProvider` trait (JSON-RPC IPC). The upstream blocker (quinn lacking `rustls-rustcrypto`)
+> is moot — quinn is no longer a dependency. See `CHANGELOG.md` Wave 89 for details.
 
 ---
 

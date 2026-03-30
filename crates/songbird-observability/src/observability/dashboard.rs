@@ -32,6 +32,7 @@ fn http_error_to_songbird(error: hyper::http::Error) -> SongbirdError {
 pub struct SimpleDashboard {
     port: u16,
     running: Arc<AtomicBool>,
+    started_at: std::time::Instant,
 }
 
 impl SimpleDashboard {
@@ -41,6 +42,7 @@ impl SimpleDashboard {
         Self {
             port,
             running: Arc::new(AtomicBool::new(false)),
+            started_at: std::time::Instant::now(),
         }
     }
 
@@ -151,12 +153,15 @@ impl SimpleDashboard {
         Ok(response)
     }
 
-    /// Serve metrics API
+    /// Serve metrics API (process-level; no external dependency collectors)
     async fn serve_metrics(&self) -> Result<Response<Full<Bytes>>> {
+        let uptime_secs = self.started_at.elapsed().as_secs();
+        let pid = std::process::id();
+
         let metrics = json!({
-            "cpu_usage": 0.0,
-            "memory_usage": 0.0,
-            "disk_usage": 0.0,
+            "uptime_seconds": uptime_secs,
+            "pid": pid,
+            "dashboard_running": self.is_running(),
             "timestamp": chrono::Utc::now()
         });
 
@@ -171,9 +176,15 @@ impl SimpleDashboard {
 
     /// Serve health API
     async fn serve_health(&self) -> Result<Response<Full<Bytes>>> {
+        let status = if self.is_running() {
+            "healthy"
+        } else {
+            "degraded"
+        };
+
         let health = json!({
-            "status": "healthy",
-            "services": [],
+            "status": status,
+            "uptime_seconds": self.started_at.elapsed().as_secs(),
             "timestamp": chrono::Utc::now()
         });
 
@@ -188,9 +199,19 @@ impl SimpleDashboard {
 
     /// Serve status API
     async fn serve_status(&self) -> Result<Response<Full<Bytes>>> {
+        let uptime = self.started_at.elapsed();
+        let uptime_str = format!("{}s", uptime.as_secs());
+        let status_label = if self.is_running() {
+            "running"
+        } else {
+            "stopped"
+        };
+
         let status = json!({
-            "status": "running",
-            "uptime": "0s",
+            "status": status_label,
+            "uptime": uptime_str,
+            "uptime_seconds": uptime.as_secs(),
+            "version": env!("CARGO_PKG_VERSION"),
             "timestamp": chrono::Utc::now()
         });
 

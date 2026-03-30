@@ -491,4 +491,63 @@ mod tests {
         let err = discover_mdns_services().await.expect_err("mdns feature off");
         assert!(matches!(err, DiscoveryError::BackendUnavailable(_)));
     }
+
+    #[cfg(not(feature = "dns-sd"))]
+    #[tokio::test]
+    async fn discover_dns_sd_services_backend_unavailable_without_feature() {
+        let err = discover_dns_sd_services().await.expect_err("dns-sd off");
+        assert!(matches!(err, DiscoveryError::BackendUnavailable(_)));
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn build_mdns_ptr_query_encodes_labels_correctly() {
+        let packet = build_mdns_ptr_query("_primal._tcp");
+        assert!(packet.len() > 12, "packet must have header + question");
+        assert_eq!(&packet[0..2], &[0, 0], "ID should be 0");
+        assert_eq!(&packet[4..6], &[0, 1], "QDCOUNT should be 1");
+        let tail_len = packet.len();
+        assert_eq!(&packet[tail_len - 4..], &[0, 12, 0, 1], "QTYPE=PTR QCLASS=IN");
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn parse_mdns_ptr_response_rejects_too_short() {
+        assert!(
+            parse_mdns_ptr_response(&[0; 6], "127.0.0.1:5353".parse().expect("addr")).is_none()
+        );
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn parse_mdns_ptr_response_rejects_query_bit() {
+        let mut data = [0u8; 16];
+        data[2] = 0x00;
+        assert!(parse_mdns_ptr_response(&data, "127.0.0.1:5353".parse().expect("addr")).is_none());
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn parse_mdns_ptr_response_accepts_response_bit() {
+        let mut data = [0u8; 16];
+        data[2] = 0x84;
+        let src = "192.168.1.42:5353".parse().expect("addr");
+        let primal = parse_mdns_ptr_response(&data, src).expect("should parse");
+        assert!(primal.name.contains("192.168.1.42"));
+        assert!(primal.endpoint.contains("192.168.1.42"));
+    }
+
+    #[test]
+    fn infer_capabilities_multi_match() {
+        let caps = infer_capabilities_from_name("data-storage-persist");
+        assert!(caps.contains(&"storage".to_string()));
+        assert_eq!(caps.len(), 1, "should not double-count");
+    }
+
+    #[test]
+    fn infer_capabilities_compute_variants() {
+        assert!(infer_capabilities_from_name("compute-node").contains(&"compute".to_string()));
+        assert!(infer_capabilities_from_name("worker-pool").contains(&"compute".to_string()));
+        assert!(infer_capabilities_from_name("exec-runner").contains(&"compute".to_string()));
+    }
 }

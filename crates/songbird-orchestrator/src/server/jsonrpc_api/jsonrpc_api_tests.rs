@@ -326,7 +326,11 @@ async fn federation_health_handlers() {
     assert_eq!(health["status"], "healthy");
 
     let std_health = handle_health_standard(&state).await.expect("std");
-    assert_eq!(std_health["status"], "healthy");
+    let status = std_health["status"].as_str().expect("status is a string");
+    assert!(
+        status == "healthy" || status == "degraded",
+        "health status should reflect real subsystem state: got {status}"
+    );
 
     let ver = handle_version().await.expect("version");
     assert!(ver.get("version").is_some());

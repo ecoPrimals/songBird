@@ -496,7 +496,10 @@ impl CapabilityDiscoveryEngine {
         let ns = namespace.unwrap_or("default");
 
         // Attempt DNS-based discovery first (works without API access)
-        let dns_name = format!("{capability}.{ns}.svc.cluster.local");
+        let cluster_domain = self
+            .read_env("SONGBIRD_K8S_CLUSTER_DOMAIN")
+            .unwrap_or_else(|_| "cluster.local".to_string());
+        let dns_name = format!("{capability}.{ns}.svc.{cluster_domain}");
         if let Ok(addrs) = tokio::net::lookup_host(format!("{dns_name}:0")).await {
             let discovered: Vec<DiscoveredService> = addrs
                 .filter(|a| a.port() > 0)
@@ -525,18 +528,24 @@ impl CapabilityDiscoveryEngine {
         }
 
         // Fall back to Kubernetes API if in-cluster service account is available
-        let token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+        let token_path = self
+            .read_env("SONGBIRD_K8S_TOKEN_PATH")
+            .unwrap_or_else(|_| "/var/run/secrets/kubernetes.io/serviceaccount/token".to_string());
         let k8s_host = self.read_env("KUBERNETES_SERVICE_HOST");
 
-        if std::path::Path::new(token_path).exists() && k8s_host.is_ok() {
+        if std::path::Path::new(&token_path).exists() && k8s_host.is_ok() {
             let host = k8s_host.unwrap_or_default();
             let port = self.read_env("KUBERNETES_SERVICE_PORT").unwrap_or_else(|_| "443".into());
-            let token = tokio::fs::read_to_string(token_path).await.map_err(|e| {
+            let token = tokio::fs::read_to_string(&token_path).await.map_err(|e| {
                 SongbirdError::discovery(format!("Failed to read K8s service account token: {e}"))
             })?;
 
+            let api_base = self
+                .read_env("SONGBIRD_K8S_API_BASE_URL")
+                .unwrap_or_else(|_| format!("https://{host}:{port}"));
             let url = format!(
-                "https://{host}:{port}/api/v1/namespaces/{ns}/endpoints?labelSelector=songbird/capability={capability}"
+                "{}/api/v1/namespaces/{ns}/endpoints?labelSelector=songbird/capability={capability}",
+                api_base.trim_end_matches('/')
             );
 
             let client = songbird_http_client::IpcHttpClient::new()

@@ -390,18 +390,19 @@ enum WsCommand {
 
 ```rust
 // File: crates/songbird-orchestrator/src/server/quic/mod.rs
+// NOTE: songbird-quic now uses a native pure-Rust engine (quinn removed in Wave 89)
 
-use quinn::{Endpoint, ServerConfig};
+use songbird_quic::{QuicServer, QuicConfig};
 
 pub struct QuicAdapter {
-    endpoint: Option<Endpoint>,
+    server: Option<QuicServer>,
     core: Arc<ServiceMeshCore>,
 }
 
 impl QuicAdapter {
-    pub async fn bind(&mut self, addr: SocketAddr, tls_config: TlsConfig) -> Result<()> {
-        let server_config = ServerConfig::with_crypto(tls_config.into());
-        self.endpoint = Some(Endpoint::server(server_config, addr)?);
+    pub async fn bind(&mut self, addr: SocketAddr) -> Result<()> {
+        let config = QuicConfig::new();
+        self.server = Some(QuicServer::new(&addr.to_string(), config).await?);
         Ok(())
     }
     

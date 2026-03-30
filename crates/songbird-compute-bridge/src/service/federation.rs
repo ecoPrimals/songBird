@@ -10,6 +10,14 @@ use std::time::Duration;
 use tokio::time::interval;
 use tracing::{debug, info, warn};
 
+/// Derive health from actual bridge state: backend reachable or bridge-only operational.
+fn derive_health_status(config: &super::types::BridgeConfig) -> &'static str {
+    match config.backend_url {
+        Some(_) => "healthy",
+        None => "degraded",
+    }
+}
+
 /// Register with Songbird federation
 pub async fn register_with_songbird(
     state: &BridgeState,
@@ -30,17 +38,18 @@ pub async fn register_with_songbird(
     }
     metadata.insert("platform".to_string(), info.platform.clone());
 
+    let health = derive_health_status(config);
     let tower_id = config.tower_id.clone();
     let registration = ServiceRegistration {
         service_id: config.node_id.clone(),
         service_name: config.service_name.clone(),
         service_type: config.service_type.clone(),
         tower_id: tower_id.clone(),
-        tower_name: tower_id, // Could be enhanced with hostname
+        tower_name: tower_id,
         endpoint: format!("http://{}:{}", config.host, config.port),
         capabilities: config.capabilities.clone(),
         metadata,
-        health_status: "healthy".to_string(),
+        health_status: health.to_string(),
         registered_at: Utc::now().to_rfc3339(),
         last_seen: Utc::now().to_rfc3339(),
     };

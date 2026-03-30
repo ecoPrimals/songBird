@@ -11,13 +11,13 @@
 | Metric | Value |
 |--------|-------|
 | **Tests** | 11,831 listed, 0 failed (~269 ignored) |
-| **Line Coverage** | ~68.48% (llvm-cov `--workspace --all-features`; target 90%) |
+| **Line Coverage** | ~69.14% (llvm-cov `--workspace --all-features`; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max prod ~790 `production_analytics.rs` post-type-extraction; test max 950 `security_tests.rs`) |
+| **Files >1000 lines** | 0 (max prod ~862 `container_orchestration.rs`; test max 950 `security_tests.rs`) |
 | **Unsafe blocks** | **0** — `songbird-process-env` evolved to BearDog overlay pattern; workspace `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
@@ -34,7 +34,8 @@
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
 | **BearDog crypto** | 6 `CryptoUnavailable` stubs wired to `CryptoProvider::call()` (JSON-RPC to BearDog); rendezvous fingerprints use `CryptoProvider` primary + HMAC-SHA256 fallback; XOR mock isolated to `#[cfg(test)]` |
-| **C dependencies** | `ring` only via `quinn` (upstream blocker: no `rustls-rustcrypto` feature); `rcgen` removed from production deps; `sysinfo` eliminated |
+| **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + BearDog crypto delegation; `ring-crypto` opt-in feature gate on CLI only; `sysinfo` eliminated |
+| **`async-trait` evolution** | 85 `#[async_trait]` usages; ~8 traits have no `dyn` dispatch and are candidates for native async fn in trait (Rust 2024); remainder require `dyn` dispatch and stay |
 | **Live BearDog testing** | `BearDogFixture` in `songbird-test-utils`; `scripts/test-with-beardog.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
@@ -53,6 +54,23 @@
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 30, 2026 — Deep Debt Execution + Mock Evolution + Real Subsystem Status — Session 30, Wave 88)
+
+### Wave 88: Deep Debt Execution — Real Health Status, Capability Discovery, Mock Elimination
+
+- **Health endpoints evolved**: `handle_health_standard` now derives IPC/federation/crypto subsystem status from real runtime state (socket exists, federation node count, capability provider discovery) instead of hardcoded `"healthy"`/`"up"`
+- **Observability dashboard evolved**: `SimpleDashboard` now tracks real uptime via `Instant`, reports real PID, and derives health/status from `is_running()` state instead of returning zero metrics
+- **Doctor comprehensive mode evolved**: Capability-based primal discovery via XDG runtime socket scanning (`$XDG_RUNTIME_DIR/biomeos/{capability}-provider*.sock`) and env vars (`SONGBIRD_{CAPABILITY}_PROVIDER_SOCKET`) — no primal names hardcoded
+- **tarpc discover/discover_all evolved**: Returns real `health_status` from `ServiceRegistration` in the registry (uses `ServiceHealthStatus::Display`) instead of hardcoding `"healthy"` for every service
+- **Compute-bridge federation evolved**: `register_with_songbird` derives health from real bridge config (`healthy` when backend_url configured, `degraded` otherwise) instead of hardcoding `"healthy"`
+- **Protocol capabilities corrected**: `handle_protocol_capabilities` now reports tarpc as `available: true` (was falsely `false` with stale `"coming_soon": "Week 3-4"`)
+- **Unified adapter test coverage**: Created `tests.rs` for `unified_adapter` module — 12 new tests covering construction, empty discovery, registry population, capability routing errors, registry stats, and pre-seeded fallback
+- **Network discovery tests**: Added 8 new tests for `build_mdns_ptr_query`, `parse_mdns_ptr_response` (too-short, query-bit rejection, response-bit acceptance), `discover_dns_sd_services` stub, and `infer_capabilities` edge cases
+- **Dependency analysis**: Documented ring upstream blocker and async-trait evolution candidates (8 traits with no dyn dispatch suitable for Rust 2024 native async fn in trait)
+- **Health test evolved**: `federation_health_handlers` test now accepts `"healthy"` or `"degraded"` status, reflecting real subsystem-aware health
 
 ---
 

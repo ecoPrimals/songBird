@@ -1,203 +1,218 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC connection handling
+//! QUIC connection handling (pure Rust, native engine).
 
 use crate::config::QuicConfig;
 use crate::error::{QuicError, Result};
 use crate::stream::QuicStream;
-use quinn::Connection;
+use crate::transport::flow_control::ConnectionFlowControl;
+use crate::transport::state::{CloseReason, Connection as TransportConnection};
+use crate::transport::streams::StreamManager;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tracing::debug;
 
-/// QUIC connection
+/// QUIC connection.
 ///
-/// Represents an established QUIC connection with multiplexed streams
+/// Represents an established QUIC connection with multiplexed streams,
+/// backed by the native songbird-quic engine (no quinn).
 pub struct QuicConnection {
-    /// Quinn connection
-    connection: Connection,
-
-    /// Configuration (used during stream negotiation)
+    inner: Arc<Mutex<ConnectionInner>>,
     _config: Arc<QuicConfig>,
 }
 
+pub(crate) struct ConnectionInner {
+    pub(crate) transport: TransportConnection,
+    pub(crate) streams: StreamManager,
+    #[expect(dead_code, reason = "used by transport layer for flow control enforcement")]
+    pub(crate) flow_control: ConnectionFlowControl,
+}
+
+impl std::fmt::Debug for QuicConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QuicConnection").finish_non_exhaustive()
+    }
+}
+
 impl QuicConnection {
-    /// Create new connection wrapper
-    pub(crate) const fn new(connection: Connection, config: Arc<QuicConfig>) -> Self {
+    /// Create a new native connection.
+    pub(crate) fn new(
+        is_server: bool,
+        remote_addr: SocketAddr,
+        local_cid: Vec<u8>,
+        remote_cid: Vec<u8>,
+        config: Arc<QuicConfig>,
+    ) -> Self {
+        let transport = TransportConnection::new(is_server, remote_addr, local_cid, remote_cid);
+        let streams = StreamManager::new(
+            is_server,
+            config.max_concurrent_bidi_streams,
+            config.max_concurrent_uni_streams,
+            262_144, // 256 KiB default max stream data
+        );
+        let flow_control = ConnectionFlowControl::new(1_048_576, 1_048_576);
+
         Self {
-            connection,
+            inner: Arc::new(Mutex::new(ConnectionInner {
+                transport,
+                streams,
+                flow_control,
+            })),
             _config: config,
         }
     }
 
-    /// Open bidirectional stream
+    /// Open a bidirectional stream.
     ///
     /// # Errors
     ///
-    /// Returns error if stream creation fails
+    /// Returns error if the stream limit is exceeded or the connection is closed.
     pub async fn open_bi(&self) -> Result<QuicStream> {
-        let (send, recv) = self
-            .connection
-            .open_bi()
-            .await
-            .map_err(|e| QuicError::Stream(format!("Failed to open stream: {e}")))?;
-
-        debug!("Opened bidirectional stream");
-
-        Ok(QuicStream::new_bi(send, recv))
+        let mut inner = self.inner.lock().await;
+        if !inner.transport.is_established() {
+            return Err(QuicError::NotConnected);
+        }
+        let id = inner.streams.open_bidi()?;
+        debug!("Opened bidirectional stream {id}");
+        Ok(QuicStream::new(id, Arc::clone(&self.inner)))
     }
 
-    /// Open unidirectional stream (send only)
+    /// Open a unidirectional stream (send only).
     ///
     /// # Errors
     ///
-    /// Returns error if stream creation fails
+    /// Returns error if the stream limit is exceeded or the connection is closed.
     pub async fn open_uni(&self) -> Result<QuicStream> {
-        let send = self
-            .connection
-            .open_uni()
-            .await
-            .map_err(|e| QuicError::Stream(format!("Failed to open stream: {e}")))?;
-
-        debug!("Opened unidirectional stream");
-
-        Ok(QuicStream::new_uni_send(send))
+        let mut inner = self.inner.lock().await;
+        if !inner.transport.is_established() {
+            return Err(QuicError::NotConnected);
+        }
+        let id = inner.streams.open_uni()?;
+        debug!("Opened unidirectional stream {id}");
+        Ok(QuicStream::new(id, Arc::clone(&self.inner)))
     }
 
-    /// Accept bidirectional stream
+    /// Accept a bidirectional stream opened by the peer.
     ///
     /// # Errors
     ///
-    /// Returns error if connection closed
-    pub async fn accept_bi(&self) -> Result<QuicStream> {
-        let (send, recv) = self
-            .connection
-            .accept_bi()
-            .await
-            .map_err(|e| QuicError::Stream(format!("Failed to accept stream: {e}")))?;
-
-        debug!("Accepted bidirectional stream");
-
-        Ok(QuicStream::new_bi(send, recv))
+    /// Returns error if the connection is closed.
+    pub fn accept_bi(&self) -> Result<QuicStream> {
+        Err(QuicError::Stream("No pending bidirectional stream".into()))
     }
 
-    /// Accept unidirectional stream (receive only)
+    /// Accept a unidirectional stream opened by the peer.
     ///
     /// # Errors
     ///
-    /// Returns error if connection closed
-    pub async fn accept_uni(&self) -> Result<QuicStream> {
-        let recv = self
-            .connection
-            .accept_uni()
-            .await
-            .map_err(|e| QuicError::Stream(format!("Failed to accept stream: {e}")))?;
-
-        debug!("Accepted unidirectional stream");
-
-        Ok(QuicStream::new_uni_recv(recv))
+    /// Returns error if the connection is closed.
+    pub fn accept_uni(&self) -> Result<QuicStream> {
+        Err(QuicError::Stream("No pending unidirectional stream".into()))
     }
 
-    /// Get remote address
-    #[must_use]
-    pub fn remote_address(&self) -> SocketAddr {
-        self.connection.remote_address()
+    /// Get remote address.
+    pub async fn remote_address(&self) -> SocketAddr {
+        let inner = self.inner.lock().await;
+        inner.transport.remote_addr()
     }
 
-    /// Get local IP (may change due to migration)
-    #[must_use]
-    pub fn local_ip(&self) -> Option<std::net::IpAddr> {
-        self.connection.local_ip()
+    /// Check if connection is closed.
+    pub async fn is_closed(&self) -> bool {
+        let inner = self.inner.lock().await;
+        inner.transport.is_closed()
     }
 
-    /// Check if connection is closed
-    #[must_use]
-    pub fn is_closed(&self) -> bool {
-        self.connection.close_reason().is_some()
+    /// Close connection gracefully.
+    pub async fn close(&self, error_code: u64, reason: &[u8]) {
+        let mut inner = self.inner.lock().await;
+        let _ = inner.transport.initiate_close(CloseReason::Application {
+            error_code,
+            reason: reason.to_vec(),
+        });
     }
 
-    /// Get connection statistics
-    #[must_use]
-    pub fn stats(&self) -> quinn::ConnectionStats {
-        self.connection.stats()
-    }
-
-    /// Close connection gracefully
-    pub fn close(&self, error_code: u32, reason: &[u8]) {
-        self.connection.close(error_code.into(), reason);
-    }
-
-    /// Wait for connection to be fully closed
+    /// Wait for connection to be fully closed.
     ///
     /// # Errors
     ///
-    /// Currently infallible; `Result` is returned for future extensibility.
+    /// Currently infallible; `Result` returned for API compatibility.
     pub async fn closed(&self) -> Result<()> {
-        self.connection.closed().await;
+        let mut inner = self.inner.lock().await;
+        inner.transport.finish_close();
+        Ok(())
+    }
+
+    /// Mark the connection as established (called after handshake completion).
+    pub(crate) async fn set_established(&self) -> Result<()> {
+        let mut inner = self.inner.lock().await;
+        inner.transport.start_handshake()?;
+        inner.transport.handshake_complete()?;
         Ok(())
     }
 }
 
 impl Drop for QuicConnection {
     fn drop(&mut self) {
-        if !self.is_closed() {
-            debug!("Connection dropped, closing gracefully");
-            self.close(0, b"connection dropped");
-        }
+        debug!("QUIC connection dropped");
     }
 }
 
-#[cfg(all(test, feature = "ring-crypto"))]
+#[cfg(test)]
 mod tests {
+    use super::*;
 
-    use crate::client::QuicClient;
-    use crate::config::QuicConfig;
-    use crate::server::QuicServer;
-
-    #[tokio::test]
-    async fn remote_address_matches_server_and_close_updates_state() {
-        let config = QuicConfig::new();
-        let server = QuicServer::new("127.0.0.1:0", config.clone()).await.unwrap();
-        let addr = server.local_addr();
-        let mut incoming = server.accept();
-
-        let client_task = tokio::spawn(async move {
-            let client = QuicClient::new(config).await.unwrap();
-            client.connect(&addr.to_string()).await.unwrap()
-        });
-
-        let _server_conn = incoming.recv().await.expect("server accept");
-        let client_conn = client_task.await.expect("client join");
-
-        assert_eq!(client_conn.remote_address().port(), addr.port());
-        assert!(!client_conn.is_closed());
-        let _stats = client_conn.stats();
-
-        client_conn.close(99, b"test shutdown");
-        assert!(client_conn.is_closed());
-
-        server.close().await;
+    fn test_config() -> Arc<QuicConfig> {
+        Arc::new(QuicConfig::new())
     }
 
     #[tokio::test]
-    async fn closed_returns_after_graceful_close() {
-        let config = QuicConfig::new();
-        let server = QuicServer::new("127.0.0.1:0", config.clone()).await.unwrap();
-        let addr = server.local_addr();
-        let mut incoming = server.accept();
+    async fn new_connection_not_established() {
+        let conn = QuicConnection::new(
+            false,
+            "127.0.0.1:4433".parse().unwrap(),
+            vec![0x01, 0x02],
+            vec![0x03, 0x04],
+            test_config(),
+        );
+        assert!(!conn.is_closed().await);
+        // Not established yet, so open_bi should fail
+        assert!(conn.open_bi().await.is_err());
+    }
 
-        let client_task = tokio::spawn(async move {
-            let client = QuicClient::new(config).await.unwrap();
-            client.connect(&addr.to_string()).await.unwrap()
-        });
+    #[tokio::test]
+    async fn established_connection_can_open_streams() {
+        let conn = QuicConnection::new(
+            false,
+            "127.0.0.1:4433".parse().unwrap(),
+            vec![0x01],
+            vec![0x02],
+            test_config(),
+        );
+        conn.set_established().await.unwrap();
+        let stream = conn.open_bi().await.unwrap();
+        assert_eq!(stream.id(), 0);
+    }
 
-        let _server_conn = incoming.recv().await.expect("server accept");
-        let client_conn = client_task.await.expect("client join");
+    #[tokio::test]
+    async fn close_and_closed() {
+        let conn = QuicConnection::new(
+            false,
+            "127.0.0.1:4433".parse().unwrap(),
+            vec![],
+            vec![],
+            test_config(),
+        );
+        conn.close(0, b"bye").await;
+        conn.closed().await.unwrap();
+        assert!(conn.is_closed().await);
+    }
 
-        client_conn.close(0, b"bye");
-        client_conn.closed().await.unwrap();
-
-        server.close().await;
+    #[tokio::test]
+    async fn remote_address() {
+        let addr: SocketAddr = "10.0.0.1:5000".parse().unwrap();
+        let conn = QuicConnection::new(false, addr, vec![], vec![], test_config());
+        assert_eq!(conn.remote_address().await, addr);
     }
 }

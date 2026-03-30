@@ -1,65 +1,58 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC error types
+//! QUIC error types (pure Rust — no quinn/rustls dependencies).
 
 use thiserror::Error;
 
-/// Result type for QUIC operations
+/// Result type for QUIC operations.
 pub type Result<T> = std::result::Result<T, QuicError>;
 
-/// QUIC protocol errors
+/// QUIC protocol errors.
 #[derive(Debug, Error)]
 pub enum QuicError {
-    /// Quinn protocol error
-    #[error("QUIC protocol error: {0}")]
-    Protocol(#[from] quinn::ConnectionError),
+    /// QUIC transport protocol error (RFC 9000 Section 20).
+    #[error("QUIC transport error {code:#x}: {reason}")]
+    Transport {
+        /// Transport error code.
+        code: u64,
+        /// Human-readable reason.
+        reason: String,
+    },
 
-    /// Connect error
-    #[error("Connect error: {0}")]
-    Connect(#[from] quinn::ConnectError),
-
-    /// Connection closed
+    /// Connection closed by peer.
     #[error("Connection closed: {0}")]
     ConnectionClosed(String),
 
-    /// Stream error
+    /// Stream error.
     #[error("Stream error: {0}")]
     Stream(String),
 
-    /// Configuration error
+    /// Configuration error.
     #[error("Configuration error: {0}")]
     Config(String),
 
-    /// `BearDog` crypto error
+    /// BearDog crypto delegation error.
     #[error("BearDog crypto error: {0}")]
     Crypto(String),
 
-    /// IO error
+    /// IO error.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    /// Address parse error
+    /// Address parse error.
     #[error("Invalid address: {0}")]
     InvalidAddress(#[from] std::net::AddrParseError),
 
-    /// Write error
-    #[error("Write error: {0}")]
-    WriteError(#[from] quinn::WriteError),
+    /// TLS handshake error.
+    #[error("TLS handshake error: {0}")]
+    Handshake(String),
 
-    /// Read error
-    #[error("Read error: {0}")]
-    ReadError(#[from] quinn::ReadError),
-
-    /// Stream closed
-    #[error("Stream closed: {0}")]
-    ClosedStream(#[from] quinn::ClosedStream),
-
-    /// Timeout
+    /// Operation timed out.
     #[error("Operation timed out")]
     Timeout,
 
-    /// Not connected
+    /// Not connected.
     #[error("Not connected")]
     NotConnected,
 }
@@ -93,5 +86,27 @@ mod tests {
     fn timeout_and_not_connected_display() {
         assert_eq!(QuicError::Timeout.to_string(), "Operation timed out");
         assert_eq!(QuicError::NotConnected.to_string(), "Not connected");
+    }
+
+    #[test]
+    fn transport_error_display() {
+        let e = QuicError::Transport {
+            code: 0x0A,
+            reason: "flow control".into(),
+        };
+        assert!(e.to_string().contains("flow control"));
+        assert!(e.to_string().contains("0xa"));
+    }
+
+    #[test]
+    fn crypto_error_display() {
+        let e = QuicError::Crypto("beardog unavailable".into());
+        assert!(e.to_string().contains("beardog unavailable"));
+    }
+
+    #[test]
+    fn handshake_error_display() {
+        let e = QuicError::Handshake("TLS failed".into());
+        assert!(e.to_string().contains("TLS failed"));
     }
 }

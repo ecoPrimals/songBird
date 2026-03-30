@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave89] - 2026-03-30 - Pure Rust QUIC Engine, quinn/ring Elimination, Doc Refresh
+
+### Changed — Native QUIC Engine (quinn/rustls/ring fully eliminated from songbird-quic)
+- Built complete pure-Rust QUIC transport: RFC 9000 (transport), RFC 9001 (TLS binding), RFC 9002 (loss detection)
+- All cryptographic operations delegated to BearDog via `QuicCryptoProvider` trait (JSON-RPC IPC — Tower Atomic pattern)
+- Removed `quinn`, `rustls`, `rustls-rustcrypto`, `rustls-pemfile` from `songbird-quic/Cargo.toml`
+- `cargo tree -p songbird-quic -i ring` — **not found** (zero C crypto dependencies)
+
+### Added — Protocol Layers (17 new modules)
+- `varint`: RFC 9000 §16 variable-length integer encoding
+- `packet/header`: Long + Short header parsing (RFC 9000 §17)
+- `packet/frame`: All 24 QUIC frame types (RFC 9000 §19)
+- `packet/number`: Packet number codec and expansion (RFC 9000 Appendix A)
+- `crypto/provider`: `QuicCryptoProvider` trait with `BeardogQuicCrypto` implementation
+- `crypto/initial_keys`: Initial secrets from DCID via HKDF (RFC 9001 §5.2)
+- `crypto/packet_protection`: AEAD encrypt/decrypt with PN nonce (RFC 9001 §5.3)
+- `crypto/header_protection`: Header protection masking (RFC 9001 §5.4)
+- `crypto/key_update`: 1-RTT key rotation (RFC 9001 §6)
+- `tls/transport_params`: Transport parameter encoding, extension 0x39 (RFC 9000 §18)
+- `tls/handshake`: TLS 1.3 handshake state machine for QUIC
+- `tls/session`: Encryption level key management (Initial/0-RTT/Handshake/1-RTT)
+- `transport/state`: Connection state machine (RFC 9000 §10)
+- `transport/streams`: Bidi/uni stream multiplexing with flow control
+- `transport/flow_control`: Connection and stream-level flow control (RFC 9000 §4)
+- `transport/loss`: Loss detection, PTO, RTT estimation (RFC 9002)
+- `transport/congestion`: NewReno congestion control (RFC 9002 Appendix B)
+- `endpoint/udp`: Tokio UDP socket management
+
+### Changed — Public API Rewired
+- `QuicClient`, `QuicServer`, `QuicConnection`, `QuicStream` now backed by native engine
+- `QuicConfig` builds `TransportParams` and `BeardogQuicCrypto` provider (no rustls config)
+- `QuicError` evolved to native transport/handshake/crypto error variants
+- `cert_gen` module made public for inter-primal certificate generation
+
+### Changed — Documentation Refresh
+- Updated `README.md`, `CONTEXT.md`, `SECURITY.md`, `REMAINING_WORK.md` — removed stale quinn/ring references
+- Rewrote `crates/songbird-quic/README.md` with native architecture, module table, ecoBin compliance
+- Added `CHANGELOG` entry for Wave 89
+
+### Verified
+- 178 tests in `songbird-quic` (all passing)
+- `cargo tree -p songbird-quic -i ring` — package not found
+- `cargo tree -p songbird-quic -i quinn` — package not found
+- `cargo tree -p songbird-quic -i rustls` — package not found
+- `cargo check -p songbird-quic` — clean
+- `cargo clippy -p songbird-quic` — no errors (warnings: `missing_docs` + expected protocol casts)
+
+---
+
 ## [v0.2.1-wave87] - 2026-03-30 - Deep Debt Audit, Expect Evolution, Clippy Clean
 
 ### Fixed

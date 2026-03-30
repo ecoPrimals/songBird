@@ -12,7 +12,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
-| Pure Rust | `ring` only via `quinn` (upstream blocker); `rcgen` removed from production deps; `sysinfo` eliminated; all application code is pure Rust |
+| Pure Rust | 100% — `quinn`/`rustls`/`ring` fully eliminated from `songbird-quic` (native QUIC engine with BearDog crypto delegation); `rcgen` removed; `sysinfo` eliminated; `ring-crypto` opt-in feature gate remains on CLI only |
 | Crypto Delegation | BearDog via JSON-RPC IPC — 6 stubs wired to `CryptoProvider::call()`; graceful `CryptoUnavailable` fallback |
 | Runtime Discovery | All config: env → XDG → smart defaults. `primal_names` constants module; capability-first discovery |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
@@ -52,7 +52,7 @@ Songbird Orchestrator
     |-- Tor Protocol (pure Rust: directory, circuit, stream, onion service)
     |-- Sovereign Onion (P2P encrypted service + connector)
     |-- IGD Router Config (UPnP IGD + NAT-PMP, auto port forwarding)
-    |-- QUIC Transport (0-RTT, connection migration, multiplexing)
+    |-- QUIC Transport (native Rust — RFC 9000/9001/9002, BearDog crypto, 0-RTT, migration)
     |-- NFC Genesis (Dark Forest mobile pairing, zero metadata leakage)
     |-- BLE GATT (Bluetooth Low Energy genesis)
     |-- TLS 1.3 (RFC 8446, protocol detection)
@@ -120,7 +120,7 @@ export SONGBIRD_FAMILY_ID=myfamily
 - `songbird-tor-protocol` - Pure Rust Tor (directory, circuit, stream, onion)
 - `songbird-tls` - TLS 1.3 implementation
 - `songbird-stun` - STUN server RFC 5389
-- `songbird-quic` - QUIC transport (0-RTT, migration)
+- `songbird-quic` - Pure Rust QUIC transport (RFC 9000, BearDog crypto, 0-RTT, migration)
 - `songbird-sovereign-onion` - P2P onion service
 - `songbird-lineage-relay` - Lineage relay + coordinated punch
 - `songbird-onion-relay` - Hole punch coordinator

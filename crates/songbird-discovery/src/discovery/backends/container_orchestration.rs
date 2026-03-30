@@ -433,9 +433,13 @@ impl UniversalContainerOrchestration {
 
     /// Detect Docker-compatible APIs
     async fn detect_docker_apis(&mut self) {
+        let docker_socket = songbird_process_env::var("SONGBIRD_DOCKER_SOCKET")
+            .unwrap_or_else(|_| "/var/run/docker.sock".to_string());
+        let docker_unix_url = format!("unix://{docker_socket}");
+
         let potential_endpoints = vec![
             songbird_process_env::var("DOCKER_HOST").unwrap_or_default(),
-            "unix:///var/run/docker.sock".to_string(),
+            docker_unix_url,
             "tcp://songbird_config::canonical::constants::network::DEFAULT_HOST:2376".to_string(), // Docker daemon default
         ];
 
@@ -468,7 +472,9 @@ impl UniversalContainerOrchestration {
     /// Test if an endpoint is a valid Docker API
     async fn test_docker_endpoint(&self, _endpoint: &str) -> bool {
         // Check for Docker socket or environment indicators
-        std::path::Path::new("/var/run/docker.sock").exists()
+        let docker_socket = songbird_process_env::var("SONGBIRD_DOCKER_SOCKET")
+            .unwrap_or_else(|_| "/var/run/docker.sock".to_string());
+        std::path::Path::new(&docker_socket).exists()
             || std::path::Path::new("/.dockerenv").exists()
             || songbird_process_env::var("DOCKER_HOST").is_ok()
     }

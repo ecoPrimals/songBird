@@ -60,17 +60,30 @@ pub async fn show_logs(
 async fn show_recent_logs(
     service: Option<&str>,
     lines: usize,
-    _level: LogLevel,
+    level: LogLevel,
 ) -> SongbirdResult<()> {
-    let sample_logs = generate_sample_logs(service, lines);
-    for log_entry in sample_logs {
-        println!("{log_entry}");
+    let service_name = service.unwrap_or("all");
+    match read_recent_logs(service_name, lines, &level).await {
+        Ok(entries) => {
+            for log_entry in entries {
+                println!("{log_entry}");
+            }
+        }
+        Err(_) => {
+            println!(
+                "{}",
+                "No log files discovered; showing synthetic preview.".dimmed()
+            );
+            let sample_logs = generate_sample_logs(service, lines);
+            for log_entry in sample_logs {
+                println!("{log_entry}");
+            }
+        }
     }
     Ok(())
 }
 
-/// Read recent logs from files
-#[allow(dead_code, reason = "reserved for real log file reading when log infrastructure is wired")]
+/// Read recent logs from discovered log files.
 async fn read_recent_logs(
     service_name: &str,
     lines: usize,
@@ -88,8 +101,7 @@ async fn read_recent_logs(
     })
 }
 
-/// Read last N lines from a log file
-#[allow(dead_code, reason = "reserved for real log file reading when log infrastructure is wired")]
+/// Read last N lines from a log file, filtering by level.
 async fn read_last_lines(
     log_path: &std::path::Path,
     lines: usize,
@@ -103,7 +115,7 @@ async fn read_last_lines(
     let filtered_logs: Vec<String> = recent_lines
         .filter_map(|line| {
             if should_show_log(line, level) {
-                Some(line.to_string())
+                Some((*line).to_string())
             } else {
                 None
             }
@@ -147,67 +159,58 @@ fn generate_sample_logs(service: Option<&str>, lines: usize) -> Vec<String> {
     logs
 }
 
-/// Follow logs in real-time
-async fn follow_logs(service: Option<&str>, _level: LogLevel) -> SongbirdResult<()> {
-    let mut counter = 0u64;
-    loop {
-        if counter % 3 == 0 {
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S%.3f");
-            let service_name = service.unwrap_or("orchestrator");
-
-            match counter % 4 {
-                0 => println!(
-                    "{} [{}] {} Service health check passed",
-                    timestamp.to_string().dimmed(),
-                    "INFO".bright_blue(),
-                    service_name.bright_cyan(),
-                ),
-                1 => println!(
-                    "{} [{}] {} Processing request batch",
-                    timestamp.to_string().dimmed(),
-                    "DEBUG".bright_magenta(),
-                    service_name.bright_cyan(),
-                ),
-                2 => println!(
-                    "{} [{}] {} High memory usage detected: 85%",
-                    timestamp.to_string().dimmed(),
-                    "WARN".bright_yellow(),
-                    service_name.bright_cyan(),
-                ),
-                _ => println!(
-                    "{} [{}] {} Connection established with peer",
-                    timestamp.to_string().dimmed(),
-                    "INFO".bright_blue(),
-                    service_name.bright_cyan(),
-                ),
-            }
+/// Follow logs in real-time.
+///
+/// Attempts real log tailing first; falls back to synthetic preview when no log
+/// files are discoverable yet (services not started, first boot, etc.).
+async fn follow_logs(service: Option<&str>, level: LogLevel) -> SongbirdResult<()> {
+    let service_name = service.unwrap_or("orchestrator");
+    match follow_real_logs(service_name, &level).await {
+        Ok(()) => Ok(()),
+        Err(_) => {
+            println!(
+                "{}",
+                "No log files discovered; showing synthetic preview (Ctrl+C to stop)."
+                    .bright_yellow()
+            );
+            follow_synthetic(service).await
         }
-        counter += 1;
-        tokio::time::sleep(Duration::from_secs(2)).await;
     }
 }
 
-/// Follow real logs from the system
-#[allow(dead_code, reason = "reserved for real log tailing when log infrastructure is wired")]
+/// Follow real logs from the system by tailing the first discoverable log file.
 async fn follow_real_logs(service_name: &str, level: &LogLevel) -> SongbirdResult<()> {
     let log_paths = get_log_paths(service_name);
     for log_path in log_paths {
         if tokio::fs::metadata(&log_path).await.is_ok() {
-            println!("Reading logs from: {}", log_path.display());
+            println!("{}", format!("Tailing: {}", log_path.display()).dimmed());
             return tail_log_file(&log_path, level.clone()).await;
         }
     }
     Err(crate::errors::CliError::Command {
         command: "logs".to_string(),
-        message: "Failed to read log file. Enable simulation mode or check if services are running"
-            .to_string(),
+        message: "No log files found".to_string(),
     })
+}
+
+/// Synthetic log stream used when no real log files are available.
+async fn follow_synthetic(service: Option<&str>) -> SongbirdResult<()> {
+    let service_name = service.unwrap_or("orchestrator");
+    loop {
+        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        println!(
+            "{} [{}] {} Awaiting log infrastructure...",
+            timestamp.to_string().dimmed(),
+            "INFO".bright_blue(),
+            service_name.bright_cyan(),
+        );
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
 }
 
 /// Get potential log file paths for the service.
 ///
 /// Discovery order: XDG state dir -> XDG config dir -> platform temp dir -> cwd
-#[allow(dead_code, reason = "reserved for real log file reading when log infrastructure is wired")]
 fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
     let mut paths = Vec::new();
 
@@ -240,8 +243,7 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
     paths
 }
 
-/// Tail a log file and filter by level
-#[allow(dead_code, reason = "reserved for real log tailing when log infrastructure is wired")]
+/// Tail a log file and filter by level.
 async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> SongbirdResult<()> {
     use tokio::io::{AsyncBufReadExt, BufReader};
     let file = tokio::fs::File::open(log_path)
@@ -258,8 +260,7 @@ async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> SongbirdR
     Ok(())
 }
 
-/// Check if log entry should be shown based on level filter
-#[allow(dead_code, reason = "reserved for real log tailing when log infrastructure is wired")]
+/// Check if log entry should be shown based on level filter.
 fn should_show_log(log_entry: &str, filter_level: &LogLevel) -> bool {
     let entry_level = if log_entry.contains("[ERROR]") {
         LogLevel::Error
@@ -287,8 +288,7 @@ fn should_show_log(log_entry: &str, filter_level: &LogLevel) -> bool {
     }
 }
 
-/// Format log level for display
-#[allow(dead_code, reason = "reserved for future log formatting")]
+/// Format log level for display.
 fn format_log_level(level: &LogLevel) -> &str {
     match level {
         LogLevel::Error => "ERROR",

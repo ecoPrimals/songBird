@@ -27,11 +27,13 @@
 //! ```text
 //! Application Data
 //!     ↓
-//! BearDog ChaCha20Poly1305 (application-level encryption)
+//! QUIC Transport (native Rust — streams, congestion, loss recovery)
 //!     ↓
-//! QUIC Transport (quinn - connection mgmt, congestion control)
-//!     ↓ (QUIC has built-in TLS 1.3)
-//! UDP
+//! QUIC Crypto (BearDog via JSON-RPC IPC — AEAD, HKDF, HP)
+//!     ↓
+//! TLS 1.3 Handshake (BearDog X25519 + key schedule)
+//!     ↓
+//! UDP (Tokio)
 //!     ↓
 //! IPv4/IPv6
 //! ```
@@ -70,13 +72,19 @@
     reason = "intentional pattern; clippy false positive for this API"
 )]
 
-mod cert_gen;
+pub mod cert_gen;
 mod client;
 mod config;
 mod connection;
+pub mod crypto;
+mod endpoint;
 mod error;
+pub mod packet;
 mod server;
 mod stream;
+pub mod tls;
+pub mod transport;
+pub mod varint;
 
 pub use client::QuicClient;
 pub use config::QuicConfig;
