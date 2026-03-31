@@ -18,7 +18,6 @@
 //! - ✅ **Zero Technical Debt**: Clean implementation with no legacy baggage
 //! - ✅ **Gaming Protocols**: Specialized gaming network protocol support
 #![forbid(unsafe_code)]
-#![deny(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions, reason = "federation crate uses nested module layout")]
@@ -95,6 +94,8 @@ pub mod birdsong_payload;
 /// BearDog Secure Tunnel Protocol configuration and provider traits.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod btsp;
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
+mod crypto_helpers;
 /// Discovery mode selection (plaintext vs BirdSong-encrypted).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod discovery_mode;

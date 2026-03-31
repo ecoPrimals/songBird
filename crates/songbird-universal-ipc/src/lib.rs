@@ -111,7 +111,6 @@
 //! ```
 #![recursion_limit = "256"]
 #![forbid(unsafe_code)]
-#![deny(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![allow(

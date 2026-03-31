@@ -22,6 +22,7 @@ const OID_SAN: &[u8] = &[0x55, 0x1d, 0x11];
 /// Generate a self-signed Ed25519 certificate and PKCS#8 private key.
 ///
 /// Returns `(cert_der, private_key_pkcs8_der)`.
+#[must_use]
 pub fn generate_self_signed_ed25519(domain: &str) -> (Vec<u8>, Vec<u8>) {
     let mut seed = [0u8; 32];
     rand::rngs::OsRng.fill_bytes(&mut seed);

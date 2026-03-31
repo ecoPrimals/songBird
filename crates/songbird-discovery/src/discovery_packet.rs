@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use sha2::{Digest, Sha256};
+use songbird_crypto_provider::CryptoProvider;
 use songbird_types::{LineageId, LineageProof};
 use std::collections::HashMap;
 
@@ -161,46 +161,66 @@ impl DiscoveryPacket {
     /// Serializes the discovery packet into TXT record format for mDNS broadcasting.
     #[must_use]
     pub fn to_txt_records(&self) -> HashMap<String, String> {
-        let mut txt = HashMap::new();
-
-        // Core fields
-        txt.insert("node_id".to_string(), self.node_id.clone());
-        txt.insert("capabilities".to_string(), self.capabilities.join(","));
-        txt.insert("tags".to_string(), self.tags.join(","));
-        txt.insert("endpoint".to_string(), self.endpoint.clone());
-        txt.insert("timestamp".to_string(), self.timestamp.to_string());
-
-        // Optional node name
-        if let Some(name) = &self.node_name {
-            txt.insert("node_name".to_string(), name.clone());
-        }
-
-        // User metadata
-        for (k, v) in &self.metadata {
-            txt.insert(format!("meta_{k}"), v.clone());
-        }
-
-        // NEW: Genetic lineage (compact representation for TXT records)
-        if let Some(lineage) = &self.genetic_lineage {
-            txt.insert("lineage".to_string(), lineage.to_string());
-        }
-
-        // NEW: Lineage proof (base64 encoded)
+        let mut txt = self.txt_records_base();
         if let Some(proof) = &self.lineage_proof
             && let Ok(encoded) = proof.to_discovery_txt()
         {
-            // TXT records have size limits (~400 bytes), so we truncate if needed
             if encoded.len() <= 400 {
                 txt.insert("lineage_proof".to_string(), encoded);
             } else {
-                // Store a hash instead and require HTTP fetch for full proof
-                let proof_hash = Self::hash_proof(&encoded);
+                let proof_hash =
+                    hex::encode(crate::crypto_helpers::sha256_hash_sync(None, encoded.as_bytes()));
                 txt.insert("lineage_proof_hash".to_string(), proof_hash);
                 txt.insert(
                     "lineage_proof_url".to_string(),
                     format!("{}/api/v1/lineage/proof", self.endpoint),
                 );
             }
+        }
+        txt
+    }
+
+    pub async fn to_txt_records_with_crypto(
+        &self,
+        crypto: Option<&CryptoProvider>,
+    ) -> HashMap<String, String> {
+        let mut txt = self.txt_records_base();
+        if let Some(proof) = &self.lineage_proof
+            && let Ok(encoded) = proof.to_discovery_txt()
+        {
+            if encoded.len() <= 400 {
+                txt.insert("lineage_proof".to_string(), encoded);
+            } else {
+                let digest = crate::crypto_helpers::sha256_hash(crypto, encoded.as_bytes()).await;
+                txt.insert("lineage_proof_hash".to_string(), hex::encode(digest));
+                txt.insert(
+                    "lineage_proof_url".to_string(),
+                    format!("{}/api/v1/lineage/proof", self.endpoint),
+                );
+            }
+        }
+        txt
+    }
+
+    fn txt_records_base(&self) -> HashMap<String, String> {
+        let mut txt = HashMap::new();
+
+        txt.insert("node_id".to_string(), self.node_id.clone());
+        txt.insert("capabilities".to_string(), self.capabilities.join(","));
+        txt.insert("tags".to_string(), self.tags.join(","));
+        txt.insert("endpoint".to_string(), self.endpoint.clone());
+        txt.insert("timestamp".to_string(), self.timestamp.to_string());
+
+        if let Some(name) = &self.node_name {
+            txt.insert("node_name".to_string(), name.clone());
+        }
+
+        for (k, v) in &self.metadata {
+            txt.insert(format!("meta_{k}"), v.clone());
+        }
+
+        if let Some(lineage) = &self.genetic_lineage {
+            txt.insert("lineage".to_string(), lineage.to_string());
         }
 
         txt
@@ -270,13 +290,6 @@ impl DiscoveryPacket {
     #[must_use]
     pub const fn has_proof(&self) -> bool {
         self.lineage_proof.is_some()
-    }
-
-    /// Hash a proof string for compact storage
-    fn hash_proof(proof: &str) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(proof.as_bytes());
-        hex::encode(hasher.finalize())
     }
 }
 

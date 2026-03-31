@@ -425,12 +425,14 @@ impl AnonymousDiscoveryBroadcaster {
     ///
     /// Uses the first 16 bytes of SHA-256(`node_id`) when v3.0 identity is configured;
     /// otherwise fills 16 bytes from [`rand::thread_rng`] (v2.1 / anonymous mode).
-    fn dark_forest_beacon_id_fallback(&self) -> Vec<u8> {
+    async fn dark_forest_beacon_id_fallback(
+        &self,
+        crypto: Option<&songbird_crypto_provider::CryptoProvider>,
+    ) -> Vec<u8> {
         use rand::Rng;
-        use sha2::{Digest, Sha256};
 
         if let Some(ref nid) = self.node_id {
-            let h = Sha256::digest(nid.as_bytes());
+            let h = crate::crypto_helpers::sha256_hash(crypto, nid.as_bytes()).await;
             h[..16].to_vec()
         } else {
             let mut id = [0u8; 16];
@@ -468,12 +470,15 @@ impl AnonymousDiscoveryBroadcaster {
     ) -> Result<(), anyhow::Error> {
         use crate::dark_forest_beacon::BeaconPayload;
 
-        // Get our beacon ID (or derive from node identity / RNG if not yet available)
+        let crypto = songbird_crypto_provider::CryptoProvider::from_env();
+        let crypto_ref = Some(&crypto);
+
         let beacon_id = match birdsong.encryption_provider() {
-            Some(enc) if enc.is_available() => {
-                enc.get_beacon_id().await?.unwrap_or_else(|| self.dark_forest_beacon_id_fallback())
-            }
-            _ => self.dark_forest_beacon_id_fallback(),
+            Some(enc) if enc.is_available() => match enc.get_beacon_id().await? {
+                Some(id) => id,
+                None => self.dark_forest_beacon_id_fallback(crypto_ref).await,
+            },
+            _ => self.dark_forest_beacon_id_fallback(crypto_ref).await,
         };
 
         // Build endpoints list from our configuration

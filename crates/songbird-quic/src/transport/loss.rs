@@ -4,19 +4,15 @@
 //! RFC 9002: Loss detection and recovery for QUIC.
 //!
 //! Tracks sent packets and determines which are lost based on:
-//! - Packet reordering threshold (kPacketThreshold = 3)
-//! - Time threshold (kTimeThreshold = 9/8 of max(smoothed_rtt, latest_rtt))
-//! - Probe Timeout (PTO) for tail loss
+//! - Packet reordering threshold (`kPacketThreshold` = 3)
+//! - Time threshold (`kTimeThreshold` = 9/8 of max(`smoothed_rtt`, `latest_rtt`))
+//! - Probe Timeout (`PTO`) for tail loss
 
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 /// Default packet reordering threshold before declaring loss.
 const PACKET_THRESHOLD: u64 = 3;
-
-/// Time threshold multiplier (9/8).
-const TIME_THRESHOLD_NUMER: u64 = 9;
-const TIME_THRESHOLD_DENOM: u64 = 8;
 
 /// Default initial RTT estimate (333ms per RFC 9002).
 const INITIAL_RTT: Duration = Duration::from_millis(333);
@@ -108,10 +104,8 @@ impl RttEstimator {
             return;
         }
 
-        let adjusted_rtt = rtt_sample
-            .checked_sub(ack_delay)
-            .filter(|r| *r > self.min_rtt)
-            .unwrap_or(rtt_sample);
+        let adjusted_rtt =
+            rtt_sample.checked_sub(ack_delay).filter(|r| *r > self.min_rtt).unwrap_or(rtt_sample);
 
         let abs_diff = if self.smoothed_rtt > adjusted_rtt {
             self.smoothed_rtt.saturating_sub(adjusted_rtt)
@@ -185,7 +179,9 @@ impl LossDetector {
         // Mark acked packets
         for &(start, end) in ack_ranges {
             for pn in start..=end {
-                if let Some(sent) = self.sent_packets.get_mut(&pn) && !sent.acked {
+                if let Some(sent) = self.sent_packets.get_mut(&pn)
+                    && !sent.acked
+                {
                     sent.acked = true;
                     newly_acked.push(pn);
                 }
@@ -193,15 +189,16 @@ impl LossDetector {
         }
 
         // Update RTT if the largest acked packet is newly acked
-        if let Some(sent) = self.sent_packets.get(&largest_acked) && sent.acked {
+        if let Some(sent) = self.sent_packets.get(&largest_acked)
+            && sent.acked
+        {
             let rtt_sample = now.duration_since(sent.sent_time);
             self.rtt.update(rtt_sample, ack_delay);
         }
 
         let prev_largest = self.largest_acked_pn;
-        self.largest_acked_pn = Some(
-            self.largest_acked_pn.map_or(largest_acked, |prev| prev.max(largest_acked)),
-        );
+        self.largest_acked_pn =
+            Some(self.largest_acked_pn.map_or(largest_acked, |prev| prev.max(largest_acked)));
 
         // Reset PTO on new ack
         if Some(largest_acked) > prev_largest {
@@ -220,9 +217,8 @@ impl LossDetector {
             return vec![];
         };
 
-        let time_threshold = self.rtt.smoothed_rtt.max(self.rtt.latest_rtt)
-            * TIME_THRESHOLD_NUMER as u32
-            / TIME_THRESHOLD_DENOM as u32;
+        let base = self.rtt.smoothed_rtt.max(self.rtt.latest_rtt);
+        let time_threshold = base * 9u32 / 8u32;
         let loss_time = now.checked_sub(time_threshold).unwrap_or(now);
 
         let mut lost_pns = Vec::new();
@@ -269,20 +265,13 @@ impl LossDetector {
     /// Number of unacknowledged packets in flight.
     #[must_use]
     pub fn in_flight_count(&self) -> usize {
-        self.sent_packets
-            .values()
-            .filter(|p| !p.acked && !p.lost)
-            .count()
+        self.sent_packets.values().filter(|p| !p.acked && !p.lost).count()
     }
 
     /// Total bytes in flight (for congestion control).
     #[must_use]
     pub fn bytes_in_flight(&self) -> usize {
-        self.sent_packets
-            .values()
-            .filter(|p| !p.acked && !p.lost)
-            .map(|p| p.size)
-            .sum()
+        self.sent_packets.values().filter(|p| !p.acked && !p.lost).map(|p| p.size).sum()
     }
 
     /// Remove acknowledged and lost packets that are no longer needed.
@@ -343,12 +332,8 @@ mod tests {
         }
 
         // ACK packets 3, 4 (gap of 3+ from packet 0)
-        let (acked, lost) = ld.on_ack_received(
-            4,
-            Duration::ZERO,
-            &[(3, 4)],
-            now + Duration::from_millis(50),
-        );
+        let (acked, lost) =
+            ld.on_ack_received(4, Duration::ZERO, &[(3, 4)], now + Duration::from_millis(50));
         assert_eq!(acked, vec![3, 4]);
         // Packet 0 and 1 should be lost (gap >= PACKET_THRESHOLD from 4)
         assert!(lost.contains(&0));

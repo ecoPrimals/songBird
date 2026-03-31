@@ -155,8 +155,15 @@ impl Default for NetworkConfig {
             "SONGBIRD_ORCHESTRATOR_PORT",
             &crate::canonical::constants::network::default_orchestrator_port().to_string(),
         );
-        let gaming_port = env_or_default("SONGBIRD_GAMING_PORT", "8081");
-        let federation_port = env_or_default("SONGBIRD_FEDERATION_PORT", "8082");
+        let gaming_port_default = crate::canonical::constants::network::default_orchestrator_port()
+            .saturating_add(1)
+            .to_string();
+        let federation_port_default =
+            crate::canonical::constants::network::default_orchestrator_port()
+                .saturating_add(2)
+                .to_string();
+        let gaming_port = env_or_default("SONGBIRD_GAMING_PORT", &gaming_port_default);
+        let federation_port = env_or_default("SONGBIRD_FEDERATION_PORT", &federation_port_default);
         let dashboard_port = env_or_default(
             "SONGBIRD_DASHBOARD_PORT",
             &crate::canonical::constants::network::default_orchestrator_port().to_string(),
@@ -170,28 +177,29 @@ impl Default for NetworkConfig {
                     std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
                 })
             }),
-            production_bind_address: env_or_default("SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0")
-                .parse()
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
-                        e
-                    );
-                    "0.0.0.0".parse().unwrap_or({
-                        // Final fallback to UNSPECIFIED
-                        std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
-                    })
-                }),
+            production_bind_address: env_or_default(
+                "SONGBIRD_PRODUCTION_BIND_ADDRESS",
+                &IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED).to_string(),
+            )
+            .parse()
+            .unwrap_or_else(|e| {
+                tracing::warn!(
+                    "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using UNSPECIFIED: {}",
+                    e
+                );
+                IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
+            }),
             stun_servers: vec![
                 env_or_default("SONGBIRD_STUN_SERVER_1", "stun.nextcloud.com:3478"),
                 env_or_default("SONGBIRD_STUN_SERVER_2", "stun.cloudflare.com:3478"),
             ],
             port_ranges: {
+                let base = crate::canonical::constants::get_port_range_start();
                 let mut ranges = HashMap::new();
-                ranges.insert("orchestrator".to_string(), (8080, 8090));
+                ranges.insert("orchestrator".to_string(), (base, base.saturating_add(10)));
                 ranges.insert("gaming".to_string(), (7000, 7100));
-                ranges.insert("federation".to_string(), (8080, 8090));
-                ranges.insert("primals".to_string(), (8080, 8090));
+                ranges.insert("federation".to_string(), (base, base.saturating_add(10)));
+                ranges.insert("primals".to_string(), (base, base.saturating_add(10)));
                 ranges
             },
             orchestrator_endpoint: Arc::from(format!("http://{bind_ip}:{orchestrator_port}")),
@@ -345,7 +353,7 @@ fn default_tls_cert_path() -> String {
         .filter(|s| !s.is_empty())
         .or_else(|| songbird_process_env::var("SSL_CERT_FILE").ok().filter(|s| !s.is_empty()))
         .unwrap_or_else(|| {
-            std::env::var("HOME").map_or_else(
+            songbird_process_env::var("HOME").map_or_else(
                 |_| {
                     std::env::temp_dir()
                         .join("songbird")

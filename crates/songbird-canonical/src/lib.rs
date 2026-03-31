@@ -24,7 +24,6 @@
 //! - **Async Patterns**: Standard async/await patterns and utilities
 //! - **Universal Adapters**: Primal-agnostic interface patterns
 #![forbid(unsafe_code)]
-#![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]

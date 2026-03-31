@@ -18,7 +18,7 @@ use tokio::time::interval;
 
 // Server API modules
 pub mod chunked_upload;
-pub mod compute_api; // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
+pub mod compute_api;
 pub mod consent_api; // ✅ NEW: Consent Management API (Dec 18, 2025 - Week 5 MVP)
 pub mod deployment_api;
 pub mod events; // ✅ NEW: Real-Time Event Broadcasting (Nov 11, 2025 - Phase 4)

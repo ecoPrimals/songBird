@@ -12,13 +12,13 @@ use std::time::Instant;
 pub enum ConnectionState {
     /// Not yet started.
     Idle,
-    /// Handshake in progress (sending/receiving Initial and Handshake packets).
+    /// Handshake in progress (sending/receiving `Initial` and `Handshake` packets).
     Handshaking,
     /// Handshake complete, application data can flow.
     Connected,
-    /// Closing initiated (sending CONNECTION_CLOSE).
+    /// Closing initiated (sending `CONNECTION_CLOSE`).
     Closing,
-    /// Draining period (received CONNECTION_CLOSE, waiting before cleanup).
+    /// Draining period (received `CONNECTION_CLOSE`, waiting before cleanup).
     Draining,
     /// Connection fully terminated.
     Closed,
@@ -28,9 +28,21 @@ pub enum ConnectionState {
 #[derive(Debug, Clone)]
 pub enum CloseReason {
     /// Local application requested close.
-    Application { error_code: u64, reason: Vec<u8> },
+    Application {
+        /// Application error code.
+        error_code: u64,
+        /// Application-defined reason bytes.
+        reason: Vec<u8>,
+    },
     /// Transport-level error.
-    Transport { error_code: u64, frame_type: u64, reason: Vec<u8> },
+    Transport {
+        /// Transport error code.
+        error_code: u64,
+        /// Frame type that triggered the error, if applicable.
+        frame_type: u64,
+        /// Human-readable reason bytes.
+        reason: Vec<u8>,
+    },
     /// Idle timeout expired.
     IdleTimeout,
     /// Stateless reset received.
@@ -64,7 +76,12 @@ pub struct Connection {
 impl Connection {
     /// Create a new connection in the Idle state.
     #[must_use]
-    pub fn new(is_server: bool, remote_addr: SocketAddr, local_cid: Vec<u8>, remote_cid: Vec<u8>) -> Self {
+    pub fn new(
+        is_server: bool,
+        remote_addr: SocketAddr,
+        local_cid: Vec<u8>,
+        remote_cid: Vec<u8>,
+    ) -> Self {
         let now = Instant::now();
         Self {
             state: ConnectionState::Idle,
@@ -141,9 +158,7 @@ impl Connection {
 
     /// Record a received packet number.
     pub fn record_received(&mut self, pn: u64) {
-        self.largest_recv_pn = Some(
-            self.largest_recv_pn.map_or(pn, |prev| prev.max(pn)),
-        );
+        self.largest_recv_pn = Some(self.largest_recv_pn.map_or(pn, |prev| prev.max(pn)));
         self.touch();
     }
 
@@ -174,6 +189,10 @@ impl Connection {
     // --- State transitions ---
 
     /// Transition: Idle → Handshaking.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::ConnectionClosed`] if the connection is not in [`ConnectionState::Idle`].
     pub fn start_handshake(&mut self) -> Result<()> {
         self.require_state(ConnectionState::Idle)?;
         self.state = ConnectionState::Handshaking;
@@ -182,6 +201,10 @@ impl Connection {
     }
 
     /// Transition: Handshaking → Connected.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::ConnectionClosed`] if the connection is not in [`ConnectionState::Handshaking`].
     pub fn handshake_complete(&mut self) -> Result<()> {
         self.require_state(ConnectionState::Handshaking)?;
         self.state = ConnectionState::Connected;
@@ -190,6 +213,10 @@ impl Connection {
     }
 
     /// Transition: Connected → Closing (initiated by local).
+    ///
+    /// # Errors
+    ///
+    /// Never returns `Err`; included for API consistency with other transitions.
     pub fn initiate_close(&mut self, reason: CloseReason) -> Result<()> {
         if matches!(self.state, ConnectionState::Closed | ConnectionState::Draining) {
             return Ok(());
@@ -200,7 +227,11 @@ impl Connection {
         Ok(())
     }
 
-    /// Transition: Connected|Handshaking → Draining (received CONNECTION_CLOSE).
+    /// Transition: Connected|Handshaking → Draining (received `CONNECTION_CLOSE`).
+    ///
+    /// # Errors
+    ///
+    /// Never returns `Err`; included for API consistency with other transitions.
     pub fn enter_draining(&mut self, reason: CloseReason) -> Result<()> {
         if matches!(self.state, ConnectionState::Closed | ConnectionState::Draining) {
             return Ok(());
@@ -262,7 +293,8 @@ mod tests {
         conn.initiate_close(CloseReason::Application {
             error_code: 0,
             reason: b"bye".to_vec(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(conn.state(), ConnectionState::Closing);
         assert!(conn.close_reason().is_some());
 
@@ -280,7 +312,8 @@ mod tests {
             error_code: 0x0A,
             frame_type: 0,
             reason: b"flow control".to_vec(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(conn.state(), ConnectionState::Draining);
     }
 
@@ -329,12 +362,7 @@ mod tests {
 
     #[test]
     fn server_flag() {
-        let conn = Connection::new(
-            true,
-            "127.0.0.1:4433".parse().unwrap(),
-            vec![],
-            vec![],
-        );
+        let conn = Connection::new(true, "127.0.0.1:4433".parse().unwrap(), vec![], vec![]);
         assert!(conn.is_server());
     }
 

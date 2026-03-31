@@ -7,7 +7,7 @@
 //! TLS records. This module manages the TLS state machine, producing handshake
 //! bytes for outgoing CRYPTO frames and consuming bytes from incoming ones.
 //!
-//! The TLS key schedule is driven through BearDog, producing keys that are
+//! The TLS key schedule is driven through `BearDog`, producing keys that are
 //! installed into the `CryptoSession` at each encryption level.
 
 use crate::crypto::initial_keys::{self, DirectionalKeys};
@@ -19,11 +19,11 @@ use crate::tls::transport_params::TransportParams;
 /// TLS handshake state for a QUIC connection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HandshakeState {
-    /// Waiting to begin (client needs to send ClientHello).
+    /// Waiting to begin (client needs to send `ClientHello`).
     Initial,
-    /// Client has sent ClientHello, waiting for ServerHello.
+    /// Client has sent `ClientHello`, waiting for `ServerHello`.
     WaitServerHello,
-    /// Processing encrypted handshake (EncryptedExtensions, Certificate, etc.).
+    /// Processing encrypted handshake (`EncryptedExtensions`, `Certificate`, etc.).
     WaitEncryptedExtensions,
     /// Waiting for the server's Finished message.
     WaitFinished,
@@ -45,7 +45,7 @@ pub enum Role {
 /// Manages the TLS 1.3 handshake within a QUIC connection.
 ///
 /// Produces handshake bytes for CRYPTO frames and consumes incoming
-/// handshake bytes, driving the key schedule through BearDog.
+/// handshake bytes, driving the key schedule through `BearDog`.
 #[derive(Debug)]
 pub struct QuicTlsHandshake {
     /// Current handshake state.
@@ -100,7 +100,7 @@ impl QuicTlsHandshake {
         self.cipher_suite
     }
 
-    /// Peer's transport parameters (available after processing ServerHello/EncryptedExtensions).
+    /// Peer's transport parameters (available after processing `ServerHello` / `EncryptedExtensions`).
     #[must_use]
     pub fn peer_params(&self) -> Option<&TransportParams> {
         self.peer_params.as_ref()
@@ -118,7 +118,11 @@ impl QuicTlsHandshake {
     }
 
     /// Initialize the handshake: derive Initial keys and (for clients)
-    /// prepare the ClientHello.
+    /// prepare the `ClientHello`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if initial key derivation fails or the `ClientHello` cannot be built.
     pub async fn initialize(
         &mut self,
         crypto: &dyn QuicCryptoProvider,
@@ -154,6 +158,10 @@ impl QuicTlsHandshake {
     /// Process incoming handshake data and advance the state machine.
     ///
     /// Returns a list of encryption levels whose keys were updated.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if key derivation or building a handshake message fails.
     pub async fn process(
         &mut self,
         crypto: &dyn QuicCryptoProvider,
@@ -194,7 +202,7 @@ impl QuicTlsHandshake {
                     session.discard_keys(EncryptionLevel::Handshake);
                     updated_levels.push(EncryptionLevel::OneRtt);
 
-                    let client_finished = Self::build_client_finished()?;
+                    let client_finished = Self::build_client_finished();
                     self.outgoing.extend_from_slice(&client_finished);
 
                     self.state = HandshakeState::Complete;
@@ -206,7 +214,7 @@ impl QuicTlsHandshake {
                     let client_hello = std::mem::take(&mut self.incoming);
                     self.transcript.extend_from_slice(&client_hello);
 
-                    let server_hello = Self::build_server_hello()?;
+                    let server_hello = Self::build_server_hello();
                     self.transcript.extend_from_slice(&server_hello);
                     self.outgoing.extend_from_slice(&server_hello);
 
@@ -219,7 +227,7 @@ impl QuicTlsHandshake {
                     self.transcript.extend_from_slice(&ee);
                     self.outgoing.extend_from_slice(&ee);
 
-                    let finished = self.build_server_finished()?;
+                    let finished = Self::build_server_finished();
                     self.transcript.extend_from_slice(&finished);
                     self.outgoing.extend_from_slice(&finished);
 
@@ -247,7 +255,7 @@ impl QuicTlsHandshake {
         Ok(updated_levels)
     }
 
-    /// Build a minimal ClientHello message (TLS 1.3 for QUIC).
+    /// Build a minimal `ClientHello` message (TLS 1.3 for QUIC).
     fn build_client_hello(&self) -> Result<Vec<u8>> {
         let tp_encoded = self.local_params.encode()?;
         let mut msg = Vec::with_capacity(64 + tp_encoded.len());
@@ -281,24 +289,49 @@ impl QuicTlsHandshake {
 
         // QUIC Transport Parameters (0x0039)
         extensions.extend_from_slice(&[0x00, 0x39]);
-        extensions.extend_from_slice(&(tp_encoded.len() as u16).to_be_bytes());
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS extension lengths fit in u16 for valid transport params"
+        )]
+        let tp_len_u16 = tp_encoded.len() as u16;
+        extensions.extend_from_slice(&tp_len_u16.to_be_bytes());
         extensions.extend_from_slice(&tp_encoded);
 
         // Extensions total length
-        msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "handshake extension block length fits in u16 for this message layout"
+        )]
+        let ext_len_u16 = extensions.len() as u16;
+        msg.extend_from_slice(&ext_len_u16.to_be_bytes());
         msg.extend_from_slice(&extensions);
 
         // Fill in the length field (3 bytes, big-endian)
         let body_len = msg.len() - len_offset - 3;
-        msg[len_offset] = ((body_len >> 16) & 0xFF) as u8;
-        msg[len_offset + 1] = ((body_len >> 8) & 0xFF) as u8;
-        msg[len_offset + 2] = (body_len & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b0 = ((body_len >> 16) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b1 = ((body_len >> 8) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b2 = (body_len & 0xFF) as u8;
+        msg[len_offset] = b0;
+        msg[len_offset + 1] = b1;
+        msg[len_offset + 2] = b2;
 
         Ok(msg)
     }
 
-    /// Build a minimal ServerHello message.
-    fn build_server_hello() -> Result<Vec<u8>> {
+    /// Build a minimal `ServerHello` message.
+    fn build_server_hello() -> Vec<u8> {
         let mut msg = Vec::with_capacity(64);
 
         // Handshake type: ServerHello (2)
@@ -323,18 +356,38 @@ impl QuicTlsHandshake {
 
         // Extensions: Supported Versions (TLS 1.3)
         let extensions: &[u8] = &[0x00, 0x2B, 0x00, 0x02, 0x03, 0x04];
-        msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "fixed ServerHello extension block length fits in u16"
+        )]
+        let ext_len_u16 = extensions.len() as u16;
+        msg.extend_from_slice(&ext_len_u16.to_be_bytes());
         msg.extend_from_slice(extensions);
 
         let body_len = msg.len() - len_offset - 3;
-        msg[len_offset] = ((body_len >> 16) & 0xFF) as u8;
-        msg[len_offset + 1] = ((body_len >> 8) & 0xFF) as u8;
-        msg[len_offset + 2] = (body_len & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b0 = ((body_len >> 16) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b1 = ((body_len >> 8) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b2 = (body_len & 0xFF) as u8;
+        msg[len_offset] = b0;
+        msg[len_offset + 1] = b1;
+        msg[len_offset + 2] = b2;
 
-        Ok(msg)
+        msg
     }
 
-    /// Build EncryptedExtensions containing transport parameters.
+    /// Build `EncryptedExtensions` containing transport parameters.
     fn build_encrypted_extensions(&self) -> Result<Vec<u8>> {
         let tp_encoded = self.local_params.encode()?;
         let mut msg = Vec::with_capacity(32 + tp_encoded.len());
@@ -347,90 +400,146 @@ impl QuicTlsHandshake {
         // Extensions
         let mut extensions = Vec::new();
         extensions.extend_from_slice(&[0x00, 0x39]);
-        extensions.extend_from_slice(&(tp_encoded.len() as u16).to_be_bytes());
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS extension lengths fit in u16 for valid transport params"
+        )]
+        let tp_len_u16 = tp_encoded.len() as u16;
+        extensions.extend_from_slice(&tp_len_u16.to_be_bytes());
         extensions.extend_from_slice(&tp_encoded);
 
-        msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "handshake extension block length fits in u16 for this message layout"
+        )]
+        let ext_len_u16 = extensions.len() as u16;
+        msg.extend_from_slice(&ext_len_u16.to_be_bytes());
         msg.extend_from_slice(&extensions);
 
         let body_len = msg.len() - len_offset - 3;
-        msg[len_offset] = ((body_len >> 16) & 0xFF) as u8;
-        msg[len_offset + 1] = ((body_len >> 8) & 0xFF) as u8;
-        msg[len_offset + 2] = (body_len & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b0 = ((body_len >> 16) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b1 = ((body_len >> 8) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "TLS handshake body length uses three low bytes only"
+        )]
+        let b2 = (body_len & 0xFF) as u8;
+        msg[len_offset] = b0;
+        msg[len_offset + 1] = b1;
+        msg[len_offset + 2] = b2;
 
         Ok(msg)
     }
 
     /// Build client Finished message.
-    fn build_client_finished() -> Result<Vec<u8>> {
+    fn build_client_finished() -> Vec<u8> {
         let mut msg = Vec::new();
         // Handshake type: Finished (20)
         msg.push(0x14);
         // Verify data placeholder (32 bytes for SHA-256)
         let verify_data = vec![0u8; 32];
         let len = verify_data.len();
-        msg.push(((len >> 16) & 0xFF) as u8);
-        msg.push(((len >> 8) & 0xFF) as u8);
-        msg.push((len & 0xFF) as u8);
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "Finished verify_data length uses three low bytes only"
+        )]
+        let b0 = ((len >> 16) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "Finished verify_data length uses three low bytes only"
+        )]
+        let b1 = ((len >> 8) & 0xFF) as u8;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "Finished verify_data length uses three low bytes only"
+        )]
+        let b2 = (len & 0xFF) as u8;
+        msg.push(b0);
+        msg.push(b1);
+        msg.push(b2);
         msg.extend_from_slice(&verify_data);
-        Ok(msg)
+        msg
     }
 
     /// Build server Finished message.
-    fn build_server_finished(&self) -> Result<Vec<u8>> {
-        Self::build_client_finished() // Same structure
+    fn build_server_finished() -> Vec<u8> {
+        Self::build_client_finished()
     }
 
-    /// Derive Handshake-level keys via BearDog.
-    async fn derive_handshake_keys(
-        &self,
-        crypto: &dyn QuicCryptoProvider,
-    ) -> Result<LevelKeys> {
+    /// Derive Handshake-level keys via `BearDog`.
+    async fn derive_handshake_keys(&self, crypto: &dyn QuicCryptoProvider) -> Result<LevelKeys> {
         let transcript_hash = crypto.sha256(&self.transcript).await?;
         let secret = crypto.hkdf_extract(&[0u8; 32], &[0u8; 32]).await?;
 
-        let client_secret = initial_keys::hkdf_expand_label(
-            crypto, &secret, b"c hs traffic", &transcript_hash, 32,
-        ).await?;
-        let server_secret = initial_keys::hkdf_expand_label(
-            crypto, &secret, b"s hs traffic", &transcript_hash, 32,
-        ).await?;
+        let client_secret =
+            initial_keys::hkdf_expand_label(crypto, &secret, b"c hs traffic", &transcript_hash, 32)
+                .await?;
+        let server_secret =
+            initial_keys::hkdf_expand_label(crypto, &secret, b"s hs traffic", &transcript_hash, 32)
+                .await?;
 
-        let client_keys = derive_keys_from_secret(crypto, &client_secret, self.cipher_suite).await?;
-        let server_keys = derive_keys_from_secret(crypto, &server_secret, self.cipher_suite).await?;
+        let client_keys =
+            derive_keys_from_secret(crypto, &client_secret, self.cipher_suite).await?;
+        let server_keys =
+            derive_keys_from_secret(crypto, &server_secret, self.cipher_suite).await?;
 
         let (local, remote) = match self.role {
             Role::Client => (client_keys, server_keys),
             Role::Server => (server_keys, client_keys),
         };
 
-        Ok(LevelKeys { local, remote, suite: self.cipher_suite })
+        Ok(LevelKeys {
+            local,
+            remote,
+            suite: self.cipher_suite,
+        })
     }
 
-    /// Derive Application-level (1-RTT) keys via BearDog.
-    async fn derive_application_keys(
-        &self,
-        crypto: &dyn QuicCryptoProvider,
-    ) -> Result<LevelKeys> {
+    /// Derive Application-level (1-RTT) keys via `BearDog`.
+    async fn derive_application_keys(&self, crypto: &dyn QuicCryptoProvider) -> Result<LevelKeys> {
         let transcript_hash = crypto.sha256(&self.transcript).await?;
         let master_secret = crypto.hkdf_extract(&[0u8; 32], &[0u8; 32]).await?;
 
         let client_secret = initial_keys::hkdf_expand_label(
-            crypto, &master_secret, b"c ap traffic", &transcript_hash, 32,
-        ).await?;
+            crypto,
+            &master_secret,
+            b"c ap traffic",
+            &transcript_hash,
+            32,
+        )
+        .await?;
         let server_secret = initial_keys::hkdf_expand_label(
-            crypto, &master_secret, b"s ap traffic", &transcript_hash, 32,
-        ).await?;
+            crypto,
+            &master_secret,
+            b"s ap traffic",
+            &transcript_hash,
+            32,
+        )
+        .await?;
 
-        let client_keys = derive_keys_from_secret(crypto, &client_secret, self.cipher_suite).await?;
-        let server_keys = derive_keys_from_secret(crypto, &server_secret, self.cipher_suite).await?;
+        let client_keys =
+            derive_keys_from_secret(crypto, &client_secret, self.cipher_suite).await?;
+        let server_keys =
+            derive_keys_from_secret(crypto, &server_secret, self.cipher_suite).await?;
 
         let (local, remote) = match self.role {
             Role::Client => (client_keys, server_keys),
             Role::Server => (server_keys, client_keys),
         };
 
-        Ok(LevelKeys { local, remote, suite: self.cipher_suite })
+        Ok(LevelKeys {
+            local,
+            remote,
+            suite: self.cipher_suite,
+        })
     }
 }
 
@@ -440,10 +549,18 @@ async fn derive_keys_from_secret(
     secret: &[u8],
     suite: QuicCipherSuite,
 ) -> Result<DirectionalKeys> {
-    let key = initial_keys::hkdf_expand_label(crypto, secret, b"quic key", &[], suite.key_len()).await?;
-    let iv = initial_keys::hkdf_expand_label(crypto, secret, b"quic iv", &[], suite.iv_len()).await?;
-    let hp_key = initial_keys::hkdf_expand_label(crypto, secret, b"quic hp", &[], suite.hp_key_len()).await?;
-    Ok(DirectionalKeys { key, iv, hp_key })
+    let key =
+        initial_keys::hkdf_expand_label(crypto, secret, b"quic key", &[], suite.key_len()).await?;
+    let iv =
+        initial_keys::hkdf_expand_label(crypto, secret, b"quic iv", &[], suite.iv_len()).await?;
+    let hp_key =
+        initial_keys::hkdf_expand_label(crypto, secret, b"quic hp", &[], suite.hp_key_len())
+            .await?;
+    Ok(DirectionalKeys {
+        key,
+        iv,
+        hp_key,
+    })
 }
 
 #[cfg(test)]
@@ -476,8 +593,8 @@ mod tests {
 
     #[test]
     fn server_hello_builds_valid_message() {
-        let hs = QuicTlsHandshake::new(Role::Server, TransportParams::default());
-        let sh = QuicTlsHandshake::build_server_hello().unwrap();
+        let _hs = QuicTlsHandshake::new(Role::Server, TransportParams::default());
+        let sh = QuicTlsHandshake::build_server_hello();
         assert_eq!(sh[0], 0x02); // ServerHello type
         let body_len = ((sh[1] as usize) << 16) | ((sh[2] as usize) << 8) | (sh[3] as usize);
         assert_eq!(sh.len(), 4 + body_len);
@@ -513,8 +630,8 @@ mod tests {
 
     #[test]
     fn finished_message_structure() {
-        let hs = QuicTlsHandshake::new(Role::Client, TransportParams::default());
-        let fin = QuicTlsHandshake::build_client_finished().unwrap();
+        let _hs = QuicTlsHandshake::new(Role::Client, TransportParams::default());
+        let fin = QuicTlsHandshake::build_client_finished();
         assert_eq!(fin[0], 0x14); // Finished type
         let body_len = ((fin[1] as usize) << 16) | ((fin[2] as usize) << 8) | (fin[3] as usize);
         assert_eq!(body_len, 32); // SHA-256 verify data length

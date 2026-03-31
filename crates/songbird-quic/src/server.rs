@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC server implementation (pure Rust, BearDog crypto delegation).
+//! QUIC server implementation (pure Rust, `BearDog` crypto delegation).
 
 use crate::config::QuicConfig;
 use crate::connection::QuicConnection;
@@ -14,7 +14,7 @@ use tracing::{debug, info, warn};
 
 /// QUIC server.
 ///
-/// Listens for incoming QUIC connections with BearDog crypto delegation.
+/// Listens for incoming QUIC connections with `BearDog` crypto delegation.
 /// All cryptographic operations are delegated via IPC.
 pub struct QuicServer {
     /// UDP endpoint.
@@ -62,7 +62,7 @@ impl QuicServer {
     ///
     /// Returns a channel receiver for new connections.
     /// The accept loop runs in a background task, processing incoming
-    /// UDP datagrams and performing TLS handshakes via BearDog.
+    /// UDP datagrams and performing TLS handshakes via `BearDog`.
     #[must_use]
     pub fn accept(&self) -> mpsc::Receiver<QuicConnection> {
         let (tx, rx) = mpsc::channel(100);
@@ -86,8 +86,7 @@ impl QuicServer {
                                 config,
                             );
 
-                            if conn.set_established().await.is_ok()
-                                && tx.send(conn).await.is_err()
+                            if conn.set_established().await.is_ok() && tx.send(conn).await.is_err()
                             {
                                 warn!("Failed to send connection to channel");
                             }

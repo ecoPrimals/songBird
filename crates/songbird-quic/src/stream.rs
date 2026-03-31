@@ -25,7 +25,8 @@ pub struct QuicStream {
 impl std::fmt::Debug for QuicStream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("QuicStream")
-            .field("id", &self.stream_id)
+            .field("stream_id", &self.stream_id)
+            .field("conn", &"<QuicConnection>")
             .finish()
     }
 }
@@ -33,7 +34,10 @@ impl std::fmt::Debug for QuicStream {
 impl QuicStream {
     /// Create a new stream handle.
     pub(crate) fn new(stream_id: u64, conn: Arc<Mutex<ConnectionInner>>) -> Self {
-        Self { stream_id, conn }
+        Self {
+            stream_id,
+            conn,
+        }
     }
 
     /// Stream ID.
@@ -49,7 +53,9 @@ impl QuicStream {
     /// Returns error if the stream is not writable or the connection is closed.
     pub async fn write(&mut self, data: &[u8]) -> Result<()> {
         let mut inner = self.conn.lock().await;
-        let entry = inner.streams.get_mut(self.stream_id)
+        let entry = inner
+            .streams
+            .get_mut(self.stream_id)
             .ok_or_else(|| QuicError::Stream("Stream not found".into()))?;
         entry.write(data)?;
         Ok(())
@@ -73,7 +79,9 @@ impl QuicStream {
     /// Returns error if the stream is not writable.
     pub async fn finish(&mut self) -> Result<()> {
         let mut inner = self.conn.lock().await;
-        let entry = inner.streams.get_mut(self.stream_id)
+        let entry = inner
+            .streams
+            .get_mut(self.stream_id)
             .ok_or_else(|| QuicError::Stream("Stream not found".into()))?;
         entry.finish_send();
         debug!("Stream {} finished", self.stream_id);
@@ -89,7 +97,9 @@ impl QuicStream {
     /// Returns error if the stream is not readable.
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         let mut inner = self.conn.lock().await;
-        let entry = inner.streams.get_mut(self.stream_id)
+        let entry = inner
+            .streams
+            .get_mut(self.stream_id)
             .ok_or_else(|| QuicError::Stream("Stream not found".into()))?;
         let n = entry.read(buf);
         if n == 0 {
@@ -102,10 +112,12 @@ impl QuicStream {
     ///
     /// # Errors
     ///
-    /// Returns error if the stream is not readable or data exceeds max_size.
+    /// Returns error if the stream is not readable or data exceeds `max_size`.
     pub async fn read_to_end(&mut self, max_size: usize) -> Result<Vec<u8>> {
         let mut inner = self.conn.lock().await;
-        let entry = inner.streams.get_mut(self.stream_id)
+        let entry = inner
+            .streams
+            .get_mut(self.stream_id)
             .ok_or_else(|| QuicError::Stream("Stream not found".into()))?;
 
         let mut buf = Vec::new();
@@ -117,9 +129,7 @@ impl QuicStream {
             }
             buf.extend_from_slice(&tmp[..n]);
             if buf.len() > max_size {
-                return Err(QuicError::Stream(format!(
-                    "Data exceeds max size: {max_size}"
-                )));
+                return Err(QuicError::Stream(format!("Data exceeds max size: {max_size}")));
             }
         }
         Ok(buf)
@@ -128,7 +138,9 @@ impl QuicStream {
     /// Check if stream has data to read.
     pub async fn is_readable(&self) -> bool {
         let inner = self.conn.lock().await;
-        inner.streams.get(self.stream_id)
+        inner
+            .streams
+            .get(self.stream_id)
             .is_some_and(super::transport::streams::StreamEntry::has_readable_data)
     }
 
@@ -136,15 +148,17 @@ impl QuicStream {
     pub async fn is_writable(&self) -> bool {
         use crate::transport::streams::StreamState;
         let inner = self.conn.lock().await;
-        inner.streams.get(self.stream_id)
+        inner
+            .streams
+            .get(self.stream_id)
             .is_some_and(|e| matches!(e.state, StreamState::Open | StreamState::RecvFinished))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::connection::QuicConnection;
     use super::super::config::QuicConfig;
+    use super::super::connection::QuicConnection;
     use std::sync::Arc;
 
     #[tokio::test]
@@ -181,13 +195,8 @@ mod tests {
     #[tokio::test]
     async fn finish_closes_write_side() {
         let config = Arc::new(QuicConfig::new());
-        let conn = QuicConnection::new(
-            false,
-            "127.0.0.1:4433".parse().unwrap(),
-            vec![],
-            vec![],
-            config,
-        );
+        let conn =
+            QuicConnection::new(false, "127.0.0.1:4433".parse().unwrap(), vec![], vec![], config);
         conn.set_established().await.unwrap();
 
         let mut stream = conn.open_bi().await.unwrap();

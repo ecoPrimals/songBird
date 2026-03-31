@@ -20,6 +20,10 @@ pub struct VarInt(u64);
 
 impl VarInt {
     /// Create a new `VarInt` from a `u64`, returning an error if out of range.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Config`](crate::error::QuicError::Config) if `value` exceeds [`VARINT_MAX`].
     pub fn new(value: u64) -> Result<Self> {
         if value > VARINT_MAX {
             return Err(QuicError::Config(format!(
@@ -58,6 +62,10 @@ impl VarInt {
     /// Encode into the provided buffer, returning the number of bytes written.
     ///
     /// The buffer must be at least `self.encoded_len()` bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Stream`](crate::error::QuicError::Stream) if the buffer is too short.
     pub fn encode(&self, buf: &mut [u8]) -> Result<usize> {
         let len = self.encoded_len();
         if buf.len() < len {
@@ -68,13 +76,26 @@ impl VarInt {
         }
         match len {
             1 => {
-                buf[0] = self.0 as u8;
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "1-byte VarInt encodes values < 64"
+                )]
+                let b = self.0 as u8;
+                buf[0] = b;
             }
             2 => {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "2-byte VarInt encodes values < 16384"
+                )]
                 let val = (self.0 as u16) | 0x4000;
                 buf[..2].copy_from_slice(&val.to_be_bytes());
             }
             4 => {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "4-byte VarInt encodes values < 2^30"
+                )]
                 let val = (self.0 as u32) | 0x8000_0000;
                 buf[..4].copy_from_slice(&val.to_be_bytes());
             }
@@ -90,6 +111,10 @@ impl VarInt {
     /// Decode a `VarInt` from the beginning of the buffer.
     ///
     /// Returns the decoded value and the number of bytes consumed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Stream`](crate::error::QuicError::Stream) if the buffer is empty or truncated.
     pub fn decode(buf: &[u8]) -> Result<(Self, usize)> {
         if buf.is_empty() {
             return Err(QuicError::Stream("VarInt decode: empty buffer".into()));

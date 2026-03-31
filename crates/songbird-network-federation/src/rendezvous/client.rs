@@ -196,7 +196,6 @@ impl RendezvousClient {
     /// Returns an error when `BearDog` is unavailable or fails and there is no `node_id`
     /// to derive a surrogate fingerprint from (`CryptoUnavailable`).
     async fn get_public_key_fingerprint(&self) -> Result<String> {
-        // Primary path: CryptoProvider (handles socket discovery via Neural API / BearDog)
         let crypto = songbird_crypto_provider::CryptoProvider::from_env();
         match crypto.call("crypto.get_public_key", serde_json::json!({})).await {
             Ok(result) => {
@@ -206,8 +205,7 @@ impl RendezvousClient {
                     .or_else(|| result.get("key").and_then(serde_json::Value::as_str))
                     .unwrap_or("");
                 if let Ok(key_data) = BASE64.decode(key_b64) {
-                    use sha2::{Digest, Sha256};
-                    let hash = Sha256::digest(&key_data);
+                    let hash = crate::crypto_helpers::sha256_hash(Some(&crypto), &key_data).await;
                     return Ok(format!("sha256:{}", hex::encode(hash)));
                 }
             }
@@ -218,14 +216,12 @@ impl RendezvousClient {
             }
         }
 
-        // Legacy path: direct BEARDOG_SOCKET_PATH (for bootstrapping without Neural API)
         if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET_PATH")
             && let Ok(beardog_client) = UnixRpcClient::new(PathBuf::from(socket_path))
         {
             match beardog_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
                 Ok(key_data) => {
-                    use sha2::{Digest, Sha256};
-                    let hash = Sha256::digest(&key_data);
+                    let hash = crate::crypto_helpers::sha256_hash(Some(&crypto), &key_data).await;
                     return Ok(format!("sha256:{}", hex::encode(hash)));
                 }
                 Err(e) => {
@@ -239,16 +235,13 @@ impl RendezvousClient {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires BearDog (CryptoProvider or BEARDOG_SOCKET_PATH) or node identity"))?;
 
-        use hmac::{Hmac, Mac};
-        use sha2::Sha256;
-
-        type HmacSha256 = Hmac<Sha256>;
-
         const DOMAIN_KEY: &[u8] = b"songbird.rendezvous.pkfp.v1";
-        let mut mac = HmacSha256::new_from_slice(DOMAIN_KEY)
-            .map_err(|e| anyhow::anyhow!("HMAC key construction failed: {e}"))?;
-        mac.update(node_info.node_id.as_bytes());
-        let tag = mac.finalize().into_bytes();
+        let tag = crate::crypto_helpers::hmac_sha256(
+            Some(&crypto),
+            DOMAIN_KEY,
+            node_info.node_id.as_bytes(),
+        )
+        .await;
 
         Ok(format!("hmac-sha256:{}", hex::encode(tag)))
     }

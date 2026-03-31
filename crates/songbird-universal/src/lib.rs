@@ -8,7 +8,6 @@
 //! This crate provides universal, vendor-agnostic orchestration capabilities
 //! that can work with any primal or service provider through capability-based discovery.
 #![forbid(unsafe_code)]
-#![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![allow(

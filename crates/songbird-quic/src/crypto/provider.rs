@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC crypto provider trait — bridges QUIC packet protection to BearDog.
+//! QUIC crypto provider trait — bridges QUIC packet protection to `BearDog`.
 //!
 //! All cryptographic operations needed by the QUIC transport are expressed
 //! as async trait methods. The `BeardogQuicCrypto` implementation delegates
-//! to BearDog via JSON-RPC IPC, following the same Tower Atomic pattern as
-//! songbird-tls and songbird-http-client.
+//! to `BearDog` via JSON-RPC IPC, following the same Tower Atomic pattern as
+//! `songbird-tls` and `songbird-http-client`.
 
 use crate::error::{QuicError, Result};
 use async_trait::async_trait;
@@ -15,11 +15,11 @@ use async_trait::async_trait;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum QuicCipherSuite {
-    /// TLS_AES_128_GCM_SHA256 (0x1301)
+    /// `TLS_AES_128_GCM_SHA256` (`0x1301`)
     Aes128Gcm = 0x1301,
-    /// TLS_AES_256_GCM_SHA384 (0x1302)
+    /// `TLS_AES_256_GCM_SHA384` (`0x1302`)
     Aes256Gcm = 0x1302,
-    /// TLS_CHACHA20_POLY1305_SHA256 (0x1303)
+    /// `TLS_CHACHA20_POLY1305_SHA256` (`0x1303`)
     ChaCha20Poly1305 = 0x1303,
 }
 
@@ -69,9 +69,9 @@ impl QuicCipherSuite {
 
 /// Cryptographic operations required by the QUIC transport layer.
 ///
-/// Mirrors the subset of `CryptoCapability` (from songbird-http-client) that
+/// Mirrors the subset of `CryptoCapability` (from `songbird-http-client`) that
 /// QUIC needs, plus QUIC-specific header protection operations.
-/// The default implementation delegates to BearDog via `songbird-crypto-provider`.
+/// The default implementation delegates to `BearDog` via `songbird-crypto-provider`.
 #[async_trait]
 pub trait QuicCryptoProvider: Send + Sync + std::fmt::Debug {
     /// HKDF-Extract: derive a pseudorandom key from input keying material.
@@ -108,8 +108,8 @@ pub trait QuicCryptoProvider: Send + Sync + std::fmt::Debug {
 
     /// Header protection: generate a 5-byte mask from the HP key and a 16-byte sample.
     ///
-    /// For AES cipher suites: AES-ECB(hp_key, sample), take first 5 bytes.
-    /// For ChaCha20: ChaCha20(hp_key, counter=sample[0..4] LE, nonce=sample[4..16]),
+    /// For AES cipher suites: `AES-ECB`(`hp_key`, `sample`), take first 5 bytes.
+    /// For `ChaCha20`: `ChaCha20`(`hp_key`, counter=`sample`[0..4] LE, nonce=`sample`[4..16]),
     /// take first 5 bytes.
     async fn header_protection_mask(
         &self,
@@ -129,10 +129,10 @@ pub trait QuicCryptoProvider: Send + Sync + std::fmt::Debug {
     ) -> Result<Vec<u8>>;
 }
 
-/// BearDog-backed QUIC crypto provider.
+/// `BearDog`-backed QUIC crypto provider.
 ///
-/// Delegates all crypto operations to BearDog via `songbird-crypto-provider`
-/// JSON-RPC. Uses the same socket discovery and routing as songbird-tls.
+/// Delegates all crypto operations to `BearDog` via `songbird-crypto-provider`
+/// JSON-RPC. Uses the same socket discovery and routing as `songbird-tls`.
 #[derive(Debug)]
 pub struct BeardogQuicCrypto {
     provider: songbird_crypto_provider::CryptoProvider,
@@ -142,14 +142,18 @@ impl BeardogQuicCrypto {
     /// Create from a `songbird-crypto-provider` instance.
     #[must_use]
     pub const fn new(provider: songbird_crypto_provider::CryptoProvider) -> Self {
-        Self { provider }
+        Self {
+            provider,
+        }
     }
 
     /// Create using default socket discovery (same as songbird-tls / songbird-http-client).
     #[must_use]
     pub fn discover() -> Self {
         let provider = songbird_crypto_provider::CryptoProvider::from_env();
-        Self { provider }
+        Self {
+            provider,
+        }
     }
 }
 
@@ -160,7 +164,10 @@ impl QuicCryptoProvider for BeardogQuicCrypto {
             "salt": base64_encode(salt),
             "ikm": base64_encode(ikm),
         });
-        let result = self.provider.call("crypto.hkdf_extract", params).await
+        let result = self
+            .provider
+            .call("crypto.hkdf_extract", params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("hkdf_extract: {e}")))?;
         decode_base64_field(&result, "prk")
     }
@@ -171,21 +178,30 @@ impl QuicCryptoProvider for BeardogQuicCrypto {
             "info": base64_encode(info),
             "length": length,
         });
-        let result = self.provider.call("crypto.hkdf_expand", params).await
+        let result = self
+            .provider
+            .call("crypto.hkdf_expand", params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("hkdf_expand: {e}")))?;
         decode_base64_field(&result, "okm")
     }
 
     async fn sha256(&self, data: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({ "data": base64_encode(data) });
-        let result = self.provider.call("crypto.sha256", params).await
+        let result = self
+            .provider
+            .call("crypto.sha256", params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("sha256: {e}")))?;
         decode_base64_field(&result, "hash")
     }
 
     async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({ "data": base64_encode(data) });
-        let result = self.provider.call("crypto.sha384", params).await
+        let result = self
+            .provider
+            .call("crypto.sha384", params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("sha384: {e}")))?;
         decode_base64_field(&result, "hash")
     }
@@ -209,7 +225,10 @@ impl QuicCryptoProvider for BeardogQuicCrypto {
             "plaintext": base64_encode(plaintext),
             "aad": base64_encode(aad),
         });
-        let result = self.provider.call(method, params).await
+        let result = self
+            .provider
+            .call(method, params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("aead_encrypt: {e}")))?;
         decode_base64_field(&result, "ciphertext")
     }
@@ -233,7 +252,10 @@ impl QuicCryptoProvider for BeardogQuicCrypto {
             "ciphertext": base64_encode(ciphertext),
             "aad": base64_encode(aad),
         });
-        let result = self.provider.call(method, params).await
+        let result = self
+            .provider
+            .call(method, params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("aead_decrypt: {e}")))?;
         decode_base64_field(&result, "plaintext")
     }
@@ -264,7 +286,10 @@ impl QuicCryptoProvider for BeardogQuicCrypto {
                 })
             }
         };
-        let result = self.provider.call(method, params).await
+        let result = self
+            .provider
+            .call(method, params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("header_protection_mask: {e}")))?;
         let output = decode_base64_field(&result, "output")?;
         if output.len() < 5 {
@@ -276,7 +301,10 @@ impl QuicCryptoProvider for BeardogQuicCrypto {
     }
 
     async fn generate_x25519_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)> {
-        let result = self.provider.call("crypto.generate_keypair", serde_json::json!({})).await
+        let result = self
+            .provider
+            .call("crypto.generate_keypair", serde_json::json!({}))
+            .await
             .map_err(|e| QuicError::Crypto(format!("generate_keypair: {e}")))?;
         let public = decode_base64_field_multi(&result, &["public_key", "public"])?;
         let secret = decode_base64_field_multi(&result, &["secret_key", "private_key", "secret"])?;
@@ -292,7 +320,10 @@ impl QuicCryptoProvider for BeardogQuicCrypto {
             "our_secret": base64_encode(our_secret),
             "their_public": base64_encode(their_public),
         });
-        let result = self.provider.call("crypto.ecdh_derive", params).await
+        let result = self
+            .provider
+            .call("crypto.ecdh_derive", params)
+            .await
             .map_err(|e| QuicError::Crypto(format!("ecdh_derive: {e}")))?;
         decode_base64_field(&result, "shared_secret")
     }
@@ -321,10 +352,7 @@ fn decode_base64_field_multi(value: &serde_json::Value, fields: &[&str]) -> Resu
                 .map_err(|e| QuicError::Crypto(format!("Base64 decode '{field}': {e}")));
         }
     }
-    Err(QuicError::Crypto(format!(
-        "None of fields {:?} found in response",
-        fields
-    )))
+    Err(QuicError::Crypto(format!("None of fields {fields:?} found in response")))
 }
 
 #[cfg(test)]

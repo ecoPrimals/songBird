@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-only (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: March 30, 2026
+**Last Updated**: March 31, 2026
 
 ## What It Does
 
@@ -38,7 +38,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Coverage | ~69.11% region coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >1000 LOC | 0 (max prod ~484 `gateway/mod.rs`; `gaming.rs` → `gaming/` 8 modules, `canonical_types.rs` → `canonical_types/` 11 modules) |
+| Files >1000 LOC | 0 (`frame.rs` refactored → `frame/` 4 modules; max prod ~484 `gateway/mod.rs`) |
 | Unsafe blocks | 0 (`songbird-process-env` evolved to BearDog in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in `songbird-quic` (`quinn`/`rustls`/`ring` fully replaced with native QUIC engine + BearDog crypto delegation); `ring-crypto` opt-in feature gate remains on CLI for HTTPS listener only |
 | Hardcoded primal names | 0 in production discovery paths (capability-first: `crypto.sock`, not `beardog.sock`) |

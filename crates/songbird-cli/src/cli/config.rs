@@ -33,7 +33,7 @@ impl Default for CliConfig {
             config_dir: config_dir.clone(),
             data_dir: config_dir.join("data"),
             log_dir: config_dir.join("logs"),
-            editor: std::env::var("EDITOR").ok(),
+            editor: songbird_process_env::var("EDITOR").ok(),
             color: true,
             default_deployment_type: "home-network".to_string(),
         }

@@ -89,8 +89,8 @@ impl LineageServiceDiscovery {
             warn!("⚠️ No genetic lineage available - peers will require manual approval");
         }
 
-        // Convert to TXT records for mDNS
-        let txt_records = packet.to_txt_records();
+        let crypto = songbird_crypto_provider::CryptoProvider::from_env();
+        let txt_records = packet.to_txt_records_with_crypto(Some(&crypto)).await;
 
         debug!("📡 mDNS TXT records: {} entries", txt_records.len());
         for (key, value) in &txt_records {

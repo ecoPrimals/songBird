@@ -6,11 +6,15 @@
 //! After the handshake is complete, either endpoint can initiate a key update.
 //! New keys are derived from the current traffic secret using HKDF-Expand-Label.
 
-use crate::crypto::initial_keys::{hkdf_expand_label, DirectionalKeys};
+use crate::crypto::initial_keys::{DirectionalKeys, hkdf_expand_label};
 use crate::crypto::provider::{QuicCipherSuite, QuicCryptoProvider};
 use crate::error::Result;
 
 /// Derive the next generation of traffic secret from the current one.
+///
+/// # Errors
+///
+/// Returns [`QuicError`](crate::error::QuicError) when HKDF expansion fails.
 ///
 /// RFC 9001 Section 6:
 /// ```text
@@ -26,6 +30,10 @@ pub async fn derive_next_secret(
 }
 
 /// Derive new directional keys from a traffic secret.
+///
+/// # Errors
+///
+/// Returns [`QuicError`](crate::error::QuicError) when HKDF expansion fails.
 pub async fn derive_keys_from_secret(
     crypto: &dyn QuicCryptoProvider,
     secret: &[u8],
@@ -34,7 +42,11 @@ pub async fn derive_keys_from_secret(
     let key = hkdf_expand_label(crypto, secret, b"quic key", &[], suite.key_len()).await?;
     let iv = hkdf_expand_label(crypto, secret, b"quic iv", &[], suite.iv_len()).await?;
     let hp_key = hkdf_expand_label(crypto, secret, b"quic hp", &[], suite.hp_key_len()).await?;
-    Ok(DirectionalKeys { key, iv, hp_key })
+    Ok(DirectionalKeys {
+        key,
+        iv,
+        hp_key,
+    })
 }
 
 /// State for tracking key updates on a single direction.
@@ -53,11 +65,7 @@ pub struct KeyUpdateState {
 impl KeyUpdateState {
     /// Create from an initial traffic secret and keys.
     #[must_use]
-    pub const fn new(
-        secret: Vec<u8>,
-        keys: DirectionalKeys,
-        suite: QuicCipherSuite,
-    ) -> Self {
+    pub const fn new(secret: Vec<u8>, keys: DirectionalKeys, suite: QuicCipherSuite) -> Self {
         Self {
             current_secret: secret,
             current_keys: keys,
@@ -79,6 +87,10 @@ impl KeyUpdateState {
     }
 
     /// Advance to the next key generation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError`](crate::error::QuicError) when key derivation fails.
     pub async fn update(&mut self, crypto: &dyn QuicCryptoProvider) -> Result<()> {
         let next_secret = derive_next_secret(crypto, &self.current_secret, self.suite).await?;
         let next_keys = derive_keys_from_secret(crypto, &next_secret, self.suite).await?;
@@ -100,11 +112,7 @@ mod tests {
             iv: vec![0u8; 12],
             hp_key: vec![0u8; 16],
         };
-        let state = KeyUpdateState::new(
-            vec![0u8; 32],
-            keys.clone(),
-            QuicCipherSuite::Aes128Gcm,
-        );
+        let state = KeyUpdateState::new(vec![0u8; 32], keys.clone(), QuicCipherSuite::Aes128Gcm);
         assert_eq!(state.generation(), 0);
         assert_eq!(state.keys().key, keys.key);
     }

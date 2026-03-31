@@ -183,19 +183,22 @@ pub struct DiscoveredPeerInfo {
 // ============================================================================
 
 #[cfg(test)]
-pub struct MockPeerRegistry {
-    pub peers: Vec<DiscoveredPeerInfo>,
-}
+mod tests_support {
+    use super::{DiscoveredPeerInfo, IpcResult, PeerRegistry};
 
-#[cfg(test)]
-#[async_trait::async_trait]
-impl PeerRegistry for MockPeerRegistry {
-    async fn get_all_peers(&self) -> IpcResult<Vec<DiscoveredPeerInfo>> {
-        Ok(self.peers.clone())
+    pub struct MockPeerRegistry {
+        pub peers: Vec<DiscoveredPeerInfo>,
     }
 
-    async fn get_peer(&self, peer_id: &str) -> IpcResult<Option<DiscoveredPeerInfo>> {
-        Ok(self.peers.iter().find(|p| p.node_id == peer_id).cloned())
+    #[async_trait::async_trait]
+    impl PeerRegistry for MockPeerRegistry {
+        async fn get_all_peers(&self) -> IpcResult<Vec<DiscoveredPeerInfo>> {
+            Ok(self.peers.clone())
+        }
+
+        async fn get_peer(&self, peer_id: &str) -> IpcResult<Option<DiscoveredPeerInfo>> {
+            Ok(self.peers.iter().find(|p| p.node_id == peer_id).cloned())
+        }
     }
 }
 
@@ -206,6 +209,7 @@ impl PeerRegistry for MockPeerRegistry {
 #[cfg(test)]
 #[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
+    use super::tests_support::MockPeerRegistry;
     use super::*;
     use serde_json::json;
 

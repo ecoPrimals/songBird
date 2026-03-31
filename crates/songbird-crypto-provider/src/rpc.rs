@@ -181,8 +181,12 @@ impl CryptoProvider {
             "crypto.x25519.derive_secret" => ("crypto", "x25519_derive_secret"),
             "crypto.hash.sha3_256" => ("crypto", "hash_sha3_256"),
             "crypto.hmac.sha256" => ("crypto", "hmac_sha256"),
-            "crypto.aead.chacha20_poly1305_encrypt" => ("crypto", "chacha20_poly1305_encrypt"),
-            "crypto.aead.chacha20_poly1305_decrypt" => ("crypto", "chacha20_poly1305_decrypt"),
+            "crypto.aead.chacha20_poly1305_encrypt" | "crypto.aead_encrypt" => {
+                ("crypto", "chacha20_poly1305_encrypt")
+            }
+            "crypto.aead.chacha20_poly1305_decrypt" | "crypto.aead_decrypt" => {
+                ("crypto", "chacha20_poly1305_decrypt")
+            }
             // Sovereign onion (`songbird-sovereign-onion`)
             "crypto.ed25519.generate_keypair" => ("crypto", "ed25519_generate_keypair"),
             "crypto.ed25519.public_from_secret" => ("crypto", "ed25519_public_from_secret"),
@@ -216,12 +220,12 @@ impl CryptoProvider {
             "crypto.decrypt_aes_128_gcm" => "crypto.aes128_gcm_decrypt",
             "crypto.encrypt_aes_256_gcm" => "crypto.aes256_gcm_encrypt",
             "crypto.decrypt_aes_256_gcm" => "crypto.aes256_gcm_decrypt",
-            "crypto.encrypt_chacha20_poly1305" | "crypto.aead.chacha20_poly1305_encrypt" => {
-                "crypto.chacha20_poly1305_encrypt"
-            }
-            "crypto.decrypt_chacha20_poly1305" | "crypto.aead.chacha20_poly1305_decrypt" => {
-                "crypto.chacha20_poly1305_decrypt"
-            }
+            "crypto.encrypt_chacha20_poly1305"
+            | "crypto.aead.chacha20_poly1305_encrypt"
+            | "crypto.aead_encrypt" => "crypto.chacha20_poly1305_encrypt",
+            "crypto.decrypt_chacha20_poly1305"
+            | "crypto.aead.chacha20_poly1305_decrypt"
+            | "crypto.aead_decrypt" => "crypto.chacha20_poly1305_decrypt",
             "crypto.sign.ed25519" => "crypto.sign_ed25519",
             "crypto.verify.ed25519" => "crypto.verify_ed25519",
             "crypto.hash.sha3_256" => "crypto.sha3_256",

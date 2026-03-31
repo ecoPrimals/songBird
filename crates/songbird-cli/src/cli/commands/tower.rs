@@ -17,7 +17,7 @@ use crate::errors::SongbirdResult;
 /// Bind address for `tower info` / `tower config` when no CLI `--bind` is parsed (matches
 /// `SONGBIRD_BIND_ADDRESS` with `0.0.0.0` default, same as [`TowerStartArgs::bind`]).
 fn tower_bind_from_env_or_default() -> String {
-    std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string())
+    songbird_process_env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string())
 }
 
 /// Tower management commands
@@ -71,6 +71,14 @@ pub struct TowerStartArgs {
     /// Override detected memory (GB)
     #[arg(long)]
     pub memory_gb: Option<usize>,
+
+    /// Enable Dark Forest mode (encrypted BirdSong beacons, no plaintext fallback)
+    #[arg(long, env = "SONGBIRD_DARK_FOREST")]
+    pub dark_forest: bool,
+
+    /// PID file directory (for Android/container substrates)
+    #[arg(long, env = "SONGBIRD_PID_DIR")]
+    pub pid_dir: Option<String>,
 
     /// Verbose logging
     #[arg(short, long)]
@@ -153,6 +161,14 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
         songbird_process_env::set_var("FEDERATION_ENABLED", "true");
     }
 
+    if args.dark_forest {
+        songbird_process_env::set_var("SONGBIRD_DARK_FOREST", "true");
+    }
+
+    if let Some(ref pid_dir) = args.pid_dir {
+        songbird_process_env::set_var("SONGBIRD_PID_DIR", pid_dir);
+    }
+
     if let Some(bootstrap) = &args.bootstrap {
         songbird_process_env::set_var("BOOTSTRAP_NODE", bootstrap);
     }
@@ -201,6 +217,8 @@ async fn show_tower_info() -> SongbirdResult<()> {
         bootstrap: None,
         bind: tower_bind_from_env_or_default(),
         federation: false,
+        dark_forest: false,
+        pid_dir: None,
         cpu_cores: None,
         memory_gb: None,
         verbose: false,
@@ -263,6 +281,8 @@ async fn generate_config(output: &str) -> SongbirdResult<()> {
         bootstrap: None,
         bind: bind.clone(),
         federation: false,
+        dark_forest: false,
+        pid_dir: None,
         cpu_cores: None,
         memory_gb: None,
         verbose: false,

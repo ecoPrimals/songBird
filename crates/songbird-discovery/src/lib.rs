@@ -206,6 +206,8 @@ pub mod birdsong;
 /// Adapters converting between discovery representations and legacy types.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod conversion;
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
+pub(crate) mod crypto_helpers;
 /// Dark Forest beacon genetics and encrypted discovery metadata.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod dark_forest_beacon;

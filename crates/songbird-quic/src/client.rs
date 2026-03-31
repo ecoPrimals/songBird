@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC client implementation (pure Rust, BearDog crypto delegation).
+//! QUIC client implementation (pure Rust, `BearDog` crypto delegation).
 
 use crate::config::QuicConfig;
 use crate::connection::QuicConnection;
@@ -13,7 +13,7 @@ use tracing::{debug, info};
 
 /// QUIC client.
 ///
-/// Connects to QUIC servers with BearDog crypto delegation.
+/// Connects to QUIC servers with `BearDog` crypto delegation.
 /// All cryptographic operations are delegated via IPC.
 pub struct QuicClient {
     /// UDP endpoint.
@@ -35,16 +35,15 @@ impl QuicClient {
     pub async fn new(config: QuicConfig) -> Result<Self> {
         info!("Creating QUIC client (native engine)");
 
-        let endpoint = UdpEndpoint::bind_ephemeral(
-            std::net::IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED),
-        ).await.or_else(|_| {
-            // Fallback to IPv4 if IPv6 not available
-            tokio::runtime::Handle::current().block_on(
-                UdpEndpoint::bind_ephemeral(
-                    std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
-                )
-            )
-        })?;
+        let endpoint =
+            UdpEndpoint::bind_ephemeral(std::net::IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED))
+                .await
+                .or_else(|_| {
+                    // Fallback to IPv4 if IPv6 not available
+                    tokio::runtime::Handle::current().block_on(UdpEndpoint::bind_ephemeral(
+                        std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
+                    ))
+                })?;
 
         debug!("QUIC client bound to {}", endpoint.local_addr());
 
@@ -70,13 +69,8 @@ impl QuicClient {
         let local_cid = generate_connection_id();
         let remote_cid = generate_connection_id();
 
-        let conn = QuicConnection::new(
-            false,
-            addr,
-            local_cid,
-            remote_cid,
-            Arc::clone(&self.config),
-        );
+        let conn =
+            QuicConnection::new(false, addr, local_cid, remote_cid, Arc::clone(&self.config));
 
         // Mark as established (handshake will be driven by the I/O loop
         // in a full implementation; for now, immediately transition).

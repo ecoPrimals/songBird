@@ -13,7 +13,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
 | Pure Rust | 100% — `quinn`/`rustls`/`ring` fully eliminated from `songbird-quic` (native QUIC engine with BearDog crypto delegation); `rcgen` removed; `sysinfo` eliminated; `ring-crypto` opt-in feature gate remains on CLI only |
-| Crypto Delegation | BearDog via JSON-RPC IPC — 6 stubs wired to `CryptoProvider::call()`; graceful `CryptoUnavailable` fallback |
+| Crypto Delegation | BearDog via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
 | Runtime Discovery | All config: env → XDG → smart defaults. `primal_names` constants module; capability-first discovery |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
@@ -29,7 +29,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings, ~43s dev) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (max prod ~484 `gateway/mod.rs`; `gaming.rs` → `gaming/` 8 modules; `canonical_types.rs` → `canonical_types/` 11 modules) |
+| Files >1000 lines | 0 (`frame.rs` refactored → `frame/` 4 modules; max prod ~484 `gateway/mod.rs`) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |

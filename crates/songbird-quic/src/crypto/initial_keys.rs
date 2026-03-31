@@ -12,8 +12,8 @@ use crate::error::Result;
 
 /// QUIC v1 Initial salt (RFC 9001 Section 5.2).
 pub const QUIC_V1_INITIAL_SALT: &[u8] = &[
-    0x38, 0x76, 0x2c, 0xf7, 0xf5, 0x59, 0x34, 0xb3, 0x4d, 0x17,
-    0x9a, 0xe6, 0xa4, 0xc8, 0x0c, 0xad, 0xcc, 0xbb, 0x7f, 0x0a,
+    0x38, 0x76, 0x2c, 0xf7, 0xf5, 0x59, 0x34, 0xb3, 0x4d, 0x17, 0x9a, 0xe6, 0xa4, 0xc8, 0x0c, 0xad,
+    0xcc, 0xbb, 0x7f, 0x0a,
 ];
 
 /// Initial cipher suite is always AES-128-GCM-SHA256.
@@ -40,6 +40,10 @@ pub struct InitialKeys {
 }
 
 /// Derive Initial keys from the Destination Connection ID.
+///
+/// # Errors
+///
+/// Returns [`QuicError`](crate::error::QuicError) when `HKDF` or key derivation fails.
 ///
 /// RFC 9001 Section 5.2:
 /// ```text
@@ -75,10 +79,17 @@ pub async fn derive_initial_keys(
     let client = derive_directional_keys(crypto, &client_initial_secret).await?;
     let server = derive_directional_keys(crypto, &server_initial_secret).await?;
 
-    Ok(InitialKeys { client, server })
+    Ok(InitialKeys {
+        client,
+        server,
+    })
 }
 
 /// Derive AEAD key, IV, and HP key from a traffic secret.
+///
+/// # Errors
+///
+/// Returns [`QuicError`](crate::error::QuicError) when HKDF expansion fails.
 ///
 /// RFC 9001 Section 5.1:
 /// ```text
@@ -90,37 +101,28 @@ pub async fn derive_directional_keys(
     crypto: &dyn QuicCryptoProvider,
     secret: &[u8],
 ) -> Result<DirectionalKeys> {
-    let key = hkdf_expand_label(
-        crypto,
-        secret,
-        b"quic key",
-        &[],
-        INITIAL_CIPHER_SUITE.key_len(),
-    )
-    .await?;
+    let key =
+        hkdf_expand_label(crypto, secret, b"quic key", &[], INITIAL_CIPHER_SUITE.key_len()).await?;
 
-    let iv = hkdf_expand_label(
-        crypto,
-        secret,
-        b"quic iv",
-        &[],
-        INITIAL_CIPHER_SUITE.iv_len(),
-    )
-    .await?;
+    let iv =
+        hkdf_expand_label(crypto, secret, b"quic iv", &[], INITIAL_CIPHER_SUITE.iv_len()).await?;
 
-    let hp_key = hkdf_expand_label(
-        crypto,
-        secret,
-        b"quic hp",
-        &[],
-        INITIAL_CIPHER_SUITE.hp_key_len(),
-    )
-    .await?;
+    let hp_key =
+        hkdf_expand_label(crypto, secret, b"quic hp", &[], INITIAL_CIPHER_SUITE.hp_key_len())
+            .await?;
 
-    Ok(DirectionalKeys { key, iv, hp_key })
+    Ok(DirectionalKeys {
+        key,
+        iv,
+        hp_key,
+    })
 }
 
-/// HKDF-Expand-Label as defined in RFC 8446 Section 7.1, used by QUIC.
+/// `HKDF-Expand-Label` as defined in RFC 8446 Section 7.1, used by QUIC.
+///
+/// # Errors
+///
+/// Returns [`QuicError`](crate::error::QuicError) when HKDF expansion fails.
 ///
 /// ```text
 /// HKDF-Expand-Label(Secret, Label, Context, Length) =
@@ -143,18 +145,33 @@ pub async fn hkdf_expand_label(
     crypto.hkdf_expand(secret, &full_label, length).await
 }
 
-/// Build the HkdfLabel structure for HKDF-Expand-Label.
+/// Build the `HkdfLabel` structure for `HKDF-Expand-Label`.
 fn build_hkdf_label(label: &[u8], context: &[u8], length: usize) -> Vec<u8> {
     let tls13_label = [b"tls13 ", label].concat();
 
     let mut info = Vec::with_capacity(2 + 1 + tls13_label.len() + 1 + context.len());
     // uint16 length
-    info.extend_from_slice(&(length as u16).to_be_bytes());
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "HKDF label length matches hkdf_expand length parameter (<= 255 for QUIC)"
+    )]
+    let length_u16 = length as u16;
+    info.extend_from_slice(&length_u16.to_be_bytes());
     // opaque label<7..255>
-    info.push(tls13_label.len() as u8);
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS label length is bounded by HKDF-Expand-Label construction"
+    )]
+    let label_len = tls13_label.len() as u8;
+    info.push(label_len);
     info.extend_from_slice(&tls13_label);
     // opaque context<0..255>
-    info.push(context.len() as u8);
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "HKDF context length is at most 255 bytes per RFC 8446"
+    )]
+    let ctx_len = context.len() as u8;
+    info.push(ctx_len);
     info.extend_from_slice(context);
 
     info

@@ -31,8 +31,8 @@ use tokio::sync::{Notify, RwLock};
 use tracing::{debug, error, info, warn};
 
 use songbird_types::json_rpc_method::{
-    DiscoveryMethod, EncryptionDiscoveryMethod, HttpMethod, JsonRpcMethod, NetworkMethod,
-    PeerMethod, PrimalMethod, RpcMethod,
+    DiscoveryMethod, EncryptionDiscoveryMethod, HealthMethod, HttpMethod, JsonRpcMethod,
+    NetworkMethod, PeerMethod, PrimalMethod, RpcMethod,
 };
 use super::handlers;
 use super::jsonrpc::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
@@ -390,6 +390,9 @@ async fn handle_request(
         // biomeOS Standard Methods (Feb 4, 2026)
         // ========================================================================
         JsonRpcMethod::BiomeOsHealth => handlers::handle_health_standard(Arc::clone(&registry), connection_manager.clone(), Some(Arc::clone(&start_time))).await,
+        JsonRpcMethod::Health(HealthMethod::Liveness) => Ok(songbird_universal_ipc::introspection::health_liveness()),
+        JsonRpcMethod::Health(HealthMethod::Readiness) => Ok(songbird_universal_ipc::introspection::health_readiness()),
+        JsonRpcMethod::Health(HealthMethod::Check) => handlers::handle_health_standard(Arc::clone(&registry), connection_manager.clone(), Some(Arc::clone(&start_time))).await,
         JsonRpcMethod::Identity => handlers::handle_identity().await,
         JsonRpcMethod::Rpc(RpcMethod::Discover) => handlers::handle_rpc_discover().await,
         

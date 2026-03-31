@@ -113,9 +113,11 @@ impl CertificateEntry {
 mod tests {
     use super::*;
 
+    const STUB_CERTIFICATE_DER: &[u8] = &[1, 2, 3, 4];
+
     #[test]
     fn test_certificate_new() {
-        let cert_data = vec![1, 2, 3, 4]; // Mock certificate data
+        let cert_data = STUB_CERTIFICATE_DER.to_vec();
         let entry = CertificateEntry::new(cert_data.clone());
         let cert = Certificate::new(vec![entry]);
 

@@ -162,81 +162,79 @@ impl RendezvousHandler {
 // ============================================================================
 
 #[cfg(test)]
-pub struct MockRendezvousClient {
-    // Simulated registered peers
-    registered: std::sync::RwLock<Vec<(String, String, String, String)>>, // (node_id, family_id, public_address, token)
-}
+mod tests_support {
+    use super::{RendezvousClient, RendezvousPeer, RendezvousRegisterResult};
+    use async_trait::async_trait;
 
-#[cfg(test)]
-impl Default for MockRendezvousClient {
-    fn default() -> Self {
-        Self::new()
+    pub struct MockRendezvousClient {
+        registered: std::sync::RwLock<Vec<(String, String, String, String)>>,
     }
-}
 
-#[cfg(test)]
-impl MockRendezvousClient {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            registered: std::sync::RwLock::new(Vec::new()),
+    impl Default for MockRendezvousClient {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
-    pub fn add_peer(&self, node_id: &str, family_id: &str, public_address: &str, token: &str) {
-        let mut registered = self.registered.write().unwrap();
-        registered.push((
-            node_id.to_string(),
-            family_id.to_string(),
-            public_address.to_string(),
-            token.to_string(),
-        ));
-    }
-}
+    impl MockRendezvousClient {
+        #[must_use]
+        pub fn new() -> Self {
+            Self {
+                registered: std::sync::RwLock::new(Vec::new()),
+            }
+        }
 
-#[cfg(test)]
-#[async_trait]
-impl RendezvousClient for MockRendezvousClient {
-    async fn register(
-        &self,
-        _server: &str,
-        node_id: &str,
-        family_id: &str,
-        public_address: &str,
-    ) -> Result<RendezvousRegisterResult, String> {
-        let registration_id = uuid::Uuid::new_v4().to_string();
-        let rendezvous_token = format!("token-{}", &registration_id[..8]);
-
-        // Store registration
-        self.add_peer(node_id, family_id, public_address, &rendezvous_token);
-
-        // Simulate expiry in 1 hour
-        let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
-
-        Ok(RendezvousRegisterResult {
-            registration_id,
-            expires_at: expires_at.to_rfc3339(),
-            rendezvous_token,
-        })
+        pub fn add_peer(&self, node_id: &str, family_id: &str, public_address: &str, token: &str) {
+            let mut registered = self.registered.write().unwrap();
+            registered.push((
+                node_id.to_string(),
+                family_id.to_string(),
+                public_address.to_string(),
+                token.to_string(),
+            ));
+        }
     }
 
-    async fn lookup(&self, _server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
-        // Find peers matching node_id or family_id
-        let peers: Vec<RendezvousPeer> = {
-            let registered = self.registered.read().unwrap();
-            registered
-                .iter()
-                .filter(|(node_id, family_id, _, _)| node_id == target || family_id == target)
-                .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
-                    node_id: node_id.clone(),
-                    family_id: family_id.clone(),
-                    public_address: public_address.clone(),
-                    rendezvous_token: token.clone(),
-                })
-                .collect()
-        };
+    #[async_trait]
+    impl RendezvousClient for MockRendezvousClient {
+        async fn register(
+            &self,
+            _server: &str,
+            node_id: &str,
+            family_id: &str,
+            public_address: &str,
+        ) -> Result<RendezvousRegisterResult, String> {
+            let registration_id = uuid::Uuid::new_v4().to_string();
+            let rendezvous_token = format!("token-{}", &registration_id[..8]);
 
-        Ok(peers)
+            self.add_peer(node_id, family_id, public_address, &rendezvous_token);
+
+            let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
+
+            Ok(RendezvousRegisterResult {
+                registration_id,
+                expires_at: expires_at.to_rfc3339(),
+                rendezvous_token,
+            })
+        }
+
+        async fn lookup(&self, _server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
+            let peers: Vec<RendezvousPeer> = {
+                let registered = self.registered.read().unwrap();
+                registered
+                    .iter()
+                    .filter(|(node_id, family_id, _, _)| node_id == target || family_id == target)
+                    .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
+                        node_id: node_id.clone(),
+                        family_id: family_id.clone(),
+                        public_address: public_address.clone(),
+                        rendezvous_token: token.clone(),
+                    })
+                    .collect()
+            };
+
+            Ok(peers)
+        }
     }
 }
 
@@ -246,6 +244,7 @@ impl RendezvousClient for MockRendezvousClient {
 
 #[cfg(test)]
 mod tests {
+    use super::tests_support::MockRendezvousClient;
     use super::*;
     use serde_json::json;
 

@@ -2,7 +2,7 @@
 
 **Date**: March 30, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 30, 2026 (Session 29, Wave 87 — Deep Debt Audit + Expect Evolution + Clippy Clean)
+**Last Deep Debt Audit**: March 31, 2026 (Session 31, Wave 89 — Deep Debt Evolution: QUIC Clippy Clean + Frame Refactor + Mock Isolation + Crypto Delegation + Env Modernization)
 
 ---
 
@@ -17,7 +17,7 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 (max prod ~862 `container_orchestration.rs`; test max 950 `security_tests.rs`) |
+| **Files >1000 lines** | 0 — `songbird-quic/src/packet/frame.rs` refactored into `frame/mod.rs` (302), `frame/decode.rs` (387), `frame/encode.rs` (320), `frame/tests.rs` (292) |
 | **Unsafe blocks** | **0** — `songbird-process-env` evolved to BearDog overlay pattern; workspace `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
@@ -33,7 +33,7 @@
 | **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
-| **BearDog crypto** | 6 `CryptoUnavailable` stubs wired to `CryptoProvider::call()` (JSON-RPC to BearDog); rendezvous fingerprints use `CryptoProvider` primary + HMAC-SHA256 fallback; XOR mock isolated to `#[cfg(test)]` |
+| **BearDog crypto** | Full delegation wired: TLS record layer `encrypt/decrypt_record_delegated` → `crypto.aead_encrypt/decrypt`; JWT `encode_with_crypto/decode_with_crypto` → `crypto.hmac.sha256`; checkpoint `calculate_checksum` → `crypto.sha256`; discovery + rendezvous SHA-256/HMAC-SHA256 → `CryptoProvider::call`; all with local fallback + `tracing::warn!` |
 | **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + BearDog crypto delegation; `ring-crypto` opt-in feature gate on CLI only; `sysinfo` eliminated |
 | **`async-trait` evolution** | 85 `#[async_trait]` usages; ~8 traits have no `dyn` dispatch and are candidates for native async fn in trait (Rust 2024); remainder require `dyn` dispatch and stay |
 | **Live BearDog testing** | `BearDogFixture` in `songbird-test-utils`; `scripts/test-with-beardog.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
@@ -42,8 +42,8 @@
 | **SPDX headers** | 100% coverage across all `.rs` files |
 | **CI quality gate** | Coverage threshold ratcheted to 66%; `Swatinem/rust-cache`; `cargo-deny` job; `rustsec/audit-check` |
 | **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
-| **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) |
-| **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; XOR broadcast encryption isolated to test/mock builds; beacon ID uses SHA-256(node_id) fallback |
+| **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) — all three health names now wired on HTTP + Unix + IPC transports |
+| **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; `MockRendezvousClient/MockPeerConnector/MockPeerRegistry` in `tests_support` modules; XOR broadcast encryption isolated to test/mock builds; TLS record layer returns `CryptoUnavailable` instead of mock crypto |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, `serde_json::to_vec` (no intermediate String) |
 | **Concurrent tests** | All tests fully concurrent; injectable `_with` env readers; `tokio::time::pause()` for deterministic timing |
 | **Event-driven** | Zero `sleep`-based polling in production |
@@ -54,6 +54,24 @@
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## Completed (Mar 31, 2026 — Deep Debt Evolution: QUIC Clippy Clean + Frame Refactor + Crypto Delegation — Session 31, Wave 89)
+
+### Wave 89: Deep Debt Execution — songbird-quic Cleanup + Application Crypto Delegation + Mock Isolation + Env Modernization
+
+- **songbird-quic frame.rs refactored**: 1226-line monolith split into `frame/mod.rs` (types + enum, 302 lines), `frame/decode.rs` (387 lines), `frame/encode.rs` (320 lines), `frame/tests.rs` (292 lines) — all under 400 lines, public API unchanged
+- **songbird-quic clippy clean**: 322 clippy errors → 0. Fixed: 90 `doc_markdown` (backticked identifiers), 46 `use_self` (`Frame::` → `Self::`), 32 `missing_errors_doc` (added `# Errors` sections), 17 missing constant docs, 38 `cast_possible_truncation` (added `#[expect]` with reasons), plus dead_code, unused vars, unnecessary_wraps, and trivially_copy_pass_by_ref fixes. All 178 tests pass.
+- **TLS record layer evolved**: Mock XOR encryption replaced with `CryptoProvider::call("crypto.aead_encrypt/decrypt")` delegation via `encrypt_record_delegated`/`decrypt_record_delegated`. Returns `TlsError::CryptoUnavailable` when BearDog is not connected instead of silently pretending encryption happened. Certificate stub test data explicitly marked.
+- **JWT crypto delegation**: New `encode_with_crypto`/`decode_with_crypto` functions delegate HMAC-SHA256 to BearDog via `crypto.hmac.sha256`. Existing sync API preserved for backward compatibility; local fallback with `tracing::warn!`.
+- **Checkpoint crypto delegation**: `calculate_checksum` async API delegates SHA-256 to BearDog via `crypto.sha256`. Local sync `calculate_checksum_local` preserved for `Checkpoint::new`/`verify`.
+- **Discovery crypto delegation**: `crypto_helpers.rs` module with `sha256_hash`/`sha256_hash_sync` delegating to BearDog; used by `discovery_packet.rs`, `anonymous/messages.rs`, `anonymous/broadcaster.rs`.
+- **Rendezvous crypto delegation**: `crypto_helpers.rs` module with `sha256_hash` and `hmac_sha256` delegating to BearDog; `get_public_key_fingerprint` no longer uses `sha2`/`hmac` directly.
+- **Mock isolation**: `MockRendezvousClient`, `MockPeerConnector`, `MockPeerRegistry` moved from module-level `#[cfg(test)]` to `#[cfg(test)] mod tests_support {}` — no longer re-exported via `pub use handler::*`.
+- **`std::env::var` migration**: Production calls in `songbird-cli` (`EDITOR`, `SONGBIRD_BIND_ADDRESS`), `songbird-config` (`HOME`) migrated to `songbird_process_env::var`. Test-only calls left unchanged.
+- **Orchestrator lint evolution**: `unwrap_used`/`expect_used` lint levels changed from `"allow"` to `"warn"` in Cargo.toml; `ProcessManager::default` uses `#[expect(clippy::expect_used)]` with documented reason.
+- **Crypto provider RPC cleanup**: Merged duplicate match arms in `method_to_capability` and `semantic_to_actual` for AEAD encrypt/decrypt aliases.
 
 ---
 
@@ -923,6 +941,21 @@ Backwards compatibility maintained via re-exports (`ServiceLocator` still access
 - [x] Updated `specs/00_SPECIFICATIONS_INDEX.md` version/date alignment
 - [x] Fixed `examples/README.md` — removed references to nonexistent `legacy/` and `clients/rust/`
 - [x] Updated root docs (README.md, REMAINING_WORK.md) with current metrics
+
+---
+
+## Completed (Mar 22, 2026 — Comprehensive Audit & Debt Evolution Session 8)
+
+### Wave 61: Comprehensive Audit & Hardcoding Evolution
+- [x] **P0**: Fixed `test_port_allocation_is_cached` race condition — concurrent `clear_port_registry()` was invalidating cache between calls; evolved tests to use unique capability keys instead of nuking shared global
+- [x] **Lint cleanup**: Removed redundant `#![deny(unsafe_code)]` after `#![forbid(unsafe_code)]` in 4 crates (universal-ipc, network-federation, canonical, universal)
+- [x] **Hardcoding evolution**: `btsp/provider.rs` now derives UPA endpoint from canonical `get_bind_address()` + `default_orchestrator_port()` instead of `"http://localhost:8080"`
+- [x] **Hardcoding evolution**: `discovery.rs` CLI uses `MDNS_MULTICAST_ADDR` named constant (RFC 6762) and env-driven `discovery_http_port()` instead of inline literals
+- [x] **Hardcoding evolution**: `hardcoded_elimination.rs` gaming/federation ports derive from `get_port_range_start()` + offsets; port ranges use canonical base; production bind uses `Ipv4Addr::UNSPECIFIED` constant
+- [x] **Mock evolution**: `ProductionServiceDiscovery::watch()` evolved from `stream::empty()` to real `tokio::sync::broadcast` channel with `ServiceEvent` emission on register/unregister and `service_type`/`tags` filtering
+- [x] **Smart refactor**: `compute_api.rs` (977 → 820 lines) via `compute_types.rs` extraction — DTOs, job model, helpers, and `ApiError` in a domain-coherent module
+- [x] **CI evolution**: Coverage floor ratcheted from 58% to 72% in `quality-checks.yml`
+- [x] **Specs alignment**: `00_SPECIFICATIONS_INDEX.md` updated from stale v3.36.0/Feb 2026 to v0.2.1/Mar 2026
 
 ---
 

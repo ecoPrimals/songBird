@@ -42,7 +42,9 @@ pub fn truncate_pn(pn: u64, pn_length: u8) -> u32 {
         3 => 0xFF_FFFF,
         _ => 0xFFFF_FFFF,
     };
-    (pn & mask) as u32
+    #[expect(clippy::cast_possible_truncation, reason = "masked to at most 32 bits by pn_length")]
+    let truncated = (pn & mask) as u32;
+    truncated
 }
 
 /// Expand a truncated packet number to a full packet number using the
@@ -145,8 +147,19 @@ mod tests {
             let truncated = truncate_pn(pn, pn_len);
             let pn_nbits = u32::from(pn_len) * 8;
             let largest = largest_acked.unwrap_or(0);
-            let expanded = expand_pn(if largest_acked.is_some() { largest } else { 0 }, truncated, pn_nbits);
-            assert_eq!(expanded, pn, "roundtrip failed for pn={pn}, la={largest_acked:?}, len={pn_len}");
+            let expanded = expand_pn(
+                if largest_acked.is_some() {
+                    largest
+                } else {
+                    0
+                },
+                truncated,
+                pn_nbits,
+            );
+            assert_eq!(
+                expanded, pn,
+                "roundtrip failed for pn={pn}, la={largest_acked:?}, len={pn_len}"
+            );
         }
     }
 

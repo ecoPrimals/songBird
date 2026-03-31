@@ -23,7 +23,8 @@ pub struct QuicConnection {
     _config: Arc<QuicConfig>,
 }
 
-pub(crate) struct ConnectionInner {
+/// Shared mutable state for a QUIC connection (transport, streams, flow control).
+pub struct ConnectionInner {
     pub(crate) transport: TransportConnection,
     pub(crate) streams: StreamManager,
     #[expect(dead_code, reason = "used by transport layer for flow control enforcement")]

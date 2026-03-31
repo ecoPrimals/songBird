@@ -235,22 +235,17 @@ impl AnonymousDiscoveryMessage {
     ///
     /// This allows correlation of responses within an hour while preventing long-term tracking.
     fn generate_session_id() -> String {
-        use sha2::{Digest, Sha256};
-
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
-        // Truncate to hour (rotates every 3600 seconds)
         let hour = now / 3600;
 
-        // Mix with random UUID to prevent collisions
         let uuid = Uuid::new_v4();
 
-        // Hash to create session ID
-        let mut hasher = Sha256::new();
-        hasher.update(hour.to_le_bytes());
-        hasher.update(uuid.as_bytes());
-
-        format!("{:x}", hasher.finalize())
+        let mut buf = Vec::with_capacity(8 + 16);
+        buf.extend_from_slice(&hour.to_le_bytes());
+        buf.extend_from_slice(uuid.as_bytes());
+        let digest = crate::crypto_helpers::sha256_hash_sync(None, &buf);
+        hex::encode(digest)
     }
 
     /// Generate a session ID from stable node ID (v3.0+)
@@ -259,19 +254,15 @@ impl AnonymousDiscoveryMessage {
     /// - Stable node ID (for consistency within an hour)
     /// - Current hour (for rotation)
     fn generate_session_id_from_node(node_id: &str) -> String {
-        use sha2::{Digest, Sha256};
-
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
-        // Truncate to hour (rotates every 3600 seconds)
         let hour = now / 3600;
 
-        // Hash node_id + hour
-        let mut hasher = Sha256::new();
-        hasher.update(node_id.as_bytes());
-        hasher.update(hour.to_le_bytes());
-
-        format!("{:x}", hasher.finalize())
+        let mut buf = Vec::with_capacity(node_id.len() + 8);
+        buf.extend_from_slice(node_id.as_bytes());
+        buf.extend_from_slice(&hour.to_le_bytes());
+        let digest = crate::crypto_helpers::sha256_hash_sync(None, &buf);
+        hex::encode(digest)
     }
 
     /// Serialize to JSON bytes for UDP transmission

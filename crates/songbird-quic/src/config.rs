@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC configuration with BearDog crypto delegation.
+//! QUIC configuration with `BearDog` crypto delegation.
 //!
-//! All cryptographic operations are delegated to BearDog via JSON-RPC IPC.
+//! All cryptographic operations are delegated to `BearDog` via JSON-RPC IPC.
 //! No quinn, rustls, or ring dependencies.
 
 use crate::crypto::provider::BeardogQuicCrypto;
@@ -15,10 +15,10 @@ use std::time::Duration;
 
 /// QUIC configuration.
 ///
-/// Transport configuration; all crypto is routed via the Neural API / BearDog socket.
+/// Transport configuration; all crypto is routed via the Neural API / `BearDog` socket.
 #[derive(Debug, Clone)]
 pub struct QuicConfig {
-    /// Neural API Unix socket path (same discovery as `songbird-crypto-provider`).
+    /// Neural API Unix socket path (same discovery as `songbird_crypto_provider`).
     pub neural_api_socket: PathBuf,
 
     /// Connection idle timeout.
@@ -101,8 +101,13 @@ impl QuicConfig {
     /// Build transport parameters from this config.
     #[must_use]
     pub fn transport_params(&self) -> TransportParams {
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "idle timeout in ms fits u64 for transport params"
+        )]
+        let max_idle_timeout = self.idle_timeout.as_millis() as u64;
         TransportParams {
-            max_idle_timeout: self.idle_timeout.as_millis() as u64,
+            max_idle_timeout,
             max_udp_payload_size: u64::from(self.max_mtu),
             initial_max_streams_bidi: self.max_concurrent_bidi_streams,
             initial_max_streams_uni: self.max_concurrent_uni_streams,
@@ -111,7 +116,7 @@ impl QuicConfig {
         }
     }
 
-    /// Create a BearDog crypto provider from this config's socket path.
+    /// Create a `BearDog` crypto provider from this config's socket path.
     #[must_use]
     pub fn crypto_provider(&self) -> Arc<BeardogQuicCrypto> {
         Arc::new(BeardogQuicCrypto::discover())

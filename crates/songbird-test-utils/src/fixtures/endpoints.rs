@@ -240,8 +240,6 @@ mod tests {
 
     #[test]
     fn test_port_allocation_is_cached() {
-        // Verify caching by checking the registry directly — avoids TOCTOU
-        // race with test_clear_registry_does_not_panic running concurrently
         let capability = "cache_stability_isolated_v4";
         let port1 = test_port(capability);
         let registry =

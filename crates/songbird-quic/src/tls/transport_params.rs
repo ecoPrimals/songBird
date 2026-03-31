@@ -4,7 +4,7 @@
 //! QUIC Transport Parameters (RFC 9000 Section 18).
 //!
 //! Carried in the TLS handshake as extension type 0x39 (57).
-//! Each parameter is encoded as a (VarInt id, VarInt length, value) tuple.
+//! Each parameter is encoded as a (`VarInt` id, `VarInt` length, value) tuple.
 
 use crate::error::{QuicError, Result};
 use crate::varint::VarInt;
@@ -15,22 +15,39 @@ pub const TRANSPORT_PARAMS_EXTENSION_TYPE: u16 = 0x0039;
 
 /// Transport parameter IDs (RFC 9000 Section 18.2).
 pub mod param_id {
+    /// `original_destination_connection_id`.
     pub const ORIGINAL_DESTINATION_CONNECTION_ID: u64 = 0x00;
+    /// `max_idle_timeout`.
     pub const MAX_IDLE_TIMEOUT: u64 = 0x01;
+    /// `stateless_reset_token`.
     pub const STATELESS_RESET_TOKEN: u64 = 0x02;
+    /// `max_udp_payload_size`.
     pub const MAX_UDP_PAYLOAD_SIZE: u64 = 0x03;
+    /// `initial_max_data`.
     pub const INITIAL_MAX_DATA: u64 = 0x04;
+    /// `initial_max_stream_data_bidi_local`.
     pub const INITIAL_MAX_STREAM_DATA_BIDI_LOCAL: u64 = 0x05;
+    /// `initial_max_stream_data_bidi_remote`.
     pub const INITIAL_MAX_STREAM_DATA_BIDI_REMOTE: u64 = 0x06;
+    /// `initial_max_stream_data_uni`.
     pub const INITIAL_MAX_STREAM_DATA_UNI: u64 = 0x07;
+    /// `initial_max_streams_bidi`.
     pub const INITIAL_MAX_STREAMS_BIDI: u64 = 0x08;
+    /// `initial_max_streams_uni`.
     pub const INITIAL_MAX_STREAMS_UNI: u64 = 0x09;
+    /// `ack_delay_exponent`.
     pub const ACK_DELAY_EXPONENT: u64 = 0x0A;
+    /// `max_ack_delay`.
     pub const MAX_ACK_DELAY: u64 = 0x0B;
+    /// `disable_active_migration`.
     pub const DISABLE_ACTIVE_MIGRATION: u64 = 0x0C;
+    /// `preferred_address`.
     pub const PREFERRED_ADDRESS: u64 = 0x0D;
+    /// `active_connection_id_limit`.
     pub const ACTIVE_CONNECTION_ID_LIMIT: u64 = 0x0E;
+    /// `initial_source_connection_id`.
     pub const INITIAL_SOURCE_CONNECTION_ID: u64 = 0x0F;
+    /// `retry_source_connection_id`.
     pub const RETRY_SOURCE_CONNECTION_ID: u64 = 0x10;
 }
 
@@ -101,7 +118,7 @@ impl TransportParams {
         Self {
             max_idle_timeout: 30_000,
             max_udp_payload_size: 1200,
-            initial_max_data: 1_048_576,          // 1 MiB
+            initial_max_data: 1_048_576,                 // 1 MiB
             initial_max_stream_data_bidi_local: 262_144, // 256 KiB
             initial_max_stream_data_bidi_remote: 262_144,
             initial_max_stream_data_uni: 262_144,
@@ -115,11 +132,20 @@ impl TransportParams {
     /// Set max idle timeout from a Duration.
     #[must_use]
     pub fn with_idle_timeout(mut self, timeout: Duration) -> Self {
-        self.max_idle_timeout = timeout.as_millis() as u64;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "Idle timeout in ms fits u64 for practical QUIC use."
+        )]
+        let ms = timeout.as_millis() as u64;
+        self.max_idle_timeout = ms;
         self
     }
 
     /// Encode transport parameters into wire format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a value cannot be encoded as a [`VarInt`].
     pub fn encode(&self) -> Result<Vec<u8>> {
         let mut buf = Vec::with_capacity(128);
 
@@ -134,17 +160,41 @@ impl TransportParams {
         }
         encode_param_varint(&mut buf, param_id::MAX_UDP_PAYLOAD_SIZE, self.max_udp_payload_size)?;
         encode_param_varint(&mut buf, param_id::INITIAL_MAX_DATA, self.initial_max_data)?;
-        encode_param_varint(&mut buf, param_id::INITIAL_MAX_STREAM_DATA_BIDI_LOCAL, self.initial_max_stream_data_bidi_local)?;
-        encode_param_varint(&mut buf, param_id::INITIAL_MAX_STREAM_DATA_BIDI_REMOTE, self.initial_max_stream_data_bidi_remote)?;
-        encode_param_varint(&mut buf, param_id::INITIAL_MAX_STREAM_DATA_UNI, self.initial_max_stream_data_uni)?;
-        encode_param_varint(&mut buf, param_id::INITIAL_MAX_STREAMS_BIDI, self.initial_max_streams_bidi)?;
-        encode_param_varint(&mut buf, param_id::INITIAL_MAX_STREAMS_UNI, self.initial_max_streams_uni)?;
+        encode_param_varint(
+            &mut buf,
+            param_id::INITIAL_MAX_STREAM_DATA_BIDI_LOCAL,
+            self.initial_max_stream_data_bidi_local,
+        )?;
+        encode_param_varint(
+            &mut buf,
+            param_id::INITIAL_MAX_STREAM_DATA_BIDI_REMOTE,
+            self.initial_max_stream_data_bidi_remote,
+        )?;
+        encode_param_varint(
+            &mut buf,
+            param_id::INITIAL_MAX_STREAM_DATA_UNI,
+            self.initial_max_stream_data_uni,
+        )?;
+        encode_param_varint(
+            &mut buf,
+            param_id::INITIAL_MAX_STREAMS_BIDI,
+            self.initial_max_streams_bidi,
+        )?;
+        encode_param_varint(
+            &mut buf,
+            param_id::INITIAL_MAX_STREAMS_UNI,
+            self.initial_max_streams_uni,
+        )?;
         encode_param_varint(&mut buf, param_id::ACK_DELAY_EXPONENT, self.ack_delay_exponent)?;
         encode_param_varint(&mut buf, param_id::MAX_ACK_DELAY, self.max_ack_delay)?;
         if self.disable_active_migration {
             encode_param_empty(&mut buf, param_id::DISABLE_ACTIVE_MIGRATION)?;
         }
-        encode_param_varint(&mut buf, param_id::ACTIVE_CONNECTION_ID_LIMIT, self.active_connection_id_limit)?;
+        encode_param_varint(
+            &mut buf,
+            param_id::ACTIVE_CONNECTION_ID_LIMIT,
+            self.active_connection_id_limit,
+        )?;
         if let Some(ref cid) = self.initial_source_cid {
             encode_param_bytes(&mut buf, param_id::INITIAL_SOURCE_CONNECTION_ID, cid)?;
         }
@@ -156,6 +206,10 @@ impl TransportParams {
     }
 
     /// Decode transport parameters from wire format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is truncated, varints are invalid, or a parameter value is ill-formed.
     pub fn decode(mut data: &[u8]) -> Result<Self> {
         let mut params = Self::default();
 
@@ -164,6 +218,10 @@ impl TransportParams {
             data = &data[consumed..];
             let (length, consumed) = VarInt::decode(data)?;
             data = &data[consumed..];
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "QUIC transport parameter lengths are bounded by wire format."
+            )]
             let len = length.value() as usize;
             if data.len() < len {
                 return Err(QuicError::Config("Transport param value truncated".into()));
@@ -180,7 +238,9 @@ impl TransportParams {
                 }
                 param_id::STATELESS_RESET_TOKEN => {
                     if value.len() != 16 {
-                        return Err(QuicError::Config("Stateless reset token must be 16 bytes".into()));
+                        return Err(QuicError::Config(
+                            "Stateless reset token must be 16 bytes".into(),
+                        ));
                     }
                     let mut token = [0u8; 16];
                     token.copy_from_slice(value);

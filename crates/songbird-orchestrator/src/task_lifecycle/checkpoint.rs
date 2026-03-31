@@ -12,8 +12,11 @@
 
 use super::TaskId;
 use anyhow::{Context, Result};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use songbird_crypto_provider::CryptoProvider;
 use std::sync::Arc;
 
 /// Checkpoint for resuming tasks
@@ -64,7 +67,7 @@ impl Checkpoint {
     #[must_use]
     pub fn new(task_id: TaskId, progress: f32, state: Vec<u8>) -> Self {
         let size_bytes = state.len() as u64;
-        let checksum = Self::calculate_checksum(&state);
+        let checksum = Self::calculate_checksum_local(&state);
 
         Self {
             id: Arc::from(uuid::Uuid::now_v7().to_string()),
@@ -87,7 +90,7 @@ impl Checkpoint {
     pub fn new_compressed(task_id: TaskId, progress: f32, state: Vec<u8>) -> Result<Self> {
         let compressed = Self::compress_state(&state)?;
         let size_bytes = compressed.len() as u64;
-        let checksum = Self::calculate_checksum(&compressed);
+        let checksum = Self::calculate_checksum_local(&compressed);
 
         Ok(Self {
             id: Arc::from(uuid::Uuid::now_v7().to_string()),
@@ -108,7 +111,7 @@ impl Checkpoint {
     ///
     /// Returns an error if the operation fails.
     pub fn verify(&self) -> Result<()> {
-        let calculated_checksum = Self::calculate_checksum(&self.state);
+        let calculated_checksum = Self::calculate_checksum_local(&self.state);
         if calculated_checksum != self.metadata.checksum.as_ref() {
             anyhow::bail!("Checkpoint integrity check failed: checksum mismatch");
         }
@@ -127,8 +130,7 @@ impl Checkpoint {
         }
     }
 
-    /// Calculate SHA-256 checksum
-    fn calculate_checksum(data: &[u8]) -> String {
+    fn calculate_checksum_local(data: &[u8]) -> String {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(data);
@@ -170,6 +172,42 @@ impl Checkpoint {
             .read_to_end(&mut result)
             .context("Failed to decompress checkpoint state with zlib")?;
         Ok(result)
+    }
+}
+
+async fn sha256_bytes_via_provider(data: &[u8], provider: &CryptoProvider) -> Result<Vec<u8>> {
+    let data_b64 = STANDARD.encode(data);
+    let result = provider
+        .call("crypto.sha256", json!({ "data": data_b64 }))
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let hash_b64 = result
+        .get("hash")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing hash in SHA-256 response"))?;
+    STANDARD.decode(hash_b64).map_err(|e| anyhow::anyhow!("Invalid hash: {e}"))
+}
+
+pub async fn calculate_checksum(data: &[u8], crypto: Option<&CryptoProvider>) -> Result<String> {
+    if let Some(provider) = crypto {
+        let bytes = sha256_bytes_via_provider(data, provider).await?;
+        if bytes.len() != 32 {
+            anyhow::bail!("Unexpected SHA-256 digest length");
+        }
+        let mut hex = String::with_capacity(64);
+        for b in &bytes {
+            use std::fmt::Write;
+            let _ = write!(hex, "{b:02x}");
+        }
+        Ok(hex)
+    } else {
+        tracing::warn!(
+            "Checkpoint checksum using local SHA-256; BearDog crypto provider not configured"
+        );
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        Ok(format!("{:x}", hasher.finalize()))
     }
 }
 

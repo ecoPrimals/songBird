@@ -87,7 +87,7 @@ pub struct StreamEntry {
     /// Maximum data the peer allows us to send on this stream.
     max_stream_data_send: u64,
     /// Maximum data we allow the peer to send on this stream.
-    max_stream_data_recv: u64,
+    _max_stream_data_recv: u64,
 }
 
 impl StreamEntry {
@@ -102,11 +102,15 @@ impl StreamEntry {
             send_fin: false,
             recv_fin: false,
             max_stream_data_send: max_send,
-            max_stream_data_recv: max_recv,
+            _max_stream_data_recv: max_recv,
         }
     }
 
     /// Queue data for sending.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Stream`] if the stream is closed or send is finished.
     pub fn write(&mut self, data: &[u8]) -> Result<()> {
         if self.send_fin {
             return Err(QuicError::Stream("Cannot write after FIN".into()));
@@ -129,6 +133,10 @@ impl StreamEntry {
     }
 
     /// Receive data from the peer.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Stream`] if the stream is closed or reset.
     pub fn receive(&mut self, data: &[u8]) -> Result<()> {
         if matches!(self.state, StreamState::Closed | StreamState::Reset) {
             return Err(QuicError::Stream("Stream is closed".into()));
@@ -149,7 +157,9 @@ impl StreamEntry {
     /// Whether there is data waiting to be sent.
     #[must_use]
     pub fn has_pending_send(&self) -> bool {
-        !self.send_buf.is_empty() || (self.send_fin && !matches!(self.state, StreamState::SendFinished | StreamState::Closed))
+        !self.send_buf.is_empty()
+            || (self.send_fin
+                && !matches!(self.state, StreamState::SendFinished | StreamState::Closed))
     }
 
     /// Whether there is received data available to read.
@@ -197,7 +207,7 @@ impl StreamEntry {
 #[derive(Debug)]
 pub struct StreamManager {
     streams: BTreeMap<u64, StreamEntry>,
-    is_server: bool,
+    _is_server: bool,
     next_bidi_id: u64,
     next_uni_id: u64,
     max_bidi_streams: u64,
@@ -209,10 +219,14 @@ impl StreamManager {
     /// Create a new stream manager.
     #[must_use]
     pub fn new(is_server: bool, max_bidi: u64, max_uni: u64, default_max_stream_data: u64) -> Self {
-        let (bidi_base, uni_base) = if is_server { (1, 3) } else { (0, 2) };
+        let (bidi_base, uni_base) = if is_server {
+            (1, 3)
+        } else {
+            (0, 2)
+        };
         Self {
             streams: BTreeMap::new(),
-            is_server,
+            _is_server: is_server,
             next_bidi_id: bidi_base,
             next_uni_id: uni_base,
             max_bidi_streams: max_bidi,
@@ -222,6 +236,10 @@ impl StreamManager {
     }
 
     /// Open a new locally-initiated bidirectional stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Stream`] if the bidirectional stream limit is reached.
     pub fn open_bidi(&mut self) -> Result<u64> {
         let id = self.next_bidi_id;
         if self.bidi_count() >= self.max_bidi_streams {
@@ -236,6 +254,10 @@ impl StreamManager {
     }
 
     /// Open a new locally-initiated unidirectional stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Stream`] if the unidirectional stream limit is reached.
     pub fn open_uni(&mut self) -> Result<u64> {
         let id = self.next_uni_id;
         if self.uni_count() >= self.max_uni_streams {
@@ -250,14 +272,14 @@ impl StreamManager {
     }
 
     /// Accept a remotely-initiated stream (creates the entry if new).
+    ///
+    /// # Errors
+    ///
+    /// Never returns `Err`; [`Result`] is reserved for future validation.
     pub fn accept_remote(&mut self, stream_id: u64) -> Result<&mut StreamEntry> {
-        if !self.streams.contains_key(&stream_id) {
-            self.streams.insert(
-                stream_id,
-                StreamEntry::new(stream_id, self.default_max_stream_data, self.default_max_stream_data),
-            );
-        }
-        Ok(self.streams.get_mut(&stream_id).unwrap())
+        Ok(self.streams.entry(stream_id).or_insert_with(|| {
+            StreamEntry::new(stream_id, self.default_max_stream_data, self.default_max_stream_data)
+        }))
     }
 
     /// Get a stream entry by ID.
@@ -276,10 +298,10 @@ impl StreamManager {
     pub fn bidi_count(&self) -> u64 {
         self.streams
             .keys()
-            .filter(|id| stream_type(**id) == StreamType::Bidi && !matches!(
-                self.streams[id].state,
-                StreamState::Closed | StreamState::Reset
-            ))
+            .filter(|id| {
+                stream_type(**id) == StreamType::Bidi
+                    && !matches!(self.streams[id].state, StreamState::Closed | StreamState::Reset)
+            })
             .count() as u64
     }
 
@@ -288,10 +310,10 @@ impl StreamManager {
     pub fn uni_count(&self) -> u64 {
         self.streams
             .keys()
-            .filter(|id| stream_type(**id) == StreamType::Uni && !matches!(
-                self.streams[id].state,
-                StreamState::Closed | StreamState::Reset
-            ))
+            .filter(|id| {
+                stream_type(**id) == StreamType::Uni
+                    && !matches!(self.streams[id].state, StreamState::Closed | StreamState::Reset)
+            })
             .count() as u64
     }
 
@@ -305,12 +327,9 @@ impl StreamManager {
     }
 
     /// IDs of streams with pending send data.
+    #[must_use]
     pub fn streams_with_pending_data(&self) -> Vec<u64> {
-        self.streams
-            .iter()
-            .filter(|(_, s)| s.has_pending_send())
-            .map(|(id, _)| *id)
-            .collect()
+        self.streams.iter().filter(|(_, s)| s.has_pending_send()).map(|(id, _)| *id).collect()
     }
 
     /// Update the peer's max stream data for a specific stream.

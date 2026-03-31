@@ -18,6 +18,7 @@ pub const MAX_DATAGRAM_SIZE: usize = 1200;
 #[derive(Debug)]
 pub struct Datagram {
     /// Raw datagram bytes.
+    #[allow(dead_code)]
     pub data: Vec<u8>,
     /// Source address of the sender.
     pub source: SocketAddr,
@@ -38,7 +39,10 @@ impl UdpEndpoint {
         let socket = UdpSocket::bind(addr).await?;
         let local_addr = socket.local_addr()?;
         debug!("UDP endpoint bound to {}", local_addr);
-        Ok(Self { socket, local_addr })
+        Ok(Self {
+            socket,
+            local_addr,
+        })
     }
 
     /// Bind to an ephemeral port on the given address (for clients).
@@ -53,6 +57,7 @@ impl UdpEndpoint {
     }
 
     /// Send a datagram to the specified address.
+    #[allow(dead_code)]
     pub async fn send_to(&self, data: &[u8], addr: SocketAddr) -> Result<usize> {
         if data.len() > MAX_DATAGRAM_SIZE {
             return Err(QuicError::Config(format!(
@@ -71,11 +76,15 @@ impl UdpEndpoint {
         let (n, source) = self.socket.recv_from(&mut buf).await?;
         buf.truncate(n);
         trace!("Received {} bytes from {}", n, source);
-        Ok(Datagram { data: buf, source })
+        Ok(Datagram {
+            data: buf,
+            source,
+        })
     }
 
     /// Get a reference to the underlying socket (for advanced usage).
     #[must_use]
+    #[expect(dead_code, reason = "public API for advanced socket configuration")]
     pub const fn socket(&self) -> &UdpSocket {
         &self.socket
     }
@@ -115,9 +124,9 @@ mod tests {
 
     #[tokio::test]
     async fn bind_ephemeral() {
-        let ep = UdpEndpoint::bind_ephemeral(
-            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
-        ).await.unwrap();
+        let ep = UdpEndpoint::bind_ephemeral(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+            .await
+            .unwrap();
         assert_ne!(ep.local_addr().port(), 0);
     }
 }

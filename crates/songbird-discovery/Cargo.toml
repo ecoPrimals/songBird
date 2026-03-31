@@ -21,6 +21,7 @@ songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-universal = { path = "../songbird-universal" }  # Includes UnixRpcClient (Pure Rust!)
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
+songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 # External dependencies
 tokio = { version = "1.0", features = ["full"] }
@@ -30,6 +31,7 @@ serde_json = "1.0"
 tracing = "0.1"
 async-trait = "0.1"
 futures-util = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
 parking_lot = "0.12"
 base64 = "0.22"  # For BearDog BirdSong provider
 uuid = { workspace = true }

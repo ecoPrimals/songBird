@@ -32,7 +32,7 @@ pub enum QuicError {
     #[error("Configuration error: {0}")]
     Config(String),
 
-    /// BearDog crypto delegation error.
+    /// `BearDog` crypto delegation error.
     #[error("BearDog crypto error: {0}")]
     Crypto(String),
 

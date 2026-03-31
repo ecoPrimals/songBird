@@ -13,12 +13,42 @@
 //! - `serde_json` for JSON (Pure Rust)
 
 use anyhow::{Result, anyhow};
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::{
+    Engine,
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sha2::Sha256;
+use songbird_crypto_provider::CryptoProvider;
 
 type HmacSha256 = Hmac<Sha256>;
+
+fn hmac_sha256_local(secret: &[u8], message: &[u8]) -> Result<Vec<u8>> {
+    let mut mac =
+        HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {e}"))?;
+    mac.update(message);
+    Ok(mac.finalize().into_bytes().to_vec())
+}
+
+pub async fn hmac_sha256_via_provider(
+    key: &[u8],
+    message: &[u8],
+    provider: &CryptoProvider,
+) -> Result<Vec<u8>> {
+    let key_b64 = STANDARD.encode(key);
+    let data_b64 = STANDARD.encode(message);
+    let result = provider
+        .call("crypto.hmac.sha256", json!({ "key": key_b64, "data": data_b64 }))
+        .await
+        .map_err(|e| anyhow!("{}", e))?;
+    let mac_b64 = result
+        .get("mac")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("Missing mac in HMAC response"))?;
+    STANDARD.decode(mac_b64).map_err(|e| anyhow!("Invalid mac: {e}"))
+}
 
 /// JWT Header
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,28 +80,49 @@ impl Default for JwtHeader {
 ///
 /// Returns an error if the operation fails.
 pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
-    // Create header
     let header = JwtHeader::default();
     let header_json =
         serde_json::to_string(&header).map_err(|e| anyhow!("Failed to serialize header: {e}"))?;
     let header_b64 = URL_SAFE_NO_PAD.encode(header_json.as_bytes());
 
-    // Create payload
     let payload_json =
         serde_json::to_string(claims).map_err(|e| anyhow!("Failed to serialize claims: {e}"))?;
     let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
 
-    // Create signature input
     let signing_input = format!("{header_b64}.{payload_b64}");
 
-    // Create HMAC-SHA256 signature (Pure Rust!)
-    let mut mac =
-        HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {e}"))?;
-    mac.update(signing_input.as_bytes());
-    let signature = mac.finalize().into_bytes();
-    let signature_b64 = URL_SAFE_NO_PAD.encode(signature);
+    let signature = hmac_sha256_local(secret, signing_input.as_bytes())?;
+    let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
 
-    // Combine into JWT
+    Ok(format!("{signing_input}.{signature_b64}"))
+}
+
+pub async fn encode_with_crypto<T: Serialize>(
+    claims: &T,
+    secret: &[u8],
+    crypto: Option<&CryptoProvider>,
+) -> Result<String> {
+    let header = JwtHeader::default();
+    let header_json =
+        serde_json::to_string(&header).map_err(|e| anyhow!("Failed to serialize header: {e}"))?;
+    let header_b64 = URL_SAFE_NO_PAD.encode(header_json.as_bytes());
+
+    let payload_json =
+        serde_json::to_string(claims).map_err(|e| anyhow!("Failed to serialize claims: {e}"))?;
+    let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
+
+    let signing_input = format!("{header_b64}.{payload_b64}");
+
+    let signature = if let Some(provider) = crypto {
+        hmac_sha256_via_provider(secret, signing_input.as_bytes(), provider).await?
+    } else {
+        tracing::warn!(
+            "JWT signing using local HMAC-SHA256; BearDog crypto provider not configured"
+        );
+        hmac_sha256_local(secret, signing_input.as_bytes())?
+    };
+    let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
+
     Ok(format!("{signing_input}.{signature_b64}"))
 }
 
@@ -89,7 +140,6 @@ pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
 ///
 /// Returns an error if the operation fails.
 pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Result<T> {
-    // Split token into parts
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {
         return Err(anyhow!("Invalid JWT format: expected 3 parts, got {}", parts.len()));
@@ -99,18 +149,13 @@ pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Resul
     let payload_b64 = parts[1];
     let signature_b64 = parts[2];
 
-    // Verify signature (Pure Rust crypto!)
     let signing_input = format!("{header_b64}.{payload_b64}");
-    let mut mac =
-        HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {e}"))?;
-    mac.update(signing_input.as_bytes());
 
-    let expected_signature = mac.finalize().into_bytes();
+    let expected_signature = hmac_sha256_local(secret, signing_input.as_bytes())?;
     let provided_signature = URL_SAFE_NO_PAD
         .decode(signature_b64)
         .map_err(|e| anyhow!("Invalid signature encoding: {e}"))?;
 
-    // Constant-time comparison (security best practice)
     if expected_signature.len() != provided_signature.len() {
         return Err(anyhow!("Invalid signature"));
     }
@@ -124,7 +169,56 @@ pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Resul
         return Err(anyhow!("Invalid signature"));
     }
 
-    // Decode payload
+    let payload_json = URL_SAFE_NO_PAD
+        .decode(payload_b64)
+        .map_err(|e| anyhow!("Invalid payload encoding: {e}"))?;
+    let claims: T = serde_json::from_slice(&payload_json)
+        .map_err(|e| anyhow!("Failed to deserialize claims: {e}"))?;
+
+    Ok(claims)
+}
+
+pub async fn decode_with_crypto<T: for<'de> Deserialize<'de>>(
+    token: &str,
+    secret: &[u8],
+    crypto: Option<&CryptoProvider>,
+) -> Result<T> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return Err(anyhow!("Invalid JWT format: expected 3 parts, got {}", parts.len()));
+    }
+
+    let header_b64 = parts[0];
+    let payload_b64 = parts[1];
+    let signature_b64 = parts[2];
+
+    let signing_input = format!("{header_b64}.{payload_b64}");
+
+    let expected_signature = if let Some(provider) = crypto {
+        hmac_sha256_via_provider(secret, signing_input.as_bytes(), provider).await?
+    } else {
+        tracing::warn!(
+            "JWT verification using local HMAC-SHA256; BearDog crypto provider not configured"
+        );
+        hmac_sha256_local(secret, signing_input.as_bytes())?
+    };
+    let provided_signature = URL_SAFE_NO_PAD
+        .decode(signature_b64)
+        .map_err(|e| anyhow!("Invalid signature encoding: {e}"))?;
+
+    if expected_signature.len() != provided_signature.len() {
+        return Err(anyhow!("Invalid signature"));
+    }
+
+    let mut is_valid = true;
+    for (a, b) in expected_signature.iter().zip(provided_signature.iter()) {
+        is_valid &= a == b;
+    }
+
+    if !is_valid {
+        return Err(anyhow!("Invalid signature"));
+    }
+
     let payload_json = URL_SAFE_NO_PAD
         .decode(payload_b64)
         .map_err(|e| anyhow!("Invalid payload encoding: {e}"))?;

@@ -137,67 +137,66 @@ impl PeerHandler {
 // ============================================================================
 
 #[cfg(test)]
-pub struct MockPeerConnector {
-    // Simulate success/failure behavior
-    should_succeed: std::sync::RwLock<bool>,
-}
+mod tests_support {
+    use super::{PeerChannel, PeerConnectResult, PeerConnector};
+    use async_trait::async_trait;
 
-#[cfg(test)]
-impl Default for MockPeerConnector {
-    fn default() -> Self {
-        Self::new()
+    pub struct MockPeerConnector {
+        should_succeed: std::sync::RwLock<bool>,
     }
-}
 
-#[cfg(test)]
-impl MockPeerConnector {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            should_succeed: std::sync::RwLock::new(true),
+    impl Default for MockPeerConnector {
+        fn default() -> Self {
+            Self::new()
         }
     }
 
-    pub fn set_should_succeed(&self, succeed: bool) {
-        *self.should_succeed.write().unwrap() = succeed;
+    impl MockPeerConnector {
+        #[must_use]
+        pub fn new() -> Self {
+            Self {
+                should_succeed: std::sync::RwLock::new(true),
+            }
+        }
+
+        pub fn set_should_succeed(&self, succeed: bool) {
+            *self.should_succeed.write().unwrap() = succeed;
+        }
     }
-}
 
-#[cfg(test)]
-#[async_trait]
-impl PeerConnector for MockPeerConnector {
-    async fn connect(
-        &self,
-        target_address: &str,
-        our_binding: Option<&str>,
-        _rendezvous_token: Option<&str>,
-    ) -> Result<PeerConnectResult, String> {
-        let should_succeed = *self.should_succeed.read().unwrap();
+    #[async_trait]
+    impl PeerConnector for MockPeerConnector {
+        async fn connect(
+            &self,
+            target_address: &str,
+            our_binding: Option<&str>,
+            _rendezvous_token: Option<&str>,
+        ) -> Result<PeerConnectResult, String> {
+            let should_succeed = *self.should_succeed.read().unwrap();
 
-        let connection_id = uuid::Uuid::new_v4().to_string();
+            let connection_id = uuid::Uuid::new_v4().to_string();
 
-        if should_succeed {
-            // Simulate successful connection
-            let local_address = our_binding
-                .map_or_else(|| "0.0.0.0:0".to_string(), std::string::ToString::to_string);
+            if should_succeed {
+                let local_address = our_binding
+                    .map_or_else(|| "0.0.0.0:0".to_string(), std::string::ToString::to_string);
 
-            Ok(PeerConnectResult {
-                connection_id,
-                state: "connected".to_string(),
-                channel: Some(PeerChannel {
-                    local_address,
-                    remote_address: target_address.to_string(),
-                    protocol: "udp".to_string(),
-                    latency_ms: Some(25), // Simulated latency
-                }),
-            })
-        } else {
-            // Simulate failed connection
-            Ok(PeerConnectResult {
-                connection_id,
-                state: "failed".to_string(),
-                channel: None,
-            })
+                Ok(PeerConnectResult {
+                    connection_id,
+                    state: "connected".to_string(),
+                    channel: Some(PeerChannel {
+                        local_address,
+                        remote_address: target_address.to_string(),
+                        protocol: "udp".to_string(),
+                        latency_ms: Some(25),
+                    }),
+                })
+            } else {
+                Ok(PeerConnectResult {
+                    connection_id,
+                    state: "failed".to_string(),
+                    channel: None,
+                })
+            }
         }
     }
 }
@@ -210,6 +209,7 @@ impl PeerConnector for MockPeerConnector {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
+    use super::tests_support::MockPeerConnector;
     use super::*;
     use serde_json::json;
 

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! NewReno congestion control (RFC 9002 Appendix B).
+//! `NewReno` congestion control (RFC 9002 Appendix B).
 //!
 //! This is the baseline congestion controller for QUIC. It uses a
-//! classic AIMD (additive increase, multiplicative decrease) approach
+//! classic `AIMD` (additive increase, multiplicative decrease) approach
 //! with slow start and congestion avoidance phases.
 
 use std::time::Instant;
@@ -21,15 +21,15 @@ const MSS: usize = 1200;
 /// Congestion control state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CongestionState {
-    /// Exponential growth (double cwnd per RTT).
+    /// Exponential growth (double `cwnd` per `RTT`).
     SlowStart,
-    /// Linear growth (increase cwnd by MSS per RTT).
+    /// Linear growth (increase `cwnd` by `MSS` per `RTT`).
     CongestionAvoidance,
     /// After loss detected, waiting for recovery.
     Recovery,
 }
 
-/// NewReno congestion controller.
+/// `NewReno` congestion controller.
 #[derive(Debug)]
 pub struct NewReno {
     state: CongestionState,
@@ -83,7 +83,7 @@ impl NewReno {
         self.ssthresh
     }
 
-    /// Available congestion window (cwnd - bytes_in_flight).
+    /// Available congestion window (`cwnd` - `bytes_in_flight`).
     #[must_use]
     pub fn available_cwnd(&self) -> usize {
         self.cwnd.saturating_sub(self.bytes_in_flight)
@@ -143,7 +143,9 @@ impl NewReno {
         self.bytes_in_flight = self.bytes_in_flight.saturating_sub(lost_bytes);
 
         // Only enter recovery once per flight
-        if let Some(recovery_pn) = self.recovery_start_pn && largest_lost_pn <= recovery_pn {
+        if let Some(recovery_pn) = self.recovery_start_pn
+            && largest_lost_pn <= recovery_pn
+        {
             return;
         }
 

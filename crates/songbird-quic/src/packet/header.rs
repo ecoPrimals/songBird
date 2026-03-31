@@ -28,6 +28,10 @@ pub enum LongPacketType {
 
 impl LongPacketType {
     /// Decode from the two type bits in the first byte.
+    ///
+    /// # Errors
+    ///
+    /// Never returns `Err`; all two-bit patterns map to a variant.
     pub fn from_bits(bits: u8) -> Result<Self> {
         match bits & 0x03 {
             0x00 => Ok(Self::Initial),
@@ -114,6 +118,10 @@ pub const fn is_long_header(first_byte: u8) -> bool {
 
 /// Decode a long header from the buffer. Returns the header and the offset
 /// where the packet payload begins (after the packet number).
+///
+/// # Errors
+///
+/// Returns [`QuicError::Stream`] on truncated or malformed wire data.
 pub fn decode_long_header(buf: &[u8]) -> Result<(LongHeader, usize)> {
     if buf.len() < 7 {
         return Err(QuicError::Stream("Long header too short".into()));
@@ -162,6 +170,10 @@ pub fn decode_long_header(buf: &[u8]) -> Result<(LongHeader, usize)> {
     let token = if packet_type == LongPacketType::Initial {
         let (token_len, consumed) = VarInt::decode(&buf[offset..])?;
         offset += consumed;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "Initial token length from VarInt; bounds-checked against buffer"
+        )]
         let tlen = token_len.value() as usize;
         if offset + tlen > buf.len() {
             return Err(QuicError::Stream("Truncated token".into()));
@@ -226,6 +238,10 @@ pub fn decode_long_header(buf: &[u8]) -> Result<(LongHeader, usize)> {
 /// Encode a long header into the buffer. Returns bytes written.
 ///
 /// Does NOT include the packet payload — only the header through the packet number.
+///
+/// # Errors
+///
+/// Returns [`QuicError::Stream`] if the encode buffer is too small.
 pub fn encode_long_header(header: &LongHeader, buf: &mut [u8]) -> Result<usize> {
     let mut offset = 0;
 
@@ -254,7 +270,12 @@ pub fn encode_long_header(header: &LongHeader, buf: &mut [u8]) -> Result<usize> 
     if offset + 1 + header.dcid.len() > buf.len() {
         return Err(QuicError::Stream("Encode buffer too small for DCID".into()));
     }
-    buf[offset] = header.dcid.len() as u8;
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "QUIC CID length is at most 20 bytes per RFC 9000"
+    )]
+    let dcid_len_u8 = header.dcid.len() as u8;
+    buf[offset] = dcid_len_u8;
     offset += 1;
     buf[offset..offset + header.dcid.len()].copy_from_slice(&header.dcid);
     offset += header.dcid.len();
@@ -263,7 +284,12 @@ pub fn encode_long_header(header: &LongHeader, buf: &mut [u8]) -> Result<usize> 
     if offset + 1 + header.scid.len() > buf.len() {
         return Err(QuicError::Stream("Encode buffer too small for SCID".into()));
     }
-    buf[offset] = header.scid.len() as u8;
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "QUIC CID length is at most 20 bytes per RFC 9000"
+    )]
+    let scid_len_u8 = header.scid.len() as u8;
+    buf[offset] = scid_len_u8;
     offset += 1;
     buf[offset..offset + header.scid.len()].copy_from_slice(&header.scid);
     offset += header.scid.len();
@@ -303,6 +329,10 @@ pub fn encode_long_header(header: &LongHeader, buf: &mut [u8]) -> Result<usize> 
 }
 
 /// Decode a short header. Requires knowing the DCID length (from connection state).
+///
+/// # Errors
+///
+/// Returns [`QuicError::Stream`] on truncated or malformed wire data.
 pub fn decode_short_header(buf: &[u8], dcid_len: usize) -> Result<(ShortHeader, usize)> {
     if buf.is_empty() {
         return Err(QuicError::Stream("Short header too short".into()));
@@ -351,14 +381,28 @@ pub fn decode_short_header(buf: &[u8], dcid_len: usize) -> Result<(ShortHeader, 
 }
 
 /// Encode a short header into the buffer. Returns bytes written.
+///
+/// # Errors
+///
+/// Returns [`QuicError::Stream`] if the encode buffer is too small.
 pub fn encode_short_header(header: &ShortHeader, buf: &mut [u8]) -> Result<usize> {
     let mut offset = 0;
 
     let pn_len_bits = header.pn_length.saturating_sub(1) & 0x03;
-    let first: u8 = if header.fixed_bit { 0x40 } else { 0 }
-        | if header.spin_bit { 0x20 } else { 0 }
-        | ((header.reserved_bits & 0x03) << 3)
-        | if header.key_phase { 0x04 } else { 0 }
+    let first: u8 = if header.fixed_bit {
+        0x40
+    } else {
+        0
+    } | if header.spin_bit {
+        0x20
+    } else {
+        0
+    } | ((header.reserved_bits & 0x03) << 3)
+        | if header.key_phase {
+            0x04
+        } else {
+            0
+        }
         | pn_len_bits;
 
     if buf.is_empty() {

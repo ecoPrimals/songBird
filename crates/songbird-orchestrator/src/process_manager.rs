@@ -402,9 +402,9 @@ impl ProcessManager {
 
 impl Default for ProcessManager {
     fn default() -> Self {
-        #[allow(
+        #[expect(
             clippy::expect_used,
-            reason = "Default impl must succeed or is a fatal misconfiguration"
+            reason = "`Default` cannot return `Result`; use `ProcessManager::new()` when errors must propagate"
         )]
         Self::new().expect("Failed to create default ProcessManager")
     }

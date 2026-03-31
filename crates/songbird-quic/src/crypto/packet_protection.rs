@@ -4,7 +4,7 @@
 //! QUIC packet protection: AEAD encrypt/decrypt with packet-number-derived nonces.
 //!
 //! RFC 9001 Section 5.3: each QUIC packet payload is protected with an
-//! AEAD algorithm. The nonce is constructed by XORing the IV with the
+//! `AEAD` algorithm. The nonce is constructed by `XORing` the IV with the
 //! packet number (left-padded to IV length).
 
 use super::initial_keys::DirectionalKeys;
@@ -15,7 +15,7 @@ use crate::error::Result;
 ///
 /// RFC 9001 Section 5.3:
 /// The packet number is left-padded with zeros to the IV length,
-/// then XORed with the IV.
+/// then `XORed` with the IV.
 #[must_use]
 pub fn build_nonce(iv: &[u8], packet_number: u64) -> Vec<u8> {
     let mut nonce = iv.to_vec();
@@ -31,8 +31,12 @@ pub fn build_nonce(iv: &[u8], packet_number: u64) -> Vec<u8> {
 
 /// Encrypt a QUIC packet payload.
 ///
-/// The AAD (additional authenticated data) is the QUIC packet header
+/// The `AAD` (additional authenticated data) is the QUIC packet header
 /// (from the first byte through the packet number, inclusive).
+///
+/// # Errors
+///
+/// Returns [`QuicError`](crate::error::QuicError) when `AEAD` encryption fails.
 pub async fn protect_payload(
     crypto: &dyn QuicCryptoProvider,
     suite: QuicCipherSuite,
@@ -42,14 +46,16 @@ pub async fn protect_payload(
     plaintext: &[u8],
 ) -> Result<Vec<u8>> {
     let nonce = build_nonce(&keys.iv, packet_number);
-    crypto
-        .aead_encrypt(suite, &keys.key, &nonce, plaintext, header)
-        .await
+    crypto.aead_encrypt(suite, &keys.key, &nonce, plaintext, header).await
 }
 
 /// Decrypt a QUIC packet payload.
 ///
-/// The AAD must be the same header bytes used during encryption.
+/// The `AAD` must be the same header bytes used during encryption.
+///
+/// # Errors
+///
+/// Returns [`QuicError`](crate::error::QuicError) when `AEAD` decryption fails.
 pub async fn unprotect_payload(
     crypto: &dyn QuicCryptoProvider,
     suite: QuicCipherSuite,
@@ -59,9 +65,7 @@ pub async fn unprotect_payload(
     ciphertext: &[u8],
 ) -> Result<Vec<u8>> {
     let nonce = build_nonce(&keys.iv, packet_number);
-    crypto
-        .aead_decrypt(suite, &keys.key, &nonce, ciphertext, header)
-        .await
+    crypto.aead_decrypt(suite, &keys.key, &nonce, ciphertext, header).await
 }
 
 #[cfg(test)]
@@ -101,15 +105,12 @@ mod tests {
     #[test]
     fn rfc_nonce_construction_example() {
         // RFC 9001 uses a 12-byte IV and up to 62-bit PN
-        let iv = [
-            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-            0x08, 0x09, 0x0A, 0x0B,
-        ];
+        let iv = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B];
         let pn = 42u64;
         let nonce = build_nonce(&iv, pn);
         assert_eq!(nonce.len(), 12);
         // Only the last byte should differ (pn=42 fits in 1 byte)
-        assert_eq!(nonce[11], 0x0B ^ 42);
+        assert_eq!(nonce[11], 0x0B ^ 0x2a);
         assert_eq!(&nonce[..11], &iv[..11]);
     }
 }

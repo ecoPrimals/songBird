@@ -4,7 +4,7 @@
 //! Connection-level and stream-level flow control (RFC 9000 Section 4).
 //!
 //! Flow control prevents a sender from overwhelming a receiver.
-//! QUIC has both connection-level and stream-level flow control.
+//! `QUIC` has both connection-level and stream-level flow control.
 
 use crate::error::{QuicError, Result};
 
@@ -55,6 +55,10 @@ impl FlowController {
     }
 
     /// Try to consume `amount` bytes. Returns error if exceeds limit.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QuicError::Stream`](crate::error::QuicError::Stream) if `amount` would exceed the flow limit.
     pub fn consume(&mut self, amount: u64) -> Result<()> {
         let new_consumed = self.consumed + amount;
         if new_consumed > self.limit {
@@ -71,7 +75,7 @@ impl FlowController {
         Ok(())
     }
 
-    /// Update the limit (e.g., from a MAX_DATA or MAX_STREAM_DATA frame).
+    /// Update the limit (e.g., from a `MAX_DATA` or `MAX_STREAM_DATA` frame).
     /// Only increases are accepted.
     pub fn update_limit(&mut self, new_limit: u64) {
         if new_limit > self.limit {
@@ -86,10 +90,15 @@ impl FlowController {
         if self.limit == 0 {
             return 0.0;
         }
-        self.consumed as f64 / self.limit as f64
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "utilization ratio; u64 flow counts fit f64 mantissa for control-plane metrics"
+        )]
+        let ratio = self.consumed as f64 / self.limit as f64;
+        ratio
     }
 
-    /// Whether we should send a MAX_DATA/MAX_STREAM_DATA update.
+    /// Whether we should send a `MAX_DATA`/`MAX_STREAM_DATA` update.
     /// Triggers when utilization exceeds a threshold.
     #[must_use]
     pub fn should_send_update(&self) -> bool {
