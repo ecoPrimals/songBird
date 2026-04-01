@@ -23,7 +23,7 @@ impl VarInt {
     ///
     /// # Errors
     ///
-    /// Returns [`QuicError::Config`](crate::error::QuicError::Config) if `value` exceeds [`VARINT_MAX`].
+    /// Returns [`QuicError::Config`] if `value` exceeds [`VARINT_MAX`].
     pub fn new(value: u64) -> Result<Self> {
         if value > VARINT_MAX {
             return Err(QuicError::Config(format!(
@@ -65,7 +65,7 @@ impl VarInt {
     ///
     /// # Errors
     ///
-    /// Returns [`QuicError::Stream`](crate::error::QuicError::Stream) if the buffer is too short.
+    /// Returns [`QuicError::Stream`] if the buffer is too short.
     pub fn encode(&self, buf: &mut [u8]) -> Result<usize> {
         let len = self.encoded_len();
         if buf.len() < len {
@@ -114,7 +114,7 @@ impl VarInt {
     ///
     /// # Errors
     ///
-    /// Returns [`QuicError::Stream`](crate::error::QuicError::Stream) if the buffer is empty or truncated.
+    /// Returns [`QuicError::Stream`] if the buffer is empty or truncated.
     pub fn decode(buf: &[u8]) -> Result<(Self, usize)> {
         if buf.is_empty() {
             return Err(QuicError::Stream("VarInt decode: empty buffer".into()));

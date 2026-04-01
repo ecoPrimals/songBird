@@ -187,8 +187,11 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
     let config = songbird_types::config::CanonicalSongbirdConfig::from_env()
         .map_err(|e| format!("Failed to load configuration: {e}"))?;
 
-    // Initialize rustls crypto provider (required before any TLS operations)
-    // Default: rustls-rustcrypto (pure Rust). Use ring-crypto feature for ring.
+    // SB-02: rustls crypto provider bootstrap.
+    // Default path: rustls-rustcrypto (pure Rust, zero C — ecoBin compliant).
+    // `ring-crypto` feature: opt-in ONLY for standalone testing without BearDog.
+    // Production TLS is delegated to BearDog via Tower Atomic; this provider is
+    // the initial bootstrap before BearDog discovery completes.
     #[cfg(feature = "ring-crypto")]
     {
         rustls::crypto::ring::default_provider().install_default().ok();

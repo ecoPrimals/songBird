@@ -20,7 +20,14 @@ use std::net::{IpAddr, Ipv4Addr};
 /// 2. Auto-detect from network interfaces
 /// 3. Fall back to unspecified (let discovery resolve)
 pub(crate) fn detect_public_ip() -> IpAddr {
-    if let Ok(ip_str) = songbird_process_env::var("SONGBIRD_PUBLIC_IP")
+    detect_public_ip_with(|k| songbird_process_env::var(k))
+}
+
+/// Injectable variant for concurrent testing without global env mutation.
+pub(crate) fn detect_public_ip_with(
+    env: impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> IpAddr {
+    if let Ok(ip_str) = env("SONGBIRD_PUBLIC_IP")
         && let Ok(ip) = ip_str.parse::<IpAddr>()
     {
         return ip;
@@ -53,8 +60,15 @@ fn detect_from_network_interfaces() -> IpAddr {
 ///
 /// Fast, zero-cost in non-cloud environments (no network calls).
 fn check_cloud_metadata() -> Option<IpAddr> {
+    check_cloud_metadata_with(|k| songbird_process_env::var(k))
+}
+
+/// Injectable variant for concurrent testing without global env mutation.
+fn check_cloud_metadata_with(
+    env: impl Fn(&str) -> Result<String, std::env::VarError>,
+) -> Option<IpAddr> {
     for var in ["AWS_INSTANCE_IP", "GCE_INSTANCE_IP", "AZURE_VM_IP"] {
-        if let Ok(ip_str) = songbird_process_env::var(var)
+        if let Ok(ip_str) = env(var)
             && let Ok(ip) = ip_str.parse::<IpAddr>()
         {
             return Some(ip);

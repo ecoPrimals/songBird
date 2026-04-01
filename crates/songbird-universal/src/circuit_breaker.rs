@@ -7,8 +7,8 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::time::Instant;
 use tokio::sync::RwLock;
+use tokio::time::Instant;
 
 /// Circuit breaker state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -207,7 +207,7 @@ mod tests {
         assert!(!cb.is_request_allowed().await);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_circuit_half_open_after_timeout() {
         let config = CircuitBreakerConfig {
             failure_threshold: 1,
@@ -216,19 +216,16 @@ mod tests {
         };
         let cb = CircuitBreaker::with_config(config);
 
-        // Open the circuit
         cb.record_failure().await;
         assert_eq!(cb.get_state().await, CircuitState::Open);
 
-        // Wait for timeout
-        tokio::time::sleep(Duration::from_millis(150)).await;
+        tokio::time::advance(Duration::from_millis(150)).await;
 
-        // Should transition to half-open
         assert!(cb.is_request_allowed().await);
         assert_eq!(cb.get_state().await, CircuitState::HalfOpen);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_circuit_closes_after_successes() {
         let config = CircuitBreakerConfig {
             failure_threshold: 1,
@@ -239,22 +236,19 @@ mod tests {
         };
         let cb = CircuitBreaker::with_config(config);
 
-        // Open the circuit
         cb.record_failure().await;
 
-        // Wait and transition to half-open
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        tokio::time::advance(Duration::from_millis(100)).await;
         assert!(cb.is_request_allowed().await);
 
-        // Record successes
         cb.record_success().await;
         assert_eq!(cb.get_state().await, CircuitState::HalfOpen);
 
-        cb.record_success().await; // Should close
+        cb.record_success().await;
         assert_eq!(cb.get_state().await, CircuitState::Closed);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_half_open_reopens_on_failure() {
         let config = CircuitBreakerConfig {
             failure_threshold: 1,
@@ -263,15 +257,12 @@ mod tests {
         };
         let cb = CircuitBreaker::with_config(config);
 
-        // Open the circuit
         cb.record_failure().await;
 
-        // Transition to half-open
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        tokio::time::advance(Duration::from_millis(100)).await;
         assert!(cb.is_request_allowed().await);
         assert_eq!(cb.get_state().await, CircuitState::HalfOpen);
 
-        // Failure in half-open should reopen
         cb.record_failure().await;
         assert_eq!(cb.get_state().await, CircuitState::Open);
     }

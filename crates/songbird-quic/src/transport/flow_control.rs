@@ -58,7 +58,7 @@ impl FlowController {
     ///
     /// # Errors
     ///
-    /// Returns [`QuicError::Stream`](crate::error::QuicError::Stream) if `amount` would exceed the flow limit.
+    /// Returns [`QuicError::Stream`] if `amount` would exceed the flow limit.
     pub fn consume(&mut self, amount: u64) -> Result<()> {
         let new_consumed = self.consumed + amount;
         if new_consumed > self.limit {

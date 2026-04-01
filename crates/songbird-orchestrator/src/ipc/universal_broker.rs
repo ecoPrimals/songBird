@@ -163,23 +163,33 @@ impl UniversalIpcBroker {
         })
     }
 
-    /// Start the Universal IPC Broker
+    /// Start the Universal IPC Broker (runs indefinitely).
     ///
-    /// This starts the Tower Atomic server and begins listening for
-    /// JSON-RPC requests from other primals.
-    ///
-    /// Runs indefinitely until the server is stopped or an error occurs.
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
+    /// Returns an error if the server fails to bind or encounters a fatal error.
     pub async fn start(self) -> Result<()> {
         info!("🚀 Starting Universal IPC Broker");
         info!("   Listening on: {}", self.endpoint.path);
         info!("   Waiting for primal connections...");
 
-        // Start Tower Atomic server (runs forever)
         self.server.serve(self.endpoint).await.context("Universal IPC Broker server error")?;
+        Ok(())
+    }
 
+    /// Start with readiness notification — signals when the socket is bound.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the server fails to bind or encounters a fatal error.
+    pub async fn start_with_ready(self, ready: tokio::sync::oneshot::Sender<()>) -> Result<()> {
+        info!("🚀 Starting Universal IPC Broker");
+        info!("   Listening on: {}", self.endpoint.path);
+
+        self.server
+            .serve_with_ready(self.endpoint, ready)
+            .await
+            .context("Universal IPC Broker server error")?;
         Ok(())
     }
 }
@@ -240,15 +250,15 @@ pub async fn start_broker_with_discovery(
 
     info!("✅ Universal IPC Broker created successfully");
 
-    // Start broker in background task (runs indefinitely)
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+
     tokio::spawn(async move {
-        if let Err(e) = broker.start().await {
+        if let Err(e) = broker.start_with_ready(ready_tx).await {
             error!("❌ Universal IPC Broker error: {}", e);
         }
     });
 
-    // Give server time to start listening
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    let _ = ready_rx.await;
 
     info!("✅ Universal IPC Broker started in background");
     info!("   Other primals can now connect to /primal/songbird");

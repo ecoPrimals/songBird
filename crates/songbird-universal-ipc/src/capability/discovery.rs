@@ -72,7 +72,6 @@ mod tests {
     use crate::capability::strategy::EnvironmentStrategy;
     use songbird_process_env;
 
-    #[serial_test::serial]
     #[tokio::test]
     async fn discover_finds_provider_via_environment() {
         init_capability_registry();
@@ -84,7 +83,6 @@ mod tests {
         songbird_process_env::remove_var(&key);
     }
 
-    #[serial_test::serial]
     #[tokio::test]
     async fn discover_all_returns_vec_from_environment() {
         init_capability_registry();

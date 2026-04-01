@@ -286,6 +286,37 @@ impl ConsentStorage {
     }
 }
 
+#[async_trait::async_trait]
+impl super::ConsentStorageBackend for ConsentStorage {
+    async fn save(&self, record: &ConsentRecord) -> Result<()> {
+        Self::save(self, record).await
+    }
+
+    async fn get(&self, id: &str) -> Result<Option<ConsentRecord>> {
+        Self::get(self, id).await
+    }
+
+    async fn list_by_user(&self, user_id: &UserId) -> Result<Vec<ConsentRecord>> {
+        Self::list_by_user(self, user_id).await
+    }
+
+    async fn list_by_task(&self, task_id: &TaskId) -> Result<Vec<ConsentRecord>> {
+        Self::list_by_task(self, task_id).await
+    }
+
+    async fn list_pending(&self) -> Result<Vec<ConsentRecord>> {
+        Self::list_pending(self).await
+    }
+
+    async fn delete(&self, id: &str) -> Result<()> {
+        Self::delete(self, id).await
+    }
+
+    async fn flush(&self) -> Result<()> {
+        Self::flush(self).await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

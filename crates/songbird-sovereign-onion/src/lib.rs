@@ -68,7 +68,7 @@ pub use connector::OnionConnector;
 pub use crypto::{decrypt_data_via_beardog, encrypt_data_via_beardog};
 pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
-pub use storage::OnionStorage;
+pub use storage::{OnionStorage, OnionStorageBackend};
 
 // ✅ Phase 3 Complete: OnionService & OnionConnector with BearDog
 pub use connector::OnionConnection;

@@ -27,6 +27,35 @@ mod rules;
 mod storage_sled;
 pub use storage_sled::ConsentStorage;
 
+/// Async consent persistence backend (SB-03: abstraction for sled → nestGate migration).
+///
+/// The sled implementation ([`ConsentStorage`]) is the current default.
+/// When nestGate exposes `storage.*` IPC (NG-01), a `NestGateConsentBackend`
+/// can implement this trait to delegate persistence over JSON-RPC.
+#[async_trait::async_trait]
+pub trait ConsentStorageBackend: Send + Sync {
+    /// Persist a consent record.
+    async fn save(&self, record: &ConsentRecord) -> anyhow::Result<()>;
+
+    /// Retrieve a consent record by ID.
+    async fn get(&self, id: &str) -> anyhow::Result<Option<ConsentRecord>>;
+
+    /// List records for a specific user.
+    async fn list_by_user(&self, user_id: &UserId) -> anyhow::Result<Vec<ConsentRecord>>;
+
+    /// List records for a specific task.
+    async fn list_by_task(&self, task_id: &TaskId) -> anyhow::Result<Vec<ConsentRecord>>;
+
+    /// List all records with pending status.
+    async fn list_pending(&self) -> anyhow::Result<Vec<ConsentRecord>>;
+
+    /// Delete a consent record.
+    async fn delete(&self, id: &str) -> anyhow::Result<()>;
+
+    /// Flush pending writes to durable storage.
+    async fn flush(&self) -> anyhow::Result<()>;
+}
+
 pub use enforcement::*;
 pub use preferences::*;
 pub use request::*;
@@ -60,8 +89,8 @@ pub struct ConsentManager {
     records: Arc<RwLock<HashMap<Arc<str>, ConsentRecord>>>,
     preferences: Arc<RwLock<HashMap<UserId, UserPreferences>>>,
 
-    /// Optional persistent storage (MVP Week 5)
-    storage: Option<Arc<ConsentStorage>>,
+    /// Optional persistent storage backend (SB-03: trait-abstracted for nestGate migration)
+    storage: Option<Arc<dyn ConsentStorageBackend>>,
 
     /// Notify waiters when a consent decision is made (event-driven)
     decision_notify: Arc<tokio::sync::Notify>,
@@ -79,18 +108,27 @@ impl ConsentManager {
         }
     }
 
-    /// Create a new consent manager with persistent storage (MVP Week 5)
+    /// Create a new consent manager with sled-backed persistent storage
+    ///
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
+    /// Returns an error if the sled database cannot be opened.
     pub async fn with_storage(database_url: &str) -> anyhow::Result<Self> {
         let storage = ConsentStorage::new(database_url).await?;
-        Ok(Self {
+        Ok(Self::with_backend(Arc::new(storage)))
+    }
+
+    /// Create a consent manager with an arbitrary [`ConsentStorageBackend`].
+    ///
+    /// SB-03: allows swapping sled for nestGate IPC when NG-01 lands.
+    #[must_use]
+    pub fn with_backend(backend: Arc<dyn ConsentStorageBackend>) -> Self {
+        Self {
             records: Arc::new(RwLock::new(HashMap::new())),
             preferences: Arc::new(RwLock::new(HashMap::new())),
             decision_notify: Arc::new(tokio::sync::Notify::new()),
-            storage: Some(Arc::new(storage)),
-        })
+            storage: Some(backend),
+        }
     }
 
     /// Request consent for an operation

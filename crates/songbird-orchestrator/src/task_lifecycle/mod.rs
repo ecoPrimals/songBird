@@ -24,6 +24,41 @@ pub use manager::TaskLifecycleManager;
 pub use storage_sled::*;
 pub use types::*;
 
+/// Async task persistence backend (SB-03: abstraction for sled → nestGate migration).
+///
+/// The sled implementation ([`TaskStorage`]) is the current default.
+/// When nestGate exposes `storage.*` IPC (NG-01), a `NestGateTaskBackend`
+/// can implement this trait to delegate persistence over JSON-RPC.
+#[async_trait::async_trait]
+pub trait TaskStorageBackend: Send + Sync {
+    /// Persist or update a task.
+    async fn save_task(&self, task: &TaskLifecycle) -> anyhow::Result<()>;
+
+    /// Retrieve a task by ID.
+    async fn get_task(&self, id: TaskId) -> anyhow::Result<Option<TaskLifecycle>>;
+
+    /// List tasks matching a filter.
+    async fn list_tasks(&self, filter: &TaskFilter) -> anyhow::Result<Vec<TaskLifecycle>>;
+
+    /// Delete a task by ID.
+    async fn delete_task(&self, id: TaskId) -> anyhow::Result<()>;
+
+    /// Persist a checkpoint.
+    async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> anyhow::Result<()>;
+
+    /// Retrieve a checkpoint by ID.
+    async fn get_checkpoint(&self, id: &str) -> anyhow::Result<Option<Checkpoint>>;
+
+    /// List checkpoints for a task (most recent first).
+    async fn list_checkpoints(&self, task_id: TaskId) -> anyhow::Result<Vec<Checkpoint>>;
+
+    /// Delete a checkpoint by ID.
+    async fn delete_checkpoint(&self, id: &str) -> anyhow::Result<()>;
+
+    /// Flush pending writes to durable storage.
+    async fn flush(&self) -> anyhow::Result<()>;
+}
+
 /// Task identifier (UUID v7 for time-ordered IDs)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TaskId(Uuid);

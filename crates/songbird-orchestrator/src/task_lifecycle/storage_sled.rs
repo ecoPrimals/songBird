@@ -512,6 +512,45 @@ impl TaskStorage {
     }
 }
 
+#[async_trait::async_trait]
+impl super::TaskStorageBackend for TaskStorage {
+    async fn save_task(&self, task: &TaskLifecycle) -> Result<()> {
+        Self::save_task(self, task).await
+    }
+
+    async fn get_task(&self, id: TaskId) -> Result<Option<TaskLifecycle>> {
+        Self::get_task(self, id).await
+    }
+
+    async fn list_tasks(&self, filter: &TaskFilter) -> Result<Vec<TaskLifecycle>> {
+        Self::list_tasks(self, filter).await
+    }
+
+    async fn delete_task(&self, id: TaskId) -> Result<()> {
+        Self::delete_task(self, id).await
+    }
+
+    async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> Result<()> {
+        Self::save_checkpoint(self, checkpoint).await
+    }
+
+    async fn get_checkpoint(&self, id: &str) -> Result<Option<Checkpoint>> {
+        Self::get_checkpoint(self, id).await
+    }
+
+    async fn list_checkpoints(&self, task_id: TaskId) -> Result<Vec<Checkpoint>> {
+        Self::list_checkpoints(self, task_id).await
+    }
+
+    async fn delete_checkpoint(&self, id: &str) -> Result<()> {
+        Self::delete_checkpoint(self, id).await
+    }
+
+    async fn flush(&self) -> Result<()> {
+        Self::flush(self).await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

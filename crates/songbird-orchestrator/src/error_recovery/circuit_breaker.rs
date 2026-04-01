@@ -12,8 +12,9 @@
 use anyhow::Result;
 use std::future::Future;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::RwLock;
+use tokio::time::Instant;
 use tracing::{debug, warn};
 
 /// Circuit breaker state
@@ -241,7 +242,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_circuit_half_open_after_timeout() {
         let config = CircuitBreakerConfig {
             failure_threshold: 2,
@@ -250,26 +251,21 @@ mod tests {
         };
         let cb = CircuitBreaker::new(config);
 
-        // Open circuit
         for _ in 0..2 {
             let _: Result<()> = cb.call(|| async { anyhow::bail!("Error") }).await;
         }
 
         assert_eq!(cb.get_state().await, CircuitState::Open);
 
-        // Wait for timeout
-        tokio::time::sleep(Duration::from_millis(150)).await;
+        tokio::time::advance(Duration::from_millis(150)).await;
 
-        // Next call should transition to half-open
         let _: Result<i32> = cb.call(|| async { Ok::<_, anyhow::Error>(42) }).await;
 
-        // Should be closed now after success in half-open
-        // (with default success_threshold of 2, need one more success)
         let state = cb.get_state().await;
         assert!(state == CircuitState::HalfOpen || state == CircuitState::Closed);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_circuit_closes_after_successes_in_half_open() {
         let config = CircuitBreakerConfig {
             failure_threshold: 2,
@@ -279,15 +275,12 @@ mod tests {
         };
         let cb = CircuitBreaker::new(config);
 
-        // Open circuit
         for _ in 0..2 {
             let _: Result<()> = cb.call(|| async { anyhow::bail!("Error") }).await;
         }
 
-        // Wait for timeout
-        tokio::time::sleep(Duration::from_millis(20)).await;
+        tokio::time::advance(Duration::from_millis(20)).await;
 
-        // Succeed twice in half-open state
         let _: Result<i32> = cb.call(|| async { Ok::<_, anyhow::Error>(42) }).await;
         let _: Result<i32> = cb.call(|| async { Ok::<_, anyhow::Error>(42) }).await;
 

@@ -631,7 +631,6 @@ mod tests {
         let _e = RuntimeDiscoveryEngine::with_capabilities(vec!["a".into(), "b".into()]);
     }
 
-    #[serial_test::serial]
     #[tokio::test]
     async fn discover_by_capability_uses_environment_variable() {
         let cap = "sbserialrtcap";
@@ -644,7 +643,6 @@ mod tests {
         songbird_process_env::remove_var(&var);
     }
 
-    #[serial_test::serial]
     #[tokio::test]
     async fn discover_by_capability_returns_cached_before_env() {
         let cap = "sbcachedcap";

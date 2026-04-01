@@ -556,7 +556,6 @@ mod tests {
 
     use super::replace;
 
-    #[serial_test::serial]
     #[test]
     fn format_endpoint_prefers_full_endpoint_env() {
         songbird_process_env::set_var("ROUTING_ENDPOINT", "https://router.example:7443");
@@ -565,7 +564,6 @@ mod tests {
         songbird_process_env::remove_var("ROUTING_ENDPOINT");
     }
 
-    #[serial_test::serial]
     #[test]
     fn format_service_endpoint_joins_base_and_path() {
         songbird_process_env::set_var("METRICS_ENDPOINT", "http://metrics.local:9090");

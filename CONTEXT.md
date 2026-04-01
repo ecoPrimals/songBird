@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-only (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: March 31, 2026
+**Last Updated**: April 1, 2026
 
 ## What It Does
 
@@ -35,7 +35,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 |--------|-------|
 | Crates | 30 workspace members |
 | Tests | 11,831+ (0 failed, ~269 ignored) |
-| Coverage | ~69.11% region coverage via llvm-cov (target 90%) |
+| Coverage | ~69.14% region coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
 | Files >1000 LOC | 0 (`frame.rs` refactored → `frame/` 4 modules; max prod ~484 `gateway/mod.rs`) |

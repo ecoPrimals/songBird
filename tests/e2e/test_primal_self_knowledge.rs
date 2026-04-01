@@ -126,19 +126,17 @@ async fn test_self_description_independent() -> SongbirdResult<()> {
 /// Test: Environment-based configuration (not hardcoded)
 #[tokio::test]
 async fn test_configuration_from_environment() -> SongbirdResult<()> {
-    // Primal gets configuration from environment, not hardcoded
-    std::env::set_var("MY_PRIMAL_PORT", "9000");
-    std::env::set_var("MY_PRIMAL_CAPABILITY", "compute");
-    
-    let port = std::env::var("MY_PRIMAL_PORT").unwrap();
-    let capability = std::env::var("MY_PRIMAL_CAPABILITY").unwrap();
-    
+    songbird_process_env::set_var("E2EPSK_PRIMAL_PORT", "9000");
+    songbird_process_env::set_var("E2EPSK_PRIMAL_CAPABILITY", "compute");
+
+    let port = songbird_process_env::var("E2EPSK_PRIMAL_PORT").unwrap();
+    let capability = songbird_process_env::var("E2EPSK_PRIMAL_CAPABILITY").unwrap();
+
     assert_eq!(port, "9000");
     assert_eq!(capability, "compute");
-    
-    // Cleanup
-    std::env::remove_var("MY_PRIMAL_PORT");
-    std::env::remove_var("MY_PRIMAL_CAPABILITY");
+
+    songbird_process_env::remove_var("E2EPSK_PRIMAL_PORT");
+    songbird_process_env::remove_var("E2EPSK_PRIMAL_CAPABILITY");
     
     Ok(())
 }
@@ -281,22 +279,21 @@ async fn test_no_compile_time_primal_dependencies() {
 async fn test_identity_from_configuration() -> SongbirdResult<()> {
     // Primal identity comes from config, not hardcoded
     
-    std::env::set_var("PRIMAL_NAME", "my-custom-primal");
-    std::env::set_var("PRIMAL_CAPABILITIES", "compute,storage,ai");
-    
-    let name = std::env::var("PRIMAL_NAME").unwrap();
-    let capabilities: Vec<String> = std::env::var("PRIMAL_CAPABILITIES")
+    songbird_process_env::set_var("E2EPSK_PRIMAL_NAME", "my-custom-primal");
+    songbird_process_env::set_var("E2EPSK_PRIMAL_CAPABILITIES", "compute,storage,ai");
+
+    let name = songbird_process_env::var("E2EPSK_PRIMAL_NAME").unwrap();
+    let capabilities: Vec<String> = songbird_process_env::var("E2EPSK_PRIMAL_CAPABILITIES")
         .unwrap()
         .split(',')
         .map(|s| s.to_string())
         .collect();
-    
+
     assert_eq!(name, "my-custom-primal");
     assert_eq!(capabilities.len(), 3);
-    
-    // Cleanup
-    std::env::remove_var("PRIMAL_NAME");
-    std::env::remove_var("PRIMAL_CAPABILITIES");
+
+    songbird_process_env::remove_var("E2EPSK_PRIMAL_NAME");
+    songbird_process_env::remove_var("E2EPSK_PRIMAL_CAPABILITIES");
     
     Ok(())
 }

@@ -288,6 +288,20 @@ pub enum NetworkMethod {
     Listen,
 }
 
+/// `storage.*` — nestGate-delegated persistence (SB-03 migration surface).
+///
+/// When nestGate exposes real `storage.*` IPC (NG-01), Songbird will call these
+/// methods instead of embedding sled directly. Until then the enum is routed but
+/// the sled backend remains the active implementation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StorageMethod {
+    Get,
+    Put,
+    Delete,
+    List,
+    Flush,
+}
+
 /// Unix discovery encryption helpers (legacy names).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EncryptionDiscoveryMethod {
@@ -330,6 +344,7 @@ pub enum JsonRpcMethod {
     SongbirdServices(SongbirdServicesMethod),
     Songbird(SongbirdMethod),
     Network(NetworkMethod),
+    Storage(StorageMethod),
     EncryptionDiscovery(EncryptionDiscoveryMethod),
 }
 
@@ -453,6 +468,11 @@ impl JsonRpcMethod {
             Self::Network(NetworkMethod::BeaconExchange) => "network.beacon_exchange",
             Self::Network(NetworkMethod::Broadcast) => "network.broadcast",
             Self::Network(NetworkMethod::Listen) => "network.listen",
+            Self::Storage(StorageMethod::Get) => "storage.get",
+            Self::Storage(StorageMethod::Put) => "storage.put",
+            Self::Storage(StorageMethod::Delete) => "storage.delete",
+            Self::Storage(StorageMethod::List) => "storage.list",
+            Self::Storage(StorageMethod::Flush) => "storage.flush",
             Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt) => "encrypt_discovery",
             Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt) => "decrypt_discovery",
         }
@@ -586,6 +606,11 @@ impl JsonRpcMethod {
             "network.beacon_exchange" => Self::Network(NetworkMethod::BeaconExchange),
             "network.broadcast" => Self::Network(NetworkMethod::Broadcast),
             "network.listen" => Self::Network(NetworkMethod::Listen),
+            "storage.get" => Self::Storage(StorageMethod::Get),
+            "storage.put" => Self::Storage(StorageMethod::Put),
+            "storage.delete" => Self::Storage(StorageMethod::Delete),
+            "storage.list" => Self::Storage(StorageMethod::List),
+            "storage.flush" => Self::Storage(StorageMethod::Flush),
             "encrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt),
             "decrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt),
             _ => return Err(JsonRpcMethodParseError(s.to_string())),
@@ -684,6 +709,24 @@ mod json_rpc_method_tests {
         assert_eq!(v, "\"ipc.find_capability\"");
         let back: JsonRpcMethod = serde_json::from_str(&v).unwrap();
         assert_eq!(back, m);
+    }
+
+    #[test]
+    fn storage_methods_roundtrip() {
+        for (wire, expected) in [
+            ("storage.get", JsonRpcMethod::Storage(StorageMethod::Get)),
+            ("storage.put", JsonRpcMethod::Storage(StorageMethod::Put)),
+            ("storage.delete", JsonRpcMethod::Storage(StorageMethod::Delete)),
+            ("storage.list", JsonRpcMethod::Storage(StorageMethod::List)),
+            ("storage.flush", JsonRpcMethod::Storage(StorageMethod::Flush)),
+        ] {
+            let m = JsonRpcMethod::from_wire_str(wire).unwrap();
+            assert_eq!(m, expected);
+            assert_eq!(m.as_wire_str(), wire);
+            let json = serde_json::to_string(&m).unwrap();
+            let back: JsonRpcMethod = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, m);
+        }
     }
 
     #[test]

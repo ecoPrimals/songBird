@@ -133,7 +133,6 @@ fn initialize_service_paths_top_level_creates_under_tmp() {
     assert!(dirs.discovery.exists());
 }
 
-#[serial_test::serial]
 #[test]
 fn get_fallback_data_dir_with_xdg_data_home() {
     let base = tempfile::tempdir().expect("tempdir");
@@ -148,7 +147,6 @@ fn get_fallback_data_dir_with_xdg_data_home() {
     assert!(p.ends_with("songbird"));
 }
 
-#[serial_test::serial]
 #[test]
 fn get_fallback_config_dir_with_xdg_config_home() {
     let base = tempfile::tempdir().expect("tempdir");

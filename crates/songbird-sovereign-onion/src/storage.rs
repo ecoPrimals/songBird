@@ -9,6 +9,37 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
 
+/// Sync persistence backend for onion service data (SB-03: abstraction for sled → nestGate).
+///
+/// The sled implementation ([`OnionStorage`]) is the current default. When nestGate
+/// exposes `storage.*` IPC (NG-01), a `NestGateOnionBackend` can implement this trait
+/// to delegate persistence over JSON-RPC.
+pub trait OnionStorageBackend: Send + Sync {
+    /// Load an existing identity from persistent storage.
+    fn load_identity(&self) -> Result<Option<OnionIdentity>>;
+
+    /// Store identity to persistent storage.
+    fn store_identity(&self, identity: &OnionIdentity) -> Result<()>;
+
+    /// Store peer info.
+    fn store_peer(&self, peer: &PeerInfo) -> Result<()>;
+
+    /// Get peer info by onion address.
+    fn get_peer(&self, onion_address: &str) -> Result<Option<PeerInfo>>;
+
+    /// List all known peers.
+    fn list_peers(&self) -> Result<Vec<PeerInfo>>;
+
+    /// Update peer's last seen timestamp.
+    fn update_peer_last_seen(&self, onion_address: &str, timestamp: u64) -> Result<()>;
+
+    /// Remove peer by onion address.
+    fn remove_peer(&self, onion_address: &str) -> Result<()>;
+
+    /// Flush to durable storage.
+    fn flush(&self) -> Result<()>;
+}
+
 /// Persistent storage for onion service
 #[derive(Clone)]
 pub struct OnionStorage {
@@ -225,7 +256,7 @@ impl OnionStorage {
         Ok(())
     }
 
-    /// Clear all data (dangerous!)
+    /// Clear all data (test only)
     ///
     /// # Errors
     ///
@@ -244,6 +275,40 @@ impl OnionStorage {
     pub fn flush(&self) -> Result<()> {
         self.db.flush()?;
         Ok(())
+    }
+}
+
+impl OnionStorageBackend for OnionStorage {
+    fn load_identity(&self) -> Result<Option<OnionIdentity>> {
+        Self::load_identity(self)
+    }
+
+    fn store_identity(&self, identity: &OnionIdentity) -> Result<()> {
+        Self::store_identity(self, identity)
+    }
+
+    fn store_peer(&self, peer: &PeerInfo) -> Result<()> {
+        Self::store_peer(self, peer)
+    }
+
+    fn get_peer(&self, onion_address: &str) -> Result<Option<PeerInfo>> {
+        Self::get_peer(self, onion_address)
+    }
+
+    fn list_peers(&self) -> Result<Vec<PeerInfo>> {
+        Self::list_peers(self)
+    }
+
+    fn update_peer_last_seen(&self, onion_address: &str, timestamp: u64) -> Result<()> {
+        Self::update_peer_last_seen(self, onion_address, timestamp)
+    }
+
+    fn remove_peer(&self, onion_address: &str) -> Result<()> {
+        Self::remove_peer(self, onion_address)
+    }
+
+    fn flush(&self) -> Result<()> {
+        Self::flush(self)
     }
 }
 

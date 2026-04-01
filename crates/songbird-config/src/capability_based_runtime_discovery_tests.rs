@@ -305,7 +305,6 @@ fn capability_request_multiple_preferences_and_optional_features() {
     assert_eq!(r.optional_features, vec!["o1", "o2"]);
 }
 
-#[serial_test::serial]
 #[tokio::test]
 async fn discover_provider_succeeds_via_environment_only() {
     let key = "SONGBIRD_SERIALAI_PROVIDER_URL";

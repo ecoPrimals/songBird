@@ -253,13 +253,37 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
         }
     }
 
-    /// Serve JSON-RPC requests on the given endpoint
+    /// Serve JSON-RPC requests on the given endpoint.
     ///
-    /// This will listen for connections and handle requests until cancelled.
+    /// Listens for connections and handles requests until cancelled.
     pub async fn serve(&self, endpoint: VirtualEndpoint) -> IpcResult<()> {
+        self.serve_inner(endpoint, None).await
+    }
+
+    /// Serve with readiness notification — signals after socket is bound.
+    ///
+    /// Callers can `await` the `oneshot::Receiver` to know the server is ready
+    /// for connections without resorting to sleep-based polling.
+    pub async fn serve_with_ready(
+        &self,
+        endpoint: VirtualEndpoint,
+        ready: tokio::sync::oneshot::Sender<()>,
+    ) -> IpcResult<()> {
+        self.serve_inner(endpoint, Some(ready)).await
+    }
+
+    async fn serve_inner(
+        &self,
+        endpoint: VirtualEndpoint,
+        ready: Option<tokio::sync::oneshot::Sender<()>>,
+    ) -> IpcResult<()> {
         debug!("Starting Tower Atomic server on {}", endpoint.path);
 
         let mut listener = ipc::listen(endpoint).await?;
+
+        if let Some(tx) = ready {
+            let _ = tx.send(());
+        }
 
         loop {
             match listener.accept().await {

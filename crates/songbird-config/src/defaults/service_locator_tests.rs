@@ -28,7 +28,6 @@ fn discover_by_capability_returns_empty_when_nothing_configured() {
     assert!(results.is_empty());
 }
 
-#[serial_test::serial]
 #[test]
 fn discover_from_environment_parses_comma_separated_endpoints() {
     songbird_process_env::set_var(
@@ -46,7 +45,6 @@ fn discover_from_environment_parses_comma_separated_endpoints() {
     assert_eq!(results[1].port(), 3001);
 }
 
-#[serial_test::serial]
 #[test]
 fn discover_from_environment_handles_dashes_in_capability() {
     songbird_process_env::set_var("SONGBIRD_CAPABILITY_KEY_VALUE_ENDPOINTS", "10.0.0.1:6379");

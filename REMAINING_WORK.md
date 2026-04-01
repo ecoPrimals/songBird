@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: March 30, 2026  
+**Date**: April 1, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: March 31, 2026 (Session 31, Wave 89 — Deep Debt Evolution: QUIC Clippy Clean + Frame Refactor + Mock Isolation + Crypto Delegation + Env Modernization)
+**Last Deep Debt Audit**: April 1, 2026 (Session 33, Wave 91 — Deep Debt: serial elimination + event-driven evolution + deterministic tests)
 
 ---
 
@@ -29,12 +29,12 @@
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
 | **Hardcoded elimination** | All ports env-driven; `primal_names` constants module; DNS-SD/mDNS/broadcast discovery; capability-first |
 | **JSON-RPC handlers** | 14 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (ecosystem standard) |
-| **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain (Discovery, Network, Stun, Relay, etc.) |
+| **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain (Discovery, Network, Stun, Relay, Storage, etc.) |
 | **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
 | **BearDog crypto** | Full delegation wired: TLS record layer `encrypt/decrypt_record_delegated` → `crypto.aead_encrypt/decrypt`; JWT `encode_with_crypto/decode_with_crypto` → `crypto.hmac.sha256`; checkpoint `calculate_checksum` → `crypto.sha256`; discovery + rendezvous SHA-256/HMAC-SHA256 → `CryptoProvider::call`; all with local fallback + `tracing::warn!` |
-| **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + BearDog crypto delegation; `ring-crypto` opt-in feature gate on CLI only; `sysinfo` eliminated |
+| **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + BearDog crypto delegation; `ring-crypto` opt-in feature gate on CLI only (deny.toml wrapper: `rustls` only); `sysinfo` eliminated |
 | **`async-trait` evolution** | 85 `#[async_trait]` usages; ~8 traits have no `dyn` dispatch and are candidates for native async fn in trait (Rust 2024); remainder require `dyn` dispatch and stay |
 | **Live BearDog testing** | `BearDogFixture` in `songbird-test-utils`; `scripts/test-with-beardog.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
@@ -45,8 +45,11 @@
 | **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) — all three health names now wired on HTTP + Unix + IPC transports |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; `MockRendezvousClient/MockPeerConnector/MockPeerRegistry` in `tests_support` modules; XOR broadcast encryption isolated to test/mock builds; TLS record layer returns `CryptoUnavailable` instead of mock crypto |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, `serde_json::to_vec` (no intermediate String) |
-| **Concurrent tests** | All tests fully concurrent; injectable `_with` env readers; `tokio::time::pause()` for deterministic timing |
-| **Event-driven** | Zero `sleep`-based polling in production |
+| **`#[serial_test]`** | **0** — fully eliminated from all 30 crates + workspace integration tests; `serial_test` dev-dependency removed from 3 crates |
+| **`std::env::set_var`** | **0** in test code — all migrated to `songbird_process_env` overlay; e2e tests use unique per-test env keys |
+| **Concurrent tests** | All tests fully concurrent; injectable `_with()` env readers; `tokio::time::pause()` + `advance()` for deterministic timing |
+| **Event-driven** | Zero `sleep`-based polling in production; `UniversalIpcBroker` uses `oneshot` readiness signal (not sleep) |
+| **Deterministic circuit breakers** | Both `songbird-universal` and `songbird-orchestrator` circuit breakers use `tokio::time::Instant` + `start_paused = true` — tests complete in 0.00s |
 | **Module docs** | 77 `pub mod` declarations documented across 5 crates |
 | **Binary size** | 20MB release |
 | **`#[warn(missing_docs)]`** | 30/30 crates (all library crates have the lint enabled) |
@@ -54,6 +57,62 @@
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
 | **Crates** | 30 workspace members |
+
+---
+
+## SB-03: Sled → NestGate Storage Migration (Blocked on NG-01)
+
+**Status**: Abstraction layer complete; migration blocked until nestGate exposes `storage.*` IPC.
+
+### What was done (Wave 90)
+
+- **`storage.*` JSON-RPC methods** added to `songbird-types::JsonRpcMethod`: `storage.get`, `storage.put`, `storage.delete`, `storage.list`, `storage.flush` — defines the wire surface Songbird will use when calling nestGate
+- **`ConsentStorageBackend` trait** in `songbird-orchestrator::consent_management` — async trait abstracting consent persistence; sled `ConsentStorage` implements it; `ConsentManager::with_backend()` accepts any `Arc<dyn ConsentStorageBackend>`
+- **`TaskStorageBackend` trait** in `songbird-orchestrator::task_lifecycle` — async trait abstracting task + checkpoint persistence; sled `TaskStorage` implements it
+- **`OnionStorageBackend` trait** in `songbird-sovereign-onion::storage` — sync trait abstracting identity + peer persistence; sled `OnionStorage` implements it
+
+### Migration path (when NG-01 lands)
+
+1. Implement `NestGateConsentBackend` calling `storage.put`/`storage.get`/`storage.list`/`storage.delete` over JSON-RPC UDS
+2. Implement `NestGateTaskBackend` (same pattern)
+3. Implement `NestGateOnionBackend` (sync wrapper over async IPC, or evolve trait to async)
+4. Wire via capability discovery: if nestGate `storage` capability is discovered, use IPC backend; otherwise fall back to sled
+5. Remove `sled` from `[dependencies]` when all storage is delegated
+6. `songbird-tor-protocol` `persistent-cache` feature already has sled optional — same migration path
+
+### Remaining sled locations
+
+| Crate | Module | Backend |
+|-------|--------|---------|
+| `songbird-orchestrator` | `consent_management/storage_sled.rs` | `ConsentStorage` (sled) → `ConsentStorageBackend` |
+| `songbird-orchestrator` | `task_lifecycle/storage_sled.rs` | `TaskStorage` (sled) → `TaskStorageBackend` |
+| `songbird-sovereign-onion` | `storage.rs` | `OnionStorage` (sled) → `OnionStorageBackend` |
+| `songbird-tor-protocol` | `Cargo.toml` only | Optional dep, no Rust usage yet |
+
+---
+
+## Completed (Apr 1, 2026 — Deep Debt: Serial Elimination + Event-Driven Evolution — Session 33, Wave 91)
+
+### Wave 91: Deep Debt Execution — Fully Concurrent Tests + Event-Driven Production + Deterministic Timing
+
+- **Zero `#[serial_test]`**: Eliminated all 14 `#[serial_test::serial]` annotations across 8 files in `songbird-config` (10) and `songbird-universal-ipc` (2) + `capability_based_runtime_discovery_tests` (1) + e2e (1). Removed `serial_test` dev-dependency from 3 crates (songbird-config, songbird-universal-ipc, songbird-types).
+- **Injectable `_with()` pattern**: `detect_public_ip_with()` and `check_cloud_metadata_with()` in `songbird-config::defaults::network_detection` — tests inject closure env readers, zero global state mutation.
+- **Unique per-test env keys**: All env-touching tests use unique prefixed keys (`E2ERTCOMP_`, `E2ESOV*_`, `sbserialrtcap`, etc.) so parallel execution cannot conflict.
+- **E2e `std::env` migration**: All `tests/e2e/test_runtime_discovery.rs`, `test_service_discovery_sovereign.rs`, `test_primal_self_knowledge.rs` migrated from `std::env::set_var`/`remove_var` (Rust 2024 unsafe) to `songbird_process_env`.
+- **Event-driven broker startup**: `TowerAtomicServer::serve_with_ready()` + `UniversalIpcBroker::start_with_ready()` — oneshot readiness signal replaces 100ms sleep in `start_broker_with_discovery`.
+- **Deterministic circuit breaker tests**: Both `songbird-universal` and `songbird-orchestrator` circuit breakers evolved from `std::time::Instant` to `tokio::time::Instant`. Tests use `#[tokio::test(start_paused = true)]` + `tokio::time::advance()` — complete in 0.00s, no real waits.
+- **Rustdoc warnings fixed**: 4 redundant explicit link warnings in `songbird-quic` (`flow_control.rs`, `varint.rs`) simplified to intra-doc links.
+- **Zero regressions**: All 727 songbird-config tests, 674 songbird-universal tests, 320 songbird-universal-ipc tests, 178 songbird-quic tests, 33 orchestrator circuit breaker tests pass. `cargo deny`, `cargo fmt --check`, `cargo doc` all clean.
+
+---
+
+## Completed (Apr 1, 2026 — primalSpring Audit: SB-02 + SB-03 — Session 32, Wave 90)
+
+### Wave 90: primalSpring Audit Response — ring-crypto Cleanup + Storage Abstraction
+
+- **SB-02 resolved**: `deny.toml` comments clarified — `rcgen` remains as wrapper (`ring` enters via dev-dep of `songbird-tls` for test cert generation); `rustls` wrapper retained for `songbird-cli` `ring-crypto` opt-in feature. `songbird-quic` confirmed ring-free with `BeardogQuicCrypto`. CLI `Cargo.toml` and `tower.rs` documentation improved with explicit ecoBin warnings and production-must-not-enable guidance.
+- **SB-03 abstraction layer**: Three storage backend traits created (`ConsentStorageBackend`, `TaskStorageBackend`, `OnionStorageBackend`) with sled as default implementation. `storage.*` JSON-RPC method surface added to `JsonRpcMethod` dispatch table (5 methods: get/put/delete/list/flush). Migration to nestGate IPC is now mechanical when NG-01 ships. `ConsentManager::with_backend()` added for runtime backend injection.
+- **Zero regressions**: `cargo fmt --check` pass, `cargo clippy -D warnings` zero warnings, `cargo check --workspace --all-features` clean, all affected crate tests pass.
 
 ---
 
