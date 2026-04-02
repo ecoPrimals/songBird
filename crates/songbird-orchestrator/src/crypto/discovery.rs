@@ -15,7 +15,7 @@ use tracing::info;
 ///
 /// Delegates to [`songbird_crypto_provider::socket_discovery::discover_neural_api_socket`].
 /// Prefer [`songbird_crypto_provider::CryptoProvider::from_env`] when constructing a
-/// routed crypto client (Neural API by default; `BEARDOG_MODE=direct` for bootstrap).
+/// routed crypto client (Neural API by default; `SECURITY_PROVIDER_MODE=direct` for bootstrap).
 ///
 /// # Errors
 ///

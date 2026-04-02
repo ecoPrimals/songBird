@@ -64,29 +64,37 @@ impl SovereignSecurityValidator {
         }
     }
 
-    /// Attempt to discover and integrate with `BearDog` (network effect)
+    /// Attempt to discover and integrate with the optional security-provider endpoint (network effect).
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` connection fails when endpoint is configured
-    pub async fn discover_beardog(&self) -> SongbirdResult<bool> {
-        info!("🔍 Attempting BearDog capability discovery...");
+    /// Returns an error if the security provider connection fails when an endpoint is configured.
+    pub async fn discover_security_provider(&self) -> SongbirdResult<bool> {
+        info!("🔍 Attempting security provider capability discovery...");
 
         // In production, this would use Songbird's discovery system:
         // let songbird_discovery = UniversalAdapter::new("songbird")?;
-        // let beardog_services = songbird_discovery.discover_capability("enhanced_security").await?;
+        // let services = songbird_discovery.discover_capability("enhanced_security").await?;
 
-        // For now, check environment or config
-        let beardog_available = songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT").is_ok();
+        // For now, check environment or config (capability-based names first)
+        let beardog_available = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            .or_else(|_| songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT"))
+            .is_ok();
 
         if beardog_available {
-            info!("✅ BearDog discovered - enabling enhanced security network effect");
+            info!("✅ Security provider discovered - enabling enhanced security network effect");
             *self.beardog.write().await = Some(BearDogIntegration::connect().await?);
             Ok(true)
         } else {
-            info!("ℹ️  BearDog not discovered - continuing with sovereign security");
+            info!("ℹ️  Security provider not discovered - continuing with sovereign security");
             Ok(false)
         }
+    }
+
+    /// Discover optional legacy `BearDog` integration (deprecated alias).
+    #[deprecated(note = "use discover_security_provider (capability-based naming)")]
+    pub async fn discover_beardog(&self) -> SongbirdResult<bool> {
+        self.discover_security_provider().await
     }
 
     /// Validate execution request
@@ -222,19 +230,21 @@ struct BearDogIntegration {
 }
 
 impl BearDogIntegration {
-    /// Connect to `BearDog` security service
+    /// Connect to the delegated security validation HTTP endpoint
     ///
-    /// Discovers `BearDog` endpoint via:
-    /// 1. `BEARDOG_SECURITY_ENDPOINT` environment variable
-    /// 2. `SONGBIRD_SECURITY_ENDPOINT` environment variable
-    /// 3. Development-only fallback to `localhost:DEFAULT_HTTPS_PORT`
+    /// Resolves base URL via:
+    /// 1. `SECURITY_PROVIDER_ENDPOINT` (capability-based)
+    /// 2. `BEARDOG_SECURITY_ENDPOINT` (legacy)
+    /// 3. `SONGBIRD_SECURITY_ENDPOINT` (legacy)
+    /// 4. Development-only fallback to `localhost:DEFAULT_HTTPS_PORT`
     ///
     /// # Errors
     ///
     /// Returns an error if HTTP client cannot be created, or if no endpoint
     /// is configured in release builds.
     async fn connect() -> SongbirdResult<Self> {
-        let endpoint = songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT")
+        let endpoint = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            .or_else(|_| songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT"))
             .or_else(|_| songbird_process_env::var("SONGBIRD_SECURITY_ENDPOINT"))
             .or_else(|_| -> Result<String, std::env::VarError> {
                 #[cfg(debug_assertions)]
@@ -251,8 +261,8 @@ impl BearDogIntegration {
             })
             .map_err(|_| {
                 SongbirdError::configuration(
-                    "BearDog security endpoint not configured. \
-                     Set BEARDOG_SECURITY_ENDPOINT or SONGBIRD_SECURITY_ENDPOINT.",
+                    "Security provider endpoint not configured. \
+                     Set SECURITY_PROVIDER_ENDPOINT, BEARDOG_SECURITY_ENDPOINT, or SONGBIRD_SECURITY_ENDPOINT.",
                 )
             })?;
 

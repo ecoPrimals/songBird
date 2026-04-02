@@ -11,7 +11,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use songbird_orchestrator::auth::{
-    discover_beardog_socket, discover_beardog_socket_for_family, get_beardog_socket_for_jwt,
+    discover_security_socket, discover_security_socket_for_family, get_security_socket_for_jwt,
     provision_jwt_secret,
 };
 use std::sync::Mutex;
@@ -25,12 +25,13 @@ fn test_capability_discovery_with_security_provider() {
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Set SECURITY_PROVIDER
     songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/test-beardog-unit.sock");
 
-    let socket = discover_beardog_socket();
+    let socket = discover_security_socket();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-unit.sock");
 
@@ -44,12 +45,13 @@ fn test_capability_discovery_with_beardog_socket() {
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
-    // Set BEARDOG_SOCKET (explicit override)
+    // Set BEARDOG_SOCKET (legacy explicit override; prefer SECURITY_PROVIDER_SOCKET)
     songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog-override.sock");
 
-    let socket = discover_beardog_socket();
+    let socket = discover_security_socket();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-override.sock");
 
@@ -63,18 +65,21 @@ fn test_capability_discovery_priority() {
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
-    // Set both (SECURITY_PROVIDER should win)
+    // Set both (SECURITY_PROVIDER should win over SECURITY_PROVIDER_SOCKET and BEARDOG_SOCKET)
     songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/security-provider.sock");
+    songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/tmp/security-provider-socket.sock");
     songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/beardog-socket.sock");
 
-    let socket = discover_beardog_socket();
+    let socket = discover_security_socket();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/security-provider.sock");
 
     // Cleanup
     songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 }
 
@@ -84,10 +89,11 @@ fn test_family_specific_discovery() {
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Family-specific discovery should fall back to generic
-    let socket = discover_beardog_socket_for_family("nat0");
+    let socket = discover_security_socket_for_family("nat0");
 
     // May or may not find a socket depending on system state
     // Just verify it doesn't panic
@@ -97,16 +103,17 @@ fn test_family_specific_discovery() {
 }
 
 #[test]
-fn test_get_beardog_socket_for_jwt() {
+fn test_get_security_socket_for_jwt() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/jwt-test-unit.sock");
 
-    let socket = get_beardog_socket_for_jwt();
+    let socket = get_security_socket_for_jwt();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap(), "/tmp/jwt-test-unit.sock");
 
@@ -160,9 +167,10 @@ fn test_capability_discovery_no_env_vars() {
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
-    let socket = discover_beardog_socket();
+    let socket = discover_security_socket();
 
     // May or may not find a socket depending on system state
     // Just verify it doesn't panic and returns Option

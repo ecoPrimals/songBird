@@ -10,7 +10,7 @@
 //! ## XDG Base Directory Compliance
 //!
 //! Following XDG Base Directory Specification for runtime files:
-//! - Priority 1: `${primal_name}_SOCKET` (explicit override)
+//! - Priority 1: `${primal_name}_SOCKET` (explicit override); for `beardog`, `SECURITY_PROVIDER_SOCKET` is checked first
 //! - Priority 2: `BIOMEOS_SOCKET_DIR/{primal}.sock` (shared directory)
 //! - Priority 3: `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` (XDG standard)
 //! - Priority 4: `/run/user/$UID/biomeos/{primal}.sock` (fallback XDG)
@@ -35,6 +35,7 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
+use songbird_types::primal_names::BEARDOG;
 use std::path::PathBuf;
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, info, warn};
@@ -47,7 +48,7 @@ pub struct UnixIPC;
 /// Get XDG-compliant Unix socket path for a primal
 ///
 /// **Priority order** (biomeOS standard):
-/// 1. `{PRIMAL_NAME}_SOCKET` - Explicit override (e.g., `BEARDOG_SOCKET`)
+/// 1. For `beardog`: `SECURITY_PROVIDER_SOCKET` then `{PRIMAL_NAME}_SOCKET` (e.g. `BEARDOG_SOCKET`)
 /// 2. `BIOMEOS_SOCKET_DIR/{primal}.sock` - Shared socket directory
 /// 3. `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` - XDG standard
 /// 4. `/run/user/$UID/biomeos/{primal}.sock` - Fallback XDG (Pure Rust!)
@@ -63,7 +64,12 @@ fn resolve_socket_path<F>(primal_name: &str, env_reader: F) -> PathBuf
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
 {
-    // Priority 1: Explicit override (e.g., BEARDOG_SOCKET=/path/to/socket.sock)
+    // Priority 1: Explicit override — capability name first for security provider primal
+    if primal_name == BEARDOG
+        && let Ok(path) = env_reader("SECURITY_PROVIDER_SOCKET")
+    {
+        return PathBuf::from(path);
+    }
     let override_var = format!("{}_SOCKET", primal_name.to_uppercase().replace('-', "_"));
     if let Ok(path) = env_reader(&override_var) {
         return PathBuf::from(path);
@@ -232,6 +238,16 @@ mod tests {
         let env = mock_env(HashMap::from([("TESTPRIMAL_SOCKET", "/custom/path/test.sock")]));
         let path = resolve_socket_path("testprimal", env);
         assert_eq!(path, PathBuf::from("/custom/path/test.sock"));
+    }
+
+    #[test]
+    fn test_get_socket_path_beardog_security_provider_first() {
+        let env = mock_env(HashMap::from([
+            ("SECURITY_PROVIDER_SOCKET", "/cap/security.sock"),
+            ("BEARDOG_SOCKET", "/legacy/beardog.sock"),
+        ]));
+        let path = resolve_socket_path(BEARDOG, env);
+        assert_eq!(path, PathBuf::from("/cap/security.sock"));
     }
 
     #[test]

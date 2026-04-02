@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! NFC configuration with `BearDog` integration
+//! NFC configuration with security-provider (crypto) socket discovery
 
 use std::path::PathBuf;
 use std::time::Duration;
 
 /// NFC protocol configuration
 ///
-/// All crypto operations delegated to `BearDog` - zero hardcoded secrets
+/// All crypto operations delegated to the configured security provider — zero hardcoded secrets
 #[derive(Debug, Clone)]
 pub struct NfcConfig {
-    /// `BearDog` socket path for crypto operations
+    /// Security provider Unix socket path for crypto operations (see discovery order below)
     pub beardog_socket: PathBuf,
 
     /// Exchange timeout (including timing protection delays)
@@ -33,8 +33,8 @@ pub struct NfcConfig {
 impl Default for NfcConfig {
     fn default() -> Self {
         Self {
-            // BearDog socket discovered at runtime (no hardcoding)
-            beardog_socket: Self::discover_beardog_socket(),
+            // Security provider socket discovered at runtime (no hardcoding)
+            beardog_socket: Self::discover_security_provider_socket(),
 
             exchange_timeout: Duration::from_secs(30),
             timing_protection: true,
@@ -52,7 +52,7 @@ impl NfcConfig {
         Self::default()
     }
 
-    /// Set `BearDog` socket path
+    /// Set security provider socket path (field name retains legacy `beardog_socket`)
     #[must_use]
     pub fn with_beardog_socket(mut self, socket: PathBuf) -> Self {
         self.beardog_socket = socket;
@@ -85,7 +85,7 @@ impl NfcConfig {
     /// 6. XDG: `$XDG_RUNTIME_DIR/biomeos/crypto.sock` - Capability-named
     /// 7. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` - Provider hint
     /// 8. Legacy: `/tmp/biomeos/security.sock` - Fallback
-    fn discover_beardog_socket() -> PathBuf {
+    fn discover_security_provider_socket() -> PathBuf {
         // 1. Capability-based env vars (preferred - primal agnostic)
         for env_var in &[
             "SECURITY_PROVIDER_SOCKET",

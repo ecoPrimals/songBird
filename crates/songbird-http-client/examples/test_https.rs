@@ -43,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     info!("🌐 Target: {}", url);
-    info!("🔧 Mode: From environment (BEARDOG_MODE)");
+    info!("🔧 Mode: From environment (SECURITY_PROVIDER_MODE or BEARDOG_MODE)");
     info!("");
 
     // Create HTTP client (uses environment configuration)

@@ -268,10 +268,10 @@ pub struct BearDogRelayAuthority {
 impl BearDogRelayAuthority {
     /// Create new `BearDog` relay authority
     ///
-    /// Discovers `BearDog` socket path at runtime:
-    /// 1. `BEARDOG_SOCKET` environment variable
-    /// 2. XDG runtime dir: `$XDG_RUNTIME_DIR/beardog/beardog.sock`
-    /// 3. Fallback: `/tmp/beardog.sock`
+    /// Discovers security provider socket path at runtime:
+    /// 1. `SECURITY_PROVIDER_SOCKET` / `CRYPTO_PROVIDER_SOCKET` / `BEARDOG_SOCKET` (see [`Self::discover_socket_path`])
+    /// 2. XDG runtime dir capability-named sockets under `biomeos/`
+    /// 3. Legacy fallbacks under `/tmp/biomeos/` or `/tmp/`
     pub fn new() -> Self {
         let socket_path = Self::discover_socket_path();
         info!("BearDog relay authority created (socket: {:?})", socket_path);

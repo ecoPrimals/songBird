@@ -64,7 +64,7 @@ impl BearDogFixture {
         Ok(fixture)
     }
 
-    /// Socket path for `BEARDOG_SOCKET` env var.
+    /// Socket path for `SECURITY_PROVIDER_SOCKET` (preferred) or legacy `BEARDOG_SOCKET`.
     #[must_use]
     pub fn socket_path(&self) -> &Path {
         &self.socket_path

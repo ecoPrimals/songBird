@@ -23,8 +23,8 @@
 //! while maintaining backward compatibility with manual deployments.
 
 use songbird_types::defaults::paths::{
-    BEARDOG_SOCKET_LEGACY, BIOMEOS_RUNTIME_SUBDIR, IPC_DISCOVERY_TMP_DIR,
-    NEURAL_API_SOCKET_LEGACY_PATTERN,
+    BIOMEOS_RUNTIME_SUBDIR, IPC_DISCOVERY_TMP_DIR, NEURAL_API_SOCKET_LEGACY_PATTERN,
+    SECURITY_SOCKET_TMP_FALLBACK,
 };
 use songbird_types::primal_names::{BEARDOG, NEURAL_API};
 use std::path::{Path, PathBuf};
@@ -313,8 +313,8 @@ fn try_xdg_socket(runtime_dir: &str, primal_name: &str, family_id: &str) -> Opti
 ///
 /// # Arguments
 ///
-/// * `env_var` - Environment variable name to check (e.g., "`BEARDOG_SOCKET`")
-/// * `primal_name` - Primal name for XDG discovery (e.g., "beardog")
+/// * `env_var` - Environment variable name to check (e.g., "`SECURITY_PROVIDER_SOCKET`")
+/// * `primal_name` - Primal name for XDG discovery (e.g., "security")
 /// * `legacy_path` - Legacy `/tmp` path for backward compatibility
 ///
 /// # Returns
@@ -332,14 +332,39 @@ pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> S
         }
     }
 }
+/// Discover security provider socket via capability-based discovery.
 ///
-/// Checks in order:
-/// 1. `$BEARDOG_SOCKET`
-/// 2. `$XDG_RUNTIME_DIR/biomeos/beardog-$FAMILY_ID.sock`
-/// 3. `/tmp/beardog.sock` (legacy)
+/// Priority (wateringHole v1.2):
+/// 1. `$SECURITY_PROVIDER_SOCKET` (capability-standard)
+/// 2. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
+/// 3. `$BEARDOG_SOCKET` (legacy, deprecated)
+/// 4. `/tmp/beardog.sock` (legacy fallback)
+#[must_use]
+pub fn discover_security_provider_socket() -> String {
+    if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Security provider via $SECURITY_PROVIDER_SOCKET: {socket}");
+        return socket;
+    }
+
+    if let Ok(xdg_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+        let cap_path = PathBuf::from(&xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR).join("security.sock");
+        if cap_path.exists() {
+            let path = cap_path.to_string_lossy().to_string();
+            info!("✅ Security provider via capability symlink: {path}");
+            return path;
+        }
+    }
+
+    discover_socket("BEARDOG_SOCKET", BEARDOG, SECURITY_SOCKET_TMP_FALLBACK)
+}
+
+/// Deprecated alias for [`discover_security_provider_socket`].
+#[deprecated(note = "Use discover_security_provider_socket (capability-based naming)")]
 #[must_use]
 pub fn discover_beardog_socket() -> String {
-    discover_socket("BEARDOG_SOCKET", BEARDOG, BEARDOG_SOCKET_LEGACY)
+    discover_security_provider_socket()
 }
 
 /// Discover Neural API socket with full fallback chain

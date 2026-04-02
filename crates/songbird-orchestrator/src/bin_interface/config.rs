@@ -202,9 +202,9 @@ SONGBIRD_BIRDSONG_ENABLED=true
 # Federation
 SONGBIRD_FEDERATION_ENABLED=true
 
-# Security — BearDog discovered at runtime via capability system.
-# Override only if running BearDog at a non-standard path:
-# BEARDOG_SOCKET=/run/user/${{UID}}/biomeos/beardog-{family_id}.sock
+# Security — discovered at runtime via capability system.
+# Override only if running security provider at a non-standard path:
+# SECURITY_PROVIDER_SOCKET=/run/user/${{UID}}/biomeos/security.sock
 
 # Logging
 RUST_LOG=info

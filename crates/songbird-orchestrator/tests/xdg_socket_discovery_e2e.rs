@@ -216,7 +216,7 @@ async fn test_e2e_xdg_path_priority_xdg_runtime_dir_first() {
     use songbird_orchestrator::primal_discovery::discover_with;
     let temp_dir_str = temp_dir.to_str().unwrap();
     let result = discover_with(Capability::Crypto, |name| match name {
-        "CRYPTO_PROVIDER_SOCKET" | "BEARDOG_SOCKET" => None,
+        "CRYPTO_PROVIDER_SOCKET" | "SECURITY_PROVIDER_SOCKET" | "BEARDOG_SOCKET" => None,
         "XDG_RUNTIME_DIR" => Some(temp_dir_str.to_string()),
         _ => None,
     })
@@ -280,7 +280,7 @@ async fn test_e2e_socket_naming_no_family_suffix() {
     use songbird_orchestrator::primal_discovery::discover_with;
     let temp_dir_str = temp_dir.to_str().unwrap();
     let result = discover_with(Capability::Crypto, |name| match name {
-        "CRYPTO_PROVIDER_SOCKET" | "BEARDOG_SOCKET" => None,
+        "CRYPTO_PROVIDER_SOCKET" | "SECURITY_PROVIDER_SOCKET" | "BEARDOG_SOCKET" => None,
         "XDG_RUNTIME_DIR" => Some(temp_dir_str.to_string()),
         _ => None,
     })
@@ -400,6 +400,7 @@ async fn test_e2e_security_client_discovers_xdg_beardog() {
     songbird_process_env::remove_var("NEURAL_API_SOCKET");
     songbird_process_env::remove_var("NEURALS_SOCKET");
     songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     use songbird_orchestrator::crypto::discovery::get_beardog_crypto_socket;
@@ -426,7 +427,7 @@ async fn test_e2e_xdg_directory_structure_compliance() {
 
     // Verify expected directory structure
     // /run/user/$UID/biomeos/
-    // ├── beardog.sock
+    // ├── security.sock / crypto.sock (capability sockets; legacy: beardog.sock)
     // ├── songbird.sock
     // ├── neural-api.sock
     // └── ...

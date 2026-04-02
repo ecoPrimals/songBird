@@ -98,9 +98,10 @@ impl TorHandler {
         Self::get_beardog_socket_from_env()
     }
 
-    /// Get `BearDog` socket path from environment (capability-based discovery)
+    /// Get security provider socket path from environment (capability-based discovery)
     fn get_beardog_socket_from_env() -> Option<String> {
-        songbird_process_env::var("BEARDOG_SOCKET")
+        songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
             .or_else(|_| songbird_process_env::var("BEARDOG_CRYPTO_SOCKET"))
             .or_else(|_| songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER"))
             .ok()

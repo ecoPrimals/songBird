@@ -148,28 +148,22 @@ impl BeardogCryptoClient {
     fn discover_socket() -> Result<String> {
         #[cfg(unix)]
         {
-            use crate::socket_discovery::{discover_beardog_socket, discover_neural_api_socket};
+            use crate::socket_discovery::{discover_security_provider_socket, discover_neural_api_socket};
 
-            // Strategy 1: Try BearDog socket (checks env vars + XDG + fallback)
-            // This includes BEARDOG_SOCKET, BEARDOG_CRYPTO_SOCKET, SONGBIRD_CRYPTO_SOCKET
-            let beardog_socket = discover_beardog_socket(None);
+            let security_socket = discover_security_provider_socket(None);
 
-            // Check if it's a TCP socket (tcp:host:port format) - skip file existence check
-            if beardog_socket.starts_with("tcp:") {
-                tracing::info!("✅ Discovered BearDog TCP socket: {}", beardog_socket);
-                return Ok(beardog_socket);
+            if security_socket.starts_with("tcp:") {
+                tracing::info!("✅ Discovered security provider TCP socket: {}", security_socket);
+                return Ok(security_socket);
             }
 
-            if Path::new(&beardog_socket).exists() {
-                tracing::info!("✅ Discovered BearDog socket: {}", beardog_socket);
-                return Ok(beardog_socket);
+            if Path::new(&security_socket).exists() {
+                tracing::info!("✅ Discovered security provider socket: {}", security_socket);
+                return Ok(security_socket);
             }
 
-            // Strategy 2: Try Neural API socket (checks env vars + XDG + fallback)
-            // This includes NEURAL_API_SOCKET, NEURALS_SOCKET
             let neural_socket = discover_neural_api_socket(None);
 
-            // Check if it's a TCP socket
             if neural_socket.starts_with("tcp:") {
                 tracing::info!("✅ Discovered Neural API TCP socket: {}", neural_socket);
                 return Ok(neural_socket);
@@ -180,11 +174,10 @@ impl BeardogCryptoClient {
                 return Ok(neural_socket);
             }
 
-            // Strategy 3: Legacy fallback paths (for backward compatibility)
             let legacy_paths = vec![
                 "/var/run/neural-api/socket",
-                "/var/run/beardog/crypto.sock",
-                "/run/beardog/crypto.sock",
+                "/var/run/biomeos/security.sock",
+                "/run/biomeos/security.sock",
             ];
 
             for path in legacy_paths {
@@ -195,22 +188,22 @@ impl BeardogCryptoClient {
             }
 
             Err(TlsError::CryptoError(format!(
-                "Could not discover BearDog or Neural API socket. Tried:\n\
-                 - BearDog: {beardog_socket} (not found)\n\
+                "Could not discover security provider or Neural API socket. Tried:\n\
+                 - Security: {security_socket} (not found)\n\
                  - Neural API: {neural_socket} (not found)\n\
-                 - Legacy paths: /var/run/neural-api/socket, /var/run/beardog/crypto.sock (not found)\n\
+                 - Legacy: /var/run/neural-api/socket, /var/run/biomeos/security.sock (not found)\n\
                  \n\
-                 Set one of: BEARDOG_SOCKET=tcp:host:port, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR + FAMILY_ID"
+                 Set one of: SECURITY_PROVIDER_SOCKET, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR"
             )))
         }
 
         #[cfg(windows)]
         {
-            // Windows: Use TCP localhost fallback
-            // Windows path: env-based TCP fallback until universal IPC discovery covers named pipes.
-            tracing::warn!("⚠️  Windows: Using TCP localhost fallback for BearDog crypto");
+            tracing::warn!("⚠️  Windows: Using TCP localhost fallback for security provider");
 
-            // Try environment variables first
+            if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET") {
+                return Ok(socket);
+            }
             if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
                 return Ok(socket);
             }
@@ -218,7 +211,8 @@ impl BeardogCryptoClient {
                 return Ok(socket);
             }
 
-            let port = songbird_process_env::var("BEARDOG_PORT")
+            let port = songbird_process_env::var("SECURITY_PROVIDER_PORT")
+                .or_else(|_| songbird_process_env::var("BEARDOG_PORT"))
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);
@@ -228,8 +222,9 @@ impl BeardogCryptoClient {
 
         #[cfg(not(any(unix, windows)))]
         {
-            tracing::warn!("⚠️  Platform: Using TCP localhost fallback for BearDog crypto");
-            let port = songbird_process_env::var("BEARDOG_PORT")
+            tracing::warn!("⚠️  Platform: Using TCP localhost fallback for security provider");
+            let port = songbird_process_env::var("SECURITY_PROVIDER_PORT")
+                .or_else(|_| songbird_process_env::var("BEARDOG_PORT"))
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);

@@ -82,10 +82,9 @@ impl SongbirdHttpClient {
     /// Create from environment variable with standard HTTP config
     ///
     /// Automatically detects Neural API mode or Direct mode based on environment:
-    /// - `BEARDOG_MODE=neural` (default): Routes through Neural API for `capability.call`
-    /// - `BEARDOG_MODE=direct` (testing): Direct connection to `BearDog`
+    /// - `SECURITY_PROVIDER_MODE` or `BEARDOG_MODE`: `neural` (default) routes through Neural API for `capability.call`; `direct` uses the security/crypto provider socket.
     ///
-    /// Uses `NEURAL_API_SOCKET` or `BEARDOG_SOCKET` accordingly.
+    /// Uses `NEURAL_API_SOCKET` / `NEURALS_SOCKET` in neural mode, or `SECURITY_PROVIDER_SOCKET` / `BEARDOG_SOCKET` in direct mode (via provider discovery).
     pub fn from_env() -> Self {
         info!("🌐 Creating Songbird HTTP client from environment");
 
@@ -113,7 +112,7 @@ impl SongbirdHttpClient {
 
         // v5.28.0: ALWAYS use environment-based routing (TRUE PRIMAL pattern)
         // This ensures capability.call routing via Neural API
-        // The socket_path parameter is ignored - routing determined by BEARDOG_MODE
+        // The socket_path parameter is ignored - routing determined by SECURITY_PROVIDER_MODE / BEARDOG_MODE
         Self {
             crypto: Arc::new(BearDogProvider::from_env()),
             tls_config,

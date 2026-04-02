@@ -30,12 +30,12 @@ async fn test_socket_discovery_priority() {
     let handler = BirdSongHandler::new();
 
     // Test that discovery doesn't panic (socket may not exist in test env)
-    let result = handler.discover_beardog_socket().await;
+    let result = handler.discover_security_provider_socket().await;
 
     // In CI/test environment, socket won't exist - that's expected
     if result.is_err() {
         let err = result.unwrap_err();
-        assert!(err.contains("BearDog socket not found"));
+        assert!(err.contains("Security provider socket not found"));
     }
 }
 

@@ -37,6 +37,7 @@ pub use capability::{
 pub use beardog_provider::BearDogProvider;
 pub use discovery::discover_crypto_capability;
 pub use socket_discovery::{
-    IpcEndpoint, discover_beardog_socket, discover_ipc_endpoint, discover_neural_api_socket,
+    IpcEndpoint, discover_security_provider_socket,
+    discover_ipc_endpoint, discover_neural_api_socket,
     discover_socket,
 };

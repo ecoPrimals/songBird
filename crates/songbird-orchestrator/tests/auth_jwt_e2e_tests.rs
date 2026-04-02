@@ -39,9 +39,12 @@ use tokio::time::timeout;
 #[ignore = "Requires BearDog running"]
 async fn test_e2e_jwt_provisioning_from_beardog() {
     // This test requires BearDog to be running
-    // Set BEARDOG_SOCKET to test with real BearDog
+    // Set SECURITY_PROVIDER_SOCKET (or legacy BEARDOG_SOCKET) to test with the security provider
 
-    if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
+    let socket_opt = std::env::var("SECURITY_PROVIDER_SOCKET")
+        .or_else(|_| std::env::var("BEARDOG_SOCKET"));
+
+    if let Ok(socket) = socket_opt {
         println!("🔍 Testing JWT provisioning from BearDog at: {socket}");
 
         let result = timeout(
@@ -73,7 +76,7 @@ async fn test_e2e_jwt_provisioning_from_beardog() {
             }
         }
     } else {
-        println!("⏭️  Skipping BearDog E2E test (set BEARDOG_SOCKET to enable)");
+        println!("⏭️  Skipping BearDog E2E test (set SECURITY_PROVIDER_SOCKET or BEARDOG_SOCKET to enable)");
     }
 }
 

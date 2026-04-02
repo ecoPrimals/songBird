@@ -63,10 +63,10 @@ impl RendezvousClient {
 
         info!("📡 Registering with rendezvous via RPC at {:?}", self.socket_path);
 
-        // Get public key fingerprint (may involve BearDog call)
+        // Get public key fingerprint (may involve security-provider RPC)
         let public_key_fingerprint = self.get_public_key_fingerprint().await?;
 
-        // Get signature (may involve BearDog call)
+        // Get signature (may involve security-provider RPC)
         let signature = self.sign_message_for_registration().await;
 
         let msg = RegisterPresenceMessage {
@@ -184,16 +184,16 @@ impl RendezvousClient {
         }
     }
 
-    /// Get public key fingerprint from `BearDog`, or a deterministic HMAC-based surrogate.
+    /// Get public key fingerprint from the security provider, or a deterministic HMAC-based surrogate.
     ///
-    /// When `BEARDOG_SOCKET_PATH` is set and `crypto.get_public_key` succeeds, returns
+    /// When `SECURITY_PROVIDER_SOCKET`, `BEARDOG_SOCKET`, or legacy `BEARDOG_SOCKET_PATH` is set and `crypto.get_public_key` succeeds, returns
     /// `sha256:` + hex(SHA-256(pubkey)). Otherwise derives
     /// `hmac-sha256:` + hex(HMAC-SHA256(key, `node_id`)) using a fixed domain key so the
     /// value is stable per node without silently using a global placeholder string.
     ///
     /// # Errors
     ///
-    /// Returns an error when `BearDog` is unavailable or fails and there is no `node_id`
+    /// Returns an error when the security provider is unavailable or fails and there is no `node_id`
     /// to derive a surrogate fingerprint from (`CryptoUnavailable`).
     async fn get_public_key_fingerprint(&self) -> Result<String> {
         let crypto = songbird_crypto_provider::CryptoProvider::from_env();
@@ -216,7 +216,10 @@ impl RendezvousClient {
             }
         }
 
-        if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET_PATH")
+        let legacy_socket_path = ["SECURITY_PROVIDER_SOCKET", "BEARDOG_SOCKET", "BEARDOG_SOCKET_PATH"]
+            .iter()
+            .find_map(|k| songbird_process_env::var(k).ok());
+        if let Some(socket_path) = legacy_socket_path
             && let Ok(beardog_client) = UnixRpcClient::new(PathBuf::from(socket_path))
         {
             match beardog_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
@@ -225,7 +228,7 @@ impl RendezvousClient {
                     return Ok(format!("sha256:{}", hex::encode(hash)));
                 }
                 Err(e) => {
-                    debug!("Legacy BearDog path failed: {e}; falling back to HMAC surrogate");
+                    debug!("Legacy direct-socket path failed: {e}; falling back to HMAC surrogate");
                 }
             }
         }
@@ -233,7 +236,7 @@ impl RendezvousClient {
         let node_info = self
             .node_info
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires BearDog (CryptoProvider or BEARDOG_SOCKET_PATH) or node identity"))?;
+            .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires security provider (CryptoProvider or SECURITY_PROVIDER_SOCKET / BEARDOG_SOCKET / BEARDOG_SOCKET_PATH) or node identity"))?;
 
         const DOMAIN_KEY: &[u8] = b"songbird.rendezvous.pkfp.v1";
         let tag = crate::crypto_helpers::hmac_sha256(

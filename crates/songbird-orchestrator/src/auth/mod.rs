@@ -36,7 +36,8 @@ pub use capability_discovery::{
     get_security_socket_for_jwt, get_security_socket_for_jwt_with,
 };
 
-// Backward-compatible aliases
+// Backward-compatible aliases (deprecated, kept for downstream callers)
+#[allow(deprecated)]
 pub use capability_discovery::{
     discover_beardog_socket, discover_beardog_socket_for_family, discover_beardog_socket_with,
     get_beardog_socket_for_jwt, get_beardog_socket_for_jwt_with,

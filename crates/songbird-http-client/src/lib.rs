@@ -122,7 +122,7 @@ pub use ipc_client::multipart;
 /// Crypto capability traits, TLS secret bags, and runtime discovery helpers for `BearDog` sockets.
 pub use crypto::{
     BearDogProvider, CryptoCapability, IpcEndpoint, TlsApplicationSecrets, TlsHandshakeSecrets,
-    discover_beardog_socket, discover_crypto_capability, discover_ipc_endpoint,
+    discover_security_provider_socket, discover_crypto_capability, discover_ipc_endpoint,
     discover_neural_api_socket,
 };
 

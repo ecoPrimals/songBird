@@ -128,7 +128,7 @@ impl BearDogClient {
 
     /// Create from environment variable with isomorphic discovery
     ///
-    /// Checks `BEARDOG_MODE` env var to determine mode:
+    /// Checks `SECURITY_PROVIDER_MODE` (preferred) or `BEARDOG_MODE` to determine mode:
     /// - "direct" → Direct mode (discovers `BearDog` endpoint) - DEPRECATED for production
     /// - "neural" or default → Neural API mode (discovers Neural API endpoint) - TRUE PRIMAL pattern
     ///
@@ -136,8 +136,9 @@ impl BearDogClient {
     pub fn from_env() -> Self {
         use crate::crypto::socket_discovery;
 
-        let mode =
-            songbird_process_env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
+        let mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")
+            .or_else(|_| songbird_process_env::var("BEARDOG_MODE"))
+            .unwrap_or_else(|_| "neural".to_string());
 
         if mode.to_lowercase() == "direct" {
             // Direct mode: Discover crypto provider endpoint via capability

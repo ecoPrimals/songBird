@@ -30,7 +30,22 @@ pub fn run_user_biomeos_socket(uid: &str, socket_filename: &str) -> PathBuf {
     PathBuf::from(format!("/run/user/{uid}/{BIOMEOS_RUNTIME_SUBDIR}/{socket_filename}"))
 }
 
-/// Default `BearDog` socket paths (tried in order during discovery)
+/// Preferred default security provider socket path (capability-based naming)
+pub const SECURITY_SOCKET_DEFAULT: &str = "/tmp/biomeos/security.sock";
+
+/// Last-resort `/tmp/beardog.sock` path for legacy discovery chains (same literal as deprecated [`BEARDOG_SOCKET_LEGACY`])
+pub const SECURITY_SOCKET_TMP_FALLBACK: &str = "/tmp/beardog.sock";
+
+/// Default security provider socket paths (tried in order during discovery; preferred naming)
+pub const SECURITY_SOCKET_CANDIDATES: &[&str] = &[
+    "/tmp/biomeos/security.sock",
+    "/tmp/beardog.sock",
+    "/run/user/1000/beardog-default.sock",
+    "/var/run/beardog.sock",
+];
+
+/// Default `BearDog` socket paths (legacy naming; use [`SECURITY_SOCKET_CANDIDATES`])
+#[deprecated(note = "Use SECURITY_SOCKET_CANDIDATES or capability-based discovery")]
 pub const BEARDOG_SOCKET_CANDIDATES: &[&str] =
     &["/tmp/beardog.sock", "/run/user/1000/beardog-default.sock", "/var/run/beardog.sock"];
 
@@ -48,8 +63,9 @@ pub const BIOMEOS_SOCKET_FALLBACK_PATHS: &[&str] = &[
 /// Default security socket path (final fallback)
 pub const BIOMEOS_SECURITY_SOCKET_DEFAULT: &str = "/tmp/biomeos/security.sock";
 
-/// Legacy `BearDog` socket path
-pub const BEARDOG_SOCKET_LEGACY: &str = "/tmp/beardog.sock";
+/// Legacy `/tmp/beardog.sock` path string (compatibility; prefer [`SECURITY_SOCKET_DEFAULT`])
+#[deprecated(note = "Use SECURITY_SOCKET_TMP_FALLBACK or SECURITY_SOCKET_DEFAULT")]
+pub const BEARDOG_SOCKET_LEGACY: &str = SECURITY_SOCKET_TMP_FALLBACK;
 
 /// Legacy Neural API socket path pattern (append `{family_id}.sock`)
 pub const NEURAL_API_SOCKET_LEGACY_PATTERN: &str = "/tmp/neural-api-";

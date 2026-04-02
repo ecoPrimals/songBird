@@ -23,16 +23,23 @@ use std::sync::atomic::AtomicU64;
 
 pub use rpc::RoutingMode;
 
-/// Interprets `BEARDOG_MODE` the same way as [`CryptoProvider::from_env`].
+/// Interprets `SECURITY_PROVIDER_MODE` / `BEARDOG_MODE` env var.
 ///
 /// - Missing or any value other than `"direct"` selects [`RoutingMode::NeuralApi`].
-/// - `"direct"` selects [`RoutingMode::Direct`].
+/// - `"direct"` selects [`RoutingMode::Direct`] (bootstrap / fallback).
 #[must_use]
-pub fn routing_mode_from_beardog_env_value(beardog_mode: Option<&str>) -> RoutingMode {
-    match beardog_mode.unwrap_or("neural") {
+pub fn routing_mode_from_env(mode_value: Option<&str>) -> RoutingMode {
+    match mode_value.unwrap_or("neural") {
         "direct" => RoutingMode::Direct,
         _ => RoutingMode::NeuralApi,
     }
+}
+
+/// Deprecated alias for [`routing_mode_from_env`].
+#[deprecated(note = "Use routing_mode_from_env (capability-based naming)")]
+#[must_use]
+pub fn routing_mode_from_beardog_env_value(beardog_mode: Option<&str>) -> RoutingMode {
+    routing_mode_from_env(beardog_mode)
 }
 
 /// Crypto provider error.
@@ -72,8 +79,8 @@ impl CryptoProvider {
 
     /// Create a provider from environment variables.
     ///
-    /// Defaults to `NeuralApi` mode. Set `BEARDOG_MODE=direct` to bypass
-    /// the Neural API (bootstrap only).
+    /// Defaults to `NeuralApi` mode. Set `SECURITY_PROVIDER_MODE=direct`
+    /// (or legacy `BEARDOG_MODE=direct`) to bypass the Neural API (bootstrap only).
     #[must_use]
     pub fn from_env() -> Self {
         Self::from_env_with(|key| songbird_process_env::var(key).ok())
@@ -86,10 +93,12 @@ impl CryptoProvider {
     {
         use tracing::info;
 
-        let mode = routing_mode_from_beardog_env_value(get_var("BEARDOG_MODE").as_deref());
+        let mode_val = get_var("SECURITY_PROVIDER_MODE")
+            .or_else(|| get_var("BEARDOG_MODE"));
+        let mode = routing_mode_from_env(mode_val.as_deref());
         match mode {
             RoutingMode::Direct => {
-                let socket = socket_discovery::discover_beardog_socket_with(
+                let socket = socket_discovery::discover_security_provider_socket_with(
                     |k| get_var(k),
                     std::path::Path::exists,
                 );
@@ -178,20 +187,20 @@ mod tests {
     }
 
     #[test]
-    fn routing_mode_from_beardog_env_value_direct() {
-        assert_eq!(routing_mode_from_beardog_env_value(Some("direct")), RoutingMode::Direct);
+    fn routing_mode_from_env_direct() {
+        assert_eq!(routing_mode_from_env(Some("direct")), RoutingMode::Direct);
     }
 
     #[test]
-    fn routing_mode_from_beardog_env_value_defaults_to_neural_when_unset() {
-        assert_eq!(routing_mode_from_beardog_env_value(None), RoutingMode::NeuralApi);
+    fn routing_mode_from_env_defaults_to_neural_when_unset() {
+        assert_eq!(routing_mode_from_env(None), RoutingMode::NeuralApi);
     }
 
     #[test]
-    fn routing_mode_from_beardog_env_value_non_direct_is_neural() {
+    fn routing_mode_from_env_non_direct_is_neural() {
         for v in ["", "neural", "NEURAL", "bogus"] {
             assert_eq!(
-                routing_mode_from_beardog_env_value(Some(v)),
+                routing_mode_from_env(Some(v)),
                 RoutingMode::NeuralApi,
                 "value={v:?}"
             );
@@ -199,9 +208,16 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
+    fn routing_mode_from_beardog_env_value_deprecated_alias() {
+        assert_eq!(routing_mode_from_beardog_env_value(Some("direct")), RoutingMode::Direct);
+        assert_eq!(routing_mode_from_beardog_env_value(None), RoutingMode::NeuralApi);
+    }
+
+    #[test]
     fn from_env_with_neural_uses_neural_socket_from_env() {
         let p = CryptoProvider::from_env_with(|key| match key {
-            "BEARDOG_MODE" => Some("neural".to_string()),
+            "SECURITY_PROVIDER_MODE" => Some("neural".to_string()),
             "NEURAL_API_SOCKET" => Some("/run/neural.sock".to_string()),
             _ => None,
         });
@@ -215,7 +231,7 @@ mod tests {
             "NEURAL_API_SOCKET" => Some("/only/neural.sock".to_string()),
             _ => None,
         });
-        assert_eq!(p.mode, RoutingMode::NeuralApi, "unset BEARDOG_MODE should default to NeuralApi");
+        assert_eq!(p.mode, RoutingMode::NeuralApi, "unset mode env should default to NeuralApi");
         assert_eq!(p.socket_path, "/only/neural.sock");
     }
 

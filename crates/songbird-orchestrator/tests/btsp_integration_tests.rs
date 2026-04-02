@@ -60,19 +60,23 @@ async fn beardog_available() -> bool {
 
 /// Helper: Get or create test socket path
 fn test_socket_path() -> String {
-    env::var("BEARDOG_SOCKET")
+    env::var("SECURITY_PROVIDER_SOCKET")
+        .or_else(|_| env::var("BEARDOG_SOCKET"))
         .or_else(|_| env::var("TEST_BEARDOG_SOCKET"))
         .unwrap_or_else(|_| "/tmp/beardog-test.sock".to_string())
 }
 
 /// Helper: Setup test environment variables
 fn setup_test_env() {
-    songbird_process_env::set_var("BEARDOG_SOCKET", test_socket_path());
+    let path = test_socket_path();
+    songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", &path);
+    songbird_process_env::set_var("BEARDOG_SOCKET", &path);
     songbird_process_env::set_var("BEARDOG_FAMILY_ID", "test");
 }
 
 /// Helper: Cleanup test environment
 fn cleanup_test_env() {
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::remove_var("BEARDOG_FAMILY_ID");
 }
@@ -99,17 +103,22 @@ async fn test_socket_path_discovery_priority() {
     let _guard = lock_env();
 
     // Clean slate for this test
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
     let saved_xdg = env::var("XDG_RUNTIME_DIR").ok();
 
-    // Test priority 1: BEARDOG_SOCKET
-    songbird_process_env::set_var("BEARDOG_SOCKET", "/custom/beardog.sock");
+    // Test priority 1: SECURITY_PROVIDER_SOCKET (BEARDOG_SOCKET remains supported)
+    songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/custom/beardog.sock");
     let client1 = BtspClient::new();
     let debug1 = format!("{client1:?}");
-    assert!(debug1.contains("/custom/beardog.sock"), "Should use BEARDOG_SOCKET, got: {debug1}");
+    assert!(
+        debug1.contains("/custom/beardog.sock"),
+        "Should use SECURITY_PROVIDER_SOCKET, got: {debug1}"
+    );
 
-    // Test priority 2: BIOMEOS_SOCKET_PATH (when BEARDOG_SOCKET not set)
+    // Test priority 2: BIOMEOS_SOCKET_PATH (when explicit socket env vars not set)
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::set_var("BIOMEOS_SOCKET_PATH", "/biomeos/beardog.sock");
     let client2 = BtspClient::new();
@@ -131,6 +140,7 @@ async fn test_socket_path_discovery_priority() {
     );
 
     // Cleanup — restore original XDG_RUNTIME_DIR
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
     if let Some(xdg) = saved_xdg {
@@ -144,6 +154,7 @@ async fn test_socket_path_discovery_priority() {
 async fn test_socket_path_fallback() {
     let _guard = lock_env();
     // Remove explicit socket env vars (XDG_RUNTIME_DIR may still be set by system)
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
     songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
@@ -468,7 +479,7 @@ async fn test_multiple_tunnels_concurrent() -> Result<()> {
 #[tokio::test]
 async fn test_invalid_socket_path() {
     let _guard = lock_env();
-    songbird_process_env::set_var("BEARDOG_SOCKET", "/nonexistent/path/to/socket.sock");
+    songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/nonexistent/path/to/socket.sock");
 
     let client = BtspClient::new();
     let result = client.ping().await;
@@ -480,6 +491,7 @@ async fn test_invalid_socket_path() {
         "Should fail with connection error"
     );
 
+    songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 }
 

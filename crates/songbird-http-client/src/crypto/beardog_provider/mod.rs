@@ -47,12 +47,13 @@ impl BearDogProvider {
         use super::socket_discovery;
         use tracing::info;
 
-        let mode =
-            songbird_process_env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
+        let mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")
+            .or_else(|_| songbird_process_env::var("BEARDOG_MODE"))
+            .unwrap_or_else(|_| "neural".to_string());
 
         if mode.as_str() == "direct" {
-            let socket = socket_discovery::discover_beardog_socket();
-            info!("🔧 BearDog provider: DIRECT mode → {}", socket);
+            let socket = socket_discovery::discover_security_provider_socket();
+            info!("🔧 Security provider: DIRECT mode → {}", socket);
             Self {
                 socket_path: socket,
                 request_id: AtomicU64::new(1),

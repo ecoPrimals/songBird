@@ -133,7 +133,9 @@ async fn test_discover_priority_order() {
     let result = discover_with(Capability::Crypto, |name| match name {
         "CRYPTO_PROVIDER_SOCKET" => Some("/tmp/priority1.sock".to_string()),
         "CRYPTO_PROVIDER" => Some("/tmp/priority2.sock".to_string()),
-        "BEARDOG_CRYPTO_SOCKET" | "BEARDOG_SOCKET" => Some("/tmp/priority3.sock".to_string()),
+        "SECURITY_PROVIDER_SOCKET" | "BEARDOG_CRYPTO_SOCKET" | "BEARDOG_SOCKET" => {
+            Some("/tmp/priority3.sock".to_string())
+        },
         _ => None,
     })
     .await;

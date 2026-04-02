@@ -268,14 +268,12 @@ impl SongbirdOrchestrator {
     /// * `Ok(String)` - JWT secret (512 bits, base64-encoded)
     /// * `Err` - Only on critical failure (fallback always succeeds)
     pub(crate) async fn provision_jwt_secret(&self) -> Result<String> {
-        use crate::auth::{get_beardog_socket_for_jwt, provision_jwt_secret};
+        use crate::auth::{get_security_socket_for_jwt, provision_jwt_secret};
 
-        // Discover BearDog via capability-based discovery
-        let beardog_socket = get_beardog_socket_for_jwt();
+        let security_socket = get_security_socket_for_jwt();
 
-        // Provision JWT secret (tries BearDog, falls back to secure random)
         let jwt_secret =
-            provision_jwt_secret(beardog_socket.as_deref(), "songbird_authentication").await?;
+            provision_jwt_secret(security_socket.as_deref(), "songbird_authentication").await?;
 
         Ok(jwt_secret)
     }
@@ -422,9 +420,9 @@ impl SongbirdOrchestrator {
 
         // v5.28.0: Discover crypto provider via capability-based discovery (zero identity hardcoding)
         // Priority: explicit env → capability env → family-scoped fallback
-        let crypto_socket = songbird_process_env::var("CRYPTO_PROVIDER_SOCKET")
+        let crypto_socket = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_SOCKET"))
             .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
-            .or_else(|_| songbird_process_env::var("SONGBIRD_BEARDOG_SOCKET"))
             .unwrap_or_else(|_| {
                 let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                     .or_else(|_| songbird_process_env::var("FAMILY_ID"))

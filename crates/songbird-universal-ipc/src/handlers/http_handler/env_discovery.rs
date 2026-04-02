@@ -10,9 +10,10 @@ use super::traits::CryptoCapabilityDiscovery;
 /// Discovers crypto capability via environment variables
 ///
 /// Priority:
-/// 1. `CRYPTO_ENDPOINT` env var
-/// 2. `BEARDOG_SOCKET` env var
-/// 3. Default: /primal/beardog
+/// 1. `{CAPABILITY}_ENDPOINT` derived from the capability string
+/// 2. `SECURITY_PROVIDER_SOCKET` (capability-standard)
+/// 3. `BEARDOG_SOCKET` (legacy)
+/// 4. Default: /primal/beardog
 pub struct EnvCryptoDiscovery;
 
 #[async_trait]
@@ -37,7 +38,11 @@ impl EnvCryptoDiscovery {
             return Ok(endpoint);
         }
 
-        // Fall back to BEARDOG_SOCKET
+        if let Some(socket) = env_reader("SECURITY_PROVIDER_SOCKET") {
+            info!("Found crypto provider at {} (via SECURITY_PROVIDER_SOCKET)", socket);
+            return Ok(socket);
+        }
+
         if let Some(socket) = env_reader("BEARDOG_SOCKET") {
             info!("Found crypto provider at {} (via BEARDOG_SOCKET)", socket);
             return Ok(socket);

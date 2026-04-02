@@ -12,9 +12,9 @@ impl BirdSongHandler {
     /// Handle `birdsong.verify_lineage`
     ///
     /// Verifies peer lineage using challenge-response (defense-in-depth).
-    /// Calls `BearDog`'s `genetic.generate_challenge` and `genetic.verify_challenge_response`.
+    /// Calls the security provider's `genetic.generate_challenge` and `genetic.verify_challenge_response`.
     ///
-    /// Deep debt: Delegates to `BearDog` (separation of concerns)
+    /// Deep debt: Delegates to the crypto/security provider (e.g. `BearDog`) (separation of concerns)
     pub async fn handle_verify_lineage(&self, params: Value) -> Result<Value, String> {
         debug!("🔍 RPC: birdsong.verify_lineage");
 
@@ -23,12 +23,12 @@ impl BirdSongHandler {
         let request: VerifyLineageRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
-        // Discover BearDog socket
-        let beardog_socket = self.discover_beardog_socket().await?;
+        // Discover security provider socket (capability-based)
+        let security_socket = self.discover_security_provider_socket().await?;
 
-        // Create RPC client to BearDog
-        let client = UnixRpcClient::new(&beardog_socket)
-            .map_err(|e| format!("Failed to connect to BearDog: {e}"))?;
+        // Create RPC client to the security provider
+        let client = UnixRpcClient::new(&security_socket)
+            .map_err(|e| format!("Failed to connect to security provider: {e}"))?;
 
         // Step 1: Generate challenge
         let challenge_params = json!({
@@ -61,7 +61,7 @@ impl BirdSongHandler {
     ///
     /// Returns our own lineage info for sharing with peers.
     ///
-    /// Deep debt: Self-knowledge only, queries `BearDog` for our identity
+    /// Deep debt: Self-knowledge only, queries the security provider for our identity
     pub async fn handle_get_lineage(&self, params: Value) -> Result<Value, String> {
         debug!("📋 RPC: birdsong.get_lineage");
 
@@ -73,10 +73,10 @@ impl BirdSongHandler {
 
         let family_id = provider.family_id().unwrap_or_else(|| "unknown".to_string());
 
-        // Query BearDog for our node ID (if needed)
-        let beardog_socket = self.discover_beardog_socket().await?;
-        let client = UnixRpcClient::new(&beardog_socket)
-            .map_err(|e| format!("Failed to connect to BearDog: {e}"))?;
+        // Query security provider for our node ID (if needed)
+        let security_socket = self.discover_security_provider_socket().await?;
+        let client = UnixRpcClient::new(&security_socket)
+            .map_err(|e| format!("Failed to connect to security provider: {e}"))?;
 
         // Query primal.info from the discovered crypto provider
         let provider_info: Value = client

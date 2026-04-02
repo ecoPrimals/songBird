@@ -21,10 +21,11 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
     // Create client
-    let beardog_socket =
-        std::env::var("BEARDOG_SOCKET").unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+    let beardog_socket = std::env::var("SECURITY_PROVIDER_SOCKET")
+        .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+        .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
 
-    println!("Using BearDog at: {beardog_socket}");
+    println!("Using security provider socket at: {beardog_socket}");
 
     let client = SongbirdHttpClient::new(beardog_socket);
 

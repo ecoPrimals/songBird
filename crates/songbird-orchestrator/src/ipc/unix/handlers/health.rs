@@ -53,10 +53,9 @@ pub async fn handle_health_standard(
         0
     };
     
-    // Check BearDog connectivity (best effort)
     let beardog_connected = {
-        let beardog_socket = songbird_http_client::discover_beardog_socket();
-        std::path::Path::new(&beardog_socket).exists()
+        let security_socket = songbird_http_client::discover_security_provider_socket();
+        std::path::Path::new(&security_socket).exists()
     };
     
     let uptime_seconds = if let Some(start_time_arc) = start_time {

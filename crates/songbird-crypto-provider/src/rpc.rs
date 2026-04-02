@@ -18,7 +18,7 @@ use super::{CryptoProvider, CryptoProviderError, Result};
 /// Routing mode for crypto operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoutingMode {
-    /// Call `BearDog` directly (bootstrap / fallback).
+    /// Call security provider directly (bootstrap / fallback).
     Direct,
     /// Route via Neural API `capability.call` (production default).
     NeuralApi,

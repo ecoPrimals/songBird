@@ -4,7 +4,7 @@
 //! Neural API / `BearDog` crypto delegation via [`songbird_crypto_provider::CryptoProvider`]
 //!
 //! All cryptographic operations are routed through `CryptoProvider::from_env()` (Neural API by
-//! default; set `BEARDOG_MODE=direct` for bootstrap). See `songbird-crypto-provider` for
+//! default; set `SECURITY_PROVIDER_MODE=direct` or legacy `BEARDOG_MODE=direct` for bootstrap). See `songbird-crypto-provider` for
 //! environment variables and socket discovery.
 //!
 //! ## Usage

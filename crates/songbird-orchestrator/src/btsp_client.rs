@@ -47,10 +47,11 @@ impl BtspClient {
     /// Create new BTSP client with environment-based socket discovery
     ///
     /// Socket path priority:
-    /// 1. `BEARDOG_SOCKET` (explicit path)
-    /// 2. `BIOMEOS_SOCKET_PATH` (`BiomeOS` orchestrator)
-    /// 3. XDG_RUNTIME_DIR/beardog-{family_id}.sock
-    /// 4. /tmp/beardog-default-default.sock (fallback)
+    /// 1. `SECURITY_PROVIDER_SOCKET` (capability-standard)
+    /// 2. `BEARDOG_SOCKET` (legacy)
+    /// 3. `BIOMEOS_SOCKET_PATH` (`BiomeOS` orchestrator)
+    /// 4. XDG_RUNTIME_DIR/security-{family_id}.sock
+    /// 5. /tmp/security-default.sock (fallback)
     pub fn new() -> Self {
         let socket_path = Self::discover_socket_path();
         info!("BTSP client initialized with socket: {:?}", socket_path);
@@ -67,9 +68,9 @@ impl BtspClient {
         }
     }
 
-    /// Discover `BearDog` socket path from environment
     fn discover_socket_path() -> PathBuf {
-        let path = songbird_process_env::var("BEARDOG_SOCKET")
+        let path = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
             .or_else(|_| songbird_process_env::var("BIOMEOS_SOCKET_PATH"))
             .or_else(|_| {
                 // Try XDG runtime directory (capability-based, primal-agnostic)
@@ -431,9 +432,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_btsp_ping() {
-        // Integration test (requires BearDog running)
-        // Skipped in CI, run manually for verification
-        if std::env::var("BEARDOG_SOCKET").is_ok() {
+        if std::env::var("SECURITY_PROVIDER_SOCKET").or_else(|_| std::env::var("BEARDOG_SOCKET")).is_ok() {
             let client = BtspClient::new();
             let response = client.ping().await;
             if let Ok(resp) = response {

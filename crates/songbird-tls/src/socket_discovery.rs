@@ -3,8 +3,8 @@
 
 //! XDG-compliant socket discovery for TLS layer
 //!
-//! This module provides functions to discover Unix socket paths for `BearDog`
-//! and Neural API following the XDG Base Directory Specification.
+//! This module provides functions to discover Unix socket paths for the
+//! security provider capability and Neural API following the XDG Base Directory Specification.
 //!
 //! ## Discovery Order
 //! 1. Explicitly provided path (e.g., from CLI arguments)
@@ -136,7 +136,7 @@ fn discover_xdg_socket_with_env(
 /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/{socket}.sock` (capability names first)
 /// 6. UID fallback: `/run/user/$UID/biomeos/security.sock`
 /// 7. Legacy: `/tmp/biomeos/security.sock`
-fn discover_beardog_socket_with_env(
+fn discover_security_provider_socket_with_env(
     explicit_path: Option<&PathBuf>,
     env: &impl EnvReader,
 ) -> String {
@@ -227,8 +227,15 @@ fn discover_beardog_socket_with_env(
 /// 5. UID: `/run/user/$UID/biomeos/security.sock`
 /// 6. Legacy: `/tmp/biomeos/security.sock` (fallback)
 #[must_use]
+pub fn discover_security_provider_socket(explicit_path: Option<&PathBuf>) -> String {
+    discover_security_provider_socket_with_env(explicit_path, &SystemEnv)
+}
+
+/// Deprecated alias for [`discover_security_provider_socket`].
+#[deprecated(note = "Use discover_security_provider_socket (capability-based naming)")]
+#[must_use]
 pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
-    discover_beardog_socket_with_env(explicit_path, &SystemEnv)
+    discover_security_provider_socket(explicit_path)
 }
 
 /// Internal: Discover AI/Neural API socket path (capability-first)
@@ -348,7 +355,7 @@ mod tests {
         let env = MockEnv::new(); // Empty env, explicit path takes priority
 
         let custom_path = PathBuf::from("/custom/explicit/beardog.sock");
-        let discovered = discover_beardog_socket_with_env(Some(&custom_path), &env);
+        let discovered = discover_security_provider_socket_with_env(Some(&custom_path), &env);
         assert_eq!(discovered, "/custom/explicit/beardog.sock");
 
         let custom_path = PathBuf::from("/custom/explicit/neural.sock");
@@ -360,24 +367,24 @@ mod tests {
     fn test_env_var_priority_beardog() {
         // Test BEARDOG_SOCKET priority
         let env = MockEnv::new().set("BEARDOG_SOCKET", "/env/beardog.sock");
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/beardog.sock");
 
         // Test BEARDOG_CRYPTO_SOCKET priority (when BEARDOG_SOCKET not set)
         let env = MockEnv::new().set("BEARDOG_CRYPTO_SOCKET", "/env/beardog-crypto.sock");
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/beardog-crypto.sock");
 
         // Test SONGBIRD_CRYPTO_SOCKET priority (when others not set)
         let env = MockEnv::new().set("SONGBIRD_CRYPTO_SOCKET", "/env/songbird-crypto.sock");
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/songbird-crypto.sock");
 
         // Test priority order: BEARDOG_SOCKET > BEARDOG_CRYPTO_SOCKET
         let env = MockEnv::new()
             .set("BEARDOG_SOCKET", "/env/beardog.sock")
             .set("BEARDOG_CRYPTO_SOCKET", "/env/beardog-crypto.sock");
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/beardog.sock");
     }
 
@@ -416,7 +423,7 @@ mod tests {
         let crypto_path = PathBuf::from(format!("{test_dir}/biomeos/crypto.sock"));
         create_dummy_socket(&crypto_path);
 
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, crypto_path.to_string_lossy().into_owned());
 
         let ai_path = PathBuf::from(format!("{test_dir}/biomeos/ai.sock"));
@@ -438,7 +445,7 @@ mod tests {
         let env = MockEnv::new(); // No env vars set
 
         // Capability-first: Falls back to security.sock (capability name preferred)
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, "/tmp/biomeos/security.sock");
 
         // AI capability: Falls back to ai.sock (capability name preferred)
@@ -451,7 +458,7 @@ mod tests {
         // SONGBIRD_SECURITY_PROVIDER takes priority after BEARDOG_* vars
         let env =
             MockEnv::new().set("SONGBIRD_SECURITY_PROVIDER", "/run/user/1000/biomeos/beardog.sock");
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, "/run/user/1000/biomeos/beardog.sock");
     }
 
@@ -468,7 +475,7 @@ mod tests {
         let xdg_path = PathBuf::from(format!("{test_dir}/biomeos/crypto.sock"));
         create_dummy_socket(&xdg_path);
 
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, xdg_path.to_string_lossy().into_owned());
 
         // Cleanup
@@ -497,7 +504,7 @@ mod tests {
         let security_path = PathBuf::from(format!("{test_dir}/biomeos/security.sock"));
         create_dummy_socket(&security_path);
 
-        let discovered = discover_beardog_socket_with_env(None, &env);
+        let discovered = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(discovered, security_path.to_string_lossy().into_owned());
 
         // Cleanup
@@ -517,7 +524,7 @@ mod tests {
                 thread::spawn(move || {
                     let env =
                         MockEnv::new().set("BEARDOG_SOCKET", format!("/env/beardog-{i}.sock"));
-                    let discovered = discover_beardog_socket_with_env(None, &env);
+                    let discovered = discover_security_provider_socket_with_env(None, &env);
                     assert_eq!(discovered, format!("/env/beardog-{i}.sock"));
                 })
             })
@@ -542,14 +549,14 @@ mod tests {
         let env = MockEnv::new()
             .set("CRYPTO_PROVIDER_SOCKET", "/run/crypto.sock")
             .set("BEARDOG_SOCKET", "/run/beardog.sock");
-        let p = discover_beardog_socket_with_env(None, &env);
+        let p = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(p, "/run/crypto.sock");
     }
 
     #[test]
     fn security_provider_socket_matches_capability_second_priority() {
         let env = MockEnv::new().set("SECURITY_PROVIDER_SOCKET", "/run/sec.sock");
-        let p = discover_beardog_socket_with_env(None, &env);
+        let p = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(p, "/run/sec.sock");
     }
 
@@ -558,7 +565,7 @@ mod tests {
         let env = MockEnv::new()
             .set("CRYPTO_PROVIDER_SOCKET", "/run/c.sock")
             .set("SECURITY_PROVIDER_SOCKET", "/run/s.sock");
-        let p = discover_beardog_socket_with_env(None, &env);
+        let p = discover_security_provider_socket_with_env(None, &env);
         assert_eq!(p, "/run/c.sock");
     }
 

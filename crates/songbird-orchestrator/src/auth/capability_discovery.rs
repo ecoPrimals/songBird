@@ -28,6 +28,7 @@ pub fn discover_security_socket() -> Option<PathBuf> {
 }
 
 /// Backward-compatible alias for [`discover_security_socket`].
+#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
 #[must_use]
 pub fn discover_beardog_socket() -> Option<PathBuf> {
     discover_security_socket()
@@ -57,7 +58,7 @@ where
     if let Ok(socket_path) = env_reader("BEARDOG_SOCKET")
         && !socket_path.is_empty()
     {
-        info!("   ✅ Found BEARDOG_SOCKET (security capability): {}", socket_path);
+        warn!("   ⚠️  Found deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET: {}", socket_path);
         return Some(PathBuf::from(socket_path));
     }
 
@@ -78,6 +79,7 @@ where
 }
 
 /// Backward-compatible alias for [`discover_security_socket_with`].
+#[deprecated(note = "Use discover_security_socket_with (capability-based naming)")]
 pub fn discover_beardog_socket_with<F>(env_reader: F) -> Option<PathBuf>
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
@@ -92,6 +94,7 @@ pub fn discover_security_socket_for_family(family_id: &str) -> Option<PathBuf> {
 }
 
 /// Backward-compatible alias for [`discover_security_socket_for_family`].
+#[deprecated(note = "Use discover_security_socket_for_family (capability-based naming)")]
 #[must_use]
 pub fn discover_beardog_socket_for_family(family_id: &str) -> Option<PathBuf> {
     discover_security_socket_for_family(family_id)
@@ -111,6 +114,7 @@ where
 }
 
 /// Backward-compatible alias for [`discover_security_socket_for_family_with`].
+#[deprecated(note = "Use discover_security_socket_for_family_with (capability-based naming)")]
 pub fn discover_beardog_socket_for_family_with<F>(family_id: &str, env_reader: F) -> Option<PathBuf>
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
@@ -125,6 +129,7 @@ pub fn get_security_socket_for_jwt() -> Option<String> {
 }
 
 /// Backward-compatible alias for [`get_security_socket_for_jwt`].
+#[deprecated(note = "Use get_security_socket_for_jwt (capability-based naming)")]
 #[must_use]
 pub fn get_beardog_socket_for_jwt() -> Option<String> {
     get_security_socket_for_jwt()
@@ -139,6 +144,7 @@ where
 }
 
 /// Backward-compatible alias for [`get_security_socket_for_jwt_with`].
+#[deprecated(note = "Use get_security_socket_for_jwt_with (capability-based naming)")]
 pub fn get_beardog_socket_for_jwt_with<F>(env_reader: F) -> Option<String>
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
@@ -161,16 +167,16 @@ mod tests {
     #[test]
     fn test_discover_security_provider_env() {
         let env = mock_env(HashMap::from([("SECURITY_PROVIDER", "/tmp/test-security.sock")]));
-        let socket = discover_beardog_socket_with(env);
+        let socket = discover_security_socket_with(env);
         assert!(socket.is_some());
         assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-security.sock");
     }
 
     #[test]
-    fn test_discover_beardog_socket_env() {
+    fn test_discover_legacy_beardog_socket_env() {
         let env =
             mock_env(HashMap::from([("BEARDOG_SOCKET", "/run/user/1000/biomeos/beardog.sock")]));
-        let socket = discover_beardog_socket_with(env);
+        let socket = discover_security_socket_with(env);
         assert!(socket.is_some());
         assert_eq!(socket.unwrap().to_str().unwrap(), "/run/user/1000/biomeos/beardog.sock");
     }
@@ -181,7 +187,7 @@ mod tests {
             ("SECURITY_PROVIDER", "/high-priority.sock"),
             ("BEARDOG_SOCKET", "/low-priority.sock"),
         ]));
-        let socket = discover_beardog_socket_with(env);
+        let socket = discover_security_socket_with(env);
         assert!(socket.is_some());
         assert_eq!(socket.unwrap().to_str().unwrap(), "/high-priority.sock");
     }
@@ -189,21 +195,21 @@ mod tests {
     #[test]
     fn test_discover_empty_env_ignored() {
         let env = mock_env(HashMap::from([("SECURITY_PROVIDER", ""), ("BEARDOG_SOCKET", "")]));
-        let socket = discover_beardog_socket_with(env);
+        let socket = discover_security_socket_with(env);
         let _ = socket;
     }
 
     #[test]
     fn test_discover_no_env_no_panic() {
         let env = mock_env(HashMap::new());
-        let socket = discover_beardog_socket_with(env);
+        let socket = discover_security_socket_with(env);
         let _ = socket;
     }
 
     #[test]
-    fn test_get_beardog_socket_for_jwt() {
+    fn test_get_security_socket_for_jwt() {
         let env = mock_env(HashMap::from([("SECURITY_PROVIDER", "/tmp/jwt-test.sock")]));
-        let socket = get_beardog_socket_for_jwt_with(env);
+        let socket = get_security_socket_for_jwt_with(env);
         assert!(socket.is_some());
         assert_eq!(socket.unwrap(), "/tmp/jwt-test.sock");
     }
@@ -218,7 +224,7 @@ mod tests {
                         "SECURITY_PROVIDER",
                         Box::leak(format!("/sock-{i}.sock").into_boxed_str()) as &str,
                     )]));
-                    let socket = discover_beardog_socket_with(env);
+                    let socket = discover_security_socket_with(env);
                     assert!(socket.is_some());
                     assert_eq!(socket.unwrap().to_str().unwrap(), format!("/sock-{i}.sock"));
                 })

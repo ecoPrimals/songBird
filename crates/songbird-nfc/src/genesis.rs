@@ -51,7 +51,7 @@ pub struct GenesisExchange {
     /// Timing protector
     timing: TimingProtector,
 
-    /// Shared crypto provider (Neural API by default; `BEARDOG_MODE=direct` for BearDog socket)
+    /// Shared crypto provider (Neural API by default; `SECURITY_PROVIDER_MODE=direct` or legacy `BEARDOG_MODE=direct` for direct socket routing)
     provider: CryptoProvider,
 }
 
@@ -61,7 +61,7 @@ pub struct GenesisExchange {
     reason = "Result kept for uniform error propagation at call sites"
 )]
 fn decode_hex_or_b64(s: &str) -> Result<Vec<u8>> {
-    // Try hex first (common for BearDog responses)
+    // Try hex first (common for security-provider JSON-RPC responses)
     if let Ok(bytes) = hex::decode(s) {
         return Ok(bytes);
     }
@@ -380,7 +380,7 @@ impl GenesisExchange {
             self.timing.random_delay().await;
         }
 
-        // 1. Generate ephemeral X25519 keypair via BearDog
+        // 1. Generate ephemeral X25519 keypair via security provider
         let ephemeral_pubkey = self.generate_x25519_keypair().await?;
 
         // 2. Send public key to peer
@@ -391,10 +391,10 @@ impl GenesisExchange {
         let peer_pubkey = device.receive_raw(PUBLIC_KEY_SIZE).await?;
         debug!("Received peer ephemeral public key");
 
-        // 4. Compute shared secret via BearDog
+        // 4. Compute shared secret via security provider
         let shared_secret = self.x25519_dh(&peer_pubkey).await?;
 
-        // 5. Encrypt genesis credentials via BearDog
+        // 5. Encrypt genesis credentials via security provider
         let nonce = self.generate_nonce().await?;
         let serialized = serde_json::to_vec(credentials)?;
         let encrypted = self.encrypt(&serialized, &shared_secret, &nonce).await?;
@@ -421,7 +421,7 @@ impl GenesisExchange {
 
         info!("Genesis exchange complete");
 
-        // 8. Destroy ephemeral keys via BearDog
+        // 8. Destroy ephemeral keys via security provider
         self.destroy_ephemeral_keys().await?;
 
         if self.config.timing_protection {
@@ -444,7 +444,7 @@ impl GenesisExchange {
             self.timing.random_delay().await;
         }
 
-        // 1. Generate ephemeral keypair via BearDog
+        // 1. Generate ephemeral keypair via security provider
         let ephemeral_pubkey = self.generate_x25519_keypair().await?;
 
         // 2. Receive peer's public key
@@ -455,7 +455,7 @@ impl GenesisExchange {
         device.send_raw(&ephemeral_pubkey).await?;
         debug!("Sent ephemeral public key");
 
-        // 4. Compute shared secret via BearDog
+        // 4. Compute shared secret via security provider
         let shared_secret = self.x25519_dh(&peer_pubkey).await?;
 
         // 5. Receive encrypted genesis
@@ -465,10 +465,10 @@ impl GenesisExchange {
             return Err(NfcError::InvalidMessageType(message.msg_type));
         }
 
-        // 6. Verify signature via BearDog
+        // 6. Verify signature via security provider
         self.ed25519_verify(&message.encrypted_payload, &message.signature).await?;
 
-        // 7. Decrypt genesis via BearDog
+        // 7. Decrypt genesis via security provider
         let decrypted =
             self.decrypt(&message.encrypted_payload, &shared_secret, &message.nonce).await?;
         let credentials: GenesisCredentials = serde_json::from_slice(&decrypted)?;
@@ -490,7 +490,7 @@ impl GenesisExchange {
 
         info!("Genesis received");
 
-        // 9. Destroy ephemeral keys via BearDog
+        // 9. Destroy ephemeral keys via security provider
         self.destroy_ephemeral_keys().await?;
 
         if self.config.timing_protection {

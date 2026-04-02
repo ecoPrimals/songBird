@@ -236,18 +236,17 @@ impl HttpHandler {
         let method = HttpMethod::from_str(method_str)
             .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?;
 
-        // 3. Create HTTP client with BearDog crypto provider
-        // Note: SongbirdHttpClient::new takes a socket path string
-        let beardog_socket_path = songbird_process_env::var("BEARDOG_SOCKET")
-            .or_else(|_| songbird_process_env::var("SONGBIRD_BEARDOG_SOCKET"))
+        let security_socket = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_SOCKET"))
+            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
             .unwrap_or_else(|_| {
                 let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                     .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .unwrap_or_else(|_| "default".to_string());
-                format!("/tmp/beardog-{family_id}.sock")
+                format!("/tmp/security-{family_id}.sock")
             });
 
-        let client = SongbirdHttpClient::new(&beardog_socket_path);
+        let client = SongbirdHttpClient::new(&security_socket);
 
         // 4. Make request
         let response = client

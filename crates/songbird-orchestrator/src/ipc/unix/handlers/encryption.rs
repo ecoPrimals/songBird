@@ -39,8 +39,7 @@ pub async fn handle_encrypt_discovery(params: Option<Value>) -> Result<Value, Js
     // Base64 encode for BearDog
     let payload_b64 = general_purpose::STANDARD.encode(&payload_json);
     
-    // Call BearDog's beacon.encrypt method
-    let beardog_socket = songbird_http_client::discover_beardog_socket();
+    let beardog_socket = songbird_http_client::discover_security_provider_socket();
     let encrypted_b64 = call_beardog_method(
         &beardog_socket,
         "beacon.encrypt",
@@ -82,7 +81,7 @@ pub async fn handle_decrypt_discovery(params: Option<Value>) -> Result<Value, Js
     
     info!("🔓 Attempting to decrypt discovery payload ({} known seeds)", params.known_beacon_seeds.len());
     
-    let beardog_socket = songbird_http_client::discover_beardog_socket();
+    let beardog_socket = songbird_http_client::discover_security_provider_socket();
     
     // Try each known beacon seed
     for (index, seed_hex) in params.known_beacon_seeds.iter().enumerate() {

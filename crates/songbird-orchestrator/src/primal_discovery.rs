@@ -67,8 +67,8 @@ impl Capability {
     /// Alternative environment variable names (backward compatibility).
     fn alt_env_vars(&self) -> Vec<&'static str> {
         match self {
-            Self::Crypto => vec!["BEARDOG_CRYPTO_SOCKET", "BEARDOG_SOCKET"],
-            Self::Security => vec!["SONGBIRD_SECURITY_PROVIDER", "BEARDOG_SOCKET"],
+            Self::Crypto => vec!["SECURITY_PROVIDER_SOCKET", "BEARDOG_CRYPTO_SOCKET", "BEARDOG_SOCKET"],
+            Self::Security => vec!["SECURITY_PROVIDER_SOCKET", "SONGBIRD_SECURITY_PROVIDER", "BEARDOG_SOCKET"],
             Self::Http => vec!["HTTP_CLIENT_SOCKET", "SONGBIRD_SOCKET"],
             Self::Ai => vec!["SQUIRREL_SOCKET", "AI_PROVIDER_SOCKETS"],
             Self::Storage => vec!["NESTGATE_SOCKET", "STORAGE_SOCKET"],

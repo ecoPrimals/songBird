@@ -104,9 +104,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Create HTTPS client (uses BearDogClient::from_env() for mode detection)
     info!("🏗️  Creating HTTPS client...");
-    info!("   Mode: Controlled by BEARDOG_MODE env var");
-    info!("   - BEARDOG_MODE=direct → Direct RPC to BearDog");
-    info!("   - BEARDOG_MODE=neural → Via Neural API (default)");
+    info!("   Mode: SECURITY_PROVIDER_MODE (preferred) or BEARDOG_MODE");
+    info!("   - SECURITY_PROVIDER_MODE=direct or BEARDOG_MODE=direct → Direct RPC to crypto provider");
+    info!("   - SECURITY_PROVIDER_MODE=neural or BEARDOG_MODE=neural → Via Neural API (default)");
     let client = SongbirdHttpClient::from_env();
     info!("✅ Client ready");
     info!("");

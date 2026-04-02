@@ -56,11 +56,11 @@ pub use types::TlsSecrets;
 //
 // `BearDogClient` supports semantic routing via Neural API through its mode enum:
 //
-// - Direct mode: Talk directly to `BearDog` (testing)
-//   Set: BEARDOG_MODE=direct, BEARDOG_SOCKET=/tmp/beardog.sock
+// - Direct mode: Talk directly to the crypto/security provider (testing)
+//   Set: SECURITY_PROVIDER_MODE=direct (or BEARDOG_MODE=direct), SECURITY_PROVIDER_SOCKET or BEARDOG_SOCKET
 //
 // - Neural API mode: Route through Neural API (production)
-//   Set: BEARDOG_MODE=neural, NEURAL_API_SOCKET=/tmp/neural-api.sock
+//   Set: SECURITY_PROVIDER_MODE=neural (or BEARDOG_MODE=neural), NEURAL_API_SOCKET=/tmp/neural-api.sock
 //
 // The client automatically uses semantic method names when in Neural API mode.
 // See `BearDogClient::from_env()` for automatic mode detection.

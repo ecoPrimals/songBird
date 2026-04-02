@@ -42,7 +42,7 @@ pub trait BearDogProvider: LineageProvider + BirdSongCrypto + LineageRelay + Sen
 ///
 /// Supports multiple discovery strategies:
 /// 1. UPA (Universal Port Authority) - query for "security" capability
-/// 2. Environment variable - `BEARDOG_URL`
+/// 2. Environment variable - `SECURITY_PROVIDER_SOCKET` / `BEARDOG_URL` (legacy)
 /// 3. Well-known port - localhost:8200
 /// 4. Mock provider - for testing without `BearDog`
 pub struct BearDogProviderFactory;
@@ -122,12 +122,18 @@ impl BearDogProviderFactory {
     }
 
     async fn discover_via_env() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
-        // Check BEARDOG_SOCKET first (preferred for Unix sockets)
-        if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET") {
-            tracing::info!("Using BearDog socket from BEARDOG_SOCKET: {}", socket_path);
-            match crate::beardog::production::ProductionBearDogProvider::new(&socket_path).await {
-                Ok(provider) => return Ok(Some(Box::new(provider))),
-                Err(e) => tracing::warn!("Failed to connect to BEARDOG_SOCKET: {}", e),
+        // Capability-based socket first, then legacy BEARDOG_SOCKET (Unix sockets)
+        for (env_key, label) in [
+            ("SECURITY_PROVIDER_SOCKET", "SECURITY_PROVIDER_SOCKET"),
+            ("BEARDOG_SOCKET", "BEARDOG_SOCKET"),
+        ] {
+            if let Ok(socket_path) = songbird_process_env::var(env_key) {
+                tracing::info!("Using security provider socket from {label}: {socket_path}");
+                match crate::beardog::production::ProductionBearDogProvider::new(&socket_path).await
+                {
+                    Ok(provider) => return Ok(Some(Box::new(provider))),
+                    Err(e) => tracing::warn!("Failed to connect to {label}: {e}"),
+                }
             }
         }
 
@@ -157,7 +163,9 @@ impl BearDogProviderFactory {
                 }
             } else {
                 tracing::warn!("BearDog URL is not a Unix socket URL: {}", url);
-                tracing::warn!("Use BEARDOG_SOCKET for Unix socket paths, or prefix with unix://");
+                tracing::warn!(
+                    "Use SECURITY_PROVIDER_SOCKET or BEARDOG_SOCKET for Unix socket paths, or prefix with unix://"
+                );
             }
         }
 
@@ -174,7 +182,7 @@ impl BearDogProviderFactory {
                     "Using development fallback for BearDog: {}",
                     default_socket.display()
                 );
-                tracing::warn!("Set BEARDOG_SOCKET or SECURITY_SOCKET for production");
+                tracing::warn!("Set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or SECURITY_SOCKET for production");
                 match crate::beardog::production::ProductionBearDogProvider::new(default_socket)
                     .await
                 {
@@ -188,7 +196,7 @@ impl BearDogProviderFactory {
         {
             // Production: No fallback
             tracing::error!(
-                "BearDog not found. Set BEARDOG_SOCKET or SECURITY_SOCKET environment variable"
+                "BearDog not found. Set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or SECURITY_SOCKET"
             );
         }
 

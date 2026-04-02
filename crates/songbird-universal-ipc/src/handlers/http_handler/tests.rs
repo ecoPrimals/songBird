@@ -121,7 +121,19 @@ async fn test_default_discovery_fallback() {
 }
 
 #[tokio::test]
-async fn test_discovery_beardog_socket_fallback() {
+async fn test_discovery_security_provider_socket_priority() {
+    let mut env = std::collections::HashMap::new();
+    env.insert("SECURITY_PROVIDER_SOCKET".to_string(), "/run/capability.sock".to_string());
+    env.insert("BEARDOG_SOCKET".to_string(), "/run/user/1000/biomeos/beardog.sock".to_string());
+
+    let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| env.get(key).cloned());
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), "/run/capability.sock");
+}
+
+#[tokio::test]
+async fn test_discovery_beardog_socket_legacy_fallback() {
     let mut env = std::collections::HashMap::new();
     env.insert("BEARDOG_SOCKET".to_string(), "/run/user/1000/biomeos/beardog.sock".to_string());
 

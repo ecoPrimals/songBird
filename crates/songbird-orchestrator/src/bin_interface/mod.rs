@@ -84,13 +84,13 @@ pub struct ServerArgs {
     #[arg(long)]
     pub socket: Option<String>,
 
-    /// `BearDog` socket path for crypto operations (defaults based on `family_id`)
+    /// Security provider socket path for crypto operations (defaults via capability discovery)
     ///
-    /// If not specified, uses XDG-compliant discovery:
-    /// 1. $`BEARDOG_SOCKET` env var
-    /// 2. $XDG_RUNTIME_DIR/biomeos/beardog-$FAMILY_ID.sock
-    /// 3. /tmp/beardog-nat0.sock (fallback)
-    #[arg(long)]
+    /// If not specified, uses capability-based discovery:
+    /// 1. `$SECURITY_PROVIDER_SOCKET` env var
+    /// 2. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
+    /// 3. `$BEARDOG_SOCKET` (legacy)
+    #[arg(long, alias = "beardog-socket")]
     pub beardog_socket: Option<String>,
 
     /// TCP listen address for IPC (alternative to Unix socket)
