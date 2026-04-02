@@ -2,7 +2,7 @@
 
 **Date**: April 2, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: April 2, 2026 (Session 36, Wave 96 — Deep Debt: IPC handler dedup, config template evolution, port source consolidation, production stub evolution, deny.toml hygiene)
+**Last Deep Debt Audit**: April 2, 2026 (Session 37, Wave 97 — Capability-Based Discovery Compliance: discover_beardog→discover_security_provider across 13 crates/53 files, SECURITY_PROVIDER_SOCKET env var chain, security.sock capability symlink)
 
 ---
 
@@ -27,7 +27,7 @@
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
 | **`#[allow()]` vs `#[expect()]`** | Fully correct: `#[expect(reason)]` only where lint fires, `#[allow(reason)]` everywhere else |
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
-| **Hardcoded elimination** | All ports env-driven via `defaults::ports`; `primal_scan_ports()` aggregation; config templates generated from runtime defaults; DNS-SD/mDNS/broadcast discovery; capability-first |
+| **Hardcoded elimination** | All ports env-driven via `defaults::ports`; `primal_scan_ports()` aggregation; config templates generated from runtime defaults; DNS-SD/mDNS/broadcast discovery; capability-first; `SECURITY_PROVIDER_SOCKET` → `security.sock` symlink chain (wateringHole v1.2 compliant) |
 | **JSON-RPC handlers** | 15 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` + `mesh.topology` (ecosystem standard) |
 | **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain; transport-agnostic `handle_json_rpc_connection` (Unix + TCP via single generic) |
 | **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
