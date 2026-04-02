@@ -336,7 +336,7 @@ mod tests {
             server_write_key: vec![],
             server_write_iv: vec![],
         };
-        assert_eq!(a.clone().client_traffic_secret, vec![1]);
+        assert_eq!(a.client_traffic_secret, vec![1]);
     }
 
     #[test]

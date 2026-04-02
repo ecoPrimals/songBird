@@ -244,32 +244,60 @@ const fn nat_pmp_error_description(code: u16) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
-    fn test_nat_pmp_error_descriptions() {
+    fn nat_pmp_error_descriptions_cover_rfc_codes() {
         assert_eq!(nat_pmp_error_description(0), "Success");
+        assert_eq!(nat_pmp_error_description(1), "Unsupported version");
         assert_eq!(nat_pmp_error_description(2), "Not authorized / refused");
+        assert_eq!(nat_pmp_error_description(3), "Network failure");
+        assert_eq!(nat_pmp_error_description(4), "Out of resources");
+        assert_eq!(nat_pmp_error_description(5), "Unsupported opcode");
         assert_eq!(nat_pmp_error_description(99), "Unknown error");
     }
 
     #[test]
-    fn test_nat_pmp_client_creation() {
+    fn nat_pmp_client_new_targets_gateway_port_5351() {
         let client = NatPmpClient::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)));
-        assert_eq!(client.gateway.port(), 5351);
+        assert_eq!(client.gateway.port(), crate::NAT_PMP_PORT);
         assert_eq!(client.gateway.ip(), IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)));
     }
 
     #[test]
-    fn test_request_encoding() {
-        // Verify port encoding is correct (big-endian)
-        let port: u16 = 3492;
-        let bytes = port.to_be_bytes();
-        assert_eq!(bytes, [0x0D, 0xA4]);
+    fn nat_pmp_client_with_timeout_preserves_gateway() {
+        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+        let c = NatPmpClient::with_timeout(ip, Duration::from_millis(500));
+        assert_eq!(c.gateway.ip(), ip);
+        assert_eq!(c.timeout, Duration::from_millis(500));
+    }
 
-        // Verify lifetime encoding
+    #[test]
+    fn nat_pmp_mapping_and_external_ip_types_are_debuggable() {
+        let m = NatPmpMappingResponse {
+            internal_port: 1,
+            external_port: 2,
+            lifetime: 3,
+        };
+        let s = format!("{m:?}");
+        assert!(s.contains("NatPmpMappingResponse"), "Debug should name struct: {s}");
+
+        let e = NatPmpExternalIp {
+            ip: Ipv4Addr::new(1, 2, 3, 4),
+            epoch: 42,
+        };
+        let s = format!("{e:?}");
+        assert!(s.contains("1.2.3.4"), "Debug should include IP: {s}");
+    }
+
+    #[test]
+    fn request_encoding_big_endian_matches_rfc() {
+        let port: u16 = 3492;
+        assert_eq!(port.to_be_bytes(), [0x0D, 0xA4]);
+
         let lifetime: u32 = 86400;
-        let bytes = lifetime.to_be_bytes();
-        assert_eq!(bytes, [0x00, 0x01, 0x51, 0x80]);
+        assert_eq!(lifetime.to_be_bytes(), [0x00, 0x01, 0x51, 0x80]);
     }
 }

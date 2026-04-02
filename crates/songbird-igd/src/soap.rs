@@ -307,18 +307,30 @@ fn xml_escape(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::error::SoapErrorCode;
     use crate::mapping::Protocol;
     use std::net::Ipv4Addr;
 
     #[test]
-    fn test_xml_escape() {
-        assert_eq!(xml_escape("test & <test>"), "test &amp; &lt;test&gt;");
+    fn xml_escape_escapes_special_chars() {
+        assert_eq!(
+            xml_escape("test & <test>"),
+            "test &amp; &lt;test&gt;",
+            "&, <, > must be escaped for SOAP/XML"
+        );
         assert_eq!(xml_escape("Songbird's mapping"), "Songbird&apos;s mapping");
+        assert_eq!(
+            xml_escape("\"q\""),
+            "&quot;q&quot;",
+            "double quotes must be escaped in attributes/text"
+        );
     }
 
     #[test]
-    fn test_build_add_port_mapping_xml() {
+    fn build_add_port_mapping_xml_contains_expected_elements() {
         let soap = SoapClient::new(
             "http://192.168.1.254:5431/ctl/IPConn".to_string(),
             crate::WANIP_SERVICE_TYPE.to_string(),
@@ -337,10 +349,33 @@ mod tests {
         assert!(xml.contains("<NewInternalPort>3492</NewInternalPort>"));
         assert!(xml.contains("<NewInternalClient>192.168.1.144</NewInternalClient>"));
         assert!(xml.contains("<NewProtocol>TCP</NewProtocol>"));
+        assert!(xml.contains("<NewLeaseDuration>86400</NewLeaseDuration>"));
     }
 
     #[test]
-    fn test_parse_soap_error() {
+    fn build_delete_port_mapping_xml_contains_port_and_protocol() {
+        let soap = SoapClient::new(
+            "http://192.168.1.1/ctl".to_string(),
+            crate::WANIP_SERVICE_TYPE.to_string(),
+        );
+        let xml = soap.build_delete_port_mapping_xml(443, "UDP");
+        assert!(xml.contains("<NewExternalPort>443</NewExternalPort>"));
+        assert!(xml.contains("<NewProtocol>UDP</NewProtocol>"));
+    }
+
+    #[test]
+    fn build_get_external_ip_xml_includes_service_namespace() {
+        let soap = SoapClient::new(
+            "http://192.168.1.1/ctl".to_string(),
+            crate::WANIP_SERVICE_TYPE.to_string(),
+        );
+        let xml = soap.build_get_external_ip_xml();
+        assert!(xml.contains("GetExternalIPAddress"));
+        assert!(xml.contains(crate::WANIP_SERVICE_TYPE));
+    }
+
+    #[test]
+    fn parse_soap_error_finds_error_code() {
         let error_response = r#"<?xml version="1.0"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
@@ -362,7 +397,12 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_external_ip() {
+    fn parse_soap_error_returns_none_when_missing() {
+        assert_eq!(SoapClient::parse_soap_error("<xml></xml>"), None);
+    }
+
+    #[test]
+    fn parse_external_ip_reads_ipv4() {
         let response = r#"<?xml version="1.0"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
@@ -372,40 +412,92 @@ mod tests {
   </s:Body>
 </s:Envelope>"#;
 
-        let ip = SoapClient::parse_external_ip(response).unwrap();
+        let ip = SoapClient::parse_external_ip(response).expect("valid SOAP body");
         assert_eq!(ip, IpAddr::V4(Ipv4Addr::new(162, 226, 225, 148)));
     }
 
     #[test]
-    fn test_parse_url() {
+    fn parse_external_ip_rejects_malformed_body() {
+        let err = SoapClient::parse_external_ip("<empty/>").expect_err("no NewExternalIPAddress");
+        assert!(
+            matches!(err, IgdError::InvalidResponse(_)),
+            "expected InvalidResponse, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn map_soap_error_maps_known_codes() {
+        let e = SoapClient::map_soap_error(718, 8080);
+        assert!(
+            matches!(e, IgdError::MappingConflict(8080, _)),
+            "718 should become MappingConflict: {e:?}"
+        );
+
+        let e = SoapClient::map_soap_error(501, 0);
+        match e {
+            IgdError::SoapError(s) => {
+                assert!(s.contains("501"), "message should mention code: {s}");
+                assert!(s.contains(SoapErrorCode::ActionFailed.description()));
+            }
+            other => panic!("expected SoapError, got {other:?}"),
+        }
+
+        let e = SoapClient::map_soap_error(9999, 1);
+        assert!(
+            matches!(e, IgdError::SoapError(_)),
+            "unknown code maps to SoapError string: {e:?}"
+        );
+    }
+
+    #[test]
+    fn parse_url_splits_host_port_path() {
         let (host, port, path) =
-            SoapClient::parse_url("http://192.168.1.254:5431/ctl/IPConn").unwrap();
+            SoapClient::parse_url("http://192.168.1.254:5431/ctl/IPConn").expect("valid URL");
         assert_eq!(host, "192.168.1.254");
         assert_eq!(port, 5431);
         assert_eq!(path, "/ctl/IPConn");
     }
 
     #[test]
-    fn test_parse_url_default_port() {
-        let (host, port, path) = SoapClient::parse_url("http://192.168.1.1/upnp/control").unwrap();
+    fn parse_url_default_port_80() {
+        let (host, port, path) =
+            SoapClient::parse_url("http://192.168.1.1/upnp/control").expect("valid URL");
         assert_eq!(host, "192.168.1.1");
         assert_eq!(port, 80);
         assert_eq!(path, "/upnp/control");
     }
 
     #[test]
-    fn test_parse_url_no_path() {
-        let (host, port, path) = SoapClient::parse_url("http://10.0.0.1:8080").unwrap();
+    fn parse_url_no_explicit_path_defaults_to_slash() {
+        let (host, port, path) = SoapClient::parse_url("http://10.0.0.1:8080").expect("valid URL");
         assert_eq!(host, "10.0.0.1");
         assert_eq!(port, 8080);
         assert_eq!(path, "/");
     }
 
+    #[test]
+    fn parse_url_rejects_non_http_scheme() {
+        let err =
+            SoapClient::parse_url("https://192.168.1.1/ctl").expect_err("only http:// supported");
+        assert!(
+            matches!(err, IgdError::InvalidParameter(_)),
+            "expected InvalidParameter, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn parse_url_rejects_invalid_port() {
+        let err = SoapClient::parse_url("http://192.168.1.1:bad/").expect_err("port must be numeric");
+        assert!(
+            matches!(err, IgdError::InvalidParameter(_)),
+            "expected InvalidParameter, got {err:?}"
+        );
+    }
+
     #[tokio::test]
-    async fn test_soap_send_unreachable_host() {
-        // Verify that connection to unreachable host returns clean error, not panic
+    async fn add_port_mapping_unreachable_host_returns_error() {
         let soap = SoapClient::new(
-            "http://203.0.113.1:5431/ctl/IPConn".to_string(), // RFC 5737 TEST-NET-3
+            "http://203.0.113.1:5431/ctl/IPConn".to_string(),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
 
@@ -416,8 +508,10 @@ mod tests {
             Protocol::Tcp,
         );
 
-        // Should fail cleanly with timeout or connection error
         let result = soap.add_port_mapping(&req).await;
-        assert!(result.is_err(), "Should fail for unreachable host");
+        assert!(
+            result.is_err(),
+            "unreachable TEST-NET-3 host should yield error, got {result:?}"
+        );
     }
 }

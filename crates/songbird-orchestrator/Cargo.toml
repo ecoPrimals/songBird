@@ -87,9 +87,11 @@ unnecessary_literal_unwrap = "allow"
 
 # Evolution (SB-03 / BearDog): `task-checkpoint-gzip` gates flate2 so minimal builds can omit gzip.
 # `sled-storage` gates embedded sled; without it, consent/task persistence uses in-memory backends.
+# SB-03 / Tower Atomic: sled is default-OFF — storage is nestGate's concern. Opt in explicitly
+# with `--features sled-storage` when nestGate is unavailable and local persistence is needed.
 # `sha2` + `hmac` back local JWT + checkpoint fallbacks when BearDog/crypto provider is unavailable.
 [features]
-default = ["task-checkpoint-gzip", "sled-storage"]
+default = ["task-checkpoint-gzip"]
 task-checkpoint-gzip = ["dep:flate2"]
 sled-storage = ["dep:sled"]
 
@@ -116,7 +118,7 @@ futures = { version = "0.3" }
 futures-util = { version = "0.3" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.0", features = ["derive", "env"] }
 anyhow = "1.0"
 thiserror = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "v5", "v7"] }
@@ -132,7 +134,7 @@ fastrand = "2.0"
 rand = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
 socket2 = { workspace = true }
-serde_yaml = "0.9.34"
+toml = "0.8"
 hostname = "0.4"
 dirs = "5.0"
 async-stream = "0.3"

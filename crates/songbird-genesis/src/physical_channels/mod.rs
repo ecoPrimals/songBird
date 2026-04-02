@@ -136,3 +136,54 @@ impl PhysicalChannelProvider for PhysicalChannel {
         }
     }
 }
+
+#[cfg(test)]
+mod enum_dispatch_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{PhysicalChannel, PhysicalChannelProvider};
+    use crate::physical_channels::mock::MockPhysicalChannel;
+    use crate::physical_channels::qr_code::QrCodeChannel;
+    use crate::types::{PhysicalChannelType, TrustLevel};
+
+    #[tokio::test]
+    async fn physical_channel_enum_delegates_to_inner_provider() {
+        let mock = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        assert_eq!(mock.channel_type(), PhysicalChannelType::HardwareKey);
+        assert_eq!(mock.trust_level(), TrustLevel::Maximum);
+        let proof = mock.verify_proximity().await.expect("mock proximity");
+        assert_eq!(proof.channel_type, PhysicalChannelType::HardwareKey);
+
+        let qr = PhysicalChannel::QrCode(QrCodeChannel::new());
+        assert_eq!(qr.channel_type(), PhysicalChannelType::QrCodeWithOob);
+        assert_eq!(qr.trust_level(), TrustLevel::High);
+    }
+
+    #[cfg(feature = "solokey")]
+    #[tokio::test]
+    async fn hardware_key_variant_round_trip() {
+        use crate::physical_channels::solokey::SoloKeyChannel;
+        let ch = PhysicalChannel::HardwareKey(SoloKeyChannel::new());
+        assert_eq!(ch.channel_type(), PhysicalChannelType::HardwareKey);
+        let creds = ch.secure_exchange().await.expect("solokey exchange");
+        assert_eq!(creds, b"solokey_genesis_creds");
+    }
+
+    #[cfg(feature = "legacy-bluetooth")]
+    #[tokio::test]
+    #[allow(deprecated, reason = "legacy btleplug channel remains in API until callers migrate")]
+    async fn legacy_bluetooth_channel_errors_and_metadata() {
+        use crate::error::GenesisError;
+        use crate::physical_channels::bluetooth::BluetoothChannel;
+        use crate::physical_channels::PhysicalChannelProvider;
+
+        let ch = BluetoothChannel::new();
+        assert_eq!(ch.channel_type(), PhysicalChannelType::Bluetooth);
+        assert_eq!(ch.trust_level(), TrustLevel::Medium);
+
+        let prox = ch.verify_proximity().await;
+        let exchange = ch.secure_exchange().await;
+        assert!(matches!(prox, Err(GenesisError::BluetoothError(_))), "got {prox:?}");
+        assert!(matches!(exchange, Err(GenesisError::BluetoothError(_))), "got {exchange:?}");
+    }
+}

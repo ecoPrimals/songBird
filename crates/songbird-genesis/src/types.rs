@@ -154,3 +154,82 @@ pub struct PrimalGenesisResponse {
     /// Optional error message
     pub error: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn physical_channel_type_trust_stars_and_attestation() {
+        assert_eq!(
+            PhysicalChannelType::HardwareKey.trust_level(),
+            5,
+            "hardware key should map to five stars"
+        );
+        assert!(PhysicalChannelType::HardwareKey.has_hardware_attestation());
+
+        assert_eq!(PhysicalChannelType::QrCodeWithOob.trust_level(), 4);
+        assert_eq!(PhysicalChannelType::Nfc.trust_level(), 4);
+        assert!(!PhysicalChannelType::QrCodeWithOob.has_hardware_attestation());
+        assert!(PhysicalChannelType::Nfc.has_hardware_attestation());
+
+        assert_eq!(PhysicalChannelType::Bluetooth.trust_level(), 3);
+        assert!(!PhysicalChannelType::Bluetooth.has_hardware_attestation());
+    }
+
+    #[test]
+    fn trust_level_from_u8_star_mapping() {
+        assert_eq!(TrustLevel::from(5_u8), TrustLevel::Maximum);
+        assert_eq!(TrustLevel::from(4_u8), TrustLevel::High);
+        assert_eq!(TrustLevel::from(3_u8), TrustLevel::Medium);
+        assert_eq!(TrustLevel::from(2_u8), TrustLevel::Low);
+        assert_eq!(TrustLevel::from(0_u8), TrustLevel::Low);
+    }
+
+    #[test]
+    fn trust_level_ordering() {
+        assert!(TrustLevel::Low < TrustLevel::Medium);
+        assert!(TrustLevel::Medium < TrustLevel::High);
+        assert!(TrustLevel::High < TrustLevel::Maximum);
+    }
+
+    #[test]
+    fn serde_roundtrip_core_types() {
+        let proof = ProximityProof {
+            channel_type: PhysicalChannelType::Bluetooth,
+            timestamp: Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap(),
+            proof_data: vec![1, 2, 3],
+            attestation: None,
+        };
+        let json = serde_json::to_string(&proof).expect("serialize proof");
+        let back: ProximityProof = serde_json::from_str(&json).expect("deserialize proof");
+        assert_eq!(back.channel_type, proof.channel_type);
+        assert_eq!(back.proof_data, proof.proof_data);
+
+        let lineage = PrimalLineage {
+            primal_name: "songbird".to_string(),
+            lineage_data: vec![9],
+            signature: vec![8],
+            timestamp: Utc::now(),
+        };
+        let json = serde_json::to_string(&lineage).expect("serialize lineage");
+        let back: PrimalLineage = serde_json::from_str(&json).expect("deserialize lineage");
+        assert_eq!(back.primal_name, "songbird");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn tokio_virtual_time_advances_for_deterministic_async_delays() {
+        let start = tokio::time::Instant::now();
+        let delay = std::time::Duration::from_secs(2);
+        let sleep = tokio::time::sleep(delay);
+        tokio::time::advance(delay).await;
+        sleep.await;
+        assert!(
+            start.elapsed() >= delay,
+            "paused clock should advance only via `time::advance` in tests"
+        );
+    }
+}

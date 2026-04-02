@@ -139,3 +139,30 @@ pub const HEADER_SIZE: usize = 1 + 1 + 2; // version + type + length
 
 /// Full frame overhead (header + pubkey + nonce + signature)
 pub const FRAME_OVERHEAD: usize = HEADER_SIZE + PUBLIC_KEY_SIZE + NONCE_SIZE + SIGNATURE_SIZE;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wire_constants_are_consistent() {
+        assert_eq!(HEADER_SIZE, 4, "version + type + u16 length");
+        assert_eq!(
+            FRAME_OVERHEAD,
+            HEADER_SIZE + PUBLIC_KEY_SIZE + NONCE_SIZE + SIGNATURE_SIZE,
+            "FRAME_OVERHEAD should match header + fixed fields + signature"
+        );
+        assert_eq!(PROTOCOL_VERSION, 0x01);
+        assert_eq!(PUBLIC_KEY_SIZE + NONCE_SIZE + SIGNATURE_SIZE, 32 + 24 + 64);
+    }
+
+    #[test]
+    fn message_types_differ() {
+        assert_ne!(
+            MSG_TYPE_GENESIS_REQUEST,
+            MSG_TYPE_GENESIS_RESPONSE,
+            "request and response must be distinct opcodes"
+        );
+    }
+}

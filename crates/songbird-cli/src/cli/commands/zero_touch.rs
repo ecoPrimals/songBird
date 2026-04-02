@@ -85,14 +85,14 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
     }
     async fn save_config_file(&self, path: &std::path::Path) -> SongbirdResult<()> {
         let config = ZeroTouchConfig::default();
-        let config_yaml = serde_yaml::to_string(&config,.map_err(|e| {
+        let config_toml = toml::to_string_pretty(&config).map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to serialize configuration: {}","
+                "Failed to serialize configuration: {}",
                 e
-            )
+            ))
         })?;
 
-        tokio::fs::write(path, config_yaml).await.map_err(|e| {
+        tokio::fs::write(path, config_toml).await.map_err(|e| {
             SongbirdError::configuration(&format!(
                 "Failed to write config file: {}","
                 e
@@ -271,14 +271,14 @@ async fn save_songbird_configuration(
     config: &songbird_config::config::SongbirdConfig,
     path: &std::path::Path,
 ) -> SongbirdResult<()> {
-    let config_yaml = serde_yaml::to_string(config,.map_err(|e| {
+    let config_toml = toml::to_string_pretty(config).map_err(|e| {
         SongbirdError::configuration(format!(
-            "Failed to serialize configuration: {}","
+            "Failed to serialize configuration: {}",
             e
-        )
+        ))
     })?;
 
-    tokio::fs::write(path, config_yaml).await.map_err(|e| {
+    tokio::fs::write(path, config_toml).await.map_err(|e| {
         SongbirdError::configuration(&format!(
             "Failed to write config file: {}","
             e

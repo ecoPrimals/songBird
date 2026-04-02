@@ -131,6 +131,8 @@ impl NewNodeIdentity {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::types::PhysicalChannelType;
 
@@ -143,27 +145,23 @@ mod tests {
     }
 
     fn create_test_lineage() -> GenesisLineage {
+        create_lineage_with_primals(&["songbird", "beardog"])
+    }
+
+    fn create_lineage_with_primals(primals: &[&str]) -> GenesisLineage {
         let mut primal_lineages = std::collections::HashMap::new();
-
-        primal_lineages.insert(
-            "songbird".to_string(),
-            PrimalLineage {
-                primal_name: "songbird".to_string(),
-                lineage_data: vec![4, 5, 6],
-                signature: vec![7, 8, 9],
-                timestamp: Utc::now(),
-            },
-        );
-
-        primal_lineages.insert(
-            "beardog".to_string(),
-            PrimalLineage {
-                primal_name: "beardog".to_string(),
-                lineage_data: vec![10, 11, 12],
-                signature: vec![13, 14, 15],
-                timestamp: Utc::now(),
-            },
-        );
+        for (i, name) in primals.iter().enumerate() {
+            let tag = u8::try_from(i).expect("test uses small primal index");
+            primal_lineages.insert(
+                (*name).to_string(),
+                PrimalLineage {
+                    primal_name: (*name).to_string(),
+                    lineage_data: vec![tag, 5, 6],
+                    signature: vec![7, 8, 9],
+                    timestamp: Utc::now(),
+                },
+            );
+        }
 
         GenesisLineage {
             witness_device_id: "test-witness".to_string(),
@@ -200,5 +198,47 @@ mod tests {
         let songbird_lineage = identity.get_primal_lineage("songbird");
         assert!(songbird_lineage.is_some());
         assert_eq!(songbird_lineage.unwrap().primal_name, "songbird");
+        assert!(identity.get_primal_lineage("missing").is_none());
+    }
+
+    #[test]
+    fn new_node_identity_single_primal_is_not_multi_primal() {
+        let witness = create_test_witness();
+        let lineage = create_lineage_with_primals(&["songbird"]);
+        let identity = NewNodeIdentity::new("n1".to_string(), vec![1], witness, lineage);
+        assert_eq!(identity.primal_signature_count(), 1);
+        assert!(!identity.is_multi_primal_genesis(), "one primal should not count as multi-primal");
+    }
+
+    #[tokio::test]
+    async fn verify_all_signatures_false_when_no_primal_lineages() {
+        let witness = create_test_witness();
+        let lineage = GenesisLineage {
+            witness_device_id: "w".to_string(),
+            primal_lineages: std::collections::HashMap::new(),
+            birth_timestamp: Utc::now(),
+            ceremony_id: Uuid::new_v4(),
+        };
+        let identity = NewNodeIdentity::new("n".to_string(), vec![], witness, lineage);
+        assert!(
+            !identity.verify_all_signatures().await,
+            "empty primal lineages must fail verification"
+        );
+    }
+
+    #[test]
+    fn new_node_identity_serde_roundtrip() {
+        let witness = create_test_witness();
+        let lineage = create_test_lineage();
+        let mut identity =
+            NewNodeIdentity::new("node-a".to_string(), vec![9, 9, 9], witness, lineage);
+        identity.metadata.insert("k".to_string(), "v".to_string());
+
+        let json = serde_json::to_string(&identity).expect("serialize identity");
+        let back: NewNodeIdentity = serde_json::from_str(&json).expect("deserialize identity");
+        assert_eq!(back.node_id, "node-a");
+        assert_eq!(back.public_key, vec![9, 9, 9]);
+        assert_eq!(back.metadata.get("k"), Some(&"v".to_string()));
+        assert_eq!(back.ceremony_id, identity.ceremony_id);
     }
 }

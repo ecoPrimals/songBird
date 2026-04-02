@@ -82,3 +82,100 @@ pub async fn heartbeat_loop(state: BridgeState, songbird_endpoint: String) {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::{derive_health_status, heartbeat_loop, register_with_songbird};
+    use crate::service::types::{BridgeConfig, BridgeState, ServiceInfo};
+    use songbird_http_client::IpcHttpClient;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    async fn sample_bridge_state(backend_url: Option<&str>) -> BridgeState {
+        let http_client = IpcHttpClient::new()
+            .await
+            .expect("IPC HTTP client required for federation unit tests");
+        BridgeState {
+            config: Arc::new(BridgeConfig {
+                host: "10.0.0.1".into(),
+                port: 9000,
+                service_name: "fed-test".into(),
+                service_type: "compute".into(),
+                node_id: "node-fed".into(),
+                tower_id: "tower-fed".into(),
+                songbird_endpoint: None,
+                capabilities: vec!["compute".into()],
+                backend_url: backend_url.map(String::from),
+            }),
+            http_client,
+            service_info: Arc::new(ServiceInfo {
+                cpu_cores: 4,
+                memory_gb: 16,
+                gpu_count: 0,
+                gpu_model: None,
+                storage_gb: Some(50),
+                platform: "linux-x86_64".into(),
+            }),
+        }
+    }
+
+    #[test]
+    fn derive_health_status_healthy_when_backend_configured() {
+        let cfg = BridgeConfig {
+            host: "127.0.0.1".into(),
+            port: 1,
+            service_name: "s".into(),
+            service_type: "compute".into(),
+            node_id: "n".into(),
+            tower_id: "t".into(),
+            songbird_endpoint: None,
+            capabilities: vec![],
+            backend_url: Some("http://backend".into()),
+        };
+        assert_eq!(
+            derive_health_status(&cfg),
+            "healthy",
+            "backend URL present should map to healthy"
+        );
+    }
+
+    #[test]
+    fn derive_health_status_degraded_when_no_backend() {
+        let cfg = BridgeConfig {
+            host: "127.0.0.1".into(),
+            port: 1,
+            service_name: "s".into(),
+            service_type: "compute".into(),
+            node_id: "n".into(),
+            tower_id: "t".into(),
+            songbird_endpoint: None,
+            capabilities: vec![],
+            backend_url: None,
+        };
+        assert_eq!(derive_health_status(&cfg), "degraded");
+    }
+
+    #[tokio::test]
+    async fn register_with_songbird_returns_err_when_unreachable() {
+        let state = sample_bridge_state(None).await;
+        let err = register_with_songbird(&state, "http://127.0.0.1:1")
+            .await
+            .expect_err("registration to closed port should fail");
+        let msg = err.to_string();
+        assert!(
+            !msg.is_empty(),
+            "error should surface a message for debugging; got empty error chain"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn heartbeat_loop_performs_tick_on_interval() {
+        let state = sample_bridge_state(None).await;
+        let handle = tokio::spawn(heartbeat_loop(state, "http://127.0.0.1:1".into()));
+        tokio::time::advance(Duration::from_secs(30)).await;
+        tokio::task::yield_now().await;
+        handle.abort();
+        let _ = handle.await;
+    }
+}

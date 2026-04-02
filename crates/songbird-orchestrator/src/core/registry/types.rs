@@ -161,6 +161,10 @@ pub struct HeartbeatData {
 ///
 /// **ZERO-COPY OPTIMIZATION** (Dec 8, 2025 Phase 2):
 /// Registration ID uses `Arc<str>` to eliminate clones during verification checks.
+///
+/// **VIRTUAL-TIME** (Apr 2026): Health monitoring uses `tokio::time::Instant`
+/// for elapsed-time checks, enabling deterministic testing with `start_paused = true`.
+/// `last_heartbeat` (`DateTime<Utc>`) is retained for API display only.
 #[derive(Debug, Clone)]
 pub struct RegisteredProvider {
     /// Original registration request
@@ -176,8 +180,12 @@ pub struct RegisteredProvider {
     /// When this provider was registered
     pub registered_at: DateTime<Utc>,
 
-    /// Last successful heartbeat
+    /// Last successful heartbeat (wall-clock, for API display / serialization)
     pub last_heartbeat: DateTime<Utc>,
+
+    /// Last successful heartbeat (monotonic, for health monitor elapsed checks).
+    /// Advances with `tokio::time::advance()` under `start_paused = true`.
+    pub last_heartbeat_instant: tokio::time::Instant,
 
     /// Number of tasks currently assigned to this provider
     pub active_tasks: usize,

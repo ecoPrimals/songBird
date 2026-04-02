@@ -57,7 +57,7 @@ criterion = "0.5"
 [features]
 # Production builds: ZERO crypto (delegates to BearDog)
 # Test builds: Use --features standalone for offline testing
-default = ["sled-storage"]  # Embedded sled; omit with --no-default-features (in-memory storage)
+default = []  # SB-03 / Tower Atomic: sled default-OFF; opt in with --features sled-storage
 sled-storage = ["dep:sled"]
 standalone = [
     "ed25519-dalek",

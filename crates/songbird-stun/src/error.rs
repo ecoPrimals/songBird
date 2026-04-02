@@ -47,7 +47,7 @@ pub enum StunError {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::StunError;
     use std::io;
@@ -94,6 +94,15 @@ mod tests {
             StunError::AllServersFailed("all".into())
                 .to_string()
                 .contains("All STUN servers failed")
+        );
+    }
+
+    #[test]
+    fn stun_error_debug_is_nonempty() {
+        let e = StunError::InvalidResponse("x".into());
+        assert!(
+            format!("{e:?}").contains("InvalidResponse"),
+            "Debug should mention variant: {e:?}"
         );
     }
 }

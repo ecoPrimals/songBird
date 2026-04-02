@@ -6,7 +6,7 @@
 //! Provides comprehensive health diagnostics with multiple output formats:
 //! - Text (human-readable)
 //! - JSON (machine-readable)
-//! - YAML (machine-readable)
+//! - TOML (machine-readable)
 
 use anyhow::Result;
 
@@ -22,9 +22,13 @@ pub async fn run_doctor(args: DoctorArgs) -> Result<()> {
     match args.format.as_str() {
         "text" => run_doctor_text(args.comprehensive).await,
         "json" => run_doctor_json(args.comprehensive).await,
-        "yaml" => run_doctor_yaml(args.comprehensive).await,
+        "toml" => run_doctor_toml(args.comprehensive).await,
+        "yaml" => {
+            eprintln!("⚠️  YAML format is deprecated; using TOML instead.");
+            run_doctor_toml(args.comprehensive).await
+        }
         _ => {
-            eprintln!("❌ Unknown format: {}. Use: text, json, or yaml", args.format);
+            eprintln!("❌ Unknown format: {}. Use: text, json, or toml", args.format);
             std::process::exit(1);
         }
     }
@@ -152,11 +156,11 @@ async fn run_doctor_json(comprehensive: bool) -> Result<()> {
     Ok(())
 }
 
-/// Run doctor in YAML format
-async fn run_doctor_yaml(comprehensive: bool) -> Result<()> {
+/// Run doctor in TOML format (replaces deprecated YAML output)
+async fn run_doctor_toml(comprehensive: bool) -> Result<()> {
     let health_status = gather_health_status(comprehensive).await?;
-    let yaml = serde_yaml::to_string(&health_status)?;
-    println!("{yaml}");
+    let output = toml::to_string_pretty(&health_status)?;
+    println!("{output}");
     Ok(())
 }
 

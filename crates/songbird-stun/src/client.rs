@@ -530,16 +530,15 @@ impl Default for StunClient {
 
 #[cfg(test)]
 mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::ignore_without_reason,
-        reason = "test assertions"
-    )]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use crate::message::{MAGIC_COOKIE, MessageType, StunAttribute};
+    use crate::StunServer;
+    use songbird_config::timeouts::TimeoutConfig;
     use std::net::{IpAddr, Ipv4Addr};
+    use tokio::sync::oneshot;
+    use tokio::time::timeout;
 
     #[test]
     fn binding_request_encode_decode_roundtrip() {
@@ -616,19 +615,113 @@ mod tests {
         assert!(matches!(infer_port_pattern_from_mapped_ports(&[42]), PortPattern::Unknown));
     }
 
-    #[tokio::test]
+    #[test]
+    fn infer_port_pattern_large_step_treated_as_random() {
+        let p = infer_port_pattern_from_mapped_ports(&[1000, 1101, 1202, 1303]);
+        assert!(
+            matches!(p, PortPattern::Random { .. }),
+            "expected Random for |step| > 100, got {p:?}"
+        );
+    }
+
+    #[test]
+    fn infer_port_pattern_inconsistent_deltas_yield_random() {
+        let p = infer_port_pattern_from_mapped_ports(&[10_000, 10_001, 10_010, 10_011]);
+        assert!(
+            matches!(p, PortPattern::Random { .. }),
+            "expected Random when deltas disagree, got {p:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn discover_public_address_racing_empty_server_list() {
         let client = StunClient::with_timeout(Duration::from_millis(200));
-        let err = client.discover_public_address_racing(&[]).await.expect_err("empty server list");
-        assert!(matches!(err, StunError::Config(_)));
+        let err = client
+            .discover_public_address_racing(&[])
+            .await
+            .expect_err("empty server list should yield Config error");
+        assert!(
+            matches!(err, StunError::Config(_)),
+            "expected Config error, got {err:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn discover_public_address_parallel_empty_server_list() {
+        let client = StunClient::with_timeout(Duration::from_millis(200));
+        let err = client
+            .discover_public_address_parallel(&[])
+            .await
+            .expect_err("empty server list should yield Config error");
+        assert!(
+            matches!(err, StunError::Config(_)),
+            "expected Config error, got {err:?}"
+        );
+    }
+
+    async fn start_local_stun_server() -> (tokio::task::JoinHandle<()>, std::net::SocketAddr) {
+        let (ready_tx, ready_rx) = oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let server = StunServer::new("127.0.0.1:0".parse().expect("loopback parse"));
+            let _ = server.run_with_ready(ready_tx).await;
+        });
+        let addr = ready_rx
+            .await
+            .expect("STUN server should signal bound address");
+        (handle, addr)
     }
 
     #[tokio::test]
-    async fn discover_public_address_parallel_empty_server_list() {
-        let client = StunClient::with_timeout(Duration::from_millis(200));
-        let err =
-            client.discover_public_address_parallel(&[]).await.expect_err("empty server list");
-        assert!(matches!(err, StunError::Config(_)));
+    async fn discover_public_address_parallel_local_server_succeeds() {
+        let (server_handle, actual_addr) = start_local_stun_server().await;
+        let client = StunClient::with_timeout(Duration::from_secs(2));
+        let result = timeout(
+            Duration::from_secs(3),
+            client.discover_public_address_parallel(&[actual_addr.to_string()]),
+        )
+        .await;
+        server_handle.abort();
+        let inner = result.expect("outer timeout: parallel discovery should finish");
+        let addr = inner.expect("parallel STUN discovery should succeed against local server");
+        assert!(
+            addr.ip().is_loopback(),
+            "expected loopback mapped address from local server, got {addr}"
+        );
+    }
+
+    #[tokio::test]
+    async fn discover_public_address_racing_local_server_succeeds() {
+        let (server_handle, actual_addr) = start_local_stun_server().await;
+        let client = StunClient::with_timeout(Duration::from_secs(2));
+        let server_str = actual_addr.to_string();
+        let result = timeout(
+            Duration::from_secs(3),
+            client.discover_public_address_racing(&[server_str.as_str()]),
+        )
+        .await;
+        server_handle.abort();
+        let inner = result.expect("outer timeout: racing discovery should finish");
+        let addr = inner.expect("racing STUN discovery should succeed against local server");
+        assert!(
+            addr.ip().is_loopback(),
+            "expected loopback mapped address from local server, got {addr}"
+        );
+    }
+
+    #[tokio::test]
+    async fn discover_public_endpoint_local_server_returns_unknown_nat() {
+        let (server_handle, actual_addr) = start_local_stun_server().await;
+        let client = StunClient::with_timeout(Duration::from_secs(2));
+        let ep = timeout(
+            Duration::from_secs(3),
+            client.discover_public_endpoint(&actual_addr.to_string()),
+        )
+        .await
+        .expect("endpoint discovery should complete within timeout")
+        .expect("endpoint discovery should succeed");
+        server_handle.abort();
+        assert_eq!(ep.nat_type, NatType::Unknown);
+        assert!(ep.address.ip().is_loopback());
     }
 
     #[test]
@@ -657,16 +750,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_stun_client_creation() {
+        let expected = TimeoutConfig::from_env().connect;
         let client = StunClient::new();
-        assert_eq!(client.timeout, Duration::from_secs(5));
+        assert_eq!(
+            client.timeout, expected,
+            "StunClient::new should use TimeoutConfig::from_env().connect"
+        );
 
         let client = StunClient::with_timeout(Duration::from_secs(10));
-        assert_eq!(client.timeout, Duration::from_secs(10));
+        assert_eq!(
+            client.timeout,
+            Duration::from_secs(10),
+            "with_timeout should store the given duration"
+        );
     }
 
     #[test]
     fn test_default_client() {
+        let expected = TimeoutConfig::from_env().connect;
         let client = StunClient::default();
-        assert_eq!(client.timeout, Duration::from_secs(5));
+        assert_eq!(client.timeout, expected, "default() should match StunClient::new()");
     }
 }

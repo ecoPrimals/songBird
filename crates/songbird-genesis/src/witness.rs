@@ -187,6 +187,8 @@ impl Default for WitnessVerifier {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -236,5 +238,58 @@ mod tests {
         // Should now be trusted
         assert!(verifier.is_trusted(&witness).await);
         assert!(verifier.verify_authority(&witness).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn verify_signature_empty_returns_false_without_error() {
+        let witness = GenesisWitness::new(
+            "dev".to_string(),
+            vec![],
+            PhysicalChannelType::HardwareKey,
+        );
+        assert!(
+            !witness.verify_signature(b"payload").await.expect("verify should not error on empty sig"),
+            "empty witness signature should yield false"
+        );
+    }
+
+    #[tokio::test]
+    async fn verify_authority_rejects_untrusted_witness() {
+        let verifier = WitnessVerifier::new();
+        let witness = GenesisWitness::new(
+            "unknown".to_string(),
+            vec![1],
+            PhysicalChannelType::HardwareKey,
+        );
+        let err = verifier.verify_authority(&witness).await.expect_err("untrusted witness");
+        match err {
+            GenesisError::UnauthorizedWitness(msg) => {
+                assert!(msg.contains("unknown"), "message should name witness: {msg}");
+            }
+            other => panic!("expected UnauthorizedWitness, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn genesis_witness_serde_roundtrip() {
+        let w = GenesisWitness::new(
+            "d1".to_string(),
+            vec![9, 8],
+            PhysicalChannelType::QrCodeWithOob,
+        );
+        let json = serde_json::to_string(&w).expect("serialize witness");
+        let back: GenesisWitness = serde_json::from_str(&json).expect("deserialize witness");
+        assert_eq!(back.device_id, "d1");
+        assert_eq!(back.public_key, vec![9, 8]);
+        assert_eq!(back.physical_channel, PhysicalChannelType::QrCodeWithOob);
+    }
+
+    #[tokio::test]
+    async fn witness_verifier_default_matches_new_empty() {
+        let a = WitnessVerifier::new();
+        let b = WitnessVerifier::default();
+        let w = GenesisWitness::new("x".to_string(), vec![], PhysicalChannelType::HardwareKey);
+        assert!(!a.is_trusted(&w).await, "new() should start with no trusted witnesses");
+        assert!(!b.is_trusted(&w).await, "default() should start with no trusted witnesses");
     }
 }

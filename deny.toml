@@ -21,11 +21,9 @@ deny = [
     { name = "serde_json", version = "<1.0.85" },
     # ecoBin: `ring` pulls C/ASM via `cc` — not pure Rust. quinn/rustls/ring fully
     # eliminated from songbird-quic (Wave 89: native QUIC engine + BearDogQuicCrypto).
-    # `ring` enters the tree through two paths:
-    #   1. `rcgen` (dev-dep of songbird-tls for test cert generation) → ring transitive
-    #   2. `rustls` when songbird-cli `ring-crypto` feature is enabled (opt-in only)
-    # Neither path affects the default production binary.
-    { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust.", wrappers = ["rcgen", "rustls"] },
+    # `ring` enters the tree only via `rustls` when songbird-cli `ring-crypto` feature
+    # is enabled (opt-in only). `rcgen` eliminated (Wave 94). Default build: zero ring.
+    { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust.", wrappers = ["rustls"] },
 ]
 skip = [
     # Transitive duplicates from upstream — tracked for elimination
@@ -35,15 +33,12 @@ skip = [
     { name = "hashbrown" },
     { name = "syn" },
     { name = "socket2" },
-    { name = "parking_lot" },
-    { name = "parking_lot_core" },
     { name = "getrandom" },
     { name = "indexmap" },
     { name = "generic-array" },
     { name = "tower" },
     { name = "thiserror" },
     { name = "thiserror-impl" },
-    { name = "redox_syscall" },
 ]
 
 [licenses]
@@ -64,23 +59,12 @@ allow = [
 
 [advisories]
 ignore = [
-    # bytes: BytesMut::reserve integer overflow — awaiting upstream dep
-    # updates to pull bytes >=1.10.1 transitively
-    "RUSTSEC-2026-0007",
-    # serde_json: stack exhaustion on deeply nested input — mitigated by
-    # bounded input sizes in our JSON-RPC handlers
-    "RUSTSEC-2026-0009",
     # bincode 1.x unmaintained (RUSTSEC-2025-0141) — transitive via tarpc /
     # tokio-serde. Migration: tarpc on bincode 2.x, or serde formats like postcard.
     "RUSTSEC-2025-0141",
-    # fxhash: unmaintained — transitive dependency; no known vulnerabilities
-    "RUSTSEC-2025-0057",
     # opentelemetry_api: merged into opentelemetry — transitive; awaiting
     # upstream migration in sysinfo/tracing ecosystem
     "RUSTSEC-2024-0387",
-    # instant: unmaintained — transitive via parking_lot_core; no replacement
-    # in stable ecosystem yet
-    "RUSTSEC-2024-0384",
     # paste: unmaintained — transitive; no known vulnerabilities
     "RUSTSEC-2024-0436",
 ]

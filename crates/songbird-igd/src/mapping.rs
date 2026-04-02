@@ -195,21 +195,25 @@ impl PortMapping {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use std::net::Ipv4Addr;
+    use std::time::{Duration, Instant};
 
     #[test]
-    fn test_protocol_conversion() {
+    fn protocol_conversion_and_case_insensitivity() {
         assert_eq!(Protocol::Tcp.as_str(), "TCP");
         assert_eq!(Protocol::Udp.as_str(), "UDP");
 
-        assert_eq!(Protocol::from_str("tcp"), Some(Protocol::Tcp));
-        assert_eq!(Protocol::from_str("UDP"), Some(Protocol::Udp));
+        assert_eq!(Protocol::from_str("tcp"), Some(Protocol::Tcp), "TCP is case-insensitive");
+        assert_eq!(Protocol::from_str("Udp"), Some(Protocol::Udp));
         assert_eq!(Protocol::from_str("invalid"), None);
+        assert_eq!(Protocol::from_str(""), None);
     }
 
     #[test]
-    fn test_port_mapping_request() {
+    fn port_mapping_request_builder_chains() {
         let req = PortMappingRequest::new(
             3492,
             3492,
@@ -226,7 +230,26 @@ mod tests {
     }
 
     #[test]
-    fn test_port_mapping_lifecycle() {
+    fn port_mapping_from_request_and_with_external_ip() {
+        let req = PortMappingRequest::new(
+            80,
+            8080,
+            IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)),
+            Protocol::Udp,
+        );
+        let m = PortMapping::from_request(&req).with_external_ip(IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)));
+        assert_eq!(m.external_port, 80);
+        assert_eq!(m.internal_port, 8080);
+        assert_eq!(
+            m.external_ip,
+            Some(IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4))),
+            "with_external_ip should set WAN address"
+        );
+        assert!(m.active);
+    }
+
+    #[test]
+    fn port_mapping_short_ttl_still_fresh() {
         let req = PortMappingRequest::new(
             3492,
             3492,
@@ -235,9 +258,88 @@ mod tests {
         );
 
         let mut mapping = PortMapping::from_request(&req);
-        mapping.lease_duration = 2; // 2 second TTL for testing
+        mapping.lease_duration = 2;
 
         assert!(mapping.active);
         assert!(!mapping.is_expired());
+    }
+
+    fn mapping_with_created_at(lease_secs: u32, created_offset: Duration) -> PortMapping {
+        PortMapping {
+            external_port: 1,
+            internal_port: 1,
+            internal_client: IpAddr::V4(Ipv4Addr::LOCALHOST),
+            external_ip: None,
+            protocol: Protocol::Tcp,
+            description: "t".to_string(),
+            lease_duration: lease_secs,
+            created_at: Instant::now()
+                .checked_sub(created_offset)
+                .expect("test offsets should stay within Instant representable range"),
+            active: true,
+        }
+    }
+
+    #[test]
+    fn port_mapping_time_until_renewal_before_half_ttl() {
+        let m = mapping_with_created_at(100, Duration::from_secs(10));
+        let until = m.time_until_renewal();
+        assert!(
+            until.as_secs() > 0,
+            "well before half TTL, renewal should not be due yet: {until:?}"
+        );
+        assert!(!m.needs_renewal(), "should not need renewal before half TTL");
+    }
+
+    #[test]
+    fn port_mapping_needs_renewal_at_or_after_half_ttl() {
+        let m = mapping_with_created_at(100, Duration::from_secs(50));
+        assert!(m.needs_renewal(), "at half of 100s TTL, renewal should be due");
+        assert_eq!(
+            m.time_until_renewal(),
+            Duration::from_secs(0),
+            "no time left until renewal threshold"
+        );
+    }
+
+    #[test]
+    fn port_mapping_expiration_and_zero_lease_edge() {
+        let m = mapping_with_created_at(60, Duration::from_secs(61));
+        assert!(m.is_expired(), "past full TTL should be expired");
+        assert_eq!(
+            m.time_until_expiration(),
+            Duration::from_secs(0),
+            "no time left after expiry"
+        );
+
+        let fresh = mapping_with_created_at(0, Duration::from_secs(0));
+        assert!(
+            fresh.needs_renewal(),
+            "zero lease => half TTL is 0, renewal is immediately due"
+        );
+    }
+
+    #[test]
+    fn port_mapping_inactive_still_reports_timing() {
+        let mut m = mapping_with_created_at(3600, Duration::from_secs(0));
+        m.active = false;
+        assert!(!m.active);
+        assert!(!m.is_expired(), "fresh mapping should not read as expired");
+    }
+
+    #[test]
+    fn port_mapping_serde_roundtrip_request() {
+        let req = PortMappingRequest::new(
+            443,
+            8443,
+            IpAddr::V4(Ipv4Addr::new(192, 168, 2, 2)),
+            Protocol::Tcp,
+        )
+        .with_lease_duration(120);
+        let json = serde_json::to_string(&req).expect("serialize");
+        let back: PortMappingRequest = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(req.external_port, back.external_port);
+        assert_eq!(req.internal_client, back.internal_client);
+        assert_eq!(req.lease_duration, back.lease_duration);
     }
 }

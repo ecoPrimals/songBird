@@ -5,13 +5,6 @@
     clippy::clone_on_ref_ptr,
     clippy::unwrap_used,
     clippy::expect_used,
-    reason = "test assertions"
-)]
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (c) 2024-2026 ecoPrimals
-#![allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
     clippy::unnecessary_wraps,
     clippy::await_holding_lock,
     clippy::float_cmp,
@@ -27,7 +20,6 @@
     clippy::items_after_statements,
     clippy::empty_line_after_doc_comments,
     clippy::const_is_empty,
-    clippy::duplicated_attributes,
     deprecated,
     dead_code,
     clippy::unnecessary_literal_unwrap,
@@ -40,16 +32,29 @@
 //!
 //! End-to-end tests that validate actual Unix socket behavior for upstream issues.
 //! These tests spin up a real Unix socket server and test with actual connections.
+//! All socket paths are ephemeral (unique per invocation) for concurrent safety.
 
 use serde_json::{Value, json};
 use songbird_universal_ipc::registry::ServiceRegistry;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{RwLock, oneshot};
 use tokio::time::{Duration, timeout};
+
+fn unique_socket_path(label: &str) -> String {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!(
+        "/tmp/songbird-e2e-{}-{}-{}.sock",
+        std::process::id(),
+        label,
+        n
+    )
+}
 
 /// Helper: Start a test Unix socket server with readiness signaling.
 ///
@@ -140,14 +145,14 @@ fn start_test_server(socket_path: &str) -> (tokio::task::JoinHandle<()>, oneshot
 
 #[tokio::test]
 async fn test_e2e_health_via_unix_socket() {
-    let socket_path = "/tmp/songbird-test-health.sock";
+    let socket_path = unique_socket_path("health");
 
     // Start server and wait for readiness signal
-    let (server_handle, ready_rx) = start_test_server(socket_path);
+    let (server_handle, ready_rx) = start_test_server(&socket_path);
     ready_rx.await.expect("Server failed to signal readiness");
 
     // Connect client
-    let mut stream = timeout(Duration::from_secs(5), UnixStream::connect(socket_path))
+    let mut stream = timeout(Duration::from_secs(5), UnixStream::connect(&socket_path))
         .await
         .expect("Timeout connecting")
         .expect("Failed to connect");
@@ -187,15 +192,15 @@ async fn test_e2e_health_via_unix_socket() {
 
     // Cleanup
     server_handle.abort();
-    let _ = std::fs::remove_file(socket_path);
+    let _ = std::fs::remove_file(&socket_path);
 }
 
 #[tokio::test]
 async fn test_e2e_identity_via_unix_socket() {
-    let socket_path = "/tmp/songbird-test-identity.sock";
+    let socket_path = unique_socket_path("identity");
 
     // Start server and wait for readiness signal
-    let (server_handle, ready_rx) = start_test_server_with_handler(socket_path, |registry| {
+    let (server_handle, ready_rx) = start_test_server_with_handler(&socket_path, |registry| {
         IpcServiceHandler::with_family_id_env(registry, |k| {
             if k == "FAMILY_ID" {
                 Ok("test_e2e_family".to_string())
@@ -207,7 +212,7 @@ async fn test_e2e_identity_via_unix_socket() {
     ready_rx.await.expect("Server failed to signal readiness");
 
     // Connect and request
-    let mut stream = UnixStream::connect(socket_path).await.expect("Failed to connect");
+    let mut stream = UnixStream::connect(&socket_path).await.expect("Failed to connect");
 
     let request = json!({
         "jsonrpc": "2.0",
@@ -233,19 +238,19 @@ async fn test_e2e_identity_via_unix_socket() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    let _ = std::fs::remove_file(socket_path);
+    let _ = std::fs::remove_file(&socket_path);
 }
 
 #[tokio::test]
 async fn test_e2e_persistent_connection_multiple_requests() {
-    let socket_path = "/tmp/songbird-test-persistent.sock";
+    let socket_path = unique_socket_path("persistent");
 
     // Start server and wait for readiness signal
-    let (server_handle, ready_rx) = start_test_server(socket_path);
+    let (server_handle, ready_rx) = start_test_server(&socket_path);
     ready_rx.await.expect("Server failed to signal readiness");
 
     // Connect once
-    let mut stream = UnixStream::connect(socket_path).await.expect("Failed to connect");
+    let mut stream = UnixStream::connect(&socket_path).await.expect("Failed to connect");
 
     // Send 3 requests on same connection
     for i in 1..=3 {
@@ -278,7 +283,7 @@ async fn test_e2e_persistent_connection_multiple_requests() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    let _ = std::fs::remove_file(socket_path);
+    let _ = std::fs::remove_file(&socket_path);
 }
 
 // ============================================================================
@@ -287,12 +292,12 @@ async fn test_e2e_persistent_connection_multiple_requests() {
 
 #[tokio::test]
 async fn test_e2e_family_id_priority_family_id_first() {
-    let socket_path = "/tmp/songbird-test-fam1.sock";
+    let socket_path = unique_socket_path("fam-priority");
 
     // Canonical priority: SONGBIRD_ORCHESTRATOR_FAMILY_ID > BIOMEOS_FAMILY_ID
     // > SONGBIRD_FAMILY_ID > FAMILY_ID > NODE_FAMILY_ID
     // Set lower-priority vars — SONGBIRD_FAMILY_ID should win over FAMILY_ID
-    let (server_handle, ready_rx) = start_test_server_with_handler(socket_path, |registry| {
+    let (server_handle, ready_rx) = start_test_server_with_handler(&socket_path, |registry| {
         IpcServiceHandler::with_family_id_env(registry, |k| match k {
             "FAMILY_ID" => Ok("lowest".to_string()),
             "SONGBIRD_FAMILY_ID" => Ok("winner".to_string()),
@@ -302,7 +307,7 @@ async fn test_e2e_family_id_priority_family_id_first() {
     });
     ready_rx.await.expect("Server failed to signal readiness");
 
-    let mut stream = UnixStream::connect(socket_path).await.unwrap();
+    let mut stream = UnixStream::connect(&socket_path).await.unwrap();
 
     stream.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"identity\",\"id\":1}\n").await.unwrap();
 
@@ -316,19 +321,19 @@ async fn test_e2e_family_id_priority_family_id_first() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    let _ = std::fs::remove_file(socket_path);
+    let _ = std::fs::remove_file(&socket_path);
 }
 
 #[tokio::test]
 async fn test_e2e_family_id_default() {
-    let socket_path = "/tmp/songbird-test-default.sock";
+    let socket_path = unique_socket_path("fam-default");
 
-    let (server_handle, ready_rx) = start_test_server_with_handler(socket_path, |registry| {
+    let (server_handle, ready_rx) = start_test_server_with_handler(&socket_path, |registry| {
         IpcServiceHandler::with_family_id_env(registry, |_| Err(std::env::VarError::NotPresent))
     });
     ready_rx.await.expect("Server failed to signal readiness");
 
-    let mut stream = UnixStream::connect(socket_path).await.unwrap();
+    let mut stream = UnixStream::connect(&socket_path).await.unwrap();
 
     stream.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"identity\",\"id\":1}\n").await.unwrap();
 
@@ -342,7 +347,7 @@ async fn test_e2e_family_id_default() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    let _ = std::fs::remove_file(socket_path);
+    let _ = std::fs::remove_file(&socket_path);
 }
 
 // ============================================================================
@@ -351,12 +356,12 @@ async fn test_e2e_family_id_default() {
 
 #[tokio::test(start_paused = true)]
 async fn test_e2e_connection_stays_open_after_response() {
-    let socket_path = "/tmp/songbird-test-persistent2.sock";
+    let socket_path = unique_socket_path("persistent2");
 
-    let (server_handle, ready_rx) = start_test_server(socket_path);
+    let (server_handle, ready_rx) = start_test_server(&socket_path);
     ready_rx.await.expect("Server failed to signal readiness");
 
-    let stream = UnixStream::connect(socket_path).await.unwrap();
+    let stream = UnixStream::connect(&socket_path).await.unwrap();
     let (read_half, mut write_half) = stream.into_split();
     let mut reader = BufReader::new(read_half);
 
@@ -386,5 +391,5 @@ async fn test_e2e_connection_stays_open_after_response() {
 
     // Cleanup (stream auto-drops at end of scope)
     server_handle.abort();
-    let _ = std::fs::remove_file(socket_path);
+    let _ = std::fs::remove_file(&socket_path);
 }

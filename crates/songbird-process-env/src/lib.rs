@@ -147,15 +147,18 @@ pub fn reset_overlay() {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 #[allow(
     clippy::items_after_statements,
     reason = "test KEY constants declared after lock() guard for clarity"
 )]
 mod tests {
     use super::*;
-    use std::ffi::OsStr;
-    use std::sync::Mutex;
+    use std::collections::HashSet;
+    use std::ffi::{OsStr, OsString};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Barrier, Mutex};
+    use std::thread;
 
     static TEST_LOCK: Mutex<()> = Mutex::new(());
 
@@ -337,6 +340,18 @@ mod tests {
     }
 
     #[test]
+    fn var_unwrap_or_default_on_missing_key() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_UNWRAP_OR_DEFAULT__";
+        overlay().lock().unwrap().remove(KEY);
+        assert_eq!(
+            var(KEY).unwrap_or_default(),
+            String::new(),
+            "callers can use Result::unwrap_or_default on var() when a default empty string is acceptable"
+        );
+    }
+
+    #[test]
     fn vars_includes_os_vars() {
         let _g = lock();
         let has_path = vars().any(|(k, _)| k == "PATH");
@@ -374,5 +389,204 @@ mod tests {
         remove_var(KEY);
         remove_var(KEY);
         assert!(var(KEY).is_err());
+    }
+
+    #[test]
+    fn var_os_matches_std_env_when_key_not_in_overlay() {
+        let _g = lock();
+        const KEY: &str = "PATH";
+        overlay().lock().expect("overlay lock").remove(KEY);
+        let expected = std::env::var_os(KEY);
+        assert_eq!(
+            var_os(KEY),
+            expected,
+            "var_os should mirror std::env::var_os when overlay has no entry for this key"
+        );
+    }
+
+    #[test]
+    fn var_os_empty_overlay_value_round_trip() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_VAR_OS_EMPTY__";
+        set_var(KEY, "");
+        assert_eq!(
+            var_os(KEY).as_deref(),
+            Some(OsStr::new("")),
+            "empty overlay value should be visible as empty OsStr"
+        );
+        remove_var(KEY);
+    }
+
+    #[test]
+    fn get_var_always_matches_var() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_GET_EQ_VAR__";
+        assert_eq!(get_var(KEY), var(KEY), "get_var must be an alias of var");
+        set_var(KEY, "x");
+        assert_eq!(get_var(KEY), var(KEY));
+        remove_var(KEY);
+        assert_eq!(get_var(KEY), var(KEY));
+    }
+
+    #[test]
+    fn reset_overlay_is_idempotent() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_RESET_IDEMP__";
+        set_var(KEY, "1");
+        reset_overlay();
+        reset_overlay();
+        assert!(
+            var(KEY).is_err(),
+            "double reset should still leave overlay empty for this key"
+        );
+    }
+
+    #[test]
+    fn vars_yields_no_duplicate_keys() {
+        let _g = lock();
+        let keys: HashSet<String> = vars().map(|(k, _)| k).collect();
+        let count = vars().count();
+        assert_eq!(
+            keys.len(),
+            count,
+            "vars() iterator must not emit duplicate keys"
+        );
+    }
+
+    #[test]
+    fn overlay_set_var_overrides_os_for_reads_only() {
+        let _g = lock();
+        const KEY: &str = "PATH";
+        let os_snapshot = std::env::var_os(KEY).expect("PATH should exist in test environment");
+        set_var(KEY, "overlay-only-read");
+        assert_eq!(var_os(KEY).as_deref(), Some(OsStr::new("overlay-only-read")));
+        overlay().lock().expect("overlay lock").remove(KEY);
+        assert_eq!(var_os(KEY), Some(os_snapshot), "after removing overlay entry, OS value returns");
+    }
+
+    #[test]
+    fn remove_var_then_var_sees_os_again_for_path() {
+        let _g = lock();
+        const KEY: &str = "PATH";
+        let original = std::env::var(KEY).expect("PATH present");
+        set_var(KEY, "temporary-overlay");
+        assert_eq!(var(KEY).unwrap(), "temporary-overlay");
+        remove_var(KEY);
+        assert_eq!(
+            var(KEY),
+            Err(VarError::NotPresent),
+            "remove_var masks OS; var() should not see PATH until overlay entry cleared"
+        );
+        overlay().lock().expect("overlay lock").remove(KEY);
+        assert_eq!(var(KEY).unwrap(), original, "clearing overlay None entry restores OS");
+    }
+
+    #[test]
+    fn concurrent_independent_keys_many_threads() {
+        let _g = lock();
+        const N: usize = 64;
+        let barrier = Arc::new(Barrier::new(N));
+        let mut handles = Vec::with_capacity(N);
+        for i in 0..N {
+            let b = Arc::clone(&barrier);
+            handles.push(thread::spawn(move || {
+                let key = format!("__SONGBIRD_PE_CONC_IND_{i}__");
+                b.wait();
+                set_var(&key, format!("v{i}"));
+                assert_eq!(
+                    var(&key).expect("read after set in same thread"),
+                    format!("v{i}"),
+                    "thread {i} should read its own overlay value"
+                );
+                remove_var(&key);
+                assert!(
+                    var(&key).is_err(),
+                    "after remove, key {i} should be absent"
+                );
+            }));
+        }
+        for h in handles {
+            h.join().expect("thread should not panic");
+        }
+    }
+
+    #[test]
+    fn concurrent_contention_single_key() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_CONC_SINGLE__";
+        overlay().lock().expect("overlay lock").remove(KEY);
+        let threads = 32;
+        let barrier = Arc::new(Barrier::new(threads + 1));
+        let counter = Arc::new(AtomicUsize::new(0));
+        let mut handles = Vec::with_capacity(threads);
+        for _ in 0..threads {
+            let b = Arc::clone(&barrier);
+            let c = Arc::clone(&counter);
+            handles.push(thread::spawn(move || {
+                let n = c.fetch_add(1, Ordering::SeqCst);
+                b.wait();
+                set_var(KEY, format!("writer-{n}"));
+                let _ = var(KEY);
+            }));
+        }
+        barrier.wait();
+        for h in handles {
+            h.join().expect("thread join");
+        }
+        assert!(
+            var(KEY).unwrap().starts_with("writer-"),
+            "final value should be from one of the writers"
+        );
+        remove_var(KEY);
+        assert!(var(KEY).is_err());
+    }
+
+    #[test]
+    fn concurrent_readers_while_writer_updates() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_CONC_RW__";
+        set_var(KEY, "start");
+        let stop = Arc::new(AtomicUsize::new(0));
+        let reader_stop = Arc::clone(&stop);
+        let reader = thread::spawn(move || {
+            while reader_stop.load(Ordering::Relaxed) < 1000 {
+                let _ = var_os(KEY);
+            }
+        });
+        for i in 0..500 {
+            set_var(KEY, format!("iter-{i}"));
+        }
+        stop.store(1000, Ordering::Relaxed);
+        reader.join().expect("reader join");
+        assert_eq!(var(KEY).unwrap(), "iter-499");
+        remove_var(KEY);
+    }
+
+    #[test]
+    fn vars_overlay_wins_over_duplicate_os_key() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_VARS_WIN__";
+        set_var(KEY, "overlay-wins");
+        let from_vars = vars()
+            .find(|(k, _)| k == KEY)
+            .map(|(_, v)| v);
+        assert_eq!(
+            from_vars.as_deref(),
+            Some("overlay-wins"),
+            "merged vars() must prefer overlay over any OS collision"
+        );
+        remove_var(KEY);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn set_var_accepts_non_utf8_os_string_key_lossy() {
+        let _g = lock();
+        use std::os::unix::ffi::OsStringExt;
+        let key = OsString::from_vec(vec![b'F', b'O', b'O', 0xFF]);
+        set_var(&key, "bar");
+        let k_str = key_str(key.as_os_str());
+        assert_eq!(var(&k_str).unwrap(), "bar");
+        remove_var(&k_str);
     }
 }

@@ -265,3 +265,70 @@ impl OnionStorageBackend for OnionStorage {
         Self::flush(self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::storage::PeerInfo;
+    use serde_json::json;
+
+    #[test]
+    fn memory_storage_opens_and_load_identity_is_none() {
+        let s = OnionStorage::memory().expect("memory db");
+        assert!(
+            s.load_identity().expect("query").is_none(),
+            "empty sled store has no identity"
+        );
+    }
+
+    #[test]
+    fn store_and_load_identity_roundtrip() {
+        let s = OnionStorage::memory().expect("memory db");
+        let j = json!({
+            "secret_key_bytes": vec![5u8; 32],
+            "public_key_bytes": vec![6u8; 32],
+            "onion_address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.onion",
+            "created_at": 99u64
+        });
+        let bytes = serde_json::to_vec(&j).expect("fixture");
+        let id = crate::OnionIdentity::from_stored_bytes(&bytes).expect("identity");
+        s.store_identity(&id).expect("store");
+        let loaded = s.load_identity().expect("load").expect("some");
+        assert_eq!(loaded.onion_address(), id.onion_address(), "onion address");
+    }
+
+    #[test]
+    fn peer_crud_and_flush() {
+        let s = OnionStorage::memory().expect("memory db");
+        let p = PeerInfo {
+            onion_address: "peer.onion".to_string(),
+            last_seen: 1,
+            actual_addr: None,
+        };
+        s.store_peer(&p).expect("store peer");
+        s.flush().expect("flush");
+        let got = s.get_peer("peer.onion").expect("get").expect("peer");
+        assert_eq!(got.onion_address, p.onion_address, "roundtrip");
+        assert_eq!(s.list_peers().expect("list").len(), 1, "one peer");
+        s.remove_peer("peer.onion").expect("remove");
+        assert!(s.get_peer("peer.onion").expect("get").is_none());
+    }
+
+    #[test]
+    fn clear_all_empties_database() {
+        let s = OnionStorage::memory().expect("memory db");
+        let j = json!({
+            "secret_key_bytes": vec![1u8; 32],
+            "public_key_bytes": vec![2u8; 32],
+            "onion_address": "cccccccccccccccccccccccccccccccccccccccccccccccccccccc.onion",
+            "created_at": 0u64
+        });
+        let bytes = serde_json::to_vec(&j).expect("fixture");
+        let id = crate::OnionIdentity::from_stored_bytes(&bytes).expect("identity");
+        s.store_identity(&id).expect("store");
+        s.clear_all().expect("clear");
+        assert!(s.load_identity().expect("load").is_none(), "cleared");
+    }
+}

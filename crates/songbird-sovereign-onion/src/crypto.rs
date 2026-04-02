@@ -135,6 +135,8 @@ pub fn decrypt_data(key: &[u8; 32], sequence: u64, ciphertext: &[u8]) -> Result<
 
 #[cfg(all(test, feature = "standalone"))]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -191,10 +193,12 @@ mod tests {
 
 #[cfg(test)]
 mod beardog_crypto_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::beardog_crypto::BeardogCryptoClient;
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn encrypt_via_beardog_errors_when_rpc_unreachable() {
         let client =
             BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
@@ -203,7 +207,7 @@ mod beardog_crypto_tests {
         assert!(r.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn decrypt_via_beardog_errors_when_rpc_unreachable() {
         let client =
             BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");

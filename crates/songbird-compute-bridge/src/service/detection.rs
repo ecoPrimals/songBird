@@ -99,3 +99,92 @@ pub fn detect_capabilities(info: &ServiceInfo) -> String {
 
     caps.join(",")
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::super::types::ServiceInfo;
+    use super::{detect_capabilities, detect_resources};
+
+    #[test]
+    fn detect_capabilities_includes_compute_and_cpu_always() {
+        let info = ServiceInfo {
+            cpu_cores: 1,
+            memory_gb: 1,
+            gpu_count: 0,
+            gpu_model: None,
+            storage_gb: None,
+            platform: "linux-x86_64".into(),
+        };
+        let caps = detect_capabilities(&info);
+        assert!(
+            caps.starts_with("compute,cpu"),
+            "base capabilities should start with compute,cpu; got {caps}"
+        );
+        assert!(
+            !caps.contains("gpu"),
+            "no GPU should mean no gpu capability; got {caps}"
+        );
+    }
+
+    #[test]
+    fn detect_capabilities_batch_only_from_eight_cores() {
+        let seven = ServiceInfo {
+            cpu_cores: 7,
+            memory_gb: 8,
+            gpu_count: 0,
+            gpu_model: None,
+            storage_gb: None,
+            platform: "linux-x86_64".into(),
+        };
+        assert!(
+            !detect_capabilities(&seven).contains("batch-processing"),
+            "7 cores should not enable batch-processing"
+        );
+
+        let eight = ServiceInfo {
+            cpu_cores: 8,
+            ..seven
+        };
+        assert!(
+            detect_capabilities(&eight).contains("batch-processing"),
+            "8 cores should enable batch-processing"
+        );
+    }
+
+    #[test]
+    fn detect_capabilities_parallel_only_from_thirty_two_cores() {
+        let base = ServiceInfo {
+            cpu_cores: 31,
+            memory_gb: 64,
+            gpu_count: 0,
+            gpu_model: None,
+            storage_gb: None,
+            platform: "linux-x86_64".into(),
+        };
+        assert!(
+            !detect_capabilities(&base).contains("parallel-computing"),
+            "31 cores should not enable parallel-computing"
+        );
+
+        let wide = ServiceInfo {
+            cpu_cores: 32,
+            ..base
+        };
+        assert!(
+            detect_capabilities(&wide).contains("parallel-computing"),
+            "32 cores should enable parallel-computing"
+        );
+    }
+
+    #[tokio::test]
+    async fn detect_resources_yields_nonzero_cpu_and_sensible_platform() {
+        let info = detect_resources().await;
+        assert!(info.cpu_cores >= 1, "expected at least one logical CPU");
+        assert!(
+            info.platform.contains('-'),
+            "platform should be os-arch form; got {}",
+            info.platform
+        );
+    }
+}

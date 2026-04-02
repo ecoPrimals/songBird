@@ -188,3 +188,58 @@ impl HolePunchCoordinator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use crate::coordinator::config::HolePunchConfig;
+    use crate::coordinator::core::HolePunchCoordinator;
+    use crate::coordinator::types::CoordinatedPunchResult;
+    use songbird_lineage_relay::types::{MaskingLevel, NodeId};
+    use songbird_lineage_relay::RelaySession;
+    use songbird_stun::PortPattern;
+    use std::net::SocketAddr;
+    use std::time::Duration;
+    use tokio::net::UdpSocket;
+
+    #[tokio::test]
+    async fn coordinate_relay_punch_keep_relay_when_no_udp_reply() {
+        let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let relay_addr: SocketAddr = server.local_addr().unwrap();
+
+        let session = RelaySession::new(
+            NodeId("relay".into()),
+            relay_addr,
+            NodeId("me".into()),
+            NodeId("peer".into()),
+            MaskingLevel::None,
+        )
+        .await
+        .expect("relay session");
+
+        let config = HolePunchConfig {
+            attempt_timeout: Duration::from_millis(0),
+            ..Default::default()
+        };
+
+        let (coord, _in, _out) = HolePunchCoordinator::new("me".into(), config);
+
+        let pattern = PortPattern::Unknown;
+        let r = coord
+            .coordinate_relay_punch(
+                "peer",
+                &session,
+                &pattern,
+                40_000,
+                "127.0.0.1".parse().unwrap(),
+            )
+            .await
+            .expect("coordination completes");
+
+        assert!(
+            matches!(r, CoordinatedPunchResult::KeepRelay { .. }),
+            "expected KeepRelay when peer never answers UDP, got {r:?}"
+        );
+    }
+}

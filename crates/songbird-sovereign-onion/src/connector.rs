@@ -201,17 +201,25 @@ impl OnionConnection {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::beardog_crypto::BeardogCryptoClient;
 
-    #[tokio::test]
+    #[test]
+    fn default_is_empty_connector() {
+        let c = OnionConnector::default();
+        let _ = c;
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn default_connector_missing_beardog_errors_before_tcp() {
         let connector = OnionConnector::default();
         let r = connector.connect("127.0.0.1", 9).await;
         assert!(matches!(r, Err(OnionError::ConfigError(_))));
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn beardog_connector_tcp_fails_fast_when_port_closed() {
         let client =
             BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");

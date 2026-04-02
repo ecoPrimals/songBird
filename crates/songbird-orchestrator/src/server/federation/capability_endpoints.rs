@@ -62,7 +62,7 @@ pub async fn register_capability_provider(
                         provider_id: request.provider_id.clone(),
                         registration_id,
                         status: "registered".to_string(),
-                        heartbeat_interval_ms: capability_registry.config().interval_ms,
+                        heartbeat_interval_ms: capability_registry.config().interval.as_millis() as u64,
                         heartbeat_endpoint: "/api/v1/federation/capability/heartbeat".to_string(),
                     }),
                     error: None,
@@ -139,7 +139,7 @@ pub async fn capability_provider_heartbeat(
                     success: true,
                     data: Some(HeartbeatData {
                         acknowledged: true,
-                        next_heartbeat_ms: capability_registry.config().interval_ms,
+                        next_heartbeat_ms: capability_registry.config().interval.as_millis() as u64,
                     }),
                     error: None,
                     timestamp: Utc::now(),

@@ -125,19 +125,76 @@ impl SoapErrorCode {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
-    fn test_soap_error_codes() {
-        assert_eq!(SoapErrorCode::from_code(718), Some(SoapErrorCode::ConflictInMappingEntry));
-        assert_eq!(SoapErrorCode::from_code(999), None);
+    fn soap_error_code_from_code_roundtrip_known_values() {
+        let cases = [
+            (501u16, SoapErrorCode::ActionFailed),
+            (402, SoapErrorCode::ArgumentValueInvalid),
+            (603, SoapErrorCode::ArgumentValueOutOfRange),
+            (718, SoapErrorCode::ConflictInMappingEntry),
+            (725, SoapErrorCode::OnlyPermanentLeasesSupported),
+            (726, SoapErrorCode::RemoteHostOnlySupportsWildcard),
+            (727, SoapErrorCode::ExternalPortOnlySupportsWildcard),
+            (714, SoapErrorCode::NoSuchEntryInArray),
+            (713, SoapErrorCode::InvalidArrayIndex),
+        ];
+        for (code, expected) in cases {
+            assert_eq!(
+                SoapErrorCode::from_code(code),
+                Some(expected),
+                "from_code({code}) should map to {expected:?}"
+            );
+            assert!(!expected.description().is_empty(), "description should be non-empty");
+        }
+        assert_eq!(SoapErrorCode::from_code(0), None, "unknown code 0");
+        assert_eq!(SoapErrorCode::from_code(9999), None, "unknown code 9999");
     }
 
     #[test]
-    fn test_error_descriptions() {
+    fn soap_error_code_descriptions_are_distinct_where_required() {
+        let d501 = SoapErrorCode::ActionFailed.description();
+        let d718 = SoapErrorCode::ConflictInMappingEntry.description();
+        assert_ne!(d501, d718, "distinct codes should not share the same description string");
+    }
+
+    #[test]
+    fn legacy_soap_error_code_spot_checks() {
+        assert_eq!(SoapErrorCode::from_code(718), Some(SoapErrorCode::ConflictInMappingEntry));
+        assert_eq!(SoapErrorCode::from_code(999), None);
         assert_eq!(
             SoapErrorCode::ConflictInMappingEntry.description(),
             "Port already mapped to another device"
         );
+    }
+
+    #[test]
+    fn igd_error_display_includes_context() {
+        let e = IgdError::NoGatewayFound;
+        assert!(
+            e.to_string().to_lowercase().contains("gateway"),
+            "NoGatewayFound message should mention gateway: {}",
+            e
+        );
+
+        let e = IgdError::MappingConflict(443, "other-host".to_string());
+        assert!(e.to_string().contains("443"), "should include port: {e}");
+        assert!(e.to_string().contains("other-host"), "should include peer hint: {e}");
+
+        let e = IgdError::InvalidParameter("bad".to_string());
+        assert!(e.to_string().contains("bad"), "should include parameter detail: {e}");
+
+        let e = IgdError::ProtocolNotSupported("foo".to_string());
+        assert!(e.to_string().contains("foo"), "should include protocol name: {e}");
+    }
+
+    #[test]
+    fn igd_error_io_roundtrip_via_from() {
+        let io_err = io::Error::new(io::ErrorKind::TimedOut, "simulated");
+        let e: IgdError = io_err.into();
+        assert!(matches!(e, IgdError::Io(_)), "Io variant should convert from io::Error");
     }
 }

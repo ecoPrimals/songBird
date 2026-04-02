@@ -189,6 +189,8 @@ impl OnionStorageBackend for InMemoryOnionStorage {
 
 #[cfg(all(test, feature = "standalone"))]
 mod standalone_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -205,6 +207,8 @@ mod standalone_tests {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     fn test_backend(storage: &dyn OnionStorageBackend) {
@@ -236,6 +240,57 @@ mod tests {
     #[test]
     fn test_inmemory_peer_operations() {
         test_backend(&InMemoryOnionStorage::new());
+    }
+
+    #[test]
+    fn load_identity_returns_none_when_empty() {
+        let storage = InMemoryOnionStorage::new();
+        assert!(
+            storage.load_identity().unwrap().is_none(),
+            "fresh storage has no identity"
+        );
+    }
+
+    #[test]
+    fn peer_info_roundtrips_through_serde() {
+        let p = PeerInfo {
+            onion_address: "peer.onion".to_string(),
+            last_seen: 100,
+            actual_addr: Some("127.0.0.1:1".to_string()),
+        };
+        let json = serde_json::to_string(&p).expect("serialize");
+        let q: PeerInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(q.onion_address, p.onion_address, "address");
+        assert_eq!(q.last_seen, p.last_seen, "last_seen");
+        assert_eq!(q.actual_addr, p.actual_addr, "actual_addr");
+    }
+
+    #[test]
+    fn update_peer_last_seen_is_noop_when_peer_missing() {
+        let storage = InMemoryOnionStorage::new();
+        storage
+            .update_peer_last_seen("ghost.onion", 99)
+            .expect("update should not error");
+        assert!(
+            storage.get_peer("ghost.onion").unwrap().is_none(),
+            "missing peer should stay absent"
+        );
+    }
+
+    #[test]
+    fn store_identity_and_load_roundtrip() {
+        let storage = InMemoryOnionStorage::new();
+        let j = serde_json::json!({
+            "secret_key_bytes": vec![7u8; 32],
+            "public_key_bytes": vec![8u8; 32],
+            "onion_address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+            "created_at": 11u64
+        });
+        let bytes = serde_json::to_vec(&j).expect("fixture");
+        let id = crate::OnionIdentity::from_stored_bytes(&bytes).expect("identity");
+        storage.store_identity(&id).expect("store");
+        let loaded = storage.load_identity().expect("load").expect("some");
+        assert_eq!(loaded.onion_address(), id.onion_address(), "onion address");
     }
 
     #[cfg(feature = "sled-storage")]
@@ -288,6 +343,8 @@ mod tests {
 
 #[cfg(all(test, feature = "standalone", feature = "sled-storage"))]
 mod standalone_sled_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use crate::storage_sled::OnionStorage;
 
     #[test]

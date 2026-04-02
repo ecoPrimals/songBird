@@ -184,6 +184,7 @@ impl NfcProtocol {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -219,5 +220,112 @@ mod tests {
         );
 
         assert!(msg.to_bytes().is_err());
+    }
+
+    #[test]
+    fn empty_payload_roundtrips() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_RESPONSE,
+            [0xabu8; PUBLIC_KEY_SIZE],
+            [0xbcu8; NONCE_SIZE],
+            Vec::new(),
+            [0xdeu8; SIGNATURE_SIZE],
+        );
+        let bytes = msg.to_bytes().expect("empty payload is valid");
+        assert_eq!(
+            bytes.len(),
+            FRAME_OVERHEAD,
+            "wire size should equal frame overhead for empty ciphertext"
+        );
+        let decoded = NfcMessage::from_bytes(&bytes).expect("parse empty-payload frame");
+        assert_eq!(decoded.encrypted_payload.len(), 0);
+        assert_eq!(decoded.msg_type, MSG_TYPE_GENESIS_RESPONSE);
+    }
+
+    #[test]
+    fn from_bytes_rejects_frame_shorter_than_overhead() {
+        let short = vec![0u8; FRAME_OVERHEAD - 1];
+        let err = NfcMessage::from_bytes(&short).expect_err("truncated frame should error");
+        assert!(
+            matches!(err, NfcError::MalformedFrame(_)),
+            "expected MalformedFrame, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn from_bytes_rejects_unsupported_version() {
+        let mut msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0u8; PUBLIC_KEY_SIZE],
+            [0u8; NONCE_SIZE],
+            vec![1u8],
+            [0u8; SIGNATURE_SIZE],
+        );
+        msg.version = 0x99;
+        let bytes = msg.to_bytes().expect("valid message with nonstandard version byte");
+        let err = NfcMessage::from_bytes(&bytes).expect_err("wrong version should error");
+        assert!(
+            matches!(err, NfcError::UnsupportedVersion(0x99)),
+            "expected UnsupportedVersion, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn from_bytes_rejects_invalid_message_type() {
+        let base = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0u8; PUBLIC_KEY_SIZE],
+            [0u8; NONCE_SIZE],
+            vec![],
+            [0u8; SIGNATURE_SIZE],
+        );
+        let mut bytes = base.to_bytes().expect("valid base");
+        bytes[1] = 0xff;
+        let err = NfcMessage::from_bytes(&bytes).expect_err("unknown msg type should error");
+        assert!(
+            matches!(err, NfcError::InvalidMessageType(0xff)),
+            "expected InvalidMessageType, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn from_bytes_rejects_oversized_declared_payload() {
+        let declared = u16::try_from(MAX_PAYLOAD_SIZE + 1).expect("1025 fits in u16");
+        let mut frame = vec![0u8; FRAME_OVERHEAD];
+        frame[0] = PROTOCOL_VERSION;
+        frame[1] = MSG_TYPE_GENESIS_REQUEST;
+        frame[2..4].copy_from_slice(&declared.to_be_bytes());
+        let err = NfcMessage::from_bytes(&frame).expect_err("oversized length field should error");
+        assert!(
+            matches!(err, NfcError::PayloadTooLarge(n, MAX_PAYLOAD_SIZE) if n == MAX_PAYLOAD_SIZE + 1),
+            "expected PayloadTooLarge, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn from_bytes_rejects_incomplete_trailing_frame() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [1u8; PUBLIC_KEY_SIZE],
+            [2u8; NONCE_SIZE],
+            vec![3u8; 10],
+            [4u8; SIGNATURE_SIZE],
+        );
+        let mut bytes = msg.to_bytes().expect("valid message");
+        bytes.truncate(bytes.len() - 1);
+        let err = NfcMessage::from_bytes(&bytes).expect_err("truncated body should error");
+        assert!(
+            matches!(err, NfcError::MalformedFrame(_)),
+            "expected MalformedFrame for incomplete frame, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn nfc_protocol_exposes_config_socket() {
+        use std::path::PathBuf;
+        let socket = PathBuf::from("/tmp/test-nfc-beardog.sock");
+        let cfg = crate::NfcConfig::default().with_beardog_socket(socket.clone());
+        let proto = NfcProtocol::new(cfg);
+        assert_eq!(proto.beardog_socket(), socket.as_path(), "socket path should match config");
     }
 }

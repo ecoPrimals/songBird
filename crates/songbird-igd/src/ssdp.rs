@@ -197,11 +197,26 @@ impl Default for SsdpClient {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
-    use std::net::Ipv4Addr;
+    use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn test_parse_ssdp_response() {
+    fn ssdp_client_new_and_default_match() {
+        let a = SsdpClient::new();
+        let b = SsdpClient::default();
+        assert_eq!(a.timeout, b.timeout, "Default and new() should agree");
+    }
+
+    #[test]
+    fn ssdp_client_with_timeout_overrides_default() {
+        let c = SsdpClient::with_timeout(Duration::from_secs(7));
+        assert_eq!(c.timeout, Duration::from_secs(7));
+    }
+
+    #[test]
+    fn parse_ssdp_response_igd_device() {
         let response = b"HTTP/1.1 200 OK\r\n\
             CACHE-CONTROL: max-age=1800\r\n\
             LOCATION: http://192.168.1.254:5431/IGD.xml\r\n\
@@ -213,15 +228,55 @@ mod tests {
         let addr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)), 1900);
 
         let parsed = SsdpClient::parse_response(response, addr);
-        assert!(parsed.is_some());
+        assert!(parsed.is_some(), "IGD ST should be accepted");
 
-        let ssdp = parsed.unwrap();
+        let ssdp = parsed.expect("parsed IGD response");
         assert_eq!(ssdp.location, "http://192.168.1.254:5431/IGD.xml");
         assert!(ssdp.service_type.contains("InternetGatewayDevice"));
+        assert_eq!(ssdp.source_addr, addr);
+        assert!(!ssdp.usn.is_empty(), "USN should be captured when present");
     }
 
     #[test]
-    fn test_parse_non_igd_response() {
+    fn parse_ssdp_response_wanip_service_st_header() {
+        let response = b"HTTP/1.1 200 OK\r\n\
+            LOCATION: http://192.168.0.1:49000/wanip.xml\r\n\
+            ST: urn:schemas-upnp-org:service:WANIPConnection:1\r\n\
+            \r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 0, 1)), 1900);
+        let ssdp = SsdpClient::parse_response(response, addr).expect("WANIP ST should qualify");
+        assert!(ssdp.service_type.contains("WANIPConnection"));
+        assert_eq!(ssdp.server, "Unknown", "missing SERVER defaults to Unknown");
+    }
+
+    #[test]
+    fn parse_ssdp_response_rejects_non_200() {
+        let response = b"HTTP/1.1 404 Not Found\r\n\r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
+        assert!(
+            SsdpClient::parse_response(response, addr).is_none(),
+            "non-200 SSDP should be ignored"
+        );
+    }
+
+    #[test]
+    fn parse_ssdp_response_rejects_non_utf8() {
+        let bad = [0xFFu8, 0xFE, 0xFD];
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
+        assert!(SsdpClient::parse_response(&bad, addr).is_none());
+    }
+
+    #[test]
+    fn parse_ssdp_response_requires_location() {
+        let response = b"HTTP/1.1 200 OK\r\n\
+            ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\
+            \r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
+        assert!(SsdpClient::parse_response(response, addr).is_none());
+    }
+
+    #[test]
+    fn parse_non_igd_response_filtered_out() {
         let response = b"HTTP/1.1 200 OK\r\n\
             LOCATION: http://192.168.1.100:8008/\r\n\
             ST: urn:dial-multiscreen-org:service:dial:1\r\n\
@@ -230,6 +285,6 @@ mod tests {
         let addr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 1900);
 
         let parsed = SsdpClient::parse_response(response, addr);
-        assert!(parsed.is_none(), "Should ignore non-IGD devices");
+        assert!(parsed.is_none(), "non-IGD ST should be ignored");
     }
 }

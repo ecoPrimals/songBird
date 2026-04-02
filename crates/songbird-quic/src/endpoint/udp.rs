@@ -92,7 +92,10 @@ impl UdpEndpoint {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn bind_and_local_addr() {
@@ -128,5 +131,18 @@ mod tests {
             .await
             .unwrap();
         assert_ne!(ep.local_addr().port(), 0);
+    }
+
+    /// Virtual time: `start_paused` avoids real sleeps while still exercising the timer driver.
+    #[tokio::test(start_paused = true)]
+    async fn sleep_completes_after_virtual_time_advance() {
+        let start = tokio::time::Instant::now();
+        let sleep = tokio::time::sleep(Duration::from_secs(10_000));
+        tokio::time::advance(Duration::from_secs(10_000)).await;
+        sleep.await;
+        assert!(
+            start.elapsed() >= Duration::from_secs(10_000),
+            "paused timer should advance Instant::elapsed without wall-clock delay"
+        );
     }
 }

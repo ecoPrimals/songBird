@@ -55,3 +55,48 @@ pub enum OnionRelayError {
     #[error("Other: {0}")]
     Other(String),
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn stun_failed_display_contains_message() {
+        let e = OnionRelayError::StunFailed("no route".into());
+        let s = e.to_string();
+        assert!(s.contains("STUN"), "expected STUN in {s:?}");
+        assert!(s.contains("no route"), "expected detail in {s:?}");
+    }
+
+    #[test]
+    fn hole_punch_failed_includes_attempts() {
+        let e = OnionRelayError::HolePunchFailed { attempts: 7 };
+        assert!(e.to_string().contains('7'), "expected attempts in {}", e);
+    }
+
+    #[test]
+    fn signaling_timeout_peer_not_found_transport_encryption_invalid_other() {
+        assert!(OnionRelayError::SignalingTimeout.to_string().contains("Signaling"));
+        assert!(OnionRelayError::PeerNotFound("n".into()).to_string().contains('n'));
+        assert!(OnionRelayError::Transport("t".into()).to_string().contains("Transport"));
+        assert!(OnionRelayError::Encryption("e".into()).to_string().contains("Encryption"));
+        assert!(OnionRelayError::InvalidMessage("m".into()).to_string().contains("Invalid"));
+        assert!(OnionRelayError::Other("o".into()).to_string().contains('o'));
+    }
+
+    #[cfg(feature = "onion")]
+    #[test]
+    fn onion_variant_display() {
+        let e = OnionRelayError::Onion("svc".into());
+        assert!(e.to_string().contains("Onion"));
+    }
+
+    #[test]
+    fn io_error_converts_via_from() {
+        let io = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
+        let e: OnionRelayError = io.into();
+        assert!(matches!(e, OnionRelayError::Io(_)), "expected Io, got {e:?}");
+    }
+}

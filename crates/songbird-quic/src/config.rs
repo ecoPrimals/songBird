@@ -125,6 +125,8 @@ impl QuicConfig {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use std::path::PathBuf;
     use std::time::Duration;
@@ -166,5 +168,49 @@ mod tests {
         let config = QuicConfig::new().with_migration(false);
         let tp = config.transport_params();
         assert!(tp.disable_active_migration);
+    }
+
+    #[test]
+    fn transport_params_max_udp_payload_matches_max_mtu() {
+        let mtu: u16 = 1452;
+        let config = QuicConfig::new();
+        let config = QuicConfig {
+            max_mtu: mtu,
+            ..config
+        };
+        let tp = config.transport_params();
+        assert_eq!(
+            tp.max_udp_payload_size,
+            u64::from(mtu),
+            "transport params should mirror config max_mtu for UDP payload size"
+        );
+    }
+
+    #[test]
+    fn transport_params_zero_idle_timeout() {
+        let config = QuicConfig::new().with_idle_timeout(Duration::ZERO);
+        let tp = config.transport_params();
+        assert_eq!(tp.max_idle_timeout, 0, "zero idle timeout should map to 0 ms");
+    }
+
+    #[test]
+    fn stream_limits_reflected_in_transport_params() {
+        let config = QuicConfig {
+            max_concurrent_bidi_streams: 7,
+            max_concurrent_uni_streams: 3,
+            ..QuicConfig::new()
+        };
+        let tp = config.transport_params();
+        assert_eq!(tp.initial_max_streams_bidi, 7);
+        assert_eq!(tp.initial_max_streams_uni, 3);
+    }
+
+    #[test]
+    fn migration_enabled_sets_disable_active_migration_false() {
+        let tp = QuicConfig::new().with_migration(true).transport_params();
+        assert!(
+            !tp.disable_active_migration,
+            "when migration is on, disable_active_migration should be false"
+        );
     }
 }

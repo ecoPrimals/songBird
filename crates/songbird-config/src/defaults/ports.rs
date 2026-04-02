@@ -259,6 +259,26 @@ pub fn tarpc_port() -> u16 {
         .unwrap_or(8091)
 }
 
+/// Collect all known primal scan ports from env-driven defaults.
+///
+/// Returns the canonical set of ports that discovery scanning should probe.
+/// Each port is resolved from its environment variable, falling back to its default.
+#[must_use]
+pub fn primal_scan_ports() -> Vec<u16> {
+    let mut ports = vec![
+        orchestrator_port(),
+        discovery_port(),
+        federation_port(),
+        beardog_port(),
+        dashboard_port(),
+        toadstool_port(),
+        nestgate_port(),
+    ];
+    ports.sort_unstable();
+    ports.dedup();
+    ports
+}
+
 /// Get service port by name from environment or default
 ///
 /// Supports dynamic port lookup for any service.

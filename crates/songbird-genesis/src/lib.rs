@@ -63,3 +63,15 @@ pub use witness::GenesisWitness;
 
 /// Genesis module version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn version_constant_is_non_empty() {
+        assert!(!VERSION.is_empty(), "crate version should be defined");
+    }
+}

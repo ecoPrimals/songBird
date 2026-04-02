@@ -534,7 +534,7 @@ impl ConcurrencyLimiter {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_readiness_signal() {
         let ready = Arc::new(ReadinessSignal::new());
         let ready_clone = ready.clone();
@@ -548,7 +548,7 @@ mod tests {
         assert!(ready.is_ready().await);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_completion_waiter() {
         let waiter = Arc::new(CompletionWaiter::new(3));
 
@@ -564,7 +564,7 @@ mod tests {
         assert_eq!(waiter.remaining().await, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_async_barrier() {
         let barrier = Arc::new(AsyncBarrier::new(3));
         let completed = Arc::new(RwLock::new(0));
@@ -584,7 +584,7 @@ mod tests {
         assert_eq!(*completed.read().await, 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_retry_policy() {
         use std::sync::Arc;
         use std::sync::atomic::{AtomicUsize, Ordering};
@@ -620,7 +620,7 @@ mod tests {
         assert!(socket1.to_string_lossy().contains("songbird-test"));
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_concurrency_limiter() {
         let limiter = Arc::new(ConcurrencyLimiter::new(2));
         let concurrent = Arc::new(RwLock::new(0));

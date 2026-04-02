@@ -340,17 +340,23 @@ impl PrimalCoordinator {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::physical_channels::MockPhysicalChannel;
+
+    fn sample_witness() -> GenesisWitness {
+        GenesisWitness::new(
+            "test-witness".to_string(),
+            vec![1, 2, 3],
+            crate::types::PhysicalChannelType::HardwareKey,
+        )
+    }
 
     #[tokio::test]
     async fn test_genesis_ceremony_basic() {
         let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
-        let witness = GenesisWitness::new(
-            "test-witness".to_string(),
-            vec![1, 2, 3],
-            crate::types::PhysicalChannelType::HardwareKey,
-        );
+        let witness = sample_witness();
 
         let mut ceremony = GenesisCeremony::new(channel, witness);
 
@@ -376,5 +382,63 @@ mod tests {
         // This is expected behavior for isolated testing
         // In production with real BearDog+Songbird, is_multi_primal_genesis() would return true
         assert!(identity.primal_signature_count() >= 1, "Should have at least one signature");
+    }
+
+    #[tokio::test]
+    async fn conduct_fails_when_no_primal_coordinators() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let ceremony = GenesisCeremony::new(channel, sample_witness());
+        let err = ceremony
+            .conduct("orphan-node".to_string())
+            .await
+            .expect_err("coordination must fail with zero primals");
+        match err {
+            GenesisError::CoordinationFailed(msg) => {
+                assert!(
+                    msg.contains("No primals"),
+                    "expected coordination message, got {msg}"
+                );
+            }
+            other => panic!("expected CoordinationFailed, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn conduct_fails_when_proximity_verification_fails() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::failing());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".to_string(),
+            "http://127.0.0.1:1".to_string(),
+        ));
+        let err = ceremony
+            .conduct("n".to_string())
+            .await
+            .expect_err("proximity should fail before coordination");
+        assert!(
+            matches!(err, GenesisError::ProximityVerificationFailed(_)),
+            "expected proximity failure, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn primal_coordinator_new_fields() {
+        let c = PrimalCoordinator::new("p".to_string(), "http://example/genesis".to_string());
+        assert_eq!(c.primal_name, "p");
+        assert_eq!(c.endpoint, "http://example/genesis");
+        assert!(c.auth_token.is_none());
+    }
+
+    #[tokio::test]
+    async fn set_timeout_does_not_break_conduct() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.set_timeout(std::time::Duration::from_secs(3600));
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".to_string(),
+            "http://127.0.0.1:1".to_string(),
+        ));
+        let identity = ceremony.conduct("timeout-smoke".to_string()).await;
+        assert!(identity.is_ok(), "custom timeout should not block successful ceremony: {identity:?}");
     }
 }

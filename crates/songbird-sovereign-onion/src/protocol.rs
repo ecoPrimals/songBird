@@ -238,6 +238,8 @@ impl WireMessage {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -373,5 +375,65 @@ mod tests {
         assert_eq!(MessageType::try_from(0x01).unwrap(), MessageType::KeyExchange);
         assert_eq!(MessageType::try_from(0x02).unwrap(), MessageType::Data);
         assert_eq!(MessageType::try_from(0x03).unwrap(), MessageType::Close);
+    }
+
+    #[test]
+    fn message_type_equality_and_copy() {
+        let a = MessageType::KeyExchange;
+        let b = MessageType::KeyExchange;
+        assert_eq!(a, b, "KeyExchange should equal itself");
+        assert_ne!(MessageType::Data, MessageType::Close, "distinct variants");
+    }
+
+    #[test]
+    fn wire_decode_truncated_after_header() {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&10u32.to_be_bytes());
+        buf.push(MessageType::Close as u8);
+        let r = WireMessage::decode(&buf);
+        assert!(
+            matches!(r, Err(OnionError::InvalidMessage(_))),
+            "expected length mismatch, got {r:?}"
+        );
+    }
+
+    #[test]
+    fn wire_decode_payload_short_for_key_exchange() {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&2u32.to_be_bytes());
+        buf.push(MessageType::KeyExchange as u8);
+        buf.push(0x01);
+        let r = WireMessage::decode(&buf);
+        assert!(
+            matches!(r, Err(OnionError::InvalidMessage(_))),
+            "KeyExchange payload too short: {r:?}"
+        );
+    }
+
+    #[test]
+    fn key_exchange_new_const_matches_encode_layout() {
+        let msg = KeyExchangeMessage::new([3u8; 32], [4u8; 24]);
+        assert_eq!(msg.version, 0x01, "protocol version");
+        let enc = msg.encode();
+        assert_eq!(enc.len(), 57, "encoded key exchange length");
+    }
+
+    #[test]
+    fn data_message_large_sequence_roundtrips() {
+        let seq = u64::MAX;
+        let msg = DataMessage::new(seq, vec![0xAB; 3]);
+        let decoded = DataMessage::decode(&msg.encode()).expect("decode");
+        assert_eq!(decoded.sequence, seq, "u64::MAX sequence");
+    }
+
+    #[test]
+    fn wire_message_close_length_is_one() {
+        let w = WireMessage::Close;
+        let enc = w.encode().expect("encode close");
+        assert_eq!(
+            u32::from_be_bytes([enc[0], enc[1], enc[2], enc[3]]),
+            1,
+            "length field should cover type byte only"
+        );
     }
 }

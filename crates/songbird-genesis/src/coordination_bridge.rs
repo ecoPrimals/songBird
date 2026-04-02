@@ -106,6 +106,8 @@ impl GenesisCoordinationBridge {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[cfg(feature = "coordination")]
@@ -167,7 +169,18 @@ mod tests {
     #[tokio::test]
     async fn test_fallback_mode() {
         let bridge = GenesisCoordinationBridge::new_fallback();
-        let result = bridge.execute_genesis("test-node-123".to_string()).await;
-        assert!(result.is_err());
+        let err = bridge
+            .execute_genesis("test-node-123".to_string())
+            .await
+            .expect_err("fallback must error");
+        match err {
+            GenesisError::CoordinationFailed(msg) => {
+                assert!(
+                    msg.contains("not enabled"),
+                    "message should explain feature flag: {msg}"
+                );
+            }
+            other => panic!("expected CoordinationFailed, got {other:?}"),
+        }
     }
 }

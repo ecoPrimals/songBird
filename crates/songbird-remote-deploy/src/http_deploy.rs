@@ -587,6 +587,7 @@ pub async fn deploy_via_http<S: BuildHasher>(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -679,5 +680,159 @@ mod tests {
         assert_eq!(caps.node_id, "node-1");
         assert_eq!(caps.network.network_type, "lan");
         assert!(caps.deployment_methods.single.enabled);
+    }
+
+    #[test]
+    fn deployment_response_serializes_none_service_url() {
+        let r = DeploymentResponse {
+            deployment_id: "d".into(),
+            status: "pending".into(),
+            message: "m".into(),
+            service_url: None,
+        };
+        let json = serde_json::to_string(&r).expect("serialize DeploymentResponse");
+        let back: DeploymentResponse = serde_json::from_str(&json).expect("deserialize");
+        assert!(back.service_url.is_none(), "optional service_url should round-trip as None");
+    }
+
+    #[test]
+    fn select_deployment_method_exact_single_limit_uses_chunked() {
+        let caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).expect("sample caps");
+        // Selection uses strict `<` for single max, so size == max uses chunked path
+        let max = f64::from(caps.deployment_methods.single.max_size_mb);
+        let m = select_deployment_method(Some(&caps), max);
+        assert!(
+            matches!(m, SelectedMethod::Chunked { .. }),
+            "binary size equal to single max should not use Single (strict <): got {m:?}"
+        );
+    }
+
+    #[test]
+    fn select_deployment_method_single_disabled_uses_chunked() {
+        let mut caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).expect("sample caps");
+        caps.deployment_methods.single.enabled = false;
+        let m = select_deployment_method(Some(&caps), 5.0);
+        assert!(
+            matches!(m, SelectedMethod::Chunked { .. }),
+            "when single upload disabled, small binaries should use chunked: got {m:?}"
+        );
+    }
+
+    #[test]
+    fn select_deployment_method_streams_when_chunked_too_small() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {
+                "type": "wan",
+                "bandwidth_estimate": {
+                    "download_mbps": 10,
+                    "upload_mbps": 10,
+                    "latency_ms": 100,
+                    "confidence": "low"
+                }
+            },
+            "deployment_methods": {
+                "single": {
+                    "enabled": true,
+                    "max_size_mb": 10,
+                    "compression_supported": [],
+                    "recommended_for": "small"
+                },
+                "chunked": {
+                    "enabled": true,
+                    "max_total_size_mb": 100,
+                    "chunk_size_mb": 10,
+                    "max_chunks": 10,
+                    "compression_supported": [],
+                    "recommended_for": "large"
+                },
+                "streaming": {
+                    "enabled": true,
+                    "unlimited": true,
+                    "compression_supported": [],
+                    "recommended_for": "huge"
+                }
+            },
+            "resources": {
+                "available_storage_gb": 1,
+                "available_memory_gb": 1,
+                "cpu_cores": 1,
+                "cpu_load_percent": 0.5,
+                "max_concurrent_deployments": 1,
+                "current_deployments": 0
+            }
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("caps");
+        let m = select_deployment_method(Some(&caps), 200.0);
+        assert!(
+            matches!(m, SelectedMethod::Streaming),
+            "over chunked max with streaming enabled should select Streaming: got {m:?}"
+        );
+    }
+
+    #[test]
+    fn select_deployment_method_fallback_when_all_methods_unusable() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {
+                "type": "wan",
+                "bandwidth_estimate": {
+                    "download_mbps": 1,
+                    "upload_mbps": 1,
+                    "latency_ms": 500,
+                    "confidence": "low"
+                }
+            },
+            "deployment_methods": {
+                "single": {
+                    "enabled": false,
+                    "max_size_mb": 100,
+                    "compression_supported": [],
+                    "recommended_for": ""
+                },
+                "chunked": {
+                    "enabled": false,
+                    "max_total_size_mb": 100,
+                    "chunk_size_mb": 10,
+                    "max_chunks": 10,
+                    "compression_supported": [],
+                    "recommended_for": ""
+                },
+                "streaming": {
+                    "enabled": false,
+                    "unlimited": false,
+                    "compression_supported": [],
+                    "recommended_for": ""
+                }
+            },
+            "resources": {
+                "available_storage_gb": 1,
+                "available_memory_gb": 1,
+                "cpu_cores": 1,
+                "cpu_load_percent": 0.9,
+                "max_concurrent_deployments": 1,
+                "current_deployments": 1
+            }
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("caps");
+        let m = select_deployment_method(Some(&caps), 1.0);
+        assert!(
+            matches!(m, SelectedMethod::Fallback),
+            "when no method applies, expect Fallback: got {m:?}"
+        );
+    }
+
+    #[test]
+    fn selected_method_clone_and_debug() {
+        let a = SelectedMethod::Single;
+        let b = a.clone();
+        assert!(matches!(b, SelectedMethod::Single));
+        let dbg = format!("{a:?}");
+        assert!(
+            dbg.contains("Single"),
+            "SelectedMethod should implement Debug: {dbg}"
+        );
     }
 }

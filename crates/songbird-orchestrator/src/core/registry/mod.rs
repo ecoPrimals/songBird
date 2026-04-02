@@ -14,10 +14,11 @@ pub mod types;
 use crate::core::registry::types::{
     CapabilityRegistrationRequest, HealthStatus, ProviderHealth, RegisteredProvider, ResourceUsage,
 };
-use chrono::{Duration as ChronoDuration, Utc};
+use chrono::Utc;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -36,24 +37,29 @@ pub struct CapabilityRegistry {
 }
 
 /// Configuration for heartbeat monitoring
+///
+/// **Type-safe durations** (Apr 2026): Uses `std::time::Duration` instead of
+/// raw integer seconds, preventing unit-mismatch bugs at compile time.
 #[derive(Debug, Clone)]
 pub struct HeartbeatConfig {
-    /// Expected interval between heartbeats (milliseconds)
-    pub interval_ms: u64,
+    /// Expected interval between heartbeats
+    pub interval: Duration,
 
-    /// Number of missed heartbeats before marking provider unhealthy (seconds)
-    pub unhealthy_threshold_secs: i64,
+    /// Elapsed time without heartbeat before marking provider unhealthy
+    pub unhealthy_threshold: Duration,
 
-    /// Number of missed heartbeats before removing provider (seconds)
-    pub removal_threshold_secs: i64,
+    /// Elapsed time without heartbeat before removing provider
+    pub removal_threshold: Duration,
 }
 
 impl Default for HeartbeatConfig {
     fn default() -> Self {
         Self {
-            interval_ms: songbird_types::defaults::ports::DEFAULT_HEARTBEAT_INTERVAL_MS, // 5 seconds between heartbeats
-            unhealthy_threshold_secs: 15, // 15 seconds = 3 missed heartbeats
-            removal_threshold_secs: 60,   // 60 seconds = 12 missed heartbeats
+            interval: Duration::from_millis(
+                songbird_types::defaults::ports::DEFAULT_HEARTBEAT_INTERVAL_MS,
+            ),
+            unhealthy_threshold: Duration::from_secs(15),
+            removal_threshold: Duration::from_secs(60),
         }
     }
 }
@@ -129,12 +135,7 @@ impl CapabilityRegistry {
 
         // Generate unique registration ID (Arc for zero-copy)
         let registration_id = Arc::from(Uuid::new_v4().to_string().as_str());
-        let now = Utc::now();
 
-        // Create registered provider entry
-        // Extract available capacity from metadata, defaulting to 10 if not specified or invalid
-        // Modern idiomatic: map_or is cleaner than map().unwrap_or()
-        // Safe cast: u64 fits in usize on 64-bit, truncates on 32-bit (acceptable for capacity)
         #[expect(
             clippy::cast_possible_truncation,
             reason = "intentional pattern; clippy false positive for this API"
@@ -157,8 +158,9 @@ impl CapabilityRegistry {
                     gpu_utilization: vec![],
                 },
             },
-            registered_at: now,
-            last_heartbeat: now,
+            registered_at: Utc::now(),
+            last_heartbeat: Utc::now(),
+            last_heartbeat_instant: tokio::time::Instant::now(),
             active_tasks: 0,
         };
 
@@ -219,8 +221,8 @@ impl CapabilityRegistry {
             }));
         }
 
-        // Update last heartbeat timestamp
         provider.last_heartbeat = Utc::now();
+        provider.last_heartbeat_instant = tokio::time::Instant::now();
 
         // Update health status if provided
         if let Some(new_health) = health {
@@ -336,11 +338,10 @@ impl CapabilityRegistry {
     /// This spawns a tokio task that periodically checks provider health
     /// and removes offline providers.
     pub fn start_health_monitor(self: Arc<Self>) {
-        let check_interval_ms = self.config.interval_ms;
+        let check_interval = self.config.interval;
 
         tokio::spawn(async move {
-            let mut interval =
-                tokio::time::interval(std::time::Duration::from_millis(check_interval_ms));
+            let mut interval = tokio::time::interval(check_interval);
 
             loop {
                 interval.tick().await;
@@ -355,42 +356,41 @@ impl CapabilityRegistry {
 
     /// Check health of all providers and update status
     ///
+    /// Uses `tokio::time::Instant` for elapsed-time checks, making this function
+    /// fully compatible with `start_paused = true` virtual time in tests.
+    ///
     /// **ZERO-COPY**: Arc<str> keys are cloned only for removal list (Arc refcount increment).
     async fn check_provider_health(&self) -> SongbirdResult<()> {
         let mut providers = self.providers.write().await;
-        let now = Utc::now();
 
         let mut to_remove: Vec<Arc<str>> = Vec::new();
 
         for (provider_id, provider) in providers.iter_mut() {
-            let elapsed = now - provider.last_heartbeat;
+            let elapsed = provider.last_heartbeat_instant.elapsed();
 
-            // Check if provider should be marked unhealthy
-            if elapsed > ChronoDuration::seconds(self.config.unhealthy_threshold_secs)
+            if elapsed > self.config.unhealthy_threshold
                 && provider.health.status != HealthStatus::Unhealthy
                 && provider.health.status != HealthStatus::Offline
             {
                 warn!(
                     provider_id = %provider_id,
-                    elapsed_seconds = elapsed.num_seconds(),
+                    elapsed_secs = elapsed.as_secs(),
                     "Provider unhealthy - missing heartbeats"
                 );
                 provider.health.status = HealthStatus::Unhealthy;
             }
 
-            // Check if provider should be removed
-            if elapsed > ChronoDuration::seconds(self.config.removal_threshold_secs) {
+            if elapsed > self.config.removal_threshold {
                 warn!(
                     provider_id = %provider_id,
-                    elapsed_seconds = elapsed.num_seconds(),
+                    elapsed_secs = elapsed.as_secs(),
                     "Provider offline - removing from registry"
                 );
                 provider.health.status = HealthStatus::Offline;
-                to_remove.push(Arc::clone(provider_id)); // Arc clone: just refcount increment
+                to_remove.push(Arc::clone(provider_id));
             }
         }
 
-        // Remove offline providers
         for provider_id in to_remove {
             providers.remove(&provider_id);
             info!(provider_id = %provider_id, "Removed offline provider");

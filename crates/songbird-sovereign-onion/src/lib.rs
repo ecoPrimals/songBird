@@ -88,3 +88,23 @@ pub use crypto::{decrypt_data, encrypt_data};
 pub use storage::InMemoryOnionStorage as OnionStorageStandalone;
 #[cfg(all(feature = "standalone", feature = "sled-storage"))]
 pub use storage_sled::OnionStorage as OnionStorageStandalone;
+
+#[cfg(test)]
+mod public_api_smoke_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use crate::{
+        BeardogCryptoClient, InMemoryOnionStorage, OnionConnector, OnionError, OnionIdentity,
+        PeerInfo,
+    };
+
+    #[test]
+    fn public_types_are_constructible_or_named() {
+        let _ = std::any::type_name::<OnionError>();
+        let _ = std::any::type_name::<OnionIdentity>();
+        let _ = std::any::type_name::<OnionConnector>();
+        let _ = std::any::type_name::<BeardogCryptoClient>();
+        let _ = std::any::type_name::<InMemoryOnionStorage>();
+        let _ = std::any::type_name::<PeerInfo>();
+    }
+}

@@ -47,3 +47,44 @@ pub enum CoordinatedPunchResult {
         reason: String,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[tokio::test]
+    async fn punch_result_direct_and_relay_clone_debug() {
+        let socket = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+        let peer: SocketAddr = "127.0.0.1:9".parse().unwrap();
+        let d = PunchResult::Direct {
+            peer_addr: peer,
+            local_socket: socket,
+            latency: Duration::from_micros(1),
+        };
+        let _ = format!("{d:?}");
+        assert!(matches!(d, PunchResult::Direct { .. }));
+
+        let r = PunchResult::Relay { attempts: 3 };
+        assert!(matches!(r, PunchResult::Relay { attempts: 3 }));
+    }
+
+    #[tokio::test]
+    async fn coordinated_punch_result_direct_and_keep_relay() {
+        let socket = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+        let d = CoordinatedPunchResult::Direct {
+            peer_addr: "127.0.0.1:1".parse().unwrap(),
+            local_socket: socket,
+            latency: Duration::from_nanos(1),
+        };
+        let _ = format!("{d:?}");
+        assert!(matches!(d, CoordinatedPunchResult::Direct { .. }));
+
+        let k = CoordinatedPunchResult::KeepRelay {
+            ports_tried: 2,
+            reason: "timeout".into(),
+        };
+        assert!(matches!(k, CoordinatedPunchResult::KeepRelay { .. }));
+    }
+}

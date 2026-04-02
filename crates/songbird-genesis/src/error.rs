@@ -97,3 +97,84 @@ impl From<&str> for GenesisError {
         Self::Other(msg.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::GenesisError;
+    use std::error::Error as _;
+
+    #[test]
+    fn display_and_source_for_variants() {
+        let cases: Vec<(GenesisError, &str)> = vec![
+            (
+                GenesisError::ProximityVerificationFailed("x".into()),
+                "Physical proximity verification failed: x",
+            ),
+            (
+                GenesisError::InvalidWitnessSignature("sig".into()),
+                "Witness signature invalid: sig",
+            ),
+            (
+                GenesisError::PhysicalChannelError("ch".into()),
+                "Physical channel error: ch",
+            ),
+            (
+                GenesisError::CoordinationFailed("coord".into()),
+                "Coordination failed: coord",
+            ),
+            (GenesisError::CeremonyTimeout(60), "Genesis ceremony timed out after 60s"),
+            (
+                GenesisError::UnauthorizedWitness("u".into()),
+                "Witness not authorized: u",
+            ),
+            (
+                GenesisError::InvalidCertificate("c".into()),
+                "Invalid genesis certificate: c",
+            ),
+            (
+                GenesisError::LineageFailed("l".into()),
+                "Lineage establishment failed: l",
+            ),
+            (
+                GenesisError::SignatureVerificationFailed("v".into()),
+                "Signature verification failed: v",
+            ),
+            (GenesisError::SigningFailed("s".into()), "Signing failed: s"),
+            (
+                GenesisError::HardwareKeyError("h".into()),
+                "Hardware key error: h",
+            ),
+            (GenesisError::QrCodeError("q".into()), "QR code error: q"),
+            (GenesisError::BluetoothError("b".into()), "Bluetooth error: b"),
+            (
+                GenesisError::FeatureUnavailable("f".into()),
+                "Feature unavailable: f",
+            ),
+        ];
+
+        for (err, want_prefix) in cases {
+            assert_eq!(err.to_string(), want_prefix, "Display should match for {err:?}");
+        }
+
+        let serde_err = serde_json::from_str::<i32>("not-json").expect_err("invalid json");
+        let wrapped: GenesisError = serde_err.into();
+        assert!(wrapped.to_string().contains("Serialization error"));
+        assert!(wrapped.source().is_some(), "serde error should set source");
+
+        let io_err = std::io::Error::other("disk");
+        let wrapped: GenesisError = io_err.into();
+        assert!(wrapped.to_string().starts_with("IO error:"));
+
+        let anyhow_err = anyhow::anyhow!("boom");
+        let from_any: GenesisError = anyhow_err.into();
+        assert_eq!(from_any.to_string(), "boom");
+
+        let from_string: GenesisError = GenesisError::from("hello".to_string());
+        assert_eq!(from_string.to_string(), "hello");
+
+        let from_str: GenesisError = GenesisError::from("slice");
+        assert_eq!(from_str.to_string(), "slice");
+    }
+}

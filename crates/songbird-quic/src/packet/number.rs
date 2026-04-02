@@ -71,6 +71,8 @@ pub fn expand_pn(largest_pn: u64, truncated_pn: u32, pn_nbits: u32) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]

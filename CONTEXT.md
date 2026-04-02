@@ -34,8 +34,8 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 11,917 (0 failed, ~269 ignored, full suite ~84s) |
-| Coverage | ~69% region coverage via llvm-cov (target 90%) |
+| Tests | 12,124 passed (0 failed, 269 ignored, full suite ~60s) |
+| Coverage | ~72% est. region coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
 | Files >1000 LOC | 0 (all production modules under 800 lines; test-only files under 950) |

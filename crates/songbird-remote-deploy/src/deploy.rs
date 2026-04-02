@@ -523,9 +523,48 @@ async fn check_status(songbird_endpoint: &str, tower_id: &str, port: Option<u16>
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    use super::{Args, Commands, parse_env_var};
+    use super::{Args, Commands, default_federation_endpoint, parse_env_var, parse_tower_address};
     use clap::Parser;
+    use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
+
+    #[test]
+    fn default_federation_endpoint_matches_types_constants() {
+        let expected = format!("http://{LOCALHOST}:{DEFAULT_HTTP_PORT}");
+        assert_eq!(
+            default_federation_endpoint(),
+            expected,
+            "CLI default federation URL should match songbird_types::constants"
+        );
+    }
+
+    #[test]
+    fn parse_tower_address_strips_port() {
+        assert_eq!(
+            parse_tower_address("192.168.1.10:8443"),
+            "192.168.1.10",
+            "host:port should yield host only"
+        );
+    }
+
+    #[test]
+    fn parse_tower_address_host_without_port_unchanged() {
+        assert_eq!(
+            parse_tower_address("compute.local"),
+            "compute.local",
+            "address without ':' should be returned as-is"
+        );
+    }
+
+    #[test]
+    fn parse_tower_address_takes_first_colon_segment() {
+        assert_eq!(
+            parse_tower_address("fd00::1:8080"),
+            "fd00",
+            "current parser splits on first ':' (IPv6 not specially handled)"
+        );
+    }
 
     #[test]
     fn parse_env_var_accepts_key_value() {
@@ -535,8 +574,19 @@ mod tests {
     }
 
     #[test]
+    fn parse_env_var_accepts_empty_value() {
+        let (k, v) = parse_env_var("EMPTY=").unwrap();
+        assert_eq!(k, "EMPTY");
+        assert_eq!(v, "");
+    }
+
+    #[test]
     fn parse_env_var_rejects_missing_equals() {
-        assert!(parse_env_var("noequals").is_err());
+        let err = parse_env_var("noequals").unwrap_err();
+        assert!(
+            err.contains("Invalid env var format"),
+            "error should mention invalid format: {err}"
+        );
     }
 
     #[test]
@@ -544,6 +594,20 @@ mod tests {
         let (k, v) = parse_env_var("A=b=c").unwrap();
         assert_eq!(k, "A");
         assert_eq!(v, "b=c");
+    }
+
+    #[test]
+    fn args_default_songbird_endpoint_uses_federation_default() {
+        let args = Args::try_parse_from([
+            "songbird-deploy",
+            "list",
+        ])
+        .expect("minimal list command should parse");
+        assert_eq!(
+            args.songbird_endpoint,
+            default_federation_endpoint(),
+            "omitted --songbird-endpoint should match default_federation_endpoint()"
+        );
     }
 
     #[test]
@@ -603,6 +667,54 @@ mod tests {
                 assert!(env_vars.is_empty());
             }
             _ => panic!("expected DeployHttp variant"),
+        }
+    }
+
+    #[test]
+    fn args_parses_list_subcommand() {
+        let args = Args::try_parse_from(["songbird-deploy", "list", "--detailed"])
+            .expect("list --detailed should parse");
+        match args.command_ref() {
+            Commands::List {
+                detailed,
+            } => assert!(detailed, "--detailed should set flag"),
+            _ => panic!("expected List variant"),
+        }
+    }
+
+    #[test]
+    fn args_parses_status_with_port() {
+        let args = Args::try_parse_from([
+            "songbird-deploy",
+            "status",
+            "--tower",
+            "tower-z",
+            "--port",
+            "9000",
+        ])
+        .expect("status with port should parse");
+        match args.command_ref() {
+            Commands::Status {
+                tower,
+                port,
+            } => {
+                assert_eq!(tower, "tower-z");
+                assert_eq!(*port, Some(9000_u16));
+            }
+            _ => panic!("expected Status variant"),
+        }
+    }
+
+    #[test]
+    fn args_parses_status_without_port() {
+        let args = Args::try_parse_from(["songbird-deploy", "status", "--tower", "tower-z"])
+            .expect("status without port should parse");
+        match args.command_ref() {
+            Commands::Status {
+                port,
+                ..
+            } => assert!(port.is_none()),
+            _ => panic!("expected Status variant"),
         }
     }
 }

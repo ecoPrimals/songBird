@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use super::*;
 use crate::varint::VarInt;
 
@@ -292,4 +294,142 @@ fn unknown_frame_type_errors() {
     let mut buf = [0u8; 4];
     let n = VarInt::from_u32(0xFF).encode(&mut buf).unwrap();
     assert!(Frame::decode(&buf[..n]).is_err());
+}
+
+#[test]
+fn crypto_frame_truncated_payload_errors() {
+    let mut buf = [0u8; 32];
+    let mut off = VarInt::new(super::frame_type::CRYPTO).unwrap().encode(&mut buf).unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(10u64).unwrap().encode(&mut buf[off..]).unwrap();
+    buf[off] = 0xAB;
+    off += 1;
+    let err = Frame::decode(&buf[..off]).expect_err("truncated CRYPTO data must fail decode");
+    assert!(
+        err.to_string().contains("CRYPTO") || err.to_string().contains("truncated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn new_token_truncated_errors() {
+    let mut buf = [0u8; 16];
+    let mut off = VarInt::new(super::frame_type::NEW_TOKEN)
+        .unwrap()
+        .encode(&mut buf)
+        .unwrap();
+    off += VarInt::new(5u64).unwrap().encode(&mut buf[off..]).unwrap();
+    buf[off] = 1;
+    off += 1;
+    let err = Frame::decode(&buf[..off]).expect_err("truncated NEW_TOKEN must fail");
+    assert!(
+        err.to_string().contains("NEW_TOKEN") || err.to_string().contains("truncated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn new_connection_id_invalid_cid_length_errors() {
+    let mut buf = [0u8; 64];
+    let mut off = VarInt::new(super::frame_type::NEW_CONNECTION_ID)
+        .unwrap()
+        .encode(&mut buf)
+        .unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    buf[off] = 21;
+    off += 1;
+    let err = Frame::decode(&buf[..off]).expect_err("CID length > 20 must fail");
+    assert!(
+        err.to_string().contains("NEW_CONNECTION_ID") || err.to_string().contains("invalid"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn path_challenge_truncated_errors() {
+    let mut buf = [0u8; 8];
+    let n = VarInt::new(super::frame_type::PATH_CHALLENGE)
+        .unwrap()
+        .encode(&mut buf)
+        .unwrap();
+    assert_eq!(n, 1);
+    let err = Frame::decode(&buf[..n]).expect_err("PATH_CHALLENGE without 8 data bytes must fail");
+    assert!(
+        err.to_string().contains("PATH") || err.to_string().contains("truncated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn connection_close_quic_truncated_reason_errors() {
+    let mut buf = [0u8; 32];
+    let mut off = VarInt::new(super::frame_type::CONNECTION_CLOSE_QUIC)
+        .unwrap()
+        .encode(&mut buf)
+        .unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(100u64).unwrap().encode(&mut buf[off..]).unwrap();
+    let err = Frame::decode(&buf[..off]).expect_err("truncated CONNECTION_CLOSE reason must fail");
+    assert!(
+        err.to_string().contains("CONNECTION_CLOSE") || err.to_string().contains("truncated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn stream_frame_truncated_with_length_errors() {
+    let flags = StreamFlags {
+        has_offset: false,
+        has_length: true,
+        is_fin: false,
+    };
+    let ft = flags.to_type();
+    let mut buf = [0u8; 32];
+    let mut off = VarInt::new(ft).unwrap().encode(&mut buf).unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(50u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += 2;
+    let err = Frame::decode(&buf[..off]).expect_err("STREAM with short payload must fail");
+    assert!(
+        err.to_string().contains("STREAM") || err.to_string().contains("truncated"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn encode_rejects_buffer_too_small_for_crypto() {
+    let frame = Frame::Crypto {
+        offset: 0,
+        data: vec![0x01, 0x02, 0x03],
+    };
+    let mut buf = [0u8; 4];
+    let err = frame.encode(&mut buf).expect_err("tiny buffer must not fit CRYPTO frame");
+    assert!(
+        err.to_string().contains("CRYPTO") || err.to_string().contains("small"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn padding_byte_not_confused_with_varint_zero() {
+    let (f, n) = Frame::decode(&[0x00]).expect("padding decode");
+    assert_eq!(n, 1, "PADDING consumes exactly one byte");
+    assert_eq!(f, Frame::Padding);
+}
+
+#[test]
+fn ack_ecn_decode_requires_ecn_varints() {
+    let mut buf = [0u8; 32];
+    let mut off = VarInt::new(super::frame_type::ACK_ECN).unwrap().encode(&mut buf).unwrap();
+    off += VarInt::new(1u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
+    let err = Frame::decode(&buf[..off]).expect_err("ACK_ECN without ECN fields must fail");
+    assert!(
+        err.to_string().contains("VarInt") || err.to_string().contains("bytes"),
+        "unexpected error: {err}"
+    );
 }

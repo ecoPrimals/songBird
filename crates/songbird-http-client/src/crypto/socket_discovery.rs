@@ -507,7 +507,7 @@ mod tests {
     #[test]
     fn tcp_discovery_candidates_order_includes_tmp_last() {
         let c = get_tcp_discovery_file_candidates("z");
-        assert!(c.last().map_or(false, |p| p.ends_with("z-ipc-port")));
+        assert!(c.last().is_some_and(|p| p.ends_with("z-ipc-port")));
     }
 
     #[test]

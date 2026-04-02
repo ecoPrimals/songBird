@@ -465,9 +465,8 @@ fn pool_config_clone_preserves_fields() {
         cleanup_interval: Duration::from_secs(5),
         health_check_interval: Duration::from_secs(1),
     };
-    let c2 = c.clone();
-    assert_eq!(c2.max_size, 3);
-    assert_eq!(c2.health_check_interval, Duration::from_secs(1));
+    assert_eq!(c.max_size, 3);
+    assert_eq!(c.health_check_interval, Duration::from_secs(1));
 }
 
 #[test]

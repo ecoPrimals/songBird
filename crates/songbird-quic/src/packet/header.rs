@@ -430,6 +430,8 @@ pub fn encode_short_header(header: &ShortHeader, buf: &mut [u8]) -> Result<usize
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     fn make_initial_header() -> LongHeader {
@@ -613,5 +615,103 @@ mod tests {
         let (decoded, _) = decode_long_header(&buf[..written]).unwrap();
         assert_eq!(decoded.packet_number, 0x00FF_AABB);
         assert_eq!(decoded.pn_length, 4);
+    }
+
+    #[test]
+    fn decode_long_rejects_short_form_first_byte() {
+        let err = decode_long_header(&[0x40, 0, 0, 0, 1, 0, 0])
+            .expect_err("short form must not decode as long header");
+        assert!(
+            err.to_string().contains("Not a long header"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn decode_short_rejects_long_form_first_byte() {
+        let err = decode_short_header(&[0xC0], 0).expect_err("long form must not decode as short");
+        assert!(
+            err.to_string().contains("Not a short header"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn zero_rtt_long_header_roundtrip() {
+        let header = LongHeader {
+            fixed_bit: true,
+            packet_type: LongPacketType::ZeroRtt,
+            reserved_bits: 0,
+            pn_length: 1,
+            version: QUIC_VERSION_1,
+            dcid: vec![0x01, 0x02],
+            scid: vec![0x03],
+            token: vec![],
+            payload_length: 200,
+            packet_number: 9,
+        };
+        let mut buf = [0u8; 128];
+        let written = encode_long_header(&header, &mut buf).expect("encode 0-RTT long header");
+        let (decoded, _) = decode_long_header(&buf[..written]).expect("decode 0-RTT long header");
+        assert_eq!(
+            decoded.packet_type,
+            LongPacketType::ZeroRtt,
+            "packet type must stay 0-RTT"
+        );
+        assert!(
+            decoded.token.is_empty(),
+            "0-RTT must not carry Initial token"
+        );
+        assert_eq!(decoded.payload_length, 200);
+        assert_eq!(decoded.packet_number, 9);
+    }
+
+    #[test]
+    fn encode_long_header_buffer_too_small_for_version() {
+        let header = make_initial_header();
+        let mut buf = [0u8; 1];
+        let err = encode_long_header(&header, &mut buf).expect_err("buffer must be too small");
+        assert!(
+            err.to_string().contains("version") || err.to_string().contains("small"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn encode_short_header_buffer_too_small_for_pn() {
+        let header = ShortHeader {
+            fixed_bit: true,
+            spin_bit: false,
+            reserved_bits: 0,
+            key_phase: false,
+            pn_length: 4,
+            dcid: vec![0x01],
+            packet_number: 0x1122_3344,
+        };
+        let mut buf = [0u8; 3];
+        let err = encode_short_header(&header, &mut buf).expect_err("must fail for undersized buffer");
+        assert!(
+            err.to_string().contains("PN") || err.to_string().contains("small"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn short_header_spin_and_key_phase_roundtrip() {
+        let header = ShortHeader {
+            fixed_bit: true,
+            spin_bit: true,
+            reserved_bits: 0b11,
+            key_phase: true,
+            pn_length: 1,
+            dcid: vec![0xAB; 8],
+            packet_number: 7,
+        };
+        let mut buf = [0u8; 32];
+        let written = encode_short_header(&header, &mut buf).expect("encode short header");
+        let (decoded, _) = decode_short_header(&buf[..written], 8).expect("decode short header");
+        assert!(decoded.spin_bit, "spin bit must round-trip");
+        assert!(decoded.key_phase, "key phase must round-trip");
+        assert_eq!(decoded.reserved_bits, 0b11, "reserved bits must round-trip");
     }
 }

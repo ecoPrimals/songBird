@@ -103,6 +103,22 @@ pub struct ServerArgs {
     /// Security: Only binds to localhost by default for same-device IPC.
     #[arg(long)]
     pub listen: Option<String>,
+
+    /// Enable Dark Forest mode (encrypted BirdSong beacons, no plaintext fallback)
+    ///
+    /// When enabled, all discovery beacons are encrypted via BearDog.
+    /// Plaintext beacon fallback is disabled for maximum privacy.
+    /// Equivalent to setting `SONGBIRD_DARK_FOREST=true`.
+    #[arg(long, env = "SONGBIRD_DARK_FOREST")]
+    pub dark_forest: bool,
+
+    /// PID file directory (for Android/container substrates)
+    ///
+    /// Override the default PID file location for environments with
+    /// restricted filesystem access (Android SELinux, containers).
+    /// Equivalent to setting `SONGBIRD_PID_DIR`.
+    #[arg(long, env = "SONGBIRD_PID_DIR")]
+    pub pid_dir: Option<String>,
 }
 
 /// Doctor mode arguments
@@ -112,7 +128,7 @@ pub struct DoctorArgs {
     #[arg(long, short)]
     pub comprehensive: bool,
 
-    /// Output format (text, json, yaml)
+    /// Output format (text, json, toml)
     #[arg(long, default_value = "text")]
     pub format: String,
 }
@@ -126,7 +142,7 @@ pub enum ConfigCommands {
         #[arg(long)]
         show_secrets: bool,
 
-        /// Output format (text, json, yaml)
+        /// Output format (text, json, toml)
         #[arg(long, default_value = "text")]
         format: String,
     },

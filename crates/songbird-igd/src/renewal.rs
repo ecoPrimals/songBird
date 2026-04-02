@@ -165,12 +165,18 @@ impl Default for RenewalManager {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::gateway::{Gateway, GatewayProtocol};
     use crate::mapping::{PortMappingRequest, Protocol};
     use std::net::{IpAddr, Ipv4Addr};
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
+    use tokio::time::timeout;
 
     #[tokio::test]
-    async fn test_renewal_manager_add_remove() {
+    async fn renewal_manager_add_remove_and_list() {
         let manager = RenewalManager::new();
 
         let req = PortMappingRequest::new(
@@ -182,9 +188,57 @@ mod tests {
         let mapping = PortMapping::from_request(&req);
 
         manager.add_mapping(mapping).await;
-        assert_eq!(manager.get_mappings().await.len(), 1);
+        assert_eq!(manager.get_mappings().await.len(), 1, "add_mapping should append");
 
         manager.remove_mapping(3492).await;
-        assert_eq!(manager.get_mappings().await.len(), 0);
+        assert_eq!(manager.get_mappings().await.len(), 0, "remove_mapping should filter by port");
+    }
+
+    #[tokio::test]
+    async fn renewal_manager_default_matches_new() {
+        let a = RenewalManager::new();
+        let b = RenewalManager::default();
+        assert_eq!(a.get_mappings().await.len(), b.get_mappings().await.len());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn renewal_task_exits_after_stop_without_panicking() {
+        let manager = RenewalManager::new();
+        let gateway = Arc::new(Gateway {
+            ip: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+            protocol: GatewayProtocol::None,
+            external_ip: None,
+            device_name: None,
+            other_devices: Vec::new(),
+        });
+
+        let stale = PortMapping {
+            external_port: 3492,
+            internal_port: 3492,
+            internal_client: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)),
+            external_ip: None,
+            protocol: Protocol::Tcp,
+            description: "test".to_string(),
+            lease_duration: 3600,
+            created_at: Instant::now()
+                .checked_sub(Duration::from_secs(10_000))
+                .expect("test offset should stay within Instant representable range"),
+            active: true,
+        };
+        assert!(stale.needs_renewal(), "stale mapping should need renewal");
+        manager.add_mapping(stale).await;
+
+        let handle = manager.spawn_renewal_task(gateway);
+
+        tokio::time::advance(Duration::from_secs(60)).await;
+        tokio::task::yield_now().await;
+
+        manager.stop().await;
+        tokio::time::advance(Duration::from_secs(61)).await;
+
+        timeout(Duration::from_secs(5), handle)
+            .await
+            .expect("renewal task should finish after stop")
+            .expect("join should succeed");
     }
 }

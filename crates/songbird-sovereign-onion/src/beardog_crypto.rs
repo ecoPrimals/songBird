@@ -423,14 +423,42 @@ fn base64_decode(s: &str) -> Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn from_provider_unreachable_socket_errors_on_call() {
         let client = BeardogCryptoClient::from_provider(CryptoProvider::new(
             "/tmp/songbird-sovereign-onion-no-such.sock",
         ));
         let r = client.ed25519_generate_keypair().await;
         assert!(r.is_err());
+    }
+
+    #[test]
+    fn from_neural_api_socket_builds_client() {
+        let c = BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-sovereign-onion-neural.sock");
+        let _ = std::any::type_name_of_val(&c);
+    }
+
+    #[test]
+    fn from_env_builds_client() {
+        let c = BeardogCryptoClient::from_env();
+        let _ = std::any::type_name_of_val(&c);
+    }
+
+    #[test]
+    fn ed25519_keypair_and_x25519_keypair_are_debuggable() {
+        let e = Ed25519Keypair {
+            public_key: [1u8; 32],
+            secret_key: [2u8; 32],
+        };
+        let x = X25519Keypair {
+            public_key: [3u8; 32],
+            secret_key: [4u8; 32],
+        };
+        assert!(format!("{e:?}").contains("Ed25519Keypair"));
+        assert!(format!("{x:?}").contains("X25519Keypair"));
     }
 }

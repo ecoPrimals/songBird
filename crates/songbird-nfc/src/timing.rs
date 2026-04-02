@@ -107,8 +107,10 @@ impl TimingProtector {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::error::NfcError;
 
     #[tokio::test]
     async fn test_timing_protection() {
@@ -130,5 +132,35 @@ mod tests {
 
         // Should be padded to at least target duration
         assert!(elapsed >= Duration::from_secs(2));
+    }
+
+    #[tokio::test]
+    async fn pad_without_start_returns_ok_without_sleeping() {
+        let protector = TimingProtector::new(Duration::from_secs(10), Duration::from_millis(1));
+        let start = Instant::now();
+        protector.pad_to_constant_time().await.expect("pad should succeed when no start mark");
+        assert!(
+            start.elapsed() < Duration::from_millis(50),
+            "without start_time, pad_to_constant_time should not wait for target duration"
+        );
+    }
+
+    #[tokio::test]
+    async fn protect_propagates_inner_error_without_padding_success_path() {
+        let mut protector =
+            TimingProtector::new(Duration::from_secs(60), Duration::from_millis(1));
+        let err = protector
+            .protect(async { Err::<(), NfcError>(NfcError::Timeout) })
+            .await
+            .expect_err("inner error should surface");
+        assert_eq!(err.to_string(), NfcError::Timeout.to_string());
+    }
+
+    #[tokio::test]
+    async fn start_marks_operation_without_panicking() {
+        let mut protector =
+            TimingProtector::new(Duration::from_millis(100), Duration::from_millis(2));
+        protector.start();
+        protector.pad_to_constant_time().await.expect("pad after start");
     }
 }

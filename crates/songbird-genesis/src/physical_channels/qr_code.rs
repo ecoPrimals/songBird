@@ -72,3 +72,44 @@ impl PhysicalChannelProvider for QrCodeChannel {
         PhysicalChannelType::QrCodeWithOob
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::QrCodeChannel;
+    use crate::error::GenesisError;
+    use crate::physical_channels::PhysicalChannelProvider;
+    use crate::types::{PhysicalChannelType, TrustLevel};
+
+    #[test]
+    fn qr_code_channel_constructors_and_metadata() {
+        let ch = QrCodeChannel::new();
+        assert_eq!(ch.channel_type(), PhysicalChannelType::QrCodeWithOob);
+        assert_eq!(ch.trust_level(), TrustLevel::High);
+    }
+
+    #[tokio::test]
+    async fn qr_code_channel_proximity_and_exchange_match_feature_flags() {
+        let ch = QrCodeChannel::new();
+        let prox = ch.verify_proximity().await;
+        let exchange = ch.secure_exchange().await;
+
+        #[cfg(feature = "qr")]
+        {
+            assert!(matches!(prox, Err(GenesisError::QrCodeError(_))), "got {prox:?}");
+            assert!(matches!(exchange, Err(GenesisError::QrCodeError(_))), "got {exchange:?}");
+        }
+        #[cfg(not(feature = "qr"))]
+        {
+            assert!(
+                matches!(prox, Err(GenesisError::FeatureUnavailable(_))),
+                "got {prox:?}"
+            );
+            assert!(
+                matches!(exchange, Err(GenesisError::FeatureUnavailable(_))),
+                "got {exchange:?}"
+            );
+        }
+    }
+}

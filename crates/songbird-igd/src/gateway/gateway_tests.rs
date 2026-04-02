@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use super::upnp_device_description;
 use super::*;
 use crate::error::IgdError;
@@ -195,6 +197,94 @@ async fn get_external_ip_errors_when_protocol_none() {
 #[tokio::test]
 async fn unmap_port_rejects_bad_protocol() {
     let gw = sample_upnp_gateway();
-    let err = gw.unmap_port(443, "QUIC").await.unwrap_err();
+    let err = gw.unmap_port(443, "QUIC").await.expect_err("QUIC is not a valid IGD protocol");
     assert!(matches!(err, IgdError::InvalidParameter(_)));
+}
+
+#[test]
+fn gateway_nat_pmp_is_available() {
+    let gw = Gateway {
+        ip: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+        protocol: GatewayProtocol::NatPmp,
+        external_ip: Some(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 1))),
+        device_name: None,
+        other_devices: Vec::new(),
+    };
+    assert!(gw.is_available(), "NAT-PMP should count as an available IGD protocol");
+}
+
+#[tokio::test]
+async fn unmap_port_unsupported_when_protocol_none() {
+    let gw = Gateway {
+        ip: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+        protocol: GatewayProtocol::None,
+        external_ip: None,
+        device_name: None,
+        other_devices: Vec::new(),
+    };
+    let err = gw
+        .unmap_port(80, "TCP")
+        .await
+        .expect_err("unmap should fail without a backing protocol");
+    assert!(
+        matches!(err, IgdError::ProtocolNotSupported(_)),
+        "expected ProtocolNotSupported, got {err:?}"
+    );
+}
+
+#[test]
+fn discovery_diagnostics_serde_roundtrip() {
+    let d = DiscoveryDiagnostics {
+        gateway_ip: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+        gateway_reachable: true,
+        upnp: UpnpDiscoveryStatus {
+            ssdp_sent: true,
+            igd_found: false,
+        },
+        upnp_devices_found: vec!["urn:device (192.168.1.1:1900)".to_string()],
+        nat_pmp: NatPmpDiscoveryStatus {
+            probe_sent: true,
+            responded: false,
+        },
+        manual_instructions: vec!["open router".to_string()],
+        alternative_tiers: vec!["onion".to_string()],
+    };
+    let json = serde_json::to_string(&d).expect("serialize diagnostics");
+    let back: DiscoveryDiagnostics = serde_json::from_str(&json).expect("deserialize diagnostics");
+    assert_eq!(d.gateway_ip, back.gateway_ip);
+    assert_eq!(d.upnp.ssdp_sent, back.upnp.ssdp_sent);
+    assert_eq!(d.nat_pmp.responded, back.nat_pmp.responded);
+}
+
+#[tokio::test]
+async fn fetch_device_description_rejects_non_http_location() {
+    let err = upnp_device_description::fetch_device_description("https://192.168.1.1/desc.xml")
+        .await
+        .expect_err("only http:// locations are supported");
+    assert!(
+        matches!(err, IgdError::InvalidResponse(_)),
+        "expected InvalidResponse for bad scheme, got {err:?}"
+    );
+}
+
+#[test]
+fn extract_xml_value_empty_element_returns_none() {
+    let xml = "<friendlyName></friendlyName>";
+    assert_eq!(
+        upnp_device_description::extract_xml_value(xml, "friendlyName"),
+        None,
+        "empty trimmed content should not produce Some(\"\")"
+    );
+}
+
+#[test]
+fn extract_control_url_relative_without_leading_slash() {
+    let xml = r"
+        <service>
+            <serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType>
+            <controlURL>ctl/IPConn</controlURL>
+        </service>";
+    let url = upnp_device_description::extract_control_url(xml, "http://192.168.1.2:8080/root.xml")
+        .expect("relative path without leading slash should resolve");
+    assert_eq!(url, "http://192.168.1.2:8080/ctl/IPConn");
 }

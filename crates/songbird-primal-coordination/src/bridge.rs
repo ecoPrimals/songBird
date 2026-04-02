@@ -246,11 +246,14 @@ pub struct DiscoveredPrimal {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::error::PrimalCoordinationError;
     use crate::{PrimalCapabilities, ServiceQuality};
+    use std::sync::Arc;
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_primal_connection_creation() {
         let caps = PrimalCapabilities {
             services: vec!["security".to_string()],
@@ -271,7 +274,121 @@ mod tests {
         assert!(!conn.supports_capability(&CapabilityType::Compute).await);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
+    async fn primal_connection_endpoint_accepts_arc_str() {
+        let caps = PrimalCapabilities {
+            services: vec!["compute".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let ep: Arc<str> = Arc::from("http://example.test/");
+        let conn = PrimalConnection::new("id".into(), ep, caps);
+        assert_eq!(&*conn.endpoint, "http://example.test/");
+        let got = conn.get_capabilities().await;
+        assert!(
+            got.supports_capability(&CapabilityType::Compute),
+            "get_capabilities should clone advertised services"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn send_request_returns_error_without_reachable_ipc_backend() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn = PrimalConnection::new(
+            "ipc-test".into(),
+            "http://127.0.0.1:9",
+            caps,
+        );
+        let err = conn
+            .send_request(PrimalRequest::Status)
+            .await
+            .expect_err("IPC HTTP delegation should fail without a Songbird socket/server");
+        assert!(
+            matches!(err, PrimalCoordinationError::Internal(_)),
+            "expected Internal error from client/network path, got {err:?}"
+        );
+    }
+
+    struct StaticDiscovery {
+        endpoint: String,
+        caps: PrimalCapabilities,
+    }
+
+    #[async_trait::async_trait]
+    impl PrimalDiscovery for StaticDiscovery {
+        async fn discover_by_capability(
+            &self,
+            _capability: &CapabilityType,
+        ) -> crate::error::Result<DiscoveredPrimal> {
+            Ok(DiscoveredPrimal {
+                endpoint: self.endpoint.clone(),
+                capabilities: self.caps.clone(),
+            })
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn discovery_based_bridge_connect_and_supported_capabilities() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let bridge = DiscoveryBasedBridge::new(Arc::new(StaticDiscovery {
+            endpoint: "http://127.0.0.1:1".into(),
+            caps: caps.clone(),
+        }));
+        let sup = bridge.supported_capabilities();
+        assert!(
+            sup.contains(&CapabilityType::Security) && sup.contains(&CapabilityType::Compute),
+            "discovery bridge advertises core capability set"
+        );
+        let conn = bridge
+            .connect(CapabilityType::Security)
+            .await
+            .expect("connect should use discovery result");
+        assert_eq!(conn.endpoint.as_ref(), "http://127.0.0.1:1");
+        let live = conn.get_capabilities().await;
+        assert_eq!(live.services, caps.services);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn discovery_based_bridge_discover_capabilities_follows_send_request() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let bridge = DiscoveryBasedBridge::new(Arc::new(StaticDiscovery {
+            endpoint: "http://127.0.0.1:9".into(),
+            caps,
+        }));
+        let conn = bridge
+            .connect(CapabilityType::Security)
+            .await
+            .expect("connect");
+        let err = bridge
+            .discover_capabilities(&conn)
+            .await
+            .expect_err("discover_capabilities delegates to HTTP and should fail without IPC");
+        assert!(
+            matches!(
+                err,
+                PrimalCoordinationError::Internal(_) | PrimalCoordinationError::PrimalError(_)
+            ),
+            "unexpected error variant: {err:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn test_capability_update() {
         let initial_caps = PrimalCapabilities {
             services: vec!["security".to_string()],

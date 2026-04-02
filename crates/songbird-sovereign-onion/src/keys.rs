@@ -449,6 +449,8 @@ impl SessionKeys {
 
 #[cfg(all(test, feature = "standalone"))]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -532,5 +534,61 @@ mod tests {
         // Different nonces should produce different keys
         assert_ne!(keys1.send_key, keys2.send_key);
         assert_ne!(keys1.recv_key, keys2.recv_key);
+    }
+}
+
+#[cfg(test)]
+mod stored_identity_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use crate::keys::OnionIdentity;
+    use serde_json::json;
+
+    #[test]
+    fn to_from_stored_bytes_v2_roundtrip_without_local_ed25519() {
+        let j = json!({
+            "secret_key_bytes": vec![9u8; 32],
+            "public_key_bytes": vec![8u8; 32],
+            "onion_address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+            "created_at": 42u64
+        });
+        let bytes = serde_json::to_vec(&j).expect("serialize fixture");
+        let id = OnionIdentity::from_stored_bytes(&bytes).expect("parse v2 stored identity");
+        assert_eq!(id.created_at(), 42, "created_at");
+        assert_eq!(
+            id.onion_address(),
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+            "onion address"
+        );
+        assert_eq!(id.public_key_bytes(), &[8u8; 32], "public key bytes");
+        let round = id.to_stored_bytes();
+        let id2 = OnionIdentity::from_stored_bytes(&round).expect("second parse");
+        assert_eq!(
+            id2.secret_key_bytes(),
+            id.secret_key_bytes(),
+            "secret roundtrip"
+        );
+    }
+
+    #[test]
+    fn from_stored_bytes_rejects_invalid_json() {
+        let r = OnionIdentity::from_stored_bytes(b"{not json");
+        assert!(r.is_err(), "expected serde error, got {r:?}");
+    }
+
+    /// Production builds without `standalone` cannot reconstruct v1 blobs (secret-only).
+    #[cfg(not(feature = "standalone"))]
+    #[test]
+    fn from_stored_bytes_v1_legacy_returns_crypto_error() {
+        let j = json!({
+            "secret_key_bytes": vec![3u8; 32],
+            "created_at": 0u64
+        });
+        let bytes = serde_json::to_vec(&j).expect("serialize v1 fixture");
+        let r = OnionIdentity::from_stored_bytes(&bytes);
+        assert!(
+            matches!(r, Err(crate::error::OnionError::CryptoError(ref s)) if s.contains("Legacy")),
+            "expected legacy storage error, got {r:?}"
+        );
     }
 }

@@ -417,6 +417,7 @@ mod tests {
 
     use super::*;
     use crate::message::StunMessage;
+    use std::time::Instant;
 
     #[test]
     fn test_server_creation() {
@@ -504,5 +505,46 @@ mod tests {
             response.attributes.iter().any(|attr| matches!(attr, StunAttribute::OtherAddress(_)));
 
         assert!(has_other_address);
+    }
+
+    #[test]
+    fn stats_uptime_seconds_zero_without_start_time() {
+        let stats = StunServerStats::default();
+        assert_eq!(stats.uptime_seconds(), 0, "uptime should be 0 until start_time is set");
+    }
+
+    #[test]
+    fn stats_seconds_since_last_request_none_when_never_seen() {
+        let stats = StunServerStats::default();
+        assert_eq!(
+            stats.seconds_since_last_request(),
+            None,
+            "last request time should be absent before any request"
+        );
+    }
+
+    #[test]
+    fn stats_uptime_seconds_truncates_subsecond_elapsed() {
+        let stats = StunServerStats {
+            start_time: Some(Instant::now()),
+            ..Default::default()
+        };
+        assert_eq!(
+            stats.uptime_seconds(),
+            0,
+            "uptime_seconds uses whole seconds; immediate read should be 0"
+        );
+    }
+
+    #[test]
+    fn stats_seconds_since_last_request_some_after_last_request() {
+        let stats = StunServerStats {
+            last_request: Some(Instant::now()),
+            ..Default::default()
+        };
+        assert!(
+            stats.seconds_since_last_request().is_some(),
+            "elapsed since last request should be defined once last_request is set"
+        );
     }
 }

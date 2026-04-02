@@ -795,7 +795,7 @@ mod tests {
     fn global_stats_clone_independent() {
         let profiler = ServerProfiler::new();
         let s1 = profiler.get_stats();
-        let mut s2 = s1.clone();
+        let mut s2 = s1;
         s2.total_successes = 999;
         let s1b = profiler.get_stats();
         assert_ne!(s1b.total_successes, s2.total_successes);

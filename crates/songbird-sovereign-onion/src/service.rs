@@ -305,7 +305,9 @@ impl OnionService {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use std::time::Duration;
 
     #[test]
     fn onion_data_dir_returns_non_empty_path() {
@@ -314,6 +316,18 @@ mod tests {
         assert!(
             dir.contains("sovereign-onion") || dir.ends_with("sovereign-onion"),
             "expected default or env-based path segment: {dir:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn virtual_time_advances_for_sleep() {
+        let start = tokio::time::Instant::now();
+        let sleep = tokio::time::sleep(Duration::from_secs(2));
+        tokio::time::advance(Duration::from_secs(2)).await;
+        sleep.await;
+        assert!(
+            start.elapsed() >= Duration::from_secs(2),
+            "paused timer should advance with tokio::time::advance"
         );
     }
 }

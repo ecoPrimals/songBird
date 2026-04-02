@@ -334,9 +334,9 @@ fn service_to_json(service: &ServiceStatus) -> serde_json::Value {
     })
 }
 
-/// Display status in YAML format
+/// Display status in TOML format (replaces deprecated YAML output)
 async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> SongbirdResult<()> {
-    let mut yaml_status = serde_yaml::to_string(&json!({
+    let mut output = serde_json::to_string_pretty(&json!({
         "overall_status": status.orchestrator_status.health,
         "version": status.version,
         "uptime_seconds": status.uptime.as_secs(),
@@ -349,13 +349,13 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> SongbirdR
         }
     }))
     .map_err(|e| CliError::Config {
-        message: format!("Failed to serialize YAML: {e}"),
+        message: format!("Failed to serialize status: {e}"),
         field: Some("status".to_string()),
         suggestion: Some("Check system status and try again".to_string()),
     })?;
 
     if detailed {
-        let detailed_yaml = serde_yaml::to_string(&json!({
+        let detailed_output = serde_json::to_string_pretty(&json!({
             "system_metrics": {
                 "cpu_usage_percent": status.cpu_usage,
                 "memory_usage_bytes": status.memory_usage,
@@ -367,15 +367,15 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> SongbirdR
             }
         }))
         .map_err(|e| CliError::Config {
-            message: format!("Failed to serialize detailed YAML: {e}"),
+            message: format!("Failed to serialize detailed status: {e}"),
             field: Some("status".to_string()),
             suggestion: Some("Check system status and try again".to_string()),
         })?;
 
-        yaml_status.push_str(&detailed_yaml);
+        output.push_str(&detailed_output);
     }
 
-    println!("{yaml_status}");
+    println!("{output}");
     Ok(())
 }
 

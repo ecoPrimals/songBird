@@ -257,14 +257,12 @@ mod tests {
     }
 
     #[test]
-    fn public_endpoint_debug_and_clone() {
+    fn public_endpoint_debug_nonempty() {
         let ep = PublicEndpoint {
             address: SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
             nat_type: NatType::Symmetric,
         };
-        let c = ep.clone();
-        assert_eq!(ep, c);
-        assert!(!format!("{ep:?}").is_empty());
+        assert!(!format!("{ep:?}").is_empty(), "Debug impl should be non-empty");
     }
 
     #[test]

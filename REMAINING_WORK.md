@@ -2,7 +2,7 @@
 
 **Date**: April 2, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: April 2, 2026 (Session 34, Wave 93 — Deep Debt: large file refactoring + capability-based discovery + async-trait evolution + hardcode elimination + dep pruning + coverage expansion)
+**Last Deep Debt Audit**: April 2, 2026 (Session 36, Wave 96 — Deep Debt: IPC handler dedup, config template evolution, port source consolidation, production stub evolution, deny.toml hygiene)
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 11,831 listed, 0 failed (~269 ignored) |
-| **Line Coverage** | ~69.14% (llvm-cov `--workspace --all-features`; target 90%) |
+| **Tests** | 12,124 passed, 0 failed, 269 ignored |
+| **Line Coverage** | ~72% est. (llvm-cov `--workspace --all-features`; target 90%; +400 tests across 12 crates in Wave 94) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features -D warnings`); orchestrator 395 `unwrap_used` test warnings resolved (Wave 92) |
@@ -27,21 +27,21 @@
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
 | **`#[allow()]` vs `#[expect()]`** | Fully correct: `#[expect(reason)]` only where lint fires, `#[allow(reason)]` everywhere else |
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
-| **Hardcoded elimination** | All ports env-driven; `primal_names` constants module; DNS-SD/mDNS/broadcast discovery; capability-first |
+| **Hardcoded elimination** | All ports env-driven via `defaults::ports`; `primal_scan_ports()` aggregation; config templates generated from runtime defaults; DNS-SD/mDNS/broadcast discovery; capability-first |
 | **JSON-RPC handlers** | 15 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` + `mesh.topology` (ecosystem standard) |
-| **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain (Discovery, Network, Stun, Relay, Storage, etc.) |
+| **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain; transport-agnostic `handle_json_rpc_connection` (Unix + TCP via single generic) |
 | **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
 | **BearDog crypto** | Full delegation wired: TLS record layer `encrypt/decrypt_record_delegated` → `crypto.aead_encrypt/decrypt`; JWT `encode_with_crypto/decode_with_crypto` → `crypto.hmac.sha256`; checkpoint `calculate_checksum` → `crypto.sha256`; discovery + rendezvous SHA-256/HMAC-SHA256 → `CryptoProvider::call`; all with local fallback + `tracing::warn!` |
 | **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + BearDog crypto delegation; `ring-crypto` opt-in feature gate on CLI only (deny.toml wrapper: `rustls` only); `sysinfo` eliminated |
-| **`async-trait` evolution** | 81 `#[async_trait]` usages (4 evolved to native async fn in trait: `TorProtocolCrypto`, `PhysicalChannelProvider`, `UniversalAdapter`, `JsonRpcHandler`); remainder require `dyn` dispatch and stay |
+| **`async-trait` evolution** | 136 `#[async_trait]` across 76 files — all verified as dyn-dispatch (`Box<dyn>`, `Arc<dyn>`); 4 previously evolved to native async fn; remainder blocked on Rust lang dyn async trait stabilization |
 | **Live BearDog testing** | `BearDogFixture` in `songbird-test-utils`; `scripts/test-with-beardog.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
-| **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
+| **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); 3 advisory ignores (bincode unmaintained, opentelemetry_api merged, paste unmaintained — all transitive) |
 | **SPDX headers** | 100% coverage across all `.rs` files |
 | **CI quality gate** | Coverage threshold ratcheted to 66%; `Swatinem/rust-cache`; `cargo-deny` job; `rustsec/audit-check` |
-| **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
+| **UniBin** | `songbird server` (v1.1: `--dark-forest`, `--pid-dir` parity with tower), `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
 | **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) — all three health names now wired on HTTP + Unix + IPC transports |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; `MockRendezvousClient/MockPeerConnector/MockPeerRegistry` in `tests_support` modules; XOR broadcast encryption isolated to test/mock builds; TLS record layer returns `CryptoUnavailable` instead of mock crypto |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, `serde_json::to_vec` (no intermediate String) |
@@ -50,10 +50,12 @@
 | **Concurrent tests** | All tests fully concurrent; injectable `_with()` env readers; `tokio::time::pause()` + `advance()` for deterministic timing |
 | **Event-driven** | Zero `sleep`-based polling in production; `UniversalIpcBroker` uses `oneshot` readiness signal (not sleep) |
 | **Deterministic circuit breakers** | Both `songbird-universal` and `songbird-orchestrator` circuit breakers use `tokio::time::Instant` + `start_paused = true` — tests complete in 0.00s |
+| **Virtual-time health monitors** | `CapabilityRegistry` + `ServiceRegistry` health monitors evolved from `chrono::Utc::now()` / `SystemTime` to `tokio::time::Instant` — all heartbeat/timeout tests now use `start_paused = true` + `tokio::time::advance()` (0.00s, deterministic) |
+| **Type-safe durations** | `HeartbeatConfig` uses `std::time::Duration` instead of raw `i64` seconds — compile-time unit safety |
 | **Module docs** | 77 `pub mod` declarations documented across 5 crates |
 | **Binary size** | 20MB release |
 | **`#[warn(missing_docs)]`** | 30/30 crates (all library crates have the lint enabled) |
-| **Dependencies** | ~410 unique (`sysinfo`/`rayon`/`crossbeam`/`md5` eliminated; `serde_yaml` removed from `songbird-types`; `flate2` feature-gated); duplicates aligned (base32→0.5, base64→0.22, hostname→0.4, thiserror→2.0) |
+| **Dependencies** | ~410 unique (`sysinfo`/`rayon`/`crossbeam`/`md5` eliminated; `serde_yaml` removed from orchestrator + CLI + types; kept in config only for YAML parsing — successor `yaml_serde` available); `blake3` pure-Rust (`features = ["std", "pure"]`); duplicates aligned; deny.toml: 3 advisory ignores, 2 stale skip entries pruned |
 | **Build time** | ~43s clean dev build, ~68s test suite |
 | **Total Rust lines** | ~410,685 (crates + src + tests + examples; +1.2K from coverage expansion, net of refactoring) |
 | **Crates** | 30 workspace members |

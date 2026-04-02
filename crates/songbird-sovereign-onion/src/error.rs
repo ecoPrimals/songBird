@@ -117,6 +117,8 @@ impl From<ed25519_dalek::SignatureError> for OnionError {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -141,6 +143,78 @@ mod tests {
     fn io_error_maps() {
         let io = std::io::Error::new(std::io::ErrorKind::NotFound, "x");
         let e: OnionError = io.into();
-        assert!(matches!(e, OnionError::Io(_)));
+        assert!(matches!(e, OnionError::Io(_)), "expected Io variant");
+    }
+
+    #[test]
+    fn display_handshake_encryption_decryption_and_invalid_message() {
+        assert!(
+            OnionError::HandshakeFailed("h".into())
+                .to_string()
+                .contains("Handshake"),
+            "handshake display"
+        );
+        assert!(
+            OnionError::EncryptionError("e".into())
+                .to_string()
+                .contains("Encryption"),
+            "encryption display"
+        );
+        assert!(
+            OnionError::DecryptionError("d".into())
+                .to_string()
+                .contains("Decryption"),
+            "decryption display"
+        );
+        assert!(
+            OnionError::InvalidMessage("m".into())
+                .to_string()
+                .contains("protocol message"),
+            "invalid message display"
+        );
+    }
+
+    #[test]
+    fn serialization_error_maps() {
+        let e: OnionError = serde_json::from_str::<i32>("not json").unwrap_err().into();
+        assert!(matches!(e, OnionError::Serialization(_)), "expected Serialization");
+    }
+
+    #[test]
+    fn display_signature_keyexchange_aead_and_other() {
+        assert!(OnionError::Signature("s".into()).to_string().contains("Signature"));
+        assert!(OnionError::KeyExchange("k".into()).to_string().contains("Key exchange"));
+        assert!(OnionError::Aead("a".into()).to_string().contains("AEAD"));
+        assert!(OnionError::Other("o".into()).to_string().contains("Onion error"));
+    }
+
+    #[test]
+    fn display_connection_and_crypto_errors() {
+        assert!(
+            OnionError::ConnectionError("c".into())
+                .to_string()
+                .contains("Connection error"),
+            "connection error display"
+        );
+        assert!(
+            OnionError::CryptoError("x".into()).to_string().contains("Crypto error"),
+            "crypto error display"
+        );
+    }
+
+    #[test]
+    fn connection_timeout_display() {
+        assert!(
+            OnionError::ConnectionTimeout.to_string().contains("timeout"),
+            "timeout display"
+        );
+    }
+
+    #[test]
+    fn invalid_public_key_display() {
+        assert!(
+            OnionError::InvalidPublicKey.to_string().contains("public key"),
+            "invalid pubkey display"
+        );
     }
 }

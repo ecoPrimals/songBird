@@ -30,7 +30,9 @@ songbird-types = { path = "../songbird-types" }
 
 [lints]
 workspace = true
+
 [dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
 tokio-test = "0.4"
 
 [lib]

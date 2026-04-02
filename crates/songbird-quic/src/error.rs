@@ -59,6 +59,8 @@ pub enum QuicError {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -108,5 +110,31 @@ mod tests {
     fn handshake_error_display() {
         let e = QuicError::Handshake("TLS failed".into());
         assert!(e.to_string().contains("TLS failed"));
+    }
+
+    #[test]
+    fn connection_closed_display() {
+        let e = QuicError::ConnectionClosed("peer reset".into());
+        assert!(
+            e.to_string().contains("peer reset"),
+            "expected reason in Display, got {e}"
+        );
+    }
+
+    #[test]
+    fn transport_error_hex_and_reason() {
+        let e = QuicError::Transport {
+            code: 0x100,
+            reason: "test reason".into(),
+        };
+        let s = e.to_string();
+        assert!(s.contains("0x100"), "expected hex code in Display: {s}");
+        assert!(s.contains("test reason"), "expected reason in Display: {s}");
+    }
+
+    #[test]
+    fn error_is_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<QuicError>();
     }
 }

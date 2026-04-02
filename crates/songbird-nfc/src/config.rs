@@ -136,3 +136,39 @@ impl NfcConfig {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn new_matches_default() {
+        let a = NfcConfig::new();
+        let b = NfcConfig::default();
+        assert_eq!(a.exchange_timeout, b.exchange_timeout, "new() should mirror default()");
+        assert_eq!(a.timing_protection, b.timing_protection);
+        assert_eq!(a.validate_connection, b.validate_connection);
+    }
+
+    #[test]
+    fn builder_methods_override_fields() {
+        let socket = PathBuf::from("/tmp/custom-security.sock");
+        let cfg = NfcConfig::default()
+            .with_beardog_socket(socket.clone())
+            .with_timeout(Duration::from_secs(60))
+            .with_timing_protection(false)
+            .with_timing_protection(true);
+
+        assert_eq!(cfg.beardog_socket, socket, "with_beardog_socket should stick");
+        assert_eq!(cfg.exchange_timeout, Duration::from_secs(60));
+        assert!(cfg.timing_protection, "last with_timing_protection wins");
+    }
+
+    #[test]
+    fn with_timeout_is_const_path() {
+        let cfg = NfcConfig::default().with_timeout(Duration::from_nanos(1));
+        assert_eq!(cfg.exchange_timeout, Duration::from_nanos(1));
+    }
+}

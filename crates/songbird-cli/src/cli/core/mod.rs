@@ -15,9 +15,7 @@ pub mod types;
 
 // Error handling - using songbird_errors instead
 // pub use types::{CliError, SongbirdResult} ; // Re-enabled - now properly defined as type aliases
-// Removed recursive type alias - use Result directly
-// Constants - re-export centralized constants;
-// pub use constants: :cli; // Temporarily disabled
+// Constants re-exported from songbird_config::canonical::constants
 
 // CLI Types and enums
 // pub use types::{ColorMode, ConfigAction, DeploymentType, OutputFormat};

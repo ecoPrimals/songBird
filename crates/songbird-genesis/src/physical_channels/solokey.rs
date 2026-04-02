@@ -60,3 +60,32 @@ impl PhysicalChannelProvider for SoloKeyChannel {
         PhysicalChannelType::HardwareKey
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::SoloKeyChannel;
+    use crate::physical_channels::PhysicalChannelProvider;
+    use crate::types::{PhysicalChannelType, TrustLevel};
+
+    #[test]
+    fn solokey_channel_constructors() {
+        let a = SoloKeyChannel::new();
+        let b = SoloKeyChannel::default();
+        assert_eq!(a.channel_type(), b.channel_type());
+        assert_eq!(a.channel_type(), PhysicalChannelType::HardwareKey);
+        assert_eq!(a.trust_level(), TrustLevel::Maximum);
+    }
+
+    #[tokio::test]
+    async fn solokey_placeholder_proximity_and_exchange() {
+        let ch = SoloKeyChannel::new();
+        let proof = ch.verify_proximity().await.expect("placeholder proximity");
+        assert_eq!(proof.channel_type, PhysicalChannelType::HardwareKey);
+        assert!(proof.attestation.is_some());
+
+        let creds = ch.secure_exchange().await.expect("placeholder exchange");
+        assert_eq!(creds, b"solokey_genesis_creds");
+    }
+}

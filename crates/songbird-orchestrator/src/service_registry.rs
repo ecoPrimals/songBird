@@ -93,7 +93,16 @@ impl Default for RegistryConfig {
     }
 }
 
+/// Provide a default `tokio::time::Instant` for serde deserialization skip.
+fn default_instant() -> tokio::time::Instant {
+    tokio::time::Instant::now()
+}
+
 /// A registered service
+///
+/// **VIRTUAL-TIME** (Apr 2026): `last_heartbeat_instant` uses `tokio::time::Instant`
+/// for elapsed-time checks in cleanup, enabling deterministic testing with
+/// `start_paused = true`. The `SystemTime` fields are retained for serialization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisteredService {
     /// Unique service ID
@@ -123,8 +132,13 @@ pub struct RegisteredService {
     /// Registration timestamp
     pub registered_at: SystemTime,
 
-    /// Last heartbeat timestamp
+    /// Last heartbeat timestamp (wall-clock, for serialization / display)
     pub last_heartbeat: SystemTime,
+
+    /// Last heartbeat (monotonic, for elapsed-time cleanup checks).
+    /// Advances with `tokio::time::advance()` under `start_paused = true`.
+    #[serde(skip, default = "default_instant")]
+    pub last_heartbeat_instant: tokio::time::Instant,
 
     /// Heartbeat interval (seconds)
     pub heartbeat_interval: u64,
@@ -365,7 +379,6 @@ impl ServiceRegistry {
             None
         };
 
-        // Create registered service
         let now = SystemTime::now();
         let service = RegisteredService {
             service_id: service_id.clone(),
@@ -378,6 +391,7 @@ impl ServiceRegistry {
             protocols: request.protocols,
             registered_at: now,
             last_heartbeat: now,
+            last_heartbeat_instant: tokio::time::Instant::now(),
             heartbeat_interval: self.config.default_heartbeat_interval,
             status: ServiceStatus::Active,
             trust_level: "anonymous".to_string(),
@@ -422,8 +436,8 @@ impl ServiceRegistry {
             return Err(anyhow!("Invalid token for service {}", request.service_id));
         }
 
-        // Update heartbeat
         service.last_heartbeat = SystemTime::now();
+        service.last_heartbeat_instant = tokio::time::Instant::now();
         service.missed_heartbeats = 0;
 
         // Update status if changed
@@ -497,32 +511,36 @@ impl ServiceRegistry {
     }
 
     /// Cleanup stale services (TTL expired)
+    ///
+    /// Uses `tokio::time::Instant` for elapsed-time checks, compatible with
+    /// `start_paused = true` virtual time in tests.
     pub async fn cleanup_stale_services(&self) -> usize {
-        let now = SystemTime::now();
         let ttl = Duration::from_secs(self.config.service_ttl_sec);
 
         let mut services = self.services.write().await;
         let mut to_remove = Vec::new();
 
         for (id, service) in services.iter_mut() {
-            // Check if last heartbeat is beyond TTL
-            if let Ok(elapsed) = now.duration_since(service.last_heartbeat) {
-                if elapsed > ttl {
-                    warn!(
-                        "Service {} ({}) has not sent heartbeat for {:?}, marking for removal",
-                        service.service_name, id, elapsed
-                    );
-                    to_remove.push(id.clone());
-                } else {
-                    // Update missed heartbeats
-                    let expected_heartbeats =
-                        (elapsed.as_secs() / service.heartbeat_interval) as u32;
-                    if expected_heartbeats > 0 {
-                        service.missed_heartbeats = expected_heartbeats.saturating_sub(1);
+            let elapsed = service.last_heartbeat_instant.elapsed();
 
-                        if service.missed_heartbeats >= self.config.max_missed_heartbeats {
-                            service.status = ServiceStatus::Degraded;
-                        }
+            if elapsed > ttl {
+                warn!(
+                    "Service {} ({}) has not sent heartbeat for {:?}, marking for removal",
+                    service.service_name, id, elapsed
+                );
+                to_remove.push(id.clone());
+            } else {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "heartbeat count won't exceed u32 in practice"
+                )]
+                let expected_heartbeats =
+                    (elapsed.as_secs() / service.heartbeat_interval) as u32;
+                if expected_heartbeats > 0 {
+                    service.missed_heartbeats = expected_heartbeats.saturating_sub(1);
+
+                    if service.missed_heartbeats >= self.config.max_missed_heartbeats {
+                        service.status = ServiceStatus::Degraded;
                     }
                 }
             }

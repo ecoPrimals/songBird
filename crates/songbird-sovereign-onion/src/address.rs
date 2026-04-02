@@ -274,6 +274,8 @@ pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
 
 #[cfg(all(test, feature = "standalone"))]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use ed25519_dalek::SigningKey;
 
@@ -383,6 +385,8 @@ mod tests {
 
 #[cfg(test)]
 mod beardog_path_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::beardog_crypto::BeardogCryptoClient;
 
@@ -417,5 +421,26 @@ mod beardog_path_tests {
         let pk = [7u8; 32];
         let r = derive_onion_address_via_beardog(&client, &pk).await;
         assert!(r.is_err());
+    }
+
+    /// Wrong version is rejected before any BearDog RPC (checksum step is skipped).
+    #[tokio::test(start_paused = true)]
+    async fn validate_via_beardog_rejects_unsupported_version_without_rpc() {
+        let client =
+            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+        let mut raw = [0u8; 35];
+        raw[34] = 0x02;
+        let encoded = base32::encode(
+            base32::Alphabet::Rfc4648Lower {
+                padding: false,
+            },
+            &raw,
+        );
+        let onion = format!("{encoded}.onion");
+        let r = validate_onion_address_via_beardog(&client, &onion).await;
+        assert!(
+            matches!(r, Err(OnionError::UnsupportedVersion(2))),
+            "expected UnsupportedVersion(2), got {r:?}"
+        );
     }
 }

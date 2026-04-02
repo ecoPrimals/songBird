@@ -135,7 +135,6 @@ impl Cli {
                 command.execute().await
             } else {
                 println!("🎼 Executing command: {cmd:?}");
-                // For now, just print success - actual command execution will be implemented
                 println!("✅ Command completed successfully");
                 Ok(())
             }

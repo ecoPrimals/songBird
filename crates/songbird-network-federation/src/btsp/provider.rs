@@ -188,8 +188,9 @@ impl BtspProviderFactory {
             return self.connect_to_security_provider(&endpoint).await;
         }
 
-        // Strategy 3: Try well-known local ports (localhost only for security)
-        for port in [9000, 9001, 9002] {
+        // Strategy 3: Probe env-configured BearDog port and adjacent ports
+        let base_port = songbird_config::defaults::ports::beardog_port();
+        for port in [base_port, base_port + 1, base_port + 2] {
             let endpoint = format!("https://localhost:{port}");
             if self.probe_security_provider_endpoint(&endpoint).await.is_ok() {
                 debug!("✅ Found security provider via probe: {}", endpoint);

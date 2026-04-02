@@ -245,9 +245,39 @@ pub struct DeploymentId(pub String);
 pub use crate::error::ComputeError;
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use songbird_process_env;
+
+    /// RAII restore for [`songbird_process_env`] overlay keys (see workspace `ScopedEnv` pattern).
+    struct EnvOverlayGuard {
+        key: &'static str,
+        previous: Option<String>,
+    }
+
+    impl EnvOverlayGuard {
+        fn mask_key(key: &'static str) -> Self {
+            let previous = songbird_process_env::var(key).ok();
+            songbird_process_env::remove_var(key);
+            Self { key, previous }
+        }
+
+        fn set(key: &'static str, value: &str) -> Self {
+            let previous = songbird_process_env::var(key).ok();
+            songbird_process_env::set_var(key, value);
+            Self { key, previous }
+        }
+    }
+
+    impl Drop for EnvOverlayGuard {
+        fn drop(&mut self) {
+            match &self.previous {
+                Some(v) => songbird_process_env::set_var(self.key, v),
+                None => songbird_process_env::remove_var(self.key),
+            }
+        }
+    }
 
     fn workload_sample() -> Workload {
         Workload {
@@ -265,6 +295,63 @@ mod tests {
         assert_eq!(cfg.cache_ttl_secs, 300);
     }
 
+    #[test]
+    fn compute_provider_clone_and_debug() {
+        let p = ComputeProvider {
+            endpoint: "http://e".into(),
+            capabilities: vec!["compute".into()],
+            metadata: HashMap::new(),
+            healthy: false,
+        };
+        let q = p.clone();
+        assert_eq!(format!("{p:?}"), format!("{q:?}"));
+        assert!(!q.healthy);
+    }
+
+    #[test]
+    fn workload_and_deployment_id_serde_roundtrip() {
+        let mut req = HashMap::new();
+        req.insert("mem".into(), "8Gi".into());
+        let w = Workload {
+            id: "w1".into(),
+            service_type: "batch".into(),
+            requirements: req,
+        };
+        let json = serde_json::to_string(&w).expect("serialize workload");
+        let back: Workload = serde_json::from_str(&json).expect("deserialize workload");
+        assert_eq!(back.id, w.id);
+        assert_eq!(back.requirements.get("mem"), Some(&"8Gi".into()));
+
+        let d = DeploymentId("dep-42".into());
+        let dj = serde_json::to_string(&d).expect("serialize deployment id");
+        let db: DeploymentId = serde_json::from_str(&dj).expect("deserialize deployment id");
+        assert_eq!(db.0, "dep-42");
+    }
+
+    #[test]
+    fn default_coordinator_matches_new() {
+        let a = AgnosticComputeCoordinator::default();
+        let b = AgnosticComputeCoordinator::new();
+        assert_eq!(
+            a.config.discovery_timeout_secs,
+            b.config.discovery_timeout_secs,
+            "Default and new() should share the same baseline config"
+        );
+    }
+
+    #[test]
+    fn with_config_preserves_custom_timeouts() {
+        let cfg = ComputeCoordinatorConfig {
+            discovery_timeout_secs: 99,
+            enable_cache: false,
+            cache_ttl_secs: 12,
+        };
+        let c = AgnosticComputeCoordinator::with_config(cfg);
+        assert_eq!(c.config.discovery_timeout_secs, 99);
+        assert!(!c.config.enable_cache);
+        assert_eq!(c.config.cache_ttl_secs, 12);
+    }
+
     #[tokio::test]
     async fn coordinator_new_matches_default_config() {
         let coordinator = AgnosticComputeCoordinator::new();
@@ -276,36 +363,45 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn request_compute_capability_returns_cached_provider_when_env_unset() {
-        if std::env::var("CAPABILITY_COMPUTE_ENDPOINT").is_ok() {
-            // Without mutating process env (unsafe under concurrency in Rust 2024), skip.
-            return;
-        }
+    async fn request_compute_capability_cache_then_env_precedence() {
+        // Serialized in one test so the shared `songbird_process_env` overlay is not raced by
+        // other tests touching `CAPABILITY_COMPUTE_ENDPOINT`.
+        let _mask = EnvOverlayGuard::mask_key("CAPABILITY_COMPUTE_ENDPOINT");
 
         let coordinator = AgnosticComputeCoordinator::new();
         coordinator
             .insert_provider_for_test(
                 "compute",
                 ComputeProvider {
-                    endpoint: "http://cached.compute.test:9000".to_string(),
-                    capabilities: vec!["compute".to_string()],
+                    endpoint: "http://cached.compute.test:9000".into(),
+                    capabilities: vec!["compute".into()],
                     metadata: HashMap::new(),
                     healthy: true,
                 },
             )
             .await;
 
-        let provider = coordinator.request_compute_capability().await.unwrap();
-        assert_eq!(provider.endpoint, "http://cached.compute.test:9000");
-        assert!(provider.capabilities.contains(&"compute".to_string()));
-        assert!(provider.healthy);
+        let from_cache = coordinator.request_compute_capability().await.expect("cached provider");
+        assert_eq!(
+            from_cache.endpoint,
+            "http://cached.compute.test:9000",
+            "in-memory cache should satisfy when env is masked"
+        );
+        assert!(from_cache.capabilities.contains(&"compute".to_string()));
+        assert!(from_cache.healthy);
+
+        let _env = EnvOverlayGuard::set("CAPABILITY_COMPUTE_ENDPOINT", "http://env-priority.example:9000");
+        let from_env = coordinator.request_compute_capability().await.expect("env endpoint");
+        assert_eq!(
+            from_env.endpoint,
+            "http://env-priority.example:9000",
+            "CAPABILITY_COMPUTE_ENDPOINT must override in-memory cache"
+        );
     }
 
     #[tokio::test]
     async fn deploy_workload_falls_back_to_local_id_when_http_unreachable() {
-        if std::env::var("CAPABILITY_COMPUTE_ENDPOINT").is_ok() {
-            return;
-        }
+        let _mask = EnvOverlayGuard::mask_key("CAPABILITY_COMPUTE_ENDPOINT");
 
         let coordinator = AgnosticComputeCoordinator::new();
         coordinator

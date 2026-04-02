@@ -57,6 +57,7 @@ pub enum PrimalCoordinationError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -75,11 +76,48 @@ mod tests {
         assert!(
             PrimalCoordinationError::NoCapablePrimal("cap".into())
                 .to_string()
-                .contains("No capable primal")
+                .contains("No capable primal"),
+            "NoCapablePrimal should mention no capable primal"
         );
         assert!(
-            PrimalCoordinationError::Internal("bug".into()).to_string().contains("Internal error")
+            PrimalCoordinationError::Internal("bug".into()).to_string().contains("Internal error"),
+            "Internal should surface as internal error"
         );
+    }
+
+    #[test]
+    fn display_communication_unexpected_primal_discovery() {
+        assert!(
+            PrimalCoordinationError::CommunicationError("c".into())
+                .to_string()
+                .contains("Communication error"),
+            "CommunicationError display"
+        );
+        assert!(
+            PrimalCoordinationError::UnexpectedResponse("u".into())
+                .to_string()
+                .contains("Unexpected response"),
+            "UnexpectedResponse display"
+        );
+        assert!(
+            PrimalCoordinationError::PrimalError("p".into())
+                .to_string()
+                .contains("Primal error"),
+            "PrimalError display"
+        );
+        assert!(
+            PrimalCoordinationError::DiscoveryFailed("d".into())
+                .to_string()
+                .contains("Discovery failed"),
+            "DiscoveryFailed display"
+        );
+    }
+
+    #[test]
+    fn anyhow_error_maps_to_other() {
+        let e: PrimalCoordinationError = anyhow::anyhow!("wrapped").into();
+        assert!(matches!(e, PrimalCoordinationError::Other(_)), "anyhow maps to Other");
+        assert!(e.to_string().contains("wrapped"), "Underlying message preserved");
     }
 
     #[test]

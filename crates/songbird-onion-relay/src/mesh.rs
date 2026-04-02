@@ -385,6 +385,8 @@ impl BeaconMesh {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -471,6 +473,171 @@ mod tests {
         assert!(
             matches!(ep.endpoint_type, EndpointType::FamilyRelay { .. })
                 || matches!(ep.endpoint_type, EndpointType::TorOnion { .. })
+        );
+    }
+
+    #[tokio::test]
+    async fn set_my_onion_and_announce_register_shape() {
+        let mesh = BeaconMesh::new("me".into(), vec![]);
+        mesh.set_my_onion("abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx.onion".into())
+            .await;
+        let msg = mesh.announce_as_relay().await;
+        match msg {
+            SignalingMessage::Register {
+                peer_info,
+                encrypted_beacon,
+            } => {
+                assert_eq!(peer_info.node_id, "me");
+                assert!(peer_info.capabilities.iter().any(|c| c.starts_with("can_reach:")));
+                assert_eq!(
+                    encrypted_beacon,
+                    Some("abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx.onion".into())
+                );
+            }
+            other => panic!("expected Register, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn get_all_paths_and_best_prefers_lower_priority() {
+        let mesh = BeaconMesh::new("hub".into(), vec![]);
+        let addr = "10.0.0.5:9000".parse().unwrap();
+        mesh.record_direct_connection("peer".into(), addr, Duration::from_millis(10))
+            .await;
+        mesh.record_relay_path("peer".into(), "via".into(), Duration::from_millis(5))
+            .await;
+
+        let paths = mesh.get_all_paths("peer").await;
+        assert_eq!(paths.len(), 2, "both endpoints recorded");
+
+        let best = mesh.get_best_path("peer").await.expect("best path");
+        assert!(
+            matches!(best.endpoint_type, EndpointType::Direct { .. }),
+            "direct should beat family relay: {:?}",
+            best.endpoint_type
+        );
+    }
+
+    #[tokio::test]
+    async fn find_relay_for_unknown_peer_without_bootstrap_returns_none() {
+        let mesh = BeaconMesh::new("solo".into(), vec![]);
+        assert!(
+            mesh.find_relay_for("nobody").await.is_none(),
+            "no relays and no bootstrap → None"
+        );
+    }
+
+    #[tokio::test]
+    async fn find_relay_for_prefers_reachable_lower_priority_endpoint() {
+        let mesh = BeaconMesh::new("me".into(), vec![]);
+        mesh.record_relay_path("target".into(), "r1".into(), Duration::from_millis(100))
+            .await;
+        mesh.record_direct_connection("helper".into(), "1.1.1.1:1".parse().unwrap(), Duration::from_millis(20))
+            .await;
+
+        let path = mesh
+            .find_relay_for("target")
+            .await
+            .expect("helper or bootstrap path");
+        assert!(
+            matches!(path.endpoint_type, EndpointType::FamilyRelay { .. }),
+            "expected family relay toward target, got {:?}",
+            path.endpoint_type
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_relay_request_ok_and_peer_not_found() {
+        let mesh = BeaconMesh::new("relay".into(), vec![]);
+        mesh.record_direct_connection("dest".into(), "8.8.8.8:53".parse().unwrap(), Duration::ZERO)
+            .await;
+
+        mesh.handle_relay_request("src", "dest", vec![1, 2, 3])
+            .await
+            .expect("path to dest exists");
+
+        let err = mesh
+            .handle_relay_request("src", "missing", vec![])
+            .await
+            .expect_err("no path");
+        assert!(matches!(err, crate::OnionRelayError::PeerNotFound(_)));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn health_check_marks_stale_unreachable() {
+        let mesh = BeaconMesh::new("n".into(), vec![]);
+        let ep = RelayEndpoint {
+            node_id: "p".into(),
+            endpoint_type: EndpointType::Direct {
+                addr: "1.1.1.1:1".parse().unwrap(),
+            },
+            latency: None,
+            last_seen: Instant::now()
+                .checked_sub(Duration::from_secs(120))
+                .expect("instant far enough after epoch for subtraction"),
+            reachable: true,
+        };
+        {
+            let mut map = mesh.endpoints.write().await;
+            map.insert("p".into(), vec![ep.clone()]);
+        }
+
+        mesh.health_check().await;
+
+        let eps = mesh.get_all_paths("p").await;
+        assert_eq!(eps.len(), 1);
+        assert!(
+            !eps[0].reachable,
+            "endpoint older than 60s should be marked unreachable"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_reachable_nodes_filters_unreachable() {
+        let mesh = BeaconMesh::new("n".into(), vec![]);
+        let mut ep = RelayEndpoint {
+            node_id: "up".into(),
+            endpoint_type: EndpointType::Direct {
+                addr: "2.2.2.2:2".parse().unwrap(),
+            },
+            latency: Some(Duration::from_millis(1)),
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+        {
+            let mut map = mesh.endpoints.write().await;
+            map.insert("up".into(), vec![ep.clone()]);
+            ep.reachable = false;
+            map.insert("down".into(), vec![ep]);
+        }
+
+        let nodes = mesh.get_reachable_nodes().await;
+        assert_eq!(nodes, vec!["up".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn endpoint_type_priority_ordering() {
+        assert_eq!(EndpointType::Local { addr: "127.0.0.1:1".parse().unwrap() }.priority(), 0);
+        assert_eq!(
+            EndpointType::Direct {
+                addr: "1.1.1.1:1".parse().unwrap()
+            }
+            .priority(),
+            1
+        );
+        assert_eq!(
+            EndpointType::FamilyRelay {
+                relay_node_id: "r".into()
+            }
+            .priority(),
+            2
+        );
+        assert_eq!(
+            EndpointType::TorOnion {
+                onion_addr: "x.onion".into()
+            }
+            .priority(),
+            3
         );
     }
 }

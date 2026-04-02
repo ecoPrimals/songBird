@@ -288,9 +288,7 @@ pub enum FallbackStrategy {
     Fail,
     /// Use alternative primal type
     Alternative(String),
-    /// Use mock/simulation mode
-    MockMode,
-    /// Degrade functionality
+    /// Degrade functionality gracefully (reduced capability, not simulated)
     Degrade,
 }
 
@@ -415,7 +413,7 @@ impl Default for AutoDiscoveryConfig {
             ],
             discovery_interval: Duration::from_secs(300),
             scan_ranges: vec!["127.0.0.0/8".to_string(), "10.0.0.0/8".to_string()],
-            scan_ports: vec![8080, 8081, 8082, 8083, 8443, 3000, 5000],
+            scan_ports: crate::defaults::ports::primal_scan_ports(),
             discovery_timeout: Duration::from_secs(10),
         }
     }

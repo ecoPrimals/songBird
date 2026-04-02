@@ -39,7 +39,7 @@
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
 use songbird_orchestrator::core::registry::types::{
-    CapabilityDescriptor, CapabilityRegistrationRequest, HealthStatus, RegisteredProvider,
+    CapabilityDescriptor, CapabilityRegistrationRequest, HealthStatus,
 };
 use songbird_orchestrator::core::registry::{CapabilityRegistry, HeartbeatConfig};
 use songbird_orchestrator::core::routing::{CapabilityRouter, RoutingDecision, Task};
@@ -50,9 +50,9 @@ use std::time::Duration;
 /// Create a test capability registry with short timeouts for testing
 fn create_test_registry() -> Arc<CapabilityRegistry> {
     let config = HeartbeatConfig {
-        interval_ms: 100,            // 100ms between heartbeats
-        unhealthy_threshold_secs: 1, // 1 second to mark unhealthy
-        removal_threshold_secs: 2,   // 2 seconds to remove
+        interval: Duration::from_millis(100),
+        unhealthy_threshold: Duration::from_secs(1),
+        removal_threshold: Duration::from_secs(2),
     };
     Arc::new(CapabilityRegistry::with_config(config))
 }
@@ -210,75 +210,41 @@ async fn test_provider_unregistration() {
     assert!(result.is_err(), "Unregister should fail for non-existent provider");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_heartbeat_timeout() {
     let registry = create_test_registry();
     let request = create_test_registration_request("test-provider-1");
 
     let registration_id = registry.register(request.clone()).await.expect("test precondition");
 
-    // Initial heartbeat
     registry
         .update_heartbeat(&request.provider_id, &registration_id, None)
         .await
         .expect("test precondition");
 
-    // Verify provider is healthy
     let providers = registry.list_providers().await;
     assert_eq!(providers.len(), 1);
 
-    // Start health monitor
     let registry_clone = registry.clone();
     registry_clone.start_health_monitor();
 
-    // Poll for provider to become unhealthy (timeout after 2 seconds)
-    let became_unhealthy = wait_for_provider_state(
-        &registry,
-        |providers| {
-            providers.is_empty()
-                || providers.iter().any(|p| !matches!(p.health.status, HealthStatus::Healthy))
-        },
-        Duration::from_secs(2),
-    )
-    .await;
-    assert!(became_unhealthy, "Provider should become unhealthy within 2 seconds");
+    // Advance virtual time past unhealthy threshold (1s) but before removal (2s)
+    tokio::time::advance(Duration::from_millis(1200)).await;
+    tokio::task::yield_now().await;
 
-    // Provider should still be registered but unhealthy
     let providers = registry.list_providers().await;
     assert_eq!(providers.len(), 1, "Provider should still be registered");
+    assert!(
+        providers.iter().any(|p| p.health.status == HealthStatus::Unhealthy),
+        "Provider should be unhealthy"
+    );
 
-    // Poll for removal (timeout after 3 seconds)
-    let was_removed = wait_for_provider_state(
-        &registry,
-        <[songbird_orchestrator::core::registry::types::RegisteredProvider]>::is_empty,
-        Duration::from_secs(3),
-    )
-    .await;
-    assert!(was_removed, "Provider should be removed after timeout");
+    // Advance past removal threshold
+    tokio::time::advance(Duration::from_millis(1500)).await;
+    tokio::task::yield_now().await;
 
-    // Provider should be removed
     let providers = registry.list_providers().await;
     assert_eq!(providers.len(), 0, "Provider should be removed after timeout");
-}
-
-/// Helper: Poll for a provider state condition with timeout
-async fn wait_for_provider_state<F>(
-    registry: &CapabilityRegistry,
-    condition: F,
-    timeout: Duration,
-) -> bool
-where
-    F: Fn(&[RegisteredProvider]) -> bool,
-{
-    let deadline = tokio::time::Instant::now() + timeout;
-    while tokio::time::Instant::now() < deadline {
-        let providers = registry.list_providers().await;
-        if condition(&providers) {
-            return true;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-    }
-    false
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -347,62 +313,52 @@ async fn test_routing_falls_back_without_provider() {
     }
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_provider_selection_prefers_healthy() {
     let registry = create_test_registry();
 
-    // Register two providers
     let request1 = create_test_registration_request("provider-1");
     let request2 = create_test_registration_request("provider-2");
 
     let reg_id_1 = registry.register(request1.clone()).await.expect("test precondition");
     let _reg_id_2 = registry.register(request2.clone()).await.expect("test precondition");
 
-    // Start health monitor first
     let registry_clone = registry.clone();
     registry_clone.start_health_monitor();
 
-    // Send initial heartbeat for provider-1
-    registry
-        .update_heartbeat(&request1.provider_id, &reg_id_1, None)
-        .await
-        .expect("test precondition");
-
-    // Find providers - both should be available initially
+    // Both should be available initially
     let providers = registry
         .find_providers_with_capability("compute_gpu")
         .await
         .expect("should find expected value");
     assert_eq!(providers.len(), 2, "Should find both providers");
 
-    // Wait for provider-2 to become unhealthy (but keep provider-1 alive with heartbeats)
-    for _ in 0..3 {
-        // Yield to allow other tasks to run (cooperative multitasking)
-        tokio::task::yield_now().await;
+    // Keep provider-1 alive, let provider-2 expire
+    registry
+        .update_heartbeat(&request1.provider_id, &reg_id_1, None)
+        .await
+        .expect("test precondition");
 
-        // Send heartbeat for provider-1 to keep it healthy
-        registry
-            .update_heartbeat(&request1.provider_id, &reg_id_1, None)
-            .await
-            .expect("test precondition");
-    }
+    // Advance past unhealthy threshold — provider-2 has no heartbeat
+    tokio::time::advance(Duration::from_millis(1200)).await;
+    tokio::task::yield_now().await;
 
-    // By now, provider-2 has been without heartbeat for >1s, should be unhealthy
-    // Provider-1 should still be healthy
-    // ⏰ LEGITIMATE: Waiting for health monitor timeout behavior (testing actual timeout)
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    // Refresh provider-1's heartbeat after the time advance
+    registry
+        .update_heartbeat(&request1.provider_id, &reg_id_1, None)
+        .await
+        .expect("test precondition");
 
     let providers = registry
         .find_providers_with_capability("compute_gpu")
         .await
         .expect("should find expected value");
 
-    // find_providers_with_capability filters out unhealthy providers
-    // Allow for timing variations - should find at least 1 provider
-    assert!(!providers.is_empty(), "Should find at least one provider");
-    // Verify provider-1 (the healthy one) is in the list
-    let has_provider_1 = providers.iter().any(|p| p.registration.provider_id == "provider-1");
-    assert!(has_provider_1, "Should include the healthy provider-1");
+    assert_eq!(providers.len(), 1, "Only healthy provider should be returned");
+    assert_eq!(
+        providers[0].registration.provider_id, "provider-1",
+        "Should include the healthy provider-1"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -431,21 +387,19 @@ async fn test_concurrent_registrations() {
     assert_eq!(providers.len(), 10, "Should have 10 registered providers");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(start_paused = true)]
 async fn test_registry_health_monitor_lifecycle() {
     let registry = create_test_registry();
 
-    // Register a provider
     let request = create_test_registration_request("test-provider");
     let reg_id = registry.register(request.clone()).await.expect("test precondition");
 
-    // Start health monitor
     let registry_clone = registry.clone();
     registry_clone.start_health_monitor();
 
-    // Send periodic heartbeats
+    // Send periodic heartbeats, advancing time in small steps
     for _ in 0..5 {
-        // Yield to allow other tasks to run
+        tokio::time::advance(Duration::from_millis(200)).await;
         tokio::task::yield_now().await;
         registry
             .update_heartbeat(&request.provider_id, &reg_id, None)
@@ -453,21 +407,17 @@ async fn test_registry_health_monitor_lifecycle() {
             .expect("test precondition");
     }
 
-    // Provider should remain healthy
     let providers = registry.list_providers().await;
     assert_eq!(providers.len(), 1, "Provider should remain registered with heartbeats");
 
-    // Stop sending heartbeats and wait for removal
-    // ⏰ LEGITIMATE: Waiting for health monitor timeout behavior (testing actual timeout)
-    // Give extra time for health monitor to process
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+    // Stop sending heartbeats, advance past removal threshold
+    tokio::time::advance(Duration::from_millis(2500)).await;
+    tokio::task::yield_now().await;
 
-    // Provider should be removed (or at least marked unhealthy)
-    // Allow for timing variations in test environment
     let providers = registry.list_providers().await;
-    assert!(
-        providers.len() <= 1,
-        "Provider should be removed or marked unhealthy after timeout, got {}",
-        providers.len()
+    assert_eq!(
+        providers.len(),
+        0,
+        "Provider should be removed after timeout"
     );
 }

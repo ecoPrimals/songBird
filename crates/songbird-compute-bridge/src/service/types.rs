@@ -113,3 +113,83 @@ pub struct WorkloadRequest {
     )]
     pub payload: serde_json::Value,
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::{Args, BridgeConfig, ServiceInfo, ServiceRegistration, WorkloadRequest};
+    use clap::Parser;
+    use std::collections::HashMap;
+
+    #[test]
+    fn bridge_config_clone_and_debug_roundtrip() {
+        let c = BridgeConfig {
+            host: "0.0.0.0".into(),
+            port: 9000,
+            service_name: "S".into(),
+            service_type: "compute".into(),
+            node_id: "n".into(),
+            tower_id: "t".into(),
+            songbird_endpoint: Some("http://sb".into()),
+            capabilities: vec!["a".into()],
+            backend_url: None,
+        };
+        let d = c.clone();
+        assert_eq!(format!("{c:?}"), format!("{d:?}"));
+    }
+
+    #[test]
+    fn service_info_serializes_expected_fields() {
+        let i = ServiceInfo {
+            cpu_cores: 2,
+            memory_gb: 4,
+            gpu_count: 0,
+            gpu_model: None,
+            storage_gb: None,
+            platform: "linux-x86_64".into(),
+        };
+        let v = serde_json::to_value(&i).expect("serialize ServiceInfo");
+        assert_eq!(v["cpu_cores"], 2);
+        assert_eq!(v["platform"], "linux-x86_64");
+    }
+
+    #[test]
+    fn args_accepts_empty_optional_strings() {
+        let args = Args::try_parse_from(["songbird-compute-bridge"]).expect("default argv");
+        assert!(args.songbird_endpoint.is_none());
+        assert!(args.node_id.is_none());
+        assert!(args.capabilities.is_none());
+    }
+
+    #[test]
+    fn service_registration_includes_metadata_roundtrip() {
+        let mut m = HashMap::new();
+        m.insert("k".into(), "v".into());
+        let r = ServiceRegistration {
+            service_id: "id".into(),
+            service_name: "sn".into(),
+            service_type: "st".into(),
+            tower_id: "tid".into(),
+            tower_name: "tn".into(),
+            endpoint: "http://e".into(),
+            capabilities: vec!["c".into()],
+            metadata: m,
+            health_status: "ok".into(),
+            registered_at: "rfc3339".into(),
+            last_seen: "rfc3339b".into(),
+        };
+        let json = serde_json::to_string(&r).expect("to json");
+        let back: ServiceRegistration = serde_json::from_str(&json).expect("from json");
+        assert_eq!(back.metadata.get("k"), Some(&"v".into()));
+    }
+
+    #[test]
+    fn workload_request_preserves_null_payload() {
+        let w = WorkloadRequest {
+            name: "n".into(),
+            payload: serde_json::Value::Null,
+        };
+        let v = serde_json::to_value(&w).expect("serde");
+        assert!(v["payload"].is_null());
+    }
+}

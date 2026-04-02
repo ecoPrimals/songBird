@@ -14,7 +14,7 @@ use crate::process_manager::ProcessManager;
 
 /// Run health diagnostics and system checks
 ///
-/// Supports text, json, and yaml output formats.
+/// Supports text, json, and toml output formats.
 ///
 /// # Errors
 ///
@@ -23,9 +23,13 @@ pub async fn run_doctor(comprehensive: bool, format: &str) -> Result<()> {
     match format {
         "text" => run_doctor_text(comprehensive).await,
         "json" => run_doctor_json(comprehensive).await,
-        "yaml" => run_doctor_yaml(comprehensive).await,
+        "toml" => run_doctor_toml(comprehensive).await,
+        "yaml" => {
+            eprintln!("⚠️  YAML format is deprecated; using TOML instead.");
+            run_doctor_toml(comprehensive).await
+        }
         _ => {
-            eprintln!("❌ Unknown format: {format}. Use: text, json, or yaml");
+            eprintln!("❌ Unknown format: {format}. Use: text, json, or toml");
             std::process::exit(1);
         }
     }
@@ -64,7 +68,7 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
 
     // Check 3: Network ports
     println!("🌐 Network Ports");
-    let default_port = 8080;
+    let default_port = songbird_config::defaults::ports::orchestrator_port();
     match check_port_availability(default_port).await {
         Ok(true) => {
             println!("   Port {default_port}: ✅ Available");
@@ -146,11 +150,11 @@ async fn run_doctor_json(comprehensive: bool) -> Result<()> {
     Ok(())
 }
 
-/// Run doctor in YAML format (machine-readable)
-async fn run_doctor_yaml(comprehensive: bool) -> Result<()> {
+/// Run doctor in TOML format (replaces deprecated YAML output)
+async fn run_doctor_toml(comprehensive: bool) -> Result<()> {
     let health_status = gather_health_status(comprehensive).await?;
-    let yaml = serde_yaml::to_string(&health_status)?;
-    println!("{yaml}");
+    let output = toml::to_string_pretty(&health_status)?;
+    println!("{output}");
     Ok(())
 }
 

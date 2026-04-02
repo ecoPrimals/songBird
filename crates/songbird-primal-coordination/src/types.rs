@@ -297,6 +297,7 @@ pub struct ServiceStatus {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -308,6 +309,50 @@ mod tests {
             CapabilityType::from_str("custom_cap"),
             CapabilityType::Custom("custom_cap".into())
         );
+        assert_eq!(CapabilityType::Storage.as_str(), "storage");
+        assert_eq!(CapabilityType::Ai.as_str(), "ai");
+        assert_eq!(CapabilityType::Discovery.as_str(), "discovery");
+        assert_eq!(CapabilityType::Orchestration.as_str(), "orchestration");
+        assert_eq!(CapabilityType::Networking.as_str(), "networking");
+    }
+
+    #[test]
+    fn capability_type_display_matches_as_str() {
+        assert_eq!(
+            format!("{}", CapabilityType::Security),
+            CapabilityType::Security.as_str(),
+            "Display should match canonical capability string"
+        );
+        assert_eq!(
+            format!("{}", CapabilityType::Custom("foo".into())),
+            "foo",
+            "Custom capability displays raw string"
+        );
+    }
+
+    #[test]
+    fn capability_type_hash_and_eq() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        assert!(set.insert(CapabilityType::Security));
+        assert!(!set.insert(CapabilityType::Security));
+        assert!(set.insert(CapabilityType::Custom("x".into())));
+        assert_eq!(
+            CapabilityType::from_str("SECURITY"),
+            CapabilityType::Security,
+            "from_str is case-insensitive for known names"
+        );
+    }
+
+    #[test]
+    fn capability_type_serde_known_and_custom() {
+        let sec: CapabilityType = serde_json::from_str("\"security\"").expect("serde security");
+        assert_eq!(sec, CapabilityType::Security);
+        let custom: CapabilityType = serde_json::from_str("\"my_cap\"").expect("serde custom");
+        assert_eq!(custom, CapabilityType::Custom("my_cap".into()));
+        let round = serde_json::to_string(&CapabilityType::Compute).expect("to_string");
+        let back: CapabilityType = serde_json::from_str(&round).expect("roundtrip");
+        assert_eq!(back, CapabilityType::Compute);
     }
 
     #[test]
@@ -320,6 +365,33 @@ mod tests {
         };
         assert!(caps.supports_capability(&CapabilityType::Security));
         assert!(!caps.supports_capability(&CapabilityType::Ai));
+    }
+
+    #[test]
+    fn primal_capabilities_supports_workload_negative() {
+        let caps = PrimalCapabilities {
+            services: vec!["batch".into()],
+            resources: HashMap::new(),
+            metadata: HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let w = Workload {
+            id: "1".into(),
+            service_type: "other".into(),
+            requirements: HashMap::new(),
+            payload: serde_json::json!({}),
+        };
+        assert!(
+            !caps.supports_workload(&w),
+            "workload service_type must match a listed service"
+        );
+    }
+
+    #[test]
+    fn service_quality_default_has_availability_and_zero_load() {
+        let q = ServiceQuality::default();
+        assert_eq!(q.availability, Some(1.0));
+        assert_eq!(q.current_load, Some(0.0));
     }
 
     #[test]
@@ -353,5 +425,98 @@ mod tests {
         let w2: Workload = serde_json::from_str(&json).unwrap();
         assert_eq!(w2.id, w.id);
         assert_eq!(w2.service_type, w.service_type);
+    }
+
+    #[test]
+    fn primal_request_custom_and_status_roundtrip() {
+        let req = PrimalRequest::Custom {
+            operation: "op".into(),
+            params: serde_json::json!({"a": 1}),
+        };
+        let v = serde_json::to_value(&req).expect("serialize custom request");
+        let back: PrimalRequest = serde_json::from_value(v).expect("deserialize custom request");
+        assert!(
+            matches!(back, PrimalRequest::Custom { ref operation, .. } if operation == "op"),
+            "Custom request roundtrips through JSON"
+        );
+
+        let status_req = PrimalRequest::Status;
+        let v2 = serde_json::to_value(&status_req).expect("status");
+        let back2: PrimalRequest = serde_json::from_value(v2).expect("status back");
+        assert!(matches!(back2, PrimalRequest::Status));
+    }
+
+    #[test]
+    fn primal_response_variants_roundtrip() {
+        let caps = PrimalCapabilities {
+            services: vec!["s".into()],
+            resources: HashMap::new(),
+            metadata: HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let r = PrimalResponse::Capabilities(caps);
+        let v = serde_json::to_value(&r).expect("caps response");
+        let back: PrimalResponse = serde_json::from_value(v).expect("caps back");
+        assert!(matches!(back, PrimalResponse::Capabilities(_)));
+
+        let keys = PrimalResponse::KeysGenerated(GeneratedKeys {
+            public_key: vec![1],
+            private_key_handle: "h".into(),
+        });
+        let v2 = serde_json::to_value(&keys).expect("keys");
+        let back2: PrimalResponse = serde_json::from_value(v2).expect("keys back");
+        assert!(matches!(back2, PrimalResponse::KeysGenerated(_)));
+
+        let lineage = PrimalResponse::LineageSigned(Lineage {
+            data: vec![2, 3],
+        });
+        let v3 = serde_json::to_value(&lineage).expect("lineage");
+        let back3: PrimalResponse = serde_json::from_value(v3).expect("lineage back");
+        assert!(matches!(back3, PrimalResponse::LineageSigned(_)));
+
+        let dep = PrimalResponse::WorkloadDeployed(DeploymentId("d1".into()));
+        let v4 = serde_json::to_value(&dep).expect("deploy");
+        let back4: PrimalResponse = serde_json::from_value(v4).expect("deploy back");
+        assert!(matches!(back4, PrimalResponse::WorkloadDeployed(_)));
+
+        let st = PrimalResponse::StatusResponse(ServiceStatus {
+            healthy: true,
+            version: "1".into(),
+            capabilities: vec![],
+            metrics: HashMap::new(),
+        });
+        let v5 = serde_json::to_value(&st).expect("status resp");
+        let back5: PrimalResponse = serde_json::from_value(v5).expect("status resp back");
+        assert!(matches!(back5, PrimalResponse::StatusResponse(_)));
+
+        let custom = PrimalResponse::Custom(serde_json::json!([1]));
+        let v6 = serde_json::to_value(&custom).expect("custom resp");
+        let back6: PrimalResponse = serde_json::from_value(v6).expect("custom resp back");
+        assert!(matches!(back6, PrimalResponse::Custom(_)));
+    }
+
+    #[test]
+    fn identity_roundtrip() {
+        let id = Identity {
+            node_id: NodeId("n".into()),
+            public_key: vec![9],
+            lineage: Lineage {
+                data: vec![1],
+            },
+            witness_proof: WitnessProof {
+                data: vec![2],
+            },
+        };
+        let json = serde_json::to_string(&id).expect("identity json");
+        let back: Identity = serde_json::from_str(&json).expect("identity back");
+        assert_eq!(back.node_id.0, "n");
+        assert_eq!(back.public_key, vec![9]);
+    }
+
+    #[test]
+    fn deployment_id_and_node_id_equality() {
+        assert_eq!(NodeId("a".into()), NodeId("a".into()));
+        assert_ne!(NodeId("a".into()), NodeId("b".into()));
+        assert_eq!(DeploymentId("x".into()), DeploymentId("x".into()));
     }
 }

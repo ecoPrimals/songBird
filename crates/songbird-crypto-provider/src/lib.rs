@@ -132,8 +132,19 @@ impl Clone for CryptoProvider {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+
+    #[test]
+    fn socket_path_returns_configured_path() {
+        let p = CryptoProvider::with_mode("/var/run/crypto.sock", RoutingMode::NeuralApi);
+        assert_eq!(
+            p.socket_path(),
+            "/var/run/crypto.sock",
+            "socket_path should expose the configured Unix socket path"
+        );
+    }
 
     #[test]
     fn new_uses_direct_mode_and_stores_socket_path() {
@@ -199,6 +210,16 @@ mod tests {
     }
 
     #[test]
+    fn from_env_with_defaults_to_neural_when_beardog_mode_absent() {
+        let p = CryptoProvider::from_env_with(|key| match key {
+            "NEURAL_API_SOCKET" => Some("/only/neural.sock".to_string()),
+            _ => None,
+        });
+        assert_eq!(p.mode, RoutingMode::NeuralApi, "unset BEARDOG_MODE should default to NeuralApi");
+        assert_eq!(p.socket_path, "/only/neural.sock");
+    }
+
+    #[test]
     fn from_env_with_direct_prefers_beardog_socket_env() {
         let p = CryptoProvider::from_env_with(|key| match key {
             "BEARDOG_MODE" => Some("direct".to_string()),
@@ -207,5 +228,25 @@ mod tests {
         });
         assert_eq!(p.mode, RoutingMode::Direct);
         assert_eq!(p.socket_path, "/custom/beardog.sock");
+    }
+
+    #[test]
+    fn from_env_with_direct_discovers_xdg_biomeos_crypto_when_file_exists() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let xdg = dir.path().to_string_lossy().to_string();
+        let socket_path = crate::socket_discovery::crypto_socket_path_in_biomeos_runtime(&xdg, "");
+        std::fs::create_dir_all(socket_path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&socket_path, b"x").expect("touch socket path");
+        let p = CryptoProvider::from_env_with(move |key| match key {
+            "BEARDOG_MODE" => Some("direct".to_string()),
+            "XDG_RUNTIME_DIR" => Some(xdg.clone()),
+            _ => None,
+        });
+        assert_eq!(p.mode, RoutingMode::Direct);
+        assert_eq!(
+            p.socket_path,
+            socket_path.to_string_lossy(),
+            "direct mode without BEARDOG_SOCKET should use XDG biomeos crypto.sock when present"
+        );
     }
 }

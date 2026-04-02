@@ -326,6 +326,8 @@ struct CreateLineageResponse {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -339,6 +341,9 @@ mod tests {
         // Different nodes should have different fingerprints
         let fp3 = SecurityCapabilityClient::generate_deterministic_fingerprint("other-node");
         assert_ne!(fp1, fp3);
+
+        let empty = SecurityCapabilityClient::generate_deterministic_fingerprint("");
+        assert_eq!(empty.len(), 64, "SHA256 hex is 64 chars");
     }
 
     #[tokio::test]
@@ -348,5 +353,12 @@ mod tests {
 
         let client = client.expect("Failed to create client");
         assert_eq!(client.base_url, "http://localhost:9999");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn with_endpoint_roundtrip_uses_tokio_paused_clock_compat() {
+        let fut = SecurityCapabilityClient::with_endpoint("http://127.0.0.1:7");
+        tokio::time::advance(std::time::Duration::from_millis(1)).await;
+        assert!(fut.await.is_ok(), "explicit endpoint client should construct under paused runtime");
     }
 }

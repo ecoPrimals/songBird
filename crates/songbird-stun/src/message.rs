@@ -454,7 +454,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-    use std::net::Ipv4Addr;
+    use std::net::{Ipv4Addr, Ipv6Addr};
 
     #[test]
     fn test_message_type_conversion() {
@@ -588,7 +588,7 @@ mod tests {
         let data = Bytes::from_static(b"opaque");
         let mut msg = StunMessage::new_binding_request();
         msg.message_type = MessageType::BindingResponse;
-        msg.attributes.push(StunAttribute::Unknown(0x9999, data.clone()));
+        msg.attributes.push(StunAttribute::Unknown(0x9999, data));
         let wire = msg.encode();
         let decoded = StunMessage::decode(&wire).unwrap();
         assert!(decoded.attributes.iter().any(|a| matches!(a, StunAttribute::Unknown(0x9999, _))));
@@ -598,6 +598,44 @@ mod tests {
     fn decode_attribute_too_short_errors_cleanly() {
         let mut buf: &[u8] = &[0x00, 0x01, 0x00, 0x10];
         assert!(StunAttribute::decode(&mut buf).is_err());
+    }
+
+    #[test]
+    fn mapped_address_ipv6_roundtrip() {
+        let addr = SocketAddr::new(
+            IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+            53_421,
+        );
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::BindingResponse;
+        msg.attributes.push(StunAttribute::MappedAddress(addr));
+        let wire = msg.encode();
+        let decoded = StunMessage::decode(&wire).expect("decode IPv6 mapped address");
+        assert_eq!(decoded.get_mapped_address(), Some(addr));
+    }
+
+    #[test]
+    fn decode_continues_when_mapped_attribute_has_unknown_family() {
+        // Malformed MAPPED-ADDRESS (unknown family 0x03) causes attribute decode to fail;
+        // decode() logs and stops parsing attributes (RFC lenient behavior).
+        let mut buf = vec![0u8; 20];
+        buf[0] = 0x01;
+        buf[1] = 0x01;
+        buf[2] = 0x00;
+        buf[3] = 0x0c; // 12 bytes of attributes
+        buf[4..8].copy_from_slice(&MAGIC_COOKIE.to_be_bytes());
+        let tid = [0xabu8; 12];
+        buf[8..20].copy_from_slice(&tid);
+        buf.extend_from_slice(&[0x00, 0x01, 0x00, 0x08]);
+        buf.extend_from_slice(&[0x00, 0x03, 0x12, 0x34, 0x01, 0x02, 0x03, 0x04]);
+        let decoded = StunMessage::decode(&buf).expect("header should still parse");
+        assert_eq!(decoded.message_type, MessageType::BindingResponse);
+        assert_eq!(decoded.transaction_id, tid);
+        assert!(
+            decoded.attributes.is_empty(),
+            "expected malformed MAPPED-ADDRESS to be skipped, attrs: {:?}",
+            decoded.attributes
+        );
     }
 }
 

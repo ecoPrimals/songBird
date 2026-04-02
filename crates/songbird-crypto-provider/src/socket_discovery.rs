@@ -134,6 +134,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use std::collections::HashMap;
@@ -171,6 +172,26 @@ mod tests {
     }
 
     #[test]
+    fn discover_neural_neural_api_socket_wins_over_neurals_when_both_set() {
+        let map: HashMap<&str, String> = [
+            ("NEURAL_API_SOCKET", "/primary.sock".to_string()),
+            ("NEURALS_SOCKET", "/secondary.sock".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
+        assert_eq!(out, "/primary.sock", "$NEURAL_API_SOCKET should take precedence over $NEURALS_SOCKET");
+    }
+
+    #[test]
+    fn discover_neural_skips_empty_neural_api_socket_env() {
+        let map: HashMap<&str, String> =
+            std::iter::once(("NEURAL_API_SOCKET", String::new())).collect();
+        let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
+        assert_eq!(out, "/tmp/neural-api-default.sock", "empty env should fall through to legacy");
+    }
+
+    #[test]
     fn discover_neural_falls_back_to_neurals_socket() {
         let map: HashMap<&str, String> =
             std::iter::once(("NEURALS_SOCKET", "/alt/neural.sock".to_string())).collect();
@@ -202,6 +223,50 @@ mod tests {
             std::iter::once(("FAMILY_ID", "gamma".to_string())).collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/tmp/neural-api-gamma.sock");
+    }
+
+    #[test]
+    fn discover_neural_uses_temp_biomeos_neural_socket_when_present() {
+        let temp = std::env::temp_dir();
+        let biomeos_path = temp.join("biomeos").join("neural-api.sock");
+        let _ = std::fs::create_dir_all(
+            biomeos_path
+                .parent()
+                .expect("biomeos parent"),
+        );
+        std::fs::write(&biomeos_path, b"x").expect("touch neural socket");
+        let map: HashMap<&str, String> = HashMap::new();
+        let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |p| p == biomeos_path.as_path());
+        assert_eq!(
+            PathBuf::from(&out),
+            biomeos_path,
+            "should prefer temp_dir/biomeos/neural-api.sock when it exists"
+        );
+        let _ = std::fs::remove_file(&biomeos_path);
+    }
+
+    #[test]
+    fn discover_neural_xdg_with_family_suffix_in_path() {
+        let xdg = "/run/user/7777";
+        let expected = neural_api_socket_path_in_biomeos_runtime(xdg, "fam");
+        let map: HashMap<&str, String> = [
+            ("XDG_RUNTIME_DIR", xdg.to_string()),
+            ("FAMILY_ID", "fam".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        let out =
+            discover_neural_api_socket_with(|k| map.get(k).cloned(), |p| p == expected.as_path());
+        assert_eq!(out, expected.to_string_lossy());
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn beardog_socket_path_deprecated_alias_matches_crypto_path() {
+        assert_eq!(
+            beardog_socket_path_in_biomeos_runtime("/r", "id"),
+            crypto_socket_path_in_biomeos_runtime("/r", "id")
+        );
     }
 
     #[test]

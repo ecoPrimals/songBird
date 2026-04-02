@@ -179,3 +179,150 @@ pub trait NfcBackend: Send + Sync {
     /// Receive data
     async fn receive(&mut self, expected_len: usize) -> Result<Vec<u8>>;
 }
+
+#[cfg(test)]
+impl NfcDevice {
+    /// Construct with a custom backend for unit tests (same crate only).
+    pub(crate) fn from_backend_for_test(backend: Box<dyn NfcBackend>, timeout: Duration) -> Self {
+        Self {
+            backend,
+            timeout,
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::redundant_pub_crate, reason = "test_support is crate-private; pub(crate) is intentional")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+pub(crate) mod test_support {
+    //! In-crate test doubles for [`NfcBackend`].
+
+    use super::{NfcBackend, NfcDevice};
+    use crate::error::{NfcError, Result};
+    use std::sync::{Arc, Mutex};
+    use std::time::Duration;
+
+    /// Records sends and serves scripted receive bytes in FIFO order.
+    pub(crate) struct ScriptedBackend {
+        recv_buf: Arc<Mutex<Vec<u8>>>,
+        sent_frames: Arc<Mutex<Vec<Vec<u8>>>>,
+    }
+
+    impl ScriptedBackend {
+        pub(crate) fn new(recv_buf: Vec<u8>) -> Self {
+            Self {
+                recv_buf: Arc::new(Mutex::new(recv_buf)),
+                sent_frames: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+
+        /// Clone of the shared send log for assertions after [`Self::into_device`].
+        pub(crate) fn sent_frames_handle(&self) -> Arc<Mutex<Vec<Vec<u8>>>> {
+            Arc::clone(&self.sent_frames)
+        }
+
+        pub(crate) fn into_device(self, timeout: Duration) -> NfcDevice {
+            NfcDevice::from_backend_for_test(Box::new(self), timeout)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl NfcBackend for ScriptedBackend {
+        async fn connect(&mut self, _timeout: Duration) -> Result<()> {
+            Ok(())
+        }
+
+        async fn disconnect(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        async fn send(&mut self, data: &[u8]) -> Result<()> {
+            self.sent_frames.lock().expect("scripted backend lock").push(data.to_vec());
+            Ok(())
+        }
+
+        async fn receive(&mut self, expected_len: usize) -> Result<Vec<u8>> {
+            let mut buf = self.recv_buf.lock().expect("scripted backend lock");
+            if buf.len() < expected_len {
+                return Err(NfcError::ConnectionLost);
+            }
+            let chunk: Vec<u8> = buf.drain(..expected_len).collect();
+            Ok(chunk)
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::test_support::ScriptedBackend;
+    use super::NfcDevice;
+    use crate::protocol::NfcMessage;
+    use crate::{MSG_TYPE_GENESIS_REQUEST, PROTOCOL_VERSION, PUBLIC_KEY_SIZE, SIGNATURE_SIZE};
+    use std::time::Duration;
+
+    #[test]
+    fn new_reports_platform_unsupported() {
+        let res = NfcDevice::new(Duration::from_secs(1));
+        let err = res.expect_err("native NFC backend is not wired in this crate yet");
+        match err {
+            crate::NfcError::PlatformUnsupported(msg) => {
+                assert!(
+                    !msg.is_empty(),
+                    "unsupported message should explain why NFC is unavailable"
+                );
+            }
+            other => panic!("expected PlatformUnsupported, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn send_and_receive_message_roundtrip_on_scripted_backend() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0x11u8; PUBLIC_KEY_SIZE],
+            [0x22u8; crate::NONCE_SIZE],
+            vec![0x33u8; 7],
+            [0x44u8; SIGNATURE_SIZE],
+        );
+        let wire = msg.to_bytes().expect("valid test frame");
+
+        let backend = ScriptedBackend::new(Vec::new());
+        let sent = backend.sent_frames_handle();
+        let mut device = backend.into_device(Duration::from_secs(2));
+
+        device.send_message(&msg).await.expect("send_message should serialize and send");
+        let frames = sent.lock().expect("sent_frames lock");
+        assert_eq!(
+            frames.len(),
+            1,
+            "send_message should produce exactly one raw frame"
+        );
+        assert_eq!(frames[0], wire, "raw bytes should match NfcMessage::to_bytes");
+
+        drop(frames);
+        let mut device2 =
+            ScriptedBackend::new(wire.clone()).into_device(Duration::from_secs(2));
+        let got = device2
+            .receive_message()
+            .await
+            .expect("receive_message should parse scripted wire");
+        assert_eq!(got.version, PROTOCOL_VERSION);
+        assert_eq!(got.msg_type, MSG_TYPE_GENESIS_REQUEST);
+        assert_eq!(got.encrypted_payload.len(), 7);
+    }
+
+    #[tokio::test]
+    async fn receive_raw_errors_when_buffer_underruns() {
+        let mut device =
+            ScriptedBackend::new(vec![0u8; PUBLIC_KEY_SIZE - 1]).into_device(Duration::from_secs(1));
+        let err = device
+            .receive_raw(PUBLIC_KEY_SIZE)
+            .await
+            .expect_err("short buffer should surface connection loss");
+        assert!(
+            matches!(err, crate::NfcError::ConnectionLost),
+            "expected ConnectionLost on underrun, got {err:?}"
+        );
+    }
+}

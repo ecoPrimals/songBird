@@ -5,7 +5,6 @@
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
 )]
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # Songbird IGD - Sovereign Router Configuration
 //!
 //! Pure Rust implementation of `UPnP` IGD (Internet Gateway Device) and NAT-PMP protocols

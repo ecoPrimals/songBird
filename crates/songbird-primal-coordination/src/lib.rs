@@ -9,7 +9,6 @@
     clippy::ignore_without_reason,
     reason = "Historical patterns in this crate; inherited workspace pedantic lints."
 )]
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions"))]
 //! # 🌳 Songbird Primal Coordination - Universal Signal and Coordinator
 //!
 //! **MISSION**: Songbird is the nervous system, not the organs
@@ -83,9 +82,8 @@ pub use error::{PrimalCoordinationError, Result};
 pub use types::*;
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod lib_smoke_tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-
     use crate::{
         CapabilityType, DeploymentId, NodeId, PrimalCapabilities, PrimalCoordinationError,
         PrimalRequest, ServiceQuality,
