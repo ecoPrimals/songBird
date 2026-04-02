@@ -243,7 +243,9 @@ impl HttpHandler {
                 let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                     .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .unwrap_or_else(|_| "default".to_string());
-                format!("/tmp/security-{family_id}.sock")
+                songbird_types::defaults::paths::family_scoped_security_socket_path(&family_id)
+                    .to_string_lossy()
+                    .into_owned()
             });
 
         let client = SongbirdHttpClient::new(&security_socket);

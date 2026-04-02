@@ -46,6 +46,7 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
+use songbird_types::primal_names::BIOMEOS_DIR;
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, info};
 
@@ -61,7 +62,7 @@ impl PlatformIPC for AndroidIPC {
         // Abstract socket naming: @biomeos_{primal_name}
         // The @ prefix is a convention for abstract sockets
         // Rust's UnixListener automatically converts @ to null byte
-        let abstract_name = format!("@biomeos_{primal_name}");
+        let abstract_name = format!("@{BIOMEOS_DIR}_{primal_name}");
 
         debug!("Creating abstract socket endpoint for '{}': {}", primal_name, abstract_name);
 

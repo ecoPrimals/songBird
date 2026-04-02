@@ -14,7 +14,7 @@
 //! - Fallback: `$XDG_RUNTIME_DIR/biomeos/crypto.sock`
 //! - Legacy: `BEARDOG_SOCKET` env var (deprecated, logged)
 
-use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, NEURAL_API_SOCKET_LEGACY_PATTERN};
+use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, neural_api_socket_legacy_path};
 use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
@@ -106,7 +106,7 @@ where
     }
 
     let family_id = get_var("FAMILY_ID").unwrap_or_else(|| "default".to_string());
-    let socket = format!("{NEURAL_API_SOCKET_LEGACY_PATTERN}{family_id}.sock");
+    let socket = neural_api_socket_legacy_path(&family_id).to_string_lossy().into_owned();
     warn!("⚠️  Using legacy Neural API path: {}", socket);
     socket
 }

@@ -140,7 +140,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         let beardog_socket = args.beardog_socket.clone().unwrap_or_else(|| {
             let default_family = crate::env_config::family_id();
             let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            format!("/tmp/beardog-{family_id}.sock")
+            songbird_types::defaults::paths::family_scoped_beardog_socket_path(family_id)
+                .to_string_lossy()
+                .into_owned()
         });
         tracing::info!("   BearDog: {}", beardog_socket);
         tracing::info!("   Capabilities: http, stun, discovery");
@@ -166,7 +168,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
             let default_family = crate::env_config::family_id();
             let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            format!("/tmp/beardog-{family_id}.sock")
+            songbird_types::defaults::paths::family_scoped_beardog_socket_path(family_id)
+                .to_string_lossy()
+                .into_owned()
         });
         tracing::info!("   BearDog: {}", beardog_socket);
         tracing::info!("   Capabilities: http, discovery, secure_http");

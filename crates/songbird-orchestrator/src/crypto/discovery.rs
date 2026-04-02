@@ -8,7 +8,9 @@
 //! use [`songbird_crypto_provider::CryptoProvider::from_env`].
 
 use anyhow::Result;
-use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, NEURAL_API_SOCKET_LEGACY_PATTERN};
+use songbird_types::defaults::paths::{
+    BIOMEOS_RUNTIME_SUBDIR, family_scoped_crypto_socket_path, neural_api_socket_legacy_path,
+};
 use tracing::info;
 
 /// Discover crypto provider socket via Neural API socket discovery.
@@ -49,8 +51,9 @@ pub async fn discover_crypto_socket_for_family(family_id: &str) -> Result<String
     info!("🔍 Discovering crypto provider for family '{family_id}'...");
 
     // Check family-specific socket (capability-based, primal-agnostic)
-    let family_socket = format!("/tmp/crypto-{family_id}.sock");
-    if std::path::Path::new(&family_socket).exists() {
+    let family_socket = family_scoped_crypto_socket_path(family_id);
+    if family_socket.exists() {
+        let family_socket = family_socket.to_string_lossy().into_owned();
         info!("   ✅ Found family-specific crypto socket: {family_socket}");
         return Ok(family_socket);
     }
@@ -93,14 +96,14 @@ pub async fn is_crypto_available() -> bool {
         }
     }
 
-    if std::path::Path::new("/tmp/biomeos/neural-api.sock").exists() {
+    let tmp_neural = std::env::temp_dir().join("biomeos").join("neural-api.sock");
+    if tmp_neural.exists() {
         return true;
     }
 
     let family_id =
         songbird_process_env::var("FAMILY_ID").unwrap_or_else(|_| "default".to_string());
-    let legacy = format!("{NEURAL_API_SOCKET_LEGACY_PATTERN}{family_id}.sock");
-    std::path::Path::new(&legacy).exists()
+    neural_api_socket_legacy_path(&family_id).exists()
 }
 
 /// Backward-compatible alias for [`is_crypto_available`].

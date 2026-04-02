@@ -97,7 +97,9 @@ impl SecurityCapabilityClient {
                 if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
                     format!("{runtime_dir}/biomeos/security.sock")
                 } else {
-                    "/tmp/biomeos/security.sock".to_string()
+                    songbird_types::defaults::paths::security_socket_default_path()
+                        .to_string_lossy()
+                        .into_owned()
                 }
             });
 

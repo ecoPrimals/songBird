@@ -50,6 +50,8 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
+#[cfg(target_os = "macos")]
+use songbird_types::primal_names::BIOMEOS_DIR;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use tracing::{debug, info, warn};
 
@@ -69,7 +71,8 @@ impl PlatformIPC for iOSIPC {
 
             // macOS: Use Unix sockets (XDG-compliant path)
             // /var/tmp is recommended for macOS (persists across reboots)
-            let socket_path = PathBuf::from(format!("/var/tmp/biomeos/{}.sock", primal_name));
+            let socket_path =
+                PathBuf::from(format!("/var/tmp/{BIOMEOS_DIR}/{}.sock", primal_name));
 
             debug!(
                 "Creating macOS Unix socket endpoint for '{}': {}",

@@ -35,7 +35,7 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
-use songbird_types::primal_names::BEARDOG;
+use songbird_types::primal_names::{BEARDOG, BIOMEOS_DIR};
 use std::path::PathBuf;
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, info, warn};
@@ -82,12 +82,16 @@ where
 
     // Priority 3: XDG_RUNTIME_DIR (XDG standard)
     if let Ok(xdg_runtime_dir) = env_reader("XDG_RUNTIME_DIR") {
-        return PathBuf::from(xdg_runtime_dir).join("biomeos").join(format!("{primal_name}.sock"));
+        return PathBuf::from(xdg_runtime_dir)
+            .join(BIOMEOS_DIR)
+            .join(format!("{primal_name}.sock"));
     }
 
     // Priority 4: Fallback XDG path using UID env var (Pure Rust!)
     if let Ok(uid_str) = env_reader("UID") {
-        return PathBuf::from(format!("/run/user/{uid_str}/biomeos/{primal_name}.sock"));
+        return PathBuf::from(format!(
+            "/run/user/{uid_str}/{BIOMEOS_DIR}/{primal_name}.sock"
+        ));
     }
 
     // Priority 5: Legacy temp-dir fallback (if all else fails)

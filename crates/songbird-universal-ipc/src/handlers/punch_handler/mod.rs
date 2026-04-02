@@ -16,6 +16,14 @@
 //! This handler coordinates with the `HolePunchCoordinator` from
 //! `songbird-onion-relay` and `BeaconMesh` for fallback routing.
 
+mod coordinate;
+mod port_pattern;
+mod types;
+
+pub use types::{PunchAttempt, PunchStatus};
+
+use coordinate::{CoordinatePunchOutcome, run_coordinated_udp_punch};
+use port_pattern::parse_port_pattern;
 use serde_json::{Value, json};
 use songbird_onion_relay::HolePunchCoordinator;
 use std::collections::HashMap;
@@ -24,38 +32,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
-
-/// Status of a punch attempt
-#[derive(Debug, Clone)]
-pub struct PunchAttempt {
-    /// Target node ID
-    pub target_node_id: String,
-    /// Current status
-    pub status: PunchStatus,
-    /// Number of attempts made
-    pub attempts: u32,
-    /// Max attempts before giving up
-    pub max_attempts: u32,
-    /// When the punch was started
-    pub started: Instant,
-    /// Connected address if successful
-    pub connected_address: Option<SocketAddr>,
-    /// Measured latency if successful
-    pub latency: Option<Duration>,
-}
-
-/// Punch attempt status
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PunchStatus {
-    /// Punch in progress
-    InProgress,
-    /// Punch succeeded - direct connection established
-    Succeeded,
-    /// Punch failed - will use relay fallback
-    Failed {
-        reason: String,
-    },
-}
 
 /// Punch handler for JSON-RPC integration
 ///
@@ -447,49 +423,14 @@ impl PunchHandler {
             }));
         };
 
-        // For the relay-assisted punch, we need an active relay session
-        // In the current architecture, the coordinator does the punch directly
-        // using the provided predictions. The relay session is managed by the
-        // relay handler — here we do a "predicted spray" without needing the
-        // relay session object directly.
-        let socket = Arc::new(
-            tokio::net::UdpSocket::bind("0.0.0.0:0")
-                .await
-                .map_err(|e| format!("Failed to bind socket: {e}"))?,
-        );
-
-        let punch_msg = b"SONGBIRD_COORDINATED_PUNCH_V1";
-        let spray_window: i32 = 3;
-        let mut ports_tried: u32 = 0;
-        let start = Instant::now();
-
-        // Spray predicted ports (± window)
-        for offset in -spray_window..=spray_window {
-            let target_port =
-                u16::try_from((i32::from(peer_predicted_port) + offset).clamp(1, 65535))
-                    .unwrap_or(peer_predicted_port);
-            let target_addr = SocketAddr::new(peer_public_ip, target_port);
-
-            if socket.send_to(punch_msg, target_addr).await.is_ok() {
-                ports_tried += 1;
-            }
-        }
-
-        // Extra reliability punches on exact predicted port
-        for _ in 0..3 {
-            let target_addr = SocketAddr::new(peer_public_ip, peer_predicted_port);
-            let _ = socket.send_to(punch_msg, target_addr).await;
-        }
-
-        // Listen for response
         let listen_timeout = Duration::from_secs(3);
-        let mut recv_buf = vec![0u8; 1024];
 
-        match tokio::time::timeout(listen_timeout, socket.recv_from(&mut recv_buf)).await {
-            Ok(Ok((_len, from_addr))) if from_addr.ip() == peer_public_ip => {
-                let latency = start.elapsed();
-
-                // Record success
+        match run_coordinated_udp_punch(peer_public_ip, peer_predicted_port).await? {
+            CoordinatePunchOutcome::Success {
+                from_addr,
+                latency,
+                ports_tried,
+            } => {
                 self.record_success(&target_node_id, from_addr, latency, ports_tried).await;
 
                 info!("✅ Coordinated punch SUCCESS: {} (latency: {:?})", from_addr, latency);
@@ -503,8 +444,9 @@ impl PunchHandler {
                     "relay_dropped": true
                 }))
             }
-            _ => {
-                // Punch failed — relay continues (zero disruption)
+            CoordinatePunchOutcome::Timeout {
+                ports_tried,
+            } => {
                 self.record_failure(
                     &target_node_id,
                     format!("coordinated_punch_timeout ({ports_tried} ports sprayed)"),
@@ -530,52 +472,6 @@ impl PunchHandler {
     }
 }
 
-/// Parse a `PortPattern` from JSON-RPC params
-fn parse_port_pattern(value: &Value) -> songbird_stun::PortPattern {
-    let pattern_type = value.get("pattern").and_then(|v| v.as_str()).unwrap_or("unknown");
-
-    match pattern_type {
-        "sequential" => {
-            let step =
-                i32::try_from(value.get("step").and_then(serde_json::Value::as_i64).unwrap_or(1))
-                    .unwrap_or(1);
-            let last_port = value
-                .get("last_port")
-                .and_then(serde_json::Value::as_u64)
-                .map_or(0, |p| u16::try_from(p).unwrap_or(0));
-            let predicted_next = value
-                .get("predicted_next")
-                .and_then(serde_json::Value::as_u64)
-                .map_or(0, |p| u16::try_from(p).unwrap_or(0));
-            let confidence =
-                value.get("confidence").and_then(serde_json::Value::as_f64).unwrap_or(0.5);
-
-            songbird_stun::PortPattern::Sequential {
-                step,
-                last_port,
-                predicted_next,
-                confidence,
-            }
-        }
-        "random" => {
-            let observed = value
-                .get("observed_ports")
-                .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_u64().map(|p| u16::try_from(p).unwrap_or(0)))
-                        .collect()
-                })
-                .unwrap_or_default();
-
-            songbird_stun::PortPattern::Random {
-                observed,
-            }
-        }
-        _ => songbird_stun::PortPattern::Unknown,
-    }
-}
-
 impl Default for PunchHandler {
     fn default() -> Self {
         Self::new()
@@ -583,262 +479,4 @@ impl Default for PunchHandler {
 }
 
 #[cfg(test)]
-mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
-
-    use super::*;
-    use serde_json::json;
-
-    #[tokio::test]
-    async fn punch_handler_default_matches_new_behavior() {
-        let a = PunchHandler::new();
-        let b = PunchHandler::default();
-        let ra = a.handle_request(json!({ "target_node_id": "node-a" })).await.unwrap();
-        let rb = b.handle_request(json!({ "target_node_id": "node-b" })).await.unwrap();
-        assert_eq!(ra["reason"], rb["reason"]);
-    }
-
-    #[tokio::test]
-    async fn handle_request_missing_target_errors() {
-        let handler = PunchHandler::new();
-        let err = handler.handle_request(json!({})).await.expect_err("target");
-        assert!(err.contains("target_node_id"));
-    }
-
-    #[tokio::test]
-    async fn handle_status_missing_target_errors() {
-        let handler = PunchHandler::new();
-        let err = handler.handle_status(json!({})).await.expect_err("target");
-        assert!(err.contains("target_node_id"));
-    }
-
-    #[tokio::test]
-    async fn handle_coordinate_missing_fields_errors_or_relay() {
-        let handler = PunchHandler::new();
-        let err = handler
-            .handle_coordinate(json!({ "target_node_id": "peer-1" }))
-            .await
-            .expect_err("peer_predicted_port");
-        assert!(err.contains("peer_predicted_port"));
-    }
-
-    #[tokio::test]
-    async fn test_punch_handler_new_uses_default_max_attempts_in_request() {
-        let handler = PunchHandler::new();
-        let r = handler.handle_request(json!({ "target_node_id": "z" })).await.unwrap();
-        assert_eq!(r["reason"], "hole_punch_coordinator_not_initialized");
-    }
-
-    #[tokio::test]
-    async fn test_punch_request_no_coordinator() {
-        let handler = PunchHandler::new();
-
-        let result = handler
-            .handle_request(json!({
-                "target_node_id": "test-peer",
-                "timeout_seconds": 5
-            }))
-            .await;
-
-        assert!(result.is_ok());
-        let response = result.unwrap();
-        assert_eq!(response["success"], false);
-        assert_eq!(response["fallback"], "family_relay");
-    }
-
-    #[tokio::test]
-    async fn test_punch_status_not_found() {
-        let handler = PunchHandler::new();
-
-        let result = handler
-            .handle_status(json!({
-                "target_node_id": "unknown-peer"
-            }))
-            .await;
-
-        assert!(result.is_ok());
-        let response = result.unwrap();
-        assert_eq!(response["status"], "not_found");
-    }
-
-    #[tokio::test]
-    async fn test_punch_record_success() {
-        let handler = PunchHandler::new();
-
-        // Start a punch request
-        handler
-            .handle_request(json!({
-                "target_node_id": "test-peer",
-                "timeout_seconds": 5
-            }))
-            .await
-            .unwrap();
-
-        // Record success
-        handler
-            .record_success(
-                "test-peer",
-                "1.2.3.4:5678".parse().unwrap(),
-                Duration::from_millis(45),
-                5,
-            )
-            .await;
-
-        // Check status
-        let result = handler
-            .handle_status(json!({
-                "target_node_id": "test-peer"
-            }))
-            .await;
-
-        assert!(result.is_ok());
-        let response = result.unwrap();
-        assert_eq!(response["status"], "succeeded");
-        assert_eq!(response["connected_address"], "1.2.3.4:5678");
-        assert_eq!(response["latency_ms"], 45);
-    }
-
-    #[tokio::test]
-    async fn test_punch_record_failure() {
-        let handler = PunchHandler::new();
-
-        // Start a punch request first
-        handler
-            .handle_request(json!({
-                "target_node_id": "test-peer",
-                "timeout_seconds": 5
-            }))
-            .await
-            .unwrap();
-
-        // Record failure
-        handler.record_failure("test-peer", "symmetric_nat_both_sides".to_string(), 20).await;
-
-        // Check status
-        let result = handler
-            .handle_status(json!({
-                "target_node_id": "test-peer"
-            }))
-            .await;
-
-        assert!(result.is_ok());
-        let response = result.unwrap();
-        assert_eq!(response["status"], "failed");
-        assert_eq!(response["reason"], "symmetric_nat_both_sides");
-        assert_eq!(response["fallback"], "family_relay");
-    }
-
-    #[tokio::test]
-    async fn handle_coordinate_without_coordinator_parses_sequential_pattern() {
-        let handler = PunchHandler::new();
-        let r = handler
-            .handle_coordinate(json!({
-                "target_node_id": "peer-coord",
-                "peer_predicted_port": 45000,
-                "peer_public_ip": "10.0.0.1",
-                "our_pattern": {
-                    "pattern": "sequential",
-                    "step": 2,
-                    "last_port": 40000,
-                    "predicted_next": 40002,
-                    "confidence": 0.95
-                }
-            }))
-            .await
-            .unwrap();
-        assert_eq!(r["success"], false);
-        assert_eq!(r["mode"], "relay");
-    }
-
-    #[tokio::test]
-    async fn handle_coordinate_without_coordinator_parses_random_pattern() {
-        let handler = PunchHandler::new();
-        let r = handler
-            .handle_coordinate(json!({
-                "target_node_id": "peer-rand",
-                "peer_predicted_port": 1234,
-                "peer_public_ip": "::1",
-                "our_pattern": {
-                    "pattern": "random",
-                    "observed_ports": [1000, 1001, 9999]
-                }
-            }))
-            .await
-            .unwrap();
-        assert_eq!(r["reason"], "coordinator_not_initialized");
-    }
-
-    #[tokio::test]
-    async fn handle_coordinate_unknown_pattern_defaults() {
-        let handler = PunchHandler::new();
-        let r = handler
-            .handle_coordinate(json!({
-                "target_node_id": "u",
-                "peer_predicted_port": 9,
-                "peer_public_ip": "192.0.2.1",
-                "our_pattern": { "pattern": "weird" }
-            }))
-            .await
-            .unwrap();
-        assert_eq!(r["fallback"], "relay_continues");
-    }
-
-    #[tokio::test]
-    async fn handle_request_respects_max_attempts_and_timeout_json() {
-        let handler = PunchHandler::new();
-        let r = handler
-            .handle_request(json!({
-                "target_node_id": "ma",
-                "timeout_seconds": 3,
-                "max_attempts": 7
-            }))
-            .await
-            .unwrap();
-        // Without coordinator, response is immediate failure (no `started` branch fields).
-        assert_eq!(r["success"], false);
-        assert_eq!(r["attempts"], 0);
-        assert_eq!(r["reason"], "hole_punch_coordinator_not_initialized");
-    }
-
-    #[tokio::test]
-    async fn handle_status_in_progress_shape() {
-        let handler = PunchHandler::new();
-        handler
-            .handle_request(json!({ "target_node_id": "prog", "timeout_seconds": 60 }))
-            .await
-            .unwrap();
-        let r = handler.handle_status(json!({ "target_node_id": "prog" })).await.unwrap();
-        assert_eq!(r["status"], "failed");
-        assert_eq!(r["reason"], "no_coordinator");
-    }
-
-    #[tokio::test]
-    async fn handle_coordinate_invalid_ip_errors() {
-        let handler = PunchHandler::new();
-        let err = handler
-            .handle_coordinate(json!({
-                "target_node_id": "x",
-                "peer_predicted_port": 1,
-                "peer_public_ip": "not-an-ip"
-            }))
-            .await
-            .expect_err("ip");
-        assert!(err.contains("peer_public_ip") || err.contains("invalid"));
-    }
-
-    #[tokio::test]
-    async fn punch_status_includes_elapsed_ms() {
-        let handler = PunchHandler::new();
-        handler.handle_request(json!({ "target_node_id": "elapsed" })).await.unwrap();
-        let r = handler.handle_status(json!({ "target_node_id": "elapsed" })).await.unwrap();
-        assert!(r.get("elapsed_ms").is_some());
-    }
-
-    #[test]
-    fn punch_status_and_attempt_enum_debug() {
-        let s = PunchStatus::Failed {
-            reason: "r".to_string(),
-        };
-        assert!(format!("{s:?}").contains("Failed"));
-    }
-}
+mod tests;

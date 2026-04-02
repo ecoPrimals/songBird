@@ -101,7 +101,6 @@ async fn mock_tls_server(port: u16) -> tokio::task::JoinHandle<()> {
 }
 
 #[tokio::test]
-#[ignore = "integration test requires setup"]
 async fn test_complete_tls_handshake_flow() {
     let port = 18443;
     let _server = mock_tls_server(port).await;
@@ -151,7 +150,6 @@ async fn test_complete_tls_handshake_flow() {
 }
 
 #[tokio::test]
-#[ignore = "integration test"]
 async fn test_client_hello_format_validation() {
     let client_hello = build_minimal_client_hello();
 
@@ -166,7 +164,6 @@ async fn test_client_hello_format_validation() {
 }
 
 #[tokio::test]
-#[ignore = "integration test"]
 async fn test_multiple_handshakes_sequential() {
     let port = 18444;
 

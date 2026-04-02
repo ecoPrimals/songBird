@@ -427,7 +427,9 @@ impl SongbirdOrchestrator {
                 let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                     .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .unwrap_or_else(|_| "default".to_string());
-                format!("/tmp/crypto-{family_id}.sock")
+                songbird_types::defaults::paths::family_scoped_crypto_socket_path(&family_id)
+                    .to_string_lossy()
+                    .into_owned()
             });
 
         info!("🔐 HTTP Handler: Using crypto provider at {}", crypto_socket);
@@ -474,24 +476,23 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// Start the IPC server (Windows stub)
+    /// Start the JSON-RPC IPC server (**known platform limitation on non-Unix**).
     ///
-    /// Windows: Not supported (Linux/Unix focus)
+    /// Production IPC uses Unix domain sockets (`UnixSocketServer`). Native Windows builds
+    /// do not start an equivalent transport (named pipes / TCP parity is not implemented).
     ///
-    /// **Platform Limitation**: Songbird targets Linux/Unix environments with:
-    /// - XDG Runtime Directory support
-    /// - Unix domain sockets for IPC
-    /// - Standard Linux networking stack
-    ///
-    /// **Alternatives**:
-    /// - Use WSL2 on Windows for full compatibility
-    /// - See Phase 2 roadmap for native Windows support (TCP/Named Pipes)
+    /// **Tracking**: Treat native Windows IPC as out of scope until an explicit transport
+    /// design is scheduled; use [WSL2](https://learn.microsoft.com/windows/wsl/) for the same
+    /// socket-based workflow as Linux.
     #[cfg(not(unix))]
-    pub(crate) async fn start_ipc_server(&mut self) -> Result<()> {
-        warn!("⚠️  Platform not supported: Songbird requires Linux/Unix");
-        warn!("   Recommended: Use WSL2 or see Phase 2 roadmap for Windows support");
+    pub(crate) async fn start_ipc_server(&self) -> Result<()> {
+        warn!(
+            target_os = std::env::consts::OS,
+            "IPC server is unavailable on this platform: Songbird's primal IPC requires Unix domain sockets"
+        );
+        warn!("For Windows hosts, run Songbird under WSL2 or wait for tracked native IPC (named pipes / TCP) support");
         Err(anyhow::anyhow!(
-            "IPC server requires Unix domain sockets (Linux/macOS/BSD). Use WSL2 on Windows."
+            "IPC server requires Unix domain sockets (Linux/macOS/BSD). On Windows use WSL2 for parity."
         ))
     }
 

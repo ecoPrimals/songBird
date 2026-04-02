@@ -7,7 +7,10 @@
 
 use super::*;
 
-use super::super::types::{RoutingPath, SovereigntyAdapterConfig};
+use super::super::types::{
+    PathSegment, RoutingPath, SecurityCapability, SecurityLevel, SovereigntyAdapterConfig,
+    SovereigntyLevel,
+};
 use crate::types::capability::PrimalType;
 use crate::types::{HealthStatus, ServiceInfo};
 use songbird_types::SongbirdError;
@@ -94,7 +97,10 @@ async fn test_get_stats() -> Result<(), Box<dyn std::error::Error>> {
     assert!(stats.sovereignty_routing_enabled);
     assert!(stats.federation_routing_enabled);
     assert!(stats.network_optimization_enabled);
-    assert!(stats.base_adapter_healthy);
+    assert!(
+        !stats.base_adapter_healthy,
+        "empty capability registry should report base_adapter_healthy=false"
+    );
     Ok(())
 }
 
@@ -571,17 +577,33 @@ async fn test_create_routing_decision_federation_capabilities()
     let adapter = SovereigntyAwareAdapter::new().await?;
 
     let path = RoutingPath {
-        segments: vec![],
+        segments: vec![PathSegment {
+            service: ServiceInfo {
+                name: "fed-svc".to_string(),
+                primal_type: PrimalType::new("compute"),
+                endpoint: "http://fed:8080".to_string(),
+                capabilities: vec![],
+                health: HealthStatus::Healthy,
+                metadata: std::collections::HashMap::new(),
+            },
+            sovereignty_level: SovereigntyLevel::ModeratelySovereign,
+            efficiency_score: 0.8,
+            security_capabilities: vec![SecurityCapability::Encryption],
+            metadata: std::collections::HashMap::new(),
+        }],
         sovereignty_score: 0.8,
         efficiency_score: 0.8,
         combined_score: 0.8,
-        security_level: super::super::types::SecurityLevel::High,
+        security_level: SecurityLevel::High,
     };
 
     let decision = adapter.create_routing_decision(path.clone(), &[path]).await?;
 
     assert!(!decision.federation_capabilities.is_empty());
-    assert_eq!(decision.federation_capabilities[0].capability_id, "cross_node_comm");
+    assert_eq!(
+        decision.federation_capabilities[0].capability_id,
+        "service:fed-svc:hop0"
+    );
     assert!(decision.federation_capabilities[0].availability_score > 0.0);
     Ok(())
 }
@@ -621,14 +643,18 @@ async fn test_execute_through_path_response_shape() -> Result<(), Box<dyn std::e
         sovereignty_score: 0.8,
         efficiency_score: 0.8,
         combined_score: 0.8,
-        security_level: super::super::types::SecurityLevel::High,
+        security_level: SecurityLevel::High,
     };
 
-    let response = adapter.execute_through_path(request, &path).await?;
-    assert_eq!(response.request_id, "through-path-1");
-    assert!(response.error.is_none());
-    let data = response.data.expect("should have data");
-    assert_eq!(data["sovereignty"], "routed");
+    let err = adapter
+        .execute_through_path(request, &path)
+        .await
+        .expect_err("empty path must fail closed");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("segment") || msg.contains("segments"),
+        "unexpected error: {msg}"
+    );
     Ok(())
 }
 

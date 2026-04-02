@@ -42,6 +42,7 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
+use songbird_types::primal_names::BIOMEOS_DIR;
 use tracing::{debug, info};
 
 #[cfg(windows)]
@@ -62,8 +63,8 @@ impl PlatformIPC for WindowsIPC {
         let pipe_name = songbird_process_env::var(format!("{}_PIPE", primal_name.to_uppercase()))
             .unwrap_or_else(|_| {
                 songbird_process_env::var("BIOMEOS_PIPE_DIR").map_or_else(
-                    |_| format!(r"\\.\pipe\biomeos_{primal_name}"),
-                    |custom_dir| format!("{custom_dir}_biomeos_{primal_name}"),
+                    |_| format!(r"\\.\pipe\{BIOMEOS_DIR}_{primal_name}"),
+                    |custom_dir| format!("{custom_dir}_{BIOMEOS_DIR}_{primal_name}"),
                 )
             });
 

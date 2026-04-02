@@ -26,10 +26,10 @@
 //! kept separate to avoid circular dependencies between crates.
 
 use songbird_types::defaults::paths::{
-    BIOMEOS_RUNTIME_SUBDIR, BIOMEOS_SECURITY_SOCKET_DEFAULT, BIOMEOS_SOCKET_FALLBACK_PATHS,
+    BIOMEOS_RUNTIME_SUBDIR, biomeos_security_socket_default_path, biomeos_socket_fallback_paths,
     CRYPTO_PROVIDER_SOCKET_FILENAMES_UID, CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG,
-    NEURAL_API_CAPABILITY_SOCKET_FILENAMES, NEURAL_API_SOCKET_DEFAULT,
-    NEURAL_API_SOCKET_FALLBACK_PATHS, run_user_biomeos_socket,
+    NEURAL_API_CAPABILITY_SOCKET_FILENAMES, neural_api_socket_default_path,
+    neural_api_socket_fallback_paths, run_user_biomeos_socket,
 };
 use std::path::PathBuf;
 use tracing::{debug, trace, warn};
@@ -202,16 +202,17 @@ fn discover_security_provider_socket_with_env(
         }
     }
 
-    // 5. Legacy /tmp fallback (capability name preferred)
-    for path in BIOMEOS_SOCKET_FALLBACK_PATHS {
-        if PathBuf::from(path).exists() {
-            debug!("Found legacy fallback socket: {}", path);
-            return path.to_string();
+    // 5. Legacy temp-dir fallback (capability name preferred)
+    for path in biomeos_socket_fallback_paths() {
+        if path.exists() {
+            let path_str = path.to_string_lossy().into_owned();
+            debug!("Found legacy fallback socket: {}", path_str);
+            return path_str;
         }
     }
 
     // Final fallback (capability name)
-    let fallback = BIOMEOS_SECURITY_SOCKET_DEFAULT.to_string();
+    let fallback = biomeos_security_socket_default_path().to_string_lossy().into_owned();
     warn!("Falling back to default socket path: {}", fallback);
     fallback
 }
@@ -297,14 +298,14 @@ fn discover_neural_api_socket_with_env(
         }
     }
 
-    // 4. Legacy fallback (capability name preferred)
-    for path in NEURAL_API_SOCKET_FALLBACK_PATHS {
-        if PathBuf::from(path).exists() {
-            return path.to_string();
+    // 4. Legacy temp-dir fallback (capability name preferred)
+    for path in neural_api_socket_fallback_paths() {
+        if path.exists() {
+            return path.to_string_lossy().into_owned();
         }
     }
 
-    let fallback = NEURAL_API_SOCKET_DEFAULT.to_string();
+    let fallback = neural_api_socket_default_path().to_string_lossy().into_owned();
     warn!("Falling back to legacy Neural API socket path: {}", fallback);
     fallback
 }

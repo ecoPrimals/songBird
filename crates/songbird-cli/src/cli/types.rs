@@ -92,7 +92,9 @@ pub struct CliArgs {
 }
 
 impl CliArgs {
-    /// Parse CLI arguments from environment (stub implementation)
+    /// Reads `SONGBIRD_VERBOSE`, `SONGBIRD_QUIET`, and `SONGBIRD_CONFIG` from the process
+    /// environment via [`songbird_process_env`]. Output format defaults to [`OutputFormat::Auto`];
+    /// structured flags are supplied by the clap [`Cli`] parser, not by this helper.
     #[must_use]
     pub fn parse_from_env() -> Self {
         Self::parse_with(|name| songbird_process_env::var(name).ok())

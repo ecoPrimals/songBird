@@ -81,8 +81,9 @@ impl BtspClient {
             })
             .unwrap_or_else(|_| {
                 warn!("No crypto provider socket configured, using fallback discovery");
-                // Use capability-based discovery as fallback
-                "/tmp/security.sock".to_string()
+                songbird_types::defaults::paths::tmp_flat_security_sock_path()
+                    .to_string_lossy()
+                    .into_owned()
             });
 
         PathBuf::from(path)

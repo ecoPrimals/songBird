@@ -16,10 +16,10 @@
 use super::network_optimizer::NetworkEffectsOptimizer;
 use super::router::SovereigntyRouter;
 use super::types::{RoutingPath, SovereigntyAdapterConfig, SovereigntyAwareRoutingDecision};
-use crate::types::{ServiceInfo, UniversalRequest, UniversalResponse};
+use crate::types::{HealthStatus, ServiceInfo, UniversalRequest, UniversalResponse};
 use crate::unified_adapter::UnifiedUniversalAdapter;
 use songbird_types::{SongbirdError, SongbirdResult};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 /// Sovereignty-aware enhancement to existing universal adapter
 ///
 /// This adds sovereignty-aware routing and federation capabilities
@@ -226,38 +226,55 @@ impl SovereigntyAwareAdapter {
         all_paths: &[RoutingPath],
     ) -> SongbirdResult<SovereigntyAwareRoutingDecision> {
         use super::types::{
-            DecisionFactor, ExpectedNetworkEffect, FederationCapability, FederationCapabilityType,
-            NetworkEffectType, PathSovereigntyAssessment, PerformanceCharacteristics,
-            RoutingDecisionMetadata, SovereigntyAwareRoutingDecision,
+            DecisionFactor, PathSovereigntyAssessment, RoutingDecisionMetadata,
+            SegmentSovereigntyAssessment, SecurityAssessment, SovereigntyAwareRoutingDecision,
         };
+
+        if selected_path.segments.is_empty() {
+            warn!(
+                "sovereignty routing decision: selected path has no service segments; \
+                 federation capability list and segment assessments are empty (fail-closed metadata)"
+            );
+        } else {
+            info!(
+                segment_count = selected_path.segments.len(),
+                "federation capabilities and network-effect hints derived from universal adapter discovery (per path segment)"
+            );
+        }
+
+        let segment_assessments: Vec<SegmentSovereigntyAssessment> = selected_path
+            .segments
+            .iter()
+            .enumerate()
+            .map(|(i, seg)| SegmentSovereigntyAssessment {
+                segment_id: format!("{}-{}", seg.service.name, i),
+                sovereignty_score: seg.sovereignty_level.score(),
+                sovereignty_level: seg.sovereignty_level.clone(),
+                security_assessment: SecurityAssessment {
+                    security_score: seg.efficiency_score.clamp(0.0, 1.0),
+                    security_level: selected_path.security_level.clone(),
+                    identified_vulnerabilities: vec![],
+                },
+            })
+            .collect();
 
         // Create sovereignty assessment
         let sovereignty_assessment = PathSovereigntyAssessment {
             overall_score: selected_path.sovereignty_score,
-            segment_assessments: vec![], // Would be populated in full implementation
+            segment_assessments,
             compliance_level: self.determine_compliance_level(selected_path.sovereignty_score),
-            sovereignty_risks: vec![], // Would be populated in full implementation
+            sovereignty_risks: vec![],
         };
 
-        // Create federation capabilities (placeholder)
-        let federation_capabilities = vec![FederationCapability {
-            capability_id: "cross_node_comm".to_string(),
-            capability_type: FederationCapabilityType::CrossNodeCommunication,
-            availability_score: 0.9,
-            performance_characteristics: PerformanceCharacteristics {
-                latency_ms: 10.0,
-                throughput_ops_per_sec: 1000.0,
-                reliability_score: 0.95,
-            },
-        }];
+        let federation_capabilities = Self::federation_capabilities_from_path(&selected_path);
 
-        // Create expected network effects (placeholder)
-        let expected_network_effects = vec![ExpectedNetworkEffect {
-            effect_id: "performance_boost".to_string(),
-            effect_type: NetworkEffectType::PerformanceImprovement,
-            impact_magnitude: 0.15,
-            confidence_level: 0.8,
-        }];
+        let expected_network_effects = Self::network_effects_from_path(&selected_path);
+        if !expected_network_effects.is_empty() {
+            info!(
+                effect_count = expected_network_effects.len(),
+                "expected network effects are score-derived estimates until federation telemetry is integrated"
+            );
+        }
 
         // Create decision metadata
         let decision_metadata = RoutingDecisionMetadata {
@@ -283,18 +300,120 @@ impl SovereigntyAwareAdapter {
     async fn execute_through_path(
         &self,
         request: UniversalRequest,
-        _path: &RoutingPath,
+        path: &RoutingPath,
     ) -> SongbirdResult<UniversalResponse> {
-        // For now, delegate to base adapter
-        // In a full implementation, this would route through the specific path
-        // For now, return a success response - will be implemented with proper routing
-        Ok(UniversalResponse {
-            request_id: request.request_id,
-            status: crate::types::ResponseStatus::Success,
-            data: Some(serde_json::json!({"sovereignty": "routed"})),
-            metadata: std::collections::HashMap::new(),
-            error: None,
-        })
+        if path.segments.is_empty() {
+            warn!(
+                request_id = %request.request_id,
+                "execute_through_path: empty path has no discovered services; refusing execution"
+            );
+            return Err(SongbirdError::network(
+                "Sovereignty path has no segments; cannot execute against a target service",
+            ));
+        }
+
+        if path.segments.len() > 1 {
+            warn!(
+                request_id = %request.request_id,
+                hop_count = path.segments.len(),
+                "multi-hop path execution not implemented; delegating to single-hop UnifiedUniversalAdapter::route_request"
+            );
+        }
+
+        info!(
+            request_id = %request.request_id,
+            "delegating request execution to UnifiedUniversalAdapter (per-hop chain execution tracked for songbird-universal)"
+        );
+
+        self.base_adapter
+            .route_request(request)
+            .await
+            .map_err(Into::into)
+    }
+
+    fn health_to_score(health: &HealthStatus) -> f64 {
+        match health {
+            HealthStatus::Healthy => 1.0,
+            HealthStatus::Degraded => 0.65,
+            HealthStatus::Unhealthy => 0.0,
+            HealthStatus::Unknown => 0.5,
+        }
+    }
+
+    fn federation_type_from_capability_name(name: &str) -> super::types::FederationCapabilityType {
+        use super::types::FederationCapabilityType;
+        let n = name.to_lowercase();
+        if n.contains("health") {
+            FederationCapabilityType::HealthMonitoring
+        } else if n.contains("consensus") {
+            FederationCapabilityType::ConsensusParticipation
+        } else if n.contains("replic") {
+            FederationCapabilityType::DataReplication
+        } else if n.contains("load") || n.contains("balance") {
+            FederationCapabilityType::LoadDistribution
+        } else if n.contains("route") || n.contains("optim") {
+            FederationCapabilityType::RouteOptimization
+        } else {
+            FederationCapabilityType::CrossNodeCommunication
+        }
+    }
+
+    fn federation_capabilities_from_path(path: &RoutingPath) -> Vec<super::types::FederationCapability> {
+        use super::types::{FederationCapability, PerformanceCharacteristics};
+
+        let mut out = Vec::new();
+        for (hop, seg) in path.segments.iter().enumerate() {
+            if seg.service.capabilities.is_empty() {
+                out.push(FederationCapability {
+                    capability_id: format!("service:{}:hop{}", seg.service.name, hop),
+                    capability_type: super::types::FederationCapabilityType::CrossNodeCommunication,
+                    availability_score: Self::health_to_score(&seg.service.health),
+                    performance_characteristics: PerformanceCharacteristics {
+                        latency_ms: (1.0 - seg.efficiency_score.clamp(0.0, 1.0)) * 100.0,
+                        throughput_ops_per_sec: 1000.0 * seg.efficiency_score.clamp(0.0, 1.0),
+                        reliability_score: Self::health_to_score(&seg.service.health),
+                    },
+                });
+            } else {
+                for cap in &seg.service.capabilities {
+                    out.push(FederationCapability {
+                        capability_id: format!("{}::{}", seg.service.name, cap.name),
+                        capability_type: Self::federation_type_from_capability_name(&cap.name),
+                        availability_score: Self::health_to_score(&cap.health_status),
+                        performance_characteristics: PerformanceCharacteristics {
+                            latency_ms: cap.qos_metrics.latency_ms.unwrap_or(0.0),
+                            throughput_ops_per_sec: cap.qos_metrics.throughput_ops_sec.unwrap_or(0.0),
+                            reliability_score: cap
+                                .qos_metrics
+                                .reliability
+                                .unwrap_or_else(|| Self::health_to_score(&cap.health_status)),
+                        },
+                    });
+                }
+            }
+        }
+        out
+    }
+
+    fn network_effects_from_path(path: &RoutingPath) -> Vec<super::types::ExpectedNetworkEffect> {
+        use super::types::{ExpectedNetworkEffect, NetworkEffectType};
+
+        let mut effects = Vec::new();
+        effects.push(ExpectedNetworkEffect {
+            effect_id: "routing_efficiency_hint".to_string(),
+            effect_type: NetworkEffectType::PerformanceImprovement,
+            impact_magnitude: (path.efficiency_score - 0.5).abs(),
+            confidence_level: 0.45,
+        });
+        if path.sovereignty_score > 0.6 {
+            effects.push(ExpectedNetworkEffect {
+                effect_id: "routing_sovereignty_hint".to_string(),
+                effect_type: NetworkEffectType::SecurityEnhancement,
+                impact_magnitude: (path.sovereignty_score - 0.5).abs(),
+                confidence_level: 0.45,
+            });
+        }
+        effects
     }
 
     fn determine_compliance_level(
@@ -328,11 +447,12 @@ impl SovereigntyAwareAdapter {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_stats(&self) -> SongbirdResult<AdapterStats> {
+        let registry = self.base_adapter.get_registry_stats().await;
         Ok(AdapterStats {
             sovereignty_routing_enabled: self.config.enable_sovereignty_routing,
             federation_routing_enabled: self.config.enable_federation_routing,
             network_optimization_enabled: self.config.enable_network_optimization,
-            base_adapter_healthy: true, // Would check base adapter health
+            base_adapter_healthy: registry.total_services > 0,
         })
     }
 }

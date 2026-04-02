@@ -23,8 +23,8 @@
 //! while maintaining backward compatibility with manual deployments.
 
 use songbird_types::defaults::paths::{
-    BIOMEOS_RUNTIME_SUBDIR, IPC_DISCOVERY_TMP_DIR, NEURAL_API_SOCKET_LEGACY_PATTERN,
-    SECURITY_SOCKET_TMP_FALLBACK,
+    BIOMEOS_RUNTIME_SUBDIR, ipc_discovery_primal_port_path, neural_api_socket_legacy_path,
+    security_socket_tmp_fallback_path,
 };
 use songbird_types::primal_names::{BEARDOG, NEURAL_API};
 use std::path::{Path, PathBuf};
@@ -225,8 +225,8 @@ fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
         candidates.push(PathBuf::from(home).join(".local/share").join(&filename));
     }
 
-    // Priority 3: /tmp (last resort, system-wide)
-    candidates.push(PathBuf::from(IPC_DISCOVERY_TMP_DIR).join(&filename));
+    // Priority 3: OS temp dir (last resort, system-wide)
+    candidates.push(ipc_discovery_primal_port_path(primal_name));
 
     candidates
 }
@@ -357,7 +357,9 @@ pub fn discover_security_provider_socket() -> String {
         }
     }
 
-    discover_socket("BEARDOG_SOCKET", BEARDOG, SECURITY_SOCKET_TMP_FALLBACK)
+    let beardog_tmp = security_socket_tmp_fallback_path();
+    let beardog_tmp_fallback = beardog_tmp.to_string_lossy();
+    discover_socket("BEARDOG_SOCKET", BEARDOG, beardog_tmp_fallback.as_ref())
 }
 
 /// Deprecated alias for [`discover_security_provider_socket`].
@@ -400,8 +402,8 @@ pub fn discover_neural_api_socket() -> String {
         .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
         .or_else(|_| songbird_process_env::var("FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string());
-    let socket = format!("{NEURAL_API_SOCKET_LEGACY_PATTERN}{family_id}.sock");
-    warn!("⚠️  Using legacy /tmp socket: {}", socket);
+    let socket = neural_api_socket_legacy_path(&family_id).to_string_lossy().into_owned();
+    warn!("⚠️  Using legacy temp-dir Neural API socket: {}", socket);
     warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
     socket
 }

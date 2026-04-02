@@ -125,11 +125,14 @@ impl NetworkBindingStrategy {
                 ]
             }
             Self::Interface(name) => {
-                // For specific interface, try to get its address
-                // This is a placeholder - full implementation would query the interface
+                // Known limitation: we do not call SO_BINDTODEVICE / per-interface bind APIs here.
+                // `NetworkBindingStrategy::auto_detect` never selects `Interface`; this arm exists
+                // for API completeness. Binding `0.0.0.0` listens on all interfaces (see tracking:
+                // per-NIC bind for multi-homed hosts).
                 warn!(
-                    "Specific interface binding ({}) not yet implemented, falling back to IPv4All",
-                    name
+                    interface = %name,
+                    "Interface-scoped bind not implemented; using IPv4 unspecified (0.0.0.0) on port {}",
+                    port
                 );
                 vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port)]
             }
@@ -150,7 +153,7 @@ impl NetworkBindingStrategy {
                 SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port)
             }
             Self::Interface(_) => {
-                // Fallback to IPv4
+                // Matches `to_socket_addrs`: unspecified IPv4 when interface-specific bind is unavailable.
                 SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port)
             }
         }

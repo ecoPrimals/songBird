@@ -101,7 +101,7 @@ mod integration_tests {
 mod e2e_tests {
     /// E2E: Two towers discover each other but not themselves
     #[tokio::test]
-    #[ignore] // Requires full Songbird setup with multiple instances
+    #[ignore = "LIVE: requires full Songbird multi-instance setup and UDP multicast"]
     async fn test_e2e_two_towers_mutual_discovery_with_self_filtering() {
         // This E2E test requires:
         // 1. Full UDP multicast setup
@@ -120,7 +120,7 @@ mod e2e_tests {
 
     /// E2E: Three towers with self-filtering
     #[tokio::test]
-    #[ignore] // Requires full Songbird setup with multiple instances
+    #[ignore = "LIVE: requires full Songbird multi-instance setup and UDP multicast"]
     async fn test_e2e_three_towers_self_filtering() {
         // Setup 3 towers, each should see the other 2 (not itself)
         // Tower 1: node_id A
@@ -138,7 +138,7 @@ mod e2e_tests {
 
     /// E2E: Self-filtering with bridge processing
     #[tokio::test]
-    #[ignore] // Requires full Songbird setup including bridge
+    #[ignore = "LIVE: requires Songbird bridge, ConnectionManager, and FederationState"]
     async fn test_e2e_self_filtering_with_bridge_processing() {
         // This test verifies the entire flow:
         // 1. Broadcaster sends packets
@@ -163,7 +163,7 @@ mod e2e_tests {
 
     /// E2E: Performance test with self-filtering
     #[tokio::test]
-    #[ignore] // Performance test, run manually
+    #[ignore = "Expensive performance test; run manually with --ignored"]
     async fn test_e2e_self_filtering_performance() {
         // Test that self-filtering has negligible overhead
         // Measure time for 1000 broadcasts with and without filtering
@@ -176,7 +176,7 @@ mod e2e_tests {
 
     /// E2E: Self-filtering with stale peer cleanup
     #[tokio::test]
-    #[ignore] // Requires time-based testing
+    #[ignore = "LIVE: requires time-based TTL / stale-peer cleanup scenario"]
     async fn test_e2e_self_filtering_with_ttl_cleanup() {
         // Verify that self-filtering doesn't interfere with TTL cleanup
         // 1. Discover peers (self filtered)

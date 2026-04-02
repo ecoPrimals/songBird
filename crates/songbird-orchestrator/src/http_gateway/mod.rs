@@ -108,7 +108,9 @@ impl HttpGatewayService {
             .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
             .unwrap_or_else(|_| {
                 let family = crate::env_config::family_id();
-                format!("/tmp/security-{family}.sock")
+                songbird_types::defaults::paths::family_scoped_security_socket_path(&family)
+                    .to_string_lossy()
+                    .into_owned()
             });
 
         let http_client = SongbirdHttpClient::new(crypto_socket);

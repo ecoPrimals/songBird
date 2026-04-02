@@ -142,10 +142,12 @@ impl BearDogClient {
 
         if mode.to_lowercase() == "direct" {
             // Direct mode: Discover crypto provider endpoint via capability
+            let legacy_crypto = std::env::temp_dir().join("crypto.sock");
+            let legacy_crypto = legacy_crypto.to_string_lossy();
             let endpoint = socket_discovery::discover_ipc_endpoint(
                 "CRYPTO_PROVIDER_SOCKET",
                 "crypto",
-                "/tmp/crypto.sock",
+                legacy_crypto.as_ref(),
             );
             info!("🔧 BearDog mode from env: DIRECT → {:?}", endpoint);
             Self::new_direct_with_endpoint(endpoint)

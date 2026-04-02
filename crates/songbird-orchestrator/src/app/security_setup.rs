@@ -19,10 +19,13 @@
 //!
 //! 1. Check `SECURITY_ENDPOINT` (explicit configuration)
 //! 2. Query capability system for "security" provider
-//! 3. Fall back to `CAPABILITY_SECURITY_ENDPOINT`
-//! 4. Final fallback: construct from bind address + port
+//! 3. Fall back to `CAPABILITY_SECURITY_ENDPOINT` (legacy)
 //!
-//! This enables ANY security provider to be discovered and used!
+//! There is **no** silent URL construction in discovery: if none of the above apply,
+//! discovery fails closed with an actionable error. The helper
+//! [`construct_default_security_endpoint`] exists for tests and local tooling only.
+//!
+//! This enables ANY security provider to be discovered and used when configured!
 
 use anyhow::Result;
 use std::sync::Arc;
@@ -134,10 +137,12 @@ pub async fn discover_security_endpoint(
 ///
 /// # Returns
 ///
-/// Security integration instance (currently a placeholder)
+/// A [`SecurityIntegration`] holding the resolved provider endpoint URL.
+///
 /// # Errors
 ///
-/// Returns an error if the operation fails.
+/// Returns an error when [`discover_security_endpoint`] cannot resolve any provider
+/// (missing env and adapter discovery). Operators must set an explicit endpoint for production.
 pub async fn setup_security() -> Result<SecurityIntegration> {
     let security_endpoint = discover_security_endpoint(None).await?;
     info!("🔐 Security integration established at {security_endpoint}");
@@ -146,10 +151,11 @@ pub async fn setup_security() -> Result<SecurityIntegration> {
     })
 }
 
-/// Construct default security endpoint from bind address and port
+/// Construct a heuristic security endpoint from bind address and port.
 ///
-/// Falls back to sensible defaults if not configured.
-/// This is the final fallback in the discovery chain.
+/// **Not used by [`discover_security_endpoint`]** — discovery is fail-closed without
+/// explicit configuration to avoid pointing production traffic at the wrong service.
+/// This helper remains for unit tests and ad-hoc local tooling.
 fn construct_default_security_endpoint() -> String {
     let bind_address = SafeEnv::get_or_default(
         "SONGBIRD_BIND_ADDRESS",

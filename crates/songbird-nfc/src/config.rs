@@ -114,20 +114,21 @@ impl NfcConfig {
         // 3. Fallback (platform-specific, capability name preferred)
         #[cfg(unix)]
         {
+            use songbird_types::defaults::paths::{biomeos_socket_dir_tmp, security_socket_default_path};
+
             let fallback_paths = [
-                "/tmp/biomeos/security.sock",
-                "/tmp/biomeos/crypto.sock",
-                "/tmp/biomeos/beardog.sock",
+                security_socket_default_path(),
+                biomeos_socket_dir_tmp().join("crypto.sock"),
+                biomeos_socket_dir_tmp().join("beardog.sock"),
             ];
 
-            for path in fallback_paths {
-                let path_buf = PathBuf::from(path);
-                if path_buf.exists() {
-                    return path_buf;
+            for path in &fallback_paths {
+                if path.exists() {
+                    return path.clone();
                 }
             }
 
-            PathBuf::from("/tmp/biomeos/security.sock")
+            security_socket_default_path()
         }
 
         #[cfg(not(unix))]

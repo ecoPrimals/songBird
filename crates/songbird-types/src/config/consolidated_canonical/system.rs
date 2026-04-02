@@ -158,7 +158,9 @@ pub struct CanonicalShutdownConfig {
 
 impl Default for CanonicalSystemConfig {
     fn default() -> Self {
-        let home = songbird_process_env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let home = songbird_process_env::var("HOME").unwrap_or_else(|_| {
+            std::env::temp_dir().to_string_lossy().into_owned()
+        });
         Self {
             environment: "development".to_string(),
             system_id: "songbird-1".to_string(),
@@ -169,7 +171,10 @@ impl Default for CanonicalSystemConfig {
             config_dir: format!("{home}/.config/songbird"),
             cache_dir: format!("{home}/.cache/songbird"),
             log_dir: format!("{home}/.local/share/songbird/logs"),
-            temp_dir: "/tmp/songbird".to_string(),
+            temp_dir: std::env::temp_dir()
+                .join("songbird")
+                .to_string_lossy()
+                .into_owned(),
             logging: CanonicalLoggingConfig::default(),
             resources: CanonicalResourceConfig::default(),
             shutdown: CanonicalShutdownConfig::default(),

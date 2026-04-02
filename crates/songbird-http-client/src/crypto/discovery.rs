@@ -28,10 +28,7 @@ use tracing::{debug, info, warn};
 use super::beardog_provider::BearDogProvider;
 use super::capability::CryptoCapability;
 use crate::error::{Error, Result};
-
-/// Well-known default socket paths (in order of preference)
-const DEFAULT_SOCKET_PATHS: &[&str] =
-    &["/tmp/beardog.sock", "/run/user/1000/beardog-default.sock", "/var/run/beardog.sock"];
+use songbird_types::defaults::paths::security_socket_candidates;
 
 /// Discover crypto capability at runtime
 ///
@@ -88,21 +85,22 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
     }
 
     // 4. Try well-known default paths
-    for socket_path in DEFAULT_SOCKET_PATHS {
-        debug!("   Trying well-known path: {}", socket_path);
+    for socket_path in security_socket_candidates() {
+        let socket_str = socket_path.to_string_lossy();
+        debug!("   Trying well-known path: {}", socket_str);
 
         // Check if socket file exists
-        if !std::path::Path::new(socket_path).exists() {
-            debug!("   Socket not found: {}", socket_path);
+        if !socket_path.exists() {
+            debug!("   Socket not found: {}", socket_str);
             continue;
         }
 
-        let provider = BearDogProvider::new(*socket_path);
+        let provider = BearDogProvider::new(socket_str.as_ref());
         if provider.is_available().await {
-            info!("✅ Using crypto provider at {} (well-known path)", socket_path);
+            info!("✅ Using crypto provider at {} (well-known path)", socket_str);
             return Ok(Arc::new(provider));
         }
-        debug!("   Socket exists but provider not responding: {}", socket_path);
+        debug!("   Socket exists but provider not responding: {}", socket_str);
     }
 
     // Neural API `capability.discover("crypto")` is not used here yet; discovery stays path-based.

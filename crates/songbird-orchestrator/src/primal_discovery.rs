@@ -254,7 +254,7 @@ where
     if let Some(xdg) = env_reader("XDG_RUNTIME_DIR") {
         dirs.push(PathBuf::from(xdg).join(songbird_types::primal_names::BIOMEOS_DIR));
     }
-    dirs.push(PathBuf::from("/tmp/biomeos"));
+    dirs.push(songbird_types::defaults::paths::biomeos_socket_dir_tmp());
 
     let mut out = Vec::new();
     for dir in dirs {
@@ -377,7 +377,7 @@ where
         candidates.push(std::path::PathBuf::from(home).join(".local/share").join(&filename));
     }
 
-    candidates.push(std::path::PathBuf::from(format!("/tmp/{filename}")));
+    candidates.push(std::env::temp_dir().join(&filename));
 
     check_tcp_discovery_from_candidates(&candidates)
 }

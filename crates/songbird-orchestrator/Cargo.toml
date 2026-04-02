@@ -165,6 +165,8 @@ tokio-serde = { version = "0.8.0", features = ["bincode"] }
 netdev = "0.40.0"
 
 [dev-dependencies]
+serial_test = "3"
+songbird-process-env = { path = "../songbird-process-env" }
 songbird-test-utils = { path = "../songbird-test-utils" }
 tokio-tungstenite = "0.24"
 assert_cmd = "2.0"  # UniBin CLI testing
