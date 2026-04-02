@@ -2,7 +2,6 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use crate::error::IpcResult;
-use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -112,7 +111,6 @@ impl HttpHandler {
     }
 }
 
-#[async_trait]
 impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         match method {

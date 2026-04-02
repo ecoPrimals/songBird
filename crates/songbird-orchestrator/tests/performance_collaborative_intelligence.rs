@@ -9,6 +9,8 @@
 //! - `graph.suggest_alternatives`: < 30ms
 //! - `coordination.validate_pattern`: < 100ms
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::graph::{
     AvailabilityChecker, CoordinationValidator, Graph, GraphEdge, GraphMetadata, GraphNode,
     GraphValidator,

@@ -8,16 +8,14 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use std::net::SocketAddr;
-use std::sync::Mutex;
 
 use songbird_process_env;
 
 use super::SongbirdOrchestrator;
-
-static BROADCAST_ENV_LOCK: Mutex<()> = Mutex::new(());
+use super::broadcast_test_lock;
 
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    BROADCAST_ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    broadcast_test_lock::guard()
 }
 
 fn parse(s: &str) -> SocketAddr {

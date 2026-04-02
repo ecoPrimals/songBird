@@ -433,6 +433,8 @@ impl GlobalStats {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -719,5 +721,92 @@ mod tests {
                 >= stats_after_small.best_extension_set.len(),
             "larger successful extension set should be promoted"
         );
+    }
+
+    #[test]
+    fn record_success_does_not_promote_when_new_set_shorter() {
+        let profiler = ServerProfiler::new();
+        let long_set = ExtensionSet::standard().extensions;
+        profiler.record_success("s.com", long_set.clone(), 0x1301, Duration::from_millis(100));
+        let short = vec![ExtensionType::Sni];
+        profiler.record_success("s.com", short, 0x1302, Duration::from_millis(50));
+        let stats = profiler.get_stats();
+        assert_eq!(stats.best_extension_set.len(), long_set.len());
+        let p = profiler.get_profile("s.com").expect("profile");
+        assert_eq!(p.successful_cipher, Some(0x1302));
+    }
+
+    #[test]
+    fn record_failure_skips_duplicate_failed_extensions() {
+        let profiler = ServerProfiler::new();
+        // Not in `ExtensionSet::standard()` initial successful set, so failures are tracked.
+        let exts = vec![ExtensionType::SessionTicket];
+        profiler.record_failure("dup.com", exts.clone(), None, "e1");
+        profiler.record_failure("dup.com", exts, None, "e2");
+        let p = profiler.get_profile("dup.com").expect("profile");
+        assert_eq!(p.failed_extensions, vec![ExtensionType::SessionTicket]);
+    }
+
+    #[test]
+    fn record_failure_deduplicates_failed_cipher() {
+        let profiler = ServerProfiler::new();
+        let exts = vec![ExtensionType::Sni];
+        profiler.record_failure("c.com", exts.clone(), Some(0x1301), "a");
+        profiler.record_failure("c.com", exts, Some(0x1301), "b");
+        let p = profiler.get_profile("c.com").expect("profile");
+        assert_eq!(p.failed_ciphers, vec![0x1301]);
+    }
+
+    #[test]
+    fn recommend_extensions_unknown_host_uses_global_or_standard() {
+        let profiler = ServerProfiler::new();
+        let rec = profiler.recommend_extensions("no-such-host.example");
+        assert!(!rec.is_empty());
+    }
+
+    #[test]
+    fn recommend_cipher_unknown_falls_back_to_global_default() {
+        let profiler = ServerProfiler::new();
+        let c = profiler.recommend_cipher("unknown.example");
+        assert_eq!(c, Some(0x1301));
+    }
+
+    #[test]
+    fn server_profiler_default_same_as_new() {
+        let a = ServerProfiler::default();
+        let b = ServerProfiler::new();
+        assert_eq!(a.profile_count(), b.profile_count());
+    }
+
+    #[test]
+    fn record_success_moving_average_reduces_spike() {
+        let profiler = ServerProfiler::new();
+        let exts = ExtensionSet::standard().extensions;
+        profiler.record_success("ma.com", exts.clone(), 0x1301, Duration::from_secs(0));
+        profiler.record_success("ma.com", exts, 0x1301, Duration::from_secs(10));
+        let p = profiler.get_profile("ma.com").expect("profile");
+        assert!(
+            p.avg_handshake_duration.as_secs_f32() > 0.0
+                && p.avg_handshake_duration.as_secs_f32() < 10.0
+        );
+    }
+
+    #[test]
+    fn global_stats_clone_independent() {
+        let profiler = ServerProfiler::new();
+        let s1 = profiler.get_stats();
+        let mut s2 = s1.clone();
+        s2.total_successes = 999;
+        let s1b = profiler.get_stats();
+        assert_ne!(s1b.total_successes, s2.total_successes);
+    }
+
+    #[test]
+    fn failure_without_cipher_still_increments_failures() {
+        let profiler = ServerProfiler::new();
+        profiler.record_failure("nc.com", vec![ExtensionType::Sni], None, "no cipher");
+        let p = profiler.get_profile("nc.com").expect("profile");
+        assert_eq!(p.failure_count, 1);
+        assert!(p.failed_ciphers.is_empty());
     }
 }

@@ -12,24 +12,24 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
-| Pure Rust | 100% — `quinn`/`rustls`/`ring` fully eliminated from `songbird-quic` (native QUIC engine with BearDog crypto delegation); `rcgen` removed; `sysinfo` eliminated; `ring-crypto` opt-in feature gate remains on CLI only |
+| Pure Rust | 100% — native QUIC engine with BearDog crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` opt-in feature gate remains on CLI only |
 | Crypto Delegation | BearDog via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
-| Runtime Discovery | All config: env → XDG → smart defaults. `primal_names` constants module; capability-first discovery |
+| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
-| Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent (`#[serial_test::serial]` eliminated) |
-| Tests | 11,831+ total, 0 failed, ~269 ignored |
-| Line Coverage | ~69.11% (llvm-cov `--workspace --all-features`; target 90%) |
+| Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; zero `#[serial_test]`; `tokio::time::pause()` for deterministic timing |
+| Tests | 11,917 total, 0 failed, ~269 ignored |
+| Line Coverage | ~69% (llvm-cov `--workspace --all-features`; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
-| Build | Clean (zero errors, zero warnings, ~43s dev) |
+| Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (`frame.rs` refactored → `frame/` 4 modules; max prod ~484 `gateway/mod.rs`) |
+| Files >1000 lines | 0 (all production modules under 800 lines; test-only files under 950) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
@@ -37,9 +37,9 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
-| Dependencies | ~412 unique (`sysinfo`/`rayon`/`crossbeam` eliminated); `kube`/`k8s-openapi`/`bollard` feature-gated |
+| Dependencies | `sled` feature-gated with in-memory fallback; `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~381,498 lines across 30 crates |
+| Total Rust | ~412,555 lines across 30 crates |
 
 ## Architecture
 
@@ -162,7 +162,7 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ## Testing
 
 ```bash
-cargo test --workspace --all-features          # Full suite (11,831 tests)
+cargo test --workspace --all-features          # Full suite (11,917 tests, ~84s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
 ./scripts/test-with-beardog.sh                 # With live BearDog from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report

@@ -61,7 +61,7 @@ async fn chaos_invalid_content_type() {
 }
 
 /// Test timeout scenarios (no sleeps! using timeout wrapper)
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn chaos_operation_timeout() {
     // Simulate a long-running operation
     let slow_operation = async {

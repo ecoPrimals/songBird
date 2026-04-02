@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
+#![allow(async_fn_in_trait, reason = "native async trait methods; futures are Send in impls")]
 
 //! Cryptographic operations for Tor protocol
 //!
@@ -11,7 +12,6 @@ pub mod sha3;
 pub use songbird_crypto_provider::{CryptoProvider, CryptoProviderError, RoutingMode};
 
 use crate::error::{Error, Result};
-use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::json;
 
@@ -20,7 +20,6 @@ fn map_crypto_err(e: &CryptoProviderError) -> Error {
 }
 
 /// Tor-protocol crypto operations routed through [`CryptoProvider`].
-#[async_trait]
 pub trait TorProtocolCrypto {
     /// Initialize client-side ntor handshake
     ///
@@ -110,7 +109,6 @@ pub trait TorProtocolCrypto {
     ) -> Result<Vec<u8>>;
 }
 
-#[async_trait]
 impl TorProtocolCrypto for CryptoProvider {
     async fn tor_ntor_client_init(
         &self,

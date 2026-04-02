@@ -7,6 +7,8 @@
 //! - `discover_capabilities`: Capability discovery
 //! - http.request: HTTP delegation for external APIs
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use serde_json::json;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};

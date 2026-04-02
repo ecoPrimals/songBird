@@ -303,8 +303,67 @@ pub type CryptoProvider = dyn CryptoCapability;
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     // Test that trait is object-safe
     fn _assert_object_safe(_: &dyn CryptoCapability) {}
+
+    #[test]
+    fn tls_handshake_secrets_struct_fields_roundtrip_clone() {
+        let s = TlsHandshakeSecrets {
+            client_handshake_secret: vec![1, 2],
+            server_handshake_secret: vec![3],
+            client_write_key: vec![4; 16],
+            client_write_iv: vec![5; 12],
+            server_write_key: vec![6; 16],
+            server_write_iv: vec![7; 12],
+            handshake_secret: vec![8, 9, 10],
+        };
+        let c = s.clone();
+        assert_eq!(c.client_handshake_secret, s.client_handshake_secret);
+        assert_eq!(c.handshake_secret.len(), 3);
+    }
+
+    #[test]
+    fn tls_application_secrets_clone() {
+        let a = TlsApplicationSecrets {
+            client_traffic_secret: vec![1],
+            server_traffic_secret: vec![2],
+            client_write_key: vec![],
+            client_write_iv: vec![],
+            server_write_key: vec![],
+            server_write_iv: vec![],
+        };
+        assert_eq!(a.clone().client_traffic_secret, vec![1]);
+    }
+
+    #[test]
+    fn tls_handshake_secrets_debug_non_empty() {
+        let s = TlsHandshakeSecrets {
+            client_handshake_secret: vec![0xff],
+            server_handshake_secret: vec![],
+            client_write_key: vec![],
+            client_write_iv: vec![],
+            server_write_key: vec![],
+            server_write_iv: vec![],
+            handshake_secret: vec![],
+        };
+        let d = format!("{s:?}");
+        assert!(d.contains("TlsHandshakeSecrets") || d.contains("client_handshake"));
+    }
+
+    #[test]
+    fn tls_application_secrets_debug_non_empty() {
+        let a = TlsApplicationSecrets {
+            client_traffic_secret: vec![1],
+            server_traffic_secret: vec![2],
+            client_write_key: vec![],
+            client_write_iv: vec![],
+            server_write_key: vec![],
+            server_write_iv: vec![],
+        };
+        assert!(!format!("{a:?}").is_empty());
+    }
 }

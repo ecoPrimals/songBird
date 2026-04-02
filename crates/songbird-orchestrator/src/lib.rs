@@ -217,6 +217,8 @@ pub mod server;
 /// Inter-primal service registration and port authority.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service_registry;
+/// In-memory consent/task storage when `sled-storage` is disabled.
+mod storage_memory;
 /// Task lifecycle and scheduling hooks for orchestrated work.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod task_lifecycle;
@@ -230,6 +232,8 @@ pub mod universal_adapter;
 // Re-export main orchestrator
 /// Primary orchestrator application type: loads config, wires subsystems, runs the server loop.
 pub use app::SongbirdOrchestrator;
+/// Non-durable storage backend used when the `sled-storage` feature is off.
+pub use storage_memory::InMemoryStorage;
 
 // Re-export security capability client (provider-agnostic!)
 /// HTTP client for security-capability RPC against `BearDog` (trust evaluation and related calls).

@@ -22,6 +22,8 @@
     clippy::struct_field_names,
     clippy::match_same_arms,
     clippy::future_not_send,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
@@ -283,7 +285,7 @@ async fn test_e2e_invalid_method() {
     let _ = std::fs::remove_file(socket_path);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_e2e_timeout_handling() {
     // Test timeout behavior
 

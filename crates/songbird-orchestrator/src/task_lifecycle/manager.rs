@@ -14,7 +14,7 @@
 //! - Background cleanup tasks
 
 use super::{
-    Checkpoint, CheckpointConfig, TaskFilter, TaskId, TaskLifecycle, TaskSpec, TaskStorage,
+    Checkpoint, CheckpointConfig, TaskFilter, TaskId, TaskLifecycle, TaskSpec, TaskStorageBackend,
     TowerId, UserId,
 };
 use anyhow::{Context, Result};
@@ -110,7 +110,7 @@ pub enum TaskEvent {
 /// # }
 /// ```
 pub struct TaskLifecycleManager {
-    storage: Arc<TaskStorage>,
+    storage: Arc<dyn TaskStorageBackend>,
     checkpoint_config: CheckpointConfig,
     event_tx: broadcast::Sender<TaskEvent>,
     cleanup_interval: std::time::Duration,
@@ -122,9 +122,21 @@ impl TaskLifecycleManager {
     ///
     /// Returns an error if the operation fails.
     pub async fn new(database_url: &str) -> Result<Self> {
-        let storage = Arc::new(
-            TaskStorage::new(database_url).await.context("Failed to create task storage")?,
-        );
+        let storage: Arc<dyn TaskStorageBackend> = {
+            #[cfg(feature = "sled-storage")]
+            {
+                Arc::new(
+                    super::TaskStorage::new(database_url)
+                        .await
+                        .context("Failed to create task storage")?,
+                )
+            }
+            #[cfg(not(feature = "sled-storage"))]
+            {
+                let _ = database_url;
+                Arc::new(crate::storage_memory::InMemoryStorage::new())
+            }
+        };
 
         let (event_tx, _) = broadcast::channel(1000);
 
@@ -381,8 +393,10 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        // Decide whether to compress based on size
-        let checkpoint = if state.len() > self.checkpoint_config.compression_threshold as usize {
+        // Decide whether to compress based on size (gzip requires `task-checkpoint-gzip` feature)
+        let checkpoint = if cfg!(feature = "task-checkpoint-gzip")
+            && state.len() > self.checkpoint_config.compression_threshold as usize
+        {
             Checkpoint::new_compressed(task_id, task.progress, state)?
         } else {
             Checkpoint::new(task_id, task.progress, state)
@@ -467,6 +481,7 @@ impl TaskLifecycleManager {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::task_lifecycle::types::{Priority, ResourceRequirements};

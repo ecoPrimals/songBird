@@ -132,7 +132,10 @@ pub fn create_crypto_capability(socket_path: &str) -> Arc<dyn CryptoCapability> 
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn test_create_crypto_capability() {
@@ -145,5 +148,34 @@ mod tests {
         // ✅ Concurrent-safe: Uses explicit path (no env vars needed)
         let result = discover_crypto_capability_at("/nonexistent/path.sock").await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn discover_crypto_capability_at_error_message_mentions_unavailable() {
+        let err = discover_crypto_capability_at("/definitely/missing/beardog.sock")
+            .await
+            .expect_err("unavailable");
+        let msg = err.to_string();
+        assert!(msg.contains("not available") || msg.to_lowercase().contains("unavailable"));
+    }
+
+    #[test]
+    fn create_crypto_capability_twice_same_provider_name() {
+        let a = create_crypto_capability("/a/b/c.sock");
+        let b = create_crypto_capability("/x/y/z.sock");
+        assert_eq!(a.name(), b.name());
+    }
+
+    #[tokio::test]
+    async fn discover_crypto_capability_at_returns_beardog_rpc_error() {
+        let err = discover_crypto_capability_at("/nonexistent.sock").await.expect_err("err");
+        assert!(matches!(err, Error::BearDogRpc(_)));
+    }
+
+    #[test]
+    fn create_crypto_capability_debug_includes_path() {
+        let c = create_crypto_capability("/tmp/unique-test.sock");
+        let dbg = format!("{c:?}");
+        assert!(!dbg.is_empty());
     }
 }

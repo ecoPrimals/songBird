@@ -28,6 +28,7 @@
 //! ```
 
 use songbird_types::{SongbirdError, SongbirdResult};
+use std::time::Duration;
 use tracing::{debug, warn};
 
 /// Discovery configuration options for dependency injection
@@ -45,6 +46,8 @@ pub struct DiscoveryOptions {
     pub compute_endpoint: Option<String>,
     /// Legacy Toadstool endpoint (None = read from env)
     pub toadstool_endpoint: Option<String>,
+    /// Overrides runtime discovery timeout when falling back to [`crate::runtime_discovery`] (tests use ~1ms).
+    pub discovery_timeout: Option<Duration>,
 }
 
 impl DiscoveryOptions {
@@ -82,6 +85,13 @@ impl DiscoveryOptionsBuilder {
     #[must_use]
     pub fn toadstool_endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.options.toadstool_endpoint = Some(endpoint.into());
+        self
+    }
+
+    /// Sets runtime discovery timeout for the capability-discovery fallback path.
+    #[must_use]
+    pub fn discovery_timeout(mut self, timeout: Duration) -> Self {
+        self.options.discovery_timeout = Some(timeout);
         self
     }
 
@@ -148,7 +158,8 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     }
 
     // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
-    match crate::runtime_discovery::discover_compute().await {
+    let rt_timeout = options.discovery_timeout.unwrap_or_else(|| Duration::from_secs(5));
+    match crate::runtime_discovery::discover_by_capability_timed("compute", rt_timeout).await {
         Ok(service) => {
             debug!("Discovered compute via RuntimeDiscoveryEngine: {}", service.endpoint);
             return Ok(service.endpoint);
@@ -350,13 +361,17 @@ where
 /// - No `{CAPABILITY}_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a provider with the requested capability
 pub async fn get_endpoint_by_capability(capability: &str) -> SongbirdResult<String> {
-    get_endpoint_by_capability_with(capability, |key| songbird_process_env::var(key)).await
+    get_endpoint_by_capability_with(capability, |key| songbird_process_env::var(key), None).await
 }
 
 /// Get endpoint by capability with injectable env reader (concurrent-safe)
+///
+/// `discovery_timeout` bounds the runtime discovery fallback (`None` = 5 seconds). Tests should pass
+/// `Some(Duration::from_millis(1))` so the failure path does not wait on the full announcement timeout.
 pub async fn get_endpoint_by_capability_with<F>(
     capability: &str,
     env_reader: F,
+    discovery_timeout: Option<Duration>,
 ) -> SongbirdResult<String>
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
@@ -371,7 +386,8 @@ where
     }
 
     // 2. Try capability-based discovery (RuntimeDiscoveryEngine)
-    let engine = crate::runtime_discovery::RuntimeDiscoveryEngine::new();
+    let rt_timeout = discovery_timeout.unwrap_or_else(|| Duration::from_secs(5));
+    let engine = crate::runtime_discovery::RuntimeDiscoveryEngine::with_timeout(rt_timeout);
     match engine.discover_by_capability(capability).await {
         Ok(service) => {
             debug!("Discovered {} via RuntimeDiscoveryEngine: {}", capability, service.endpoint);
@@ -436,7 +452,8 @@ mod tests {
     async fn test_compute_endpoint_not_configured() {
         // Modern pattern: test error case with empty options
         // No env vars set, no explicit endpoint → should fail (unless runtime discovery succeeds)
-        let options = DiscoveryOptions::default();
+        let options =
+            DiscoveryOptions::for_testing().discovery_timeout(Duration::from_millis(1)).build();
         let result = get_compute_endpoint(options).await;
 
         // Runtime discovery might find a service on this machine
@@ -471,7 +488,7 @@ mod tests {
             vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };
 
-        let result = get_endpoint_by_capability_with("myservice", env).await;
+        let result = get_endpoint_by_capability_with("myservice", env, None).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "http://my-service:5000");
     }
@@ -487,7 +504,8 @@ mod tests {
             vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };
 
-        let result = get_endpoint_by_capability_with("myservice", env).await;
+        let result =
+            get_endpoint_by_capability_with("myservice", env, Some(Duration::from_millis(1))).await;
         // Should fail (empty env var ignored, no runtime discovery)
         // Unless runtime discovers something on this machine
         if result.is_err()

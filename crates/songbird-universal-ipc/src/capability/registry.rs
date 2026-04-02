@@ -226,7 +226,10 @@ impl Default for CapabilityRegistry {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::capability::provider::HealthStatus;
     use crate::capability::strategy::{DiscoveryStrategy, EnvironmentStrategy, FilesystemStrategy};
     use async_trait::async_trait;
     use std::collections::HashMap;
@@ -307,5 +310,61 @@ mod tests {
         let providers = registry.discover_all(CAP).await.unwrap();
 
         assert!(!providers.is_empty(), "expected env strategy to find {ENV}");
+    }
+
+    #[tokio::test]
+    async fn discover_all_empty_when_no_providers() {
+        let registry = registry_with_injected_env(HashMap::new());
+        let all = registry.discover_all("nothing_here").await.unwrap();
+        assert!(all.is_empty());
+    }
+
+    #[tokio::test]
+    async fn clear_cache_then_discover_runs_strategies_again() {
+        const CAP: &str = "sbipc_clear";
+        const ENV: &str = "SBIPC_CLEAR_PROVIDER_SOCKET";
+        let mut map = HashMap::new();
+        map.insert(ENV.to_string(), "/tmp/sbipc_clear.sock".to_string());
+        let registry = registry_with_injected_env(map);
+        let _ = registry.discover(CAP).await.unwrap();
+        registry.clear_cache().await;
+        let _ = registry.discover(CAP).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn update_health_noop_when_capability_not_in_cache() {
+        let registry = registry_with_injected_env(HashMap::new());
+        registry.update_health("no_cache", "any-id", HealthStatus::Unhealthy).await;
+    }
+
+    #[tokio::test]
+    async fn update_health_changes_cached_provider_health() {
+        const CAP: &str = "sbipc_health";
+        const ENV: &str = "SBIPC_HEALTH_PROVIDER_SOCKET";
+        let mut map = HashMap::new();
+        map.insert(ENV.to_string(), "/tmp/sbipc_health.sock".to_string());
+        let registry = registry_with_injected_env(map).with_cache_ttl(Duration::from_secs(3600));
+        let p = registry.discover(CAP).await.unwrap();
+        registry.update_health(CAP, &p.id, HealthStatus::Degraded).await;
+        let p2 = registry.discover(CAP).await.unwrap();
+        assert_eq!(p2.id, p.id);
+        assert_eq!(p2.metadata.health, HealthStatus::Degraded);
+    }
+
+    #[tokio::test]
+    async fn with_cache_ttl_zero_always_misses_cache() {
+        const CAP: &str = "sbipc_ttl0";
+        const ENV: &str = "SBIPC_TTL0_PROVIDER_SOCKET";
+        let mut map = HashMap::new();
+        map.insert(ENV.to_string(), "/tmp/sbipc_ttl0.sock".to_string());
+        let registry = registry_with_injected_env(map).with_cache_ttl(Duration::from_secs(0));
+        let _ = registry.discover(CAP).await.unwrap();
+        let _ = registry.discover(CAP).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn registry_default_constructible() {
+        let _ = CapabilityRegistry::default();
+        let _ = CapabilityRegistry::new();
     }
 }

@@ -18,6 +18,17 @@ use tracing::{debug, error, info, warn};
 
 use super::messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
 
+/// Default HTTPS port for v2.1 fallback when the primary v3.0 endpoint omits `:port`.
+///
+/// Set `SONGBIRD_DEFAULT_DISCOVERY_PORT` to override; otherwise
+/// [`songbird_types::constants::DEFAULT_HTTP_PORT`] (8080).
+fn default_v3_fallback_port() -> u16 {
+    songbird_process_env::var("SONGBIRD_DEFAULT_DISCOVERY_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(songbird_types::constants::DEFAULT_HTTP_PORT)
+}
+
 /// Anonymous discovery broadcaster
 ///
 /// Broadcasts anonymous discovery messages over UDP multicast to find other towers.
@@ -120,7 +131,7 @@ impl AnonymousDiscoveryBroadcaster {
         let port = primary
             .and_then(|e| e.address.split(':').nth(1))
             .and_then(|p| p.parse().ok())
-            .unwrap_or(8080);
+            .unwrap_or_else(default_v3_fallback_port);
 
         let protocols = primary.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
 

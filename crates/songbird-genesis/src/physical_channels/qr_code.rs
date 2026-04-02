@@ -12,7 +12,6 @@
 
 use crate::error::{GenesisError, Result};
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
-use async_trait::async_trait;
 
 use super::PhysicalChannelProvider;
 
@@ -34,7 +33,6 @@ impl Default for QrCodeChannel {
     }
 }
 
-#[async_trait]
 impl PhysicalChannelProvider for QrCodeChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         #[cfg(not(feature = "qr"))]

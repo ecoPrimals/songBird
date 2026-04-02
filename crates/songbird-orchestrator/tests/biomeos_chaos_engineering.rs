@@ -17,6 +17,8 @@
 // **Concurrency Evolution**: These chaos tests mutate process-wide env vars.
 // A static Mutex ensures they don't race with each other within this binary.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use rand::Rng;
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;

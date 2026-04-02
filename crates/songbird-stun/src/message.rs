@@ -451,7 +451,7 @@ impl StunAttribute {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use std::net::Ipv4Addr;
@@ -527,6 +527,77 @@ mod tests {
     fn attribute_type_roundtrip() {
         assert_eq!(AttributeType::Unknown(0xabcd).to_u16(), 0xabcd);
         assert!(matches!(AttributeType::from_u16(0xabcd), AttributeType::Unknown(0xabcd)));
+    }
+
+    #[test]
+    fn message_type_binding_response_roundtrip() {
+        assert_eq!(MessageType::from_u16(0x0101).unwrap(), MessageType::BindingResponse);
+        assert_eq!(MessageType::BindingResponse.to_u16(), 0x0101);
+    }
+
+    #[test]
+    fn message_type_binding_error_roundtrip() {
+        assert_eq!(MessageType::from_u16(0x0111).unwrap(), MessageType::BindingError);
+    }
+
+    #[test]
+    fn mapped_address_encode_decode_ipv4() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 5)), 49152);
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::BindingResponse;
+        msg.attributes.push(StunAttribute::MappedAddress(addr));
+        let wire = msg.encode();
+        let decoded = StunMessage::decode(&wire).unwrap();
+        assert_eq!(decoded.get_mapped_address(), Some(addr));
+        assert_eq!(decoded.get_any_mapped_address(), Some(addr));
+    }
+
+    #[test]
+    fn xor_preferred_over_mapped_in_get_any_mapped_address() {
+        let xor_a = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1)), 111);
+        let map_b = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(2, 2, 2, 2)), 222);
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::BindingResponse;
+        msg.attributes.push(StunAttribute::MappedAddress(map_b));
+        msg.attributes.push(StunAttribute::XorMappedAddress(xor_a));
+        let wire = msg.encode();
+        let decoded = StunMessage::decode(&wire).unwrap();
+        assert_eq!(decoded.get_any_mapped_address(), Some(xor_a));
+    }
+
+    #[test]
+    fn other_address_attribute_roundtrip() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(198, 51, 100, 2)), 3478);
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::BindingResponse;
+        msg.attributes.push(StunAttribute::OtherAddress(addr));
+        let wire = msg.encode();
+        let decoded = StunMessage::decode(&wire).unwrap();
+        let other = decoded.attributes.iter().find_map(|a| {
+            if let StunAttribute::OtherAddress(sa) = a {
+                Some(*sa)
+            } else {
+                None
+            }
+        });
+        assert_eq!(other, Some(addr));
+    }
+
+    #[test]
+    fn unknown_attribute_preserved_in_message() {
+        let data = Bytes::from_static(b"opaque");
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::BindingResponse;
+        msg.attributes.push(StunAttribute::Unknown(0x9999, data.clone()));
+        let wire = msg.encode();
+        let decoded = StunMessage::decode(&wire).unwrap();
+        assert!(decoded.attributes.iter().any(|a| matches!(a, StunAttribute::Unknown(0x9999, _))));
+    }
+
+    #[test]
+    fn decode_attribute_too_short_errors_cleanly() {
+        let mut buf: &[u8] = &[0x00, 0x01, 0x00, 0x10];
+        assert!(StunAttribute::decode(&mut buf).is_err());
     }
 }
 

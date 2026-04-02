@@ -28,6 +28,11 @@ use tokio::sync::RwLock;
 const MULTICAST_ADDR_OCTETS: [u8; 4] = [239, 255, 255, 250];
 const MULTICAST_PORT: u16 = 9091;
 
+/// Below this threshold, [`RuntimeDiscoveryEngine`] skips mDNS daemon startup and the multicast
+/// announcement listener so unit tests using ~1ms timeouts do not pay real network or `mdns-sd`
+/// shutdown latency.
+const MIN_TIMEOUT_FOR_SLOW_DISCOVERY_PATHS: Duration = Duration::from_millis(50);
+
 /// Runtime service discovery engine
 ///
 /// Discovers services by capability at runtime with zero hardcoded knowledge.
@@ -50,9 +55,15 @@ impl RuntimeDiscoveryEngine {
     /// Create new discovery engine
     #[must_use]
     pub fn new() -> Self {
+        Self::with_timeout(Duration::from_secs(5))
+    }
+
+    /// Create engine with a custom discovery timeout (e.g. tests use 1ms).
+    #[must_use]
+    pub fn with_timeout(timeout: Duration) -> Self {
         Self {
             capabilities: Vec::new(),
-            timeout: Duration::from_secs(5),
+            timeout,
             cache: Arc::new(RwLock::new(HashMap::new())),
             cache_ttl: Duration::from_secs(300), // 5 minutes
         }
@@ -157,6 +168,12 @@ impl RuntimeDiscoveryEngine {
         use tracing::debug;
 
         debug!("Attempting mDNS discovery for capability '{capability}'");
+
+        if self.timeout < MIN_TIMEOUT_FOR_SLOW_DISCOVERY_PATHS {
+            return Err(SongbirdError::discovery(format!(
+                "mDNS discovery skipped for capability '{capability}' (timeout below slow-path minimum)"
+            )));
+        }
 
         // mDNS is best-effort for local network discovery
         // If we can't discover via mDNS, we'll try other methods
@@ -279,6 +296,12 @@ impl RuntimeDiscoveryEngine {
         use tracing::{debug, info};
 
         debug!("Waiting for announcement for capability '{}'", capability);
+
+        if self.timeout < MIN_TIMEOUT_FOR_SLOW_DISCOVERY_PATHS {
+            return Err(SongbirdError::discovery(format!(
+                "No announcement received for capability '{capability}' (timeout below slow-path minimum)"
+            )));
+        }
 
         // Create a channel for receiving announcements
         let (tx, mut rx) = tokio::sync::mpsc::channel::<DiscoveredService>(10);
@@ -489,7 +512,15 @@ impl std::fmt::Display for DiscoveryMethod {
 ///
 /// Returns error if no compute service found.
 pub async fn discover_compute() -> SongbirdResult<DiscoveredService> {
-    RuntimeDiscoveryEngine::new().discover_by_capability("compute").await
+    discover_by_capability_timed("compute", Duration::from_secs(5)).await
+}
+
+/// Like [`discover_compute`] but with an explicit timeout (tests use a short duration).
+pub(crate) async fn discover_by_capability_timed(
+    capability: &str,
+    timeout: Duration,
+) -> SongbirdResult<DiscoveredService> {
+    RuntimeDiscoveryEngine::with_timeout(timeout).discover_by_capability(capability).await
 }
 
 /// Discover AI service
@@ -505,7 +536,7 @@ pub async fn discover_compute() -> SongbirdResult<DiscoveredService> {
 ///
 /// Returns error if no AI service found.
 pub async fn discover_ai() -> SongbirdResult<DiscoveredService> {
-    RuntimeDiscoveryEngine::new().discover_by_capability("ai").await
+    discover_by_capability_timed("ai", Duration::from_secs(5)).await
 }
 
 /// Discover storage service
@@ -521,7 +552,7 @@ pub async fn discover_ai() -> SongbirdResult<DiscoveredService> {
 ///
 /// Returns error if no storage service found.
 pub async fn discover_storage() -> SongbirdResult<DiscoveredService> {
-    RuntimeDiscoveryEngine::new().discover_by_capability("storage").await
+    discover_by_capability_timed("storage", Duration::from_secs(5)).await
 }
 
 /// Discover security service
@@ -537,12 +568,11 @@ pub async fn discover_storage() -> SongbirdResult<DiscoveredService> {
 ///
 /// Returns error if no security service found.
 pub async fn discover_security() -> SongbirdResult<DiscoveredService> {
-    RuntimeDiscoveryEngine::new().discover_by_capability("security").await
+    discover_by_capability_timed("security", Duration::from_secs(5)).await
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, reason = "test assertions")]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use songbird_process_env;
@@ -664,25 +694,37 @@ mod tests {
 
     #[tokio::test]
     async fn discover_compute_errors_without_configuration() {
-        let err = discover_compute().await.expect_err("no compute");
+        let err = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(1))
+            .discover_by_capability("compute")
+            .await
+            .expect_err("no compute");
         assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
     }
 
     #[tokio::test]
     async fn discover_ai_errors_without_configuration() {
-        let err = discover_ai().await.expect_err("no ai");
+        let err = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(1))
+            .discover_by_capability("ai")
+            .await
+            .expect_err("no ai");
         assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
     }
 
     #[tokio::test]
     async fn discover_storage_errors_without_configuration() {
-        let err = discover_storage().await.expect_err("no storage");
+        let err = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(1))
+            .discover_by_capability("storage")
+            .await
+            .expect_err("no storage");
         assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
     }
 
     #[tokio::test]
     async fn discover_security_errors_without_configuration() {
-        let err = discover_security().await.expect_err("no security");
+        let err = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(1))
+            .discover_by_capability("security")
+            .await
+            .expect_err("no security");
         assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
     }
 
@@ -697,5 +739,40 @@ mod tests {
         };
         let _ = format!("{:?}", &s);
         assert_eq!(s.health_score, 0.5);
+    }
+
+    #[test]
+    fn from_environment_uppercases_capability_for_env_suffix() {
+        let svc = RuntimeDiscoveryEngine::from_environment_with("MyCap", &|k| {
+            if k == "MYCAP_ENDPOINT" {
+                Ok("http://example:1".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        })
+        .expect("env");
+        assert_eq!(svc.capability, "MyCap");
+        assert_eq!(svc.endpoint, "http://example:1");
+    }
+
+    #[test]
+    fn discovery_method_copy_and_partial_eq() {
+        let a = DiscoveryMethod::Environment;
+        let b = a;
+        assert_eq!(a, b);
+        assert_ne!(a, DiscoveryMethod::Registry);
+    }
+
+    #[test]
+    fn discovered_service_debug_includes_capability() {
+        let s = DiscoveredService {
+            capability: "compute".into(),
+            endpoint: "http://c:1".into(),
+            discovered_via: DiscoveryMethod::MDNS,
+            health_score: 1.0,
+            last_seen: std::time::SystemTime::UNIX_EPOCH,
+        };
+        let d = format!("{s:?}");
+        assert!(d.contains("compute") && d.contains("MDNS"));
     }
 }

@@ -101,10 +101,10 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
         println!();
 
         println!("   🔐 Crypto Provider (capability: crypto)");
-        match check_beardog_connectivity().await {
-            Ok(true) => println!("      Status: ✅ Connected"),
-            Ok(false) => println!("      Status: ⚠️  Not reachable"),
-            Err(e) => println!("      Status: ❌ Error: {e}"),
+        match discover_capability_provider("crypto").await {
+            DiscoveryResult::Found(path) => println!("      Status: ✅ Discovered at {path}"),
+            DiscoveryResult::NotFound => println!("      Status: ⚠️  No provider discovered"),
+            DiscoveryResult::Error(e) => println!("      Status: ❌ Discovery error: {e}"),
         }
 
         for (capability, label) in [
@@ -219,8 +219,12 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
     // Comprehensive checks — discover primals at runtime by capability
     let primal_checks = if comprehensive {
         let mut discovered = std::collections::HashMap::new();
-        let crypto_status = check_primal_status("crypto", check_beardog_connectivity()).await;
-        discovered.insert("crypto".to_string(), crypto_status);
+        let crypto_found =
+            matches!(discover_capability_provider("crypto").await, DiscoveryResult::Found(_));
+        discovered.insert(
+            "crypto".to_string(),
+            check_primal_status("crypto", futures::future::ready(Ok(crypto_found))).await,
+        );
         for capability in &["ai", "storage", "sovereign-storage", "messaging"] {
             let found =
                 matches!(discover_capability_provider(capability).await, DiscoveryResult::Found(_));
@@ -340,17 +344,6 @@ async fn check_port_availability(port: u16) -> Result<bool> {
     }
 }
 
-/// Check `BearDog` connectivity
-async fn check_beardog_connectivity() -> Result<bool> {
-    use crate::btsp_client::BtspClient;
-
-    let client = BtspClient::new();
-    match client.ping().await {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
-    }
-}
-
 /// Result of runtime capability discovery
 enum DiscoveryResult {
     Found(String),
@@ -358,11 +351,8 @@ enum DiscoveryResult {
     Error(String),
 }
 
-/// Discover a primal by capability via XDG runtime socket scanning.
-///
-/// Scans `$XDG_RUNTIME_DIR/biomeos/` for sockets matching the capability
-/// pattern, then falls back to well-known environment variables. No primal
-/// names are hardcoded — only capability identifiers.
+/// Discover a primal by capability: optional `SONGBIRD_*_PROVIDER_SOCKET`, then
+/// [`crate::primal_discovery::discover_for_capability_id_with`] (env + biomeos JSON-RPC probes).
 async fn discover_capability_provider(capability: &str) -> DiscoveryResult {
     let env_key =
         format!("SONGBIRD_{}_PROVIDER_SOCKET", capability.to_uppercase().replace('-', "_"));
@@ -372,35 +362,26 @@ async fn discover_capability_provider(capability: &str) -> DiscoveryResult {
         return DiscoveryResult::Found(path);
     }
 
-    let xdg = songbird_process_env::var("XDG_RUNTIME_DIR").unwrap_or_default();
-    if xdg.is_empty() {
-        return DiscoveryResult::NotFound;
-    }
-    let scan_dir = std::path::PathBuf::from(&xdg).join("biomeos");
-    if !scan_dir.is_dir() {
-        return DiscoveryResult::NotFound;
-    }
-
-    let pattern = format!("{capability}-provider");
-    match std::fs::read_dir(&scan_dir) {
-        Ok(entries) => {
-            for entry in entries.flatten() {
-                let name = entry.file_name();
-                let name_str = name.to_string_lossy();
-                if name_str.contains(&pattern) && name_str.ends_with(".sock") {
-                    return DiscoveryResult::Found(entry.path().to_string_lossy().into_owned());
-                }
+    match crate::primal_discovery::discover_for_capability_id_with(capability, |k| {
+        songbird_process_env::var(k).ok()
+    })
+    .await
+    {
+        Ok(path) => DiscoveryResult::Found(path),
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("No ") && msg.contains("provider available") {
+                DiscoveryResult::NotFound
+            } else {
+                DiscoveryResult::Error(msg)
             }
-            DiscoveryResult::NotFound
         }
-        Err(e) => DiscoveryResult::Error(e.to_string()),
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-
     use super::check_primal_status;
     use crate::bin_interface::DoctorArgs;
     use clap::Parser;

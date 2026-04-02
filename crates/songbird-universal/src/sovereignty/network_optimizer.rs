@@ -297,6 +297,8 @@ pub struct OptimizationStats {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::sovereignty::types::{
         PathSegment, RoutingPath, SecurityCapability, SecurityLevel, SovereigntyLevel,

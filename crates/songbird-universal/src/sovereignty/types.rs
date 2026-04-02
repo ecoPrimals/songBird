@@ -377,6 +377,7 @@ pub enum RiskSeverity {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
     #![allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
     #![allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
 
@@ -597,5 +598,47 @@ mod tests {
 
         assert_eq!(decision.selected_path.sovereignty_score, 0.9);
         assert_eq!(decision.sovereignty_assessment.overall_score, 0.9);
+    }
+
+    #[test]
+    fn risk_severity_json_roundtrip() {
+        for s in
+            [RiskSeverity::Critical, RiskSeverity::High, RiskSeverity::Medium, RiskSeverity::Low]
+        {
+            let json = serde_json::to_string(&s).expect("serialize");
+            let back: RiskSeverity = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, s);
+        }
+    }
+
+    #[test]
+    fn sovereignty_risk_type_json_roundtrip() {
+        let t = SovereigntyRiskType::JurisdictionalCompliance;
+        let json = serde_json::to_string(&t).expect("serialize");
+        let back: SovereigntyRiskType = serde_json::from_str(&json).expect("deserialize");
+        assert!(matches!(back, SovereigntyRiskType::JurisdictionalCompliance));
+    }
+
+    #[test]
+    fn network_effect_type_json_roundtrip() {
+        let t = NetworkEffectType::CapabilityExpansion;
+        let json = serde_json::to_string(&t).expect("serialize");
+        let back: NetworkEffectType = serde_json::from_str(&json).expect("deserialize");
+        assert!(matches!(back, NetworkEffectType::CapabilityExpansion));
+    }
+
+    #[test]
+    fn federation_capability_type_json_roundtrip() {
+        let t = FederationCapabilityType::ConsensusParticipation;
+        let json = serde_json::to_string(&t).expect("serialize");
+        let back: FederationCapabilityType = serde_json::from_str(&json).expect("deserialize");
+        assert!(matches!(back, FederationCapabilityType::ConsensusParticipation));
+    }
+
+    #[test]
+    fn performance_characteristics_default_impl() {
+        let p = PerformanceCharacteristics::default();
+        assert_eq!(p.latency_ms, 0.0);
+        assert_eq!(p.reliability_score, 1.0);
     }
 }

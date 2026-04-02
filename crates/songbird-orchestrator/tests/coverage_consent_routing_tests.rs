@@ -10,6 +10,8 @@
 //! - core/orchestrator.rs
 //! - core/routing/types.rs (`TaskBuilder`, `ResourceRequirements`, Task serde)
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::consent_management::{
     AutoApprovalRule, ConsentRequestBuilder, UserPreferences,
 };

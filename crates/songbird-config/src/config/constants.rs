@@ -737,10 +737,80 @@ pub mod network {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
+    use super::{
+        external_address, get_cache_dir, get_config_dir, get_data_dir, get_log_dir, get_temp_dir,
+        health, protocol_port_mappings, resources, services,
+    };
+
     #[test]
     fn test_get_bind_address() {
         let addr = super::get_bind_address();
         assert!(!addr.is_empty());
+    }
+
+    #[test]
+    fn string_constants_are_documented_non_empty() {
+        assert_eq!(super::LOCALHOST_IPV4, "127.0.0.1");
+        assert!(!super::DEFAULT_CONFIG_PATH.is_empty());
+        assert!(!super::DEFAULT_BIND_ADDRESS.is_empty());
+    }
+
+    #[test]
+    fn protocol_port_mappings_includes_core_protocols() {
+        let m = protocol_port_mappings();
+        assert_eq!(m.get("udp"), Some(&6112));
+        assert_eq!(m.get("tcp"), Some(&6113));
+        assert_eq!(m.get("websocket"), Some(&8080));
+        assert_eq!(m.get("secure_websocket"), Some(&8443));
+    }
+
+    #[test]
+    fn health_module_default_intervals() {
+        assert_eq!(health::DEFAULT_CHECK_INTERVAL.as_secs(), 30);
+        assert_eq!(health::DEFAULT_CHECK_TIMEOUT.as_secs(), 5);
+    }
+
+    #[test]
+    fn resources_module_defaults() {
+        assert_eq!(resources::DEFAULT_CLEANUP_INTERVAL.as_secs(), 300);
+        assert!((resources::DEFAULT_MAX_MEMORY_USAGE - 0.8).abs() < f64::EPSILON);
+        assert!((resources::DEFAULT_MAX_CPU_USAGE - 0.7).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn services_module_shutdown_and_startup() {
+        assert_eq!(services::DEFAULT_SHUTDOWN_TIMEOUT.as_secs(), 30);
+        assert_eq!(services::DEFAULT_STARTUP_TIMEOUT.as_secs(), 60);
+    }
+
+    #[test]
+    fn default_subnet_and_external_address_are_non_empty() {
+        assert!(!super::default_subnet().is_empty());
+        assert!(!external_address().is_empty());
+    }
+
+    #[test]
+    fn directory_helpers_return_non_empty_strings() {
+        assert!(!get_log_dir().is_empty());
+        assert!(!get_cache_dir().is_empty());
+        assert!(!get_data_dir().is_empty());
+        assert!(!get_config_dir().is_empty());
+        assert!(!get_temp_dir().is_empty());
+    }
+
+    #[test]
+    fn duration_constants_are_sensible() {
+        assert_eq!(super::DEFAULT_CACHE_TTL.as_secs(), 300);
+        assert_eq!(super::DEFAULT_EVALUATION_TIMEOUT.as_secs(), 30);
+        assert_eq!(super::DEFAULT_METRICS_INTERVAL.as_secs(), 60);
+    }
+
+    #[test]
+    fn network_submodule_host_constants() {
+        assert_eq!(super::network::DEFAULT_HOST, "localhost");
+        assert_eq!(super::network::DEFAULT_HOST_V4, "127.0.0.1");
+        assert_eq!(super::network::PRODUCTION_BIND_ADDRESS, "0.0.0.0");
     }
 }

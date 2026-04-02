@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
+#![allow(async_fn_in_trait, reason = "native async trait methods; not used as trait objects")]
 
 //! # 🔧 Universal Adapter Traits
 //!
@@ -7,8 +8,6 @@
 //!
 //! This module provides universal adapter traits that use the canonical
 //! trait system from songbird-types.
-
-use async_trait::async_trait;
 
 // Re-export canonical traits from songbird-types
 pub use songbird_types::traits::canonical::{
@@ -22,7 +21,6 @@ pub use songbird_types::{SongbirdError, SongbirdResult};
 /// Universal adapter trait for protocol-agnostic communication
 ///
 /// This trait extends the canonical Provider trait with universal adapter functionality.
-#[async_trait]
 pub trait UniversalAdapter: Provider {
     /// Discover available services
     async fn discover_services(&self) -> SongbirdResult<Vec<crate::types::ServiceInfo>>;

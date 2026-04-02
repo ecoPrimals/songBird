@@ -76,6 +76,8 @@ impl SovereigntyFederationManager {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::super::types::{FederationCapabilityType, PerformanceCharacteristics};
     use super::*;
     use songbird_types::{SongbirdError, SongbirdResult};

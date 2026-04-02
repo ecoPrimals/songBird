@@ -17,7 +17,7 @@ mod checker;
 mod types;
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests;
 
 pub use checker::AvailabilityChecker;

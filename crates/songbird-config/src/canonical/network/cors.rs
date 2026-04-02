@@ -4,6 +4,10 @@
 //! CORS Configuration
 //!
 //! Cross-Origin Resource Sharing (CORS) configuration for web services.
+//!
+//! Default allowed origins come from `SONGBIRD_CORS_ORIGINS` (comma-separated); if unset,
+//! the fallback is `http://localhost:3000`. Reads use [`songbird_types::SafeEnv`] →
+//! [`songbird_process_env::var`].
 
 #![allow(missing_docs, reason = "CORS struct fields follow standard browser terminology")]
 

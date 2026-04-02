@@ -85,6 +85,14 @@ new_without_default = "allow"
 module_inception = "allow"
 unnecessary_literal_unwrap = "allow"
 
+# Evolution (SB-03 / BearDog): `task-checkpoint-gzip` gates flate2 so minimal builds can omit gzip.
+# `sled-storage` gates embedded sled; without it, consent/task persistence uses in-memory backends.
+# `sha2` + `hmac` back local JWT + checkpoint fallbacks when BearDog/crypto provider is unavailable.
+[features]
+default = ["task-checkpoint-gzip", "sled-storage"]
+task-checkpoint-gzip = ["dep:flate2"]
+sled-storage = ["dep:sled"]
+
 [dependencies]
 # All workspace crates (songbird-core consolidated into this crate)
 songbird-process-env.workspace = true
@@ -113,8 +121,8 @@ anyhow = "1.0"
 thiserror = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "v5", "v7"] }
 
-sled = "0.34"
-flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
+sled = { version = "0.34", optional = true }
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"], optional = true }
 sha2 = "0.10"
 base64 = "0.22"
 
@@ -127,7 +135,6 @@ socket2 = { workspace = true }
 serde_yaml = "0.9.34"
 hostname = "0.4"
 dirs = "5.0"
-md5 = "0.7"
 async-stream = "0.3"
 tokio-stream = "0.1"
 

@@ -12,6 +12,7 @@
 //! - `mesh.find_path` - Find best path to reach a peer
 //! - `mesh.announce` - Announce as relay to the mesh
 //! - `mesh.peers` - List known peers in the mesh
+//! - `mesh.topology` - Get full mesh network topology graph
 //! - `mesh.health_check` - Check health of peer connections
 //!
 //! ## TRUE PRIMAL Architecture
@@ -293,6 +294,69 @@ impl MeshHandler {
             "total": peers.len(),
             "online": peers.len(),
             "relays": relay_count
+        }))
+    }
+
+    /// Handle `mesh.topology` method — Return full mesh graph topology
+    ///
+    /// Returns nodes with their connections and path types, giving a
+    /// graph-level view of the mesh for monitoring and visualization.
+    pub async fn handle_topology(&self, _params: Value) -> Result<Value, String> {
+        let mesh = self
+            .mesh
+            .read()
+            .await
+            .as_ref()
+            .cloned()
+            .ok_or("Mesh not initialized (call mesh.init first)")?;
+
+        let node_id = self.node_id.read().await.clone();
+        let reachable = mesh.get_reachable_nodes().await;
+
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
+
+        nodes.push(json!({
+            "id": node_id,
+            "role": "self",
+            "reachable": true
+        }));
+
+        for peer_id in &reachable {
+            let paths = mesh.get_all_paths(peer_id).await;
+            let best = mesh.get_best_path(peer_id).await;
+
+            let is_relay =
+                paths.iter().any(|p| matches!(p.endpoint_type, EndpointType::FamilyRelay { .. }));
+
+            nodes.push(json!({
+                "id": peer_id,
+                "role": if is_relay { "relay" } else { "peer" },
+                "reachable": best.as_ref().is_some_and(|b| b.reachable),
+                "path_count": paths.len()
+            }));
+
+            for path in &paths {
+                let (path_type, address) = json::endpoint_to_strings(&path.endpoint_type);
+                edges.push(json!({
+                    "from": node_id,
+                    "to": peer_id,
+                    "path_type": path_type,
+                    "address": address,
+                    "latency_ms": path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
+                    "reachable": path.reachable,
+                    "is_best": best.as_ref().is_some_and(|b| b.endpoint_type == path.endpoint_type)
+                }));
+            }
+        }
+
+        Ok(json!({
+            "nodes": nodes,
+            "edges": edges,
+            "node_count": nodes.len(),
+            "edge_count": edges.len(),
+            "self_node_id": node_id,
+            "uptime_seconds": self.start_time.elapsed().as_secs()
         }))
     }
 

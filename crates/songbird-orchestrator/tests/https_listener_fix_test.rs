@@ -6,6 +6,8 @@
 // This test verifies that the HTTPS server correctly uses the pre-bound
 // listener instead of trying to bind again, which was causing startup hangs.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 #[cfg(test)]
 mod https_listener_tests {
 

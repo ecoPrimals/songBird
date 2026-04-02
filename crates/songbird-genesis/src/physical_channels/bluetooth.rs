@@ -9,7 +9,6 @@
 
 use crate::error::{GenesisError, Result};
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
-use async_trait::async_trait;
 
 use super::PhysicalChannelProvider;
 
@@ -31,7 +30,6 @@ impl Default for BluetoothChannel {
     }
 }
 
-#[async_trait]
 impl PhysicalChannelProvider for BluetoothChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         Err(GenesisError::BluetoothError(

@@ -10,6 +10,9 @@
 pub mod generator;
 pub mod test_utils; // Pure Rust certificate generation (hybrid standalone + BearDog)
 
+#[cfg(test)]
+mod test_cert_gen;
+
 use crate::crypto::BeardogCryptoClient;
 use crate::error::{Result, TlsError};
 use crate::messages::Certificate;
@@ -212,11 +215,11 @@ impl Default for CertificateValidator {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
 mod tests {
+    use super::test_cert_gen::TestEku;
+    use super::test_cert_gen::generate_test_ed25519_cert;
     use super::*;
     use crate::messages::certificate::CertificateEntry;
-    use rcgen::{CertificateParams, ExtendedKeyUsagePurpose, KeyPair, date_time_ymd};
 
     #[test]
     fn test_new_validator() {
@@ -325,19 +328,19 @@ mod tests {
         assert!(validator.validate_purpose(&cert_data).is_ok());
     }
 
-    fn rcgen_server_cert_der() -> Vec<u8> {
-        let mut params =
-            CertificateParams::new(vec!["tls.test.local".to_string()]).expect("params");
-        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
-        let key = KeyPair::generate().unwrap();
-        let cert = params.self_signed(&key).unwrap();
-        cert.der().as_ref().to_vec()
+    fn tls_test_server_cert_der() -> Vec<u8> {
+        generate_test_ed25519_cert(
+            "tls.test.local",
+            "20240101000000Z",
+            "20990101000000Z",
+            TestEku::ServerAuth,
+        )
     }
 
     #[test]
     fn test_validate_certificate_chain_with_x509_der_leaf() {
         let validator = CertificateValidator::new();
-        let der = rcgen_server_cert_der();
+        let der = tls_test_server_cert_der();
         let entry = CertificateEntry::new(der);
         let cert = Certificate::new(vec![entry]);
 
@@ -347,38 +350,36 @@ mod tests {
 
     #[test]
     fn test_check_validity_period_rejects_expired_x509() {
-        let mut params =
-            CertificateParams::new(vec!["expired.test.local".to_string()]).expect("params");
-        params.not_before = date_time_ymd(2001, 1, 1);
-        params.not_after = date_time_ymd(2002, 1, 1);
-        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
-        let key = KeyPair::generate().unwrap();
-        let cert = params.self_signed(&key).unwrap();
-        let der = cert.der().as_ref();
+        let der = generate_test_ed25519_cert(
+            "expired.test.local",
+            "20010101000000Z",
+            "20020101000000Z",
+            TestEku::ServerAuth,
+        );
 
         let validator = CertificateValidator::new();
-        assert!(validator.check_validity_period(der).is_err());
+        assert!(validator.check_validity_period(&der).is_err());
     }
 
     #[test]
     fn test_validate_purpose_rejects_client_auth_only_eku() {
-        let mut params =
-            CertificateParams::new(vec!["client.only.test".to_string()]).expect("params");
-        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ClientAuth];
-        let key = KeyPair::generate().unwrap();
-        let cert = params.self_signed(&key).unwrap();
-        let der = cert.der().as_ref();
+        let der = generate_test_ed25519_cert(
+            "client.only.test",
+            "20240101000000Z",
+            "20990101000000Z",
+            TestEku::ClientAuthOnly,
+        );
 
         let validator = CertificateValidator::new();
-        assert!(validator.validate_purpose(der).is_err());
+        assert!(validator.validate_purpose(&der).is_err());
     }
 
     #[test]
     fn test_extract_public_key_from_x509_der() {
-        let der = rcgen_server_cert_der();
+        let der = tls_test_server_cert_der();
         let validator = CertificateValidator::new();
         let pk = validator.extract_public_key(&der).unwrap();
-        assert!(pk.len() > 32, "RSA SPKI payload is larger than Ed25519 placeholder");
+        assert_eq!(pk.len(), 32, "Ed25519 raw public key in SPKI");
     }
 
     #[test]

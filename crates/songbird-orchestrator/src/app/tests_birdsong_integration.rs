@@ -11,6 +11,7 @@
 //! 5. Preserves privacy across families
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use serde_json::json;
     use songbird_discovery::IdentityAttestation;

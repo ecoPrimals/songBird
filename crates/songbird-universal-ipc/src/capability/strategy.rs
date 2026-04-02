@@ -229,6 +229,8 @@ fn extract_provider_id(socket_path: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -262,5 +264,88 @@ mod tests {
         // This test depends on system state, so we just verify it doesn't panic
         let result = strategy.discover("crypto").await;
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn extract_provider_id_empty_path_uses_unknown() {
+        assert_eq!(extract_provider_id(""), "unknown");
+    }
+
+    #[test]
+    fn extract_provider_id_hidden_file() {
+        assert_eq!(extract_provider_id("/tmp/.hidden.sock"), ".hidden");
+    }
+
+    #[tokio::test]
+    async fn environment_strategy_prefers_provider_socket_over_provider() {
+        let providers = EnvironmentStrategy::discover_with("ab", |k| match k {
+            "AB_PROVIDER_SOCKET" => Ok("/tmp/first.sock".to_string()),
+            "AB_PROVIDER" => Ok("/tmp/second.sock".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .unwrap();
+        assert_eq!(providers.len(), 1);
+        assert!(providers[0].metadata.discovery_method.contains("PROVIDER_SOCKET"));
+    }
+
+    #[tokio::test]
+    async fn environment_strategy_falls_back_to_capability_provider() {
+        let providers = EnvironmentStrategy::discover_with("xy", |k| match k {
+            "XY_PROVIDER_SOCKET" => Err(std::env::VarError::NotPresent),
+            "XY_PROVIDER" => Ok("/run/xy.sock".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .unwrap();
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0].id, "xy");
+    }
+
+    #[tokio::test]
+    async fn environment_strategy_third_tier_generic_socket() {
+        let providers = EnvironmentStrategy::discover_with("zz", |k| match k {
+            "ZZ_PROVIDER_SOCKET" | "ZZ_PROVIDER" => Err(std::env::VarError::NotPresent),
+            "ZZ_SOCKET" => Ok("/var/zz.sock".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .unwrap();
+        assert_eq!(providers.len(), 1);
+        assert!(providers[0].metadata.discovery_method.contains("ZZ_SOCKET"));
+    }
+
+    #[tokio::test]
+    async fn environment_strategy_empty_when_no_vars() {
+        let providers =
+            EnvironmentStrategy::discover_with("none", |_| Err(std::env::VarError::NotPresent))
+                .await
+                .unwrap();
+        assert!(providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn filesystem_strategy_empty_paths_returns_empty() {
+        let strategy = FilesystemStrategy::with_paths(vec![]);
+        let providers = strategy.discover("anything").await.unwrap();
+        assert!(providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn discovery_strategy_environment_name() {
+        let s = EnvironmentStrategy;
+        assert_eq!(s.name(), "environment");
+    }
+
+    #[tokio::test]
+    async fn discovery_strategy_filesystem_name() {
+        let s = FilesystemStrategy::with_paths(vec![]);
+        assert_eq!(s.name(), "filesystem");
+    }
+
+    #[test]
+    fn filesystem_strategy_new_default_constructible() {
+        let _ = FilesystemStrategy::new();
+        let _ = FilesystemStrategy::default();
     }
 }

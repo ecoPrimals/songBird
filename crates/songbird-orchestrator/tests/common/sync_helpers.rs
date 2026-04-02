@@ -88,8 +88,10 @@ where
         if start.elapsed() > timeout {
             return false;
         }
-        // Cooperative yielding - allows other tasks to run
-        tokio::task::yield_now().await;
+        // 1ms sleep advances virtual time under `start_paused` and yields to
+        // other tasks.  `yield_now()` would spin without advancing the clock,
+        // causing infinite loops when the runtime is paused.
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }
 
@@ -118,7 +120,7 @@ where
         if start.elapsed() > timeout {
             return None;
         }
-        tokio::task::yield_now().await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }
 
@@ -150,7 +152,7 @@ where
             return Err(PollError::Timeout(last_error));
         }
 
-        tokio::task::yield_now().await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
 
         match check() {
             Ok(result) => return Ok(result),
@@ -204,7 +206,7 @@ where
         if start.elapsed() > timeout {
             return false;
         }
-        tokio::task::yield_now().await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }
 
@@ -232,14 +234,14 @@ mod tests {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_poll_until_immediate() {
         // Condition already true
         let result = poll_until(|| true, Duration::from_secs(1)).await;
         assert!(result);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_poll_until_eventual() {
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
@@ -257,21 +259,20 @@ mod tests {
         assert!(result);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_poll_until_timeout() {
-        // Condition never true
         let result = poll_until(|| false, Duration::from_millis(50)).await;
         assert!(!result);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_poll_until_some_immediate() {
         let result = poll_until_some(|| Some(42), Duration::from_secs(1)).await;
 
         assert_eq!(result, Some(42));
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_poll_until_some_eventual() {
         use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -302,7 +303,7 @@ mod tests {
         assert_eq!(result, Some(42));
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_poll_until_count() {
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
@@ -322,7 +323,7 @@ mod tests {
         assert!(result);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_wait_for_condition_async() {
         let ready = Arc::new(tokio::sync::RwLock::new(false));
         let ready_clone = ready.clone();

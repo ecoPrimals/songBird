@@ -69,7 +69,9 @@ impl UniversalPrimalDiscovery {
 
         // Network scanning discovery (mDNS, broadcast)
         if self.config.mechanisms.enable_network_scanning {
-            match backends::network::discover_from_network().await {
+            // mDNS previously used a fixed 5s listen; honor shorter test timeouts but cap at 5s.
+            let mdns_listen = self.config.timeout.min(tokio::time::Duration::from_secs(5));
+            match backends::network::discover_from_network_with_timeout(mdns_listen).await {
                 Ok(mut network_primals) => {
                     info!("✅ Discovered {} primals from network scan", network_primals.len());
                     all_discovered.append(&mut network_primals);
@@ -176,7 +178,7 @@ mod tests {
                 enable_network_scanning: true,
                 enable_container_discovery: false,
             },
-            timeout: tokio::time::Duration::from_secs(5),
+            timeout: tokio::time::Duration::from_millis(1),
         };
         let mut engine = UniversalPrimalDiscovery::new(config);
         let result = engine.discover_all_primals().await;
@@ -223,7 +225,8 @@ mod tests {
                 enable_network_scanning: true,
                 enable_container_discovery: true,
             },
-            timeout: tokio::time::Duration::from_secs(5),
+            // Short scan window so network discovery does not wait on the default 5s mDNS/DNS-SD path.
+            timeout: tokio::time::Duration::from_millis(1),
         };
         let mut engine = UniversalPrimalDiscovery::new(config);
         let result = engine.discover_all_primals().await;

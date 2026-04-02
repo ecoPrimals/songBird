@@ -23,6 +23,8 @@
     clippy::match_same_arms,
     clippy::future_not_send,
     clippy::case_sensitive_file_extension_comparisons,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 

@@ -24,6 +24,8 @@
     clippy::struct_excessive_bools,
     clippy::similar_names,
     clippy::significant_drop_tightening,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 

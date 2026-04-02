@@ -175,6 +175,7 @@ pub enum MeshMethod {
     FindPath,
     Announce,
     Peers,
+    Topology,
     HealthCheck,
     AutoDiscover,
 }
@@ -425,6 +426,7 @@ impl JsonRpcMethod {
             Self::Mesh(MeshMethod::FindPath) => "mesh.find_path",
             Self::Mesh(MeshMethod::Announce) => "mesh.announce",
             Self::Mesh(MeshMethod::Peers) => "mesh.peers",
+            Self::Mesh(MeshMethod::Topology) => "mesh.topology",
             Self::Mesh(MeshMethod::HealthCheck) => "mesh.health_check",
             Self::Mesh(MeshMethod::AutoDiscover) => "mesh.auto_discover",
             Self::Punch(PunchMethod::Request) => "punch.request",
@@ -559,6 +561,7 @@ impl JsonRpcMethod {
             "mesh.find_path" => Self::Mesh(MeshMethod::FindPath),
             "mesh.announce" => Self::Mesh(MeshMethod::Announce),
             "mesh.peers" => Self::Mesh(MeshMethod::Peers),
+            "mesh.topology" => Self::Mesh(MeshMethod::Topology),
             "mesh.health_check" => Self::Mesh(MeshMethod::HealthCheck),
             "mesh.auto_discover" => Self::Mesh(MeshMethod::AutoDiscover),
             "punch.request" => Self::Punch(PunchMethod::Request),

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
+#![allow(async_fn_in_trait, reason = "native async trait methods; not used as trait objects")]
 
 //! Physical channel implementations for genesis
 
 use crate::error::Result;
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
-use async_trait::async_trait;
 
 #[cfg(feature = "solokey")]
 pub mod solokey;
@@ -25,7 +25,6 @@ pub mod mock;
 pub use mock::MockPhysicalChannel;
 
 /// Physical channel trait for genesis ceremonies
-#[async_trait]
 pub trait PhysicalChannelProvider: Send + Sync {
     /// Verify physical proximity
     async fn verify_proximity(&self) -> Result<ProximityProof>;
@@ -64,7 +63,6 @@ pub enum PhysicalChannel {
     Mock(MockPhysicalChannel),
 }
 
-#[async_trait]
 impl PhysicalChannelProvider for PhysicalChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         match self {

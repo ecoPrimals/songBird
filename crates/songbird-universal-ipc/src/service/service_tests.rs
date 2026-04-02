@@ -5,8 +5,12 @@
 #![expect(clippy::expect_used, reason = "test assertions")]
 
 use super::*;
+use crate::registry::ServiceRegistry;
+use crate::tower_atomic::JsonRpcHandler;
 use serde_json::json;
 use songbird_network_federation::state::{FederationState, NodeRegistration, NodeStatus};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[tokio::test]
 async fn test_ipc_service_register() {

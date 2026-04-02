@@ -129,6 +129,7 @@ pub async fn get_beardog_crypto_socket_for_purpose(purpose: &str) -> Result<Stri
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

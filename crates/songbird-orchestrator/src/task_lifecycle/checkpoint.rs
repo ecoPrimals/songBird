@@ -11,7 +11,9 @@
 //! No unsafe code, modern async patterns.
 
 use super::TaskId;
-use anyhow::{Context, Result};
+#[cfg(feature = "task-checkpoint-gzip")]
+use anyhow::Context;
+use anyhow::Result;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -88,22 +90,31 @@ impl Checkpoint {
     ///
     /// Returns an error if the operation fails.
     pub fn new_compressed(task_id: TaskId, progress: f32, state: Vec<u8>) -> Result<Self> {
-        let compressed = Self::compress_state(&state)?;
-        let size_bytes = compressed.len() as u64;
-        let checksum = Self::calculate_checksum_local(&compressed);
+        #[cfg(not(feature = "task-checkpoint-gzip"))]
+        {
+            anyhow::bail!(
+                "checkpoint gzip compression requires the `task-checkpoint-gzip` crate feature"
+            );
+        }
+        #[cfg(feature = "task-checkpoint-gzip")]
+        {
+            let compressed = Self::compress_state(&state)?;
+            let size_bytes = compressed.len() as u64;
+            let checksum = Self::calculate_checksum_local(&compressed);
 
-        Ok(Self {
-            id: Arc::from(uuid::Uuid::now_v7().to_string()),
-            task_id,
-            created_at: Utc::now(),
-            progress,
-            state: compressed,
-            metadata: CheckpointMetadata {
-                size_bytes,
-                compression: Some(CompressionAlgorithm::Gzip),
-                checksum: Arc::from(checksum),
-            },
-        })
+            Ok(Self {
+                id: Arc::from(uuid::Uuid::now_v7().to_string()),
+                task_id,
+                created_at: Utc::now(),
+                progress,
+                state: compressed,
+                metadata: CheckpointMetadata {
+                    size_bytes,
+                    compression: Some(CompressionAlgorithm::Gzip),
+                    checksum: Arc::from(checksum),
+                },
+            })
+        }
     }
 
     /// Verify checkpoint integrity
@@ -138,6 +149,7 @@ impl Checkpoint {
     }
 
     /// Compress state using gzip (pure Rust via flate2)
+    #[cfg(feature = "task-checkpoint-gzip")]
     fn compress_state(data: &[u8]) -> Result<Vec<u8>> {
         use flate2::Compression;
         use flate2::write::GzEncoder;
@@ -149,6 +161,7 @@ impl Checkpoint {
     }
 
     /// Decompress state using gzip (pure Rust via flate2)
+    #[cfg(feature = "task-checkpoint-gzip")]
     fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>> {
         use flate2::read::GzDecoder;
         use std::io::Read;
@@ -161,7 +174,13 @@ impl Checkpoint {
         Ok(result)
     }
 
+    #[cfg(not(feature = "task-checkpoint-gzip"))]
+    fn decompress_gzip(_data: &[u8]) -> Result<Vec<u8>> {
+        anyhow::bail!("reading gzip checkpoints requires the `task-checkpoint-gzip` crate feature");
+    }
+
     /// Decompress state using zlib (pure Rust via flate2)
+    #[cfg(feature = "task-checkpoint-gzip")]
     fn decompress_zlib(data: &[u8]) -> Result<Vec<u8>> {
         use flate2::read::ZlibDecoder;
         use std::io::Read;
@@ -172,6 +191,11 @@ impl Checkpoint {
             .read_to_end(&mut result)
             .context("Failed to decompress checkpoint state with zlib")?;
         Ok(result)
+    }
+
+    #[cfg(not(feature = "task-checkpoint-gzip"))]
+    fn decompress_zlib(_data: &[u8]) -> Result<Vec<u8>> {
+        anyhow::bail!("reading zlib checkpoints requires the `task-checkpoint-gzip` crate feature");
     }
 }
 
@@ -239,6 +263,7 @@ impl Default for CheckpointConfig {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -273,6 +298,7 @@ mod tests {
         assert!(corrupted.verify().is_err());
     }
 
+    #[cfg(feature = "task-checkpoint-gzip")]
     #[test]
     fn test_checkpoint_compression() {
         let task_id = TaskId::new();

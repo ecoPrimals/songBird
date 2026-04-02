@@ -124,7 +124,7 @@ async fn test_revoke_trust() {
     assert!(manager.get_trust_level(&session_id).await.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_cleanup_expired() {
     let mut timeouts = TrustTimeouts::default();
     timeouts.anonymous = 0; // Expire immediately
@@ -246,7 +246,7 @@ async fn verify_hardware_fails_without_security_client() {
     assert!(msg.contains("security") || msg.contains("Session"), "unexpected message: {msg}");
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn get_trust_level_reports_anonymous_when_expired() {
     let mut timeouts = TrustTimeouts::default();
     timeouts.anonymous = 0;
@@ -258,7 +258,7 @@ async fn get_trust_level_reports_anonymous_when_expired() {
     assert_eq!(level, TrustLevel::Anonymous);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn check_permission_false_when_session_expired() {
     let mut timeouts = TrustTimeouts::default();
     timeouts.anonymous = 0;

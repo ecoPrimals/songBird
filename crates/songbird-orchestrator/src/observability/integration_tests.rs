@@ -10,6 +10,7 @@
 //! - Event history
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use crate::observability::{EventFilter, EventStreamManager, TaskEventType};
     use crate::task_lifecycle::{TaskId, UserId};
@@ -116,7 +117,7 @@ mod tests {
         assert_eq!(received.task_id, alice_task);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_event_history() {
         let manager = Arc::new(EventStreamManager::new());
 

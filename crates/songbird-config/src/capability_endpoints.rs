@@ -555,9 +555,10 @@ pub async fn get_multiple_endpoints(capabilities: &[&str]) -> SongbirdResult<Vec
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     // ✅ CONCURRENT-SAFE! Using ScopedEnv for proper isolation
     use songbird_test_utils::ScopedEnv;
 
@@ -685,5 +686,72 @@ mod tests {
         assert_eq!(endpoint1, endpoint3);
 
         // Cleanup happens automatically when _env drops
+    }
+
+    #[tokio::test]
+    async fn static_override_returns_endpoint_without_environment() {
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Compute, "http://compute-override:9000".to_string());
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
+        let ep = resolver.get_endpoint(CapabilityType::Compute).await.expect("static override");
+        assert_eq!(ep, "http://compute-override:9000");
+        let cached_map = resolver.get_all_cached().await;
+        let cached = cached_map.get(&CapabilityType::Compute).expect("cached");
+        assert!(matches!(cached.discovery_method, DiscoveryMethod::ConfigFile));
+    }
+
+    #[test]
+    fn capability_endpoint_serde_roundtrip() {
+        let ce = CapabilityEndpoint {
+            capability: CapabilityType::Observability,
+            endpoint: "http://obs:4317".into(),
+            provider_id: Some("prov".into()),
+            discovery_method: DiscoveryMethod::ServiceRegistry,
+            confidence: 0.85,
+            discovered_at: std::time::SystemTime::UNIX_EPOCH,
+        };
+        let json = serde_json::to_string(&ce).expect("serialize");
+        let back: CapabilityEndpoint = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.capability, ce.capability);
+        assert_eq!(back.endpoint, ce.endpoint);
+        assert_eq!(back.confidence, ce.confidence);
+        assert_eq!(back.provider_id, ce.provider_id);
+    }
+
+    #[test]
+    fn capability_type_custom_stores_normalized_name() {
+        // `from_str` matches on lowercase; unknown labels are stored lowercased.
+        let c: CapabilityType = "MyWidget".parse().expect("parse");
+        match c {
+            CapabilityType::Custom(s) => assert_eq!(s, "mywidget"),
+            _ => panic!("expected Custom"),
+        }
+        assert_eq!(CapabilityType::Custom("foo".into()).env_var_name(), "CAPABILITY_FOO_ENDPOINT");
+    }
+
+    #[test]
+    fn capability_type_roundtrip_as_str_known_variants() {
+        for (ct, expected) in [
+            (CapabilityType::Security, "security"),
+            (CapabilityType::Storage, "storage"),
+            (CapabilityType::Compute, "compute"),
+            (CapabilityType::Ai, "ai"),
+            (CapabilityType::Orchestration, "orchestration"),
+            (CapabilityType::Observability, "observability"),
+            (CapabilityType::Networking, "networking"),
+        ] {
+            assert_eq!(ct.as_str(), expected);
+            let parsed: CapabilityType = expected.parse().expect("parse");
+            assert_eq!(parsed, ct);
+        }
+    }
+
+    #[tokio::test]
+    async fn resolver_static_override_for_storage_endpoint() {
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Storage, "unix:///tmp/storage.sock".to_string());
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
+        let ep = resolver.get_endpoint(CapabilityType::Storage).await.expect("storage");
+        assert_eq!(ep, "unix:///tmp/storage.sock");
     }
 }

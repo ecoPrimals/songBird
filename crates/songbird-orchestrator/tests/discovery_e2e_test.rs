@@ -22,6 +22,8 @@
     clippy::struct_field_names,
     clippy::match_same_arms,
     clippy::future_not_send,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
@@ -150,7 +152,7 @@ async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
             start.elapsed() <= Duration::from_secs(5),
             "Timeout: No peers discovered within 5 seconds"
         );
-        tokio::task::yield_now().await; // Cooperative yielding
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
     };
 
     tracing::info!("📊 Discovered {} peers", peers.len());

@@ -230,11 +230,8 @@ async fn test_collect_metrics_with_timeout() {
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body_from_request(|_| {
-            // Note: mockito's with_body_from_request runs in sync context
-            // Using thread::sleep here is necessary for mockito compatibility
-            // The key improvement is the reduced timeout (100ms vs 1000ms)
-            // This makes the test 10x faster while still testing timeout behavior
-            std::thread::sleep(Duration::from_millis(150)); // Just over timeout
+            // Deliberately slow body (must exceed adapter timeout below)
+            std::thread::sleep(Duration::from_millis(250));
             r#"{"active_models":0,"total_requests":0,"avg_latency_ms":0.0,"accuracy_score":1.0,"gpu_utilization_percent":0.0,"timestamp":"2025-11-18T12:00:00Z"}"#.into()
         })
         .create_async()
@@ -243,7 +240,7 @@ async fn test_collect_metrics_with_timeout() {
     let adapter = AIAdapter::new(server.url())
         .await
         .expect("test precondition")
-        .with_timeout(Duration::from_millis(100)); // Short timeout for fast test
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");

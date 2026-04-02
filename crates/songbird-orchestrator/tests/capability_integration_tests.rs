@@ -276,8 +276,7 @@ where
         if condition(&providers) {
             return true;
         }
-        // ✅ Brief yield for cooperative multitasking (event-driven!)
-        tokio::task::yield_now().await;
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
     }
     false
 }

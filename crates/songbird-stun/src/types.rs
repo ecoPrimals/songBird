@@ -138,7 +138,7 @@ impl std::fmt::Display for NatType {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use serde_json::{from_value, to_value};
@@ -232,5 +232,56 @@ mod tests {
         let v = to_value(&unk).unwrap();
         let back: PortPattern = from_value(v).unwrap();
         assert_eq!(unk, back);
+    }
+
+    #[test]
+    fn port_pattern_sequential_boundary_confidence_half() {
+        let p = PortPattern::Sequential {
+            step: 1,
+            last_port: 1,
+            predicted_next: 2,
+            confidence: 0.5,
+        };
+        assert!(!p.supports_coordinated_punch());
+    }
+
+    #[test]
+    fn port_pattern_sequential_just_above_threshold() {
+        let p = PortPattern::Sequential {
+            step: 1,
+            last_port: 1,
+            predicted_next: 2,
+            confidence: 0.51,
+        };
+        assert!(p.supports_coordinated_punch());
+    }
+
+    #[test]
+    fn public_endpoint_debug_and_clone() {
+        let ep = PublicEndpoint {
+            address: SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
+            nat_type: NatType::Symmetric,
+        };
+        let c = ep.clone();
+        assert_eq!(ep, c);
+        assert!(!format!("{ep:?}").is_empty());
+    }
+
+    #[test]
+    fn nat_type_copy_roundtrip() {
+        let n = NatType::PortRestrictedCone;
+        let n2 = n;
+        assert_eq!(n, n2);
+    }
+
+    #[test]
+    fn port_pattern_predict_next_sequential_only() {
+        let p = PortPattern::Sequential {
+            step: 3,
+            last_port: 10,
+            predicted_next: 13,
+            confidence: 1.0,
+        };
+        assert_eq!(p.predict_next(), Some(13));
     }
 }

@@ -23,6 +23,7 @@ pub mod beardog_jwt_client; // Security provider JWT delegation (Pure Rust!)
 pub mod capability_discovery; // Capability-based security discovery (TRUE PRIMAL!)
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests; // Integration tests for JWT delegation
 
 pub use beardog_jwt_client::{

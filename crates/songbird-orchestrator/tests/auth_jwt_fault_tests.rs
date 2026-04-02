@@ -5,6 +5,8 @@
 //!
 //! Tests JWT provisioning under fault conditions.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::auth::provision_jwt_secret;
 use std::time::Duration;
 
@@ -239,7 +241,7 @@ async fn test_fault_timeout_recovery() {
     println!("✅ FAULT: Timeout recovery test passed!");
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 // ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_resource_exhaustion() {
     // Test under resource exhaustion conditions

@@ -383,6 +383,8 @@ pub fn discover_neural_api_socket() -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use std::collections::HashMap;
 
@@ -466,5 +468,60 @@ mod tests {
             IpcEndpoint::UnixSocket(path) => assert_eq!(path, "/tmp/fallback.sock"),
             IpcEndpoint::TcpLocal(_) => panic!("Should not discover TCP without discovery file"),
         }
+    }
+
+    #[test]
+    fn discover_ipc_endpoint_tcp_from_tmp_discovery_file() {
+        let primal = "songbird_sockdisc_unit";
+        let path = PathBuf::from("/tmp").join(format!("{primal}-ipc-port"));
+        std::fs::write(&path, b"tcp:127.0.0.1:12345").unwrap();
+        let env = mock_env(HashMap::new());
+        let endpoint = discover_ipc_endpoint_with("NO_SUCH_ENV", primal, "/tmp/fallback.sock", env);
+        let _ = std::fs::remove_file(&path);
+        match endpoint {
+            IpcEndpoint::TcpLocal(addr) => {
+                assert_eq!(addr.ip().to_string(), "127.0.0.1");
+                assert_eq!(addr.port(), 12345);
+            }
+            IpcEndpoint::UnixSocket(p) => panic!("expected tcp discovery, got unix {p}"),
+        }
+    }
+
+    #[test]
+    fn discover_ipc_endpoint_invalid_tcp_file_falls_back_to_legacy() {
+        let primal = "songbird_sockdisc_badfmt";
+        let path = PathBuf::from("/tmp").join(format!("{primal}-ipc-port"));
+        std::fs::write(&path, b"not-tcp-format").unwrap();
+        let env = mock_env(HashMap::new());
+        let endpoint = discover_ipc_endpoint_with("NO_SUCH_ENV", primal, "/tmp/fallback.sock", env);
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
+    }
+
+    #[test]
+    fn ipc_endpoint_unix_display_escapes_nothing_special() {
+        let ep = IpcEndpoint::UnixSocket("/path/with space.sock".to_string());
+        assert!(ep.display().contains("unix://"));
+    }
+
+    #[test]
+    fn tcp_discovery_candidates_order_includes_tmp_last() {
+        let c = get_tcp_discovery_file_candidates("z");
+        assert!(c.last().map_or(false, |p| p.ends_with("z-ipc-port")));
+    }
+
+    #[test]
+    fn xdg_runtime_set_prefers_unix_when_socket_exists() {
+        let dir = tempfile::tempdir().unwrap();
+        let biome = dir.path().join("biomeos");
+        std::fs::create_dir_all(&biome).unwrap();
+        let sock = biome.join("p.sock");
+        std::fs::write(&sock, b"").unwrap();
+        let xdg = dir.path().to_string_lossy().to_string();
+        let sock_path = sock.to_string_lossy().to_string();
+        let env = mock_env(HashMap::from([("XDG_RUNTIME_DIR", xdg.as_str()), ("FAMILY_ID", "")]));
+        // No env var for "UNUSED_SOCKET" — XDG path with existing `p.sock` wins.
+        let endpoint = discover_ipc_endpoint_with("UNUSED_SOCKET", "p", "/tmp/legacy.sock", env);
+        assert_eq!(endpoint, IpcEndpoint::UnixSocket(sock_path));
     }
 }

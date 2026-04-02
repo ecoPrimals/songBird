@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::unwrap_used, reason = "test assertions")]
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -59,6 +59,8 @@ async fn test_circuit_breaker_open_rejects_immediately() {
 
 #[tokio::test]
 async fn test_circuit_breaker_half_open_recovery() {
+    // Open→half-open uses `std::time::Instant::elapsed()` in `CircuitBreaker`; do not use
+    // `start_paused` here — `tokio::time::sleep` must advance wall time for this wait.
     let breaker = CircuitBreaker::builder()
         .failure_threshold(1)
         .timeout(Duration::from_millis(100))
@@ -69,7 +71,6 @@ async fn test_circuit_breaker_half_open_recovery() {
     // Fail to open circuit
     let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("test")) }).await;
 
-    // std::time::Instant is not driven by tokio's paused clock; wait for real elapsed time
     tokio::time::sleep(Duration::from_millis(150)).await;
 
     // Succeed twice to close circuit
@@ -173,10 +174,8 @@ async fn failure_in_half_open_reopens_immediately() {
     assert!(matches!(breaker.state().await, CircuitState::Open { .. }));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn operation_timeout_returns_timeout_error() {
-    tokio::time::pause();
-
     let config = CircuitBreakerConfig {
         failure_threshold: 10,
         timeout: Duration::from_secs(60),

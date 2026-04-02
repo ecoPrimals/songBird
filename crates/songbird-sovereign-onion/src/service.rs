@@ -5,16 +5,21 @@
 //!
 //! ✅ **TRUE PRIMAL**: Production uses `BearDog` delegation for all crypto.
 
+#[cfg(feature = "sled-storage")]
+use crate::OnionStorage;
 use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
 use crate::keys::{EphemeralKeypair, OnionIdentity};
 use crate::protocol::{DataMessage, KeyExchangeMessage, MessageType};
-use crate::storage::OnionStorage;
+#[cfg(not(feature = "sled-storage"))]
+use crate::storage::InMemoryOnionStorage;
+use crate::storage::OnionStorageBackend;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, error, info};
 
+#[cfg(any(test, feature = "sled-storage"))]
 fn onion_data_dir() -> String {
     songbird_process_env::var("SONGBIRD_ONION_DATA_DIR").unwrap_or_else(|_| {
         dirs::data_local_dir().map_or_else(
@@ -29,7 +34,7 @@ fn onion_data_dir() -> String {
 /// **Status**: Phase 3 - Complete implementation with `BearDog` delegation
 pub struct OnionService {
     identity: OnionIdentity,
-    storage: OnionStorage,
+    storage: Arc<dyn OnionStorageBackend>,
     port: u16,
     beardog: Arc<BeardogCryptoClient>,
 }
@@ -43,7 +48,10 @@ impl OnionService {
     ///
     /// Returns an error if storage open, identity load/generate, or persistence fails.
     pub async fn new_via_beardog(port: u16, beardog: BeardogCryptoClient) -> Result<Self> {
-        let storage = OnionStorage::open(onion_data_dir())?;
+        #[cfg(feature = "sled-storage")]
+        let storage: Arc<dyn OnionStorageBackend> = Arc::new(OnionStorage::open(onion_data_dir())?);
+        #[cfg(not(feature = "sled-storage"))]
+        let storage: Arc<dyn OnionStorageBackend> = Arc::new(InMemoryOnionStorage::new());
 
         // Load or generate identity via BearDog
         let identity = if let Some(stored) = storage.load_identity()? {
@@ -79,8 +87,18 @@ impl OnionService {
     /// Returns an error if storage open or identity load/generate fails.
     #[cfg(feature = "standalone")]
     pub fn new_standalone(port: u16) -> Result<Self> {
-        let storage = OnionStorage::open(onion_data_dir())?;
-        let identity = storage.load_or_generate_identity()?;
+        #[cfg(feature = "sled-storage")]
+        let (storage, identity): (Arc<dyn OnionStorageBackend>, OnionIdentity) = {
+            let inner = OnionStorage::open(onion_data_dir())?;
+            let identity = inner.load_or_generate_identity()?;
+            (Arc::new(inner), identity)
+        };
+        #[cfg(not(feature = "sled-storage"))]
+        let (storage, identity): (Arc<dyn OnionStorageBackend>, OnionIdentity) = {
+            let inner = InMemoryOnionStorage::new();
+            let identity = inner.load_or_generate_identity()?;
+            (Arc::new(inner), identity)
+        };
 
         info!(
             onion_address = %identity.onion_address(),

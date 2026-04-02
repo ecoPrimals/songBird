@@ -22,6 +22,8 @@
     clippy::struct_field_names,
     clippy::match_same_arms,
     clippy::future_not_send,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
@@ -240,7 +242,7 @@ async fn test_e2e_discovery_broadcast_actual_port() {
     assert!(connect_url.contains(":8082"), "Connect URL should use actual port");
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_e2e_startup_order_timing() {
     // Test that HTTP server starts BEFORE discovery
 

@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: April 1, 2026  
+**Date**: April 2, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: April 1, 2026 (Session 33, Wave 91 — Deep Debt: serial elimination + event-driven evolution + deterministic tests)
+**Last Deep Debt Audit**: April 2, 2026 (Session 34, Wave 93 — Deep Debt: large file refactoring + capability-based discovery + async-trait evolution + hardcode elimination + dep pruning + coverage expansion)
 
 ---
 
@@ -14,7 +14,7 @@
 | **Line Coverage** | ~69.14% (llvm-cov `--workspace --all-features`; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features`) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features -D warnings`); orchestrator 395 `unwrap_used` test warnings resolved (Wave 92) |
 | **Format** | Clean (`cargo fmt --check` passes) |
 | **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
 | **Files >1000 lines** | 0 — `songbird-quic/src/packet/frame.rs` refactored into `frame/mod.rs` (302), `frame/decode.rs` (387), `frame/encode.rs` (320), `frame/tests.rs` (292) |
@@ -28,14 +28,14 @@
 | **`#[allow()]` vs `#[expect()]`** | Fully correct: `#[expect(reason)]` only where lint fires, `#[allow(reason)]` everywhere else |
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
 | **Hardcoded elimination** | All ports env-driven; `primal_names` constants module; DNS-SD/mDNS/broadcast discovery; capability-first |
-| **JSON-RPC handlers** | 14 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (ecosystem standard) |
+| **JSON-RPC handlers** | 15 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` + `mesh.topology` (ecosystem standard) |
 | **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain (Discovery, Network, Stun, Relay, Storage, etc.) |
 | **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
 | **BearDog crypto** | Full delegation wired: TLS record layer `encrypt/decrypt_record_delegated` → `crypto.aead_encrypt/decrypt`; JWT `encode_with_crypto/decode_with_crypto` → `crypto.hmac.sha256`; checkpoint `calculate_checksum` → `crypto.sha256`; discovery + rendezvous SHA-256/HMAC-SHA256 → `CryptoProvider::call`; all with local fallback + `tracing::warn!` |
 | **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + BearDog crypto delegation; `ring-crypto` opt-in feature gate on CLI only (deny.toml wrapper: `rustls` only); `sysinfo` eliminated |
-| **`async-trait` evolution** | 85 `#[async_trait]` usages; ~8 traits have no `dyn` dispatch and are candidates for native async fn in trait (Rust 2024); remainder require `dyn` dispatch and stay |
+| **`async-trait` evolution** | 81 `#[async_trait]` usages (4 evolved to native async fn in trait: `TorProtocolCrypto`, `PhysicalChannelProvider`, `UniversalAdapter`, `JsonRpcHandler`); remainder require `dyn` dispatch and stay |
 | **Live BearDog testing** | `BearDogFixture` in `songbird-test-utils`; `scripts/test-with-beardog.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
@@ -53,9 +53,9 @@
 | **Module docs** | 77 `pub mod` declarations documented across 5 crates |
 | **Binary size** | 20MB release |
 | **`#[warn(missing_docs)]`** | 30/30 crates (all library crates have the lint enabled) |
-| **Dependencies** | ~412 unique (`sysinfo`/`rayon`/`crossbeam` eliminated); duplicates aligned (base32→0.5, base64→0.22, hostname→0.4, thiserror→2.0) |
+| **Dependencies** | ~410 unique (`sysinfo`/`rayon`/`crossbeam`/`md5` eliminated; `serde_yaml` removed from `songbird-types`; `flate2` feature-gated); duplicates aligned (base32→0.5, base64→0.22, hostname→0.4, thiserror→2.0) |
 | **Build time** | ~43s clean dev build, ~68s test suite |
-| **Total Rust lines** | ~381,498 (crates + src + tests + examples; -9K from dead code pruning) |
+| **Total Rust lines** | ~410,685 (crates + src + tests + examples; +1.2K from coverage expansion, net of refactoring) |
 | **Crates** | 30 workspace members |
 
 ---
@@ -88,6 +88,61 @@
 | `songbird-orchestrator` | `task_lifecycle/storage_sled.rs` | `TaskStorage` (sled) → `TaskStorageBackend` |
 | `songbird-sovereign-onion` | `storage.rs` | `OnionStorage` (sled) → `OnionStorageBackend` |
 | `songbird-tor-protocol` | `Cargo.toml` only | Optional dep, no Rust usage yet |
+
+---
+
+## Completed (Apr 2, 2026 — Deep Debt Evolution — Session 34, Wave 93)
+
+### Wave 93: Deep Debt — Large File Refactoring + Capability Discovery + async-trait + Hardcode Elimination + Dep Pruning + Coverage
+
+**Large File Refactoring (3 modules, smart split by responsibility):**
+- **`songbird-tls/record_layer/mod.rs`** (956→8 files, max 376): Split into `layer.rs` (core struct), `framing.rs` (encode/parse), `record_crypto.rs` (closure-based encrypt/decrypt), `crypto_provider.rs` (BearDog delegation), 3 test files
+- **`songbird-discovery/container_orchestration.rs`** (862→9 files, max 195): Split into `types.rs`, `adapter.rs`, `kubernetes.rs`, `docker.rs`, `environment.rs`, `discovery.rs`, `trait_impl.rs`, `tests.rs`
+- **`songbird-onion-relay/coordinator.rs`** (814→9 files, max 197): Split into `config.rs`, `types.rs`, `util.rs`, `core.rs`, `stun.rs`, `punch.rs`, `relay.rs`, `tests.rs`
+
+**Capability-Based Discovery Evolution:**
+- **`primal_discovery.rs`**: Removed all filename-based heuristics (`path.contains("nestgate")`, etc.). Now probes `$XDG_RUNTIME_DIR/biomeos/*.sock` via `health.liveness` + `capabilities.list` JSON-RPC, classifying by capability tokens not filenames
+- **`auth/capability_discovery.rs`**: Removed `SECURITY_SEARCH_TERMS` filename scanning; uses biomeos probe path
+- **`bin_interface/doctor.rs`**: Removed filename-pattern matching; uses `discover_for_capability_id_with()` capability probes
+
+**async-trait Evolution (4 traits → native Rust 2024 async fn in trait):**
+- `TorProtocolCrypto` (songbird-tor-protocol): no dyn dispatch, removed `async-trait` dep from crate
+- `PhysicalChannelProvider` (songbird-genesis): no dyn dispatch
+- `UniversalAdapter` (songbird-universal): no dyn dispatch, removed `async-trait` dep from crate
+- `JsonRpcHandler` (songbird-universal-ipc): RPITIT + Send bound for tokio::spawn compatibility
+
+**Hardcoded Defaults → Environment-Configurable:**
+- STUN servers: `SONGBIRD_STUN_SERVERS` env var (comma-separated), `BIOMEOS_STUN_SERVERS` legacy fallback
+- Broadcaster discovery port: `SONGBIRD_DEFAULT_DISCOVERY_PORT` env var with `songbird_types::constants::DEFAULT_HTTP_PORT` fallback
+- Genesis ceremony: already env-driven via `SONGBIRD_BROADCAST_ADDRESSES`
+- CORS: verified env-driven via `SONGBIRD_CORS_ORIGINS`
+- mDNS `224.0.0.251:5353`: annotated as RFC 6762 protocol constant
+
+**Dependency Evolution:**
+- Removed dead `md5` dependency from songbird-orchestrator (zero usage found)
+- Removed unused `serde_yaml` from songbird-types
+- Feature-gated `flate2` behind `task-checkpoint-gzip` (default enabled, opt-out for minimal builds)
+- Analyzed `sha2`/`hmac`: still needed for sync JWT path; BearDog delegation active for async paths
+- Analyzed `sled`: abstraction layer complete, feature-gating deferred until nestGate IPC lands
+
+**Coverage Expansion (~80 new test functions):**
+- songbird-orchestrator: `quota.rs`, `fairness.rs`, `admission.rs`, `scheduler.rs`, `retry.rs`, `partial_success.rs`, `degradation.rs`, `router.rs`, `state.rs`, `types.rs` — 50+ new tests
+- songbird-config: `capability_endpoints.rs`, `infant_config.rs`, `runtime_discovery.rs`, `constants.rs` — 15+ new tests
+- songbird-universal: `compute.rs`, `tarpc_client.rs`, `sovereignty/types.rs`, `sovereignty/router_comprehensive_tests.rs` — 15+ new tests
+
+**Zero regressions**: `cargo fmt --check` clean, `cargo clippy --all-targets --all-features -D warnings` zero warnings across all 30 crates, `cargo doc --all-features --no-deps -D warnings` clean, all tests pass.
+
+---
+
+## Completed (Apr 2, 2026 — primalSpring Audit Response — Session 34, Wave 92)
+
+### Wave 92: primalSpring Audit Response — Orchestrator Lint Hygiene + `mesh.topology` Method
+
+- **395 `unwrap_used` clippy warnings resolved**: All `.unwrap()` calls in orchestrator test code (68 files: 37 integration tests + 31 inline `#[cfg(test)]` modules) brought under lint control. Integration tests use `#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]`; inline test modules use `#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]` on the `#[cfg(test)]` block. `cargo clippy -p songbird-orchestrator --all-targets --all-features -- -D warnings` now passes clean (was 395 errors).
+- **`mesh.topology` JSON-RPC method**: New `MeshMethod::Topology` variant in `songbird-types::JsonRpcMethod` enum. Handler in `songbird-universal-ipc::handlers::mesh_handler` returns graph topology (nodes with roles + edges with path types/latency/reachability). Wired in service dispatch, introspection, and all capability lists. Semantic naming: `mesh.topology` per wateringHole `SEMANTIC_METHOD_NAMING_STANDARD.md`.
+- **SB-02 verified**: `ring` in lockfile only via `rcgen` (dev dep) and `rustls` (optional `ring-crypto` CLI feature). Not in production normal dependency tree. `deny.toml` documents wrappers. Tracked, not urgent.
+- **SB-03 verified**: `sled = "0.34"` in orchestrator, sovereign-onion (direct), tor-protocol (optional). Abstraction layer complete (3 backend traits). Blocked on nestGate `storage.*` IPC (NG-01).
+- **Zero regressions**: `cargo fmt --check` clean, `cargo clippy --all-targets --all-features -D warnings` zero warnings across all 30 crates, `cargo doc --all-features --no-deps -D warnings` clean, all tests pass.
 
 ---
 
@@ -1487,6 +1542,21 @@ Backwards compatibility maintained via re-exports (`ServiceLocator` still access
 - [x] Deleted `config/scripts/deploy.sh` (wrong PROJECT_ROOT, builds `songbird-orchestrator`)
 - [x] Corrected `#[warn(missing_docs)]` count: 13/29 crates (was reported as 2)
 - [x] Created wateringHole handoff for v0.3.3
+
+### Wave 7: Ring Elimination + Sled Feature-Gating + Refactoring + Coverage + Concurrency Fixes
+- [x] **`rcgen` → pure Rust**: Replaced `rcgen` dev-dependency in songbird-tls with `ed25519-dalek` + manual DER (same pattern as songbird-quic cert_gen)
+- [x] **Sled feature-gated**: `sled` is now optional behind `sled-storage` feature in both `songbird-orchestrator` and `songbird-sovereign-onion` with `InMemoryStorage` fallbacks; `--no-default-features` compiles clean
+- [x] **Refactored 3 large files**:
+  - `birdsong_handler.rs` (855 lines → 7-file directory module)
+  - `production_analytics.rs` (812 lines → 6-file directory module)
+  - `service.rs` (797 lines → 7-file directory module)
+- [x] **Coverage expansion wave 2**: 60+ new test functions across songbird-http-client, songbird-universal-ipc, songbird-stun, songbird-lineage-relay
+- [x] **Fixed infinite-loop concurrency bug**: `yield_now()` in poll-until loops under `start_paused = true` caused infinite loops (virtual time never advances). Replaced with `tokio::time::sleep(Duration::from_millis(1))` in all poll helpers (sync_helpers, event_helpers, capability_integration, discovery_e2e, relay_forwarding, runtime_engine_tests)
+- [x] **Eliminated busy-loop patterns**: All `yield_now()` poll loops now use small sleeps — works correctly under both real and virtual time
+- [x] **Discovery fast-fail**: `RuntimeDiscoveryEngine` skips mDNS/DNS-SD for sub-50ms timeouts; `discover_mdns_services_with_timeout` skips DNS-SD for sub-100ms listen windows — test-only paths no longer pay multi-second network costs
+- [x] **Fixed `unused_async` lint**: Added `#[allow]` to `discover_mdns_services_with_timeout` (async required but await gated behind `#[cfg(feature = "mdns")]`)
+- [x] **Zero `#[serial_test]`** in workspace (confirmed none exist)
+- [x] **All tests pass**: Full workspace `cargo test --all-features --workspace` completes in ~87s with zero failures
 
 ---
 

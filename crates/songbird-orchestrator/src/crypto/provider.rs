@@ -290,6 +290,7 @@ pub async fn discover_crypto_provider() -> Result<Arc<dyn CryptoProvider>> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

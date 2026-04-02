@@ -93,7 +93,7 @@ async fn call_capability_invalid_json_response() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn call_capability_connect_failure() {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("addr");

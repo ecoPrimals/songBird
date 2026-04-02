@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: ~69.11% (llvm-cov measured, Mar 30 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: ~69% (llvm-cov measured, Apr 2 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html
@@ -99,10 +99,9 @@ cargo llvm-cov --workspace --lib --html
 
 ### Concurrent-Safe Tests (CRITICAL)
 
-Tests **must not** use `std::env::set_var` (unsafe in Rust 2024). Use
-`songbird_process_env::set_var` for overlay mutation, and injectable `_with`
-variants where available. Mark tests that mutate the shared overlay with
-`#[serial_test::serial]` to prevent interference:
+Tests **must not** use `std::env::set_var` (unsafe in Rust 2024). Use injectable
+`_with` closures for environment isolation — tests inject mock env readers and
+run fully concurrently with zero global state mutation:
 
 ```rust
 #[tokio::test]
@@ -114,6 +113,15 @@ async fn test_discovery() {
     assert!(result.is_ok());
 }
 ```
+
+Zero `#[serial_test]` in the workspace. All tests run concurrently.
+
+### Deterministic Time in Tests
+
+Use `#[tokio::test(start_paused = true)]` for tests involving `tokio::time::sleep` —
+virtual time advances instantly. Never use `tokio::task::yield_now()` in poll loops
+(causes infinite loops under paused time); use `tokio::time::sleep(Duration::from_millis(1))`
+instead.
 
 ### No Polling in Production
 

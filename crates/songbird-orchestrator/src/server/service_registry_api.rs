@@ -249,6 +249,7 @@ impl IntoResponse for ApiError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use axum::body::Body;

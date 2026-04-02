@@ -9,7 +9,6 @@ use serde_json::{Value, json};
 // Simple test handler
 struct MathService;
 
-#[async_trait::async_trait]
 impl JsonRpcHandler for MathService {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         match method {
@@ -114,7 +113,6 @@ fn json_rpc_response_roundtrip() {
 
 struct EchoHandler;
 
-#[async_trait::async_trait]
 impl JsonRpcHandler for EchoHandler {
     async fn handle(&self, _method: &str, params: Value) -> Result<Value, String> {
         Ok(params)
@@ -147,7 +145,6 @@ async fn handle_request_for_test_success_wraps_handler_ok() {
 #[tokio::test]
 async fn handle_request_for_test_wraps_handler_err_as_internal() {
     struct Fail;
-    #[async_trait::async_trait]
     impl JsonRpcHandler for Fail {
         async fn handle(&self, _method: &str, _params: Value) -> Result<Value, String> {
             Err("boom".into())
@@ -163,7 +160,6 @@ async fn handle_request_for_test_wraps_handler_err_as_internal() {
 #[tokio::test]
 async fn handle_request_for_test_omitted_params_become_null() {
     struct NullCheck;
-    #[async_trait::async_trait]
     impl JsonRpcHandler for NullCheck {
         async fn handle(&self, _method: &str, params: Value) -> Result<Value, String> {
             assert!(params.is_null());
@@ -197,7 +193,6 @@ fn json_rpc_request_new_uses_numeric_id() {
 #[tokio::test]
 async fn handle_request_invalid_jsonrpc_version_message() {
     struct X;
-    #[async_trait::async_trait]
     impl JsonRpcHandler for X {
         async fn handle(&self, _method: &str, _params: Value) -> Result<Value, String> {
             Ok(json!(0))

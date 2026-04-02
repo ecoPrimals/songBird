@@ -154,7 +154,7 @@ async fn test_unit_family_id_from_environment() {
     assert_eq!(family_id, "test_family_1", "Should use FAMILY_ID");
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_unit_uptime_tracking() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);

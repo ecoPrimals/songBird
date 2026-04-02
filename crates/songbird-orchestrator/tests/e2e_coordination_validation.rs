@@ -6,6 +6,8 @@
 //! These tests verify the full workflow from graph creation to coordination
 //! pattern validation, using real service registry integration.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::graph::{
     CoordinationPattern, CoordinationValidator, Graph, GraphEdge, GraphMetadata, GraphNode,
 };

@@ -158,10 +158,8 @@ impl RetryPolicy {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
-
     use super::*;
 
     #[tokio::test]
@@ -342,5 +340,83 @@ mod tests {
             .await
             .expect_err("should fail");
         assert!(err.to_string().contains("rate limited"));
+    }
+
+    #[test]
+    fn should_retry_respects_custom_retry_on_list() {
+        let mut p = RetryPolicy::default();
+        p.retry_on = vec![ErrorClass::Permanent];
+        let transient = anyhow::anyhow!("connection reset");
+        assert!(!p.should_retry(&transient));
+        let perm = anyhow::anyhow!("Resource not found");
+        assert!(p.should_retry(&perm));
+    }
+
+    #[test]
+    fn default_policy_clones_correctly() {
+        let a = RetryPolicy::default();
+        let b = a.clone();
+        assert_eq!(a.max_attempts, b.max_attempts);
+        assert_eq!(a.jitter, b.jitter);
+    }
+
+    #[test]
+    fn backoff_attempt_zero_with_multiplier_one() {
+        let policy = RetryPolicy {
+            initial_backoff: Duration::from_millis(50),
+            multiplier: 1.0,
+            jitter: false,
+            max_backoff: Duration::from_secs(60),
+            ..Default::default()
+        };
+        assert_eq!(policy.calculate_backoff(0).as_millis(), 50);
+        assert_eq!(policy.calculate_backoff(3).as_millis(), 50);
+    }
+
+    #[test]
+    fn calculate_backoff_handles_large_attempt_index() {
+        let policy = RetryPolicy {
+            initial_backoff: Duration::from_millis(1),
+            max_backoff: Duration::from_millis(500),
+            multiplier: 2.0,
+            jitter: false,
+            ..Default::default()
+        };
+        assert_eq!(policy.calculate_backoff(100).as_millis(), 500);
+    }
+
+    #[tokio::test]
+    async fn execute_stops_on_non_retryable_without_sleep_extra() {
+        let policy = RetryPolicy {
+            max_attempts: 5,
+            initial_backoff: Duration::from_secs(60),
+            ..Default::default()
+        };
+        let calls = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let c2 = calls.clone();
+        let r = policy
+            .execute(move || {
+                let c = c2.clone();
+                async move {
+                    c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    Err::<(), _>(anyhow::anyhow!("invalid request"))
+                }
+            })
+            .await;
+        assert!(r.is_err());
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn retry_all_covers_resource_exhausted_class() {
+        let p = RetryPolicy::retry_all(4);
+        assert!(p.retry_on.contains(&ErrorClass::ResourceExhausted));
+    }
+
+    #[test]
+    fn transient_only_excludes_rate_limit() {
+        let p = RetryPolicy::transient_only(2);
+        let rate_err = anyhow::anyhow!("rate limit exceeded");
+        assert!(!p.should_retry(&rate_err));
     }
 }

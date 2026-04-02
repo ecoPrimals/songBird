@@ -25,13 +25,26 @@ use std::collections::HashMap;
 /// # Errors
 ///
 /// Does not return errors; individual backend failures are logged.
+///
+/// Uses a 5-second mDNS listen window unless you call [`discover_from_network_with_timeout`].
 pub async fn discover_from_network() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
+    use std::time::Duration;
+    discover_from_network_with_timeout(Duration::from_secs(5)).await
+}
+
+/// Discover primals from the local network with an explicit mDNS query duration.
+///
+/// Tests should pass a short duration (for example 1ms) so the empty-result path does not
+/// wait on the default 5-second multicast listen.
+pub async fn discover_from_network_with_timeout(
+    mdns_listen: std::time::Duration,
+) -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     debug!("🔍 Discovering primals from local network (mDNS)...");
 
     let mut discovered = Vec::new();
 
     // 1. Try mDNS discovery
-    match discover_mdns_services().await {
+    match discover_mdns_services_with_timeout(mdns_listen).await {
         Ok(mut mdns_primals) => {
             info!("Discovered {} primals via mDNS", mdns_primals.len());
             discovered.append(&mut mdns_primals);
@@ -40,12 +53,20 @@ pub async fn discover_from_network() -> Result<Vec<DiscoveredPrimal>, DiscoveryE
     }
 
     // 2. Try DNS-SD (DNS Service Discovery)
-    match discover_dns_sd_services().await {
-        Ok(mut dns_primals) => {
-            info!("Discovered {} primals via DNS-SD", dns_primals.len());
-            discovered.append(&mut dns_primals);
+    //
+    // Short mDNS windows (e.g. 1ms in tests) imply a bounded scan; skip DNS-SD so hickory-resolver
+    // does not spend seconds per SRV query on slow or absent resolvers.
+    let run_dns_sd = mdns_listen >= std::time::Duration::from_millis(100);
+    if run_dns_sd {
+        match discover_dns_sd_services().await {
+            Ok(mut dns_primals) => {
+                info!("Discovered {} primals via DNS-SD", dns_primals.len());
+                discovered.append(&mut dns_primals);
+            }
+            Err(e) => debug!("DNS-SD discovery failed: {}", e),
         }
-        Err(e) => debug!("DNS-SD discovery failed: {}", e),
+    } else {
+        debug!("Skipping DNS-SD phase (mDNS listen window below DNS-SD minimum)");
     }
 
     debug!("Total primals discovered from network: {}", discovered.len());
@@ -79,16 +100,25 @@ pub async fn discover_from_network() -> Result<Vec<DiscoveredPrimal>, DiscoveryE
     reason = "async signature required for consistent discovery backend interface"
 )]
 pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
+    use std::time::Duration;
+    discover_mdns_services_with_timeout(Duration::from_secs(5)).await
+}
+
+/// Like [`discover_mdns_services`] with an explicit listen duration (tests use ~1ms).
+#[allow(
+    clippy::unused_async,
+    reason = "async signature required; await is behind #[cfg(feature = \"mdns\")]"
+)]
+pub async fn discover_mdns_services_with_timeout(
+    timeout: std::time::Duration,
+) -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "mdns")]
     {
-        use std::time::Duration;
-
         info!("🔍 Starting mDNS service discovery for Songbird primals");
 
         // Query for Songbird services on local network
         // Pattern: _songbird._tcp.local
         let service_type = "_songbird._tcp";
-        let timeout = Duration::from_secs(5);
 
         let primals = query_mdns_services(service_type, timeout).await?;
         info!("✅ Discovered {} primals via mDNS", primals.len());
@@ -97,6 +127,7 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
 
     #[cfg(not(feature = "mdns"))]
     {
+        let _ = timeout;
         Err(DiscoveryError::BackendUnavailable(
             "mDNS support not enabled - compile with --features mdns".to_string(),
         ))
@@ -119,6 +150,7 @@ async fn query_mdns_services(
 
     debug!("Querying mDNS for service type: {}", service_type);
 
+    // RFC 6762: mDNS uses IPv4 link-local multicast 224.0.0.251, UDP port 5353 (IANA).
     let mdns_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(224, 0, 0, 251), 5353));
     let socket = UdpSocket::bind("0.0.0.0:0")
         .await
@@ -432,8 +464,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_from_network() {
-        // Should not panic, may return empty if no services
-        let result = discover_from_network().await;
+        // Short window: empty result path without the default 5s mDNS listen or DNS-SD resolver waits.
+        let result = discover_from_network_with_timeout(std::time::Duration::from_millis(1)).await;
         assert!(result.is_ok());
     }
 
@@ -481,7 +513,9 @@ mod tests {
     #[cfg(feature = "mdns")]
     #[tokio::test]
     async fn test_discover_mdns_services_returns_ok_empty_stub() {
-        let got = discover_mdns_services().await.expect("mDNS stub");
+        let got = discover_mdns_services_with_timeout(std::time::Duration::from_millis(1))
+            .await
+            .expect("mDNS stub");
         assert!(got.is_empty());
     }
 

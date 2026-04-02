@@ -17,6 +17,8 @@
 // A static Mutex ensures they don't race with each other within this binary.
 // This is NOT a production concern — production reads env vars once at startup.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
 use std::path::PathBuf;

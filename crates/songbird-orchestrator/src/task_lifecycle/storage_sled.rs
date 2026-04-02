@@ -549,9 +549,18 @@ impl super::TaskStorageBackend for TaskStorage {
     async fn flush(&self) -> Result<()> {
         Self::flush(self).await
     }
+
+    async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> Result<u64> {
+        Self::cleanup_old_checkpoints(self, max_age_seconds).await
+    }
+
+    async fn delete_old_checkpoints(&self, task_id: TaskId, keep_count: usize) -> Result<()> {
+        Self::delete_old_checkpoints(self, task_id, keep_count).await
+    }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "sled-storage"))]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::task_lifecycle::{Priority, ResourceRequirements, TaskSpec, UserId};

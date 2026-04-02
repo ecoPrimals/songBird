@@ -143,10 +143,8 @@ pub struct AlternativeRecommendation {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
-
     use super::{
         AlternativePrimal, AlternativeRecommendation, AlternativeSuggestions, AvailabilityReport,
         AvailabilitySummary, NodeAvailability, NodeAvailabilityStatus,
@@ -249,5 +247,126 @@ mod tests {
         let j = serde_json::to_string(&sug).unwrap();
         let back: AlternativeSuggestions = serde_json::from_str(&j).unwrap();
         assert_eq!(sug, back);
+    }
+
+    #[test]
+    fn node_availability_full_roundtrip() {
+        let n = NodeAvailability {
+            status: NodeAvailabilityStatus::Degraded,
+            primal: Some("p".into()),
+            service_id: Some("s".into()),
+            endpoint: Some("e".into()),
+            protocol: Some("tcp".into()),
+            health_status: Some("degraded".into()),
+            last_seen: Some("t".into()),
+            required_capability: Some("c".into()),
+            reason: Some("r".into()),
+            suggested_action: Some("a".into()),
+        };
+        let j = serde_json::to_string(&n).unwrap();
+        let back: NodeAvailability = serde_json::from_str(&j).unwrap();
+        assert_eq!(n, back);
+    }
+
+    #[test]
+    fn alternative_primal_score_boundaries() {
+        let a = AlternativePrimal {
+            rank: usize::MAX,
+            service_id: "s".into(),
+            primal_name: "n".into(),
+            endpoint: "e".into(),
+            protocol: "p".into(),
+            health_status: "h".into(),
+            last_seen: "t".into(),
+            reason: "r".into(),
+            compatibility_score: 100,
+        };
+        assert_eq!(a.compatibility_score, 100);
+    }
+
+    #[test]
+    fn availability_report_empty_vectors_roundtrip() {
+        let r = AvailabilityReport {
+            available: vec![],
+            unavailable: vec![],
+            unhealthy: vec![],
+            degraded: vec![],
+            details: HashMap::new(),
+            summary: AvailabilitySummary {
+                total_nodes: 0,
+                available_nodes: 0,
+                availability_percent: 0.0,
+            },
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: AvailabilityReport = serde_json::from_str(&j).unwrap();
+        assert_eq!(r, back);
+    }
+
+    #[test]
+    fn availability_summary_zero_percent() {
+        let s = AvailabilitySummary {
+            total_nodes: 10,
+            available_nodes: 0,
+            availability_percent: 0.0,
+        };
+        let j = serde_json::to_string(&s).unwrap();
+        let back: AvailabilitySummary = serde_json::from_str(&j).unwrap();
+        assert_eq!(s, back);
+    }
+
+    #[test]
+    fn alternative_recommendation_roundtrip() {
+        let r = AlternativeRecommendation {
+            service_id: "svc".into(),
+            reason: "closest".into(),
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: AlternativeRecommendation = serde_json::from_str(&j).unwrap();
+        assert_eq!(r, back);
+    }
+
+    #[test]
+    fn node_availability_status_exhaustive() {
+        let mut count = 0;
+        for s in [
+            NodeAvailabilityStatus::Available,
+            NodeAvailabilityStatus::Unavailable,
+            NodeAvailabilityStatus::Unhealthy,
+            NodeAvailabilityStatus::Degraded,
+        ] {
+            let j = serde_json::to_string(&s).unwrap();
+            let _: NodeAvailabilityStatus = serde_json::from_str(&j).unwrap();
+            count += 1;
+        }
+        assert_eq!(count, 4);
+    }
+
+    #[test]
+    fn alternative_suggestions_equality_none_recommendation() {
+        let a = AlternativeSuggestions {
+            alternatives: vec![],
+            recommendation: None,
+            unavailable_reason: None,
+        };
+        let b = a.clone();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn availability_report_clone_preserves_summary() {
+        let r = AvailabilityReport {
+            available: vec!["a".into()],
+            unavailable: vec![],
+            unhealthy: vec![],
+            degraded: vec![],
+            details: HashMap::new(),
+            summary: AvailabilitySummary {
+                total_nodes: 1,
+                available_nodes: 1,
+                availability_percent: 100.0,
+            },
+        };
+        assert_eq!(r.summary.total_nodes, 1);
     }
 }

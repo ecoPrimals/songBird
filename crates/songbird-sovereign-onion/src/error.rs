@@ -60,6 +60,7 @@ pub enum OnionError {
     Io(#[from] std::io::Error),
 
     /// Sled database error
+    #[cfg(feature = "sled-storage")]
     #[error("Database error: {0}")]
     Database(#[from] sled::Error),
 

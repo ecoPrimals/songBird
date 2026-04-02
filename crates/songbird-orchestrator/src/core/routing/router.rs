@@ -418,9 +418,8 @@ impl CapabilityRouter {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
-
     use super::*;
     use chrono::Utc;
     use songbird_config::capability_endpoints::CapabilityType;
@@ -659,5 +658,74 @@ mod tests {
         let task = Task::builder("long").with_duration(400).build();
         let d = router.route_task(&task).await.unwrap();
         assert!(matches!(d, RoutingDecision::RouteToCapability { .. }));
+    }
+
+    #[test]
+    fn determine_capability_gpu_compute_prefers_compute() {
+        let t = Task::new("gpu_compute");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Compute);
+    }
+
+    #[test]
+    fn determine_capability_auth_maps_security() {
+        let t = Task::new("auth");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Security);
+    }
+
+    #[test]
+    fn determine_capability_ai_query_maps_ai() {
+        let t = Task::new("ai_query");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Ai);
+    }
+
+    #[test]
+    fn determine_capability_backup_maps_storage() {
+        let t = Task::new("backup");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Storage);
+    }
+
+    #[test]
+    fn determine_capability_sign_maps_security() {
+        let t = Task::new("sign");
+        assert_eq!(CapabilityRouter::determine_capability_type(&t), CapabilityType::Security);
+    }
+
+    #[test]
+    fn capability_type_to_name_orchestration() {
+        assert_eq!(
+            CapabilityRouter::capability_type_to_name(&CapabilityType::Orchestration),
+            "orchestration"
+        );
+    }
+
+    #[test]
+    fn capability_type_to_name_observability() {
+        assert_eq!(
+            CapabilityRouter::capability_type_to_name(&CapabilityType::Observability),
+            "observability"
+        );
+    }
+
+    #[test]
+    fn capability_type_to_name_networking() {
+        assert_eq!(
+            CapabilityRouter::capability_type_to_name(&CapabilityType::Networking),
+            "networking"
+        );
+    }
+
+    #[test]
+    fn capability_type_to_name_storage_ai_security() {
+        assert_eq!(CapabilityRouter::capability_type_to_name(&CapabilityType::Storage), "storage");
+        assert_eq!(CapabilityRouter::capability_type_to_name(&CapabilityType::Ai), "ai_inference");
+        assert_eq!(
+            CapabilityRouter::capability_type_to_name(&CapabilityType::Security),
+            "security"
+        );
+    }
+
+    #[test]
+    fn create_test_router_builds() {
+        let _ = create_test_router();
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::unwrap_used, reason = "test assertions")]
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::*;
 
@@ -57,7 +57,7 @@ async fn test_pool_full() {
     assert!(matches!(result, Err(PoolError::PoolFull(2))));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_connection_return_on_drop() {
     let pool = ConnectionPool::builder().max_size(5).build().await.unwrap();
 
@@ -321,7 +321,7 @@ async fn connection_pool_builder_chains_all_public_options() {
     assert_eq!(stats.min_idle, 1);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn acquire_then_release_roundtrip_multiple_times() {
     let pool = ConnectionPool::<MockConnection>::builder().max_size(2).build().await.unwrap();
     pool.add_connection(MockConnection {
@@ -338,7 +338,7 @@ async fn acquire_then_release_roundtrip_multiple_times() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn concurrent_acquire_return_no_panic() {
     let pool = std::sync::Arc::new(
         ConnectionPool::<MockConnection>::builder().max_size(4).build().await.unwrap(),
@@ -385,7 +385,7 @@ async fn pooled_connection_is_unhealthy_after_idle_exceeds_max_while_held() {
     assert!(!conn.is_healthy());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn dropped_connection_after_shutdown_does_not_repopulate_pool() {
     let pool = ConnectionPool::<MockConnection>::builder().max_size(2).build().await.unwrap();
     pool.add_connection(MockConnection {
@@ -447,4 +447,129 @@ async fn acquire_skips_stale_head_and_returns_next_fresh_connection() {
 
     let acquired = pool.acquire().await.unwrap();
     assert_eq!(acquired.id, 2);
+}
+
+#[test]
+fn pool_error_partial_eq_and_clone() {
+    assert_eq!(PoolError::ShuttingDown, PoolError::ShuttingDown);
+    assert_ne!(PoolError::ShuttingDown, PoolError::UnhealthyConnection);
+}
+
+#[test]
+fn pool_config_clone_preserves_fields() {
+    let c = PoolConfig {
+        max_size: 3,
+        min_idle: 1,
+        max_idle_time: Duration::from_secs(10),
+        acquire_timeout: Duration::from_secs(2),
+        cleanup_interval: Duration::from_secs(5),
+        health_check_interval: Duration::from_secs(1),
+    };
+    let c2 = c.clone();
+    assert_eq!(c2.max_size, 3);
+    assert_eq!(c2.health_check_interval, Duration::from_secs(1));
+}
+
+#[test]
+fn pool_config_builder_preserves_cleanup_and_health_interval_defaults() {
+    let built = PoolConfig::builder().max_size(11).build();
+    assert_eq!(built.cleanup_interval, PoolConfig::default().cleanup_interval);
+    assert_eq!(built.health_check_interval, PoolConfig::default().health_check_interval);
+}
+
+#[tokio::test(start_paused = true)]
+async fn add_connection_after_acquire_increments_idle_when_returned() {
+    let pool = ConnectionPool::<MockConnection>::builder().max_size(3).build().await.unwrap();
+    pool.add_connection(MockConnection {
+        id: 1,
+    })
+    .await
+    .unwrap();
+    let c = pool.acquire().await.unwrap();
+    drop(c);
+    tokio::time::sleep(Duration::from_millis(15)).await;
+    let stats = pool.stats().await;
+    assert!(stats.total_connections >= 1);
+}
+
+#[tokio::test]
+async fn multiple_stale_connections_all_skipped_yields_unhealthy() {
+    let pool = ConnectionPool::<MockConnection>::builder()
+        .max_size(5)
+        .max_idle_time(Duration::from_millis(1))
+        .build()
+        .await
+        .unwrap();
+    for i in 0..3 {
+        pool.add_connection(MockConnection {
+            id: i,
+        })
+        .await
+        .unwrap();
+    }
+    tokio::time::sleep(Duration::from_millis(40)).await;
+    let err = pool.acquire().await;
+    assert!(matches!(err, Err(PoolError::UnhealthyConnection)));
+}
+
+#[tokio::test]
+async fn acquire_releases_permit_on_unhealthy_empty_deque() {
+    let pool =
+        ConnectionPool::<MockConnection>::builder().max_size(1).min_idle(0).build().await.unwrap();
+    let e = pool.acquire().await;
+    assert!(matches!(e, Err(PoolError::UnhealthyConnection)));
+    pool.add_connection(MockConnection {
+        id: 7,
+    })
+    .await
+    .unwrap();
+    let c = pool.acquire().await.unwrap();
+    assert_eq!(c.id, 7);
+}
+
+#[test]
+fn pool_stats_field_accessors() {
+    let s = PoolStats {
+        total_connections: 0,
+        idle_connections: 0,
+        max_connections: 9,
+        min_idle: 0,
+    };
+    assert_eq!(s.max_connections, 9);
+    assert_eq!(s.min_idle, 0);
+}
+
+#[test]
+fn pool_config_validate_accepts_min_idle_zero() {
+    let c = PoolConfig {
+        max_size: 5,
+        min_idle: 0,
+        ..Default::default()
+    };
+    assert!(c.validate().is_ok());
+}
+
+#[tokio::test]
+async fn pooled_connection_inner_none_not_constructed_via_acquire() {
+    let pool = ConnectionPool::<MockConnection>::builder().max_size(2).build().await.unwrap();
+    pool.add_connection(MockConnection {
+        id: 1,
+    })
+    .await
+    .unwrap();
+    let p = pool.acquire().await.unwrap();
+    assert!(p.inner().is_some());
+}
+
+#[tokio::test]
+async fn shutdown_then_stats_empty() {
+    let pool = ConnectionPool::<MockConnection>::builder().max_size(2).build().await.unwrap();
+    pool.add_connection(MockConnection {
+        id: 1,
+    })
+    .await
+    .unwrap();
+    pool.shutdown().await;
+    let stats = pool.stats().await;
+    assert_eq!(stats.total_connections, 0);
 }

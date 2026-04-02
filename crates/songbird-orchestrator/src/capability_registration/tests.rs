@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use super::payload::{capability_registration_params, capability_unregister_params};
 use super::*;
 #[cfg(unix)]
@@ -307,7 +309,7 @@ async fn test_chaos_socket_disappears_during_registration() {
     let _ = std::fs::remove_file(socket_path);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[cfg(unix)]
 async fn test_chaos_slow_neural_api_responses() {
     let socket_path = "/tmp/test-neural-chaos-slow-c.sock";
@@ -336,7 +338,7 @@ async fn test_chaos_slow_neural_api_responses() {
     let _ = std::fs::remove_file(socket_path);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 #[cfg(unix)]
 async fn test_chaos_neural_api_restarts_during_operation() {
     let socket_path = "/tmp/test-neural-chaos-restart-c.sock";

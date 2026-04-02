@@ -224,10 +224,8 @@ impl Default for QuotaManager {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
-
     use super::*;
 
     #[test]
@@ -333,5 +331,95 @@ mod tests {
         let q1 = m.get_quota(&u).await;
         let q2 = m.get_quota(&u).await;
         assert_eq!(q1.user_id, q2.user_id);
+    }
+
+    #[tokio::test]
+    async fn quota_manager_default_matches_new() {
+        let a = QuotaManager::new();
+        let b = QuotaManager::default();
+        assert_eq!(a.quotas.read().await.len(), 0);
+        assert_eq!(b.quotas.read().await.len(), 0);
+    }
+
+    #[test]
+    fn can_allocate_errors_when_limit_missing_for_requested_type() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        quota.limits.remove(&ResourceType::Network);
+        let mut req = HashMap::new();
+        req.insert(ResourceType::Network, ResourceAmount::new(1.0, ResourceUnit::Mbps));
+        let err = quota.can_allocate(&req).unwrap_err();
+        assert!(err.to_string().contains("No limit set"));
+    }
+
+    #[test]
+    fn can_allocate_errors_when_usage_missing_for_requested_type() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        quota.used.remove(&ResourceType::Storage);
+        let mut req = HashMap::new();
+        req.insert(ResourceType::Storage, ResourceAmount::new(1.0, ResourceUnit::Megabytes));
+        let err = quota.can_allocate(&req).unwrap_err();
+        assert!(err.to_string().contains("No usage tracking"));
+    }
+
+    #[test]
+    fn allocate_errors_when_usage_tracking_missing() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        quota.used.remove(&ResourceType::Cpu);
+        let mut req = HashMap::new();
+        req.insert(ResourceType::Cpu, ResourceAmount::new(1.0, ResourceUnit::Cores));
+        assert!(quota.allocate(&req).is_err());
+    }
+
+    #[test]
+    fn release_ignores_unknown_resource_types() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        let mut rel = HashMap::new();
+        rel.insert(ResourceType::Cpu, ResourceAmount::new(1.0, ResourceUnit::Cores));
+        rel.insert(ResourceType::Network, ResourceAmount::new(999.0, ResourceUnit::Mbps));
+        quota.release(&rel).unwrap();
+        assert_eq!(quota.used.get(&ResourceType::Cpu).unwrap().value, 0.0);
+    }
+
+    #[test]
+    fn allocate_errors_on_unit_mismatch_in_request() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        let mut bad = HashMap::new();
+        bad.insert(ResourceType::Cpu, ResourceAmount::new(1.0, ResourceUnit::Megabytes));
+        assert!(quota.allocate(&bad).is_err());
+    }
+
+    #[test]
+    fn available_reports_zero_when_used_exceeds_limit() {
+        let mut quota = ResourceQuota::new(UserId::from("u"));
+        quota.limits.insert(ResourceType::Cpu, ResourceAmount::new(1.0, ResourceUnit::Cores));
+        quota.used.insert(ResourceType::Cpu, ResourceAmount::new(2.0, ResourceUnit::Cores));
+        let avail = quota.available();
+        let cpu = avail.get(&ResourceType::Cpu).unwrap();
+        assert_eq!(cpu.value, 0.0);
+    }
+
+    #[tokio::test]
+    async fn update_quota_persists_custom_limits() {
+        let m = QuotaManager::new();
+        let u = UserId::from("custom");
+        let mut q = m.get_quota(&u).await;
+        q.limits.insert(ResourceType::Cpu, ResourceAmount::new(1.0, ResourceUnit::Cores));
+        m.update_quota(q).await;
+        let q2 = m.get_quota(&u).await;
+        assert_eq!(q2.limits.get(&ResourceType::Cpu).unwrap().value, 1.0);
+    }
+
+    #[tokio::test]
+    async fn allocate_then_can_allocate_false_until_release() {
+        let m = QuotaManager::new();
+        let u = UserId::from("alice");
+        let mut req = HashMap::new();
+        req.insert(ResourceType::Cpu, ResourceAmount::new(8.0, ResourceUnit::Cores));
+        m.allocate(&u, &req).await.unwrap();
+        let mut more = HashMap::new();
+        more.insert(ResourceType::Cpu, ResourceAmount::new(0.1, ResourceUnit::Cores));
+        assert!(!m.can_allocate(&u, &more).await.unwrap());
+        m.release(&u, &req).await.unwrap();
+        assert!(m.can_allocate(&u, &more).await.unwrap());
     }
 }

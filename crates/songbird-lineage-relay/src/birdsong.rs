@@ -258,7 +258,10 @@ impl BirdSongBroadcaster {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use serde_json::{from_value, to_value};
 
     struct MockCrypto;
 
@@ -311,5 +314,59 @@ mod tests {
 
         let decrypted = crypto.decrypt_birdsong(&encrypted, &NodeId::from("sender")).await.unwrap();
         assert_eq!(decrypted, Some(message.to_vec()));
+    }
+
+    #[test]
+    fn lineage_hint_specific_ancestor_serde() {
+        let h = LineageHint::SpecificAncestor(NodeId::from("ancestor-1"));
+        let v = to_value(&h).unwrap();
+        let back: LineageHint = from_value(v.clone()).unwrap();
+        assert_eq!(v, to_value(&back).unwrap());
+    }
+
+    #[test]
+    fn birdsong_type_custom_roundtrip() {
+        let t = BirdSongType::Custom("app.v1".to_string());
+        let v = to_value(&t).unwrap();
+        let back: BirdSongType = from_value(v.clone()).unwrap();
+        assert_eq!(v, to_value(&back).unwrap());
+    }
+
+    #[test]
+    fn birdsong_message_json_roundtrip() {
+        let m = BirdSongMessage {
+            version: 2,
+            message_type: BirdSongType::CapabilityAnnouncement,
+            sender: NodeId::from("n1"),
+            lineage_hint: LineageHint::DirectChildren,
+            payload: vec![1, 2, 3],
+            timestamp: 999,
+        };
+        let v = to_value(&m).unwrap();
+        let back: BirdSongMessage = from_value(v).unwrap();
+        assert_eq!(m.version, back.version);
+        assert_eq!(m.payload, back.payload);
+    }
+
+    #[test]
+    fn lineage_hint_variants_discriminant() {
+        assert!(matches!(LineageHint::DirectParent, LineageHint::DirectParent));
+        assert!(matches!(LineageHint::AllDescendants, LineageHint::AllDescendants));
+    }
+
+    #[test]
+    fn birdsong_type_all_variants_serde() {
+        for t in [
+            BirdSongType::Presence,
+            BirdSongType::CapabilityAnnouncement,
+            BirdSongType::TransportAnnouncement,
+            BirdSongType::RelayRequest,
+            BirdSongType::RelayOffer,
+            BirdSongType::FederationEvent,
+        ] {
+            let v = to_value(&t).unwrap();
+            let back: BirdSongType = from_value(v.clone()).unwrap();
+            assert_eq!(v, to_value(&back).unwrap());
+        }
     }
 }

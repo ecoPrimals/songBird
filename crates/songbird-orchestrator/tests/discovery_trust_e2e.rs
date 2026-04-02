@@ -22,6 +22,8 @@
     clippy::struct_field_names,
     clippy::match_same_arms,
     clippy::future_not_send,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 

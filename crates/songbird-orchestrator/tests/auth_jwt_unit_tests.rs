@@ -8,6 +8,8 @@
 //! **Concurrency Evolution**: Tests that mutate env vars use a static Mutex
 //! to prevent race conditions. This is the correct pattern for env var tests.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::auth::{
     discover_beardog_socket, discover_beardog_socket_for_family, get_beardog_socket_for_jwt,
     provision_jwt_secret,

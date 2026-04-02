@@ -9,7 +9,6 @@
 use super::PhysicalChannelProvider;
 use crate::error::{GenesisError, Result};
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
-use async_trait::async_trait;
 use chrono::Utc;
 use std::time::Duration;
 use tracing::{debug, info};
@@ -155,7 +154,6 @@ impl PureRustBluetoothChannel {
 }
 
 #[cfg(feature = "pure-bluetooth")]
-#[async_trait]
 impl PhysicalChannelProvider for PureRustBluetoothChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         // BLE scanning verifies devices are in range

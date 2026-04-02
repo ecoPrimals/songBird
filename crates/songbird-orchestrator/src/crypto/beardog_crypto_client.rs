@@ -428,6 +428,7 @@ async fn read_json_rpc_response(stream: &mut PlatformStream) -> Result<String> {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

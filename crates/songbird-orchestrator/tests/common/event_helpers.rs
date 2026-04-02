@@ -22,6 +22,8 @@
     clippy::struct_field_names,
     clippy::match_same_arms,
     clippy::future_not_send,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
@@ -227,8 +229,9 @@ where
         if start.elapsed() > timeout {
             anyhow::bail!("Timeout waiting for condition");
         }
-        // Cooperative yielding - allows other tasks to run
-        tokio::task::yield_now().await;
+        // Small sleep advances virtual time under `start_paused` and avoids
+        // CPU-burning busy loops under real time.
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }
 
@@ -246,7 +249,7 @@ where
         if start.elapsed() > timeout {
             anyhow::bail!("Timeout waiting for async condition");
         }
-        tokio::task::yield_now().await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }
 
@@ -277,7 +280,7 @@ where
         if start.elapsed() > timeout {
             anyhow::bail!("Timeout waiting for value");
         }
-        tokio::task::yield_now().await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }
 

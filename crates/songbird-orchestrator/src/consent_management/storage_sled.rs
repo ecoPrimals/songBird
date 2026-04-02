@@ -317,7 +317,8 @@ impl super::ConsentStorageBackend for ConsentStorage {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "sled-storage"))]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use chrono::Utc;

@@ -226,7 +226,7 @@ async fn test_collect_metrics_with_timeout() {
     let mut server = mockito::Server::new_async().await;
 
     // Mock slow response (will timeout)
-    // NOTE: mockito callbacks run in sync context, so thread::sleep is necessary here.
+    // mockito `with_body_from_request` runs synchronously — use a short wall-clock delay (not tokio virtual time).
     // This is acceptable as it's a legitimate integration test of timeout behavior.
     // Alternative would be to use a real server, but that adds complexity.
     let mock = server
@@ -234,8 +234,8 @@ async fn test_collect_metrics_with_timeout() {
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body_from_request(|_| {
-            // Deliberately slow response to test timeout handling
-            std::thread::sleep(Duration::from_millis(150)); // Just over timeout
+            // Deliberately slow response to test timeout handling (must exceed adapter timeout below)
+            std::thread::sleep(Duration::from_millis(250));
             r#"{"cpu_usage_percent":0.0,"memory_usage_bytes":0,"memory_available_bytes":0,"active_containers":0,"queued_jobs":0,"performance_score":1.0,"timestamp":"2025-11-18T12:00:00Z"}"#.into()
         })
         .create_async()
@@ -244,7 +244,7 @@ async fn test_collect_metrics_with_timeout() {
     let adapter = ComputeAdapter::new(server.url())
         .await
         .expect("test precondition")
-        .with_timeout(Duration::from_millis(100)); // Short timeout for fast test
+        .with_timeout(Duration::from_millis(200)); // Enough to connect; less than body delay above
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");

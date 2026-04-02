@@ -16,11 +16,13 @@ use uuid::Uuid;
 
 mod checkpoint;
 mod manager;
+#[cfg(feature = "sled-storage")]
 mod storage_sled;
 pub mod types;
 
 pub use checkpoint::*;
 pub use manager::TaskLifecycleManager;
+#[cfg(feature = "sled-storage")]
 pub use storage_sled::*;
 pub use types::*;
 
@@ -57,6 +59,16 @@ pub trait TaskStorageBackend: Send + Sync {
 
     /// Flush pending writes to durable storage.
     async fn flush(&self) -> anyhow::Result<()>;
+
+    /// Remove checkpoints older than `max_age_seconds` (relative to `Utc::now()`).
+    async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> anyhow::Result<u64>;
+
+    /// Keep only the `keep_count` most recent checkpoints for a task (by creation time).
+    async fn delete_old_checkpoints(
+        &self,
+        task_id: TaskId,
+        keep_count: usize,
+    ) -> anyhow::Result<()>;
 }
 
 /// Task identifier (UUID v7 for time-ordered IDs)
@@ -179,6 +191,7 @@ impl From<&str> for TowerId {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

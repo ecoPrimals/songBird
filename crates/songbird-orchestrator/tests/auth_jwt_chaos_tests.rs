@@ -7,6 +7,8 @@
 //!
 //! **Evolution**: Removed #[serial] - these tests are concurrent-safe!
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::auth::provision_jwt_secret;
 use std::sync::Arc;
 use std::time::Duration;

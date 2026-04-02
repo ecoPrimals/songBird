@@ -268,10 +268,8 @@ impl Default for FairScheduler {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
-
     use super::*;
     use crate::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
 
@@ -450,5 +448,57 @@ mod tests {
         s.enqueue(hi_task).await.unwrap();
         assert_eq!(s.dequeue().await.unwrap().spec.priority, Priority::High);
         assert_eq!(s.dequeue().await.unwrap().spec.priority, Priority::Standard);
+    }
+
+    #[tokio::test]
+    async fn fair_scheduler_default_matches_new() {
+        let a = FairScheduler::new();
+        let b = FairScheduler::default();
+        assert_eq!(a.queue_len().await, 0);
+        assert_eq!(b.queue_len().await, 0);
+    }
+
+    #[tokio::test]
+    async fn critical_dequeues_before_standard_same_user_fifo_among_equal_priority() {
+        let s = FairScheduler::new();
+        let t1 = create_test_task("u", Priority::Standard);
+        let t2 = create_test_task("u", Priority::Standard);
+        let id1 = t1.id;
+        let id2 = t2.id;
+        s.enqueue(t1).await.unwrap();
+        s.enqueue(t2).await.unwrap();
+        assert_eq!(s.dequeue().await.unwrap().id, id1);
+        assert_eq!(s.dequeue().await.unwrap().id, id2);
+    }
+
+    #[tokio::test]
+    async fn dequeue_advances_global_virtual_time() {
+        let s = FairScheduler::new();
+        let t = create_test_task("solo", Priority::Standard);
+        s.enqueue(t).await.unwrap();
+        let _ = s.dequeue().await;
+        assert_eq!(s.queue_len().await, 0);
+    }
+
+    #[tokio::test]
+    async fn peek_stable_until_dequeue() {
+        let s = FairScheduler::new();
+        let t = create_test_task("a", Priority::Standard);
+        let id = t.id;
+        s.enqueue(t).await.unwrap();
+        assert_eq!(s.peek().await.unwrap().id, id);
+        assert_eq!(s.peek().await.unwrap().id, id);
+        assert_eq!(s.dequeue().await.unwrap().id, id);
+    }
+
+    #[tokio::test]
+    async fn dequeue_drains_all_enqueued_tasks() {
+        let s = FairScheduler::new();
+        s.enqueue(create_test_task("u", Priority::Standard)).await.unwrap();
+        s.enqueue(create_test_task("u", Priority::Standard)).await.unwrap();
+        assert_eq!(s.queue_len().await, 2);
+        assert!(s.dequeue().await.is_some());
+        assert!(s.dequeue().await.is_some());
+        assert!(s.dequeue().await.is_none());
     }
 }

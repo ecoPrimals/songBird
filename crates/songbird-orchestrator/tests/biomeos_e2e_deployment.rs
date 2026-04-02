@@ -11,6 +11,8 @@
 // **Concurrency Evolution**: These tests mutate process-wide env vars.
 // A static Mutex ensures they don't race with each other within this binary.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::ipc::UnixSocketServer;
 use tempfile::TempDir;
 

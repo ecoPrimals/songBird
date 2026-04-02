@@ -502,7 +502,12 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::tarpc_types::{
+        HealthStatus, ProtocolInfo, RegistrationResult, ServiceInfo, ServiceRegistration,
+        VersionInfo,
+    };
     use serde_json::json;
+    use std::collections::HashMap;
 
     #[test]
     fn test_endpoint_parsing_valid() {
@@ -677,5 +682,93 @@ mod tests {
         let c = TarpcClient::new("tarpc://localhost:5555").expect("client");
         assert!(c.endpoint.starts_with("tarpc://"));
         assert_eq!(c.addr.port(), 5555);
+    }
+
+    #[test]
+    fn tarpc_service_info_json_roundtrip() {
+        let info = ServiceInfo {
+            id: "svc-1".into(),
+            capability: "compute".into(),
+            endpoint: "tarpc://127.0.0.1:9001".into(),
+            status: "active".into(),
+            metadata: Some(json!({"k": "v"})),
+        };
+        let json = serde_json::to_string(&info).expect("serialize");
+        let back: ServiceInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.id, info.id);
+        assert_eq!(back.capability, info.capability);
+    }
+
+    #[test]
+    fn service_registration_json_roundtrip() {
+        let mut meta = HashMap::new();
+        meta.insert("a".into(), "b".into());
+        let reg = ServiceRegistration {
+            service_id: "r1".into(),
+            service_name: "Reg".into(),
+            capability: "storage".into(),
+            endpoint: "http://x".into(),
+            metadata: meta,
+            tower_id: Some("t1".into()),
+            tower_name: None,
+        };
+        let json = serde_json::to_string(&reg).expect("serialize");
+        let back: ServiceRegistration = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.service_id, reg.service_id);
+        assert_eq!(back.tower_id, reg.tower_id);
+    }
+
+    #[test]
+    fn registration_result_json_roundtrip() {
+        let r = RegistrationResult {
+            success: true,
+            message: "ok".into(),
+        };
+        let json = serde_json::to_string(&r).expect("serialize");
+        let back: RegistrationResult = serde_json::from_str(&json).expect("deserialize");
+        assert!(back.success);
+        assert_eq!(back.message, "ok");
+    }
+
+    #[test]
+    fn health_status_tarpc_type_json_roundtrip() {
+        let h = HealthStatus {
+            status: "healthy".into(),
+            version: "1.0.0".into(),
+            uptime_seconds: 42,
+            services_count: 7,
+        };
+        let json = serde_json::to_string(&h).expect("serialize");
+        let back: HealthStatus = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.uptime_seconds, 42);
+        assert_eq!(back.services_count, 7);
+    }
+
+    #[test]
+    fn version_info_json_roundtrip() {
+        let v = VersionInfo {
+            version: "3.0".into(),
+            protocol: "bincode".into(),
+            capabilities: vec!["a".into(), "b".into()],
+        };
+        let json = serde_json::to_string(&v).expect("serialize");
+        let back: VersionInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.capabilities, v.capabilities);
+    }
+
+    #[test]
+    fn protocol_info_json_roundtrip() {
+        let mut info_map = HashMap::new();
+        info_map.insert("x".into(), "y".into());
+        let p = ProtocolInfo {
+            name: "tarpc".into(),
+            port: 9001,
+            enabled: true,
+            info: info_map,
+        };
+        let json = serde_json::to_string(&p).expect("serialize");
+        let back: ProtocolInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.port, 9001);
+        assert!(back.enabled);
     }
 }

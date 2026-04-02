@@ -48,7 +48,6 @@
 //! // Define your RPC handler
 //! struct MyService;
 //!
-//! #[async_trait::async_trait]
 //! impl JsonRpcHandler for MyService {
 //!     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
 //!         match method {
@@ -96,9 +95,9 @@
 use crate::endpoint::VirtualEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::ipc;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::future::Future;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -224,7 +223,6 @@ impl JsonRpcError {
 /// JSON-RPC handler trait
 ///
 /// Implement this trait to handle JSON-RPC requests in your service.
-#[async_trait]
 pub trait JsonRpcHandler: Send + Sync {
     /// Handle a JSON-RPC method call
     ///
@@ -234,7 +232,11 @@ pub trait JsonRpcHandler: Send + Sync {
     ///
     /// # Returns
     /// The result value or an error message
-    async fn handle(&self, method: &str, params: Value) -> Result<Value, String>;
+    fn handle(
+        &self,
+        method: &str,
+        params: Value,
+    ) -> impl Future<Output = Result<Value, String>> + Send;
 }
 
 /// Tower Atomic Server - Serves JSON-RPC over Universal IPC

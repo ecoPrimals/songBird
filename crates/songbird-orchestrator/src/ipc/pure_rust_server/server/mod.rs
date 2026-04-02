@@ -229,6 +229,7 @@ impl Drop for UnixSocketServer {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use std::collections::HashMap;

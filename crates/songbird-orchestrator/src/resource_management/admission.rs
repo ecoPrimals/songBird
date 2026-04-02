@@ -198,10 +198,8 @@ impl AdmissionController {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
-
     use super::*;
     use crate::task_lifecycle::UserId;
     use crate::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
@@ -331,5 +329,75 @@ mod tests {
         let task = TaskLifecycle::new(UserId::from("alice"), spec);
         let d = controller.evaluate(&task).await.unwrap();
         assert!(matches!(d, AdmissionDecision::Admitted));
+    }
+
+    #[tokio::test]
+    async fn gpu_request_admitted_and_tracked_in_quota() {
+        let quota_mgr = Arc::new(QuotaManager::new());
+        let controller = AdmissionController::new(quota_mgr.clone());
+        let spec = TaskSpec {
+            task_type: "gpu".into(),
+            config: serde_json::json!({}),
+            required_capabilities: vec![],
+            resources: ResourceRequirements {
+                cpu_cores: None,
+                memory_mb: None,
+                gpu_count: Some(2),
+                network_mbps: None,
+                storage_gb: None,
+            },
+            priority: Priority::Standard,
+        };
+        let task = TaskLifecycle::new(UserId::from("gpu-user"), spec);
+        let d = controller.evaluate(&task).await.unwrap();
+        assert!(matches!(d, AdmissionDecision::Admitted));
+        controller.admit(&task).await.unwrap();
+        let q = quota_mgr.get_quota(&UserId::from("gpu-user")).await;
+        assert_eq!(q.used.get(&ResourceType::Gpu).unwrap().value, 2.0);
+    }
+
+    #[tokio::test]
+    async fn rejects_when_active_tasks_at_system_max() {
+        let quota_mgr = Arc::new(QuotaManager::new());
+        let controller = AdmissionController::new(quota_mgr);
+        for i in 0..1000 {
+            let task = create_test_task(&format!("user{i}"), Some(1), Some(256));
+            controller.admit(&task).await.unwrap();
+        }
+        let overflow = create_test_task("overflow", Some(1), Some(256));
+        let d = controller.evaluate(&overflow).await.unwrap();
+        assert!(matches!(
+            d,
+            AdmissionDecision::Rejected {
+                reason
+            } if reason.contains("maximum")
+        ));
+    }
+
+    #[tokio::test]
+    async fn release_saturates_active_tasks_at_zero() {
+        let quota_mgr = Arc::new(QuotaManager::new());
+        let controller = AdmissionController::new(quota_mgr);
+        let task = create_test_task("solo", Some(1), Some(256));
+        controller.admit(&task).await.unwrap();
+        controller.release(&task).await.unwrap();
+        controller.release(&task).await.unwrap();
+        let load = controller.get_system_load().await;
+        assert_eq!(load.active_tasks, 0);
+    }
+
+    #[tokio::test]
+    async fn cpu_delayed_and_memory_ok_still_delayed_first() {
+        let quota_mgr = Arc::new(QuotaManager::new());
+        let controller = AdmissionController::new(quota_mgr);
+        controller.update_system_load(0.95, 0.1).await;
+        let task = create_test_task("t", Some(1), Some(256));
+        let d = controller.evaluate(&task).await.unwrap();
+        assert!(matches!(
+            d,
+            AdmissionDecision::Delayed {
+                estimated_wait_seconds: 60
+            }
+        ));
     }
 }

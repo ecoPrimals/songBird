@@ -44,13 +44,7 @@ async fn test_cache_functionality() {
     let services2 = engine.discover_by_capability(CAP).await;
     assert_eq!(services1, services2, "Cache should return same results");
 
-    let start = std::time::Instant::now();
-    loop {
-        if start.elapsed() > Duration::from_millis(15) {
-            break;
-        }
-        tokio::task::yield_now().await;
-    }
+    tokio::time::sleep(Duration::from_millis(15)).await;
 
     let services3 = engine.discover_by_capability(CAP).await;
     assert_eq!(services1, services3, "Should still find service after cache expiry");

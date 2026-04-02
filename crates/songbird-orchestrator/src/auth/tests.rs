@@ -6,6 +6,8 @@
 //! These tests verify the capability-based discovery and JWT provisioning.
 //! ✅ ALL TESTS ARE FULLY CONCURRENT — no env var mutation!
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 #[cfg(test)]
 mod tests {
     use crate::auth::{

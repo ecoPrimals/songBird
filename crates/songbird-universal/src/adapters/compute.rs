@@ -395,6 +395,8 @@ impl ComputeMetricsProvider for ComputeAdapter {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -765,5 +767,48 @@ mod tests {
         assert_eq!(metrics.memory_usage_percent(), 0.0);
         assert!(!metrics.is_high_load());
         assert_eq!(metrics.health_status(), HealthStatus::Healthy);
+    }
+
+    #[test]
+    fn compute_metrics_json_roundtrip_preserves_fields() {
+        let m = ComputeMetrics {
+            cpu_usage_percent: 12.5,
+            memory_usage_bytes: 100,
+            memory_available_bytes: 300,
+            active_containers: 3,
+            queued_jobs: 1,
+            performance_score: 0.9,
+            timestamp: chrono::Utc::now(),
+        };
+        let json = serde_json::to_string(&m).expect("serialize");
+        let back: ComputeMetrics = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.cpu_usage_percent, m.cpu_usage_percent);
+        assert_eq!(back.total_memory_bytes(), m.total_memory_bytes());
+        assert_eq!(back.active_containers, m.active_containers);
+        assert_eq!(back.queued_jobs, m.queued_jobs);
+    }
+
+    #[test]
+    fn health_status_json_roundtrip() {
+        for status in [HealthStatus::Healthy, HealthStatus::Degraded, HealthStatus::Unhealthy] {
+            let json = serde_json::to_string(&status).expect("serialize");
+            let back: HealthStatus = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, status);
+        }
+    }
+
+    #[test]
+    fn degraded_health_not_high_load_boundary() {
+        let m = ComputeMetrics {
+            cpu_usage_percent: 85.0,
+            memory_usage_bytes: 4_000_000_000,
+            memory_available_bytes: 6_000_000_000,
+            active_containers: 1,
+            queued_jobs: 10,
+            performance_score: 0.5,
+            timestamp: chrono::Utc::now(),
+        };
+        assert!(m.is_high_load());
+        assert_eq!(m.health_status(), HealthStatus::Degraded);
     }
 }

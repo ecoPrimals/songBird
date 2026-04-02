@@ -233,10 +233,8 @@ async fn test_collect_metrics_with_timeout() {
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body_from_request(|_| {
-            // Note: mockito's with_body_from_request runs in sync context
-            // Using thread::sleep here is necessary for mockito compatibility
-            // The key improvement is the reduced timeout (100ms vs 1000ms)
-            std::thread::sleep(Duration::from_millis(150)); // Just over timeout
+            // mockito invokes this synchronously; wall-clock delay (not tokio virtual time)
+            std::thread::sleep(Duration::from_millis(250));
             r#"{"total_capacity_bytes":0,"used_bytes":0,"available_bytes":0,"object_count":0,"avg_read_latency_ms":0.0,"avg_write_latency_ms":0.0,"timestamp":"2025-11-18T12:00:00Z"}"#.into()
         })
         .create_async()
@@ -245,7 +243,7 @@ async fn test_collect_metrics_with_timeout() {
     let adapter = StorageAdapter::new(server.url())
         .await
         .expect("test precondition")
-        .with_timeout(Duration::from_millis(100)); // Short timeout for fast test
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");

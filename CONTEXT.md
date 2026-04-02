@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-only (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 1, 2026
+**Last Updated**: April 2, 2026
 
 ## What It Does
 
@@ -34,13 +34,13 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 11,831+ (0 failed, ~269 ignored) |
-| Coverage | ~69.14% region coverage via llvm-cov (target 90%) |
+| Tests | 11,917 (0 failed, ~269 ignored, full suite ~84s) |
+| Coverage | ~69% region coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >1000 LOC | 0 (`frame.rs` refactored → `frame/` 4 modules; max prod ~484 `gateway/mod.rs`) |
-| Unsafe blocks | 0 (`songbird-process-env` evolved to BearDog in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
-| C dependencies | Zero in `songbird-quic` (`quinn`/`rustls`/`ring` fully replaced with native QUIC engine + BearDog crypto delegation); `ring-crypto` opt-in feature gate remains on CLI for HTTPS listener only |
+| Files >1000 LOC | 0 (all production modules under 800 lines; test-only files under 950) |
+| Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
+| C dependencies | Zero in `songbird-quic`; `rcgen` eliminated (pure Rust test cert gen); `sled` feature-gated with in-memory fallback; `ring-crypto` opt-in feature gate on CLI only |
 | Hardcoded primal names | 0 in production discovery paths (capability-first: `crypto.sock`, not `beardog.sock`) |
 | Production panics/unwrap/todo | 0 |
 

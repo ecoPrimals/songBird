@@ -55,9 +55,8 @@ impl<T> BatchResult<T> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
-
     use super::*;
 
     #[test]
@@ -279,5 +278,42 @@ mod tests {
         r.successes.push(1);
         let rate = r.success_rate();
         assert!(rate > 0.0 && rate < f64::INFINITY);
+    }
+
+    #[test]
+    fn batch_result_new_is_const_compatible() {
+        const BR: BatchResult<u8> = BatchResult::new(0);
+        assert_eq!(BR.total, 0);
+    }
+
+    #[test]
+    fn is_partial_success_false_when_all_ok() {
+        let mut r = BatchResult::<i32>::new(2);
+        r.successes.push(1);
+        r.successes.push(2);
+        assert!(!r.is_partial_success());
+    }
+
+    #[test]
+    fn is_partial_success_false_when_all_fail() {
+        let mut r = BatchResult::<i32>::new(2);
+        r.failures.push((0, "a".into()));
+        r.failures.push((1, "b".into()));
+        assert!(!r.is_partial_success());
+    }
+
+    #[test]
+    fn success_rate_counts_successes_not_failures_in_numerator() {
+        let mut r = BatchResult::<i32>::new(4);
+        r.successes.push(1);
+        r.failures.push((1, "e".into()));
+        assert_eq!(r.success_rate(), 0.25);
+    }
+
+    #[test]
+    fn batch_result_debug_includes_variant_name() {
+        let r = BatchResult::<()>::new(1);
+        let s = format!("{r:?}");
+        assert!(s.contains("BatchResult"));
     }
 }

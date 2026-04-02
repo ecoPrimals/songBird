@@ -59,6 +59,8 @@ pub mod keys;
 pub mod protocol;
 pub mod service;
 pub mod storage;
+#[cfg(feature = "sled-storage")]
+mod storage_sled;
 
 // Re-exports - TRUE PRIMAL (BearDog-delegated)
 // ✅ Production exports: ZERO direct crypto, 100% BearDog delegation
@@ -68,7 +70,9 @@ pub use connector::OnionConnector;
 pub use crypto::{decrypt_data_via_beardog, encrypt_data_via_beardog};
 pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
-pub use storage::{OnionStorage, OnionStorageBackend};
+pub use storage::{InMemoryOnionStorage, OnionStorageBackend, PeerInfo};
+#[cfg(feature = "sled-storage")]
+pub use storage_sled::OnionStorage;
 
 // ✅ Phase 3 Complete: OnionService & OnionConnector with BearDog
 pub use connector::OnionConnection;
@@ -80,5 +84,7 @@ pub use service::OnionService;
 pub use address::{derive_onion_address, parse_onion_address, validate_onion_address};
 #[cfg(feature = "standalone")]
 pub use crypto::{decrypt_data, encrypt_data};
-#[cfg(feature = "standalone")]
-pub use storage::OnionStorage as OnionStorageStandalone; // Standalone storage methods
+#[cfg(all(feature = "standalone", not(feature = "sled-storage")))]
+pub use storage::InMemoryOnionStorage as OnionStorageStandalone;
+#[cfg(all(feature = "standalone", feature = "sled-storage"))]
+pub use storage_sled::OnionStorage as OnionStorageStandalone;

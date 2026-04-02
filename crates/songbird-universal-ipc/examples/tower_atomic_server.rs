@@ -16,7 +16,6 @@
 //! cargo run --example tower_atomic_client
 //! ```
 
-use async_trait::async_trait;
 use serde_json::{Value, json};
 use songbird_universal_ipc::tower_atomic::{JsonRpcHandler, TowerAtomicServer};
 use songbird_universal_ipc::{error::IpcResult, ipc};
@@ -25,7 +24,6 @@ use tracing::{Level, info};
 /// Math service that provides basic arithmetic operations
 struct MathService;
 
-#[async_trait]
 impl JsonRpcHandler for MathService {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         info!("Handling method: {}", method);

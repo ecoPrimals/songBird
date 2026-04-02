@@ -5,6 +5,8 @@
 //!
 //! v3.20.0: Full workflow tests for primal registration and discovery
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use songbird_orchestrator::ipc::ServiceRegistry;
 use std::sync::Arc;
 

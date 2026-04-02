@@ -94,10 +94,8 @@ impl<T: Clone> DegradationStrategy<T> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
-
     use super::*;
 
     #[tokio::test]

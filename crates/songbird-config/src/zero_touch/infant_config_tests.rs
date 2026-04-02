@@ -5,8 +5,7 @@
 //!
 //! Extracted from `infant_config.rs` for file-size discipline (<1000 lines).
 
-#![allow(clippy::unwrap_used, reason = "test assertions")]
-#![allow(clippy::expect_used, reason = "test assertions")]
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::*;
 use crate::canonical::constants::read_process_env;
@@ -331,4 +330,111 @@ fn parse_fallback_retry_explicit() {
         }
         _ => panic!("expected retry"),
     }
+}
+
+#[test]
+fn required_capabilities_skips_empty_tokens() {
+    let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
+        "SERVICE_PORT" => Ok("8080".into()),
+        "REQUIRED_CAPABILITIES" => Ok("security, , storage".into()),
+        _ => Err(std::env::VarError::NotPresent),
+    })
+    .expect("config");
+    assert_eq!(cfg.required_capabilities.len(), 2);
+    let types: Vec<_> =
+        cfg.required_capabilities.iter().map(|r| r.capability_type.as_str()).collect();
+    assert_eq!(types, vec!["security", "storage"]);
+}
+
+#[test]
+fn discovery_defaults_when_timeout_vars_missing() {
+    let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
+        "SERVICE_PORT" => Ok("8080".into()),
+        _ => Err(std::env::VarError::NotPresent),
+    })
+    .expect("config");
+    assert_eq!(cfg.discovery.timeout, Duration::from_secs(30));
+    assert_eq!(cfg.discovery.refresh_interval, Duration::from_secs(60));
+    assert_eq!(cfg.discovery.cache_ttl, Duration::from_secs(300));
+    assert!(cfg.discovery.enable_cache);
+}
+
+#[test]
+fn bootstrap_defaults_infant_discovery_and_fail_on_missing() {
+    let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
+        "SERVICE_PORT" => Ok("8080".into()),
+        _ => Err(std::env::VarError::NotPresent),
+    })
+    .expect("config");
+    assert!(cfg.bootstrap.enable_infant_discovery);
+    assert!(cfg.bootstrap.fail_on_missing_required);
+    assert_eq!(cfg.bootstrap.discovery_phases.len(), 4);
+}
+
+#[test]
+fn network_health_metrics_default_to_service_port_when_unset() {
+    let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
+        "SERVICE_PORT" => Ok("7777".into()),
+        _ => Err(std::env::VarError::NotPresent),
+    })
+    .expect("config");
+    assert_eq!(cfg.network.health_port, 7777);
+    assert_eq!(cfg.network.metrics_port, 7777);
+}
+
+#[test]
+fn parse_quality_defaults_security_to_basic_when_level_missing() {
+    let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
+        "SERVICE_PORT" => Ok("8080".into()),
+        "REQUIRED_CAPABILITIES" => Ok("plain".into()),
+        _ => Err(std::env::VarError::NotPresent),
+    })
+    .expect("config");
+    assert_eq!(
+        cfg.required_capabilities[0].quality_requirements.security_level,
+        SecurityLevel::Basic
+    );
+}
+
+#[test]
+fn self_identity_collects_availability_zone_metadata() {
+    let cfg = ZeroTouchConfig::from_environment_reader(|key| match key {
+        "SERVICE_PORT" => Ok("8080".into()),
+        "SERVICE_ID" => Ok("id-az".into()),
+        "AVAILABILITY_ZONE" => Ok("eu-central-1a".into()),
+        _ => Err(std::env::VarError::NotPresent),
+    })
+    .expect("config");
+    assert_eq!(
+        cfg.self_identity.metadata.get("availability_zone").map(String::as_str),
+        Some("eu-central-1a")
+    );
+}
+
+#[test]
+fn fallback_behavior_serde_roundtrip() {
+    let fb = FallbackBehavior::Retry {
+        max_attempts: 5,
+        backoff_ms: 250,
+    };
+    let json = serde_json::to_string(&fb).expect("serialize");
+    let back: FallbackBehavior = serde_json::from_str(&json).expect("deserialize");
+    match back {
+        FallbackBehavior::Retry {
+            max_attempts,
+            backoff_ms,
+        } => {
+            assert_eq!(max_attempts, 5);
+            assert_eq!(backoff_ms, 250);
+        }
+        _ => panic!("expected Retry"),
+    }
+}
+
+#[test]
+fn discovery_phase_eq_and_roundtrip() {
+    let p = DiscoveryPhase::CapabilityTest;
+    let json = serde_json::to_string(&p).expect("serialize");
+    let back: DiscoveryPhase = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(back, p);
 }

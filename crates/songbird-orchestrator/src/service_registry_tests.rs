@@ -269,7 +269,7 @@ async fn heartbeat_unknown_service_returns_error() {
     assert!(result.unwrap_err().to_string().contains("not found"));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn cleanup_stale_services_removes_expired() {
     let config = RegistryConfig {
         service_ttl_sec: 0,
@@ -380,7 +380,7 @@ async fn query_by_capability_returns_matching() {
     assert_eq!(result[0].service_name, "CryptoService");
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn cleanup_releases_ports() {
     let config = RegistryConfig {
         service_ttl_sec: 0,

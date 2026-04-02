@@ -20,11 +20,14 @@ use tokio::sync::RwLock;
 
 mod enforcement;
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod enforcement_tests;
 mod preferences;
 mod request;
 mod rules;
+#[cfg(feature = "sled-storage")]
 mod storage_sled;
+#[cfg(feature = "sled-storage")]
 pub use storage_sled::ConsentStorage;
 
 /// Async consent persistence backend (SB-03: abstraction for sled → nestGate migration).
@@ -114,8 +117,16 @@ impl ConsentManager {
     ///
     /// Returns an error if the sled database cannot be opened.
     pub async fn with_storage(database_url: &str) -> anyhow::Result<Self> {
-        let storage = ConsentStorage::new(database_url).await?;
-        Ok(Self::with_backend(Arc::new(storage)))
+        #[cfg(feature = "sled-storage")]
+        {
+            let storage = ConsentStorage::new(database_url).await?;
+            Ok(Self::with_backend(Arc::new(storage)))
+        }
+        #[cfg(not(feature = "sled-storage"))]
+        {
+            let _ = database_url;
+            Ok(Self::with_backend(Arc::new(crate::storage_memory::InMemoryStorage::new())))
+        }
     }
 
     /// Create a consent manager with an arbitrary [`ConsentStorageBackend`].
@@ -332,6 +343,7 @@ impl ConsentManager {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

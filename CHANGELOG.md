@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave93] - 2026-04-02 - Ring Elimination, Sled Feature-Gate, Concurrency Fix, Refactoring
+
+### Changed — Ring Dependency Elimination
+- Replaced `rcgen` dev-dependency in songbird-tls with pure Rust test cert generation (`ed25519-dalek` + manual DER construction)
+- Same pattern as existing `songbird-quic/cert_gen.rs` — no C dependencies for test certificates
+- `cargo tree -p songbird-tls -e dev --all-features | grep "ring v"` — **no output**
+
+### Changed — Sled Feature-Gating
+- `sled` now optional behind `sled-storage` feature (default enabled) in `songbird-orchestrator` and `songbird-sovereign-onion`
+- `InMemoryStorage` implementations serve as always-available fallbacks
+- `cargo check -p songbird-orchestrator --no-default-features` compiles clean (in-memory only)
+
+### Changed — Large File Refactoring
+- `birdsong_handler.rs` (855 lines) → 7-file directory module (types, provider, beacon, decryption, lineage, schema, tests)
+- `production_analytics.rs` (812 lines) → 6-file directory module (collection, aggregation, reporting, dashboard, tests)
+- `service.rs` (797 lines) → 7-file directory module (construction, dispatch, ipc_registry, http, meta, util, tests)
+- All production modules now under 800 lines
+
+### Fixed — Concurrency Bug: `yield_now()` Infinite Loop
+- Poll-until helpers (`sync_helpers`, `event_helpers`) used `tokio::task::yield_now()` in loops
+- Under `#[tokio::test(start_paused = true)]`, `yield_now()` never advances virtual time → infinite loop
+- Replaced with `tokio::time::sleep(Duration::from_millis(1))` — works correctly under both real and virtual time
+- Fixed across 6 files; orchestrator tests now complete in ~84s (previously hung indefinitely)
+
+### Changed — Discovery Fast-Fail
+- `RuntimeDiscoveryEngine` skips mDNS daemon startup for sub-50ms timeouts
+- `discover_mdns_services_with_timeout` skips DNS-SD for sub-100ms listen windows
+- Discovery tests dropped from ~10s to ~0.01s
+
+### Added — Coverage Expansion
+- 60+ new test functions across songbird-http-client, songbird-universal-ipc, songbird-stun, songbird-lineage-relay
+
+### Verified
+- 11,917 tests passing, 0 failures, full workspace ~84s
+- `cargo clippy --all-targets --all-features -- -D warnings` — clean
+- `cargo fmt --check` — clean
+- `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps` — clean
+
+---
+
 ## [v0.2.1-wave89] - 2026-03-30 - Pure Rust QUIC Engine, quinn/ring Elimination, Doc Refresh
 
 ### Changed — Native QUIC Engine (quinn/rustls/ring fully eliminated from songbird-quic)

@@ -49,13 +49,7 @@ mod systemtime_option {
 // UNIFIED CONFIGURATION RE-EXPORTS - **MIGRATION COMPLETE**
 // ============================================================================
 
-// Experiment configuration - **MIGRATED TO UNIFIED**
-// TEMPORARY: Disabled - songbird_config::unified has E0765 corruption
-// pub use songbird_config::unified::testing::{ByzantineFailureConfig, ExperimentConfig, NetworkFaultConfig, PerformanceDegradationConfig,
-//     ResourceConstraintConfig, ServiceFailureConfig,
-// };
-
-// Temporary local definitions until unified module is fixed
+// Chaos experiment configuration types — canonical definitions for test-utils.
 /// Composes optional fault profiles for a single [`ChaosExperiment`].
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExperimentConfig {

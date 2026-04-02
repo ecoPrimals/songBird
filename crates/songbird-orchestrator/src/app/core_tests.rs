@@ -3,14 +3,11 @@
 
 //! Tests for [`crate::app::SongbirdOrchestrator`] helpers (broadcast discovery, lifecycle-related pure logic).
 
-use std::sync::{Mutex, OnceLock};
-
 use crate::app::SongbirdOrchestrator;
-
-static BROADCAST_ENV_MUTEX: OnceLock<Mutex<()>> = OnceLock::new();
+use crate::app::core::broadcast_test_lock;
 
 fn broadcast_env_lock() -> std::sync::MutexGuard<'static, ()> {
-    BROADCAST_ENV_MUTEX.get_or_init(|| Mutex::new(())).lock().expect("lock")
+    broadcast_test_lock::guard()
 }
 
 #[test]

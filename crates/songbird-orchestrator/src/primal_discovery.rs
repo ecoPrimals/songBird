@@ -1,44 +1,40 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Agnostic Primal Discovery - TRUE PRIMAL Architecture
+//! Agnostic Primal Discovery — wateringHole / TRUE PRIMAL
 //!
-//! Discovers primals by capability at runtime, with ZERO hardcoding.
-//! Songbird only knows itself - discovers other primals via capabilities.
+//! Discovers primals by **capability at runtime** via JSON-RPC probes on Unix
+//! sockets under `$XDG_RUNTIME_DIR/biomeos/`, with **no** filename- or
+//! primal-name-based classification.
 //!
 //! ## Principles
 //!
-//! 1. **Self-Knowledge Only**: Songbird knows only itself
-//! 2. **Capability-Based**: Discover by what primals DO, not what they ARE
+//! 1. **Self-Knowledge Only**: Songbird knows only itself (see [`get_primal_name`])
+//! 2. **Capability-Based**: Classify by `capabilities.list` tokens, not paths
 //! 3. **Runtime Discovery**: No compile-time dependencies on other primals
 //! 4. **Graceful Degradation**: Features work without optional primals
 //!
 //! ## Discovery Strategy
 //!
 //! ```text
-//! 1. Environment Variables (orchestrator-provided, preferred)
-//!    - Explicit: {CAPABILITY}_PROVIDER_SOCKET
-//!    - Generic: {PRIMAL}_SOCKET
-//!    
-//! 2. Capability Registry (runtime discovery)
-//!    - Query for capability
-//!    - Get socket path
-//!    
-//! 3. Common Socket Patterns (fallback)
-//!    - /tmp/{capability}.sock
-//!    - /tmp/{primal}-{family}.sock
-//!    
-//! 4. Socket Scanning (last resort)
-//!    - Scan /tmp for matching sockets
-//!    - Check socket capabilities via RPC
+//! 1. Environment variables (explicit overrides, preferred)
+//!    - Primary: {CAPABILITY}_PROVIDER_SOCKET
+//!    - Compatibility: BEARDOG_SOCKET, NESTGATE_SOCKET, etc.
+//!
+//! 2. TCP discovery files (capability-named, isomorphic fallback)
+//!
+//! 3. BiomeOS socket scan + probe (no filename classification)
+//!    - Enumerate `*.sock` in `$XDG_RUNTIME_DIR/biomeos/`
+//!    - For each socket: `health.liveness` then `capabilities.list`
+//!    - First socket whose capability list matches the requested role wins
 //! ```
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use songbird_types::primal_names;
-use std::path::Path;
+use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
-/// Capability types for primal discovery
+/// Capability types for primal discovery (functional roles, not primal names).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Capability {
     /// Cryptographic operations (signing, encryption, hashing)
@@ -68,7 +64,7 @@ impl Capability {
         }
     }
 
-    /// Get alternative environment variable names (for compatibility)
+    /// Alternative environment variable names (backward compatibility).
     fn alt_env_vars(&self) -> Vec<&'static str> {
         match self {
             Self::Crypto => vec!["BEARDOG_CRYPTO_SOCKET", "BEARDOG_SOCKET"],
@@ -80,64 +76,68 @@ impl Capability {
         }
     }
 
-    /// Get common socket path patterns for this capability.
-    ///
-    /// Returns capability-named sockets first (e.g., `crypto.sock`),
-    /// then known-provider sockets as hints (e.g., `beardog.sock`).
-    ///
-    /// Priority order:
-    /// 1. `$XDG_RUNTIME_DIR/biomeos/{capability}.sock` (capability-first)
-    /// 2. `$XDG_RUNTIME_DIR/biomeos/{provider}.sock` (known-provider hint)
-    /// 3. `/tmp/biomeos/{capability}.sock` (fallback)
-    /// 4. `/tmp/{provider}.sock` (legacy)
-    fn socket_patterns(&self) -> Vec<String> {
-        self.socket_patterns_with_env(&|k| songbird_process_env::var(k).ok())
+    /// Returns true if a flat `capabilities.list` response satisfies this role.
+    #[must_use]
+    pub fn matches_capability_tokens(&self, tokens: &[String]) -> bool {
+        let lowered: Vec<String> = tokens.iter().map(|t| t.to_ascii_lowercase()).collect();
+        match self {
+            Self::Crypto => lowered.iter().any(|t| {
+                t.contains("crypto.delegate")
+                    || t.starts_with("crypto.")
+                    || t == "crypto"
+                    || t.contains("encryption")
+            }),
+            Self::Security => lowered.iter().any(|t| {
+                t.starts_with("security.")
+                    || t.contains("jwt")
+                    || t.contains("btsp.")
+                    || t == "security"
+            }),
+            Self::Http => lowered.iter().any(|t| {
+                t == "http.request" || t == "http.get" || t == "http.post" || t.starts_with("http.")
+            }),
+            Self::Ai => lowered.iter().any(|t| {
+                t.starts_with("ai.")
+                    || t.contains("llm")
+                    || t.contains("mcp")
+                    || t.contains("inference")
+                    || t.contains("model")
+            }),
+            Self::Storage => {
+                lowered.iter().any(|t| t.starts_with("storage.") || t.contains("persist"))
+            }
+            Self::Messaging => lowered.iter().any(|t| {
+                t.contains("messaging")
+                    || t.contains("pubsub")
+                    || t.contains("queue")
+                    || t.starts_with("message.")
+            }),
+        }
     }
+}
 
-    /// Same as [`Self::socket_patterns`], but `XDG_RUNTIME_DIR` (and any future lookups)
-    /// go through `env_reader` so tests can inject values without mutating process env.
-    fn socket_patterns_with_env<F>(&self, env_reader: &F) -> Vec<String>
-    where
-        F: Fn(&str) -> Option<String>,
-    {
-        let xdg_base = env_reader("XDG_RUNTIME_DIR")
-            .map_or_else(|| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
+/// `sovereign-storage`: storage role plus an explicit sovereign / edge token.
+#[must_use]
+pub fn matches_sovereign_storage_tokens(tokens: &[String]) -> bool {
+    Capability::Storage.matches_capability_tokens(tokens)
+        && tokens.iter().any(|t| t.to_ascii_lowercase().contains("sovereign"))
+}
 
-        let cap_name: &str = match self {
-            Self::Crypto => "crypto",
-            Self::Security => "security",
-            Self::Http => "http",
-            Self::Ai => "ai",
-            Self::Storage => "storage",
-            Self::Messaging => "messaging",
-        };
-
-        vec![
-            format!("{xdg_base}/{cap_name}.sock"),
-            format!("/tmp/biomeos/{cap_name}.sock"),
-            format!("/tmp/{cap_name}.sock"),
-        ]
+/// Map doctor / CLI capability keys to [`Capability`] (excludes sovereign-storage).
+pub fn capability_from_wire_id(id: &str) -> Result<Capability> {
+    match id {
+        "crypto" => Ok(Capability::Crypto),
+        "ai" => Ok(Capability::Ai),
+        "storage" => Ok(Capability::Storage),
+        "messaging" => Ok(Capability::Messaging),
+        "http" => Ok(Capability::Http),
+        "security" => Ok(Capability::Security),
+        other => Err(anyhow!("Unknown capability id for discovery: {other}")),
     }
 }
 
 /// Discover a primal by capability (functional, no state)
 ///
-/// # Example
-///
-/// ```rust,no_run
-/// use songbird_orchestrator::primal_discovery::{discover, Capability};
-///
-/// # async fn example() -> anyhow::Result<()> {
-/// // Discover crypto provider (could be BearDog, or any primal with crypto capability)
-/// let crypto_socket = discover(Capability::Crypto).await?;
-/// println!("Crypto provider at: {}", crypto_socket);
-///
-/// // Discover AI provider (could be Squirrel, or any primal with AI capability)
-/// let ai_socket = discover(Capability::Ai).await?;
-/// println!("AI provider at: {}", ai_socket);
-/// # Ok(())
-/// # }
-/// ```
 /// # Errors
 ///
 /// Returns an error if the operation fails.
@@ -173,108 +173,177 @@ where
         }
     }
 
-    // Strategy 3: Common socket patterns (Unix sockets)
-    for pattern in capability.socket_patterns_with_env(&env_reader) {
-        if Path::new(&pattern).exists() {
-            info!("   ✅ Found {:?} provider socket at: {}", capability, pattern);
-            return Ok(pattern);
-        }
-        debug!("   ⏭️  Not found: {}", pattern);
-    }
-
-    // Strategy 3.5: TCP discovery files (isomorphic fallback)
-    if let Some(tcp_endpoint) = discover_tcp_from_capability(capability) {
+    // Strategy 3: TCP discovery files (isomorphic fallback; uses same `env_reader` as biomeos scan)
+    if let Some(tcp_endpoint) = discover_tcp_from_capability(capability, &env_reader) {
         info!("   ✅ Found {:?} provider via TCP discovery file: {}", capability, tcp_endpoint);
         return Ok(tcp_endpoint);
     }
 
-    // Strategy 4: Socket scanning (last resort)
-    if let Some(socket_path) = scan_sockets_with_env(capability, &env_reader) {
-        info!("   ✅ Found {:?} provider via scanning: {}", capability, socket_path);
+    // Strategy 4: BiomeOS `*.sock` scan + JSON-RPC capability probe (no filename classification)
+    if let Some(socket_path) = discover_via_biomeos_probe(capability, &env_reader) {
+        info!("   ✅ Found {:?} provider via biomeos probe: {}", capability, socket_path);
         return Ok(socket_path);
     }
 
-    // Not found
     warn!("❌ No {:?} provider found - checked all discovery strategies", capability);
     anyhow::bail!("No {capability:?} provider available")
 }
 
-/// Scan socket directories for sockets matching capability.
+/// Discover by string id (e.g. doctor): handles `sovereign-storage` specially.
+/// # Errors
 ///
-/// Searches using capability terms (e.g., "crypto", "security", "ai").
-///
-/// Scan priority: `$XDG_RUNTIME_DIR/biomeos/` → `/tmp/biomeos/` → `/tmp/`
-fn scan_sockets(capability: Capability) -> Option<String> {
-    scan_sockets_with_env(capability, &|k| songbird_process_env::var(k).ok())
-}
-
-fn scan_sockets_with_env<F>(capability: Capability, env_reader: &F) -> Option<String>
+/// Returns an error if the operation fails.
+pub async fn discover_for_capability_id_with<F>(id: &str, env_reader: F) -> Result<String>
 where
     F: Fn(&str) -> Option<String>,
 {
-    let search_terms = match capability {
-        Capability::Crypto => vec!["crypto", "encryption"],
-        Capability::Security => vec!["security", "auth"],
-        Capability::Http => vec!["http", "gateway"],
-        Capability::Ai => vec!["ai", "inference", "ml"],
-        Capability::Storage => vec!["storage", "persist", "data"],
-        Capability::Messaging => vec!["messaging", "pubsub"],
-    };
-
-    // Build directory search order
-    let mut dirs_to_scan = Vec::new();
-
-    // Priority 1: XDG_RUNTIME_DIR/biomeos/
-    if let Some(xdg_runtime) = env_reader("XDG_RUNTIME_DIR") {
-        dirs_to_scan.push(format!("{xdg_runtime}/biomeos"));
+    if id == "sovereign-storage" {
+        return discover_sovereign_storage_with(env_reader).await;
     }
+    let cap = capability_from_wire_id(id)?;
+    discover_with(cap, env_reader).await
+}
 
-    // Priority 2: /tmp/biomeos/
-    dirs_to_scan.push("/tmp/biomeos".to_string());
+/// Discover sovereign storage: env overrides, then biomeos probe with [`matches_sovereign_storage_tokens`].
+pub async fn discover_sovereign_storage_with<F>(env_reader: F) -> Result<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    if let Some(p) = env_reader("SONGBIRD_SOVEREIGN_STORAGE_PROVIDER_SOCKET") {
+        return Ok(p);
+    }
+    if let Some(p) = env_reader("STORAGE_PROVIDER_SOCKET") {
+        return Ok(p);
+    }
+    for alt in ["NESTGATE_SOCKET", "STORAGE_SOCKET"] {
+        if let Some(p) = env_reader(alt) {
+            return Ok(p);
+        }
+    }
+    if let Some(p) =
+        discover_via_biomeos_probe_filtered(&env_reader, matches_sovereign_storage_tokens)
+    {
+        return Ok(p);
+    }
+    anyhow::bail!("No sovereign-storage provider available")
+}
 
-    // Priority 3: /tmp/ (legacy)
-    dirs_to_scan.push("/tmp".to_string());
+/// True when `ft` is a Unix domain socket ([`std::fs::FileType`] is not a regular file for those).
+#[cfg(unix)]
+#[inline]
+fn is_unix_socket_filetype(ft: &std::fs::FileType) -> bool {
+    std::os::unix::fs::FileTypeExt::is_socket(ft)
+}
 
-    for dir in dirs_to_scan {
+#[cfg(not(unix))]
+#[inline]
+fn is_unix_socket_filetype(_ft: &std::fs::FileType) -> bool {
+    false
+}
+
+/// List `*.sock` paths under biomeos runtime dirs (XDG, then legacy `/tmp/biomeos` if no XDG).
+///
+/// Includes **real** Unix sockets (not only regular files): [`Path::is_file`] is false for
+/// socket inodes, so we use [`std::fs::DirEntry::file_type`] and accept `is_file` or
+/// (on Unix) `is_socket`.
+fn list_biomeos_sock_paths<F>(env_reader: &F) -> Vec<PathBuf>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let mut dirs = Vec::new();
+    if let Some(xdg) = env_reader("XDG_RUNTIME_DIR") {
+        dirs.push(PathBuf::from(xdg).join(songbird_types::primal_names::BIOMEOS_DIR));
+    }
+    dirs.push(PathBuf::from("/tmp/biomeos"));
+
+    let mut out = Vec::new();
+    for dir in dirs {
         if let Ok(entries) = std::fs::read_dir(&dir) {
             for entry in entries.flatten() {
-                if let Ok(file_name) = entry.file_name().into_string() {
-                    // Check if filename matches any search term
-                    if file_name.to_ascii_lowercase().ends_with(".sock") {
-                        for term in &search_terms {
-                            if file_name.contains(term) {
-                                let path = entry.path();
-                                debug!("   Found potential socket: {}", path.display());
-                                return Some(path.to_string_lossy().to_string());
-                            }
-                        }
-                    }
+                let path = entry.path();
+                if !path.extension().is_some_and(|e| e.eq_ignore_ascii_case("sock")) {
+                    continue;
+                }
+                let Ok(ft) = entry.file_type() else {
+                    continue;
+                };
+                if ft.is_file() || is_unix_socket_filetype(&ft) {
+                    out.push(path);
                 }
             }
         }
     }
+    out.sort();
+    out.dedup();
+    out
+}
 
+/// Probe every biomeos socket until `predicate` returns true on capability tokens.
+#[cfg(unix)]
+fn discover_via_biomeos_probe_filtered<F, P>(env_reader: &F, predicate: P) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+    P: Fn(&[String]) -> bool,
+{
+    for path in list_biomeos_sock_paths(env_reader) {
+        if let Some(tokens) = unix::probe_capabilities_list(&path)
+            && predicate(&tokens)
+        {
+            return Some(path.to_string_lossy().into_owned());
+        }
+    }
     None
 }
 
+#[cfg(not(unix))]
+fn discover_via_biomeos_probe_filtered<F, P>(_env_reader: &F, _predicate: P) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+    P: Fn(&[String]) -> bool,
+{
+    None
+}
+
+fn discover_via_biomeos_probe<F>(capability: Capability, env_reader: &F) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    discover_via_biomeos_probe_filtered(env_reader, |tokens| {
+        capability.matches_capability_tokens(tokens)
+    })
+}
+
+/// Synchronous entry for non-async callers (e.g. JWT path discovery). Uses blocking Unix I/O only.
+#[must_use]
+pub fn discover_via_biomeos_probe_blocking(capability: Capability) -> Option<String> {
+    discover_via_biomeos_probe(capability, &|k| songbird_process_env::var(k).ok())
+}
+
+/// Injectable env reader variant (tests).
+#[must_use]
+pub fn discover_via_biomeos_probe_blocking_with<F>(
+    capability: Capability,
+    env_reader: &F,
+) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    discover_via_biomeos_probe(capability, env_reader)
+}
+
+/// Scan socket directories for sockets matching capability — **deprecated path**: use [`discover_via_biomeos_probe`].
+///
+/// Kept for internal/binary compatibility; implements the same probe-based logic (no filename heuristics).
+#[must_use]
+pub fn scan_sockets(capability: Capability) -> Option<String> {
+    discover_via_biomeos_probe_blocking(capability)
+}
+
 /// Discover TCP endpoint for a capability (isomorphic fallback support).
-///
-/// Checks TCP discovery files for primals that provide this capability.
-/// Searches capability-named TCP discovery files (e.g., `crypto-ipc-port`).
-///
-/// # Discovery File Format
-///
-/// File: `$XDG_RUNTIME_DIR/{name}-ipc-port`\
-/// Content: `tcp:127.0.0.1:12345`
-///
-/// # Arguments
-///
-/// * `capability` - The capability to discover (e.g., Crypto, Storage)
-///
-/// # Returns
-///
-/// Socket descriptor string (e.g., "tcp:127.0.0.1:12345") if found, None otherwise.
-fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
+fn discover_tcp_from_capability<F>(capability: Capability, env_reader: &F) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
     let names: Vec<&str> = match capability {
         Capability::Crypto => vec!["crypto"],
         Capability::Security => vec!["security"],
@@ -285,7 +354,7 @@ fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
     };
 
     for name in names {
-        if let Some(tcp_addr) = check_tcp_discovery_file(name) {
+        if let Some(tcp_addr) = check_tcp_discovery_file(name, env_reader) {
             return Some(format!("tcp:{tcp_addr}"));
         }
     }
@@ -293,52 +362,35 @@ fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
     None
 }
 
-/// Check TCP discovery file for a specific primal
-///
-/// Checks XDG-compliant locations in priority order:
-/// 1. `$XDG_RUNTIME_DIR/{primal}-ipc-port`
-/// 2. `$HOME/.local/share/{primal}-ipc-port`
-/// 3. `/tmp/{primal}-ipc-port`
-///
-/// # Arguments
-///
-/// * `primal_name` - Capability name (e.g., "crypto", "security")
-///
-/// # Returns
-///
-/// TCP socket address (e.g., "127.0.0.1:12345") if found, None otherwise.
-fn check_tcp_discovery_file(primal_name: &str) -> Option<String> {
+fn check_tcp_discovery_file<F>(primal_name: &str, env_reader: &F) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
     let filename = format!("{primal_name}-ipc-port");
     let mut candidates = Vec::new();
 
-    // Priority 1: XDG_RUNTIME_DIR (preferred)
-    if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+    if let Some(runtime_dir) = env_reader("XDG_RUNTIME_DIR") {
         candidates.push(std::path::PathBuf::from(runtime_dir).join(&filename));
     }
 
-    // Priority 2: HOME/.local/share (fallback)
-    if let Ok(home) = songbird_process_env::var("HOME") {
+    if let Some(home) = env_reader("HOME") {
         candidates.push(std::path::PathBuf::from(home).join(".local/share").join(&filename));
     }
 
-    // Priority 3: /tmp (last resort)
     candidates.push(std::path::PathBuf::from(format!("/tmp/{filename}")));
 
     check_tcp_discovery_from_candidates(&candidates)
 }
 
-/// Check TCP discovery from explicit candidate paths (testable, no env vars)
 fn check_tcp_discovery_from_candidates(candidates: &[std::path::PathBuf]) -> Option<String> {
     for path in candidates {
-        if let Ok(content) = std::fs::read_to_string(path) {
-            // Parse format: "tcp:127.0.0.1:12345"
-            if let Some(addr_str) = content.strip_prefix("tcp:") {
-                let addr_trimmed = addr_str.trim();
-                // Validate it's a parseable socket address
-                if addr_trimmed.parse::<std::net::SocketAddr>().is_ok() {
-                    debug!("   Found TCP discovery file: {} -> {}", path.display(), addr_trimmed);
-                    return Some(addr_trimmed.to_string());
-                }
+        if let Ok(content) = std::fs::read_to_string(path)
+            && let Some(addr_str) = content.strip_prefix("tcp:")
+        {
+            let addr_trimmed = addr_str.trim();
+            if addr_trimmed.parse::<std::net::SocketAddr>().is_ok() {
+                debug!("   Found TCP discovery file: {} -> {}", path.display(), addr_trimmed);
+                return Some(addr_trimmed.to_string());
             }
         }
     }
@@ -390,7 +442,118 @@ pub fn get_primal_name() -> String {
     songbird_process_env::var("PRIMAL_NAME").unwrap_or_else(|_| primal_names::SELF_NAME.to_string())
 }
 
+#[cfg(unix)]
+mod unix {
+    use super::parse_capabilities_result;
+    use std::io::{Read, Write};
+    use std::path::Path;
+    use std::time::Duration;
+
+    /// `health.liveness` then `capabilities.list` / `capability.list`; returns flat token list.
+    pub(super) fn probe_capabilities_list(path: &Path) -> Option<Vec<String>> {
+        let mut stream = std::os::unix::net::UnixStream::connect(path).ok()?;
+        stream.set_read_timeout(Some(Duration::from_secs(2))).ok()?;
+        stream.set_write_timeout(Some(Duration::from_secs(2))).ok()?;
+
+        let liveness_ok = jsonrpc_request_response(&mut stream, "health.liveness", 1).is_ok()
+            || jsonrpc_request_response_raw(&mut stream, "ping", 11).is_ok();
+        if !liveness_ok {
+            return None;
+        }
+
+        let caps_resp = jsonrpc_request_response(&mut stream, "capabilities.list", 2)
+            .or_else(|_| jsonrpc_request_response(&mut stream, "capability.list", 3))
+            .ok()?;
+
+        parse_capabilities_result(&caps_resp)
+    }
+
+    /// Legacy `ping` must be sent literally — [`songbird_types::normalize_json_rpc_method_name`]
+    /// maps `ping` → `health.liveness`, which would not help when liveness failed.
+    fn jsonrpc_request_response_raw(
+        stream: &mut std::os::unix::net::UnixStream,
+        method: &str,
+        id: i64,
+    ) -> Result<serde_json::Value, std::io::Error> {
+        jsonrpc_request_response_inner(stream, method, id)
+    }
+
+    fn jsonrpc_request_response(
+        stream: &mut std::os::unix::net::UnixStream,
+        method: &str,
+        id: i64,
+    ) -> Result<serde_json::Value, std::io::Error> {
+        let method = songbird_types::normalize_json_rpc_method_name(method);
+        jsonrpc_request_response_inner(stream, method, id)
+    }
+
+    fn jsonrpc_request_response_inner(
+        stream: &mut std::os::unix::net::UnixStream,
+        method: &str,
+        id: i64,
+    ) -> Result<serde_json::Value, std::io::Error> {
+        let req = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": serde_json::json!({}),
+            "id": id,
+        });
+        let mut bytes = serde_json::to_vec(&req)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        bytes.push(b'\n');
+        stream.write_all(&bytes)?;
+        let line = read_line(stream)?;
+        let v: serde_json::Value = serde_json::from_str(line.trim())
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        if v.get("error").is_some() {
+            return Err(std::io::Error::other("jsonrpc error"));
+        }
+        Ok(v)
+    }
+
+    fn read_line(stream: &mut std::os::unix::net::UnixStream) -> Result<String, std::io::Error> {
+        let mut buf = Vec::new();
+        let mut one = [0u8; 1];
+        loop {
+            match stream.read(&mut one) {
+                Ok(0) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::UnexpectedEof,
+                        "short read",
+                    ));
+                }
+                Ok(_) => {
+                    if one[0] == b'\n' {
+                        break;
+                    }
+                    buf.push(one[0]);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        String::from_utf8(buf).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    }
+}
+
+fn parse_capabilities_result(response: &serde_json::Value) -> Option<Vec<String>> {
+    let result = response.get("result")?;
+    if let Some(arr) = result.as_array() {
+        return Some(
+            arr.iter().filter_map(|v| v.as_str().map(std::string::ToString::to_string)).collect(),
+        );
+    }
+    if let Some(obj) = result.as_object()
+        && let Some(arr) = obj.get("capabilities").and_then(|c| c.as_array())
+    {
+        return Some(
+            arr.iter().filter_map(|v| v.as_str().map(std::string::ToString::to_string)).collect(),
+        );
+    }
+    None
+}
+
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -401,17 +564,39 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_patterns_capability_first() {
-        let patterns = Capability::Crypto.socket_patterns();
-        assert!(!patterns.is_empty());
-        assert!(
-            patterns.iter().any(|p| p.contains("crypto.sock")),
-            "Should have crypto.sock pattern"
-        );
-        assert!(
-            !patterns.iter().any(|p| p.contains("beardog")),
-            "Should not contain primal-specific names"
-        );
+    fn test_matches_crypto_tokens() {
+        let t = vec!["crypto.delegate".to_string(), "ipc.jsonrpc".to_string()];
+        assert!(Capability::Crypto.matches_capability_tokens(&t));
+    }
+
+    #[test]
+    fn test_matches_security_tokens() {
+        let t = vec!["security.verify".to_string()];
+        assert!(Capability::Security.matches_capability_tokens(&t));
+    }
+
+    #[test]
+    fn test_matches_http_tokens() {
+        let t = vec!["http.request".to_string()];
+        assert!(Capability::Http.matches_capability_tokens(&t));
+    }
+
+    #[test]
+    fn test_matches_storage_not_sovereign() {
+        let t = vec!["storage.get".to_string()];
+        assert!(Capability::Storage.matches_capability_tokens(&t));
+        assert!(!matches_sovereign_storage_tokens(&t));
+    }
+
+    #[test]
+    fn test_matches_sovereign_storage() {
+        let t = vec!["storage.get".to_string(), "edge.sovereign".to_string()];
+        assert!(matches_sovereign_storage_tokens(&t));
+    }
+
+    #[test]
+    fn test_normalize_json_rpc_used() {
+        assert_eq!(songbird_types::normalize_json_rpc_method_name("ping"), "health.liveness");
     }
 
     #[test]
@@ -428,17 +613,15 @@ mod tests {
 
     #[test]
     fn test_tcp_discovery_file_parsing() {
-        // ✅ Concurrent-safe: Uses check_tcp_discovery_from_candidates (no env vars)
         use std::io::Write;
 
         let temp_dir = std::env::temp_dir();
-        let file_path = temp_dir.join("test-beardog-ipc-port");
+        let file_path = temp_dir.join("test-crypto-ipc-port");
 
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"tcp:127.0.0.1:12345").unwrap();
         drop(file);
 
-        // Directly pass candidate path (no env var needed)
         let candidates = vec![file_path.clone()];
         let result = check_tcp_discovery_from_candidates(&candidates);
         assert_eq!(result, Some("127.0.0.1:12345".to_string()));
@@ -448,11 +631,10 @@ mod tests {
 
     #[test]
     fn test_tcp_discovery_from_explicit_path() {
-        // ✅ Concurrent-safe: Tests beardog discovery via explicit candidate paths
         use std::io::Write;
 
         let temp_dir = std::env::temp_dir();
-        let file_path = temp_dir.join("beardog-ipc-port-test");
+        let file_path = temp_dir.join("crypto-ipc-port-test");
 
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"tcp:127.0.0.1:33765").unwrap();
@@ -467,13 +649,11 @@ mod tests {
 
     #[test]
     fn test_tcp_discovery_invalid_format() {
-        // ✅ Concurrent-safe: Uses explicit candidate paths
         use std::io::Write;
 
         let temp_dir = std::env::temp_dir();
-        let file_path = temp_dir.join("invalid-beardog-ipc-port-test");
+        let file_path = temp_dir.join("invalid-tcp-ipc-port-test");
 
-        // Write invalid format (missing tcp: prefix)
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"127.0.0.1:12345").unwrap();
         drop(file);
@@ -485,93 +665,8 @@ mod tests {
         std::fs::remove_file(file_path).ok();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🧪 XDG SOCKET DISCOVERY TESTS (Feb 4, 2026)
-    // ✅ Evolved to concurrent-safe — no env var mutation
-    // ═══════════════════════════════════════════════════════════════════════
-
-    #[test]
-    fn test_xdg_socket_patterns_structure() {
-        let patterns = Capability::Crypto.socket_patterns();
-
-        assert!(patterns.len() >= 2, "Should have at least 2 patterns");
-        for pattern in &patterns {
-            assert!(pattern.ends_with(".sock"), "Pattern should end with .sock: {pattern}");
-        }
-        assert!(
-            patterns.iter().any(|p| p.contains("crypto")),
-            "Crypto patterns should include capability name"
-        );
-    }
-
-    #[test]
-    fn test_all_capabilities_return_patterns() {
-        let capabilities = [
-            Capability::Crypto,
-            Capability::Security,
-            Capability::Http,
-            Capability::Ai,
-            Capability::Storage,
-            Capability::Messaging,
-        ];
-
-        for cap in &capabilities {
-            let patterns = cap.socket_patterns();
-            assert!(!patterns.is_empty(), "{cap:?} should return at least one pattern");
-            assert!(
-                patterns.iter().all(|p| p.ends_with(".sock")),
-                "{cap:?} patterns should all end with .sock"
-            );
-        }
-    }
-
-    #[test]
-    fn test_socket_patterns_no_nat0_suffix() {
-        let patterns = Capability::Crypto.socket_patterns();
-        for pattern in &patterns {
-            if pattern.contains("biomeos") {
-                assert!(
-                    !pattern.contains("-nat0"),
-                    "XDG patterns should not have -nat0 suffix: {pattern}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_socket_patterns_include_capability_names() {
-        // Each capability should include its own capability-named socket
-        assert!(Capability::Crypto.socket_patterns().iter().any(|p| p.contains("crypto")));
-        assert!(Capability::Http.socket_patterns().iter().any(|p| p.contains("http")));
-        assert!(Capability::Ai.socket_patterns().iter().any(|p| p.contains("ai")));
-        assert!(Capability::Storage.socket_patterns().iter().any(|p| p.contains("storage")));
-        assert!(Capability::Messaging.socket_patterns().iter().any(|p| p.contains("messaging")));
-    }
-
-    #[test]
-    fn test_socket_patterns_are_capability_only() {
-        for cap in [
-            Capability::Crypto,
-            Capability::Security,
-            Capability::Http,
-            Capability::Ai,
-            Capability::Storage,
-            Capability::Messaging,
-        ] {
-            let patterns = cap.socket_patterns();
-            assert!(
-                !patterns.iter().any(|p| p.contains("beardog")
-                    || p.contains("squirrel")
-                    || p.contains("nestgate")
-                    || p.contains("toadstool")),
-                "{cap:?} patterns should not contain primal-specific names: {patterns:?}"
-            );
-        }
-    }
-
     #[tokio::test]
     async fn test_discover_with_env_var_override() {
-        // ✅ Concurrent-safe: Uses discover_with (injectable env reader, no global state)
         let custom_path = "/custom/path/http-provider.sock";
         let mock_env = |name: &str| -> Option<String> {
             if name == "HTTP_PROVIDER_SOCKET" {
@@ -588,7 +683,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_returns_env_var_priority() {
-        // ✅ Concurrent-safe: Uses discover_with (injectable env reader, no global state)
         let custom_path = "/test/custom/ai-provider.sock";
         let mock_env = |name: &str| -> Option<String> {
             if name == "AI_PROVIDER_SOCKET" {

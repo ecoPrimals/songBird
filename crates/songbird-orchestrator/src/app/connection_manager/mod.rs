@@ -34,6 +34,7 @@ mod trust;
 mod types;
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests;
 
 /// Connection Manager - Coordinates peer connections with progressive trust

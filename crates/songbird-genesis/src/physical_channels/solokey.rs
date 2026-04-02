@@ -5,7 +5,6 @@
 
 use crate::error::Result;
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
-use async_trait::async_trait;
 use chrono::Utc;
 
 use super::PhysicalChannelProvider;
@@ -37,7 +36,6 @@ impl Default for SoloKeyChannel {
     }
 }
 
-#[async_trait]
 impl PhysicalChannelProvider for SoloKeyChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         // Placeholder attestation: real SoloKey/FIDO2 verification is not invoked here.

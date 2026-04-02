@@ -126,6 +126,7 @@ impl FairnessCalculator {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::resource_management::ResourceUnit;
@@ -235,5 +236,103 @@ mod tests {
         for share in fair_shares {
             assert!((share.fair_share.value - 4.0).abs() < 0.1);
         }
+    }
+
+    #[test]
+    fn zero_total_weight_returns_empty_shares() {
+        let mut capacity = HashMap::new();
+        capacity.insert(ResourceType::Cpu, ResourceAmount::new(10.0, ResourceUnit::Cores));
+        let mut weights = HashMap::new();
+        weights.insert(UserId::from("a"), 0.0);
+        weights.insert(UserId::from("b"), 0.0);
+        let usage = HashMap::new();
+        let shares = FairnessCalculator::calculate_fair_shares(&capacity, &weights, &usage);
+        assert!(shares.is_empty());
+    }
+
+    #[test]
+    fn identify_under_usage_finds_light_users() {
+        let mut capacity = HashMap::new();
+        capacity.insert(ResourceType::Cpu, ResourceAmount::new(10.0, ResourceUnit::Cores));
+        let mut weights = HashMap::new();
+        weights.insert(UserId::from("alice"), 1.0);
+        weights.insert(UserId::from("bob"), 1.0);
+        let mut usage = HashMap::new();
+        let mut alice_u = HashMap::new();
+        alice_u.insert(ResourceType::Cpu, ResourceAmount::new(1.0, ResourceUnit::Cores));
+        usage.insert(UserId::from("alice"), alice_u);
+        let mut bob_u = HashMap::new();
+        bob_u.insert(ResourceType::Cpu, ResourceAmount::new(8.0, ResourceUnit::Cores));
+        usage.insert(UserId::from("bob"), bob_u);
+        let fair_shares = FairnessCalculator::calculate_fair_shares(&capacity, &weights, &usage);
+        let under = FairnessCalculator::identify_under_usage(&fair_shares, 0.5);
+        assert!(under.iter().any(|fs| fs.user_id.as_str() == "alice"));
+    }
+
+    #[test]
+    fn identify_over_usage_empty_slice() {
+        let v: Vec<FairShare> = vec![];
+        assert!(FairnessCalculator::identify_over_usage(&v, 1.0).is_empty());
+    }
+
+    #[test]
+    fn dominant_resource_fairness_empty_input() {
+        let m = FairnessCalculator::dominant_resource_fairness(&[]);
+        assert!(m.is_empty());
+    }
+
+    #[test]
+    fn dominant_resource_fairness_picks_max_ratio_per_user() {
+        let fair_shares = vec![
+            FairShare {
+                user_id: UserId::from("u"),
+                resource_type: ResourceType::Cpu,
+                fair_share: ResourceAmount::new(10.0, ResourceUnit::Cores),
+                current_usage: ResourceAmount::new(5.0, ResourceUnit::Cores),
+                ratio: 0.5,
+            },
+            FairShare {
+                user_id: UserId::from("u"),
+                resource_type: ResourceType::Memory,
+                fair_share: ResourceAmount::new(100.0, ResourceUnit::Megabytes),
+                current_usage: ResourceAmount::new(90.0, ResourceUnit::Megabytes),
+                ratio: 0.9,
+            },
+        ];
+        let drf = FairnessCalculator::dominant_resource_fairness(&fair_shares);
+        let (_t, r) = drf.get(&UserId::from("u")).unwrap();
+        assert!((*r - 0.9).abs() < 1e-9);
+    }
+
+    #[test]
+    fn fair_share_ratio_zero_when_capacity_zero() {
+        let mut capacity = HashMap::new();
+        capacity.insert(ResourceType::Cpu, ResourceAmount::new(0.0, ResourceUnit::Cores));
+        let mut weights = HashMap::new();
+        weights.insert(UserId::from("solo"), 1.0);
+        let mut usage = HashMap::new();
+        let mut u = HashMap::new();
+        u.insert(ResourceType::Cpu, ResourceAmount::new(0.0, ResourceUnit::Cores));
+        usage.insert(UserId::from("solo"), u);
+        let shares = FairnessCalculator::calculate_fair_shares(&capacity, &weights, &usage);
+        assert_eq!(shares.len(), 1);
+        assert_eq!(shares[0].ratio, 0.0);
+    }
+
+    #[test]
+    fn bob_gets_expected_share_when_alice_only_has_usage() {
+        let mut capacity = HashMap::new();
+        capacity.insert(ResourceType::Cpu, ResourceAmount::new(9.0, ResourceUnit::Cores));
+        let mut weights = HashMap::new();
+        weights.insert(UserId::from("alice"), 1.0);
+        weights.insert(UserId::from("bob"), 1.0);
+        let mut usage = HashMap::new();
+        let mut alice_u = HashMap::new();
+        alice_u.insert(ResourceType::Cpu, ResourceAmount::new(3.0, ResourceUnit::Cores));
+        usage.insert(UserId::from("alice"), alice_u);
+        let shares = FairnessCalculator::calculate_fair_shares(&capacity, &weights, &usage);
+        let bob = shares.iter().find(|s| s.user_id.as_str() == "bob").unwrap();
+        assert!((bob.fair_share.value - 4.5).abs() < 0.01);
+        assert_eq!(bob.current_usage.value, 0.0);
     }
 }

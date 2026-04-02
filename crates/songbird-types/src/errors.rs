@@ -501,7 +501,7 @@ impl From<std::io::Error> for SongbirdError {
     }
 }
 
-// Note: From implementations for external crates (serde_yaml, reqwest, tokio)
+// Note: From implementations for external crates (reqwest, tokio)
 // are implemented in their respective modules where those dependencies are available
 
 #[cfg(test)]

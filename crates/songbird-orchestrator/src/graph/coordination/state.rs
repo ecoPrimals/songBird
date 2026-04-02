@@ -47,7 +47,7 @@ impl CoordinationValidationResult {
         }
     }
 
-    pub(super) fn add_issue(&mut self, issue: CoordinationIssue) {
+    pub(crate) fn add_issue(&mut self, issue: CoordinationIssue) {
         if issue.severity == IssueSeverity::Error {
             self.valid = false;
         }
@@ -65,14 +65,14 @@ pub struct CoordinationIssue {
 }
 
 impl CoordinationIssue {
-    pub(super) const fn error(message: String) -> Self {
+    pub(crate) const fn error(message: String) -> Self {
         Self {
             severity: IssueSeverity::Error,
             message,
         }
     }
 
-    pub(super) const fn warning(message: String) -> Self {
+    pub(crate) const fn warning(message: String) -> Self {
         Self {
             severity: IssueSeverity::Warning,
             message,
@@ -96,10 +96,8 @@ pub struct ResourceCheck {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
-
     use super::{
         CoordinationIssue, CoordinationPattern, CoordinationValidationResult, IssueSeverity,
         ResourceCheck,
@@ -198,5 +196,63 @@ mod tests {
     #[test]
     fn issue_severity_info_distinct() {
         assert_ne!(IssueSeverity::Info, IssueSeverity::Error);
+    }
+
+    #[test]
+    fn validation_result_new_starts_valid_with_empty_issues() {
+        let r = CoordinationValidationResult::new(
+            CoordinationPattern::Pipeline,
+            "pipeline".to_string(),
+        );
+        assert!(r.valid);
+        assert_eq!(r.pattern, CoordinationPattern::Pipeline);
+        assert!(r.issues.is_empty());
+    }
+
+    #[test]
+    fn add_issue_warning_keeps_valid() {
+        let mut r =
+            CoordinationValidationResult::new(CoordinationPattern::Sequential, "seq".into());
+        r.add_issue(CoordinationIssue::warning("heads up".into()));
+        assert!(r.valid);
+        assert_eq!(r.issues.len(), 1);
+        assert_eq!(r.issues[0].severity, IssueSeverity::Warning);
+    }
+
+    #[test]
+    fn add_issue_error_invalidates() {
+        let mut r = CoordinationValidationResult::new(CoordinationPattern::Hybrid, "h".into());
+        r.add_issue(CoordinationIssue::error("blocked".into()));
+        assert!(!r.valid);
+        assert_eq!(r.issues[0].severity, IssueSeverity::Error);
+    }
+
+    #[test]
+    fn add_issue_error_after_warning_stays_invalid() {
+        let mut r = CoordinationValidationResult::new(CoordinationPattern::Parallel, "p".into());
+        r.add_issue(CoordinationIssue::warning("w".into()));
+        assert!(r.valid);
+        r.add_issue(CoordinationIssue::error("e".into()));
+        assert!(!r.valid);
+        assert_eq!(r.issues.len(), 2);
+    }
+
+    #[test]
+    fn coordination_issue_constructors_match_severity() {
+        let e = CoordinationIssue::error("x".into());
+        let w = CoordinationIssue::warning("y".into());
+        assert_eq!(e.severity, IssueSeverity::Error);
+        assert_eq!(w.severity, IssueSeverity::Warning);
+    }
+
+    #[test]
+    fn issue_severity_exhaustive_in_match() {
+        let i = IssueSeverity::Info;
+        let s = match i {
+            IssueSeverity::Error => "e",
+            IssueSeverity::Warning => "w",
+            IssueSeverity::Info => "i",
+        };
+        assert_eq!(s, "i");
     }
 }

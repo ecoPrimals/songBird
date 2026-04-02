@@ -12,7 +12,6 @@
 //! - `BluetoothChannel` for Bluetooth proximity
 
 use crate::{error::*, types::*};
-use async_trait::async_trait;
 use chrono::Utc;
 
 use super::PhysicalChannelProvider;
@@ -59,7 +58,6 @@ impl Default for MockPhysicalChannel {
     }
 }
 
-#[async_trait]
 impl PhysicalChannelProvider for MockPhysicalChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         if !self.should_succeed {

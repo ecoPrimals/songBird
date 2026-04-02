@@ -396,7 +396,10 @@ impl RelayDiscovery {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use serde_json::{from_value, to_value};
 
     struct MockRelayAuthority;
 
@@ -478,5 +481,70 @@ mod tests {
 
         assert!(auth.authorized);
         assert_eq!(auth.masking_level, MaskingLevel::Masked);
+    }
+
+    #[test]
+    fn relay_request_serde_roundtrip() {
+        let r = RelayRequest {
+            requester: NodeId::from("req"),
+            target: NodeId::from("tgt"),
+            target_address: Some("127.0.0.1:1".parse().unwrap()),
+            timestamp: SystemTime::UNIX_EPOCH,
+        };
+        let v = to_value(&r).unwrap();
+        let back: RelayRequest = from_value(v).unwrap();
+        assert_eq!(r.requester, back.requester);
+        assert_eq!(r.target, back.target);
+        assert_eq!(r.target_address, back.target_address);
+    }
+
+    #[test]
+    fn relay_offer_serde_roundtrip() {
+        let offer = RelayOffer {
+            relay_node: NodeId::from("relay"),
+            relay_address: "192.0.2.1:3478".parse().unwrap(),
+            authorization: RelayAuthorization::authorized(
+                NodeId::from("relay"),
+                NodeId::from("req"),
+                MaskingLevel::Full,
+                120,
+            ),
+            timestamp: SystemTime::UNIX_EPOCH,
+        };
+        let v = to_value(&offer).unwrap();
+        let back: RelayOffer = from_value(v).unwrap();
+        assert_eq!(offer.relay_node, back.relay_node);
+        assert_eq!(offer.relay_address, back.relay_address);
+    }
+
+    #[test]
+    fn relay_offer_optional_fields_none() {
+        let r = RelayRequest {
+            requester: NodeId::from("a"),
+            target: NodeId::from("b"),
+            target_address: None,
+            timestamp: SystemTime::now(),
+        };
+        let js = serde_json::to_string(&r).unwrap();
+        assert!(js.contains("null") || js.contains("target_address"));
+    }
+
+    #[test]
+    fn relay_session_stats_zero_before_send() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            let server_addr = server_socket.local_addr().unwrap();
+            let session = RelaySession::new(
+                NodeId::from("relay-1"),
+                server_addr,
+                NodeId::from("requester"),
+                NodeId::from("target"),
+                MaskingLevel::Masked,
+            )
+            .await
+            .unwrap();
+            assert_eq!(session.stats(), 0);
+        });
     }
 }

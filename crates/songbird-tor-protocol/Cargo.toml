@@ -50,7 +50,6 @@ songbird-tls = { path = "../songbird-tls" }
 # Crypto delegation (NO direct crypto!)
 # All crypto via BearDog IPC / Neural API (`songbird-crypto-provider`)
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
-async-trait = { workspace = true }
 
 [lints]
 workspace = true

@@ -159,6 +159,7 @@ pub fn initialize_components(config: &CanonicalSongbirdConfig) -> Result<Initial
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use songbird_config::CanonicalSongbirdConfig;

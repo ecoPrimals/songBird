@@ -315,10 +315,8 @@ mod integration_tests {
         },
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_bridge_poll_interval() {
-        tokio::time::pause();
-
         let expected = Duration::from_secs(10);
         let mut interval = tokio::time::interval(expected);
 
@@ -333,10 +331,8 @@ mod integration_tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_connectivity_timeout() {
-        tokio::time::pause();
-
         let timeout = Duration::from_secs(3);
 
         let start = tokio::time::Instant::now();

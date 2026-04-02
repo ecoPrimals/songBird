@@ -2,6 +2,10 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Genesis ceremony coordinator
+//!
+//! UDP/multicast discovery broadcast addresses are not configured here; the orchestrator
+//! resolves them from `SONGBIRD_BROADCAST_ADDRESSES` (and config fallbacks) in
+//! `songbird_orchestrator::app`.
 
 use crate::error::{GenesisError, Result};
 use crate::identity::NewNodeIdentity;

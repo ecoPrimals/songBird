@@ -30,6 +30,7 @@ mod tests_birdsong_integration; // BirdSong listener/broadcaster E2E tests
 mod tests_discovery_bridge; // Discovery→Federation bridge unit & E2E tests (v3.10.1)
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod core_tests;
 
 // Re-exports for backwards compatibility

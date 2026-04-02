@@ -6,6 +6,8 @@
 //! This test module provides extensive coverage for the sovereignty router,
 //! targeting 65%+ coverage from the current 3.81%.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
 use super::router::{SovereigntyPreferences, SovereigntyRouter};
 use super::types::{RiskSeverity, SecurityCapability, SovereigntyLevel};
 use crate::types::{HealthStatus, PrimalType, ServiceInfo, UniversalRequest};
@@ -468,4 +470,39 @@ async fn test_path_finding_completes_quickly() {
 
     assert!(result.is_ok());
     assert!(duration.as_millis() < 1000, "Path finding should complete quickly");
+}
+
+#[test]
+fn sovereignty_preferences_extreme_weights_are_stored() {
+    let preferences = SovereigntyPreferences {
+        minimum_sovereignty_level: SovereigntyLevel::NonSovereign,
+        sovereignty_weight: 0.0,
+        required_security_capabilities: vec![],
+        max_acceptable_risk: RiskSeverity::Critical,
+    };
+    let router = SovereigntyRouter::with_preferences(preferences);
+    assert!(format!("{router:?}").contains("SovereigntyRouter"));
+}
+
+#[tokio::test]
+async fn single_service_path_has_positive_combined_score() -> SongbirdResult<()> {
+    let router = SovereigntyRouter::new();
+    let request = create_test_request();
+    let paths =
+        router.find_sovereignty_aware_paths(&request, &[create_test_service("only", 9000)]).await?;
+    assert_eq!(paths.len(), 1);
+    assert!(paths[0].combined_score > 0.0);
+    assert_eq!(paths[0].segments.len(), 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn path_segment_preserves_service_name() -> SongbirdResult<()> {
+    let router = SovereigntyRouter::new();
+    let request = create_test_request();
+    let paths = router
+        .find_sovereignty_aware_paths(&request, &[create_test_service("named-svc", 7000)])
+        .await?;
+    assert_eq!(paths[0].segments[0].service.name, "named-svc");
+    Ok(())
 }

@@ -22,6 +22,8 @@
     clippy::struct_field_names,
     clippy::match_same_arms,
     clippy::future_not_send,
+    clippy::unwrap_used,
+    clippy::expect_used,
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
@@ -30,7 +32,6 @@
 //! Tests error handling, edge cases, and failure scenarios in the compute API.
 //! Targets code paths identified as needing coverage in the audit.
 
-#![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")] // Test code
 use songbird_orchestrator::server::compute_api::ApiError;
 use std::error::Error;
 #[test]

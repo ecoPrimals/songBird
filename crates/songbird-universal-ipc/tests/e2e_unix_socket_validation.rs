@@ -349,7 +349,7 @@ async fn test_e2e_family_id_default() {
 // E2E TESTS - Persistent Connection Behavior (Issue 1 Clarification)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_e2e_connection_stays_open_after_response() {
     let socket_path = "/tmp/songbird-test-persistent2.sock";
 
