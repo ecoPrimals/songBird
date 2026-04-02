@@ -2,7 +2,7 @@
 
 **Date**: April 2, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: April 2, 2026 (Session 37, Wave 97 — Capability-Based Discovery Compliance: discover_beardog→discover_security_provider across 13 crates/53 files, SECURITY_PROVIDER_SOCKET env var chain, security.sock capability symlink)
+**Last Deep Debt Audit**: April 2, 2026 (Session 37, Wave 98 — Deep Debt: /tmp→temp_dir() portability, 4 large file smart refactors, production stub evolution, 22 tests un-ignored, primal name alignment, capability discovery compliance)
 
 ---
 

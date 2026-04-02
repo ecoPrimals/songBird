@@ -20,7 +20,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; zero `#[serial_test]`; `tokio::time::pause()` for deterministic timing |
-| Tests | 12,124 passed, 0 failed, 269 ignored |
+| Tests | 12,154 passed, 0 failed, ~159 ignored |
 | Line Coverage | ~72% est. (llvm-cov `--workspace --all-features`; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
@@ -39,7 +39,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | Dependencies | `sled` feature-gated with in-memory fallback; `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~410,685 lines across 30 crates |
+| Total Rust | ~402,500 lines across 30 crates |
 
 ## Architecture
 
@@ -162,7 +162,7 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ## Testing
 
 ```bash
-cargo test --workspace --all-features          # Full suite (12,124 tests, ~60s)
+cargo test --workspace --all-features          # Full suite (12,154 tests, ~60s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
 ./scripts/test-with-beardog.sh                 # With live BearDog from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report
