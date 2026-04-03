@@ -88,18 +88,18 @@ pub struct AnonymousDiscoveryMessage {
 
     /// Generic tags (NEW - for USB seed integration)
     ///
-    /// Contains `BearDog` encryption tags and other metadata for trust evaluation.
+    /// Contains `security provider` encryption tags and other metadata for trust evaluation.
     /// Songbird doesn't parse these - just passes them to the security provider.
     ///
     /// Examples:
-    /// - `BearDog` lineage: `"beardog:family:a3f2:tower1"`
+    /// - `security provider` lineage: `"beardog:family:a3f2:tower1"`
     /// - Protocol support: `"btsp_enabled"`, `"birdsong_v2"`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 
     /// Identity attestations (CRITICAL FIX - Jan 3, 2026)
     ///
-    /// Structured identity information from security providers (e.g., `BearDog`, `ToadStool`).
+    /// Structured identity information from security providers (e.g., `security provider`, `ToadStool`).
     /// Enables genetic lineage auto-trust and provider-agnostic authentication.
     ///
     /// MUST be included for federation to work with genetic lineage!

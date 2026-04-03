@@ -90,8 +90,8 @@ pub struct ServerArgs {
     /// 1. `$SECURITY_PROVIDER_SOCKET` env var
     /// 2. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
     /// 3. `$BEARDOG_SOCKET` (legacy)
-    #[arg(long, alias = "beardog-socket")]
-    pub beardog_socket: Option<String>,
+    #[arg(long = "security-socket", alias = "beardog-socket")]
+    pub security_socket: Option<String>,
 
     /// TCP listen address for IPC (alternative to Unix socket)
     ///
@@ -106,7 +106,7 @@ pub struct ServerArgs {
 
     /// Enable Dark Forest mode (encrypted BirdSong beacons, no plaintext fallback)
     ///
-    /// When enabled, all discovery beacons are encrypted via BearDog.
+    /// When enabled, all discovery beacons are encrypted via security provider.
     /// Plaintext beacon fallback is disabled for maximum privacy.
     /// Equivalent to setting `SONGBIRD_DARK_FOREST=true`.
     #[arg(long, env = "SONGBIRD_DARK_FOREST")]

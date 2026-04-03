@@ -57,7 +57,7 @@ use std::sync::Arc;
 
 /// Mock encryption provider for testing Dark Forest beacons
 ///
-/// Simulates `BearDog`'s `beacon.*` RPC methods with in-memory beacon seeds.
+/// Simulates `security provider`'s `beacon.*` RPC methods with in-memory beacon seeds.
 struct MockDarkForestProvider {
     beacon_id: Vec<u8>,
     beacon_seed: [u8; 32],
@@ -244,15 +244,15 @@ async fn test_dark_forest_different_beacon_families_invisible() {
 }
 
 #[tokio::test]
-#[ignore = "Requires BearDog beacon.try_decrypt_with_id RPC (not yet implemented)"]
+#[ignore = "Requires security provider beacon.try_decrypt_with_id RPC (not yet implemented)"]
 async fn test_dark_forest_multi_beacon_decryption() {
     // Test decryption with known beacon seeds from "meetings"
     //
-    // NOTE: This test requires BearDog's beacon.try_decrypt_with_id RPC method
-    // which is part of BearDog Phase 1 (parallel evolution).
+    // NOTE: This test requires security provider's beacon.try_decrypt_with_id RPC method
+    // which is part of security provider Phase 1 (parallel evolution).
     //
     // Current implementation: try_decrypt_with_beacon_id() uses our own seed
-    // Full implementation: Should call BearDog RPC with specific beacon_id
+    // Full implementation: Should call security provider RPC with specific beacon_id
 
     let our_seed = [1u8; 32];
     let friend_seed = [2u8; 32];

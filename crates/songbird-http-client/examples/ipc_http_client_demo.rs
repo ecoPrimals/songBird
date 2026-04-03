@@ -36,7 +36,7 @@
 //! ┌─────────────────────▼───────────────────────────────────────┐
 //! │  SongbirdHttpClient                                         │
 //! │  - Pure Rust TLS 1.3 handshake                             │
-//! │  - BearDog crypto delegation (Tower Atomic)                │
+//! │  - Security-provider crypto delegation (Tower Atomic)       │
 //! └──────────────────────────────────────────────────────────────┘
 //! ```
 //!
@@ -183,7 +183,9 @@ async fn main() -> Result<()> {
     info!("✅ Pure Rust - Zero C dependencies");
     info!("✅ Tower Atomic - Self-delegation via IPC");
     info!("✅ TRUE ecoBin compliance achieved");
-    info!("\n📚 Reqwest elimination complete — pure Rust HTTP via Tower Atomic + BearDog IPC");
+    info!(
+        "\n📚 Reqwest elimination complete — pure Rust HTTP via Tower Atomic + security-provider IPC"
+    );
 
     Ok(())
 }

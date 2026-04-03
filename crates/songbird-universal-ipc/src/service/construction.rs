@@ -16,8 +16,8 @@ use crate::handlers::stun_handler::StunHandler;
 use crate::handlers::tor_handler::TorHandler;
 use crate::handlers::udp_peer_connector::UdpPeerConnector;
 use crate::registry::ServiceRegistry;
-use songbird_lineage_relay::beardog::BearDogRelayAuthority;
 use songbird_lineage_relay::relay_handler::RelayHandler;
+use songbird_lineage_relay::security::SecurityRelayAuthority;
 use songbird_network_federation::state::FederationState;
 use std::env::VarError;
 use std::sync::Arc;
@@ -34,7 +34,7 @@ impl IpcServiceHandler {
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new());
-        let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new())));
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(SecurityRelayAuthority::new())));
         let mesh_handler = Arc::new(MeshHandler::new());
         let onion_handler = Arc::new(OnionHandler::new());
 

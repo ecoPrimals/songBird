@@ -437,7 +437,7 @@ async fn handle_request(
         JsonRpcMethod::Network(NetworkMethod::Listen) => handlers::handle_network_listen(request.params).await,
         
         // ========================================================================
-        // HTTP delegation (for Squirrel's Anthropic adapter - Jan 20, 2026)
+        // HTTP delegation (for AI coordination / Anthropic-style adapters — Jan 20, 2026)
         // ========================================================================
         JsonRpcMethod::Http(HttpMethod::Request) => handlers::handle_http_request(request.params).await,
         

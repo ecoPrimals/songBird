@@ -8,7 +8,9 @@ use serde_json::{Value, json};
 #[cfg(test)]
 fn is_expected_crypto_delegate_connectivity_error(msg: &str) -> bool {
     let m = msg.to_lowercase();
-    m.contains(songbird_types::primal_names::BEARDOG)
+    #[allow(deprecated)]
+    let beardog_name = songbird_types::primal_names::BEARDOG;
+    m.contains(beardog_name)
         || m.contains("socket")
         || m.contains("ipc")
         || m.contains("connection refused")
@@ -30,7 +32,7 @@ async fn test_socket_discovery_priority() {
     let handler = BirdSongHandler::new();
 
     // Test that discovery doesn't panic (socket may not exist in test env)
-    let result = handler.discover_security_provider_socket().await;
+    let result = handler.discover_security_socket().await;
 
     // In CI/test environment, socket won't exist - that's expected
     if result.is_err() {
@@ -48,15 +50,15 @@ async fn test_generate_beacon_params() {
         "capabilities": ["crypto", "discovery"]
     });
 
-    // In test env without BearDog, should gracefully fail
+    // In test env without security provider, should gracefully fail
     let result = handler.handle_generate_encrypted_beacon(params).await;
 
-    // Expected: Err (no BearDog in test env)
+    // Expected: Err (no security provider in test env)
     // But the error should be clear and actionable
     if let Err(e) = result {
         assert!(
-            e.contains("BearDog") || e.contains("socket"),
-            "Error should mention BearDog or socket, got: {e}"
+            e.contains("security provider") || e.contains("socket"),
+            "Error should mention security provider or socket, got: {e}"
         );
     }
 }
@@ -69,14 +71,14 @@ async fn test_decrypt_beacon_params() {
         "encrypted_beacon": "dGVzdF9lbmNyeXB0ZWRfYmVhY29u" // base64 "test_encrypted_beacon"
     });
 
-    // Should validate params even without BearDog
+    // Should validate params even without security provider
     let result = handler.handle_decrypt_beacon(params).await;
 
-    // Expected: Err (no BearDog in test env)
+    // Expected: Err (no security provider in test env)
     if let Err(e) = result {
         assert!(
-            e.contains("BearDog") || e.contains("socket"),
-            "Error should mention BearDog or socket, got: {e}"
+            e.contains("security provider") || e.contains("socket"),
+            "Error should mention security provider or socket, got: {e}"
         );
     }
 }
@@ -93,11 +95,11 @@ async fn test_verify_lineage_params() {
     // Should validate params
     let result = handler.handle_verify_lineage(params).await;
 
-    // Expected: Err (no BearDog in test env)
+    // Expected: Err (no security provider in test env)
     if let Err(e) = result {
         assert!(
             is_expected_crypto_delegate_connectivity_error(&e),
-            "Error should mention BearDog, socket, or IPC, got: {e}"
+            "Error should mention security provider, socket, or IPC, got: {e}"
         );
     }
 }
@@ -111,11 +113,11 @@ async fn test_get_lineage_params() {
     // Should accept empty params
     let result = handler.handle_get_lineage(params).await;
 
-    // Expected: Err (no BearDog in test env)
+    // Expected: Err (no security provider in test env)
     if let Err(e) = result {
         assert!(
             is_expected_crypto_delegate_connectivity_error(&e),
-            "Error should mention BearDog, socket, or IPC, got: {e}"
+            "Error should mention security provider, socket, or IPC, got: {e}"
         );
     }
 }
@@ -292,4 +294,4 @@ async fn test_verify_lineage_missing_one_field() {
     assert!(!err.contains("peer_node_id"), "should not list present field: {err}");
 }
 
-// Integration tests with real BearDog in tests/birdsong_integration_test.rs
+// Integration tests with real security provider in tests/birdsong_integration_test.rs

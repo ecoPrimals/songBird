@@ -3,14 +3,14 @@
 
 //! Onion service (listen mode) - Phase 3 Implementation
 //!
-//! ✅ **TRUE PRIMAL**: Production uses `BearDog` delegation for all crypto.
+//! ✅ **TRUE PRIMAL**: Production uses `security provider` delegation for all crypto.
 
 #[cfg(feature = "sled-storage")]
 use crate::OnionStorage;
-use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
 use crate::keys::{EphemeralKeypair, OnionIdentity};
 use crate::protocol::{DataMessage, KeyExchangeMessage, MessageType};
+use crate::security_crypto::SecurityCryptoClient;
 #[cfg(not(feature = "sled-storage"))]
 use crate::storage::InMemoryOnionStorage;
 use crate::storage::OnionStorageBackend;
@@ -31,35 +31,38 @@ fn onion_data_dir() -> String {
 
 /// Onion service (creates reachable .onion address)
 ///
-/// **Status**: Phase 3 - Complete implementation with `BearDog` delegation
+/// **Status**: Phase 3 - Complete implementation with `security provider` delegation
 pub struct OnionService {
     identity: OnionIdentity,
     storage: Arc<dyn OnionStorageBackend>,
     port: u16,
-    beardog: Arc<BeardogCryptoClient>,
+    security: Arc<SecurityCryptoClient>,
 }
 
 impl OnionService {
-    /// Create new onion service via `BearDog` (TRUE PRIMAL - production)
+    /// Create new onion service via `security provider` (TRUE PRIMAL - production)
     ///
-    /// Loads existing identity or generates new one via `BearDog`.
+    /// Loads existing identity or generates new one via `security provider`.
     ///
     /// # Errors
     ///
     /// Returns an error if storage open, identity load/generate, or persistence fails.
-    pub async fn new_via_beardog(port: u16, beardog: BeardogCryptoClient) -> Result<Self> {
+    pub async fn new_via_security_provider(
+        port: u16,
+        security: SecurityCryptoClient,
+    ) -> Result<Self> {
         #[cfg(feature = "sled-storage")]
         let storage: Arc<dyn OnionStorageBackend> = Arc::new(OnionStorage::open(onion_data_dir())?);
         #[cfg(not(feature = "sled-storage"))]
         let storage: Arc<dyn OnionStorageBackend> = Arc::new(InMemoryOnionStorage::new());
 
-        // Load or generate identity via BearDog
+        // Load or generate identity via security provider
         let identity = if let Some(stored) = storage.load_identity()? {
             debug!("Loaded existing onion identity");
             stored
         } else {
-            info!("Generating new onion identity via BearDog");
-            let identity = OnionIdentity::generate_via_beardog(&beardog).await?;
+            info!("Generating new onion identity via security provider");
+            let identity = OnionIdentity::generate_via_security_provider(&security).await?;
             storage.store_identity(&identity)?;
             identity
         };
@@ -67,20 +70,26 @@ impl OnionService {
         info!(
             onion_address = %identity.onion_address(),
             port = port,
-            "Onion service created (TRUE PRIMAL - BearDog crypto)"
+            "Onion service created (delegated security-provider crypto)"
         );
 
         Ok(Self {
             identity,
             storage,
             port,
-            beardog: Arc::new(beardog),
+            security: Arc::new(security),
         })
+    }
+
+    /// Deprecated alias for [`Self::new_via_security_provider`].
+    #[deprecated(note = "use new_via_security_provider")]
+    pub async fn new_via_beardog(port: u16, beardog: SecurityCryptoClient) -> Result<Self> {
+        Self::new_via_security_provider(port, beardog).await
     }
 
     /// Create new onion service (standalone mode - testing only)
     ///
-    /// ⚠️ **Testing only** - Uses direct crypto without `BearDog`
+    /// ⚠️ **Testing only** - Uses direct crypto without `security provider`
     ///
     /// # Errors
     ///
@@ -108,13 +117,13 @@ impl OnionService {
 
         // Session handshakes and data-plane crypto (`ChaCha20Poly1305`, X25519 ephemeral)
         // still delegate to this client; only long-lived identity material above is local.
-        let beardog = BeardogCryptoClient::from_env();
+        let security = SecurityCryptoClient::from_env();
 
         Ok(Self {
             identity,
             storage,
             port,
-            beardog: Arc::new(beardog),
+            security: Arc::new(security),
         })
     }
 
@@ -163,7 +172,7 @@ impl OnionService {
                         identity: self.identity.clone(),
                         storage: self.storage.clone(),
                         port: self.port,
-                        beardog: Arc::clone(&self.beardog),
+                        security: Arc::clone(&self.security),
                     };
 
                     tokio::spawn(async move {
@@ -202,16 +211,17 @@ impl OnionService {
         let key_exchange = KeyExchangeMessage::decode(&buf[1..])?;
         debug!("Received key exchange from peer");
 
-        // Generate our ephemeral keypair via BearDog
-        let our_ephemeral = EphemeralKeypair::generate_via_beardog(&self.beardog).await?;
+        // Generate our ephemeral keypair via security provider
+        let our_ephemeral =
+            EphemeralKeypair::generate_via_security_provider(&self.security).await?;
         let our_public_key = *our_ephemeral.public_bytes();
 
-        // Derive shared secret via BearDog (consumes our_ephemeral)
+        // Derive shared secret via security provider (consumes our_ephemeral)
         let shared_secret = our_ephemeral
-            .derive_shared_secret_via_beardog(&self.beardog, &key_exchange.pubkey)
+            .derive_shared_secret_via_security_provider(&self.security, &key_exchange.pubkey)
             .await?;
 
-        debug!("Derived shared secret via BearDog - handshake complete");
+        debug!("Derived shared secret via security provider - handshake complete");
 
         // Send our key exchange response
         let our_key_exchange = KeyExchangeMessage::new(our_public_key, [0u8; 24]);
@@ -261,24 +271,24 @@ impl OnionService {
                     let mut encrypted = vec![0u8; payload_len];
                     stream.read_exact(&mut encrypted).await?;
 
-                    // Decrypt via BearDog (pad sequence to 12 bytes for nonce)
+                    // Decrypt via security provider (pad sequence to 12 bytes for nonce)
                     let mut nonce = [0u8; 12];
                     nonce[..8].copy_from_slice(&msg_sequence.to_be_bytes());
 
                     let plaintext = self
-                        .beardog
+                        .security
                         .chacha20_poly1305_decrypt(session_key, &nonce, &encrypted)
                         .await?;
 
                     debug!(
                         sequence = msg_sequence,
                         bytes = plaintext.len(),
-                        "Received and decrypted message via BearDog"
+                        "Received and decrypted message via security provider"
                     );
 
                     // Echo back (for testing - replace with actual logic)
                     let response_encrypted = self
-                        .beardog
+                        .security
                         .chacha20_poly1305_encrypt(session_key, &nonce, &plaintext)
                         .await?;
 

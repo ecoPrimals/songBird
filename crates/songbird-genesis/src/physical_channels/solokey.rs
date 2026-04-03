@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! `SoloKey` hardware key support (FIDO2/WebAuthn)
+//! Placeholder / demo implementation of a hardware-key genesis channel.
+//!
+//! **Not production-ready:** this module does not talk to a real security key or perform
+//! FIDO2/WebAuthn. [`SoloKeyChannel`] returns static dummy proximity and exchange bytes so
+//! callers can compile and exercise APIs. Enable the `solokey` Cargo feature explicitly
+//! when you need this stub; it is off by default.
 
 use crate::error::Result;
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
@@ -15,7 +20,7 @@ use super::PhysicalChannelProvider;
 ///
 /// **Future Implementation:**
 /// - Use Pure Rust FIDO2/WebAuthn library (when available)
-/// - Or delegate to `BearDog` for hardware key operations via IPC
+/// - Or delegate to `security provider` for hardware key operations via IPC
 /// - Zero C dependencies (no OpenSSL)
 #[derive(Debug)]
 pub struct SoloKeyChannel {

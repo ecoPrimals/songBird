@@ -216,13 +216,14 @@ impl RendezvousClient {
             }
         }
 
-        let legacy_socket_path = ["SECURITY_PROVIDER_SOCKET", "BEARDOG_SOCKET", "BEARDOG_SOCKET_PATH"]
-            .iter()
-            .find_map(|k| songbird_process_env::var(k).ok());
+        let legacy_socket_path =
+            ["SECURITY_PROVIDER_SOCKET", "BEARDOG_SOCKET", "BEARDOG_SOCKET_PATH"]
+                .iter()
+                .find_map(|k| songbird_process_env::var(k).ok());
         if let Some(socket_path) = legacy_socket_path
-            && let Ok(beardog_client) = UnixRpcClient::new(PathBuf::from(socket_path))
+            && let Ok(security_client) = UnixRpcClient::new(PathBuf::from(socket_path))
         {
-            match beardog_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
+            match security_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
                 Ok(key_data) => {
                     let hash = crate::crypto_helpers::sha256_hash(Some(&crypto), &key_data).await;
                     return Ok(format!("sha256:{}", hex::encode(hash)));
@@ -236,7 +237,7 @@ impl RendezvousClient {
         let node_info = self
             .node_info
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires security provider (CryptoProvider or SECURITY_PROVIDER_SOCKET / BEARDOG_SOCKET / BEARDOG_SOCKET_PATH) or node identity"))?;
+            .ok_or_else(|| anyhow::anyhow!("CryptoUnavailable: rendezvous fingerprint requires security provider (CryptoProvider or SECURITY_PROVIDER_SOCKET) or node identity"))?;
 
         const DOMAIN_KEY: &[u8] = b"songbird.rendezvous.pkfp.v1";
         let tag = crate::crypto_helpers::hmac_sha256(
@@ -249,19 +250,20 @@ impl RendezvousClient {
         Ok(format!("hmac-sha256:{}", hex::encode(tag)))
     }
 
-    /// Sign registration message with `BearDog` or return None
+    /// Sign registration message with security provider or return None
     ///
-    /// In production, this would use the `BearDog` security service to
+    /// In production, this would use the security provider service to
     /// cryptographically sign the registration message.
     async fn sign_message_for_registration(&self) -> Option<String> {
-        // Try to sign with BearDog security service
-        if let Ok(beardog_url) = songbird_process_env::var("BEARDOG_ENDPOINT") {
-            // In production, would serialize msg and send to BearDog for signing
-            // For now, return None to indicate unsigned (but ready for integration)
-            debug!("BearDog endpoint configured at {}, signature integration pending", beardog_url);
+        if let Ok(security_url) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            .or_else(|_| songbird_process_env::var("BEARDOG_ENDPOINT"))
+        {
+            debug!(
+                "Security provider endpoint configured at {}, signature integration pending",
+                security_url
+            );
         }
 
-        // Return None for now - server should accept unsigned messages in development
         None
     }
 }

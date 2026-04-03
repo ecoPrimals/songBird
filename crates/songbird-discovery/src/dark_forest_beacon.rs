@@ -63,7 +63,7 @@
 //!     created_at: 1234567890,
 //! };
 //!
-//! // Encrypt with beacon seed (via BearDog)
+//! // Encrypt with beacon seed (via security provider)
 //! let encrypted = encrypt_with_beacon_seed(&payload.to_bytes()?).await?;
 //!
 //! // Create Dark Forest beacon

@@ -3,8 +3,8 @@
 
 //! Onion address derivation and validation (Tor v3 format)
 
-use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
+use crate::security_crypto::SecurityCryptoClient;
 
 // Import dalek/sha3 types only for standalone/test mode
 #[cfg(feature = "standalone")]
@@ -12,9 +12,9 @@ use ed25519_dalek::VerifyingKey;
 #[cfg(feature = "standalone")]
 use sha3::{Digest, Sha3_256};
 
-/// Derive .onion address from an Ed25519 public key using delegated SHA3-256 (Neural API / `BearDog`).
-pub(crate) async fn derive_onion_address_with_beardog(
-    client: &BeardogCryptoClient,
+/// Derive .onion address from an Ed25519 public key using delegated SHA3-256 (Neural API).
+pub(crate) async fn derive_onion_address_with_security_provider(
+    client: &SecurityCryptoClient,
     pubkey_bytes: &[u8; 32],
 ) -> Result<String> {
     let mut data = Vec::with_capacity(35);
@@ -48,39 +48,46 @@ pub(crate) async fn derive_onion_address_with_beardog(
     Ok(format!("{encoded}.onion"))
 }
 
-/// Derive .onion address via `BearDog` (TRUE PRIMAL)
-///
-/// Uses `BearDog`'s `crypto.sha3_256` for the checksum calculation.
+/// Derive .onion address via the security provider (delegated `crypto.sha3_256`).
 ///
 /// # Example
 ///
 /// ```no_run
-/// # use songbird_sovereign_onion::{derive_onion_address_via_beardog, BeardogCryptoClient};
+/// # use songbird_sovereign_onion::{derive_onion_address_via_security_provider, SecurityCryptoClient};
 /// # tokio_test::block_on(async {
-/// let client = BeardogCryptoClient::from_env();
+/// let client = SecurityCryptoClient::from_env();
 /// let pubkey_bytes = [0u8; 32]; // Your Ed25519 public key
-/// let onion = derive_onion_address_via_beardog(&client, &pubkey_bytes).await.unwrap();
+/// let onion = derive_onion_address_via_security_provider(&client, &pubkey_bytes).await.unwrap();
 /// assert!(onion.ends_with(".onion"));
 /// # });
 /// ```
 ///
 /// # Errors
 ///
-/// Returns error if `BearDog` RPC fails or checksum computation fails.
-pub async fn derive_onion_address_via_beardog(
-    client: &BeardogCryptoClient,
+/// Returns error if the security RPC fails or checksum computation fails.
+pub async fn derive_onion_address_via_security_provider(
+    client: &SecurityCryptoClient,
     pubkey_bytes: &[u8; 32],
 ) -> Result<String> {
-    derive_onion_address_with_beardog(client, pubkey_bytes).await
+    derive_onion_address_with_security_provider(client, pubkey_bytes).await
 }
 
-/// Validate .onion address via `BearDog` (TRUE PRIMAL)
+/// Deprecated alias for [`derive_onion_address_via_security_provider`].
+#[deprecated(note = "use derive_onion_address_via_security_provider")]
+pub async fn derive_onion_address_via_beardog(
+    client: &SecurityCryptoClient,
+    pubkey_bytes: &[u8; 32],
+) -> Result<String> {
+    derive_onion_address_via_security_provider(client, pubkey_bytes).await
+}
+
+/// Validate .onion address via the security provider
 ///
 /// # Errors
 ///
-/// Returns error if address format is invalid, checksum fails, or `BearDog` RPC fails.
-pub async fn validate_onion_address_via_beardog(
-    client: &BeardogCryptoClient,
+/// Returns error if address format is invalid, checksum fails, or RPC fails.
+pub async fn validate_onion_address_via_security_provider(
+    client: &SecurityCryptoClient,
     onion: &str,
 ) -> Result<[u8; 32]> {
     // 1. Remove ".onion" suffix
@@ -110,7 +117,7 @@ pub async fn validate_onion_address_via_beardog(
         return Err(OnionError::UnsupportedVersion(version));
     }
 
-    // 6. Verify checksum via BearDog
+    // 6. Verify checksum via security provider
     let mut checksum_input = Vec::new();
     checksum_input.extend_from_slice(b".onion checksum");
     checksum_input.extend_from_slice(pubkey_bytes);
@@ -128,6 +135,15 @@ pub async fn validate_onion_address_via_beardog(
         pubkey_bytes.try_into().map_err(|_| OnionError::InvalidPublicKey)?;
 
     Ok(pubkey_array)
+}
+
+/// Deprecated alias for [`validate_onion_address_via_security_provider`].
+#[deprecated(note = "use validate_onion_address_via_security_provider")]
+pub async fn validate_onion_address_via_beardog(
+    client: &SecurityCryptoClient,
+    onion: &str,
+) -> Result<[u8; 32]> {
+    validate_onion_address_via_security_provider(client, onion).await
 }
 
 /// Standalone derivation (for testing/offline only)
@@ -384,50 +400,50 @@ mod tests {
 }
 
 #[cfg(test)]
-mod beardog_path_tests {
+mod security_provider_path_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-    use crate::beardog_crypto::BeardogCryptoClient;
+    use crate::security_crypto::SecurityCryptoClient;
 
     #[tokio::test]
-    async fn validate_via_beardog_rejects_non_onion_suffix() {
+    async fn validate_via_security_provider_rejects_non_onion_suffix() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
-        let r = validate_onion_address_via_beardog(&client, "not-onion").await;
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+        let r = validate_onion_address_via_security_provider(&client, "not-onion").await;
         assert!(matches!(r, Err(OnionError::InvalidFormat)));
     }
 
     #[tokio::test]
-    async fn validate_via_beardog_rejects_bad_base32() {
+    async fn validate_via_security_provider_rejects_bad_base32() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
-        let r = validate_onion_address_via_beardog(&client, "!!!!.onion").await;
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+        let r = validate_onion_address_via_security_provider(&client, "!!!!.onion").await;
         assert!(matches!(r, Err(OnionError::InvalidEncoding)));
     }
 
     #[tokio::test]
-    async fn validate_via_beardog_rejects_wrong_decoded_length() {
+    async fn validate_via_security_provider_rejects_wrong_decoded_length() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
-        let r = validate_onion_address_via_beardog(&client, "aa.onion").await;
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+        let r = validate_onion_address_via_security_provider(&client, "aa.onion").await;
         assert!(matches!(r, Err(OnionError::InvalidLength(_))));
     }
 
     #[tokio::test]
-    async fn derive_with_beardog_fails_without_service() {
+    async fn derive_with_security_provider_fails_without_service() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
         let pk = [7u8; 32];
-        let r = derive_onion_address_via_beardog(&client, &pk).await;
+        let r = derive_onion_address_via_security_provider(&client, &pk).await;
         assert!(r.is_err());
     }
 
-    /// Wrong version is rejected before any BearDog RPC (checksum step is skipped).
+    /// Wrong version is rejected before any RPC (checksum step is skipped).
     #[tokio::test(start_paused = true)]
-    async fn validate_via_beardog_rejects_unsupported_version_without_rpc() {
+    async fn validate_via_security_provider_rejects_unsupported_version_without_rpc() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
         let mut raw = [0u8; 35];
         raw[34] = 0x02;
         let encoded = base32::encode(
@@ -437,7 +453,7 @@ mod beardog_path_tests {
             &raw,
         );
         let onion = format!("{encoded}.onion");
-        let r = validate_onion_address_via_beardog(&client, &onion).await;
+        let r = validate_onion_address_via_security_provider(&client, &onion).await;
         assert!(
             matches!(r, Err(OnionError::UnsupportedVersion(2))),
             "expected UnsupportedVersion(2), got {r:?}"

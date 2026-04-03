@@ -29,7 +29,7 @@ pub trait HttpClientCapability: Send + Sync {
 /// Trait for discovering crypto capabilities at runtime
 ///
 /// This enables:
-/// - No hardcoded `BearDog` endpoints
+/// - No hardcoded `security provider` endpoints
 /// - Capability-based discovery
 /// - Multiple discovery backends (env, IPC, mDNS)
 #[async_trait]

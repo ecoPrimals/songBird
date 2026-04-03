@@ -196,8 +196,8 @@ mod tests {
     use crate::coordinator::config::HolePunchConfig;
     use crate::coordinator::core::HolePunchCoordinator;
     use crate::coordinator::types::CoordinatedPunchResult;
-    use songbird_lineage_relay::types::{MaskingLevel, NodeId};
     use songbird_lineage_relay::RelaySession;
+    use songbird_lineage_relay::types::{MaskingLevel, NodeId};
     use songbird_stun::PortPattern;
     use std::net::SocketAddr;
     use std::time::Duration;

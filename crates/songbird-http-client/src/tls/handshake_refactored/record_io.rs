@@ -213,9 +213,12 @@ impl TlsHandshake {
         let aad = [record_type, version[0], version[1], (length >> 8) as u8, (length & 0xFF) as u8];
         trace!("   AAD (TLS record header): {:02x?}", aad);
 
-        // Decrypt via BearDog - use correct AEAD algorithm based on negotiated cipher suite!
+        // Decrypt via crypto provider - use correct AEAD algorithm based on negotiated cipher suite!
         let decrypt_start = std::time::Instant::now();
-        info!("⏳ Calling beardog.decrypt with cipher suite 0x{:04x}...", self.cipher_suite);
+        info!(
+            "⏳ Calling crypto provider decrypt with cipher suite 0x{:04x}...",
+            self.cipher_suite
+        );
 
         let plaintext = match self.cipher_suite {
             0x1301 => {
@@ -360,7 +363,7 @@ impl TlsHandshake {
         Err(Error::TlsHandshake("key_share extension not found".to_string()))
     }
 
-    /// Generate 32-byte random (for testing, production should use `BearDog`)
+    /// Generate 32-byte random (for testing, production should use the `crypto provider`)
     #[expect(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
     pub(crate) fn generate_random(&self) -> Vec<u8> {
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -374,7 +377,7 @@ impl TlsHandshake {
         .unwrap_or(0);
         random.extend_from_slice(&timestamp.to_be_bytes());
 
-        // Fill rest with pseudo-random (in production, BearDog should provide this)
+        // Fill rest with pseudo-random (in production, the crypto provider should provide this)
         #[expect(
             clippy::cast_possible_truncation,
             reason = "truncation acceptable: test-only pseudo-random filler bytes"
@@ -394,9 +397,10 @@ mod tests {
 
     #[test]
     fn test_generate_random() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         let random1 = handshake.generate_random();
 
@@ -408,9 +412,10 @@ mod tests {
 
     #[test]
     fn test_extract_key_share_too_short() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         let data = vec![0x00]; // Too short
         let result = handshake.extract_key_share(&data);
@@ -421,9 +426,10 @@ mod tests {
 
     #[test]
     fn test_parse_server_hello_invalid() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         // Empty data
         let result = handshake.parse_server_hello(&[]);
@@ -436,9 +442,10 @@ mod tests {
 
     #[test]
     fn test_parse_server_hello_truncated() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         // ServerHello type but truncated
         let data = vec![0x02, 0x00, 0x00, 0x05, 0x03, 0x03]; // Too short for random

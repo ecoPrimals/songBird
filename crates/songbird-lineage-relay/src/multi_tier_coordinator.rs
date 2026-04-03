@@ -14,7 +14,7 @@
 //! │                                                                 │
 //! │  Tier 1: Genetic Lineage Relay                                 │
 //! │  ├─ Zero external trust                                        │
-//! │  ├─ BearDog lineage verification                               │
+//! │  ├─ security provider lineage verification                               │
 //! │  └─ Ancestors relay for descendants                            │
 //! │                                                                 │
 //! │  Tier 2: User-Provided STUN                                    │

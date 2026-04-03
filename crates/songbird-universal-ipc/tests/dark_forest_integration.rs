@@ -39,7 +39,7 @@
 //! Dark Forest Protocol Integration Tests
 //!
 //! Comprehensive tests for all 6 Dark Forest JSON-RPC methods
-//! through the `IpcServiceHandler` wiring (no `BearDog` required).
+//! through the `IpcServiceHandler` wiring (no `security provider` required).
 //!
 //! Tests validate:
 //! - Method routing (correct handler called)

@@ -166,7 +166,7 @@ pub enum PrimalType {
     Security,
     /// Compute services (toadstool, containers)
     Compute,
-    /// Storage services (nestgate, databases)
+    /// Storage services (storage provider, databases)
     Storage,
     /// AI/ML services (squirrel, models)
     AI,

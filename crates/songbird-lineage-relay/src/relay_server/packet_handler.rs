@@ -230,7 +230,7 @@ pub(super) fn apply_masking(data: &[u8], level: MaskingLevel) -> Result<Vec<u8>>
         }
         MaskingLevel::Full => {
             // Distant family: Full encryption + padding
-            // Future: Integrate with BearDog encryption
+            // Future: Integrate with security provider encryption
             // For now, just pad (encryption is future enhancement)
             let mut padded = data.to_vec();
             let target_size = data.len().div_ceil(1024) * 1024;

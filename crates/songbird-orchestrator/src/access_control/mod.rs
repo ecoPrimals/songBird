@@ -8,7 +8,7 @@
 //! ## Modes
 //!
 //! - **Standalone**: JWT-based authentication, works independently
-//! - **security provider-Enhanced**: Genetic identity, hardware binding (when available)
+//! - **Security provider (enhanced)**: Genetic identity, hardware binding (when available)
 //!
 //! ## Information Layers
 //!
@@ -57,7 +57,7 @@ pub enum AuthMode {
     /// Standalone JWT authentication
     Standalone,
 
-    /// security provider genetic identity (when available)
+    /// Security provider–backed genetic identity (when available)
     BearDogEnhanced {
         genetic_verification_endpoint: String,
         hardware_binding_required: bool,
@@ -325,7 +325,7 @@ impl AccessControl {
             // Verify 2FA/hardware key for infrastructure access
             // Implementation depends on auth mode:
             // - Standalone mode: Check for explicit 2FA token claim
-            // - security provider mode: Verify hardware key (SoloKey) entropy level
+            // - Security provider mode: Verify hardware key (SoloKey) entropy level
             match &self.mode {
                 AuthMode::Standalone => {
                     // In standalone mode, infrastructure access requires explicit 2FA verification
@@ -345,7 +345,7 @@ impl AccessControl {
                 AuthMode::BearDogEnhanced {
                     ..
                 } => {
-                    // security provider mode: Verify hardware key entropy level
+                    // Security provider mode: Verify hardware key entropy level
                     // Future: Integrate with security provider for hardware key verification
                     // For now, allow if role permits (security provider integration Q1 2025)
                     info.add_infrastructure_layer(self.info_builder.build_infrastructure(task));

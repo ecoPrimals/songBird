@@ -43,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let mut url = "https://localhost:8443".to_string();
     let mut skip_verify = false;
-    let mut beardog_socket = "/tmp/beardog-test.sock".to_string();
+    let mut security_provider_socket = "/tmp/beardog-test.sock".to_string();
 
     let mut i = 1;
     while i < args.len() {
@@ -61,12 +61,12 @@ async fn main() -> anyhow::Result<()> {
                 skip_verify = true;
                 i += 1;
             }
-            "--beardog-socket" => {
+            "--security-provider-socket" => {
                 if i + 1 < args.len() {
-                    beardog_socket = args[i + 1].clone();
+                    security_provider_socket = args[i + 1].clone();
                     i += 2;
                 } else {
-                    eprintln!("Error: --beardog-socket requires a value");
+                    eprintln!("Error: --security-provider-socket requires a value");
                     std::process::exit(1);
                 }
             }
@@ -83,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
                     "  --skip-verify              Skip certificate verification (for self-signed certs)"
                 );
                 println!(
-                    "  --beardog-socket <PATH>    BearDog socket path (default: /tmp/beardog-test.sock)"
+                    "  --security-provider-socket <PATH>    Security provider socket path (default: /tmp/beardog-test.sock)"
                 );
                 println!("  --help, -h                 Show this help message");
                 std::process::exit(0);
@@ -99,13 +99,15 @@ async fn main() -> anyhow::Result<()> {
     info!("📋 Configuration:");
     info!("   URL: {}", url);
     info!("   Skip Verify: {}", skip_verify);
-    info!("   BearDog Socket: {}", beardog_socket);
+    info!("   Security provider socket: {}", security_provider_socket);
     info!("");
 
-    // Create HTTPS client (uses BearDogClient::from_env() for mode detection)
+    // Create HTTPS client (uses SongbirdHttpClient::from_env() for mode detection)
     info!("🏗️  Creating HTTPS client...");
     info!("   Mode: SECURITY_PROVIDER_MODE (preferred) or BEARDOG_MODE");
-    info!("   - SECURITY_PROVIDER_MODE=direct or BEARDOG_MODE=direct → Direct RPC to crypto provider");
+    info!(
+        "   - SECURITY_PROVIDER_MODE=direct or BEARDOG_MODE=direct → Direct RPC to crypto provider"
+    );
     info!("   - SECURITY_PROVIDER_MODE=neural or BEARDOG_MODE=neural → Via Neural API (default)");
     let client = SongbirdHttpClient::from_env();
     info!("✅ Client ready");

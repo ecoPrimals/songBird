@@ -17,7 +17,7 @@ use tracing::{debug, error, info, trace};
 impl TlsHandshake {
     /// Send client Finished message (RFC 8446 Section 4.4.4)
     ///
-    /// Computes the transcript hash, delegates `verify_data` computation to `BearDog`,
+    /// Computes the transcript hash, delegates `verify_data` computation to the `crypto provider`,
     /// builds and encrypts the Finished handshake message, then sends it.
     pub(crate) async fn send_client_finished(
         &self,
@@ -38,7 +38,7 @@ impl TlsHandshake {
             }
         );
 
-        // 2. Compute verify_data via BearDog (RFC 8446 Section 4.4.4)
+        // 2. Compute verify_data via crypto provider (RFC 8446 Section 4.4.4)
         let verify_data = self
             .crypto
             .tls_compute_finished_verify_data(
@@ -55,7 +55,7 @@ impl TlsHandshake {
         debug!("Finished verify_data: {} bytes", verify_data.len());
 
         // 3. Build Finished handshake message
-        let finished_msg = Self::build_finished_message(&verify_data);
+        let finished_msg = Self::build_finished_message(&verify_data)?;
 
         // 4. Add ContentType for TLS 1.3 encryption (RFC 8446 Section 5.2)
         let mut plaintext = finished_msg;
@@ -82,17 +82,29 @@ impl TlsHandshake {
     }
 
     /// Build a Finished handshake message from `verify_data`
-    fn build_finished_message(verify_data: &[u8]) -> Vec<u8> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TLS wire format: values are masked to & 0xFF before cast"
+    )]
+    fn build_finished_message(verify_data: &[u8]) -> Result<Vec<u8>> {
+        const MAX_HANDSHAKE_BODY: usize = 0xFF_FFFF;
+
+        let length = verify_data.len();
+        if length > MAX_HANDSHAKE_BODY {
+            return Err(Error::TlsHandshake(format!(
+                "Finished verify_data length {length} exceeds maximum {MAX_HANDSHAKE_BODY}"
+            )));
+        }
+
         let mut msg = Vec::with_capacity(4 + verify_data.len());
         msg.push(0x14); // HandshakeType: Finished
 
-        let length = verify_data.len();
-        msg.push(u8::try_from((length >> 16) & 0xFF).expect("length byte fits in u8"));
-        msg.push(u8::try_from((length >> 8) & 0xFF).expect("length byte fits in u8"));
-        msg.push(u8::try_from(length & 0xFF).expect("length byte fits in u8"));
+        msg.push(((length >> 16) & 0xFF) as u8);
+        msg.push(((length >> 8) & 0xFF) as u8);
+        msg.push((length & 0xFF) as u8);
 
         msg.extend_from_slice(verify_data);
-        msg
+        Ok(msg)
     }
 
     /// Encrypt plaintext using handshake traffic keys with the given sequence number
@@ -221,11 +233,12 @@ impl TlsHandshake {
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::TlsHandshake;
-    use crate::crypto::{BearDogProvider, CryptoCapability};
+    use crate::crypto::{CryptoCapability, SecurityCryptoProvider};
     use std::sync::Arc;
 
     fn handshake() -> TlsHandshake {
-        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let crypto: Arc<dyn CryptoCapability> =
+            Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
         TlsHandshake::new(crypto)
     }
 
@@ -256,7 +269,7 @@ mod tests {
     #[test]
     fn build_finished_message_framing() {
         let verify = [0xAB, 0xCD];
-        let msg = TlsHandshake::build_finished_message(&verify);
+        let msg = TlsHandshake::build_finished_message(&verify).expect("finished message");
         assert_eq!(msg[0], 0x14);
         assert_eq!(msg.len(), 4 + verify.len());
         assert_eq!(&msg[4..], verify);

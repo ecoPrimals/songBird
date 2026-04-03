@@ -108,36 +108,36 @@ impl GenesisCeremony {
         self.physical_channel.verify_proximity().await
     }
 
-    /// Witness signs genesis using `BearDog`
+    /// Witness signs genesis using `security provider`
     async fn witness_sign_genesis(&self, creds: &[u8]) -> Result<Vec<u8>> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
-        // Try to create BearDog client
+        // Try to create security provider client
         match SecurityCapabilityClient::new().await {
             Ok(client) => {
-                // Try to sign with BearDog
+                // Try to sign with security provider
                 match client.sign_data(&self.witness.device_id, creds).await {
                     Ok(signature) => {
-                        tracing::debug!("✅ Signed with BearDog");
+                        tracing::debug!("✅ Signed with security provider");
                         return Ok(signature);
                     }
                     Err(e) => {
-                        // BearDog request failed, use fallback
+                        // security provider request failed, use fallback
                         tracing::warn!(
-                            "BearDog signing request failed: {e}. Using deterministic fallback signature."
+                            "security provider signing request failed: {e}. Using deterministic fallback signature."
                         );
                     }
                 }
             }
             Err(e) => {
-                // BearDog not available, use fallback
+                // security provider not available, use fallback
                 tracing::warn!(
-                    "BearDog not available: {e}. Using deterministic fallback signature."
+                    "security provider not available: {e}. Using deterministic fallback signature."
                 );
             }
         }
 
-        // Degraded mode: deterministic signature when BearDog is unavailable
+        // Degraded mode: deterministic signature when security provider is unavailable
         Ok(format!("witness_sig_{}_{}", self.witness.device_id, creds.len()).into_bytes())
     }
 
@@ -179,7 +179,7 @@ impl GenesisCeremony {
 /// Coordinator for a specific primal
 #[derive(Debug, Clone)]
 pub struct PrimalCoordinator {
-    /// Primal name (e.g., "songbird", "beardog")
+    /// Primal name (e.g., "songbird", "security-provider")
     pub primal_name: String,
 
     /// Primal endpoint for genesis requests
@@ -200,7 +200,7 @@ impl PrimalCoordinator {
         }
     }
 
-    /// Request lineage from this primal using `BearDog`
+    /// Request lineage from this primal using `security provider`
     ///
     /// # Errors
     ///
@@ -239,16 +239,18 @@ impl PrimalCoordinator {
             }
             Err(e) => {
                 tracing::warn!(
-                    "Failed to contact primal {}: {}. Trying local BearDog fallback.",
+                    "Failed to contact primal {}: {}. Trying local security provider fallback.",
                     self.primal_name,
                     e
                 );
-                if let Some(lineage) = Self::try_beardog_lineage(self, node_id, witness).await {
+                if let Some(lineage) =
+                    Self::try_security_provider_lineage(self, node_id, witness).await
+                {
                     return Ok(lineage);
                 }
                 tracing::error!(
                     primal = %self.primal_name,
-                    "DEGRADED: Generating synthetic lineage — primal unreachable and BearDog unavailable. \
+                    "DEGRADED: Generating synthetic lineage — primal unreachable and security provider unavailable. \
                      This node will have reduced trust until re-genesis with live primals."
                 );
                 Ok(Self::synthetic_lineage(self, node_id))
@@ -286,7 +288,7 @@ impl PrimalCoordinator {
         })
     }
 
-    async fn try_beardog_lineage(
+    async fn try_security_provider_lineage(
         coordinator: &Self,
         node_id: &str,
         witness: &GenesisWitness,
@@ -296,7 +298,9 @@ impl PrimalCoordinator {
         let security_client = match SecurityCapabilityClient::new().await {
             Ok(c) => c,
             Err(e) => {
-                tracing::warn!("BearDog not available: {e}. Falling back to synthetic lineage.");
+                tracing::warn!(
+                    "Security provider not available: {e}. Falling back to synthetic lineage."
+                );
                 return None;
             }
         };
@@ -307,7 +311,7 @@ impl PrimalCoordinator {
             Ok(d) => d,
             Err(e) => {
                 tracing::warn!(
-                    "BearDog lineage creation failed: {e}. Falling back to synthetic lineage."
+                    "Security provider lineage creation failed: {e}. Falling back to synthetic lineage."
                 );
                 return None;
             }
@@ -315,11 +319,13 @@ impl PrimalCoordinator {
         let signature = match security_client.sign_data(node_id, &lineage_data).await {
             Ok(s) => s,
             Err(e) => {
-                tracing::warn!("BearDog signing failed: {e}. Falling back to synthetic lineage.");
+                tracing::warn!(
+                    "Security provider signing failed: {e}. Falling back to synthetic lineage."
+                );
                 return None;
             }
         };
-        tracing::debug!("✅ Created lineage with BearDog");
+        tracing::debug!("✅ Created lineage with security provider");
         Some(PrimalLineage {
             primal_name: coordinator.primal_name.clone(),
             lineage_data,
@@ -366,7 +372,7 @@ mod tests {
             "http://localhost:8080".to_string(),
         ));
         ceremony.add_primal_coordinator(PrimalCoordinator::new(
-            "beardog".to_string(),
+            "security-provider".to_string(),
             "http://localhost:9000".to_string(),
         ));
 
@@ -380,7 +386,7 @@ mod tests {
 
         // Note: In fallback mode (no real primals), we won't have multi-primal genesis
         // This is expected behavior for isolated testing
-        // In production with real BearDog+Songbird, is_multi_primal_genesis() would return true
+        // In production with real security-provider+songbird, is_multi_primal_genesis() would return true
         assert!(identity.primal_signature_count() >= 1, "Should have at least one signature");
     }
 
@@ -394,10 +400,7 @@ mod tests {
             .expect_err("coordination must fail with zero primals");
         match err {
             GenesisError::CoordinationFailed(msg) => {
-                assert!(
-                    msg.contains("No primals"),
-                    "expected coordination message, got {msg}"
-                );
+                assert!(msg.contains("No primals"), "expected coordination message, got {msg}");
             }
             other => panic!("expected CoordinationFailed, got {other:?}"),
         }
@@ -439,6 +442,9 @@ mod tests {
             "http://127.0.0.1:1".to_string(),
         ));
         let identity = ceremony.conduct("timeout-smoke".to_string()).await;
-        assert!(identity.is_ok(), "custom timeout should not block successful ceremony: {identity:?}");
+        assert!(
+            identity.is_ok(),
+            "custom timeout should not block successful ceremony: {identity:?}"
+        );
     }
 }

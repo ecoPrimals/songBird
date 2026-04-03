@@ -9,15 +9,15 @@
 //! # Songbird TLS - Pure Rust TLS 1.3 Implementation
 //!
 //! A 100% Pure Rust implementation of TLS 1.3 designed for the biomeOS ecosystem.
-//! All cryptographic operations are delegated to `BearDog` via runtime-discovered
+//! All cryptographic operations are delegated to the security (crypto) provider via runtime-discovered
 //! Unix sockets, ensuring TRUE Pure Rust sovereignty with zero C dependencies.
 //!
 //! ## Architecture
 //!
 //! ```text
-//! Pure Songbird TLS = Protocol (Songbird) + Crypto (BearDog)
+//! Pure Songbird TLS = Protocol (Songbird) + Crypto (security provider)
 //!
-//! Songbird TLS:                  BearDog:
+//! Songbird TLS:                  Security provider:
 //! ├── Handshake State Machine    ├── Ed25519 (signing)
 //! ├── Record Layer (framing)     ├── X25519 (key exchange)
 //! ├── Key Schedule (HKDF)        ├── ChaCha20-Poly1305 (AEAD)
@@ -53,7 +53,7 @@
 //!
 //! ## Performance Targets
 //!
-//! - Handshake: < 10ms (includes `BearDog` round-trips)
+//! - Handshake: < 10ms (includes security-provider round-trips)
 //! - Throughput: > 1 GB/s (CPU-bound, parallel streams)
 //! - Memory: < 16 KB per connection
 //!
@@ -75,6 +75,12 @@ pub mod record_layer;
 pub mod server; // NEW: High-level server API
 pub mod socket_discovery; // NEW: XDG-compliant socket discovery
 
+/// Re-export of [`crate::crypto::SecurityTlsCryptoClient`].
+pub use crypto::SecurityTlsCryptoClient;
+/// Deprecated alias for [`SecurityTlsCryptoClient`].
+#[deprecated(note = "use SecurityTlsCryptoClient (capability-based naming)")]
+pub type BeardogCryptoClient = SecurityTlsCryptoClient;
+
 // Error types
 pub mod error;
 pub use error::{Result, TlsError};
@@ -85,7 +91,7 @@ pub use messages::{Certificate, ClientHello, Finished, ServerHello};
 pub use record_layer::RecordLayer;
 pub use server::{TlsAcceptor, TlsServerConfig, TlsStream};
 
-// Certificate generation (hybrid standalone + BearDog)
+// Certificate generation (hybrid standalone + security provider)
 pub use cert::generator::{CertGenerationMode, CertificateGenerator};
 
 /// TLS 1.3 protocol version (0x0304)

@@ -226,7 +226,7 @@ pub async fn calculate_checksum(data: &[u8], crypto: Option<&CryptoProvider>) ->
         Ok(hex)
     } else {
         tracing::warn!(
-            "Checkpoint checksum using local SHA-256; BearDog crypto provider not configured"
+            "Checkpoint checksum using local SHA-256; security provider crypto provider not configured"
         );
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();

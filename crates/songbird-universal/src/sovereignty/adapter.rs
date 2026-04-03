@@ -226,8 +226,8 @@ impl SovereigntyAwareAdapter {
         all_paths: &[RoutingPath],
     ) -> SongbirdResult<SovereigntyAwareRoutingDecision> {
         use super::types::{
-            DecisionFactor, PathSovereigntyAssessment, RoutingDecisionMetadata,
-            SegmentSovereigntyAssessment, SecurityAssessment, SovereigntyAwareRoutingDecision,
+            DecisionFactor, PathSovereigntyAssessment, RoutingDecisionMetadata, SecurityAssessment,
+            SegmentSovereigntyAssessment, SovereigntyAwareRoutingDecision,
         };
 
         if selected_path.segments.is_empty() {
@@ -325,10 +325,7 @@ impl SovereigntyAwareAdapter {
             "delegating request execution to UnifiedUniversalAdapter (per-hop chain execution tracked for songbird-universal)"
         );
 
-        self.base_adapter
-            .route_request(request)
-            .await
-            .map_err(Into::into)
+        self.base_adapter.route_request(request).await.map_err(Into::into)
     }
 
     fn health_to_score(health: &HealthStatus) -> f64 {
@@ -358,7 +355,9 @@ impl SovereigntyAwareAdapter {
         }
     }
 
-    fn federation_capabilities_from_path(path: &RoutingPath) -> Vec<super::types::FederationCapability> {
+    fn federation_capabilities_from_path(
+        path: &RoutingPath,
+    ) -> Vec<super::types::FederationCapability> {
         use super::types::{FederationCapability, PerformanceCharacteristics};
 
         let mut out = Vec::new();
@@ -382,7 +381,10 @@ impl SovereigntyAwareAdapter {
                         availability_score: Self::health_to_score(&cap.health_status),
                         performance_characteristics: PerformanceCharacteristics {
                             latency_ms: cap.qos_metrics.latency_ms.unwrap_or(0.0),
-                            throughput_ops_per_sec: cap.qos_metrics.throughput_ops_sec.unwrap_or(0.0),
+                            throughput_ops_per_sec: cap
+                                .qos_metrics
+                                .throughput_ops_sec
+                                .unwrap_or(0.0),
                             reliability_score: cap
                                 .qos_metrics
                                 .reliability

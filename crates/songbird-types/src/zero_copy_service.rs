@@ -254,7 +254,7 @@ mod tests {
     fn test_zero_copy_service_creation() {
         let service = ZeroCopyServiceRegistration::new(
             "beardog-1",
-            "BearDog Security",
+            "security provider Security",
             "beardog",
             "tower-main",
             "Main Tower",
@@ -262,7 +262,7 @@ mod tests {
         );
 
         assert_eq!(service.service_id.as_ref(), "beardog-1");
-        assert_eq!(service.service_name.as_ref(), "BearDog Security");
+        assert_eq!(service.service_name.as_ref(), "security provider Security");
         assert_eq!(service.service_type.as_ref(), "beardog");
     }
 

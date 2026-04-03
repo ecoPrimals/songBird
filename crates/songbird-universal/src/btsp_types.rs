@@ -30,7 +30,7 @@
 //! ## Zero Hardcoding
 //!
 //! - Discovers security provider via capabilities
-//! - No hardcoded vendor names (`BearDog`, etc.)
+//! - No hardcoded vendor names (`security provider`, etc.)
 //! - Runtime protocol negotiation
 //! - Primal only knows itself
 

@@ -46,7 +46,7 @@ async fn test_same_family_auto_accept() {
         identity_attestations: vec![],
     };
 
-    // Note: This test requires a running BearDog instance or mock server
+    // Note: This test requires a running security provider instance or mock server
     // For now, we're just testing the structure
 
     assert_eq!(peer.node_id, "tower2");
@@ -67,7 +67,7 @@ async fn test_no_tags_reject() {
     };
 
     assert!(peer.tags.is_empty());
-    // Without tags, BearDog should reject this peer
+    // Without tags, security provider should reject this peer
 }
 
 /// Test: Peer with different family should prompt user
@@ -237,7 +237,7 @@ fn test_confidence_levels() {
     }
 }
 
-/// Test: Agnostic pattern - no hardcoded "`BearDog`" in peer struct
+/// Test: Agnostic pattern - no hardcoded "`security provider`" in peer struct
 #[test]
 fn test_agnostic_pattern() {
     let peer = DiscoveredPeer {
@@ -251,8 +251,8 @@ fn test_agnostic_pattern() {
     };
 
     // Tags are generic - could be from any security provider
-    assert!(!format!("{peer:?}").contains("BearDog"));
-    assert!(!peer.endpoint.contains("beardog"));
+    assert!(!format!("{peer:?}").contains("security provider"));
+    assert!(!peer.endpoint.contains(".sock"), "endpoint should be a URL, not a Unix socket path");
 
     // Only the tag content mentions the provider, which is opaque to Songbird
 }

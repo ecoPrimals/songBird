@@ -57,10 +57,8 @@ async fn test_circuit_breaker_open_rejects_immediately() {
     assert_eq!(call_count.load(Ordering::SeqCst), 0);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_circuit_breaker_half_open_recovery() {
-    // Open→half-open uses `std::time::Instant::elapsed()` in `CircuitBreaker`; do not use
-    // `start_paused` here — `tokio::time::sleep` must advance wall time for this wait.
     let breaker = CircuitBreaker::builder()
         .failure_threshold(1)
         .timeout(Duration::from_millis(100))
@@ -68,17 +66,14 @@ async fn test_circuit_breaker_half_open_recovery() {
         .build()
         .unwrap();
 
-    // Fail to open circuit
     let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("test")) }).await;
 
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    tokio::time::advance(Duration::from_millis(150)).await;
 
-    // Succeed twice to close circuit
     for _ in 0..2 {
         let _ = breaker.call(|| async { Ok::<(), std::io::Error>(()) }).await;
     }
 
-    // Should be back in Closed state
     assert!(matches!(breaker.state().await, CircuitState::Closed { .. }));
 }
 
@@ -158,7 +153,7 @@ async fn success_in_closed_clears_failure_streak_before_open() {
     assert!(matches!(breaker.state().await, CircuitState::Open { .. }));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn failure_in_half_open_reopens_immediately() {
     let breaker = CircuitBreaker::builder()
         .failure_threshold(1)
@@ -168,7 +163,7 @@ async fn failure_in_half_open_reopens_immediately() {
         .expect("build");
 
     let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("open")) }).await;
-    tokio::time::sleep(Duration::from_millis(80)).await;
+    tokio::time::advance(Duration::from_millis(80)).await;
 
     let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("half-open fail")) }).await;
     assert!(matches!(breaker.state().await, CircuitState::Open { .. }));
@@ -220,7 +215,7 @@ async fn stats_reflects_failures_in_closed_state() {
     ));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn half_open_single_success_stays_half_open_until_success_threshold() {
     let breaker = CircuitBreaker::builder()
         .failure_threshold(1)
@@ -230,7 +225,7 @@ async fn half_open_single_success_stays_half_open_until_success_threshold() {
         .expect("build");
 
     let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("fail")) }).await;
-    tokio::time::sleep(Duration::from_millis(80)).await;
+    tokio::time::advance(Duration::from_millis(80)).await;
 
     let _ = breaker.call(|| async { Ok::<(), std::io::Error>(()) }).await;
     assert!(matches!(breaker.state().await, CircuitState::HalfOpen));
@@ -339,7 +334,7 @@ async fn stats_when_open_reports_zero_current_failures() {
     assert_eq!(stats.failure_threshold, 1);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn success_threshold_one_closes_from_half_open_in_single_call() {
     let breaker = CircuitBreaker::builder()
         .failure_threshold(1)
@@ -349,13 +344,13 @@ async fn success_threshold_one_closes_from_half_open_in_single_call() {
         .unwrap();
 
     let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("fail")) }).await;
-    tokio::time::sleep(Duration::from_millis(60)).await;
+    tokio::time::advance(Duration::from_millis(60)).await;
 
     let _ = breaker.call(|| async { Ok::<(), std::io::Error>(()) }).await;
     assert!(matches!(breaker.state().await, CircuitState::Closed { .. }));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn reset_clears_half_open_success_counter() {
     let breaker = CircuitBreaker::builder()
         .failure_threshold(1)
@@ -365,7 +360,7 @@ async fn reset_clears_half_open_success_counter() {
         .unwrap();
 
     let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("fail")) }).await;
-    tokio::time::sleep(Duration::from_millis(60)).await;
+    tokio::time::advance(Duration::from_millis(60)).await;
 
     let _ = breaker.call(|| async { Ok::<(), std::io::Error>(()) }).await;
     assert!(matches!(breaker.state().await, CircuitState::HalfOpen));
@@ -395,7 +390,7 @@ async fn closed_tracks_failure_count_until_threshold_minus_one() {
     ));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn open_rejects_until_timeout_then_allows_half_open_probe() {
     let breaker = CircuitBreaker::builder()
         .failure_threshold(1)
@@ -408,7 +403,7 @@ async fn open_rejects_until_timeout_then_allows_half_open_probe() {
     let r = breaker.call(|| async { Ok::<(), std::io::Error>(()) }).await;
     assert!(matches!(r, Err(CircuitBreakerError::Open)));
 
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::time::advance(Duration::from_millis(50)).await;
 
     let r2 = breaker.call(|| async { Ok::<(), std::io::Error>(()) }).await;
     assert!(r2.is_ok());

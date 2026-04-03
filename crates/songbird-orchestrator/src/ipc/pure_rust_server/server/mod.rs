@@ -3,7 +3,7 @@
 
 //! Pure Rust IPC Server Infrastructure (Isomorphic - TRUE ecoBin v2.0)
 //!
-//! v3.22.0: Evolved from jsonrpsee to pure Rust implementation (`BearDog` pattern)
+//! v3.22.0: Evolved from jsonrpsee to pure Rust implementation (`security provider` pattern)
 //! v8.23.0: Added automatic TCP fallback (isomorphic adaptation)
 //!
 //! ## Design Principles
@@ -55,14 +55,14 @@ impl UnixSocketServer {
         service_registry: Arc<ServiceRegistry>,
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
         connection_manager: Arc<ConnectionManager>,
-        beardog_client: Arc<songbird_http_client::BearDogClient>,
+        security_client: Arc<songbird_http_client::SecurityRpcClient>,
     ) -> Self {
         let socket_path = Self::socket_path_from_env();
         let handlers = Arc::new(IpcHandlers::new(
             service_registry,
             discovery_listener,
             connection_manager,
-            beardog_client,
+            security_client,
         ));
 
         Self {

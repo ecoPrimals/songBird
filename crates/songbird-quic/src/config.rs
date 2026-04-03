@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC configuration with `BearDog` crypto delegation.
+//! QUIC configuration with `security provider` crypto delegation.
 //!
-//! All cryptographic operations are delegated to `BearDog` via JSON-RPC IPC.
+//! All cryptographic operations are delegated to `security provider` via JSON-RPC IPC.
 //! No quinn, rustls, or ring dependencies.
 
-use crate::crypto::provider::BeardogQuicCrypto;
+use crate::crypto::SecurityQuicCrypto;
 use crate::tls::transport_params::TransportParams;
 use songbird_crypto_provider::socket_discovery;
 use std::path::PathBuf;
@@ -15,7 +15,7 @@ use std::time::Duration;
 
 /// QUIC configuration.
 ///
-/// Transport configuration; all crypto is routed via the Neural API / `BearDog` socket.
+/// Transport configuration; all crypto is routed via the Neural API / `security provider` socket.
 #[derive(Debug, Clone)]
 pub struct QuicConfig {
     /// Neural API Unix socket path (same discovery as `songbird_crypto_provider`).
@@ -116,10 +116,10 @@ impl QuicConfig {
         }
     }
 
-    /// Create a `BearDog` crypto provider from this config's socket path.
+    /// Create a `security provider` crypto provider from this config's socket path.
     #[must_use]
-    pub fn crypto_provider(&self) -> Arc<BeardogQuicCrypto> {
-        Arc::new(BeardogQuicCrypto::discover())
+    pub fn crypto_provider(&self) -> Arc<SecurityQuicCrypto> {
+        Arc::new(SecurityQuicCrypto::discover())
     }
 }
 

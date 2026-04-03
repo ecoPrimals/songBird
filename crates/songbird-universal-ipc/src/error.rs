@@ -45,9 +45,9 @@ pub enum IpcError {
     #[error("Registry error: {0}")]
     RegistryError(String),
 
-    /// `NestGate` integration error (optional feature)
+    /// Storage-provider integration error (optional feature; feature flag remains `nestgate`)
     #[cfg(feature = "nestgate")]
-    #[error("NestGate error: {0}")]
+    #[error("Storage provider error: {0}")]
     NestGateError(String),
 
     /// RPC error

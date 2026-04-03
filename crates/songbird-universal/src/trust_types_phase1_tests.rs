@@ -13,7 +13,7 @@ mod tests {
 
     #[test]
     fn test_trust_response_deserialize_integer() {
-        // BearDog Phase 1: Integer format
+        // security provider Phase 1: Integer format
         let json = json!({
             "decision": "auto_accept",
             "trust_level": 1,  // Integer!
@@ -41,10 +41,10 @@ mod tests {
 
     #[test]
     fn test_trust_response_deserialize_beardog_alias() {
-        // BearDog aliases
+        // security provider aliases
         let json = json!({
             "decision": "auto_accept",
-            "trust_level": "basic",  // BearDog alias for Limited
+            "trust_level": "basic",  // security provider alias for Limited
             "reason": "same_genetic_family"
         });
 
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_beardog_phase1_full_response() {
-        // Full BearDog Phase 1 response format
+        // Full security provider Phase 1 response format
         let json = json!({
             "decision": "auto_accept",
             "trust_level": 1,

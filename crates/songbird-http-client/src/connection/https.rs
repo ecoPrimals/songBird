@@ -36,7 +36,7 @@ impl HttpsConnection {
     ///
     /// # Arguments
     ///
-    /// * `crypto` - Crypto capability provider (`BearDog` or mock)
+    /// * `crypto` - Crypto capability provider (`security provider` or mock)
     /// * `tls_config` - TLS configuration (versions, fallback strategy, etc.)
     /// * `profiler` - Optional server profiler for performance tracking
     pub fn new(
@@ -528,13 +528,14 @@ impl HttpsConnection {
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::HttpsConnection;
-    use crate::crypto::{BearDogProvider, CryptoCapability};
+    use crate::crypto::{CryptoCapability, SecurityCryptoProvider};
     use crate::tls::config::{ExtensionStrategy, FallbackStrategy, TlsConfig};
     use std::sync::Arc;
 
     #[test]
     fn https_connection_new_stores_config() {
-        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let crypto: Arc<dyn CryptoCapability> =
+            Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
         let cfg = TlsConfig {
             max_retries: 4,
             ..Default::default()

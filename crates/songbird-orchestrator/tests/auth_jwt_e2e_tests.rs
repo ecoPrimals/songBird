@@ -27,7 +27,7 @@
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
-//! E2E Tests for `BearDog` JWT Delegation
+//! E2E Tests for `security provider` JWT Delegation
 //!
 //! Tests the complete JWT flow from discovery to provisioning.
 
@@ -36,16 +36,16 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]
-#[ignore = "Requires BearDog running"]
-async fn test_e2e_jwt_provisioning_from_beardog() {
-    // This test requires BearDog to be running
+#[ignore = "Requires security provider running"]
+async fn test_e2e_jwt_provisioning_from_security_provider() {
+    // This test requires security provider to be running
     // Set SECURITY_PROVIDER_SOCKET (or legacy BEARDOG_SOCKET) to test with the security provider
 
-    let socket_opt = std::env::var("SECURITY_PROVIDER_SOCKET")
-        .or_else(|_| std::env::var("BEARDOG_SOCKET"));
+    let socket_opt =
+        std::env::var("SECURITY_PROVIDER_SOCKET").or_else(|_| std::env::var("BEARDOG_SOCKET"));
 
     if let Ok(socket) = socket_opt {
-        println!("🔍 Testing JWT provisioning from BearDog at: {socket}");
+        println!("🔍 Testing JWT provisioning from security provider at: {socket}");
 
         let result = timeout(
             Duration::from_secs(5),
@@ -55,7 +55,7 @@ async fn test_e2e_jwt_provisioning_from_beardog() {
 
         match result {
             Ok(Ok(secret)) => {
-                println!("✅ Got JWT secret from BearDog: {} chars", secret.len());
+                println!("✅ Got JWT secret from security provider: {} chars", secret.len());
                 assert!(secret.len() >= 85);
                 assert!(secret.len() <= 90);
 
@@ -67,22 +67,26 @@ async fn test_e2e_jwt_provisioning_from_beardog() {
                 assert_eq!(decoded.len(), 64); // 512 bits
             }
             Ok(Err(e)) => {
-                println!("⚠️  BearDog JWT fetch failed (expected if method not implemented): {e}");
-                // This is acceptable - BearDog may not have the method yet
+                println!(
+                    "⚠️  security provider JWT fetch failed (expected if method not implemented): {e}"
+                );
+                // This is acceptable - security provider may not have the method yet
             }
             Err(_) => {
-                println!("⏱️  Timeout waiting for BearDog (5s)");
-                panic!("BearDog did not respond in time");
+                println!("⏱️  Timeout waiting for security provider (5s)");
+                panic!("security provider did not respond in time");
             }
         }
     } else {
-        println!("⏭️  Skipping BearDog E2E test (set SECURITY_PROVIDER_SOCKET or BEARDOG_SOCKET to enable)");
+        println!(
+            "⏭️  Skipping security provider E2E test (set SECURITY_PROVIDER_SOCKET or BEARDOG_SOCKET to enable)"
+        );
     }
 }
 
 #[tokio::test]
 async fn test_e2e_jwt_provisioning_fallback_flow() {
-    // Test the complete fallback flow (no BearDog)
+    // Test the complete fallback flow (no security provider)
     println!("🔍 Testing JWT provisioning fallback flow...");
 
     let secret = provision_jwt_secret(None, "songbird_e2e_fallback")
@@ -110,7 +114,7 @@ async fn test_e2e_jwt_provisioning_with_invalid_socket() {
     println!("🔍 Testing JWT provisioning with invalid socket...");
 
     let secret = provision_jwt_secret(
-        Some("/tmp/nonexistent-beardog-socket-12345.sock"),
+        Some("/tmp/nonexistent-security-provider-socket-12345.sock"),
         "songbird_e2e_invalid",
     )
     .await

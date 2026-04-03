@@ -8,6 +8,12 @@
 //! `capabilities.list` probes on sockets under `$XDG_RUNTIME_DIR/biomeos/`.
 //! Songbird only knows itself — classification uses capability tokens, not paths
 //! or primal names.
+//!
+//! # API surface
+//!
+//! Prefer [`discover_security_socket`], [`get_security_socket_for_jwt`], and related
+//! `*_security_*` helpers. Deprecated compatibility wrappers (see `#[deprecated]` items below)
+//! remain for older callers.
 
 use crate::primal_discovery::Capability;
 use std::path::PathBuf;
@@ -58,7 +64,10 @@ where
     if let Ok(socket_path) = env_reader("BEARDOG_SOCKET")
         && !socket_path.is_empty()
     {
-        warn!("   ⚠️  Found deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET: {}", socket_path);
+        warn!(
+            "   ⚠️  Found deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET: {}",
+            socket_path
+        );
         return Some(PathBuf::from(socket_path));
     }
 

@@ -3,7 +3,7 @@
 
 //! Tower Atomic - JSON-RPC over Universal IPC
 //!
-//! **Tower Atomic** is the BearDog-inspired pattern for JSON-RPC communication
+//! **Tower Atomic** is the security provider-inspired pattern for JSON-RPC communication
 //! over IPC. This module provides a universal adapter that works across all
 //! platforms using the Universal IPC layer.
 //!

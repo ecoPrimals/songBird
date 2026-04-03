@@ -2,7 +2,7 @@
 
 ## Overview
 
-`songbird-quic` is a pure Rust QUIC transport implementation for the ecoPrimals ecosystem. All cryptographic operations are delegated to BearDog via JSON-RPC IPC — the same Tower Atomic pattern used for HTTPS. Zero C dependencies (`quinn`, `rustls`, and `ring` have been fully replaced).
+`songbird-quic` is a pure Rust QUIC transport implementation for the ecoPrimals ecosystem. All cryptographic operations are delegated to the security provider via JSON-RPC IPC — the same Tower Atomic pattern used for HTTPS. Zero C dependencies (`quinn`, `rustls`, and `ring` have been fully replaced).
 
 ## Architecture
 
@@ -11,9 +11,9 @@ Application Data
     ↓
 QUIC Transport (native Rust — streams, congestion, loss recovery)
     ↓
-QUIC Crypto (BearDog via JSON-RPC IPC — AEAD, HKDF, HP)
+QUIC Crypto (security provider via JSON-RPC IPC — AEAD, HKDF, HP)
     ↓
-TLS 1.3 Handshake (BearDog X25519 + key schedule)
+TLS 1.3 Handshake (security provider X25519 + key schedule)
     ↓
 UDP (Tokio)
     ↓
@@ -26,7 +26,7 @@ IPv4/IPv6
 - **`QuicClient`**: Establishes outgoing QUIC connections with 0-RTT support
 - **`QuicConnection`**: Manages a QUIC connection and multiplexed streams
 - **`QuicStream`**: Bidirectional or unidirectional stream within a connection
-- **`QuicConfig`**: Configuration with runtime BearDog socket discovery
+- **`QuicConfig`**: Configuration with runtime Neural API socket discovery (security provider routing)
 
 ### Internal Modules
 
@@ -36,7 +36,7 @@ IPv4/IPv6
 | `packet::header` | 9000 §17 | Long and Short header parsing/serialization |
 | `packet::frame` | 9000 §19 | All 24 QUIC frame types |
 | `packet::number` | 9000 App A | Packet number codec and expansion |
-| `crypto::provider` | — | `QuicCryptoProvider` trait delegating to BearDog |
+| `crypto::provider` | — | `QuicCryptoProvider` trait delegating to the security provider |
 | `crypto::initial_keys` | 9001 §5.2 | Initial secrets from DCID via HKDF |
 | `crypto::packet_protection` | 9001 §5.3 | AEAD encrypt/decrypt with PN nonce |
 | `crypto::header_protection` | 9001 §5.4 | Header protection masking |
@@ -54,10 +54,10 @@ IPv4/IPv6
 
 ### Dark Forest Compliance
 
-- Zero hardcoded secrets — BearDog socket discovered at runtime
-- TLS 1.3 encryption via BearDog crypto delegation
+- Zero hardcoded secrets — Neural API / security provider routing discovered at runtime
+- TLS 1.3 encryption via security provider crypto delegation
 - Zero metadata leakage design
-- Timing protection via constant-time operations (delegated to BearDog)
+- Timing protection via constant-time operations (delegated to the security provider)
 
 ## Usage
 
@@ -104,14 +104,9 @@ let n = stream.read(&mut buf).await?;
 
 ## Configuration
 
-### BearDog Socket Discovery
+### Neural API socket discovery
 
-`QuicConfig` discovers the BearDog socket at runtime (no hardcoding):
-
-1. `BEARDOG_SOCKET` environment variable
-2. `SONGBIRD_SECURITY_PROVIDER` environment variable
-3. `$XDG_RUNTIME_DIR/biomeos/beardog.sock`
-4. `/tmp/biomeos/beardog.sock` (fallback)
+`QuicConfig` defaults to the same Neural API discovery as `songbird-crypto-provider` (crypto is routed to the security provider through the Neural API). Typical precedence includes `NEURAL_API_SOCKET` / `NEURALS_SOCKET`, then `$XDG_RUNTIME_DIR/biomeos/neural-api.sock`, with further fallbacks in `discover_neural_api_socket`. For direct security provider sockets (bootstrap / alternate tooling), see `songbird-crypto-provider` (`SECURITY_PROVIDER_SOCKET`, legacy `BEARDOG_SOCKET`).
 
 ### Transport Configuration
 
@@ -120,14 +115,14 @@ let config = QuicConfig::new()
     .with_idle_timeout(Duration::from_secs(30))
     .with_0rtt(true)
     .with_migration(true)
-    .with_beardog_socket(PathBuf::from("/custom/beardog.sock"));
+    .with_neural_api_socket(PathBuf::from("/custom/neural-api.sock"));
 ```
 
 ## ecoBin Compliance
 
 - Zero C dependencies (`quinn`, `rustls`, `ring` fully eliminated)
 - `#![forbid(unsafe_code)]`
-- BearDog crypto delegation via JSON-RPC IPC
+- Security provider crypto delegation via JSON-RPC IPC
 - Runtime discovery — no hardcoded endpoints
 - Pure Rust — all protocol layers implemented natively
 

@@ -3,7 +3,7 @@
 
 //! TLS connector for Tor relay connections
 //!
-//! Uses songbird-tls (pure Rust, `BearDog` crypto delegation) instead of
+//! Uses songbird-tls (pure Rust, `security provider` crypto delegation) instead of
 //! rustls+ring. Tor relays use self-signed certs — trust is established
 //! via the Ed25519 identity in the Tor handshake, not TLS PKI.
 //!
@@ -24,7 +24,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 /// Tor authenticates via Ed25519 identity keys in the link protocol,
 /// not via TLS certificates. The TLS layer is just transport encryption.
 /// For the Tor link protocol, we establish a raw TCP connection and then
-/// perform the Tor-specific handshake with BearDog-delegated crypto.
+/// perform the Tor-specific handshake with security provider-delegated crypto.
 ///
 /// Since Tor relays use self-signed certs and authentication happens at
 /// the Tor protocol layer (not TLS), we use a direct TCP stream with
@@ -53,7 +53,7 @@ impl TlsConnector {
     ///
     /// Establishes a TCP connection to the relay. The Tor link protocol
     /// handles authentication and encryption via ntor handshake with
-    /// BearDog-delegated crypto — no TLS PKI needed.
+    /// security provider-delegated crypto — no TLS PKI needed.
     ///
     /// # Errors
     /// Returns error if connection times out or fails.

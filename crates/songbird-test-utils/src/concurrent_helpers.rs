@@ -3,7 +3,7 @@
 
 //! Modern Concurrent Test Helpers
 //!
-//! Production-grade concurrent testing utilities evolved from `BearDog`'s patterns.
+//! Production-grade concurrent testing utilities evolved from `security provider`'s patterns.
 //!
 //! ## Philosophy
 //!
@@ -14,9 +14,9 @@
 //! - Explicit readiness signaling
 //! - Fast and reliable
 //!
-//! ## Evolution from `BearDog`
+//! ## Evolution from `security provider`
 //!
-//! This module implements the concurrent testing patterns proven by `BearDog`,
+//! This module implements the concurrent testing patterns proven by `security provider`,
 //! adapted for Songbird's architecture:
 //!
 //! - `ReadinessSignal` - Event-driven service startup

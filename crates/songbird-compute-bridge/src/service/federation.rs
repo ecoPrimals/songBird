@@ -93,9 +93,8 @@ mod tests {
     use std::time::Duration;
 
     async fn sample_bridge_state(backend_url: Option<&str>) -> BridgeState {
-        let http_client = IpcHttpClient::new()
-            .await
-            .expect("IPC HTTP client required for federation unit tests");
+        let http_client =
+            IpcHttpClient::new().await.expect("IPC HTTP client required for federation unit tests");
         BridgeState {
             config: Arc::new(BridgeConfig {
                 host: "10.0.0.1".into(),

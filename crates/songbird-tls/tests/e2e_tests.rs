@@ -236,8 +236,8 @@ async fn e2e_handshake_state_transitions() {
     // Initial state
     assert_eq!(hsm.state(), HandshakeState::Start);
 
-    // NOTE: State transitions require BearDog crypto operations
-    // Full handshake flow will be tested in integration tests with mock BearDog
+    // NOTE: State transitions require security-provider crypto operations
+    // Full handshake flow will be tested in integration tests with a mock provider
 }
 
 #[tokio::test]
@@ -307,5 +307,5 @@ async fn e2e_graceful_shutdown() {
     client_handle.await.unwrap();
 }
 
-// NOTE: Full TLS handshake E2E tests require mock BearDog implementation
+// NOTE: Full TLS handshake E2E tests require mock security-provider implementation
 // These will be added in the next phase once we have a complete mock crypto provider

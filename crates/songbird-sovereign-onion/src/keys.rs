@@ -3,8 +3,8 @@
 
 //! Onion identity key management
 
-use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::Result;
+use crate::security_crypto::SecurityCryptoClient;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -21,7 +21,7 @@ const X25519_BASEPOINT_BYTES: [u8; 32] = [
 
 /// Onion service identity (Ed25519 keypair + derived .onion address)
 ///
-/// TRUE PRIMAL: Stores raw bytes, delegates crypto to `BearDog`
+/// TRUE PRIMAL: Stores raw bytes, delegates crypto to `security provider`
 #[derive(Debug, Clone)]
 pub struct OnionIdentity {
     secret_key: [u8; 32],
@@ -47,36 +47,34 @@ struct StoredIdentity {
 }
 
 impl OnionIdentity {
-    /// Generate new random onion identity via `BearDog` (TRUE PRIMAL)
+    /// Generate new random onion identity via the security provider
     ///
     /// # Example
     ///
     /// ```no_run
-    /// # use songbird_sovereign_onion::{OnionIdentity, BeardogCryptoClient};
+    /// # use songbird_sovereign_onion::{OnionIdentity, SecurityCryptoClient};
     /// # tokio_test::block_on(async {
-    /// let client = BeardogCryptoClient::from_env();
-    /// let identity = OnionIdentity::generate_via_beardog(&client).await.unwrap();
+    /// let client = SecurityCryptoClient::from_env();
+    /// let identity = OnionIdentity::generate_via_security_provider(&client).await.unwrap();
     /// println!("Onion address: {}", identity.onion_address());
     /// # });
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns error if `BearDog` key generation or address derivation fails.
-    ///
-    /// # Panics
-    ///
-    /// Panics if system time is before Unix epoch (should never happen).
-    pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
+    /// Returns error if key generation, address derivation, or clock read fails.
+    pub async fn generate_via_security_provider(client: &SecurityCryptoClient) -> Result<Self> {
         let keypair = client.ed25519_generate_keypair().await?;
 
-        // Derive .onion address via BearDog
         let onion_address =
-            crate::address::derive_onion_address_via_beardog(client, &keypair.public_key).await?;
+            crate::address::derive_onion_address_via_security_provider(client, &keypair.public_key)
+                .await?;
 
         let created_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("system time before Unix epoch")
+            .map_err(|e| {
+                crate::error::OnionError::Other(format!("system clock before Unix epoch: {e}"))
+            })?
             .as_secs();
 
         Ok(Self {
@@ -87,7 +85,13 @@ impl OnionIdentity {
         })
     }
 
-    /// Load identity from stored bytes via `BearDog` (TRUE PRIMAL)
+    /// Deprecated alias for [`Self::generate_via_security_provider`].
+    #[deprecated(note = "use generate_via_security_provider")]
+    pub async fn generate_via_beardog(client: &SecurityCryptoClient) -> Result<Self> {
+        Self::generate_via_security_provider(client).await
+    }
+
+    /// Load identity from stored bytes via the security provider
     ///
     /// # Errors
     ///
@@ -96,11 +100,11 @@ impl OnionIdentity {
         feature = "standalone",
         expect(
             clippy::unused_async,
-            reason = "awaits BearDog RPC only when not feature standalone"
+            reason = "awaits security provider RPC only when not feature standalone"
         )
     )]
-    pub async fn from_stored_via_beardog(
-        client: &BeardogCryptoClient,
+    pub async fn from_stored_via_security_provider(
+        client: &SecurityCryptoClient,
         bytes: &[u8],
     ) -> Result<Self> {
         // Extract secret key and timestamp from stored bytes
@@ -127,7 +131,8 @@ impl OnionIdentity {
         {
             let public_key = client.ed25519_public_from_secret(secret_key).await?;
             let onion_address =
-                crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
+                crate::address::derive_onion_address_via_security_provider(client, &public_key)
+                    .await?;
 
             Ok(Self {
                 secret_key: *secret_key,
@@ -138,9 +143,18 @@ impl OnionIdentity {
         }
     }
 
+    /// Deprecated alias for [`Self::from_stored_via_security_provider`].
+    #[deprecated(note = "use from_stored_via_security_provider")]
+    pub async fn from_stored_via_beardog(
+        client: &SecurityCryptoClient,
+        bytes: &[u8],
+    ) -> Result<Self> {
+        Self::from_stored_via_security_provider(client, bytes).await
+    }
+
     /// Standalone generation (for testing/offline only)
     ///
-    /// This bypasses `BearDog` and uses local crypto. Only available in test builds
+    /// This bypasses `security provider` and uses local crypto. Only available in test builds
     /// or with the `standalone` feature.
     #[cfg(feature = "standalone")]
     #[must_use]
@@ -255,7 +269,7 @@ impl OnionIdentity {
 
         #[cfg(not(feature = "standalone"))]
         {
-            // Production with v1 storage: Regenerate via BearDog
+            // Production with v1 storage: Regenerate via security provider
             // Delete old storage and generate fresh identity
             Err(crate::OnionError::CryptoError(
                 "Legacy v1 storage format detected. Delete ./data/sovereign-onion to regenerate identity.".to_string()
@@ -266,19 +280,19 @@ impl OnionIdentity {
 
 /// X25519 ephemeral keypair for session key exchange
 ///
-/// TRUE PRIMAL: Stores raw bytes, delegates crypto to `BearDog`
+/// TRUE PRIMAL: Stores raw bytes, delegates crypto to `security provider`
 pub struct EphemeralKeypair {
     secret_key: [u8; 32],
     public_key: [u8; 32],
 }
 
 impl EphemeralKeypair {
-    /// Generate via `BearDog` (TRUE PRIMAL)
+    /// Generate via `security provider` (TRUE PRIMAL)
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` RPC fails.
-    pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
+    /// Returns an error if `security provider` RPC fails.
+    pub async fn generate_via_security_provider(client: &SecurityCryptoClient) -> Result<Self> {
         let keypair = client.x25519_generate_ephemeral().await?;
         Ok(Self {
             secret_key: keypair.secret_key,
@@ -286,17 +300,33 @@ impl EphemeralKeypair {
         })
     }
 
-    /// Derive shared secret via `BearDog` (TRUE PRIMAL)
+    /// Deprecated alias for [`Self::generate_via_security_provider`].
+    #[deprecated(note = "use generate_via_security_provider")]
+    pub async fn generate_via_beardog(client: &SecurityCryptoClient) -> Result<Self> {
+        Self::generate_via_security_provider(client).await
+    }
+
+    /// Derive shared secret via the security provider
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` RPC fails.
-    pub async fn derive_shared_secret_via_beardog(
+    /// Returns an error if `security provider` RPC fails.
+    pub async fn derive_shared_secret_via_security_provider(
         self,
-        client: &BeardogCryptoClient,
+        client: &SecurityCryptoClient,
         peer_public: &[u8; 32],
     ) -> Result<[u8; 32]> {
         client.x25519_derive_secret(&self.secret_key, peer_public).await
+    }
+
+    /// Deprecated alias for [`Self::derive_shared_secret_via_security_provider`].
+    #[deprecated(note = "use derive_shared_secret_via_security_provider")]
+    pub async fn derive_shared_secret_via_beardog(
+        self,
+        client: &SecurityCryptoClient,
+        peer_public: &[u8; 32],
+    ) -> Result<[u8; 32]> {
+        self.derive_shared_secret_via_security_provider(client, peer_public).await
     }
 
     /// Standalone generation (for testing/offline only)
@@ -345,15 +375,15 @@ pub struct SessionKeys {
 }
 
 impl SessionKeys {
-    /// Derive session keys via `BearDog` (TRUE PRIMAL)
+    /// Derive session keys via `security provider` (TRUE PRIMAL)
     ///
-    /// Uses `BearDog`'s HMAC-SHA256 to implement HKDF for session key derivation.
+    /// Uses `security provider`'s HMAC-SHA256 to implement HKDF for session key derivation.
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` HMAC RPC fails.
-    pub async fn derive_via_beardog(
-        client: &BeardogCryptoClient,
+    /// Returns an error if `security provider` HMAC RPC fails.
+    pub async fn derive_via_security_provider(
+        client: &SecurityCryptoClient,
         shared_secret: &[u8; 32],
         client_nonce: &[u8; 24],
         server_nonce: &[u8; 24],
@@ -389,6 +419,25 @@ impl SessionKeys {
                 recv_key: client_key,
             })
         }
+    }
+
+    /// Deprecated alias for [`Self::derive_via_security_provider`].
+    #[deprecated(note = "use derive_via_security_provider")]
+    pub async fn derive_via_beardog(
+        client: &SecurityCryptoClient,
+        shared_secret: &[u8; 32],
+        client_nonce: &[u8; 24],
+        server_nonce: &[u8; 24],
+        is_client: bool,
+    ) -> Result<Self> {
+        Self::derive_via_security_provider(
+            client,
+            shared_secret,
+            client_nonce,
+            server_nonce,
+            is_client,
+        )
+        .await
     }
 
     /// Standalone derivation (for testing/offline only)
@@ -563,11 +612,7 @@ mod stored_identity_tests {
         assert_eq!(id.public_key_bytes(), &[8u8; 32], "public key bytes");
         let round = id.to_stored_bytes();
         let id2 = OnionIdentity::from_stored_bytes(&round).expect("second parse");
-        assert_eq!(
-            id2.secret_key_bytes(),
-            id.secret_key_bytes(),
-            "secret roundtrip"
-        );
+        assert_eq!(id2.secret_key_bytes(), id.secret_key_bytes(), "secret roundtrip");
     }
 
     #[test]

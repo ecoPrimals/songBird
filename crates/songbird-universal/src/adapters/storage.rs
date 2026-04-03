@@ -4,7 +4,7 @@
 //! Storage Capability Adapter
 //!
 //! **SOVEREIGNTY**: This adapter works with ANY storage capability provider.
-//! It does NOT know about specific primals (`NestGate` is just one example).
+//! It does NOT know about specific primals (`storage provider` is just one example).
 //! Discovery is capability-based through environment hints or zero-knowledge bootstrap.
 //!
 //! Songbird has local storage for sovereign standalone operation, but can utilize
@@ -144,7 +144,7 @@ impl StorageAdapter {
     /// # tokio_test::block_on(async {
     /// use songbird_universal::adapters::StorageAdapter;
     ///
-    /// // Discovers any storage provider (could be NestGate, or local filesystem, or anyone)
+    /// // Discovers any storage provider (could be storage provider, or local filesystem, or anyone)
     /// let adapter = StorageAdapter::from_discovery().await?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// # });

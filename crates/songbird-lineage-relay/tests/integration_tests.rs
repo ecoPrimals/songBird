@@ -38,12 +38,12 @@
 
 //! Integration tests for lineage relay system
 
-use songbird_lineage_relay::beardog::{
-    MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority,
-};
 use songbird_lineage_relay::birdsong::{BirdSongBroadcaster, BirdSongCrypto, LineageHint};
 use songbird_lineage_relay::coordinator::{LineageRelayConfig, LineageRelayCoordinator};
 use songbird_lineage_relay::relay::RelayAuthority;
+use songbird_lineage_relay::security::{
+    MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority,
+};
 use songbird_lineage_relay::types::NodeId;
 use std::net::SocketAddr;
 use std::sync::Arc;

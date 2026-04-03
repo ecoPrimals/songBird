@@ -185,8 +185,8 @@ fn test_health_port_default() {
 }
 
 #[test]
-fn test_beardog_port_default() {
-    let port = beardog_port();
+fn test_security_provider_port_default() {
+    let port = security_provider_port();
     assert!(port > 0);
     if songbird_process_env::var("SONGBIRD_BEARDOG_PORT").is_err() {
         assert_eq!(port, 8443);
@@ -194,28 +194,34 @@ fn test_beardog_port_default() {
 }
 
 #[test]
-fn test_toadstool_port_default() {
-    let port = toadstool_port();
+fn test_compute_provider_port_default() {
+    let port = compute_provider_port();
     assert!(port > 0);
-    if songbird_process_env::var("SONGBIRD_TOADSTOOL_PORT").is_err() {
+    if songbird_process_env::var("SONGBIRD_COMPUTE_PROVIDER_PORT").is_err()
+        && songbird_process_env::var("SONGBIRD_TOADSTOOL_PORT").is_err()
+    {
         assert_eq!(port, 8001);
     }
 }
 
 #[test]
-fn test_squirrel_port_default() {
-    let port = squirrel_port();
+fn test_ai_provider_port_default() {
+    let port = ai_provider_port();
     assert!(port > 0);
-    if songbird_process_env::var("SONGBIRD_SQUIRREL_PORT").is_err() {
+    if songbird_process_env::var("SONGBIRD_AI_PROVIDER_PORT").is_err()
+        && songbird_process_env::var("SONGBIRD_SQUIRREL_PORT").is_err()
+    {
         assert_eq!(port, 8002);
     }
 }
 
 #[test]
-fn test_nestgate_port_default() {
-    let port = nestgate_port();
+fn test_storage_provider_port_default() {
+    let port = storage_provider_port();
     assert!(port > 0);
-    if songbird_process_env::var("SONGBIRD_NESTGATE_PORT").is_err() {
+    if songbird_process_env::var("SONGBIRD_STORAGE_PROVIDER_PORT").is_err()
+        && songbird_process_env::var("SONGBIRD_NESTGATE_PORT").is_err()
+    {
         assert_eq!(port, 8003);
     }
 }
@@ -293,24 +299,24 @@ fn test_default_ports_are_distinct() {
 #[test]
 fn test_primal_service_ports_distinct() {
     // Primal services should have distinct ports
-    let beardog = beardog_port();
-    let toadstool = toadstool_port();
-    let squirrel = squirrel_port();
-    let nestgate = nestgate_port();
+    let security = security_provider_port();
+    let compute = compute_provider_port();
+    let ai = ai_provider_port();
+    let storage = storage_provider_port();
     let tarpc = tarpc_port();
 
     // All should be positive
-    assert!(beardog > 0);
-    assert!(toadstool > 0);
-    assert!(squirrel > 0);
-    assert!(nestgate > 0);
+    assert!(security > 0);
+    assert!(compute > 0);
+    assert!(ai > 0);
+    assert!(storage > 0);
     assert!(tarpc > 0);
 
     // Check distinctions when using defaults
     if songbird_process_env::var("SONGBIRD_BEARDOG_PORT").is_err()
         && songbird_process_env::var("SONGBIRD_TOADSTOOL_PORT").is_err()
     {
-        assert_ne!(beardog, toadstool);
+        assert_ne!(security, compute);
     }
 }
 
@@ -330,10 +336,10 @@ fn test_all_ports_in_valid_range() {
         websocket_port(),
         gaming_port(),
         health_port(),
-        beardog_port(),
-        toadstool_port(),
-        squirrel_port(),
-        nestgate_port(),
+        security_provider_port(),
+        compute_provider_port(),
+        ai_provider_port(),
+        storage_provider_port(),
         tarpc_port(),
         starcraft_port(),
         aoe2_port(),

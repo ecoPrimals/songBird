@@ -3,12 +3,12 @@
 
 //! Onion connector (connect to .onion addresses) - Phase 4 Implementation
 //!
-//! ✅ **TRUE PRIMAL**: Production uses `BearDog` delegation for all crypto.
+//! ✅ **TRUE PRIMAL**: Production uses `security provider` delegation for all crypto.
 
-use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
 use crate::keys::EphemeralKeypair;
 use crate::protocol::{DataMessage, KeyExchangeMessage, MessageType};
+use crate::security_crypto::SecurityCryptoClient;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -19,16 +19,22 @@ use tracing::{debug, info};
 /// **Status**: Phase 4 - Complete implementation
 #[derive(Default)]
 pub struct OnionConnector {
-    beardog: Option<Arc<BeardogCryptoClient>>,
+    security: Option<Arc<SecurityCryptoClient>>,
 }
 
 impl OnionConnector {
-    /// Create new onion connector with `BearDog` delegation (TRUE PRIMAL)
+    /// Create new onion connector with `security provider` delegation (TRUE PRIMAL)
     #[must_use]
-    pub fn new_via_beardog(beardog: BeardogCryptoClient) -> Self {
+    pub fn new_via_security_provider(security: SecurityCryptoClient) -> Self {
         Self {
-            beardog: Some(Arc::new(beardog)),
+            security: Some(Arc::new(security)),
         }
+    }
+
+    /// Deprecated alias for [`Self::new_via_security_provider`].
+    #[deprecated(note = "use new_via_security_provider")]
+    pub fn new_via_beardog(beardog: SecurityCryptoClient) -> Self {
+        Self::new_via_security_provider(beardog)
     }
 
     /// Create new onion connector (standalone mode - testing only)
@@ -36,15 +42,15 @@ impl OnionConnector {
     #[must_use]
     pub const fn new_standalone() -> Self {
         Self {
-            beardog: None,
+            security: None,
         }
     }
 
-    /// Connect to an onion address (via `BearDog`)
+    /// Connect to an onion address (via `security provider`)
     ///
     /// # Errors
     ///
-    /// Returns error if connection fails, handshake fails, or `BearDog` crypto fails.
+    /// Returns error if connection fails, handshake fails, or `security provider` crypto fails.
     ///
     /// # Arguments
     /// - `onion_address`: The target .onion address
@@ -53,10 +59,10 @@ impl OnionConnector {
     /// # Returns
     /// Established encrypted connection
     pub async fn connect(&self, onion_address: &str, port: u16) -> Result<OnionConnection> {
-        let beardog = self
-            .beardog
+        let security = self
+            .security
             .as_ref()
-            .ok_or_else(|| OnionError::ConfigError("BearDog client required".into()))?;
+            .ok_or_else(|| OnionError::ConfigError("Security crypto client required".into()))?;
 
         info!(onion_address = onion_address, port = port, "Connecting to onion service");
 
@@ -68,8 +74,8 @@ impl OnionConnector {
 
         debug!("TCP connection established, starting handshake");
 
-        // Generate our ephemeral keypair via BearDog
-        let our_ephemeral = EphemeralKeypair::generate_via_beardog(beardog).await?;
+        // Generate our ephemeral keypair via security provider
+        let our_ephemeral = EphemeralKeypair::generate_via_security_provider(security).await?;
 
         // Send KeyExchange
         let key_exchange = KeyExchangeMessage::new(*our_ephemeral.public_bytes(), [0u8; 24]);
@@ -95,18 +101,18 @@ impl OnionConnector {
         let peer_key_exchange = KeyExchangeMessage::decode(&recv_buf[1..])?;
         debug!("Received key exchange response");
 
-        // Derive shared secret via BearDog
+        // Derive shared secret via security provider
         let shared_secret = our_ephemeral
-            .derive_shared_secret_via_beardog(beardog, &peer_key_exchange.pubkey)
+            .derive_shared_secret_via_security_provider(security, &peer_key_exchange.pubkey)
             .await?;
 
-        info!("Handshake complete - connection established via BearDog crypto");
+        info!("Handshake complete - connection established via security provider crypto");
 
         Ok(OnionConnection {
             stream,
             session_key: shared_secret,
             sequence: 0,
-            beardog: Arc::clone(beardog),
+            security: Arc::clone(security),
         })
     }
 }
@@ -116,27 +122,27 @@ pub struct OnionConnection {
     stream: TcpStream,
     session_key: [u8; 32],
     sequence: u64,
-    beardog: Arc<BeardogCryptoClient>,
+    security: Arc<SecurityCryptoClient>,
 }
 
 impl OnionConnection {
-    /// Send encrypted data via `BearDog`
+    /// Send encrypted data via `security provider`
     ///
     /// # Errors
     ///
     /// Returns error if encryption or I/O fails.
     pub async fn send(&mut self, data: &[u8]) -> Result<()> {
-        // Encrypt via BearDog (pad sequence to 12 bytes for nonce)
+        // Encrypt via security provider (pad sequence to 12 bytes for nonce)
         let mut nonce = [0u8; 12];
         nonce[..8].copy_from_slice(&self.sequence.to_be_bytes());
 
         let encrypted =
-            self.beardog.chacha20_poly1305_encrypt(&self.session_key, &nonce, data).await?;
+            self.security.chacha20_poly1305_encrypt(&self.session_key, &nonce, data).await?;
 
         debug!(
             sequence = self.sequence,
             bytes = data.len(),
-            "Sending encrypted message via BearDog"
+            "Sending encrypted message via security provider"
         );
 
         // Send DataMessage (type + sequence + length + payload)
@@ -148,7 +154,7 @@ impl OnionConnection {
         Ok(())
     }
 
-    /// Receive encrypted data, decrypt via `BearDog`
+    /// Receive encrypted data, decrypt via `security provider`
     ///
     /// # Errors
     ///
@@ -172,17 +178,17 @@ impl OnionConnection {
         let mut encrypted = Vec::new();
         self.stream.read_to_end(&mut encrypted).await?;
 
-        // Decrypt via BearDog
+        // Decrypt via security provider
         let mut nonce = [0u8; 12];
         nonce[..8].copy_from_slice(&msg_sequence.to_be_bytes());
 
         let plaintext =
-            self.beardog.chacha20_poly1305_decrypt(&self.session_key, &nonce, &encrypted).await?;
+            self.security.chacha20_poly1305_decrypt(&self.session_key, &nonce, &encrypted).await?;
 
         debug!(
             sequence = msg_sequence,
             bytes = plaintext.len(),
-            "Received and decrypted message via BearDog"
+            "Received and decrypted message via security provider"
         );
 
         Ok(plaintext)
@@ -204,7 +210,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-    use crate::beardog_crypto::BeardogCryptoClient;
+    use crate::security_crypto::SecurityCryptoClient;
 
     #[test]
     fn default_is_empty_connector() {
@@ -222,8 +228,8 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn beardog_connector_tcp_fails_fast_when_port_closed() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
-        let connector = OnionConnector::new_via_beardog(client);
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+        let connector = OnionConnector::new_via_security_provider(client);
         let r = connector.connect("127.0.0.1", 1).await;
         assert!(matches!(r, Err(OnionError::ConnectionTimeout)));
     }
@@ -231,7 +237,7 @@ mod tests {
     #[test]
     fn new_via_beardog_stores_client_for_connect() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
-        let _connector = OnionConnector::new_via_beardog(client);
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+        let _connector = OnionConnector::new_via_security_provider(client);
     }
 }

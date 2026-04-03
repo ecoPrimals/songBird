@@ -8,9 +8,10 @@
 //! **Architecture**:
 //! ```text
 //! ┌──────────┐
-//! │ Squirrel │─┐
-//! │  (Pure   │ │
-//! │   Rust!) │ │
+//! │ AI /     │─┐
+//! │ coord.   │ │
+//! │ (Pure    │ │
+//! │  Rust!)  │ │
 //! └──────────┘ │
 //!              │ (Unix Socket ONLY!)
 //! ┌──────────┐ │
@@ -86,7 +87,7 @@ pub struct HttpGatewayService {
     /// Credential manager for API keys
     credentials: Arc<CredentialManager>,
 
-    /// HTTP client for external requests (Tower Atomic: Pure Rust + `BearDog` crypto!)
+    /// HTTP client for external requests (Tower Atomic: Pure Rust + `security provider` crypto!)
     http_client: SongbirdHttpClient,
 }
 
@@ -127,7 +128,7 @@ impl HttpGatewayService {
         info!("✅ HTTP Gateway Service initialized (Tower Atomic)");
         info!("   Rate limit: 100 req/min per client");
         info!("   Cache size: 100MB");
-        info!("   TLS: Pure Rust (BearDog crypto delegation)");
+        info!("   TLS: Pure Rust (security provider crypto delegation)");
         info!("   HTTP: Zero C dependencies");
 
         Ok(Self {
@@ -171,7 +172,7 @@ impl HttpGatewayService {
     /// Check rate limit for a client
     ///
     /// # Arguments
-    /// * `client_id` - Unique identifier for the client (e.g., "squirrel", "nestgate")
+    /// * `client_id` - Unique identifier for the client (e.g., `ai-coordination`, `storage-provider`)
     ///
     /// # Returns
     /// * `Ok(())` if rate limit allows request

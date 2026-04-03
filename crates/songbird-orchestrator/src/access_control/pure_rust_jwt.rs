@@ -117,7 +117,7 @@ pub async fn encode_with_crypto<T: Serialize>(
         hmac_sha256_via_provider(secret, signing_input.as_bytes(), provider).await?
     } else {
         tracing::warn!(
-            "JWT signing using local HMAC-SHA256; BearDog crypto provider not configured"
+            "JWT signing using local HMAC-SHA256; security provider crypto provider not configured"
         );
         hmac_sha256_local(secret, signing_input.as_bytes())?
     };
@@ -198,7 +198,7 @@ pub async fn decode_with_crypto<T: for<'de> Deserialize<'de>>(
         hmac_sha256_via_provider(secret, signing_input.as_bytes(), provider).await?
     } else {
         tracing::warn!(
-            "JWT verification using local HMAC-SHA256; BearDog crypto provider not configured"
+            "JWT verification using local HMAC-SHA256; security provider crypto provider not configured"
         );
         hmac_sha256_local(secret, signing_input.as_bytes())?
     };

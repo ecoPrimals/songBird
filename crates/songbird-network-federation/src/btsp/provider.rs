@@ -29,16 +29,16 @@ pub struct BtspConfig {
     /// Enable BTSP encryption
     pub enabled: bool,
 
-    /// `BearDog` discovery method (capability-based, not hardcoded)
+    /// `security provider` discovery method (capability-based, not hardcoded)
     pub discovery_method: DiscoveryMethod,
 
-    /// Capability to discover `BearDog` service
+    /// Capability to discover `security provider` service
     pub security_capability: String,
 
-    /// Fallback to local implementation if `BearDog` unavailable
+    /// Fallback to local implementation if `security provider` unavailable
     pub local_fallback: bool,
 
-    /// Genetic auth enabled (requires `BearDog`)
+    /// Genetic auth enabled (requires `security provider`)
     pub genetic_auth: bool,
 
     /// Key lineage tracking
@@ -64,8 +64,8 @@ impl Default for BtspConfig {
             discovery_method: DiscoveryMethod::Capability,
             security_capability: "enterprise-security".to_string(),
             local_fallback: true, // Graceful degradation
-            genetic_auth: false,  // Requires BearDog
-            key_lineage: false,   // Requires BearDog
+            genetic_auth: false,  // Requires security provider
+            key_lineage: false,   // Requires security provider
         }
     }
 }
@@ -91,7 +91,7 @@ pub struct PeerInfo {
 /// This trait defines the interface for all BTSP implementations.
 /// Implementations can be:
 /// - Local (for testing)
-/// - `BearDog` (real genetic crypto)
+/// - `security provider` (real genetic crypto)
 /// - Mock (for unit tests)
 #[async_trait]
 pub trait BtspProvider: Send + Sync {
@@ -136,8 +136,8 @@ impl BtspProviderFactory {
 
     /// Create BTSP provider based on runtime discovery
     ///
-    /// This method discovers `BearDog` via capability system at runtime.
-    /// If `BearDog` is not available and `local_fallback` is enabled, returns
+    /// This method discovers `security provider` via capability system at runtime.
+    /// If `security provider` is not available and `local_fallback` is enabled, returns
     /// local implementation.
     pub async fn create_provider(&self) -> SongbirdResult<Arc<dyn BtspProvider>> {
         if !self.config.enabled {
@@ -188,8 +188,8 @@ impl BtspProviderFactory {
             return self.connect_to_security_provider(&endpoint).await;
         }
 
-        // Strategy 3: Probe env-configured BearDog port and adjacent ports
-        let base_port = songbird_config::defaults::ports::beardog_port();
+        // Strategy 3: Probe security provider port and adjacent ports
+        let base_port = songbird_config::defaults::ports::security_provider_port();
         for port in [base_port, base_port + 1, base_port + 2] {
             let endpoint = format!("https://localhost:{port}");
             if self.probe_security_provider_endpoint(&endpoint).await.is_ok() {
@@ -210,7 +210,7 @@ impl BtspProviderFactory {
     ///
     /// **Capability-Based Discovery**: Queries for "security" capability,
     /// not hardcoded primal name. Any primal providing security with BTSP
-    /// support will be discovered (`BearDog`, future alternatives, etc.)
+    /// support will be discovered (`security provider`, future alternatives, etc.)
     async fn query_local_upa_for_security_provider(&self) -> SongbirdResult<Option<String>> {
         let client = IpcHttpClient::new()
             .await
@@ -280,7 +280,7 @@ impl BtspProviderFactory {
     /// Connect to security provider at discovered endpoint
     ///
     /// **Capability-Based**: Works with ANY primal implementing the BTSP API,
-    /// not just `BearDog`. The provider self-identifies through UPA registration.
+    /// not just `security provider`. The provider self-identifies through UPA registration.
     async fn connect_to_security_provider(
         &self,
         endpoint: &str,

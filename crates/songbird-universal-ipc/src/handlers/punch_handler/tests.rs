@@ -94,12 +94,7 @@ async fn test_punch_record_success() {
 
     // Record success
     handler
-        .record_success(
-            "test-peer",
-            "1.2.3.4:5678".parse().unwrap(),
-            Duration::from_millis(45),
-            5,
-        )
+        .record_success("test-peer", "1.2.3.4:5678".parse().unwrap(), Duration::from_millis(45), 5)
         .await;
 
     // Check status

@@ -34,9 +34,9 @@ use crate::ipc::types::{
 ///   "jsonrpc": "2.0",
 ///   "method": "register_service",
 ///   "params": {
-///     "primal_name": "BearDog",
+///     "primal_name": "security provider",
 ///     "capabilities": ["encryption", "identity"],
-///     "endpoint": "/run/user/1000/beardog-nat0.sock",
+///     "endpoint": "/run/user/1000/security-provider-nat0.sock",
 ///     "protocol": "json-rpc",
 ///     "health_check_interval": 30
 ///   },
@@ -144,7 +144,7 @@ pub async fn discover_by_capability(
 ///   "jsonrpc": "2.0",
 ///   "method": "get_service_health",
 ///   "params": {
-///     "service_id": "beardog-12345"
+///     "service_id": "security-provider-12345"
 ///   },
 ///   "id": 6
 /// }

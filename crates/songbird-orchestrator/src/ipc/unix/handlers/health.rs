@@ -33,7 +33,7 @@ pub async fn handle_health(
 /// Handle health - biomeOS-standard health check (Feb 4, 2026)
 ///
 /// NEW: Bare `health` method (no prefix) as required by biomeOS.
-/// Returns health status with uptime, peer count, and BearDog connectivity.
+/// Returns health status with uptime, peer count, and security provider connectivity.
 ///
 /// EVOLVED (Phase 5A): Real uptime tracking instead of hardcoded value
 pub async fn handle_health_standard(
@@ -53,8 +53,8 @@ pub async fn handle_health_standard(
         0
     };
     
-    let beardog_connected = {
-        let security_socket = songbird_http_client::discover_security_provider_socket();
+    let security_provider_connected = {
+        let security_socket = songbird_http_client::discover_security_socket();
         std::path::Path::new(&security_socket).exists()
     };
     
@@ -70,7 +70,7 @@ pub async fn handle_health_standard(
         "status": "healthy",
         "uptime_seconds": uptime_seconds,
         "peers_connected": peers_connected,
-        "beardog_connected": beardog_connected,
+        "security_provider_connected": security_provider_connected,
         "registered_primals": primal_count
     }))
 }

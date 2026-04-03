@@ -79,10 +79,7 @@ async fn handle_message_register_stores_peer() {
         encrypted_beacon: None,
     };
     assert!(coord.handle_message(msg).await.is_none());
-    assert_eq!(
-        coord.peers.read().await.get("remote").map(|x| x.public_addr),
-        Some(p.public_addr)
-    );
+    assert_eq!(coord.peers.read().await.get("remote").map(|x| x.public_addr), Some(p.public_addr));
 }
 
 #[tokio::test]
@@ -97,7 +94,9 @@ async fn handle_message_query_returns_peer_or_none() {
     };
     let resp = coord.handle_message(q).await.expect("query response");
     match resp {
-        SignalingMessage::PeerInfoResponse { peer_info } => {
+        SignalingMessage::PeerInfoResponse {
+            peer_info,
+        } => {
             assert!(peer_info.is_some());
         }
         other => panic!("expected PeerInfoResponse, got {other:?}"),
@@ -108,7 +107,9 @@ async fn handle_message_query_returns_peer_or_none() {
     };
     let resp2 = coord.handle_message(q2).await.expect("query response");
     match resp2 {
-        SignalingMessage::PeerInfoResponse { peer_info } => assert!(peer_info.is_none()),
+        SignalingMessage::PeerInfoResponse {
+            peer_info,
+        } => assert!(peer_info.is_none()),
         other => panic!("expected PeerInfoResponse, got {other:?}"),
     }
 }
@@ -143,10 +144,8 @@ async fn handle_message_punch_request_to_self_without_my_info_returns_none() {
 async fn handle_message_punch_request_to_self_with_my_info_returns_ack() {
     let (coord, _in_tx, _out_rx) =
         HolePunchCoordinator::new("victim".into(), HolePunchConfig::default());
-    *coord.my_info.write().await = Some(PeerInfo::new(
-        "victim".into(),
-        "3.3.3.3:3".parse().unwrap(),
-    ));
+    *coord.my_info.write().await =
+        Some(PeerInfo::new("victim".into(), "3.3.3.3:3".parse().unwrap()));
 
     let from = PeerInfo::new("peer".into(), "4.4.4.4:4".parse().unwrap());
     let nonce = [7u8; 16];
@@ -183,17 +182,8 @@ async fn handle_message_heartbeat_updates_timestamp() {
     };
     assert!(coord.handle_message(hb).await.is_none());
 
-    let ts = coord
-        .peers
-        .read()
-        .await
-        .get("beat")
-        .expect("peer")
-        .timestamp;
-    assert!(
-        ts > std::time::SystemTime::UNIX_EPOCH,
-        "heartbeat should refresh timestamp"
-    );
+    let ts = coord.peers.read().await.get("beat").expect("peer").timestamp;
+    assert!(ts > std::time::SystemTime::UNIX_EPOCH, "heartbeat should refresh timestamp");
 }
 
 #[tokio::test]
@@ -210,35 +200,20 @@ async fn handle_message_unknown_variant_returns_none() {
 #[tokio::test]
 async fn punch_to_peer_errors_without_my_info() {
     let config = HolePunchConfig::default();
-    let (coord, _in_tx, _out_rx) =
-        HolePunchCoordinator::new("me".into(), config);
-    coord
-        .register_peer(PeerInfo::new("p".into(), "8.8.8.8:8".parse().unwrap()))
-        .await;
+    let (coord, _in_tx, _out_rx) = HolePunchCoordinator::new("me".into(), config);
+    coord.register_peer(PeerInfo::new("p".into(), "8.8.8.8:8".parse().unwrap())).await;
 
-    let err = coord
-        .punch_to_peer("p")
-        .await
-        .expect_err("must discover address first");
-    assert!(
-        matches!(err, crate::OnionRelayError::Other(_)),
-        "expected Other, got {err:?}"
-    );
+    let err = coord.punch_to_peer("p").await.expect_err("must discover address first");
+    assert!(matches!(err, crate::OnionRelayError::Other(_)), "expected Other, got {err:?}");
 }
 
 #[tokio::test]
 async fn punch_to_peer_errors_when_peer_missing() {
     let config = HolePunchConfig::default();
     let (coord, _in_tx, _out_rx) = HolePunchCoordinator::new("me".into(), config);
-    *coord.my_info.write().await = Some(PeerInfo::new(
-        "me".into(),
-        "127.0.0.1:1".parse().unwrap(),
-    ));
+    *coord.my_info.write().await = Some(PeerInfo::new("me".into(), "127.0.0.1:1".parse().unwrap()));
 
-    let err = coord
-        .punch_to_peer("ghost")
-        .await
-        .expect_err("unknown peer");
+    let err = coord.punch_to_peer("ghost").await.expect_err("unknown peer");
     assert!(matches!(err, crate::OnionRelayError::PeerNotFound(_)));
 }
 
@@ -253,13 +228,8 @@ async fn punch_to_peer_signaling_timeout_when_no_ack() {
     };
 
     let (coord, _in_tx, mut out_rx) = HolePunchCoordinator::new("me".into(), config);
-    *coord.my_info.write().await = Some(PeerInfo::new(
-        "me".into(),
-        "127.0.0.1:2".parse().unwrap(),
-    ));
-    coord
-        .register_peer(PeerInfo::new("peer".into(), "127.0.0.1:3".parse().unwrap()))
-        .await;
+    *coord.my_info.write().await = Some(PeerInfo::new("me".into(), "127.0.0.1:2".parse().unwrap()));
+    coord.register_peer(PeerInfo::new("peer".into(), "127.0.0.1:3".parse().unwrap())).await;
 
     let err = coord.punch_to_peer("peer").await.expect_err("no ack");
     assert!(
@@ -280,21 +250,16 @@ async fn punch_to_peer_relay_fallback_when_udp_unanswered() {
     };
 
     let (coord, inbound_tx, mut outbound_rx) = HolePunchCoordinator::new("me".into(), config);
-    *coord.my_info.write().await = Some(PeerInfo::new(
-        "me".into(),
-        "127.0.0.1:2".parse().unwrap(),
-    ));
-    coord
-        .register_peer(PeerInfo::new(
-            "peer".into(),
-            "127.0.0.1:9".parse().unwrap(),
-        ))
-        .await;
+    *coord.my_info.write().await = Some(PeerInfo::new("me".into(), "127.0.0.1:2".parse().unwrap()));
+    coord.register_peer(PeerInfo::new("peer".into(), "127.0.0.1:9".parse().unwrap())).await;
 
     let helper = tokio::spawn(async move {
         let msg = outbound_rx.recv().await.expect("outbound punch request");
         let nonce = match msg {
-            SignalingMessage::PunchRequest { nonce, .. } => nonce,
+            SignalingMessage::PunchRequest {
+                nonce,
+                ..
+            } => nonce,
             other => panic!("expected PunchRequest, got {other:?}"),
         };
         let start_at_ms = unix_epoch_millis_u64().unwrap().saturating_add(100);
@@ -312,7 +277,12 @@ async fn punch_to_peer_relay_fallback_when_udp_unanswered() {
     helper.await.expect("helper join");
 
     assert!(
-        matches!(result, PunchResult::Relay { attempts: 2 }),
+        matches!(
+            result,
+            PunchResult::Relay {
+                attempts: 2
+            }
+        ),
         "expected relay fallback when peer UDP is silent, got {result:?}"
     );
 }

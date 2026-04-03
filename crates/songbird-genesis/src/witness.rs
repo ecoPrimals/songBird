@@ -60,11 +60,11 @@ impl GenesisWitness {
         self.physical_channel.has_hardware_attestation()
     }
 
-    /// Verify witness signature using `BearDog`
+    /// Verify witness signature using `security provider`
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` verification fails and signature is non-empty.
+    /// Returns an error if `security provider` verification fails and signature is non-empty.
     pub async fn verify_signature(&self, data: &[u8]) -> Result<bool> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
@@ -72,20 +72,20 @@ impl GenesisWitness {
             return Ok(false);
         }
 
-        // Try to create BearDog client
+        // Try to create security provider client
         match SecurityCapabilityClient::new().await {
             Ok(client) => {
-                // Use BearDog for cryptographic verification
+                // Use security provider for cryptographic verification
                 client.verify_signature(&self.device_id, data, &self.signature).await.map_err(|e| {
                     GenesisError::SignatureVerificationFailed(format!(
-                        "BearDog verification failed: {e}"
+                        "security provider verification failed: {e}"
                     ))
                 })
             }
             Err(e) => {
                 // Fallback: Check signature exists (graceful degradation)
                 tracing::warn!(
-                    "BearDog not available for signature verification: {}. Using basic check.",
+                    "security provider not available for signature verification: {}. Using basic check.",
                     e
                 );
                 Ok(!self.signature.is_empty())
@@ -93,20 +93,20 @@ impl GenesisWitness {
         }
     }
 
-    /// Sign data as witness using `BearDog`
+    /// Sign data as witness using `security provider`
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` signing fails.
+    /// Returns an error if `security provider` signing fails.
     pub async fn sign(&mut self, data: &[u8]) -> Result<Vec<u8>> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
-        // Try to create BearDog client
+        // Try to create security provider client
         match SecurityCapabilityClient::new().await {
             Ok(client) => {
-                // Use BearDog for cryptographic signing
+                // Use security provider for cryptographic signing
                 let signature = client.sign_data(&self.device_id, data).await.map_err(|e| {
-                    GenesisError::SigningFailed(format!("BearDog signing failed: {e}"))
+                    GenesisError::SigningFailed(format!("security provider signing failed: {e}"))
                 })?;
 
                 self.signature.clone_from(&signature);
@@ -115,7 +115,7 @@ impl GenesisWitness {
             Err(e) => {
                 // Fallback: Create deterministic signature (graceful degradation)
                 tracing::warn!(
-                    "BearDog not available for signing: {}. Using fallback signature.",
+                    "security provider not available for signing: {}. Using fallback signature.",
                     e
                 );
                 let sig = format!("witness_sig_{}_{}", self.device_id, data.len()).into_bytes();
@@ -242,13 +242,13 @@ mod tests {
 
     #[tokio::test]
     async fn verify_signature_empty_returns_false_without_error() {
-        let witness = GenesisWitness::new(
-            "dev".to_string(),
-            vec![],
-            PhysicalChannelType::HardwareKey,
-        );
+        let witness =
+            GenesisWitness::new("dev".to_string(), vec![], PhysicalChannelType::HardwareKey);
         assert!(
-            !witness.verify_signature(b"payload").await.expect("verify should not error on empty sig"),
+            !witness
+                .verify_signature(b"payload")
+                .await
+                .expect("verify should not error on empty sig"),
             "empty witness signature should yield false"
         );
     }
@@ -256,11 +256,8 @@ mod tests {
     #[tokio::test]
     async fn verify_authority_rejects_untrusted_witness() {
         let verifier = WitnessVerifier::new();
-        let witness = GenesisWitness::new(
-            "unknown".to_string(),
-            vec![1],
-            PhysicalChannelType::HardwareKey,
-        );
+        let witness =
+            GenesisWitness::new("unknown".to_string(), vec![1], PhysicalChannelType::HardwareKey);
         let err = verifier.verify_authority(&witness).await.expect_err("untrusted witness");
         match err {
             GenesisError::UnauthorizedWitness(msg) => {
@@ -272,11 +269,8 @@ mod tests {
 
     #[test]
     fn genesis_witness_serde_roundtrip() {
-        let w = GenesisWitness::new(
-            "d1".to_string(),
-            vec![9, 8],
-            PhysicalChannelType::QrCodeWithOob,
-        );
+        let w =
+            GenesisWitness::new("d1".to_string(), vec![9, 8], PhysicalChannelType::QrCodeWithOob);
         let json = serde_json::to_string(&w).expect("serialize witness");
         let back: GenesisWitness = serde_json::from_str(&json).expect("deserialize witness");
         assert_eq!(back.device_id, "d1");

@@ -15,11 +15,11 @@
 //!
 //! ## TRUE PRIMAL Architecture
 //!
-//! All crypto operations are delegated to `BearDog` via `BeardogCryptoClient`.
+//! All crypto operations are delegated via `SecurityCryptoClient` (capability-discovered provider).
 //! Zero embedded crypto in Songbird.
 
 use serde_json::{Value, json};
-use songbird_sovereign_onion::{BeardogCryptoClient, OnionConnector, OnionService};
+use songbird_sovereign_onion::{OnionConnector, OnionService, SecurityCryptoClient};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -31,7 +31,7 @@ use tracing::{info, warn};
 ///
 /// ## Design Principles
 ///
-/// - **TRUE PRIMAL**: All crypto via `BearDog` delegation
+/// - **TRUE PRIMAL**: All crypto via capability-discovered security provider
 /// - **Self-Sovereign**: No external onion routers needed
 /// - **Safe**: All operations use safe Rust
 /// - **Async**: Modern async/await patterns
@@ -41,8 +41,8 @@ pub struct OnionHandler {
     service: Arc<RwLock<Option<Arc<OnionService>>>>,
     /// Service start time
     start_time: Arc<RwLock<Option<std::time::Instant>>>,
-    /// `BearDog` socket path (for creating clients on demand)
-    beardog_socket: Arc<RwLock<Option<String>>>,
+    /// Security-provider Neural API socket path (optional override for client creation)
+    security_socket: Arc<RwLock<Option<String>>>,
 }
 
 impl OnionHandler {
@@ -52,23 +52,23 @@ impl OnionHandler {
         Self {
             service: Arc::new(RwLock::new(None)),
             start_time: Arc::new(RwLock::new(None)),
-            beardog_socket: Arc::new(RwLock::new(None)),
+            security_socket: Arc::new(RwLock::new(None)),
         }
     }
 
-    /// Set `BearDog` socket path (optional - will auto-detect from env)
-    pub async fn set_beardog_socket(&self, socket_path: String) {
-        *self.beardog_socket.write().await = Some(socket_path);
+    /// Set security-provider socket path (optional — otherwise uses env discovery)
+    pub async fn set_security_socket(&self, socket_path: String) {
+        *self.security_socket.write().await = Some(socket_path);
     }
 
     /// Get or create a crypto client (Neural API socket from env, or IPC override).
-    async fn get_beardog_client(&self) -> BeardogCryptoClient {
-        if let Some(ref path) = *self.beardog_socket.read().await
+    async fn get_security_crypto_client(&self) -> SecurityCryptoClient {
+        if let Some(ref path) = *self.security_socket.read().await
             && !path.is_empty()
         {
-            return BeardogCryptoClient::from_neural_api_socket(path);
+            return SecurityCryptoClient::from_neural_api_socket(path);
         }
-        BeardogCryptoClient::from_env()
+        SecurityCryptoClient::from_env()
     }
 
     /// Handle `onion.start` - Start the sovereign onion service
@@ -108,17 +108,17 @@ impl OnionHandler {
             }
         }
 
-        let beardog = self.get_beardog_client().await;
+        let security = self.get_security_crypto_client().await;
 
         // Parse port from params
         let port =
             u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492))
                 .unwrap_or(3492);
 
-        info!(port = port, "Starting sovereign onion service via BearDog");
+        info!(port = port, "Starting sovereign onion service via security provider");
 
         // Create onion service
-        let service = OnionService::new_via_beardog(port, beardog)
+        let service = OnionService::new_via_security_provider(port, security)
             .await
             .map_err(|e| format!("Failed to create onion service: {e}"))?;
 
@@ -200,14 +200,14 @@ impl OnionHandler {
     ///     "onion_address": "xyz123abc456def789.onion",
     ///     "port": 3492,
     ///     "uptime_seconds": 3600,
-    ///     "beardog_connected": true
+    ///     "security_provider_available": true
     ///   },
     ///   "id": 1
     /// }
     /// ```
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
         let service = self.service.read().await;
-        let beardog_available = true;
+        let security_provider_available = true;
 
         if let Some(svc) = service.as_ref() {
             let uptime = self.start_time.read().await.map(|t| t.elapsed().as_secs()).unwrap_or(0);
@@ -217,13 +217,13 @@ impl OnionHandler {
                 "onion_address": svc.onion_address(),
                 "port": svc.port(),
                 "uptime_seconds": uptime,
-                "beardog_available": beardog_available
+                "security_provider_available": security_provider_available
             }))
         } else {
             Ok(json!({
                 "running": false,
                 "onion_address": null,
-                "beardog_available": beardog_available
+                "security_provider_available": security_provider_available
             }))
         }
     }
@@ -258,7 +258,7 @@ impl OnionHandler {
     /// }
     /// ```
     pub async fn handle_connect(&self, params: Value) -> Result<Value, String> {
-        let beardog = self.get_beardog_client().await;
+        let security = self.get_security_crypto_client().await;
 
         let address =
             params.get("address").and_then(|v| v.as_str()).ok_or("Missing 'address' parameter")?;
@@ -267,10 +267,9 @@ impl OnionHandler {
             u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492))
                 .unwrap_or(3492);
 
-        info!(address = address, port = port, "Connecting to onion address via BearDog");
+        info!(address = address, port = port, "Connecting to onion address via security provider");
 
-        // Create connector with BearDog
-        let connector = OnionConnector::new_via_beardog(beardog);
+        let connector = OnionConnector::new_via_security_provider(security);
 
         // Attempt connection
         match connector.connect(address, port).await {
@@ -282,7 +281,7 @@ impl OnionHandler {
                 Ok(json!({
                     "connected": true,
                     "target_address": format!("{}:{}", address, port),
-                    "comment": "Connection established via BearDog crypto"
+                    "comment": "Connection established via security provider crypto"
                 }))
             }
             Err(e) => {
@@ -335,11 +334,13 @@ impl Default for OnionHandler {
     }
 }
 
-/// Whether `msg` matches known BearDog/crypto-delegate connectivity failures (unit tests).
+/// Whether `msg` matches known security provider/crypto-delegate connectivity failures (unit tests).
 #[cfg(test)]
 fn is_expected_crypto_delegate_connectivity_error(msg: &str) -> bool {
     let m = msg.to_lowercase();
-    m.contains(songbird_types::primal_names::BEARDOG)
+    #[allow(deprecated)]
+    let beardog_name = songbird_types::primal_names::BEARDOG;
+    m.contains(beardog_name)
         || m.contains("socket")
         || m.contains("ipc")
         || m.contains("rpc")
@@ -383,8 +384,7 @@ mod tests {
         assert!(result.is_ok());
         let status = result.unwrap();
         assert_eq!(status["running"], false);
-        // beardog_available depends on env, just check field exists
-        assert!(status.get("beardog_available").is_some());
+        assert!(status.get("security_provider_available").is_some());
     }
 
     #[tokio::test]
@@ -398,11 +398,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_onion_start_without_beardog() {
-        // This test verifies the handler attempts to find BearDog
-        // In CI/test env without BearDog, it should fail gracefully
+        // This test verifies the handler attempts to find security provider
+        // In CI/test env without security provider, it should fail gracefully
         let handler = OnionHandler::new();
         let result = handler.handle_start(json!({"port": 3492})).await;
-        // Either works (BearDog available) or fails with a relevant error
+        // Either works (security provider available) or fails with a relevant error
         // Valid errors include: socket not found, RPC method not found, connection refused
         if let Err(e) = result {
             assert!(
@@ -414,7 +414,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_onion_connect_without_beardog() {
-        // This test verifies the handler attempts to find BearDog
+        // This test verifies the handler attempts to find security provider
         let handler = OnionHandler::new();
         let result = handler
             .handle_connect(json!({

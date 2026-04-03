@@ -260,13 +260,19 @@ mod tests {
         fn mask_key(key: &'static str) -> Self {
             let previous = songbird_process_env::var(key).ok();
             songbird_process_env::remove_var(key);
-            Self { key, previous }
+            Self {
+                key,
+                previous,
+            }
         }
 
         fn set(key: &'static str, value: &str) -> Self {
             let previous = songbird_process_env::var(key).ok();
             songbird_process_env::set_var(key, value);
-            Self { key, previous }
+            Self {
+                key,
+                previous,
+            }
         }
     }
 
@@ -333,8 +339,7 @@ mod tests {
         let a = AgnosticComputeCoordinator::default();
         let b = AgnosticComputeCoordinator::new();
         assert_eq!(
-            a.config.discovery_timeout_secs,
-            b.config.discovery_timeout_secs,
+            a.config.discovery_timeout_secs, b.config.discovery_timeout_secs,
             "Default and new() should share the same baseline config"
         );
     }
@@ -383,18 +388,17 @@ mod tests {
 
         let from_cache = coordinator.request_compute_capability().await.expect("cached provider");
         assert_eq!(
-            from_cache.endpoint,
-            "http://cached.compute.test:9000",
+            from_cache.endpoint, "http://cached.compute.test:9000",
             "in-memory cache should satisfy when env is masked"
         );
         assert!(from_cache.capabilities.contains(&"compute".to_string()));
         assert!(from_cache.healthy);
 
-        let _env = EnvOverlayGuard::set("CAPABILITY_COMPUTE_ENDPOINT", "http://env-priority.example:9000");
+        let _env =
+            EnvOverlayGuard::set("CAPABILITY_COMPUTE_ENDPOINT", "http://env-priority.example:9000");
         let from_env = coordinator.request_compute_capability().await.expect("env endpoint");
         assert_eq!(
-            from_env.endpoint,
-            "http://env-priority.example:9000",
+            from_env.endpoint, "http://env-priority.example:9000",
             "CAPABILITY_COMPUTE_ENDPOINT must override in-memory cache"
         );
     }

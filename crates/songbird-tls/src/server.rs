@@ -4,9 +4,9 @@
 //! TLS Server Module
 //!
 //! High-level TLS server integration for HTTP/HTTPS serving.
-//! Uses `BearDog` for all crypto operations via JSON-RPC.
+//! Uses the security (crypto) provider for all crypto operations via JSON-RPC.
 
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::SecurityTlsCryptoClient;
 use crate::error::{Result, TlsError};
 use crate::handshake::HandshakeStateMachine;
 use crate::record_layer::RecordLayer;
@@ -16,13 +16,13 @@ use tokio::net::TcpStream;
 
 /// TLS Server Configuration
 pub struct TlsServerConfig {
-    /// `BearDog` crypto client
-    pub crypto_client: BeardogCryptoClient,
+    /// Security-provider crypto client
+    pub crypto_client: SecurityTlsCryptoClient,
 
     /// Server certificate (DER-encoded)
     pub certificate: Vec<u8>,
 
-    /// Certificate private key ID (for `BearDog` signing)
+    /// Certificate private key ID (for security-provider signing)
     pub key_id: String,
 }
 
@@ -71,7 +71,7 @@ pub struct TlsStream {
     read_iv: Arc<[u8]>,
 
     /// Crypto client for encryption/decryption
-    crypto_client: BeardogCryptoClient,
+    crypto_client: SecurityTlsCryptoClient,
 }
 
 impl TlsStream {
@@ -181,7 +181,7 @@ impl TlsStream {
             .server_secret_key()
             .ok_or_else(|| TlsError::InternalError("Server secret key not stored".to_string()))?;
 
-        // Derive ECDHE shared secret using BearDog
+        // Derive ECDHE shared secret using the security provider
         let shared_secret = config
             .crypto_client
             .x25519_derive_secret(server_secret_key, &client_public_key)
@@ -205,7 +205,7 @@ impl TlsStream {
         // NOTE: In a complete implementation, we would:
         // 1. Send EncryptedExtensions (empty for basic TLS)
         // 2. Send Certificate (from config)
-        // 3. Send CertificateVerify (Ed25519 signature via BearDog)
+        // 3. Send CertificateVerify (Ed25519 signature via security provider)
         // 4. Send server Finished (HMAC of transcript)
         // 5. Receive client Finished
         // 6. Compute master secret and application traffic keys
@@ -246,7 +246,7 @@ impl TlsStream {
                 nonce[4 + i] ^= seq_bytes[i];
             }
 
-            // Encrypt with ChaCha20-Poly1305 via BearDog
+            // Encrypt with ChaCha20-Poly1305 via security provider
             // For now, use a blocking approach (will be made async in future)
             // This is acceptable as the async runtime handles it
             tokio::task::block_in_place(|| {
@@ -329,7 +329,7 @@ impl TlsStream {
                 nonce[4 + i] ^= seq_bytes[i];
             }
 
-            // Decrypt with ChaCha20-Poly1305 via BearDog
+            // Decrypt with ChaCha20-Poly1305 via security provider
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     crypto_client
@@ -404,7 +404,7 @@ impl tokio::io::AsyncWrite for TlsStream {
 mod tests {
     #[test]
     fn test_tls_acceptor_creation() {
-        // Test will use mock BearDog client
+        // Test will use mock security-provider client
         // Actual TLS handshake tested in integration tests
     }
 }

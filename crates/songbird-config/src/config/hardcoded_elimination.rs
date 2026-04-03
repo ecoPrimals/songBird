@@ -87,7 +87,15 @@ pub struct PerformanceConfig {
 pub struct PrimalConfig {
     pub beardog_endpoint: Arc<str>,
     pub nestgate_endpoint: Arc<str>,
+    /// Compute capability HTTP endpoint (canonical).
+    pub compute_provider_endpoint: Arc<str>,
+    /// AI / neural capability HTTP endpoint (canonical).
+    pub ai_provider_endpoint: Arc<str>,
+    /// Deprecated: use [`PrimalConfig::compute_provider_endpoint`].
+    #[deprecated(note = "use compute_provider_endpoint (capability-based naming)")]
     pub toadstool_endpoint: Arc<str>,
+    /// Deprecated: use [`PrimalConfig::ai_provider_endpoint`].
+    #[deprecated(note = "use ai_provider_endpoint (capability-based naming)")]
     pub squirrel_endpoint: Arc<str>,
     pub discovery_endpoints: Vec<String>,
     pub base_port: u16,
@@ -258,6 +266,10 @@ impl Default for PerformanceConfig {
     }
 }
 
+#[allow(
+    deprecated,
+    reason = "PrimalConfig keeps deprecated field mirrors for backward compatibility"
+)]
 impl Default for PrimalConfig {
     fn default() -> Self {
         let base_ip = env_or_default(
@@ -271,6 +283,15 @@ impl Default for PrimalConfig {
         .parse()
         .unwrap_or_else(|_| crate::canonical::constants::get_port_range_start());
 
+        let compute_provider_endpoint: Arc<str> = Arc::from(env_or_default(
+            "SONGBIRD_COMPUTE_PROVIDER_ENDPOINT",
+            &env_or_default("SONGBIRD_TOADSTOOL_ENDPOINT", &format!("http://{base_ip}:8082")),
+        ));
+        let ai_provider_endpoint: Arc<str> = Arc::from(env_or_default(
+            "SONGBIRD_AI_PROVIDER_ENDPOINT",
+            &env_or_default("SONGBIRD_SQUIRREL_ENDPOINT", &format!("http://{base_ip}:8083")),
+        ));
+
         Self {
             beardog_endpoint: Arc::from(env_or_default(
                 "SONGBIRD_BEARDOG_ENDPOINT",
@@ -280,14 +301,10 @@ impl Default for PrimalConfig {
                 "SONGBIRD_NESTGATE_ENDPOINT",
                 &format!("http://{base_ip}:{base_port}/storage"),
             )),
-            toadstool_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_TOADSTOOL_ENDPOINT",
-                &format!("http://{base_ip}:8082"),
-            )),
-            squirrel_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_SQUIRREL_ENDPOINT",
-                &format!("http://{base_ip}:8083"),
-            )),
+            compute_provider_endpoint: Arc::clone(&compute_provider_endpoint),
+            ai_provider_endpoint: Arc::clone(&ai_provider_endpoint),
+            toadstool_endpoint: compute_provider_endpoint,
+            squirrel_endpoint: ai_provider_endpoint,
             discovery_endpoints: vec![
                 env_or_default(
                     "SONGBIRD_DISCOVERY_ENDPOINT_1",
@@ -302,11 +319,16 @@ impl Default for PrimalConfig {
             port_range: (
                 env_or_default(
                     "SONGBIRD_PRIMAL_PORT_START",
-                    &crate::canonical::constants::network::default_orchestrator_port().to_string(),
+                    &crate::canonical::constants::get_port_range_start().to_string(),
                 )
                 .parse()
                 .unwrap_or_else(|_| crate::canonical::constants::get_port_range_start()),
-                env_or_default("SONGBIRD_PRIMAL_PORT_END", "8090").parse().unwrap_or(8090),
+                env_or_default(
+                    "SONGBIRD_PRIMAL_PORT_END",
+                    &crate::canonical::constants::get_port_range_end().to_string(),
+                )
+                .parse()
+                .unwrap_or_else(|_| crate::canonical::constants::get_port_range_end()),
             ),
         }
     }
@@ -403,14 +425,36 @@ pub mod replace {
 
     /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8443`"
     #[must_use]
-    pub fn beardog_endpoint() -> Arc<str> {
+    pub fn security_provider_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.beardog_endpoint)
     }
 
     /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8080/storage`"
     #[must_use]
-    pub fn nestgate_endpoint() -> Arc<str> {
+    pub fn storage_provider_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.nestgate_endpoint)
+    }
+
+    /// Deprecated alias for [`security_provider_endpoint`].
+    #[deprecated(note = "use security_provider_endpoint (capability-based naming)")]
+    #[allow(
+        deprecated,
+        reason = "delegates to non-legacy name; parent `config` module is deprecated"
+    )]
+    #[must_use]
+    pub fn beardog_endpoint() -> Arc<str> {
+        security_provider_endpoint()
+    }
+
+    /// Deprecated alias for [`storage_provider_endpoint`].
+    #[deprecated(note = "use storage_provider_endpoint (capability-based naming)")]
+    #[allow(
+        deprecated,
+        reason = "delegates to non-legacy name; parent `config` module is deprecated"
+    )]
+    #[must_use]
+    pub fn nestgate_endpoint() -> Arc<str> {
+        storage_provider_endpoint()
     }
 
     /// Replace hardcoded `Duration::from_secs(30)`
@@ -447,6 +491,40 @@ pub mod replace {
     #[must_use]
     pub fn federation_endpoints() -> Vec<String> {
         get_config().federation.cluster_endpoints.clone()
+    }
+
+    /// Replace hardcoded compute capability endpoint (legacy primal: toadstool).
+    #[must_use]
+    pub fn compute_provider_endpoint() -> Arc<str> {
+        Arc::clone(&get_config().primals.compute_provider_endpoint)
+    }
+
+    /// Deprecated alias for [`compute_provider_endpoint`].
+    #[deprecated(note = "use compute_provider_endpoint (capability-based naming)")]
+    #[allow(
+        deprecated,
+        reason = "delegates to non-legacy name; parent `config` module is deprecated"
+    )]
+    #[must_use]
+    pub fn toadstool_endpoint() -> Arc<str> {
+        compute_provider_endpoint()
+    }
+
+    /// Replace hardcoded AI / neural capability endpoint (legacy primal: squirrel).
+    #[must_use]
+    pub fn ai_provider_endpoint() -> Arc<str> {
+        Arc::clone(&get_config().primals.ai_provider_endpoint)
+    }
+
+    /// Deprecated alias for [`ai_provider_endpoint`].
+    #[deprecated(note = "use ai_provider_endpoint (capability-based naming)")]
+    #[allow(
+        deprecated,
+        reason = "delegates to non-legacy name; parent `config` module is deprecated"
+    )]
+    #[must_use]
+    pub fn squirrel_endpoint() -> Arc<str> {
+        ai_provider_endpoint()
     }
 
     /// Replace hardcoded primal discovery endpoints

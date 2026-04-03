@@ -8,7 +8,7 @@
 
 ## 🎯 Mission
 
-A **Pure Rust HTTP/HTTPS client** that delegates all cryptographic operations to BearDog via JSON-RPC over Unix sockets.
+A **Pure Rust HTTP/HTTPS client** that delegates all cryptographic operations to the security provider via JSON-RPC over Unix sockets.
 
 This enables:
 - ✅ **100% Pure Rust** networking stack
@@ -30,7 +30,7 @@ This enables:
                     │ Unix Socket JSON-RPC
                     │ (crypto.*, tls.* methods)
 ┌───────────────────▼──────────────────────────────────────┐
-│             BearDog Crypto Provider                      │
+│             Security provider (JSON-RPC)                 │
 │  - x25519 (ECDH key exchange)                           │
 │  - ChaCha20-Poly1305 (AEAD encryption)                  │
 │  - ed25519 (signatures)                                 │
@@ -50,8 +50,8 @@ use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Create client with BearDog socket path
-    let client = SongbirdHttpClient::new("/tmp/beardog-nat0.sock");
+    // Create client with security provider socket path (see SECURITY_PROVIDER_SOCKET; legacy: BEARDOG_SOCKET)
+    let client = SongbirdHttpClient::new("/tmp/security.sock");
 
     // Make HTTP GET request
     let response = client.request(
@@ -68,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-### HTTPS Request (with BearDog Crypto)
+### HTTPS Request (with security provider crypto)
 
 ```rust
 use songbird_http_client::SongbirdHttpClient;
@@ -76,7 +76,7 @@ use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = SongbirdHttpClient::new("/tmp/beardog-nat0.sock");
+    let client = SongbirdHttpClient::new("/tmp/security.sock");
 
     // Make HTTPS POST request
     let mut headers = HashMap::new();
@@ -106,7 +106,7 @@ async fn main() -> anyhow::Result<()> {
 
 ### HTTP/HTTPS Support
 - ✅ HTTP/1.1 and HTTP/2 (via `hyper`)
-- ✅ TLS 1.3 with BearDog crypto delegation
+- ✅ TLS 1.3 with security provider crypto delegation
 - ✅ GET, POST, PUT, DELETE, PATCH methods
 - ✅ Custom headers
 - ✅ JSON request/response bodies
@@ -116,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
 - ✅ Zero OpenSSL
 - ✅ Zero ring
 - ✅ Zero rustls C bindings
-- ✅ BearDog provides all crypto operations
+- ✅ The security provider supplies all crypto operations
 
 ### Tower Atomic Pattern
 - ✅ Crypto delegation via JSON-RPC
@@ -126,9 +126,9 @@ async fn main() -> anyhow::Result<()> {
 
 ---
 
-## 🔐 BearDog RPC Methods
+## 🔐 Security provider JSON-RPC methods
 
-This client requires BearDog to implement the following JSON-RPC methods:
+This client requires the security provider to implement the following JSON-RPC methods:
 
 ### crypto.generate_keypair
 Generate x25519 keypair for ECDH.
@@ -180,8 +180,8 @@ cargo test --package songbird-http-client
 # HTTP example
 cargo run --example simple_get --package songbird-http-client
 
-# HTTPS example (requires BearDog running)
-BEARDOG_SOCKET=/tmp/beardog-nat0.sock cargo run --example https_test --package songbird-http-client
+# HTTPS example (security provider running; prefer SECURITY_PROVIDER_SOCKET, legacy BEARDOG_SOCKET)
+SECURITY_PROVIDER_SOCKET=/tmp/security.sock cargo run --example https_test --package songbird-http-client
 ```
 
 ---
@@ -198,7 +198,7 @@ BEARDOG_SOCKET=/tmp/beardog-nat0.sock cargo run --example https_test --package s
 - HTTP response parsing
 - TLS handshake logic
 - TLS record layer
-- BearDog RPC client
+- Security provider RPC client
 - Session management
 
 ---
@@ -208,7 +208,7 @@ BEARDOG_SOCKET=/tmp/beardog-nat0.sock cargo run --example https_test --package s
 **Target**:
 - TLS handshake: < 10ms
 - HTTP round-trip: < 100ms (local)
-- End-to-end AI query: < 5s (Squirrel → Songbird → BearDog → Anthropic)
+- End-to-end AI query: < 5s (Squirrel → Songbird → security provider → Anthropic)
 
 **Actual** (to be measured in production):
 - ⏳ Pending real-world validation
@@ -235,7 +235,7 @@ BEARDOG_SOCKET=/tmp/beardog-nat0.sock cargo run --example https_test --package s
 ## 📚 Related Documentation
 
 - `TOWER_ATOMIC_HTTP_EVOLUTION_JAN_21_2026.md` - Implementation plan
-- BearDog RPC spec: `../beardog/RPC_SPEC.md` (upstream)
+- Security provider RPC spec: upstream primal repo `RPC_SPEC.md` (BearDog implementation reference)
 - Tower Atomic pattern: `../wateringHole/TOWER_ATOMIC_PATTERN.md`
 
 ---
@@ -245,7 +245,7 @@ BEARDOG_SOCKET=/tmp/beardog-nat0.sock cargo run --example https_test --package s
 **Current**: ✅ **Foundation Complete** (v0.1.0)
 
 **Implemented**:
-- ✅ BearDog RPC client
+- ✅ Security provider RPC client
 - ✅ TLS 1.3 handshake
 - ✅ TLS record layer
 - ✅ HTTP/HTTPS client
@@ -254,7 +254,7 @@ BEARDOG_SOCKET=/tmp/beardog-nat0.sock cargo run --example https_test --package s
 
 **Pending**:
 - ⏳ Real-world performance validation
-- ⏳ BearDog RPC methods implementation (upstream)
+- ⏳ Security provider RPC methods implementation (upstream)
 - ⏳ End-to-end Squirrel integration testing
 
 ---
@@ -270,7 +270,6 @@ assert!(songbird_http_client::is_pure_rust());
 
 ---
 
-**Built with**: Rust 1.83+ | Tower Atomic Pattern | BearDog Crypto | biomeOS ecoPrimals
+**Built with**: Rust 1.83+ | Tower Atomic Pattern | Security provider crypto | biomeOS ecoPrimals
 
-🐦🐕✨ **Pure Rust Future!** ✨🐕🐦
-
+🐦✨ **Pure Rust Future!** ✨🐦

@@ -16,7 +16,7 @@
 //!
 //! This crate implements a minimal subset of the Tor protocol focused on
 //! .onion service hosting and client connectivity. All cryptographic operations
-//! are delegated to `BearDog` (TRUE PRIMAL architecture).
+//! are delegated to `security provider` (TRUE PRIMAL architecture).
 //!
 //! ## Features
 //!
@@ -27,7 +27,7 @@
 //!
 //! ## TRUE PRIMAL
 //!
-//! 100% `BearDog` crypto delegation - zero direct crypto in this crate.
+//! 100% `security provider` crypto delegation - zero direct crypto in this crate.
 
 #![forbid(unsafe_code)]
 #![warn(clippy::unwrap_used)]
@@ -56,7 +56,7 @@ pub struct TorClient {
 }
 
 impl TorClient {
-    /// Create new Tor client with `BearDog` delegation
+    /// Create new Tor client with `security provider` delegation
     #[must_use]
     pub const fn new(beardog: CryptoProvider) -> Self {
         Self {
@@ -87,7 +87,7 @@ impl TorService {
 
     /// Get onion address.
     ///
-    /// Returns `None` until the service has published a descriptor via BearDog.
+    /// Returns `None` until the service has published a descriptor via security provider.
     /// Callers should treat `None` as "service not yet reachable on the Tor network."
     #[must_use]
     pub const fn onion_address(&self) -> Option<&str> {

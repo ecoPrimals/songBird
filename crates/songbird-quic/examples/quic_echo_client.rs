@@ -8,7 +8,7 @@
     reason = "example code"
 )]
 
-//! QUIC echo client example (pure Rust, BearDog crypto delegation).
+//! QUIC echo client example (pure Rust, security provider crypto delegation).
 //!
 //! Run with: cargo run --example quic_echo_client
 

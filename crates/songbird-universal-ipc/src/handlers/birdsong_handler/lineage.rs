@@ -14,7 +14,7 @@ impl BirdSongHandler {
     /// Verifies peer lineage using challenge-response (defense-in-depth).
     /// Calls the security provider's `genetic.generate_challenge` and `genetic.verify_challenge_response`.
     ///
-    /// Deep debt: Delegates to the crypto/security provider (e.g. `BearDog`) (separation of concerns)
+    /// Deep debt: Delegates to the crypto/security provider (e.g. `security provider`) (separation of concerns)
     pub async fn handle_verify_lineage(&self, params: Value) -> Result<Value, String> {
         debug!("🔍 RPC: birdsong.verify_lineage");
 
@@ -24,7 +24,7 @@ impl BirdSongHandler {
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
         // Discover security provider socket (capability-based)
-        let security_socket = self.discover_security_provider_socket().await?;
+        let security_socket = self.discover_security_socket().await?;
 
         // Create RPC client to the security provider
         let client = UnixRpcClient::new(&security_socket)
@@ -74,7 +74,7 @@ impl BirdSongHandler {
         let family_id = provider.family_id().unwrap_or_else(|| "unknown".to_string());
 
         // Query security provider for our node ID (if needed)
-        let security_socket = self.discover_security_provider_socket().await?;
+        let security_socket = self.discover_security_socket().await?;
         let client = UnixRpcClient::new(&security_socket)
             .map_err(|e| format!("Failed to connect to security provider: {e}"))?;
 

@@ -60,12 +60,12 @@ pub async fn start_http_server(
                 info!("✅ HTTPS server started successfully");
             }
             Err(e) => {
-                // ✅ GRACEFUL DEGRADATION: If HTTPS fails (e.g., BearDog unavailable),
+                // ✅ GRACEFUL DEGRADATION: If HTTPS fails (e.g., security provider unavailable),
                 // fall back to plain HTTP so the server still starts
                 warn!("⚠️  HTTPS server failed to start: {}", e);
-                warn!("   Most likely cause: BearDog crypto provider not available");
+                warn!("   Most likely cause: security provider crypto provider not available");
                 warn!("   DEGRADING TO PLAIN HTTP (insecure, but functional)");
-                warn!("   To resolve: Start BearDog or set SONGBIRD_TLS_ENABLED=false");
+                warn!("   To resolve: Start security provider or set SONGBIRD_TLS_ENABLED=false");
 
                 // Rebind the port since the listener was consumed
                 let (fallback_listener, fallback_addr) = bind_with_fallback(&bind_addr).await?;
@@ -236,14 +236,14 @@ async fn get_local_ip() -> Result<String> {
     Err(anyhow::anyhow!("Could not determine local IP"))
 }
 
-/// Start HTTPS server with Pure Rust TLS (songbird-tls + `BearDog`)
+/// Start HTTPS server with Pure Rust TLS (songbird-tls + `security provider`)
 async fn start_https_server(
     app: Router,
     listener: tokio::net::TcpListener,
     addr: SocketAddr,
 ) -> Result<()> {
     use songbird_tls::cert::test_utils::generate_test_certificate;
-    use songbird_tls::crypto::BeardogCryptoClient;
+    use songbird_tls::crypto::SecurityTlsCryptoClient;
     use songbird_tls::{TlsAcceptor, TlsServerConfig};
 
     // Get TLS configuration from environment
@@ -278,7 +278,7 @@ async fn start_https_server(
 
     let sans_display = sans.join(", ");
 
-    // PURE RUST TLS: songbird-tls + BearDog crypto
+    // PURE RUST TLS: songbird-tls + security provider crypto
     // Generate test certificate (in production, use proper cert management)
     let test_cert = generate_test_certificate(&node_id)
         .map_err(|e| anyhow::anyhow!("Failed to generate test certificate: {e}"))?;
@@ -291,16 +291,16 @@ async fn start_https_server(
         .cert_data
         .clone();
 
-    // Create BearDog crypto client for TLS operations
-    // This will discover BearDog via Unix socket at runtime
-    let crypto_client = BeardogCryptoClient::new()
-        .map_err(|e| anyhow::anyhow!("Failed to create BearDog crypto client: {e}"))?;
+    // Create security provider crypto client for TLS operations
+    // This will discover security provider via Unix socket at runtime
+    let crypto_client = SecurityTlsCryptoClient::new()
+        .map_err(|e| anyhow::anyhow!("Failed to create security provider crypto client: {e}"))?;
 
     // Create Pure Rust TLS server config
     let tls_config = TlsServerConfig {
         crypto_client,
         certificate: certificate_der,
-        key_id: format!("{node_id}_tls_key"), // Key ID for BearDog signing
+        key_id: format!("{node_id}_tls_key"), // Key ID for security provider signing
     };
 
     // Create Pure Rust TLS acceptor (wrap in Arc for sharing across tasks)
@@ -308,10 +308,10 @@ async fn start_https_server(
 
     info!("✅ Pure Rust TLS configuration loaded, server listening on {}", addr);
     info!("   Certificate: Generated (test cert for '{}')", node_id);
-    info!("   Crypto: BearDog via Unix socket");
+    info!("   Crypto: security provider via Unix socket");
     info!("   SANs: {}", sans_display);
     info!("   🔒 100% PURE RUST - Zero C dependencies!");
-    info!("   🎯 Protocol: songbird-tls | Crypto: BearDog");
+    info!("   🎯 Protocol: songbird-tls | Crypto: security provider");
     info!("   🔄 Protocol Detection: HTTP and HTTPS on same port");
     info!("   💡 To disable TLS (not recommended): export SONGBIRD_TLS_ENABLED=false");
 
@@ -319,7 +319,7 @@ async fn start_https_server(
     //
     // This is the sovereign pattern:
     // - songbird-tls for TLS 1.3 protocol (Pure Rust)
-    // - BearDog for all cryptographic operations (Pure Rust)
+    // - security provider for all cryptographic operations (Pure Rust)
     // - Runtime discovery via Unix sockets (no hardcoding)
     // - Zero C dependencies (TRUE ecoBin)
 

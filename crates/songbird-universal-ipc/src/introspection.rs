@@ -207,7 +207,7 @@ pub fn primal_capabilities() -> Value {
                 "description": "Dark Forest encrypted discovery (genetic lineage, family-only)",
                 "security": "genetic_lineage",
                 "encryption": "chacha20_poly1305",
-                "provider": primal_names::BEARDOG
+                "provider": "security"
             },
             {
                 "name": "relay",
@@ -230,7 +230,7 @@ pub fn primal_capabilities() -> Value {
                 "operations": ["start", "stop", "status", "connect", "address"],
                 "description": "Sovereign .onion service for NAT traversal",
                 "encryption": "x25519_chacha20poly1305",
-                "provider": primal_names::BEARDOG
+                "provider": "security"
             },
             {
                 "name": "tor",
@@ -238,7 +238,7 @@ pub fn primal_capabilities() -> Value {
                     "consensus.fetch", "circuit.build", "circuit.close"],
                 "description": "Pure Rust Tor protocol for symmetric NAT traversal",
                 "implementation": "from_scratch",
-                "provider": primal_names::BEARDOG
+                "provider": "security"
             }
         ]
     })

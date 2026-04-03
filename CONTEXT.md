@@ -5,13 +5,13 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-only (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 2, 2026
+**Last Updated**: April 3, 2026
 
 ## What It Does
 
 Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 
-- **HTTP/HTTPS**: Pure Rust TLS 1.3 client for sovereign HTTPS (Tower Atomic with BearDog)
+- **HTTP/HTTPS**: Pure Rust TLS 1.3 client for sovereign HTTPS (Tower Atomic with security provider)
 - **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication
 - **Discovery**: Capability-based runtime discovery — mDNS, SSDP, UDP broadcast, DNS-SD, BirdSong encrypted beacons
 - **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh
@@ -21,10 +21,10 @@ Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 
 ## Ecosystem Role
 
-Songbird is half of **Tower Atomic** (BearDog + Songbird), the minimum viable
+Songbird is half of **Tower Atomic** (security provider + Songbird), the minimum viable
 ecosystem composition. Every other primal and spring uses Songbird for:
 
-- Sovereign HTTPS without C dependencies (via BearDog crypto delegation)
+- Sovereign HTTPS without C dependencies (via security provider crypto delegation)
 - Service discovery and capability-based primal location (zero identity hardcoding)
 - Cross-NAT connectivity for multi-machine deployments
 - Dark Forest encrypted discovery (zero metadata leakage)
@@ -34,14 +34,14 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 12,154 passed (0 failed, ~159 ignored, full suite ~60s) |
-| Coverage | ~72% est. region coverage via llvm-cov (target 90%) |
+| Tests | 12,154 passed (0 failed, 247 ignored env-dependent, full suite ~70s) |
+| Coverage | 71.65% region coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >1000 LOC | 0 (all production modules under 800 lines; test-only files under 950) |
+| Files >1000 LOC | 0 (all production modules under 400 lines; test-only files under 950) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in `songbird-quic`; `rcgen` eliminated (pure Rust test cert gen); `sled` feature-gated with in-memory fallback; `ring-crypto` opt-in feature gate on CLI only |
-| Hardcoded primal names | 0 in production discovery paths (capability-first: `security.sock` symlink, `SECURITY_PROVIDER_SOCKET` env) |
+| Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`) |
 | Production panics/unwrap/todo | 0 |
 
 ## IPC Surface
@@ -67,7 +67,7 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 
 ## Dependencies on Other Primals
 
-- **BearDog**: Crypto delegation via capability discovery (no compile-time import, no identity hardcoding)
+- **Security Provider (BearDog)**: Crypto delegation via capability discovery (no compile-time import, no identity hardcoding)
 - **biomeOS**: Registers via Neural API `lifecycle.register` when available
 - No other primal code imports — all coordination via JSON-RPC IPC
 

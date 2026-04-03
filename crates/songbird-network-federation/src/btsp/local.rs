@@ -5,23 +5,23 @@
 //!
 //! ⚠️ **TRUE PRIMAL NOTE**: This module is for TESTING ONLY!
 //! Requires `local-btsp` feature (which includes crypto deps).
-//! Production builds should use `BearDog` delegation (no crypto in Songbird).
+//! Production builds should use `security provider` delegation (no crypto in Songbird).
 //!
 //! This module provides a local implementation of BTSP for testing and
-//! development without requiring `BearDog` to be running. It uses standard
+//! development without requiring `security provider` to be running. It uses standard
 //! Rust cryptography libraries to simulate the BTSP protocol.
 //!
 //! ## Security Notice
 //!
 //! This implementation is for TESTING ONLY. It does not provide the same
-//! security guarantees as real `BearDog` genetic cryptography:
+//! security guarantees as real `security provider` genetic cryptography:
 //!
 //! - Uses AES-256-GCM instead of genetic crypto
 //! - No key lineage tracking
 //! - No multi-party consent
 //! - No threshold key schemes
 //!
-//! When `BearDog` is available, it will be discovered and used automatically.
+//! When `security provider` is available, it will be discovered and used automatically.
 
 #![cfg(feature = "local-btsp")]
 
@@ -44,7 +44,7 @@ use songbird_types::{SongbirdError, SongbirdResult};
 /// Local BTSP provider for testing
 ///
 /// This implementation uses standard AES-256-GCM encryption and is suitable
-/// for testing federation without `BearDog`. It maintains tunnels in memory
+/// for testing federation without `security provider`. It maintains tunnels in memory
 /// and uses symmetric encryption.
 pub struct LocalBtspProvider {
     tunnels: Arc<RwLock<HashMap<String, Tunnel>>>,
@@ -307,7 +307,7 @@ mod tests {
             aad: None,
         };
 
-        let plaintext = b"Hello, BearDog!";
+        let plaintext = b"Hello, security provider!";
         let encrypted = provider.encrypt(plaintext, &context).await.unwrap();
         let decrypted = provider.decrypt(&encrypted, &context).await.unwrap();
 

@@ -48,12 +48,7 @@ use tokio::time::{Duration, timeout};
 fn unique_socket_path(label: &str) -> String {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-    format!(
-        "/tmp/songbird-e2e-{}-{}-{}.sock",
-        std::process::id(),
-        label,
-        n
-    )
+    format!("/tmp/songbird-e2e-{}-{}-{}.sock", std::process::id(), label, n)
 }
 
 /// Helper: Start a test Unix socket server with readiness signaling.

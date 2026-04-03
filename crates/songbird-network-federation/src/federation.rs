@@ -13,9 +13,9 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-use crate::beardog::{BearDogProvider, BearDogProviderFactory};
 use crate::discovery_mode::DiscoveryMode;
 use crate::rendezvous::RendezvousClient;
+use crate::security::{SecurityProvider, SecurityProviderFactory};
 use crate::state::{FederationState, FederationStatus, NodeRegistration};
 
 /// Federation coordinator
@@ -24,17 +24,17 @@ pub struct FederationCoordinator {
     state: Arc<FederationState>,
     client: IpcHttpClient,
     rendezvous_client: Arc<RwLock<Option<Arc<RendezvousClient>>>>,
-    beardog_provider: Arc<RwLock<Option<Box<dyn BearDogProvider>>>>,
+    security_provider: Arc<RwLock<Option<Box<dyn SecurityProvider>>>>,
 }
 
-// Manual Debug implementation since BearDogProvider doesn't impl Debug
+// Manual Debug implementation since SecurityProvider doesn't impl Debug
 impl std::fmt::Debug for FederationCoordinator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FederationCoordinator")
             .field("state", &self.state)
             .field("client", &self.client)
             .field("rendezvous_client", &"<rendezvous>")
-            .field("beardog_provider", &"<beardog>")
+            .field("security_provider", &"<security_provider>")
             .finish()
     }
 }
@@ -53,7 +53,7 @@ impl FederationCoordinator {
             state: Arc::new(FederationState::new("default".to_string())),
             client,
             rendezvous_client: Arc::new(RwLock::new(None)),
-            beardog_provider: Arc::new(RwLock::new(None)),
+            security_provider: Arc::new(RwLock::new(None)),
         })
     }
 
@@ -70,18 +70,24 @@ impl FederationCoordinator {
             state,
             client,
             rendezvous_client: Arc::new(RwLock::new(None)),
-            beardog_provider: Arc::new(RwLock::new(None)),
+            security_provider: Arc::new(RwLock::new(None)),
         })
     }
 
-    /// Check if `BearDog` is available
-    pub async fn has_beardog(&self) -> bool {
-        self.beardog_provider.read().await.is_some()
+    /// Whether a capability-discovered security provider is connected
+    pub async fn has_security_provider(&self) -> bool {
+        self.security_provider.read().await.is_some()
     }
 
-    /// Get discovery mode based on `BearDog` availability
+    /// Deprecated alias for [`Self::has_security_provider`].
+    #[deprecated(note = "use has_security_provider")]
+    pub async fn has_beardog(&self) -> bool {
+        self.has_security_provider().await
+    }
+
+    /// Get discovery mode based on security-provider availability
     pub async fn discovery_mode(&self) -> DiscoveryMode {
-        if self.has_beardog().await {
+        if self.has_security_provider().await {
             DiscoveryMode::BirdSong
         } else {
             DiscoveryMode::Plaintext
@@ -93,9 +99,9 @@ impl FederationCoordinator {
         // If config forces a mode, use it
         if let Some(mode) = config.discovery_mode {
             // Validate that we can support it
-            if mode.requires_beardog() && !self.has_beardog().await {
+            if mode.requires_security_provider() && !self.has_security_provider().await {
                 warn!(
-                    "⚠️  BirdSong mode requested but BearDog unavailable, falling back to plaintext"
+                    "⚠️  BirdSong mode requested but security provider unavailable, falling back to plaintext"
                 );
                 return DiscoveryMode::Plaintext;
             }
@@ -127,18 +133,19 @@ impl FederationCoordinator {
             self.state.register_node(node_info.clone()).await;
         }
 
-        // Initialize BearDog provider if available
-        info!("🔒 Attempting to discover BearDog security provider...");
-        match BearDogProviderFactory::discover().await {
+        info!("🔒 Attempting to discover security provider...");
+        match SecurityProviderFactory::discover().await {
             Ok(Some(provider)) => {
-                info!("✅ BearDog available - using encrypted birdSong discovery");
-                *self.beardog_provider.write().await = Some(provider);
+                info!("✅ Security provider available - using encrypted birdSong discovery");
+                *self.security_provider.write().await = Some(provider);
             }
             Ok(None) => {
-                info!("ℹ️  BearDog not available - using plaintext discovery (trusted LAN only)");
+                info!(
+                    "ℹ️  Security provider not available - using plaintext discovery (trusted LAN only)"
+                );
             }
             Err(e) => {
-                warn!("⚠️  BearDog discovery failed: {} - using plaintext discovery", e);
+                warn!("⚠️  Security provider discovery failed: {} - using plaintext discovery", e);
             }
         }
 
@@ -523,7 +530,7 @@ pub struct FederationConfig {
     /// Example: "<http://rendezvous.songbird.network:8888>"
     pub rendezvous_url: Option<String>,
 
-    /// Force discovery mode (if None, auto-detect based on `BearDog` availability)
+    /// Force discovery mode (if None, auto-detect based on security-provider availability)
     #[serde(default)]
     pub discovery_mode: Option<DiscoveryMode>,
 }

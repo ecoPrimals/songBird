@@ -103,7 +103,7 @@ pub enum TrustLevel {
     RoleVerified,
     /// Identity-verified (can see infrastructure)
     IdentityVerified,
-    /// Hardware-verified (full admin access, `BearDog`)
+    /// Hardware-verified (full admin access, `security provider`)
     HardwareVerified,
 }
 

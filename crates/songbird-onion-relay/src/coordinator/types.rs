@@ -66,8 +66,15 @@ mod tests {
         let _ = format!("{d:?}");
         assert!(matches!(d, PunchResult::Direct { .. }));
 
-        let r = PunchResult::Relay { attempts: 3 };
-        assert!(matches!(r, PunchResult::Relay { attempts: 3 }));
+        let r = PunchResult::Relay {
+            attempts: 3,
+        };
+        assert!(matches!(
+            r,
+            PunchResult::Relay {
+                attempts: 3
+            }
+        ));
     }
 
     #[tokio::test]

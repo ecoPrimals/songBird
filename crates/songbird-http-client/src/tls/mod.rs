@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! TLS 1.3 implementation with `BearDog` crypto delegation
+//! TLS 1.3 implementation with security-provider crypto delegation
 //!
 //! This module implements a Pure Rust TLS 1.3 client AND server by delegating all
-//! cryptographic operations to `BearDog` via JSON-RPC.
+//! cryptographic operations to the `security provider` via JSON-RPC.
 //!
 //! ## Architecture (Smart Refactored - January 26, 2026)
 //!

@@ -34,7 +34,7 @@ pub enum ServiceState {
 
 /// Onion service manager
 pub struct OnionServiceManager {
-    /// `BearDog` crypto client
+    /// `security provider` crypto client
     beardog: Arc<CryptoProvider>,
     /// Service keys
     keys: Arc<RwLock<Option<OnionServiceKeys>>>,
@@ -74,7 +74,7 @@ impl OnionServiceManager {
     ///
     /// Returns error if key generation fails.
     pub async fn initialize(&self) -> Result<OnionServiceKeys> {
-        // Generate service keys via BearDog
+        // Generate service keys via security provider
         let keys = OnionServiceKeys::generate(&self.beardog).await?;
 
         // Store keys
@@ -119,7 +119,7 @@ impl OnionServiceManager {
     /// In production, this would:
     /// 1. Select random relays from the consensus
     /// 2. Build 3-hop circuits to each
-    /// 3. Send `ESTABLISH_INTRO` cells via BearDog-signed auth
+    /// 3. Send `ESTABLISH_INTRO` cells via security provider-signed auth
     ///
     /// Currently creates introduction points with generated keys
     /// and prepares `ESTABLISH_INTRO` cells for when circuits are available.

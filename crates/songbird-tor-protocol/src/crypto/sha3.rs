@@ -4,7 +4,7 @@
 //! Minimal pure Rust SHA3-256 (Keccak-f\[1600\])
 //!
 //! Zero external dependencies. Used for onion address checksum verification
-//! and descriptor ID computation where `BearDog` is not required.
+//! and descriptor ID computation where `security provider` is not required.
 //!
 //! Implements FIPS 202 (SHA-3) using the Keccak sponge construction.
 //! Only SHA3-256 is provided as that's all Tor v3 requires.

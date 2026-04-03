@@ -8,12 +8,12 @@
 //! Full X.509 parsing will be added as needed.
 
 pub mod generator;
-pub mod test_utils; // Pure Rust certificate generation (hybrid standalone + BearDog)
+pub mod test_utils; // Pure Rust certificate generation (hybrid standalone + security provider)
 
 #[cfg(test)]
 mod test_cert_gen;
 
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::SecurityTlsCryptoClient;
 use crate::error::{Result, TlsError};
 use crate::messages::Certificate;
 use x509_parser::certificate::X509Certificate;
@@ -24,7 +24,7 @@ use x509_parser::prelude::FromDer;
 /// Validates certificate chains and signatures.
 pub struct CertificateValidator {
     /// Crypto client for signature verification
-    crypto_client: Option<BeardogCryptoClient>,
+    crypto_client: Option<SecurityTlsCryptoClient>,
 
     /// Trusted root certificates (for chain validation)
     trusted_roots: Vec<Vec<u8>>,
@@ -40,8 +40,8 @@ impl CertificateValidator {
         }
     }
 
-    /// Set the `BearDog` crypto client
-    pub fn set_crypto_client(&mut self, client: BeardogCryptoClient) {
+    /// Set the security-provider crypto client
+    pub fn set_crypto_client(&mut self, client: SecurityTlsCryptoClient) {
         self.crypto_client = Some(client);
     }
 
@@ -94,7 +94,7 @@ impl CertificateValidator {
         signature: &[u8],
         public_key: &[u8],
     ) -> Result<()> {
-        // For Ed25519, we need to verify the signature using `BearDog`
+        // For Ed25519, we need to verify the signature using the security provider
         // In production, this would extract the public key from the certificate
         // and verify the signature over the TBS (To Be Signed) portion
 
@@ -113,7 +113,7 @@ impl CertificateValidator {
             )));
         }
 
-        // Length checks only; cryptographic verify is delegated elsewhere when wired to BearDog.
+        // Length checks only; cryptographic verify is delegated elsewhere when wired to the provider.
 
         Ok(())
     }
@@ -411,7 +411,8 @@ mod tests {
     #[test]
     fn set_crypto_client_stores_client() {
         let mut v = CertificateValidator::new();
-        let client = BeardogCryptoClient::with_socket_path("/tmp/cert-validator-test.sock".into());
+        let client =
+            SecurityTlsCryptoClient::with_socket_path("/tmp/cert-validator-test.sock".into());
         v.set_crypto_client(client);
         assert!(v.crypto_client.is_some());
     }

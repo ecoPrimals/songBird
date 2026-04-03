@@ -35,12 +35,12 @@
 //! - `TrustRelationship` `can_perform()` with expiration
 //! - `TrustEscalationManager`: role verification edge cases
 //! - `TrustEscalationManager`: `get_all_relationships`, `get_trust_level_counts`
-//! - `BearDogClient` creation and defaults
+//! - `SecurityTrustClient` creation and defaults
 //! - `CapabilityProof` verification edge cases
 //! - `IdentityProof` verification edge cases
 //! - `PeerMetadata` serde
 
-use songbird_orchestrator::trust::escalation::BearDogClient;
+use songbird_orchestrator::trust::escalation::SecurityTrustClient;
 use songbird_orchestrator::trust::{
     CapabilityProof, HardwareAttestation, IdentityProof, TowerIdentity, TrustEscalationManager,
     TrustLevel, TrustRelationship, TrustTimeouts,
@@ -436,7 +436,7 @@ fn test_trust_timeouts_clone() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BearDogClient tests
+// SecurityTrustClient tests
 // ═══════════════════════════════════════════════════════════════════════════
 
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -446,38 +446,38 @@ fn lock_env() -> std::sync::MutexGuard<'static, ()> {
 }
 
 #[test]
-fn test_beardog_client_default_no_endpoint() {
+fn test_security_trust_client_default_no_endpoint() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
     songbird_process_env::remove_var("SECURITY_ENDPOINT");
     songbird_process_env::remove_var("BEARDOG_URL");
-    let _client = BearDogClient::default();
+    let _client = SecurityTrustClient::default();
 }
 
 #[test]
 fn test_beardog_client_new_with_security_provider() {
     let _g = lock_env();
     songbird_process_env::set_var("SONGBIRD_SECURITY_PROVIDER", "http://localhost:9090");
-    let _client = BearDogClient::new();
+    let _client = SecurityTrustClient::new();
     songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
 }
 
 #[test]
-fn test_beardog_client_new_with_security_endpoint() {
+fn test_security_trust_client_new_with_security_endpoint() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
     songbird_process_env::set_var("SECURITY_ENDPOINT", "http://localhost:9091");
-    let _client = BearDogClient::new();
+    let _client = SecurityTrustClient::new();
     songbird_process_env::remove_var("SECURITY_ENDPOINT");
 }
 
 #[test]
-fn test_beardog_client_new_with_deprecated_url() {
+fn test_security_trust_client_new_with_deprecated_url() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
     songbird_process_env::remove_var("SECURITY_ENDPOINT");
     songbird_process_env::set_var("BEARDOG_URL", "http://localhost:9092");
-    let _client = BearDogClient::new();
+    let _client = SecurityTrustClient::new();
     songbird_process_env::remove_var("BEARDOG_URL");
 }
 

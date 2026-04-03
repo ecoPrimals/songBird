@@ -402,9 +402,6 @@ mod tests {
         let b = a.clone();
         assert!(matches!(b, SelectedMethod::Single));
         let dbg = format!("{a:?}");
-        assert!(
-            dbg.contains("Single"),
-            "SelectedMethod should implement Debug: {dbg}"
-        );
+        assert!(dbg.contains("Single"), "SelectedMethod should implement Debug: {dbg}");
     }
 }

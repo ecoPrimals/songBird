@@ -17,7 +17,7 @@ use tracing::{debug, info};
 
 /// Circuit manager
 pub struct CircuitManager {
-    /// `BearDog` crypto client
+    /// `security provider` crypto client
     beardog: Arc<CryptoProvider>,
     /// Network consensus
     consensus: Arc<RwLock<Consensus>>,

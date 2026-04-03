@@ -112,12 +112,12 @@ pub async fn handle_beacon_exchange(
     // For now, we return a clear error explaining what's needed
     // Full implementation requires:
     // 1. Direct peer connection (TCP/QUIC)
-    // 2. BearDog beacon seed derivation
+    // 2. security provider beacon seed derivation
     // 3. Encrypted beacon seed exchange protocol
     
     warn!("⚠️  Peer not connected, direct beacon exchange requires:");
     warn!("   1. Direct peer connectivity (TCP/QUIC)");
-    warn!("   2. BearDog beacon seed derivation");
+    warn!("   2. security provider beacon seed derivation");
     warn!("   3. Encrypted seed exchange protocol");
     warn!("   Endpoint: {}", params.endpoint);
     

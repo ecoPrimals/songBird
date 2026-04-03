@@ -98,7 +98,7 @@ impl BirdSongPayload {
 
 /// Plaintext discovery payload
 ///
-/// Used when `BearDog` is not available
+/// Used when `security provider` is not available
 /// WARNING: Everything is visible to network observers
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlaintextPayload {

@@ -116,52 +116,92 @@ pub fn health_port() -> u16 {
         .unwrap_or(8002)
 }
 
-/// Get `BearDog` security service port from environment or default
+/// Get security provider service port from environment or default
 ///
-/// # Environment Variable
-/// `SONGBIRD_BEARDOG_PORT` (default: 8443)
+/// # Environment Variables (checked in order)
+/// 1. `SONGBIRD_SECURITY_PROVIDER_PORT` (preferred)
+/// 2. `SONGBIRD_BEARDOG_PORT` (legacy fallback)
+/// 3. Default: 8443
 #[must_use]
-pub fn beardog_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_BEARDOG_PORT")
+pub fn security_provider_port() -> u16 {
+    songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER_PORT")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_BEARDOG_PORT"))
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8443)
 }
 
-/// Get Toadstool load balancing service port from environment or default
-///
-/// # Environment Variable
-/// `SONGBIRD_TOADSTOOL_PORT` (default: 8001)
+/// Deprecated alias for [`security_provider_port`].
+#[deprecated(note = "use security_provider_port (capability-based naming)")]
 #[must_use]
-pub fn toadstool_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_TOADSTOOL_PORT")
+pub fn beardog_port() -> u16 {
+    security_provider_port()
+}
+
+/// Get compute capability provider port from environment or default
+///
+/// # Environment Variables (checked in order)
+/// 1. `SONGBIRD_COMPUTE_PROVIDER_PORT` (preferred)
+/// 2. `SONGBIRD_TOADSTOOL_PORT` (legacy fallback)
+/// 3. Default: 8001
+#[must_use]
+pub fn compute_provider_port() -> u16 {
+    songbird_process_env::var("SONGBIRD_COMPUTE_PROVIDER_PORT")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_TOADSTOOL_PORT"))
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8001)
 }
 
-/// Get Squirrel storage service port from environment or default
-///
-/// # Environment Variable
-/// `SONGBIRD_SQUIRREL_PORT` (default: 8002)
+/// Deprecated alias for [`compute_provider_port`].
+#[deprecated(note = "use compute_provider_port (capability-based naming)")]
 #[must_use]
-pub fn squirrel_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_SQUIRREL_PORT")
+pub fn toadstool_port() -> u16 {
+    compute_provider_port()
+}
+
+/// Get AI / neural capability provider port from environment or default
+///
+/// # Environment Variables (checked in order)
+/// 1. `SONGBIRD_AI_PROVIDER_PORT` (preferred)
+/// 2. `SONGBIRD_SQUIRREL_PORT` (legacy fallback)
+/// 3. Default: 8002
+#[must_use]
+pub fn ai_provider_port() -> u16 {
+    songbird_process_env::var("SONGBIRD_AI_PROVIDER_PORT")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_SQUIRREL_PORT"))
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8002)
 }
 
-/// Get `NestGate` gateway service port from environment or default
-///
-/// # Environment Variable
-/// `SONGBIRD_NESTGATE_PORT` (default: 8003)
+/// Deprecated alias for [`ai_provider_port`].
+#[deprecated(note = "use ai_provider_port (capability-based naming)")]
 #[must_use]
-pub fn nestgate_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_NESTGATE_PORT")
+pub fn squirrel_port() -> u16 {
+    ai_provider_port()
+}
+
+/// Get storage provider gateway service port from environment or default
+///
+/// # Environment Variables (checked in order)
+/// 1. `SONGBIRD_STORAGE_PROVIDER_PORT` (preferred)
+/// 2. `SONGBIRD_NESTGATE_PORT` (legacy fallback)
+/// 3. Default: 8003
+#[must_use]
+pub fn storage_provider_port() -> u16 {
+    songbird_process_env::var("SONGBIRD_STORAGE_PROVIDER_PORT")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_NESTGATE_PORT"))
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8003)
+}
+
+/// Deprecated alias for [`storage_provider_port`].
+#[deprecated(note = "use storage_provider_port (capability-based naming)")]
+#[must_use]
+pub fn nestgate_port() -> u16 {
+    storage_provider_port()
 }
 
 /// Get gaming port range start from environment or default
@@ -269,10 +309,10 @@ pub fn primal_scan_ports() -> Vec<u16> {
         orchestrator_port(),
         discovery_port(),
         federation_port(),
-        beardog_port(),
+        security_provider_port(),
         dashboard_port(),
-        toadstool_port(),
-        nestgate_port(),
+        compute_provider_port(),
+        storage_provider_port(),
     ];
     ports.sort_unstable();
     ports.dedup();

@@ -6,7 +6,7 @@
 //! v3.19.1: Modern async Rust patterns for primal-to-primal communication
 //! v3.20.0: Service registry for capability-based primal discovery
 //! v3.21.0: Graph intelligence APIs (Collaborative Intelligence)
-//! v3.22.0: Pure Rust Unix socket implementation (`BearDog` pattern)
+//! v3.22.0: Pure Rust Unix socket implementation (`security provider` pattern)
 //!
 //! ## Architecture
 //!

@@ -175,39 +175,15 @@ impl DiscoveryStrategy for FilesystemStrategy {
     async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
         debug!("🔍 [{}] Discovering {} providers...", self.name(), capability);
 
-        let mut providers = Vec::new();
+        let search_paths = self.search_paths.clone();
+        let cap = capability.to_string();
 
-        for search_path in &self.search_paths {
-            if !search_path.exists() {
-                continue;
-            }
-
-            if let Ok(entries) = std::fs::read_dir(search_path) {
-                for entry in entries.flatten() {
-                    if let Ok(file_name) = entry.file_name().into_string() {
-                        // Look for sockets matching capability pattern
-                        if file_name.contains(capability)
-                            && file_name.to_lowercase().ends_with(".sock")
-                        {
-                            let path = entry.path();
-                            info!("   ✅ Found {} socket at: {}", capability, path.display());
-
-                            let provider_id = extract_provider_id(path.to_string_lossy().as_ref());
-
-                            let mut provider = Provider::new(
-                                provider_id.clone(),
-                                vec![capability.to_string()],
-                                format!("/primal/{provider_id}"),
-                            );
-                            provider.metadata.discovery_method =
-                                format!("filesystem:{}", search_path.display());
-
-                            providers.push(provider);
-                        }
-                    }
-                }
-            }
-        }
+        let providers =
+            tokio::task::spawn_blocking(move || discover_on_filesystem(&search_paths, &cap))
+                .await
+                .map_err(|e| {
+                    crate::error::IpcError::Internal(format!("spawn_blocking join: {e}"))
+                })?;
 
         if providers.is_empty() {
             debug!("   ⏭️  No {} providers found via filesystem", capability);
@@ -215,6 +191,42 @@ impl DiscoveryStrategy for FilesystemStrategy {
 
         Ok(providers)
     }
+}
+
+fn discover_on_filesystem(search_paths: &[PathBuf], capability: &str) -> Vec<Provider> {
+    let mut providers = Vec::new();
+
+    for search_path in search_paths {
+        if !search_path.exists() {
+            continue;
+        }
+
+        if let Ok(entries) = std::fs::read_dir(search_path) {
+            for entry in entries.flatten() {
+                if let Ok(file_name) = entry.file_name().into_string()
+                    && file_name.contains(capability)
+                    && file_name.to_lowercase().ends_with(".sock")
+                {
+                    let path = entry.path();
+                    info!("   ✅ Found {} socket at: {}", capability, path.display());
+
+                    let provider_id = extract_provider_id(path.to_string_lossy().as_ref());
+
+                    let mut provider = Provider::new(
+                        provider_id.clone(),
+                        vec![capability.to_string()],
+                        format!("/primal/{provider_id}"),
+                    );
+                    provider.metadata.discovery_method =
+                        format!("filesystem:{}", search_path.display());
+
+                    providers.push(provider);
+                }
+            }
+        }
+    }
+
+    providers
 }
 
 /// Extract provider ID from socket path
@@ -238,7 +250,7 @@ mod tests {
         assert_eq!(extract_provider_id("/tmp/beardog.sock"), "beardog");
         assert_eq!(extract_provider_id("/tmp/beardog-nat0.sock"), "beardog-nat0");
         assert_eq!(extract_provider_id("/run/user/1000/crypto.sock"), "crypto");
-        assert_eq!(extract_provider_id("nestgate.sock"), "nestgate");
+        assert_eq!(extract_provider_id("storage provider.sock"), "storage provider");
     }
 
     #[tokio::test]

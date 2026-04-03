@@ -165,7 +165,7 @@ async fn test_security_auth_success() {
         enable_auth: true,
         auth_tokens: vec!["secret123".to_string()],
         max_timeout_seconds: 3600,
-        enable_beardog_discovery: false,
+        enable_security_provider_discovery: false,
     };
 
     let validator = SovereignSecurityValidator::new(config);
@@ -188,7 +188,7 @@ async fn test_security_auth_failure() {
         enable_auth: true,
         auth_tokens: vec!["secret123".to_string()],
         max_timeout_seconds: 3600,
-        enable_beardog_discovery: false,
+        enable_security_provider_discovery: false,
     };
 
     let validator = SovereignSecurityValidator::new(config);
@@ -211,7 +211,7 @@ async fn test_security_dangerous_command_blocked() {
         enable_auth: false,
         auth_tokens: vec![],
         max_timeout_seconds: 3600,
-        enable_beardog_discovery: false,
+        enable_security_provider_discovery: false,
     };
 
     let validator = SovereignSecurityValidator::new(config);
@@ -239,7 +239,7 @@ async fn test_security_timeout_limit() {
         enable_auth: false,
         auth_tokens: vec![],
         max_timeout_seconds: 3600, // 1 hour
-        enable_beardog_discovery: false,
+        enable_security_provider_discovery: false,
     };
 
     let validator = SovereignSecurityValidator::new(config);
@@ -263,7 +263,7 @@ async fn test_security_safe_commands_allowed() {
         enable_auth: false,
         auth_tokens: vec![],
         max_timeout_seconds: 3600,
-        enable_beardog_discovery: false,
+        enable_security_provider_discovery: false,
     };
 
     let validator = SovereignSecurityValidator::new(config);
@@ -319,7 +319,7 @@ async fn test_security_multiple_tokens() {
         enable_auth: true,
         auth_tokens: vec!["token1".to_string(), "token2".to_string(), "token3".to_string()],
         max_timeout_seconds: 3600,
-        enable_beardog_discovery: false,
+        enable_security_provider_discovery: false,
     };
 
     let validator = SovereignSecurityValidator::new(config);

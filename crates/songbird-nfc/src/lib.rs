@@ -6,14 +6,14 @@
 //! # Overview
 //!
 //! `songbird-nfc` implements a zero-metadata-leakage NFC protocol for genesis ceremonies
-//! and secure mobile device pairing. All cryptographic operations are delegated to `BearDog`.
+//! and secure mobile device pairing. All cryptographic operations are delegated to `security provider`.
 //!
 //! # Dark Forest Guarantees
 //!
 //! - **Zero metadata leakage**: No identifiable information in cleartext
 //! - **Ephemeral keys**: Single-use X25519 keys for each exchange
 //! - **Timing protection**: Constant-time operations, random delays
-//! - **`BearDog` delegation**: All crypto operations via `BearDog` IPC
+//! - **`security provider` delegation**: All crypto operations via `security provider` IPC
 //! - **Zero unsafe code**: Pure Rust, memory-safe implementation
 //!
 //! # Protocol
@@ -41,7 +41,7 @@
 //! [2 bytes]  Payload length (big-endian, u16)
 //! [32 bytes] Ephemeral public key (X25519)
 //! [24 bytes] Nonce (ChaCha20-Poly1305)
-//! [N bytes]  Encrypted payload (BearDog ChaCha20-Poly1305, includes 16-byte auth tag)
+//! [N bytes]  Encrypted payload (security provider ChaCha20-Poly1305, includes 16-byte auth tag)
 //! [64 bytes] Signature (ephemeral Ed25519)
 //! ```
 
@@ -160,8 +160,7 @@ mod tests {
     #[test]
     fn message_types_differ() {
         assert_ne!(
-            MSG_TYPE_GENESIS_REQUEST,
-            MSG_TYPE_GENESIS_RESPONSE,
+            MSG_TYPE_GENESIS_REQUEST, MSG_TYPE_GENESIS_RESPONSE,
             "request and response must be distinct opcodes"
         );
     }

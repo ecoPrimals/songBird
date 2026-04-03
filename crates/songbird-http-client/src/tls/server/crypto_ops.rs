@@ -56,7 +56,7 @@ impl TlsServer {
 
         debug!("   AAD (TLS record header): {:02x?}", aad);
 
-        // Encrypt via BearDog (uses correct AEAD algorithm based on cipher suite)
+        // Encrypt via crypto provider (uses correct AEAD algorithm based on cipher suite)
         let ciphertext = match self.cipher_suite {
             CipherSuite::Aes128GcmSha256 => {
                 debug!("   → Using AES-128-GCM");
@@ -126,7 +126,7 @@ impl TlsServer {
 
         debug!("   AAD (TLS record header): {:02x?}", aad);
 
-        // Decrypt via BearDog
+        // Decrypt via crypto provider
         let plaintext = match self.cipher_suite {
             CipherSuite::Aes128GcmSha256 => {
                 debug!("   → Using AES-128-GCM");

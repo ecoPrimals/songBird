@@ -162,7 +162,7 @@ pub async fn handle_rpc_discover() -> Result<Value, JsonRpcError> {
 ///
 /// LEGACY (Jan 20, 2026): Upstream integration from biomeOS.
 /// DEPRECATED: Use `identity` or `rpc.discover` instead.
-/// Kept for backward compatibility with Squirrel.
+/// Kept for backward compatibility with coordination clients that still call this method.
 pub async fn handle_discover_capabilities() -> Result<Value, JsonRpcError> {
     warn!("⚠️  discover_capabilities is deprecated, use 'identity' or 'rpc.discover' instead");
     handle_identity().await

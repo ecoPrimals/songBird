@@ -30,16 +30,16 @@
 //! End-to-End Tests for `CryptoProvider`
 //!
 //! Tests the complete flow from discovery to crypto operations.
-//! These tests require a running `BearDog` instance.
+//! These tests require a running `security provider` instance.
 
 use songbird_orchestrator::crypto::discover_crypto_provider;
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_discover_and_hash() {
     let provider = discover_crypto_provider()
         .await
-        .expect("Failed to discover crypto provider - is BearDog running?");
+        .expect("Failed to discover crypto provider - is security provider running?");
 
     let data = b"Hello, Songbird!";
     let hash = provider.blake3_hash(data).await.unwrap();
@@ -48,7 +48,7 @@ async fn test_e2e_discover_and_hash() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_complete_crypto_flow() {
     let provider = discover_crypto_provider().await.expect("Failed to discover crypto provider");
 
@@ -91,7 +91,7 @@ async fn test_e2e_complete_crypto_flow() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_ed25519_sign_verify() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -101,11 +101,11 @@ async fn test_e2e_ed25519_sign_verify() {
     assert_eq!(signature.len(), 64, "Ed25519 signature should be 64 bytes");
 
     // Note: Verification requires the public key
-    // In a real scenario, we'd retrieve it from BearDog
+    // In a real scenario, we'd retrieve it from security provider
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_performance_single_operation() {
     use std::time::Instant;
 
@@ -125,7 +125,7 @@ async fn test_e2e_performance_single_operation() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_multiple_operations_sequential() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -138,7 +138,7 @@ async fn test_e2e_multiple_operations_sequential() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_large_data_hash() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -150,7 +150,7 @@ async fn test_e2e_large_data_hash() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_encryption_with_aad() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -178,7 +178,7 @@ async fn test_e2e_encryption_with_aad() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_e2e_concurrent_operations() {
     use std::sync::Arc;
     use tokio::task::JoinSet;

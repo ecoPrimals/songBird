@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🧅 Fetching Tor network consensus...\n");
 
-    // Create BearDog client (placeholder)
+    // Create security provider client (placeholder)
     let beardog = CryptoProvider::from_env();
 
     // Fetch consensus

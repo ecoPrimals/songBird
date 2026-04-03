@@ -124,7 +124,7 @@ pub async fn handle_version() -> Result<Value, JsonRpcError> {
 /// `health.check` / `health` / `status` / `check` — full health with details
 ///
 /// Capability-based crypto provider discovery: asks "who provides crypto?"
-/// rather than "where is beardog?". Follows the 5-tier discovery standard.
+/// rather than naming a specific primal. Follows the 5-tier discovery standard.
 /// Subsystem status is derived from real runtime state, not hardcoded.
 pub async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
     let start_time = state.start_time.read().await;

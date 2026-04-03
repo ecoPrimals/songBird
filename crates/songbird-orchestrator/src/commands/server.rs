@@ -51,7 +51,7 @@ pub async fn run_server(
     let _singleton_guard = process_mgr.acquire_lock()?;
     tracing::info!("   Instance Lock: ✅ Acquired (PID file active)");
 
-    // Pure Songbird TLS — BearDog handles all crypto via JSON-RPC at runtime
+    // Pure Songbird TLS — security provider handles all crypto via JSON-RPC at runtime
 
     // Get node identity for logging
     let node_identity = songbird_process_env::var("SONGBIRD_NODE_ID")

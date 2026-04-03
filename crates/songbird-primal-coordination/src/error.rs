@@ -100,9 +100,7 @@ mod tests {
             "UnexpectedResponse display"
         );
         assert!(
-            PrimalCoordinationError::PrimalError("p".into())
-                .to_string()
-                .contains("Primal error"),
+            PrimalCoordinationError::PrimalError("p".into()).to_string().contains("Primal error"),
             "PrimalError display"
         );
         assert!(

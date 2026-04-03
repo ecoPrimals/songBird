@@ -2,8 +2,8 @@
 // Copyright (c) 2025 ecoPrimals
 //! Encryption Wrapper Handlers
 //!
-//! Handlers for encrypting/decrypting discovery broadcasts via BearDog.
-//! These methods delegate cryptographic operations to the BearDog primal.
+//! Handlers for encrypting/decrypting discovery broadcasts via security provider.
+//! These methods delegate cryptographic operations to the security provider primal.
 
 use serde_json::Value;
 use tracing::info;
@@ -13,7 +13,7 @@ use crate::ipc::jsonrpc::JsonRpcError;
 /// Handle encrypt_discovery - Encrypt payload for discovery broadcast
 ///
 /// NEW (Feb 4, 2026): biomeOS integration for beacon exchange.
-/// Delegates to BearDog's `beacon.encrypt` method.
+/// Delegates to security provider's `beacon.encrypt` method.
 pub async fn handle_encrypt_discovery(params: Option<Value>) -> Result<Value, JsonRpcError> {
     use base64::{Engine as _, engine::general_purpose};
     
@@ -36,21 +36,21 @@ pub async fn handle_encrypt_discovery(params: Option<Value>) -> Result<Value, Js
     let payload_json = serde_json::to_vec(&params.payload)
         .map_err(|e| JsonRpcError::internal_error(&format!("Failed to serialize payload: {}", e)))?;
     
-    // Base64 encode for BearDog
+    // Base64 encode for security provider
     let payload_b64 = general_purpose::STANDARD.encode(&payload_json);
     
-    let beardog_socket = songbird_http_client::discover_security_provider_socket();
-    let encrypted_b64 = call_beardog_method(
-        &beardog_socket,
+    let security_socket = songbird_http_client::discover_security_socket();
+    let encrypted_b64 = call_security_provider_method(
+        &security_socket,
         "beacon.encrypt",
         serde_json::json!({"plaintext_b64": payload_b64})
     )
     .await
-    .map_err(|e| JsonRpcError::internal_error(&format!("BearDog encryption failed: {}", e)))?;
+    .map_err(|e| JsonRpcError::internal_error(&format!("security provider encryption failed: {}", e)))?;
     
     let ciphertext_b64 = encrypted_b64["ciphertext_b64"]
         .as_str()
-        .ok_or_else(|| JsonRpcError::internal_error("Missing ciphertext_b64 in BearDog response"))?
+        .ok_or_else(|| JsonRpcError::internal_error("Missing ciphertext_b64 in security provider response"))?
         .to_string();
     
     info!("✅ Payload encrypted successfully");
@@ -63,7 +63,7 @@ pub async fn handle_encrypt_discovery(params: Option<Value>) -> Result<Value, Js
 /// Handle decrypt_discovery - Decrypt discovery broadcast
 ///
 /// NEW (Feb 4, 2026): biomeOS integration for beacon exchange.
-/// Delegates to BearDog's `beacon.try_decrypt` method.
+/// Delegates to security provider's `beacon.try_decrypt` method.
 pub async fn handle_decrypt_discovery(params: Option<Value>) -> Result<Value, JsonRpcError> {
     use base64::{Engine as _, engine::general_purpose};
     
@@ -81,12 +81,12 @@ pub async fn handle_decrypt_discovery(params: Option<Value>) -> Result<Value, Js
     
     info!("🔓 Attempting to decrypt discovery payload ({} known seeds)", params.known_beacon_seeds.len());
     
-    let beardog_socket = songbird_http_client::discover_security_provider_socket();
+    let security_socket = songbird_http_client::discover_security_socket();
     
     // Try each known beacon seed
     for (index, seed_hex) in params.known_beacon_seeds.iter().enumerate() {
-        let result = call_beardog_method(
-            &beardog_socket,
+        let result = call_security_provider_method(
+            &security_socket,
             "beacon.try_decrypt",
             serde_json::json!({
                 "ciphertext_b64": params.encrypted_b64,
@@ -130,8 +130,8 @@ pub async fn handle_decrypt_discovery(params: Option<Value>) -> Result<Value, Js
     }))
 }
 
-/// Call BearDog method via Unix socket JSON-RPC
-async fn call_beardog_method(
+/// Call security provider method via Unix socket JSON-RPC
+async fn call_security_provider_method(
     socket_path: &str,
     method: &str,
     params: Value,
@@ -161,7 +161,7 @@ async fn call_beardog_method(
     let response: Value = serde_json::from_str(&response_line)?;
     
     if let Some(error) = response.get("error") {
-        return Err(anyhow::anyhow!("BearDog error: {}", error));
+        return Err(anyhow::anyhow!("security provider error: {}", error));
     }
     
     Ok(response["result"].clone())

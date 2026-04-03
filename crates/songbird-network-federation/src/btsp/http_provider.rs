@@ -4,7 +4,7 @@
 //! RPC-based BTSP Provider Client (Pure Rust)
 //!
 //! This module implements a BTSP provider that communicates with a remote
-//! security provider (like `BearDog`) over Unix socket RPC (Pure Rust).
+//! security provider (like `security provider`) over Unix socket RPC (Pure Rust).
 //!
 //! **Modern Idiomatic Rust**:
 //! - Async/await throughout

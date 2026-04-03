@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Unit Tests for `BearDog` JWT Delegation
+//! Unit Tests for `security provider` JWT Delegation
 //!
 //! Tests the JWT provisioning and capability discovery in isolation.
 //!
@@ -29,18 +29,18 @@ fn test_capability_discovery_with_security_provider() {
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Set SECURITY_PROVIDER
-    songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/test-beardog-unit.sock");
+    songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/test-security-provider-unit.sock");
 
     let socket = discover_security_socket();
     assert!(socket.is_some());
-    assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-unit.sock");
+    assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-security-provider-unit.sock");
 
     // Cleanup
     songbird_process_env::remove_var("SECURITY_PROVIDER");
 }
 
 #[test]
-fn test_capability_discovery_with_beardog_socket() {
+fn test_capability_discovery_with_legacy_env_socket() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
@@ -49,11 +49,11 @@ fn test_capability_discovery_with_beardog_socket() {
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Set BEARDOG_SOCKET (legacy explicit override; prefer SECURITY_PROVIDER_SOCKET)
-    songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog-override.sock");
+    songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/test-legacy-socket-override.sock");
 
     let socket = discover_security_socket();
     assert!(socket.is_some());
-    assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-override.sock");
+    assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-legacy-socket-override.sock");
 
     // Cleanup
     songbird_process_env::remove_var("BEARDOG_SOCKET");
@@ -71,7 +71,7 @@ fn test_capability_discovery_priority() {
     // Set both (SECURITY_PROVIDER should win over SECURITY_PROVIDER_SOCKET and BEARDOG_SOCKET)
     songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/security-provider.sock");
     songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/tmp/security-provider-socket.sock");
-    songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/beardog-socket.sock");
+    songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/legacy-socket.sock");
 
     let socket = discover_security_socket();
     assert!(socket.is_some());

@@ -112,46 +112,22 @@ mod tests {
                 GenesisError::ProximityVerificationFailed("x".into()),
                 "Physical proximity verification failed: x",
             ),
-            (
-                GenesisError::InvalidWitnessSignature("sig".into()),
-                "Witness signature invalid: sig",
-            ),
-            (
-                GenesisError::PhysicalChannelError("ch".into()),
-                "Physical channel error: ch",
-            ),
-            (
-                GenesisError::CoordinationFailed("coord".into()),
-                "Coordination failed: coord",
-            ),
+            (GenesisError::InvalidWitnessSignature("sig".into()), "Witness signature invalid: sig"),
+            (GenesisError::PhysicalChannelError("ch".into()), "Physical channel error: ch"),
+            (GenesisError::CoordinationFailed("coord".into()), "Coordination failed: coord"),
             (GenesisError::CeremonyTimeout(60), "Genesis ceremony timed out after 60s"),
-            (
-                GenesisError::UnauthorizedWitness("u".into()),
-                "Witness not authorized: u",
-            ),
-            (
-                GenesisError::InvalidCertificate("c".into()),
-                "Invalid genesis certificate: c",
-            ),
-            (
-                GenesisError::LineageFailed("l".into()),
-                "Lineage establishment failed: l",
-            ),
+            (GenesisError::UnauthorizedWitness("u".into()), "Witness not authorized: u"),
+            (GenesisError::InvalidCertificate("c".into()), "Invalid genesis certificate: c"),
+            (GenesisError::LineageFailed("l".into()), "Lineage establishment failed: l"),
             (
                 GenesisError::SignatureVerificationFailed("v".into()),
                 "Signature verification failed: v",
             ),
             (GenesisError::SigningFailed("s".into()), "Signing failed: s"),
-            (
-                GenesisError::HardwareKeyError("h".into()),
-                "Hardware key error: h",
-            ),
+            (GenesisError::HardwareKeyError("h".into()), "Hardware key error: h"),
             (GenesisError::QrCodeError("q".into()), "QR code error: q"),
             (GenesisError::BluetoothError("b".into()), "Bluetooth error: b"),
-            (
-                GenesisError::FeatureUnavailable("f".into()),
-                "Feature unavailable: f",
-            ),
+            (GenesisError::FeatureUnavailable("f".into()), "Feature unavailable: f"),
         ];
 
         for (err, want_prefix) in cases {

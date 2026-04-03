@@ -30,10 +30,10 @@ mod storage_sled;
 #[cfg(feature = "sled-storage")]
 pub use storage_sled::ConsentStorage;
 
-/// Async consent persistence backend (SB-03: abstraction for sled → nestGate migration).
+/// Async consent persistence backend (SB-03: abstraction for sled → storage provider migration).
 ///
-/// The sled implementation ([`ConsentStorage`]) is the current default.
-/// When nestGate exposes `storage.*` IPC (NG-01), a `NestGateConsentBackend`
+/// The sled implementation (`ConsentStorage`) is the current default.
+/// When storage provider exposes `storage.*` IPC (NG-01), a `StorageProviderConsentBackend`
 /// can implement this trait to delegate persistence over JSON-RPC.
 #[async_trait::async_trait]
 pub trait ConsentStorageBackend: Send + Sync {
@@ -92,7 +92,7 @@ pub struct ConsentManager {
     records: Arc<RwLock<HashMap<Arc<str>, ConsentRecord>>>,
     preferences: Arc<RwLock<HashMap<UserId, UserPreferences>>>,
 
-    /// Optional persistent storage backend (SB-03: trait-abstracted for nestGate migration)
+    /// Optional persistent storage backend (SB-03: trait-abstracted for storage provider migration)
     storage: Option<Arc<dyn ConsentStorageBackend>>,
 
     /// Notify waiters when a consent decision is made (event-driven)
@@ -131,7 +131,7 @@ impl ConsentManager {
 
     /// Create a consent manager with an arbitrary [`ConsentStorageBackend`].
     ///
-    /// SB-03: allows swapping sled for nestGate IPC when NG-01 lands.
+    /// SB-03: allows swapping sled for storage provider IPC when NG-01 lands.
     #[must_use]
     pub fn with_backend(backend: Arc<dyn ConsentStorageBackend>) -> Self {
         Self {

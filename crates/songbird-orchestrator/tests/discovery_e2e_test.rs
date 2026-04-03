@@ -44,9 +44,9 @@ mod common;
 use common::sync_helpers::*;
 
 /// Test that discovery broadcaster starts on orchestrator startup
-/// NOTE: Ignored because it requires a running security provider (`BearDog`)
+/// NOTE: Ignored because it requires a running security provider (`security provider`)
 #[tokio::test]
-#[ignore = "Requires security provider (BearDog) and federated discovery env"]
+#[ignore = "Requires security provider (security provider) and federated discovery env"]
 async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
     // Initialize tracing for test
     let _ = tracing_subscriber::fmt::try_init();

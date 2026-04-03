@@ -3,8 +3,8 @@
 
 //! JSON-RPC request routing and response construction for the pure Rust IPC server.
 
+use super::super::coordination_handlers;
 use super::super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
-use super::super::squirrel_handlers;
 use super::UnixSocketServer;
 
 impl UnixSocketServer {
@@ -65,8 +65,8 @@ impl UnixSocketServer {
                     .await
             }
 
-            "discover_capabilities" => squirrel_handlers::handle_discover_capabilities().await,
-            "health" => squirrel_handlers::handle_health().await,
+            "discover_capabilities" => coordination_handlers::handle_discover_capabilities().await,
+            "health" => coordination_handlers::handle_health().await,
 
             _ => Err(JsonRpcError::method_not_found(&request.method)),
         };

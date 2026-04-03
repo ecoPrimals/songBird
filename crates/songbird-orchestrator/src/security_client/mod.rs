@@ -34,7 +34,7 @@
 //! let request = TrustEvaluationRequest {
 //!     peer_id: "tower2".to_string(),
 //!     peer_family: Some("a3f2".to_string()),
-//!     peer_tags: vec!["beardog:family:a3f2".to_string()],
+//!     peer_tags: vec!["crypto:family:a3f2".to_string()],
 //!     connection_info: None,
 //!     context: None,
 //! };

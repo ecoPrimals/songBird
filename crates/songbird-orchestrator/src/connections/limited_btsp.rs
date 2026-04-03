@@ -131,7 +131,7 @@ impl LimitedBtspConnection {
             capabilities: peer_tags.clone(),
         };
 
-        // Establish tunnel via BearDog Unix socket
+        // Establish tunnel via security provider Unix socket
         let tunnel = btsp_client
             .establish_tunnel(peer_endpoint)
             .await
@@ -192,7 +192,7 @@ impl LimitedBtspConnection {
 
         // Send over tunnel
         // NOTE: In v3.18.0, send_data_over_tunnel is not yet implemented in BtspClient
-        // This requires BearDog v0.16.0+ for bidirectional tunnel support.
+        // This requires security provider v0.16.0+ for bidirectional tunnel support.
         //
         // ROADMAP (Phase 2): Bidirectional BTSP Communication
         // - Implement BtspClient.send_data_over_tunnel()
@@ -205,7 +205,7 @@ impl LimitedBtspConnection {
         // For v3.18.0, return error indicating Phase 2 feature
         Err(SongbirdError::not_implemented_with_detail(
             "btsp_bidirectional_rpc",
-            "Requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(); \
+            "Requires security provider v0.16.0+ and BtspClient.send_data_over_tunnel(); \
              current code establishes tunnels only. See BTSP_CONNECTION_EVOLUTION_V3_18_0.md.",
         )
         .into())

@@ -244,7 +244,7 @@ pub fn log_level() -> String {
 /// When `true`, Songbird broadcasts Dark Forest beacons (version 2, fully encrypted).
 /// When `false`, Songbird broadcasts legacy `BirdSongPacket` (version 1.0, plaintext `family_id`).
 ///
-/// **Default**: `false` (opt-in for privacy, requires `BearDog` beacon.* RPC)
+/// **Default**: `false` (opt-in for privacy, requires `security provider` beacon.* RPC)
 #[must_use]
 pub fn dark_forest_enabled() -> bool {
     env("SONGBIRD_DARK_FOREST").ok().and_then(|v| v.parse().ok()).unwrap_or(false)

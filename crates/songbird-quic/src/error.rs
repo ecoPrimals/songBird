@@ -32,8 +32,8 @@ pub enum QuicError {
     #[error("Configuration error: {0}")]
     Config(String),
 
-    /// `BearDog` crypto delegation error.
-    #[error("BearDog crypto error: {0}")]
+    /// Security-provider crypto delegation error.
+    #[error("Security provider crypto error: {0}")]
     Crypto(String),
 
     /// IO error.
@@ -102,8 +102,8 @@ mod tests {
 
     #[test]
     fn crypto_error_display() {
-        let e = QuicError::Crypto("beardog unavailable".into());
-        assert!(e.to_string().contains("beardog unavailable"));
+        let e = QuicError::Crypto("security provider unavailable".into());
+        assert!(e.to_string().contains("security provider unavailable"));
     }
 
     #[test]
@@ -115,10 +115,7 @@ mod tests {
     #[test]
     fn connection_closed_display() {
         let e = QuicError::ConnectionClosed("peer reset".into());
-        assert!(
-            e.to_string().contains("peer reset"),
-            "expected reason in Display, got {e}"
-        );
+        assert!(e.to_string().contains("peer reset"), "expected reason in Display, got {e}");
     }
 
     #[test]

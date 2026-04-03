@@ -33,7 +33,7 @@ impl RecordLayer {
         }
     }
 
-    /// Construct a record layer that routes AEAD to [`CryptoProvider`] (BearDog / Neural API).
+    /// Construct a record layer that routes AEAD to [`CryptoProvider`] (security provider / Neural API).
     #[must_use]
     pub fn with_crypto_provider(crypto_provider: Arc<CryptoProvider>) -> Self {
         Self {

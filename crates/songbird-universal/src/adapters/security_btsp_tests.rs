@@ -87,7 +87,7 @@ async fn test_btsp_tunnel_establish_request_format() {
 
 #[tokio::test]
 async fn test_btsp_contact_exchange_response_parsing() {
-    // Test parsing BearDog v0.15.0 response format
+    // Test parsing security provider v0.15.0 response format
     let response = json!({
         "success": true,
         "data": {
@@ -102,7 +102,7 @@ async fn test_btsp_contact_exchange_response_parsing() {
         }
     });
 
-    // Verify structure matches BearDog v0.15.0
+    // Verify structure matches security provider v0.15.0
     assert_eq!(response["success"], true);
     assert!(response["data"]["contact"].is_object());
     assert_eq!(response["data"]["contact"]["peer_id"], "tower-b");
@@ -191,8 +191,8 @@ fn test_zero_hardcoding_principle() {
     let code = include_str!("security.rs");
 
     // Should not contain vendor-specific names in call_generic
-    assert!(!code.contains("\"BearDog\""));
-    assert!(!code.contains("\"beardog\"") || code.contains("// BearDog")); // Comments OK
+    assert!(!code.contains("\"security provider\""));
+    assert!(!code.contains("\"beardog\"") || code.contains("// security provider")); // Comments OK
 
     // Should use generic terms
     assert!(code.contains("security provider") || code.contains("security_provider"));

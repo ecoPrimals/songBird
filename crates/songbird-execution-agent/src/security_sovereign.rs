@@ -17,7 +17,7 @@
 //!    - Simple, reliable, always functional
 //!
 //! 2. **Network Effect Enhancement** (Optional)
-//!    - Discover `BearDog` via capability discovery
+//!    - Discover `security provider` via capability discovery
 //!    - If available: delegate enhanced security checks
 //!    - If unavailable: gracefully continue with sovereign security
 //!
@@ -25,9 +25,9 @@
 //!
 //! **"Each primal knows itself and is sovereign"**
 //!
-//! - Songbird continues normally if `BearDog` goes down
-//! - Loses unique `BearDog` security features → falls back to failsafe
-//! - LAN users can interact without `BearDog` (though `BearDog` adds security)
+//! - Songbird continues normally if `security provider` goes down
+//! - Loses unique `security provider` security features → falls back to failsafe
+//! - LAN users can interact without `security provider` (though `security provider` adds security)
 //! - Internet/public: utilize network effect of multiple primals
 
 use serde::{Deserialize, Serialize};
@@ -37,13 +37,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-/// Sovereign security validator with optional `BearDog` network effect
+/// Sovereign security validator with optional `security provider` network effect
 pub struct SovereignSecurityValidator {
     /// Songbird's sovereign security (always available)
     sovereign: Arc<RwLock<SovereignSecurity>>,
 
-    /// Optional `BearDog` integration (discovered via capability)
-    beardog: Arc<RwLock<Option<BearDogIntegration>>>,
+    /// Optional delegated security-provider integration (discovered via capability)
+    security_provider: Arc<RwLock<Option<SecurityProviderIntegration>>>,
 
     /// Configuration
     #[expect(dead_code, reason = "stored for future validator configuration hooks")]
@@ -55,11 +55,11 @@ impl SovereignSecurityValidator {
     pub fn new(config: SecurityConfig) -> Self {
         info!("🎯 Initializing Songbird sovereign security");
         info!("   Mode: Sovereign (Songbird-native)");
-        info!("   BearDog integration: Optional via discovery");
+        info!("   Security provider integration: Optional via discovery");
 
         Self {
             sovereign: Arc::new(RwLock::new(SovereignSecurity::new(config.clone()))),
-            beardog: Arc::new(RwLock::new(None)),
+            security_provider: Arc::new(RwLock::new(None)),
             config,
         }
     }
@@ -77,13 +77,14 @@ impl SovereignSecurityValidator {
         // let services = songbird_discovery.discover_capability("enhanced_security").await?;
 
         // For now, check environment or config (capability-based names first)
-        let beardog_available = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+        let security_provider_configured = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
             .or_else(|_| songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT"))
             .is_ok();
 
-        if beardog_available {
+        if security_provider_configured {
             info!("✅ Security provider discovered - enabling enhanced security network effect");
-            *self.beardog.write().await = Some(BearDogIntegration::connect().await?);
+            *self.security_provider.write().await =
+                Some(SecurityProviderIntegration::connect().await?);
             Ok(true)
         } else {
             info!("ℹ️  Security provider not discovered - continuing with sovereign security");
@@ -91,7 +92,7 @@ impl SovereignSecurityValidator {
         }
     }
 
-    /// Discover optional legacy `BearDog` integration (deprecated alias).
+    /// Discover optional legacy `security provider` integration (deprecated alias).
     #[deprecated(note = "use discover_security_provider (capability-based naming)")]
     pub async fn discover_beardog(&self) -> SongbirdResult<bool> {
         self.discover_security_provider().await
@@ -104,32 +105,31 @@ impl SovereignSecurityValidator {
     /// Returns an error if sovereign validation fails
     ///
     /// **Primal sovereignty pattern**:
-    /// 1. Try enhanced security if `BearDog` available (network effect)
-    /// 2. Fallback to sovereign security if `BearDog` unavailable
+    /// 1. Try enhanced security if security provider available (network effect)
+    /// 2. Fallback to sovereign security if provider unavailable
     /// 3. Always functional - never blocks on other primals
     pub async fn validate_request(
         &self,
         request: &SecurityRequest,
     ) -> SongbirdResult<SecurityDecision> {
-        // Check if BearDog is available (network effect)
-        let beardog = self.beardog.read().await;
+        let integration_slot = self.security_provider.read().await;
 
-        if let Some(ref integration) = *beardog {
-            // Network effect: Enhanced security via BearDog
-            debug!("🔒 Using BearDog enhanced security (network effect)");
+        if let Some(ref integration) = *integration_slot {
+            debug!("🔒 Using delegated security-provider validation (network effect)");
 
             match integration.validate(request).await {
                 Ok(decision) => {
-                    info!("✅ BearDog validation: {:?}", decision.allowed);
+                    info!("✅ Security provider validation: {:?}", decision.allowed);
                     return Ok(decision);
                 }
                 Err(e) => {
-                    // BearDog failed - gracefully fallback to sovereign
-                    warn!("⚠️  BearDog validation failed, falling back to sovereign: {}", e);
-                    // Clear the integration so we don't keep trying
-                    drop(beardog);
-                    let mut beardog_mut = self.beardog.write().await;
-                    *beardog_mut = None;
+                    warn!(
+                        "⚠️  Security provider validation failed, falling back to sovereign: {}",
+                        e
+                    );
+                    drop(integration_slot);
+                    let mut slot = self.security_provider.write().await;
+                    *slot = None;
                 }
             }
         }
@@ -215,21 +215,20 @@ impl SovereignSecurity {
     }
 }
 
-/// Optional `BearDog` integration (network effect)
+/// Optional integration with a capability-discovered security provider (network effect).
 ///
-/// Provides enhanced security validation by delegating to `BearDog` security service
-/// when available. Falls back to local validation if `BearDog` is unreachable.
-struct BearDogIntegration {
-    /// `BearDog` security endpoint URL
+/// Delegates enhanced validation to the provider HTTP API when available.
+struct SecurityProviderIntegration {
+    /// Security provider base URL
     endpoint: String,
-    /// HTTP client for `BearDog` requests
+    /// HTTP client for provider requests
     client: IpcHttpClient,
     /// Request timeout for security operations (reserved for timeout enforcement)
-    #[expect(dead_code, reason = "reserved for BearDog request timeout enforcement")]
+    #[expect(dead_code, reason = "reserved for security-provider request timeout enforcement")]
     timeout: std::time::Duration,
 }
 
-impl BearDogIntegration {
+impl SecurityProviderIntegration {
     /// Connect to the delegated security validation HTTP endpoint
     ///
     /// Resolves base URL via:
@@ -251,7 +250,7 @@ impl BearDogIntegration {
                 {
                     use songbird_types::constants::{DEFAULT_HTTPS_PORT, LOCALHOST};
                     let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
-                    warn!("⚠️ Using development fallback for BearDog security: {fallback}");
+                    warn!("⚠️ Using development fallback for security provider security: {fallback}");
                     Ok(fallback)
                 }
                 #[cfg(not(debug_assertions))]
@@ -271,17 +270,20 @@ impl BearDogIntegration {
             SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
         })?;
 
-        // Verify BearDog is reachable (non-blocking health check)
+        // Verify security provider is reachable (non-blocking health check)
         let health_url = format!("{endpoint}/health");
         match client.get(&health_url).await {
             Ok(response) if response.is_success() => {
-                info!("🔗 Successfully connected to BearDog at {endpoint}");
+                info!("🔗 Successfully connected to security provider at {endpoint}");
             }
             Ok(response) => {
-                warn!("⚠️ BearDog health check returned non-success: {}", response.status());
+                warn!(
+                    "⚠️ security provider health check returned non-success: {}",
+                    response.status()
+                );
             }
             Err(e) => {
-                warn!("⚠️ BearDog not reachable (will use local validation): {e}");
+                warn!("⚠️ security provider not reachable (will use local validation): {e}");
             }
         }
 
@@ -292,16 +294,16 @@ impl BearDogIntegration {
         })
     }
 
-    /// Validate security request using `BearDog`
+    /// Validate security request using `security provider`
     ///
-    /// Calls `BearDog`'s security validation API to get enhanced security decisions.
-    /// Falls back to permissive local decision if `BearDog` is unreachable.
+    /// Calls `security provider`'s security validation API to get enhanced security decisions.
+    /// Falls back to permissive local decision if `security provider` is unreachable.
     ///
     /// # Errors
     ///
     /// Returns an error only for unrecoverable failures (not network issues)
     async fn validate(&self, request: &SecurityRequest) -> SongbirdResult<SecurityDecision> {
-        info!("🛡️ Delegating to BearDog for enhanced security");
+        info!("🛡️ Delegating to security provider for enhanced security");
 
         let url = format!("{}/security/validate", self.endpoint);
 
@@ -313,7 +315,7 @@ impl BearDogIntegration {
             "requester": &request.requester,
         });
 
-        // Call BearDog security validation API
+        // Call security provider security validation API
         let request_builder = self.client.post(&url).await;
         let request_with_body = request_builder
             .json(&payload)
@@ -321,19 +323,20 @@ impl BearDogIntegration {
 
         match request_with_body.send().await {
             Ok(response) if response.is_success() => {
-                // Parse BearDog's security decision
+                // Parse security provider's security decision
                 match response.json::<SecurityDecision>().await {
                     Ok(decision) => {
-                        info!("✅ BearDog validation complete: {:?}", decision.allowed);
+                        info!("✅ security provider validation complete: {:?}", decision.allowed);
                         Ok(decision)
                     }
                     Err(e) => {
-                        warn!("⚠️ Failed to parse BearDog response: {e}");
+                        warn!("⚠️ Failed to parse security provider response: {e}");
                         // Fallback to permissive decision
                         Ok(SecurityDecision {
                             allowed: true,
                             reason: Some(
-                                "BearDog validation unavailable (parse error)".to_string(),
+                                "security provider validation unavailable (parse error)"
+                                    .to_string(),
                             ),
                             confidence: 0.5,
                             mode: SecurityMode::Sovereign,
@@ -342,12 +345,12 @@ impl BearDogIntegration {
                 }
             }
             Ok(response) => {
-                warn!("⚠️ BearDog returned error status: {}", response.status());
+                warn!("⚠️ security provider returned error status: {}", response.status());
                 // Fallback to permissive decision
                 Ok(SecurityDecision {
                     allowed: true,
                     reason: Some(format!(
-                        "BearDog validation unavailable (HTTP {})",
+                        "security provider validation unavailable (HTTP {})",
                         response.status()
                     )),
                     confidence: 0.5,
@@ -355,11 +358,13 @@ impl BearDogIntegration {
                 })
             }
             Err(e) => {
-                warn!("⚠️ BearDog request failed: {e}");
+                warn!("⚠️ security provider request failed: {e}");
                 // Fallback to permissive decision (don't block on network errors)
                 Ok(SecurityDecision {
                     allowed: true,
-                    reason: Some("BearDog validation unavailable (network error)".to_string()),
+                    reason: Some(
+                        "security provider validation unavailable (network error)".to_string(),
+                    ),
                     confidence: 0.5,
                     mode: SecurityMode::Sovereign,
                 })
@@ -367,17 +372,17 @@ impl BearDogIntegration {
         }
     }
 
-    /// Check if `BearDog` is currently reachable
+    /// Check if `security provider` is currently reachable
     ///
-    /// Non-blocking health check to determine if `BearDog` integration is active
-    #[expect(dead_code, reason = "reserved for BearDog availability probing")]
+    /// Non-blocking health check to determine if `security provider` integration is active
+    #[expect(dead_code, reason = "reserved for security provider availability probing")]
     async fn is_available(&self) -> bool {
         let url = format!("{}/health", self.endpoint);
 
         self.client.get(&url).await.map(|r| r.is_success()).unwrap_or(false)
     }
 
-    /// Get `BearDog` endpoint URL
+    /// Get `security provider` endpoint URL
     #[must_use]
     #[expect(dead_code, reason = "accessor reserved for diagnostics and future callers")]
     fn endpoint(&self) -> &str {
@@ -413,8 +418,9 @@ pub struct SecurityConfig {
     /// Maximum timeout (seconds)
     pub max_timeout_seconds: u64,
 
-    /// Enable `BearDog` discovery
-    pub enable_beardog_discovery: bool,
+    /// Enable discovery of optional delegated security provider
+    #[serde(default, alias = "enable_beardog_discovery")]
+    pub enable_security_provider_discovery: bool,
 }
 
 impl Default for SecurityConfig {
@@ -423,7 +429,7 @@ impl Default for SecurityConfig {
             enable_auth: true,
             auth_tokens: vec![],       // Empty = reject all until configured
             max_timeout_seconds: 7200, // 2 hours
-            enable_beardog_discovery: true,
+            enable_security_provider_discovery: true,
         }
     }
 }

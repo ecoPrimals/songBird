@@ -214,14 +214,11 @@ mod tests {
         assert!(record.end_time.is_none());
         assert!(record.duration_seconds.is_none());
 
-        // Simulate some time passing (longer to ensure measurable duration)
-        std::thread::sleep(std::time::Duration::from_millis(100));
-
+        record.start_time = Utc::now() - chrono::Duration::seconds(1);
         record.complete();
 
         assert!(record.end_time.is_some());
         assert!(record.duration_seconds.is_some());
-        // With 100ms sleep and 2.0 CPU cores, should have measurable resource-seconds
         let resource_secs = record.resource_seconds();
         assert!(resource_secs > 0.0, "Expected resource_seconds > 0, got {resource_secs}");
     }
@@ -257,9 +254,8 @@ mod tests {
         let tracker = UsageTracker::new();
         let user_id = UserId::from("alice");
 
-        let start_time = Utc::now();
+        let start_time = Utc::now() - chrono::Duration::seconds(10);
 
-        // Track multiple tasks with longer duration to ensure measurable resource usage
         for _ in 0..3 {
             let task_id = TaskId::new();
             let mut resources = HashMap::new();
@@ -267,15 +263,20 @@ mod tests {
 
             tracker.start_tracking(task_id, user_id.clone(), &resources).await;
 
-            // Longer sleep to ensure measurable duration
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            {
+                let mut active = tracker.active_records.write().await;
+                if let Some(records) = active.get_mut(&task_id) {
+                    for r in records.iter_mut() {
+                        r.start_time = Utc::now() - chrono::Duration::seconds(1);
+                    }
+                }
+            }
 
             tracker.stop_tracking(task_id).await;
         }
 
         let end_time = Utc::now();
 
-        // Get summary
         let summary = tracker.get_summary(&user_id, start_time, end_time).await;
 
         assert_eq!(summary.task_count, 3);

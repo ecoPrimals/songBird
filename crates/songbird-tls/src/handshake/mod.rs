@@ -5,7 +5,7 @@
 //!
 //! Manages the TLS handshake protocol state transitions.
 
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::SecurityTlsCryptoClient;
 use crate::error::{Result, TlsError};
 use crate::key_schedule::KeySchedule;
 use crate::messages::{ClientHello, ServerHello};
@@ -39,8 +39,8 @@ pub struct HandshakeStateMachine {
     /// Key schedule for key derivation
     key_schedule: KeySchedule,
 
-    /// Crypto client for `BearDog` delegation
-    crypto_client: Option<BeardogCryptoClient>,
+    /// Crypto client for security-provider delegation
+    crypto_client: Option<SecurityTlsCryptoClient>,
 
     /// Cached `ClientHello` (for transcript)
     client_hello: Option<ClientHello>,
@@ -62,8 +62,8 @@ impl HandshakeStateMachine {
         }
     }
 
-    /// Set the `BearDog` crypto client
-    pub fn set_crypto_client(&mut self, client: BeardogCryptoClient) {
+    /// Set the security-provider crypto client
+    pub fn set_crypto_client(&mut self, client: SecurityTlsCryptoClient) {
         self.key_schedule.set_crypto_client(client.clone());
         self.crypto_client = Some(client);
     }
@@ -127,7 +127,7 @@ impl HandshakeStateMachine {
             .as_ref()
             .ok_or_else(|| TlsError::InternalError("ClientHello not stored".to_string()))?;
 
-        // Server random (32 bytes): OS CSPRNG — no BearDog delegation (RFC 8446)
+        // Server random (32 bytes): OS CSPRNG — no security-provider delegation (RFC 8446)
         let mut server_random = [0u8; 32];
         getrandom::fill(&mut server_random)
             .map_err(|e| TlsError::CryptoError(format!("RNG failed: {e}")))?;
@@ -245,7 +245,7 @@ mod tests {
         let mut hsm = HandshakeStateMachine::new();
 
         // Set up a mock crypto client (for testing, we'll skip this)
-        // In real tests, we'd use a mock BearDog client
+        // In real tests, we'd use a mock security-provider client
 
         // First, process ClientHello
         let random = [42u8; 32];
@@ -258,8 +258,8 @@ mod tests {
         let client_hello = ClientHello::new(random, cipher_suites, extensions);
         hsm.process_client_hello(client_hello).unwrap();
 
-        // NOTE: Skipping generate_server_hello test as it requires BearDog
-        // This will be tested in integration tests with a live BearDog instance
+        // NOTE: Skipping generate_server_hello test as it requires a security provider
+        // This will be tested in integration tests with a live provider instance
         assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
     }
 
@@ -278,8 +278,8 @@ mod tests {
         let client_hello = ClientHello::new(random, cipher_suites, extensions);
         hsm.process_client_hello(client_hello).unwrap();
 
-        // NOTE: Skipping full handshake test as it requires BearDog
-        // This will be tested in integration tests with a live BearDog instance
+        // NOTE: Skipping full handshake test as it requires a security provider
+        // This will be tested in integration tests with a live provider instance
         assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
     }
 
@@ -431,7 +431,7 @@ mod tests {
 
         // Create a mock crypto client (using explicit socket path for testing)
         let crypto_client =
-            BeardogCryptoClient::with_socket_path("/tmp/test-beardog.sock".to_string());
+            SecurityTlsCryptoClient::with_socket_path("/tmp/test-beardog.sock".to_string());
         hsm.set_crypto_client(crypto_client);
 
         assert!(hsm.crypto_client.is_some());

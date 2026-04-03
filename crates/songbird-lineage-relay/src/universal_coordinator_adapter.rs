@@ -139,9 +139,9 @@ impl LineageRelayPrimalConnection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::beardog::{MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority};
     use crate::birdsong::BirdSongBroadcaster;
     use crate::coordinator::LineageRelayConfig;
+    use crate::security::{MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority};
 
     #[tokio::test]
     async fn test_universal_coordinator_adapter() {

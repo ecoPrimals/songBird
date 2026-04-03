@@ -34,7 +34,7 @@ impl Default for NfcConfig {
     fn default() -> Self {
         Self {
             // Security provider socket discovered at runtime (no hardcoding)
-            beardog_socket: Self::discover_security_provider_socket(),
+            beardog_socket: Self::discover_security_socket(),
 
             exchange_timeout: Duration::from_secs(30),
             timing_protection: true,
@@ -85,7 +85,7 @@ impl NfcConfig {
     /// 6. XDG: `$XDG_RUNTIME_DIR/biomeos/crypto.sock` - Capability-named
     /// 7. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` - Provider hint
     /// 8. Legacy: `/tmp/biomeos/security.sock` - Fallback
-    fn discover_security_provider_socket() -> PathBuf {
+    fn discover_security_socket() -> PathBuf {
         // 1. Capability-based env vars (preferred - primal agnostic)
         for env_var in &[
             "SECURITY_PROVIDER_SOCKET",
@@ -114,7 +114,9 @@ impl NfcConfig {
         // 3. Fallback (platform-specific, capability name preferred)
         #[cfg(unix)]
         {
-            use songbird_types::defaults::paths::{biomeos_socket_dir_tmp, security_socket_default_path};
+            use songbird_types::defaults::paths::{
+                biomeos_socket_dir_tmp, security_socket_default_path,
+            };
 
             let fallback_paths = [
                 security_socket_default_path(),

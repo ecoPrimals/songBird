@@ -23,10 +23,9 @@
 //! while maintaining backward compatibility with manual deployments.
 
 use songbird_types::defaults::paths::{
-    BIOMEOS_RUNTIME_SUBDIR, ipc_discovery_primal_port_path, neural_api_socket_legacy_path,
-    security_socket_tmp_fallback_path,
+    BIOMEOS_RUNTIME_SUBDIR, ai_provider_socket_legacy_path, ipc_discovery_primal_port_path,
 };
-use songbird_types::primal_names::{BEARDOG, NEURAL_API};
+use songbird_types::primal_names::NEURAL_API;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
@@ -171,7 +170,7 @@ where
 ///
 /// # Arguments
 ///
-/// * `primal_name` - Primal name (e.g., "songbird", "beardog")
+/// * `primal_name` - Primal name (e.g., "songbird", "other-primal")
 ///
 /// # Returns
 ///
@@ -237,7 +236,7 @@ fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
 ///
 /// # Arguments
 ///
-/// * `primal_name` - Primal name (e.g., "beardog", "songbird")
+/// * `primal_name` - Primal name (e.g., "other-primal", "songbird")
 ///
 /// # Returns
 ///
@@ -334,17 +333,27 @@ pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> S
 }
 /// Discover security provider socket via capability-based discovery.
 ///
-/// Priority (wateringHole v1.2):
+/// Priority (wateringHole v1.2, aligned with `songbird-crypto-provider`):
 /// 1. `$SECURITY_PROVIDER_SOCKET` (capability-standard)
-/// 2. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
-/// 3. `$BEARDOG_SOCKET` (legacy, deprecated)
-/// 4. `/tmp/beardog.sock` (legacy fallback)
+/// 2. `$CRYPTO_PROVIDER_SOCKET` (alternate capability name)
+/// 3. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
+/// 4. `$XDG_RUNTIME_DIR/biomeos/crypto.sock` (domain socket, with optional family suffix)
+/// 5. `$BEARDOG_SOCKET` (legacy — logged as deprecated)
+/// 6. `{temp_dir}/biomeos/security.sock` (capability temp fallback)
+/// 7. Legacy temp-directory socket filename (backward-compatible; see implementation)
 #[must_use]
-pub fn discover_security_provider_socket() -> String {
+pub fn discover_security_socket() -> String {
     if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
         && !socket.is_empty()
     {
         info!("✅ Security provider via $SECURITY_PROVIDER_SOCKET: {socket}");
+        return socket;
+    }
+
+    if let Ok(socket) = songbird_process_env::var("CRYPTO_PROVIDER_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Security provider via $CRYPTO_PROVIDER_SOCKET: {socket}");
         return socket;
     }
 
@@ -355,18 +364,51 @@ pub fn discover_security_provider_socket() -> String {
             info!("✅ Security provider via capability symlink: {path}");
             return path;
         }
+
+        let family_id = songbird_process_env::var("FAMILY_ID").unwrap_or_default();
+        let crypto_name = if family_id.is_empty() {
+            "crypto.sock".to_string()
+        } else {
+            format!("crypto-{family_id}.sock")
+        };
+        let crypto_path = PathBuf::from(&xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(&crypto_name);
+        if crypto_path.exists() {
+            let path = crypto_path.to_string_lossy().to_string();
+            info!("✅ Security provider via crypto domain socket: {path}");
+            return path;
+        }
     }
 
-    let beardog_tmp = security_socket_tmp_fallback_path();
-    let beardog_tmp_fallback = beardog_tmp.to_string_lossy();
-    discover_socket("BEARDOG_SOCKET", BEARDOG, beardog_tmp_fallback.as_ref())
+    if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
+        && !socket.is_empty()
+    {
+        warn!("⚠️  Using deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET");
+        return socket;
+    }
+
+    let temp_biomeos_security =
+        std::env::temp_dir().join(BIOMEOS_RUNTIME_SUBDIR).join("security.sock");
+    if temp_biomeos_security.exists() {
+        return temp_biomeos_security.to_string_lossy().into_owned();
+    }
+
+    let legacy = std::env::temp_dir().join("beardog.sock");
+    warn!("⚠️  Using legacy fallback: {}", legacy.display());
+    legacy.to_string_lossy().into_owned()
 }
 
-/// Deprecated alias for [`discover_security_provider_socket`].
-#[deprecated(note = "Use discover_security_provider_socket (capability-based naming)")]
+/// Deprecated alias for [`discover_security_socket`].
+#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
+#[must_use]
+pub fn discover_security_provider_socket() -> String {
+    discover_security_socket()
+}
+
+/// Deprecated alias for [`discover_security_socket`].
+#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
 #[must_use]
 pub fn discover_beardog_socket() -> String {
-    discover_security_provider_socket()
+    discover_security_socket()
 }
 
 /// Discover Neural API socket with full fallback chain
@@ -402,7 +444,7 @@ pub fn discover_neural_api_socket() -> String {
         .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
         .or_else(|_| songbird_process_env::var("FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string());
-    let socket = neural_api_socket_legacy_path(&family_id).to_string_lossy().into_owned();
+    let socket = ai_provider_socket_legacy_path(&family_id).to_string_lossy().into_owned();
     warn!("⚠️  Using legacy temp-dir Neural API socket: {}", socket);
     warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
     socket

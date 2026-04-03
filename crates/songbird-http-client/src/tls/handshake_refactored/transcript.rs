@@ -301,14 +301,14 @@ impl TlsHandshake {
         hash
     }
 
-    /// Compute cipher-aware transcript hash via `BearDog`
+    /// Compute cipher-aware transcript hash via the `crypto provider`
     ///
     /// RFC 8446 Section 4.4.1: Different cipher suites use different hash algorithms:
     /// - 0x1301 (`TLS_AES_128_GCM_SHA256)`: SHA-256 (32 bytes)
     /// - 0x1302 (`TLS_AES_256_GCM_SHA384)`: SHA-384 (48 bytes)
     /// - 0x1303 (`TLS_CHACHA20_POLY1305_SHA256)`: SHA-256 (32 bytes)
     ///
-    /// This method delegates to `BearDog`'s `crypto.hash_for_cipher` capability.
+    /// This method delegates to the provider's `crypto.hash_for_cipher` capability.
     pub(super) async fn compute_transcript_hash_for_cipher(
         &self,
         cipher_suite: u16,
@@ -345,9 +345,10 @@ mod tests {
 
     #[test]
     fn test_transcript_empty_initially() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         // Transcript should be empty initially
         assert_eq!(handshake.transcript.len(), 0, "Transcript should start empty");
@@ -355,9 +356,10 @@ mod tests {
 
     #[test]
     fn test_update_transcript() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake = TlsHandshake::new(crypto);
 
         // Add first message
         let message1 = b"ClientHello";
@@ -376,9 +378,10 @@ mod tests {
 
     #[test]
     fn test_compute_transcript_hash_empty() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         let hash = handshake.compute_transcript_hash();
 
@@ -394,9 +397,10 @@ mod tests {
 
     #[test]
     fn test_compute_transcript_hash_deterministic() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake = TlsHandshake::new(crypto);
 
         // Add test messages
         handshake.update_transcript(b"ClientHello");
@@ -413,9 +417,10 @@ mod tests {
 
     #[test]
     fn test_compute_transcript_hash_known_value() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake = TlsHandshake::new(crypto);
 
         // Use a known message
         let message = b"test";
@@ -434,9 +439,10 @@ mod tests {
 
     #[test]
     fn test_transcript_accumulates_multiple_messages() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake = TlsHandshake::new(crypto);
 
         // Simulate handshake message accumulation
         let client_hello = vec![1u8; 100];
@@ -462,13 +468,15 @@ mod tests {
 
     #[test]
     fn test_transcript_order_matters() {
-        let beardog1 = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake1 = TlsHandshake::new(beardog1);
+        let crypto1 =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake1 = TlsHandshake::new(crypto1);
 
-        let beardog2 = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake2 = TlsHandshake::new(beardog2);
+        let crypto2 =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake2 = TlsHandshake::new(crypto2);
 
         // Add messages in different orders
         handshake1.update_transcript(b"A");
@@ -486,9 +494,10 @@ mod tests {
 
     #[test]
     fn test_transcript_hash_length() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake = TlsHandshake::new(crypto);
 
         // Add various sized messages
         for size in [1, 10, 100, 1000, 10000] {
@@ -505,9 +514,10 @@ mod tests {
         // RFC 8446 Section 4.4.1: Transcript must contain PLAINTEXT messages
         // This test ensures we understand the requirement
 
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake = TlsHandshake::new(crypto);
 
         // Simulate plaintext messages (what SHOULD be in transcript)
         let plaintext_message = b"This is plaintext handshake message";
@@ -517,9 +527,10 @@ mod tests {
         let plaintext_hash = handshake.compute_transcript_hash();
 
         // Create new handshake with encrypted version (what SHOULD NOT be in transcript)
-        let beardog2 = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let mut handshake2 = TlsHandshake::new(beardog2);
+        let crypto2 =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let mut handshake2 = TlsHandshake::new(crypto2);
         let encrypted_message = b"ENCRYPTED_VERSION_OF_SAME_MESSAGE_WITH_TAG";
         handshake2.update_transcript(encrypted_message);
 

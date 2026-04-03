@@ -26,7 +26,7 @@ use std::collections::HashMap;
 ///
 /// Each level grants specific capabilities with clear boundaries.
 ///
-/// **Phase 1 (v3.13.1)**: Accepts both integer and string formats from `BearDog`!
+/// **Phase 1 (v3.13.1)**: Accepts both integer and string formats from `security provider`!
 /// - Deserialize: Accepts integer OR string (flexible!)
 /// - Serialize: Always produces integer (compact, efficient)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -72,7 +72,7 @@ impl Serialize for TrustLevel {
 
 /// Custom deserializer for `TrustLevel` (Phase 1: Accept both int and string)
 ///
-/// **`BearDog` Compatibility**:
+/// **`security provider` Compatibility**:
 /// - Accepts integer: 0, 1, 2, 3
 /// - Accepts string: "none", "limited", "elevated", "highest"
 /// - Accepts aliases: "anonymous", "basic", "medium", "explicit"
@@ -89,7 +89,7 @@ impl<'de> Deserialize<'de> for TrustLevel {
         }
 
         match TrustLevelHelper::deserialize(deserializer)? {
-            // Integer format (BearDog primary)
+            // Integer format (security provider primary)
             TrustLevelHelper::Int(0) => Ok(Self::None),
             TrustLevelHelper::Int(1) => Ok(Self::Limited),
             TrustLevelHelper::Int(2) => Ok(Self::Elevated),
@@ -150,7 +150,7 @@ impl TrustLevel {
         }
     }
 
-    /// Get `BearDog` alias for compatibility
+    /// Get `security provider` alias for compatibility
     #[must_use]
     pub const fn beardog_alias(self) -> &'static str {
         match self {

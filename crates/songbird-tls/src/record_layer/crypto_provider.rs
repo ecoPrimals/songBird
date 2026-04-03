@@ -16,7 +16,7 @@ impl RecordLayer {
     ///
     /// # Errors
     ///
-    /// Returns [`TlsError::CryptoUnavailable`] when no provider was configured or BearDog is unreachable.
+    /// Returns [`TlsError::CryptoUnavailable`] when no provider was configured or the security provider is unreachable.
     pub async fn encrypt_record_delegated(
         &mut self,
         content_type: ContentType,
@@ -40,7 +40,7 @@ impl RecordLayer {
     ///
     /// # Errors
     ///
-    /// Returns [`TlsError::CryptoUnavailable`] when no provider was configured or BearDog is unreachable.
+    /// Returns [`TlsError::CryptoUnavailable`] when no provider was configured or the security provider is unreachable.
     pub async fn decrypt_record_delegated(
         &mut self,
         ciphertext: &[u8],
@@ -79,11 +79,11 @@ fn tls_record_nonce_from_iv(iv: &[u8], sequence: u64) -> Result<[u8; 12]> {
     Ok(nonce)
 }
 
-/// TLS record AEAD encrypt: BearDog `crypto.aead_encrypt` (semantic wire name).
+/// TLS record AEAD encrypt: security provider `crypto.aead_encrypt` (semantic wire name).
 ///
 /// # Errors
 ///
-/// Returns [`TlsError::CryptoUnavailable`] when the RPC to BearDog fails.
+/// Returns [`TlsError::CryptoUnavailable`] when the RPC to the security provider fails.
 pub async fn record_aead_encrypt_via_provider(
     provider: &CryptoProvider,
     plaintext: &[u8],
@@ -100,15 +100,15 @@ pub async fn record_aead_encrypt_via_provider(
         params["aad"] = json!(general_purpose::STANDARD.encode(a));
     }
     let result = provider.call("crypto.aead_encrypt", params).await.map_err(|e| {
-        warn!(error = %e, "TLS record AEAD encrypt: BearDog unavailable");
+        warn!(error = %e, "TLS record AEAD encrypt: security provider unavailable");
         TlsError::CryptoUnavailable
     })?;
     let ciphertext_b64 = result["ciphertext"].as_str().ok_or_else(|| {
-        TlsError::CryptoError("BearDog aead_encrypt: missing ciphertext".to_string())
+        TlsError::CryptoError("Security provider aead_encrypt: missing ciphertext".to_string())
     })?;
-    let tag_b64 = result["tag"]
-        .as_str()
-        .ok_or_else(|| TlsError::CryptoError("BearDog aead_encrypt: missing tag".to_string()))?;
+    let tag_b64 = result["tag"].as_str().ok_or_else(|| {
+        TlsError::CryptoError("Security provider aead_encrypt: missing tag".to_string())
+    })?;
     let mut ciphertext = general_purpose::STANDARD
         .decode(ciphertext_b64)
         .map_err(|e| TlsError::CryptoError(format!("decode ciphertext: {e}")))?;
@@ -119,11 +119,11 @@ pub async fn record_aead_encrypt_via_provider(
     Ok(ciphertext)
 }
 
-/// TLS record AEAD decrypt: BearDog `crypto.aead_decrypt` (semantic wire name).
+/// TLS record AEAD decrypt: security provider `crypto.aead_decrypt` (semantic wire name).
 ///
 /// # Errors
 ///
-/// Returns [`TlsError::CryptoUnavailable`] when the RPC to BearDog fails.
+/// Returns [`TlsError::CryptoUnavailable`] when the RPC to the security provider fails.
 pub async fn record_aead_decrypt_via_provider(
     provider: &CryptoProvider,
     ciphertext_with_tag: &[u8],
@@ -147,11 +147,11 @@ pub async fn record_aead_decrypt_via_provider(
         params["aad"] = json!(general_purpose::STANDARD.encode(a));
     }
     let result = provider.call("crypto.aead_decrypt", params).await.map_err(|e| {
-        warn!(error = %e, "TLS record AEAD decrypt: BearDog unavailable");
+        warn!(error = %e, "TLS record AEAD decrypt: security provider unavailable");
         TlsError::CryptoUnavailable
     })?;
     let plaintext_b64 = result["plaintext"].as_str().ok_or_else(|| {
-        TlsError::CryptoError("BearDog aead_decrypt: missing plaintext".to_string())
+        TlsError::CryptoError("Security provider aead_decrypt: missing plaintext".to_string())
     })?;
     general_purpose::STANDARD
         .decode(plaintext_b64)

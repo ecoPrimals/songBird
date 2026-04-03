@@ -66,13 +66,13 @@ pub struct BirdSongMessage {
     pub sender: NodeId,
     /// Lineage hint (who should receive)
     pub lineage_hint: LineageHint,
-    /// Payload (encrypted by `BearDog`)
+    /// Payload (encrypted by `security provider`)
     pub payload: Vec<u8>,
     /// Timestamp
     pub timestamp: u64,
 }
 
-/// `BirdSong` crypto provider (implemented by `BearDog`)
+/// `BirdSong` crypto provider (implemented by `security provider`)
 #[async_trait]
 pub trait BirdSongCrypto: Send + Sync {
     /// Encrypt message for lineage

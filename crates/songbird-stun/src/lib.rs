@@ -47,7 +47,9 @@
 pub mod client;
 pub mod error;
 pub mod message;
+mod protocol;
 pub mod server;
+mod transaction;
 pub mod types;
 
 // Re-exports

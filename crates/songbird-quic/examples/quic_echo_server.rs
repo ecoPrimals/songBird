@@ -8,7 +8,7 @@
     reason = "example code"
 )]
 
-//! QUIC echo server example (pure Rust, BearDog crypto delegation).
+//! QUIC echo server example (pure Rust, security provider crypto delegation).
 //!
 //! Start with: cargo run --example quic_echo_server
 //! Test with:  cargo run --example quic_echo_client
@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     let server = QuicServer::new("[::]:4433", config).await?;
 
     info!("QUIC server listening on {}", server.local_addr());
-    info!("Features: 0-RTT, Migration, Multiplexing, BearDog crypto");
+    info!("Features: 0-RTT, Migration, Multiplexing, security provider crypto");
 
     let mut incoming = server.accept();
 

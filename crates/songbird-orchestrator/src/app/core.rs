@@ -254,13 +254,13 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// Provision JWT secret from `BearDog` via capability-based discovery
+    /// Provision JWT secret from `security provider` via capability-based discovery
     ///
     /// ## TRUE PRIMAL Architecture
     ///
     /// - **Self-Knowledge**: Songbird only knows itself
-    /// - **Capability Discovery**: Discovers `BearDog` via "security" capability
-    /// - **Graceful Fallback**: Uses secure random if `BearDog` unavailable
+    /// - **Capability Discovery**: Discovers `security provider` via "security" capability
+    /// - **Graceful Fallback**: Uses secure random if `security provider` unavailable
     /// - **Pure Rust**: JSON-RPC over Unix socket (no C dependencies!)
     ///
     /// # Returns
@@ -433,14 +433,14 @@ impl SongbirdOrchestrator {
             });
 
         info!("🔐 HTTP Handler: Using crypto provider at {}", crypto_socket);
-        let beardog_client = Arc::new(songbird_http_client::BearDogClient::new(crypto_socket));
+        let security_client = Arc::new(songbird_http_client::SecurityRpcClient::new(crypto_socket));
 
         // v3.20.0: Create Unix socket server with service registry
         let server = Arc::new(UnixSocketServer::new(
             service_registry,
             discovery_listener_clone,
             connection_manager_clone,
-            beardog_client,
+            security_client,
         ));
 
         // Start server in background task (pure Rust server runs forever)
@@ -490,7 +490,9 @@ impl SongbirdOrchestrator {
             target_os = std::env::consts::OS,
             "IPC server is unavailable on this platform: Songbird's primal IPC requires Unix domain sockets"
         );
-        warn!("For Windows hosts, run Songbird under WSL2 or wait for tracked native IPC (named pipes / TCP) support");
+        warn!(
+            "For Windows hosts, run Songbird under WSL2 or wait for tracked native IPC (named pipes / TCP) support"
+        );
         Err(anyhow::anyhow!(
             "IPC server requires Unix domain sockets (Linux/macOS/BSD). On Windows use WSL2 for parity."
         ))
@@ -721,6 +723,10 @@ impl SongbirdOrchestrator {
 // They are re-exported at the top of this module for backwards compatibility.
 
 /// Shared `SONGBIRD_BROADCAST_ADDRESSES` mutex for all `discover_broadcast_addresses` tests.
+///
+/// Uses `std::sync::Mutex` on purpose: every caller is a **synchronous** `#[test]` that never
+/// holds this guard across `.await`. A blocking mutex is fine for short test-only serialization;
+/// `tokio::sync::Mutex` would not help here because there is no async boundary.
 #[cfg(test)]
 pub(crate) mod broadcast_test_lock {
     use std::sync::{Mutex, OnceLock};

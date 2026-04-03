@@ -422,7 +422,7 @@ impl BirdSongProcessor {
         _beacon_id: &[u8],
     ) -> Result<Option<BeaconPayload>> {
         // Try decryption with our beacon seed
-        // Note: BearDog integration uses family_id in encrypt/decrypt operations (v3.21.0)
+        // Note: security provider integration uses family_id in encrypt/decrypt operations (v3.21.0)
         self.try_decrypt_with_own_beacon(encryption, beacon).await
     }
 

@@ -18,7 +18,7 @@
 //!
 //! ## TRUE PRIMAL Architecture
 //!
-//! All crypto operations are delegated to `BearDog` via `CryptoProvider`.
+//! All crypto operations are delegated to `security provider` via `CryptoProvider`.
 //! Zero embedded crypto in Songbird.
 
 use serde_json::{Value, json};
@@ -37,7 +37,7 @@ use tracing::{error, info, warn};
 ///
 /// ## Design Principles
 ///
-/// - **TRUE PRIMAL**: All crypto via `BearDog` delegation  
+/// - **TRUE PRIMAL**: All crypto via `security provider` delegation  
 /// - **Pure Rust**: No external Tor daemon required
 /// - **Safe**: All operations use safe Rust
 /// - **Async**: Modern async/await patterns
@@ -65,8 +65,8 @@ struct TorState {
     service_running: bool,
     /// Service onion address
     service_address: Option<String>,
-    /// `BearDog` socket path
-    beardog_socket: Option<String>,
+    /// `security provider` socket path
+    security_socket: Option<String>,
 }
 
 impl TorHandler {
@@ -79,38 +79,42 @@ impl TorHandler {
         }
     }
 
-    /// Set `BearDog` socket path
-    pub async fn set_beardog_socket(&self, socket_path: String) {
+    /// Set `security provider` socket path
+    pub async fn set_security_socket(&self, socket_path: String) {
         let mut state = self.state.write().await;
-        state.beardog_socket = Some(socket_path);
+        state.security_socket = Some(socket_path);
     }
 
-    /// Get `BearDog` socket path from state or environment
-    async fn resolve_beardog_socket(&self) -> Option<String> {
+    /// Get `security provider` socket path from state or environment
+    async fn resolve_security_socket(&self) -> Option<String> {
         // Check state first (explicitly set)
         let state = self.state.read().await;
-        if let Some(ref socket) = state.beardog_socket {
+        if let Some(ref socket) = state.security_socket {
             return Some(socket.clone());
         }
         drop(state);
 
         // Fall back to environment discovery
-        Self::get_beardog_socket_from_env()
+        Self::get_security_socket_from_env()
     }
 
     /// Get security provider socket path from environment (capability-based discovery)
-    fn get_beardog_socket_from_env() -> Option<String> {
+    fn get_security_socket_from_env() -> Option<String> {
         songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
             .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
             .or_else(|_| songbird_process_env::var("BEARDOG_CRYPTO_SOCKET"))
             .or_else(|_| songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER"))
             .ok()
             .or_else(|| {
-                // XDG standard path
+                // XDG standard paths: primary capability socket, legacy beardog.sock fallback
                 if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-                    let path = format!("{xdg}/biomeos/beardog.sock");
-                    if std::path::Path::new(&path).exists() {
-                        return Some(path);
+                    let primary = format!("{xdg}/biomeos/security.sock");
+                    if std::path::Path::new(&primary).exists() {
+                        return Some(primary);
+                    }
+                    let legacy = format!("{xdg}/biomeos/beardog.sock");
+                    if std::path::Path::new(&legacy).exists() {
+                        return Some(legacy);
                     }
                 }
                 None
@@ -137,8 +141,7 @@ impl TorHandler {
                 state.service_address.clone(),
             )
         };
-        let beardog_available = self.resolve_beardog_socket().await.is_some()
-            || Self::get_beardog_socket_from_env().is_some();
+        let security_provider_available = self.resolve_security_socket().await.is_some();
 
         Ok(json!({
             "initialized": initialized,
@@ -147,7 +150,7 @@ impl TorHandler {
             "relay_count": relay_count,
             "service_running": service_running,
             "service_address": service_address,
-            "beardog_available": beardog_available,
+            "security_provider_available": security_provider_available,
             "comment": "Pure Rust Tor protocol (TRUE PRIMAL architecture)"
         }))
     }
@@ -207,7 +210,7 @@ impl TorHandler {
                     "target_address": format!("{}:{}", address, port),
                     "status": "circuit_failed",
                     "error": format!("{e}"),
-                    "comment": "Circuit build failed — check relay reachability and BearDog availability"
+                    "comment": "Circuit build failed — check relay reachability and security provider availability"
                 }))
             }
         }
@@ -231,7 +234,7 @@ impl TorHandler {
 
         info!(port = port, "Starting Tor hidden service via pure Rust");
 
-        // Create BearDog client for service key operations
+        // Create security provider client for service key operations
         let beardog = CryptoProvider::from_env();
 
         // Create Tor service
@@ -310,7 +313,7 @@ impl TorHandler {
 
         info!("Fetching Tor network consensus via pure Rust");
 
-        // Create BearDog crypto client
+        // Create security provider crypto client
         let beardog = CryptoProvider::from_env();
 
         // Fetch consensus using songbird-tor-protocol
@@ -363,7 +366,7 @@ impl TorHandler {
     ///
     /// Uses `CircuitManager` to build a real 3-hop circuit:
     /// 1. SELECT path (guard, middle, exit) from consensus
-    /// 2. CREATE2 to guard (ntor handshake via `BearDog`)
+    /// 2. CREATE2 to guard (ntor handshake via `security provider`)
     /// 3. EXTEND2 to middle
     /// 4. EXTEND2 to exit
     pub async fn handle_circuit_build(&self, params: Value) -> Result<Value, String> {
@@ -472,7 +475,7 @@ mod tests {
         let handler = TorHandler::new();
         let status = handler.handle_status(json!({})).await.unwrap();
         assert_eq!(status["comment"], "Pure Rust Tor protocol (TRUE PRIMAL architecture)");
-        assert!(status.get("beardog_available").is_some());
+        assert!(status.get("security_provider_available").is_some());
     }
 
     #[tokio::test]
@@ -553,10 +556,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_set_beardog_socket_reflected_in_status_path() {
+    async fn test_set_security_socket_reflected_in_status_path() {
         let handler = TorHandler::new();
-        handler.set_beardog_socket("/tmp/test-beardog.sock".to_string()).await;
+        handler.set_security_socket("/tmp/test-security.sock".to_string()).await;
         let status = handler.handle_status(json!({})).await.unwrap();
-        assert_eq!(status["beardog_available"], true);
+        assert_eq!(status["security_provider_available"], true);
     }
 }

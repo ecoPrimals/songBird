@@ -108,7 +108,7 @@ impl FederatedBtspConnection {
             capabilities: peer_tags.clone(),
         };
 
-        // Establish tunnel via BearDog Unix socket
+        // Establish tunnel via security provider Unix socket
         let tunnel = btsp_client
             .establish_tunnel(peer_endpoint)
             .await
@@ -162,7 +162,7 @@ impl FederatedBtspConnection {
         // See: BTSP_CONNECTION_EVOLUTION_V3_18_0.md
         Err(SongbirdError::not_implemented_with_detail(
             "btsp_bidirectional_rpc",
-            "Requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(); \
+            "Requires security provider v0.16.0+ and BtspClient.send_data_over_tunnel(); \
              current implementation establishes tunnels only.",
         )
         .into())

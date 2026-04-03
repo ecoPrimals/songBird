@@ -3,7 +3,7 @@
 
 //! BTSP Integration Tests - Week 4 Part 2
 //!
-//! Comprehensive testing of `BearDog` BTSP (`BearDog` Tunnel Security Protocol)
+//! Comprehensive testing of `security provider` BTSP (`security provider` Tunnel Security Protocol)
 //! integration via Unix sockets. These tests validate the complete BTSP lifecycle:
 //! - Socket discovery and connection
 //! - Tunnel establishment
@@ -52,8 +52,8 @@ fn lock_env() -> std::sync::MutexGuard<'static, ()> {
     ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// Helper: Check if `BearDog` is available for testing
-async fn beardog_available() -> bool {
+/// Helper: Check if `security provider` is available for testing
+async fn security_provider_available() -> bool {
     let client = BtspClient::new();
     client.ping().await.is_ok()
 }
@@ -63,7 +63,7 @@ fn test_socket_path() -> String {
     env::var("SECURITY_PROVIDER_SOCKET")
         .or_else(|_| env::var("BEARDOG_SOCKET"))
         .or_else(|_| env::var("TEST_BEARDOG_SOCKET"))
-        .unwrap_or_else(|_| "/tmp/beardog-test.sock".to_string())
+        .unwrap_or_else(|_| "/tmp/security-provider-test.sock".to_string())
 }
 
 /// Helper: Setup test environment variables
@@ -109,22 +109,22 @@ async fn test_socket_path_discovery_priority() {
     let saved_xdg = env::var("XDG_RUNTIME_DIR").ok();
 
     // Test priority 1: SECURITY_PROVIDER_SOCKET (BEARDOG_SOCKET remains supported)
-    songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/custom/beardog.sock");
+    songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/custom/security-provider.sock");
     let client1 = BtspClient::new();
     let debug1 = format!("{client1:?}");
     assert!(
-        debug1.contains("/custom/beardog.sock"),
+        debug1.contains("/custom/security-provider.sock"),
         "Should use SECURITY_PROVIDER_SOCKET, got: {debug1}"
     );
 
     // Test priority 2: BIOMEOS_SOCKET_PATH (when explicit socket env vars not set)
     songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
-    songbird_process_env::set_var("BIOMEOS_SOCKET_PATH", "/biomeos/beardog.sock");
+    songbird_process_env::set_var("BIOMEOS_SOCKET_PATH", "/biomeos/security-provider.sock");
     let client2 = BtspClient::new();
     let debug2 = format!("{client2:?}");
     assert!(
-        debug2.contains("/biomeos/beardog.sock"),
+        debug2.contains("/biomeos/security-provider.sock"),
         "Should use BIOMEOS_SOCKET_PATH, got: {debug2}"
     );
 
@@ -174,15 +174,15 @@ async fn test_socket_path_fallback() {
 // ====================
 
 #[tokio::test]
-async fn test_btsp_ping_when_beardog_unavailable() {
+async fn test_btsp_ping_when_security_provider_unavailable() {
     let _guard = lock_env();
     setup_test_env();
 
     let client = BtspClient::new();
     let result = client.ping().await;
 
-    // Should fail gracefully when BearDog not available
-    if !beardog_available().await {
+    // Should fail gracefully when security provider not available
+    if !security_provider_available().await {
         assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
         assert!(
@@ -195,15 +195,15 @@ async fn test_btsp_ping_when_beardog_unavailable() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
-async fn test_btsp_ping_with_live_beardog() {
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
+async fn test_btsp_ping_with_live_security_provider() {
     setup_test_env();
 
     let client = BtspClient::new();
     let result = client.ping().await;
 
-    // Should succeed with live BearDog
-    assert!(result.is_ok(), "Ping should succeed with live BearDog");
+    // Should succeed with live security provider
+    assert!(result.is_ok(), "Ping should succeed with live security provider");
 
     let response = result.unwrap();
     assert!(response.is_object(), "Response should be JSON object");
@@ -216,10 +216,10 @@ async fn test_btsp_ping_with_live_beardog() {
 // ====================
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_establish_tunnel_basic() -> Result<()> {
-    if !beardog_available().await {
-        println!("⚠️  Skipping test: BearDog not available");
+    if !security_provider_available().await {
+        println!("⚠️  Skipping test: security provider not available");
         return Ok(());
     }
 
@@ -244,9 +244,9 @@ async fn test_establish_tunnel_basic() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_establish_tunnel_with_capabilities() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -270,7 +270,7 @@ async fn test_establish_tunnel_with_capabilities() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_establish_tunnel_fails_when_beardog_unavailable() {
+async fn test_establish_tunnel_fails_when_security_provider_unavailable() {
     let _guard = lock_env();
     setup_test_env();
 
@@ -285,7 +285,7 @@ async fn test_establish_tunnel_fails_when_beardog_unavailable() {
     let result = client.establish_tunnel(peer).await;
 
     // Should fail gracefully
-    if !beardog_available().await {
+    if !security_provider_available().await {
         assert!(result.is_err());
     }
 
@@ -297,9 +297,9 @@ async fn test_establish_tunnel_fails_when_beardog_unavailable() {
 // ====================
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_tunnel_encrypt_decrypt_roundtrip() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -316,7 +316,7 @@ async fn test_tunnel_encrypt_decrypt_roundtrip() -> Result<()> {
     let tunnel = client.establish_tunnel(peer).await?;
 
     // Test data
-    let plaintext = b"Hello, BearDog! This is a test message.";
+    let plaintext = b"Hello, security provider! This is a test message.";
 
     // Encrypt
     let ciphertext = client.tunnel_encrypt(&tunnel, plaintext, Direction::Outbound).await?;
@@ -334,9 +334,9 @@ async fn test_tunnel_encrypt_decrypt_roundtrip() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_tunnel_encrypt_large_data() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -369,9 +369,9 @@ async fn test_tunnel_encrypt_large_data() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_tunnel_encrypt_empty_data() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -391,7 +391,7 @@ async fn test_tunnel_encrypt_empty_data() -> Result<()> {
     let ciphertext = client.tunnel_encrypt(&tunnel, plaintext, Direction::Outbound).await?;
 
     // Empty data should still produce valid ciphertext (may include auth tags, etc.)
-    // The exact behavior depends on BearDog's implementation
+    // The exact behavior depends on security provider's implementation
     assert!(ciphertext.is_empty() || !ciphertext.is_empty());
 
     cleanup_test_env();
@@ -403,9 +403,9 @@ async fn test_tunnel_encrypt_empty_data() -> Result<()> {
 // ====================
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_tunnel_close() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -428,17 +428,17 @@ async fn test_tunnel_close() -> Result<()> {
     let _encrypt_result = client.tunnel_encrypt(&tunnel, b"test", Direction::Outbound).await;
 
     // Should fail (tunnel closed)
-    // Note: Exact behavior depends on BearDog implementation
-    // May succeed if BearDog auto-recreates tunnels or uses stateless design
+    // Note: Exact behavior depends on security provider implementation
+    // May succeed if security provider auto-recreates tunnels or uses stateless design
 
     cleanup_test_env();
     Ok(())
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_multiple_tunnels_concurrent() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -496,15 +496,15 @@ async fn test_invalid_socket_path() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_malformed_request_handling() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
     // This test would require direct JSON-RPC manipulation
     // which is private in the current implementation.
-    // Testing malformed requests is best done at the BearDog level.
+    // Testing malformed requests is best done at the security provider level.
 
     Ok(())
 }
@@ -514,9 +514,9 @@ async fn test_malformed_request_handling() -> Result<()> {
 // ====================
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Only run when BearDog is live
+#[ignore = "requires running security provider crypto provider"] // Only run when security provider is live
 async fn test_connection_manager_btsp_integration() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -538,9 +538,9 @@ async fn test_connection_manager_btsp_integration() -> Result<()> {
 // ====================
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider; stress test"] // Only run when BearDog is live + stress testing
+#[ignore = "requires running security provider crypto provider; stress test"] // Only run when security provider is live + stress testing
 async fn test_btsp_rapid_tunnel_creation() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -569,9 +569,9 @@ async fn test_btsp_rapid_tunnel_creation() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider; stress test"] // Only run when BearDog is live + stress testing
+#[ignore = "requires running security provider crypto provider; stress test"] // Only run when security provider is live + stress testing
 async fn test_btsp_high_throughput_encryption() -> Result<()> {
-    if !beardog_available().await {
+    if !security_provider_available().await {
         return Ok(());
     }
 
@@ -602,17 +602,20 @@ async fn test_btsp_high_throughput_encryption() -> Result<()> {
 // ====================
 
 #[tokio::test]
-async fn test_helper_beardog_availability_check() {
+async fn test_helper_security_provider_availability_check() {
     // This test validates the test helper itself
-    let available = beardog_available().await;
+    let available = security_provider_available().await;
 
     // Should not panic
-    println!("BearDog available: {available}");
+    println!("security provider available: {available}");
 }
 
 #[test]
 fn test_helper_socket_path() {
     let path = test_socket_path();
     assert!(!path.is_empty());
-    assert!(path.contains("beardog"));
+    assert!(
+        path.contains("security-provider") || path.contains("beardog") || path.contains("/tmp/"),
+        "unexpected test socket path: {path}"
+    );
 }

@@ -85,13 +85,19 @@
 )]
 
 // Core modules
-/// BearDog integration traits (lineage, BirdSong, relay hooks).
+/// Security-provider integration traits (lineage, BirdSong, relay hooks); discovered by capability.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
-pub mod beardog;
+pub mod security;
+
+/// Deprecated alias for [`security`].
+#[deprecated(note = "use module `security` (capability-based naming)")]
+pub mod beardog {
+    pub use crate::security::*;
+}
 /// BirdSong wire payloads and federation message types.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod birdsong_payload;
-/// BearDog Secure Tunnel Protocol configuration and provider traits.
+/// security provider Secure Tunnel Protocol configuration and provider traits.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod btsp;
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
@@ -123,13 +129,13 @@ pub mod service_registry;
 /// Federation and network shared runtime state.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod state;
-// pub mod tls;  // ✅ DEPRECATED: Using songbird-tls instead (100% Pure Rust via BearDog!)
+// pub mod tls;  // ✅ DEPRECATED: Using songbird-tls instead (100% Pure Rust via security provider!)
 /// Zero-copy friendly registry for hot federation paths.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod zero_copy_registry;
 
 // Re-export core types for convenience
-/// `BearDog` Secure Tunnel Protocol configuration and provider traits.
+/// `security provider` Secure Tunnel Protocol configuration and provider traits.
 pub use btsp::{BtspConfig, BtspProvider, LocalBtspProvider};
 /// Federation coordinator, node metadata, and configuration for multi-node setups.
 pub use federation::{FederationConfig, FederationCoordinator, NodeInfo};

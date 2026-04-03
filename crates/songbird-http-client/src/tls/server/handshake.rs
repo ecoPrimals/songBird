@@ -270,7 +270,7 @@ impl TlsServer {
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
-    use crate::crypto::BearDogProvider;
+    use crate::crypto::SecurityCryptoProvider;
     use crate::tls::server::TlsServer;
     use crate::tls::{CIPHER_SUITES, TLS_1_2, TLS_1_3, content_type, handshake_type};
     use std::sync::Arc;
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn tls_server_constructed_with_cert_material() {
-        let crypto = Arc::new(BearDogProvider::new("/tmp/songbird-tls-accept-test.sock"))
+        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-tls-accept-test.sock"))
             as Arc<dyn crate::crypto::CryptoCapability>;
         let cert = vec![0x30, 0x81, 0xff];
         let key = vec![0x04, 0x20];

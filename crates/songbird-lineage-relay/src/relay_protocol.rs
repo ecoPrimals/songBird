@@ -218,7 +218,7 @@ pub struct AllocationRequest {
     /// Target peer address to relay to
     pub target_addr: SocketAddr,
 
-    /// Lineage proof (`BearDog` signature)
+    /// Lineage proof (`security provider` signature)
     pub lineage_proof: Vec<u8>,
 
     /// Requested TTL (seconds)

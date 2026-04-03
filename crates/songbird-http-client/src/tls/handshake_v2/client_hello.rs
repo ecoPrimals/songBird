@@ -269,7 +269,7 @@ fn build_key_share_extension(public_key: &[u8]) -> Vec<u8> {
 /// Generate client random (32 bytes)
 ///
 /// Uses timestamp + pseudo-random for now.
-/// In production, `BearDog` should provide cryptographically secure random.
+/// In production, the `crypto provider` should provide cryptographically secure random.
 #[must_use]
 #[expect(clippy::cast_possible_truncation, reason = "TLS wire format: values are masked/bounded")]
 pub fn generate_random() -> Vec<u8> {

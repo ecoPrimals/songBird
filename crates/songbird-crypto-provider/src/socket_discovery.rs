@@ -14,7 +14,7 @@
 //! - Fallback: `$XDG_RUNTIME_DIR/biomeos/crypto.sock`
 //! - Legacy: `BEARDOG_SOCKET` env var (deprecated, logged)
 
-use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, neural_api_socket_legacy_path};
+use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, ai_provider_socket_legacy_path};
 use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
@@ -106,7 +106,7 @@ where
     }
 
     let family_id = get_var("FAMILY_ID").unwrap_or_else(|| "default".to_string());
-    let socket = neural_api_socket_legacy_path(&family_id).to_string_lossy().into_owned();
+    let socket = ai_provider_socket_legacy_path(&family_id).to_string_lossy().into_owned();
     warn!("⚠️  Using legacy Neural API path: {}", socket);
     socket
 }
@@ -121,13 +121,13 @@ where
 /// 5. `$BEARDOG_SOCKET` (legacy — logged as deprecated)
 /// 6. `{temp_dir}/biomeos/security.sock` (temp fallback)
 #[must_use]
-pub fn discover_security_provider_socket() -> String {
-    discover_security_provider_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
+pub fn discover_security_socket() -> String {
+    discover_security_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
 }
 
-/// Like [`discover_security_provider_socket`], but with injectable env and path checks.
+/// Like [`discover_security_socket`], but with injectable env and path checks.
 #[must_use]
-pub fn discover_security_provider_socket_with<G, P>(get_var: G, path_exists: P) -> String
+pub fn discover_security_socket_with<G, P>(get_var: G, path_exists: P) -> String
 where
     G: Fn(&str) -> Option<String>,
     P: Fn(&Path) -> bool,
@@ -180,22 +180,40 @@ where
     legacy.to_string_lossy().into_owned()
 }
 
-/// Backward-compatible alias for [`discover_security_provider_socket`].
-#[deprecated(note = "Use discover_security_provider_socket (capability-based naming)")]
+/// Deprecated alias for [`discover_security_socket`].
+#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
 #[must_use]
-pub fn discover_beardog_socket() -> String {
-    discover_security_provider_socket()
+pub fn discover_security_provider_socket() -> String {
+    discover_security_socket()
 }
 
-/// Backward-compatible alias for [`discover_security_provider_socket_with`].
-#[deprecated(note = "Use discover_security_provider_socket_with (capability-based naming)")]
+/// Deprecated alias for [`discover_security_socket_with`].
+#[deprecated(note = "Use discover_security_socket_with (capability-based naming)")]
+#[must_use]
+pub fn discover_security_provider_socket_with<G, P>(get_var: G, path_exists: P) -> String
+where
+    G: Fn(&str) -> Option<String>,
+    P: Fn(&Path) -> bool,
+{
+    discover_security_socket_with(get_var, path_exists)
+}
+
+/// Deprecated alias for [`discover_security_socket`].
+#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
+#[must_use]
+pub fn discover_beardog_socket() -> String {
+    discover_security_socket()
+}
+
+/// Deprecated alias for [`discover_security_socket_with`].
+#[deprecated(note = "Use discover_security_socket_with (capability-based naming)")]
 #[must_use]
 pub fn discover_beardog_socket_with<G, P>(get_var: G, path_exists: P) -> String
 where
     G: Fn(&str) -> Option<String>,
     P: Fn(&Path) -> bool,
 {
-    discover_security_provider_socket_with(get_var, path_exists)
+    discover_security_socket_with(get_var, path_exists)
 }
 
 #[cfg(test)]
@@ -245,7 +263,10 @@ mod tests {
         .into_iter()
         .collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/primary.sock", "$NEURAL_API_SOCKET should take precedence over $NEURALS_SOCKET");
+        assert_eq!(
+            out, "/primary.sock",
+            "$NEURAL_API_SOCKET should take precedence over $NEURALS_SOCKET"
+        );
     }
 
     #[test]
@@ -294,14 +315,13 @@ mod tests {
     fn discover_neural_uses_temp_biomeos_neural_socket_when_present() {
         let temp = std::env::temp_dir();
         let biomeos_path = temp.join("biomeos").join("neural-api.sock");
-        let _ = std::fs::create_dir_all(
-            biomeos_path
-                .parent()
-                .expect("biomeos parent"),
-        );
+        let _ = std::fs::create_dir_all(biomeos_path.parent().expect("biomeos parent"));
         std::fs::write(&biomeos_path, b"x").expect("touch neural socket");
         let map: HashMap<&str, String> = HashMap::new();
-        let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |p| p == biomeos_path.as_path());
+        let out = discover_neural_api_socket_with(
+            |k| map.get(k).cloned(),
+            |p| p == biomeos_path.as_path(),
+        );
         assert_eq!(
             PathBuf::from(&out),
             biomeos_path,
@@ -314,12 +334,10 @@ mod tests {
     fn discover_neural_xdg_with_family_suffix_in_path() {
         let xdg = "/run/user/7777";
         let expected = neural_api_socket_path_in_biomeos_runtime(xdg, "fam");
-        let map: HashMap<&str, String> = [
-            ("XDG_RUNTIME_DIR", xdg.to_string()),
-            ("FAMILY_ID", "fam".to_string()),
-        ]
-        .into_iter()
-        .collect();
+        let map: HashMap<&str, String> =
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "fam".to_string())]
+                .into_iter()
+                .collect();
         let out =
             discover_neural_api_socket_with(|k| map.get(k).cloned(), |p| p == expected.as_path());
         assert_eq!(out, expected.to_string_lossy());
@@ -348,7 +366,7 @@ mod tests {
         ]
         .into_iter()
         .collect();
-        let out = discover_security_provider_socket_with(|k| map.get(k).cloned(), |_p| false);
+        let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/cap/security.sock", "$SECURITY_PROVIDER_SOCKET beats $BEARDOG_SOCKET");
     }
 
@@ -356,7 +374,7 @@ mod tests {
     fn discover_security_uses_crypto_provider_socket_env() {
         let map: HashMap<&str, String> =
             std::iter::once(("CRYPTO_PROVIDER_SOCKET", "/cap/crypto.sock".to_string())).collect();
-        let out = discover_security_provider_socket_with(|k| map.get(k).cloned(), |_p| false);
+        let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/cap/crypto.sock");
     }
 
@@ -367,11 +385,15 @@ mod tests {
         let crypto = crypto_socket_path_in_biomeos_runtime(xdg, "");
         let map: HashMap<&str, String> =
             std::iter::once(("XDG_RUNTIME_DIR", xdg.to_string())).collect();
-        let out = discover_security_provider_socket_with(
+        let out = discover_security_socket_with(
             |k| map.get(k).cloned(),
             |p| p == security.as_path() || p == crypto.as_path(),
         );
-        assert_eq!(out, security.to_string_lossy(), "security.sock symlink should beat crypto.sock");
+        assert_eq!(
+            out,
+            security.to_string_lossy(),
+            "security.sock symlink should beat crypto.sock"
+        );
     }
 
     #[test]
@@ -380,10 +402,7 @@ mod tests {
         let crypto = crypto_socket_path_in_biomeos_runtime(xdg, "");
         let map: HashMap<&str, String> =
             std::iter::once(("XDG_RUNTIME_DIR", xdg.to_string())).collect();
-        let out = discover_security_provider_socket_with(
-            |k| map.get(k).cloned(),
-            |p| p == crypto.as_path(),
-        );
+        let out = discover_security_socket_with(|k| map.get(k).cloned(), |p| p == crypto.as_path());
         assert_eq!(out, crypto.to_string_lossy());
     }
 
@@ -391,14 +410,17 @@ mod tests {
     fn discover_security_falls_back_to_beardog_socket_deprecated() {
         let map: HashMap<&str, String> =
             std::iter::once(("BEARDOG_SOCKET", "/legacy/bd.sock".to_string())).collect();
-        let out = discover_security_provider_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/legacy/bd.sock", "legacy $BEARDOG_SOCKET still works as last env fallback");
+        let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
+        assert_eq!(
+            out, "/legacy/bd.sock",
+            "legacy $BEARDOG_SOCKET still works as last env fallback"
+        );
     }
 
     #[test]
     fn discover_security_legacy_when_no_match() {
         let map: HashMap<&str, String> = HashMap::new();
-        let out = discover_security_provider_socket_with(|k| map.get(k).cloned(), |_p| false);
+        let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
         let expected = std::env::temp_dir().join("beardog.sock");
         assert_eq!(PathBuf::from(out), expected);
     }

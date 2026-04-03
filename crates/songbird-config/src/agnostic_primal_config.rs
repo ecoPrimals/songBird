@@ -5,7 +5,7 @@
 //!
 //! **ZERO PRIMAL NAME HARDCODING** - Evolution from specific to agnostic
 //!
-//! This module replaces hardcoded primal names (BearDog, Toadstool, NestGate, Squirrel)
+//! This module replaces hardcoded primal names (security provider, Toadstool, storage provider, Squirrel)
 //! with capability-based discovery.
 //!
 //! ## Evolution Pattern

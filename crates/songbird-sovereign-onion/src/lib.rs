@@ -51,7 +51,13 @@
 #![warn(missing_docs)]
 
 pub mod address;
-pub mod beardog_crypto;
+pub mod security_crypto;
+
+/// Deprecated alias for [`security_crypto`].
+#[deprecated(note = "use module security_crypto")]
+pub mod beardog_crypto {
+    pub use crate::security_crypto::*;
+}
 pub mod connector;
 pub mod crypto;
 pub mod error;
@@ -62,19 +68,26 @@ pub mod storage;
 #[cfg(feature = "sled-storage")]
 mod storage_sled;
 
-// Re-exports - TRUE PRIMAL (BearDog-delegated)
-// ✅ Production exports: ZERO direct crypto, 100% BearDog delegation
+// Re-exports — delegated cryptography via capability-discovered security provider
+#[allow(deprecated)]
 pub use address::{derive_onion_address_via_beardog, validate_onion_address_via_beardog};
-pub use beardog_crypto::{BeardogCryptoClient, Ed25519Keypair, X25519Keypair};
+pub use address::{
+    derive_onion_address_via_security_provider, validate_onion_address_via_security_provider,
+};
 pub use connector::OnionConnector;
+#[allow(deprecated)]
 pub use crypto::{decrypt_data_via_beardog, encrypt_data_via_beardog};
+pub use crypto::{decrypt_data_via_security_provider, encrypt_data_via_security_provider};
 pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
+#[allow(deprecated)]
+pub use security_crypto::BeardogCryptoClient;
+pub use security_crypto::{Ed25519Keypair, SecurityCryptoClient, X25519Keypair};
 pub use storage::{InMemoryOnionStorage, OnionStorageBackend, PeerInfo};
 #[cfg(feature = "sled-storage")]
 pub use storage_sled::OnionStorage;
 
-// ✅ Phase 3 Complete: OnionService & OnionConnector with BearDog
+// ✅ Phase 3 Complete: OnionService & OnionConnector with security provider
 pub use connector::OnionConnection;
 pub use service::OnionService;
 
@@ -94,8 +107,8 @@ mod public_api_smoke_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use crate::{
-        BeardogCryptoClient, InMemoryOnionStorage, OnionConnector, OnionError, OnionIdentity,
-        PeerInfo,
+        InMemoryOnionStorage, OnionConnector, OnionError, OnionIdentity, PeerInfo,
+        SecurityCryptoClient,
     };
 
     #[test]
@@ -103,7 +116,7 @@ mod public_api_smoke_tests {
         let _ = std::any::type_name::<OnionError>();
         let _ = std::any::type_name::<OnionIdentity>();
         let _ = std::any::type_name::<OnionConnector>();
-        let _ = std::any::type_name::<BeardogCryptoClient>();
+        let _ = std::any::type_name::<SecurityCryptoClient>();
         let _ = std::any::type_name::<InMemoryOnionStorage>();
         let _ = std::any::type_name::<PeerInfo>();
     }

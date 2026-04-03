@@ -9,7 +9,7 @@
 //! ## Design Philosophy
 //!
 //! Like in ecology, each organism exists independently:
-//! - Songbird doesn't "know" specific primals exist (`BearDog`, `NestGate`, etc.)
+//! - Songbird doesn't "know" specific primals exist (`security provider`, `storage provider`, etc.)
 //! - Songbird only knows "something provides security capability"
 //! - Discovery is dynamic through `ZeroKnowledgeBootstrap`
 //! - No 2^n hardcoded connections - only universal adapter for network effects

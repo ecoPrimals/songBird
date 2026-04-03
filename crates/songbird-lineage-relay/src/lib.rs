@@ -28,7 +28,7 @@
 //!                      │
 //!                      ▼
 //! ┌─────────────────────────────────────────────────────────────┐
-//! │              BearDog Lineage Provider                       │
+//! │         Security provider (capability-discovered)            │
 //! │   (Genetic crypto, lineage verification, relay authority)   │
 //! └─────────────────────────────────────────────────────────────┘
 //! ```
@@ -37,11 +37,11 @@
 //!
 //! ```rust,ignore
 //! use songbird_lineage_relay::{LineageRelayCoordinator, BirdSongBroadcaster};
-//! use songbird_lineage_relay::beardog::MockLineageProvider;
+//! use songbird_lineage_relay::security::MockLineageProvider;
 //! use songbird_lineage_relay::types::NodeId;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Create lineage provider (BearDog in production, mock for testing)
+//! // Create lineage provider (security provider in production, mock for testing)
 //! let lineage_provider = Arc::new(MockLineageProvider::new());
 //! let crypto = Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
 //! let broadcaster = Arc::new(BirdSongBroadcaster::new(/* ... */));
@@ -160,11 +160,17 @@ pub mod types;
 pub mod udp_hole_punch;
 pub mod universal_coordinator_adapter;
 
-// Mock BearDog implementations for testing
-pub mod beardog;
+// Security-provider integration (BirdSong + relay authority; discovered by capability at runtime)
+pub mod security;
+
+/// Deprecated alias for [`security`].
+#[deprecated(note = "use module `security` (capability-based naming)")]
+pub mod beardog {
+    pub use crate::security::*;
+}
 
 #[cfg(test)]
-mod beardog_tests;
+mod security_tests;
 
 // Re-exports
 pub use birdsong::{BirdSongBroadcaster, BirdSongMessage, LineageHint};

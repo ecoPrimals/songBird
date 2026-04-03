@@ -122,13 +122,13 @@ pub mod access_control;
 /// Core application wiring and the main [`SongbirdOrchestrator`] entrypoint.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod app;
-/// JWT authentication delegated to BearDog over IPC.
+/// JWT authentication delegated to security provider over IPC.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod auth;
 /// UniBin public API: `run_server`, `run_doctor`, `run_config`, and related CLI types.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod bin_interface;
-/// BTSP Unix socket client for `BearDog` secure tunnels.
+/// BTSP Unix socket client for `security provider` secure tunnels.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod btsp_client;
 /// Neural API capability registration for the local runtime.
@@ -149,7 +149,7 @@ pub mod consent_management;
 /// Consolidated orchestrator core (routing, execution, benchmarks, adapters).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod core;
-/// Pure Rust TLS and crypto delegation to BearDog.
+/// Pure Rust TLS and crypto delegation to security provider.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod crypto;
 /// Environment-backed self-configuration for the orchestrator process.
@@ -203,7 +203,7 @@ pub mod resource_management;
 /// Multi-protocol RPC (JSON-RPC, tarpc, etc.).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod rpc;
-/// HTTP client for security-capability and trust RPC against BearDog.
+/// HTTP client for security-capability and trust RPC against security provider.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod security_client;
 /// Backward-compatible module alias for [`security_client`] (existing imports use `security_capability_client`).
@@ -236,7 +236,7 @@ pub use app::SongbirdOrchestrator;
 pub use storage_memory::InMemoryStorage;
 
 // Re-export security capability client (provider-agnostic!)
-/// HTTP client for security-capability RPC against `BearDog` (trust evaluation and related calls).
+/// HTTP client for security-capability RPC against `security provider` (trust evaluation and related calls).
 pub use security_capability_client::{
     SecurityCapabilityClient, TrustEvaluationRequest, TrustEvaluationResponse,
 };

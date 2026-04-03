@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Fault Injection Tests for `BearDog` JWT Delegation
+//! Fault Injection Tests for `security provider` JWT Delegation
 //!
 //! Tests JWT provisioning under fault conditions.
 
@@ -44,10 +44,12 @@ async fn test_fault_socket_connection_refused() {
     println!("💥 FAULT: Testing connection refused...");
 
     // Use a path that's unlikely to have a listening socket
-    let secret =
-        provision_jwt_secret(Some("/tmp/beardog-fault-refused-12345.sock"), "fault_refused")
-            .await
-            .expect("Should fall back to secure random");
+    let secret = provision_jwt_secret(
+        Some("/tmp/security-provider-fault-refused-12345.sock"),
+        "fault_refused",
+    )
+    .await
+    .expect("Should fall back to secure random");
 
     assert!(secret.len() >= 85);
 
@@ -186,7 +188,7 @@ async fn test_fault_rapid_socket_changes() {
     let handles: Vec<_> = (0..100)
         .map(|i| {
             tokio::spawn(async move {
-                let socket = format!("/tmp/beardog-fault-{}.sock", i % 10);
+                let socket = format!("/tmp/security-provider-fault-{}.sock", i % 10);
                 provision_jwt_secret(Some(&socket), &format!("fault_rapid_{i}"))
                     .await
                     .expect("Should succeed with fallback")

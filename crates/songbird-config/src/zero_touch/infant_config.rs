@@ -10,7 +10,7 @@
 //! dynamically from the environment.
 //!
 //! ## Core Principles
-//! 1. **No Hardcoded Primal Names**: Never reference beardog, toadstool, nestgate, squirrel
+//! 1. **No Hardcoded Primal Names**: Never reference beardog, toadstool, storage provider, squirrel
 //! 2. **No Hardcoded Vendors**: Never reference kubernetes, consul, docker, redis, etc.
 //! 3. **No Hardcoded Ports**: All ports come from environment or discovery
 //! 4. **Capability-Based**: Request what you need (security, storage, compute, ai)

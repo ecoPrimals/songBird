@@ -19,16 +19,27 @@
 //! - Falls back to secure random if unavailable
 //! - Maintains self-knowledge (only knows itself)
 
-pub mod beardog_jwt_client; // Security provider JWT delegation (Pure Rust!)
+pub mod security_jwt_client; // Security provider JWT delegation (Pure Rust!)
+
+/// Deprecated: use [`security_jwt_client`].
+#[deprecated(note = "Renamed to security_jwt_client (capability-based naming)")]
+pub mod beardog_jwt_client {
+    pub use super::security_jwt_client::*;
+}
+
 pub mod capability_discovery; // Capability-based security discovery (TRUE PRIMAL!)
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests; // Integration tests for JWT delegation
 
-pub use beardog_jwt_client::{
-    fetch_jwt_secret_from_beardog, generate_secure_random_jwt, provision_jwt_secret,
+pub use security_jwt_client::{
+    fetch_jwt_secret_from_security_provider, generate_secure_random_jwt, provision_jwt_secret,
 };
+
+// Backward-compatible alias (deprecated)
+#[allow(deprecated)]
+pub use security_jwt_client::fetch_jwt_secret_from_beardog;
 
 // Capability-based security discovery (preferred API)
 pub use capability_discovery::{

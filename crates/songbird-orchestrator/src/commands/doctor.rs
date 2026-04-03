@@ -104,24 +104,24 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
         println!("   Checking primal connectivity...");
         println!();
 
-        // Check BearDog connectivity
-        println!("   🐻 BearDog (Security & Crypto)");
-        match check_beardog_connectivity().await {
+        // Check security provider connectivity
+        println!("   🐻 security provider (Security & Crypto)");
+        match check_security_provider_connectivity().await {
             Ok(true) => println!("      Status: ✅ Connected"),
             Ok(false) => println!("      Status: ⚠️  Not reachable"),
             Err(e) => println!("      Status: ❌ Error: {e}"),
         }
 
-        // Check Squirrel connectivity (future)
-        println!("   🐿️  Squirrel (AI & MCP)");
+        // Check AI coordination connectivity (future)
+        println!("   🤖  AI coordination (AI & MCP)");
         println!("      Status: ⏳ Not yet integrated");
 
         // Check ToadStool connectivity (future)
         println!("   🍄 ToadStool (Storage)");
         println!("      Status: ⏳ Not yet integrated");
 
-        // Check NestGate connectivity (future)
-        println!("   🏠 NestGate (Sovereign Storage)");
+        // Check storage provider connectivity (future)
+        println!("   🏠 Storage provider (sovereign storage)");
         println!("      Status: ⏳ Not yet integrated");
 
         println!();
@@ -216,7 +216,8 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
     let primal_checks = if comprehensive {
         let mut discovered = std::collections::HashMap::new();
         // Check known capability providers discovered at runtime
-        let crypto_status = check_primal_status("crypto", check_beardog_connectivity()).await;
+        let crypto_status =
+            check_primal_status("crypto", check_security_provider_connectivity()).await;
         discovered.insert("crypto".to_string(), crypto_status);
         // Scan for other primals via socket directory
         for capability in &["ai", "storage", "messaging"] {
@@ -290,8 +291,8 @@ pub async fn check_port_availability(port: u16) -> Result<bool> {
     }
 }
 
-/// Check `BearDog` connectivity
-async fn check_beardog_connectivity() -> Result<bool> {
+/// Check `security provider` connectivity
+async fn check_security_provider_connectivity() -> Result<bool> {
     use crate::btsp_client::BtspClient;
 
     let client = BtspClient::new();

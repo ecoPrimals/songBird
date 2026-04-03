@@ -22,7 +22,7 @@
 //!
 //! # Example
 //! ```text
-//! // Squirrel requests "ai:text-generation" capability
+//! // A coordination client requests "ai:text-generation" capability
 //! // Router discovers available providers at runtime
 //! // No hardcoded "OpenAI" or "HuggingFace" logic!
 //! ```

@@ -31,6 +31,7 @@
 //! - Record layer encryption (Section 5.2)
 
 use super::core::TlsHandshake;
+use super::tls_wire_u16;
 use crate::crypto::{TlsApplicationSecrets, TlsHandshakeSecrets as TlsSecrets};
 use crate::error::{Error, Result};
 use crate::tls::session::SessionKeys;
@@ -44,7 +45,7 @@ impl TlsHandshake {
     /// Execute the complete TLS 1.3 handshake
     ///
     /// Orchestrates all 13 steps of the TLS 1.3 handshake, delegating
-    /// cryptographic operations to `BearDog` via the crypto capability.
+    /// cryptographic operations to the `security provider` via the crypto capability.
     ///
     /// # Errors
     ///
@@ -60,7 +61,7 @@ impl TlsHandshake {
         // Steps 1-3: Generate keypair, random, send ClientHello
         let (client_public, client_private) = self.crypto.generate_x25519_keypair().await?;
         let client_random = self.generate_random();
-        let client_hello = self.build_client_hello(&client_random, &client_public, server_name);
+        let client_hello = self.build_client_hello(&client_random, &client_public, server_name)?;
 
         info!("📤 Sending ClientHello: {} bytes", client_hello.len());
         self.add_client_hello_to_transcript(&client_hello);
@@ -385,7 +386,7 @@ impl TlsHandshake {
         client_random: &[u8],
         client_public_key: &[u8],
         server_name: &str,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>> {
         let mut msg = Vec::new();
 
         // TLS record header
@@ -407,11 +408,7 @@ impl TlsHandshake {
         msg.push(0); // Legacy session ID length
 
         // Cipher suites
-        msg.extend_from_slice(
-            &u16::try_from(CIPHER_SUITES.len() * 2)
-                .expect("cipher suites fit in u16")
-                .to_be_bytes(),
-        );
+        msg.extend_from_slice(&tls_wire_u16(CIPHER_SUITES.len().saturating_mul(2))?.to_be_bytes());
         for suite in CIPHER_SUITES {
             msg.extend_from_slice(&suite.to_be_bytes());
         }
@@ -421,10 +418,8 @@ impl TlsHandshake {
         msg.push(0); // No compression
 
         // Extensions
-        let extensions = self.build_extensions(server_name, client_public_key);
-        msg.extend_from_slice(
-            &u16::try_from(extensions.len()).expect("extensions fit in u16").to_be_bytes(),
-        );
+        let extensions = self.build_extensions(server_name, client_public_key)?;
+        msg.extend_from_slice(&tls_wire_u16(extensions.len())?.to_be_bytes());
         msg.extend_from_slice(&extensions);
 
         // Fill in lengths
@@ -437,7 +432,7 @@ impl TlsHandshake {
         msg[length_pos] = ((record_length >> 8) & 0xFF) as u8;
         msg[length_pos + 1] = (record_length & 0xFF) as u8;
 
-        msg
+        Ok(msg)
     }
 }
 
@@ -446,13 +441,13 @@ mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::*;
-    use crate::crypto::BearDogProvider;
+    use crate::crypto::SecurityCryptoProvider;
     use crate::tls::config::TlsConfig;
     use crate::tls::{CIPHER_SUITES, TLS_1_2, content_type, handshake_type};
     use std::sync::Arc;
 
     fn test_handshake() -> TlsHandshake {
-        let crypto = Arc::new(BearDogProvider::new("/tmp/songbird-handshake-flow-test.sock"))
+        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-handshake-flow-test.sock"))
             as Arc<dyn crate::crypto::CryptoCapability>;
         TlsHandshake::new(crypto)
     }
@@ -462,7 +457,7 @@ mod tests {
         let h = test_handshake();
         let random = [0x5au8; 32];
         let key = [0x3cu8; 32];
-        let msg = h.build_client_hello(&random, &key, "example.com");
+        let msg = h.build_client_hello(&random, &key, "example.com").expect("client hello");
 
         assert_eq!(msg[0], content_type::HANDSHAKE);
         assert_eq!(&msg[1..3], &TLS_1_2.to_be_bytes());
@@ -475,7 +470,7 @@ mod tests {
         let h = test_handshake();
         let random = [0u8; 32];
         let key = [1u8; 32];
-        let msg = h.build_client_hello(&random, &key, "test.local");
+        let msg = h.build_client_hello(&random, &key, "test.local").expect("client hello");
 
         assert_eq!(msg[5], handshake_type::CLIENT_HELLO);
     }
@@ -486,7 +481,7 @@ mod tests {
         let mut random = [0u8; 32];
         random[0] = 0x7e;
         let key = [9u8; 32];
-        let msg = h.build_client_hello(&random, &key, "svc.example");
+        let msg = h.build_client_hello(&random, &key, "svc.example").expect("client hello");
 
         // After record header (5) + handshake type (1) + handshake length (3) + legacy version (2)
         let body_start = 5 + 1 + 3;
@@ -500,10 +495,11 @@ mod tests {
 
     #[test]
     fn handshake_with_config_preserves_cipher_list_in_client_hello() {
-        let crypto = Arc::new(BearDogProvider::new("/tmp/songbird-tls-config-test.sock"))
+        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-tls-config-test.sock"))
             as Arc<dyn crate::crypto::CryptoCapability>;
         let h = TlsHandshake::with_config(crypto, TlsConfig::default(), None);
-        let msg = h.build_client_hello(&[0xee; 32], &[0xdd; 32], "h.example");
+        let msg =
+            h.build_client_hello(&[0xee; 32], &[0xdd; 32], "h.example").expect("client hello");
 
         assert!(msg.len() > 40);
         assert_eq!(msg[0], content_type::HANDSHAKE);
@@ -512,7 +508,8 @@ mod tests {
     #[test]
     fn build_client_hello_sni_extension_present_for_non_empty_host() {
         let h = test_handshake();
-        let msg = h.build_client_hello(&[0x01; 32], &[0x02; 32], "api.github.com");
+        let msg =
+            h.build_client_hello(&[0x01; 32], &[0x02; 32], "api.github.com").expect("client hello");
         let host = b"api.github.com";
         assert!(
             msg.windows(host.len()).any(|w| w == host),
@@ -523,7 +520,7 @@ mod tests {
     #[test]
     fn build_client_hello_record_length_matches_payload() {
         let h = test_handshake();
-        let msg = h.build_client_hello(&[0xab; 32], &[0xcd; 32], "x");
+        let msg = h.build_client_hello(&[0xab; 32], &[0xcd; 32], "x").expect("client hello");
 
         let rl = u16::from_be_bytes([msg[3], msg[4]]) as usize;
         assert_eq!(msg.len(), 5 + rl);

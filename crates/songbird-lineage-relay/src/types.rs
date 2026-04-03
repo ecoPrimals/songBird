@@ -39,8 +39,8 @@ pub struct LineageProof {
     pub parent: Option<NodeId>,
     /// Ordered ancestor chain toward genesis (oldest last or per convention).
     pub ancestors: Vec<NodeId>,
-    /// BearDog-signed attestation binding this node to its birth event.
-    pub birth_signature: Vec<u8>, // Signed by BearDog
+    /// security provider-signed attestation binding this node to its birth event.
+    pub birth_signature: Vec<u8>, // Signed by security provider
     /// When the birth certificate was issued.
     pub birth_timestamp: SystemTime,
 }

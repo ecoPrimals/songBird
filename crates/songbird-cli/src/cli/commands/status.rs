@@ -148,7 +148,7 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
         },
         load_balancer_status: ServiceStatus {
             name: "Load Balancer".to_string(),
-            port: Some(songbird_config::defaults::ports::beardog_port()),
+            port: Some(songbird_config::defaults::ports::security_provider_port()),
             ..unreachable.clone()
         },
         monitoring_status: ServiceStatus {

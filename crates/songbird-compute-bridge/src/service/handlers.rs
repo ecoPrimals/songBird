@@ -184,11 +184,7 @@ mod tests {
             )
             .await
             .expect("router should accept request");
-        assert_eq!(
-            res.status(),
-            StatusCode::METHOD_NOT_ALLOWED,
-            "/health only allows GET"
-        );
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED, "/health only allows GET");
     }
 
     #[tokio::test]
@@ -200,9 +196,7 @@ mod tests {
                     .method(Method::POST)
                     .uri("/api/v1/workloads")
                     .header("content-type", "application/json")
-                    .body(Body::from(
-                        br#"{"name":"n","payload":null}"#.to_vec(),
-                    ))
+                    .body(Body::from(br#"{"name":"n","payload":null}"#.to_vec()))
                     .expect("valid test request"),
             )
             .await
@@ -212,9 +206,7 @@ mod tests {
             StatusCode::SERVICE_UNAVAILABLE,
             "without backend_url handler returns service unavailable"
         );
-        let body = to_bytes(res.into_body(), usize::MAX)
-            .await
-            .expect("read body");
+        let body = to_bytes(res.into_body(), usize::MAX).await.expect("read body");
         let v: serde_json::Value = serde_json::from_slice(&body).expect("json body");
         assert_eq!(v["error"], "no_backend");
     }
@@ -232,15 +224,10 @@ mod tests {
             .await
             .expect("router should accept request");
         assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
-        let body = to_bytes(res.into_body(), usize::MAX)
-            .await
-            .expect("read body");
+        let body = to_bytes(res.into_body(), usize::MAX).await.expect("read body");
         let v: serde_json::Value = serde_json::from_slice(&body).expect("json body");
         assert!(
-            v["message"]
-                .as_str()
-                .expect("message field")
-                .contains("compute backend"),
+            v["message"].as_str().expect("message field").contains("compute backend"),
             "expected guidance about backend; got {v}"
         );
     }
@@ -285,7 +272,8 @@ mod tests {
             .await
             .expect("router should accept request");
         assert!(
-            res.status() == StatusCode::BAD_GATEWAY || res.status() == StatusCode::INTERNAL_SERVER_ERROR,
+            res.status() == StatusCode::BAD_GATEWAY
+                || res.status() == StatusCode::INTERNAL_SERVER_ERROR,
             "unreachable backend should yield gateway or build error, got {}",
             res.status()
         );

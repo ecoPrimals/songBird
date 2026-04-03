@@ -148,8 +148,8 @@ cargo run --example discovery
 ## Architecture
 
 ```
-Application Layer (BearDog, Squirrel, etc.):
-  - Uses virtual paths: "/primal/beardog"
+Application layer (security provider, Squirrel, etc.):
+  - Uses virtual paths such as "/primal/beardog" (legacy BearDog primal name)
   - Platform-agnostic code!
 
 Universal IPC Layer (this crate):

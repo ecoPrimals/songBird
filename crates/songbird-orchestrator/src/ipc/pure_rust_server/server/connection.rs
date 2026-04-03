@@ -45,7 +45,7 @@ impl UnixSocketServer {
 
         info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
-        info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 Squirrel)");
+        info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 coordination)");
         info!("   Status: READY ✅ (atomic flag set)");
 
         while self.is_running() {
@@ -133,7 +133,7 @@ impl UnixSocketServer {
         self.is_ready.store(true, std::sync::atomic::Ordering::Release);
         self.ready_notify.notify_waiters();
 
-        info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 Squirrel)");
+        info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 coordination)");
         info!("   Status: READY ✅ (isomorphic TCP fallback active)");
 
         while self.is_running() {

@@ -72,7 +72,9 @@ mod tests {
 
     #[test]
     fn hole_punch_failed_includes_attempts() {
-        let e = OnionRelayError::HolePunchFailed { attempts: 7 };
+        let e = OnionRelayError::HolePunchFailed {
+            attempts: 7,
+        };
         assert!(e.to_string().contains('7'), "expected attempts in {}", e);
     }
 

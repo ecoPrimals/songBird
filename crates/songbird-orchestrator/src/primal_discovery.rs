@@ -9,7 +9,7 @@
 //!
 //! ## Principles
 //!
-//! 1. **Self-Knowledge Only**: Songbird knows only itself (see [`get_primal_name`])
+//! 1. **Self-Knowledge Only**: Songbird knows only itself (see `get_primal_name`)
 //! 2. **Capability-Based**: Classify by `capabilities.list` tokens, not paths
 //! 3. **Runtime Discovery**: No compile-time dependencies on other primals
 //! 4. **Graceful Degradation**: Features work without optional primals
@@ -67,8 +67,12 @@ impl Capability {
     /// Alternative environment variable names (backward compatibility).
     fn alt_env_vars(&self) -> Vec<&'static str> {
         match self {
-            Self::Crypto => vec!["SECURITY_PROVIDER_SOCKET", "BEARDOG_CRYPTO_SOCKET", "BEARDOG_SOCKET"],
-            Self::Security => vec!["SECURITY_PROVIDER_SOCKET", "SONGBIRD_SECURITY_PROVIDER", "BEARDOG_SOCKET"],
+            Self::Crypto => {
+                vec!["SECURITY_PROVIDER_SOCKET", "BEARDOG_CRYPTO_SOCKET", "BEARDOG_SOCKET"]
+            }
+            Self::Security => {
+                vec!["SECURITY_PROVIDER_SOCKET", "SONGBIRD_SECURITY_PROVIDER", "BEARDOG_SOCKET"]
+            }
             Self::Http => vec!["HTTP_CLIENT_SOCKET", "SONGBIRD_SOCKET"],
             Self::Ai => vec!["SQUIRREL_SOCKET", "AI_PROVIDER_SOCKETS"],
             Self::Storage => vec!["NESTGATE_SOCKET", "STORAGE_SOCKET"],
@@ -141,19 +145,54 @@ pub fn capability_from_wire_id(id: &str) -> Result<Capability> {
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-pub async fn discover(capability: Capability) -> Result<String> {
-    discover_with(capability, |name| songbird_process_env::var(name).ok()).await
-}
-
-/// Discover a primal by capability with injectable env reader (concurrent-safe, testable)
+/// Discover a primal by capability.
+///
+/// Uses `songbird_process_env` as the env reader. The env fast-path runs inline;
+/// if no env match, the filesystem/socket slow path runs in `spawn_blocking` to
+/// avoid blocking async worker threads.
+///
 /// # Errors
 ///
-/// Returns an error if the operation fails.
+/// Returns an error if no provider is found.
+pub async fn discover(capability: Capability) -> Result<String> {
+    let env_reader = |name: &str| songbird_process_env::var(name).ok();
+
+    // Fast path: env vars (no I/O, instant)
+    if let Some(socket_path) = env_reader(capability.env_var_name()) {
+        info!("   ✅ Found via {}: {}", capability.env_var_name(), socket_path);
+        return Ok(socket_path);
+    }
+    for alt_var in capability.alt_env_vars() {
+        if let Some(socket_path) = env_reader(alt_var) {
+            info!("   ✅ Found via {} (compatibility): {}", alt_var, socket_path);
+            return Ok(socket_path);
+        }
+    }
+
+    // Slow path: blocking filesystem/socket I/O in the blocking pool
+    tokio::task::spawn_blocking(move || discover_with_sync(capability, env_reader)).await?
+}
+
+/// Discover a primal by capability with injectable env reader (concurrent-safe, testable).
+///
+/// Fully synchronous: call from `spawn_blocking` when on an async runtime to
+/// avoid blocking worker threads. Tests can call directly (no I/O in env-only cases).
+///
+/// # Errors
+///
+/// Returns an error if no provider is found.
 #[expect(
     clippy::unused_async,
-    reason = "async signature required by Axum, trait objects, or future I/O"
+    reason = "async signature preserved for call-site compatibility; I/O is sync"
 )]
 pub async fn discover_with<F>(capability: Capability, env_reader: F) -> Result<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    discover_with_sync(capability, env_reader)
+}
+
+fn discover_with_sync<F>(capability: Capability, env_reader: F) -> Result<String>
 where
     F: Fn(&str) -> Option<String>,
 {
@@ -173,13 +212,13 @@ where
         }
     }
 
-    // Strategy 3: TCP discovery files (isomorphic fallback; uses same `env_reader` as biomeos scan)
+    // Strategy 3: TCP discovery files (blocking filesystem reads)
     if let Some(tcp_endpoint) = discover_tcp_from_capability(capability, &env_reader) {
         info!("   ✅ Found {:?} provider via TCP discovery file: {}", capability, tcp_endpoint);
         return Ok(tcp_endpoint);
     }
 
-    // Strategy 4: BiomeOS `*.sock` scan + JSON-RPC capability probe (no filename classification)
+    // Strategy 4: BiomeOS `*.sock` scan + JSON-RPC capability probe
     if let Some(socket_path) = discover_via_biomeos_probe(capability, &env_reader) {
         info!("   ✅ Found {:?} provider via biomeos probe: {}", capability, socket_path);
         return Ok(socket_path);
@@ -205,6 +244,10 @@ where
 }
 
 /// Discover sovereign storage: env overrides, then biomeos probe with [`matches_sovereign_storage_tokens`].
+#[expect(
+    clippy::unused_async,
+    reason = "async signature preserved for call-site compatibility; I/O is sync"
+)]
 pub async fn discover_sovereign_storage_with<F>(env_reader: F) -> Result<String>
 where
     F: Fn(&str) -> Option<String>,
@@ -331,12 +374,42 @@ where
     discover_via_biomeos_probe(capability, env_reader)
 }
 
-/// Scan socket directories for sockets matching capability — **deprecated path**: use [`discover_via_biomeos_probe`].
+/// Scan socket directories for sockets matching capability — **deprecated path**: use `discover_via_biomeos_probe`.
 ///
 /// Kept for internal/binary compatibility; implements the same probe-based logic (no filename heuristics).
 #[must_use]
 pub fn scan_sockets(capability: Capability) -> Option<String> {
     discover_via_biomeos_probe_blocking(capability)
+}
+
+/// TCP discovery with pre-resolved env vars (safe to call from `spawn_blocking`).
+fn discover_tcp_from_resolved_env(
+    capability: Capability,
+    xdg_runtime_dir: Option<&str>,
+    home_dir: Option<&str>,
+) -> Option<String> {
+    let env = |key: &str| -> Option<String> {
+        match key {
+            "XDG_RUNTIME_DIR" => xdg_runtime_dir.map(String::from),
+            "HOME" => home_dir.map(String::from),
+            _ => None,
+        }
+    };
+    discover_tcp_from_capability(capability, &env)
+}
+
+/// BiomeOS socket probe with pre-resolved env vars (safe to call from `spawn_blocking`).
+fn discover_biomeos_from_resolved_env(
+    capability: Capability,
+    xdg_runtime_dir: Option<&str>,
+) -> Option<String> {
+    let env = |key: &str| -> Option<String> {
+        match key {
+            "XDG_RUNTIME_DIR" => xdg_runtime_dir.map(String::from),
+            _ => None,
+        }
+    };
+    discover_via_biomeos_probe(capability, &env)
 }
 
 /// Discover TCP endpoint for a capability (isomorphic fallback support).

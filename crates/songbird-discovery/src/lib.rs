@@ -155,7 +155,7 @@
 //! - **etcd**: etcd-based service registry
 //! - **Network Scanning**: Active network scanning and probing
 //! - **mDNS**: Multicast DNS service discovery
-//! - **🧬 Pattern Recognition**: BearDog-inspired pattern detection for primal classification
+//! - **🧬 Pattern Recognition**: security provider-inspired pattern detection for primal classification
 //!
 //! ## Service Types
 //!
@@ -197,9 +197,19 @@
 //! error information including network errors, timeout handling, and recovery
 //! suggestions for common discovery failures.
 
-/// BearDog-backed BirdSong encryption provider for discovery traffic.
+/// Security-provider-backed BirdSong encryption provider for discovery traffic.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
-pub mod beardog_birdsong_provider;
+pub mod security_birdsong_provider;
+
+/// Deprecated alias for [`security_birdsong_provider`].
+#[deprecated(note = "use module `security_birdsong_provider` (capability-based naming)")]
+pub mod beardog_birdsong_provider {
+    pub use crate::security_birdsong_provider::*;
+
+    /// Deprecated alias for [`crate::SecurityBirdSongProvider`].
+    #[deprecated(note = "use SecurityBirdSongProvider")]
+    pub type BearDogBirdSongProvider = crate::SecurityBirdSongProvider;
+}
 /// BirdSong encryption configuration and processing for discovery.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod birdsong;
@@ -249,8 +259,12 @@ mod tests_self_filtering;
 
 // 🌐 Federation-aware discovery (Phase 2)
 // Re-export universal discovery functionality
-/// BearDog-backed `BirdSong` provider for encrypted discovery.
-pub use beardog_birdsong_provider::BearDogBirdSongProvider; // NEW (Jan 3, 2026)
+/// Security-provider-backed `BirdSong` provider for encrypted discovery.
+pub use security_birdsong_provider::SecurityBirdSongProvider;
+
+/// Deprecated alias for [`SecurityBirdSongProvider`].
+#[deprecated(note = "use SecurityBirdSongProvider")]
+pub type BearDogBirdSongProvider = SecurityBirdSongProvider;
 /// `BirdSong` encryption types and processor for discovery traffic.
 pub use birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor}; // REFACTORED v3.22.0
 /// Factory for creating discovery backends from configuration or auto-detection.

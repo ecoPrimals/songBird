@@ -3,22 +3,22 @@
 
 use serde::Deserialize;
 use serde_json::Value;
-use songbird_discovery::beardog_birdsong_provider::BearDogBirdSongProvider;
+use songbird_discovery::security_birdsong_provider::SecurityBirdSongProvider;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// `BirdSong` handler for encrypted discovery
 ///
-/// Manages family-encrypted discovery beacons using `BearDog`'s genetic lineage crypto.
-/// All operations discover `BearDog` at runtime (no hardcoding).
+/// Manages family-encrypted discovery beacons using `security provider`'s genetic lineage crypto.
+/// All operations discover `security provider` at runtime (no hardcoding).
 #[derive(Default)]
 pub struct BirdSongHandler {
-    /// Cached `BearDog` socket path (runtime discovered)
-    pub(super) beardog_socket: Arc<RwLock<Option<PathBuf>>>,
+    /// Cached `security provider` socket path (runtime discovered)
+    pub(super) security_socket: Arc<RwLock<Option<PathBuf>>>,
 
     /// Cached `BirdSong` provider (lazy initialization)
-    pub(super) provider: Arc<RwLock<Option<Arc<BearDogBirdSongProvider>>>>,
+    pub(super) provider: Arc<RwLock<Option<Arc<SecurityBirdSongProvider>>>>,
 }
 
 impl BirdSongHandler {
@@ -31,7 +31,7 @@ impl BirdSongHandler {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            beardog_socket: Arc::new(RwLock::new(None)),
+            security_socket: Arc::new(RwLock::new(None)),
             provider: Arc::new(RwLock::new(None)),
         }
     }

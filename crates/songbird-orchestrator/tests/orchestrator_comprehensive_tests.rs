@@ -10,14 +10,14 @@
 
 //! Comprehensive Orchestrator Tests
 //!
-//! Modern concurrent testing patterns - no sleeps, event-driven coordination
+//! Modern concurrent testing patterns — no sleeps, event-driven coordination.
 //!
 //! `SongbirdOrchestrator::new` is fail-closed without a security provider endpoint in env.
 //! Tests use [`songbird_process_env`] (thread-safe overlay) with a placeholder URL so no live
-//! BearDog is required for these unit-level lifecycle checks.
+//! security provider is required for these unit-level lifecycle checks.
 //!
-//! [`serial_test::serial`] avoids flaky parallel failures from shared crypto-provider discovery
-//! during [`SongbirdOrchestrator::start`].
+//! Only tests that call `start()` (which binds ports) remain serialized.
+//! All read-only / accessor tests run fully concurrently.
 
 use anyhow::Result;
 use songbird_orchestrator::SongbirdOrchestrator;
@@ -39,7 +39,6 @@ fn ensure_security_provider_overlay() {
 // Creation Tests
 // ============================================================================
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_creation_default_config() -> Result<()> {
     ensure_security_provider_overlay();
@@ -49,7 +48,6 @@ async fn test_orchestrator_creation_default_config() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_creation_custom_environment() -> Result<()> {
     ensure_security_provider_overlay();
@@ -66,7 +64,6 @@ async fn test_orchestrator_creation_custom_environment() -> Result<()> {
 // Service Registry Tests
 // ============================================================================
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_registry_access() -> Result<()> {
     ensure_security_provider_overlay();
@@ -83,7 +80,6 @@ async fn test_service_registry_access() -> Result<()> {
 // Lifecycle Tests
 // ============================================================================
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_lifecycle_start_stop() -> Result<()> {
     ensure_security_provider_overlay();
@@ -96,7 +92,6 @@ async fn test_lifecycle_start_stop() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_lifecycle_stop_without_start() -> Result<()> {
     ensure_security_provider_overlay();
@@ -109,7 +104,6 @@ async fn test_lifecycle_stop_without_start() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_lifecycle_multiple_cycles() -> Result<()> {
     ensure_security_provider_overlay();
@@ -129,7 +123,6 @@ async fn test_lifecycle_multiple_cycles() -> Result<()> {
 // Status Tests
 // ============================================================================
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_status_basic() -> Result<()> {
     ensure_security_provider_overlay();
@@ -141,7 +134,6 @@ async fn test_get_status_basic() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_status_while_running() -> Result<()> {
     ensure_security_provider_overlay();
@@ -155,7 +147,6 @@ async fn test_get_status_while_running() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_status_after_stop() -> Result<()> {
     ensure_security_provider_overlay();
@@ -173,7 +164,6 @@ async fn test_get_status_after_stop() -> Result<()> {
 // Command Handling Tests
 // ============================================================================
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_command_unknown() -> Result<()> {
     ensure_security_provider_overlay();
@@ -186,7 +176,6 @@ async fn test_handle_command_unknown() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_command_empty() -> Result<()> {
     ensure_security_provider_overlay();
@@ -199,7 +188,6 @@ async fn test_handle_command_empty() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_command_whitespace() -> Result<()> {
     ensure_security_provider_overlay();
@@ -246,7 +234,6 @@ fn test_config_debug() {
 // Rapid/Stress Tests (Modern Concurrent Pattern)
 // ============================================================================
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rapid_creation() -> Result<()> {
     ensure_security_provider_overlay();
@@ -259,7 +246,6 @@ async fn test_rapid_creation() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rapid_lifecycle_cycles() -> Result<()> {
     ensure_security_provider_overlay();
@@ -274,7 +260,6 @@ async fn test_rapid_lifecycle_cycles() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_status_checks() -> Result<()> {
     ensure_security_provider_overlay();
@@ -289,7 +274,6 @@ async fn test_multiple_status_checks() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_command_handling() -> Result<()> {
     ensure_security_provider_overlay();
@@ -309,7 +293,6 @@ async fn test_multiple_command_handling() -> Result<()> {
 // Integration Tests
 // ============================================================================
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_services_accessible() -> Result<()> {
     ensure_security_provider_overlay();
@@ -325,7 +308,6 @@ async fn test_orchestrator_services_accessible() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_environment_check() -> Result<()> {
     ensure_security_provider_overlay();
@@ -338,7 +320,6 @@ async fn test_orchestrator_environment_check() -> Result<()> {
     Ok(())
 }
 
-#[serial_test::serial]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_full_lifecycle() -> Result<()> {
     ensure_security_provider_overlay();

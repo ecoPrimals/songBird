@@ -35,10 +35,10 @@ pub enum TlsError {
     /// IO error (connection closed, timeout, etc)
     IoError(String),
 
-    /// Crypto provider error (`BearDog` unavailable or operation failed)
+    /// Crypto provider error (security provider unavailable or operation failed)
     CryptoError(String),
 
-    /// `BearDog` / Neural API crypto backend not reachable (no silent mock crypto)
+    /// Security provider / Neural API crypto backend not reachable (no silent mock crypto)
     CryptoUnavailable,
 
     /// Internal error (should never happen in production)
@@ -81,7 +81,7 @@ impl fmt::Display for TlsError {
             Self::IoError(msg) => write!(f, "IO error: {msg}"),
             Self::CryptoError(msg) => write!(f, "Crypto error: {msg}"),
             Self::CryptoUnavailable => {
-                write!(f, "Crypto unavailable: BearDog backend not reachable")
+                write!(f, "Crypto unavailable: security provider backend not reachable")
             }
             Self::InternalError(msg) => write!(f, "Internal error: {msg}"),
             Self::BufferTooSmall {

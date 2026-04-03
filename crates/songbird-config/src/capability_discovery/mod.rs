@@ -221,7 +221,7 @@ impl CapabilityDiscovery {
         self.find_providers_by_capability("compute").await
     }
 
-    /// Discover storage providers (replaces hardcoded `NestGate` endpoint)
+    /// Discover storage providers (replaces hardcoded `storage provider` endpoint)
     ///
     /// # Errors
     ///
@@ -230,7 +230,7 @@ impl CapabilityDiscovery {
         self.find_providers_by_capability("storage").await
     }
 
-    /// Discover security providers (replaces hardcoded `BearDog` endpoint)
+    /// Discover security providers (replaces hardcoded `security provider` endpoint)
     ///
     /// # Errors
     ///

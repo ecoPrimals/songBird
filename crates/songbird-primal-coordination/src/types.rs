@@ -381,10 +381,7 @@ mod tests {
             requirements: HashMap::new(),
             payload: serde_json::json!({}),
         };
-        assert!(
-            !caps.supports_workload(&w),
-            "workload service_type must match a listed service"
-        );
+        assert!(!caps.supports_workload(&w), "workload service_type must match a listed service");
     }
 
     #[test]

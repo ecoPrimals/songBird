@@ -7,26 +7,23 @@
     clippy::expect_used,
     reason = "test assertions"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (c) 2024-2026 ecoPrimals
-
 //! Integration tests for songbird-tls
 //!
-//! These tests validate the TLS implementation with mock `BearDog` crypto.
+//! These tests validate the TLS implementation with mock security-provider crypto.
 
 use songbird_tls::error::TlsError;
 use tokio::net::TcpListener;
 
-/// Mock `BearDog` crypto client for testing
+/// Mock security-provider crypto client for testing
 ///
-/// This simulates `BearDog` responses without requiring a live `BearDog` instance.
-/// In production, use real `BeardogCryptoClient`.
+/// This simulates provider JSON-RPC responses without requiring a live crypto provider.
+/// In production, use real `SecurityTlsCryptoClient`.
 #[derive(Clone)]
-struct MockBearDogClient {
+struct MockSecurityProviderTlsClient {
     fail_on_operation: Option<String>,
 }
 
-impl MockBearDogClient {
+impl MockSecurityProviderTlsClient {
     const fn new() -> Self {
         Self {
             fail_on_operation: None,
@@ -116,8 +113,8 @@ async fn create_test_server() -> Result<(TcpListener, u16), Box<dyn std::error::
 }
 
 #[tokio::test]
-async fn test_mock_beardog_client_operations() {
-    let client = MockBearDogClient::new();
+async fn test_mock_security_provider_client_operations() {
+    let client = MockSecurityProviderTlsClient::new();
 
     // Test key generation
     let (public, secret) = client.x25519_generate_ephemeral().unwrap();
@@ -148,29 +145,29 @@ async fn test_mock_beardog_client_operations() {
 }
 
 #[tokio::test]
-async fn test_mock_beardog_failure_injection() {
+async fn test_mock_security_provider_failure_injection() {
     // Test x25519_generate failure
-    let client = MockBearDogClient::with_failure("x25519_generate");
+    let client = MockSecurityProviderTlsClient::with_failure("x25519_generate");
     let result = client.x25519_generate_ephemeral();
     assert!(result.is_err());
 
     // Test x25519_derive failure
-    let client = MockBearDogClient::with_failure("x25519_derive");
+    let client = MockSecurityProviderTlsClient::with_failure("x25519_derive");
     let result = client.x25519_derive_secret(&[0u8; 32], &[1u8; 32]);
     assert!(result.is_err());
 
     // Test HMAC failure
-    let client = MockBearDogClient::with_failure("hmac");
+    let client = MockSecurityProviderTlsClient::with_failure("hmac");
     let result = client.hmac_sha256(b"test", b"key");
     assert!(result.is_err());
 
     // Test encryption failure
-    let client = MockBearDogClient::with_failure("encrypt");
+    let client = MockSecurityProviderTlsClient::with_failure("encrypt");
     let result = client.chacha20_poly1305_encrypt(b"test", b"key", None);
     assert!(result.is_err());
 
     // Test decryption failure
-    let client = MockBearDogClient::with_failure("decrypt");
+    let client = MockSecurityProviderTlsClient::with_failure("decrypt");
     let result = client.chacha20_poly1305_decrypt(b"test", b"key", &[0u8; 12], &[0u8; 16], None);
     assert!(result.is_err());
 }

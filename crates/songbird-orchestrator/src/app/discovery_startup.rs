@@ -224,33 +224,32 @@ async fn initialize_birdsong_processor(
     }
 
     // Create security provider provider (Pure Rust Unix socket!)
-    let security_provider =
-        match songbird_discovery::BearDogBirdSongProvider::new(endpoint.clone(), family_id.clone())
-            .await
-        {
-            Ok(provider) => provider,
-            Err(e) => {
-                warn!(
-                    "⚠️  Failed to create security provider provider: {}. Using plaintext fallback",
-                    e
-                );
-                let config = songbird_discovery::BirdSongConfig {
-                    enabled: true,
-                    fallback_to_plaintext: true,
-                    security_endpoint: Some(endpoint.clone()),
-                    mixed_mode: true,
-                    dark_forest_enabled: crate::env_config::dark_forest_enabled(),
-                    accept_legacy_format: crate::env_config::accept_legacy_birdsong(),
-                    dual_broadcast: crate::env_config::dual_broadcast(),
-                };
-                let processor = songbird_discovery::BirdSongProcessor::new(None, config);
-                info!(
-                    "📡 BirdSong processor initialized (plaintext fallback): {}",
-                    processor.status()
-                );
-                return Some(Arc::new(processor));
-            }
-        };
+    let security_provider = match songbird_discovery::SecurityBirdSongProvider::new(
+        endpoint.clone(),
+        family_id.clone(),
+    )
+    .await
+    {
+        Ok(provider) => provider,
+        Err(e) => {
+            warn!(
+                "⚠️  Failed to create security provider provider: {}. Using plaintext fallback",
+                e
+            );
+            let config = songbird_discovery::BirdSongConfig {
+                enabled: true,
+                fallback_to_plaintext: true,
+                security_endpoint: Some(endpoint.clone()),
+                mixed_mode: true,
+                dark_forest_enabled: crate::env_config::dark_forest_enabled(),
+                accept_legacy_format: crate::env_config::accept_legacy_birdsong(),
+                dual_broadcast: crate::env_config::dual_broadcast(),
+            };
+            let processor = songbird_discovery::BirdSongProcessor::new(None, config);
+            info!("📡 BirdSong processor initialized (plaintext fallback): {}", processor.status());
+            return Some(Arc::new(processor));
+        }
+    };
 
     if security_provider.check_health().await {
         info!("✅ security provider provider healthy");

@@ -12,7 +12,7 @@ mod tests {
 
     #[test]
     fn test_trust_level_deserialize_integer() {
-        // BearDog sends integers
+        // security provider sends integers
         let json_0 = json!({"trust_level": 0});
         let parsed: serde_json::Value = serde_json::from_value(json_0).unwrap();
         let trust_level: TrustLevel =
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_trust_level_deserialize_string_aliases() {
-        // BearDog aliases
+        // security provider aliases
         let json = json!({"trust_level": "anonymous"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
         let trust_level: TrustLevel =
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_beardog_phase1_response() {
-        // Simulate BearDog Phase 1 response
+        // Simulate security provider Phase 1 response
         let beardog_response = json!({
             "trust_level": 1,
             "trust_level_name": "limited",

@@ -189,9 +189,9 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
 
     // SB-02: rustls crypto provider bootstrap.
     // Default path: rustls-rustcrypto (pure Rust, zero C — ecoBin compliant).
-    // `ring-crypto` feature: opt-in ONLY for standalone testing without BearDog.
-    // Production TLS is delegated to BearDog via Tower Atomic; this provider is
-    // the initial bootstrap before BearDog discovery completes.
+    // `ring-crypto` feature: opt-in ONLY for standalone testing without security provider.
+    // Production TLS is delegated to security provider via Tower Atomic; this provider is
+    // the initial bootstrap before security provider discovery completes.
     #[cfg(feature = "ring-crypto")]
     {
         rustls::crypto::ring::default_provider().install_default().ok();

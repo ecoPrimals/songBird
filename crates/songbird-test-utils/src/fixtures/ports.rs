@@ -33,10 +33,10 @@ pub mod primals {
     /// `ToadStool` compute service test port
     pub const TOADSTOOL: u16 = 8100;
 
-    /// `BearDog` security service test port
+    /// `security provider` security service test port
     pub const BEARDOG: u16 = 8101;
 
-    /// `NestGate` storage service test port
+    /// `storage provider` storage service test port
     pub const NESTGATE: u16 = 8102;
 
     /// `Squirrel` AI service test port
@@ -92,13 +92,13 @@ pub mod endpoints {
         format!("http://localhost:{}", primals::TOADSTOOL)
     }
 
-    /// Build `BearDog` test endpoint
+    /// Build `security provider` test endpoint
     #[must_use]
     pub fn beardog() -> String {
         format!("http://localhost:{}", primals::BEARDOG)
     }
 
-    /// Build `NestGate` test endpoint
+    /// Build storage-provider test endpoint
     #[must_use]
     pub fn nestgate() -> String {
         format!("http://localhost:{}", primals::NESTGATE)

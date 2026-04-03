@@ -23,8 +23,9 @@
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::RwLock;
+use tokio::time::Instant;
 use tracing::debug;
 
 /// Cache entry with TTL
@@ -209,7 +210,6 @@ impl ResponseCache {
 mod tests {
     use super::*;
     use serde_json::json;
-    use tokio::time::sleep;
 
     #[tokio::test]
     async fn test_cache_set_and_get() {
@@ -230,20 +230,17 @@ mod tests {
         assert_eq!(cached, None);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_cache_expiration() {
         let cache = ResponseCache::new(1024 * 1024);
 
         let value = json!({"result": "success"});
         cache.set("test_key", &value, Duration::from_millis(50)).await;
 
-        // Should be cached immediately
         assert!(cache.get("test_key").await.is_some());
 
-        // Wait for expiration
-        sleep(Duration::from_millis(100)).await;
+        tokio::time::advance(Duration::from_millis(100)).await;
 
-        // Should be expired
         assert!(cache.get("test_key").await.is_none());
     }
 

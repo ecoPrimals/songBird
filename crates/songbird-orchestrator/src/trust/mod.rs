@@ -48,7 +48,11 @@ pub mod peer_trust; // USB seed integration - peer trust evaluation
 pub mod types;
 pub mod universal_trust_api; // Universal, provider-agnostic trust API
 
-pub use escalation::{TrustEscalationManager, TrustTimeouts};
+pub use escalation::{SecurityTrustClient, TrustEscalationManager, TrustTimeouts};
+
+/// Deprecated alias for [`SecurityTrustClient`].
+#[deprecated(note = "renamed to SecurityTrustClient")]
+pub type BearDogClient = SecurityTrustClient;
 pub use lineage_auth::{
     LineageAuthenticator, LineageStatus, PeerAcceptanceDecision, PeerInfo, RejectionSeverity,
     UserRecommendation,

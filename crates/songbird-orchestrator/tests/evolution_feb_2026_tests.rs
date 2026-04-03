@@ -424,7 +424,7 @@ mod evolution_e2e {
         // Test that socket naming follows PRIMAL_DEPLOYMENT_STANDARD
         // Socket names should be {primal}.sock without family suffix
 
-        let primals = vec!["songbird", "beardog", "squirrel", "biome"];
+        let primals = vec!["songbird", "security-provider", "squirrel", "biome"];
 
         for primal in primals {
             // Expected socket name per PRIMAL_DEPLOYMENT_STANDARD
@@ -793,7 +793,7 @@ mod evolution_integration {
     #[test]
     fn test_integration_primal_naming_standard() {
         // Verify primal socket names follow PRIMAL_DEPLOYMENT_STANDARD
-        let primals = vec!["songbird", "beardog", "squirrel", "biome"];
+        let primals = vec!["songbird", "security-provider", "squirrel", "biome"];
 
         for primal in primals {
             let socket_name = format!("{primal}.sock");

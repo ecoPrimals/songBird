@@ -117,13 +117,13 @@ async fn test_provider_error_handling() {
 async fn test_provider_different_data_sizes() {
     let provider = UnixSocketCryptoProvider::new("/tmp/test.sock".to_string());
 
-    // Test with different data sizes (will fail without BearDog, but verifies API)
+    // Test with different data sizes (will fail without security provider, but verifies API)
     let sizes = vec![0, 1, 100, 1024, 10240, 1048576]; // 0 bytes to 1MB
 
     for size in sizes {
         let data = vec![0u8; size];
         let result = provider.blake3_hash(&data).await;
-        // We expect error (no BearDog), but API should handle any size
+        // We expect error (no security provider), but API should handle any size
         assert!(result.is_ok() || result.is_err());
     }
 }
@@ -135,7 +135,7 @@ async fn test_discover_priority_order() {
         "CRYPTO_PROVIDER" => Some("/tmp/priority2.sock".to_string()),
         "SECURITY_PROVIDER_SOCKET" | "BEARDOG_CRYPTO_SOCKET" | "BEARDOG_SOCKET" => {
             Some("/tmp/priority3.sock".to_string())
-        },
+        }
         _ => None,
     })
     .await;

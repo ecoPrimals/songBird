@@ -237,7 +237,8 @@ mod tests {
             IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)),
             Protocol::Udp,
         );
-        let m = PortMapping::from_request(&req).with_external_ip(IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)));
+        let m =
+            PortMapping::from_request(&req).with_external_ip(IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)));
         assert_eq!(m.external_port, 80);
         assert_eq!(m.internal_port, 8080);
         assert_eq!(
@@ -306,17 +307,10 @@ mod tests {
     fn port_mapping_expiration_and_zero_lease_edge() {
         let m = mapping_with_created_at(60, Duration::from_secs(61));
         assert!(m.is_expired(), "past full TTL should be expired");
-        assert_eq!(
-            m.time_until_expiration(),
-            Duration::from_secs(0),
-            "no time left after expiry"
-        );
+        assert_eq!(m.time_until_expiration(), Duration::from_secs(0), "no time left after expiry");
 
         let fresh = mapping_with_created_at(0, Duration::from_secs(0));
-        assert!(
-            fresh.needs_renewal(),
-            "zero lease => half TTL is 0, renewal is immediately due"
-        );
+        assert!(fresh.needs_renewal(), "zero lease => half TTL is 0, renewal is immediately due");
     }
 
     #[test]

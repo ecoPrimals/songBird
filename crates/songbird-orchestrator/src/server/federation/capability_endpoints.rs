@@ -62,7 +62,8 @@ pub async fn register_capability_provider(
                         provider_id: request.provider_id.clone(),
                         registration_id,
                         status: "registered".to_string(),
-                        heartbeat_interval_ms: capability_registry.config().interval.as_millis() as u64,
+                        heartbeat_interval_ms: capability_registry.config().interval.as_millis()
+                            as u64,
                         heartbeat_endpoint: "/api/v1/federation/capability/heartbeat".to_string(),
                     }),
                     error: None,

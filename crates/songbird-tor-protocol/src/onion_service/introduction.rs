@@ -43,9 +43,9 @@ impl IntroductionPoint {
     /// AUTH_KEY         [32 bytes]
     /// N_EXTENSIONS     [1 byte]  - number of extensions
     /// [extensions]     [variable]
-    /// HANDSHAKE_AUTH   [32 bytes] - MAC over cell body (placeholder until BearDog)
+    /// HANDSHAKE_AUTH   [32 bytes] - MAC over cell body (placeholder until security provider)
     /// SIG_LEN          [2 bytes]
-    /// SIG              [64 bytes] - Ed25519 signature (placeholder until BearDog)
+    /// SIG              [64 bytes] - Ed25519 signature (placeholder until security provider)
     /// ```
     ///
     /// # Panics
@@ -67,15 +67,15 @@ impl IntroductionPoint {
         // N_EXTENSIONS: 0 (no extensions)
         data.push(0u8);
 
-        // HANDSHAKE_AUTH: 32-byte MAC (needs BearDog HMAC-SHA256)
-        // For now, zero-filled — BearDog will compute this at runtime
+        // HANDSHAKE_AUTH: 32-byte MAC (needs security provider HMAC-SHA256)
+        // For now, zero-filled — security provider will compute this at runtime
         data.extend_from_slice(&[0u8; 32]);
 
         // SIG_LEN: 64
         data.extend_from_slice(&64u16.to_be_bytes());
 
-        // SIG: Ed25519 signature (needs BearDog)
-        // For now, zero-filled — BearDog will sign at runtime
+        // SIG: Ed25519 signature (needs security provider)
+        // For now, zero-filled — security provider will sign at runtime
         data.extend_from_slice(&[0u8; 64]);
 
         RelayCell {
@@ -148,13 +148,13 @@ impl IntroductionPoint {
         }
 
         // Remaining is the encrypted handshake data
-        // When BearDog is available, this would be decrypted to reveal:
+        // When security provider is available, this would be decrypted to reveal:
         // - rendezvous_point identity
         // - rendezvous_cookie
         // - client_public_key (X25519)
         //
         // For now, extract what we can from unencrypted fields
-        // In production, BearDog decrypts the ENCRYPTED section
+        // In production, security provider decrypts the ENCRYPTED section
         let encrypted = if pos < data.len() {
             &data[pos..]
         } else {
@@ -183,7 +183,7 @@ impl IntroductionPoint {
             })
         } else {
             // Encrypted section not yet decrypted — return placeholder
-            // BearDog will handle decryption in production
+            // security provider will handle decryption in production
             Ok(IntroductionRequest {
                 rendezvous_point: [0u8; 32],
                 rendezvous_cookie: [0u8; 20],

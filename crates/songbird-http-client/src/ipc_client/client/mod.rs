@@ -34,7 +34,7 @@
 //! ┌─────────────────────▼────────────────────────────────────┐
 //! │  SongbirdHttpClient                                      │
 //! │  - Pure Rust TLS 1.3                                    │
-//! │  - Tower Atomic with BearDog                            │
+//! │  - Tower Atomic with security-provider crypto            │
 //! └──────────────────────────────────────────────────────────┘
 //! ```
 //!
@@ -80,7 +80,7 @@
 //!
 //! - ✅ **Pure Rust**: Zero C dependencies (TRUE ecoBin compliant)
 //! - ✅ **Self-Delegation**: Reuses Songbird's own HTTP client
-//! - ✅ **Tower Atomic**: `BearDog` crypto via IPC (no ring/openssl)
+//! - ✅ **Tower Atomic**: `security provider` crypto via IPC (no ring/openssl)
 //! - ✅ **Simple Migration**: Drop-in replacement for legacy HTTP clients
 //! - ✅ **Maintained**: Songbird HTTP client is actively developed
 

@@ -50,35 +50,44 @@ impl OnionStorage {
         })
     }
 
-    /// Load or generate onion identity via `BearDog` (TRUE PRIMAL)
+    /// Load or generate onion identity via `security provider` (TRUE PRIMAL)
     ///
-    /// If identity exists in storage, loads it via `BearDog`. Otherwise generates
-    /// new identity via `BearDog` and stores it.
+    /// If identity exists in storage, loads it via `security provider`. Otherwise generates
+    /// new identity via `security provider` and stores it.
     ///
     /// # Errors
     ///
     /// Returns error if storage, load, or generation fails.
-    pub async fn load_or_generate_identity_via_beardog(
+    pub async fn load_or_generate_identity_via_security_provider(
         &self,
-        client: &crate::beardog_crypto::BeardogCryptoClient,
+        client: &crate::security_crypto::SecurityCryptoClient,
     ) -> Result<OnionIdentity> {
         const IDENTITY_KEY: &[u8] = b"identity/key";
 
         if let Some(bytes) = self.db.get(IDENTITY_KEY)? {
-            OnionIdentity::from_stored_via_beardog(client, &bytes).await
+            OnionIdentity::from_stored_via_security_provider(client, &bytes).await
         } else {
-            let identity = OnionIdentity::generate_via_beardog(client).await?;
+            let identity = OnionIdentity::generate_via_security_provider(client).await?;
             let bytes = identity.to_stored_bytes();
             self.db.insert(IDENTITY_KEY, bytes)?;
             self.db.flush()?;
 
             tracing::info!(
                 onion_address = %identity.onion_address(),
-                "Generated new onion identity via BearDog"
+                "Generated new onion identity via security provider"
             );
 
             Ok(identity)
         }
+    }
+
+    /// Deprecated alias for [`Self::load_or_generate_identity_via_security_provider`].
+    #[deprecated(note = "use load_or_generate_identity_via_security_provider")]
+    pub async fn load_or_generate_identity_via_beardog(
+        &self,
+        client: &crate::security_crypto::SecurityCryptoClient,
+    ) -> Result<OnionIdentity> {
+        self.load_or_generate_identity_via_security_provider(client).await
     }
 
     /// Load existing identity from storage (production safe)
@@ -115,7 +124,7 @@ impl OnionStorage {
     /// Load or generate onion identity (STANDALONE mode - testing only)
     ///
     /// ⚠️ **TRUE PRIMAL NOTE**: This method uses direct crypto and should ONLY be
-    /// used for testing! Production code should use `load_or_generate_identity_via_beardog()`.
+    /// used for testing! Production code should use `load_or_generate_identity_via_security_provider()`.
     ///
     /// # Errors
     ///
@@ -277,10 +286,7 @@ mod tests {
     #[test]
     fn memory_storage_opens_and_load_identity_is_none() {
         let s = OnionStorage::memory().expect("memory db");
-        assert!(
-            s.load_identity().expect("query").is_none(),
-            "empty sled store has no identity"
-        );
+        assert!(s.load_identity().expect("query").is_none(), "empty sled store has no identity");
     }
 
     #[test]

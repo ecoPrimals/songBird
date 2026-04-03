@@ -24,7 +24,7 @@ use tracing::{debug, info, warn};
 /// use songbird_types::CanonicalPrimalType;
 ///
 /// async fn example() -> anyhow::Result<()> {
-///     // Discover security primal (BearDog)
+///     // Discover security primal (security provider)
 ///     let endpoint = discover_primal(CanonicalPrimalType::Security).await?;
 ///     println!("Found security primal at: {}", endpoint.url);
 ///     Ok(())
@@ -155,16 +155,16 @@ fn default_url_for_primal(primal_type: &songbird_types::CanonicalPrimalType) -> 
     use songbird_types::CanonicalPrimalType;
 
     let port = match primal_type {
-        CanonicalPrimalType::Security => 8200,      // BearDog
-        CanonicalPrimalType::Storage => 6000,       // Squirrel
-        CanonicalPrimalType::Compute => 7000,       // Toadstool
-        CanonicalPrimalType::Ai => 7100,            // AI services
+        CanonicalPrimalType::Security => 8200, // security provider
+        CanonicalPrimalType::Storage => 6000,  // Squirrel
+        CanonicalPrimalType::Compute => 7000,  // Toadstool
+        CanonicalPrimalType::Ai => 7100,       // AI services
         CanonicalPrimalType::Orchestration => 8080, // Songbird
-        CanonicalPrimalType::Federation => 8090,    // Federation
-        CanonicalPrimalType::Discovery => 5300,     // Discovery
-        CanonicalPrimalType::Registry => 8081,      // Registry
+        CanonicalPrimalType::Federation => 8090, // Federation
+        CanonicalPrimalType::Discovery => 5300, // Discovery
+        CanonicalPrimalType::Registry => 8081, // Registry
         CanonicalPrimalType::Observability => 9090, // Observability
-        CanonicalPrimalType::Unknown(_) => 9999,    // Unknown
+        CanonicalPrimalType::Unknown(_) => 9999, // Unknown
     };
 
     format!("http://[::]:{port}")

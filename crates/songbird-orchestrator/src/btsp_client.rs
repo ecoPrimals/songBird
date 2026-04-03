@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-// BTSP Client - Unix Socket Integration with BearDog
+// BTSP Client - Unix Socket Integration with security provider
 // Migrated from HTTP to Unix sockets (Jan 16, 2026)
 // Aligned with BiomeOS "Concentrated Gap" strategy
 
@@ -30,10 +30,10 @@ async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
     PlatformStream::connect(addr.as_ref()).await
 }
 
-/// BTSP Client for communicating with `BearDog` via Unix socket
+/// BTSP Client for communicating with the security provider via Unix socket
 ///
-/// This client connects to `BearDog`'s BTSP (`BearDog` Tunnel Security Protocol)
-/// server via Unix sockets for secure inter-primal tunnel communication.
+/// This client connects to the security provider's BTSP server for secure inter-primal tunnel
+/// communication.
 ///
 /// # Migration Note
 /// Migrated from HTTP to Unix sockets on Jan 16, 2026 to align with
@@ -295,7 +295,7 @@ impl BtspClient {
         Ok(response["result"].clone())
     }
 
-    /// Ping `BearDog` to check health
+    /// Ping the security provider to check health
     ///
     /// # Panics
     /// May panic if JSON-RPC communication fails unexpectedly.
@@ -313,7 +313,7 @@ impl BtspClient {
         self.send_request(request).await
     }
 
-    /// Send JSON-RPC request to `BearDog` and receive response
+    /// Send JSON-RPC request to the security provider and receive response
     ///
     /// # Arguments
     /// * `request` - The JSON-RPC 2.0 request object
@@ -326,9 +326,13 @@ impl BtspClient {
     /// * JSON-RPC protocol errors
     /// * Timeout errors
     async fn send_request(&self, request: serde_json::Value) -> Result<serde_json::Value> {
-        // Connect to BearDog (platform-agnostic)
+        // Connect to security provider (platform-agnostic)
         let mut stream = connect_platform(&self.socket_path).await.map_err(|e| {
-            anyhow!("Failed to connect to BearDog socket {}: {}", self.socket_path.display(), e)
+            anyhow!(
+                "Failed to connect to security provider socket {}: {}",
+                self.socket_path.display(),
+                e
+            )
         })?;
 
         // Send request (newline-delimited JSON)
@@ -362,7 +366,7 @@ impl Default for BtspClient {
     }
 }
 
-// Type definitions (aligned with BearDog's types)
+// Type definitions (aligned with the security provider's wire types)
 
 /// Peer endpoint for BTSP tunnel establishment
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -433,11 +437,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_btsp_ping() {
-        if std::env::var("SECURITY_PROVIDER_SOCKET").or_else(|_| std::env::var("BEARDOG_SOCKET")).is_ok() {
+        if std::env::var("SECURITY_PROVIDER_SOCKET")
+            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+            .is_ok()
+        {
             let client = BtspClient::new();
             let response = client.ping().await;
             if let Ok(resp) = response {
-                assert!(resp["result"]["primal"].as_str() == Some("beardog"));
+                let primal = resp["result"]["primal"].as_str();
+                assert!(
+                    matches!(primal, Some("security provider" | "beardog")),
+                    "unexpected primal name in BTSP ping: {primal:?}"
+                );
             }
         }
     }

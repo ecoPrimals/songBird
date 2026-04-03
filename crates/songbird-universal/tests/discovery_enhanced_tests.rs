@@ -370,7 +370,7 @@ fn test_network_scan_ports() {
         80,
         443,
         songbird_config::defaults::ports::orchestrator_port(),
-        songbird_config::defaults::ports::beardog_port(),
+        songbird_config::defaults::ports::security_provider_port(),
         songbird_config::defaults::ports::dashboard_port(),
         5000,
     ];

@@ -598,11 +598,8 @@ mod tests {
 
     #[test]
     fn args_default_songbird_endpoint_uses_federation_default() {
-        let args = Args::try_parse_from([
-            "songbird-deploy",
-            "list",
-        ])
-        .expect("minimal list command should parse");
+        let args = Args::try_parse_from(["songbird-deploy", "list"])
+            .expect("minimal list command should parse");
         assert_eq!(
             args.songbird_endpoint,
             default_federation_endpoint(),

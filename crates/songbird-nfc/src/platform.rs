@@ -192,7 +192,10 @@ impl NfcDevice {
 }
 
 #[cfg(test)]
-#[allow(clippy::redundant_pub_crate, reason = "test_support is crate-private; pub(crate) is intentional")]
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "test_support is crate-private; pub(crate) is intentional"
+)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 pub(crate) mod test_support {
     //! In-crate test doubles for [`NfcBackend`].
@@ -255,8 +258,8 @@ pub(crate) mod test_support {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
-    use super::test_support::ScriptedBackend;
     use super::NfcDevice;
+    use super::test_support::ScriptedBackend;
     use crate::protocol::NfcMessage;
     use crate::{MSG_TYPE_GENESIS_REQUEST, PROTOCOL_VERSION, PUBLIC_KEY_SIZE, SIGNATURE_SIZE};
     use std::time::Duration;
@@ -293,20 +296,13 @@ mod tests {
 
         device.send_message(&msg).await.expect("send_message should serialize and send");
         let frames = sent.lock().expect("sent_frames lock");
-        assert_eq!(
-            frames.len(),
-            1,
-            "send_message should produce exactly one raw frame"
-        );
+        assert_eq!(frames.len(), 1, "send_message should produce exactly one raw frame");
         assert_eq!(frames[0], wire, "raw bytes should match NfcMessage::to_bytes");
 
         drop(frames);
-        let mut device2 =
-            ScriptedBackend::new(wire.clone()).into_device(Duration::from_secs(2));
-        let got = device2
-            .receive_message()
-            .await
-            .expect("receive_message should parse scripted wire");
+        let mut device2 = ScriptedBackend::new(wire.clone()).into_device(Duration::from_secs(2));
+        let got =
+            device2.receive_message().await.expect("receive_message should parse scripted wire");
         assert_eq!(got.version, PROTOCOL_VERSION);
         assert_eq!(got.msg_type, MSG_TYPE_GENESIS_REQUEST);
         assert_eq!(got.encrypted_payload.len(), 7);
@@ -314,8 +310,8 @@ mod tests {
 
     #[tokio::test]
     async fn receive_raw_errors_when_buffer_underruns() {
-        let mut device =
-            ScriptedBackend::new(vec![0u8; PUBLIC_KEY_SIZE - 1]).into_device(Duration::from_secs(1));
+        let mut device = ScriptedBackend::new(vec![0u8; PUBLIC_KEY_SIZE - 1])
+            .into_device(Duration::from_secs(1));
         let err = device
             .receive_raw(PUBLIC_KEY_SIZE)
             .await

@@ -487,7 +487,8 @@ mod tests {
 
     #[test]
     fn parse_url_rejects_invalid_port() {
-        let err = SoapClient::parse_url("http://192.168.1.1:bad/").expect_err("port must be numeric");
+        let err =
+            SoapClient::parse_url("http://192.168.1.1:bad/").expect_err("port must be numeric");
         assert!(
             matches!(err, IgdError::InvalidParameter(_)),
             "expected InvalidParameter, got {err:?}"
@@ -509,9 +510,6 @@ mod tests {
         );
 
         let result = soap.add_port_mapping(&req).await;
-        assert!(
-            result.is_err(),
-            "unreachable TEST-NET-3 host should yield error, got {result:?}"
-        );
+        assert!(result.is_err(), "unreachable TEST-NET-3 host should yield error, got {result:?}");
     }
 }

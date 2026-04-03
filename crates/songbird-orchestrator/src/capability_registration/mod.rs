@@ -26,7 +26,7 @@
 //! └─────────────────────┬───────────────────────────────────────┘
 //!                       │
 //! ┌─────────────────────▼───────────────────────────────────────┐
-//! │ CONSUMER PRIMALS (Squirrel, etc.)                          │
+//! │ CONSUMER PRIMALS (AI coordination, etc.)                    │
 //! │ neural_api.capability_call("secure_http", "http.post", {}) │
 //! │ → Zero knowledge of Songbird required!                      │
 //! └─────────────────────────────────────────────────────────────┘

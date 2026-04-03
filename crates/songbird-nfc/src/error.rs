@@ -27,7 +27,7 @@ pub enum NfcError {
     #[error("Malformed frame: {0}")]
     MalformedFrame(String),
 
-    /// Crypto error (`BearDog` delegation)
+    /// Crypto error (`security provider` delegation)
     #[error("Crypto error: {0}")]
     Crypto(String),
 
@@ -108,11 +108,7 @@ mod tests {
     fn io_error_roundtrips_via_from() {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
         let e: NfcError = io_err.into();
-        assert!(
-            e.to_string().contains("missing"),
-            "Io variant should wrap message: {}",
-            e
-        );
+        assert!(e.to_string().contains("missing"), "Io variant should wrap message: {}", e);
     }
 
     #[test]

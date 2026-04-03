@@ -57,7 +57,7 @@ impl SecurityCapabilityClient {
         })
     }
 
-    /// Sign data using `BearDog`
+    /// Sign data using `security provider`
     ///
     /// This is used by genesis witnesses to cryptographically sign new node identities.
     ///
@@ -73,7 +73,7 @@ impl SecurityCapabilityClient {
 
         let url = format!("{}/v1/sign", self.base_url);
 
-        tracing::debug!("🔏 Requesting signature from BearDog for node: {}", node_id);
+        tracing::debug!("🔏 Requesting signature from security provider for node: {}", node_id);
 
         let response = self
             .http_client
@@ -82,21 +82,24 @@ impl SecurityCapabilityClient {
             .json(&request)?
             .send()
             .await
-            .context("Failed to send sign request to BearDog")?;
+            .context("Failed to send sign request to security provider")?;
 
         if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("BearDog sign request failed ({status}): {error_text}");
+            anyhow::bail!("security provider sign request failed ({status}): {error_text}");
         }
 
-        let sign_response: SignResponse =
-            response.json().await.context("Failed to parse sign response from BearDog")?;
+        let sign_response: SignResponse = response
+            .json()
+            .await
+            .context("Failed to parse sign response from security provider")?;
 
-        hex::decode(&sign_response.signature).context("Failed to decode signature from BearDog")
+        hex::decode(&sign_response.signature)
+            .context("Failed to decode signature from security provider")
     }
 
-    /// Verify signature using `BearDog`
+    /// Verify signature using `security provider`
     ///
     /// This is used to verify that a signature is valid for the given data.
     ///
@@ -117,7 +120,7 @@ impl SecurityCapabilityClient {
 
         let url = format!("{}/v1/verify", self.base_url);
 
-        tracing::debug!("🔍 Verifying signature with BearDog for node: {}", node_id);
+        tracing::debug!("🔍 Verifying signature with security provider for node: {}", node_id);
 
         let response = self
             .http_client
@@ -126,16 +129,18 @@ impl SecurityCapabilityClient {
             .json(&request)?
             .send()
             .await
-            .context("Failed to send verify request to BearDog")?;
+            .context("Failed to send verify request to security provider")?;
 
         if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("BearDog verify request failed ({status}): {error_text}");
+            anyhow::bail!("security provider verify request failed ({status}): {error_text}");
         }
 
-        let verify_response: VerifyResponse =
-            response.json().await.context("Failed to parse verify response from BearDog")?;
+        let verify_response: VerifyResponse = response
+            .json()
+            .await
+            .context("Failed to parse verify response from security provider")?;
 
         Ok(verify_response.valid)
     }
@@ -150,24 +155,29 @@ impl SecurityCapabilityClient {
     pub async fn get_public_key_fingerprint(&self, node_id: &str) -> Result<String> {
         let url = format!("{}/v1/keys/{}/fingerprint", self.base_url, node_id);
 
-        tracing::debug!("🔑 Fetching public key fingerprint from BearDog for node: {}", node_id);
+        tracing::debug!(
+            "🔑 Fetching public key fingerprint from security provider for node: {}",
+            node_id
+        );
 
         let response = self
             .http_client
             .get(&url)
             .await
-            .context("Failed to fetch public key fingerprint from BearDog")?;
+            .context("Failed to fetch public key fingerprint from security provider")?;
 
         if !response.is_success() {
             // Fallback: Generate deterministic fingerprint from node_id
-            tracing::warn!("Failed to fetch public key from BearDog, using deterministic fallback");
+            tracing::warn!(
+                "Failed to fetch public key from security provider, using deterministic fallback"
+            );
             return Ok(Self::generate_deterministic_fingerprint(node_id));
         }
 
         let key_response: KeyFingerprintResponse = response
             .json()
             .await
-            .context("Failed to parse key fingerprint response from BearDog")?;
+            .context("Failed to parse key fingerprint response from security provider")?;
 
         Ok(key_response.fingerprint)
     }
@@ -207,34 +217,42 @@ impl SecurityCapabilityClient {
             .json(&request)?
             .send()
             .await
-            .context("Failed to send create lineage request to BearDog")?;
+            .context("Failed to send create lineage request to security provider")?;
 
         if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("BearDog create lineage request failed ({status}): {error_text}");
+            anyhow::bail!(
+                "security provider create lineage request failed ({status}): {error_text}"
+            );
         }
 
         let lineage_response: CreateLineageResponse = response
             .json()
             .await
-            .context("Failed to parse create lineage response from BearDog")?;
+            .context("Failed to parse create lineage response from security provider")?;
 
         hex::decode(&lineage_response.lineage_data)
-            .context("Failed to decode lineage data from BearDog")
+            .context("Failed to decode lineage data from security provider")
     }
 
-    /// Discover `BearDog` endpoint using multiple strategies
+    /// Discover `security provider` endpoint using multiple strategies
     async fn discover_endpoint() -> Result<String> {
         // Strategy 1: BEARDOG_ENDPOINT environment variable
         if let Ok(endpoint) = songbird_process_env::var("BEARDOG_ENDPOINT") {
-            tracing::info!("🐻 Using BearDog endpoint from BEARDOG_ENDPOINT: {}", endpoint);
+            tracing::info!(
+                "🐻 Using security provider endpoint from BEARDOG_ENDPOINT: {}",
+                endpoint
+            );
             return Ok(endpoint);
         }
 
         // Strategy 2: SECURITY_ENDPOINT environment variable
         if let Ok(endpoint) = songbird_process_env::var("SECURITY_ENDPOINT") {
-            tracing::info!("🐻 Using BearDog endpoint from SECURITY_ENDPOINT: {}", endpoint);
+            tracing::info!(
+                "🐻 Using security provider endpoint from SECURITY_ENDPOINT: {}",
+                endpoint
+            );
             return Ok(endpoint);
         }
 
@@ -246,7 +264,7 @@ impl SecurityCapabilityClient {
 
             if let Ok(service_endpoint) = discover_primal(CanonicalPrimalType::Security).await {
                 tracing::info!(
-                    "🐻 Discovered BearDog via capability discovery: {}",
+                    "🐻 Discovered security provider via capability discovery: {}",
                     service_endpoint.url
                 );
                 return Ok(service_endpoint.url);
@@ -258,7 +276,7 @@ impl SecurityCapabilityClient {
         {
             let default_endpoint = "http://localhost:8200".to_string();
             tracing::warn!(
-                "🐻 Using default BearDog endpoint (development only): {}",
+                "🐻 Using default security provider endpoint (development only): {}",
                 default_endpoint
             );
             Ok(default_endpoint)
@@ -267,7 +285,7 @@ impl SecurityCapabilityClient {
         #[cfg(not(debug_assertions))]
         {
             anyhow::bail!(
-                "BearDog endpoint not configured. Set BEARDOG_ENDPOINT environment variable."
+                "security provider endpoint not configured. Set BEARDOG_ENDPOINT environment variable."
             );
         }
     }
@@ -281,7 +299,7 @@ impl SecurityCapabilityClient {
     }
 }
 
-// Request/Response types for BearDog API
+// Request/Response types for security provider API
 
 #[derive(Debug, Serialize)]
 struct SignRequest {
@@ -359,6 +377,9 @@ mod tests {
     async fn with_endpoint_roundtrip_uses_tokio_paused_clock_compat() {
         let fut = SecurityCapabilityClient::with_endpoint("http://127.0.0.1:7");
         tokio::time::advance(std::time::Duration::from_millis(1)).await;
-        assert!(fut.await.is_ok(), "explicit endpoint client should construct under paused runtime");
+        assert!(
+            fut.await.is_ok(),
+            "explicit endpoint client should construct under paused runtime"
+        );
     }
 }

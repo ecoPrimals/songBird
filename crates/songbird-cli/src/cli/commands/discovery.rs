@@ -45,7 +45,7 @@ pub async fn execute_discovery(
     );
     println!(
         "    - health (songbird_config::canonical::constants::network::DEFAULT_HOST:{})",
-        songbird_config::defaults::ports::beardog_port()
+        songbird_config::defaults::ports::security_provider_port()
     );
 
     println!("✅ Discovery complete ");

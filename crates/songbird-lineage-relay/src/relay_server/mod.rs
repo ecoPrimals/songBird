@@ -21,7 +21,7 @@
 //!
 //! ## Features
 //!
-//! - ✅ Lineage-based authorization (`BearDog` integration)
+//! - ✅ Lineage-based authorization (`security provider` integration)
 //! - ✅ UDP packet forwarding for symmetric NAT
 //! - ✅ Privacy masking based on family relationship
 //! - ✅ Session management (TTL, cleanup)
@@ -172,7 +172,7 @@ impl RelayServer {
     /// # Arguments
     ///
     /// * `bind_addr` - Address to bind for relay service
-    /// * `authority` - Lineage authority provider (`BearDog`)
+    /// * `authority` - Lineage authority provider (`security provider`)
     ///
     /// # Errors
     ///

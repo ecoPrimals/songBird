@@ -621,19 +621,13 @@ mod tests {
     fn decode_long_rejects_short_form_first_byte() {
         let err = decode_long_header(&[0x40, 0, 0, 0, 1, 0, 0])
             .expect_err("short form must not decode as long header");
-        assert!(
-            err.to_string().contains("Not a long header"),
-            "unexpected error: {err}"
-        );
+        assert!(err.to_string().contains("Not a long header"), "unexpected error: {err}");
     }
 
     #[test]
     fn decode_short_rejects_long_form_first_byte() {
         let err = decode_short_header(&[0xC0], 0).expect_err("long form must not decode as short");
-        assert!(
-            err.to_string().contains("Not a short header"),
-            "unexpected error: {err}"
-        );
+        assert!(err.to_string().contains("Not a short header"), "unexpected error: {err}");
     }
 
     #[test]
@@ -653,15 +647,8 @@ mod tests {
         let mut buf = [0u8; 128];
         let written = encode_long_header(&header, &mut buf).expect("encode 0-RTT long header");
         let (decoded, _) = decode_long_header(&buf[..written]).expect("decode 0-RTT long header");
-        assert_eq!(
-            decoded.packet_type,
-            LongPacketType::ZeroRtt,
-            "packet type must stay 0-RTT"
-        );
-        assert!(
-            decoded.token.is_empty(),
-            "0-RTT must not carry Initial token"
-        );
+        assert_eq!(decoded.packet_type, LongPacketType::ZeroRtt, "packet type must stay 0-RTT");
+        assert!(decoded.token.is_empty(), "0-RTT must not carry Initial token");
         assert_eq!(decoded.payload_length, 200);
         assert_eq!(decoded.packet_number, 9);
     }
@@ -689,7 +676,8 @@ mod tests {
             packet_number: 0x1122_3344,
         };
         let mut buf = [0u8; 3];
-        let err = encode_short_header(&header, &mut buf).expect_err("must fail for undersized buffer");
+        let err =
+            encode_short_header(&header, &mut buf).expect_err("must fail for undersized buffer");
         assert!(
             err.to_string().contains("PN") || err.to_string().contains("small"),
             "unexpected error: {err}"

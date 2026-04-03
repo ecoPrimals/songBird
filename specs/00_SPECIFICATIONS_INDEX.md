@@ -250,13 +250,13 @@
 
 ### BearDog Integration
 
-17. **[SONGBIRD_BEARDOG_INTEGRATION.md](SONGBIRD_BEARDOG_INTEGRATION.md)**
-   - Cryptographic delegation model
+17. **[archive/SONGBIRD_BEARDOG_INTEGRATION.md](archive/SONGBIRD_BEARDOG_INTEGRATION.md)** *(archived — see capability-based discovery standard)*
+   - Cryptographic delegation model (historical)
    - JSON-RPC over Unix socket
    - Capability-based discovery
 
-18. **[BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md](BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md)**
-    - Security primal integration
+18. **[archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md](archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md)** *(archived)*
+    - Security primal integration (historical)
     - Trust verification
 
 ### Protocol Framework
@@ -275,8 +275,8 @@
 
 ### Specific Integrations
 
-22. **[SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md](SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md)**
-    - AI routing integration
+22. **[archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md](archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md)** *(archived)*
+    - AI/coordination routing integration (historical)
     - MCP protocol support
 
 ---
@@ -480,7 +480,7 @@ Moved from `specs/` or `docs/architecture/` for historical reference (obsolete o
 | **Discovery** | CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md |
 | **Federation** | FEDERATION_IMPLEMENTATION_SPECIFICATION.md |
 | **Testing** | `CONTRIBUTING.md`, crate `tests/`; superseded specs in `specs/archive/` |
-| **BearDog** | SONGBIRD_BEARDOG_INTEGRATION.md |
+| **Security Provider** | archive/SONGBIRD_BEARDOG_INTEGRATION.md (historical); see capability-based discovery |
 
 ### By Priority
 

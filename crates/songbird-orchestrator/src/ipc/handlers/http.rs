@@ -14,7 +14,7 @@
 //!
 //! ```text
 //! ┌─────────────────────────────────────────────────────────────┐
-//! │  biomeOS / Squirrel / Any Primal                            │
+//! │  biomeOS / AI coordination clients / Any Primal               │
 //! │  (wants to call GitHub API, Anthropic, etc.)               │
 //! └────────────────────┬────────────────────────────────────────┘
 //!                      │ JSON-RPC over Unix socket
@@ -34,7 +34,7 @@
 //! └────────────────────┬────────────────────────────────────────┘
 //!                      │ Crypto RPC calls
 //! ┌────────────────────▼────────────────────────────────────────┐
-//! │  BearDog Crypto Provider                                    │
+//! │  Security provider (crypto)                                │
 //! │  - X25519 ECDH                                             │
 //! │  - ChaCha20-Poly1305 AEAD                                  │
 //! │  - BLAKE3 HKDF                                             │
@@ -93,7 +93,7 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use songbird_http_client::{BearDogClient, SongbirdHttpClient};
+use songbird_http_client::{SecurityRpcClient, SongbirdHttpClient};
 
 use crate::ipc::pure_rust_server::JsonRpcError;
 
@@ -142,17 +142,17 @@ impl HttpMethod {
 
 /// HTTP request handler context
 ///
-/// Holds the `BearDog` client for crypto operations
+/// Holds the security provider RPC client for crypto operations
 pub struct HttpHandler {
-    beardog_client: Arc<BearDogClient>,
+    security_client: Arc<SecurityRpcClient>,
 }
 
 impl HttpHandler {
-    /// Create new HTTP handler with `BearDog` crypto provider
+    /// Create new HTTP handler with the security provider as crypto backend
     #[must_use]
-    pub const fn new(beardog_client: Arc<BearDogClient>) -> Self {
+    pub const fn new(security_client: Arc<SecurityRpcClient>) -> Self {
         Self {
-            beardog_client,
+            security_client,
         }
     }
 

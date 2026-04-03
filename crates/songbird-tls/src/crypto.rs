@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! `BearDog` crypto integration for TLS
+//! Security (crypto) provider integration for TLS
 //!
 //! **EVOLVED (Jan 31, 2026): Platform-agnostic IPC!**
 //!
-//! This module integrates with `BearDog`'s crypto JSON-RPC API for TLS operations.
-//! All cryptographic operations are delegated to `BearDog` via platform-agnostic IPC.
+//! This module integrates with the security provider's crypto JSON-RPC API for TLS operations.
+//! All cryptographic operations are delegated to the crypto provider via platform-agnostic IPC.
 //!
 //! **Deep Debt Evolution Status:**
 //! - ✅ Phase 1: Platform-agnostic transport (Unix sockets, named pipes, TCP)
@@ -18,7 +18,7 @@
 //!
 //! **Future Evolution (Deep Debt Opportunity):**
 //! - Replace socket path discovery with universal IPC service registry
-//! - Use virtual paths: "/primal/beardog" instead of filesystem paths
+//! - Use virtual paths: "/primal/security" instead of filesystem paths
 //! - Full integration with songbird-universal-ipc's capability system
 
 use crate::error::{Result, TlsError};
@@ -95,16 +95,16 @@ impl AsyncWrite for CryptoStream {
     }
 }
 
-/// `BearDog` crypto client for TLS operations
+/// TLS crypto client backed by the security (crypto) provider
 ///
-/// Communicates with `BearDog` via Unix socket JSON-RPC.
+/// Communicates with the provider via Unix socket JSON-RPC.
 #[derive(Clone)]
-pub struct BeardogCryptoClient {
+pub struct SecurityTlsCryptoClient {
     socket_path: String,
 }
 
-impl BeardogCryptoClient {
-    /// Create a new `BearDog` crypto client
+impl SecurityTlsCryptoClient {
+    /// Create a new TLS crypto client for the discovered security provider socket
     ///
     /// Uses runtime discovery to find the Neural API socket for capability.call.
     ///
@@ -114,7 +114,7 @@ impl BeardogCryptoClient {
     pub fn new() -> Result<Self> {
         let socket_path = Self::discover_socket()?;
 
-        tracing::info!("🌐 BeardogCryptoClient using socket: {}", socket_path);
+        tracing::info!("🌐 SecurityTlsCryptoClient using socket: {}", socket_path);
 
         // Verify socket exists (Unix only - Windows uses TCP)
         #[cfg(unix)]
@@ -148,9 +148,9 @@ impl BeardogCryptoClient {
     fn discover_socket() -> Result<String> {
         #[cfg(unix)]
         {
-            use crate::socket_discovery::{discover_security_provider_socket, discover_neural_api_socket};
+            use crate::socket_discovery::{discover_neural_api_socket, discover_security_socket};
 
-            let security_socket = discover_security_provider_socket(None);
+            let security_socket = discover_security_socket(None);
 
             if security_socket.starts_with("tcp:") {
                 tracing::info!("✅ Discovered security provider TCP socket: {}", security_socket);
@@ -204,7 +204,13 @@ impl BeardogCryptoClient {
             if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET") {
                 return Ok(socket);
             }
+            if let Ok(socket) = songbird_process_env::var("CRYPTO_PROVIDER_SOCKET") {
+                return Ok(socket);
+            }
             if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
+                tracing::warn!(
+                    "⚠️  Using deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET"
+                );
                 return Ok(socket);
             }
             if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET") {
@@ -212,7 +218,13 @@ impl BeardogCryptoClient {
             }
 
             let port = songbird_process_env::var("SECURITY_PROVIDER_PORT")
-                .or_else(|_| songbird_process_env::var("BEARDOG_PORT"))
+                .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_PORT"))
+                .or_else(|_| {
+                    tracing::warn!(
+                        "⚠️  Using deprecated $BEARDOG_PORT — migrate to $SECURITY_PROVIDER_PORT"
+                    );
+                    songbird_process_env::var("BEARDOG_PORT")
+                })
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);
@@ -224,7 +236,13 @@ impl BeardogCryptoClient {
         {
             tracing::warn!("⚠️  Platform: Using TCP localhost fallback for security provider");
             let port = songbird_process_env::var("SECURITY_PROVIDER_PORT")
-                .or_else(|_| songbird_process_env::var("BEARDOG_PORT"))
+                .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_PORT"))
+                .or_else(|_| {
+                    tracing::warn!(
+                        "⚠️  Using deprecated $BEARDOG_PORT — migrate to $SECURITY_PROVIDER_PORT"
+                    );
+                    songbird_process_env::var("BEARDOG_PORT")
+                })
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);
@@ -344,7 +362,7 @@ impl BeardogCryptoClient {
             "params": params,
             "id": 1
         });
-        self.send_request(request, "BearDog").await
+        self.send_request(request, "security provider").await
     }
 
     /// Generate X25519 ephemeral keypair
@@ -411,7 +429,7 @@ impl BeardogCryptoClient {
 
     /// Encrypt with ChaCha20-Poly1305 (AEAD)
     ///
-    /// `BearDog` generates the nonce.
+    /// The crypto provider generates the nonce.
     /// Returns: (ciphertext, nonce, tag)
     ///
     /// # Errors

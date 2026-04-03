@@ -11,12 +11,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Errors that can occur in Songbird HTTP Client
 #[derive(Error, Debug)]
 pub enum Error {
-    /// `BearDog` RPC communication error
-    #[error("BearDog RPC error: {0}")]
+    /// Security / crypto provider RPC communication error
+    #[error("Security provider RPC error: {0}")]
     BearDogRpc(String),
 
-    /// `BearDog` crypto delegation required but not available for this operation
-    #[error("BearDog crypto unavailable: {0}")]
+    /// Crypto provider delegation required but not available for this operation
+    #[error("Crypto provider unavailable: {0}")]
     CryptoUnavailable(String),
 
     /// TLS handshake error

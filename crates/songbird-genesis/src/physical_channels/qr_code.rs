@@ -102,10 +102,7 @@ mod tests {
         }
         #[cfg(not(feature = "qr"))]
         {
-            assert!(
-                matches!(prox, Err(GenesisError::FeatureUnavailable(_))),
-                "got {prox:?}"
-            );
+            assert!(matches!(prox, Err(GenesisError::FeatureUnavailable(_))), "got {prox:?}");
             assert!(
                 matches!(exchange, Err(GenesisError::FeatureUnavailable(_))),
                 "got {exchange:?}"

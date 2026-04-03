@@ -17,15 +17,21 @@
 //! **Note**: The rustls integration was pivoted to Pure Songbird TLS.
 //! See songbird-tls crate for the complete TLS 1.3 implementation.
 
-pub mod beardog_crypto_client;
 pub mod discovery;
 pub mod provider;
+pub mod security_crypto_client;
+
+/// Deprecated alias for [`security_crypto_client`].
+#[deprecated(note = "use module `security_crypto_client` (capability-based naming)")]
+pub mod beardog_crypto_client {
+    pub use super::security_crypto_client::*;
+}
 
 // Re-export capability-based abstractions (preferred API — TRUE PRIMAL!)
 pub use provider::{CryptoProvider, UnixSocketCryptoProvider, discover_crypto_provider};
 
-// Re-export low-level functions for backward compatibility
-pub use beardog_crypto_client::{
+// Re-export low-level functions
+pub use security_crypto_client::{
     blake3_hash, chacha20_poly1305_decrypt, chacha20_poly1305_encrypt, hmac_sha256, sign_ed25519,
     verify_ed25519, x25519_derive_secret, x25519_generate_ephemeral,
 };
@@ -33,10 +39,12 @@ pub use beardog_crypto_client::{
 // Capability-based discovery (preferred API)
 pub use discovery::{
     discover_crypto_socket, discover_crypto_socket_for_family, discover_crypto_socket_for_purpose,
-    is_crypto_available,
+    get_security_crypto_socket, get_security_crypto_socket_for_family,
+    get_security_crypto_socket_for_purpose, is_crypto_available, is_security_crypto_available,
 };
 
-// Backward-compatible aliases
+// Backward-compatible aliases (deprecated)
+#[allow(deprecated)]
 pub use discovery::{
     get_beardog_crypto_socket, get_beardog_crypto_socket_for_family,
     get_beardog_crypto_socket_for_purpose, is_beardog_crypto_available,

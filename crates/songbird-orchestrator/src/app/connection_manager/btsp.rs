@@ -48,8 +48,8 @@ impl BtspConnectionFactory {
     /// - Initialization happens only when needed
     ///
     /// **v3.20.0**: Migrated to Unix socket (Jan 16, 2026)
-    /// - Discovers `BearDog` via Unix socket at runtime
-    /// - Gracefully handles absence of `BearDog`
+    /// - Discovers `security provider` via Unix socket at runtime
+    /// - Gracefully handles absence of `security provider`
     /// # Errors
     ///
     /// Returns an error if the operation fails.

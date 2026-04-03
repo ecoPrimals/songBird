@@ -4,7 +4,7 @@
 #![allow(clippy::unwrap_used, reason = "test assertions")]
 
 use super::KeySchedule;
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::SecurityTlsCryptoClient;
 use crate::error::TlsError;
 use hmac::Hmac;
 use sha2::Sha256;
@@ -59,7 +59,7 @@ fn test_key_schedule_initialization() {
 #[test]
 fn test_set_crypto_client() {
     let mut ks = KeySchedule::new();
-    let client = BeardogCryptoClient::with_socket_path("/tmp/test-ks.sock".to_string());
+    let client = SecurityTlsCryptoClient::with_socket_path("/tmp/test-ks.sock".to_string());
     ks.set_crypto_client(client);
     assert!(ks.crypto_client.is_some());
 }
@@ -341,9 +341,9 @@ async fn compute_finished_verify_data_matches_reference() {
 }
 
 #[tokio::test]
-async fn test_hmac_prefers_test_hook_over_beardog_client() {
+async fn test_hmac_prefers_test_hook_over_security_client() {
     let mut ks = KeySchedule::new();
-    ks.set_crypto_client(BeardogCryptoClient::with_socket_path(
+    ks.set_crypto_client(SecurityTlsCryptoClient::with_socket_path(
         "/nonexistent/beardog.sock".to_string(),
     ));
     ks.set_test_hmac(ref_hmac_sha256);

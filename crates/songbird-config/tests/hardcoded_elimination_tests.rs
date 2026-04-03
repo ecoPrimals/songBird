@@ -96,8 +96,8 @@ mod hardcoded_elimination_tests {
 
         assert!(!config.beardog_endpoint.is_empty());
         assert!(!config.nestgate_endpoint.is_empty());
-        assert!(!config.toadstool_endpoint.is_empty());
-        assert!(!config.squirrel_endpoint.is_empty());
+        assert!(!config.compute_provider_endpoint.is_empty());
+        assert!(!config.ai_provider_endpoint.is_empty());
         assert!(!config.discovery_endpoints.is_empty());
         assert!(config.port_range.0 < config.port_range.1);
     }
@@ -201,16 +201,16 @@ mod hardcoded_elimination_tests {
     }
 
     #[test]
-    fn test_replace_beardog_endpoint() {
+    fn test_replace_security_provider_endpoint() {
         let _guard = lock_env();
-        let ep = replace::beardog_endpoint();
+        let ep = replace::security_provider_endpoint();
         assert!(ep.starts_with("http"));
     }
 
     #[test]
-    fn test_replace_nestgate_endpoint() {
+    fn test_replace_storage_provider_endpoint() {
         let _guard = lock_env();
-        let ep = replace::nestgate_endpoint();
+        let ep = replace::storage_provider_endpoint();
         assert!(ep.starts_with("http"));
     }
 

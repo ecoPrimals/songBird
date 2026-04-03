@@ -45,7 +45,7 @@ pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8>
             if tokio::runtime::Handle::try_current().is_ok() {
                 tracing::warn!(
                     target: "songbird_discovery",
-                    "SHA-256: CryptoProvider set but sync context cannot await BearDog; using local sha2"
+                    "SHA-256: CryptoProvider set but sync context cannot await security provider; using local sha2"
                 );
                 sha256_local(data)
             } else {
@@ -54,7 +54,7 @@ pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8>
                     Err(e) => {
                         tracing::warn!(
                             target: "songbird_discovery",
-                            "SHA-256: cannot create runtime for BearDog: {e}; using local sha2"
+                            "SHA-256: cannot create runtime for security provider: {e}; using local sha2"
                         );
                         sha256_local(data)
                     }

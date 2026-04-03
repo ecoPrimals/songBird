@@ -56,7 +56,7 @@
 
 //!
 //! Tests all 4 production adapters working together in various scenarios.
-//! This validates the complete adapter system for `ToadStool`, `BearDog`, `NestGate`, and Squirrel.
+//! This validates the complete adapter system for `ToadStool`, `security provider`, `storage_provider`, and Squirrel.
 
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
@@ -76,7 +76,7 @@ mod integration_tests {
             ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port())).await?;
         let beardog =
             SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port())).await?;
-        let nestgate =
+        let storage_provider =
             StorageAdapter::new(format!("http://localhost:{}", test_health_port())).await?;
         let squirrel =
             AIAdapter::new(format!("http://localhost:{}", test_federation_port())).await?;
@@ -84,7 +84,7 @@ mod integration_tests {
         // Verify endpoints
         assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
         assert_eq!(beardog.endpoint(), format!("http://localhost:{}", test_discovery_port()));
-        assert_eq!(nestgate.endpoint(), format!("http://localhost:{}", test_health_port()));
+        assert_eq!(storage_provider.endpoint(), format!("http://localhost:{}", test_health_port()));
         assert_eq!(squirrel.endpoint(), format!("http://localhost:{}", test_federation_port()));
         Ok(())
     }
@@ -103,9 +103,10 @@ mod integration_tests {
             .await?
             .with_timeout(Duration::from_secs(10));
 
-        let nestgate = StorageAdapter::new(format!("http://localhost:{}", test_health_port()))
-            .await?
-            .with_timeout(Duration::from_secs(10));
+        let storage_provider =
+            StorageAdapter::new(format!("http://localhost:{}", test_health_port()))
+                .await?
+                .with_timeout(Duration::from_secs(10));
 
         let squirrel = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))
             .await?
@@ -113,7 +114,7 @@ mod integration_tests {
 
         assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
         assert_eq!(beardog.endpoint(), format!("http://localhost:{}", test_discovery_port()));
-        assert_eq!(nestgate.endpoint(), format!("http://localhost:{}", test_health_port()));
+        assert_eq!(storage_provider.endpoint(), format!("http://localhost:{}", test_health_port()));
         assert_eq!(squirrel.endpoint(), format!("http://localhost:{}", test_federation_port()));
         Ok(())
     }
@@ -138,7 +139,7 @@ mod integration_tests {
                     format!("http://beardog:{}", test_discovery_port())
                 }
                 AdapterType::Storage => {
-                    format!("http://nestgate:{}", test_health_port())
+                    format!("http://storage_provider:{}", test_health_port())
                 }
                 AdapterType::AI => {
                     format!("http://squirrel:{}", test_federation_port())
@@ -153,7 +154,7 @@ mod integration_tests {
 
         assert_eq!(compute_endpoint, format!("http://toadstool:{}", test_orchestrator_port()));
         assert_eq!(security_endpoint, format!("http://beardog:{}", test_discovery_port()));
-        assert_eq!(storage_endpoint, format!("http://nestgate:{}", test_health_port()));
+        assert_eq!(storage_endpoint, format!("http://storage_provider:{}", test_health_port()));
         assert_eq!(ai_endpoint, format!("http://squirrel:{}", test_federation_port()));
     }
 
@@ -453,7 +454,7 @@ mod integration_tests {
                 .await?
                 .endpoint()
                 .to_string(),
-            StorageAdapter::new(format!("http://nestgate.local:{}", test_health_port()))
+            StorageAdapter::new(format!("http://storage_provider.local:{}", test_health_port()))
                 .await?
                 .endpoint()
                 .to_string(),
@@ -465,7 +466,7 @@ mod integration_tests {
 
         assert_eq!(adapters[0], format!("http://localhost:{}", test_orchestrator_port()));
         assert_eq!(adapters[1], "https://secure-beardog:8081");
-        assert_eq!(adapters[2], format!("http://nestgate.local:{}", test_health_port()));
+        assert_eq!(adapters[2], format!("http://storage_provider.local:{}", test_health_port()));
         assert_eq!(adapters[3], format!("http://192.168.1.100:{}", test_federation_port()));
         Ok(())
     }

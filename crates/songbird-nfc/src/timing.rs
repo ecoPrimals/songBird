@@ -6,7 +6,7 @@
 //! Prevents timing-based side-channel attacks by:
 //! - Adding random delays
 //! - Padding operations to constant time
-//! - Using constant-time crypto (delegated to `BearDog`)
+//! - Using constant-time crypto (delegated to `security provider`)
 
 use crate::error::Result;
 use rand::Rng;
@@ -147,8 +147,7 @@ mod tests {
 
     #[tokio::test]
     async fn protect_propagates_inner_error_without_padding_success_path() {
-        let mut protector =
-            TimingProtector::new(Duration::from_secs(60), Duration::from_millis(1));
+        let mut protector = TimingProtector::new(Duration::from_secs(60), Duration::from_millis(1));
         let err = protector
             .protect(async { Err::<(), NfcError>(NfcError::Timeout) })
             .await

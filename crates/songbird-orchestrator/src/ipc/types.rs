@@ -105,18 +105,18 @@ pub struct CreateGeneticTunnelRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_endpoint: Option<String>,
 
-    /// Genetic proof from `BearDog` (optional, will verify via `BearDog` if not provided)
+    /// Genetic proof from `security provider` (optional, will verify via `security provider` if not provided)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genetic_proof: Option<GeneticProof>,
 }
 
-/// Genetic lineage proof from `BearDog`
+/// Genetic lineage proof from `security provider`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneticProof {
     /// Family identifier (e.g., "my-family")
     pub family_id: String,
 
-    /// Parent seed hash (from `BearDog` verification)
+    /// Parent seed hash (from `security provider` verification)
     pub parent_seed_hash: String,
 
     /// Relationship (e.g., "sibling", "parent", "child")
@@ -140,7 +140,7 @@ pub struct CreateGeneticTunnelResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_endpoint: Option<String>,
 
-    /// Encryption algorithm (from `BearDog`)
+    /// Encryption algorithm (from `security provider`)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encryption: Option<String>,
 
@@ -204,9 +204,9 @@ pub struct AnnounceCapabilitiesResponse {
 ///   "jsonrpc": "2.0",
 ///   "method": "register_service",
 ///   "params": {
-///     "primal_name": "BearDog",
+///     "primal_name": "security provider",
 ///     "capabilities": ["encryption", "identity", "trust"],
-///     "endpoint": "/run/user/1000/beardog-nat0.sock",
+///     "endpoint": "/run/user/1000/security-provider-nat0.sock",
 ///     "protocol": "json-rpc",
 ///     "health_check_interval": 30
 ///   },
@@ -215,13 +215,13 @@ pub struct AnnounceCapabilitiesResponse {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterServiceRequest {
-    /// Primal name (e.g., "`BearDog`", "`ToadStool`")
+    /// Primal name (e.g., "`security provider`", "`ToadStool`")
     pub primal_name: String,
 
     /// Capabilities provided (e.g., ["encryption", "identity"])
     pub capabilities: Vec<String>,
 
-    /// Endpoint (e.g., "/run/user/1000/beardog-nat0.sock")
+    /// Endpoint (e.g., "/run/user/1000/security-provider-nat0.sock")
     pub endpoint: String,
 
     /// Protocol (e.g., "json-rpc", "tarpc", "http")
@@ -315,7 +315,7 @@ pub struct PrimalEndpoint {
 ///   "jsonrpc": "2.0",
 ///   "method": "get_service_health",
 ///   "params": {
-///     "service_id": "beardog-12345"
+///     "service_id": "security-provider-12345"
 ///   },
 ///   "id": 6
 /// }
@@ -437,17 +437,17 @@ mod tests {
     #[test]
     fn test_register_service_request_deserialization() {
         let json = r#"{
-            "primal_name": "BearDog",
+            "primal_name": "security provider",
             "capabilities": ["encryption", "identity"],
-            "endpoint": "/run/user/1000/beardog-nat0.sock",
+            "endpoint": "/run/user/1000/security-provider-nat0.sock",
             "protocol": "json-rpc",
             "health_check_interval": 60
         }"#;
 
         let req: RegisterServiceRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.primal_name, "BearDog");
+        assert_eq!(req.primal_name, "security provider");
         assert_eq!(req.capabilities, vec!["encryption", "identity"]);
-        assert_eq!(req.endpoint, "/run/user/1000/beardog-nat0.sock");
+        assert_eq!(req.endpoint, "/run/user/1000/security-provider-nat0.sock");
         assert_eq!(req.protocol, "json-rpc");
         assert_eq!(req.health_check_interval, 60);
     }
@@ -489,18 +489,18 @@ mod tests {
     #[test]
     fn test_primal_endpoint_serialization() {
         let endpoint = PrimalEndpoint {
-            service_id: "beardog-12345".to_string(),
-            primal_name: "BearDog".to_string(),
+            service_id: "security-provider-12345".to_string(),
+            primal_name: "security provider".to_string(),
             capabilities: vec!["encryption".to_string()],
-            endpoint: "/run/user/1000/beardog-nat0.sock".to_string(),
+            endpoint: "/run/user/1000/security-provider-nat0.sock".to_string(),
             protocol: "json-rpc".to_string(),
             last_health_check: "2026-01-10T12:00:00Z".to_string(),
             health_status: "healthy".to_string(),
         };
 
         let json = serde_json::to_string(&endpoint).unwrap();
-        assert!(json.contains("beardog-12345"));
-        assert!(json.contains("BearDog"));
+        assert!(json.contains("security-provider-12345"));
+        assert!(json.contains("security provider"));
         assert!(json.contains("encryption"));
         assert!(json.contains("healthy"));
     }

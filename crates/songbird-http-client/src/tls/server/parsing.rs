@@ -167,11 +167,11 @@ impl TlsServer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::BearDogProvider;
+    use crate::crypto::SecurityCryptoProvider;
     use std::sync::Arc;
 
     fn create_test_server() -> TlsServer {
-        let crypto = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
         TlsServer::new(crypto, vec![], vec![])
     }
 

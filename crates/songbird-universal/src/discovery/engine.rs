@@ -121,15 +121,18 @@ impl UniversalPrimalDiscovery {
 #[cfg(test)]
 mod tests {
     #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use crate::discovery::config::DiscoveryMechanisms;
-    use std::sync::{Mutex, OnceLock};
+    use std::sync::OnceLock;
+    use tokio::sync::Mutex;
 
-    fn env_discovery_lock() -> std::sync::MutexGuard<'static, ()> {
+    /// Serializes env-based discovery tests. Uses `tokio::sync::Mutex` because tests hold the
+    /// guard across `.await` (see `discover_all_primals`); `std::sync::Mutex` would block the
+    /// runtime worker for the whole await.
+    async fn env_discovery_lock() -> tokio::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(())).lock().expect("env discovery lock")
+        LOCK.get_or_init(|| Mutex::new(())).lock().await
     }
 
     #[tokio::test]
@@ -202,7 +205,7 @@ mod tests {
 
     #[tokio::test]
     async fn discover_all_environment_branch_completes() {
-        let _guard = env_discovery_lock();
+        let _guard = env_discovery_lock().await;
         let config = DiscoveryConfig {
             mechanisms: DiscoveryMechanisms {
                 enable_environment_scan: true,
@@ -218,7 +221,7 @@ mod tests {
 
     #[tokio::test]
     async fn discover_all_all_mechanisms_enabled() {
-        let _guard = env_discovery_lock();
+        let _guard = env_discovery_lock().await;
         let config = DiscoveryConfig {
             mechanisms: DiscoveryMechanisms {
                 enable_environment_scan: true,

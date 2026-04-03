@@ -3,7 +3,7 @@
 
 //! Tor cell encoding/decoding
 //!
-//! **Status**: Phase 2B — cell types implemented, encryption pending `BearDog` AES-128-CTR
+//! **Status**: Phase 2B — cell types implemented, encryption pending `security provider` AES-128-CTR
 
 use crate::error::{Error, Result};
 

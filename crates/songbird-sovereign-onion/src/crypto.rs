@@ -3,8 +3,8 @@
 
 //! Cryptographic operations (ChaCha20-Poly1305 AEAD)
 
-use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::Result;
+use crate::security_crypto::SecurityCryptoClient;
 
 #[cfg(feature = "standalone")]
 use crate::OnionError;
@@ -15,11 +15,11 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit},
 };
 
-/// Encrypt data via `BearDog` (TRUE PRIMAL)
+/// Encrypt data via the security provider
 ///
 /// # Arguments
 ///
-/// * `client` - `BearDog` crypto client
+/// * `client` - delegated crypto client
 /// * `key` - 32-byte encryption key
 /// * `sequence` - Monotonic sequence number (for nonce)
 /// * `plaintext` - Data to encrypt
@@ -30,9 +30,9 @@ use chacha20poly1305::{
 ///
 /// # Errors
 ///
-/// Returns an error if `BearDog` encryption fails.
-pub async fn encrypt_data_via_beardog(
-    client: &BeardogCryptoClient,
+/// Returns an error if encryption RPC fails.
+pub async fn encrypt_data_via_security_provider(
+    client: &SecurityCryptoClient,
     key: &[u8; 32],
     sequence: u64,
     plaintext: &[u8],
@@ -44,11 +44,22 @@ pub async fn encrypt_data_via_beardog(
     client.chacha20_poly1305_encrypt(key, &nonce, plaintext).await
 }
 
-/// Decrypt data via `BearDog` (TRUE PRIMAL)
+/// Deprecated alias for [`encrypt_data_via_security_provider`].
+#[deprecated(note = "use encrypt_data_via_security_provider")]
+pub async fn encrypt_data_via_beardog(
+    client: &SecurityCryptoClient,
+    key: &[u8; 32],
+    sequence: u64,
+    plaintext: &[u8],
+) -> Result<Vec<u8>> {
+    encrypt_data_via_security_provider(client, key, sequence, plaintext).await
+}
+
+/// Decrypt data via the security provider
 ///
 /// # Arguments
 ///
-/// * `client` - `BearDog` crypto client
+/// * `client` - delegated crypto client
 /// * `key` - 32-byte decryption key
 /// * `sequence` - Monotonic sequence number (for nonce)
 /// * `ciphertext` - Encrypted data with MAC tag
@@ -59,9 +70,9 @@ pub async fn encrypt_data_via_beardog(
 ///
 /// # Errors
 ///
-/// Returns an error if `BearDog` decryption or MAC verification fails.
-pub async fn decrypt_data_via_beardog(
-    client: &BeardogCryptoClient,
+/// Returns an error if decryption or MAC verification fails.
+pub async fn decrypt_data_via_security_provider(
+    client: &SecurityCryptoClient,
     key: &[u8; 32],
     sequence: u64,
     ciphertext: &[u8],
@@ -71,6 +82,17 @@ pub async fn decrypt_data_via_beardog(
     nonce[..8].copy_from_slice(&sequence.to_le_bytes());
 
     client.chacha20_poly1305_decrypt(key, &nonce, ciphertext).await
+}
+
+/// Deprecated alias for [`decrypt_data_via_security_provider`].
+#[deprecated(note = "use decrypt_data_via_security_provider")]
+pub async fn decrypt_data_via_beardog(
+    client: &SecurityCryptoClient,
+    key: &[u8; 32],
+    sequence: u64,
+    ciphertext: &[u8],
+) -> Result<Vec<u8>> {
+    decrypt_data_via_security_provider(client, key, sequence, ciphertext).await
 }
 
 /// Standalone: Encrypt data with ChaCha20-Poly1305
@@ -192,27 +214,27 @@ mod tests {
 }
 
 #[cfg(test)]
-mod beardog_crypto_tests {
+mod security_crypto_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-    use crate::beardog_crypto::BeardogCryptoClient;
+    use crate::security_crypto::SecurityCryptoClient;
 
     #[tokio::test(start_paused = true)]
-    async fn encrypt_via_beardog_errors_when_rpc_unreachable() {
+    async fn encrypt_via_security_provider_errors_when_rpc_unreachable() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
         let key = [9u8; 32];
-        let r = encrypt_data_via_beardog(&client, &key, 0, b"data").await;
+        let r = encrypt_data_via_security_provider(&client, &key, 0, b"data").await;
         assert!(r.is_err());
     }
 
     #[tokio::test(start_paused = true)]
-    async fn decrypt_via_beardog_errors_when_rpc_unreachable() {
+    async fn decrypt_via_security_provider_errors_when_rpc_unreachable() {
         let client =
-            BeardogCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
+            SecurityCryptoClient::from_neural_api_socket("/tmp/songbird-onion-test-invalid.sock");
         let key = [9u8; 32];
-        let r = decrypt_data_via_beardog(&client, &key, 0, &[0u8; 16]).await;
+        let r = decrypt_data_via_security_provider(&client, &key, 0, &[0u8; 16]).await;
         assert!(r.is_err());
     }
 }

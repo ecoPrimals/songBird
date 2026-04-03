@@ -21,7 +21,7 @@ pub struct RegisteredService {
     /// Unique service ID
     pub service_id: String,
 
-    /// Primal name (e.g., "`BearDog`")
+    /// Primal name (e.g., "`security provider`")
     pub primal_name: String,
 
     /// Capabilities provided
@@ -265,16 +265,16 @@ mod tests {
 
         let service_id = registry
             .register_service(
-                "BearDog".to_string(),
+                "security-provider".to_string(),
                 vec!["encryption".to_string(), "identity".to_string()],
-                "/tmp/beardog.sock".to_string(),
+                "/tmp/security-provider.sock".to_string(),
                 "json-rpc".to_string(),
                 30,
             )
             .await
             .unwrap();
 
-        assert!(service_id.starts_with("beardog-"));
+        assert!(service_id.starts_with("security-provider-"));
     }
 
     #[tokio::test]
@@ -283,9 +283,9 @@ mod tests {
 
         let service_id1 = registry
             .register_service(
-                "BearDog".to_string(),
+                "security-provider".to_string(),
                 vec!["encryption".to_string()],
-                "/tmp/beardog.sock".to_string(),
+                "/tmp/security-provider.sock".to_string(),
                 "json-rpc".to_string(),
                 30,
             )
@@ -294,9 +294,9 @@ mod tests {
 
         let service_id2 = registry
             .register_service(
-                "BearDog".to_string(),
+                "security-provider".to_string(),
                 vec!["encryption".to_string(), "identity".to_string()], // Updated capabilities
-                "/tmp/beardog.sock".to_string(),                        // Same endpoint
+                "/tmp/security-provider.sock".to_string(),              // Same endpoint
                 "json-rpc".to_string(),
                 30,
             )
@@ -314,9 +314,9 @@ mod tests {
         // Register two services
         registry
             .register_service(
-                "BearDog".to_string(),
+                "security-provider".to_string(),
                 vec!["encryption".to_string(), "identity".to_string()],
-                "/tmp/beardog.sock".to_string(),
+                "/tmp/security-provider.sock".to_string(),
                 "json-rpc".to_string(),
                 30,
             )
@@ -337,7 +337,7 @@ mod tests {
         // Discover encryption
         let encryption_primals = registry.discover_by_capability("encryption", None).await.unwrap();
         assert_eq!(encryption_primals.len(), 1);
-        assert_eq!(encryption_primals[0].primal_name, "BearDog");
+        assert_eq!(encryption_primals[0].primal_name, "security-provider");
 
         // Discover compute
         let compute_primals = registry.discover_by_capability("compute", None).await.unwrap();
@@ -356,9 +356,9 @@ mod tests {
         // Register services with different protocols
         registry
             .register_service(
-                "BearDog".to_string(),
+                "security-provider".to_string(),
                 vec!["encryption".to_string()],
-                "/tmp/beardog.sock".to_string(),
+                "/tmp/security-provider.sock".to_string(),
                 "json-rpc".to_string(),
                 30,
             )
@@ -380,7 +380,7 @@ mod tests {
         let primals =
             registry.discover_by_capability("encryption", Some("json-rpc")).await.unwrap();
         assert_eq!(primals.len(), 1);
-        assert_eq!(primals[0].primal_name, "BearDog");
+        assert_eq!(primals[0].primal_name, "security-provider");
     }
 
     #[tokio::test]
@@ -389,9 +389,9 @@ mod tests {
 
         let service_id = registry
             .register_service(
-                "BearDog".to_string(),
+                "security-provider".to_string(),
                 vec!["encryption".to_string()],
-                "/tmp/beardog.sock".to_string(),
+                "/tmp/security-provider.sock".to_string(),
                 "json-rpc".to_string(),
                 30,
             )
@@ -415,9 +415,9 @@ mod tests {
 
         let service_id = registry
             .register_service(
-                "BearDog".to_string(),
+                "security-provider".to_string(),
                 vec!["encryption".to_string()],
-                "/tmp/beardog.sock".to_string(),
+                "/tmp/security-provider.sock".to_string(),
                 "json-rpc".to_string(),
                 30,
             )

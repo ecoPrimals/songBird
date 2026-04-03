@@ -49,7 +49,7 @@ pub struct RelayHandler {
     /// Server task handle
     task: Arc<RwLock<Option<JoinHandle<()>>>>,
 
-    /// Lineage authority (`BearDog` integration)
+    /// Lineage authority (`security provider` integration)
     authority: Arc<dyn RelayAuthority>,
 }
 

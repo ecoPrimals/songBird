@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// Discovery mode for federation broadcasts
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DiscoveryMode {
-    /// Plaintext broadcasts (no `BearDog`)
+    /// Plaintext broadcasts (no security provider)
     ///
     /// Suitable for:
     /// - Trusted LANs (university campus, research lab)
@@ -21,7 +21,7 @@ pub enum DiscoveryMode {
     #[default]
     Plaintext,
 
-    /// Encrypted birdSong broadcasts (with `BearDog`)
+    /// Encrypted birdSong broadcasts (requires security provider)
     ///
     /// Suitable for:
     /// - Untrusted networks (internet, public `WiFi`, cellular)
@@ -33,10 +33,17 @@ pub enum DiscoveryMode {
 }
 
 impl DiscoveryMode {
-    /// Check if this mode requires `BearDog`
+    /// Whether this mode needs a capability-discovered security provider
+    #[must_use]
+    pub const fn requires_security_provider(&self) -> bool {
+        matches!(self, Self::BirdSong)
+    }
+
+    /// Deprecated alias for [`Self::requires_security_provider`].
+    #[deprecated(note = "use requires_security_provider")]
     #[must_use]
     pub const fn requires_beardog(&self) -> bool {
-        matches!(self, Self::BirdSong)
+        self.requires_security_provider()
     }
 
     /// Check if this mode is privacy-preserving
@@ -84,10 +91,10 @@ mod tests {
     }
 
     #[test]
-    fn requires_beardog_and_privacy_only_for_birdsong() {
-        assert!(!DiscoveryMode::Plaintext.requires_beardog());
+    fn requires_security_provider_and_privacy_only_for_birdsong() {
+        assert!(!DiscoveryMode::Plaintext.requires_security_provider());
         assert!(!DiscoveryMode::Plaintext.is_private());
-        assert!(DiscoveryMode::BirdSong.requires_beardog());
+        assert!(DiscoveryMode::BirdSong.requires_security_provider());
         assert!(DiscoveryMode::BirdSong.is_private());
     }
 

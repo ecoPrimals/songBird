@@ -33,9 +33,9 @@ async fn test_all_available() {
 
     registry
         .register_service(
-            "BearDog".to_string(),
+            "security provider".to_string(),
             vec!["encryption".to_string()],
-            "/run/user/1000/beardog.sock".to_string(),
+            "/run/user/1000/security-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -63,9 +63,9 @@ async fn test_some_unavailable() {
 
     registry
         .register_service(
-            "BearDog".to_string(),
+            "security provider".to_string(),
             vec!["encryption".to_string()],
-            "/run/user/1000/beardog.sock".to_string(),
+            "/run/user/1000/security-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )

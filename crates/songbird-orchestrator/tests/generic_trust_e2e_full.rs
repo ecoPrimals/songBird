@@ -99,7 +99,7 @@ fn e2e_same_family_complete_flow() {
     assert_eq!(trust_request.evaluator.peer_id, "tower_a");
     assert_eq!(trust_request.evaluator.attestations.len(), 1);
 
-    // Step 6: Simulate BearDog response (same family)
+    // Step 6: Simulate security provider response (same family)
     let trust_response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::AutoAccept,
@@ -167,7 +167,7 @@ fn e2e_different_family_prompt_flow() {
     )
     .with_endpoint(discovered_peer.endpoint);
 
-    // BearDog response: different family
+    // security provider response: different family
     let trust_response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::PromptUser,
@@ -216,7 +216,7 @@ fn e2e_no_attestations_reject_flow() {
         discovered_peer.identity_attestations,
     );
 
-    // BearDog response: reject (no attestations)
+    // security provider response: reject (no attestations)
     let trust_response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::Reject,
@@ -353,7 +353,7 @@ fn e2e_trust_api_roundtrip() {
     // Serialize request
     let request_json = serde_json::to_string(&request).expect("Failed to serialize request");
 
-    // Deserialize request (what BearDog receives)
+    // Deserialize request (what security provider receives)
     let received_request: UniversalTrustRequest =
         serde_json::from_str(&request_json).expect("Failed to deserialize request");
 

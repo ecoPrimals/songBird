@@ -300,11 +300,7 @@ mod tests {
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),
         };
-        let conn = PrimalConnection::new(
-            "ipc-test".into(),
-            "http://127.0.0.1:9",
-            caps,
-        );
+        let conn = PrimalConnection::new("ipc-test".into(), "http://127.0.0.1:9", caps);
         let err = conn
             .send_request(PrimalRequest::Status)
             .await
@@ -371,10 +367,7 @@ mod tests {
             endpoint: "http://127.0.0.1:9".into(),
             caps,
         }));
-        let conn = bridge
-            .connect(CapabilityType::Security)
-            .await
-            .expect("connect");
+        let conn = bridge.connect(CapabilityType::Security).await.expect("connect");
         let err = bridge
             .discover_capabilities(&conn)
             .await

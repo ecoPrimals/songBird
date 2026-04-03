@@ -182,10 +182,9 @@ impl SecurityCapabilityClient {
 
         info!("✅ Retrieved identity from security provider: {}", identity.encryption_tag);
 
-        // Cache for future use
-        self.cached_identity = Some(identity.clone());
-
-        Ok(identity)
+        let result = identity.clone();
+        self.cached_identity = Some(identity);
+        Ok(result)
     }
 
     /// Evaluate trust for a discovered peer

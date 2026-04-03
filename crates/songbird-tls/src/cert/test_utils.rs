@@ -18,7 +18,7 @@ use crate::messages::{Certificate, certificate::CertificateEntry};
 /// This is a simplified test certificate. In production, you should:
 /// 1. Use proper X.509 certificate generation
 /// 2. Get certificates from a CA or use Let's Encrypt
-/// 3. Use `BearDog` for key generation and signing
+/// 3. Use the security provider for key generation and signing
 ///
 /// # Example
 ///
@@ -72,11 +72,11 @@ fn create_test_cert_data(domain: &str) -> Result<Vec<u8>> {
     cert_data.extend_from_slice(&validity.to_be_bytes());
 
     // Ed25519 public key placeholder (32 bytes)
-    // In production, this would be a real public key from BearDog
+    // In production, this would be a real public key from the security provider
     cert_data.extend_from_slice(&[0x42u8; 32]);
 
     // Signature placeholder (64 bytes)
-    // In production, this would be a real Ed25519 signature from BearDog
+    // In production, this would be a real Ed25519 signature from the security provider
     cert_data.extend_from_slice(&[0x73u8; 64]);
 
     Ok(cert_data)

@@ -12,7 +12,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, reason = "test assertions"))]
 //! # Songbird QUIC Protocol
 //!
-//! Pure Rust QUIC implementation with `BearDog` crypto delegation.
+//! Pure Rust QUIC implementation with `security provider` crypto delegation.
 //!
 //! ## Features
 //!
@@ -20,7 +20,7 @@
 //! - **Connection Migration**: Survives IP address changes (mobile roaming)
 //! - **Multiplexed Streams**: No head-of-line blocking
 //! - **Dark Forest Compliant**: Zero metadata leakage
-//! - **BearDog-Only Crypto**: All cryptographic operations delegated
+//! - **security provider-Only Crypto**: All cryptographic operations delegated
 //!
 //! ## Architecture
 //!
@@ -29,9 +29,9 @@
 //!     ↓
 //! QUIC Transport (native Rust — streams, congestion, loss recovery)
 //!     ↓
-//! QUIC Crypto (BearDog via JSON-RPC IPC — AEAD, HKDF, HP)
+//! QUIC Crypto (security provider via JSON-RPC IPC — AEAD, HKDF, HP)
 //!     ↓
-//! TLS 1.3 Handshake (BearDog X25519 + key schedule)
+//! TLS 1.3 Handshake (security provider X25519 + key schedule)
 //!     ↓
 //! UDP (Tokio)
 //!     ↓
@@ -43,7 +43,7 @@
 //! - No plaintext metadata in QUIC headers
 //! - Ephemeral connection IDs (non-correlatable)
 //! - Encrypted SNI (no domain name leakage)
-//! - All application data BearDog-encrypted
+//! - All application data security provider-encrypted
 //!
 //! ## Usage
 //!
@@ -77,6 +77,11 @@ mod client;
 mod config;
 mod connection;
 pub mod crypto;
+pub use crypto::{QuicCipherSuite, QuicCryptoProvider, SecurityQuicCrypto};
+
+/// Deprecated alias for [`SecurityQuicCrypto`].
+#[deprecated(note = "use SecurityQuicCrypto (capability-based naming)")]
+pub type BeardogQuicCrypto = SecurityQuicCrypto;
 mod endpoint;
 mod error;
 pub mod packet;

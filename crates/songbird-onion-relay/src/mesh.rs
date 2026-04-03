@@ -479,8 +479,7 @@ mod tests {
     #[tokio::test]
     async fn set_my_onion_and_announce_register_shape() {
         let mesh = BeaconMesh::new("me".into(), vec![]);
-        mesh.set_my_onion("abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx.onion".into())
-            .await;
+        mesh.set_my_onion("abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx.onion".into()).await;
         let msg = mesh.announce_as_relay().await;
         match msg {
             SignalingMessage::Register {
@@ -502,10 +501,8 @@ mod tests {
     async fn get_all_paths_and_best_prefers_lower_priority() {
         let mesh = BeaconMesh::new("hub".into(), vec![]);
         let addr = "10.0.0.5:9000".parse().unwrap();
-        mesh.record_direct_connection("peer".into(), addr, Duration::from_millis(10))
-            .await;
-        mesh.record_relay_path("peer".into(), "via".into(), Duration::from_millis(5))
-            .await;
+        mesh.record_direct_connection("peer".into(), addr, Duration::from_millis(10)).await;
+        mesh.record_relay_path("peer".into(), "via".into(), Duration::from_millis(5)).await;
 
         let paths = mesh.get_all_paths("peer").await;
         assert_eq!(paths.len(), 2, "both endpoints recorded");
@@ -521,24 +518,21 @@ mod tests {
     #[tokio::test]
     async fn find_relay_for_unknown_peer_without_bootstrap_returns_none() {
         let mesh = BeaconMesh::new("solo".into(), vec![]);
-        assert!(
-            mesh.find_relay_for("nobody").await.is_none(),
-            "no relays and no bootstrap → None"
-        );
+        assert!(mesh.find_relay_for("nobody").await.is_none(), "no relays and no bootstrap → None");
     }
 
     #[tokio::test]
     async fn find_relay_for_prefers_reachable_lower_priority_endpoint() {
         let mesh = BeaconMesh::new("me".into(), vec![]);
-        mesh.record_relay_path("target".into(), "r1".into(), Duration::from_millis(100))
-            .await;
-        mesh.record_direct_connection("helper".into(), "1.1.1.1:1".parse().unwrap(), Duration::from_millis(20))
-            .await;
+        mesh.record_relay_path("target".into(), "r1".into(), Duration::from_millis(100)).await;
+        mesh.record_direct_connection(
+            "helper".into(),
+            "1.1.1.1:1".parse().unwrap(),
+            Duration::from_millis(20),
+        )
+        .await;
 
-        let path = mesh
-            .find_relay_for("target")
-            .await
-            .expect("helper or bootstrap path");
+        let path = mesh.find_relay_for("target").await.expect("helper or bootstrap path");
         assert!(
             matches!(path.endpoint_type, EndpointType::FamilyRelay { .. }),
             "expected family relay toward target, got {:?}",
@@ -552,14 +546,9 @@ mod tests {
         mesh.record_direct_connection("dest".into(), "8.8.8.8:53".parse().unwrap(), Duration::ZERO)
             .await;
 
-        mesh.handle_relay_request("src", "dest", vec![1, 2, 3])
-            .await
-            .expect("path to dest exists");
+        mesh.handle_relay_request("src", "dest", vec![1, 2, 3]).await.expect("path to dest exists");
 
-        let err = mesh
-            .handle_relay_request("src", "missing", vec![])
-            .await
-            .expect_err("no path");
+        let err = mesh.handle_relay_request("src", "missing", vec![]).await.expect_err("no path");
         assert!(matches!(err, crate::OnionRelayError::PeerNotFound(_)));
     }
 
@@ -586,10 +575,7 @@ mod tests {
 
         let eps = mesh.get_all_paths("p").await;
         assert_eq!(eps.len(), 1);
-        assert!(
-            !eps[0].reachable,
-            "endpoint older than 60s should be marked unreachable"
-        );
+        assert!(!eps[0].reachable, "endpoint older than 60s should be marked unreachable");
     }
 
     #[tokio::test]
@@ -617,7 +603,13 @@ mod tests {
 
     #[tokio::test]
     async fn endpoint_type_priority_ordering() {
-        assert_eq!(EndpointType::Local { addr: "127.0.0.1:1".parse().unwrap() }.priority(), 0);
+        assert_eq!(
+            EndpointType::Local {
+                addr: "127.0.0.1:1".parse().unwrap()
+            }
+            .priority(),
+            0
+        );
         assert_eq!(
             EndpointType::Direct {
                 addr: "1.1.1.1:1".parse().unwrap()

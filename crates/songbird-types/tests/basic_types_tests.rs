@@ -4,7 +4,7 @@
 //! Basic types tests for songbird-types
 //!
 //! NOTE: Updated to use modern capability-based PrimalType (Nov 2025)
-//! Old hardcoded primal names (BearDog, Squirrel, etc.) have been replaced
+//! Old hardcoded primal names (security provider, Squirrel, etc.) have been replaced
 //! with capability-based types (Security, Storage, Compute, AI)
 
 #![allow(
@@ -17,7 +17,7 @@ use songbird_types::traits::canonical::PrimalType;
 
 #[test]
 fn test_primal_type_security() {
-    // Modern: BearDog → Security capability
+    // Modern: security provider → Security capability
     let primal = PrimalType::Security;
     assert_eq!(format!("{:?}", primal), "Security");
 }
@@ -38,7 +38,7 @@ fn test_primal_type_compute() {
 
 #[test]
 fn test_primal_type_ai() {
-    // Modern: NestGate → AI capability
+    // Modern: storage provider → AI capability
     let primal = PrimalType::AI;
     assert_eq!(format!("{:?}", primal), "AI");
 }
@@ -65,7 +65,7 @@ fn test_all_primal_types() {
 #[test]
 fn test_primal_type_custom() {
     // Custom primal types supported via Custom variant
-    let primal = PrimalType::Custom("BearDog".to_string());
+    let primal = PrimalType::Custom("security provider".to_string());
     assert!(matches!(primal, PrimalType::Custom(_)));
 }
 
@@ -88,9 +88,9 @@ fn test_primal_type_copy() {
 #[test]
 fn test_primal_type_in_vec() {
     let primals = vec![
-        PrimalType::Security, // BearDog -> Security capability
+        PrimalType::Security, // security provider -> Security capability
         PrimalType::AI,       // Squirrel -> AI capability
-        PrimalType::Storage,  // NestGate -> Storage capability
+        PrimalType::Storage,  // storage provider -> Storage capability
     ];
     assert_eq!(primals.len(), 3);
 }

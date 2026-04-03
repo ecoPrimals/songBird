@@ -181,7 +181,7 @@ impl SongbirdOrchestrator {
                             );
 
                             // Check if same family for trust decisions (Jan 5, 2026)
-                            // Tags format: ["beardog:family:FAMILY_ID:NODE_ID", ...]
+                            // Tags format: family capability tags, typically `beardog:family:FAMILY_ID:NODE_ID` on the wire
                             let same_family = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                                 .ok()
                                 .is_some_and(|my_family| {
@@ -213,7 +213,7 @@ impl SongbirdOrchestrator {
                                 let connectivity_check = tokio::time::timeout(
                                 tokio::time::Duration::from_secs(3),
                                 async {
-                                    // ✅ TOWER ATOMIC: Pure Rust HTTP with BearDog crypto
+                                    // ✅ TOWER ATOMIC: Pure Rust HTTP with security provider crypto
                                     let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
                                         .map_err(|e| {
                                             warn!("Failed to discover crypto provider for connectivity check: {}", e);

@@ -7,7 +7,7 @@
 //! TLS records. This module manages the TLS state machine, producing handshake
 //! bytes for outgoing CRYPTO frames and consuming bytes from incoming ones.
 //!
-//! The TLS key schedule is driven through `BearDog`, producing keys that are
+//! The TLS key schedule is driven through `security provider`, producing keys that are
 //! installed into the `CryptoSession` at each encryption level.
 
 use crate::crypto::initial_keys::{self, DirectionalKeys};
@@ -45,7 +45,7 @@ pub enum Role {
 /// Manages the TLS 1.3 handshake within a QUIC connection.
 ///
 /// Produces handshake bytes for CRYPTO frames and consumes incoming
-/// handshake bytes, driving the key schedule through `BearDog`.
+/// handshake bytes, driving the key schedule through `security provider`.
 #[derive(Debug)]
 pub struct QuicTlsHandshake {
     /// Current handshake state.
@@ -269,7 +269,7 @@ impl QuicTlsHandshake {
         // Legacy version TLS 1.2 (for TLS 1.3 compatibility)
         msg.extend_from_slice(&[0x03, 0x03]);
 
-        // Client random (32 bytes of zeros — real impl uses BearDog randomness)
+        // Client random (32 bytes of zeros — real impl uses security provider randomness)
         msg.extend_from_slice(&[0x00; 32]);
 
         // Legacy session ID (empty)
@@ -474,7 +474,7 @@ impl QuicTlsHandshake {
         Self::build_client_finished()
     }
 
-    /// Derive Handshake-level keys via `BearDog`.
+    /// Derive Handshake-level keys via `security provider`.
     async fn derive_handshake_keys(&self, crypto: &dyn QuicCryptoProvider) -> Result<LevelKeys> {
         let transcript_hash = crypto.sha256(&self.transcript).await?;
         let secret = crypto.hkdf_extract(&[0u8; 32], &[0u8; 32]).await?;
@@ -503,7 +503,7 @@ impl QuicTlsHandshake {
         })
     }
 
-    /// Derive Application-level (1-RTT) keys via `BearDog`.
+    /// Derive Application-level (1-RTT) keys via `security provider`.
     async fn derive_application_keys(&self, crypto: &dyn QuicCryptoProvider) -> Result<LevelKeys> {
         let transcript_hash = crypto.sha256(&self.transcript).await?;
         let master_secret = crypto.hkdf_extract(&[0u8; 32], &[0u8; 32]).await?;

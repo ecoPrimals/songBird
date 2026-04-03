@@ -48,7 +48,7 @@ use tracing::{debug, error, info};
 ///
 /// # Example
 /// ```rust,ignore
-/// let verify_data = beardog.compute_finished_verify_data(base_key, transcript_hash).await?;
+/// let verify_data = crypto.compute_finished_verify_data(base_key, transcript_hash).await?;
 /// let finished_msg = build_finished_message(&verify_data)?;
 /// ```
 ///

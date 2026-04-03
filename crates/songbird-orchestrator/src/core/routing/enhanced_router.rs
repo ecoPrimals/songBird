@@ -395,7 +395,7 @@ impl EnhancedCapabilityRouter {
                 SongbirdError::Network {
                     message: format!("Failed to discover crypto provider: {e}"),
                     interface: None,
-                    suggestion: Some("Check BearDog availability".to_string()),
+                    suggestion: Some("Check security provider availability".to_string()),
                 }
             })?;
 

@@ -534,8 +534,7 @@ impl ServiceRegistry {
                     clippy::cast_possible_truncation,
                     reason = "heartbeat count won't exceed u32 in practice"
                 )]
-                let expected_heartbeats =
-                    (elapsed.as_secs() / service.heartbeat_interval) as u32;
+                let expected_heartbeats = (elapsed.as_secs() / service.heartbeat_interval) as u32;
                 if expected_heartbeats > 0 {
                     service.missed_heartbeats = expected_heartbeats.saturating_sub(1);
 

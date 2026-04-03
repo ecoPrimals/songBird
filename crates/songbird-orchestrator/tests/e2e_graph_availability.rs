@@ -65,22 +65,22 @@ async fn test_e2e_availability_workflow() {
     let checker = AvailabilityChecker::new(registry.clone());
 
     // Register 3 primals with different capabilities and health statuses
-    let beardog_id = registry
+    let security_provider_id = registry
         .register_service(
-            "BearDog".to_string(),
+            "security-provider".to_string(),
             vec!["encryption".to_string(), "identity".to_string()],
-            "/run/user/1000/beardog.sock".to_string(),
+            "/run/user/1000/security-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
         .await
         .unwrap();
 
-    let nestgate_id = registry
+    let storage_provider_id = registry
         .register_service(
-            "NestGate".to_string(),
+            "storage-provider".to_string(),
             vec!["storage".to_string()],
-            "/run/user/1000/nestgate.sock".to_string(),
+            "/run/user/1000/storage-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -98,9 +98,9 @@ async fn test_e2e_availability_workflow() {
         .await
         .unwrap();
 
-    // Mark BearDog and NestGate as healthy, ToadStool as degraded
-    registry.update_health(&beardog_id, "healthy".to_string()).await.unwrap();
-    registry.update_health(&nestgate_id, "healthy".to_string()).await.unwrap();
+    // Mark security provider and storage provider as healthy, ToadStool as degraded
+    registry.update_health(&security_provider_id, "healthy".to_string()).await.unwrap();
+    registry.update_health(&storage_provider_id, "healthy".to_string()).await.unwrap();
     registry.update_health(&toadstool_id, "degraded".to_string()).await.unwrap();
 
     // Step 2: Create a graph needing encryption, storage, and compute
@@ -122,11 +122,11 @@ async fn test_e2e_availability_workflow() {
     // Check specific node statuses
     let encrypt_status = report.details.get("encrypt").unwrap();
     assert_eq!(encrypt_status.status, NodeAvailabilityStatus::Available);
-    assert_eq!(encrypt_status.primal, Some("BearDog".to_string()));
+    assert_eq!(encrypt_status.primal, Some("security-provider".to_string()));
 
     let store_status = report.details.get("store").unwrap();
     assert_eq!(store_status.status, NodeAvailabilityStatus::Available);
-    assert_eq!(store_status.primal, Some("NestGate".to_string()));
+    assert_eq!(store_status.primal, Some("storage-provider".to_string()));
 
     let compute_status = report.details.get("compute").unwrap();
     assert_eq!(compute_status.status, NodeAvailabilityStatus::Degraded);
@@ -140,11 +140,11 @@ async fn test_e2e_alternatives_workflow() {
     let checker = AvailabilityChecker::new(registry.clone());
 
     // Register 3 encryption providers with different protocols and health
-    let beardog_id = registry
+    let security_provider_id = registry
         .register_service(
-            "BearDog".to_string(),
+            "security-provider".to_string(),
             vec!["encryption".to_string()],
-            "/run/user/1000/beardog.sock".to_string(),
+            "/run/user/1000/security-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -174,7 +174,7 @@ async fn test_e2e_alternatives_workflow() {
         .unwrap();
 
     // Set different health statuses
-    registry.update_health(&beardog_id, "healthy".to_string()).await.unwrap();
+    registry.update_health(&security_provider_id, "healthy".to_string()).await.unwrap();
     registry.update_health(&fastcrypto_id, "healthy".to_string()).await.unwrap();
     registry.update_health(&slowcrypto_id, "degraded".to_string()).await.unwrap();
 
@@ -185,9 +185,9 @@ async fn test_e2e_alternatives_workflow() {
     // Step 3: Verify alternatives are ranked correctly
     assert_eq!(suggestions.alternatives.len(), 3);
 
-    // Rank 1 should be BearDog (healthy + json-rpc protocol match)
+    // Rank 1 should be security provider (healthy + json-rpc protocol match)
     assert_eq!(suggestions.alternatives[0].rank, 1);
-    assert_eq!(suggestions.alternatives[0].primal_name, "BearDog");
+    assert_eq!(suggestions.alternatives[0].primal_name, "security-provider");
     assert_eq!(suggestions.alternatives[0].health_status, "healthy");
     assert_eq!(suggestions.alternatives[0].protocol, "json-rpc");
     assert_eq!(suggestions.alternatives[0].compatibility_score, 100);
@@ -208,10 +208,10 @@ async fn test_e2e_alternatives_workflow() {
             < suggestions.alternatives[0].compatibility_score
     );
 
-    // Verify recommendation is BearDog
+    // Verify recommendation is security provider
     assert!(suggestions.recommendation.is_some());
     let recommendation = suggestions.recommendation.unwrap();
-    assert!(recommendation.service_id.starts_with("beardog-"));
+    assert!(recommendation.service_id.starts_with("security-provider-"));
 }
 
 #[tokio::test]
@@ -223,22 +223,22 @@ async fn test_e2e_real_registry_integration() {
     let registry = Arc::new(ServiceRegistry::new());
 
     // Simulate primal startup registrations
-    let beardog_id = registry
+    let security_provider_id = registry
         .register_service(
-            "BearDog".to_string(),
+            "security-provider".to_string(),
             vec!["encryption".to_string(), "identity".to_string(), "trust".to_string()],
-            "/run/user/1000/beardog-nat0-node-alpha.sock".to_string(),
+            "/run/user/1000/security-provider-nat0-node-alpha.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
         .await
         .unwrap();
 
-    let nestgate_id = registry
+    let storage_provider_id = registry
         .register_service(
-            "NestGate".to_string(),
+            "storage-provider".to_string(),
             vec!["storage".to_string(), "persistence".to_string()],
-            "/run/user/1000/nestgate-nat0-node-alpha.sock".to_string(),
+            "/run/user/1000/storage-provider-nat0-node-alpha.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -257,7 +257,7 @@ async fn test_e2e_real_registry_integration() {
         .unwrap();
 
     // Simulate health checks (all healthy after startup)
-    for service_id in [&beardog_id, &nestgate_id, &toadstool_id] {
+    for service_id in [&security_provider_id, &storage_provider_id, &toadstool_id] {
         registry.update_health(service_id, "healthy".to_string()).await.unwrap();
     }
 

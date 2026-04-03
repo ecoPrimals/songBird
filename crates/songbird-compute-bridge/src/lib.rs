@@ -32,10 +32,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 mod version_tests {
     #[test]
     fn version_matches_semver_shape() {
-        assert!(
-            !super::VERSION.is_empty(),
-            "VERSION should be populated from CARGO_PKG_VERSION"
-        );
+        assert!(!super::VERSION.is_empty(), "VERSION should be populated from CARGO_PKG_VERSION");
         assert!(
             super::VERSION.chars().any(|c| c.is_ascii_digit()),
             "expected version to contain digits, got {:?}",

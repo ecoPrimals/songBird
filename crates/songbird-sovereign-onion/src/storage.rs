@@ -11,7 +11,7 @@ use std::sync::{Arc, RwLock};
 
 /// Sync persistence backend for onion service data (SB-03: abstraction for sled → nestGate).
 ///
-/// The sled implementation ([`OnionStorage`]) is the current default when `sled-storage` is enabled.
+/// The sled implementation (`OnionStorage`) is the current default when `sled-storage` is enabled.
 /// When nestGate exposes `storage.*` IPC (NG-01), a `NestGateOnionBackend` can implement this trait
 /// to delegate persistence over JSON-RPC.
 pub trait OnionStorageBackend: Send + Sync {
@@ -71,7 +71,7 @@ impl InMemoryOnionStorage {
     /// Load or generate onion identity (STANDALONE mode - testing only)
     ///
     /// ⚠️ **TRUE PRIMAL NOTE**: This method uses direct crypto and should ONLY be
-    /// used for testing! Production code should use `load_or_generate_identity_via_beardog()`.
+    /// used for testing! Production code should use `load_or_generate_identity_via_security_provider()`.
     ///
     /// # Errors
     ///
@@ -245,10 +245,7 @@ mod tests {
     #[test]
     fn load_identity_returns_none_when_empty() {
         let storage = InMemoryOnionStorage::new();
-        assert!(
-            storage.load_identity().unwrap().is_none(),
-            "fresh storage has no identity"
-        );
+        assert!(storage.load_identity().unwrap().is_none(), "fresh storage has no identity");
     }
 
     #[test]
@@ -268,9 +265,7 @@ mod tests {
     #[test]
     fn update_peer_last_seen_is_noop_when_peer_missing() {
         let storage = InMemoryOnionStorage::new();
-        storage
-            .update_peer_last_seen("ghost.onion", 99)
-            .expect("update should not error");
+        storage.update_peer_last_seen("ghost.onion", 99).expect("update should not error");
         assert!(
             storage.get_peer("ghost.onion").unwrap().is_none(),
             "missing peer should stay absent"

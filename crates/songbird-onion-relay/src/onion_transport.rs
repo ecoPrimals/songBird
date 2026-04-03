@@ -22,7 +22,7 @@
 //!     │ ├─ .onion addresses       │
 //!     │ ├─ TCP listener (Phase 3) │
 //!     │ ├─ Connector (Phase 4)    │
-//!     │ ├─ BearDog crypto          │
+//!     │ ├─ security provider crypto          │
 //!     │ └─ Sled persistence        │
 //!     └────────────────────────────┘
 //! ```
@@ -31,7 +31,7 @@
 //!
 //! - ✅ Zero `unimplemented!()` — all stubs evolved to real implementations
 //! - ✅ Delegates to `songbird-sovereign-onion` (no duplicated logic)
-//! - ✅ BearDog crypto delegation (TRUE PRIMAL)
+//! - ✅ security provider crypto delegation (TRUE PRIMAL)
 //! - ✅ Persistent identity via Sled storage
 
 use anyhow::{Context, Result};

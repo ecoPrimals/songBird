@@ -121,10 +121,7 @@ mod tests {
             caps.starts_with("compute,cpu"),
             "base capabilities should start with compute,cpu; got {caps}"
         );
-        assert!(
-            !caps.contains("gpu"),
-            "no GPU should mean no gpu capability; got {caps}"
-        );
+        assert!(!caps.contains("gpu"), "no GPU should mean no gpu capability; got {caps}");
     }
 
     #[test]

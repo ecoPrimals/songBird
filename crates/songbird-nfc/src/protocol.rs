@@ -176,7 +176,7 @@ impl NfcProtocol {
         }
     }
 
-    /// Get `BearDog` socket path
+    /// Get `security provider` socket path
     #[must_use]
     pub fn beardog_socket(&self) -> &std::path::Path {
         &self.config.beardog_socket
@@ -246,10 +246,7 @@ mod tests {
     fn from_bytes_rejects_frame_shorter_than_overhead() {
         let short = vec![0u8; FRAME_OVERHEAD - 1];
         let err = NfcMessage::from_bytes(&short).expect_err("truncated frame should error");
-        assert!(
-            matches!(err, NfcError::MalformedFrame(_)),
-            "expected MalformedFrame, got {err:?}"
-        );
+        assert!(matches!(err, NfcError::MalformedFrame(_)), "expected MalformedFrame, got {err:?}");
     }
 
     #[test]

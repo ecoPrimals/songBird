@@ -190,7 +190,7 @@ impl CryptoProvider {
             // Sovereign onion (`songbird-sovereign-onion`)
             "crypto.ed25519.generate_keypair" => ("crypto", "ed25519_generate_keypair"),
             "crypto.ed25519.public_from_secret" => ("crypto", "ed25519_public_from_secret"),
-            // NFC genesis (`songbird-nfc`) — legacy BearDog JSON-RPC names
+            // NFC genesis (`songbird-nfc`) — legacy security provider JSON-RPC names
             "crypto.generate_x25519_keypair" => ("crypto", "generate_x25519_keypair"),
             "crypto.x25519_dh" => ("crypto", "x25519_dh"),
             "crypto.generate_random" => ("crypto", "generate_random"),
@@ -206,7 +206,7 @@ impl CryptoProvider {
         }
     }
 
-    /// Translate semantic method names to `BearDog` JSON-RPC wire names (direct mode).
+    /// Translate semantic method names to `security provider` JSON-RPC wire names (direct mode).
     ///
     /// Methods that share the same semantic and wire name pass through the wildcard arm.
     #[must_use]
@@ -453,9 +453,8 @@ mod tests {
                 let (mut stream, _) = listener.accept().await.expect("accept");
                 let req = read_json_rpc_request(&mut stream).await;
                 assert_eq!(
-                    req["method"],
-                    "crypto.aes256_gcm_encrypt",
-                    "direct mode should translate semantic method to BearDog wire name"
+                    req["method"], "crypto.aes256_gcm_encrypt",
+                    "direct mode should translate semantic method to security provider wire name"
                 );
                 let id = req["id"].as_u64().expect("id");
                 let body = format!(r#"{{"jsonrpc":"2.0","result":{{"digest":"abc"}},"id":{id}}}"#);
@@ -463,9 +462,7 @@ mod tests {
             });
 
             let provider = CryptoProvider::with_mode(&path_str, RoutingMode::Direct);
-            let result = provider
-                .call("crypto.encrypt_aes_256_gcm", json!({ "k": "v" }))
-                .await;
+            let result = provider.call("crypto.encrypt_aes_256_gcm", json!({ "k": "v" })).await;
             let Ok(val) = result else {
                 panic!("expected Ok, got {:?}", result.err());
             };
@@ -577,7 +574,8 @@ mod tests {
 
         #[tokio::test(start_paused = true)]
         async fn call_connection_refused_reports_neural_or_crypto_in_message() {
-            let provider = CryptoProvider::with_mode("/nonexistent/path/to.sock", RoutingMode::Direct);
+            let provider =
+                CryptoProvider::with_mode("/nonexistent/path/to.sock", RoutingMode::Direct);
             let result = provider.call("crypto.sha256", json!({})).await;
             let Err(CryptoProviderError::Rpc(msg)) = result else {
                 panic!("expected connect failure");
@@ -587,7 +585,8 @@ mod tests {
                 "direct mode error should mention crypto provider, got {msg:?}"
             );
 
-            let neural = CryptoProvider::with_mode("/nonexistent/neural.sock", RoutingMode::NeuralApi);
+            let neural =
+                CryptoProvider::with_mode("/nonexistent/neural.sock", RoutingMode::NeuralApi);
             let result = neural.call("crypto.sha256", json!({})).await;
             let Err(CryptoProviderError::Rpc(msg)) = result else {
                 panic!("expected neural connect failure");

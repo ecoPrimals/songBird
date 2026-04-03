@@ -26,7 +26,7 @@ pub struct ServiceEntry {
     pub last_seen: Instant,
 }
 
-/// Metadata for persistent storage (optional `NestGate` integration)
+/// Metadata for persistent storage (optional `storage provider` integration)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceMetadata {
     /// Service name

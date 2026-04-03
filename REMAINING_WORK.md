@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: April 2, 2026  
+**Date**: April 3, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: April 2, 2026 (Session 37, Wave 98 — Deep Debt: /tmp→temp_dir() portability, 4 large file smart refactors, production stub evolution, 22 tests un-ignored, primal name alignment, capability discovery compliance)
+**Last Deep Debt Audit**: April 3, 2026 (Session 41, Wave 102 — Deep debt execution: TLS .expect()→Result, capability-domain field renames, coordination_handlers, hardcoded paths→capability, SoloKey default-off, async Mutex migration, smart monolith refactoring (runtime_engine 798→294, stun/client 766→393, broadcaster 766→369))
 
 ---
 
@@ -10,15 +10,15 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,154 passed, 0 failed, ~159 ignored |
-| **Line Coverage** | ~72% est. (llvm-cov `--workspace --all-features`; target 90%; +400 tests across 12 crates in Wave 94) |
+| **Tests** | 12,154 passed, 0 failed, 247 ignored (env-dependent e2e/chaos/hardware) |
+| **Line Coverage** | 71.65% (llvm-cov `--workspace`; target 90%; 180,905 regions, 51,290 uncovered) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `--all-targets --all-features -D warnings`); orchestrator 395 `unwrap_used` test warnings resolved (Wave 92) |
 | **Format** | Clean (`cargo fmt --check` passes) |
-| **Docs** | Clean (`cargo doc --workspace --all-features --no-deps` passes) |
-| **Files >1000 lines** | 0 — `songbird-quic/src/packet/frame.rs` refactored into `frame/mod.rs` (302), `frame/decode.rs` (387), `frame/encode.rs` (320), `frame/tests.rs` (292) |
-| **Unsafe blocks** | **0** — `songbird-process-env` evolved to BearDog overlay pattern; workspace `forbid(unsafe_code)` on all 30 crates |
+| **Docs** | Clean (`cargo doc --workspace --no-deps` passes — 0 warnings, all resolved in Wave 100) |
+| **Files >1000 lines** | 0 — largest 950 lines (test-only); all production modules under 400 lines; `runtime_engine.rs` (798→294), `stun/client.rs` (766→393), `broadcaster.rs` (766→369) decomposed Wave 102 |
+| **Unsafe blocks** | **0** — `songbird-process-env` evolved to in-memory overlay pattern; workspace `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (verified: all remaining are in `#[cfg(test)]` modules, integration tests, or doc examples) |
 | **Production `panic!()`** | 0 |
@@ -27,25 +27,25 @@
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
 | **`#[allow()]` vs `#[expect()]`** | Fully correct: `#[expect(reason)]` only where lint fires, `#[allow(reason)]` everywhere else |
 | **Capability discovery** | `find_primals_with_capability` — real capability filter (env-driven, identity-agnostic) |
-| **Hardcoded elimination** | All ports env-driven via `defaults::ports`; `primal_scan_ports()` aggregation; config templates generated from runtime defaults; DNS-SD/mDNS/broadcast discovery; capability-first; `SECURITY_PROVIDER_SOCKET` → `security.sock` symlink chain (wateringHole v1.2 compliant) |
+| **Hardcoded elimination** | All ports env-driven via `defaults::ports`; `security_provider_port()` (Wave 100) replaces `beardog_port()`; `primal_scan_ports()` aggregation; config templates from runtime defaults; DNS-SD/mDNS/broadcast discovery; capability-first across 11+ crates; `SECURITY_PROVIDER_SOCKET` → `security.sock` chain; `paths.rs` evolved: `security_socket_candidates()` uses capability names only; `PrimalConfig::port_range` bug fixed (used hardcoded 8090, now uses `get_port_range_end()`) |
 | **JSON-RPC handlers** | 15 semantic methods: 10 wrapping REST + `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` + `mesh.topology` (ecosystem standard) |
 | **JSON-RPC dispatch** | Enum-based `JsonRpcMethod` routing in `songbird-types`; `FromStr`/`Display` for wire compatibility; sub-enums per domain; transport-agnostic `handle_json_rpc_connection` (Unix + TCP via single generic) |
 | **Method normalization** | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift (`capability.list` → `capabilities.list`, `ping` → `health.liveness`, `status`/`check`/`health` → `health.check`) |
 | **Lint inheritance** | 30/30 crates inherit workspace lints; 2 crates have justified custom `[lints]` tables |
 | **CONTEXT.md** | Present at repo root (wateringHole `PUBLIC_SURFACE_STANDARD` compliant) |
-| **BearDog crypto** | Full delegation wired: TLS record layer `encrypt/decrypt_record_delegated` → `crypto.aead_encrypt/decrypt`; JWT `encode_with_crypto/decode_with_crypto` → `crypto.hmac.sha256`; checkpoint `calculate_checksum` → `crypto.sha256`; discovery + rendezvous SHA-256/HMAC-SHA256 → `CryptoProvider::call`; all with local fallback + `tracing::warn!` |
-| **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + BearDog crypto delegation; `ring-crypto` opt-in feature gate on CLI only (deny.toml wrapper: `rustls` only); `sysinfo` eliminated |
+| **Security provider crypto** | Full delegation wired: TLS record layer `encrypt/decrypt_record_delegated` → `crypto.aead_encrypt/decrypt`; JWT `encode_with_crypto/decode_with_crypto` → `crypto.hmac.sha256`; checkpoint `calculate_checksum` → `crypto.sha256`; discovery + rendezvous SHA-256/HMAC-SHA256 → `CryptoProvider::call`; all with local fallback + `tracing::warn!` |
+| **C dependencies** | Zero in `songbird-quic` — `quinn`/`rustls`/`ring` fully replaced with native pure-Rust QUIC engine (RFC 9000/9001/9002) + security provider crypto delegation; `ring-crypto` opt-in feature gate on CLI only (deny.toml wrapper: `rustls` only); `sysinfo` eliminated |
 | **`async-trait` evolution** | 136 `#[async_trait]` across 76 files — all verified as dyn-dispatch (`Box<dyn>`, `Arc<dyn>`); 4 previously evolved to native async fn; remainder blocked on Rust lang dyn async trait stabilization |
-| **Live BearDog testing** | `BearDogFixture` in `songbird-test-utils`; `scripts/test-with-beardog.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
+| **Live security provider testing** | `SecurityProviderFixture` in `songbird-test-utils`; `scripts/test-with-security-provider.sh` harness; binary discovery from `$BEARDOG_BIN` / `plasmidBin` |
 | **License** | `AGPL-3.0-only` via workspace inheritance (all 30 crates use `license.workspace = true`) + ORC + CC-BY-SA 4.0 |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); 3 advisory ignores (bincode unmaintained, opentelemetry_api merged, paste unmaintained — all transitive) |
 | **SPDX headers** | 100% coverage across all `.rs` files |
 | **CI quality gate** | Coverage threshold ratcheted to 66%; `Swatinem/rust-cache`; `cargo-deny` job; `rustsec/audit-check` |
-| **UniBin** | `songbird server` (v1.1: `--dark-forest`, `--pid-dir` parity with tower), `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
+| **UniBin** | `songbird server` (v1.2: `--port` → TCP JSON-RPC per wateringHole standard, `--dark-forest`, `--pid-dir`, `--security-socket` alias for `--beardog-socket`), `songbird cli`, `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
 | **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) — all three health names now wired on HTTP + Unix + IPC transports |
-| **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; `MockRendezvousClient/MockPeerConnector/MockPeerRegistry` in `tests_support` modules; XOR broadcast encryption isolated to test/mock builds; TLS record layer returns `CryptoUnavailable` instead of mock crypto |
-| **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, `serde_json::to_vec` (no intermediate String) |
-| **`#[serial_test]`** | **1 suite** — only in `orchestrator_comprehensive_tests.rs` (19 E2E tests requiring exclusive env-var state); `serial_test` dev-dep only in `songbird-orchestrator` |
+| **Mock isolation** | `MockSecurityProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; `MockRendezvousClient/MockPeerConnector/MockPeerRegistry` in `tests_support` modules; XOR broadcast encryption isolated to test/mock builds; TLS record layer returns `CryptoUnavailable` instead of mock crypto; full audit confirmed: 0 mock types in production code |
+| **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, `serde_json::to_vec` (no intermediate String); Wave 100: `network_optimizer` 6→1 clone per segment (by-value pipeline), `discovery/cache` Entry API, `universal_proxy` by-value transforms |
+| **`#[serial_test]`** | **0 suites** — fully eliminated from workspace (Wave 101); `serial_test` dev-dep removed from `songbird-orchestrator`; all 23 comprehensive tests run fully concurrently via `Once::call_once` env overlay |
 | **`std::env::set_var`** | **0** in test code — all migrated to `songbird_process_env` overlay; e2e tests use unique per-test env keys |
 | **Concurrent tests** | All tests fully concurrent; injectable `_with()` env readers; `tokio::time::pause()` + `advance()` for deterministic timing |
 | **Event-driven** | Zero `sleep`-based polling in production; `UniversalIpcBroker` uses `oneshot` readiness signal (not sleep) |
@@ -90,6 +90,74 @@
 | `songbird-orchestrator` | `task_lifecycle/storage_sled.rs` | `TaskStorage` (sled) → `TaskStorageBackend` |
 | `songbird-sovereign-onion` | `storage.rs` | `OnionStorage` (sled) → `OnionStorageBackend` |
 | `songbird-tor-protocol` | `Cargo.toml` only | Optional dep, no Rust usage yet |
+
+---
+
+## Completed (Apr 3, 2026 — Deep Debt Execution — Session 39, Wave 100)
+
+### Wave 100: Deep Debt — Clone Optimization + Capability Port Evolution + Doc Cleanup + Bug Fixes
+
+**Hot-path clone optimization (4 modules):**
+- **`network_optimizer.rs`**: Optimization pipeline evolved from `&PathSegment` + clone per method to by-value `PathSegment` moves — **6 clones → 1 per segment** in the optimization loop
+- **`discovery/cache.rs`**: Deduplication evolved from `HashSet` + `key.clone()` to `HashMap::entry()` API — eliminates HashSet allocation and key clone
+- **`universal_proxy.rs`**: `transform_request()` and `transform_response()` evolved to take `Value` by value — eliminates clone on no-transform fast path and reduces clones in transform path
+- **`security_client/client.rs`**: Identity cache pattern micro-optimized — clone for return, move into cache
+
+**Capability port evolution:**
+- **`songbird-config/defaults/ports.rs`**: New `security_provider_port()` checks `SONGBIRD_SECURITY_PROVIDER_PORT` → `SONGBIRD_BEARDOG_PORT` → 8443; `beardog_port()` deprecated alias
+- **`primal_scan_ports()`** uses `security_provider_port()` instead of deprecated function
+- **5 caller crates** updated: `songbird-orchestrator`, `songbird-cli` (3 commands), `songbird-test-utils`, `songbird-network-federation`
+
+**Production beardog→security-provider rename:**
+- **`songbird-network-federation/beardog/production.rs`**: `call_beardog()` → `call_security_rpc()` (private method, 12 call sites)
+- **`songbird-network-federation/rendezvous/client.rs`**: `beardog_client` → `security_client` variable; `SECURITY_PROVIDER_ENDPOINT` prioritized over `BEARDOG_ENDPOINT`
+- **`songbird-network-federation/btsp/provider.rs`**: Uses `security_provider_port()`
+- **`songbird-network-federation/beardog/mod.rs`**: Dev fallback socket → `security.sock`
+- **`songbird-sovereign-onion/address.rs`**: Test functions evolved to call `*_via_security_provider` instead of deprecated `*_via_beardog`
+- **`songbird-execution-agent/security_sovereign.rs`**: Doc comments evolved
+- **`songbird-genesis/ceremony.rs`**: Test fixture and doc comments evolved
+
+**Pre-existing bug fix:**
+- **`PrimalConfig::port_range`** in `hardcoded_elimination.rs`: End was hardcoded to `8090` but start is `8000 + user_offset` (up to 499) — assertion `start < end` failed for users with high hash. Fixed to use `get_port_range_end()` dynamically.
+
+**Doc warning elimination (7 fixes):**
+- Fixed links to private items and unresolved types across `songbird-orchestrator`, `songbird-lineage-relay`, `songbird-sovereign-onion` — 0 doc warnings remain
+
+**Validation:** `cargo fmt --check` clean, `cargo clippy --workspace --all-targets -D warnings` zero warnings, `cargo doc --workspace --no-deps` 0 warnings, `cargo test --workspace` 12,154 passed / 0 failed, `cargo llvm-cov --workspace` 71.65%.
+
+---
+
+## Completed (Apr 3, 2026 — Full Audit + Capability Evolution — Session 38, Wave 99)
+
+### Wave 99: Full Audit — Capability Discovery Evolution + Smart Refactoring + --port Wiring + Hardcode Elimination
+
+**Capability Discovery Evolution (11 crates):**
+- **`songbird-types/defaults/paths.rs`**: `security_socket_candidates()` evolved from hardcoded beardog paths to capability-named (`security.sock`, `crypto.sock`); `security_socket_tmp_fallback_path()` returns `security.sock`; `security_socket_legacy_tmp_path()` for backward compat; removed hardcoded `/run/user/1000/beardog-default.sock` and `/var/run/beardog.sock`
+- **`songbird-tls/crypto.rs`**: Windows/other platform branches now check `CRYPTO_PROVIDER_SOCKET` and `CRYPTO_PROVIDER_PORT` before legacy `BEARDOG_*`; deprecation warnings logged
+- **`songbird-http-client/crypto/socket_discovery.rs`**: `discover_security_provider_socket()` evolved to full capability waterfall (`SECURITY_PROVIDER_SOCKET` → `CRYPTO_PROVIDER_SOCKET` → XDG `security.sock` → `crypto.sock` → legacy `BEARDOG_SOCKET`); `BEARDOG` import removed from production code
+- **`songbird-universal-ipc/platform/unix.rs`**: `resolve_socket_path()` uses `SECURITY_CAPABILITY_PRIMALS` constant instead of direct `primal_name == BEARDOG` comparison
+- **`songbird-orchestrator`**: `--security-socket` as primary flag (`--beardog-socket` kept as hidden alias); `security_jwt_client` module via `#[path]`; `family_scoped_security_socket_path()` in server.rs
+- **`songbird-lineage-relay`**: `SecurityBirdSongProvider`, `SecurityRelayAuthority` with deprecated `BearDog*` type aliases; `pub mod security` via `#[path = "beardog.rs"]`
+- **`songbird-network-federation`**: `SecurityProvider`, `SecurityProviderFactory`; `pub mod security` via `#[path]`; `has_security_provider()` + deprecated `has_beardog()`
+- **`songbird-sovereign-onion`**: `SecurityCryptoClient`; `pub mod security_crypto`; `*_via_security_provider` APIs with deprecated `*_via_beardog` wrappers
+- **`songbird-genesis`**: `try_security_provider_lineage` (private); messages use "security provider"
+- **`songbird-execution-agent`**: `SecurityProviderIntegration`, `SecurityProviderValidator`; deprecated `BearDogIntegration`, `BearDogSecurityValidator`
+
+**Smart Refactoring (2 production modules):**
+- **`songbird-nfc/genesis.rs`** (827→4 files): `genesis/mod.rs` (13), `genesis/types.rs` (125), `genesis/exchange.rs` (377), `genesis/crypto.rs` (330) — all under 400 lines, public API unchanged
+- **`songbird-http-client/tls/profiler.rs`** (812→4 files): `profiler/mod.rs`, `profiler/types.rs`, `profiler/profiler_impl.rs`, `profiler/tests.rs` — production ~300 lines, tests separated
+
+**--port TCP JSON-RPC (wateringHole compliance):**
+- `songbird server --port <PORT>` now binds newline-delimited TCP JSON-RPC when `--listen` is not explicit (derived as `0.0.0.0:<port>`)
+- Compliant with `UNIBIN_ARCHITECTURE_STANDARD.md` v1.1 and `PRIMAL_IPC_PROTOCOL.md` v3.1
+- IPC Compliance Matrix: Songbird `--port` → C (was ?)
+
+**Other evolutions:**
+- `println!` → `tracing::info!` in `zero_copy_enhanced.rs` (last production `println!` in library code)
+- `doc_markdown` clippy fixes in `songbird-network-federation` and `songbird-lineage-relay`
+- `cargo fmt --all` applied (was failing with ~1946 lines of diffs)
+
+**Zero regressions**: `cargo fmt --check` clean, `cargo clippy --all-targets --all-features -D warnings` zero warnings across all 30 crates, `cargo doc --all-features --no-deps` clean, all tests pass.
 
 ---
 
@@ -167,7 +235,7 @@
 
 ### Wave 90: primalSpring Audit Response — ring-crypto Cleanup + Storage Abstraction
 
-- **SB-02 resolved**: `deny.toml` comments clarified — `rcgen` remains as wrapper (`ring` enters via dev-dep of `songbird-tls` for test cert generation); `rustls` wrapper retained for `songbird-cli` `ring-crypto` opt-in feature. `songbird-quic` confirmed ring-free with `BeardogQuicCrypto`. CLI `Cargo.toml` and `tower.rs` documentation improved with explicit ecoBin warnings and production-must-not-enable guidance.
+- **SB-02 resolved**: `deny.toml` comments clarified — `rcgen` remains as wrapper (`ring` enters via dev-dep of `songbird-tls` for test cert generation); `rustls` wrapper retained for `songbird-cli` `ring-crypto` opt-in feature. `songbird-quic` confirmed ring-free with `SecurityQuicCrypto`. CLI `Cargo.toml` and `tower.rs` documentation improved with explicit ecoBin warnings and production-must-not-enable guidance.
 - **SB-03 abstraction layer**: Three storage backend traits created (`ConsentStorageBackend`, `TaskStorageBackend`, `OnionStorageBackend`) with sled as default implementation. `storage.*` JSON-RPC method surface added to `JsonRpcMethod` dispatch table (5 methods: get/put/delete/list/flush). Migration to nestGate IPC is now mechanical when NG-01 ships. `ConsentManager::with_backend()` added for runtime backend injection.
 - **Zero regressions**: `cargo fmt --check` pass, `cargo clippy -D warnings` zero warnings, `cargo check --workspace --all-features` clean, all affected crate tests pass.
 
@@ -1562,32 +1630,31 @@ Backwards compatibility maintained via re-exports (`ServiceLocator` still access
 
 ---
 
-## Pending: BearDog Crypto Integration
+## Pending: Security Provider Crypto Integration
 
-BearDog provides pure Rust crypto via runtime capability discovery.
-All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
+Security provider provides pure Rust crypto via runtime capability discovery.
+Core delegation (TLS, JWT, checkpoints, discovery, rendezvous) is wired — remaining items need live security provider for end-to-end validation.
 
-### Tor Protocol
-- [ ] AES-128-CTR encryption roundtrip via BearDog
-- [ ] Running digest (SHA-1/SHA3-256) via BearDog for relay cell integrity
+### Tor Protocol (requires live security provider)
+- [ ] AES-128-CTR encryption roundtrip via security provider
+- [ ] Running digest (SHA-1/SHA3-256) via security provider for relay cell integrity
 - [ ] HMAC-SHA256 for ESTABLISH_INTRO handshake auth
-- [ ] ntor handshake (CREATE2/EXTEND2) via BearDog
+- [ ] ntor handshake (CREATE2/EXTEND2) via security provider
 - [ ] Heuristic relay selection (Phase 2A: intelligent selection based on consensus weights)
 
-### TLS / Sovereign Onion
-- [ ] `ed25519_public_from_secret` via BearDog
-- [ ] BearDog-generated lineage-tagged certificates (full X.509 chain validation)
-- [ ] CertificateVerify BearDog signing
-- [ ] Custom TLS extension building via BearDog
+### TLS / Sovereign Onion (requires live security provider)
+- [ ] `ed25519_public_from_secret` via security provider
+- [ ] Security-provider-generated lineage-tagged certificates (full X.509 chain validation)
+- [ ] CertificateVerify signing via security provider
+- [ ] Custom TLS extension building via security provider
 
 ### Ring-Free Workspace
-- [ ] `rcgen` removal: replace with BearDog-issued certs or pure-Rust PKIX builder (`x509-cert`)
-- [ ] Quinn `default-features = false` + selective feature enablement (avoids `rustls-ring`)
-- [ ] Track upstream quinn/rustls for ring-free QUIC (quinn-rs/quinn#2253)
+- [ ] `rcgen` removal: replace with security-provider-issued certs or pure-Rust PKIX builder (`x509-cert`)
+- [ ] Track upstream for ring-free alternatives
 
 ---
 
-## Pending: Coverage Expansion (~69.33% → 90% target)
+## Pending: Coverage Expansion (~72% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |
@@ -1660,10 +1727,10 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ## Priority Order
 
-1. **BearDog crypto wiring** — Unblocks circuit build + onion encryption (pure Rust via capability discovery)
+1. **Security provider crypto e2e validation** — Tor/TLS items need live security provider for end-to-end testing
 2. **Coverage expansion** — Target pure-logic modules first (goal: 90%)
-3. **Ring-free workspace** — `rcgen` replacement + quinn feature reconfiguration
+3. **Ring-free workspace** — `rcgen` replacement
 4. **Deep documentation** — Fill `#[allow(missing_docs)]` internal modules with full doc coverage
 5. **Real hardware tests** (Tower + Pixel) — Validates cross-network
 6. **Platform backends** — Mobile pairing, iOS, WASM
-7. **Dependency pruning** — Reduce ~412 unique deps where possible
+7. **Dependency pruning** — Reduce unique deps where possible

@@ -37,27 +37,38 @@ pub fn security_socket_default_path() -> PathBuf {
     biomeos_socket_dir_tmp().join("security.sock")
 }
 
-/// Last-resort `{temp}/beardog.sock` path for legacy discovery chains (same role as deprecated [`beardog_socket_legacy_path`]).
+/// Last-resort `{temp}/security.sock` flat fallback (capability-named).
 #[must_use]
 pub fn security_socket_tmp_fallback_path() -> PathBuf {
+    std::env::temp_dir().join("security.sock")
+}
+
+/// Legacy `{temp}/beardog.sock` path (kept for backward compatibility with existing deployments).
+#[must_use]
+pub fn security_socket_legacy_tmp_path() -> PathBuf {
     std::env::temp_dir().join("beardog.sock")
 }
 
-/// Default security provider socket paths (tried in order during discovery; preferred naming).
+/// Default security provider socket paths (tried in order during discovery; capability-named first).
+///
+/// Order: capability paths (`security.sock`, `crypto.sock`), then legacy primal-name (`beardog.sock`),
+/// system path last before legacy temp.
 #[must_use]
-pub fn security_socket_candidates() -> [PathBuf; 4] {
+pub fn security_socket_candidates() -> [PathBuf; 5] {
+    let b = biomeos_socket_dir_tmp();
     [
         security_socket_default_path(),
         security_socket_tmp_fallback_path(),
-        PathBuf::from("/run/user/1000/beardog-default.sock"),
-        PathBuf::from("/var/run/beardog.sock"),
+        PathBuf::from("/var/run/biomeos/security.sock"),
+        b.join("crypto.sock"),
+        security_socket_legacy_tmp_path(),
     ]
 }
 
-/// Default `BearDog` socket paths (legacy naming; use [`security_socket_candidates`])
-#[deprecated(note = "Use security_socket_candidates() or capability-based discovery")]
+/// Default `security provider` socket paths (legacy naming; use [`security_socket_candidates`])
+#[deprecated(note = "use security_socket_candidates (capability-based naming)")]
 #[must_use]
-pub fn beardog_socket_candidates() -> [PathBuf; 4] {
+pub fn beardog_socket_candidates() -> [PathBuf; 5] {
     security_socket_candidates()
 }
 
@@ -74,8 +85,8 @@ pub fn biomeos_socket_fallback_paths() -> [PathBuf; 4] {
     [
         b.join("security.sock"),
         b.join("crypto.sock"),
-        b.join("beardog.sock"),
         security_socket_tmp_fallback_path(),
+        security_socket_legacy_tmp_path(),
     ]
 }
 
@@ -90,12 +101,6 @@ pub fn biomeos_security_socket_default_path() -> PathBuf {
 #[must_use]
 pub fn beardog_socket_legacy_path() -> PathBuf {
     security_socket_tmp_fallback_path()
-}
-
-/// Legacy Neural API socket path: `{temp}/neural-api-{family_id}.sock`.
-#[must_use]
-pub fn neural_api_socket_legacy_path(family_id: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("neural-api-{family_id}.sock"))
 }
 
 /// Default data directory
@@ -113,17 +118,74 @@ pub fn ipc_discovery_primal_port_path(primal_name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("{primal_name}-ipc-port"))
 }
 
-/// Neural API legacy fallback paths (tried in order).
+// --- AI / neural provider (legacy primal name: squirrel) ---------------------------------------
+
+/// AI / neural provider socket fallbacks (capability names first; legacy `squirrel.sock` last).
 #[must_use]
-pub fn neural_api_socket_fallback_paths() -> [PathBuf; 3] {
+pub fn coordination_socket_candidates() -> [PathBuf; 3] {
     let b = biomeos_socket_dir_tmp();
     [b.join("ai.sock"), b.join("neural-api.sock"), b.join("squirrel.sock")]
 }
 
-/// Default Neural API socket when discovery finds nothing (legacy, under temp `biomeos/`).
+/// Deprecated alias for [`coordination_socket_candidates`].
+#[deprecated(note = "use coordination_socket_candidates (capability-based naming)")]
+#[must_use]
+pub fn neural_api_socket_fallback_paths() -> [PathBuf; 3] {
+    coordination_socket_candidates()
+}
+
+/// Deprecated alias for [`coordination_socket_candidates`] (legacy primal-name wording).
+#[deprecated(note = "use coordination_socket_candidates (capability-based naming)")]
+#[must_use]
+pub fn squirrel_socket_candidates() -> [PathBuf; 3] {
+    coordination_socket_candidates()
+}
+
+/// Default Neural API socket when discovery finds nothing (under temp `biomeos/`).
+#[must_use]
+pub fn ai_provider_socket_default_path() -> PathBuf {
+    biomeos_socket_dir_tmp().join("ai.sock")
+}
+
+/// Deprecated alias for [`ai_provider_socket_default_path`].
+#[deprecated(note = "use ai_provider_socket_default_path (capability-based naming)")]
 #[must_use]
 pub fn neural_api_socket_default_path() -> PathBuf {
-    biomeos_socket_dir_tmp().join("ai.sock")
+    ai_provider_socket_default_path()
+}
+
+/// Legacy Neural API socket path: `{temp}/neural-api-{family_id}.sock`.
+#[must_use]
+pub fn ai_provider_socket_legacy_path(family_id: &str) -> PathBuf {
+    std::env::temp_dir().join(format!("neural-api-{family_id}.sock"))
+}
+
+/// Deprecated alias for [`ai_provider_socket_legacy_path`].
+#[deprecated(note = "use ai_provider_socket_legacy_path (capability-based naming)")]
+#[must_use]
+pub fn neural_api_socket_legacy_path(family_id: &str) -> PathBuf {
+    ai_provider_socket_legacy_path(family_id)
+}
+
+// --- Compute provider (legacy primal name: toadstool) ------------------------------------------
+
+/// Compute provider socket fallbacks (capability names first; legacy `toadstool.sock` last).
+#[must_use]
+pub fn compute_socket_candidates() -> [PathBuf; 4] {
+    let b = biomeos_socket_dir_tmp();
+    [
+        b.join("compute.sock"),
+        b.join("bridge.sock"),
+        std::env::temp_dir().join("compute.sock"),
+        b.join("toadstool.sock"),
+    ]
+}
+
+/// Deprecated alias for [`compute_socket_candidates`].
+#[deprecated(note = "use compute_socket_candidates (capability-based naming)")]
+#[must_use]
+pub fn toadstool_socket_candidates() -> [PathBuf; 4] {
+    compute_socket_candidates()
 }
 
 /// `{temp}/crypto-{family_id}.sock` (family-scoped crypto socket fallback).
@@ -132,13 +194,14 @@ pub fn family_scoped_crypto_socket_path(family_id: &str) -> PathBuf {
     std::env::temp_dir().join(format!("crypto-{family_id}.sock"))
 }
 
-/// `{temp}/security-{family_id}.sock` (family-scoped security socket fallback).
+/// `{temp}/security-{family_id}.sock` (family-scoped security socket fallback — capability-named).
 #[must_use]
 pub fn family_scoped_security_socket_path(family_id: &str) -> PathBuf {
     std::env::temp_dir().join(format!("security-{family_id}.sock"))
 }
 
-/// `{temp}/beardog-{family_id}.sock` (family-scoped BearDog socket fallback).
+/// Legacy family-scoped security provider path (deprecated; use [`family_scoped_security_socket_path`]).
+#[deprecated(note = "Use family_scoped_security_socket_path (capability-based naming)")]
 #[must_use]
 pub fn family_scoped_beardog_socket_path(family_id: &str) -> PathBuf {
     std::env::temp_dir().join(format!("beardog-{family_id}.sock"))

@@ -11,12 +11,14 @@
 //! - **`MaxCompatibility`**: Maximum compatibility (session tickets)
 
 use super::core::TlsHandshake;
+use super::tls_wire_u16;
+use crate::error::Result;
 use crate::tls::TLS_1_3;
 use tracing::debug;
 
 impl TlsHandshake {
     /// Build extensions based on configured strategy
-    pub(super) fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
+    pub(super) fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         debug!("Building extensions with {:?} strategy", self.config.extension_strategy);
 
         match self.config.extension_strategy {
@@ -51,15 +53,13 @@ impl TlsHandshake {
     /// - `supported_groups` (which curves we support)
     /// - `signature_algorithms` (which signatures we accept)
     /// - `key_share` (our X25519 public key)
-    fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
+    fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 
         // 1. SNI extension (0x0000) - REQUIRED for virtual hosting
         ext.extend_from_slice(&[0x00, 0x00]);
-        let sni_data = self.build_sni_extension(server_name);
-        ext.extend_from_slice(
-            &u16::try_from(sni_data.len()).expect("SNI fits in u16").to_be_bytes(),
-        );
+        let sni_data = self.build_sni_extension(server_name)?;
+        ext.extend_from_slice(&tls_wire_u16(sni_data.len())?.to_be_bytes());
         ext.extend_from_slice(&sni_data);
 
         // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
@@ -84,13 +84,13 @@ impl TlsHandshake {
 
         // 5. Key share (0x0033) - REQUIRED for TLS 1.3 fresh handshake
         ext.extend_from_slice(&[0x00, 0x33]);
-        let key_share_data = self.build_key_share_extension(public_key);
+        let key_share_data = self.build_key_share_extension(public_key)?;
         ext.extend_from_slice(
             &u16::try_from(key_share_data.len()).expect("key share fits in u16").to_be_bytes(),
         );
         ext.extend_from_slice(&key_share_data);
 
-        ext
+        Ok(ext)
     }
 
     /// Build standard extensions (balanced, ~80ms handshake)
@@ -99,15 +99,13 @@ impl TlsHandshake {
     /// RFC 8446 Section 4.2: Extension ordering and content matters!
     /// - `key_share` MUST come BEFORE psk (if present)
     /// - We do NOT include `pre_shared_key` since we're not resuming
-    fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
+    fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 
         // 1. SNI extension (0x0000) - REQUIRED for virtual hosting
         ext.extend_from_slice(&[0x00, 0x00]);
-        let sni_data = self.build_sni_extension(server_name);
-        ext.extend_from_slice(
-            &u16::try_from(sni_data.len()).expect("SNI fits in u16").to_be_bytes(),
-        );
+        let sni_data = self.build_sni_extension(server_name)?;
+        ext.extend_from_slice(&tls_wire_u16(sni_data.len())?.to_be_bytes());
         ext.extend_from_slice(&sni_data);
 
         // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
@@ -139,7 +137,7 @@ impl TlsHandshake {
 
         // 5. Key share (0x0033) - REQUIRED for TLS 1.3 fresh handshake
         ext.extend_from_slice(&[0x00, 0x33]);
-        let key_share_data = self.build_key_share_extension(public_key);
+        let key_share_data = self.build_key_share_extension(public_key)?;
         ext.extend_from_slice(
             &u16::try_from(key_share_data.len()).expect("key share fits in u16").to_be_bytes(),
         );
@@ -161,13 +159,13 @@ impl TlsHandshake {
         // servers into thinking we want to resume (causing Application Data 0x17
         // response instead of ServerHello 0x16).
 
-        ext
+        Ok(ext)
     }
 
     /// Build modern extensions (latest features, ~100ms handshake)
-    fn build_extensions_modern(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
+    fn build_extensions_modern(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         // Start with standard extensions
-        let mut ext = self.build_extensions_standard(server_name, public_key);
+        let mut ext = self.build_extensions_standard(server_name, public_key)?;
 
         // Add modern extensions
 
@@ -184,13 +182,13 @@ impl TlsHandshake {
         // These were causing real-world servers (cloudflare, google) to send Application Data
         // instead of ServerHello, as they thought we were trying session resumption.
 
-        ext
+        Ok(ext)
     }
 
     /// Build max compatibility extensions (exhaustive set)
-    fn build_extensions_maxcompat(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
+    fn build_extensions_maxcompat(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         // Start with modern extensions
-        let mut ext = self.build_extensions_modern(server_name, public_key);
+        let mut ext = self.build_extensions_modern(server_name, public_key)?;
 
         // Add compatibility extensions
 
@@ -208,42 +206,44 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x05, 0x01]); // rsa_pkcs1_sha384
         ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
 
-        ext
+        Ok(ext)
     }
 
     /// Build SNI extension
     #[allow(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
-    pub(crate) fn build_sni_extension(&self, server_name: &str) -> Vec<u8> {
+    pub(crate) fn build_sni_extension(&self, server_name: &str) -> Result<Vec<u8>> {
         let mut sni = Vec::new();
         let name_bytes = server_name.as_bytes();
 
         sni.extend_from_slice(
-            &u16::try_from(name_bytes.len() + 3).expect("SNI list fits in u16").to_be_bytes(),
+            &tls_wire_u16(name_bytes.len().checked_add(3).ok_or_else(|| {
+                crate::error::Error::TlsHandshake("SNI hostname length overflow".into())
+            })?)?
+            .to_be_bytes(),
         ); // List length
         sni.push(0x00); // Type: host_name
-        sni.extend_from_slice(
-            &u16::try_from(name_bytes.len()).expect("hostname fits in u16").to_be_bytes(),
-        );
+        sni.extend_from_slice(&tls_wire_u16(name_bytes.len())?.to_be_bytes());
         sni.extend_from_slice(name_bytes);
 
-        sni
+        Ok(sni)
     }
 
     /// Build key share extension
     #[allow(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
-    pub(crate) fn build_key_share_extension(&self, public_key: &[u8]) -> Vec<u8> {
+    pub(crate) fn build_key_share_extension(&self, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ks = Vec::new();
 
         ks.extend_from_slice(
-            &u16::try_from(public_key.len() + 4).expect("key share fits in u16").to_be_bytes(),
+            &tls_wire_u16(public_key.len().checked_add(4).ok_or_else(|| {
+                crate::error::Error::TlsHandshake("key share length overflow".into())
+            })?)?
+            .to_be_bytes(),
         ); // Client shares length
         ks.extend_from_slice(&[0x00, 0x1d]); // Group: x25519
-        ks.extend_from_slice(
-            &u16::try_from(public_key.len()).expect("public key fits in u16").to_be_bytes(),
-        );
+        ks.extend_from_slice(&tls_wire_u16(public_key.len())?.to_be_bytes());
         ks.extend_from_slice(public_key);
 
-        ks
+        Ok(ks)
     }
 }
 
@@ -256,11 +256,12 @@ mod tests {
 
     #[test]
     fn test_build_sni_extension() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
-        let sni = handshake.build_sni_extension("api.github.com");
+        let sni = handshake.build_sni_extension("api.github.com").expect("sni");
 
         // Verify structure
         assert!(sni.len() > 3);
@@ -278,12 +279,13 @@ mod tests {
 
     #[test]
     fn test_build_key_share_extension() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         let public_key = vec![0x42; 32]; // Mock 32-byte public key
-        let ks = handshake.build_key_share_extension(&public_key);
+        let ks = handshake.build_key_share_extension(&public_key).expect("key share");
 
         // Verify structure
         // First 2 bytes: client shares length
@@ -301,16 +303,17 @@ mod tests {
 
     #[test]
     fn test_build_extensions_minimal() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Minimal,
             ..Default::default()
         };
-        let handshake = TlsHandshake::with_config(beardog, config, None);
+        let handshake = TlsHandshake::with_config(crypto, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key);
+        let ext = handshake.build_extensions("example.com", &public_key).expect("extensions");
 
         // Verify it's not empty
         assert!(!ext.is_empty());
@@ -321,16 +324,17 @@ mod tests {
 
     #[test]
     fn test_build_extensions_standard() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
         };
-        let handshake = TlsHandshake::with_config(beardog, config, None);
+        let handshake = TlsHandshake::with_config(crypto, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key);
+        let ext = handshake.build_extensions("example.com", &public_key).expect("extensions");
 
         // Standard should be larger than minimal (includes ALPN, groups, sig algs, etc.)
         assert!(ext.len() > 50);
@@ -338,16 +342,17 @@ mod tests {
 
     #[test]
     fn test_build_extensions_modern() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Modern,
             ..Default::default()
         };
-        let handshake = TlsHandshake::with_config(beardog, config, None);
+        let handshake = TlsHandshake::with_config(crypto, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key);
+        let ext = handshake.build_extensions("example.com", &public_key).expect("extensions");
 
         // Modern should be larger than standard (includes OCSP stapling)
         assert!(ext.len() > 60);
@@ -355,16 +360,17 @@ mod tests {
 
     #[test]
     fn test_build_extensions_maxcompat() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::MaxCompatibility,
             ..Default::default()
         };
-        let handshake = TlsHandshake::with_config(beardog, config, None);
+        let handshake = TlsHandshake::with_config(crypto, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key);
+        let ext = handshake.build_extensions("example.com", &public_key).expect("extensions");
 
         // MaxCompatibility should be largest (includes session ticket, cert sig algs)
         assert!(ext.len() > 80);
@@ -372,16 +378,17 @@ mod tests {
 
     #[test]
     fn test_alpn_extension_encoding() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
         };
-        let handshake = TlsHandshake::with_config(beardog, config, None);
+        let handshake = TlsHandshake::with_config(crypto, config, None);
 
         let public_key = vec![0x42; 32];
-        let ext = handshake.build_extensions("example.com", &public_key);
+        let ext = handshake.build_extensions("example.com", &public_key).expect("extensions");
 
         // Standard extensions include ALPN with "http/1.1"
         // Search for ALPN extension: 0x0010 followed by "http/1.1"
@@ -392,8 +399,9 @@ mod tests {
 
     #[test]
     fn test_extension_strategy_differences() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let public_key = vec![0x42; 32];
 
         // Build with each strategy
@@ -401,29 +409,33 @@ mod tests {
             extension_strategy: ExtensionStrategy::Minimal,
             ..Default::default()
         };
-        let minimal = TlsHandshake::with_config(beardog.clone(), minimal_config, None)
-            .build_extensions("example.com", &public_key);
+        let minimal = TlsHandshake::with_config(crypto.clone(), minimal_config, None)
+            .build_extensions("example.com", &public_key)
+            .expect("extensions");
 
         let standard_config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
         };
-        let standard = TlsHandshake::with_config(beardog.clone(), standard_config, None)
-            .build_extensions("example.com", &public_key);
+        let standard = TlsHandshake::with_config(crypto.clone(), standard_config, None)
+            .build_extensions("example.com", &public_key)
+            .expect("extensions");
 
         let modern_config = TlsConfig {
             extension_strategy: ExtensionStrategy::Modern,
             ..Default::default()
         };
-        let modern = TlsHandshake::with_config(beardog.clone(), modern_config, None)
-            .build_extensions("example.com", &public_key);
+        let modern = TlsHandshake::with_config(crypto.clone(), modern_config, None)
+            .build_extensions("example.com", &public_key)
+            .expect("extensions");
 
         let maxcompat_config = TlsConfig {
             extension_strategy: ExtensionStrategy::MaxCompatibility,
             ..Default::default()
         };
-        let maxcompat = TlsHandshake::with_config(beardog, maxcompat_config, None)
-            .build_extensions("example.com", &public_key);
+        let maxcompat = TlsHandshake::with_config(crypto, maxcompat_config, None)
+            .build_extensions("example.com", &public_key)
+            .expect("extensions");
 
         // Verify size ordering: minimal < standard < modern < maxcompat
         assert!(minimal.len() < standard.len());
@@ -433,45 +445,47 @@ mod tests {
 
     #[test]
     fn test_build_extensions_adaptive_maps_to_standard() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Adaptive,
             ..Default::default()
         };
-        let adaptive_hs = TlsHandshake::with_config(beardog.clone(), config, None);
+        let adaptive_hs = TlsHandshake::with_config(crypto.clone(), config, None);
 
         let standard_config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
         };
-        let standard_hs = TlsHandshake::with_config(beardog, standard_config, None);
+        let standard_hs = TlsHandshake::with_config(crypto, standard_config, None);
 
         let key = vec![0x42; 32];
-        let adaptive = adaptive_hs.build_extensions("example.com", &key);
-        let standard = standard_hs.build_extensions("example.com", &key);
+        let adaptive = adaptive_hs.build_extensions("example.com", &key).expect("extensions");
+        let standard = standard_hs.build_extensions("example.com", &key).expect("extensions");
         assert_eq!(adaptive, standard);
     }
 
     #[test]
     fn test_build_extensions_custom_maps_to_standard() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Custom(vec![0x000a, 0x002b]),
             ..Default::default()
         };
-        let custom_hs = TlsHandshake::with_config(beardog.clone(), config, None);
+        let custom_hs = TlsHandshake::with_config(crypto.clone(), config, None);
 
         let standard_config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
         };
-        let standard_hs = TlsHandshake::with_config(beardog, standard_config, None);
+        let standard_hs = TlsHandshake::with_config(crypto, standard_config, None);
 
         let key = vec![0x42; 32];
-        let custom = custom_hs.build_extensions("example.com", &key);
-        let standard = standard_hs.build_extensions("example.com", &key);
+        let custom = custom_hs.build_extensions("example.com", &key).expect("extensions");
+        let standard = standard_hs.build_extensions("example.com", &key).expect("extensions");
         assert_eq!(custom, standard);
     }
 }

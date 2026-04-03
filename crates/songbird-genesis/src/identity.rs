@@ -84,7 +84,7 @@ impl NewNodeIdentity {
         self.primal_signature_count() >= 2
     }
 
-    /// Verify all primal signatures using `BearDog`
+    /// Verify all primal signatures using `security provider`
     pub async fn verify_all_signatures(&self) -> bool {
         use crate::security_capability_client::SecurityCapabilityClient;
 

@@ -204,10 +204,7 @@ mod tests {
             timestamp: SystemTime::UNIX_EPOCH,
             capabilities: vec![],
         };
-        assert!(
-            !peer.is_fresh(),
-            "epoch timestamp should not be fresh relative to now"
-        );
+        assert!(!peer.is_fresh(), "epoch timestamp should not be fresh relative to now");
     }
 
     #[test]
@@ -253,7 +250,9 @@ mod tests {
         let back = SignalingMessage::from_json(&resp.to_json().unwrap()).unwrap();
         assert!(matches!(
             back,
-            SignalingMessage::PeerInfoResponse { peer_info: None }
+            SignalingMessage::PeerInfoResponse {
+                peer_info: None
+            }
         ));
     }
 

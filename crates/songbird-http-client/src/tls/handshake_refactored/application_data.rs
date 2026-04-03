@@ -62,7 +62,7 @@ impl TlsHandshake {
 
         trace!("Nonce (IV XOR seq): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
 
-        // Encrypt via BearDog
+        // Encrypt via crypto provider
         let ciphertext =
             self.crypto.encrypt(&keys.client_write_key, &nonce, plaintext, &aad).await?;
 
@@ -115,7 +115,7 @@ impl TlsHandshake {
 
         trace!("Nonce (IV XOR seq): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
 
-        // Decrypt via BearDog (will handle AEAD tag validation)
+        // Decrypt via crypto provider (will handle AEAD tag validation)
         let plaintext =
             self.crypto.decrypt(&keys.server_write_key, &nonce, ciphertext, aad).await?;
 

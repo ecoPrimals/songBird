@@ -133,7 +133,7 @@ async fn test_discovery_security_provider_socket_priority() {
 }
 
 #[tokio::test]
-async fn test_discovery_beardog_socket_legacy_fallback() {
+async fn test_discovery_security_socket_legacy_fallback() {
     let mut env = std::collections::HashMap::new();
     env.insert("BEARDOG_SOCKET".to_string(), "/run/user/1000/biomeos/beardog.sock".to_string());
 

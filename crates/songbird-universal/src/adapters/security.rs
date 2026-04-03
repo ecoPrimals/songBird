@@ -4,7 +4,7 @@
 //! Security Capability Adapter
 //!
 //! **SOVEREIGNTY**: This adapter works with ANY security capability provider.
-//! It does NOT know about specific primals (`BearDog` is just one example).
+//! It does NOT assume a specific vendor implementation (only the capability contract).
 //! Discovery is capability-based through environment hints or zero-knowledge bootstrap.
 
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
@@ -80,7 +80,7 @@ impl SecurityAdapter {
     /// # tokio_test::block_on(async {
     /// use songbird_universal::adapters::SecurityAdapter;
     ///
-    /// // Discovers any security provider (could be BearDog, or anyone)
+    /// // Discovers any security provider implementation (vendor-specific or custom)
     /// let adapter = SecurityAdapter::from_discovery().await?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// # });

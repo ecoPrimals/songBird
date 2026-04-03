@@ -16,10 +16,10 @@ pub struct SongbirdHttpClient {
 }
 
 impl SongbirdHttpClient {
-    /// Create new client with `BearDog` crypto provider at socket path
+    /// Create new client with `security provider` crypto provider at socket path
     #[must_use]
-    pub fn new(beardog_socket: &str) -> Self {
-        let inner = songbird_http_client::SongbirdHttpClient::new(beardog_socket);
+    pub fn new(security_socket: &str) -> Self {
+        let inner = songbird_http_client::SongbirdHttpClient::new(security_socket);
 
         Self {
             inner: Arc::new(inner),

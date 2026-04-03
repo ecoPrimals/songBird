@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave102] - 2026-04-03 - Deep Debt Evolution: TLS Safety, Capability Completion, Smart Refactoring
+
+### Changed — Production Safety
+- TLS handshake `.expect()` panics → `Result<Vec<u8>>` with `Error::TlsHandshake` (extensions.rs, client_finished.rs, handshake_flow.rs)
+- TLS profiler `RwLock` poisoning → `PoisonError::into_inner` recovery (profiler_impl.rs)
+- `std::sync::Mutex` → `tokio::sync::Mutex` in discovery engine (held across `.await`)
+
+### Changed — Capability-Domain Completion
+- IPC field names: `beardog_socket` → `security_socket` across 8 universal-ipc handler files
+- JSON status key: `"beardog_available"` → `"security_provider_available"`
+- Routing: `squirrel_handlers` → `coordination_handlers` module in orchestrator IPC
+- Socket paths: `security.sock` primary, `beardog.sock` legacy fallback in XDG probing
+- Config: `compute_provider_port()`, `ai_provider_port()`, `compute_provider_endpoint()`, `ai_provider_endpoint()` with deprecated aliases
+- Path candidates: `coordination_socket_candidates()`, `compute_socket_candidates()` with deprecated aliases
+
+### Changed — Smart Monolith Refactoring
+- `runtime_engine.rs` (798 LOC) → 6 modules (env_mdns, consul, etcd, kubernetes, register, mod; max 294)
+- `stun/client.rs` (766 LOC) → 3 modules (client, protocol, transaction; max 393)
+- `anonymous/broadcaster.rs` (766 LOC) → 3 modules (broadcaster, protocol, scheduling; max 369)
+- All production modules now under 400 lines
+
+### Changed — Feature Gate
+- `solokey` removed from default features in songbird-genesis (placeholder/demo, now opt-in only)
+
+### Changed — Documentation
+- Root docs (README, CONTEXT, REMAINING_WORK, SECURITY, .env.example) updated to capability-domain language
+- `scripts/test-with-beardog.sh` → `test-with-security-provider.sh`
+- 4 primal-name specs archived to `specs/archive/`
+- Example configs renamed to capability-domain names
+- WateringHole handoffs archived; Wave 102 handoff created
+
+---
+
 ## [v0.2.1-wave98] - 2026-04-02 - Deep Debt Evolution: /tmp Portability, Large File Refactors, Test Triage
 
 ### Changed — Hardcoded `/tmp` Path Evolution
@@ -111,7 +144,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `packet/header`: Long + Short header parsing (RFC 9000 §17)
 - `packet/frame`: All 24 QUIC frame types (RFC 9000 §19)
 - `packet/number`: Packet number codec and expansion (RFC 9000 Appendix A)
-- `crypto/provider`: `QuicCryptoProvider` trait with `BeardogQuicCrypto` implementation
+- `crypto/provider`: `QuicCryptoProvider` trait with `SecurityQuicCrypto` implementation
 - `crypto/initial_keys`: Initial secrets from DCID via HKDF (RFC 9001 §5.2)
 - `crypto/packet_protection`: AEAD encrypt/decrypt with PN nonce (RFC 9001 §5.3)
 - `crypto/header_protection`: Header protection masking (RFC 9001 §5.4)
@@ -128,7 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — Public API Rewired
 - `QuicClient`, `QuicServer`, `QuicConnection`, `QuicStream` now backed by native engine
-- `QuicConfig` builds `TransportParams` and `BeardogQuicCrypto` provider (no rustls config)
+- `QuicConfig` builds `TransportParams` and `SecurityQuicCrypto` provider (no rustls config)
 - `QuicError` evolved to native transport/handshake/crypto error variants
 - `cert_gen` module made public for inter-primal certificate generation
 

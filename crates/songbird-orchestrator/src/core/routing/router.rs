@@ -284,7 +284,7 @@ impl CapabilityRouter {
                 SongbirdError::Network {
                     message: format!("Failed to discover crypto provider: {e}"),
                     interface: None,
-                    suggestion: Some("Check BearDog availability".to_string()),
+                    suggestion: Some("Check security provider availability".to_string()),
                 }
             })?;
 
@@ -384,10 +384,10 @@ impl CapabilityRouter {
             // Security tasks (security provider)
             "encrypt" | "decrypt" | "sign" | "verify" | "auth" => CapabilityType::Security,
 
-            // AI tasks (Squirrel)
+            // AI tasks (`ai` capability)
             "inference" | "ai_query" | "model_serve" => CapabilityType::Ai,
 
-            // Storage tasks (NestGate)
+            // Storage tasks (storage provider)
             "store" | "retrieve" | "backup" => CapabilityType::Storage,
 
             // Default to Compute for unknown heavy tasks

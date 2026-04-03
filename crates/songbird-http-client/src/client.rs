@@ -12,7 +12,7 @@
 //! - Configurable timeouts
 
 use crate::connection::{HttpConnection, HttpsConnection};
-use crate::crypto::{BearDogProvider, CryptoCapability};
+use crate::crypto::{CryptoCapability, SecurityCryptoProvider};
 use crate::error::{Error, Result};
 use crate::http_config::{HttpClientConfig, RedirectMode};
 use crate::redirect::RedirectHandler;
@@ -74,7 +74,7 @@ impl SongbirdHttpClient {
     /// # Note
     ///
     /// This client uses the `CryptoCapability` trait for agnostic crypto operations.
-    /// The underlying provider can be `BearDog` or any other implementation.
+    /// The underlying provider can be a `security provider` or any other implementation.
     pub fn new(socket_path: impl Into<String>) -> Self {
         Self::with_tls_config(socket_path, TlsConfig::default(), None)
     }
@@ -89,7 +89,7 @@ impl SongbirdHttpClient {
         info!("🌐 Creating Songbird HTTP client from environment");
 
         Self {
-            crypto: Arc::new(BearDogProvider::from_env()),
+            crypto: Arc::new(SecurityCryptoProvider::from_env()),
             tls_config: TlsConfig::default(),
             http_config: HttpClientConfig::standard(),
             profiler: None,
@@ -114,7 +114,7 @@ impl SongbirdHttpClient {
         // This ensures capability.call routing via Neural API
         // The socket_path parameter is ignored - routing determined by SECURITY_PROVIDER_MODE / BEARDOG_MODE
         Self {
-            crypto: Arc::new(BearDogProvider::from_env()),
+            crypto: Arc::new(SecurityCryptoProvider::from_env()),
             tls_config,
             http_config: HttpClientConfig::standard(),
             profiler,
@@ -151,7 +151,7 @@ impl SongbirdHttpClient {
         info!("   Redirect mode: {:?}", http_config.redirect_mode);
 
         Self {
-            crypto: Arc::new(BearDogProvider::from_env()),
+            crypto: Arc::new(SecurityCryptoProvider::from_env()),
             tls_config: TlsConfig::default(),
             http_config,
             profiler: None,
@@ -170,7 +170,7 @@ impl SongbirdHttpClient {
         }
 
         Self {
-            crypto: Arc::new(BearDogProvider::from_env()),
+            crypto: Arc::new(SecurityCryptoProvider::from_env()),
             tls_config,
             http_config,
             profiler,

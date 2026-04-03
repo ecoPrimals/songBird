@@ -26,10 +26,10 @@ pub use manager::TaskLifecycleManager;
 pub use storage_sled::*;
 pub use types::*;
 
-/// Async task persistence backend (SB-03: abstraction for sled → nestGate migration).
+/// Async task persistence backend (SB-03: abstraction for sled → storage provider migration).
 ///
-/// The sled implementation ([`TaskStorage`]) is the current default.
-/// When nestGate exposes `storage.*` IPC (NG-01), a `NestGateTaskBackend`
+/// The sled implementation (`TaskStorage`) is the current default.
+/// When storage provider exposes `storage.*` IPC (NG-01), a `StorageProviderTaskBackend`
 /// can implement this trait to delegate persistence over JSON-RPC.
 #[async_trait::async_trait]
 pub trait TaskStorageBackend: Send + Sync {

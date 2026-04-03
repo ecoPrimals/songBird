@@ -27,8 +27,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ipc::register("toadstool", vec!["compute".to_string(), "container".to_string()]).await?;
     println!("✅ Registered toadstool [compute, container]");
 
-    ipc::register("nestgate", vec!["storage".to_string(), "kv".to_string()]).await?;
-    println!("✅ Registered nestgate [storage, kv]");
+    ipc::register("storage provider", vec!["storage".to_string(), "kv".to_string()]).await?;
+    println!("✅ Registered storage provider [storage, kv]");
 
     println!();
 

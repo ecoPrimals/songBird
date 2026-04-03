@@ -27,11 +27,11 @@ impl HttpClientFactory for DefaultHttpClientFactory {
     #[instrument(skip(self))]
     async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
         // Discover crypto provider at runtime (capability-based!)
-        let beardog_socket = self.discovery.discover("crypto.signing").await?;
+        let security_socket = self.discovery.discover("crypto.signing").await?;
 
-        info!("Discovered crypto provider at: {}", beardog_socket);
+        info!("Discovered crypto provider at: {}", security_socket);
 
-        let client = SongbirdHttpClient::new(&beardog_socket);
+        let client = SongbirdHttpClient::new(&security_socket);
         Ok(Arc::new(client))
     }
 }

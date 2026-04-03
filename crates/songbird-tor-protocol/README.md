@@ -4,7 +4,7 @@
 
 **Version**: 0.1.0  
 **Status**: ✅ Phase 2 COMPLETE - All 4 Phases Implemented (3,345 lines)  
-**TRUE PRIMAL**: ✅ 100% BearDog Crypto Delegation
+**TRUE PRIMAL**: ✅ 100% security provider crypto delegation
 
 ---
 
@@ -14,7 +14,7 @@ Minimal Tor protocol implementation in Pure Rust for hosting and connecting to .
 
 **Key Features**:
 - ✅ **Pure Rust**: Zero external dependencies (no Tor daemon, no C code)
-- ✅ **TRUE PRIMAL**: 100% BearDog crypto delegation (no direct crypto)
+- ✅ **TRUE PRIMAL**: 100% security provider crypto delegation (no direct crypto)
 - ✅ **Memory Safe**: Zero unsafe blocks, async/await
 - ✅ **Minimal**: 3,345 lines vs. Tor's 220k+ lines (98.5% reduction)
 - ✅ **Modern**: Tokio async, Result<T>, idiomatic Rust
@@ -54,10 +54,10 @@ Minimal Tor protocol implementation in Pure Rust for hosting and connecting to .
 
 ```rust
 use songbird_tor_protocol::directory::Consensus;
-use songbird_tor_protocol::crypto::BeardogCryptoClient;
+use songbird_tor_protocol::crypto::CryptoProvider;
 
-let beardog = BeardogCryptoClient::from_env()?;
-let consensus = Consensus::fetch(&beardog).await?;
+let crypto = CryptoProvider::from_env()?;
+let consensus = Consensus::fetch(&crypto).await?;
 
 // Select circuit path
 let path = consensus.select_path()?;
@@ -71,7 +71,7 @@ println!("HSDir: {}", path.hsdir.address);
 ```rust
 use songbird_tor_protocol::circuit::Circuit;
 
-let circuit = Circuit::build(&path, &beardog).await?;
+let circuit = Circuit::build(&path, &crypto).await?;
 println!("Circuit ID: {}", circuit.id());
 ```
 
@@ -80,7 +80,7 @@ println!("Circuit ID: {}", circuit.id());
 ```rust
 use songbird_tor_protocol::TorClient;
 
-let client = TorClient::new(beardog);
+let client = TorClient::new(crypto);
 let stream = client.connect("abc123...xyz.onion", 80).await?;
 stream.write_all(b"GET / HTTP/1.1\r\n\r\n").await?;
 ```
@@ -90,7 +90,7 @@ stream.write_all(b"GET / HTTP/1.1\r\n\r\n").await?;
 ```rust
 use songbird_tor_protocol::TorService;
 
-let service = TorService::new(beardog, 8080).await?;
+let service = TorService::new(crypto, 8080).await?;
 println!("Onion address: {}", service.onion_address());
 
 service.listen().await?; // Accept connections
@@ -100,17 +100,17 @@ service.listen().await?; // Accept connections
 
 ## TRUE PRIMAL Architecture
 
-**All crypto delegated to BearDog** (Zero direct crypto in this crate):
+**All crypto delegated to the security provider** (zero direct crypto in this crate):
 
-| Operation | Tor Usage | BearDog Method |
-|-----------|-----------|----------------|
+| Operation | Tor Usage | Security provider method |
+|-----------|-----------|--------------------------|
 | **Ed25519 signing** | Identity, descriptors | `ed25519_sign()` |
 | **Ed25519 verify** | Consensus validation | `ed25519_verify()` |
 | **X25519 ECDH** | ntor handshake | `x25519_derive_secret()` |
 | **AES-128-CTR** | Cell encryption | `aes_128_ctr_encrypt()` ⚠️ NEW |
 | **SHA3-256** | KDFs, onion addresses | `sha3_256()` ⚠️ NEW |
 
-**BearDog Extensions Needed**:
+**Security provider extensions needed**:
 - `aes_128_ctr_encrypt/decrypt` - Tor uses AES-CTR for cell encryption
 - `sha3_256` - Tor uses SHA3 for KDFs and onion address derivation
 
@@ -152,7 +152,7 @@ service.listen().await?; // Accept connections
 ## Next Steps
 
 **Integration Phase** (Awaiting biomeOS Coordination):
-- Wire BearDog IPC for crypto operations
+- Wire security provider IPC for crypto operations
 - Implement network I/O (TCP relay connections)
 - Test with live Tor network
 - Performance validation
@@ -173,4 +173,4 @@ AGPL-3.0
 
 ---
 
-**TRUE PRIMAL** | **Pure Rust** | **Zero Unsafe** | **BearDog Delegation**
+**TRUE PRIMAL** | **Pure Rust** | **Zero Unsafe** | **Security provider delegation**

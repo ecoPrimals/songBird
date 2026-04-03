@@ -194,12 +194,12 @@ impl TlsServer {
         msg
     }
 
-    /// Build `CertificateVerify` message via BearDog Ed25519 signing.
+    /// Build `CertificateVerify` message via security-provider Ed25519 signing.
     ///
     /// Per RFC 8446 Section 4.4.3, signs:
     /// - 64 spaces (0x20) + context string + 0x00 separator + transcript hash
     ///
-    /// Falls back to [`Error::CryptoUnavailable`] when BearDog is unreachable.
+    /// Falls back to [`Error::CryptoUnavailable`] when the crypto provider is unreachable.
     #[expect(
         clippy::cast_possible_truncation,
         reason = "TLS wire format: signature length bounded to u16"
@@ -223,7 +223,9 @@ impl TlsServer {
             .call("crypto.sign.ed25519", serde_json::json!({ "data": data_b64 }))
             .await
             .map_err(|e| {
-                Error::CryptoUnavailable(format!("BearDog signing for CertificateVerify: {e}"))
+                Error::CryptoUnavailable(format!(
+                    "Security provider signing for CertificateVerify: {e}"
+                ))
             })?;
 
         let sig_b64 = result
@@ -232,7 +234,7 @@ impl TlsServer {
             .unwrap_or("");
 
         let signature = BASE64.decode(sig_b64).map_err(|e| {
-            Error::CryptoUnavailable(format!("Failed to decode BearDog signature: {e}"))
+            Error::CryptoUnavailable(format!("Failed to decode security provider signature: {e}"))
         })?;
 
         // CertificateVerify message: SignatureScheme(2) + length(2) + signature
@@ -253,7 +255,7 @@ impl TlsServer {
         // Compute transcript hash
         let transcript_hash = self.transcript.compute_hash();
 
-        // Compute verify_data via BearDog (expects u16 for cipher_suite)
+        // Compute verify_data via crypto provider (expects u16 for cipher_suite)
         let verify_data = self
             .crypto
             .tls_compute_finished_verify_data(
@@ -302,12 +304,12 @@ impl TlsServer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::BearDogProvider;
+    use crate::crypto::SecurityCryptoProvider;
     use crate::tls::content_type;
     use std::sync::Arc;
 
     fn create_test_server() -> TlsServer {
-        let crypto = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
         TlsServer::new(crypto, vec![], vec![])
     }
 

@@ -14,19 +14,23 @@ pub const SELF_NAME: &str = "songbird";
 /// Filesystem directory name for XDG-style paths (`~/.config/songbird/`).
 pub const APP_DIR: &str = "songbird";
 
-/// External: crypto/security primal used for BearDog capability discovery.
+/// External primal name for the security/crypto capability provider.
 ///
-/// Prefer `capability_discovery("crypto")` at runtime over using this
-/// constant directly for IPC routing.
+/// Use capability-domain discovery (`Capability::Security`, `Capability::Crypto`)
+/// instead of this constant for IPC routing.
+#[deprecated(note = "use capability-domain discovery, not primal identity")]
 pub const BEARDOG: &str = "beardog";
 
-/// External: coordinator / AI orchestration primal.
+/// External primal name for the coordinator / AI orchestration capability provider.
+#[deprecated(note = "use capability-domain discovery, not primal identity")]
 pub const SQUIRREL: &str = "squirrel";
 
-/// External: compute primal.
+/// External primal name for the compute capability provider.
+#[deprecated(note = "use capability-domain discovery, not primal identity")]
 pub const TOADSTOOL: &str = "toadstool";
 
-/// External: storage / gateway primal.
+/// External primal name for the storage / gateway capability provider.
+#[deprecated(note = "use capability-domain discovery, not primal identity")]
 pub const NESTGATE: &str = "nestgate";
 
 /// External: biomeOS Neural API service name for socket discovery.

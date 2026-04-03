@@ -73,12 +73,12 @@ impl Default for TrustTimeouts {
 /// - security provider v0.9.5 is available at ../security provider
 /// - Using capability-based discovery for endpoint resolution
 /// - Without an endpoint, callers should treat verification as unavailable (use capability discovery)
-pub struct BearDogClient {
+pub struct SecurityTrustClient {
     /// Optional security provider endpoint (discovered at runtime)
     endpoint: Option<String>,
 }
 
-impl BearDogClient {
+impl SecurityTrustClient {
     /// Create a new security client with runtime discovery
     ///
     /// **EVOLVED (v3.15.0)**: Uses capability discovery (zero vendor hardcoding!)
@@ -114,7 +114,7 @@ impl BearDogClient {
     }
 }
 
-impl Default for BearDogClient {
+impl Default for SecurityTrustClient {
     fn default() -> Self {
         Self::new()
     }

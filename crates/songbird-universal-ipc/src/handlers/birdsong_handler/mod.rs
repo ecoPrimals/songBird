@@ -18,7 +18,7 @@
 //! ```text
 //! Client → songbird.birdsong.* → BirdSongHandler
 //!                                      ↓
-//!                         BearDogBirdSongProvider (via songbird-discovery)
+//!                         SecurityBirdSongProvider (via songbird-discovery)
 //!                                      ↓
 //!                            beardog Unix socket IPC
 //!                                      ↓
@@ -27,7 +27,7 @@
 //!
 //! # Deep Debt Compliance (Feb 2, 2026)
 //!
-//! - ✅ **Pure Rust**: Uses existing `BearDogBirdSongProvider` (zero C deps)
+//! - ✅ **Pure Rust**: Uses existing `SecurityBirdSongProvider` (zero C deps)
 //! - ✅ **Zero Unsafe**: All operations safe
 //! - ✅ **Runtime Discovery**: Finds beardog via `XDG_RUNTIME_DIR`, well-known paths
 //! - ✅ **Self-Knowledge**: Only exposes own beacon generation

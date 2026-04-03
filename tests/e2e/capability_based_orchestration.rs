@@ -13,7 +13,7 @@ use std::collections::HashMap;
 #[tokio::test]
 async fn test_e2e_secure_ai_workflow() {
     // Setup: Create resolver with test endpoints (NO environment variables!)
-    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::beardog_port());
+    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::security_provider_port());
     let ai_endpoint = format!("http://ai:{}", songbird_config::defaults::ports::orchestrator_port());
     let storage_endpoint = format!("http://storage:{}", songbird_config::defaults::ports::metrics_port());
     
@@ -79,7 +79,7 @@ async fn test_e2e_compute_with_storage_workflow() {
 #[tokio::test]
 async fn test_e2e_full_stack_workflow() {
     // Setup: All capabilities for full stack operation
-    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::beardog_port());
+    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::security_provider_port());
     let ai_endpoint = format!("http://ai:{}", songbird_config::defaults::ports::orchestrator_port());
     let compute_endpoint = format!("http://compute:{}", songbird_config::defaults::ports::federation_port());
     let storage_endpoint = format!("http://storage:{}", songbird_config::defaults::ports::metrics_port());
@@ -119,7 +119,7 @@ async fn test_e2e_partial_capability_availability() {
     // Setup: Only some capabilities available (realistic scenario)
     // Only configure Security and Storage, not AI or Compute
     let resolver = InMemoryResolver::new(HashMap::from([
-        (CapabilityType::Security, format!("http://security:{}", songbird_config::defaults::ports::beardog_port())),
+        (CapabilityType::Security, format!("http://security:{}", songbird_config::defaults::ports::security_provider_port())),
         (CapabilityType::Storage, format!("http://storage:{}", songbird_config::defaults::ports::metrics_port())),
     ]));
     
@@ -266,7 +266,7 @@ async fn test_e2e_zero_knowledge_bootstrap() {
 #[tokio::test]
 async fn test_e2e_capability_resolver_direct_usage() {
     // Setup: Test resolver directly
-    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::beardog_port());
+    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::security_provider_port());
     
     let resolver = InMemoryResolver::new(HashMap::from([
         (CapabilityType::Security, security_endpoint.clone()),
@@ -284,7 +284,7 @@ async fn test_e2e_capability_resolver_direct_usage() {
 #[tokio::test]
 async fn test_e2e_multiple_capabilities_parallel_query() {
     // Setup: Multiple capabilities in resolver
-    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::beardog_port());
+    let security_endpoint = format!("http://security:{}", songbird_config::defaults::ports::security_provider_port());
     let storage_endpoint = format!("http://storage:{}", songbird_config::defaults::ports::metrics_port());
     
     let resolver = InMemoryResolver::new(HashMap::from([

@@ -73,7 +73,7 @@ pub struct PrimalRegistry {
 /// Universal configuration for any primal type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalConfiguration {
-    /// Primal type identifier (e.g., "beardog", "nestgate", "toadstool", "squirrel")
+    /// Primal type identifier (e.g., "security", "storage", "toadstool", "squirrel")
     pub primal_type: String,
 
     /// Human-readable name
@@ -451,7 +451,7 @@ impl PrimalRegistry {
         self.primals.values().filter(|p| p.enabled && p.has_capability(capability_type)).collect()
     }
 
-    /// Create security primal configuration (replaces legacy `BearDog`,
+    /// Create security primal configuration (replaces legacy hardcoded security primal names)
     #[must_use]
     pub fn create_security_primal_config() -> PrimalConfiguration {
         let mut config =
@@ -473,7 +473,7 @@ impl PrimalRegistry {
         config
     }
 
-    /// Create compute primal configuration (replaces legacy Toadstool,
+    /// Create compute primal configuration (replaces legacy hardcoded compute primal names)
     #[must_use]
     pub fn create_compute_primal_config() -> PrimalConfiguration {
         let mut config = PrimalConfiguration::new_template("compute", "Universal Compute Provider");
@@ -564,17 +564,17 @@ impl LegacyConfigMigrator {
     pub fn migrate_legacy_config(_legacy_config: &super::SongbirdConfig) -> PrimalRegistry {
         let mut registry = PrimalRegistry::new();
 
-        // Register universal security primal (replaces legacy BearDog,
+        // Register universal security primal (replaces legacy hardcoded security primal),
         let security_config = PrimalRegistry::create_security_primal_config();
         registry.register_primal(security_config);
         debug!("✅ Migrated legacy security configuration to universal security primal");
 
-        // Register universal compute primal (replaces legacy Toadstool,
+        // Register universal compute primal (replaces legacy hardcoded compute primal),
         let compute_config = PrimalRegistry::create_compute_primal_config();
         registry.register_primal(compute_config);
         debug!("✅ Migrated legacy compute configuration to universal compute primal");
 
-        // Register universal storage primal (replaces legacy NestGate,
+        // Register universal storage primal (replaces legacy hardcoded storage primal),
         let mut storage_config =
             PrimalConfiguration::new_template("storage", "Universal Storage Provider");
         storage_config.capabilities = vec![PrimalCapability {
@@ -599,10 +599,10 @@ mod tests {
     #[test]
     fn primal_registry_register_and_get() {
         let mut reg = PrimalRegistry::new();
-        let mut p = PrimalConfiguration::new_template("beardog", "BD");
+        let mut p = PrimalConfiguration::new_template("security", "BD");
         p.enabled = true;
         reg.register_primal(p);
-        assert!(reg.get_primal("beardog").is_some());
+        assert!(reg.get_primal("security").is_some());
         assert_eq!(reg.get_enabled_primals().len(), 1);
     }
 

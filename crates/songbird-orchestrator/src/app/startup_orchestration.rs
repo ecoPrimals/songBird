@@ -152,21 +152,21 @@ impl<'a> StartupOrchestrator<'a> {
 
     /// Stage 1: Provision security credentials (JWT secret + identity query)
     ///
-    /// **Purpose**: Acquire security credentials from `BearDog` before starting servers
+    /// **Purpose**: Acquire security credentials from `security provider` before starting servers
     ///
     /// **Actions**:
-    /// - Provision JWT secret from `BearDog` (via capability discovery)
+    /// - Provision JWT secret from `security provider` (via capability discovery)
     /// - Query security identity (USB seed integration)
     /// - Start observability manager
     ///
     /// **Why First**: Servers need JWT secrets for authentication
     async fn stage_1_provision_security(&self) -> Result<()> {
-        // NEW (Jan 17, 2026): Provision JWT secret from BearDog via capability discovery
-        info!("🔐 Provisioning JWT secret from security provider (BearDog)...");
+        // NEW (Jan 17, 2026): Provision JWT secret from security provider via capability discovery
+        info!("🔐 Provisioning JWT secret from security provider...");
         let jwt_secret = self.orchestrator.provision_jwt_secret().await?;
         info!("✅ JWT secret provisioned ({} bytes, Pure Rust delegation!)", jwt_secret.len());
         // ✅ JWT secret is now provided to HTTP handlers via capability discovery
-        // HTTP authentication implemented via BearDog delegation (Jan 17, 2026)
+        // HTTP authentication implemented via security provider delegation (Jan 17, 2026)
 
         // NEW: Query security provider for our encryption tag (USB seed integration)
         self.orchestrator.query_security_identity().await?;

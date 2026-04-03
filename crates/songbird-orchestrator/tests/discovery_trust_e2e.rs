@@ -47,7 +47,7 @@ fn test_discovery_message_with_tags() {
         8080,
     );
 
-    // Add tags (simulating BearDog adding encryption tags)
+    // Add tags (simulating security provider adding encryption tags)
     message.tags = Some(vec!["beardog:family:iidn:tower1".to_string()]);
 
     assert!(message.tags.is_some());
@@ -185,7 +185,7 @@ fn test_tag_format() {
         // But we can check basic format
         if tag.starts_with("beardog:family:") {
             let parts: Vec<&str> = tag.split(':').collect();
-            assert!(parts.len() >= 4, "BearDog tag should have at least 4 parts");
+            assert!(parts.len() >= 4, "security provider tag should have at least 4 parts");
         }
     }
 }

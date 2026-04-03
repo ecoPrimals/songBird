@@ -40,10 +40,10 @@ pub struct DiscoveryPacket {
     /// Advertised capabilities
     pub capabilities: Vec<String>,
 
-    /// Generic tags (e.g., `BearDog` encryption tags, protocol versions)
+    /// Generic tags (e.g., `security provider` encryption tags, protocol versions)
     ///
     /// Tags are opaque strings that can be used for various purposes:
-    /// - `BearDog` encryption: `"beardog:family:a3f2:tower1"`
+    /// - `security provider` encryption: `"beardog:family:a3f2:tower1"`
     /// - Protocol support: `"btsp_enabled"`, `"birdsong_v2"`
     /// - Custom metadata: any string format
     ///
@@ -106,7 +106,7 @@ impl DiscoveryPacket {
         }
     }
 
-    /// Add tags (e.g., `BearDog` encryption tags)
+    /// Add tags (e.g., `security provider` encryption tags)
     #[must_use]
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = tags;

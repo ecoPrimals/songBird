@@ -16,7 +16,7 @@
 //! - **Health & Diagnostics** (`health`): Health checks, uptime, connectivity status
 //! - **Peer Discovery** (`peer_discovery`): Discover peers, list connections, ping
 //! - **Standard Methods** (`standard_methods`): biomeOS-standard identity and RPC discovery
-//! - **Encryption** (`encryption`): BearDog-delegated encrypt/decrypt operations
+//! - **Encryption** (`encryption`): security provider-delegated encrypt/decrypt operations
 //! - **Network** (`network`): Beacon exchange, broadcast, listen (Dark Forest)
 //! - **HTTP Delegation** (`http_delegation`): Forward HTTP/HTTPS to external services
 //!

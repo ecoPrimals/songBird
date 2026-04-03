@@ -30,7 +30,7 @@
 //!                     │ (agnostic crypto operations)
 //! ┌───────────────────▼──────────────────────────────────────┐
 //! │          Crypto Provider (discovered at runtime)         │
-//! │  - BearDog (default)                                    │
+//! │  - Security / crypto provider (default)                 │
 //! │  - Future: Neural API semantic translation              │
 //! │  - Future: Other providers                              │
 //! └──────────────────────────────────────────────────────────┘
@@ -69,9 +69,15 @@
 //! - ✅ Agnostic crypto provider support
 #![forbid(unsafe_code)]
 
-/// BearDog IPC client submodules (refactored HTTP/TLS helpers).
+/// Security-provider RPC client submodules (refactored HTTP/TLS helpers).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
-pub mod beardog_client;
+pub mod security_rpc_client;
+
+/// Deprecated alias for [`security_rpc_client`].
+#[deprecated(note = "use module `security_rpc_client` (capability-based naming)")]
+pub mod beardog_client {
+    pub use crate::security_rpc_client::*;
+}
 /// High-level `SongbirdHttpClient` and HTTP/HTTPS request execution.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod client;
@@ -79,7 +85,7 @@ mod connection; // ✅ NEW: Connection management (HTTP/HTTPS) (extracted from c
 /// Bounded connection pool with acquire/return and health-aware cleanup.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod connection_pool;
-/// Crypto capability traits, BearDog discovery, and TLS secret bags.
+/// Crypto capability traits, security-provider discovery, and TLS secret bags.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod crypto;
 /// Error types and `Result` alias for this crate.
@@ -102,14 +108,14 @@ pub mod tls;
 pub mod types;
 
 // Legacy implementation moved to archive/legacy_implementations/beardog_client_jan_26_2026/
-// Refactored into beardog_client/ module (7 sub-modules) on January 26, 2026
-// Use beardog_client module for all new code
+// Refactored into security_rpc_client/ module (7 sub-modules) on January 26, 2026
+// Use security_rpc_client module for all new code
 
 /// High-level HTTP/HTTPS client built on the internal stack and TLS integration.
 pub use client::SongbirdHttpClient;
 /// Error type and `Result` alias for this crate.
 pub use error::{Error, Result};
-/// IPC-backed HTTP client, request builder, and multipart types for `BearDog` channels.
+/// IPC-backed HTTP client, request builder, and multipart types for security-provider channels.
 pub use ipc_client::{Form, IpcHttpClient, Part, RequestBuilder, Response};
 /// Request and response value types used by [`SongbirdHttpClient`].
 pub use types::{HttpRequest, HttpResponse};
@@ -119,16 +125,19 @@ pub use types::{HttpRequest, HttpResponse};
 pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
-/// Crypto capability traits, TLS secret bags, and runtime discovery helpers for `BearDog` sockets.
+/// Crypto capability traits, TLS secret bags, and runtime discovery helpers for security-provider sockets.
+#[allow(deprecated)]
 pub use crypto::{
-    BearDogProvider, CryptoCapability, IpcEndpoint, TlsApplicationSecrets, TlsHandshakeSecrets,
-    discover_security_provider_socket, discover_crypto_capability, discover_ipc_endpoint,
-    discover_neural_api_socket,
+    BearDogProvider, CryptoCapability, IpcEndpoint, SecurityCryptoProvider, TlsApplicationSecrets,
+    TlsHandshakeSecrets, discover_crypto_capability, discover_ipc_endpoint,
+    discover_neural_api_socket, discover_security_provider_socket, discover_security_socket,
 };
 
-// Re-export BearDogClient and types
-/// Lower-level `BearDog` IPC client and TLS secret handles for advanced use.
-pub use beardog_client::{BearDogClient, BearDogMode, TlsSecrets};
+/// Lower-level security-provider RPC client and TLS secret handles for advanced use.
+pub use security_rpc_client::{SecurityRpcClient, SecurityRpcMode, TlsSecrets};
+
+#[allow(deprecated)]
+pub use security_rpc_client::{BearDogClient, BearDogMode};
 
 // Re-export HTTP configuration types for adaptive behavior
 /// Adaptive HTTP client configuration (headers, redirects, and version string constant).

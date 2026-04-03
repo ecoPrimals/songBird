@@ -14,7 +14,7 @@
 //!
 //! - **`NeuralApi`** (default): Routes calls as `capability.call` to the
 //!   Neural API, which translates and forwards to the security provider.
-//! - **`Direct`**: Calls `BearDog` directly (bootstrap / fallback).
+//! - **`Direct`**: Calls `security provider` directly (bootstrap / fallback).
 
 mod rpc;
 pub mod socket_discovery;
@@ -51,7 +51,7 @@ pub enum CryptoProviderError {
 
 pub type Result<T> = std::result::Result<T, CryptoProviderError>;
 
-/// Crypto provider that routes operations via Neural API or direct `BearDog`.
+/// Crypto provider that routes operations via Neural API or direct `security provider`.
 #[derive(Debug)]
 pub struct CryptoProvider {
     pub(crate) socket_path: String,
@@ -93,12 +93,11 @@ impl CryptoProvider {
     {
         use tracing::info;
 
-        let mode_val = get_var("SECURITY_PROVIDER_MODE")
-            .or_else(|| get_var("BEARDOG_MODE"));
+        let mode_val = get_var("SECURITY_PROVIDER_MODE").or_else(|| get_var("BEARDOG_MODE"));
         let mode = routing_mode_from_env(mode_val.as_deref());
         match mode {
             RoutingMode::Direct => {
-                let socket = socket_discovery::discover_security_provider_socket_with(
+                let socket = socket_discovery::discover_security_socket_with(
                     |k| get_var(k),
                     std::path::Path::exists,
                 );
@@ -124,7 +123,7 @@ impl CryptoProvider {
         }
     }
 
-    #[allow(dead_code, reason = "public API reserved for BearDog integration consumers")]
+    #[allow(dead_code, reason = "public API reserved for security provider integration consumers")]
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }
@@ -199,11 +198,7 @@ mod tests {
     #[test]
     fn routing_mode_from_env_non_direct_is_neural() {
         for v in ["", "neural", "NEURAL", "bogus"] {
-            assert_eq!(
-                routing_mode_from_env(Some(v)),
-                RoutingMode::NeuralApi,
-                "value={v:?}"
-            );
+            assert_eq!(routing_mode_from_env(Some(v)), RoutingMode::NeuralApi, "value={v:?}");
         }
     }
 

@@ -5,7 +5,7 @@
 //!
 //! Replaces `rcgen` (which pulled `ring` transitively) with direct DER construction
 //! using `ed25519-dalek`. The certificates are self-signed and minimal — real identity
-//! verification happens via `BearDog` lineage at the application layer.
+//! verification happens via `security provider` lineage at the application layer.
 
 use ed25519_dalek::{Signer, SigningKey};
 use rand::RngCore;

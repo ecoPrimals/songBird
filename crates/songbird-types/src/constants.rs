@@ -51,7 +51,7 @@ pub const DEFAULT_METRICS_PORT: u16 = 8004;
 /// Default orchestrator API port (self-referencing for internal metrics)
 pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8000;
 
-/// Default crypto provider transport port (BearDog TCP transport fallback)
+/// Default crypto provider transport port (security provider TCP transport fallback)
 pub const DEFAULT_CRYPTO_TRANSPORT_PORT: u16 = 9876;
 
 /// Default security vault port (capability-based security provider, dev only)

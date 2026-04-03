@@ -12,7 +12,7 @@
 //! - Discovers own network interfaces
 //! - Exposes own capabilities
 //! - **Does NOT interpret or understand tags** - just reads and broadcasts them
-//! - Security providers (security provider) interpret tag meaning
+//! - The security provider interprets tag meaning
 //!
 //! ## Tag-Based Identity (v3.14.0)
 //!
@@ -106,12 +106,12 @@ pub fn discover_capabilities() -> Vec<String> {
 /// Tags are opaque strings in format: `{provider}:{type}:{value}`
 ///
 /// ## Examples:
-/// - `SONGBIRD_TAGS=beardog:family:nat0,beardog:org:acme`
-/// - Individual vars: `SONGBIRD_FAMILY_ID=nat0` → `beardog:family:nat0`
+/// - `SONGBIRD_TAGS=crypto:family:nat0,crypto:org:acme` (deployments may still use legacy `beardog:*` prefixes)
+/// - Individual vars: `SONGBIRD_FAMILY_ID=nat0` → family tag (see implementation; legacy wire uses `beardog:family:*`)
 ///
 /// ## Philosophy:
 /// Songbird doesn't know what tags mean. It just broadcasts them.
-/// Security providers (security provider) interpret tags and make decisions.
+/// The security provider interprets tags and makes decisions.
 ///
 /// This is **self-knowledge** - we only know our own tags, not what they mean!
 #[must_use]
@@ -140,14 +140,14 @@ where
     // Option 2: Convenience vars that get converted to tags
     // (Songbird still doesn't interpret - just formats!)
 
-    // Family ID → beardog:family:{id}
+    // Family ID → legacy family tag `beardog:family:{id}` (wire compatibility)
     if let Some(family_id) = env_reader("SONGBIRD_FAMILY_ID") {
         let tag = format!("beardog:family:{family_id}");
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Family tag '{}' (security provider will interpret)", tag);
     }
 
-    // Org ID → beardog:org:{id}
+    // Org ID → legacy org tag `beardog:org:{id}` (wire compatibility)
     if let Some(org_id) = env_reader("SONGBIRD_ORG_ID") {
         let tag = format!("beardog:org:{org_id}");
         tags.push(tag.clone());

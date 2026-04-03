@@ -39,9 +39,8 @@ pub async fn run_coordinated_udp_punch(
     let start = Instant::now();
 
     for offset in -spray_window..=spray_window {
-        let target_port =
-            u16::try_from((i32::from(peer_predicted_port) + offset).clamp(1, 65535))
-                .unwrap_or(peer_predicted_port);
+        let target_port = u16::try_from((i32::from(peer_predicted_port) + offset).clamp(1, 65535))
+            .unwrap_or(peer_predicted_port);
         let target_addr = SocketAddr::new(peer_public_ip, target_port);
 
         if socket.send_to(PUNCH_MSG, target_addr).await.is_ok() {

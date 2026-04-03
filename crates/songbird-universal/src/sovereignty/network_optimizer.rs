@@ -106,30 +106,30 @@ impl NetworkEffectsOptimizer {
         let mut current_path_security_level = SecurityLevel::Maximum;
 
         for segment in &path.segments {
-            let mut optimized_segment = self.optimize_segment_for_network_effects(segment).await?;
+            let mut optimized_segment =
+                self.optimize_segment_for_network_effects(segment.clone()).await?;
 
-            // Apply specific optimization strategies
             if self.optimization_config.enable_latency_optimization {
-                optimized_segment = self.optimize_for_latency(&optimized_segment).await?;
+                optimized_segment = self.optimize_for_latency(optimized_segment).await?;
             }
 
             if self.optimization_config.enable_throughput_optimization {
-                optimized_segment = self.optimize_for_throughput(&optimized_segment).await?;
+                optimized_segment = self.optimize_for_throughput(optimized_segment).await?;
             }
 
             if self.optimization_config.enable_security_enhancement {
-                optimized_segment = self.enhance_security(&optimized_segment).await?;
+                optimized_segment = self.enhance_security(optimized_segment).await?;
             }
 
             if self.optimization_config.enable_cost_optimization {
-                optimized_segment = self.optimize_for_cost(&optimized_segment).await?;
+                optimized_segment = self.optimize_for_cost(optimized_segment).await?;
             }
 
-            optimized_segments.push(optimized_segment.clone());
             current_path_sovereignty_score += optimized_segment.sovereignty_level.score();
             current_path_efficiency_score += optimized_segment.efficiency_score;
             current_path_security_level =
                 self.assess_path_security_level(&[&optimized_segment.service]).await?;
+            optimized_segments.push(optimized_segment);
         }
 
         let mut optimized_path = RoutingPath {
@@ -146,19 +146,11 @@ impl NetworkEffectsOptimizer {
 
     async fn optimize_segment_for_network_effects(
         &self,
-        segment: &PathSegment,
+        mut segment: PathSegment,
     ) -> SongbirdResult<PathSegment> {
-        let mut optimized_segment = segment.clone();
-
-        // Add network-specific capabilities
-        let mut new_capabilities = segment.security_capabilities.clone();
-        new_capabilities.push(SecurityCapability::NetworkOptimized);
-        optimized_segment.security_capabilities = new_capabilities;
-
-        // Add network-specific metadata
-        let mut new_metadata = segment.metadata.clone();
-        new_metadata.insert("network_optimized".to_string(), "true".to_string());
-        new_metadata.insert(
+        segment.security_capabilities.push(SecurityCapability::NetworkOptimized);
+        segment.metadata.insert("network_optimized".to_string(), "true".to_string());
+        segment.metadata.insert(
             "optimization_timestamp".to_string(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -166,70 +158,40 @@ impl NetworkEffectsOptimizer {
                 .as_secs()
                 .to_string(),
         );
-        optimized_segment.metadata = new_metadata;
-
-        Ok(optimized_segment)
+        Ok(segment)
     }
 
-    async fn optimize_for_latency(&self, segment: &PathSegment) -> SongbirdResult<PathSegment> {
-        let mut optimized_segment = segment.clone();
-
-        // Add latency optimization metadata
-        optimized_segment.metadata.insert("latency_optimized".to_string(), "true".to_string());
-        optimized_segment
-            .metadata
-            .insert("optimization_strategy".to_string(), "latency".to_string());
-
-        // Boost efficiency score for latency-optimized segments
-        optimized_segment.efficiency_score = (optimized_segment.efficiency_score * 1.1).min(1.0);
-
-        Ok(optimized_segment)
+    async fn optimize_for_latency(&self, mut segment: PathSegment) -> SongbirdResult<PathSegment> {
+        segment.metadata.insert("latency_optimized".to_string(), "true".to_string());
+        segment.metadata.insert("optimization_strategy".to_string(), "latency".to_string());
+        segment.efficiency_score = (segment.efficiency_score * 1.1).min(1.0);
+        Ok(segment)
     }
 
-    async fn optimize_for_throughput(&self, segment: &PathSegment) -> SongbirdResult<PathSegment> {
-        let mut optimized_segment = segment.clone();
-
-        // Add throughput optimization metadata
-        optimized_segment.metadata.insert("throughput_optimized".to_string(), "true".to_string());
-        optimized_segment
-            .metadata
-            .insert("optimization_strategy".to_string(), "throughput".to_string());
-
-        // Boost efficiency score for throughput-optimized segments
-        optimized_segment.efficiency_score = (optimized_segment.efficiency_score * 1.05).min(1.0);
-
-        Ok(optimized_segment)
+    async fn optimize_for_throughput(
+        &self,
+        mut segment: PathSegment,
+    ) -> SongbirdResult<PathSegment> {
+        segment.metadata.insert("throughput_optimized".to_string(), "true".to_string());
+        segment.metadata.insert("optimization_strategy".to_string(), "throughput".to_string());
+        segment.efficiency_score = (segment.efficiency_score * 1.05).min(1.0);
+        Ok(segment)
     }
 
-    async fn enhance_security(&self, segment: &PathSegment) -> SongbirdResult<PathSegment> {
-        let mut optimized_segment = segment.clone();
-
-        // Add security enhancement capabilities
-        if !optimized_segment
-            .security_capabilities
-            .contains(&SecurityCapability::SovereigntyCompliant)
-        {
-            optimized_segment.security_capabilities.push(SecurityCapability::SovereigntyCompliant);
+    async fn enhance_security(&self, mut segment: PathSegment) -> SongbirdResult<PathSegment> {
+        if !segment.security_capabilities.contains(&SecurityCapability::SovereigntyCompliant) {
+            segment.security_capabilities.push(SecurityCapability::SovereigntyCompliant);
         }
-
-        // Add security enhancement metadata
-        optimized_segment.metadata.insert("security_enhanced".to_string(), "true".to_string());
-        optimized_segment.metadata.insert("security_level".to_string(), "enhanced".to_string());
-
-        Ok(optimized_segment)
+        segment.metadata.insert("security_enhanced".to_string(), "true".to_string());
+        segment.metadata.insert("security_level".to_string(), "enhanced".to_string());
+        Ok(segment)
     }
 
-    async fn optimize_for_cost(&self, segment: &PathSegment) -> SongbirdResult<PathSegment> {
-        let mut optimized_segment = segment.clone();
-
-        // Add cost optimization metadata
-        optimized_segment.metadata.insert("cost_optimized".to_string(), "true".to_string());
-        optimized_segment.metadata.insert("optimization_strategy".to_string(), "cost".to_string());
-
-        // Note: Cost optimization might slightly reduce efficiency for cost savings
-        optimized_segment.efficiency_score = (optimized_segment.efficiency_score * 0.95).max(0.0);
-
-        Ok(optimized_segment)
+    async fn optimize_for_cost(&self, mut segment: PathSegment) -> SongbirdResult<PathSegment> {
+        segment.metadata.insert("cost_optimized".to_string(), "true".to_string());
+        segment.metadata.insert("optimization_strategy".to_string(), "cost".to_string());
+        segment.efficiency_score = (segment.efficiency_score * 0.95).max(0.0);
+        Ok(segment)
     }
 
     async fn assess_path_security_level(
@@ -473,7 +435,7 @@ mod tests {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let optimized =
-            optimizer.optimize_segment_for_network_effects(&segment).await.map_err(|e| {
+            optimizer.optimize_segment_for_network_effects(segment).await.map_err(|e| {
                 SongbirdError::configuration(format!(
                     "Failed to optimize segment for network effects: {}",
                     e
@@ -489,7 +451,7 @@ mod tests {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
-        let optimized = optimizer.optimize_for_latency(&segment).await.map_err(|e| {
+        let optimized = optimizer.optimize_for_latency(segment).await.map_err(|e| {
             SongbirdError::configuration(format!("Failed to optimize segment for latency: {}", e))
         })?;
         assert_eq!(optimized.metadata.get("latency_optimized"), Some(&"true".to_string()));
@@ -502,7 +464,7 @@ mod tests {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
-        let optimized = optimizer.optimize_for_throughput(&segment).await.map_err(|e| {
+        let optimized = optimizer.optimize_for_throughput(segment).await.map_err(|e| {
             SongbirdError::configuration(format!(
                 "Failed to optimize segment for throughput: {}",
                 e
@@ -517,7 +479,7 @@ mod tests {
     async fn test_enhance_security() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
-        let optimized = optimizer.enhance_security(&segment).await.map_err(|e| {
+        let optimized = optimizer.enhance_security(segment).await.map_err(|e| {
             SongbirdError::configuration(format!("Failed to enhance security for segment: {}", e))
         })?;
         assert!(
@@ -532,7 +494,7 @@ mod tests {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
-        let optimized = optimizer.optimize_for_cost(&segment).await.map_err(|e| {
+        let optimized = optimizer.optimize_for_cost(segment).await.map_err(|e| {
             SongbirdError::configuration(format!("Failed to optimize segment for cost: {}", e))
         })?;
         assert_eq!(optimized.metadata.get("cost_optimized"), Some(&"true".to_string()));

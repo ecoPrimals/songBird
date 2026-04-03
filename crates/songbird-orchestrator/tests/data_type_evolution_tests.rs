@@ -30,7 +30,7 @@
 //! Data Type Evolution Tests
 //!
 //! Tests the evolution from u64 to String for `first_seen_at` field
-//! to ensure `BearDog` API compatibility
+//! to ensure `security provider` API compatibility
 
 use songbird_orchestrator::security_capability_client::{
     ConnectionInfo, DiscoveryContext, TrustEvaluationRequest,
@@ -108,9 +108,9 @@ fn test_trust_evaluation_request_with_string_timestamp() {
     assert_eq!(context.get("discovery_method"), Some(&"udp_multicast".to_string()));
 }
 
-/// Test: `TrustEvaluationRequest` serialization (`BearDog` API format)
+/// Test: `TrustEvaluationRequest` serialization (`security provider` API format)
 #[test]
-fn test_trust_evaluation_request_beardog_format() {
+fn test_trust_evaluation_request_legacy_family_tag_format() {
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
         peer_family: Some("iidn".to_string()), // ✅ v3.14.1
@@ -236,9 +236,9 @@ fn test_round_trip_serialization() {
     assert_eq!(original.metadata.len(), deserialized.metadata.len());
 }
 
-/// Test: `BearDog` API compatibility (exact format)
+/// Test: `security provider` API compatibility (exact format)
 #[test]
-fn test_beardog_api_exact_format() {
+fn test_security_provider_api_exact_format() {
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
         peer_family: Some("iidn".to_string()), // ✅ v3.14.1
@@ -259,11 +259,11 @@ fn test_beardog_api_exact_format() {
 
     let json = serde_json::to_string_pretty(&request).expect("Failed to serialize");
 
-    // Verify format matches BearDog expectations
+    // Verify format matches security provider expectations
     assert!(json.contains(r#""first_seen_at": "1767368141""#));
     assert!(json.contains(r#""discovery_method": "udp_multicast""#));
 
-    // This format should be accepted by BearDog API (no 422 errors)
+    // This format should be accepted by security provider API (no 422 errors)
 }
 
 /// Test: Current timestamp conversion

@@ -35,7 +35,9 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
-use songbird_types::primal_names::{BEARDOG, BIOMEOS_DIR};
+#[allow(deprecated)]
+use songbird_types::primal_names::BEARDOG;
+use songbird_types::primal_names::BIOMEOS_DIR;
 use std::path::PathBuf;
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, info, warn};
@@ -45,14 +47,19 @@ use tracing::{debug, info, warn};
 /// **Platform-agnostic, XDG-compliant, zero hardcoding**
 pub struct UnixIPC;
 
+/// Primals known to serve the security/crypto capability domain.
+#[allow(deprecated)]
+const SECURITY_CAPABILITY_PRIMALS: &[&str] = &[BEARDOG];
+
 /// Get XDG-compliant Unix socket path for a primal
 ///
 /// **Priority order** (biomeOS standard):
-/// 1. For `beardog`: `SECURITY_PROVIDER_SOCKET` then `{PRIMAL_NAME}_SOCKET` (e.g. `BEARDOG_SOCKET`)
-/// 2. `BIOMEOS_SOCKET_DIR/{primal}.sock` - Shared socket directory
-/// 3. `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` - XDG standard
-/// 4. `/run/user/$UID/biomeos/{primal}.sock` - Fallback XDG (Pure Rust!)
-/// 5. `{system temp dir}/{primal}.sock` - Legacy fallback
+/// 1. Capability env override (e.g. `SECURITY_PROVIDER_SOCKET` for security-domain primals)
+/// 2. `{PRIMAL_NAME}_SOCKET` (e.g. `BEARDOG_SOCKET`)
+/// 3. `BIOMEOS_SOCKET_DIR/{primal}.sock` - Shared socket directory
+/// 4. `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` - XDG standard
+/// 5. `/run/user/$UID/biomeos/{primal}.sock` - Fallback XDG (Pure Rust!)
+/// 6. `{system temp dir}/{primal}.sock` - Legacy fallback
 ///
 /// **Pure Rust**: No unsafe code, no `libc::getuid()`. Uses environment variables.
 fn get_socket_path(primal_name: &str) -> PathBuf {
@@ -64,8 +71,7 @@ fn resolve_socket_path<F>(primal_name: &str, env_reader: F) -> PathBuf
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
 {
-    // Priority 1: Explicit override — capability name first for security provider primal
-    if primal_name == BEARDOG
+    if SECURITY_CAPABILITY_PRIMALS.contains(&primal_name)
         && let Ok(path) = env_reader("SECURITY_PROVIDER_SOCKET")
     {
         return PathBuf::from(path);
@@ -89,9 +95,7 @@ where
 
     // Priority 4: Fallback XDG path using UID env var (Pure Rust!)
     if let Ok(uid_str) = env_reader("UID") {
-        return PathBuf::from(format!(
-            "/run/user/{uid_str}/{BIOMEOS_DIR}/{primal_name}.sock"
-        ));
+        return PathBuf::from(format!("/run/user/{uid_str}/{BIOMEOS_DIR}/{primal_name}.sock"));
     }
 
     // Priority 5: Legacy temp-dir fallback (if all else fails)

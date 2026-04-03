@@ -60,9 +60,10 @@ mod tests {
 
     #[test]
     fn test_handshake_creation() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
-        let handshake = TlsHandshake::new(beardog);
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
+        let handshake = TlsHandshake::new(crypto);
 
         // Verify initial state
         assert_eq!(handshake.transcript.len(), 0);
@@ -71,10 +72,11 @@ mod tests {
 
     #[test]
     fn test_handshake_with_config() {
-        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock"))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto =
+            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+                as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig::default();
-        let handshake = TlsHandshake::with_config(beardog, config, None);
+        let handshake = TlsHandshake::with_config(crypto, config, None);
 
         // Verify initial state
         assert_eq!(handshake.transcript.len(), 0);

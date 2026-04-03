@@ -385,7 +385,7 @@ mod tests {
     #[tokio::test]
     async fn test_adapter_creation() {
         // UniversalAdapter::new() requires a live crypto provider.
-        // In test environments without BearDog, gracefully handle the error.
+        // In test environments without security provider, gracefully handle the error.
         match UniversalAdapter::new().await {
             Ok(adapter) => assert!(adapter.cache.is_empty()),
             Err(e) => {
@@ -400,7 +400,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        // Skip if no crypto provider available (BearDog not running)
+        // Skip if no crypto provider available (security provider not running)
         let adapter = match UniversalAdapter::new().await {
             Ok(a) => a,
             Err(_) => return, // No crypto provider in test env

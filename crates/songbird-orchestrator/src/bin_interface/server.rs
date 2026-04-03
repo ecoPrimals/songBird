@@ -125,8 +125,22 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("");
 
     // Step 4.5: Start IPC server (Unix socket or TCP based on args)
-    let socket_path_for_registration = args.socket.clone().or_else(|| args.listen.clone());
-    let ipc_handle = if let Some(ref listen_addr) = args.listen {
+    // wateringHole standard: `server --port <PORT>` binds newline-delimited TCP JSON-RPC.
+    // When --listen is not explicit, derive it from --port for compliance.
+    let effective_listen = args.listen.clone().or_else(|| {
+        if args.socket.is_none() {
+            let addr = format!("0.0.0.0:{}", actual_port);
+            tracing::info!(
+                "   TCP JSON-RPC: {} (derived from --port per wateringHole standard)",
+                addr
+            );
+            Some(addr)
+        } else {
+            None
+        }
+    });
+    let socket_path_for_registration = args.socket.clone().or_else(|| effective_listen.clone());
+    let ipc_handle = if let Some(ref listen_addr) = effective_listen {
         // TCP IPC mode (Android/Universal)
         tracing::info!("");
         tracing::info!("🌐 Starting TCP IPC Server (Android/Universal mode)...");
@@ -136,20 +150,20 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             tracing::info!("   Family: {}", fam);
         }
 
-        // Determine BearDog socket/address (capability-first discovery)
-        let beardog_socket = args.beardog_socket.clone().unwrap_or_else(|| {
+        // Determine security provider socket/address (capability-first discovery)
+        let security_socket = args.security_socket.clone().unwrap_or_else(|| {
             let default_family = crate::env_config::family_id();
             let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            songbird_types::defaults::paths::family_scoped_beardog_socket_path(family_id)
+            songbird_types::defaults::paths::family_scoped_security_socket_path(family_id)
                 .to_string_lossy()
                 .into_owned()
         });
-        tracing::info!("   BearDog: {}", beardog_socket);
+        tracing::info!("   Security provider: {}", security_socket);
         tracing::info!("   Capabilities: http, stun, discovery");
 
         let listen_clone = listen_addr.clone();
         Some(tokio::spawn(async move {
-            match start_tcp_ipc_server(&listen_clone, &beardog_socket).await {
+            match start_tcp_ipc_server(&listen_clone, &security_socket).await {
                 Ok(()) => tracing::info!("TCP IPC server stopped gracefully"),
                 Err(e) => tracing::error!("TCP IPC server error: {}", e),
             }
@@ -164,15 +178,15 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             tracing::info!("   Family: {}", fam);
         }
 
-        // Determine BearDog socket (capability-first discovery)
-        let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
+        // Determine security provider socket (capability-first discovery)
+        let security_socket = args.security_socket.unwrap_or_else(|| {
             let default_family = crate::env_config::family_id();
             let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            songbird_types::defaults::paths::family_scoped_beardog_socket_path(family_id)
+            songbird_types::defaults::paths::family_scoped_security_socket_path(family_id)
                 .to_string_lossy()
                 .into_owned()
         });
-        tracing::info!("   BearDog: {}", beardog_socket);
+        tracing::info!("   Security provider: {}", security_socket);
         tracing::info!("   Capabilities: http, discovery, secure_http");
 
         // Spawn IPC server in background task (Unix only)
@@ -180,7 +194,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         let ipc_task = {
             let socket_clone = socket_path;
             Some(tokio::spawn(async move {
-                match start_ipc_server(&socket_clone, &beardog_socket).await {
+                match start_ipc_server(&socket_clone, &security_socket).await {
                     Ok(()) => tracing::info!("IPC server stopped gracefully"),
                     Err(e) => tracing::error!("IPC server error: {}", e),
                 }
@@ -311,10 +325,7 @@ async fn handle_json_rpc_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWr
                 );
 
                 let response = match handler
-                    .handle(
-                        &request.method,
-                        request.params.unwrap_or(serde_json::Value::Null),
-                    )
+                    .handle(&request.method, request.params.unwrap_or(serde_json::Value::Null))
                     .await
                 {
                     Ok(result) => JsonRpcResponse::success(result, id),
@@ -323,9 +334,7 @@ async fn handle_json_rpc_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWr
                     }
                 };
 
-                if !is_notification
-                    && let Ok(response_json) = serde_json::to_string(&response)
-                {
+                if !is_notification && let Ok(response_json) = serde_json::to_string(&response) {
                     let _ = writer.write_all(response_json.as_bytes()).await;
                     let _ = writer.write_all(b"\n").await;
                 }
@@ -355,7 +364,7 @@ fn log_available_methods() {
 
 /// Start Unix socket IPC server for external primal access to HTTP/HTTPS capabilities.
 #[cfg(unix)]
-async fn start_ipc_server(socket_path: &str, _beardog_socket: &str) -> Result<()> {
+async fn start_ipc_server(socket_path: &str, _security_socket: &str) -> Result<()> {
     let _ = std::fs::remove_file(socket_path);
     let shared_handler = create_shared_handler();
 
@@ -380,7 +389,7 @@ async fn start_ipc_server(socket_path: &str, _beardog_socket: &str) -> Result<()
 
 /// Start TCP IPC server for platforms where Unix sockets are restricted
 /// (Android SELinux, Windows). Same JSON-RPC 2.0 protocol, just over TCP.
-async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Result<()> {
+async fn start_tcp_ipc_server(listen_addr: &str, _security_socket: &str) -> Result<()> {
     let addr: std::net::SocketAddr = listen_addr
         .parse()
         .map_err(|e| anyhow::anyhow!("Invalid listen address '{listen_addr}': {e}"))?;

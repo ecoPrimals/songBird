@@ -21,7 +21,7 @@ use songbird_primal_coordination::{
 
 /// Genesis coordination using capability-based discovery
 ///
-/// **EVOLUTION**: Replaces hardcoded `BearDog` connections with capability-based security
+/// **EVOLUTION**: Replaces hardcoded `security provider` connections with capability-based security
 #[cfg(feature = "coordination")]
 pub struct GenesisCoordinationBridge {
     coordinator: Arc<PrimalCoordinator>,
@@ -175,10 +175,7 @@ mod tests {
             .expect_err("fallback must error");
         match err {
             GenesisError::CoordinationFailed(msg) => {
-                assert!(
-                    msg.contains("not enabled"),
-                    "message should explain feature flag: {msg}"
-                );
+                assert!(msg.contains("not enabled"), "message should explain feature flag: {msg}");
             }
             other => panic!("expected CoordinationFailed, got {other:?}"),
         }

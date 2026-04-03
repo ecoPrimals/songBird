@@ -61,8 +61,9 @@ tokio-test = "0.4"
 mockall = "0.12"
 
 [features]
-default = ["solokey", "qr", "pure-bluetooth", "capability-discovery"]  # Pure Rust - zero system deps!
-solokey = []  # Placeholder for future Pure Rust FIDO2/WebAuthn support
+default = ["qr", "pure-bluetooth", "capability-discovery"]  # Pure Rust - zero system deps!
+# Opt-in: stub channel only — does not perform real FIDO2/WebAuthn (see `physical_channels::solokey`).
+solokey = []
 qr = ["qrcode", "image", "rqrr"]
 # Legacy btleplug stack (system dbus on Linux). Prefer `pure-bluetooth`.
 legacy-bluetooth = ["btleplug"]

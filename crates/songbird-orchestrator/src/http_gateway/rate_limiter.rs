@@ -23,8 +23,9 @@
 use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::RwLock;
+use tokio::time::Instant;
 use tracing::debug;
 
 /// Token bucket for rate limiting
@@ -195,7 +196,6 @@ impl RateLimiter {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
-    use tokio::time::sleep;
 
     #[tokio::test]
     async fn test_rate_limiter_allows_within_limit() {
@@ -220,22 +220,18 @@ mod tests {
         assert!(limiter.check("test_client").await.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_rate_limiter_refills_tokens() {
         let limiter = RateLimiter::new(10, Duration::from_millis(100));
 
-        // Consume all tokens
         for _ in 0..10 {
             limiter.check("test_client").await.unwrap();
         }
 
-        // Should fail immediately
         assert!(limiter.check("test_client").await.is_err());
 
-        // Wait for refill (100ms = full refill)
-        sleep(Duration::from_millis(150)).await;
+        tokio::time::advance(Duration::from_millis(150)).await;
 
-        // Should succeed after refill
         assert!(limiter.check("test_client").await.is_ok());
     }
 

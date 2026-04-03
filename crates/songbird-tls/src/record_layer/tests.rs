@@ -138,7 +138,7 @@ async fn test_encrypt_decrypt_roundtrip() {
             &[0u8; 12],
         )
         .await
-        .expect_err("BearDog socket missing");
+        .expect_err("security provider socket missing");
     assert!(matches!(err, TlsError::CryptoUnavailable));
 }
 
@@ -337,7 +337,7 @@ async fn test_encryption_with_sequence_increment() {
     let err = record_layer
         .encrypt_record_delegated(ContentType::ApplicationData, b"test", &[0u8; 32], &[0u8; 12])
         .await
-        .expect_err("BearDog socket missing");
+        .expect_err("security provider socket missing");
     assert!(matches!(err, TlsError::CryptoUnavailable));
     assert_eq!(record_layer.write_sequence(), initial_seq);
 }

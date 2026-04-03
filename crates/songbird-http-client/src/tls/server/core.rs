@@ -16,7 +16,7 @@ use tracing::info;
 /// Implements RFC 8446 TLS 1.3 server by reusing client components.
 /// **Critical**: Uses SAME transcript logic as client for self-testing!
 pub struct TlsServer {
-    /// Shared crypto provider (`BearDog` or any `CryptoCapability` impl)
+    /// Shared crypto provider (`security provider` or any `CryptoCapability` impl)
     pub(super) crypto: Arc<dyn CryptoCapability>,
 
     /// Transcript tracking (SAME as client!)
@@ -87,10 +87,10 @@ impl TlsServer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::BearDogProvider;
+    use crate::crypto::SecurityCryptoProvider;
 
     fn create_test_crypto() -> Arc<dyn CryptoCapability> {
-        Arc::new(BearDogProvider::new("/tmp/beardog.sock"))
+        Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"))
     }
 
     #[test]

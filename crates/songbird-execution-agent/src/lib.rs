@@ -23,7 +23,13 @@
 pub mod executor;
 pub mod job_manager;
 pub mod security;
-pub mod security_beardog;
+pub mod security_provider;
+
+/// Deprecated alias for [`security_provider`].
+#[deprecated(note = "use module security_provider")]
+pub mod security_beardog {
+    pub use crate::security_provider::*;
+}
 pub mod security_sovereign;
 pub mod server;
 pub mod types;

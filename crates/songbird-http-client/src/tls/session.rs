@@ -3,15 +3,15 @@
 
 //! TLS session management
 
-use crate::beardog_client::BearDogClient;
+use crate::security_rpc_client::SecurityRpcClient;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// TLS session state
 #[derive(Debug)]
 pub struct TlsSession {
-    /// `BearDog` client for crypto operations
-    beardog: Arc<BearDogClient>,
+    /// Security provider RPC client for crypto operations
+    security_rpc_client: Arc<SecurityRpcClient>,
     /// Session keys
     keys: Arc<RwLock<Option<SessionKeys>>>,
     /// Server name (SNI)
@@ -33,9 +33,9 @@ pub struct SessionKeys {
 
 impl TlsSession {
     /// Create a new TLS session
-    pub fn new(beardog: Arc<BearDogClient>, server_name: String) -> Self {
+    pub fn new(security_rpc_client: Arc<SecurityRpcClient>, server_name: String) -> Self {
         Self {
-            beardog,
+            security_rpc_client,
             keys: Arc::new(RwLock::new(None)),
             server_name,
         }
@@ -59,10 +59,10 @@ impl TlsSession {
         guard.clone()
     }
 
-    /// Get `BearDog` client
+    /// Get the security provider RPC client
     #[must_use]
-    pub fn beardog(&self) -> &BearDogClient {
-        &self.beardog
+    pub fn security_rpc_client(&self) -> &SecurityRpcClient {
+        &self.security_rpc_client
     }
 }
 
@@ -72,16 +72,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_session_creation() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
-        let session = TlsSession::new(beardog, "example.com".to_string());
+        let rpc = Arc::new(SecurityRpcClient::new("/tmp/beardog.sock"));
+        let session = TlsSession::new(rpc, "example.com".to_string());
         assert_eq!(session.server_name(), "example.com");
         assert!(session.keys().await.is_none());
     }
 
     #[tokio::test]
     async fn test_session_keys() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
-        let session = TlsSession::new(beardog, "example.com".to_string());
+        let rpc = Arc::new(SecurityRpcClient::new("/tmp/beardog.sock"));
+        let session = TlsSession::new(rpc, "example.com".to_string());
 
         let keys = SessionKeys {
             client_write_key: vec![1, 2, 3],

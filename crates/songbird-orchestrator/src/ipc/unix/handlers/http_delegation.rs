@@ -3,7 +3,7 @@
 //! HTTP Delegation Handler
 //!
 //! Handler for delegating HTTP/HTTPS requests to external services.
-//! Used by primals (like Squirrel) to make outbound HTTP calls via Songbird's pure Rust HTTP client.
+//! Used by coordination / AI capability clients to make outbound HTTP calls via Songbird's pure Rust HTTP client.
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -15,7 +15,7 @@ use songbird_http_client::SongbirdHttpClient;
 /// Handle http.request - Delegate HTTP requests to external services
 ///
 /// NEW (Jan 20, 2026): Upstream integration from biomeOS.
-/// Enables Squirrel's Anthropic adapter to delegate HTTP requests through Songbird.
+/// Enables AI coordination adapters (e.g. Anthropic) to delegate HTTP requests through Songbird.
 ///
 /// **Request Format**:
 /// ```json
@@ -61,7 +61,7 @@ pub async fn handle_http_request(params: Option<Value>) -> Result<Value, JsonRpc
     // ✅ EVOLVED: Use Pure Rust HTTP client with Neural API capability translation (TRUE PRIMAL v2)
     // Instead of discovering crypto provider directly, we route through Neural API which:
     // 1. Translates semantic capabilities (crypto.generate_keypair) to actual methods (x25519_generate_ephemeral)
-    // 2. Routes to the appropriate provider (BearDog)
+    // 2. Routes to the appropriate provider (security provider)
     // 3. Returns results transparently
     // This enables zero cross-primal coupling and provider-agnostic capability routing.
     

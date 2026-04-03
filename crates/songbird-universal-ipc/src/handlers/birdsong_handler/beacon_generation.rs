@@ -41,7 +41,7 @@ impl BirdSongHandler {
         let plaintext = serde_json::to_vec(&discovery_message)
             .map_err(|e| format!("Failed to serialize discovery message: {e}"))?;
 
-        // Encrypt via BearDog (Pure Rust, Unix socket IPC)
+        // Encrypt via security provider (Pure Rust, Unix socket IPC)
         let encrypted = provider
             .encrypt_discovery(&plaintext)
             .await

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Chaos Tests for `BearDog` JWT Delegation
+//! Chaos Tests for `security provider` JWT Delegation
 //!
 //! Tests JWT provisioning under chaotic conditions.
 //!

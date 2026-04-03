@@ -222,10 +222,8 @@ async fn unmap_port_unsupported_when_protocol_none() {
         device_name: None,
         other_devices: Vec::new(),
     };
-    let err = gw
-        .unmap_port(80, "TCP")
-        .await
-        .expect_err("unmap should fail without a backing protocol");
+    let err =
+        gw.unmap_port(80, "TCP").await.expect_err("unmap should fail without a backing protocol");
     assert!(
         matches!(err, IgdError::ProtocolNotSupported(_)),
         "expected ProtocolNotSupported, got {err:?}"

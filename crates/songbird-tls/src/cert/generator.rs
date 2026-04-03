@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Pure Rust Certificate Generation (Hybrid Standalone + `BearDog`)
+//! Pure Rust Certificate Generation (Hybrid Standalone + Security Provider)
 //!
 //! This module provides certificate generation with two modes:
 //! 1. **Standalone**: Built-in ed25519-dalek (100% Pure Rust, zero dependencies)
-//! 2. **`BearDog` Enhanced**: Delegation to `BearDog` for HSM-backed, lineage-tracked certs
-//! 3. **Auto**: Try `BearDog` first, graceful fallback to standalone
+//! 2. **Security-provider enhanced**: Delegation to the crypto provider for HSM-backed, lineage-tracked certs
+//! 3. **Auto**: Try the security provider first, graceful fallback to standalone
 //!
-//! Philosophy: Songbird is secure by default and alone, enhanced when `BearDog` is available.
+//! Philosophy: Songbird is secure by default and alone, enhanced when a security provider is available.
 
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::SecurityTlsCryptoClient;
 use crate::error::Result;
 use crate::messages::certificate::{Certificate, CertificateEntry};
 use chrono::{DateTime, Duration, Utc};
@@ -22,9 +22,9 @@ use rand::{RngCore, rngs::OsRng};
 pub enum CertGenerationMode {
     /// Standalone: Use built-in ed25519-dalek (100% Pure Rust)
     Standalone,
-    /// `BearDog`: Delegate to `BearDog` for enhanced capabilities
+    /// Security-provider mode: delegate to the crypto provider for enhanced capabilities
     BearDog,
-    /// Auto: Try `BearDog`, fallback to standalone (default)
+    /// Auto: try the security provider, fallback to standalone (default)
     #[default]
     Auto,
 }
@@ -32,10 +32,10 @@ pub enum CertGenerationMode {
 /// Hybrid certificate generator
 ///
 /// Provides both standalone Pure Rust certificate generation and optional
-/// `BearDog` integration for enhanced capabilities.
+/// security-provider integration for enhanced capabilities.
 pub struct CertificateGenerator {
     mode: CertGenerationMode,
-    beardog_client: Option<BeardogCryptoClient>,
+    security_client: Option<SecurityTlsCryptoClient>,
 }
 
 impl CertificateGenerator {
@@ -43,7 +43,7 @@ impl CertificateGenerator {
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` mode is requested but `BearDog` is not available.
+    /// Returns an error if security-provider mode is requested but the provider is not available.
     pub fn new() -> Result<Self> {
         Self::with_mode(CertGenerationMode::Auto)
     }
@@ -52,21 +52,23 @@ impl CertificateGenerator {
     ///
     /// # Errors
     ///
-    /// Returns an error if `BearDog` mode is requested but `BearDog` is not available.
+    /// Returns an error if security-provider mode is requested but the provider is not available.
     pub fn with_mode(mode: CertGenerationMode) -> Result<Self> {
-        let beardog_client = match &mode {
+        let security_client = match &mode {
             CertGenerationMode::BearDog | CertGenerationMode::Auto => {
-                // Try to discover BearDog
-                match BeardogCryptoClient::new() {
+                // Try to discover the security (crypto) provider socket
+                match SecurityTlsCryptoClient::new() {
                     Ok(client) => {
-                        tracing::info!("✅ BearDog discovered for enhanced certificate generation");
+                        tracing::info!(
+                            "✅ Security provider discovered for enhanced certificate generation"
+                        );
                         Some(client)
                     }
                     Err(e) => {
-                        tracing::debug!("BearDog not available: {}", e);
+                        tracing::debug!("Security provider not available: {}", e);
                         if matches!(mode, CertGenerationMode::BearDog) {
                             return Err(anyhow::anyhow!(
-                                "BearDog mode requested but BearDog not available"
+                                "Security provider mode requested but crypto provider not available"
                             )
                             .into());
                         }
@@ -79,28 +81,28 @@ impl CertificateGenerator {
 
         Ok(Self {
             mode,
-            beardog_client,
+            security_client,
         })
     }
 
     /// Generate a self-signed certificate
     ///
-    /// Will use `BearDog` if available (Auto/BearDog mode), otherwise standalone.
+    /// Will use the security provider if available (Auto / security-provider mode), otherwise standalone.
     ///
     /// # Errors
     ///
-    /// Returns an error if certificate generation fails (e.g., `BearDog` mode requested
-    /// but `BearDog` unavailable, or key/cert generation fails).
+    /// Returns an error if certificate generation fails (e.g., security-provider mode requested
+    /// but the provider is unavailable, or key/cert generation fails).
     pub fn generate_self_signed(
         &self,
         domain: &str,
         validity_days: u32,
     ) -> Result<(Certificate, SigningKey)> {
-        // Try BearDog first if available (Auto or BearDog mode)
-        if let Some(ref client) = self.beardog_client {
+        // Try security provider first if available (Auto or security-provider mode)
+        if let Some(ref client) = self.security_client {
             tracing::trace!("Using {:?} mode for certificate generation", self.mode);
-            let result = Self::generate_via_beardog(client, domain, validity_days);
-            tracing::info!("✅ Generated certificate via BearDog: {}", domain);
+            let result = Self::generate_via_security_provider(client, domain, validity_days);
+            tracing::info!("✅ Generated certificate via security provider: {}", domain);
             return Ok(result);
         }
 
@@ -138,27 +140,27 @@ impl CertificateGenerator {
         (certificate, signing_key)
     }
 
-    /// Enhanced generation via `BearDog`
+    /// Enhanced generation via the security (crypto) provider
     ///
-    /// Delegates to `BearDog` for:
+    /// Delegates to the provider for:
     /// - HSM-backed key generation
     /// - Lineage tracking
     /// - Attestation
     /// - Key rotation support
-    fn generate_via_beardog(
-        _client: &BeardogCryptoClient,
+    fn generate_via_security_provider(
+        _client: &SecurityTlsCryptoClient,
         domain: &str,
         validity_days: u32,
     ) -> (Certificate, SigningKey) {
-        tracing::info!("🐻 Generating certificate via BearDog: {}", domain);
+        tracing::info!("🐻 Generating certificate via security provider: {}", domain);
 
-        // For now, BearDog doesn't have certificate generation in its JSON-RPC API yet
-        // So we'll use standalone generation but could delegate crypto operations to BearDog
-        // This is a placeholder for future BearDog integration
+        // For now, the provider doesn't expose certificate generation in its JSON-RPC API yet
+        // So we'll use standalone generation but could delegate crypto operations to the provider
+        // This is a placeholder for future integration
 
-        // BearDog has no `certificate.generate_self_signed` RPC in this build; standalone path only.
+        // No `certificate.generate_self_signed` RPC in this build; standalone path only.
 
-        tracing::debug!("BearDog cert generation not yet implemented, using standalone");
+        tracing::debug!("Security provider cert generation not yet implemented, using standalone");
         Self::generate_standalone(domain, validity_days)
     }
 }

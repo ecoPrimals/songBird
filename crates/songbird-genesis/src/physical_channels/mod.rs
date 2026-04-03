@@ -174,8 +174,8 @@ mod enum_dispatch_tests {
     #[allow(deprecated, reason = "legacy btleplug channel remains in API until callers migrate")]
     async fn legacy_bluetooth_channel_errors_and_metadata() {
         use crate::error::GenesisError;
-        use crate::physical_channels::bluetooth::BluetoothChannel;
         use crate::physical_channels::PhysicalChannelProvider;
+        use crate::physical_channels::bluetooth::BluetoothChannel;
 
         let ch = BluetoothChannel::new();
         assert_eq!(ch.channel_type(), PhysicalChannelType::Bluetooth);

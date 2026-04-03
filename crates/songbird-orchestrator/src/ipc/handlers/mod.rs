@@ -14,7 +14,7 @@ use super::registry::ServiceRegistry;
 use crate::app::connection_manager::ConnectionManager;
 use crate::graph::{AvailabilityChecker, CoordinationValidator, GraphValidator};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
-use songbird_http_client::BearDogClient;
+use songbird_http_client::SecurityRpcClient;
 
 // Domain-focused handler modules
 pub mod graph_intelligence;
@@ -58,16 +58,16 @@ impl IpcHandlers {
     /// v3.19.2: Modern Rust - pass only what's needed, not whole orchestrator
     /// v3.20.0: Added `service_registry` parameter
     /// v3.21.0: Added `graph_validator`
-    /// v5.27.0: Added `beardog_client` for HTTP handler
+    /// v5.27.0: Added `security_client` for HTTP handler
     pub fn new(
         service_registry: Arc<ServiceRegistry>,
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
         connection_manager: Arc<ConnectionManager>,
-        beardog_client: Arc<BearDogClient>,
+        security_client: Arc<SecurityRpcClient>,
     ) -> Self {
         let availability_checker = Arc::new(AvailabilityChecker::new(service_registry.clone()));
         let coordination_validator = Arc::new(CoordinationValidator::new(service_registry.clone()));
-        let http_handler = Arc::new(http::HttpHandler::new(beardog_client));
+        let http_handler = Arc::new(http::HttpHandler::new(security_client));
 
         Self {
             service_registry,
@@ -358,7 +358,7 @@ impl IpcHandlers {
     /// Handle `http.request` RPC call (Pure Rust TLS 1.3, v5.27.0)
     ///
     /// Makes HTTP/HTTPS requests using Pure Rust Tower Atomic pattern.
-    /// Zero C dependencies - delegates crypto to `BearDog` via RPC.
+    /// Zero C dependencies - delegates crypto to `security provider` via RPC.
     ///
     /// # Method
     ///

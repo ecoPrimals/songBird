@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC crypto provider trait — bridges QUIC packet protection to `BearDog`.
+//! QUIC crypto provider trait — bridges QUIC packet protection to `security provider`.
 //!
 //! All cryptographic operations needed by the QUIC transport are expressed
-//! as async trait methods. The `BeardogQuicCrypto` implementation delegates
-//! to `BearDog` via JSON-RPC IPC, following the same Tower Atomic pattern as
+//! as async trait methods. The `SecurityQuicCrypto` implementation delegates
+//! to `security provider` via JSON-RPC IPC, following the same Tower Atomic pattern as
 //! `songbird-tls` and `songbird-http-client`.
 
 use crate::error::{QuicError, Result};
@@ -71,7 +71,7 @@ impl QuicCipherSuite {
 ///
 /// Mirrors the subset of `CryptoCapability` (from `songbird-http-client`) that
 /// QUIC needs, plus QUIC-specific header protection operations.
-/// The default implementation delegates to `BearDog` via `songbird-crypto-provider`.
+/// The default implementation delegates to `security provider` via `songbird-crypto-provider`.
 #[async_trait]
 pub trait QuicCryptoProvider: Send + Sync + std::fmt::Debug {
     /// HKDF-Extract: derive a pseudorandom key from input keying material.
@@ -129,16 +129,16 @@ pub trait QuicCryptoProvider: Send + Sync + std::fmt::Debug {
     ) -> Result<Vec<u8>>;
 }
 
-/// `BearDog`-backed QUIC crypto provider.
+/// `security provider`-backed QUIC crypto provider.
 ///
-/// Delegates all crypto operations to `BearDog` via `songbird-crypto-provider`
+/// Delegates all crypto operations to `security provider` via `songbird-crypto-provider`
 /// JSON-RPC. Uses the same socket discovery and routing as `songbird-tls`.
 #[derive(Debug)]
-pub struct BeardogQuicCrypto {
+pub struct SecurityQuicCrypto {
     provider: songbird_crypto_provider::CryptoProvider,
 }
 
-impl BeardogQuicCrypto {
+impl SecurityQuicCrypto {
     /// Create from a `songbird-crypto-provider` instance.
     #[must_use]
     pub const fn new(provider: songbird_crypto_provider::CryptoProvider) -> Self {
@@ -158,7 +158,7 @@ impl BeardogQuicCrypto {
 }
 
 #[async_trait]
-impl QuicCryptoProvider for BeardogQuicCrypto {
+impl QuicCryptoProvider for SecurityQuicCrypto {
     async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({
             "salt": base64_encode(salt),
@@ -386,11 +386,7 @@ mod tests {
     fn cipher_suite_tls_assigned_numbers_match_rfc_9001() {
         assert_eq!(QuicCipherSuite::Aes128Gcm as u16, 0x1301, "AES-128-GCM-SHA256");
         assert_eq!(QuicCipherSuite::Aes256Gcm as u16, 0x1302, "AES-256-GCM-SHA384");
-        assert_eq!(
-            QuicCipherSuite::ChaCha20Poly1305 as u16,
-            0x1303,
-            "CHACHA20-POLY1305-SHA256"
-        );
+        assert_eq!(QuicCipherSuite::ChaCha20Poly1305 as u16, 0x1303, "CHACHA20-POLY1305-SHA256");
     }
 
     #[test]
@@ -400,9 +396,9 @@ mod tests {
     }
 
     #[test]
-    fn beardog_quic_crypto_new_and_discover_construct() {
+    fn security_quic_crypto_new_and_discover_construct() {
         let provider = songbird_crypto_provider::CryptoProvider::from_env();
-        let _via_new = BeardogQuicCrypto::new(provider);
-        let _via_discover = BeardogQuicCrypto::discover();
+        let _via_new = SecurityQuicCrypto::new(provider);
+        let _via_discover = SecurityQuicCrypto::discover();
     }
 }

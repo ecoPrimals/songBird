@@ -251,9 +251,9 @@ async fn test_registration_manager() {
     assert!(manager.current().unwrap().has_lineage());
 }
 
-/// NOTE: Ignored - requires `BearDog` running at localhost:9000
+/// NOTE: Ignored - requires `security provider` running at localhost:9000
 #[tokio::test]
-#[ignore = "Requires BearDog at localhost:9000"]
+#[ignore = "Requires security provider at localhost:9000"]
 async fn test_lineage_authenticator_same_lineage() -> Result<()> {
     let (lineage_id, proof) = create_test_lineage("auth-node-1").await;
 
@@ -299,9 +299,9 @@ async fn test_lineage_authenticator_same_lineage() -> Result<()> {
     Ok(())
 }
 
-/// NOTE: Ignored - requires `BearDog` running at localhost:9000
+/// NOTE: Ignored - requires `security provider` running at localhost:9000
 #[tokio::test]
-#[ignore = "Requires BearDog at localhost:9000"]
+#[ignore = "Requires security provider at localhost:9000"]
 async fn test_lineage_authenticator_different_lineage() -> Result<()> {
     let (_lineage_id_a, _proof_a) = create_test_lineage("auth-node-a").await;
     let (lineage_id_b, proof_b) = create_test_lineage("auth-node-b").await;
@@ -356,9 +356,9 @@ async fn test_lineage_authenticator_different_lineage() -> Result<()> {
     Ok(())
 }
 
-/// NOTE: Ignored - requires `BearDog` running at localhost:9000
+/// NOTE: Ignored - requires `security provider` running at localhost:9000
 #[tokio::test]
-#[ignore = "Requires BearDog at localhost:9000"]
+#[ignore = "Requires security provider at localhost:9000"]
 async fn test_lineage_authenticator_no_lineage() -> Result<()> {
     let mut auth = LineageAuthenticator::new();
     auth.initialize("http://localhost:9000").await?;
@@ -403,9 +403,9 @@ async fn test_lineage_authenticator_no_lineage() -> Result<()> {
     Ok(())
 }
 
-/// NOTE: Ignored - requires `BearDog` running at localhost:9000
+/// NOTE: Ignored - requires `security provider` running at localhost:9000
 #[tokio::test]
-#[ignore = "Requires BearDog at localhost:9000"]
+#[ignore = "Requires security provider at localhost:9000"]
 async fn test_lineage_authenticator_invalid_proof() -> Result<()> {
     use songbird_types::lineage::LineageSignature;
 
@@ -446,8 +446,8 @@ async fn test_lineage_authenticator_invalid_proof() -> Result<()> {
         )
         .await?;
 
-    // NOTE: In mock mode, this will still be accepted since BearDog mock always returns valid=true
-    // In production with real BearDog, this would be rejected
+    // NOTE: In mock mode, this will still be accepted since security provider mock always returns valid=true
+    // In production with real security provider, this would be rejected
     println!("⚠️ Decision (mock mode): {decision:?}");
 
     Ok(())

@@ -142,7 +142,7 @@ impl RendezvousPoint {
         data.push(0u8);
 
         // ENCRYPTED section (in production, this is ntor-encrypted)
-        // For now, include plaintext for testing; BearDog will encrypt in production
+        // For now, include plaintext for testing; security provider will encrypt in production
         data.extend_from_slice(rendezvous_point);
         data.extend_from_slice(cookie);
         data.extend_from_slice(client_public_key);

@@ -18,7 +18,7 @@
 //!
 //! ## Core Principles
 //!
-//! 1. **Zero Primal Name Hardcoding**: Never reference `BearDog`, Toadstool, `NestGate`, Squirrel
+//! 1. **Zero Primal Name Hardcoding**: Never reference `security provider`, Toadstool, `storage provider`, Squirrel
 //! 2. **Capability-Based Discovery**: Request "security", "compute", "storage", "ai"
 //! 3. **Self-Knowledge Only**: Each primal knows itself, discovers others
 //! 4. **N to 1 Coordination**: N primals connect through Songbird, not 2^N connections

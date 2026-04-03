@@ -76,7 +76,7 @@ impl InternetConnectionWizard  {fn new(config: InternetConnectionConfig) -> Self
             metrics_port: songbird_config::defaults::ports::metrics_port(),
             discovery_port: songbird_config::defaults::ports::discovery_port(),
             additional_service_ports: vec![
-                songbird_config::defaults::ports::beardog_port(),
+                songbird_config::defaults::ports::security_provider_port(),
                 9092, // Keep as is - external service
             ],
         })

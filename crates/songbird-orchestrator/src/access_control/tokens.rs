@@ -48,7 +48,8 @@ pub struct AccessToken {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TokenType {
     JWT,
-    BearDog, // For future integration
+    /// Reserved for security provider–issued tokens (future integration)
+    BearDog,
 }
 
 impl AccessToken {
@@ -164,7 +165,7 @@ impl AccessToken {
                 matches!(self.role, Role::Admin { .. } | Role::RemoteAdmin { .. })
             }
             TokenType::BearDog => {
-                // security provider tokens with hardware entropy automatically satisfy 2FA
+                // Security provider tokens with hardware entropy automatically satisfy 2FA
                 // This will be properly implemented with security provider integration (Q1 2025)
                 true
             }
@@ -351,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn has_2fa_verified_admin_and_bear_dog() {
+    fn has_2fa_verified_admin_and_security_provider_token() {
         let admin = AccessToken::admin("a");
         assert!(admin.has_2fa_verified());
         let mut bd = AccessToken::anonymous();

@@ -50,8 +50,8 @@ pub mod resources;
 pub mod services;
 
 pub use bind_and_ports::{
-    DEFAULT_BIND_ADDRESS, DEFAULT_CONFIG_PATH, DEFAULT_LOCALHOST, get_bind_address,
-    get_common_primal_ports, get_port_range_end, get_port_range_start, LOCALHOST_IPV4,
+    DEFAULT_BIND_ADDRESS, DEFAULT_CONFIG_PATH, DEFAULT_LOCALHOST, LOCALHOST_IPV4, get_bind_address,
+    get_common_primal_ports, get_port_range_end, get_port_range_start,
 };
 pub use connection_and_tuning::{
     DEFAULT_CACHE_TTL, DEFAULT_EVALUATION_TIMEOUT, DEFAULT_METRICS_INTERVAL, enable_zero_copy,

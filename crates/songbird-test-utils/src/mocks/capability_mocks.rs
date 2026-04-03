@@ -7,7 +7,7 @@
 //!
 //! This module implements mocks for the "infant discovery" philosophy where tests
 //! request capabilities (security, storage, compute, ai) rather than specific
-//! primal names (beardog, nestgate, toadstool, squirrel).
+//! primal names (beardog, storage provider, toadstool, squirrel).
 //!
 //! ## Philosophy
 //! > "Each primal only knows itself and discovers others through capabilities"
@@ -16,10 +16,10 @@
 //!
 //! ### Before (Hardcoded)
 //! ```rust,ignore
-//! use songbird_test_utils::mocks::{MockBearDog, MockSquirrel};
+//! use songbird_test_utils::mocks::{MockSecurityProvider, MockSquirrel};
 //!
-//! let beardog = MockBearDog::new();
-//! beardog.start().await?;
+//! let security = MockSecurityProvider::new();
+//! security.start().await?;
 //! ```
 //!
 //! ### After (Capability-Based)
@@ -33,7 +33,7 @@
 //! ## Available Capabilities
 //!
 //! - **Security** - Authentication, encryption, authorization (was beardog)
-//! - **Storage** - Data persistence, caching, backup (was nestgate)
+//! - **Storage** - Data persistence, caching, backup (was storage provider)
 //! - **Compute** - Workload execution, container orchestration (was toadstool)
 //! - **AI** - ML inference, training, analysis (was squirrel)
 
@@ -85,7 +85,7 @@ impl CapabilityType {
                 (base, base + 10)
             }
             Self::Security | Self::Ai => {
-                let base = songbird_config::defaults::ports::beardog_port();
+                let base = songbird_config::defaults::ports::security_provider_port();
                 (base, base + 10)
             }
             Self::Custom(_) => (9100, 9110),

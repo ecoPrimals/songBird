@@ -5,14 +5,14 @@
 //!
 //! ## Evolution
 //!
-//! **v3.22.0**: Evolved from jsonrpsee to pure Rust (`BearDog` pattern)
+//! **v3.22.0**: Evolved from jsonrpsee to pure Rust (`security provider` pattern)
 //! **v4.9.0**: Refactored into domain-driven modules
 //!
 //! ## Module Structure
 //!
 //! - `protocol`: JSON-RPC 2.0 types and error codes
 //! - `server`: Core server (`UnixSocketServer`), connection accept loops, request handlers
-//! - `squirrel_handlers`: Squirrel integration endpoints
+//! - `coordination_handlers`: IPC for coordination / AI clients (capability discovery, health)
 //!
 //! ## Public API
 //!
@@ -21,9 +21,9 @@
 //! - `UnixSocketServer`: Main server type
 //! - `JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`: Protocol types
 
+pub mod coordination_handlers;
 pub mod protocol;
 pub mod server;
-pub mod squirrel_handlers;
 
 // Re-export the main types for convenience
 pub use protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};

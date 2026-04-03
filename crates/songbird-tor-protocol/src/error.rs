@@ -27,12 +27,12 @@ pub enum Error {
     #[error("Parse error: {0}")]
     Parse(String),
 
-    /// Crypto error (from `BearDog`)
+    /// Crypto error (from `security provider`)
     #[error("Crypto error: {0}")]
     Crypto(String),
 
-    /// `BearDog` crypto delegation required but unavailable or not yet wired
-    #[error("BearDog crypto unavailable: {0}")]
+    /// `security provider` crypto delegation required but unavailable or not yet wired
+    #[error("security provider crypto unavailable: {0}")]
     CryptoUnavailable(String),
 
     /// Protocol error
@@ -80,7 +80,7 @@ mod tests {
         assert!(Error::Network("n".into()).to_string().contains("Network"));
         assert!(Error::Parse("p".into()).to_string().contains("Parse"));
         assert!(Error::Crypto("c".into()).to_string().contains("Crypto"));
-        assert!(Error::CryptoUnavailable("u".into()).to_string().contains("BearDog"));
+        assert!(Error::CryptoUnavailable("u".into()).to_string().contains("security provider"));
         assert!(Error::Protocol("pr".into()).to_string().contains("Protocol"));
         assert!(Error::Consensus("co".into()).to_string().contains("Consensus"));
         assert!(Error::Circuit("ci".into()).to_string().contains("Circuit"));

@@ -9,7 +9,7 @@
 //!
 //! - **Self-Knowledge Only**: Songbird only knows it needs "crypto" capability
 //! - **Capability Discovery**: Discovers ANY primal offering crypto at runtime
-//! - **No Hardcoding**: No hardcoded primal names (not "`BearDog`", not "`ToadStool`")
+//! - **No Hardcoding**: No hardcoded primal names (not "`security provider`", not "`ToadStool`")
 //! - **Runtime Discovery**: Orchestrator guides via env vars, or automatic discovery
 //!
 //! # Architecture
@@ -23,7 +23,7 @@
 //!     ↓
 //! UnixSocketCryptoProvider (implementation)
 //!     ↓
-//! ANY primal offering "crypto" capability (BearDog, custom, etc.)
+//! ANY primal offering "crypto" capability (security provider, custom, etc.)
 //! ```
 
 use anyhow::Result;
@@ -262,7 +262,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
 ///
 /// # TRUE PRIMAL Principles
 ///
-/// - Does NOT look for "`BearDog`" specifically
+/// - Does NOT look for "`security provider`" specifically
 /// - Looks for ANY primal offering "crypto" capability
 /// - Uses orchestrator guidance (env vars) when available
 /// - Falls back to automatic discovery

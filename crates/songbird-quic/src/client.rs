@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC client implementation (pure Rust, `BearDog` crypto delegation).
+//! QUIC client implementation (pure Rust, `security provider` crypto delegation).
 
 use crate::config::QuicConfig;
 use crate::connection::QuicConnection;
@@ -13,7 +13,7 @@ use tracing::{debug, info};
 
 /// QUIC client.
 ///
-/// Connects to QUIC servers with `BearDog` crypto delegation.
+/// Connects to QUIC servers with `security provider` crypto delegation.
 /// All cryptographic operations are delegated via IPC.
 pub struct QuicClient {
     /// UDP endpoint.

@@ -23,7 +23,7 @@
 //!
 //! There is **no** silent URL construction in discovery: if none of the above apply,
 //! discovery fails closed with an actionable error. The helper
-//! [`construct_default_security_endpoint`] exists for tests and local tooling only.
+//! `construct_default_security_endpoint` exists for tests and local tooling only.
 //!
 //! This enables ANY security provider to be discovered and used when configured!
 
@@ -166,7 +166,7 @@ fn construct_default_security_endpoint() -> String {
         "CAPABILITY_SECURITY_PORT",
         SafeEnv::get_or_default(
             "SONGBIRD_SECURITY_PORT",
-            songbird_config::defaults::ports::beardog_port().to_string(),
+            songbird_config::defaults::ports::security_provider_port().to_string(),
         ),
     );
 
@@ -198,12 +198,14 @@ mod tests {
         // The important thing is it never panics.
         let result = setup_security().await;
         match result {
-            Ok(_endpoint) => {} // BearDog or security provider available
+            Ok(_endpoint) => {} // security provider endpoint available
             Err(e) => {
                 let msg = format!("{e}");
                 // Expected in CI: no security provider
                 assert!(
-                    msg.contains("security") || msg.contains("provider") || msg.contains("BearDog"),
+                    msg.contains("security")
+                        || msg.contains("provider")
+                        || msg.contains("security provider"),
                     "Unexpected error: {msg}"
                 );
             }

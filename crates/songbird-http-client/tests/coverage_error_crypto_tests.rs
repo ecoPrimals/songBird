@@ -21,9 +21,9 @@ use songbird_http_client::error::Error;
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
-fn test_error_beardog_rpc() {
+fn test_error_security_provider_rpc() {
     let err = Error::BearDogRpc("connection refused".to_string());
-    assert!(err.to_string().contains("BearDog RPC error"));
+    assert!(err.to_string().contains("Security provider RPC error"));
     assert!(err.to_string().contains("connection refused"));
 }
 

@@ -16,17 +16,12 @@
 //!
 //! ```rust,ignore
 //! use songbird_http_client::tls::handshake::TlsHandshake;
-//! use songbird_http_client::crypto::CryptoCapability;
+//! use songbird_http_client::crypto::{CryptoCapability, SecurityCryptoProvider};
 //! use std::sync::Arc;
 //!
-//! let crypto = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+//! let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
 //! let handshake = TlsHandshake::new(crypto);
 //! ```
-
-//! TLS 1.3 handshake implementation (modularized)
-//!
-//! This module provides a production-grade TLS 1.3 handshake implementation
-//! following RFC 8446, refactored into focused sub-modules for maintainability.
 
 pub mod client_hello;
 pub mod finished;

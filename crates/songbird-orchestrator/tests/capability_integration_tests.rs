@@ -415,9 +415,5 @@ async fn test_registry_health_monitor_lifecycle() {
     tokio::task::yield_now().await;
 
     let providers = registry.list_providers().await;
-    assert_eq!(
-        providers.len(),
-        0,
-        "Provider should be removed after timeout"
-    );
+    assert_eq!(providers.len(), 0, "Provider should be removed after timeout");
 }

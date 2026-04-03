@@ -36,7 +36,7 @@ use std::sync::Arc;
 use tokio::task::JoinSet;
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_1000_concurrent_operations() {
     let provider = Arc::new(discover_crypto_provider().await.unwrap());
     let mut tasks = JoinSet::new();
@@ -68,7 +68,7 @@ async fn test_chaos_1000_concurrent_operations() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_mixed_operations_concurrent() {
     let provider = Arc::new(discover_crypto_provider().await.unwrap());
     let mut tasks = JoinSet::new();
@@ -105,7 +105,7 @@ async fn test_chaos_mixed_operations_concurrent() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_rapid_fire_sequential() {
     let provider = discover_crypto_provider().await.unwrap();
 
@@ -122,7 +122,7 @@ async fn test_chaos_rapid_fire_sequential() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_memory_pressure() {
     let provider = Arc::new(discover_crypto_provider().await.unwrap());
     let mut tasks = JoinSet::new();
@@ -148,7 +148,7 @@ async fn test_chaos_memory_pressure() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_encryption_round_trips() {
     let provider = Arc::new(discover_crypto_provider().await.unwrap());
     let mut tasks = JoinSet::new();
@@ -186,7 +186,7 @@ async fn test_chaos_encryption_round_trips() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_provider_drop_and_recreate() {
     // Test creating and dropping providers rapidly
     for i in 0..100 {
@@ -198,7 +198,7 @@ async fn test_chaos_provider_drop_and_recreate() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_varying_data_sizes() {
     let provider = Arc::new(discover_crypto_provider().await.unwrap());
     let mut tasks = JoinSet::new();
@@ -225,7 +225,7 @@ async fn test_chaos_varying_data_sizes() {
 }
 
 #[tokio::test]
-#[ignore = "requires running BearDog crypto provider"] // Requires BearDog running
+#[ignore = "requires running security provider crypto provider"] // Requires security provider running
 async fn test_chaos_sustained_load() {
     use std::time::{Duration, Instant};
 

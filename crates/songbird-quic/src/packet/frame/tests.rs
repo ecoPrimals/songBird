@@ -314,10 +314,7 @@ fn crypto_frame_truncated_payload_errors() {
 #[test]
 fn new_token_truncated_errors() {
     let mut buf = [0u8; 16];
-    let mut off = VarInt::new(super::frame_type::NEW_TOKEN)
-        .unwrap()
-        .encode(&mut buf)
-        .unwrap();
+    let mut off = VarInt::new(super::frame_type::NEW_TOKEN).unwrap().encode(&mut buf).unwrap();
     off += VarInt::new(5u64).unwrap().encode(&mut buf[off..]).unwrap();
     buf[off] = 1;
     off += 1;
@@ -331,10 +328,8 @@ fn new_token_truncated_errors() {
 #[test]
 fn new_connection_id_invalid_cid_length_errors() {
     let mut buf = [0u8; 64];
-    let mut off = VarInt::new(super::frame_type::NEW_CONNECTION_ID)
-        .unwrap()
-        .encode(&mut buf)
-        .unwrap();
+    let mut off =
+        VarInt::new(super::frame_type::NEW_CONNECTION_ID).unwrap().encode(&mut buf).unwrap();
     off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
     off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
     buf[off] = 21;
@@ -349,10 +344,7 @@ fn new_connection_id_invalid_cid_length_errors() {
 #[test]
 fn path_challenge_truncated_errors() {
     let mut buf = [0u8; 8];
-    let n = VarInt::new(super::frame_type::PATH_CHALLENGE)
-        .unwrap()
-        .encode(&mut buf)
-        .unwrap();
+    let n = VarInt::new(super::frame_type::PATH_CHALLENGE).unwrap().encode(&mut buf).unwrap();
     assert_eq!(n, 1);
     let err = Frame::decode(&buf[..n]).expect_err("PATH_CHALLENGE without 8 data bytes must fail");
     assert!(
@@ -364,10 +356,8 @@ fn path_challenge_truncated_errors() {
 #[test]
 fn connection_close_quic_truncated_reason_errors() {
     let mut buf = [0u8; 32];
-    let mut off = VarInt::new(super::frame_type::CONNECTION_CLOSE_QUIC)
-        .unwrap()
-        .encode(&mut buf)
-        .unwrap();
+    let mut off =
+        VarInt::new(super::frame_type::CONNECTION_CLOSE_QUIC).unwrap().encode(&mut buf).unwrap();
     off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
     off += VarInt::new(0u64).unwrap().encode(&mut buf[off..]).unwrap();
     off += VarInt::new(100u64).unwrap().encode(&mut buf[off..]).unwrap();

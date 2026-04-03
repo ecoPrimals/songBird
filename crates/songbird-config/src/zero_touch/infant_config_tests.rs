@@ -72,9 +72,9 @@ fn test_no_hardcoded_primal_names() {
         "No toadstool string literals in code"
     );
     assert!(
-        !code_only.to_lowercase().contains("\"nestgate\"")
-            && !code_only.to_lowercase().contains("'nestgate'"),
-        "No nestgate string literals in code"
+        !code_only.to_lowercase().contains("\"storage provider\"")
+            && !code_only.to_lowercase().contains("'storage provider'"),
+        "No storage provider string literals in code"
     );
     assert!(
         !code_only.to_lowercase().contains("\"squirrel\"")

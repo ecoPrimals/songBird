@@ -13,13 +13,13 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STD};
 use songbird_crypto_provider::CryptoProvider;
 use std::fmt::Write;
 
-/// Request key material from BearDog via JSON-RPC (`CryptoProvider`).
+/// Request key material from security provider via JSON-RPC (`CryptoProvider`).
 ///
-/// Returns decoded bytes from BearDog's base64-encoded response.
+/// Returns decoded bytes from security provider's base64-encoded response.
 /// Falls back to `CryptoUnavailable` when the provider is unreachable.
 async fn request_beardog_key(crypto: &CryptoProvider, method: &str) -> Result<Vec<u8>> {
     let result = crypto.call(method, serde_json::json!({})).await.map_err(|e| {
-        Error::CryptoUnavailable(format!("BearDog crypto delegation for {method}: {e}"))
+        Error::CryptoUnavailable(format!("security provider crypto delegation for {method}: {e}"))
     })?;
 
     let key_b64 = result
@@ -28,9 +28,9 @@ async fn request_beardog_key(crypto: &CryptoProvider, method: &str) -> Result<Ve
         .or_else(|| result.get("data").and_then(serde_json::Value::as_str))
         .unwrap_or("");
 
-    BASE64_STD
-        .decode(key_b64)
-        .map_err(|e| Error::Crypto(format!("Failed to decode BearDog response for {method}: {e}")))
+    BASE64_STD.decode(key_b64).map_err(|e| {
+        Error::Crypto(format!("Failed to decode security provider response for {method}: {e}"))
+    })
 }
 
 /// Onion service keys (Ed25519 + X25519)
@@ -51,7 +51,7 @@ pub struct OnionServiceKeys {
 }
 
 impl OnionServiceKeys {
-    /// Generate new service keys via `BearDog`
+    /// Generate new service keys via `security provider`
     ///
     /// # Errors
     ///
@@ -60,7 +60,7 @@ impl OnionServiceKeys {
         let identity_pair = request_beardog_key(beardog, "crypto.ed25519.generate_keypair").await?;
         if identity_pair.len() != 64 {
             return Err(Error::Crypto(format!(
-                "BearDog onion identity keypair: expected 64 bytes, got {}",
+                "security provider onion identity keypair: expected 64 bytes, got {}",
                 identity_pair.len()
             )));
         }
@@ -134,11 +134,11 @@ pub struct OnionServiceDescriptor {
 }
 
 impl OnionServiceDescriptor {
-    /// Create and sign a new descriptor via BearDog.
+    /// Create and sign a new descriptor via security provider.
     ///
     /// # Errors
     ///
-    /// Returns error if BearDog signing is unavailable or returns invalid data.
+    /// Returns error if security provider signing is unavailable or returns invalid data.
     pub async fn new(
         keys: &OnionServiceKeys,
         intro_points: &[IntroductionPoint],
@@ -150,7 +150,7 @@ impl OnionServiceDescriptor {
         let signature = request_beardog_key(crypto, "crypto.sign.ed25519").await?;
         if signature.len() != 64 {
             return Err(Error::Crypto(format!(
-                "BearDog onion descriptor signature: expected 64 bytes, got {}",
+                "security provider onion descriptor signature: expected 64 bytes, got {}",
                 signature.len()
             )));
         }
@@ -172,15 +172,15 @@ impl OnionServiceDescriptor {
     /// 3. Inner encrypted layer (encrypted to subcredential)
     ///
     /// Currently produces the outer plaintext wrapper.
-    /// `BearDog` integration needed for encryption layers and signing.
+    /// `security provider` integration needed for encryption layers and signing.
     ///
     /// # Errors
     ///
-    /// Returns [`Error::CryptoUnavailable`] if the descriptor has no BearDog-produced signature.
+    /// Returns [`Error::CryptoUnavailable`] if the descriptor has no security provider-produced signature.
     pub fn encode(&self) -> Result<Vec<u8>> {
         if self.signature.is_empty() {
             return Err(Error::CryptoUnavailable(
-                "BearDog crypto delegation required: descriptor signature missing (refuse to encode with placeholder)"
+                "security provider crypto delegation required: descriptor signature missing (refuse to encode with placeholder)"
                     .into(),
             ));
         }
@@ -196,7 +196,7 @@ impl OnionServiceDescriptor {
         // descriptor-signing-key-cert (placeholder)
         descriptor.push_str("descriptor-signing-key-cert\n");
         descriptor.push_str("-----BEGIN ED25519 CERT-----\n");
-        // In production: BearDog generates a cross-certification
+        // In production: security provider generates a cross-certification
         // For now, encode the signing key as base64
         let key_b64 = base64_encode(&self.signing_key);
         descriptor.push_str(&key_b64);
@@ -206,7 +206,7 @@ impl OnionServiceDescriptor {
         // revision-counter (monotonically increasing)
         descriptor.push_str("revision-counter 1\n");
 
-        // superencrypted (placeholder — needs BearDog encryption)
+        // superencrypted (placeholder — needs security provider encryption)
         descriptor.push_str("superencrypted\n");
         descriptor.push_str("-----BEGIN MESSAGE-----\n");
         // In production: encrypted introduction point data
@@ -217,7 +217,7 @@ impl OnionServiceDescriptor {
         }
         descriptor.push_str("-----END MESSAGE-----\n");
 
-        // signature — must be BearDog Ed25519 (validated in `new` when using that path)
+        // signature — must be security provider Ed25519 (validated in `new` when using that path)
         descriptor.push_str("signature ");
         descriptor.push_str(&base64_encode(&self.signature));
         descriptor.push('\n');
@@ -230,7 +230,7 @@ impl OnionServiceDescriptor {
     /// The descriptor ID determines which `HSDir` relays store this descriptor.
     /// Formula: `descriptor_id` = SHA3-256(signing_key || `time_period` || replica)
     ///
-    /// Uses pure Rust SHA3-256 (zero `BearDog` dependency for local computation).
+    /// Uses pure Rust SHA3-256 (zero `security provider` dependency for local computation).
     /// In full Tor spec: `H(blinded_public_key` || subcredential || `time_period` || replica)
     #[must_use]
     pub fn descriptor_id(&self) -> [u8; 32] {

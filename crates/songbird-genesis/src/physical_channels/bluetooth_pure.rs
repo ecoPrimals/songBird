@@ -174,7 +174,7 @@ impl PhysicalChannelProvider for PureRustBluetoothChannel {
         // 1. ✅ Scan for witness (done in verify_proximity)
         // 2. ✅ Connect to witness
         // 3. ✅ Read Genesis credentials via GATT
-        // 4. Credential signature verification is not performed on this path (BearDog not wired).
+        // 4. Credential signature verification is not performed on this path (security provider not wired).
         // 5. ✅ Return credentials
 
         info!("✅ Secure exchange complete via Pure Rust BLE");

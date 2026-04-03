@@ -4,7 +4,7 @@
 
 //! Cryptographic operations for Tor protocol
 //!
-//! - **`BearDog` / Neural API**: Key operations delegated via IPC (`songbird-crypto-provider`)
+//! - **`security provider` / Neural API**: Key operations delegated via IPC (`songbird-crypto-provider`)
 //! - **SHA3-256**: Pure Rust for local operations (onion address checksums, descriptor IDs)
 
 pub mod sha3;
@@ -550,7 +550,7 @@ impl TorProtocolCrypto for CryptoProvider {
 pub struct NtorClientInit {
     /// Client's ephemeral public key (for CREATE2 payload)
     pub client_public: [u8; 32],
-    /// State ID for completing handshake (BearDog-managed)
+    /// State ID for completing handshake (security provider-managed)
     pub state_id: String,
 }
 
@@ -570,13 +570,13 @@ pub struct KeyMaterial {
 /// X25519 keypair for ECDH
 ///
 /// **NOTE**: For circuit building compatibility, we store both the secret
-/// key ID (BearDog-managed) and a copy of the raw secret.
+/// key ID (security provider-managed) and a copy of the raw secret.
 /// In production with HSM, only the ID would be stored.
 #[derive(Debug, Clone)]
 pub struct X25519Keypair {
     /// Secret key (32 bytes) - for local circuit operations
     pub secret_key: [u8; 32],
-    /// Secret key ID (BearDog-managed) - for delegated operations
+    /// Secret key ID (security provider-managed) - for delegated operations
     pub secret_key_id: String,
     /// Public key (32 bytes)
     pub public_key: [u8; 32],

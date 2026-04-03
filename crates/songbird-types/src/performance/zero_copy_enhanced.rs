@@ -616,14 +616,17 @@ impl ZeroCopyBenchmark {
         self.measurements.len()
     }
 
-    /// Print benchmark results
+    /// Log benchmark results via `tracing::info!`
     pub fn report(&self) {
-        println!("Benchmark: {}", self.name);
-        println!("  Measurements: {}", self.count());
-        println!("  Average: {:?}", self.average());
-        println!("  Min: {:?}", self.min());
-        println!("  Max: {:?}", self.max());
-        println!("  Ops/sec: {:.2}", self.stats.operations_per_second());
+        tracing::info!(
+            benchmark = %self.name,
+            measurements = self.count(),
+            average = ?self.average(),
+            min = ?self.min(),
+            max = ?self.max(),
+            ops_per_sec = format_args!("{:.2}", self.stats.operations_per_second()),
+            "benchmark report"
+        );
     }
 }
 

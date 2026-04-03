@@ -32,14 +32,14 @@ impl DiscoveryCache {
         &mut self,
         primals: Vec<DiscoveredPrimal>,
     ) -> Vec<DiscoveredPrimal> {
-        let mut seen = std::collections::HashSet::new();
+        use std::collections::hash_map::Entry;
+
         let mut deduplicated = Vec::new();
 
         for primal in primals {
             let key = format!("{}:{}", primal.name, primal.endpoint);
-            if !seen.contains(&key) {
-                seen.insert(key.clone());
-                self.cache.insert(key, primal.clone());
+            if let Entry::Vacant(entry) = self.cache.entry(key) {
+                entry.insert(primal.clone());
                 deduplicated.push(primal);
             }
         }

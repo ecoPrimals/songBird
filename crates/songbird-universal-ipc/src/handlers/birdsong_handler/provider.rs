@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::BirdSongHandler;
-use songbird_discovery::beardog_birdsong_provider::BearDogBirdSongProvider;
+use songbird_discovery::security_birdsong_provider::SecurityBirdSongProvider;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -10,15 +10,15 @@ use tracing::{info, warn};
 impl BirdSongHandler {
     /// Discover the security provider socket at runtime (capability-based; no hardcoding).
     ///
-    /// Delegates to [`songbird_http_client::discover_security_provider_socket`] for the
+    /// Delegates to [`songbird_http_client::discover_security_socket`] for the
     /// canonical chain (`SECURITY_PROVIDER_SOCKET`, XDG capability symlink, `BEARDOG_SOCKET`, …).
     ///
     /// Deep debt: Runtime discovery, agnostic to deployment. TCP `tcp:host:port` is supported
     /// when returned by discovery.
-    pub(super) async fn discover_security_provider_socket(&self) -> Result<PathBuf, String> {
+    pub(super) async fn discover_security_socket(&self) -> Result<PathBuf, String> {
         // Check cache first
         {
-            let cached = self.beardog_socket.read().await;
+            let cached = self.security_socket.read().await;
             if let Some(path) = cached.as_ref() {
                 let path_str = path.to_string_lossy();
                 if path_str.starts_with("tcp:") {
@@ -30,7 +30,7 @@ impl BirdSongHandler {
             }
         }
 
-        let socket_str = songbird_http_client::discover_security_provider_socket();
+        let socket_str = songbird_http_client::discover_security_socket();
         let socket_path = PathBuf::from(socket_str);
 
         let path_str = socket_path.to_string_lossy();
@@ -47,7 +47,7 @@ impl BirdSongHandler {
         }
 
         {
-            let mut cached = self.beardog_socket.write().await;
+            let mut cached = self.security_socket.write().await;
             *cached = Some(socket_path.clone());
         }
 
@@ -62,7 +62,7 @@ impl BirdSongHandler {
     /// Get or create `BirdSong` provider (lazy initialization)
     ///
     /// Deep debt: Lazy loading, runtime discovery
-    pub(super) async fn get_provider(&self) -> Result<Arc<BearDogBirdSongProvider>, String> {
+    pub(super) async fn get_provider(&self) -> Result<Arc<SecurityBirdSongProvider>, String> {
         // Check cache
         {
             let cached = self.provider.read().await;
@@ -72,7 +72,7 @@ impl BirdSongHandler {
         }
 
         // Discover and create provider
-        let socket_path = self.discover_security_provider_socket().await?;
+        let socket_path = self.discover_security_socket().await?;
 
         // Discover family_id from environment (matches biomeOS pattern)
         // Priority: FAMILY_ID > SONGBIRD_FAMILY_ID > NODE_FAMILY_ID
@@ -84,10 +84,12 @@ impl BirdSongHandler {
         if family_id.is_some() {
             info!("🔒 Using family_id from environment");
         } else {
-            warn!("⚠️  No FAMILY_ID environment variable set - BearDog encryption may fail");
+            warn!(
+                "⚠️  No FAMILY_ID environment variable set - security provider encryption may fail"
+            );
         }
 
-        let provider = BearDogBirdSongProvider::new(socket_path, family_id)
+        let provider = SecurityBirdSongProvider::new(socket_path, family_id)
             .await
             .map_err(|e| format!("Failed to create BirdSong provider: {e}"))?;
 

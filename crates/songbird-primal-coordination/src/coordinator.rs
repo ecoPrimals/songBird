@@ -229,7 +229,7 @@ impl PrimalCoordinator {
     /// Coordinate service mesh connection
     ///
     /// Example: Songbird connects a service mesh for primal-to-primal communication
-    /// (e.g., Toadstool provides compute for Squirrel analyzing `NestGate` data)
+    /// (e.g., Toadstool provides compute for Squirrel analyzing `storage provider` data)
     ///
     /// # Errors
     ///
@@ -504,8 +504,7 @@ mod tests {
         let bridge = Arc::new(MockBridge);
         let coordinator = PrimalCoordinator::new(bridge);
         assert_eq!(
-            coordinator.config.max_connections_per_capability,
-            10,
+            coordinator.config.max_connections_per_capability, 10,
             "default CoordinatorConfig::default max_connections_per_capability"
         );
         assert!(coordinator.config.enable_pooling);
@@ -518,10 +517,7 @@ mod tests {
             .request_capability(CapabilityType::Security)
             .await
             .expect_err("failing bridge should surface ConnectionFailed");
-        assert!(
-            matches!(err, PrimalCoordinationError::ConnectionFailed(_)),
-            "got {err:?}"
-        );
+        assert!(matches!(err, PrimalCoordinationError::ConnectionFailed(_)), "got {err:?}");
     }
 
     #[tokio::test(start_paused = true)]
@@ -544,16 +540,12 @@ mod tests {
         let bridge = Arc::new(MockBridge);
         let coordinator = PrimalCoordinator::new(bridge);
 
-        let conn1 = coordinator
-            .request_capability(CapabilityType::Security)
-            .await
-            .expect("first request");
+        let conn1 =
+            coordinator.request_capability(CapabilityType::Security).await.expect("first request");
         let id1 = conn1.connection_id.clone();
 
-        let conn2 = coordinator
-            .request_capability(CapabilityType::Security)
-            .await
-            .expect("second request");
+        let conn2 =
+            coordinator.request_capability(CapabilityType::Security).await.expect("second request");
         let id2 = conn2.connection_id;
 
         assert_eq!(id1, id2, "Should return cached connection when pooling is on");
@@ -570,14 +562,8 @@ mod tests {
             enable_pooling: false,
         };
         let coordinator = PrimalCoordinator::with_config(bridge, config);
-        coordinator
-            .request_capability(CapabilityType::Security)
-            .await
-            .expect("first");
-        coordinator
-            .request_capability(CapabilityType::Security)
-            .await
-            .expect("second");
+        coordinator.request_capability(CapabilityType::Security).await.expect("first");
+        coordinator.request_capability(CapabilityType::Security).await.expect("second");
         assert_eq!(
             inner.connect_count(),
             2,
@@ -627,10 +613,7 @@ mod tests {
     async fn health_check_all_reports_error_when_status_request_fails() {
         let bridge = Arc::new(MockBridge);
         let coordinator = PrimalCoordinator::new(bridge);
-        coordinator
-            .request_capability(CapabilityType::Security)
-            .await
-            .expect("seed cache");
+        coordinator.request_capability(CapabilityType::Security).await.expect("seed cache");
 
         let statuses = coordinator
             .health_check_all()
@@ -653,14 +636,9 @@ mod tests {
                 ..CoordinatorConfig::default()
             },
         );
-        let statuses = coordinator
-            .health_check_all()
-            .await
-            .expect("empty registry yields empty vec");
-        assert!(
-            statuses.is_empty(),
-            "no cached connections means no health rows"
-        );
+        let statuses =
+            coordinator.health_check_all().await.expect("empty registry yields empty vec");
+        assert!(statuses.is_empty(), "no cached connections means no health rows");
     }
 
     #[tokio::test(start_paused = true)]

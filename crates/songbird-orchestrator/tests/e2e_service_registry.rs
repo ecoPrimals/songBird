@@ -16,19 +16,19 @@ async fn test_e2e_full_registration_discovery_workflow() {
 
     let registry = Arc::new(ServiceRegistry::new());
 
-    // Step 1: BearDog registers with encryption capability
-    let beardog_id = registry
+    // Step 1: security provider registers with encryption capability
+    let security_provider_id = registry
         .register_service(
-            "BearDog".to_string(),
+            "security-provider".to_string(),
             vec!["encryption".to_string(), "identity".to_string()],
-            "/run/user/1000/beardog-nat0.sock".to_string(),
+            "/run/user/1000/security-provider-nat0.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
         .await
         .unwrap();
 
-    assert!(beardog_id.starts_with("beardog-"));
+    assert!(security_provider_id.starts_with("security-provider-"));
 
     // Step 2: ToadStool registers with compute capability
     let toadstool_id = registry
@@ -44,35 +44,35 @@ async fn test_e2e_full_registration_discovery_workflow() {
 
     assert!(toadstool_id.starts_with("toadstool-"));
 
-    // Step 3: NestGate registers with storage capability
-    let nestgate_id = registry
+    // Step 3: storage provider registers with storage capability
+    let storage_provider_id = registry
         .register_service(
-            "NestGate".to_string(),
+            "storage-provider".to_string(),
             vec!["storage".to_string(), "persistence".to_string()],
-            "/run/user/1000/nestgate-nat0.sock".to_string(),
+            "/run/user/1000/storage-provider-nat0.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
         .await
         .unwrap();
 
-    assert!(nestgate_id.starts_with("nestgate-"));
+    assert!(storage_provider_id.starts_with("storage-provider-"));
 
-    // Step 4: biomeOS discovers encryption provider (should find BearDog)
+    // Step 4: biomeOS discovers encryption provider (should find security provider)
     let encryption_providers =
         registry.discover_by_capability("encryption", Some("json-rpc")).await.unwrap();
 
     assert_eq!(encryption_providers.len(), 1);
-    assert_eq!(encryption_providers[0].primal_name, "BearDog");
-    assert_eq!(encryption_providers[0].service_id, beardog_id);
+    assert_eq!(encryption_providers[0].primal_name, "security-provider");
+    assert_eq!(encryption_providers[0].service_id, security_provider_id);
     assert!(encryption_providers[0].capabilities.contains(&"encryption".to_string()));
 
-    // Step 5: biomeOS discovers storage provider (should find NestGate)
+    // Step 5: biomeOS discovers storage provider (should find storage provider)
     let storage_providers = registry.discover_by_capability("storage", None).await.unwrap();
 
     assert_eq!(storage_providers.len(), 1);
-    assert_eq!(storage_providers[0].primal_name, "NestGate");
-    assert_eq!(storage_providers[0].service_id, nestgate_id);
+    assert_eq!(storage_providers[0].primal_name, "storage-provider");
+    assert_eq!(storage_providers[0].service_id, storage_provider_id);
 
     // Step 6: petalTongue discovers all primals (wildcard)
     let all_primals = registry.discover_by_capability("*", None).await.unwrap();
@@ -81,23 +81,23 @@ async fn test_e2e_full_registration_discovery_workflow() {
 
     // Verify all primals are present
     let names: Vec<String> = all_primals.iter().map(|p| p.primal_name.clone()).collect();
-    assert!(names.contains(&"BearDog".to_string()));
+    assert!(names.contains(&"security-provider".to_string()));
     assert!(names.contains(&"ToadStool".to_string()));
-    assert!(names.contains(&"NestGate".to_string()));
+    assert!(names.contains(&"storage-provider".to_string()));
 
     // Step 7: Check health of a specific service
-    let (health_status, _) = registry.get_service_health(&beardog_id).await.unwrap();
+    let (health_status, _) = registry.get_service_health(&security_provider_id).await.unwrap();
     assert_eq!(health_status, "unknown"); // Initial state
 
     // Step 8: Simulate health check update
-    registry.update_health(&beardog_id, "healthy".to_string()).await.unwrap();
-    let (health_status, _) = registry.get_service_health(&beardog_id).await.unwrap();
+    registry.update_health(&security_provider_id, "healthy".to_string()).await.unwrap();
+    let (health_status, _) = registry.get_service_health(&security_provider_id).await.unwrap();
     assert_eq!(health_status, "healthy");
 
     // Step 9: Service unregisters (cleanup)
-    registry.unregister_service(&beardog_id).await.unwrap();
+    registry.unregister_service(&security_provider_id).await.unwrap();
     let encryption_providers = registry.discover_by_capability("encryption", None).await.unwrap();
-    assert_eq!(encryption_providers.len(), 0); // BearDog no longer discoverable
+    assert_eq!(encryption_providers.len(), 0); // security provider no longer discoverable
 }
 
 #[tokio::test]
@@ -291,9 +291,9 @@ async fn test_e2e_wildcard_discovery_returns_all() {
     // Register diverse primals
     registry
         .register_service(
-            "BearDog".to_string(),
+            "security-provider".to_string(),
             vec!["encryption".to_string()],
-            "/tmp/beardog.sock".to_string(),
+            "/tmp/security-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -311,9 +311,9 @@ async fn test_e2e_wildcard_discovery_returns_all() {
         .unwrap();
     registry
         .register_service(
-            "NestGate".to_string(),
+            "storage-provider".to_string(),
             vec!["storage".to_string()],
-            "/tmp/nestgate.sock".to_string(),
+            "/tmp/storage-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -356,9 +356,9 @@ async fn test_e2e_wildcard_discovery_returns_all() {
 
     // Verify all expected primals are present
     let names: Vec<String> = all_primals.iter().map(|p| p.primal_name.clone()).collect();
-    assert!(names.contains(&"BearDog".to_string()));
+    assert!(names.contains(&"security-provider".to_string()));
     assert!(names.contains(&"ToadStool".to_string()));
-    assert!(names.contains(&"NestGate".to_string()));
+    assert!(names.contains(&"storage-provider".to_string()));
     assert!(names.contains(&"Squirrel".to_string()));
     assert!(names.contains(&"biomeOS".to_string()));
     assert!(names.contains(&"petalTongue".to_string()));

@@ -274,13 +274,13 @@ mod jsonrpc_e2e_tests {
     use tokio;
 
     #[tokio::test]
-    #[ignore = "requires running BearDog crypto provider"] // Requires actual BearDog Unix socket server
+    #[ignore = "requires running security provider crypto provider"] // Requires actual security provider Unix socket server
     async fn test_jsonrpc_collect_metrics_e2e() {
-        // E2E test: Connect to real BearDog Unix socket and collect metrics
+        // E2E test: Connect to real security provider Unix socket and collect metrics
         //
         // Prerequisites:
         // 1. BearDog running with Unix socket at /tmp/beardog-test.sock
-        // 2. BearDog configured to respond to get_metrics JSON-RPC calls
+        // 2. security provider configured to respond to get_metrics JSON-RPC calls
         //
         // Run with: cargo test --features e2e test_jsonrpc_collect_metrics_e2e -- --ignored
 
@@ -295,20 +295,20 @@ mod jsonrpc_e2e_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires running BearDog crypto provider"] // Requires actual BearDog Unix socket server
+    #[ignore = "requires running security provider crypto provider"] // Requires actual security provider Unix socket server
     async fn test_jsonrpc_verify_auth_e2e() {
         // E2E test: Verify authentication via JSON-RPC
         //
         // Prerequisites:
-        // 1. BearDog running with Unix socket
-        // 2. BearDog configured to respond to verify_auth JSON-RPC calls
+        // 1. security provider running with Unix socket
+        // 2. security provider configured to respond to verify_auth JSON-RPC calls
         //
         // Run with: cargo test --features e2e test_jsonrpc_verify_auth_e2e -- --ignored
 
         let adapter =
             SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).await.unwrap();
 
-        // Test with valid token (configure BearDog to accept "test-valid-token")
+        // Test with valid token (configure security provider to accept "test-valid-token")
         let result = adapter.verify_auth("test-valid-token").await.unwrap();
         assert_eq!(result, AuthResult::Authorized);
 
@@ -318,17 +318,17 @@ mod jsonrpc_e2e_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires running BearDog crypto provider"] // Requires actual BearDog Unix socket server
+    #[ignore = "requires running security provider crypto provider"] // Requires actual security provider Unix socket server
     async fn test_genetic_lineage_trust_e2e() {
         // E2E test: Verify genetic lineage trust evaluation via JSON-RPC
         //
         // Prerequisites:
-        // 1. BearDog running with genetic lineage capability
+        // 1. security provider running with genetic lineage capability
         // 2. Two Songbird towers configured in same family
         //
         // This test verifies the ORIGINAL upstream debt is resolved:
         // - Songbird sends JSON-RPC (not HTTP)
-        // - BearDog receives and parses correctly
+        // - security provider receives and parses correctly
         // - Trust evaluation succeeds
         // - Trust level upgrades from 1 to 2+
         //

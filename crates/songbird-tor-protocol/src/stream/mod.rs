@@ -195,7 +195,7 @@ impl StreamManager {
 ///
 /// Creates relay cells for Tor stream operations. The `digest` field
 /// is a running SHA-1 hash that provides integrity checking across
-/// circuit hops. When `BearDog` crypto is available, pass the running
+/// circuit hops. When `security provider` crypto is available, pass the running
 /// digest state; otherwise zeros are used (suitable for testing).
 pub struct StreamProtocol;
 

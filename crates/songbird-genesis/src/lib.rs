@@ -22,7 +22,7 @@
 //!
 //! - **Genesis Witness**: Existing trusted device that witnesses new node creation
 //! - **Physical Channels**: Hardware keys, QR codes, Bluetooth for proximity proof
-//! - **Multi-Primal Coordination**: Songbird, `BearDog`, etc. all sign genesis
+//! - **Multi-Primal Coordination**: Songbird, `security provider`, etc. all sign genesis
 //! - **Never Alone**: Every node has lineage and trust from birth
 //!
 //! ## Usage

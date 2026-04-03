@@ -26,7 +26,10 @@
 //! ## Thread safety
 //!
 //! All functions in this crate are safe to call from any thread at any time. The overlay is
-//! guarded by a `std::sync::Mutex`.
+//! guarded by a `std::sync::Mutex` (not `tokio::sync::Mutex`): the API is entirely synchronous,
+//! and the mutex is always released before each function returns—no lock is held across a
+//! caller’s `.await`. Short critical sections favor `std::sync::Mutex` (or `parking_lot::Mutex`)
+//! over an async mutex.
 
 use std::collections::HashMap;
 use std::env::VarError;
@@ -435,10 +438,7 @@ mod tests {
         set_var(KEY, "1");
         reset_overlay();
         reset_overlay();
-        assert!(
-            var(KEY).is_err(),
-            "double reset should still leave overlay empty for this key"
-        );
+        assert!(var(KEY).is_err(), "double reset should still leave overlay empty for this key");
     }
 
     #[test]
@@ -446,11 +446,7 @@ mod tests {
         let _g = lock();
         let keys: HashSet<String> = vars().map(|(k, _)| k).collect();
         let count = vars().count();
-        assert_eq!(
-            keys.len(),
-            count,
-            "vars() iterator must not emit duplicate keys"
-        );
+        assert_eq!(keys.len(), count, "vars() iterator must not emit duplicate keys");
     }
 
     #[test]
@@ -461,7 +457,11 @@ mod tests {
         set_var(KEY, "overlay-only-read");
         assert_eq!(var_os(KEY).as_deref(), Some(OsStr::new("overlay-only-read")));
         overlay().lock().expect("overlay lock").remove(KEY);
-        assert_eq!(var_os(KEY), Some(os_snapshot), "after removing overlay entry, OS value returns");
+        assert_eq!(
+            var_os(KEY),
+            Some(os_snapshot),
+            "after removing overlay entry, OS value returns"
+        );
     }
 
     #[test]
@@ -499,10 +499,7 @@ mod tests {
                     "thread {i} should read its own overlay value"
                 );
                 remove_var(&key);
-                assert!(
-                    var(&key).is_err(),
-                    "after remove, key {i} should be absent"
-                );
+                assert!(var(&key).is_err(), "after remove, key {i} should be absent");
             }));
         }
         for h in handles {
@@ -567,9 +564,7 @@ mod tests {
         let _g = lock();
         const KEY: &str = "__SONGBIRD_PE_VARS_WIN__";
         set_var(KEY, "overlay-wins");
-        let from_vars = vars()
-            .find(|(k, _)| k == KEY)
-            .map(|(_, v)| v);
+        let from_vars = vars().find(|(k, _)| k == KEY).map(|(_, v)| v);
         assert_eq!(
             from_vars.as_deref(),
             Some("overlay-wins"),

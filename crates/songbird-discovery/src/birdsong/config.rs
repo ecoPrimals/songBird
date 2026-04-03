@@ -47,7 +47,7 @@ pub struct BirdSongConfig {
     /// **Privacy Impact**: Dark Forest beacons eliminate metadata leakage.
     /// Legacy format leaks `family_id` in plaintext.
     ///
-    /// Requires `BearDog` `beacon.*` RPC methods for full functionality.
+    /// Requires `security provider` `beacon.*` RPC methods for full functionality.
     /// Falls back to legacy if beacon methods unavailable.
     ///
     /// Recommended: `true` for privacy, `false` only for compatibility testing
@@ -93,7 +93,7 @@ impl Default for BirdSongConfig {
             mixed_mode: true,            // Support migration
 
             // Dark Forest configuration (conservative defaults)
-            dark_forest_enabled: false, // Opt-in (requires BearDog beacon.*)
+            dark_forest_enabled: false, // Opt-in (requires security provider beacon.*)
             accept_legacy_format: true, // Backward compatible by default
             dual_broadcast: false,      // Minimize network overhead
         }

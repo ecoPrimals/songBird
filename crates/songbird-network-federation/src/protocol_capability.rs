@@ -22,7 +22,7 @@ pub enum Protocol {
     JsonRpc,
     /// High-performance binary RPC
     Tarpc,
-    /// `BearDog` Secure Tunnel Protocol
+    /// `security provider` Secure Tunnel Protocol
     Btsp,
     /// WebSocket
     WebSocket,

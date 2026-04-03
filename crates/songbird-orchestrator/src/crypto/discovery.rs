@@ -4,12 +4,12 @@
 //! Crypto provider socket discovery
 //!
 //! Socket paths for crypto routing use the shared Neural API discovery from
-//! [`songbird_crypto_provider`]. For a full client (Neural API vs direct `BearDog`),
+//! [`songbird_crypto_provider`]. For a full client (Neural API vs direct `security provider`),
 //! use [`songbird_crypto_provider::CryptoProvider::from_env`].
 
 use anyhow::Result;
 use songbird_types::defaults::paths::{
-    BIOMEOS_RUNTIME_SUBDIR, family_scoped_crypto_socket_path, neural_api_socket_legacy_path,
+    BIOMEOS_RUNTIME_SUBDIR, ai_provider_socket_legacy_path, family_scoped_crypto_socket_path,
 };
 use tracing::info;
 
@@ -27,12 +27,21 @@ pub async fn discover_crypto_socket() -> Result<String> {
     Ok(songbird_crypto_provider::socket_discovery::discover_neural_api_socket())
 }
 
-/// Backward-compatible alias for [`discover_crypto_socket`].
+/// Preferred `get_*` name for [`discover_crypto_socket`].
+/// # Errors
+///
+/// Returns an error if the operation fails.
+pub async fn get_security_crypto_socket() -> Result<String> {
+    discover_crypto_socket().await
+}
+
+/// Backward-compatible alias for [`get_security_crypto_socket`].
+#[deprecated(note = "Use get_security_crypto_socket (capability-based naming)")]
 /// # Errors
 ///
 /// Returns an error if the operation fails.
 pub async fn get_beardog_crypto_socket() -> Result<String> {
-    discover_crypto_socket().await
+    get_security_crypto_socket().await
 }
 
 /// Discover crypto provider socket for a specific family.
@@ -62,12 +71,21 @@ pub async fn discover_crypto_socket_for_family(family_id: &str) -> Result<String
     crate::primal_discovery::discover_crypto_provider().await
 }
 
-/// Backward-compatible alias for [`discover_crypto_socket_for_family`].
+/// Preferred `get_*` name for [`discover_crypto_socket_for_family`].
+/// # Errors
+///
+/// Returns an error if the operation fails.
+pub async fn get_security_crypto_socket_for_family(family_id: &str) -> Result<String> {
+    discover_crypto_socket_for_family(family_id).await
+}
+
+/// Backward-compatible alias for [`get_security_crypto_socket_for_family`].
+#[deprecated(note = "Use get_security_crypto_socket_for_family (capability-based naming)")]
 /// # Errors
 ///
 /// Returns an error if the operation fails.
 pub async fn get_beardog_crypto_socket_for_family(family_id: &str) -> Result<String> {
-    discover_crypto_socket_for_family(family_id).await
+    get_security_crypto_socket_for_family(family_id).await
 }
 
 /// Check if any crypto provider is available.
@@ -103,12 +121,18 @@ pub async fn is_crypto_available() -> bool {
 
     let family_id =
         songbird_process_env::var("FAMILY_ID").unwrap_or_else(|_| "default".to_string());
-    neural_api_socket_legacy_path(&family_id).exists()
+    ai_provider_socket_legacy_path(&family_id).exists()
 }
 
-/// Backward-compatible alias for [`is_crypto_available`].
-pub async fn is_beardog_crypto_available() -> bool {
+/// Preferred `is_*` name for [`is_crypto_available`].
+pub async fn is_security_crypto_available() -> bool {
     is_crypto_available().await
+}
+
+/// Backward-compatible alias for [`is_security_crypto_available`].
+#[deprecated(note = "Use is_security_crypto_available (capability-based naming)")]
+pub async fn is_beardog_crypto_available() -> bool {
+    is_security_crypto_available().await
 }
 
 /// Discover crypto provider socket with purpose context for audit logging.
@@ -123,12 +147,21 @@ pub async fn discover_crypto_socket_for_purpose(purpose: &str) -> Result<String>
     discover_crypto_socket().await
 }
 
-/// Backward-compatible alias for [`discover_crypto_socket_for_purpose`].
+/// Preferred `get_*` name for [`discover_crypto_socket_for_purpose`].
+/// # Errors
+///
+/// Returns an error if the operation fails.
+pub async fn get_security_crypto_socket_for_purpose(purpose: &str) -> Result<String> {
+    discover_crypto_socket_for_purpose(purpose).await
+}
+
+/// Backward-compatible alias for [`get_security_crypto_socket_for_purpose`].
+#[deprecated(note = "Use get_security_crypto_socket_for_purpose (capability-based naming)")]
 /// # Errors
 ///
 /// Returns an error if the operation fails.
 pub async fn get_beardog_crypto_socket_for_purpose(purpose: &str) -> Result<String> {
-    discover_crypto_socket_for_purpose(purpose).await
+    get_security_crypto_socket_for_purpose(purpose).await
 }
 
 #[cfg(test)]

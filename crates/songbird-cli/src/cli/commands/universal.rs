@@ -12,7 +12,7 @@
 use clap::{Parser, Subcommand};
 use colored::*;
 use songbird_types::SongbirdResult;
-// Security operations delegated to BearDog via capability discovery at runtime
+// Security operations delegated to security provider via capability discovery at runtime
 mod convenience {
     use songbird_types::SongbirdResult;
 
@@ -22,7 +22,7 @@ mod convenience {
         let socket = songbird_config::defaults::endpoints::orchestrator_endpoint();
         println!("   Orchestrator: {socket}");
         println!("   ✅ Default secure configuration applied");
-        println!("   💡 Security hardening delegated to BearDog at runtime");
+        println!("   💡 Security hardening delegated to security provider at runtime");
         Ok(())
     }
 
@@ -31,7 +31,7 @@ mod convenience {
         println!("   Setting SONGBIRD_FAMILY_ID={name}");
         songbird_process_env::set_var("SONGBIRD_FAMILY_ID", name);
         println!("   ✅ Family identity configured");
-        println!("   💡 Device trust delegated to BearDog capability discovery");
+        println!("   💡 Device trust delegated to security provider capability discovery");
         Ok(())
     }
 
@@ -53,25 +53,25 @@ impl UniversalSecurityManager {
         Self
     }
 
-    /// Enable baseline security via BearDog capability discovery.
+    /// Enable baseline security via security provider capability discovery.
     pub fn enable_secure_for_all(&self) -> Result<(), String> {
-        println!("   🔐 Enabling baseline security (delegated to BearDog)");
+        println!("   🔐 Enabling baseline security (delegated to security provider)");
         Ok(())
     }
 
-    /// Enable family protection via BearDog capability discovery.
+    /// Enable family protection via security provider capability discovery.
     pub fn enable_family_protection(&self) -> Result<(), String> {
-        println!("   🛡️ Enabling family protection (delegated to BearDog)");
+        println!("   🛡️ Enabling family protection (delegated to security provider)");
         Ok(())
     }
 
-    /// Register device trust via BearDog capability discovery.
+    /// Register device trust via security provider capability discovery.
     pub fn register_device_secure(
         &self,
         device_id: &str,
         device_name: &str,
     ) -> Result<(), String> {
-        println!("   📱 Registering device '{device_name}' ({device_id}) (delegated to BearDog)");
+        println!("   📱 Registering device '{device_name}' ({device_id}) (delegated to security provider)");
         Ok(())
     }
 }

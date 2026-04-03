@@ -11,7 +11,7 @@ use songbird_crypto_provider::CryptoProvider;
 
 /// ntor handshake protocol for circuit creation
 ///
-/// **TRUE PRIMAL**: All crypto operations delegated to `BearDog`.
+/// **TRUE PRIMAL**: All crypto operations delegated to `security provider`.
 pub struct NtorHandshake {
     beardog: CryptoProvider,
 }
@@ -36,13 +36,13 @@ impl NtorHandshake {
     /// * `HandshakeState` for processing CREATED2 response
     ///
     /// # Errors
-    /// Returns error if `BearDog` crypto operations fail.
+    /// Returns error if `security provider` crypto operations fail.
     pub async fn create_handshake(
         &self,
         node_id: &[u8; 20],
         relay_ntor_key: &[u8; 32],
     ) -> Result<(Vec<u8>, HandshakeState)> {
-        // 1. Generate ephemeral X25519 keypair via BearDog
+        // 1. Generate ephemeral X25519 keypair via security provider
         let client_ephemeral = self.beardog.x25519_generate_ephemeral().await?;
 
         // 2. Construct CREATE2 payload (84 bytes per Tor ntor spec)

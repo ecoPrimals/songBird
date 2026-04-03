@@ -37,7 +37,7 @@ pub struct DiscoveredPeer {
     pub capabilities: Vec<String>,
 
     /// Generic tags (NEW - for USB seed integration)
-    /// Contains `BearDog` encryption tags for genetic lineage verification
+    /// Contains `security provider` encryption tags for genetic lineage verification
     pub tags: Option<Vec<String>>,
 
     /// Discovery timestamp (NEW - for USB seed integration)

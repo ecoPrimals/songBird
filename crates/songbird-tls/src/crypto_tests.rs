@@ -47,7 +47,7 @@ fn json_rpc_response_deserializes_error_variant() {
 async fn call_capability_success_returns_result() {
     let body = r#"{"jsonrpc":"2.0","result":{"hello":"world"},"id":1}"#.to_string();
     let path = spawn_one_shot_jsonrpc_server(body).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let v = client.call_capability("crypto", "op", json!({})).await.expect("call");
     assert_eq!(v["hello"], "world");
 }
@@ -56,7 +56,7 @@ async fn call_capability_success_returns_result() {
 async fn call_capability_jsonrpc_error_maps_to_crypto_error() {
     let body = r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"bad op"},"id":1}"#.to_string();
     let path = spawn_one_shot_jsonrpc_server(body).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let err =
         client.call_capability("crypto", "op", json!({})).await.expect_err("expect rpc error");
     match err {
@@ -73,7 +73,7 @@ async fn call_capability_jsonrpc_error_maps_to_crypto_error() {
 async fn call_capability_missing_result_field() {
     let body = r#"{"jsonrpc":"2.0","id":1}"#.to_string();
     let path = spawn_one_shot_jsonrpc_server(body).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let err = client.call_capability("crypto", "op", json!({})).await.expect_err("missing result");
     match err {
         TlsError::CryptoError(msg) => assert!(msg.contains("missing result")),
@@ -85,7 +85,7 @@ async fn call_capability_missing_result_field() {
 async fn call_capability_invalid_json_response() {
     let body = "not-json".to_string();
     let path = spawn_one_shot_jsonrpc_server(body).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let err = client.call_capability("crypto", "op", json!({})).await.expect_err("parse fail");
     match err {
         TlsError::CryptoError(msg) => assert!(msg.contains("Failed to parse response")),
@@ -99,7 +99,7 @@ async fn call_capability_connect_failure() {
     let addr = listener.local_addr().expect("addr");
     drop(listener);
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-    let client = BeardogCryptoClient::with_socket_path(format!("tcp:{addr}"));
+    let client = SecurityTlsCryptoClient::with_socket_path(format!("tcp:{addr}"));
     let err = client.call_capability("c", "o", json!({})).await.expect_err("connection refused");
     match err {
         TlsError::CryptoError(msg) => assert!(msg.contains("Failed to connect")),
@@ -111,17 +111,17 @@ async fn call_capability_connect_failure() {
 async fn call_jsonrpc_success_and_error_paths() {
     let ok = r#"{"jsonrpc":"2.0","result":{"x":1},"id":1}"#.to_string();
     let path = spawn_one_shot_jsonrpc_server(ok).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let v = client.call_jsonrpc("custom.method", json!({})).await.expect("jsonrpc ok");
     assert_eq!(v["x"], 1);
 
     let err_body = r#"{"jsonrpc":"2.0","error":{"code":1,"message":"nope"},"id":null}"#.to_string();
     let path2 = spawn_one_shot_jsonrpc_server(err_body).await;
-    let client2 = BeardogCryptoClient::with_socket_path(path2);
+    let client2 = SecurityTlsCryptoClient::with_socket_path(path2);
     let e = client2.call_jsonrpc("m", json!({})).await.expect_err("bear dog error");
     match e {
         TlsError::CryptoError(msg) => {
-            assert!(msg.contains("BearDog error"));
+            assert!(msg.contains("Security provider error"));
             assert!(msg.contains("nope"));
         }
         other => panic!("{other:?}"),
@@ -136,7 +136,7 @@ async fn x25519_generate_ephemeral_success_and_decode_errors() {
         r#"{{"jsonrpc":"2.0","result":{{"public_key":"{pk}","secret_key":"{sk}"}},"id":1}}"#
     );
     let path = spawn_one_shot_jsonrpc_server(body.clone()).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let (pubk, sec) = client.x25519_generate_ephemeral().await.expect("gen");
     assert_eq!(pubk, vec![9u8; 32]);
     assert_eq!(sec, vec![8u8; 32]);
@@ -144,19 +144,19 @@ async fn x25519_generate_ephemeral_success_and_decode_errors() {
     let bad =
         r#"{"jsonrpc":"2.0","result":{"public_key":"@@@","secret_key":"@@@"},"id":1}"#.to_string();
     let path2 = spawn_one_shot_jsonrpc_server(bad).await;
-    let client2 = BeardogCryptoClient::with_socket_path(path2);
+    let client2 = SecurityTlsCryptoClient::with_socket_path(path2);
     let e = client2.x25519_generate_ephemeral().await.expect_err("bad b64");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("decode")));
 
     let miss = r#"{"jsonrpc":"2.0","result":{"public_key":"QQ=="},"id":1}"#.to_string();
     let path3 = spawn_one_shot_jsonrpc_server(miss).await;
-    let client3 = BeardogCryptoClient::with_socket_path(path3);
+    let client3 = SecurityTlsCryptoClient::with_socket_path(path3);
     let e = client3.x25519_generate_ephemeral().await.expect_err("missing sk");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("secret_key")));
 
     let miss_pk = r#"{"jsonrpc":"2.0","result":{"secret_key":"QQ=="},"id":1}"#.to_string();
     let path4 = spawn_one_shot_jsonrpc_server(miss_pk).await;
-    let client4 = BeardogCryptoClient::with_socket_path(path4);
+    let client4 = SecurityTlsCryptoClient::with_socket_path(path4);
     let e = client4.x25519_generate_ephemeral().await.expect_err("missing pk");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("public_key")));
 }
@@ -166,19 +166,19 @@ async fn x25519_derive_secret_paths() {
     let ss = general_purpose::STANDARD.encode([7u8; 32]);
     let body = format!(r#"{{"jsonrpc":"2.0","result":{{"shared_secret":"{ss}"}},"id":1}}"#);
     let path = spawn_one_shot_jsonrpc_server(body).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let out = client.x25519_derive_secret(&[1], &[2]).await.expect("derive");
     assert_eq!(out, vec![7u8; 32]);
 
     let miss = r#"{"jsonrpc":"2.0","result":{},"id":1}"#.to_string();
     let path2 = spawn_one_shot_jsonrpc_server(miss).await;
-    let client2 = BeardogCryptoClient::with_socket_path(path2);
+    let client2 = SecurityTlsCryptoClient::with_socket_path(path2);
     let e = client2.x25519_derive_secret(&[], &[]).await.expect_err("missing ss");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("shared_secret")));
 
     let bad_b64 = r#"{"jsonrpc":"2.0","result":{"shared_secret":"@@@"},"id":1}"#.to_string();
     let path3 = spawn_one_shot_jsonrpc_server(bad_b64).await;
-    let client3 = BeardogCryptoClient::with_socket_path(path3);
+    let client3 = SecurityTlsCryptoClient::with_socket_path(path3);
     let e = client3.x25519_derive_secret(&[], &[]).await.expect_err("b64");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("decode")));
 }
@@ -192,7 +192,7 @@ async fn chacha_encrypt_decrypt_with_and_without_aad() {
         r#"{{"jsonrpc":"2.0","result":{{"ciphertext":"{ct}","nonce":"{nonce}","tag":"{tag}"}},"id":1}}"#
     );
     let path = spawn_one_shot_jsonrpc_server(body.clone()).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let (ciphertext, nonce_out, tag_out) =
         client.chacha20_poly1305_encrypt(b"pt", b"key", None).await.expect("enc");
     assert_eq!(ciphertext, vec![1, 2, 3]);
@@ -200,19 +200,19 @@ async fn chacha_encrypt_decrypt_with_and_without_aad() {
     assert_eq!(tag_out, vec![5u8; 16]);
 
     let path2 = spawn_one_shot_jsonrpc_server(body.clone()).await;
-    let client2 = BeardogCryptoClient::with_socket_path(path2);
+    let client2 = SecurityTlsCryptoClient::with_socket_path(path2);
     let _ =
         client2.chacha20_poly1305_encrypt(b"p", b"k", Some(b"aad-bytes")).await.expect("enc aad");
 
     let pt = general_purpose::STANDARD.encode(b"hello");
     let dec_body = format!(r#"{{"jsonrpc":"2.0","result":{{"plaintext":"{pt}"}},"id":1}}"#);
     let path3 = spawn_one_shot_jsonrpc_server(dec_body.clone()).await;
-    let client3 = BeardogCryptoClient::with_socket_path(path3);
+    let client3 = SecurityTlsCryptoClient::with_socket_path(path3);
     let plain = client3.chacha20_poly1305_decrypt(&[], &[], &[], &[], None).await.expect("dec");
     assert_eq!(plain, b"hello");
 
     let path4 = spawn_one_shot_jsonrpc_server(dec_body).await;
-    let client4 = BeardogCryptoClient::with_socket_path(path4);
+    let client4 = SecurityTlsCryptoClient::with_socket_path(path4);
     let _ =
         client4.chacha20_poly1305_decrypt(&[], &[], &[], &[], Some(b"a")).await.expect("dec aad");
 
@@ -222,7 +222,7 @@ async fn chacha_encrypt_decrypt_with_and_without_aad() {
         ("tag", r#"{"jsonrpc":"2.0","result":{"ciphertext":"QQ==","nonce":"QQ=="},"id":1}"#),
     ] {
         let p = spawn_one_shot_jsonrpc_server(miss_json.to_string()).await;
-        let c = BeardogCryptoClient::with_socket_path(p);
+        let c = SecurityTlsCryptoClient::with_socket_path(p);
         let e = c.chacha20_poly1305_encrypt(&[], &[], None).await.expect_err(field);
         assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains(field)), "{field}: {e:?}");
     }
@@ -231,7 +231,7 @@ async fn chacha_encrypt_decrypt_with_and_without_aad() {
         r#"{"jsonrpc":"2.0","result":{"ciphertext":"@@@","nonce":"QQ==","tag":"QQ=="},"id":1}"#
             .to_string();
     let p = spawn_one_shot_jsonrpc_server(bad_ct).await;
-    let c = BeardogCryptoClient::with_socket_path(p);
+    let c = SecurityTlsCryptoClient::with_socket_path(p);
     let e = c.chacha20_poly1305_encrypt(&[], &[], None).await.expect_err("b64 ct");
     assert!(
         matches!(e, TlsError::CryptoError(ref m) if m.contains("ciphertext") && m.contains("decode"))
@@ -239,7 +239,7 @@ async fn chacha_encrypt_decrypt_with_and_without_aad() {
 
     let miss_pt = r#"{"jsonrpc":"2.0","result":{},"id":1}"#.to_string();
     let p2 = spawn_one_shot_jsonrpc_server(miss_pt).await;
-    let c2 = BeardogCryptoClient::with_socket_path(p2);
+    let c2 = SecurityTlsCryptoClient::with_socket_path(p2);
     let e = c2.chacha20_poly1305_decrypt(&[], &[], &[], &[], None).await.expect_err("pt");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("plaintext")));
 }
@@ -249,26 +249,26 @@ async fn ed25519_sign_and_hmac_sha256_success_and_errors() {
     let sig = general_purpose::STANDARD.encode([3u8; 64]);
     let body = format!(r#"{{"jsonrpc":"2.0","result":{{"signature":"{sig}"}},"id":1}}"#);
     let path = spawn_one_shot_jsonrpc_server(body).await;
-    let client = BeardogCryptoClient::with_socket_path(path);
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
     let s = client.ed25519_sign(b"msg", "kid").await.expect("sign");
     assert_eq!(s, vec![3u8; 64]);
 
     let miss = r#"{"jsonrpc":"2.0","result":{},"id":1}"#.to_string();
     let path2 = spawn_one_shot_jsonrpc_server(miss).await;
-    let client2 = BeardogCryptoClient::with_socket_path(path2);
+    let client2 = SecurityTlsCryptoClient::with_socket_path(path2);
     let e = client2.ed25519_sign(b"m", "k").await.expect_err("sig");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("signature")));
 
     let mac = general_purpose::STANDARD.encode([4u8; 32]);
     let mbody = format!(r#"{{"jsonrpc":"2.0","result":{{"mac":"{mac}"}},"id":1}}"#);
     let path3 = spawn_one_shot_jsonrpc_server(mbody).await;
-    let client3 = BeardogCryptoClient::with_socket_path(path3);
+    let client3 = SecurityTlsCryptoClient::with_socket_path(path3);
     let m = client3.hmac_sha256(b"x", b"y").await.expect("hmac");
     assert_eq!(m, vec![4u8; 32]);
 
     let miss_mac = r#"{"jsonrpc":"2.0","result":{},"id":1}"#.to_string();
     let path4 = spawn_one_shot_jsonrpc_server(miss_mac).await;
-    let client4 = BeardogCryptoClient::with_socket_path(path4);
+    let client4 = SecurityTlsCryptoClient::with_socket_path(path4);
     let e = client4.hmac_sha256(b"a", b"b").await.expect_err("mac");
     assert!(matches!(e, TlsError::CryptoError(ref m) if m.contains("mac")));
 }
@@ -279,8 +279,9 @@ async fn connect_platform_tcp_strip_prefix_matches_listener() {
     let body = r#"{"jsonrpc":"2.0","result":{},"id":1}"#.to_string();
     let path = spawn_one_shot_jsonrpc_server(body).await;
     let addr = path.strip_prefix("tcp:").expect("tcp prefix");
-    let stream =
-        BeardogCryptoClient::connect_platform(&format!("tcp:{addr}")).await.expect("tcp connect");
+    let stream = SecurityTlsCryptoClient::connect_platform(&format!("tcp:{addr}"))
+        .await
+        .expect("tcp connect");
     match stream {
         CryptoStream::Tcp(_) => {}
         #[cfg(unix)]
@@ -306,7 +307,7 @@ async fn connect_platform_unix_domain_round_trip() {
         let _ = stream.shutdown().await;
     });
     tokio::task::yield_now().await;
-    let stream = BeardogCryptoClient::connect_platform(&path_str).await.expect("unix connect");
+    let stream = SecurityTlsCryptoClient::connect_platform(&path_str).await.expect("unix connect");
     match stream {
         CryptoStream::Unix(_) => {}
         CryptoStream::Tcp(_) => panic!("expected unix"),
@@ -325,7 +326,7 @@ fn create_temp_socket() -> String {
 
 #[test]
 fn test_with_socket_path() {
-    let client = BeardogCryptoClient::with_socket_path("/tmp/custom.sock".to_string());
+    let client = SecurityTlsCryptoClient::with_socket_path("/tmp/custom.sock".to_string());
     assert_eq!(client.socket_path, "/tmp/custom.sock");
 }
 
@@ -338,14 +339,14 @@ fn test_with_socket_path_various_locations() {
         "tcp:127.0.0.1:9900",
     ];
     for path in paths {
-        let client = BeardogCryptoClient::with_socket_path(path.to_string());
+        let client = SecurityTlsCryptoClient::with_socket_path(path.to_string());
         assert_eq!(client.socket_path, path);
     }
 }
 
 #[test]
 fn test_client_clone_preserves_socket_path() {
-    let original = BeardogCryptoClient::with_socket_path("/tmp/original.sock".to_string());
+    let original = SecurityTlsCryptoClient::with_socket_path("/tmp/original.sock".to_string());
     let cloned = original.clone();
     assert_eq!(original.socket_path, cloned.socket_path);
 }
@@ -353,21 +354,21 @@ fn test_client_clone_preserves_socket_path() {
 #[test]
 fn test_discover_socket_with_real_file() {
     let sock_path = create_temp_socket();
-    let client = BeardogCryptoClient::with_socket_path(sock_path.clone());
+    let client = SecurityTlsCryptoClient::with_socket_path(sock_path.clone());
     assert_eq!(client.socket_path, sock_path);
     std::fs::remove_file(&sock_path).ok();
 }
 
 #[test]
 fn test_discover_socket_tcp_format() {
-    let client = BeardogCryptoClient::with_socket_path("tcp:127.0.0.1:9900".to_string());
+    let client = SecurityTlsCryptoClient::with_socket_path("tcp:127.0.0.1:9900".to_string());
     assert_eq!(client.socket_path, "tcp:127.0.0.1:9900");
 }
 
 #[tokio::test]
 async fn test_new_fails_on_nonexistent_socket() {
     let client =
-        BeardogCryptoClient::with_socket_path("/tmp/nonexistent-tls-test.sock".to_string());
+        SecurityTlsCryptoClient::with_socket_path("/tmp/nonexistent-tls-test.sock".to_string());
     assert_eq!(client.socket_path, "/tmp/nonexistent-tls-test.sock");
 }
 
@@ -377,7 +378,7 @@ fn test_concurrent_client_creation() {
         .map(|i| {
             std::thread::spawn(move || {
                 let client =
-                    BeardogCryptoClient::with_socket_path(format!("/tmp/concurrent-{i}.sock"));
+                    SecurityTlsCryptoClient::with_socket_path(format!("/tmp/concurrent-{i}.sock"));
                 assert_eq!(client.socket_path, format!("/tmp/concurrent-{i}.sock"));
             })
         })
@@ -416,7 +417,7 @@ fn jsonrpc_error_response_parses_for_client_logic() {
 }
 
 #[test]
-fn base64_roundtrip_for_beardog_payload_fields() {
+fn base64_roundtrip_for_security_provider_payload_fields() {
     use base64::{Engine as _, engine::general_purpose};
     let bytes = b"\x00\x01\x02";
     let enc = general_purpose::STANDARD.encode(bytes);

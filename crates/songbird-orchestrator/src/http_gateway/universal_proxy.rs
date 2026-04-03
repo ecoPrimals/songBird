@@ -99,14 +99,14 @@ impl UniversalProxy {
         }
 
         // Transform request (provider-specific format)
-        let transformed_payload = self.transform_request(route, payload)?;
+        let transformed_payload = self.transform_request(route, payload.cloned())?;
 
         // Make external request
         let response_data =
             self.make_external_request(route, method, transformed_payload.as_ref()).await?;
 
         // Transform response (back to generic format)
-        let generic_response = self.transform_response(route, &response_data)?;
+        let generic_response = self.transform_response(route, response_data)?;
 
         // Cache the response
         // FUTURE (Phase 2): Implement response caching with TTL from provider config
@@ -178,37 +178,36 @@ impl UniversalProxy {
     ///
     /// This uses the transformation rules from the provider configuration
     /// instead of hardcoded vendor logic.
-    fn transform_request(&self, route: &Route, payload: Option<&Value>) -> Result<Option<Value>> {
+    fn transform_request(&self, route: &Route, payload: Option<Value>) -> Result<Option<Value>> {
         let Some(payload) = payload else {
             return Ok(None);
         };
 
-        // Get transformation config
         let backend = route.provider.backend.as_ref();
         let transform_config = backend.and_then(|b| b.request_transform.as_ref());
 
         let Some(config) = transform_config else {
-            // No transformation needed - use payload as-is
             trace!("No request transformation configured, using payload as-is");
-            return Ok(Some(payload.clone()));
+            return Ok(Some(payload));
         };
 
         debug!("Applying request transformation with {} mappings", config.field_mappings.len());
 
-        // Apply field mappings
-        let mut transformed = payload.clone();
-        for (from_field, to_field) in &config.field_mappings {
-            if let Some(value) = payload.get(from_field) {
-                transformed[to_field] = value.clone();
-                trace!("Mapped field: {} → {}", from_field, to_field);
-            }
+        let mapped_values: Vec<(String, Value)> = config
+            .field_mappings
+            .iter()
+            .filter_map(|(from_field, to_field)| {
+                payload.get(from_field).cloned().map(|v| (to_field.clone(), v))
+            })
+            .collect();
+
+        let mut transformed = payload;
+        for (to_field, value) in mapped_values {
+            trace!("Mapped field → {}", to_field);
+            transformed[to_field] = value;
         }
 
-        // Apply template if configured
         if let Some(template) = &config.template {
-            // FUTURE (Phase 2): Template-based transformation (e.g., Handlebars, Tera)
-            // Current: Field mapping (config.field_mappings) is sufficient for most use cases
-            // Future use case: Complex JSON transformations for LLM prompt templates
             warn!("Template transformation not yet implemented: {}", template);
         }
 
@@ -218,33 +217,32 @@ impl UniversalProxy {
     /// Transform provider-specific response to generic format
     ///
     /// This uses the transformation rules from the provider configuration.
-    fn transform_response(&self, route: &Route, response: &Value) -> Result<Value> {
-        // Get transformation config
+    fn transform_response(&self, route: &Route, response: Value) -> Result<Value> {
         let backend = route.provider.backend.as_ref();
         let transform_config = backend.and_then(|b| b.response_transform.as_ref());
 
         let Some(config) = transform_config else {
-            // No transformation needed - use response as-is
             trace!("No response transformation configured, using response as-is");
-            return Ok(response.clone());
+            return Ok(response);
         };
 
         debug!("Applying response transformation with {} mappings", config.field_mappings.len());
 
-        // Apply field mappings
-        let mut transformed = response.clone();
-        for (from_field, to_field) in &config.field_mappings {
-            if let Some(value) = response.get(from_field) {
-                transformed[to_field] = value.clone();
-                trace!("Mapped field: {} → {}", from_field, to_field);
-            }
+        let mapped_values: Vec<(String, Value)> = config
+            .field_mappings
+            .iter()
+            .filter_map(|(from_field, to_field)| {
+                response.get(from_field).cloned().map(|v| (to_field.clone(), v))
+            })
+            .collect();
+
+        let mut transformed = response;
+        for (to_field, value) in mapped_values {
+            trace!("Mapped field → {}", to_field);
+            transformed[to_field] = value;
         }
 
-        // Apply template if configured
         if let Some(template) = &config.template {
-            // FUTURE (Phase 2): Template-based transformation (e.g., Handlebars, Tera)
-            // Current: Field mapping (config.field_mappings) is sufficient for most use cases
-            // Future use case: Complex JSON transformations for LLM response formatting
             warn!("Template transformation not yet implemented: {}", template);
         }
 
@@ -317,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_cache_key_generation() {
-        let http_client = SongbirdHttpClient::new("/tmp/beardog-test.sock");
+        let http_client = SongbirdHttpClient::new("/tmp/security-provider-test.sock");
         let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));
         let credentials = Arc::new(CredentialManager::new());
@@ -335,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_request_transformation() {
-        let http_client = SongbirdHttpClient::new("/tmp/beardog-test.sock");
+        let http_client = SongbirdHttpClient::new("/tmp/security-provider-test.sock");
         let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));
         let credentials = Arc::new(CredentialManager::new());
@@ -344,7 +342,7 @@ mod tests {
         let route = create_test_route();
 
         let payload = serde_json::json!({"prompt": "Hello, world!"});
-        let transformed = proxy.transform_request(&route, Some(&payload)).unwrap();
+        let transformed = proxy.transform_request(&route, Some(payload)).unwrap();
 
         assert!(transformed.is_some());
         let transformed = transformed.unwrap();
@@ -354,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_response_transformation() {
-        let http_client = SongbirdHttpClient::new("/tmp/beardog-test.sock");
+        let http_client = SongbirdHttpClient::new("/tmp/security-provider-test.sock");
         let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));
         let credentials = Arc::new(CredentialManager::new());
@@ -363,7 +361,7 @@ mod tests {
         let route = create_test_route();
 
         let response = serde_json::json!({"result": "Generated text"});
-        let transformed = proxy.transform_response(&route, &response).unwrap();
+        let transformed = proxy.transform_response(&route, response).unwrap();
 
         assert_eq!(transformed["response"], "Generated text");
         assert_eq!(transformed["result"], "Generated text");

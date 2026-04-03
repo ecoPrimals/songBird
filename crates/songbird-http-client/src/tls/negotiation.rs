@@ -91,7 +91,7 @@ impl SignatureAlgorithm {
         }
     }
 
-    /// Is this algorithm currently supported by `BearDog`?
+    /// Is this algorithm currently supported by the `crypto provider`?
     #[must_use]
     pub const fn is_supported(self) -> bool {
         matches!(
@@ -120,7 +120,7 @@ pub enum NegotiationStrategy {
     /// Maximize compatibility (advertise all algorithms)
     MaxCompatibility,
 
-    /// Use only algorithms we fully support in `BearDog`
+    /// Use only algorithms we fully support via the `crypto provider`
     OnlySupported,
 
     /// Custom priority list
@@ -283,7 +283,7 @@ impl AlgorithmNegotiator {
         let _ = SignatureAlgorithm::Ed25519.family(); // Example
         vec![
             SignatureAlgorithm::Ed25519,
-            // Add more as BearDog implements them
+            // Add more as the crypto provider implements them
         ]
     }
 

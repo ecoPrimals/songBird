@@ -602,10 +602,8 @@ mod tests {
 
     #[test]
     fn mapped_address_ipv6_roundtrip() {
-        let addr = SocketAddr::new(
-            IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
-            53_421,
-        );
+        let addr =
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)), 53_421);
         let mut msg = StunMessage::new_binding_request();
         msg.message_type = MessageType::BindingResponse;
         msg.attributes.push(StunAttribute::MappedAddress(addr));

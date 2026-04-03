@@ -53,7 +53,7 @@ pub struct TrustEvaluationRequest {
 
     /// Peer family ID (v3.14.1 - tag-based identity)
     ///
-    /// Extracted from peer tags (e.g., "beardog:family:nat0" → "nat0")
+    /// Extracted from peer family tags (e.g., `crypto:family:nat0` or legacy `beardog:family:nat0` → `nat0`)
     /// Songbird doesn't interpret this - just extracts and passes to security provider
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_family: Option<String>,

@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! `BearDog` Secure Tunnel Protocol (BTSP) Interface
+//! `security provider` Secure Tunnel Protocol (BTSP) Interface
 //!
-//! This module provides the interface for integrating with `BearDog`'s genetic
+//! This module provides the interface for integrating with `security provider`'s genetic
 //! cryptography and secure tunnel protocol. It includes:
 //!
 //! - Trait definitions for BTSP providers
-//! - Local implementation for testing without `BearDog`
-//! - Integration points for real `BearDog` connection
+//! - Local implementation for testing without `security provider`
+//! - Integration points for real `security provider` connection
 //!
 //! ## Architecture
 //!
 //! The BTSP system is designed for sovereignty:
 //! - Songbird has self-knowledge only
-//! - Discovers `BearDog` via capability-based discovery at runtime
-//! - Gracefully degrades if `BearDog` unavailable
-//! - No hardcoded `BearDog` dependencies
+//! - Discovers `security provider` via capability-based discovery at runtime
+//! - Gracefully degrades if `security provider` unavailable
+//! - No hardcoded `security provider` dependencies
 //!
 //! ## Testing
 //!
 //! Local implementation allows testing federation with encryption without
-//! requiring `BearDog` to be running. When `BearDog` is available, the real
+//! requiring `security provider` to be running. When `security provider` is available, the real
 //! provider is discovered and used automatically.
 
 pub mod http_provider;

@@ -9,14 +9,14 @@
 //! ## Architecture
 //!
 //! ```text
-//! biomeOS → JSON-RPC → IPC Handler → HTTP Client Factory → BearDog (crypto)
+//! biomeOS → JSON-RPC → IPC Handler → HTTP Client Factory → security provider (crypto)
 //!                                  ↓
 //!                        Pure Rust TLS 1.3 (Tower Atomic)
 //! ```
 //!
 //! ## Design Principles
 //!
-//! 1. **Capability-Based Discovery** - No hardcoded `BearDog` endpoints
+//! 1. **Capability-Based Discovery** - No hardcoded `security provider` endpoints
 //! 2. **Factory Pattern** - Dependency injection for testability
 //! 3. **Trait-Based Abstraction** - Not concrete types
 //! 4. **Proper Error Handling** - No unwrap/expect

@@ -85,13 +85,13 @@ pub enum OnionError {
     Other(String),
 
     // =========================================================================
-    // BearDog Crypto Client Errors (TRUE PRIMAL pattern)
+    // security provider Crypto Client Errors (TRUE PRIMAL pattern)
     // =========================================================================
-    /// JSON-RPC error from `BearDog`
+    /// JSON-RPC error from `security provider`
     #[error("RPC error: {0}")]
     RpcError(String),
 
-    /// Connection error to `BearDog` socket
+    /// Connection error to `security provider` socket
     #[error("Connection error: {0}")]
     ConnectionError(String),
 
@@ -149,27 +149,19 @@ mod tests {
     #[test]
     fn display_handshake_encryption_decryption_and_invalid_message() {
         assert!(
-            OnionError::HandshakeFailed("h".into())
-                .to_string()
-                .contains("Handshake"),
+            OnionError::HandshakeFailed("h".into()).to_string().contains("Handshake"),
             "handshake display"
         );
         assert!(
-            OnionError::EncryptionError("e".into())
-                .to_string()
-                .contains("Encryption"),
+            OnionError::EncryptionError("e".into()).to_string().contains("Encryption"),
             "encryption display"
         );
         assert!(
-            OnionError::DecryptionError("d".into())
-                .to_string()
-                .contains("Decryption"),
+            OnionError::DecryptionError("d".into()).to_string().contains("Decryption"),
             "decryption display"
         );
         assert!(
-            OnionError::InvalidMessage("m".into())
-                .to_string()
-                .contains("protocol message"),
+            OnionError::InvalidMessage("m".into()).to_string().contains("protocol message"),
             "invalid message display"
         );
     }
@@ -191,9 +183,7 @@ mod tests {
     #[test]
     fn display_connection_and_crypto_errors() {
         assert!(
-            OnionError::ConnectionError("c".into())
-                .to_string()
-                .contains("Connection error"),
+            OnionError::ConnectionError("c".into()).to_string().contains("Connection error"),
             "connection error display"
         );
         assert!(
@@ -204,10 +194,7 @@ mod tests {
 
     #[test]
     fn connection_timeout_display() {
-        assert!(
-            OnionError::ConnectionTimeout.to_string().contains("timeout"),
-            "timeout display"
-        );
+        assert!(OnionError::ConnectionTimeout.to_string().contains("timeout"), "timeout display");
     }
 
     #[test]

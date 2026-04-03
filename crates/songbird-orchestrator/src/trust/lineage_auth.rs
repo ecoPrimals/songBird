@@ -138,7 +138,7 @@ struct CachedVerification {
 ///
 /// **EVOLVED (v3.22.1)**: Uses capability-based discovery (no hardcoded provider)
 /// - Discovers security provider via `security_setup::discover_security_endpoint()`
-/// - Works with any primal providing "security" capability (`BearDog`, future alternatives)
+/// - Works with any primal providing "security" capability (`security provider`, future alternatives)
 /// - Follows "Each Primal Knows Only Itself" principle
 #[derive(Debug, Clone)]
 pub struct SecurityProviderClient {

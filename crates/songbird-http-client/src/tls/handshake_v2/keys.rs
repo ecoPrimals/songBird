@@ -4,7 +4,7 @@
 //! TLS 1.3 Key Derivation Module
 //!
 //! This module provides high-level abstractions for TLS 1.3 key derivation as specified
-//! in RFC 8446 Section 7. The actual cryptographic operations are delegated to `BearDog`.
+//! in RFC 8446 Section 7. The actual cryptographic operations are delegated to the `crypto provider`.
 //!
 //! ## RFC 8446 Key Schedule
 //!
@@ -22,7 +22,7 @@
 //!
 //! ## Design
 //!
-//! This module doesn't implement HKDF directly - that's `BearDog`'s responsibility.
+//! This module doesn't implement HKDF directly - that's the `crypto provider`'s responsibility.
 //! Instead, it provides:
 //! - Type-safe key containers
 //! - Cipher suite information

@@ -4,7 +4,7 @@
 //! Cryptographic Capability Abstraction
 //!
 //! Defines the `CryptoCapability` trait that abstracts cryptographic operations.
-//! This enables Songbird to work with any crypto provider (`BearDog`, etc.) via
+//! This enables Songbird to work with any crypto provider (`security provider`, etc.) via
 //! runtime discovery rather than hardcoded dependencies.
 //!
 //! ## Architecture
@@ -30,8 +30,8 @@
 //!              │                │                │
 //!              ▼                ▼                ▼
 //!      ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-//!      │   BearDog    │ │  Future      │ │   NoOp       │
-//!      │  Provider    │ │  Provider    │ │  Provider    │
+//!      │   Security   │ │  Future      │ │   NoOp       │
+//!      │  provider    │ │  Provider    │ │  Provider    │
 //!      └──────────────┘ └──────────────┘ └──────────────┘
 //! ```
 //!
@@ -88,7 +88,7 @@ pub struct TlsApplicationSecrets {
 /// Cryptographic Capability Trait
 ///
 /// Abstracts all cryptographic operations needed for TLS 1.3.
-/// Implementations can delegate to `BearDog`, use local crypto, or
+/// Implementations can delegate to a `security provider`, use local crypto, or
 /// route through Neural API for semantic translation.
 ///
 /// ## Design Principles

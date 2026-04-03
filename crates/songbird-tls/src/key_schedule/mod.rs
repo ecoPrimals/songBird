@@ -51,7 +51,7 @@
 //!                                    = resumption_master_secret
 //! ```
 
-use crate::crypto::BeardogCryptoClient;
+use crate::crypto::SecurityTlsCryptoClient;
 use crate::error::{Result, TlsError};
 
 #[cfg(test)]
@@ -59,7 +59,7 @@ type TestHmacFn = fn(&[u8], &[u8]) -> Vec<u8>;
 
 /// TLS 1.3 Key Schedule
 ///
-/// Manages key derivation using HKDF with `BearDog` crypto delegation.
+/// Manages key derivation using HKDF with security-provider crypto delegation.
 pub struct KeySchedule {
     /// Current secret (evolves through: early -> handshake -> master)
     current_secret: Vec<u8>,
@@ -67,8 +67,8 @@ pub struct KeySchedule {
     /// Transcript hash accumulator
     transcript_hash: Vec<u8>,
 
-    /// `BearDog` crypto client for HMAC operations
-    crypto_client: Option<BeardogCryptoClient>,
+    /// Security-provider crypto client for HMAC operations
+    crypto_client: Option<SecurityTlsCryptoClient>,
 
     /// Server's X25519 secret key (for ECDHE)
     server_secret_key: Option<Vec<u8>>,
@@ -97,7 +97,7 @@ impl KeySchedule {
     /// Install a synchronous HMAC-SHA256 implementation for unit tests.
     ///
     /// When set, [`Self::hkdf_extract`], [`Self::hkdf_expand`], and related
-    /// operations use this function instead of [`BeardogCryptoClient`].
+    /// operations use this function instead of [`SecurityTlsCryptoClient`].
     #[cfg(test)]
     pub(crate) fn set_test_hmac(&mut self, f: TestHmacFn) {
         self.test_hmac = Some(f);
@@ -117,8 +117,8 @@ impl KeySchedule {
         client.hmac_sha256(message, key).await
     }
 
-    /// Set the `BearDog` crypto client (for async operations)
-    pub fn set_crypto_client(&mut self, client: BeardogCryptoClient) {
+    /// Set the security-provider crypto client (for async operations)
+    pub fn set_crypto_client(&mut self, client: SecurityTlsCryptoClient) {
         self.crypto_client = Some(client);
     }
 
@@ -147,7 +147,7 @@ impl KeySchedule {
         &self.transcript_hash
     }
 
-    /// HKDF-Extract (using HMAC-SHA256 via `BearDog`)
+    /// HKDF-Extract (using HMAC-SHA256 via the security provider)
     ///
     /// This is the core HKDF operation for deriving keys.
     ///
@@ -163,7 +163,7 @@ impl KeySchedule {
         self.hmac_sha256(ikm, salt).await
     }
 
-    /// HKDF-Expand (using HMAC-SHA256 via `BearDog`)
+    /// HKDF-Expand (using HMAC-SHA256 via the security provider)
     ///
     /// ```text
     /// HKDF-Expand(PRK, info, L) = T(0) | T(1) | T(2) | ...

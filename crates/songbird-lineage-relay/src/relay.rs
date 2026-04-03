@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 
 use tracing::{debug, info, warn};
 
-/// Relay authority provider (implemented by `BearDog`)
+/// Relay authority provider (implemented by `security provider`)
 #[async_trait]
 pub trait RelayAuthority: Send + Sync {
     /// Authorize relay service for requester
@@ -351,7 +351,7 @@ impl RelayDiscovery {
     ) -> Result<()> {
         info!("Considering relay offer for {}", request.requester);
 
-        // Verify authorization through BearDog
+        // Verify authorization through security provider
         let authorization =
             self.relay_authority.authorize_relay(&self.my_id, &request.requester).await?;
 

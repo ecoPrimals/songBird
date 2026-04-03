@@ -1,6 +1,6 @@
 # Songbird Security
 
-**Last Updated**: March 30, 2026
+**Last Updated**: April 3, 2026
 **Status**: Active Development (v0.2.1)
 
 ---
@@ -22,7 +22,7 @@
 
 ### Code Safety
 
-- **Zero unsafe code** — `forbid(unsafe_code)` across all 30 crates; `songbird-process-env` evolved to BearDog in-memory overlay pattern (zero calls to `std::env::set_var`/`remove_var`)
+- **Zero unsafe code** — `forbid(unsafe_code)` across all 30 crates; `songbird-process-env` evolved to in-memory overlay pattern (zero calls to `std::env::set_var`/`remove_var`)
 - **Cast discipline** — All four cast lints denied at workspace level; justified sites use `#[expect(reason)]`
 - **Result-based errors** — All fallible operations return `Result<T, E>`
 - **Strict linting** — `clippy::pedantic` + `clippy::nursery` workspace-wide
@@ -52,7 +52,7 @@ cargo deny check advisories
 
 ### Known C Dependencies
 
-- **`ring`** — Opt-in via `ring-crypto` feature gate on `songbird-cli` only (not enabled by default); `songbird-quic` is fully ring-free (native QUIC engine with BearDog crypto delegation)
+- **`ring`** — Opt-in via `ring-crypto` feature gate on `songbird-cli` only (not enabled by default); `songbird-quic` is fully ring-free (native QUIC engine with security provider crypto delegation)
 - **System metrics** — Pure Rust `/proc` and `/sys` readers (replaced `sysinfo`)
 
 ---

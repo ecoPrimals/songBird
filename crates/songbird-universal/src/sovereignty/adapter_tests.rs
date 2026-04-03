@@ -600,10 +600,7 @@ async fn test_create_routing_decision_federation_capabilities()
     let decision = adapter.create_routing_decision(path.clone(), &[path]).await?;
 
     assert!(!decision.federation_capabilities.is_empty());
-    assert_eq!(
-        decision.federation_capabilities[0].capability_id,
-        "service:fed-svc:hop0"
-    );
+    assert_eq!(decision.federation_capabilities[0].capability_id, "service:fed-svc:hop0");
     assert!(decision.federation_capabilities[0].availability_score > 0.0);
     Ok(())
 }
@@ -651,10 +648,7 @@ async fn test_execute_through_path_response_shape() -> Result<(), Box<dyn std::e
         .await
         .expect_err("empty path must fail closed");
     let msg = err.to_string();
-    assert!(
-        msg.contains("segment") || msg.contains("segments"),
-        "unexpected error: {msg}"
-    );
+    assert!(msg.contains("segment") || msg.contains("segments"), "unexpected error: {msg}");
     Ok(())
 }
 

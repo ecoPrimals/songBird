@@ -27,9 +27,9 @@
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
-//! `BearDog` API Compatibility E2E Tests
+//! `security provider` API Compatibility E2E Tests
 //!
-//! End-to-end tests verifying the complete flow with `BearDog` API format
+//! End-to-end tests verifying the complete flow with `security provider` API format
 
 use songbird_orchestrator::security_capability_client::{
     ConnectionInfo, TrustEvaluationRequest, TrustEvaluationResponse,
@@ -76,9 +76,9 @@ fn test_complete_trust_evaluation_flow() {
     assert!(!json.contains(r#""first_seen_at":1767368141"#)); // Not integer
 }
 
-/// Test: `BearDog` response deserialization
+/// Test: `security provider` response deserialization
 #[test]
-fn test_beardog_response_deserialization() {
+fn test_security_provider_response_deserialization() {
     let json_response = r#"{
         "decision": "auto_accept",
         "trust_level": "high",
@@ -88,8 +88,8 @@ fn test_beardog_response_deserialization() {
         "metadata": {}
     }"#;
 
-    let response: TrustEvaluationResponse =
-        serde_json::from_str(json_response).expect("Failed to deserialize BearDog response");
+    let response: TrustEvaluationResponse = serde_json::from_str(json_response)
+        .expect("Failed to deserialize security provider response");
 
     assert_eq!(response.decision, "auto_accept");
     assert_eq!(response.trust_level, "high");
@@ -162,7 +162,7 @@ fn test_request_response_cycle() {
     let request_json = serde_json::to_string(&request).expect("Failed to serialize");
     assert!(request_json.contains(r#""first_seen_at":"1767368141""#));
 
-    // 3. Simulate BearDog response
+    // 3. Simulate security provider response
     let response_json = r#"{
         "decision": "auto_accept",
         "trust_level": "high",
@@ -357,15 +357,15 @@ fn test_full_e2e_flow() {
         ),
     };
 
-    // Step 3: Serialize (what gets sent to BearDog)
+    // Step 3: Serialize (what gets sent to security provider)
     let json = serde_json::to_string(&trust_request).expect("Failed to serialize");
 
     // Verify: String format, not integer
     assert!(json.contains(r#""first_seen_at":"1767368141""#));
     assert!(!json.contains(r#""first_seen_at":1767368141"#));
 
-    // Step 4: Simulate BearDog's response
-    let beardog_response = r#"{
+    // Step 4: Simulate security provider's response
+    let sample_response = r#"{
         "decision": "auto_accept",
         "trust_level": "high",
         "confidence": 1.0,
@@ -376,7 +376,7 @@ fn test_full_e2e_flow() {
 
     // Step 5: Deserialize response
     let response: TrustEvaluationResponse =
-        serde_json::from_str(beardog_response).expect("Failed to deserialize");
+        serde_json::from_str(sample_response).expect("Failed to deserialize");
 
     // Step 6: Verify decision
     assert_eq!(response.decision, "auto_accept");

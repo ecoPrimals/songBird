@@ -37,7 +37,7 @@
 //!
 //! 1. **XDG Path Priority**: `XDG_RUNTIME_DIR` > /tmp/biomeos > /tmp (legacy)
 //! 2. **Socket Naming**: {primal}.sock (no family suffix)
-//! 3. **Cross-Primal Discovery**: Songbird finds `BearDog`, Neural API at XDG paths
+//! 3. **Cross-Primal Discovery**: Songbird finds `security provider`, Neural API at XDG paths
 //! 4. **Fallback Chain**: Graceful degradation to legacy paths
 //!
 //! ## `PRIMAL_DEPLOYMENT_STANDARD` Compliance
@@ -403,8 +403,8 @@ async fn test_e2e_security_client_discovers_xdg_beardog() {
     songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
     songbird_process_env::remove_var("BEARDOG_SOCKET");
 
-    use songbird_orchestrator::crypto::discovery::get_beardog_crypto_socket;
-    let result = get_beardog_crypto_socket().await;
+    use songbird_orchestrator::crypto::discovery::get_security_crypto_socket;
+    let result = get_security_crypto_socket().await;
 
     assert!(result.is_ok(), "Should discover Neural API socket at XDG path");
     let found = result.unwrap();

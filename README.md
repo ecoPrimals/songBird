@@ -12,15 +12,15 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
-| Pure Rust | 100% — native QUIC engine with BearDog crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` opt-in feature gate remains on CLI only |
-| Crypto Delegation | BearDog via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
+| Pure Rust | 100% — native QUIC engine with security provider crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` opt-in feature gate remains on CLI only |
+| Crypto Delegation | Security provider via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
 | Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
-| Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` only in 1 E2E suite (env-state isolation); `tokio::time::pause()` for deterministic timing |
-| Tests | 12,154 passed, 0 failed, ~159 ignored |
+| Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
+| Tests | 12,154+ passed, 0 failed, ~116 ignored |
 | Line Coverage | ~72% est. (llvm-cov `--workspace --all-features`; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
@@ -29,7 +29,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (all production modules under 800 lines; test-only files under 950) |
+| Files >1000 lines | 0 (all production modules under 400 lines; test-only files under 950) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
@@ -44,7 +44,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 ## Architecture
 
 ```
-Application Layer (biomeOS Neural API, Squirrel, Gorilla)
+Application Layer (biomeOS Neural API, AI Coordination, Compute)
     |
     | JSON-RPC 2.0 + tarpc
     v
@@ -52,7 +52,7 @@ Songbird Orchestrator
     |-- Tor Protocol (pure Rust: directory, circuit, stream, onion service)
     |-- Sovereign Onion (P2P encrypted service + connector)
     |-- IGD Router Config (UPnP IGD + NAT-PMP, auto port forwarding)
-    |-- QUIC Transport (native Rust — RFC 9000/9001/9002, BearDog crypto, 0-RTT, migration)
+    |-- QUIC Transport (native Rust — RFC 9000/9001/9002, security provider crypto, 0-RTT, migration)
     |-- NFC Genesis (Dark Forest mobile pairing, zero metadata leakage)
     |-- BLE GATT (Bluetooth Low Energy genesis)
     |-- TLS 1.3 (RFC 8446, protocol detection)
@@ -120,7 +120,7 @@ export SONGBIRD_FAMILY_ID=myfamily
 - `songbird-tor-protocol` - Pure Rust Tor (directory, circuit, stream, onion)
 - `songbird-tls` - TLS 1.3 implementation
 - `songbird-stun` - STUN server RFC 5389
-- `songbird-quic` - Pure Rust QUIC transport (RFC 9000, BearDog crypto, 0-RTT, migration)
+- `songbird-quic` - Pure Rust QUIC transport (RFC 9000, security provider crypto delegation, 0-RTT, migration)
 - `songbird-sovereign-onion` - P2P onion service
 - `songbird-lineage-relay` - Lineage relay + coordinated punch
 - `songbird-onion-relay` - Hole punch coordinator
@@ -164,7 +164,7 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ```bash
 cargo test --workspace --all-features          # Full suite (12,154 tests, ~60s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
-./scripts/test-with-beardog.sh                 # With live BearDog from plasmidBin
+./scripts/test-with-security-provider.sh        # With live security provider from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report
 ```
 

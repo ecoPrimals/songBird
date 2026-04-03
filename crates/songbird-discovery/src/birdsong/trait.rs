@@ -18,7 +18,7 @@ fn random_chacha_nonce() -> Result<[u8; 12]> {
 
 /// `BirdSong` encryption provider trait
 ///
-/// Implemented by security providers (e.g., `BearDog`) to enable
+/// Implemented by security providers (e.g., `security provider`) to enable
 /// encrypted discovery broadcasts.
 ///
 /// ## Provider Responsibilities

@@ -38,7 +38,7 @@ impl CircuitExtender {
     /// * Handshake state for processing EXTENDED2 response
     ///
     /// # Errors
-    /// Returns error if relay has no `ntor_key` or `BearDog` crypto fails.
+    /// Returns error if relay has no `ntor_key` or `security provider` crypto fails.
     pub async fn create_extend2(
         &self,
         _circuit: &Circuit,
@@ -49,7 +49,7 @@ impl CircuitExtender {
             Error::Protocol(format!("Relay {} has no ntor_key", next_relay.nickname))
         })?;
 
-        // 1. Generate ephemeral X25519 keypair via BearDog
+        // 1. Generate ephemeral X25519 keypair via security provider
         let client_ephemeral = self.beardog.x25519_generate_ephemeral().await?;
 
         // 2. Construct EXTEND2 relay cell payload

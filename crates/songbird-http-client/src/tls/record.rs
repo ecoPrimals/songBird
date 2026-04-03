@@ -429,7 +429,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-    use crate::crypto::BearDogProvider;
+    use crate::crypto::SecurityCryptoProvider;
     use crate::tls::record_crypto::build_nonce;
 
     #[test]
@@ -469,7 +469,8 @@ mod tests {
 
     #[test]
     fn test_tls_record_layer_accessors_and_initial_read_sequence() {
-        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let crypto: Arc<dyn CryptoCapability> =
+            Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
         let keys = SessionKeys {
             client_write_key: vec![0; 32],
             server_write_key: vec![0; 32],
