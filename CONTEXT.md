@@ -34,14 +34,14 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 12,124 passed (0 failed, 269 ignored, full suite ~60s) |
+| Tests | 12,154 passed (0 failed, ~159 ignored, full suite ~60s) |
 | Coverage | ~72% est. region coverage via llvm-cov (target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
 | Files >1000 LOC | 0 (all production modules under 800 lines; test-only files under 950) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in `songbird-quic`; `rcgen` eliminated (pure Rust test cert gen); `sled` feature-gated with in-memory fallback; `ring-crypto` opt-in feature gate on CLI only |
-| Hardcoded primal names | 0 in production discovery paths (capability-first: `crypto.sock`, not `beardog.sock`) |
+| Hardcoded primal names | 0 in production discovery paths (capability-first: `security.sock` symlink, `SECURITY_PROVIDER_SOCKET` env) |
 | Production panics/unwrap/todo | 0 |
 
 ## IPC Surface

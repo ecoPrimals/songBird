@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave98] - 2026-04-02 - Deep Debt Evolution: /tmp Portability, Large File Refactors, Test Triage
+
+### Changed — Hardcoded `/tmp` Path Evolution
+- All production `/tmp` string literals replaced with `std::env::temp_dir()` for portability and security
+- `songbird-types/src/defaults/paths.rs`: public constants converted to `#[must_use]` functions returning `PathBuf`
+- `songbird-types/src/config/consolidated_canonical/system.rs`: HOME fallback uses `temp_dir()`
+
+### Changed — Large File Smart Refactoring (4 modules)
+- `punch_handler.rs` (844 lines) → 5-file module (types, port_pattern, coordinate, tests, mod)
+- `http_deploy.rs` (838 lines) → 4-file module (types, capabilities, chunked, mod)
+- `config/constants.rs` (816 lines) → 10 domain-specific constant modules
+- `adapters/compute.rs` (814 lines) → 3-file module (metrics, adapter, mod)
+- All production modules now under 830 lines
+
+### Changed — Production Stub Evolution
+- `security_setup.rs`: removed "placeholder" framing; discovery is fail-closed
+- `cli/types.rs`: replaced "stub" comment with accurate env-based arg parsing description
+- `app/core.rs` Windows IPC: reframed as "known platform limitation" with structured logging
+- `network/binding.rs`: reframed interface query as "known limitation" (SO_BINDTODEVICE)
+- `sovereignty/adapter.rs`: implemented federation capabilities, network effects derivation, segment assessments
+
+### Changed — Primal Name Alignment
+- Replaced literal `"biomeos"` with `BIOMEOS_DIR` constant in `songbird-universal-ipc` platform maps (unix, windows, android, ios)
+
+### Fixed — Test Triage
+- Un-ignored 22 previously ignored tests (19 orchestrator comprehensive, 3 TLS E2E) — all now pass
+- Added explicit `#[ignore = "..."]` reasons to bare `#[ignore]` annotations
+- `orchestrator_comprehensive_tests.rs`: uses `songbird_process_env::set_var` + `#[serial_test::serial]`
+
+---
+
+## [v0.2.1-wave97] - 2026-04-02 - Capability-Based Discovery Compliance (wateringHole v1.2)
+
+### Changed — Capability-Based Socket Discovery
+- Migrated `discover_beardog*` calls to `discover_security_provider_socket()` across 13 crates (53 files)
+- New priority chain: `$SECURITY_PROVIDER_SOCKET` > `$CRYPTO_PROVIDER_SOCKET` > XDG `security.sock` > `$BEARDOG_SOCKET` (deprecated)
+- All `BEARDOG_*` env vars now secondary with deprecation warnings
+- Old function names preserved as `#[deprecated]` aliases for backward compatibility
+
+### Changed — Environment Variable Evolution
+- `SECURITY_PROVIDER_SOCKET` is now the primary env var for security provider discovery
+- `SECURITY_PROVIDER_MODE` replaces `BEARDOG_MODE` for routing configuration
+- `SECURITY_PROVIDER_ENDPOINT` replaces `BEARDOG_ENDPOINT` for execution agent
+
+### Changed — Documentation Alignment
+- All doc comments updated from "BearDog" to "security provider" / "security capability"
+- Spec examples updated to use `SECURITY_PROVIDER_SOCKET`
+- `docs/architecture/BEARDOG_CRYPTO_API_SPEC.md` renamed to `SECURITY_PROVIDER_CRYPTO_API_SPEC.md`
+
+---
+
 ## [v0.2.1-wave93] - 2026-04-02 - Ring Elimination, Sled Feature-Gate, Concurrency Fix, Refactoring
 
 ### Changed — Ring Dependency Elimination

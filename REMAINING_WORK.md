@@ -10,7 +10,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,124 passed, 0 failed, 269 ignored |
+| **Tests** | 12,154 passed, 0 failed, ~159 ignored |
 | **Line Coverage** | ~72% est. (llvm-cov `--workspace --all-features`; target 90%; +400 tests across 12 crates in Wave 94) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
@@ -45,7 +45,7 @@
 | **Nest Atomic** | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` JSON-RPC methods (14 capability tokens) — all three health names now wired on HTTP + Unix + IPC transports |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]`; `MockRendezvousClient/MockPeerConnector/MockPeerRegistry` in `tests_support` modules; XOR broadcast encryption isolated to test/mock builds; TLS record layer returns `CryptoUnavailable` instead of mock crypto |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, borrow-through redirects, HKDF buffer reuse, static path labels, `serde_json::to_vec` (no intermediate String) |
-| **`#[serial_test]`** | **0** — fully eliminated from all 30 crates + workspace integration tests; `serial_test` dev-dependency removed from 3 crates |
+| **`#[serial_test]`** | **1 suite** — only in `orchestrator_comprehensive_tests.rs` (19 E2E tests requiring exclusive env-var state); `serial_test` dev-dep only in `songbird-orchestrator` |
 | **`std::env::set_var`** | **0** in test code — all migrated to `songbird_process_env` overlay; e2e tests use unique per-test env keys |
 | **Concurrent tests** | All tests fully concurrent; injectable `_with()` env readers; `tokio::time::pause()` + `advance()` for deterministic timing |
 | **Event-driven** | Zero `sleep`-based polling in production; `UniversalIpcBroker` uses `oneshot` readiness signal (not sleep) |

@@ -5,7 +5,7 @@
 **License**: AGPL-3.0-only (scyBorg provenance trio)  
 **Edition**: Rust 2024
 
-Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to BearDog via JSON-RPC IPC at runtime through capability discovery.
+Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
 ## Quality
 
@@ -19,7 +19,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
-| Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; zero `#[serial_test]`; `tokio::time::pause()` for deterministic timing |
+| Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` only in 1 E2E suite (env-state isolation); `tokio::time::pause()` for deterministic timing |
 | Tests | 12,154 passed, 0 failed, ~159 ignored |
 | Line Coverage | ~72% est. (llvm-cov `--workspace --all-features`; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
@@ -61,9 +61,9 @@ Songbird Orchestrator
     |-- Dark Forest Discovery (encrypted beacons, mDNS, DNS-SD)
     |-- Universal IPC (Unix sockets, TCP, platform-agnostic)
     |
-    | BearDog delegation (Ed25519, X25519, ChaCha20, SHA3-256, AES-128-CTR)
+    | Security capability delegation (Ed25519, X25519, ChaCha20, SHA3-256, AES-128-CTR)
     v
-BearDog Crypto Primal (runtime capability discovery)
+Security Provider (capability discovery: security.sock / SECURITY_PROVIDER_SOCKET)
 ```
 
 ### Core Principles
@@ -92,8 +92,8 @@ cargo run --bin songbird -- deploy
 ### Environment Variables
 
 ```bash
-export CRYPTO_PROVIDER_SOCKET=/run/user/$(id -u)/biomeos/crypto.sock
 export SECURITY_PROVIDER_SOCKET=/run/user/$(id -u)/biomeos/security.sock
+export NEURAL_API_SOCKET=/run/user/$(id -u)/biomeos/neural-api.sock
 export SONGBIRD_HTTP_PORT=3492
 export SONGBIRD_BIND_ADDRESS=0.0.0.0
 export SONGBIRD_IGD_ENABLED=true
@@ -131,7 +131,7 @@ export SONGBIRD_FAMILY_ID=myfamily
 - `songbird-genesis` - Physical genesis bootstrap
 
 ### Crypto
-- `songbird-crypto-provider` - Shared crypto provider (Neural API + Direct BearDog routing)
+- `songbird-crypto-provider` - Shared crypto provider (Neural API + direct security provider routing)
 
 ### Shared
 - `songbird-universal` - Universal capability adapters
@@ -177,7 +177,7 @@ cargo test -p songbird-tor-protocol --lib      # Single crate
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
 | [`CONTEXT.md`](CONTEXT.md) | AI-ingestible project context |
 | [`specs/`](specs/) | Technical specifications |
-| [`docs/architecture/`](docs/architecture/) | Architecture guides |
+| [`docs/architecture/`](docs/architecture/) | Security provider crypto API spec, sovereign onion architecture |
 
 ## License
 

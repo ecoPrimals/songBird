@@ -1,8 +1,8 @@
 # Songbird Specifications Index
 
-**Last Updated:** March 31, 2026  
+**Last Updated:** April 2, 2026  
 **Version:** v0.2.1  
-**Status:** Active Development — Zero Warnings, Discovery Evolution, Module Refactoring
+**Status:** Active Development — Capability-Based Discovery Compliant, Zero Warnings, Module Refactoring
 
 ---
 
@@ -192,19 +192,19 @@
    - JSON-RPC security API (4 methods)
    - 5 use cases documented
 
-8. **[SONGBIRD_TLS_13_COMPLETE.md](SONGBIRD_TLS_13_COMPLETE.md)** ✅ COMPLETE
+8. **[SONGBIRD_TLS_13_COMPLETE (archived)](archive/SONGBIRD_TLS_13_COMPLETE_JAN2026.md)** ✅ COMPLETE
    - Full RFC 8446 TLS 1.3 implementation
    - 100% Pure Rust, zero C dependencies
    - 93% success rate (81/87 sites)
    - Tested: AI/ML (100%), Cloud (90%), GitHub (100%)
 
-9. **[SONGBIRD_FUTURE_WORK.md](SONGBIRD_FUTURE_WORK.md)** 📋 ROADMAP
+9. **[SONGBIRD_FUTURE_WORK (archived)](archive/SONGBIRD_FUTURE_WORK_V520_JAN2026.md)** 📋 ROADMAP (superseded by REMAINING_WORK.md)
    - Security hardening roadmap (certificate validation)
    - Performance improvements (session resumption, connection pooling)
    - Protocol extensions (HTTP/2, TLS 1.2 implementation)
    - Production cleanup tasks
 
-10. **[SONGBIRD_EVOLUTION_EXECUTION.md](SONGBIRD_EVOLUTION_EXECUTION.md)** ✅ IMPLEMENTED
+10. **[SONGBIRD_EVOLUTION_EXECUTION (archived)](archive/SONGBIRD_EVOLUTION_EXECUTION_JAN2026.md)** ✅ IMPLEMENTED
    - Capability-based crypto abstraction (`CryptoCapability` trait)
    - Runtime provider discovery (no hardcoded sockets)
    - Large file refactoring (HTTP client: 1,193 → 592 lines)
@@ -475,7 +475,7 @@ Moved from `specs/` or `docs/architecture/` for historical reference (obsolete o
 
 | Topic | Start Here |
 |-------|------------|
-| **TLS/HTTPS** | SONGBIRD_TLS_13_COMPLETE.md, SONGBIRD_FUTURE_WORK.md |
+| **TLS/HTTPS** | archive/SONGBIRD_TLS_13_COMPLETE_JAN2026.md (see CHANGELOG for current) |
 | **Architecture** | PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md |
 | **Discovery** | CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md |
 | **Federation** | FEDERATION_IMPLEMENTATION_SPECIFICATION.md |

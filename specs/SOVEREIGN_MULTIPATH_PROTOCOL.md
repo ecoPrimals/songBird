@@ -694,8 +694,7 @@ FAMILY_ID=1894e909e454 NODE_ID=gate \
 
 # Start Songbird
 FAMILY_ID=1894e909e454 NODE_ID=gate BIOMEOS_BIND_ALL=true \
-  BEARDOG_SOCKET=/run/user/1000/biomeos/beardog.sock \
-  SONGBIRD_SECURITY_PROVIDER=/run/user/1000/biomeos/beardog.sock \
+  SECURITY_PROVIDER_SOCKET=/run/user/1000/biomeos/security.sock \
   BIOMEOS_ROOT=/home/eastgate/Development/ecoPrimals/phase2/biomeOS \
   /path/to/songbird server --port 3492 --socket /run/user/1000/biomeos/songbird.sock --verbose &
 
@@ -788,10 +787,9 @@ FAMILY_ID=1894e909e454 NODE_ID=gate \
   BIOMEOS_ROOT=/home/eastgate/Development/ecoPrimals/phase2/biomeOS \
   /path/to/beardog server --socket /run/user/1000/biomeos/beardog.sock &
 
-# Songbird (IPv6 dual-stack + BearDog wired)
+# Songbird (IPv6 dual-stack + security provider wired)
 FAMILY_ID=1894e909e454 NODE_ID=gate BIOMEOS_BIND_ALL=true \
-  BEARDOG_SOCKET=/run/user/1000/biomeos/beardog.sock \
-  SONGBIRD_SECURITY_PROVIDER=/run/user/1000/biomeos/beardog.sock \
+  SECURITY_PROVIDER_SOCKET=/run/user/1000/biomeos/security.sock \
   BIOMEOS_ROOT=/home/eastgate/Development/ecoPrimals/phase2/biomeOS \
   /path/to/songbird server --port 3492 --socket /run/user/1000/biomeos/songbird.sock --verbose &
 
@@ -1047,9 +1045,8 @@ export BIOMEOS_ROOT="/home/eastgate/Development/ecoPrimals/phase2/biomeOS"
 export BIOMEOS_BIND_ALL=true
 
 # Sockets
-export BEARDOG_SOCKET="/run/user/1000/biomeos/beardog.sock"
+export SECURITY_PROVIDER_SOCKET="/run/user/1000/biomeos/security.sock"
 export SONGBIRD_SOCKET="/run/user/1000/biomeos/songbird.sock"
-export SONGBIRD_SECURITY_PROVIDER="/run/user/1000/biomeos/beardog.sock"
 
 # Networking
 export SONGBIRD_PORT=3492                    # Main service port
