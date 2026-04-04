@@ -43,7 +43,9 @@ impl CryptoCapability for SecurityCryptoProvider {
             .get("public_key")
             .or_else(|| result.get("public"))
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing public_key in response".to_string()))?;
+            .ok_or_else(|| {
+                Error::SecurityProviderRpc("Missing public_key in response".to_string())
+            })?;
 
         let private_b64 = result
             .get("secret_key")
@@ -51,15 +53,15 @@ impl CryptoCapability for SecurityCryptoProvider {
             .or_else(|| result.get("secret"))
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                Error::BearDogRpc("Missing secret_key/private_key in response".to_string())
+                Error::SecurityProviderRpc("Missing secret_key/private_key in response".to_string())
             })?;
 
         let public = BASE64_STANDARD
             .decode(public_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 public key: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 public key: {e}")))?;
         let private = BASE64_STANDARD
             .decode(private_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 private key: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 private key: {e}")))?;
 
         debug!(
             "Generated X25519 keypair: {} bytes public, {} bytes private",
@@ -85,14 +87,13 @@ impl CryptoCapability for SecurityCryptoProvider {
             )
             .await?;
 
-        let shared_b64 = result
-            .get("shared_secret")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing shared_secret in response".to_string()))?;
+        let shared_b64 = result.get("shared_secret").and_then(|v| v.as_str()).ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing shared_secret in response".to_string())
+        })?;
 
-        let shared = BASE64_STANDARD
-            .decode(shared_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 shared secret: {e}")))?;
+        let shared = BASE64_STANDARD.decode(shared_b64).map_err(|e| {
+            Error::SecurityProviderRpc(format!("Invalid base64 shared secret: {e}"))
+        })?;
 
         debug!("Derived shared secret: {} bytes", shared.len());
 
@@ -244,11 +245,11 @@ impl CryptoCapability for SecurityCryptoProvider {
         let hash_b64 = result
             .get("hash")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing hash in response".to_string()))?;
+            .ok_or_else(|| Error::SecurityProviderRpc("Missing hash in response".to_string()))?;
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 hash: {e}")))
     }
 
     async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>> {
@@ -264,11 +265,11 @@ impl CryptoCapability for SecurityCryptoProvider {
         let hash_b64 = result
             .get("hash")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing hash in response".to_string()))?;
+            .ok_or_else(|| Error::SecurityProviderRpc("Missing hash in response".to_string()))?;
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 hash: {e}")))
     }
 
     async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>> {
@@ -291,11 +292,11 @@ impl CryptoCapability for SecurityCryptoProvider {
         let hash_b64 = result
             .get("hash")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing hash in response".to_string()))?;
+            .ok_or_else(|| Error::SecurityProviderRpc("Missing hash in response".to_string()))?;
 
         let hash = BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 hash: {e}")))?;
 
         let algorithm = result.get("algorithm").and_then(|v| v.as_str()).unwrap_or("unknown");
         debug!("  → algorithm={}, hash_length={} bytes", algorithm, hash.len());
@@ -317,11 +318,11 @@ impl CryptoCapability for SecurityCryptoProvider {
         let prk_b64 = result
             .get("prk")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing prk in response".to_string()))?;
+            .ok_or_else(|| Error::SecurityProviderRpc("Missing prk in response".to_string()))?;
 
         BASE64_STANDARD
             .decode(prk_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 prk: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 prk: {e}")))
     }
 
     async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>> {
@@ -339,11 +340,11 @@ impl CryptoCapability for SecurityCryptoProvider {
         let okm_b64 = result
             .get("okm")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing okm in response".to_string()))?;
+            .ok_or_else(|| Error::SecurityProviderRpc("Missing okm in response".to_string()))?;
 
         BASE64_STANDARD
             .decode(okm_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 okm: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 okm: {e}")))
     }
 
     async fn tls_derive_handshake_secrets(
@@ -442,35 +443,33 @@ impl CryptoCapability for SecurityCryptoProvider {
 
 impl SecurityCryptoProvider {
     fn extract_ciphertext(result: &Value) -> Result<Vec<u8>> {
-        let ct_b64 = result
-            .get("ciphertext")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
+        let ct_b64 = result.get("ciphertext").and_then(|v| v.as_str()).ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing ciphertext in response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(ct_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 ciphertext: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 ciphertext: {e}")))
     }
 
     fn extract_plaintext(result: &Value) -> Result<Vec<u8>> {
-        let pt_b64 = result
-            .get("plaintext")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
+        let pt_b64 = result.get("plaintext").and_then(|v| v.as_str()).ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing plaintext in response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(pt_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 plaintext: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 plaintext: {e}")))
     }
 
     fn extract_b64_field(result: &Value, field: &str) -> Result<Vec<u8>> {
         let b64 = result
             .get(field)
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc(format!("Missing {field} in response")))?;
+            .ok_or_else(|| Error::SecurityProviderRpc(format!("Missing {field} in response")))?;
 
         BASE64_STANDARD
             .decode(b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 {field}: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 {field}: {e}")))
     }
 }

@@ -64,7 +64,7 @@ mod hardcoded_elimination_tests {
         // Security defaults
         assert_eq!(config.security.encryption_key_size, 256);
         assert_eq!(config.security.session_timeout, Duration::from_secs(3600));
-        assert!(!config.security.beardog_endpoint.is_empty());
+        assert!(!config.security.security_provider_endpoint.is_empty());
         assert!(
             config.security.tls_cert_path.contains("ssl")
                 || config.security.tls_cert_path.contains("cert")
@@ -94,8 +94,8 @@ mod hardcoded_elimination_tests {
         let _guard = lock_env();
         let config = PrimalConfig::default();
 
-        assert!(!config.beardog_endpoint.is_empty());
-        assert!(!config.nestgate_endpoint.is_empty());
+        assert!(!config.security_provider_endpoint.is_empty());
+        assert!(!config.storage_provider_endpoint.is_empty());
         assert!(!config.compute_provider_endpoint.is_empty());
         assert!(!config.ai_provider_endpoint.is_empty());
         assert!(!config.discovery_endpoints.is_empty());

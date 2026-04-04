@@ -134,13 +134,15 @@ pub fn handle_trust_response(
 
 /// Extract family ID from peer tags (v3.14.1)
 pub fn extract_family_from_tags(tags: &[String]) -> Option<String> {
-    const FAMILY_TAG_PREFIX: &str = "beardog:family:";
+    const FAMILY_TAG_PREFIXES: &[&str] = &["crypto:family:", "security:family:", "beardog:family:"];
 
     for tag in tags {
-        if let Some(family_id) = tag.strip_prefix(FAMILY_TAG_PREFIX)
-            && !family_id.is_empty()
-        {
-            return Some(family_id.to_string());
+        for prefix in FAMILY_TAG_PREFIXES {
+            if let Some(family_id) = tag.strip_prefix(prefix)
+                && !family_id.is_empty()
+            {
+                return Some(family_id.to_string());
+            }
         }
     }
 

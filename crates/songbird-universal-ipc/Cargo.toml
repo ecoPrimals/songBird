@@ -24,6 +24,7 @@ tracing = { workspace = true }
 # Serialization (for registry)
 serde = { workspace = true }
 serde_json = { workspace = true }
+bytes = { workspace = true }
 
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
@@ -84,5 +85,7 @@ futures = "0.3"  # For join_all in chaos tests
 
 [features]
 default = []
-# Optional NestGate integration (requires nestgate primal)
+# Storage capability provider integration (capability domain: storage)
+storage_provider = []
+# Deprecated alias for `storage_provider` (empty feature flags; same cfg surface)
 nestgate = []

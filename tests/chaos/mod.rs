@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Chaos Engineering Tests for Songbird
 //!
 //! These tests intentionally introduce failures and unexpected conditions

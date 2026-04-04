@@ -49,10 +49,6 @@ pub mod pure_rust_server; // v4.9.0: Refactored into domain modules
 pub mod registry;
 pub mod universal_broker; // v4.1.0: Universal IPC broker (service-based)
 
-// Deprecated: Old monolithic server_pure_rust.rs (refactored into pure_rust_server/)
-// #[deprecated(note = "Use UnixSocketServer from pure_rust_server instead")]
-// pub mod server_pure_rust;
-
 #[cfg(unix)]
 pub use pure_rust_server::UnixSocketServer; // v4.9.0: Refactored module structure (Unix-only)
 

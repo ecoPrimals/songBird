@@ -10,7 +10,7 @@
 //! - Simple federation without enterprise complexity
 //!
 //! This is SongBird's core friend federation capability.
-//! For enterprise federation, use SongBird + Toadstool ecosystem.
+//! For enterprise federation, use SongBird with compute-capability providers as needed.
 
 // clap::Args not needed for this module structure
 use super::BasicFederationCommands;
@@ -304,7 +304,7 @@ async fn show_federation_status() -> SongbirdResult<()> {
     println!("🌐 {}", "Network Health:".bright_green().bold();"
     println!("   All systems operational");
     println!("   Friend federation working perfectly");
-    println!("   Ready for expansion with Toadstool ecosystem");
+    println!("   Ready for expansion with compute capability providers");
 
     Ok(()),
 }

@@ -156,8 +156,8 @@ fn default_url_for_primal(primal_type: &songbird_types::CanonicalPrimalType) -> 
 
     let port = match primal_type {
         CanonicalPrimalType::Security => 8200, // security provider
-        CanonicalPrimalType::Storage => 6000,  // Squirrel
-        CanonicalPrimalType::Compute => 7000,  // Toadstool
+        CanonicalPrimalType::Storage => 6000,  // storage capability domain
+        CanonicalPrimalType::Compute => 7000,  // compute capability
         CanonicalPrimalType::Ai => 7100,       // AI services
         CanonicalPrimalType::Orchestration => 8080, // Songbird
         CanonicalPrimalType::Federation => 8090, // Federation

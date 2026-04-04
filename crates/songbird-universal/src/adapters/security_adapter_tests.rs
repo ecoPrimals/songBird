@@ -140,7 +140,7 @@ async fn test_from_discovery_fallback_security_provider_endpoint() -> SongbirdRe
 }
 
 #[tokio::test]
-async fn test_from_discovery_fallback_beardog_endpoint() -> SongbirdResult<()> {
+async fn test_from_discovery_fallback_legacy_beardog_env_endpoint() -> SongbirdResult<()> {
     let _g = lock_discovery_env();
     songbird_process_env::reset_overlay();
     songbird_process_env::remove_var("CAPABILITY_SECURITY_ENDPOINT");

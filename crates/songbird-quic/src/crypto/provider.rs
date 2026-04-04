@@ -401,4 +401,34 @@ mod tests {
         let _via_new = SecurityQuicCrypto::new(provider);
         let _via_discover = SecurityQuicCrypto::discover();
     }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn decode_base64_field_errors_on_missing_key() {
+        let v = serde_json::json!({ "other": "YQ==" });
+        let e = decode_base64_field(&v, "prk").expect_err("missing prk");
+        assert!(
+            e.to_string().contains("prk") || e.to_string().contains("Missing"),
+            "unexpected: {e}"
+        );
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn decode_base64_field_errors_on_invalid_base64() {
+        let v = serde_json::json!({ "hash": "@@@not-base64@@@" });
+        let e = decode_base64_field(&v, "hash").expect_err("invalid base64");
+        assert!(
+            e.to_string().contains("Base64") || e.to_string().contains("hash"),
+            "unexpected: {e}"
+        );
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn decode_base64_field_multi_errors_when_no_candidate_present() {
+        let v = serde_json::json!({ "foo": "YQ==" });
+        let e = decode_base64_field_multi(&v, &["public_key", "public"]).expect_err("no fields");
+        assert!(e.to_string().contains("None of fields"), "unexpected: {e}");
+    }
 }

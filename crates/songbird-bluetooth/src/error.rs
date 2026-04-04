@@ -145,3 +145,54 @@ impl TransportError {
         Self::Uart(msg.into())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{BluetoothError, Result, TransportError};
+    use std::time::Duration;
+
+    #[test]
+    fn bluetooth_error_display_covers_invalid_data_variant() {
+        let e = BluetoothError::InvalidData {
+            context: "bad acl".to_string(),
+        };
+        let s = e.to_string();
+        assert!(s.contains("Invalid data"));
+        assert!(s.contains("bad acl"));
+    }
+
+    #[test]
+    fn bluetooth_error_from_io_preserves_chain() {
+        let io = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
+        let e: BluetoothError = io.into();
+        assert!(matches!(e, BluetoothError::Io(_)));
+    }
+
+    #[test]
+    fn transport_error_into_bluetooth_error_round_trips_message() {
+        let e: BluetoothError = TransportError::Communication("reset".into()).into();
+        assert!(e.to_string().contains("reset"));
+    }
+
+    #[test]
+    fn is_recoverable_matches_transport_and_timeout() {
+        assert!(BluetoothError::timeout(Duration::from_millis(1)).is_recoverable());
+        assert!(BluetoothError::Transport(TransportError::NoAdapter).is_recoverable());
+        assert!(!BluetoothError::gatt("x").is_recoverable());
+    }
+
+    #[test]
+    fn result_type_alias_compiles_for_ok() {
+        let r: Result<u32> = Ok(42);
+        assert_eq!(r.expect("ok"), 42);
+    }
+
+    #[cfg(any(feature = "usb-rust", feature = "usb-c"))]
+    #[test]
+    fn transport_error_usb_factory() {
+        let e = TransportError::usb("descriptor");
+        assert!(e.to_string().contains("USB"));
+    }
+}

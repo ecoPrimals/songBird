@@ -41,7 +41,7 @@ chrono = { version = "0.4", optional = true }         # For certificate validity
 workspace = true
 [dev-dependencies]
 tokio-test = "0.4"
-criterion = "0.5"
+
 ed25519-dalek = "2.1"
 rand = { workspace = true }
 hmac = "0.12"

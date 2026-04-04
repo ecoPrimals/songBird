@@ -325,9 +325,9 @@ mod tests {
 
         registry
             .register_service(
-                "ToadStool".to_string(),
+                "compute-provider".to_string(),
                 vec!["compute".to_string()],
-                "/tmp/toadstool.sock".to_string(),
+                "/tmp/biomeos/compute.sock".to_string(),
                 "json-rpc".to_string(),
                 30,
             )
@@ -342,7 +342,7 @@ mod tests {
         // Discover compute
         let compute_primals = registry.discover_by_capability("compute", None).await.unwrap();
         assert_eq!(compute_primals.len(), 1);
-        assert_eq!(compute_primals[0].primal_name, "ToadStool");
+        assert_eq!(compute_primals[0].primal_name, "compute-provider");
 
         // Discover all with wildcard
         let all_primals = registry.discover_by_capability("*", None).await.unwrap();

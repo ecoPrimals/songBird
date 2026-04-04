@@ -374,9 +374,9 @@ mod tests {
 
     #[test]
     fn virtual_endpoint_new_and_primal_name() {
-        let v = VirtualEndpoint::new("beardog");
-        assert_eq!(v.path, "/primal/beardog");
-        assert_eq!(v.primal_name().expect("name"), "beardog");
+        let v = VirtualEndpoint::new("security");
+        assert_eq!(v.path, "/primal/security");
+        assert_eq!(v.primal_name().expect("name"), "security");
         assert!(v.is_valid());
     }
 

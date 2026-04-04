@@ -81,6 +81,7 @@ async fn test_service_registry_access() -> Result<()> {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires running security provider (crypto provider discovery)"]
 async fn test_lifecycle_start_stop() -> Result<()> {
     ensure_security_provider_overlay();
     let config = CanonicalSongbirdConfig::default();
@@ -105,6 +106,7 @@ async fn test_lifecycle_stop_without_start() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires running security provider (crypto provider discovery)"]
 async fn test_lifecycle_multiple_cycles() -> Result<()> {
     ensure_security_provider_overlay();
     let config = CanonicalSongbirdConfig::default();
@@ -135,6 +137,7 @@ async fn test_get_status_basic() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires running security provider (crypto provider discovery)"]
 async fn test_get_status_while_running() -> Result<()> {
     ensure_security_provider_overlay();
     let config = CanonicalSongbirdConfig::default();
@@ -148,6 +151,7 @@ async fn test_get_status_while_running() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires running security provider (crypto provider discovery)"]
 async fn test_get_status_after_stop() -> Result<()> {
     ensure_security_provider_overlay();
     let config = CanonicalSongbirdConfig::default();
@@ -247,6 +251,7 @@ async fn test_rapid_creation() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires running security provider (crypto provider discovery)"]
 async fn test_rapid_lifecycle_cycles() -> Result<()> {
     ensure_security_provider_overlay();
     // Rapid lifecycle cycles (testing robustness)

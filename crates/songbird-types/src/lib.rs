@@ -74,7 +74,7 @@ pub use memory_optimized::{
 };
 
 // Re-export zero-copy utilities
-pub use zero_copy::{Shareable, Shared, arc, share, smart_cow};
+pub use zero_copy::{Shareable, Shared, SharedBytes, arc, share, smart_cow};
 
 // Re-export traits
 pub use traits::{
@@ -96,6 +96,8 @@ pub mod errors;
 pub mod health;
 pub mod lineage; // Genetic lineage types
 pub mod memory_optimized;
+#[path = "performance/mod.rs"]
+mod performance_helpers;
 pub mod primal;
 pub mod response;
 pub mod service;

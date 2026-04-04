@@ -6,7 +6,6 @@
 //! This module contains all the command and subcommand enums used by the CLI.
 
 use clap::Subcommand;
-// use songbird_types::unified_constants::*; // Module not available yet
 
 /// Available CLI commands
 #[derive(Subcommand, Debug)]

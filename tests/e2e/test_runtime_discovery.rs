@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! E2E Test: Runtime Capability-Based Discovery
 //!
 //! Tests the `RuntimeDiscoveryEngine` with zero hardcoding.

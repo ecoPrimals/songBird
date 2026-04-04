@@ -4,7 +4,7 @@
 //! Socket discovery for Neural API and security provider.
 //!
 //! After Gate 5.2, songbird crates only need to find the Neural API socket.
-//! Direct security-provider discovery is kept for `BEARDOG_MODE=direct` bootstrap.
+//! Direct security-provider discovery is kept for legacy `BEARDOG_MODE=direct` bootstrap.
 //!
 //! ## Capability-Based Discovery (wateringHole v1.2)
 //!
@@ -175,8 +175,8 @@ where
         return fallback.to_string_lossy().to_string();
     }
 
-    let legacy = std::env::temp_dir().join("beardog.sock");
-    warn!("⚠️  Using legacy fallback: {}", legacy.display());
+    let legacy = std::env::temp_dir().join("security-provider.sock");
+    warn!("⚠️  Using legacy temp-dir fallback for security provider: {}", legacy.display());
     legacy.to_string_lossy().into_owned()
 }
 
@@ -345,7 +345,7 @@ mod tests {
 
     #[test]
     #[allow(deprecated)]
-    fn beardog_socket_path_deprecated_alias_matches_crypto_path() {
+    fn deprecated_beardog_socket_path_alias_matches_crypto_path() {
         assert_eq!(
             beardog_socket_path_in_biomeos_runtime("/r", "id"),
             crypto_socket_path_in_biomeos_runtime("/r", "id")
@@ -407,7 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn discover_security_falls_back_to_beardog_socket_deprecated() {
+    fn discover_security_falls_back_to_legacy_beardog_socket_env() {
         let map: HashMap<&str, String> =
             std::iter::once(("BEARDOG_SOCKET", "/legacy/bd.sock".to_string())).collect();
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
@@ -421,13 +421,13 @@ mod tests {
     fn discover_security_legacy_when_no_match() {
         let map: HashMap<&str, String> = HashMap::new();
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
-        let expected = std::env::temp_dir().join("beardog.sock");
+        let expected = std::env::temp_dir().join("security-provider.sock");
         assert_eq!(PathBuf::from(out), expected);
     }
 
     #[test]
     #[allow(deprecated)]
-    fn discover_beardog_alias_delegates_to_security_provider() {
+    fn discover_beardog_socket_deprecated_alias_delegates_to_security_discovery() {
         let map: HashMap<&str, String> =
             std::iter::once(("SECURITY_PROVIDER_SOCKET", "/new/sec.sock".to_string())).collect();
         let out = discover_beardog_socket_with(|k| map.get(k).cloned(), |_p| false);

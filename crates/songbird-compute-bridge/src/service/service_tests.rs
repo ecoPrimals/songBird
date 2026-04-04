@@ -326,3 +326,39 @@ async fn submit_workload_without_backend_returns_service_unavailable() {
     let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(v["error"], "no_backend");
 }
+
+#[test]
+fn bind_address_parse_mirrors_run_and_rejects_invalid_ip() {
+    let args =
+        Args::try_parse_from(["songbird-compute-bridge", "--host", "127.0.0.1", "--port", "9001"])
+            .unwrap();
+    let ok: std::net::SocketAddr =
+        format!("{}:{}", args.host(), args.port()).parse().expect("valid bind");
+    assert_eq!(ok.to_string(), "127.0.0.1:9001");
+
+    let bad = "999.999.999.999:9000".parse::<std::net::SocketAddr>();
+    assert!(bad.is_err(), "invalid IPv4 should not parse as SocketAddr");
+}
+
+#[test]
+fn capability_csv_split_matches_run_trimming() {
+    let raw = "compute, cpu , gpu";
+    let caps: Vec<String> = raw.split(',').map(|s| s.trim().to_string()).collect();
+    assert_eq!(caps, vec!["compute", "cpu", "gpu"]);
+}
+
+#[test]
+fn bridge_config_empty_capabilities_allowed() {
+    let c = BridgeConfig {
+        host: "0.0.0.0".into(),
+        port: 9000,
+        service_name: "S".into(),
+        service_type: "compute".into(),
+        node_id: "n".into(),
+        tower_id: "t".into(),
+        songbird_endpoint: None,
+        capabilities: vec![],
+        backend_url: None,
+    };
+    assert!(c.capabilities.is_empty());
+}

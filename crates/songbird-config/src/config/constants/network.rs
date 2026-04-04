@@ -32,9 +32,9 @@ pub const DEFAULT_DASHBOARD_PORT: u16 = 3000;
 // knowledge and discover other primals at runtime.
 //
 // OLD (REMOVED):
-// - DEFAULT_TOADSTOOL_ENDPOINT (compute)
+// - DEFAULT_COMPUTE_PROVIDER_ENDPOINT / legacy DEFAULT_TOADSTOOL_ENDPOINT (compute capability)
 // - DEFAULT_SQUIRREL_ENDPOINT (AI)
-// - DEFAULT_NESTGATE_ENDPOINT (storage)
+// - DEFAULT_STORAGE_PROVIDER_ENDPOINT / legacy DEFAULT_NESTGATE_ENDPOINT (storage capability)
 // - DEFAULT_BEARDOG_ENDPOINT (security)
 // - DEFAULT_*_PORT constants
 //

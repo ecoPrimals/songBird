@@ -216,4 +216,42 @@ mod tests {
         let conn = QuicConnection::new(false, addr, vec![], vec![], test_config());
         assert_eq!(conn.remote_address().await, addr);
     }
+
+    #[tokio::test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    async fn accept_bi_and_accept_uni_return_errors() {
+        let conn = QuicConnection::new(
+            false,
+            "127.0.0.1:1".parse().unwrap(),
+            vec![],
+            vec![],
+            test_config(),
+        );
+        conn.set_established().await.unwrap();
+        assert!(conn.accept_bi().is_err());
+        assert!(conn.accept_uni().is_err());
+    }
+
+    #[tokio::test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    async fn open_bi_fails_when_stream_limit_reached() {
+        let cfg = Arc::new(QuicConfig {
+            max_concurrent_bidi_streams: 1,
+            ..QuicConfig::new()
+        });
+        let conn = QuicConnection::new(
+            false,
+            "127.0.0.1:4433".parse().unwrap(),
+            vec![0x01],
+            vec![0x02],
+            Arc::clone(&cfg),
+        );
+        conn.set_established().await.unwrap();
+        conn.open_bi().await.unwrap();
+        let err = conn.open_bi().await.expect_err("second bidi should exceed limit");
+        assert!(
+            err.to_string().contains("Max bidi") || err.to_string().contains("stream"),
+            "unexpected: {err}"
+        );
+    }
 }

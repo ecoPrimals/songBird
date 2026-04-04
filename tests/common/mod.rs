@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Common test utilities and helpers for E2E, chaos, and fault testing
 //!
 //! This module provides shared infrastructure for integration testing across

@@ -17,7 +17,7 @@ use std::fmt::Write;
 ///
 /// Returns decoded bytes from security provider's base64-encoded response.
 /// Falls back to `CryptoUnavailable` when the provider is unreachable.
-async fn request_beardog_key(crypto: &CryptoProvider, method: &str) -> Result<Vec<u8>> {
+async fn request_security_provider_key(crypto: &CryptoProvider, method: &str) -> Result<Vec<u8>> {
     let result = crypto.call(method, serde_json::json!({})).await.map_err(|e| {
         Error::CryptoUnavailable(format!("security provider crypto delegation for {method}: {e}"))
     })?;
@@ -56,8 +56,10 @@ impl OnionServiceKeys {
     /// # Errors
     ///
     /// Returns error if key generation or address derivation fails.
-    pub async fn generate(beardog: &CryptoProvider) -> Result<Self> {
-        let identity_pair = request_beardog_key(beardog, "crypto.ed25519.generate_keypair").await?;
+    pub async fn generate(security_provider: &CryptoProvider) -> Result<Self> {
+        let identity_pair =
+            request_security_provider_key(security_provider, "crypto.ed25519.generate_keypair")
+                .await?;
         if identity_pair.len() != 64 {
             return Err(Error::Crypto(format!(
                 "security provider onion identity keypair: expected 64 bytes, got {}",
@@ -70,7 +72,7 @@ impl OnionServiceKeys {
         identity_public.copy_from_slice(&identity_pair[32..]);
 
         // Generate X25519 encryption keypair
-        let encryption_keypair = beardog.x25519_generate_ephemeral().await?;
+        let encryption_keypair = security_provider.x25519_generate_ephemeral().await?;
 
         // Derive onion address from public key
         let onion_address = Self::derive_onion_address(&identity_public);
@@ -147,7 +149,7 @@ impl OnionServiceDescriptor {
         let signing_key = keys.identity_public;
         let lifetime_minutes = 180;
 
-        let signature = request_beardog_key(crypto, "crypto.sign.ed25519").await?;
+        let signature = request_security_provider_key(crypto, "crypto.sign.ed25519").await?;
         if signature.len() != 64 {
             return Err(Error::Crypto(format!(
                 "security provider onion descriptor signature: expected 64 bytes, got {}",
@@ -179,6 +181,7 @@ impl OnionServiceDescriptor {
     /// Returns [`Error::CryptoUnavailable`] if the descriptor has no security provider-produced signature.
     pub fn encode(&self) -> Result<Vec<u8>> {
         if self.signature.is_empty() {
+            // BLOCKED: requires security provider crypto delegation (tracked in REMAINING_WORK.md — SB-03 / onion HSDir)
             return Err(Error::CryptoUnavailable(
                 "security provider crypto delegation required: descriptor signature missing (refuse to encode with placeholder)"
                     .into(),
@@ -193,11 +196,13 @@ impl OnionServiceDescriptor {
         // descriptor-lifetime (in minutes)
         let _ = writeln!(descriptor, "descriptor-lifetime {}", self.lifetime_minutes);
 
-        // descriptor-signing-key-cert (placeholder)
+        // descriptor-signing-key-cert — BLOCKED: real cross-cert and Ed25519 cert chain must come from
+        // security provider crypto delegation (tracked in REMAINING_WORK.md). Until then we emit a
+        // **non-conforming stub** (signing key bytes only) so callers never mistake this for a valid
+        // HSDir upload without completing integration.
         descriptor.push_str("descriptor-signing-key-cert\n");
         descriptor.push_str("-----BEGIN ED25519 CERT-----\n");
-        // In production: security provider generates a cross-certification
-        // For now, encode the signing key as base64
+        // Interim: base64 of raw signing key — not a valid Tor cert; production path must delegate.
         let key_b64 = base64_encode(&self.signing_key);
         descriptor.push_str(&key_b64);
         descriptor.push('\n');
@@ -206,11 +211,12 @@ impl OnionServiceDescriptor {
         // revision-counter (monotonically increasing)
         descriptor.push_str("revision-counter 1\n");
 
-        // superencrypted (placeholder — needs security provider encryption)
+        // superencrypted — BLOCKED: rend-spec superencryption + subcredential layer requires security
+        // provider encryption (tracked in REMAINING_WORK.md). Plaintext intro points below are a
+        // **development stub only**; refuse production use via `CryptoUnavailable` on unsigned paths upstream.
         descriptor.push_str("superencrypted\n");
         descriptor.push_str("-----BEGIN MESSAGE-----\n");
-        // In production: encrypted introduction point data
-        // For now, encode introduction points as plaintext
+        // Interim stub: introduction points in the clear for layout tests — not wire-safe for Tor.
         for ip in &self.intro_points {
             let ip_b64 = base64_encode(&ip.relay_identity);
             let _ = writeln!(descriptor, "introduction-point {ip_b64}");
@@ -295,6 +301,8 @@ fn base64_encode(data: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::error::Error;
 
@@ -305,6 +313,27 @@ mod tests {
         let address = OnionServiceKeys::derive_onion_address(&public_key);
 
         assert_eq!(address.len(), 56);
+    }
+
+    #[test]
+    fn derive_onion_address_is_deterministic() {
+        let pk = [0xABu8; 32];
+        let a = OnionServiceKeys::derive_onion_address(&pk);
+        let b = OnionServiceKeys::derive_onion_address(&pk);
+        assert_eq!(a, b);
+        assert_eq!(a.len(), 56);
+    }
+
+    #[test]
+    fn descriptor_encode_rejects_empty_signature() {
+        let d = OnionServiceDescriptor {
+            signing_key: [1u8; 32],
+            lifetime_minutes: 60,
+            intro_points: vec![],
+            signature: Vec::new(),
+        };
+        let err = d.encode().expect_err("empty signature");
+        assert!(matches!(err, Error::CryptoUnavailable(_)));
     }
 
     #[tokio::test]
@@ -427,5 +456,56 @@ mod tests {
         assert_eq!(base64_encode(b"fo"), "Zm8=");
         assert_eq!(base64_encode(b"foo"), "Zm9v");
         assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn descriptor_id_changes_with_signing_key() {
+        let a = OnionServiceDescriptor {
+            signing_key: [0x01u8; 32],
+            lifetime_minutes: 180,
+            intro_points: vec![],
+            signature: vec![0u8; 64],
+        };
+        let b = OnionServiceDescriptor {
+            signing_key: [0x02u8; 32],
+            lifetime_minutes: 180,
+            intro_points: vec![],
+            signature: vec![0u8; 64],
+        };
+        assert_ne!(a.descriptor_id(), b.descriptor_id());
+    }
+
+    #[test]
+    fn descriptor_id_is_32_byte_sha3_output() {
+        let d = OnionServiceDescriptor {
+            signing_key: [0xEEu8; 32],
+            lifetime_minutes: 60,
+            intro_points: vec![],
+            signature: vec![0x55; 64],
+        };
+        assert_eq!(d.descriptor_id().len(), 32);
+    }
+
+    #[test]
+    fn derive_onion_address_differs_for_distinct_public_keys() {
+        let p1 = [0u8; 32];
+        let p2 = [0xFFu8; 32];
+        assert_ne!(
+            OnionServiceKeys::derive_onion_address(&p1),
+            OnionServiceKeys::derive_onion_address(&p2)
+        );
+    }
+
+    #[test]
+    fn serde_json_roundtrip_for_descriptor_adjacent_metadata() {
+        let signing_key_hex = "00".repeat(32);
+        let v = serde_json::json!({
+            "lifetime_minutes": 180,
+            "signing_key_hex": signing_key_hex,
+        });
+        let s = serde_json::to_string(&v).expect("serialize");
+        let back: serde_json::Value = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(back["lifetime_minutes"], 180);
+        assert_eq!(back["signing_key_hex"].as_str().expect("hex").len(), 64);
     }
 }

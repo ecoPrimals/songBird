@@ -30,7 +30,7 @@
 //!
 //! # async fn example() -> songbird_types::SongbirdResult<()> {
 //! // Create client for Unix socket endpoint
-//! let client = JsonRpcClient::new("unix:///tmp/beardog-nat0-tower1.sock")?;
+//! let client = JsonRpcClient::new("unix:///tmp/biomeos/security.sock")?;
 //!
 //! // Call a method
 //! let request = json!({
@@ -111,7 +111,7 @@ impl JsonRpcClient {
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - Unix socket path (e.g., "<unix:///tmp/beardog.sock>" or "/tmp/beardog.sock")
+    /// * `endpoint` - Unix socket path (e.g., "unix:///tmp/biomeos/security.sock" or "/tmp/biomeos/security.sock")
     ///
     /// # Returns
     ///
@@ -123,7 +123,7 @@ impl JsonRpcClient {
     /// use songbird_universal::JsonRpcClient;
     ///
     /// # fn example() -> songbird_types::SongbirdResult<()> {
-    /// let client = JsonRpcClient::new("unix:///tmp/beardog.sock")?;
+    /// let client = JsonRpcClient::new("unix:///tmp/biomeos/security.sock")?;
     /// # Ok(())
     /// # }
     /// ```
@@ -209,7 +209,7 @@ impl JsonRpcClient {
     /// use serde_json::json;
     ///
     /// # async fn example() -> songbird_types::SongbirdResult<()> {
-    /// let client = JsonRpcClient::new("unix:///tmp/beardog.sock")?;
+    /// let client = JsonRpcClient::new("unix:///tmp/biomeos/security.sock")?;
     ///
     /// let result = client.call_method(
     ///     "evaluate_trust",

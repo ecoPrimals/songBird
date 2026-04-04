@@ -4,15 +4,15 @@
 //! Generic Compute Capability Adapter
 //!
 //! **SOVEREIGNTY PRINCIPLE**: This adapter is capability-based and works with
-//! ANY service providing compute capabilities. It does NOT know about specific
-//! primals like `ToadStool` - it only knows about "compute capability providers".
+//! ANY service providing compute capabilities. It does not hardcode primal names;
+//! it only knows about "compute capability providers".
 //!
 //! ## Ecological Model
 //!
 //! Like in ecology, each organism exists independently:
-//! - Songbird doesn't "know" `ToadStool` exists
+//! - Songbird does not bind to a particular primal identity for compute
 //! - Songbird only knows "something provides compute capability"
-//! - `ToadStool` happens to implement this capability in the ecosystem
+//! - A given ecosystem primal may implement this capability
 //! - But it could be ANY compute provider
 //!
 //! ## Example

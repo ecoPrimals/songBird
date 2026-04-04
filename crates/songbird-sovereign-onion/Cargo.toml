@@ -52,7 +52,7 @@ dirs = { workspace = true }
 workspace = true
 [dev-dependencies]
 tokio-test = "0.4"
-criterion = "0.5"
+
 
 [features]
 # Production builds: ZERO crypto (delegates to BearDog)

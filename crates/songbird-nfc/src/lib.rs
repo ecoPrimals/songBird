@@ -164,4 +164,16 @@ mod tests {
             "request and response must be distinct opcodes"
         );
     }
+
+    #[test]
+    fn frame_overhead_matches_fixed_field_sizes() {
+        assert_eq!(FRAME_OVERHEAD, HEADER_SIZE + PUBLIC_KEY_SIZE + NONCE_SIZE + SIGNATURE_SIZE);
+        assert_eq!(AUTH_TAG_SIZE, 16);
+    }
+
+    #[test]
+    fn public_nonce_and_signature_sizes_match_wire_contract() {
+        assert_eq!(PUBLIC_KEY_SIZE + NONCE_SIZE, 32 + 24);
+        assert_eq!(SIGNATURE_SIZE, 64);
+    }
 }

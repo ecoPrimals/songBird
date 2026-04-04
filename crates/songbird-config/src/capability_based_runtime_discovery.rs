@@ -46,7 +46,7 @@
 //! ### Instead of Hardcoding:
 //! ```rust,ignore
 //! // ❌ OLD WAY: Hardcoded primal name and endpoint
-//! let client = SquirrelClient::connect("http://localhost:9200")?;
+//! let client = AiCapabilityClient::connect("http://localhost:9200")?;
 //! let response = client.process_ai(request).await?;
 //! ```
 //!
@@ -63,7 +63,7 @@
 //!         .with_preference("performance")
 //! ).await?;
 //!
-//! // Use whatever provider was discovered (Squirrel, OpenAI, Anthropic, etc.)
+//! // Use whatever provider was discovered (local model, OpenAI, Anthropic, etc.)
 //! // Connect to the provider endpoint and make requests
 //! println!("Found provider: {} at {}", provider.name, provider.endpoint);
 //! # Ok(())

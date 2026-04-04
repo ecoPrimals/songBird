@@ -198,7 +198,7 @@ async fn test_e2e_same_family_peer_discovery() {
         session_id: "sess-ignored".into(),
         node_id: Some("tower-a".into()),
         node_name: Some("Tower A".into()),
-        tags: Some(vec!["beardog:family:nat0:tower-a".into()]),
+        tags: Some(vec!["crypto:family:nat0:tower-a".into()]),
         https_base: "https://10.0.0.5:8443".into(),
     };
 
@@ -232,7 +232,7 @@ async fn test_e2e_different_family_peer_discovery() {
         session_id: "sess1".into(),
         node_id: Some("foreign".into()),
         node_name: Some("Foreign".into()),
-        tags: Some(vec!["beardog:family:other:node".into()]),
+        tags: Some(vec!["crypto:family:other:node".into()]),
         https_base: "https://192.168.1.10:8443".into(),
     };
 
@@ -268,7 +268,7 @@ async fn test_e2e_trust_evaluation_with_security_provider() {
         session_id: "s2".into(),
         node_id: Some("trusted-node".into()),
         node_name: Some("Trusted".into()),
-        tags: Some(vec!["beardog:family:nat0:x".into()]),
+        tags: Some(vec!["crypto:family:nat0:x".into()]),
         https_base: "https://127.0.0.1:9".into(),
     };
 
@@ -298,7 +298,7 @@ async fn test_e2e_trust_evaluation_with_security_provider() {
         session_id: "s3".into(),
         node_id: Some("lineage-fail".into()),
         node_name: Some("Bad".into()),
-        tags: Some(vec!["beardog:family:other:y".into()]),
+        tags: Some(vec!["crypto:family:other:y".into()]),
         https_base: "https://10.0.0.2:8443".into(),
     };
 
@@ -328,7 +328,7 @@ async fn test_e2e_discovery_to_api_flow() {
         session_id: "s4".into(),
         node_id: Some("api-peer".into()),
         node_name: Some("API Peer".into()),
-        tags: Some(vec!["beardog:family:nat0:z".into()]),
+        tags: Some(vec!["crypto:family:nat0:z".into()]),
         https_base: "https://10.0.0.20:8443".into(),
     };
 
@@ -364,7 +364,7 @@ async fn test_e2e_connectivity_check_failure_handling() {
         session_id: "s5".into(),
         node_id: Some("unreachable".into()),
         node_name: Some("Unreachable".into()),
-        tags: Some(vec!["beardog:family:wan:peer".into()]),
+        tags: Some(vec!["crypto:family:wan:peer".into()]),
         https_base: "https://192.0.2.1:8443".into(),
     };
 
@@ -402,7 +402,7 @@ async fn test_e2e_legacy_v2_identity_uses_session_not_node_fields() {
         session_id: "legacy-sess-abcdef".into(),
         node_id: Some("ignored-id".into()),
         node_name: Some("Ignored Name".into()),
-        tags: Some(vec!["beardog:family:nat0:legacy".into()]),
+        tags: Some(vec!["crypto:family:nat0:legacy".into()]),
         https_base: "https://10.0.0.1:8443".into(),
     };
 
@@ -438,7 +438,7 @@ async fn test_e2e_v3_partial_node_metadata_falls_back_to_session() {
         session_id: "partial-sess-xyz".into(),
         node_id: Some("only-id".into()),
         node_name: None,
-        tags: Some(vec!["beardog:family:nat0:partial".into()]),
+        tags: Some(vec!["crypto:family:nat0:partial".into()]),
         https_base: "https://10.0.0.2:8443".into(),
     };
 
@@ -477,7 +477,7 @@ async fn test_e2e_prompt_user_trust_held_without_audit_reject() {
         session_id: "prompt-s".into(),
         node_id: Some("node-p".into()),
         node_name: Some("Prompt".into()),
-        tags: Some(vec!["beardog:family:nat0:p".into()]),
+        tags: Some(vec!["crypto:family:nat0:p".into()]),
         https_base: "https://10.0.0.3:8443".into(),
     };
 
@@ -508,7 +508,7 @@ async fn test_e2e_trust_evaluation_failed_blocks_federation() {
         session_id: "fail-s".into(),
         node_id: Some("node-f".into()),
         node_name: Some("Fail".into()),
-        tags: Some(vec!["beardog:family:other:f".into()]),
+        tags: Some(vec!["crypto:family:other:f".into()]),
         https_base: "https://10.0.0.4:8443".into(),
     };
 
@@ -536,7 +536,7 @@ async fn test_e2e_no_family_env_forces_connectivity_check() {
         session_id: "nofam-s".into(),
         node_id: Some("n1".into()),
         node_name: Some("NoFam".into()),
-        tags: Some(vec!["beardog:family:nat0:still-tagged".into()]),
+        tags: Some(vec!["crypto:family:nat0:still-tagged".into()]),
         https_base: "https://10.0.0.6:8443".into(),
     };
 

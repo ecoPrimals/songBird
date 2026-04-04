@@ -62,7 +62,7 @@ mockall = "0.12"
 
 [features]
 default = ["qr", "pure-bluetooth", "capability-discovery"]  # Pure Rust - zero system deps!
-# Opt-in: stub channel only — does not perform real FIDO2/WebAuthn (see `physical_channels::solokey`).
+# Opt-in: hardware-key channel types — CTAP2/FIDO2 not integrated (returns SoloKeyNotIntegrated; see `physical_channels::solokey`).
 solokey = []
 qr = ["qrcode", "image", "rqrr"]
 # Legacy btleplug stack (system dbus on Linux). Prefer `pure-bluetooth`.
@@ -72,4 +72,6 @@ pure-bluetooth = ["songbird-bluetooth"]  # Pure Rust BLE - universal!
 coordination = ["songbird-primal-coordination"]  # Agnostic primal coordination
 capability-discovery = ["songbird-config", "songbird-types"]  # Runtime capability discovery
 nfc = []  # Future: NFC support
+# Exposes `MockPhysicalChannel` / `PhysicalChannel::Mock` for integration tests (`cargo test` enables `cfg(test)` automatically).
+testing = []
 

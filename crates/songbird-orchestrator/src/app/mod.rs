@@ -38,11 +38,3 @@ pub use core::SongbirdOrchestrator;
 pub use health::{HealthCheckReport, OrchestratorStatus};
 pub use network::{detect_primary_ip, get_local_ip_for_connectivity_test, parse_bind_address};
 pub use startup::{Orchestrator, start_orchestrator};
-
-// use songbird_federation::{//     FederationConfig,
-//     canonical_federation::CanonicalFederation)
-// }; // Temporarily disabled - complex type mismatches need resolution
-// use songbird_network::gaming::GamingManager; // Temporarily disabled - gaming module not available
-// use songbird_security::UniversalSecurityIntegration; // Temporarily disabled for consolidation
-
-// Import anonymous discovery and trust escalation

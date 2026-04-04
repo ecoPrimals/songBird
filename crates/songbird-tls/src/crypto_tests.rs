@@ -121,7 +121,10 @@ async fn call_jsonrpc_success_and_error_paths() {
     let e = client2.call_jsonrpc("m", json!({})).await.expect_err("bear dog error");
     match e {
         TlsError::CryptoError(msg) => {
-            assert!(msg.contains("Security provider error"));
+            assert!(
+                msg.contains("security provider error"),
+                "expected JSON-RPC error to include provider context: {msg}"
+            );
             assert!(msg.contains("nope"));
         }
         other => panic!("{other:?}"),

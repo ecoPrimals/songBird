@@ -13,7 +13,7 @@
 //! **Solution**: Service-based architecture via JSON-RPC
 //!
 //! ```text
-//! Other Primals (security provider, Squirrel, etc.):
+//! Other primals (security provider, AI capability provider, etc.):
 //!   - Use tokio::net::UnixStream (standard library!)
 //!   - Connect to /primal/songbird
 //!   - Call JSON-RPC methods for discovery

@@ -374,4 +374,60 @@ mod tests {
         conn.initiate_close(CloseReason::IdleTimeout).unwrap();
         assert_eq!(conn.state(), ConnectionState::Closing);
     }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn initiate_close_is_idempotent_after_closed() {
+        let mut conn = test_conn();
+        conn.start_handshake().unwrap();
+        conn.handshake_complete().unwrap();
+        conn.initiate_close(CloseReason::StatelessReset).unwrap();
+        conn.finish_close();
+        assert!(conn.is_closed());
+        conn.initiate_close(CloseReason::IdleTimeout).unwrap();
+        assert!(conn.is_closed());
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn enter_draining_is_idempotent_when_already_draining() {
+        let mut conn = test_conn();
+        conn.start_handshake().unwrap();
+        conn.handshake_complete().unwrap();
+        conn.enter_draining(CloseReason::IdleTimeout).unwrap();
+        assert_eq!(conn.state(), ConnectionState::Draining);
+        conn.enter_draining(CloseReason::StatelessReset).unwrap();
+        assert_eq!(conn.state(), ConnectionState::Draining);
+    }
+
+    #[test]
+    fn handshake_complete_fails_when_not_handshaking() {
+        let mut conn = test_conn();
+        assert!(conn.handshake_complete().is_err());
+        conn.start_handshake().unwrap();
+        conn.handshake_complete().unwrap();
+        assert!(conn.handshake_complete().is_err());
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn finish_close_from_handshaking_sets_closed_without_connected() {
+        let mut conn = test_conn();
+        conn.start_handshake().unwrap();
+        conn.finish_close();
+        assert_eq!(conn.state(), ConnectionState::Closed);
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn enter_draining_from_handshaking_skips_connected() {
+        let mut conn = test_conn();
+        conn.start_handshake().unwrap();
+        conn.enter_draining(CloseReason::Application {
+            error_code: 1,
+            reason: b"nope".to_vec(),
+        })
+        .unwrap();
+        assert_eq!(conn.state(), ConnectionState::Draining);
+    }
 }

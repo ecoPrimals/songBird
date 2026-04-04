@@ -181,7 +181,7 @@ impl SongbirdOrchestrator {
                             );
 
                             // Check if same family for trust decisions (Jan 5, 2026)
-                            // Tags format: family capability tags, typically `beardog:family:FAMILY_ID:NODE_ID` on the wire
+                            // Tags format: family capability tags, typically `crypto:family:FAMILY_ID:NODE_ID` (legacy: `beardog:family:*`)
                             let same_family = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                                 .ok()
                                 .is_some_and(|my_family| {
@@ -630,7 +630,7 @@ mod tests {
 
     #[test]
     fn family_tag_colon_form_matches() {
-        assert!(tag_indicates_same_family("nat0", "beardog:family:nat0:node-aaaaaaaa"));
+        assert!(tag_indicates_same_family("nat0", "crypto:family:nat0:node-aaaaaaaa"));
     }
 
     #[test]
@@ -640,7 +640,7 @@ mod tests {
 
     #[test]
     fn family_tag_other_family_does_not_match() {
-        assert!(!tag_indicates_same_family("nat0", "beardog:family:other:node-1"));
+        assert!(!tag_indicates_same_family("nat0", "crypto:family:other:node-1"));
     }
 
     #[test]

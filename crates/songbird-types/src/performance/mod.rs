@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(dead_code)]
+
 //! # ⚡ Performance Optimization Module
 //!
 //! **ZERO-COST ABSTRACTIONS & COMPILE-TIME OPTIMIZATIONS** 🚀
@@ -10,20 +12,17 @@
 
 pub mod zero_copy_enhanced;
 
-use std::marker::PhantomData;
-use std::mem::MaybeUninit;
-
 // ============================================================================
 // CONST GENERIC OPTIMIZATIONS
 // ============================================================================
 
 /// **ZERO-COST**: Compile-time sized buffer with const generics
-/// 
+///
 /// # Safety Evolution
 /// This implementation has been refactored from unsafe MaybeUninit to safe Option-based
 /// storage. Thanks to null pointer optimization, Option<T> has zero overhead for most types
 /// (pointers, NonZero types, etc.) and minimal overhead for others (typically 1 byte).
-/// 
+///
 /// The trade-off is ~1 byte per element for non-optimizable types in exchange for 100% safety.
 /// For orchestration workloads, this is an excellent trade-off.
 #[derive(Debug)]
@@ -35,7 +34,7 @@ pub struct ConstBuffer<T, const N: usize> {
 
 impl<T, const N: usize> ConstBuffer<T, N> {
     /// Create new buffer - zero runtime cost
-    /// 
+    ///
     /// SAFE: Uses const array initialization with None - fully safe at compile time
     #[must_use]
     pub const fn new() -> Self {
@@ -49,7 +48,7 @@ impl<T, const N: usize> ConstBuffer<T, N> {
     ///
     /// # Errors
     /// Returns the item if buffer is full
-    /// 
+    ///
     /// SAFE: No unsafe code - Option handles initialization tracking automatically
     #[inline]
     pub fn try_push(&mut self, item: T) -> Result<(), T> {
@@ -64,7 +63,7 @@ impl<T, const N: usize> ConstBuffer<T, N> {
     }
 
     /// Get current length - zero cost
-    /// 
+    ///
     /// SAFE: Counts Some variants - no unsafe code
     #[must_use]
     #[inline]
@@ -73,29 +72,29 @@ impl<T, const N: usize> ConstBuffer<T, N> {
     }
 
     /// Check if empty - zero cost
-    /// 
+    ///
     /// SAFE: Pure predicate on Option state
     #[must_use]
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.data.iter().all(|x| x.is_none())
+        self.data.iter().all(Option::is_none)
     }
 
     /// Get capacity - compile-time constant
-    /// 
+    ///
     /// SAFE: Returns const generic parameter
     #[must_use]
     #[inline]
     pub const fn capacity() -> usize {
         N
     }
-    
+
     /// Iterate over items (SAFE)
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.data.iter().filter_map(|x| x.as_ref())
     }
-    
+
     /// Clear all items (SAFE)
     #[inline]
     pub fn clear(&mut self) {
@@ -115,8 +114,8 @@ impl<T, const N: usize> ConstBuffer<T, N> {
 /// **ZERO-COST**: Compile-time string hash for static strings
 #[must_use]
 pub const fn const_hash(s: &str) -> u64 {
-    const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
-    const FNV_PRIME: u64 = 1099511628211;
+    const FNV_OFFSET_BASIS: u64 = 14_695_981_039_346_656_037;
+    const FNV_PRIME: u64 = 1_099_511_628_211;
 
     let bytes = s.as_bytes();
     let mut hash = FNV_OFFSET_BASIS;
@@ -136,15 +135,11 @@ pub const fn const_hash(s: &str) -> u64 {
 pub struct ConstStringId<const HASH: u64>;
 
 impl<const HASH: u64> ConstStringId<HASH> {
-
-
     /// Create from compile-time hashed string
     #[must_use]
     pub const fn new() -> Self {
         Self
-
-
-}
+    }
 
     /// Get the hash value - compile-time constant
     #[must_use]
@@ -153,11 +148,11 @@ impl<const HASH: u64> ConstStringId<HASH> {
     }
 }
 
-// Macro to create compile-time string identifiers
+/// Macro to create compile-time string identifiers.
 #[macro_export]
 macro_rules! const_string_id {
     ($s:expr) => {
-        $crate::performance::ConstStringId::<{$crate::performance::const_hash($s)}>::new()
+        $crate::performance::ConstStringId::<{ $crate::performance::const_hash($s) }>::new()
     };
 }
 
@@ -175,15 +170,7 @@ pub trait TypeBool {
 pub struct True;
 
 impl TypeBool for True {
-
-
-
-
     const VALUE: bool = true;
-
-
-
-
 }
 
 /// False type - zero runtime cost
@@ -191,15 +178,7 @@ impl TypeBool for True {
 pub struct False;
 
 impl TypeBool for False {
-
-
-
-
     const VALUE: bool = false;
-
-
-
-
 }
 
 /// **ZERO-COST**: Conditional type selection at compile time
@@ -220,15 +199,11 @@ impl<T, U> TypeSelect<T, U> for False {
 pub struct PerformanceConfig<const FAST_MODE: bool, const DEBUG_MODE: bool>;
 
 impl<const FAST_MODE: bool, const DEBUG_MODE: bool> PerformanceConfig<FAST_MODE, DEBUG_MODE> {
-
-
     /// Create new performance config - zero cost
     #[must_use]
     pub const fn new() -> Self {
         Self
-
-
-}
+    }
 
     /// Check if fast mode enabled - compile-time constant
     #[must_use]
@@ -267,4 +242,5 @@ pub type StackString<const N: usize> = arrayvec::ArrayString<N>;
 pub type StackVec<T, const N: usize> = arrayvec::ArrayVec<T, N>;
 
 // Re-export enhanced zero-copy types
-pub use zero_copy_enhanced::{ZeroCopyString, ZeroCopyBytes};
+#[allow(unused_imports)]
+pub use zero_copy_enhanced::{ZeroCopyBytes, ZeroCopyString};

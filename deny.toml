@@ -19,11 +19,9 @@ deny = [
     { name = "hyper", version = "<0.14" },
     { name = "tokio", version = "<1.20" },
     { name = "serde_json", version = "<1.0.85" },
-    # ecoBin: `ring` pulls C/ASM via `cc` — not pure Rust. quinn/rustls/ring fully
-    # eliminated from songbird-quic (Wave 89: native QUIC engine + BearDogQuicCrypto).
-    # `ring` enters the tree only via `rustls` when songbird-cli `ring-crypto` feature
-    # is enabled (opt-in only). `rcgen` eliminated (Wave 94). Default build: zero ring.
-    { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust.", wrappers = ["rustls"] },
+    # ecoBin: `ring` pulls C/ASM via `cc` — not pure Rust. Fully eliminated from default
+    # builds (Wave 89: native QUIC + crypto provider delegation, Wave 94: rcgen removed).
+    { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust." },
 ]
 skip = [
     # Transitive duplicates from upstream — tracked for elimination

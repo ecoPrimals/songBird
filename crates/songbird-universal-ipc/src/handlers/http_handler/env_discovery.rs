@@ -13,7 +13,7 @@ use super::traits::CryptoCapabilityDiscovery;
 /// 1. `{CAPABILITY}_ENDPOINT` derived from the capability string
 /// 2. `SECURITY_PROVIDER_SOCKET` (capability-standard)
 /// 3. `BEARDOG_SOCKET` (legacy)
-/// 4. Default: /primal/beardog
+/// 4. Default: /primal/security
 pub struct EnvCryptoDiscovery;
 
 #[async_trait]
@@ -49,7 +49,7 @@ impl EnvCryptoDiscovery {
         }
 
         // Default to standard primal namespace
-        let default = "/primal/beardog".to_string();
+        let default = "/primal/security".to_string();
         info!("Using default crypto provider: {}", default);
         Ok(default)
     }

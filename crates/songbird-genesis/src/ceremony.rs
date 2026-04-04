@@ -432,6 +432,28 @@ mod tests {
         assert!(c.auth_token.is_none());
     }
 
+    #[test]
+    fn primal_coordinator_clone_roundtrip() {
+        let c = PrimalCoordinator::new("name".into(), "http://h/".into());
+        let c2 = c.clone();
+        assert_eq!(c2.primal_name, c.primal_name);
+        assert_eq!(c2.endpoint, c.endpoint);
+    }
+
+    #[tokio::test]
+    async fn genesis_ceremony_accepts_zero_timeout() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.set_timeout(std::time::Duration::from_secs(0));
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".into(),
+            "http://127.0.0.1:1".into(),
+        ));
+        // Zero timeout is stored; conduct still runs (timeout not enforced in this coordinator)
+        let out = ceremony.conduct("zero-timeout".into()).await;
+        assert!(out.is_ok(), "zero Duration timeout should not panic: {out:?}");
+    }
+
     #[tokio::test]
     async fn set_timeout_does_not_break_conduct() {
         let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
@@ -445,6 +467,43 @@ mod tests {
         assert!(
             identity.is_ok(),
             "custom timeout should not block successful ceremony: {identity:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn conduct_accepts_empty_new_node_id() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "only".into(),
+            "http://127.0.0.1:1".into(),
+        ));
+        let identity = ceremony.conduct(String::new()).await.expect("ceremony with empty id");
+        assert!(identity.node_id.is_empty());
+    }
+
+    #[test]
+    fn primal_coordinator_accepts_empty_endpoint_and_name() {
+        let c = PrimalCoordinator::new(String::new(), String::new());
+        assert!(c.primal_name.is_empty());
+        assert!(c.endpoint.is_empty());
+    }
+
+    #[tokio::test]
+    async fn multiple_primal_coordinators_are_all_registered() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        for i in 0..3 {
+            ceremony.add_primal_coordinator(PrimalCoordinator::new(
+                format!("p{i}"),
+                format!("http://127.0.0.1:{i}"),
+            ));
+        }
+        let identity = ceremony.conduct("multi-coord".into()).await.expect("conduct");
+        assert!(
+            identity.primal_signature_count() >= 1,
+            "at least one primal should yield lineage in degraded mode: count={}",
+            identity.primal_signature_count()
         );
     }
 }

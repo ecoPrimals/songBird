@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Simple IPC Client Example - NO Songbird Imports!
 //!
 //! This example demonstrates how other primals can connect to Songbird's

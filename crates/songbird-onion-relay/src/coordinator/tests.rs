@@ -7,6 +7,7 @@ use super::config::{HolePunchConfig, default_stun_servers_fallback};
 use super::core::HolePunchCoordinator;
 use super::types::PunchResult;
 use super::util::{rand_nonce, unix_epoch_millis_u64};
+use crate::error::OnionRelayError;
 use crate::signaling::{PeerInfo, SignalingMessage};
 use std::time::Duration;
 
@@ -285,4 +286,45 @@ async fn punch_to_peer_relay_fallback_when_udp_unanswered() {
         ),
         "expected relay fallback when peer UDP is silent, got {result:?}"
     );
+}
+
+#[tokio::test]
+async fn discover_public_address_fails_when_stun_server_list_empty() {
+    let config = HolePunchConfig {
+        stun_servers: vec![],
+        ..HolePunchConfig::default()
+    };
+    let (coord, _in_tx, _out_rx) = HolePunchCoordinator::new("me".into(), config);
+    let err = coord
+        .discover_public_address()
+        .await
+        .expect_err("no STUN servers means discovery cannot succeed");
+    assert!(matches!(err, OnionRelayError::StunFailed(_)), "expected StunFailed, got {err:?}");
+}
+
+#[tokio::test]
+async fn handle_message_heartbeat_for_unknown_peer_is_noop() {
+    let (coord, _in_tx, _out_rx) =
+        HolePunchCoordinator::new("me".into(), HolePunchConfig::default());
+    let hb = SignalingMessage::Heartbeat {
+        node_id: "not_registered".into(),
+    };
+    assert!(coord.handle_message(hb).await.is_none());
+    assert!(coord.peers.read().await.get("not_registered").is_none());
+}
+
+#[tokio::test]
+async fn punch_to_peer_fails_when_outbound_signaling_channel_closed() {
+    let config = HolePunchConfig::default();
+    let (coord, inbound_tx, outbound_rx) = HolePunchCoordinator::new("me".into(), config);
+    drop(outbound_rx);
+    *coord.my_info.write().await = Some(PeerInfo::new("me".into(), "127.0.0.1:1".parse().unwrap()));
+    coord.register_peer(PeerInfo::new("peer".into(), "127.0.0.1:2".parse().unwrap())).await;
+
+    let err = coord.punch_to_peer("peer").await.expect_err("signal_tx closed");
+    assert!(
+        matches!(err, OnionRelayError::Transport(_)),
+        "expected Transport when signaling send fails, got {err:?}"
+    );
+    drop(inbound_tx);
 }

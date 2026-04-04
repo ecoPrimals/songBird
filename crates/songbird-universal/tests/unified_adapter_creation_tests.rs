@@ -437,11 +437,10 @@ fn test_config_respects_environment_variable() -> SongbirdResult<()> {
 fn test_adapter_functions_are_available() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
 
-    // Verify adapter has the expected methods by type checking
-    let _cloned = adapter.clone();
-    let _debug = format!("{adapter:?}");
-
-    assert!(true); // If we got here, methods are available
+    let cloned = adapter.clone();
+    let debug = format!("{adapter:?}");
+    assert!(!debug.is_empty());
+    assert!(std::mem::size_of_val(&cloned) > 0);
     Ok(())
 }
 

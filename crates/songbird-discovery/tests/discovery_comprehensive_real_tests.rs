@@ -147,12 +147,15 @@ async fn test_multiple_discovery_calls_consistent() -> SongbirdResult<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_factory_multiple_instances() -> SongbirdResult<()> {
-    // Should be able to create multiple instances
-    let _discovery1 = UniversalDiscoveryFactory::create_auto_detect().await?;
-    let _discovery2 = UniversalDiscoveryFactory::create_auto_detect().await?;
+    let discovery1 = UniversalDiscoveryFactory::create_auto_detect().await?;
+    let discovery2 = UniversalDiscoveryFactory::create_auto_detect().await?;
 
-    // Both should be valid
-    assert!(true);
+    let query = ServiceQuery::default();
+    assert_eq!(
+        discovery1.discover(query.clone()).await?.len(),
+        discovery2.discover(query).await?.len(),
+        "independent auto-detect instances should return the same result size for the same query"
+    );
 
     Ok(())
 }

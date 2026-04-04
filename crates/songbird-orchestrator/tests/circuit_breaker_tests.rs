@@ -40,9 +40,8 @@ use songbird_orchestrator::core::robustness::CircuitBreaker;
 
 #[test]
 fn test_circuit_breaker_creation() {
-    let _breaker = CircuitBreaker;
-    // Circuit breaker can be created successfully
-    assert!(true);
+    let breaker = CircuitBreaker;
+    assert!(!format!("{breaker:?}").is_empty());
 }
 
 #[test]
@@ -112,12 +111,7 @@ fn test_circuit_breaker_in_result() {
 #[test]
 fn test_circuit_breaker_pattern_matching() {
     let breaker = CircuitBreaker;
-    match breaker {
-        CircuitBreaker => {
-            // Pattern matching works
-            assert!(true);
-        }
-    }
+    assert!(matches!(breaker, CircuitBreaker));
 }
 
 #[test]
@@ -188,17 +182,17 @@ fn test_circuit_breaker_default() {
         }
     }
 
-    let _config = Config::default();
-    assert!(true);
+    let config = Config::default();
+    assert_eq!(std::mem::size_of_val(&config._breaker), 0);
 }
 
 #[test]
 fn test_circuit_breaker_move_semantics() {
     let breaker = CircuitBreaker;
-    let _moved = breaker;
-    // CircuitBreaker is unit struct, create another instance
-    let _also_valid = CircuitBreaker;
-    assert!(true);
+    let moved = breaker;
+    let also_valid = CircuitBreaker;
+    assert_eq!(std::mem::size_of_val(&moved), 0);
+    assert_eq!(std::mem::size_of_val(&also_valid), 0);
 }
 
 #[test]
@@ -239,5 +233,4 @@ fn test_circuit_breaker_lifetime_bound() {
 
     let breaker = CircuitBreaker;
     use_breaker(&breaker);
-    assert!(true);
 }

@@ -38,7 +38,7 @@ use tracing::{debug, info, warn};
 /// use songbird_network_federation::security::production::ProductionSecurityProvider;
 ///
 /// # async fn example() -> anyhow::Result<()> {
-/// let provider = ProductionSecurityProvider::new("/tmp/beardog.sock").await?;
+/// let provider = ProductionSecurityProvider::new("/tmp/security.sock").await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -364,7 +364,8 @@ mod tests {
     #[tokio::test]
     async fn test_production_provider_creation() {
         // Test with non-existent socket (should error gracefully)
-        let result = ProductionSecurityProvider::new("/tmp/nonexistent_beardog_test.sock").await;
+        let result =
+            ProductionSecurityProvider::new("/tmp/nonexistent_security_provider_test.sock").await;
         assert!(result.is_err(), "Should error when socket doesn't exist");
     }
 }

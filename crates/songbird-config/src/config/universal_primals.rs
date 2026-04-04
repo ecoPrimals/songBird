@@ -73,7 +73,7 @@ pub struct PrimalRegistry {
 /// Universal configuration for any primal type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalConfiguration {
-    /// Primal type identifier (e.g., "security", "storage", "toadstool", "squirrel")
+    /// Primal type identifier (e.g., "security", "storage", "compute", `"ai"` capability domain)
     pub primal_type: String,
 
     /// Human-readable name

@@ -180,37 +180,25 @@ async fn test_service_query_empty() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_healthy() {
     let status = ServiceHealthStatus::Healthy;
-    match status {
-        ServiceHealthStatus::Healthy => assert!(true),
-        _ => panic!("Expected Healthy status"),
-    }
+    assert!(matches!(status, ServiceHealthStatus::Healthy));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_unhealthy() {
     let status = ServiceHealthStatus::Unhealthy;
-    match status {
-        ServiceHealthStatus::Unhealthy => assert!(true),
-        _ => panic!("Expected Unhealthy status"),
-    }
+    assert!(matches!(status, ServiceHealthStatus::Unhealthy));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_degraded() {
     let status = ServiceHealthStatus::Degraded;
-    match status {
-        ServiceHealthStatus::Degraded => assert!(true),
-        _ => panic!("Expected Degraded status"),
-    }
+    assert!(matches!(status, ServiceHealthStatus::Degraded));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_unknown() {
     let status = ServiceHealthStatus::Unknown;
-    match status {
-        ServiceHealthStatus::Unknown => assert!(true),
-        _ => panic!("Expected Unknown status"),
-    }
+    assert!(matches!(status, ServiceHealthStatus::Unknown));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

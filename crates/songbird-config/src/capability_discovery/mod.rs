@@ -239,7 +239,7 @@ impl CapabilityDiscovery {
         self.find_providers_by_capability("security").await
     }
 
-    /// Discover AI providers (replaces hardcoded `Squirrel` endpoint)
+    /// Discover AI providers (`ai` capability domain; replaces legacy primal-specific endpoints)
     ///
     /// # Errors
     ///

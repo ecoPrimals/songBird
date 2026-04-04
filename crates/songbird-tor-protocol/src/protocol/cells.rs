@@ -164,3 +164,198 @@ impl RelayCell {
         buf
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::Error;
+    use crate::protocol::MAX_RELAY_PAYLOAD;
+    use crate::protocol::constants::MAX_CELL_PAYLOAD;
+
+    #[test]
+    fn cell_roundtrip_relay_command() {
+        let original = Cell {
+            circ_id: 0xdeadbeef,
+            command: CellCommand::Relay,
+            payload: vec![1, 2, 3, 4, 5],
+        };
+        let encoded = original.encode();
+        let decoded = Cell::decode(&encoded).expect("decode");
+        assert_eq!(decoded.circ_id, original.circ_id);
+        assert_eq!(decoded.command, CellCommand::Relay);
+        assert_eq!(decoded.payload[..5], [1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn cell_roundtrip_all_command_bytes() {
+        for cmd in [
+            CellCommand::Padding,
+            CellCommand::Create,
+            CellCommand::Created,
+            CellCommand::Relay,
+            CellCommand::Destroy,
+            CellCommand::CreateFast,
+            CellCommand::CreatedFast,
+            CellCommand::Versions,
+            CellCommand::NetInfo,
+            CellCommand::RelayEarly,
+            CellCommand::Create2,
+            CellCommand::Created2,
+        ] {
+            let cell = Cell {
+                circ_id: 42,
+                command: cmd,
+                payload: vec![],
+            };
+            let out = cell.encode();
+            let back = Cell::decode(&out).expect("decode");
+            assert_eq!(back.command, cmd, "roundtrip cmd {cmd:?}");
+        }
+    }
+
+    #[test]
+    fn cell_decode_rejects_unknown_command() {
+        let mut buf = [0u8; CELL_LEN];
+        buf[4] = 99;
+        let err = Cell::decode(&buf).expect_err("unknown command");
+        match err {
+            Error::Protocol(s) => assert!(s.contains("Unknown cell command")),
+            other => panic!("expected Protocol error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn cell_encode_truncates_payload_to_max_cell_payload() {
+        let big = vec![0xabu8; MAX_CELL_PAYLOAD + 100];
+        let cell = Cell {
+            circ_id: 1,
+            command: CellCommand::Relay,
+            payload: big,
+        };
+        let enc = cell.encode();
+        assert_eq!(enc[5..].len(), MAX_CELL_PAYLOAD);
+        assert!(enc[5..].iter().all(|&b| b == 0xab));
+    }
+
+    #[test]
+    fn cell_decode_restores_full_sized_payload_slice() {
+        let mut payload = vec![0u8; MAX_CELL_PAYLOAD];
+        for (i, b) in payload.iter_mut().enumerate() {
+            *b = (i % 256) as u8;
+        }
+        let cell = Cell {
+            circ_id: 0xcafe_babe,
+            command: CellCommand::RelayEarly,
+            payload: payload.clone(),
+        };
+        let enc = cell.encode();
+        let decoded = Cell::decode(&enc).expect("decode");
+        assert_eq!(decoded.payload.len(), MAX_CELL_PAYLOAD);
+        assert_eq!(decoded.payload, payload);
+    }
+
+    #[test]
+    fn relay_cell_encode_wire_layout() {
+        let rc = RelayCell {
+            command: RelayCommand::Extend,
+            recognized: 0,
+            stream_id: 0x0102,
+            digest: [0xca, 0xfe, 0xba, 0xbe],
+            length: 4,
+            data: vec![1, 2, 3, 4],
+        };
+        let b = rc.encode();
+        assert_eq!(b[0], RelayCommand::Extend as u8);
+        assert_eq!(&b[1..3], &[0, 0]); // recognized BE
+        assert_eq!(&b[3..5], &[0x01, 0x02]); // stream_id BE
+        assert_eq!(&b[5..9], &[0xca, 0xfe, 0xba, 0xbe]);
+        assert_eq!(&b[9..11], &[0, 4]); // length BE
+        assert_eq!(&b[11..], &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn relay_cell_encode_empty_data() {
+        let rc = RelayCell {
+            command: RelayCommand::End,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0; 4],
+            length: 0,
+            data: vec![],
+        };
+        assert_eq!(rc.encode().len(), 11);
+    }
+
+    #[test]
+    fn relay_command_discriminants_match_tor_wire_values() {
+        assert_eq!(RelayCommand::Begin as u8, 1);
+        assert_eq!(RelayCommand::Introduce1 as u8, 32);
+        assert_eq!(RelayCommand::Rendezvous2 as u8, 35);
+    }
+
+    #[test]
+    fn cell_command_try_from_maps_all_variants() {
+        for (byte, expected) in [
+            (0u8, CellCommand::Padding),
+            (1, CellCommand::Create),
+            (2, CellCommand::Created),
+            (3, CellCommand::Relay),
+            (4, CellCommand::Destroy),
+            (5, CellCommand::CreateFast),
+            (6, CellCommand::CreatedFast),
+            (7, CellCommand::Versions),
+            (8, CellCommand::NetInfo),
+            (9, CellCommand::RelayEarly),
+            (10, CellCommand::Create2),
+            (11, CellCommand::Created2),
+        ] {
+            assert_eq!(CellCommand::try_from(byte).expect("ok"), expected);
+        }
+    }
+
+    #[test]
+    fn destroy_cell_roundtrip_preserves_reason_byte() {
+        let cell = Cell {
+            circ_id: 0x8000_0042,
+            command: CellCommand::Destroy,
+            payload: vec![0x03],
+        };
+        let enc = cell.encode();
+        let dec = Cell::decode(&enc).expect("decode destroy");
+        assert_eq!(dec.command, CellCommand::Destroy);
+        assert_eq!(dec.circ_id, cell.circ_id);
+        assert_eq!(dec.payload[0], 0x03);
+    }
+
+    #[test]
+    fn cell_encode_empty_payload_yields_zeroed_tail() {
+        let cell = Cell {
+            circ_id: 0,
+            command: CellCommand::Padding,
+            payload: vec![],
+        };
+        let enc = cell.encode();
+        assert!(enc[5..].iter().all(|&b| b == 0));
+        let dec = Cell::decode(&enc).expect("decode padding");
+        assert_eq!(dec.payload.len(), MAX_CELL_PAYLOAD);
+    }
+
+    #[test]
+    fn relay_cell_length_field_matches_serialized_data_len() {
+        let data = vec![0xCCu8; MAX_RELAY_PAYLOAD];
+        let rc = RelayCell {
+            command: RelayCommand::Data,
+            recognized: 0,
+            stream_id: 0xFFFF,
+            digest: [0u8; 4],
+            length: MAX_RELAY_PAYLOAD as u16,
+            data: data.clone(),
+        };
+        let w = rc.encode();
+        assert_eq!(w.len(), 11 + data.len());
+        assert_eq!(u16::from_be_bytes([w[9], w[10]]) as usize, data.len());
+        assert_eq!(&w[11..], data.as_slice());
+    }
+}

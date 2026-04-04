@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Custom test assertions for E2E testing
 //!
 //! Provides fluent assertion APIs for testing Songbird components.

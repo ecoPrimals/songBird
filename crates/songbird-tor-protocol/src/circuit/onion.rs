@@ -16,7 +16,7 @@ use songbird_crypto_provider::CryptoProvider;
 /// has forward/backward keys and digest states. The sequence counter
 /// tracks cell order for AES-CTR IV generation.
 pub struct OnionCrypto {
-    beardog: CryptoProvider,
+    security_provider: CryptoProvider,
     /// Forward sequence counter (cells sent through circuit)
     forward_sequence: std::sync::atomic::AtomicU64,
     /// Backward sequence counter (cells received from circuit)
@@ -26,9 +26,9 @@ pub struct OnionCrypto {
 impl OnionCrypto {
     /// Create new onion crypto handler
     #[must_use]
-    pub const fn new(beardog: CryptoProvider) -> Self {
+    pub const fn new(security_provider: CryptoProvider) -> Self {
         Self {
-            beardog,
+            security_provider,
             forward_sequence: std::sync::atomic::AtomicU64::new(0),
             backward_sequence: std::sync::atomic::AtomicU64::new(0),
         }
@@ -63,7 +63,7 @@ impl OnionCrypto {
             let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Encrypt with this hop's forward key via security provider
-            data = self.beardog.aes_128_ctr_encrypt(&hop.forward_key, &iv, &data).await?;
+            data = self.security_provider.aes_128_ctr_encrypt(&hop.forward_key, &iv, &data).await?;
 
             // Running digest update (security provider SHA3-256)
             // When security provider is fully integrated:
@@ -99,7 +99,8 @@ impl OnionCrypto {
             let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Decrypt with this hop's backward key via security provider
-            data = self.beardog.aes_128_ctr_decrypt(&hop.backward_key, &iv, &data).await?;
+            data =
+                self.security_provider.aes_128_ctr_decrypt(&hop.backward_key, &iv, &data).await?;
 
             // Running digest update (security provider SHA3-256)
             // When security provider is fully integrated:
@@ -150,7 +151,7 @@ impl OnionCrypto {
     #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     async fn update_digest(&self, current_digest: &[u8; 32], data: &[u8]) -> Result<[u8; 32]> {
         let input = [&current_digest[..], data].concat();
-        self.beardog.sha3_256(&input).await
+        self.security_provider.sha3_256(&input).await
     }
 
     /// Get current forward sequence counter
@@ -166,6 +167,8 @@ impl OnionCrypto {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::directory::RelayInfo;
     use std::net::IpAddr;
@@ -252,5 +255,27 @@ mod tests {
             crypto.decrypt_backward(&encrypted, &hops).await.expect("Decryption failed");
 
         assert_eq!(decrypted, plaintext);
+    }
+
+    #[tokio::test]
+    async fn encrypt_forward_with_zero_hops_is_passthrough_without_aes() {
+        let crypto = OnionCrypto::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-onion-empty-hops.sock".to_string(),
+        ));
+        let hops: Vec<CircuitHop> = vec![];
+        let out = crypto.encrypt_forward(b"payload", &hops).await.expect("no-op encrypt");
+        assert_eq!(out, b"payload");
+        assert_eq!(crypto.forward_sequence(), 1);
+    }
+
+    #[tokio::test]
+    async fn decrypt_backward_with_zero_hops_is_passthrough_without_aes() {
+        let crypto = OnionCrypto::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-onion-empty-hops.sock".to_string(),
+        ));
+        let hops: Vec<CircuitHop> = vec![];
+        let out = crypto.decrypt_backward(b"ciphertext", &hops).await.expect("no-op decrypt");
+        assert_eq!(out, b"ciphertext");
+        assert_eq!(crypto.backward_sequence(), 1);
     }
 }

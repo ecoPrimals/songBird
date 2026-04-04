@@ -101,12 +101,12 @@ async fn test_handle_post_request() {
 #[tokio::test]
 async fn test_environment_discovery() {
     let mut env = std::collections::HashMap::new();
-    env.insert("CRYPTO_SIGNING_ENDPOINT".to_string(), "/test/beardog".to_string());
+    env.insert("CRYPTO_SIGNING_ENDPOINT".to_string(), "/test/security".to_string());
 
     let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| env.get(key).cloned());
 
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), "/test/beardog");
+    assert_eq!(result.unwrap(), "/test/security");
 }
 
 #[tokio::test]
@@ -117,7 +117,7 @@ async fn test_default_discovery_fallback() {
         EnvCryptoDiscovery::discover_with("crypto.signing", |key| empty_env.get(key).cloned());
 
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), "/primal/beardog");
+    assert_eq!(result.unwrap(), "/primal/security");
 }
 
 #[tokio::test]

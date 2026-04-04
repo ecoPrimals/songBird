@@ -449,18 +449,6 @@ impl From<serde_json::Error> for SongbirdError {
     }
 }
 
-// Note: tokio integration would be added when tokio dependency is available
-// impl From<tokio::task::JoinError> for SongbirdError {
-//     fn from(error: tokio::task::JoinError) -> Self {
-//         Self::Runtime {
-//             message: format!("Task join error: {}", error),
-//             component: Some("tokio".to_string(),
-//             debug_info: None,
-//         }
-//     }
-// }
-// }
-
 impl From<std::net::AddrParseError> for SongbirdError {
     fn from(error: std::net::AddrParseError) -> Self {
         Self::Network {

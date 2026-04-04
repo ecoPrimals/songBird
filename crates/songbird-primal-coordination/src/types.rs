@@ -516,4 +516,69 @@ mod tests {
         assert_ne!(NodeId("a".into()), NodeId("b".into()));
         assert_eq!(DeploymentId("x".into()), DeploymentId("x".into()));
     }
+
+    #[test]
+    fn primal_capabilities_supports_workload_positive_when_service_matches() {
+        let caps = PrimalCapabilities {
+            services: vec!["batch".into(), "streaming".into()],
+            resources: HashMap::new(),
+            metadata: HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let w = Workload {
+            id: "1".into(),
+            service_type: "streaming".into(),
+            requirements: HashMap::new(),
+            payload: serde_json::json!({}),
+        };
+        assert!(caps.supports_workload(&w));
+    }
+
+    #[test]
+    fn primal_capabilities_supports_capability_rejects_substring_match() {
+        let caps = PrimalCapabilities {
+            services: vec!["security-v2".into()],
+            resources: HashMap::new(),
+            metadata: HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        assert!(
+            !caps.supports_capability(&CapabilityType::Security),
+            "services list uses exact string match, not prefix/substring"
+        );
+    }
+
+    #[test]
+    fn capability_type_from_str_unknown_becomes_custom_preserved_case() {
+        let c = CapabilityType::from_str("MyCustomCap");
+        assert_eq!(c, CapabilityType::Custom("MyCustomCap".into()));
+        assert_eq!(c.as_str(), "MyCustomCap");
+    }
+
+    #[test]
+    fn service_status_roundtrip() {
+        let s = ServiceStatus {
+            healthy: false,
+            version: "0.0.0".into(),
+            capabilities: vec!["a".into()],
+            metrics: HashMap::from([("k".into(), serde_json::json!(1))]),
+        };
+        let json = serde_json::to_string(&s).expect("serialize");
+        let back: ServiceStatus = serde_json::from_str(&json).expect("deserialize");
+        assert!(!back.healthy);
+        assert_eq!(back.version, "0.0.0");
+        assert_eq!(back.capabilities, vec!["a"]);
+    }
+
+    #[test]
+    fn node_id_display_matches_inner_string() {
+        let n = NodeId("nid-1".into());
+        assert_eq!(format!("{n}"), "nid-1");
+    }
+
+    #[test]
+    fn deployment_id_display_matches_inner_string() {
+        let d = DeploymentId("dep-9".into());
+        assert_eq!(format!("{d}"), "dep-9");
+    }
 }

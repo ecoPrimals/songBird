@@ -345,9 +345,9 @@ mod tests {
 
     #[test]
     fn test_transcript_empty_initially() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(crypto);
 
         // Transcript should be empty initially
@@ -356,9 +356,9 @@ mod tests {
 
     #[test]
     fn test_update_transcript() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(crypto);
 
         // Add first message
@@ -378,9 +378,9 @@ mod tests {
 
     #[test]
     fn test_compute_transcript_hash_empty() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(crypto);
 
         let hash = handshake.compute_transcript_hash();
@@ -397,9 +397,9 @@ mod tests {
 
     #[test]
     fn test_compute_transcript_hash_deterministic() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(crypto);
 
         // Add test messages
@@ -417,9 +417,9 @@ mod tests {
 
     #[test]
     fn test_compute_transcript_hash_known_value() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(crypto);
 
         // Use a known message
@@ -439,9 +439,9 @@ mod tests {
 
     #[test]
     fn test_transcript_accumulates_multiple_messages() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(crypto);
 
         // Simulate handshake message accumulation
@@ -468,14 +468,14 @@ mod tests {
 
     #[test]
     fn test_transcript_order_matters() {
-        let crypto1 =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto1 = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake1 = TlsHandshake::new(crypto1);
 
-        let crypto2 =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto2 = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake2 = TlsHandshake::new(crypto2);
 
         // Add messages in different orders
@@ -494,9 +494,9 @@ mod tests {
 
     #[test]
     fn test_transcript_hash_length() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(crypto);
 
         // Add various sized messages
@@ -514,9 +514,9 @@ mod tests {
         // RFC 8446 Section 4.4.1: Transcript must contain PLAINTEXT messages
         // This test ensures we understand the requirement
 
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(crypto);
 
         // Simulate plaintext messages (what SHOULD be in transcript)
@@ -527,9 +527,9 @@ mod tests {
         let plaintext_hash = handshake.compute_transcript_hash();
 
         // Create new handshake with encrypted version (what SHOULD NOT be in transcript)
-        let crypto2 =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto2 = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            "/tmp/security-provider.sock",
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake2 = TlsHandshake::new(crypto2);
         let encrypted_message = b"ENCRYPTED_VERSION_OF_SAME_MESSAGE_WITH_TAG";
         handshake2.update_transcript(encrypted_message);

@@ -104,4 +104,21 @@ mod tests {
         assert!(matches!(e, ComputeError::Other(_)));
         assert!(e.to_string().contains("wrapped"));
     }
+
+    #[test]
+    fn simple_variants_have_no_error_source_chain() {
+        let e = ComputeError::ProviderError("upstream".into());
+        assert!(e.source().is_none());
+        let e = ComputeError::CommunicationError("timeout".into());
+        assert!(e.source().is_none());
+        let e = ComputeError::ConfigurationError("bad".into());
+        assert!(e.source().is_none());
+    }
+
+    #[test]
+    fn deployment_failed_preserves_message() {
+        let detail = "connection reset by peer";
+        let e = ComputeError::DeploymentFailed(detail.into());
+        assert_eq!(e.to_string(), format!("Deployment failed: {detail}"));
+    }
 }

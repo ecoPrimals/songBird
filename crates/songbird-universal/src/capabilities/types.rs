@@ -164,11 +164,11 @@ pub(super) struct CapabilityResponse {
 pub enum PrimalType {
     /// Security services (beardog, auth)
     Security,
-    /// Compute services (toadstool, containers)
+    /// Compute services (containers, batch jobs, GPU workloads)
     Compute,
     /// Storage services (storage provider, databases)
     Storage,
-    /// AI/ML services (squirrel, models)
+    /// AI/ML services (`ai` capability domain; any provider)
     AI,
     /// Discovery services
     Discovery,

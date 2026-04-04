@@ -11,6 +11,7 @@ pub mod birdsong;
 pub mod genesis;
 pub mod lineage;
 pub mod noop;
+pub use noop::NoOpSecurityError;
 pub mod production;
 pub mod relay;
 

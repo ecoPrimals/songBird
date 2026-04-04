@@ -43,6 +43,11 @@ fn overlay() -> &'static Mutex<Overlay> {
     CELL.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+#[inline]
+fn overlay_lock() -> std::sync::MutexGuard<'static, Overlay> {
+    overlay().lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 fn key_str(key: &OsStr) -> String {
     key.to_string_lossy().into_owned()
 }
@@ -51,14 +56,12 @@ fn key_str(key: &OsStr) -> String {
 ///
 /// Does **not** call [`std::env::set_var`].
 ///
-/// # Panics
-///
-/// Panics if the internal overlay mutex is poisoned (unrecoverable).
-#[expect(clippy::expect_used, reason = "mutex poisoning is unrecoverable for the env overlay")]
+/// A poisoned overlay mutex is recovered via [`std::sync::PoisonError::into_inner`]; this
+/// function does not panic on lock poisoning.
 pub fn set_var(key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) {
     let k = key_str(key.as_ref());
     let v = key_str(value.as_ref());
-    overlay().lock().expect("process_env overlay mutex poisoned").insert(k, Some(v));
+    overlay_lock().insert(k, Some(v));
 }
 
 /// Mark a key as removed in the overlay (thread-safe, zero `unsafe`).
@@ -66,13 +69,10 @@ pub fn set_var(key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) {
 /// A removed key masks the OS value for [`var`] / [`var_os`] / [`vars`].
 /// Does **not** call [`std::env::remove_var`].
 ///
-/// # Panics
-///
-/// Panics if the internal overlay mutex is poisoned (unrecoverable).
-#[expect(clippy::expect_used, reason = "mutex poisoning is unrecoverable for the env overlay")]
+/// A poisoned overlay mutex is recovered; this function does not panic on lock poisoning.
 pub fn remove_var(key: impl AsRef<OsStr>) {
     let k = key_str(key.as_ref());
-    overlay().lock().expect("process_env overlay mutex poisoned").insert(k, None);
+    overlay_lock().insert(k, None);
 }
 
 /// Read an environment variable: overlay first, then [`std::env::var`].
@@ -99,13 +99,10 @@ pub fn get_var(key: impl AsRef<OsStr>) -> Result<String, VarError> {
 
 /// Read an environment variable as [`OsString`]: overlay first, then [`std::env::var_os`].
 ///
-/// # Panics
-///
-/// Panics if the internal overlay mutex is poisoned (unrecoverable).
-#[expect(clippy::expect_used, reason = "mutex poisoning is unrecoverable for the env overlay")]
+/// A poisoned overlay mutex is recovered; this function does not panic on lock poisoning.
 pub fn var_os(key: impl AsRef<OsStr>) -> Option<OsString> {
     let k = key_str(key.as_ref());
-    let guard = overlay().lock().expect("process_env overlay mutex poisoned");
+    let guard = overlay_lock();
     if let Some(opt) = guard.get(&k) {
         return opt.as_ref().map(OsString::from);
     }
@@ -117,12 +114,9 @@ pub fn var_os(key: impl AsRef<OsStr>) -> Option<OsString> {
 ///
 /// Overlay values win over OS values. Keys removed via [`remove_var`] are excluded.
 ///
-/// # Panics
-///
-/// Panics if the internal overlay mutex is poisoned (unrecoverable).
-#[expect(clippy::expect_used, reason = "mutex poisoning is unrecoverable for the env overlay")]
+/// A poisoned overlay mutex is recovered; this function does not panic on lock poisoning.
 pub fn vars() -> impl Iterator<Item = (String, String)> {
-    let snapshot: Overlay = overlay().lock().expect("process_env overlay mutex poisoned").clone();
+    let snapshot: Overlay = overlay_lock().clone();
     let mut combined: HashMap<String, String> = std::env::vars().collect();
     for (k, v_opt) in snapshot {
         match v_opt {
@@ -141,12 +135,9 @@ pub fn vars() -> impl Iterator<Item = (String, String)> {
 ///
 /// After calling this, all reads fall through to the OS environment.
 ///
-/// # Panics
-///
-/// Panics if the internal overlay mutex is poisoned (unrecoverable).
-#[expect(clippy::expect_used, reason = "mutex poisoning is unrecoverable for the env overlay")]
+/// A poisoned overlay mutex is recovered; this function does not panic on lock poisoning.
 pub fn reset_overlay() {
-    overlay().lock().expect("process_env overlay mutex poisoned").clear();
+    overlay_lock().clear();
 }
 
 #[cfg(test)]

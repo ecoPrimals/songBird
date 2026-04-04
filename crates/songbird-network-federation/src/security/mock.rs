@@ -3,6 +3,9 @@
 
 //! Mock `security provider` Provider
 //!
+//! This file is only compiled when the parent module enables it:
+//! `#[cfg(any(test, feature = "test-mocks"))]` in [`crate::security`].
+//!
 //! For testing Songbird without `security provider` deployed.
 //!
 //! **SECURITY WARNING**: This is for testing only!

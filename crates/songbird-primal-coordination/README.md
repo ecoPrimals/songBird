@@ -15,5 +15,6 @@ This crate provides the foundational types and patterns for coordinating between
 
 ## License
 
-MIT OR Apache-2.0
+Licensed under AGPL-3.0-only as part of the ecoPrimals ecosystem.
 
+Part of the scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0

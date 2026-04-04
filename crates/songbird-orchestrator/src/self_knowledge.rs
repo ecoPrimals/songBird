@@ -106,8 +106,8 @@ pub fn discover_capabilities() -> Vec<String> {
 /// Tags are opaque strings in format: `{provider}:{type}:{value}`
 ///
 /// ## Examples:
-/// - `SONGBIRD_TAGS=crypto:family:nat0,crypto:org:acme` (deployments may still use legacy `beardog:*` prefixes)
-/// - Individual vars: `SONGBIRD_FAMILY_ID=nat0` → family tag (see implementation; legacy wire uses `beardog:family:*`)
+/// - `SONGBIRD_TAGS=crypto:family:nat0,crypto:org:acme` (some peers may still advertise legacy `beardog:*` wire tags)
+/// - Individual vars: `SONGBIRD_FAMILY_ID=nat0` → `crypto:family:*` tag (see implementation)
 ///
 /// ## Philosophy:
 /// Songbird doesn't know what tags mean. It just broadcasts them.
@@ -140,16 +140,16 @@ where
     // Option 2: Convenience vars that get converted to tags
     // (Songbird still doesn't interpret - just formats!)
 
-    // Family ID → legacy family tag `beardog:family:{id}` (wire compatibility)
+    // Family ID → capability-scoped family tag `crypto:family:{id}` (legacy BearDog deployments used `beardog:family:*`)
     if let Some(family_id) = env_reader("SONGBIRD_FAMILY_ID") {
-        let tag = format!("beardog:family:{family_id}");
+        let tag = format!("crypto:family:{family_id}");
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Family tag '{}' (security provider will interpret)", tag);
     }
 
-    // Org ID → legacy org tag `beardog:org:{id}` (wire compatibility)
+    // Org ID → capability-scoped org tag `crypto:org:{id}` (legacy: `beardog:org:*`)
     if let Some(org_id) = env_reader("SONGBIRD_ORG_ID") {
-        let tag = format!("beardog:org:{org_id}");
+        let tag = format!("crypto:org:{org_id}");
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Org tag '{}' (security provider will interpret)", tag);
     }
@@ -310,7 +310,7 @@ mod tests {
 
         let tags = discover_identity_tags_with(mock_env(env));
         assert!(
-            tags.contains(&"beardog:family:test_family".to_string()),
+            tags.contains(&"crypto:family:test_family".to_string()),
             "Expected tag not found. Got: {tags:?}"
         );
     }
@@ -340,7 +340,7 @@ mod tests {
 
         let tags = discover_identity_tags_with(mock_env(env));
 
-        assert!(tags.contains(&"beardog:org:acme".to_string()));
+        assert!(tags.contains(&"crypto:org:acme".to_string()));
         assert!(tags.contains(&"security provider:role:relay".to_string()));
     }
 
@@ -356,8 +356,8 @@ mod tests {
 
         assert_eq!(tags.len(), 4);
         assert!(tags.contains(&"explicit:tag:1".to_string()));
-        assert!(tags.contains(&"beardog:family:nat0".to_string()));
-        assert!(tags.contains(&"beardog:org:org1".to_string()));
+        assert!(tags.contains(&"crypto:family:nat0".to_string()));
+        assert!(tags.contains(&"crypto:org:org1".to_string()));
         assert!(tags.contains(&"security provider:role:edge".to_string()));
     }
 

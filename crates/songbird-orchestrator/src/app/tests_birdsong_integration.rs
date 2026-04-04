@@ -93,7 +93,7 @@ mod tests {
             format: "tag_list".to_string(),
             data: json!({
                 "family_id": "test-family",
-                "tags": ["beardog:family:test-family:node1"]
+                "tags": ["crypto:family:test-family:node1"]
             }),
         }];
 
@@ -110,7 +110,8 @@ mod tests {
 
         // Verify broadcaster has identity attestations and BirdSong
         // (This is a compile-time check - if it compiles, the builder pattern works)
-        assert!(true);
+        // Reached without panic — construction succeeded
+        drop(broadcaster);
     }
 
     #[tokio::test]
@@ -130,7 +131,8 @@ mod tests {
 
         // Verify listener has BirdSong
         // (This is the critical v3.3 fix - listener can now decrypt)
-        assert!(true);
+        // Reached without panic — construction succeeded
+        drop(listener);
     }
 
     #[tokio::test]
@@ -153,7 +155,7 @@ mod tests {
             format: "tag_list".to_string(),
             data: json!({
                 "family_id": "iidn",
-                "tags": ["beardog:family:iidn:tower1"]
+                "tags": ["crypto:family:iidn:tower1"]
             }),
         }];
 
@@ -221,7 +223,7 @@ mod tests {
             format: "tag_list".to_string(),
             data: json!({
                 "family_id": "iidn",
-                "tags": ["beardog:family:iidn:tower1"]
+                "tags": ["crypto:family:iidn:tower1"]
             }),
         }];
 
@@ -260,7 +262,7 @@ mod tests {
             format: "tag_list".to_string(),
             data: json!({
                 "family_id": "mixed-family",
-                "tags": ["beardog:family:mixed-family:node1"]
+                "tags": ["crypto:family:mixed-family:node1"]
             }),
         }];
 
@@ -343,7 +345,7 @@ mod tests {
             data: json!({
                 "family_id": "test-family",
                 "tags": [
-                    "beardog:family:test-family:node1",
+                    "crypto:family:test-family:node1",
                     "security provider:capability:orchestration",
                     "security provider:hardware:tpm2"
                 ],

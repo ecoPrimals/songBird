@@ -52,7 +52,7 @@ impl StunClient {
     ///
     /// # Arguments
     ///
-    /// * `stun_server` - STUN server address (e.g., "stun.nextcloud.com:3478")
+    /// * `stun_server` - STUN server address (e.g. [`songbird_types::constants::DEFAULT_STUN_SERVER_1`])
     ///
     /// # Returns
     ///
@@ -115,9 +115,10 @@ impl StunClient {
     ///
     /// ```rust,no_run
     /// use songbird_stun::StunClient;
+    /// use songbird_types::constants::DEFAULT_STUN_SERVER_1;
     /// # async fn ex() -> Result<(), Box<dyn std::error::Error>> {
     /// let addr = StunClient::new()
-    ///     .discover_public_address_racing(&["stun.nextcloud.com:3478"])
+    ///     .discover_public_address_racing(&[DEFAULT_STUN_SERVER_1])
     ///     .await?;
     /// # let _ = addr;
     /// # Ok(())
@@ -287,7 +288,7 @@ impl StunClient {
     ///
     /// # Arguments
     ///
-    /// * `stun_server` - STUN server to probe (e.g., "stun.nextcloud.com:3478")
+    /// * `stun_server` - STUN server to probe (e.g. [`songbird_types::constants::DEFAULT_STUN_SERVER_1`])
     /// * `probes` - Number of probes to send (recommended: 5–8)
     ///
     /// # Returns

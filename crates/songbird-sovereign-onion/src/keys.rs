@@ -224,18 +224,17 @@ impl OnionIdentity {
     /// Stores all identity components (secret, public, onion address) so
     /// no crypto derivation is needed on load.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if JSON serialization fails (should not happen with valid identity).
-    #[must_use]
-    pub fn to_stored_bytes(&self) -> Vec<u8> {
+    /// Returns an error if JSON serialization fails.
+    pub fn to_stored_bytes(&self) -> Result<Vec<u8>> {
         let stored = StoredIdentity {
             secret_key_bytes: self.secret_key,
             public_key_bytes: Some(self.public_key),
             onion_address: Some(self.onion_address.clone()),
             created_at: self.created_at,
         };
-        serde_json::to_vec(&stored).expect("identity serialization should not fail")
+        serde_json::to_vec(&stored).map_err(Into::into)
     }
 
     /// Deserialize from storage (production safe - no crypto needed)
@@ -442,56 +441,64 @@ impl SessionKeys {
 
     /// Standalone derivation (for testing/offline only)
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if HMAC key construction fails for fixed-size keys (should not occur).
+    /// Returns an error if HMAC construction or key material extraction fails.
     #[cfg(feature = "standalone")]
-    #[must_use]
     pub fn derive(
         shared_secret: &[u8; 32],
         client_nonce: &[u8; 24],
         server_nonce: &[u8; 24],
         is_client: bool,
-    ) -> Self {
+    ) -> Result<Self> {
         use hmac::{Hmac, Mac};
         use sha2::Sha256;
 
         type HmacSha256 = Hmac<Sha256>;
 
         // 1. HKDF-Extract: PRK = HMAC-SHA256(salt=zeros, IKM=shared_secret)
-        let mut mac = HmacSha256::new_from_slice(&[0u8; 32]).expect("known size");
+        let mut mac = HmacSha256::new_from_slice(&[0u8; 32])
+            .map_err(|e| crate::OnionError::CryptoError(format!("HKDF extract HMAC key: {e}")))?;
         mac.update(shared_secret);
         let prk = mac.finalize().into_bytes();
 
         // 2. HKDF-Expand for client key
-        let mut mac = HmacSha256::new_from_slice(&prk).expect("known size");
+        let mut mac = HmacSha256::new_from_slice(&prk).map_err(|e| {
+            crate::OnionError::CryptoError(format!("HKDF expand (client) HMAC key: {e}"))
+        })?;
         mac.update(b"sovereign-onion client");
         mac.update(client_nonce);
         mac.update(server_nonce);
         mac.update(&[0x01]); // Counter
         let client_key_full = mac.finalize().into_bytes();
-        let client_key: [u8; 32] = client_key_full[..32].try_into().expect("known size");
+        let client_key: [u8; 32] = client_key_full[..32]
+            .try_into()
+            .map_err(|_| crate::OnionError::CryptoError("HKDF client key length".into()))?;
 
         // 3. HKDF-Expand for server key
-        let mut mac = HmacSha256::new_from_slice(&prk).expect("known size");
+        let mut mac = HmacSha256::new_from_slice(&prk).map_err(|e| {
+            crate::OnionError::CryptoError(format!("HKDF expand (server) HMAC key: {e}"))
+        })?;
         mac.update(b"sovereign-onion server");
         mac.update(client_nonce);
         mac.update(server_nonce);
         mac.update(&[0x01]); // Counter
         let server_key_full = mac.finalize().into_bytes();
-        let server_key: [u8; 32] = server_key_full[..32].try_into().expect("known size");
+        let server_key: [u8; 32] = server_key_full[..32]
+            .try_into()
+            .map_err(|_| crate::OnionError::CryptoError("HKDF server key length".into()))?;
 
         // Assign keys based on role
         if is_client {
-            Self {
+            Ok(Self {
                 send_key: client_key,
                 recv_key: server_key,
-            }
+            })
         } else {
-            Self {
+            Ok(Self {
                 send_key: server_key,
                 recv_key: client_key,
-            }
+            })
         }
     }
 }
@@ -523,7 +530,7 @@ mod tests {
     #[test]
     fn test_identity_serialization() {
         let original = OnionIdentity::generate();
-        let bytes = original.to_stored_bytes();
+        let bytes = original.to_stored_bytes().unwrap();
         let restored = OnionIdentity::from_stored_bytes(&bytes).unwrap();
 
         assert_eq!(original.onion_address(), restored.onion_address());
@@ -556,10 +563,12 @@ mod tests {
         let server_nonce = [0x02u8; 24];
 
         // Derive from client perspective
-        let client_keys = SessionKeys::derive(&shared_secret, &client_nonce, &server_nonce, true);
+        let client_keys =
+            SessionKeys::derive(&shared_secret, &client_nonce, &server_nonce, true).unwrap();
 
         // Derive from server perspective
-        let server_keys = SessionKeys::derive(&shared_secret, &client_nonce, &server_nonce, false);
+        let server_keys =
+            SessionKeys::derive(&shared_secret, &client_nonce, &server_nonce, false).unwrap();
 
         // Client's send key = Server's recv key
         assert_eq!(client_keys.send_key, server_keys.recv_key);
@@ -577,8 +586,8 @@ mod tests {
         let nonce1 = [0x01u8; 24];
         let nonce2 = [0x02u8; 24];
 
-        let keys1 = SessionKeys::derive(&shared_secret, &nonce1, &nonce2, true);
-        let keys2 = SessionKeys::derive(&shared_secret, &nonce2, &nonce1, true);
+        let keys1 = SessionKeys::derive(&shared_secret, &nonce1, &nonce2, true).unwrap();
+        let keys2 = SessionKeys::derive(&shared_secret, &nonce2, &nonce1, true).unwrap();
 
         // Different nonces should produce different keys
         assert_ne!(keys1.send_key, keys2.send_key);
@@ -610,7 +619,7 @@ mod stored_identity_tests {
             "onion address"
         );
         assert_eq!(id.public_key_bytes(), &[8u8; 32], "public key bytes");
-        let round = id.to_stored_bytes();
+        let round = id.to_stored_bytes().expect("serialize stored identity");
         let id2 = OnionIdentity::from_stored_bytes(&round).expect("second parse");
         assert_eq!(id2.secret_key_bytes(), id.secret_key_bytes(), "secret roundtrip");
     }

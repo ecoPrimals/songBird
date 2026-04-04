@@ -33,14 +33,14 @@ impl Consensus {
     ///
     /// # Errors
     /// Returns error if all authorities fail or consensus parse fails.
-    pub async fn fetch(beardog: &CryptoProvider) -> Result<Self> {
+    pub async fn fetch(security_provider: &CryptoProvider) -> Result<Self> {
         info!("Fetching Tor network consensus");
 
         // Try up to 3 authorities
         for authority in DIRECTORY_AUTHORITIES.iter().take(3) {
             debug!("Trying directory authority: {}", authority.nickname);
 
-            match Self::fetch_from_authority(authority, beardog).await {
+            match Self::fetch_from_authority(authority, security_provider).await {
                 Ok(consensus) => {
                     info!(
                         authority = authority.nickname,
@@ -65,7 +65,7 @@ impl Consensus {
     /// Fetch consensus from specific authority
     async fn fetch_from_authority(
         authority: &DirectoryAuthority,
-        _beardog: &CryptoProvider,
+        _security_provider: &CryptoProvider,
     ) -> Result<Self> {
         let url = authority.consensus_url();
 
@@ -375,7 +375,29 @@ const fn is_leap_year(year: u64) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::directory::{RelayFlags, RelayInfo};
+    use crate::error::Error;
+    use std::net::{IpAddr, Ipv4Addr};
+    use std::time::{Duration, SystemTime};
+
+    fn sample_relay(name: &str, fp: u8, flags: RelayFlags) -> RelayInfo {
+        let mut fingerprint = [0u8; 20];
+        fingerprint[0] = fp;
+        RelayInfo {
+            nickname: name.to_string(),
+            fingerprint,
+            address: IpAddr::V4(Ipv4Addr::new(10, 0, 0, fp)),
+            or_port: 443,
+            dir_port: None,
+            flags,
+            bandwidth: 50_000,
+            ntor_key: None,
+            version: None,
+        }
+    }
 
     #[test]
     fn test_parse_empty() {
@@ -453,5 +475,66 @@ mod tests {
         assert!(!is_leap_year(2025));
         assert!(is_leap_year(2000));
         assert!(!is_leap_year(1900));
+    }
+
+    #[test]
+    fn select_path_errors_when_not_enough_relays() {
+        let c = Consensus {
+            valid_after: SystemTime::UNIX_EPOCH,
+            fresh_until: SystemTime::UNIX_EPOCH + Duration::from_secs(3600),
+            valid_until: SystemTime::UNIX_EPOCH + Duration::from_secs(7200),
+            relays: vec![sample_relay("a", 1, RelayFlags::empty())],
+        };
+        let err = c.select_path().expect_err("need >=3 relays");
+        assert!(matches!(err, Error::Consensus(_)));
+    }
+
+    #[test]
+    fn select_path_succeeds_with_three_flagged_relays() {
+        let guard_f = RelayFlags::GUARD
+            | RelayFlags::FAST
+            | RelayFlags::STABLE
+            | RelayFlags::VALID
+            | RelayFlags::RUNNING;
+        let mid_f = RelayFlags::FAST | RelayFlags::STABLE | RelayFlags::VALID | RelayFlags::RUNNING;
+        let exit_f = RelayFlags::HSDIR | RelayFlags::VALID | RelayFlags::RUNNING;
+
+        let c = Consensus {
+            valid_after: SystemTime::UNIX_EPOCH,
+            fresh_until: SystemTime::UNIX_EPOCH + Duration::from_secs(3600),
+            valid_until: SystemTime::UNIX_EPOCH + Duration::from_secs(7200),
+            relays: vec![
+                sample_relay("g", 1, guard_f),
+                sample_relay("m", 2, mid_f),
+                sample_relay("e", 3, exit_f),
+            ],
+        };
+
+        let path = c.select_path().expect("path");
+        assert_eq!(path.guard.nickname, "g");
+        assert_eq!(path.middle.nickname, "m");
+        assert_eq!(path.exit.nickname, "e");
+    }
+
+    #[test]
+    fn consensus_not_valid_when_past_valid_until() {
+        let past = SystemTime::UNIX_EPOCH + Duration::from_secs(10);
+        let c = Consensus {
+            valid_after: past,
+            fresh_until: past,
+            valid_until: past,
+            relays: vec![],
+        };
+        assert!(!c.is_valid());
+        assert!(!c.is_fresh());
+    }
+
+    #[test]
+    fn parse_internal_roundtrip_header_timestamps() {
+        let doc = "network-status-version 3\nvalid-after 2026-02-08 12:00:00\nfresh-until 2026-02-08 13:00:00\nvalid-until 2026-02-08 15:00:00\n\nr X AAAAAAAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAA 2026-02-07 00:00:00 1.2.3.4 443 0\ns Fast Running Valid\nw Bandwidth=1000\n";
+        let parsed = Consensus::parse(doc).expect("parse");
+        assert!(!parsed.relays.is_empty());
+        assert!(parsed.valid_after <= parsed.fresh_until);
+        assert!(parsed.fresh_until <= parsed.valid_until);
     }
 }

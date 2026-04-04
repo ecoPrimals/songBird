@@ -112,9 +112,11 @@ impl<T: Transport + 'static> GattClient<T> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::{
-        device::{Address, DeviceInfo},
+        device::{Address, Device, DeviceInfo},
         l2cap::L2capChannel,
         transport::{Transport, TransportType},
     };
@@ -175,5 +177,78 @@ mod tests {
         assert!(!props.write_without_response());
         assert!(props.notify());
         assert!(!props.indicate());
+    }
+
+    /// Echoes the last ACL frame so [`GattClient::send_att_request`] can parse ATT payload.
+    struct EchoAclTransport {
+        last_acl: tokio::sync::Mutex<Option<Vec<u8>>>,
+    }
+
+    impl EchoAclTransport {
+        fn new() -> Self {
+            Self {
+                last_acl: tokio::sync::Mutex::new(None),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl Transport for EchoAclTransport {
+        fn transport_type(&self) -> TransportType {
+            TransportType::Usb
+        }
+
+        async fn send_command(&mut self, _data: &[u8]) -> Result<()> {
+            Ok(())
+        }
+
+        async fn receive_event(&mut self) -> Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        async fn send_acl(&mut self, data: &[u8]) -> Result<()> {
+            *self.last_acl.lock().await = Some(data.to_vec());
+            Ok(())
+        }
+
+        async fn receive_acl(&mut self) -> Result<Vec<u8>> {
+            self.last_acl.lock().await.take().ok_or_else(|| {
+                crate::error::BluetoothError::Transport(
+                    crate::error::TransportError::Communication("no acl".into()),
+                )
+            })
+        }
+
+        fn is_connected(&self) -> bool {
+            true
+        }
+
+        async fn close(&mut self) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn send_att_request_round_trips_acl_framing() {
+        let info = DeviceInfo::new(Address::from_bytes([1, 2, 3, 4, 5, 6]));
+        let device = Arc::new(Device::new(info, 0x0040));
+        let l2cap = L2capChannel::new_att(0x0040);
+        let transport = Arc::new(Mutex::new(EchoAclTransport::new()));
+        let client = GattClient::new(device, l2cap, transport);
+
+        let att = [0x0Au8, 0x01, 0x00]; // Read Req, handle 1
+        let out = client.send_att_request(&att).await.expect("att");
+        assert_eq!(out, att);
+    }
+
+    #[test]
+    fn gatt_client_with_timeout_updates_duration() {
+        let info = DeviceInfo::new(Address::from_bytes([1, 2, 3, 4, 5, 6]));
+        let device = Arc::new(Device::new(info, 0x0040));
+        let l2cap = L2capChannel::new_att(0x0040);
+        let transport = Arc::new(Mutex::new(MockTransport));
+        let c = GattClient::new(device, l2cap, transport)
+            .with_timeout(std::time::Duration::from_secs(9));
+        assert_eq!(c.timeout_duration, std::time::Duration::from_secs(9));
     }
 }

@@ -17,8 +17,8 @@ use tracing::{debug, info};
 
 /// Circuit manager
 pub struct CircuitManager {
-    /// `security provider` crypto client
-    beardog: Arc<CryptoProvider>,
+    /// Security provider crypto client ([`CryptoProvider`])
+    security_provider: Arc<CryptoProvider>,
     /// Network consensus
     consensus: Arc<RwLock<Consensus>>,
     /// Active circuits
@@ -32,9 +32,9 @@ pub struct CircuitManager {
 impl CircuitManager {
     /// Create new circuit manager
     #[must_use]
-    pub fn new(beardog: CryptoProvider, consensus: Consensus) -> Self {
+    pub fn new(security_provider: CryptoProvider, consensus: Consensus) -> Self {
         Self {
-            beardog: Arc::new(beardog),
+            security_provider: Arc::new(security_provider),
             consensus: Arc::new(RwLock::new(consensus)),
             circuits: Arc::new(RwLock::new(HashMap::new())),
             connections: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
@@ -107,7 +107,7 @@ impl CircuitManager {
         connection.connect().await?;
 
         // 2. Generate CREATE2 payload via ntor handshake
-        let ntor = super::NtorHandshake::new((*self.beardog).clone());
+        let ntor = super::NtorHandshake::new((*self.security_provider).clone());
 
         // Get ntor key from relay (required for ntor handshake)
         let relay_ntor_key = guard
@@ -242,14 +242,14 @@ impl CircuitManager {
         };
 
         // Create EXTEND2 relay cell
-        let extender = super::extend::CircuitExtender::new((*self.beardog).clone());
+        let extender = super::extend::CircuitExtender::new((*self.security_provider).clone());
         let (extend2_relay_cell, state) = extender.create_extend2(&circuit, next_relay).await?;
 
         // Encode EXTEND2 as relay cell
         let relay_payload = extend2_relay_cell.encode();
 
         // Encrypt through existing hops (onion encryption)
-        let onion = super::OnionCrypto::new((*self.beardog).clone());
+        let onion = super::OnionCrypto::new((*self.security_provider).clone());
         let encrypted_payload = onion.encrypt_forward(&relay_payload, &circuit.hops).await?;
 
         // Build RELAY_EARLY cell (used for first 8 hops, required for EXTEND2)
@@ -437,13 +437,17 @@ impl CircuitManager {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn test_circuit_manager_creation() {
         use std::time::SystemTime;
 
-        let beardog = CryptoProvider::from_env();
+        let beardog =
+            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string());
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,
@@ -460,7 +464,8 @@ mod tests {
     fn test_circuit_id_allocation() {
         use std::time::SystemTime;
 
-        let beardog = CryptoProvider::from_env();
+        let beardog =
+            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string());
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,
@@ -480,5 +485,73 @@ mod tests {
         // Verify MSB is set (client-initiated)
         assert!(id1 & 0x8000_0000 != 0);
         assert!(id2 & 0x8000_0000 != 0);
+    }
+
+    #[test]
+    fn get_circuit_missing_returns_error() {
+        use std::time::SystemTime;
+
+        let manager = CircuitManager::new(
+            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            Consensus {
+                valid_after: SystemTime::now(),
+                fresh_until: SystemTime::now(),
+                valid_until: SystemTime::now(),
+                relays: Vec::new(),
+            },
+        );
+
+        let err = manager.get_circuit(0xdead_beef).expect_err("unknown circuit");
+        assert!(matches!(err, Error::Circuit(_)));
+    }
+
+    #[tokio::test]
+    async fn close_circuit_unknown_is_ok_and_no_panic() {
+        use std::time::SystemTime;
+
+        let manager = CircuitManager::new(
+            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            Consensus {
+                valid_after: SystemTime::now(),
+                fresh_until: SystemTime::now(),
+                valid_until: SystemTime::now(),
+                relays: Vec::new(),
+            },
+        );
+
+        manager.close_circuit(99).await.expect("close unknown id");
+        assert_eq!(manager.circuit_count(), 0);
+    }
+
+    #[test]
+    fn allocate_circuit_id_increments_monotonically() {
+        let manager = CircuitManager::new(
+            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            Consensus {
+                valid_after: std::time::SystemTime::now(),
+                fresh_until: std::time::SystemTime::now(),
+                valid_until: std::time::SystemTime::now(),
+                relays: Vec::new(),
+            },
+        );
+        assert_eq!(manager.allocate_circuit_id().expect("a"), 0x8000_0001);
+        assert_eq!(manager.allocate_circuit_id().expect("b"), 0x8000_0002);
+        assert_eq!(manager.allocate_circuit_id().expect("c"), 0x8000_0003);
+    }
+
+    #[tokio::test]
+    async fn close_circuit_idempotent_without_panic() {
+        let manager = CircuitManager::new(
+            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            Consensus {
+                valid_after: std::time::SystemTime::now(),
+                fresh_until: std::time::SystemTime::now(),
+                valid_until: std::time::SystemTime::now(),
+                relays: Vec::new(),
+            },
+        );
+        manager.close_circuit(404).await.expect("first");
+        manager.close_circuit(404).await.expect("second");
+        assert_eq!(manager.circuit_count(), 0);
     }
 }

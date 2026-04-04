@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Mock BearDog server for testing BTSP client
+// Copyright (c) 2024-2026 ecoPrimals
+//! Mock security provider server for testing BTSP client
 //!
-//! Provides a lightweight mock implementation of BearDog's Unix socket server
-//! for testing BTSP tunnel establishment, encryption/decryption, and error handling.
+//! Provides a lightweight mock implementation of a security provider's Unix socket
+//! server for testing BTSP tunnel establishment, encryption/decryption, and error handling.
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -12,8 +13,8 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, info, warn};
 
-/// Mock BearDog server for testing
-pub struct BearDogMock {
+/// Mock security provider server for testing
+pub struct SecurityProviderMock {
     socket_path: PathBuf,
     listener: Option<UnixListener>,
     fault_mode: FaultMode,
@@ -41,11 +42,15 @@ pub enum FaultMode {
     },
 }
 
-impl BearDogMock {
-    /// Create a new mock BearDog server
+/// Deprecated alias for [`SecurityProviderMock`].
+#[deprecated(note = "use SecurityProviderMock")]
+pub type BearDogMock = SecurityProviderMock;
+
+impl SecurityProviderMock {
+    /// Create a new mock security provider server
     ///
     /// # Arguments
-    /// * `socket_path` - Path to Unix socket (e.g., "/tmp/beardog-test.sock")
+    /// * `socket_path` - Path to Unix socket (e.g., "/tmp/security-test.sock")
     pub fn new<P: AsRef<Path>>(socket_path: P) -> Self {
         Self {
             socket_path: socket_path.as_ref().to_path_buf(),
@@ -61,7 +66,7 @@ impl BearDogMock {
 
         // Bind to Unix socket
         let listener = UnixListener::bind(&self.socket_path)?;
-        info!("🐻 BearDog mock started on {:?}", self.socket_path);
+        info!("Security provider mock started on {:?}", self.socket_path);
 
         self.listener = Some(listener);
         Ok(())
@@ -72,7 +77,7 @@ impl BearDogMock {
         let listener = self.listener.as_ref().ok_or_else(|| anyhow!("Mock server not started"))?;
 
         let (stream, _) = listener.accept().await?;
-        debug!("🐻 BearDog mock accepted connection");
+        debug!("Security provider mock accepted connection");
 
         self.handle_stream(stream).await
     }
@@ -86,7 +91,7 @@ impl BearDogMock {
         reader.read_until(b'\n', &mut buffer).await?;
 
         let request: Value = serde_json::from_slice(&buffer)?;
-        debug!("🐻 BearDog mock received request: {:?}", request);
+        debug!("Security provider mock received request: {:?}", request);
 
         // Inject faults if configured
         match self.fault_mode {
@@ -166,7 +171,7 @@ impl BearDogMock {
             "jsonrpc": "2.0",
             "id": request.get("id"),
             "result": {
-                "primal": "beardog",
+                "primal": "security provider",
                 "version": "mock-1.0.0",
                 "status": "healthy"
             }
@@ -274,7 +279,7 @@ impl BearDogMock {
     pub fn stop(self) -> Result<()> {
         drop(self.listener);
         let _ = std::fs::remove_file(&self.socket_path);
-        info!("🐻 BearDog mock stopped");
+        info!("Security provider mock stopped");
         Ok(())
     }
 }
@@ -284,14 +289,14 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_beardog_mock_creation() {
-        let mock = BearDogMock::new("/tmp/test-beardog-mock.sock");
-        assert_eq!(mock.socket_path, PathBuf::from("/tmp/test-beardog-mock.sock"));
+    async fn test_security_provider_mock_creation() {
+        let mock = SecurityProviderMock::new("/tmp/test-security-mock.sock");
+        assert_eq!(mock.socket_path, PathBuf::from("/tmp/test-security-mock.sock"));
     }
 
     #[tokio::test]
-    async fn test_beardog_mock_start_stop() {
-        let mut mock = BearDogMock::new("/tmp/test-beardog-mock-2.sock");
+    async fn test_security_provider_mock_start_stop() {
+        let mut mock = SecurityProviderMock::new("/tmp/test-security-mock-2.sock");
         mock.start().await.unwrap();
         assert!(mock.listener.is_some());
         mock.stop().unwrap();

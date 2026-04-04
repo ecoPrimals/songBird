@@ -34,8 +34,8 @@ pub enum ServiceState {
 
 /// Onion service manager
 pub struct OnionServiceManager {
-    /// `security provider` crypto client
-    beardog: Arc<CryptoProvider>,
+    /// Security-provider crypto client ([`CryptoProvider`])
+    security_provider: Arc<CryptoProvider>,
     /// Service keys
     keys: Arc<RwLock<Option<OnionServiceKeys>>>,
     /// Introduction points
@@ -57,9 +57,9 @@ impl OnionServiceManager {
 
     /// Create new onion service manager
     #[must_use]
-    pub fn new(beardog: CryptoProvider, port: u16) -> Self {
+    pub fn new(security_provider: CryptoProvider, port: u16) -> Self {
         Self {
-            beardog: Arc::new(beardog),
+            security_provider: Arc::new(security_provider),
             keys: Arc::new(RwLock::new(None)),
             intro_points: Arc::new(RwLock::new(Vec::new())),
             rendezvous_circuits: Arc::new(RwLock::new(HashMap::new())),
@@ -75,7 +75,7 @@ impl OnionServiceManager {
     /// Returns error if key generation fails.
     pub async fn initialize(&self) -> Result<OnionServiceKeys> {
         // Generate service keys via security provider
-        let keys = OnionServiceKeys::generate(&self.beardog).await?;
+        let keys = OnionServiceKeys::generate(&self.security_provider).await?;
 
         // Store keys
         {
@@ -209,7 +209,8 @@ impl OnionServiceManager {
             guard.clone()
         };
 
-        let descriptor = OnionServiceDescriptor::new(&keys, &intro_points, &self.beardog).await?;
+        let descriptor =
+            OnionServiceDescriptor::new(&keys, &intro_points, &self.security_provider).await?;
 
         // HSDir upload is not performed; descriptor is built then discarded for this state machine step.
         let _ = descriptor;
@@ -342,11 +343,18 @@ impl OnionServiceManager {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::error::Error;
+
+    fn test_crypto() -> CryptoProvider {
+        CryptoProvider::new("/tmp/songbird-tor-protocol-onion-service-test.sock".to_string())
+    }
 
     #[test]
     fn test_service_manager_creation() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
 
         assert_eq!(manager.port(), 8080);
@@ -355,7 +363,7 @@ mod tests {
 
     #[test]
     fn test_service_state() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
 
         let state = manager.state().expect("Failed to get state");
@@ -364,7 +372,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_setup_introduction_points() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
 
         manager.setup_introduction_points(3).await.expect("Failed to setup intro points");
@@ -380,7 +388,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_publish_descriptor_without_init() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
         let result = manager.publish_descriptor().await;
         assert!(result.is_err(), "publish_descriptor should fail when service not initialized");
@@ -388,7 +396,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_introduction_wrong_state() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
         let cookie = [0xABu8; 20];
         let result = manager.handle_introduction(&cookie).await;
@@ -397,7 +405,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_stop_service() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
 
         manager.setup_introduction_points(2).await.expect("setup failed");
@@ -410,7 +418,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_duplicate_rendezvous_cookie_rejected() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
         manager.set_state(ServiceState::Running).expect("set state failed");
 
@@ -422,9 +430,42 @@ mod tests {
 
     #[tokio::test]
     async fn test_onion_address_before_init() {
-        let beardog = CryptoProvider::from_env();
+        let beardog = test_crypto();
         let manager = OnionServiceManager::new(beardog, 8080);
         let result = manager.onion_address();
         assert!(result.is_err(), "onion_address should fail before init");
+    }
+
+    #[tokio::test]
+    async fn setup_introduction_points_rejects_count_over_u8() {
+        let manager = OnionServiceManager::new(test_crypto(), 9000);
+        let err =
+            manager.setup_introduction_points(257).await.expect_err("index 256 does not fit u8");
+        assert!(matches!(err, Error::Protocol(_)));
+    }
+
+    #[tokio::test]
+    async fn handle_introduction_succeeds_when_running() {
+        let manager = OnionServiceManager::new(test_crypto(), 9001);
+        manager.set_state(ServiceState::Running).expect("set running");
+        let cookie = [0x11u8; 20];
+        manager.handle_introduction(&cookie).await.expect("introduction");
+        manager.handle_introduction(&[0x22u8; 20]).await.expect("second cookie");
+    }
+
+    #[tokio::test]
+    async fn stop_clears_rendezvous_after_introduction() {
+        let manager = OnionServiceManager::new(test_crypto(), 9002);
+        manager.set_state(ServiceState::Running).expect("set running");
+        manager.handle_introduction(&[0x33u8; 20]).await.expect("intro");
+        manager.stop().await.expect("stop");
+        assert_eq!(manager.state().expect("state"), ServiceState::Stopped);
+    }
+
+    #[test]
+    fn service_state_all_variants_distinct() {
+        assert_ne!(ServiceState::Publishing, ServiceState::Running);
+        assert_ne!(ServiceState::Running, ServiceState::Stopped);
+        assert_ne!(ServiceState::Initializing, ServiceState::Stopped);
     }
 }

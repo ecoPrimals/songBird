@@ -584,6 +584,8 @@ pub struct X25519Keypair {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -595,5 +597,40 @@ mod tests {
     fn test_crypto_provider_new() {
         let p = CryptoProvider::new("/tmp/test.sock".to_string());
         assert_eq!(p.socket_path(), "/tmp/test.sock");
+    }
+
+    #[test]
+    fn ntor_client_init_clone_copies_fields() {
+        let a = NtorClientInit {
+            client_public: [7u8; 32],
+            state_id: "state-1".to_string(),
+        };
+        let b = a.clone();
+        assert_eq!(a.client_public, b.client_public);
+        assert_eq!(a.state_id, b.state_id);
+    }
+
+    #[test]
+    fn key_material_clone_preserves_secrets() {
+        let km = KeyMaterial {
+            forward_key: [1u8; 16],
+            backward_key: [2u8; 16],
+            forward_iv: [3u8; 16],
+            backward_iv: [4u8; 16],
+        };
+        let c = km.clone();
+        assert_eq!(c.forward_key, km.forward_key);
+        assert_eq!(c.backward_iv, km.backward_iv);
+    }
+
+    #[test]
+    fn x25519_keypair_fields_accessible() {
+        let kp = X25519Keypair {
+            secret_key: [9u8; 32],
+            secret_key_id: "id".into(),
+            public_key: [8u8; 32],
+        };
+        assert_eq!(kp.secret_key[0], 9);
+        assert_eq!(kp.public_key[0], 8);
     }
 }

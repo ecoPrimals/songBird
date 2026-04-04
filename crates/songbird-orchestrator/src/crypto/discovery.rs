@@ -35,15 +35,6 @@ pub async fn get_security_crypto_socket() -> Result<String> {
     discover_crypto_socket().await
 }
 
-/// Backward-compatible alias for [`get_security_crypto_socket`].
-#[deprecated(note = "Use get_security_crypto_socket (capability-based naming)")]
-/// # Errors
-///
-/// Returns an error if the operation fails.
-pub async fn get_beardog_crypto_socket() -> Result<String> {
-    get_security_crypto_socket().await
-}
-
 /// Discover crypto provider socket for a specific family.
 ///
 /// Checks family-specific capability socket first, then falls back to
@@ -77,15 +68,6 @@ pub async fn discover_crypto_socket_for_family(family_id: &str) -> Result<String
 /// Returns an error if the operation fails.
 pub async fn get_security_crypto_socket_for_family(family_id: &str) -> Result<String> {
     discover_crypto_socket_for_family(family_id).await
-}
-
-/// Backward-compatible alias for [`get_security_crypto_socket_for_family`].
-#[deprecated(note = "Use get_security_crypto_socket_for_family (capability-based naming)")]
-/// # Errors
-///
-/// Returns an error if the operation fails.
-pub async fn get_beardog_crypto_socket_for_family(family_id: &str) -> Result<String> {
-    get_security_crypto_socket_for_family(family_id).await
 }
 
 /// Check if any crypto provider is available.
@@ -129,12 +111,6 @@ pub async fn is_security_crypto_available() -> bool {
     is_crypto_available().await
 }
 
-/// Backward-compatible alias for [`is_security_crypto_available`].
-#[deprecated(note = "Use is_security_crypto_available (capability-based naming)")]
-pub async fn is_beardog_crypto_available() -> bool {
-    is_security_crypto_available().await
-}
-
 /// Discover crypto provider socket with purpose context for audit logging.
 ///
 /// Same as [`discover_crypto_socket`] but logs the purpose.
@@ -153,15 +129,6 @@ pub async fn discover_crypto_socket_for_purpose(purpose: &str) -> Result<String>
 /// Returns an error if the operation fails.
 pub async fn get_security_crypto_socket_for_purpose(purpose: &str) -> Result<String> {
     discover_crypto_socket_for_purpose(purpose).await
-}
-
-/// Backward-compatible alias for [`get_security_crypto_socket_for_purpose`].
-#[deprecated(note = "Use get_security_crypto_socket_for_purpose (capability-based naming)")]
-/// # Errors
-///
-/// Returns an error if the operation fails.
-pub async fn get_beardog_crypto_socket_for_purpose(purpose: &str) -> Result<String> {
-    get_security_crypto_socket_for_purpose(purpose).await
 }
 
 #[cfg(test)]

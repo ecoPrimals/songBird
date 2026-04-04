@@ -16,7 +16,7 @@
 //!
 //! This crate implements a minimal subset of the Tor protocol focused on
 //! .onion service hosting and client connectivity. All cryptographic operations
-//! are delegated to `security provider` (TRUE PRIMAL architecture).
+//! are delegated to the security provider (TRUE PRIMAL architecture).
 //!
 //! ## Features
 //!
@@ -27,7 +27,7 @@
 //!
 //! ## TRUE PRIMAL
 //!
-//! 100% `security provider` crypto delegation - zero direct crypto in this crate.
+//! 100% security-provider crypto delegation — zero direct crypto in this crate.
 
 #![forbid(unsafe_code)]
 #![warn(clippy::unwrap_used)]
@@ -52,22 +52,22 @@ pub use error::{Error, Result};
 
 /// Tor client for connecting to .onion addresses
 pub struct TorClient {
-    _beardog: CryptoProvider,
+    _security_provider: CryptoProvider,
 }
 
 impl TorClient {
-    /// Create new Tor client with `security provider` delegation
+    /// Create new Tor client with security provider delegation
     #[must_use]
-    pub const fn new(beardog: CryptoProvider) -> Self {
+    pub const fn new(security_provider: CryptoProvider) -> Self {
         Self {
-            _beardog: beardog,
+            _security_provider: security_provider,
         }
     }
 }
 
 /// Tor service for hosting .onion addresses
 pub struct TorService {
-    _beardog: CryptoProvider,
+    _security_provider: CryptoProvider,
     _port: u16,
 }
 
@@ -77,10 +77,10 @@ impl TorService {
     /// # Errors
     ///
     /// Returns error if service creation fails.
-    pub async fn new(beardog: CryptoProvider, port: u16) -> Result<Self> {
+    pub async fn new(security_provider: CryptoProvider, port: u16) -> Result<Self> {
         core::future::ready(()).await;
         Ok(Self {
-            _beardog: beardog,
+            _security_provider: security_provider,
             _port: port,
         })
     }
@@ -92,5 +92,41 @@ impl TorService {
     #[must_use]
     pub const fn onion_address(&self) -> Option<&str> {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::circuit::CircuitPurpose;
+
+    #[test]
+    fn tor_client_holds_crypto_provider() {
+        let p = CryptoProvider::new("/tmp/songbird-tor-test.sock".to_string());
+        let c = TorClient::new(p);
+        let _ = c;
+    }
+
+    #[tokio::test]
+    async fn tor_service_new_and_onion_address_pending() {
+        let p = CryptoProvider::new("/tmp/songbird-tor-test2.sock".to_string());
+        let svc = TorService::new(p, 9050).await.expect("service");
+        assert_eq!(svc.onion_address(), None);
+    }
+
+    #[test]
+    fn circuit_purpose_exported_for_callers() {
+        let _ = CircuitPurpose::General;
+        let _ = CircuitPurpose::HSDir;
+        let _ = CircuitPurpose::Rendezvous;
+    }
+
+    #[tokio::test]
+    async fn tor_service_new_accepts_ephemeral_port() {
+        let p = CryptoProvider::new("/tmp/songbird-tor-test3.sock".to_string());
+        let svc = TorService::new(p, 49152).await.expect("service");
+        assert_eq!(svc.onion_address(), None);
     }
 }

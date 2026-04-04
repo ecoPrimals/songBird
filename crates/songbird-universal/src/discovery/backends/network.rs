@@ -260,7 +260,7 @@ fn parse_mdns_ptr_response(data: &[u8], src: std::net::SocketAddr) -> Option<Dis
 ///
 /// ```text
 /// capabilities=compute,storage
-/// primal_type=toadstool
+/// primal_type=compute-provider-example
 /// version=0.1.0
 /// environment=production
 /// ```

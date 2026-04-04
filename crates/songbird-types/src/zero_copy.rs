@@ -5,8 +5,76 @@
 //!
 //! **CANONICAL**: Zero-copy and memory-efficient utilities for high-performance scenarios
 
+use bytes::Bytes;
 use std::borrow::Cow;
 use std::sync::Arc;
+
+/// Zero-copy byte buffer for IPC payloads.
+/// Wraps `bytes::Bytes` for reference-counted, zero-copy sharing.
+#[derive(Debug, Clone)]
+pub struct SharedBytes {
+    inner: Bytes,
+}
+
+impl SharedBytes {
+    /// Wrap existing `Bytes` without copying.
+    #[must_use]
+    pub const fn from_bytes(bytes: Bytes) -> Self {
+        Self {
+            inner: bytes,
+        }
+    }
+
+    /// Borrow the underlying `Bytes` handle.
+    #[must_use]
+    pub const fn as_bytes(&self) -> &Bytes {
+        &self.inner
+    }
+
+    /// Consume `self`, returning the underlying `Bytes`.
+    #[must_use]
+    pub fn into_bytes(self) -> Bytes {
+        self.inner
+    }
+}
+
+impl From<Bytes> for SharedBytes {
+    fn from(inner: Bytes) -> Self {
+        Self {
+            inner,
+        }
+    }
+}
+
+impl From<Vec<u8>> for SharedBytes {
+    fn from(value: Vec<u8>) -> Self {
+        Self {
+            inner: Bytes::from(value),
+        }
+    }
+}
+
+impl From<&[u8]> for SharedBytes {
+    fn from(value: &[u8]) -> Self {
+        Self {
+            inner: Bytes::copy_from_slice(value),
+        }
+    }
+}
+
+impl From<String> for SharedBytes {
+    fn from(value: String) -> Self {
+        Self {
+            inner: Bytes::from(value),
+        }
+    }
+}
+
+impl AsRef<[u8]> for SharedBytes {
+    fn as_ref(&self) -> &[u8] {
+        self.inner.as_ref()
+    }
+}
 
 /// Shared reference wrapper for zero-copy sharing
 #[derive(Debug, Clone)]
@@ -106,6 +174,7 @@ mod tests {
     #![allow(unused, reason = "unused bindings/imports in this compilation unit")]
 
     use super::*;
+    use bytes::Bytes;
 
     #[test]
     fn test_shared_creation() {
@@ -163,6 +232,36 @@ mod tests {
         let arc_data = arc(data);
 
         assert_eq!(shared.as_ref(), arc_data.as_ref());
+    }
+
+    #[test]
+    fn shared_bytes_from_vec_roundtrip() {
+        let v = vec![1u8, 2, 3];
+        let sb = SharedBytes::from(v);
+        assert_eq!(sb.as_ref(), &[1, 2, 3]);
+        let b: Bytes = sb.into_bytes();
+        assert_eq!(b.as_ref(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn shared_bytes_from_slice_copies() {
+        let slice = b"hello";
+        let sb = SharedBytes::from(slice.as_slice());
+        assert_eq!(sb.as_ref(), slice);
+    }
+
+    #[test]
+    fn shared_bytes_from_string_utf8() {
+        let s = "json".to_string();
+        let sb = SharedBytes::from(s);
+        assert_eq!(sb.as_ref(), b"json");
+    }
+
+    #[test]
+    fn shared_bytes_from_bytes_identity() {
+        let b = Bytes::from_static(b"abc");
+        let sb = SharedBytes::from_bytes(b.clone());
+        assert_eq!(sb.as_bytes(), &b);
     }
 
     #[test]

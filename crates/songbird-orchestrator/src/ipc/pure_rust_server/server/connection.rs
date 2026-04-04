@@ -4,6 +4,7 @@
 //! Unix/TCP accept loops, per-connection framing, and TCP discovery file I/O.
 
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -192,9 +193,9 @@ impl UnixSocketServer {
                         },
                     };
 
-                    let response_json = serde_json::to_string(&response)?;
-                    writer.write_all(response_json.as_bytes()).await?;
-                    writer.write_all(b"\n").await?;
+                    let mut payload = serde_json::to_vec(&response)?;
+                    payload.push(b'\n');
+                    writer.write_all(&Bytes::from(payload)).await?;
                     writer.flush().await?;
 
                     debug!("✅ TCP response sent, closing connection");
@@ -265,9 +266,9 @@ impl UnixSocketServer {
                                 ))),
                                 id: serde_json::Value::Null,
                             };
-                            let resp_json = serde_json::to_string(&resp)?;
-                            writer.write_all(resp_json.as_bytes()).await?;
-                            writer.write_all(b"\n").await?;
+                            let mut payload = serde_json::to_vec(&resp)?;
+                            payload.push(b'\n');
+                            writer.write_all(&Bytes::from(payload)).await?;
                             writer.flush().await?;
                             break;
                         }
@@ -281,9 +282,9 @@ impl UnixSocketServer {
                     let response = self.handle_jsonrpc_request(request).await;
 
                     if !is_notification {
-                        let response_json = serde_json::to_string(&response)?;
-                        writer.write_all(response_json.as_bytes()).await?;
-                        writer.write_all(b"\n").await?;
+                        let mut payload = serde_json::to_vec(&response)?;
+                        payload.push(b'\n');
+                        writer.write_all(&Bytes::from(payload)).await?;
                         writer.flush().await?;
                     }
 

@@ -41,5 +41,6 @@ See parent project documentation for complete architecture details.
 
 ## License
 
-Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+Licensed under AGPL-3.0-only as part of the ecoPrimals ecosystem.
 
+Part of the scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0

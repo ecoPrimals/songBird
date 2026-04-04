@@ -12,6 +12,16 @@ use base64::prelude::*;
 use serde_json::json;
 use tracing::{debug, error, info, trace, warn};
 
+/// Decode a base64 field from a JSON-RPC response, returning a typed error on failure.
+fn decode_b64_field(result: &serde_json::Value, field: &str) -> Result<Vec<u8>> {
+    let encoded = result[field]
+        .as_str()
+        .ok_or_else(|| Error::SecurityProviderRpc(format!("Missing {field} in response")))?;
+    BASE64_STANDARD
+        .decode(encoded)
+        .map_err(|e| Error::SecurityProviderRpc(format!("Invalid {field} base64: {e}")))
+}
+
 impl SecurityRpcClient {
     /// Derive TLS handshake traffic secrets (for encrypting handshake messages)
     ///
@@ -38,7 +48,9 @@ impl SecurityRpcClient {
         transcript_hash: &[u8],
         cipher_suite: u16,
     ) -> Result<TlsSecrets> {
-        info!("🔑 Calling tls_derive_handshake_secrets via Neural API (RFC 8446 Section 7.1)");
+        info!(
+            "🔑 Calling tls_derive_handshake_secrets via security provider (RFC 8446 Section 7.1)"
+        );
         debug!("  → pre_master_secret: {} bytes", shared_secret.len());
         debug!("  → client_random: {} bytes", client_random.len());
         debug!("  → server_random: {} bytes", server_random.len());
@@ -75,51 +87,22 @@ impl SecurityRpcClient {
 
         debug!("📋 Parsing handshake traffic keys from response...");
 
-        let client_write_key = BASE64_STANDARD
-            .decode(result["client_write_key"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing client_write_key in response".to_string())
-            })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {e}")))?;
+        let client_write_key = decode_b64_field(&result, "client_write_key")?;
         debug!("  ✅ client_handshake_key: {} bytes", client_write_key.len());
 
-        let server_write_key = BASE64_STANDARD
-            .decode(result["server_write_key"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing server_write_key in response".to_string())
-            })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {e}")))?;
+        let server_write_key = decode_b64_field(&result, "server_write_key")?;
         debug!("  ✅ server_handshake_key: {} bytes", server_write_key.len());
 
-        let client_write_iv = BASE64_STANDARD
-            .decode(result["client_write_iv"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing client_write_iv in response".to_string())
-            })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {e}")))?;
+        let client_write_iv = decode_b64_field(&result, "client_write_iv")?;
         debug!("  ✅ client_handshake_iv: {} bytes", client_write_iv.len());
 
-        let server_write_iv = BASE64_STANDARD
-            .decode(result["server_write_iv"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing server_write_iv in response".to_string())
-            })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {e}")))?;
+        let server_write_iv = decode_b64_field(&result, "server_write_iv")?;
         debug!("  ✅ server_handshake_iv: {} bytes", server_write_iv.len());
 
-        // Parse traffic secrets (needed for Finished message - RFC 8446 Section 4.4.4)
-        let client_handshake_secret = BASE64_STANDARD
-            .decode(result["client_handshake_secret"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing client_handshake_secret in response".to_string())
-            })?)
-            .map_err(|e| {
-                Error::BearDogRpc(format!("Invalid client_handshake_secret base64: {e}"))
-            })?;
+        let client_handshake_secret = decode_b64_field(&result, "client_handshake_secret")?;
         debug!("  ✅ client_handshake_secret: {} bytes", client_handshake_secret.len());
 
-        let server_handshake_secret = BASE64_STANDARD
-            .decode(result["server_handshake_secret"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing server_handshake_secret in response".to_string())
-            })?)
-            .map_err(|e| {
-                Error::BearDogRpc(format!("Invalid server_handshake_secret base64: {e}"))
-            })?;
+        let server_handshake_secret = decode_b64_field(&result, "server_handshake_secret")?;
         debug!("  ✅ server_handshake_secret: {} bytes", server_handshake_secret.len());
 
         // HEX DUMPS for derived keys (cross-verify with RFC 8448 or server expectations)
@@ -162,7 +145,9 @@ impl SecurityRpcClient {
         transcript_hash: &[u8],
         cipher_suite: u16,
     ) -> Result<TlsSecrets> {
-        info!("🔑 Calling tls_derive_application_secrets via Neural API (RFC 8446 compliant)");
+        info!(
+            "🔑 Calling tls_derive_application_secrets via security provider (RFC 8446 compliant)"
+        );
         debug!("  → pre_master_secret: {} bytes", shared_secret.len());
         debug!("  → client_random: {} bytes", client_random.len());
         debug!("  → server_random: {} bytes", server_random.len());
@@ -201,30 +186,38 @@ impl SecurityRpcClient {
 
         let client_write_key = BASE64_STANDARD
             .decode(result["client_write_key"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing client_write_key in response".to_string())
+                Error::SecurityProviderRpc("Missing client_write_key in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {e}")))?;
+            .map_err(|e| {
+                Error::SecurityProviderRpc(format!("Invalid client_write_key base64: {e}"))
+            })?;
         debug!("  ✅ client_write_key: {} bytes", client_write_key.len());
 
         let server_write_key = BASE64_STANDARD
             .decode(result["server_write_key"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing server_write_key in response".to_string())
+                Error::SecurityProviderRpc("Missing server_write_key in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {e}")))?;
+            .map_err(|e| {
+                Error::SecurityProviderRpc(format!("Invalid server_write_key base64: {e}"))
+            })?;
         debug!("  ✅ server_write_key: {} bytes", server_write_key.len());
 
         let client_write_iv = BASE64_STANDARD
             .decode(result["client_write_iv"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing client_write_iv in response".to_string())
+                Error::SecurityProviderRpc("Missing client_write_iv in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {e}")))?;
+            .map_err(|e| {
+                Error::SecurityProviderRpc(format!("Invalid client_write_iv base64: {e}"))
+            })?;
         debug!("  ✅ client_write_iv: {} bytes", client_write_iv.len());
 
         let server_write_iv = BASE64_STANDARD
             .decode(result["server_write_iv"].as_str().ok_or_else(|| {
-                Error::BearDogRpc("Missing server_write_iv in response".to_string())
+                Error::SecurityProviderRpc("Missing server_write_iv in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {e}")))?;
+            .map_err(|e| {
+                Error::SecurityProviderRpc(format!("Invalid server_write_iv base64: {e}"))
+            })?;
         debug!("  ✅ server_write_iv: {} bytes", server_write_iv.len());
 
         info!("🎉 Application traffic keys successfully derived and parsed");
@@ -280,13 +273,13 @@ impl SecurityRpcClient {
                 e
             })?;
 
-        let verify_data = result["verify_data"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing verify_data in response".to_string()))?;
+        let verify_data = result["verify_data"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing verify_data in response".to_string())
+        })?;
 
         let decoded = BASE64_STANDARD
             .decode(verify_data)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid verify_data base64: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid verify_data base64: {e}")))?;
 
         info!("✅ Finished verify_data computed: {} bytes", decoded.len());
         debug!("   Verify data (hex): {}", hex::encode(&decoded));

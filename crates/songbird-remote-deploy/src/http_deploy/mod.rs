@@ -404,4 +404,68 @@ mod tests {
         let dbg = format!("{a:?}");
         assert!(dbg.contains("Single"), "SelectedMethod should implement Debug: {dbg}");
     }
+
+    #[test]
+    fn select_deployment_method_zero_mb_uses_single_when_under_limit() {
+        let caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).expect("sample caps");
+        let m = select_deployment_method(Some(&caps), 0.0);
+        assert!(
+            matches!(m, SelectedMethod::Single),
+            "0MB should be strictly under single max and select Single: got {m:?}"
+        );
+    }
+
+    #[test]
+    fn select_deployment_method_oversized_when_chunked_and_streaming_disabled_uses_fallback() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {"type": "wan", "bandwidth_estimate": {"download_mbps":1,"upload_mbps":1,"latency_ms":1,"confidence":"low"}},
+            "deployment_methods": {
+                "single": {"enabled": true, "max_size_mb": 10, "compression_supported": [], "recommended_for": ""},
+                "chunked": {"enabled": true, "max_total_size_mb": 20, "chunk_size_mb": 5, "max_chunks": 10, "compression_supported": [], "recommended_for": ""},
+                "streaming": {"enabled": false, "unlimited": false, "compression_supported": [], "recommended_for": ""}
+            },
+            "resources": {"available_storage_gb": 1, "available_memory_gb": 1, "cpu_cores": 1, "cpu_load_percent": 0.0, "max_concurrent_deployments": 1, "current_deployments": 0}
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("caps");
+        let m = select_deployment_method(Some(&caps), 100.0);
+        assert!(
+            matches!(m, SelectedMethod::Fallback),
+            "over chunked max with streaming off should Fallback: got {m:?}"
+        );
+    }
+
+    #[test]
+    fn deployment_capabilities_rejects_invalid_json() {
+        let err = serde_json::from_str::<DeploymentCapabilities>("not json").unwrap_err();
+        assert!(
+            err.to_string().contains("expected") || err.to_string().contains("EOF"),
+            "deserialize error should mention parse failure: {err}"
+        );
+    }
+
+    #[test]
+    fn resource_info_accepts_zero_cpu_and_storage() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {"type": "x", "bandwidth_estimate": {"download_mbps":0,"upload_mbps":0,"latency_ms":0,"confidence":"low"}},
+            "deployment_methods": {
+                "single": {"enabled": true, "max_size_mb": 1, "compression_supported": [], "recommended_for": ""},
+                "chunked": {"enabled": false, "max_total_size_mb": 0, "chunk_size_mb": 1, "max_chunks": 0, "compression_supported": [], "recommended_for": ""},
+                "streaming": {"enabled": false, "unlimited": false, "compression_supported": [], "recommended_for": ""}
+            },
+            "resources": {
+                "available_storage_gb": 0,
+                "available_memory_gb": 0,
+                "cpu_cores": 0,
+                "cpu_load_percent": 0.0,
+                "max_concurrent_deployments": 0,
+                "current_deployments": 0
+            }
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("zero resources");
+        assert_eq!(caps.resources.cpu_cores, 0);
+        assert_eq!(caps.resources.available_storage_gb, 0);
+    }
 }

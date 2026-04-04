@@ -12,9 +12,7 @@
 //! Uses dependency injection for zero global state coupling:
 //!
 //! ```rust,ignore
-//! // ❌ OLD: Hardcoded endpoints (DEPRECATED)
-//! use songbird_config::config::constants::deprecated::DEFAULT_TOADSTOOL_ENDPOINT;
-//! let endpoint = DEFAULT_TOADSTOOL_ENDPOINT;
+//! // ❌ OLD: Hardcoded primal endpoints (DEPRECATED — use capability discovery)
 //!
 //! // ✅ NEW: Environment + Discovery (Production)
 //! use songbird_config::primal_discovery::{get_compute_endpoint, DiscoveryOptions};
@@ -44,8 +42,8 @@ use tracing::{debug, warn};
 pub struct DiscoveryOptions {
     /// Compute endpoint (None = read from env)
     pub compute_endpoint: Option<String>,
-    /// Legacy Toadstool endpoint (None = read from env)
-    pub toadstool_endpoint: Option<String>,
+    /// Legacy explicit compute provider override (None = read from env). Prefer [`Self::compute_endpoint`].
+    pub compute_provider_endpoint: Option<String>,
     /// Overrides runtime discovery timeout when falling back to [`crate::runtime_discovery`] (tests use ~1ms).
     pub discovery_timeout: Option<Duration>,
 }
@@ -81,11 +79,18 @@ impl DiscoveryOptionsBuilder {
         self
     }
 
-    /// Sets an explicit Toadstool endpoint (skips env for this field).
+    /// Sets an explicit compute provider endpoint (skips env for this field).
+    #[must_use]
+    pub fn compute_provider_endpoint(mut self, endpoint: impl Into<String>) -> Self {
+        self.options.compute_provider_endpoint = Some(endpoint.into());
+        self
+    }
+
+    /// Deprecated alias for [`Self::compute_provider_endpoint`].
+    #[deprecated(note = "use compute_provider_endpoint (capability-based naming)")]
     #[must_use]
     pub fn toadstool_endpoint(mut self, endpoint: impl Into<String>) -> Self {
-        self.options.toadstool_endpoint = Some(endpoint.into());
-        self
+        self.compute_provider_endpoint(endpoint)
     }
 
     /// Sets runtime discovery timeout for the capability-discovery fallback path.
@@ -102,7 +107,7 @@ impl DiscoveryOptionsBuilder {
     }
 }
 
-/// Get compute provider endpoint (replaces `DEFAULT_TOADSTOOL_ENDPOINT`)
+/// Get compute provider endpoint (replaces legacy `DEFAULT_TOADSTOOL_ENDPOINT` / hardcoded primal endpoints)
 ///
 /// Uses dependency injection for zero global state coupling.
 ///
@@ -145,9 +150,9 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
         return Ok(endpoint);
     }
 
-    // 2. Try explicit legacy option (dependency injection)
-    if let Some(endpoint) = options.toadstool_endpoint {
-        warn!("Using deprecated toadstool_endpoint option - migrate to compute_endpoint");
+    // 2. Try explicit legacy compute provider option (dependency injection)
+    if let Some(endpoint) = options.compute_provider_endpoint {
+        warn!("Using explicit compute_provider_endpoint from options — prefer compute_endpoint");
         return Ok(endpoint);
     }
 
@@ -178,18 +183,19 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     })
 }
 
-/// Get storage provider endpoint (replaces `DEFAULT_NESTGATE_ENDPOINT`)
+/// Get storage provider endpoint (replaces legacy `DEFAULT_NESTGATE_ENDPOINT` naming)
 ///
 /// Discovery order:
 /// 1. `STORAGE_ENDPOINT` environment variable
-/// 2. `NESTGATE_ENDPOINT` environment variable (backwards compatibility)
-/// 3. Capability-based discovery (future)
-/// 4. Error - no hardcoded fallback
+/// 2. `STORAGE_PROVIDER_ENDPOINT` environment variable
+/// 3. `NESTGATE_ENDPOINT` environment variable (legacy compatibility)
+/// 4. Capability-based discovery (`runtime_discovery`)
+/// 5. Error - no hardcoded fallback
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - No `STORAGE_ENDPOINT` or `NESTGATE_ENDPOINT` environment variable is set
+/// - No storage endpoint environment variable is set
 /// - Capability-based discovery fails to find a storage provider
 pub async fn get_storage_endpoint() -> SongbirdResult<String> {
     get_storage_endpoint_with(|k| songbird_process_env::var(k)).await
@@ -206,13 +212,21 @@ where
         return Ok(endpoint);
     }
 
-    // 2. Try legacy NESTGATE_ENDPOINT (backwards compatibility)
-    if let Ok(endpoint) = env_reader("NESTGATE_ENDPOINT") {
-        warn!("Using deprecated NESTGATE_ENDPOINT - migrate to STORAGE_ENDPOINT");
+    // 2. Try STORAGE_PROVIDER_ENDPOINT (aligns with capability-based config)
+    if let Ok(endpoint) = env_reader("STORAGE_PROVIDER_ENDPOINT") {
+        debug!("Using STORAGE_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
-    // 3. Try capability-based discovery (RuntimeDiscoveryEngine)
+    // 3. Try legacy NESTGATE_ENDPOINT (backwards compatibility)
+    if let Ok(endpoint) = env_reader("NESTGATE_ENDPOINT") {
+        warn!(
+            "Using deprecated NESTGATE_ENDPOINT - migrate to STORAGE_ENDPOINT or STORAGE_PROVIDER_ENDPOINT"
+        );
+        return Ok(endpoint);
+    }
+
+    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
     match crate::runtime_discovery::discover_storage().await {
         Ok(service) => {
             debug!("Discovered storage via RuntimeDiscoveryEngine: {}", service.endpoint);

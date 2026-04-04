@@ -286,4 +286,51 @@ mod tests {
         assert!(!a.is_trusted(&w).await, "new() should start with no trusted witnesses");
         assert!(!b.is_trusted(&w).await, "default() should start with no trusted witnesses");
     }
+
+    #[tokio::test]
+    async fn add_trusted_witness_second_call_overwrites_entry() {
+        let verifier = WitnessVerifier::new();
+        verifier.add_trusted_witness("dev".to_string(), vec![1]).await;
+        verifier.add_trusted_witness("dev".to_string(), vec![2, 2]).await;
+        let w = GenesisWitness::new("dev".to_string(), vec![1], PhysicalChannelType::HardwareKey);
+        assert!(
+            verifier.is_trusted(&w).await,
+            "re-adding same device_id should keep witness in trusted set"
+        );
+    }
+
+    #[tokio::test]
+    async fn verify_authority_accepts_minimum_trusted_medium_channel() {
+        let verifier = WitnessVerifier::new();
+        let witness =
+            GenesisWitness::new("edge".to_string(), vec![], PhysicalChannelType::Bluetooth);
+        verifier.add_trusted_witness("edge".to_string(), vec![]).await;
+        assert_eq!(witness.trust_level(), TrustLevel::Medium);
+        verifier.verify_authority(&witness).await.expect("Medium should satisfy genesis gate");
+    }
+
+    #[tokio::test]
+    async fn is_trusted_false_when_device_id_differs_by_case() {
+        let verifier = WitnessVerifier::new();
+        verifier.add_trusted_witness("Case".to_string(), vec![1]).await;
+        let w = GenesisWitness::new("case".to_string(), vec![1], PhysicalChannelType::HardwareKey);
+        assert!(!verifier.is_trusted(&w).await, "witness device_id matching must be exact");
+    }
+
+    #[test]
+    fn genesis_witness_new_starts_with_empty_signature_and_metadata() {
+        let w = GenesisWitness::new("id".into(), vec![9], PhysicalChannelType::Nfc);
+        assert!(w.signature.is_empty());
+        assert!(w.metadata.is_empty());
+        assert_eq!(w.physical_channel, PhysicalChannelType::Nfc);
+    }
+
+    #[test]
+    fn genesis_witness_serde_roundtrip_preserves_metadata() {
+        let mut w = GenesisWitness::new("meta".into(), vec![1], PhysicalChannelType::QrCodeWithOob);
+        w.metadata.insert("k".into(), "v".into());
+        let json = serde_json::to_string(&w).expect("serialize");
+        let back: GenesisWitness = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.metadata.get("k"), Some(&"v".to_string()));
+    }
 }

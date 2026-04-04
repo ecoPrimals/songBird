@@ -36,9 +36,6 @@
 pub mod capability;
 pub mod communication;
 pub mod config;
-// ✅ REMOVED: Deprecated error types migrated to songbird_types::SongbirdError
-// pub mod errors;
-// pub mod errors_migration; // ✅ REMOVED: Migration helpers no longer needed
 pub mod service;
 
 // Re-export all public types for backward compatibility
@@ -68,14 +65,6 @@ pub use config::{
     CircuitBreakerConfig, FeatureFlags, HealthCheckConfig, LoadBalancingConfig,
     LoadBalancingStrategy, RetryConfig, SecurityConfig,
 };
-
-// Error types
-// ✅ REMOVED: All error types unified into songbird_types::SongbirdError
-// Deprecated error types removed - use songbird_types::SongbirdError instead
-// pub use errors::{
-//     ConfigError, DiscoveryError, EventError, LoadBalancingError, MetricsError, ProtocolError,
-//     RegistryError, SecurityError, ServiceError,
-// };
 
 #[cfg(test)]
 mod config_tests;

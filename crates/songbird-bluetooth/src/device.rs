@@ -188,6 +188,8 @@ impl Device {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -210,5 +212,53 @@ mod tests {
         assert_eq!(info.address, addr);
         assert_eq!(info.name.as_deref(), Some("Test Device"));
         assert_eq!(info.rssi, -50);
+    }
+
+    #[test]
+    fn address_parse_rejects_wrong_field_count() {
+        let err = "AA:BB:CC".parse::<Address>().expect_err("too few");
+        assert!(err.contains("Invalid address"));
+    }
+
+    #[test]
+    fn address_parse_rejects_non_hex() {
+        let err = "GG:BB:CC:DD:EE:FF".parse::<Address>().expect_err("bad hex");
+        assert!(err.contains("hex") || err.contains("Invalid"));
+    }
+
+    #[test]
+    fn device_info_builder_and_has_service() {
+        let addr = Address::from_bytes([9, 8, 7, 6, 5, 4]);
+        let u = uuid::Uuid::from_u128(0xABCD);
+        let info = DeviceInfo::new(addr)
+            .with_name("N".into())
+            .with_rssi(-30)
+            .with_service(u)
+            .with_manufacturer_data(vec![0x00, 0x01]);
+
+        assert!(info.has_service(&u));
+        assert!(!info.has_service(&uuid::Uuid::from_u128(1)));
+        assert_eq!(info.manufacturer_data.as_ref().map(Vec::len), Some(2));
+        let s = info.to_string();
+        assert!(s.contains("N") && s.contains("rssi=-30"));
+    }
+
+    #[test]
+    fn device_wrapper_exposes_address_name_handle() {
+        let addr = Address::from_bytes([1, 2, 3, 4, 5, 6]);
+        let info = DeviceInfo::new(addr).with_name("Wrap".into());
+        let dev = Device::new(info, 0x00AB);
+        assert_eq!(dev.address(), addr);
+        assert_eq!(dev.name(), Some("Wrap"));
+        assert_eq!(dev.handle(), 0x00AB);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn uuid_serde_json_round_trip_for_service_lists() {
+        let u = uuid::Uuid::from_u128(0xF00D);
+        let json = serde_json::to_string(&u).expect("serialize");
+        let back: uuid::Uuid = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(u, back);
     }
 }

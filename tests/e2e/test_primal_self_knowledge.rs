@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! E2E Test: Primal Self-Knowledge Principle
 //!
 //! **Core Principle**: Each primal knows ONLY itself. No hardcoded knowledge of others.

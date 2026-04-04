@@ -43,14 +43,20 @@ impl IntroductionPoint {
     /// AUTH_KEY         [32 bytes]
     /// N_EXTENSIONS     [1 byte]  - number of extensions
     /// [extensions]     [variable]
-    /// HANDSHAKE_AUTH   [32 bytes] - MAC over cell body (placeholder until security provider)
+    /// HANDSHAKE_AUTH   [32 bytes] - MAC over cell body
     /// SIG_LEN          [2 bytes]
-    /// SIG              [64 bytes] - Ed25519 signature (placeholder until security provider)
+    /// SIG              [64 bytes] - Ed25519 signature
     /// ```
+    ///
+    /// **BLOCKED:** `HANDSHAKE_AUTH` and `SIG` are zero-filled until security provider crypto
+    /// delegation is wired (HMAC over the cell body and Ed25519 signature). This produces a
+    /// structurally valid-sized cell for tests only — relays must reject it on the wire until
+    /// integration is complete (tracked in REMAINING_WORK.md).
     ///
     /// # Panics
     ///
-    /// Panics if the cell payload length does not fit in `u16`.
+    /// Panics only if the implementation is inconsistent (payload would exceed `u16::MAX`); fixed
+    /// layout is well below that limit.
     #[must_use]
     pub fn create_establish_intro(&self) -> RelayCell {
         let mut data = Vec::with_capacity(136);
@@ -67,15 +73,13 @@ impl IntroductionPoint {
         // N_EXTENSIONS: 0 (no extensions)
         data.push(0u8);
 
-        // HANDSHAKE_AUTH: 32-byte MAC (needs security provider HMAC-SHA256)
-        // For now, zero-filled — security provider will compute this at runtime
+        // HANDSHAKE_AUTH — BLOCKED: security provider HMAC-SHA256 (tracked in REMAINING_WORK.md)
         data.extend_from_slice(&[0u8; 32]);
 
         // SIG_LEN: 64
         data.extend_from_slice(&64u16.to_be_bytes());
 
-        // SIG: Ed25519 signature (needs security provider)
-        // For now, zero-filled — security provider will sign at runtime
+        // SIG — BLOCKED: security provider Ed25519 (tracked in REMAINING_WORK.md)
         data.extend_from_slice(&[0u8; 64]);
 
         RelayCell {
@@ -182,13 +186,13 @@ impl IntroductionPoint {
                 client_public_key,
             })
         } else {
-            // Encrypted section not yet decrypted — return placeholder
-            // security provider will handle decryption in production
-            Ok(IntroductionRequest {
-                rendezvous_point: [0u8; 32],
-                rendezvous_cookie: [0u8; 20],
-                client_public_key: [0u8; 32],
-            })
+            // BLOCKED: requires security provider crypto delegation (tracked in REMAINING_WORK.md).
+            // Returning synthetic zeros was unsafe (looked like success). Callers must not treat
+            // partial INTRODUCE2 payloads as authenticated rendezvous data.
+            Err(crate::error::Error::CryptoUnavailable(
+                "INTRODUCE2 encrypted section too short or not decrypted; security provider required"
+                    .into(),
+            ))
         }
     }
 }
@@ -208,6 +212,8 @@ pub struct IntroductionRequest {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -315,5 +321,85 @@ mod tests {
 
         let result = IntroductionPoint::parse_introduce2(&cell);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_introduce2_short_encrypted_returns_crypto_unavailable() {
+        // Valid header + auth key + zero extensions, but encrypted payload < 84 bytes (cannot hold
+        // rendezvous_point + cookie + client_pk).
+        let mut data = Vec::new();
+        data.extend_from_slice(&[0u8; 20]);
+        data.push(0x02);
+        data.extend_from_slice(&32u16.to_be_bytes());
+        data.extend_from_slice(&[0xAA; 32]);
+        data.push(0);
+        data.extend_from_slice(&[1u8; 50]);
+
+        let cell = RelayCell {
+            command: crate::protocol::RelayCommand::Introduce2,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0u8; 4],
+            length: u16::try_from(data.len()).expect("cell data length fits in u16"),
+            data,
+        };
+
+        let err = IntroductionPoint::parse_introduce2(&cell).expect_err("short encrypted");
+        assert!(matches!(err, crate::error::Error::CryptoUnavailable(_)));
+    }
+
+    #[test]
+    fn test_parse_introduce2_truncated_at_auth_key() {
+        // Meet minimum 56-byte outer length, but declare AUTH_KEY_LEN larger than remaining bytes.
+        let mut data = vec![0u8; 20];
+        data.push(0x02);
+        data.extend_from_slice(&100u16.to_be_bytes()); // claims 100-byte key; body is shorter
+        data.extend_from_slice(&[0xAA; 33]); // 20+1+2+33 = 56 total
+
+        let cell = RelayCell {
+            command: crate::protocol::RelayCommand::Introduce2,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0u8; 4],
+            length: u16::try_from(data.len()).expect("fits u16"),
+            data,
+        };
+
+        let err = IntroductionPoint::parse_introduce2(&cell).expect_err("truncated");
+        assert!(matches!(err, crate::error::Error::Protocol(msg) if msg.contains("truncated")));
+    }
+
+    #[test]
+    fn test_parse_introduce2_with_one_extension_parses_encrypted() {
+        let mut data = Vec::new();
+        data.extend_from_slice(&[0u8; 20]);
+        data.push(0x02);
+        data.extend_from_slice(&32u16.to_be_bytes());
+        data.extend_from_slice(&[0xBB; 32]);
+        data.push(1u8); // N_EXTENSIONS
+        // One extension: 4-byte header, length 0 at bytes 2–3 of extension
+        data.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);
+        data.extend_from_slice(&[1u8; 32]);
+        data.extend_from_slice(&[2u8; 20]);
+        data.extend_from_slice(&[3u8; 32]);
+
+        let cell = RelayCell {
+            command: crate::protocol::RelayCommand::Introduce2,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0u8; 4],
+            length: u16::try_from(data.len()).expect("fits u16"),
+            data,
+        };
+
+        let req = IntroductionPoint::parse_introduce2(&cell).expect("parses with extension");
+        assert_eq!(req.rendezvous_point, [1u8; 32]);
+        assert_eq!(req.rendezvous_cookie, [2u8; 20]);
+        assert_eq!(req.client_public_key, [3u8; 32]);
+    }
+
+    #[test]
+    fn auth_key_type_enum_matches_tor_ed25519() {
+        assert_eq!(AuthKeyType::Ed25519 as u8, 2);
     }
 }

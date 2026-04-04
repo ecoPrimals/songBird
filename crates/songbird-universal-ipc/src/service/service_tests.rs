@@ -18,16 +18,16 @@ async fn test_ipc_service_register() {
     let handler = IpcServiceHandler::new(registry.clone());
 
     let params = json!({
-        "primal_id": "beardog",
+        "primal_id": "security",
         "capabilities": ["crypto", "btsp"],
-        "endpoint": "/tmp/primal-beardog.sock"
+        "endpoint": "/tmp/primal-security.sock"
     });
 
     let result = handler.handle("ipc.register", params).await;
     assert!(result.is_ok());
 
     let result_value = result.unwrap();
-    assert_eq!(result_value["virtual_endpoint"], "/primal/beardog");
+    assert_eq!(result_value["virtual_endpoint"], "/primal/security");
 }
 
 #[tokio::test]
@@ -37,23 +37,23 @@ async fn test_ipc_service_resolve() {
 
     // Register first
     let register_params = json!({
-        "primal_id": "beardog",
+        "primal_id": "security",
         "capabilities": ["crypto"],
-        "endpoint": "/tmp/primal-beardog.sock"
+        "endpoint": "/tmp/primal-security.sock"
     });
     handler.handle("ipc.register", register_params).await.unwrap();
 
     // Then resolve
     let resolve_params = json!({
-        "primal_id": "beardog"
+        "primal_id": "security"
     });
 
     let result = handler.handle("ipc.resolve", resolve_params).await;
     assert!(result.is_ok());
 
     let result_value = result.unwrap();
-    assert_eq!(result_value["virtual_endpoint"], "/primal/beardog");
-    assert!(result_value["native_endpoint"].as_str().unwrap().contains("beardog"));
+    assert_eq!(result_value["virtual_endpoint"], "/primal/security");
+    assert!(result_value["native_endpoint"].as_str().unwrap().contains("security"));
 }
 
 #[tokio::test]
@@ -63,9 +63,9 @@ async fn test_ipc_service_discover() {
 
     // Register service with capability
     let register_params = json!({
-        "primal_id": "beardog",
+        "primal_id": "security",
         "capabilities": ["crypto", "btsp"],
-        "endpoint": "/tmp/primal-beardog.sock"
+        "endpoint": "/tmp/primal-security.sock"
     });
     handler.handle("ipc.register", register_params).await.unwrap();
 
@@ -80,7 +80,7 @@ async fn test_ipc_service_discover() {
     let result_value = result.unwrap();
     let providers = result_value["providers"].as_array().unwrap();
     assert_eq!(providers.len(), 1);
-    assert_eq!(providers[0]["primal_id"], "beardog");
+    assert_eq!(providers[0]["primal_id"], "security");
 }
 
 #[tokio::test]
@@ -153,7 +153,7 @@ async fn test_ipc_service_list() {
     let handler = IpcServiceHandler::new(registry.clone());
 
     // Register multiple services
-    for (id, caps) in &[("beardog", vec!["crypto"]), ("squirrel", vec!["ai"])] {
+    for (id, caps) in &[("security", vec!["crypto"]), ("squirrel", vec!["ai"])] {
         let params = json!({
             "primal_id": id,
             "capabilities": caps,
@@ -198,12 +198,12 @@ async fn test_discover_capabilities() {
 #[test]
 fn ipc_register_params_deserialize_roundtrip() {
     let v = json!({
-        "primal_id": "beardog",
+        "primal_id": "security",
         "capabilities": ["crypto"],
         "endpoint": "/tmp/x.sock"
     });
     let p: RegisterParams = serde_json::from_value(v).expect("RegisterParams");
-    assert_eq!(p.primal_id, "beardog");
+    assert_eq!(p.primal_id, "security");
     assert_eq!(p.capabilities, vec!["crypto".to_string()]);
     assert_eq!(p.endpoint, "/tmp/x.sock");
 }

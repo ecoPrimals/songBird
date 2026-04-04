@@ -118,7 +118,5 @@ pub use performance::*;
 // Export providers and traits with specific imports to avoid ServiceProvider conflict
 // ProviderMetadata removed - use canonical provider traits from songbird-types
 pub use responses::*;
-// Traits are now available from songbird_types::traits::canonical
-// pub use songbird_types::traits::canonical::{Capability, CapabilityProvider, ServiceProvider, OrchestrationProvider};
 pub use types::*;
 pub use validation::*;

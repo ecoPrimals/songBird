@@ -29,6 +29,13 @@
 
 pub mod ai;
 pub mod compute;
+
+/// Deprecated module path for compute adapters (use [`compute`]).
+#[deprecated(note = "use `adapters::compute` (capability domain: compute)")]
+pub mod toadstool {
+    pub use super::compute::*;
+}
+
 pub mod security;
 #[cfg(test)]
 mod security_btsp_tests;
@@ -37,5 +44,9 @@ pub mod storage;
 // Re-export adapters
 pub use ai::{AIAdapter, AIHealth, AIMetrics, ModelType};
 pub use compute::{ComputeAdapter, ComputeMetrics, HealthStatus as ComputeHealth};
+
+/// Deprecated alias for [`ComputeAdapter`].
+#[deprecated(note = "use ComputeAdapter (capability-based naming)")]
+pub type ToadStoolMetricsAdapter = ComputeAdapter;
 pub use security::{SecurityAdapter, SecurityHealth, SecurityMetrics};
 pub use storage::{StorageAdapter, StorageHealth, StorageMetrics};

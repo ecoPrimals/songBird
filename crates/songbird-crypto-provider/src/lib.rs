@@ -38,15 +38,55 @@ pub fn routing_mode_from_env(mode_value: Option<&str>) -> RoutingMode {
 /// Deprecated alias for [`routing_mode_from_env`].
 #[deprecated(note = "Use routing_mode_from_env (capability-based naming)")]
 #[must_use]
-pub fn routing_mode_from_beardog_env_value(beardog_mode: Option<&str>) -> RoutingMode {
-    routing_mode_from_env(beardog_mode)
+pub fn routing_mode_from_beardog_env_value(mode_value: Option<&str>) -> RoutingMode {
+    routing_mode_from_env(mode_value)
+}
+
+/// JSON-RPC transport and wire-format errors from [`CryptoProvider::call`](CryptoProvider::call).
+#[derive(Debug, thiserror::Error)]
+pub enum RpcError {
+    #[error("failed to serialize JSON-RPC request")]
+    RequestSerialize(#[source] serde_json::Error),
+
+    #[error("failed to connect to {target} at {path}: {source}")]
+    Connect {
+        target: &'static str,
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
+
+    #[error("failed to send request: {0}")]
+    SendRequest(#[source] std::io::Error),
+
+    #[error("failed to shutdown write side of socket: {0}")]
+    ShutdownWrite(#[source] std::io::Error),
+
+    #[error("failed to read response: {0}")]
+    ReadResponse(#[source] std::io::Error),
+
+    #[error("failed to parse JSON-RPC response: {source} (raw: {raw_preview})")]
+    ResponseParse {
+        raw_preview: String,
+        #[source]
+        source: serde_json::Error,
+    },
+
+    #[error("JSON-RPC error: {message} (code: {code})")]
+    Remote {
+        code: i32,
+        message: String,
+    },
+
+    #[error("JSON-RPC response contained null result")]
+    NullResult,
 }
 
 /// Crypto provider error.
 #[derive(Debug, thiserror::Error)]
 pub enum CryptoProviderError {
-    #[error("RPC error: {0}")]
-    Rpc(String),
+    #[error(transparent)]
+    Rpc(#[from] RpcError),
 }
 
 pub type Result<T> = std::result::Result<T, CryptoProviderError>;
@@ -156,9 +196,9 @@ mod tests {
 
     #[test]
     fn new_uses_direct_mode_and_stores_socket_path() {
-        let p = CryptoProvider::new("/tmp/beardog.sock");
+        let p = CryptoProvider::new("/tmp/security-provider.sock");
         assert_eq!(p.mode, RoutingMode::Direct);
-        assert_eq!(p.socket_path, "/tmp/beardog.sock");
+        assert_eq!(p.socket_path, "/tmp/security-provider.sock");
         assert_eq!(p.request_id.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 
@@ -221,7 +261,7 @@ mod tests {
     }
 
     #[test]
-    fn from_env_with_defaults_to_neural_when_beardog_mode_absent() {
+    fn from_env_with_defaults_to_neural_when_security_provider_mode_absent() {
         let p = CryptoProvider::from_env_with(|key| match key {
             "NEURAL_API_SOCKET" => Some("/only/neural.sock".to_string()),
             _ => None,
@@ -231,14 +271,14 @@ mod tests {
     }
 
     #[test]
-    fn from_env_with_direct_prefers_beardog_socket_env() {
+    fn from_env_with_direct_prefers_legacy_beardog_socket_env() {
         let p = CryptoProvider::from_env_with(|key| match key {
             "BEARDOG_MODE" => Some("direct".to_string()),
-            "BEARDOG_SOCKET" => Some("/custom/beardog.sock".to_string()),
+            "BEARDOG_SOCKET" => Some("/custom/security-provider.sock".to_string()),
             _ => None,
         });
         assert_eq!(p.mode, RoutingMode::Direct);
-        assert_eq!(p.socket_path, "/custom/beardog.sock");
+        assert_eq!(p.socket_path, "/custom/security-provider.sock");
     }
 
     #[test]

@@ -78,10 +78,7 @@ async fn test_stun_get_public_address_routing() {
 
     // Should return result or specific error, not "Unknown method"
     match result {
-        Ok(_) => {
-            // Success case - method handled
-            assert!(true);
-        }
+        Ok(_) => {}
         Err(e) => {
             // Allow specific errors, but not "Unknown method"
             assert!(!e.contains("Unknown method"), "Method not routed: {e}");
@@ -158,10 +155,7 @@ async fn test_stun_bind_missing_params() {
 
     // Should return specific error about missing params, not "Unknown method"
     match result {
-        Ok(_) => {
-            // OK if it has default behavior
-            assert!(true);
-        }
+        Ok(_) => {}
         Err(e) => {
             assert!(!e.contains("Unknown method"), "Should be routed even with bad params");
             // Handler uses defaults for missing params and attempts STUN request,
@@ -295,10 +289,7 @@ async fn test_rendezvous_register_missing_params() {
                 "Should mention missing params: {e}"
             );
         }
-        Ok(_) => {
-            // OK if it has defaults
-            assert!(true);
-        }
+        Ok(_) => {}
     }
 }
 
@@ -422,10 +413,7 @@ async fn test_peer_connect_missing_target() {
                 "Should mention missing target: {e}"
             );
         }
-        Ok(_) => {
-            // OK if it has default
-            assert!(true);
-        }
+        Ok(_) => {}
     }
 }
 
@@ -454,10 +442,7 @@ async fn test_all_six_methods_route_correctly() {
 
         // None should return "Unknown method"
         match result {
-            Ok(_) => {
-                // Success - method routed correctly
-                assert!(true, "{method} routed successfully");
-            }
+            Ok(_) => {}
             Err(e) => {
                 assert!(
                     !e.contains("Unknown method"),
@@ -563,7 +548,7 @@ async fn test_concurrent_method_calls() {
 
         // All should either succeed or have specific error (not "Unknown method")
         match result {
-            Ok(_) => assert!(true),
+            Ok(_) => {}
             Err(e) => assert!(
                 !e.contains("Unknown method"),
                 "Concurrent call failed with unknown method: {e}"
@@ -584,7 +569,7 @@ async fn test_json_rpc_null_params() {
     let result = handler.handle("discovery.peers", serde_json::Value::Null).await;
 
     match result {
-        Ok(_) => assert!(true, "Should handle null params"),
+        Ok(_) => {}
         Err(e) => {
             // Should not be "Unknown method"
             assert!(!e.contains("Unknown method"), "Should be routed: {e}");
@@ -600,7 +585,7 @@ async fn test_json_rpc_array_params() {
     let result = handler.handle("discovery.peers", json!([])).await;
 
     match result {
-        Ok(_) => assert!(true),
+        Ok(_) => {}
         Err(e) => {
             // Should handle or error gracefully (not "Unknown method")
             assert!(!e.contains("Unknown method"), "Should be routed: {e}");

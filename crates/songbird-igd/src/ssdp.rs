@@ -287,4 +287,36 @@ mod tests {
         let parsed = SsdpClient::parse_response(response, addr);
         assert!(parsed.is_none(), "non-IGD ST should be ignored");
     }
+
+    #[test]
+    fn parse_ssdp_response_rejects_http_200_without_ok_phrase() {
+        let response = b"HTTP/1.1 200\r\n\
+            LOCATION: http://192.168.1.1/desc.xml\r\n\
+            ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\
+            \r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
+        assert!(
+            SsdpClient::parse_response(response, addr).is_none(),
+            "parser requires exact 'HTTP/1.1 200 OK' line"
+        );
+    }
+
+    #[test]
+    fn parse_ssdp_response_requires_st_header_even_with_location() {
+        let response = b"HTTP/1.1 200 OK\r\n\
+            LOCATION: http://192.168.1.1/desc.xml\r\n\
+            \r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
+        assert!(SsdpClient::parse_response(response, addr).is_none());
+    }
+
+    #[test]
+    fn parse_ssdp_response_is_case_sensitive_on_status_line() {
+        let response = b"http/1.1 200 OK\r\n\
+            LOCATION: http://192.168.1.1/desc.xml\r\n\
+            ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\
+            \r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
+        assert!(SsdpClient::parse_response(response, addr).is_none());
+    }
 }

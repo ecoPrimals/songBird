@@ -128,7 +128,7 @@ impl LineageChain {
     /// In development mode without `security provider`, returns Ok(true) with warning.
     async fn verify_signatures(&self) -> anyhow::Result<bool> {
         // Check if security provider is available
-        let Ok(beardog_endpoint) = songbird_process_env::var("BEARDOG_ENDPOINT")
+        let Ok(security_provider_base) = songbird_process_env::var("BEARDOG_ENDPOINT")
             .or_else(|_| songbird_process_env::var("SECURITY_ENDPOINT"))
         else {
             tracing::warn!(
@@ -153,7 +153,7 @@ impl LineageChain {
             });
 
             let response = client
-                .post(format!("{beardog_endpoint}/api/v1/verify-signature"))
+                .post(format!("{security_provider_base}/api/v1/verify-signature"))
                 .await
                 .json(&verify_request)?
                 .send()

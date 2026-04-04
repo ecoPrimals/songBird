@@ -75,6 +75,8 @@ mod hci_opcode {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     /// Mock transport for testing

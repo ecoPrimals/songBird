@@ -231,7 +231,7 @@ echo '{"jsonrpc":"2.0","method":"onion.status","params":{},"id":1}' \
    - Songbird tries IGD first, falls back to NAT-PMP
 
 **Rust Ecosystem Options**:
-- `igd-next` crate: async UPnP IGD client (MIT licensed, pure Rust)
+- `igd-next` crate: async UPnP IGD client (pure Rust; third-party license per crate authors)
 - **Recommended**: Implement directly using Songbird's existing HTTP client for TRUE PRIMAL purity
 - SSDP discovery is just UDP multicast + HTTP parsing - Songbird already has both
 
@@ -1195,3 +1195,9 @@ This specification focuses on the **core 7-tier internet connectivity strategy**
 **Status**: IPv6 + Onion WORKING | Router Evolution + Coordinator Wiring Needed
 
 🦀 **Pure Rust** | 🌐 **Multi-Path Resilience** | 🧬 **Sovereign Architecture** | 🐕 **BearDog Crypto**
+
+## License
+
+Licensed under AGPL-3.0-only as part of the ecoPrimals ecosystem.
+
+Part of the scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0

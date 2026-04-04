@@ -49,7 +49,7 @@ impl CapabilityDiscovery {
     ///
     /// ## Example DNS-SD Record
     /// ```text
-    /// _compute._tcp.local.  IN SRV 0 5 8001 toadstool.local.
+    /// _compute._tcp.local.  IN SRV 0 5 8001 compute-provider.local.
     /// ```
     pub(super) async fn discover_via_dnssd(
         &self,

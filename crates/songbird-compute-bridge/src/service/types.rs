@@ -192,4 +192,32 @@ mod tests {
         let v = serde_json::to_value(&w).expect("serde");
         assert!(v["payload"].is_null());
     }
+
+    #[test]
+    fn args_default_bind_parses_as_socket_addr() {
+        let args = Args::try_parse_from(["songbird-compute-bridge"]).expect("default argv");
+        let addr: std::net::SocketAddr = format!("{}:{}", args.host, args.port)
+            .parse()
+            .expect("defaults should form a valid bind address for TcpListener::bind");
+        assert_eq!(addr.port(), 9000);
+    }
+
+    #[test]
+    fn args_accepts_port_zero() {
+        let args = Args::try_parse_from(["songbird-compute-bridge", "--port", "0"]).expect("argv");
+        assert_eq!(args.port, 0);
+    }
+
+    #[test]
+    fn args_capabilities_passthrough_for_csv_split() {
+        let args = Args::try_parse_from([
+            "songbird-compute-bridge",
+            "--capabilities",
+            " compute , batch ,gpu ",
+        ])
+        .expect("argv");
+        let caps = args.capabilities.as_deref().expect("capabilities set");
+        let parsed: Vec<String> = caps.split(',').map(|s| s.trim().to_string()).collect();
+        assert_eq!(parsed, vec!["compute", "batch", "gpu"]);
+    }
 }

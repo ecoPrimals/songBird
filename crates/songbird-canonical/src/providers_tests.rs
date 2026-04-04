@@ -43,6 +43,10 @@ fn test_provider_factory_multiple_instances() {
 // Provider Trait Re-exports Tests
 // ============================================================================
 
+/// Compile-time check that re-exported provider traits are available for object-safe use.
+///
+/// `PrimalProvider` is not covered with `dyn` here: its API is generic and not object-safe,
+/// so concrete primal wiring is validated in integration tests rather than this table.
 #[test]
 fn test_provider_traits_available() {
     // Verify all provider traits are available through re-exports
@@ -55,7 +59,5 @@ fn test_provider_traits_available() {
     let _: Option<&dyn DiscoveryProvider> = None;
     let _: Option<&dyn ObservabilityProvider> = None;
     let _: Option<&dyn OrchestrationProvider> = None;
-    // Temporarily disabled - PrimalProvider uses generics which aren't dyn-compatible
-    // let _: Option<&dyn PrimalProvider> = None;
     let _: Option<&dyn SecurityProvider> = None;
 }

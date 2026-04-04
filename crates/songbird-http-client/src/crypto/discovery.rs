@@ -10,7 +10,7 @@
 //!
 //! 1. `CRYPTO_CAPABILITY_SOCKET` environment variable
 //! 2. `SECURITY_PROVIDER_SOCKET` (preferred)
-//! 3. `BEARDOG_SOCKET` (backward compatibility)
+//! 3. Legacy `BEARDOG_SOCKET` (backward compatibility in discovery chains)
 //! 4. Neural API capability query (future)
 //! 5. Well-known default paths (legacy temp/capability paths; see `security_socket_candidates`)
 //!
@@ -35,7 +35,7 @@ use songbird_types::defaults::paths::security_socket_candidates;
 /// Tries multiple discovery methods in order:
 /// 1. Environment variable `CRYPTO_CAPABILITY_SOCKET`
 /// 2. Environment variable `SECURITY_PROVIDER_SOCKET`
-/// 3. Environment variable `BEARDOG_SOCKET` (backward compat)
+/// 3. Environment variable `BEARDOG_SOCKET` (legacy name; backward compatibility)
 /// 4. Well-known default socket paths
 ///
 /// # Errors
@@ -73,15 +73,15 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
         warn!("⚠️  SECURITY_PROVIDER_SOCKET set but provider not available");
     }
 
-    // 3. Try BEARDOG_SOCKET env var (backward compatibility)
+    // 3. Try legacy BEARDOG_SOCKET env var (backward compatibility)
     if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET") {
-        info!("   Found BEARDOG_SOCKET: {}", socket_path);
+        info!("   Legacy security provider socket (BEARDOG_SOCKET): {}", socket_path);
         let provider = SecurityCryptoProvider::new(&socket_path);
         if provider.is_available().await {
-            info!("✅ Using crypto provider at {} (via BEARDOG_SOCKET)", socket_path);
+            info!("✅ Using security provider at {} (legacy env BEARDOG_SOCKET)", socket_path);
             return Ok(Arc::new(provider));
         }
-        warn!("⚠️  BEARDOG_SOCKET set but provider not available");
+        warn!("⚠️  Legacy BEARDOG_SOCKET set but provider not available");
     }
 
     // 4. Try well-known default paths
@@ -105,7 +105,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 
     // Neural API `capability.discover("crypto")` is not used here yet; discovery stays path-based.
 
-    Err(Error::BearDogRpc(
+    Err(Error::SecurityProviderRpc(
         "No crypto capability provider found. Set CRYPTO_CAPABILITY_SOCKET or ensure a security provider is running.".to_string()
     ))
 }
@@ -126,7 +126,9 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
     if provider.is_available().await {
         Ok(Arc::new(provider))
     } else {
-        Err(Error::BearDogRpc(format!("Crypto provider at {socket_path} is not available")))
+        Err(Error::SecurityProviderRpc(format!(
+            "Crypto provider at {socket_path} is not available"
+        )))
     }
 }
 
@@ -180,7 +182,7 @@ mod tests {
     #[tokio::test]
     async fn discover_crypto_capability_at_returns_security_provider_rpc_error() {
         let err = discover_crypto_capability_at("/nonexistent.sock").await.expect_err("err");
-        assert!(matches!(err, Error::BearDogRpc(_)));
+        assert!(matches!(err, Error::SecurityProviderRpc(_)));
     }
 
     #[test]

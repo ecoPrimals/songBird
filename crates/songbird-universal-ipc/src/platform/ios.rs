@@ -332,14 +332,14 @@ mod tests {
         #[cfg(target_os = "macos")]
         {
             // macOS uses Unix sockets (fully functional)
-            assert!(true);
+            assert_eq!(std::env::consts::OS, "macos");
         }
 
         #[cfg(target_os = "ios")]
         {
             // iOS uses XPC (documented, not yet implemented)
             // Will use TCP fallback until XPC bindings available
-            assert!(true);
+            assert_eq!(std::env::consts::OS, "ios");
         }
     }
 }

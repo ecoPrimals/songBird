@@ -176,10 +176,17 @@ impl NfcProtocol {
         }
     }
 
-    /// Get `security provider` socket path
+    /// Get security provider socket path
+    #[must_use]
+    pub fn security_provider_socket(&self) -> &std::path::Path {
+        &self.config.security_provider_socket
+    }
+
+    /// Deprecated alias for [`NfcProtocol::security_provider_socket`].
+    #[deprecated(note = "use security_provider_socket")]
     #[must_use]
     pub fn beardog_socket(&self) -> &std::path::Path {
-        &self.config.beardog_socket
+        self.security_provider_socket()
     }
 }
 
@@ -320,9 +327,182 @@ mod tests {
     #[test]
     fn nfc_protocol_exposes_config_socket() {
         use std::path::PathBuf;
-        let socket = PathBuf::from("/tmp/test-nfc-beardog.sock");
-        let cfg = crate::NfcConfig::default().with_beardog_socket(socket.clone());
+        let socket = PathBuf::from("/tmp/test-nfc-security.sock");
+        let cfg = crate::NfcConfig::default().with_security_provider_socket(socket.clone());
         let proto = NfcProtocol::new(cfg);
-        assert_eq!(proto.beardog_socket(), socket.as_path(), "socket path should match config");
+        assert_eq!(
+            proto.security_provider_socket(),
+            socket.as_path(),
+            "socket path should match config"
+        );
+    }
+
+    #[test]
+    fn to_bytes_accepts_max_payload_boundary() {
+        let payload = vec![0xabu8; MAX_PAYLOAD_SIZE];
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0u8; PUBLIC_KEY_SIZE],
+            [0u8; NONCE_SIZE],
+            payload,
+            [0u8; SIGNATURE_SIZE],
+        );
+        let wire = msg.to_bytes().expect("max payload serializes");
+        assert_eq!(wire.len(), FRAME_OVERHEAD + MAX_PAYLOAD_SIZE);
+        let back = NfcMessage::from_bytes(&wire).expect("roundtrip");
+        assert_eq!(back.encrypted_payload.len(), MAX_PAYLOAD_SIZE);
+    }
+
+    #[test]
+    fn to_bytes_rejects_payload_one_byte_over_max() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_RESPONSE,
+            [1u8; PUBLIC_KEY_SIZE],
+            [2u8; NONCE_SIZE],
+            vec![0u8; MAX_PAYLOAD_SIZE + 1],
+            [3u8; SIGNATURE_SIZE],
+        );
+        let err = msg.to_bytes().expect_err("oversized payload");
+        assert!(
+            matches!(err, NfcError::PayloadTooLarge(n, MAX_PAYLOAD_SIZE) if n == MAX_PAYLOAD_SIZE + 1),
+            "expected PayloadTooLarge, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn from_bytes_accepts_both_genesis_message_types() {
+        for ty in [MSG_TYPE_GENESIS_REQUEST, MSG_TYPE_GENESIS_RESPONSE] {
+            let msg = NfcMessage::new(
+                ty,
+                [7u8; PUBLIC_KEY_SIZE],
+                [8u8; NONCE_SIZE],
+                vec![9, 10],
+                [6u8; SIGNATURE_SIZE],
+            );
+            let bytes = msg.to_bytes().expect("serialize");
+            let parsed = NfcMessage::from_bytes(&bytes).expect("parse");
+            assert_eq!(parsed.msg_type, ty);
+        }
+    }
+
+    #[test]
+    fn wire_length_field_is_big_endian() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0u8; PUBLIC_KEY_SIZE],
+            [0u8; NONCE_SIZE],
+            vec![0xff; 256],
+            [0u8; SIGNATURE_SIZE],
+        );
+        let bytes = msg.to_bytes().expect("serialize");
+        assert_eq!(bytes[2], 0x01);
+        assert_eq!(bytes[3], 0x00);
+    }
+
+    #[test]
+    fn from_bytes_preserves_declared_protocol_version_field() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0xabu8; PUBLIC_KEY_SIZE],
+            [0xbcu8; NONCE_SIZE],
+            vec![1],
+            [0xdeu8; SIGNATURE_SIZE],
+        );
+        assert_eq!(msg.version, PROTOCOL_VERSION);
+        let bytes = msg.to_bytes().expect("serialize");
+        let parsed = NfcMessage::from_bytes(&bytes).expect("parse");
+        assert_eq!(parsed.version, PROTOCOL_VERSION);
+    }
+
+    #[test]
+    fn malformed_frame_display_explains_incomplete_frame() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0u8; PUBLIC_KEY_SIZE],
+            [0u8; NONCE_SIZE],
+            vec![0u8; 5],
+            [0u8; SIGNATURE_SIZE],
+        );
+        let mut bytes = msg.to_bytes().expect("serialize");
+        bytes.truncate(bytes.len() - SIGNATURE_SIZE / 2);
+        let err = NfcMessage::from_bytes(&bytes).expect_err("truncated signature");
+        let text = err.to_string();
+        assert!(
+            text.contains("Incomplete") || text.contains("bytes"),
+            "error should explain truncation: {text}"
+        );
+    }
+
+    #[test]
+    fn from_bytes_accepts_trailing_garbage_after_signature() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_RESPONSE,
+            [0x11u8; PUBLIC_KEY_SIZE],
+            [0x22u8; NONCE_SIZE],
+            vec![0x33, 0x44],
+            [0x55u8; SIGNATURE_SIZE],
+        );
+        let mut bytes = msg.to_bytes().expect("serialize");
+        bytes.extend_from_slice(b"EXTRA_TRAILING_BYTES");
+        let parsed = NfcMessage::from_bytes(&bytes).expect("wire format does not require EOF");
+        assert_eq!(parsed.msg_type, MSG_TYPE_GENESIS_RESPONSE);
+        assert_eq!(parsed.encrypted_payload, vec![0x33, 0x44]);
+    }
+
+    #[test]
+    fn from_bytes_rejects_truncated_signature_only() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [1u8; PUBLIC_KEY_SIZE],
+            [2u8; NONCE_SIZE],
+            vec![],
+            [3u8; SIGNATURE_SIZE],
+        );
+        let bytes = msg.to_bytes().expect("serialize");
+        let truncated = &bytes[..bytes.len().saturating_sub(1)];
+        let err = NfcMessage::from_bytes(truncated).expect_err("missing final signature byte");
+        assert!(matches!(err, NfcError::MalformedFrame(_)), "got {err:?}");
+    }
+
+    #[test]
+    fn from_bytes_rejects_message_type_zero() {
+        let base = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0u8; PUBLIC_KEY_SIZE],
+            [0u8; NONCE_SIZE],
+            vec![],
+            [0u8; SIGNATURE_SIZE],
+        );
+        let mut bytes = base.to_bytes().expect("serialize");
+        bytes[1] = 0;
+        let err = NfcMessage::from_bytes(&bytes).expect_err("msg type 0 is invalid");
+        assert!(matches!(err, NfcError::InvalidMessageType(0)), "got {err:?}");
+    }
+
+    #[test]
+    fn from_bytes_rejects_wrong_protocol_version_byte() {
+        let mut bytes = vec![0u8; FRAME_OVERHEAD];
+        bytes[0] = PROTOCOL_VERSION.wrapping_add(1);
+        bytes[1] = MSG_TYPE_GENESIS_REQUEST;
+        bytes[2..4].copy_from_slice(&0u16.to_be_bytes());
+        let err = NfcMessage::from_bytes(&bytes).expect_err("version mismatch");
+        assert!(
+            matches!(err, NfcError::UnsupportedVersion(v) if v == PROTOCOL_VERSION.wrapping_add(1)),
+            "got {err:?}"
+        );
+    }
+
+    #[test]
+    fn to_bytes_length_field_matches_payload_at_max() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0u8; PUBLIC_KEY_SIZE],
+            [0u8; NONCE_SIZE],
+            vec![0u8; MAX_PAYLOAD_SIZE],
+            [0u8; SIGNATURE_SIZE],
+        );
+        let wire = msg.to_bytes().expect("at-limit payload");
+        let len = u16::from_be_bytes([wire[2], wire[3]]) as usize;
+        assert_eq!(len, MAX_PAYLOAD_SIZE);
     }
 }

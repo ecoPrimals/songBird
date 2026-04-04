@@ -18,10 +18,10 @@ pub mod bluetooth;
 #[cfg(feature = "pure-bluetooth")]
 pub mod bluetooth_pure;
 
-// Mock implementation - TEST ONLY
-#[cfg(test)]
+// Mock implementation — tests only, or `--features testing` for integration tests.
+#[cfg(any(test, feature = "testing"))]
 pub mod mock;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 pub use mock::MockPhysicalChannel;
 
 /// Physical channel trait for genesis ceremonies
@@ -58,8 +58,8 @@ pub enum PhysicalChannel {
     #[cfg(feature = "pure-bluetooth")]
     BluetoothPure(bluetooth_pure::PureRustBluetoothChannel),
 
-    /// Mock channel for testing
-    #[cfg(test)]
+    /// Mock channel for testing (not present in default production builds).
+    #[cfg(any(test, feature = "testing"))]
     Mock(MockPhysicalChannel),
 }
 
@@ -77,7 +77,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.verify_proximity().await,
 
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             Self::Mock(ch) => ch.verify_proximity().await,
         }
     }
@@ -95,7 +95,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.secure_exchange().await,
 
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             Self::Mock(ch) => ch.secure_exchange().await,
         }
     }
@@ -113,7 +113,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.trust_level(),
 
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             Self::Mock(ch) => ch.trust_level(),
         }
     }
@@ -131,7 +131,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.channel_type(),
 
-            #[cfg(test)]
+            #[cfg(any(test, feature = "testing"))]
             Self::Mock(ch) => ch.channel_type(),
         }
     }
@@ -161,12 +161,14 @@ mod enum_dispatch_tests {
 
     #[cfg(feature = "solokey")]
     #[tokio::test]
-    async fn hardware_key_variant_round_trip() {
+    async fn hardware_key_variant_reports_not_integrated() {
+        use crate::error::GenesisError;
         use crate::physical_channels::solokey::SoloKeyChannel;
         let ch = PhysicalChannel::HardwareKey(SoloKeyChannel::new());
         assert_eq!(ch.channel_type(), PhysicalChannelType::HardwareKey);
-        let creds = ch.secure_exchange().await.expect("solokey exchange");
-        assert_eq!(creds, b"solokey_genesis_creds");
+        assert_eq!(ch.trust_level(), TrustLevel::Low);
+        let err = ch.secure_exchange().await.expect_err("FIDO2 path not wired");
+        assert!(matches!(err, GenesisError::SoloKeyNotIntegrated(_)));
     }
 
     #[cfg(feature = "legacy-bluetooth")]

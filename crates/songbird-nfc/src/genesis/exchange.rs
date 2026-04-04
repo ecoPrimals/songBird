@@ -218,7 +218,7 @@ mod tests {
     }
 
     fn offline_provider() -> CryptoProvider {
-        CryptoProvider::with_mode("/tmp/nonexistent-beardog.sock", RoutingMode::Direct)
+        CryptoProvider::with_mode("/tmp/nonexistent-security-provider.sock", RoutingMode::Direct)
     }
 
     #[tokio::test]

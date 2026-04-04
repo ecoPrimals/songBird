@@ -180,4 +180,18 @@ mod tests {
             other => panic!("expected CoordinationFailed, got {other:?}"),
         }
     }
+
+    #[cfg(not(feature = "coordination"))]
+    #[tokio::test]
+    async fn fallback_execute_genesis_empty_node_id_still_errors() {
+        let bridge = GenesisCoordinationBridge::new_fallback();
+        let err = bridge
+            .execute_genesis(String::new())
+            .await
+            .expect_err("coordination remains unavailable");
+        assert!(
+            matches!(err, GenesisError::CoordinationFailed(_)),
+            "expected CoordinationFailed, got {err:?}"
+        );
+    }
 }

@@ -162,7 +162,7 @@ impl SecurityAdapter {
     /// let adapter1 = SecurityAdapter::new("tarpc://localhost:9001".to_string())?;
     ///
     /// // Unix socket (SECONDARY - port-free)
-    /// let adapter2 = SecurityAdapter::new("unix:///tmp/beardog.sock".to_string())?;
+    /// let adapter2 = SecurityAdapter::new("unix:///tmp/biomeos/security.sock".to_string())?;
     ///
     /// // HTTP endpoint (FALLBACK)
     /// let adapter3 = SecurityAdapter::new("http://localhost:9000".to_string())?;

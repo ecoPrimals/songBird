@@ -24,6 +24,7 @@ unsafe-reference = []  # Feature flag for deprecated unsafe SafeZeroCopyBuffer (
 
 [dependencies]
 # Foundation layer has minimal external dependencies
+bytes = { workspace = true }
 songbird-process-env = { workspace = true }
 thiserror = { workspace = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
@@ -38,6 +39,7 @@ tokio = { version = "1.0", features = ["full"] }
 toml = "0.8"
 # Performance optimizations
 arrayvec = "0.7"
+tracing = { workspace = true }
 # Added for consolidated traits Stream support
 futures-util = "0.3"
 # Added for canonical adapters
@@ -51,7 +53,7 @@ base64 = "0.22"
 tokio = { version = "1.0", features = ["full"] }
 tokio-test = "0.4"
 tempfile = "3.0"
-criterion = { version = "0.5", features = ["html_reports"] }
+
 songbird-test-utils = { path = "../songbird-test-utils" }
 songbird-config = { path = "../songbird-config" }
 

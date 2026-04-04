@@ -201,7 +201,7 @@ mod tests {
         let _router = federation_routes(federation_state, service_registry);
 
         // Router should be created without panicking
-        assert!(true);
+        // Reached without panic — construction succeeded
     }
 
     #[tokio::test]

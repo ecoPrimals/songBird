@@ -50,12 +50,8 @@ impl Default for LineageRelayConfig {
         // 255.255.255.255:<port> = broadcast address
         Self {
             my_id: NodeId::from("default-node"),
-            birdsong_bind: format!("0.0.0.0:{birdsong_port}")
-                .parse()
-                .expect("hardcoded IPv4 bind address should always parse"),
-            birdsong_broadcast: format!("255.255.255.255:{birdsong_port}")
-                .parse()
-                .expect("hardcoded IPv4 broadcast address should always parse"),
+            birdsong_bind: SocketAddr::from(([0, 0, 0, 0], birdsong_port)),
+            birdsong_broadcast: SocketAddr::from(([255, 255, 255, 255], birdsong_port)),
             my_relay_address: None,
             direct_timeout: Duration::from_secs(5),
             stun_relay: None, // Disabled by default (sovereignty-first: lineage only)
@@ -314,9 +310,13 @@ impl LineageRelayCoordinator {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::birdsong::BirdSongBroadcaster;
+    use crate::error::LineageRelayError;
     use crate::security::{MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority};
+    use songbird_types::config::stun_relay::StunRelayConfig;
 
     #[tokio::test]
     async fn test_coordinator_creation() {
@@ -380,5 +380,89 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn start_relay_service_errors_without_relay_address() {
+        let lineage_provider = Arc::new(MockLineageProvider::new());
+        let crypto =
+            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
+        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let broadcaster = Arc::new(
+            BirdSongBroadcaster::new(
+                crypto,
+                NodeId::from("node-1"),
+                "127.0.0.1:42426".parse().unwrap(),
+                "255.255.255.255:42426".parse().unwrap(),
+            )
+            .await
+            .unwrap(),
+        );
+        let config = LineageRelayConfig {
+            my_id: NodeId::from("node-1"),
+            my_relay_address: None,
+            ..Default::default()
+        };
+        let coordinator =
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap();
+        let err = coordinator.start_relay_service().await.expect_err("no relay addr");
+        assert!(
+            matches!(err, LineageRelayError::ConfigError(_)),
+            "expected ConfigError, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_tier_quality_none_without_stun_config() {
+        let lineage_provider = Arc::new(MockLineageProvider::new());
+        let crypto =
+            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
+        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let broadcaster = Arc::new(
+            BirdSongBroadcaster::new(
+                crypto,
+                NodeId::from("node-1"),
+                "127.0.0.1:42427".parse().unwrap(),
+                "255.255.255.255:42427".parse().unwrap(),
+            )
+            .await
+            .unwrap(),
+        );
+        let config = LineageRelayConfig {
+            my_id: NodeId::from("node-1"),
+            stun_relay: None,
+            ..Default::default()
+        };
+        let coordinator =
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap();
+        assert!(coordinator.get_tier_quality().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn get_tier_quality_some_when_stun_configured() {
+        let lineage_provider = Arc::new(MockLineageProvider::new());
+        let crypto =
+            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
+        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let broadcaster = Arc::new(
+            BirdSongBroadcaster::new(
+                crypto,
+                NodeId::from("node-1"),
+                "127.0.0.1:42428".parse().unwrap(),
+                "255.255.255.255:42428".parse().unwrap(),
+            )
+            .await
+            .unwrap(),
+        );
+        let config = LineageRelayConfig {
+            my_id: NodeId::from("node-1"),
+            stun_relay: Some(StunRelayConfig::default()),
+            ..Default::default()
+        };
+        let coordinator =
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap();
+        let report = coordinator.get_tier_quality().await.expect("multi-tier");
+        assert!(report.user_provided_latency.is_none());
+        assert!(report.public_stun_latency.is_none());
     }
 }

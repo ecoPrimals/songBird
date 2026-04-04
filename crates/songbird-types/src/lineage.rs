@@ -222,7 +222,12 @@ pub enum LineageError {
     #[error("Lineage verification failed: {0}")]
     VerificationFailed(String),
 
-    /// `security provider` API error
+    /// Security provider API error
+    #[error("security provider API error: {0}")]
+    SecurityProviderError(String),
+
+    /// Deprecated alias for [`LineageError::SecurityProviderError`].
+    #[deprecated(note = "use LineageError::SecurityProviderError")]
     #[error("security provider API error: {0}")]
     BearDogError(String),
 }
@@ -408,7 +413,7 @@ mod tests {
             (LineageError::DeserializationError("d".into()), "deserialize"),
             (LineageError::DecodingError("c".into()), "decode"),
             (LineageError::VerificationFailed("v".into()), "verification"),
-            (LineageError::BearDogError("b".into()), "security provider"),
+            (LineageError::SecurityProviderError("b".into()), "security provider"),
         ];
         for (err, needle) in cases {
             let msg = err.to_string();

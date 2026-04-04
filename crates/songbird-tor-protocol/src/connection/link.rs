@@ -19,6 +19,15 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tracing::{debug, info, warn};
 
+/// Returns true if the link-layer command byte uses variable-length cell framing.
+///
+/// Variable-length cell commands (per Tor spec): 7 (`VERSIONS`), 128 (`VPADDING`),
+/// 129 (`CERTS`), 130 (`AUTH_CHALLENGE`), 131 (`AUTHENTICATE`).
+#[must_use]
+pub(super) const fn variable_length_cell_command(command: u8) -> bool {
+    matches!(command, 7 | 128 | 129 | 130 | 131)
+}
+
 /// Link protocol versions we support
 /// NOTE: v5 adds padding negotiation which we don't implement yet,
 /// so we stick with v4 for better compatibility
@@ -221,13 +230,6 @@ impl TorConnection {
         Ok(())
     }
 
-    /// Check if a command is a variable-length cell type
-    const fn is_variable_length_cell(command: u8) -> bool {
-        // Variable-length cell commands (per Tor spec):
-        // 7 (VERSIONS), 128 (VPADDING), 129 (CERTS), 130 (AUTH_CHALLENGE), 131 (AUTHENTICATE)
-        matches!(command, 7 | 128 | 129 | 130 | 131)
-    }
-
     /// Receive NETINFO cell (and possibly other cells)
     async fn recv_netinfo(&mut self) -> Result<()> {
         let stream =
@@ -248,7 +250,7 @@ impl TorConnection {
             let circ_id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
             let command = header[4];
 
-            if Self::is_variable_length_cell(command) {
+            if variable_length_cell_command(command) {
                 // Variable-length cell: read 2-byte length, then payload
                 let mut len_buf = [0u8; 2];
                 stream
@@ -500,6 +502,8 @@ impl TorConnection {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::directory::RelayFlags;
     use std::net::IpAddr;
@@ -524,5 +528,35 @@ mod tests {
         let conn = TorConnection::new(relay);
         assert_eq!(conn.state(), ConnectionState::Disconnected);
         assert!(!conn.is_ready());
+    }
+
+    #[test]
+    fn connection_ipv6_relay_starts_disconnected() {
+        let mut relay = test_relay();
+        relay.address = IpAddr::from([0x20, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        let conn = TorConnection::new(relay);
+        assert_eq!(conn.state(), ConnectionState::Disconnected);
+        assert!(!conn.is_ready());
+    }
+
+    #[test]
+    fn variable_length_commands_match_fixed_netinfo() {
+        assert!(variable_length_cell_command(CellCommand::Versions as u8));
+        assert!(!variable_length_cell_command(CellCommand::NetInfo as u8));
+        assert!(!variable_length_cell_command(CellCommand::Relay as u8));
+    }
+
+    #[test]
+    fn variable_length_includes_auth_handshake_cells() {
+        for cmd in [128u8, 129, 130, 131] {
+            assert!(variable_length_cell_command(cmd), "cmd {cmd} should use var-length framing");
+        }
+    }
+
+    #[test]
+    fn connection_state_equality_for_teardown_modeling() {
+        assert_eq!(ConnectionState::Disconnected, ConnectionState::Disconnected);
+        assert_ne!(ConnectionState::Disconnected, ConnectionState::Ready);
+        assert_ne!(ConnectionState::TlsConnected, ConnectionState::VersionsNegotiated);
     }
 }

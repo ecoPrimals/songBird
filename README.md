@@ -20,8 +20,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires; `#[allow(reason)]` where unfulfilled — zero stale expectations |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 12,154+ passed, 0 failed, ~116 ignored |
-| Line Coverage | ~72% est. (llvm-cov `--workspace --all-features`; target 90%) |
+| Tests | 12,495 passed, 0 failed, 252 ignored |
+| Line Coverage | ~77% est. (llvm-cov `--workspace --all-features`; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
@@ -29,7 +29,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >1000 lines | 0 (all production modules under 400 lines; test-only files under 950) |
+| Files >1000 lines | 0 (largest production file 709 lines; test-only files under 950) |
 | License | `AGPL-3.0-only` via workspace inheritance; all crates use `license.workspace = true` |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-only` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
@@ -39,7 +39,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | Dependencies | `sled` feature-gated with in-memory fallback; `kube`/`k8s-openapi`/`bollard` feature-gated |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~402,500 lines across 30 crates |
+| Total Rust | ~421,800 lines across 30 crates |
 
 ## Architecture
 
@@ -162,7 +162,7 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ## Testing
 
 ```bash
-cargo test --workspace --all-features          # Full suite (12,154 tests, ~60s)
+cargo test --workspace --all-features          # Full suite (12,495 tests, ~70s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
 ./scripts/test-with-security-provider.sh        # With live security provider from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report

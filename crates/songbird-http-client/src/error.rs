@@ -13,6 +13,11 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     /// Security / crypto provider RPC communication error
     #[error("Security provider RPC error: {0}")]
+    SecurityProviderRpc(String),
+
+    /// Deprecated alias for [`Error::SecurityProviderRpc`].
+    #[deprecated(note = "Use SecurityProviderRpc")]
+    #[error("Security provider RPC error: {0}")]
     BearDogRpc(String),
 
     /// Crypto provider delegation required but not available for this operation

@@ -68,7 +68,7 @@ impl OnionStorage {
             OnionIdentity::from_stored_via_security_provider(client, &bytes).await
         } else {
             let identity = OnionIdentity::generate_via_security_provider(client).await?;
-            let bytes = identity.to_stored_bytes();
+            let bytes = identity.to_stored_bytes()?;
             self.db.insert(IDENTITY_KEY, bytes)?;
             self.db.flush()?;
 
@@ -115,7 +115,7 @@ impl OnionStorage {
     /// Returns error if serialization or database write fails.
     pub fn store_identity(&self, identity: &OnionIdentity) -> Result<()> {
         const IDENTITY_KEY: &[u8] = b"identity/key";
-        let bytes = identity.to_stored_bytes();
+        let bytes = identity.to_stored_bytes()?;
         self.db.insert(IDENTITY_KEY, bytes)?;
         self.db.flush()?;
         Ok(())
@@ -137,7 +137,7 @@ impl OnionStorage {
             OnionIdentity::from_stored_bytes(&bytes)
         } else {
             let identity = OnionIdentity::generate();
-            let bytes = identity.to_stored_bytes();
+            let bytes = identity.to_stored_bytes()?;
             self.db.insert(IDENTITY_KEY, bytes)?;
             self.db.flush()?;
 

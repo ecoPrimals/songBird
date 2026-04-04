@@ -112,3 +112,22 @@ pub const MAX_MTU: usize = 512;
 
 /// Default scan duration
 pub const DEFAULT_SCAN_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
+
+#[cfg(test)]
+mod crate_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{DEFAULT_SCAN_DURATION, MAX_MTU, VERSION};
+
+    #[test]
+    fn version_is_non_empty_semver_fragment() {
+        assert!(!VERSION.is_empty());
+        assert!(VERSION.chars().next().is_some_and(|c| c.is_ascii_digit()));
+    }
+
+    #[test]
+    fn mtu_and_default_scan_duration_match_public_contract() {
+        assert_eq!(MAX_MTU, 512);
+        assert_eq!(DEFAULT_SCAN_DURATION.as_secs(), 5);
+    }
+}

@@ -278,4 +278,68 @@ mod tests {
             res.status()
         );
     }
+
+    #[tokio::test]
+    async fn info_rejects_non_get() {
+        let app = bridge_router(sample_bridge_state().await);
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/info")
+                    .body(Body::empty())
+                    .expect("valid test request"),
+            )
+            .await
+            .expect("router should accept request");
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn capabilities_rejects_non_get() {
+        let app = bridge_router(sample_bridge_state().await);
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/capabilities")
+                    .body(Body::empty())
+                    .expect("valid test request"),
+            )
+            .await
+            .expect("router should accept request");
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn resources_rejects_non_get() {
+        let app = bridge_router(sample_bridge_state().await);
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/resources")
+                    .body(Body::empty())
+                    .expect("valid test request"),
+            )
+            .await
+            .expect("router should accept request");
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn health_rejects_non_get() {
+        let app = bridge_router(sample_bridge_state().await);
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method(Method::PUT)
+                    .uri("/health")
+                    .body(Body::empty())
+                    .expect("valid test request"),
+            )
+            .await
+            .expect("router should accept request");
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
 }

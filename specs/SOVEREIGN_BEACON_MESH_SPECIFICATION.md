@@ -240,7 +240,7 @@ Alice                 Rendezvous              Bob
 **Crate**: `arti-client = "0.24"`  
 **Language**: 100% Rust  
 **Dependencies**: Zero C code  
-**License**: MIT/Apache-2.0
+**Arti (upstream)**: Licensing is defined by the Arti project; see References.
 
 ### 4.2 Bootstrap Process
 
@@ -849,3 +849,9 @@ pub struct TorTransport {
 **Status**: Draft - Ready for Implementation
 
 🦀 **Pure Rust** | 🧅 **Sovereign** | 🧬 **Organic Growth**
+
+## License
+
+Licensed under AGPL-3.0-only as part of the ecoPrimals ecosystem.
+
+Part of the scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0

@@ -108,7 +108,7 @@ pub struct RegisteredService {
     /// Unique service ID
     pub service_id: String,
 
-    /// Service name (e.g., "Toadstool", "security provider")
+    /// Service display name (often a primal name; discovery uses capability domains)
     pub service_name: String,
 
     /// Service version

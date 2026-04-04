@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors = ["ecoPrimals <songbird@ecoprimal.io>"]
 license.workspace = true
-description = "Pure Rust Tor protocol implementation for Songbird - TRUE PRIMAL (100% BearDog delegation)"
+description = "Pure Rust Tor protocol implementation for Songbird — security-provider crypto delegation (TRUE PRIMAL)"
 repository = "https://github.com/ecoPrimals/songBird"
 keywords = ["tor", "onion", "privacy", "p2p", "pure-rust"]
 categories = ["network-programming", "cryptography"]
@@ -43,12 +43,12 @@ hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio", 
 http-body-util = "0.1"
 bytes = "1.0"
 
-# TLS for relay connections (pure Rust, BearDog crypto delegation)
-# songbird-tls delegates all crypto to BearDog - ZERO ring, ZERO C
+# TLS for relay connections (pure Rust, security provider crypto delegation)
+# songbird-tls delegates all crypto to the security provider — ZERO ring, ZERO C
 songbird-tls = { path = "../songbird-tls" }
 
 # Crypto delegation (NO direct crypto!)
-# All crypto via BearDog IPC / Neural API (`songbird-crypto-provider`)
+# All crypto via security provider IPC / Neural API (`songbird-crypto-provider`)
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 [lints]

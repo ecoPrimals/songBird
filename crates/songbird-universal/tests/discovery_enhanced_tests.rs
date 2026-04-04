@@ -530,13 +530,7 @@ fn test_discovery_error_messages() {
 #[test]
 fn test_empty_result_handling() {
     let results: Vec<String> = Vec::new();
-
-    if results.is_empty() {
-        // Handle empty case
-        assert!(true);
-    } else {
-        panic!("Expected empty results");
-    }
+    assert!(results.is_empty());
 }
 
 #[test]

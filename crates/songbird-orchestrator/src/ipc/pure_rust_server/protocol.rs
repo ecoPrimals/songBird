@@ -55,6 +55,15 @@ impl JsonRpcError {
         }
     }
 
+    /// Create an invalid request error (e.g. wrong or missing `jsonrpc` version).
+    pub fn invalid_request(message: impl Into<String>) -> Self {
+        Self {
+            code: Self::INVALID_REQUEST,
+            message: message.into(),
+            data: None,
+        }
+    }
+
     /// Create a method not found error
     pub fn method_not_found(method: impl Into<String>) -> Self {
         Self {

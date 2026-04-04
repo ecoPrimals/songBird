@@ -80,7 +80,7 @@ async fn test_provider_creation_no_family() {
 #[test]
 fn test_beardog_encrypt_response_parsing() {
     let response_json = r#"{"ciphertext":"yo8Tz+qVxUp7A01pf7PYAhTvfe0Cl727z9r6nh/Qey21gL09gL+wTzS4ghiTKO6gnyqYvukBVw==","family_id":"iidn"}"#;
-    let parsed: BearDogEncryptResponse = serde_json::from_str(response_json).unwrap();
+    let parsed: SecurityProviderEncryptResponse = serde_json::from_str(response_json).unwrap();
     assert_eq!(parsed.family_id, "iidn");
     assert!(!parsed.ciphertext.is_empty());
 }
@@ -88,7 +88,7 @@ fn test_beardog_encrypt_response_parsing() {
 #[test]
 fn test_beardog_decrypt_response_parsing() {
     let response_json = r#"{"plaintext":"SGVsbG8sIEJlYXJEb2ch","family_id":"iidn","success":true}"#;
-    let parsed: BearDogDecryptResponse = serde_json::from_str(response_json).unwrap();
+    let parsed: SecurityProviderDecryptResponse = serde_json::from_str(response_json).unwrap();
     assert_eq!(parsed.family_id, "iidn");
     assert!(parsed.success);
     assert_eq!(parsed.plaintext, b"Hello, BearDog!");
@@ -96,7 +96,7 @@ fn test_beardog_decrypt_response_parsing() {
 
 #[test]
 fn test_base64_serde_serialization() {
-    let request = BearDogEncryptRequest {
+    let request = SecurityProviderEncryptRequest {
         plaintext: b"test_message".to_vec(),
         family_id: Some("test-family".to_string()),
     };
@@ -108,7 +108,7 @@ fn test_base64_serde_serialization() {
 #[test]
 fn test_base64_serde_roundtrip() {
     let response_json = r#"{"encrypted":"dGVzdF9jaXBoZXJ0ZXh0","family_id":"test-family"}"#;
-    let parsed: BearDogEncryptResponse = serde_json::from_str(response_json).unwrap();
+    let parsed: SecurityProviderEncryptResponse = serde_json::from_str(response_json).unwrap();
     assert_eq!(parsed.family_id, "test-family");
     assert_eq!(parsed.ciphertext, b"test_ciphertext");
 }
@@ -255,7 +255,7 @@ async fn tcp_address_missing_colon_errors() {
 
 #[test]
 fn encrypt_request_omits_family_id_when_none() {
-    let req = BearDogEncryptRequest {
+    let req = SecurityProviderEncryptRequest {
         plaintext: vec![1, 2, 3],
         family_id: None,
     };
@@ -265,7 +265,7 @@ fn encrypt_request_omits_family_id_when_none() {
 
 #[test]
 fn encrypt_request_includes_family_id_when_some() {
-    let req = BearDogEncryptRequest {
+    let req = SecurityProviderEncryptRequest {
         plaintext: vec![1],
         family_id: Some("fam".into()),
     };
@@ -276,7 +276,7 @@ fn encrypt_request_includes_family_id_when_some() {
 #[test]
 fn decrypt_response_accepts_success_false() {
     let raw = r#"{"plaintext":"","family_id":"x","success":false}"#;
-    let d: BearDogDecryptResponse = serde_json::from_str(raw).unwrap();
+    let d: SecurityProviderDecryptResponse = serde_json::from_str(raw).unwrap();
     assert!(!d.success);
 }
 
@@ -441,7 +441,7 @@ async fn mock_tcp_encrypt_discovery_jsonrpc_error() {
 
 #[test]
 fn decrypt_request_json_omits_family_id_when_none() {
-    let req = BearDogDecryptRequest {
+    let req = SecurityProviderDecryptRequest {
         ciphertext: vec![9, 9],
         family_id: None,
     };
@@ -451,7 +451,7 @@ fn decrypt_request_json_omits_family_id_when_none() {
 
 #[test]
 fn decrypt_request_json_includes_family_id_when_some() {
-    let req = BearDogDecryptRequest {
+    let req = SecurityProviderDecryptRequest {
         ciphertext: vec![1],
         family_id: Some("my-fam".into()),
     };
@@ -485,7 +485,7 @@ async fn mock_tcp_decrypt_jsonrpc_error_surfaces_as_anyhow() {
 #[test]
 fn encrypt_response_accepts_explicit_ciphertext_key() {
     let raw = r#"{"ciphertext":"QUJD","family_id":"z"}"#;
-    let r: BearDogEncryptResponse = serde_json::from_str(raw).unwrap();
+    let r: SecurityProviderEncryptResponse = serde_json::from_str(raw).unwrap();
     assert_eq!(r.ciphertext, b"ABC");
     assert_eq!(r.family_id, "z");
 }

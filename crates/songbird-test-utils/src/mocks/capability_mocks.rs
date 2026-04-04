@@ -7,7 +7,7 @@
 //!
 //! This module implements mocks for the "infant discovery" philosophy where tests
 //! request capabilities (security, storage, compute, ai) rather than specific
-//! primal names (beardog, storage provider, toadstool, squirrel).
+//! legacy primal-name fixtures (use capability mocks instead).
 //!
 //! ## Philosophy
 //! > "Each primal only knows itself and discovers others through capabilities"
@@ -16,7 +16,7 @@
 //!
 //! ### Before (Hardcoded)
 //! ```rust,ignore
-//! use songbird_test_utils::mocks::{MockSecurityProvider, MockSquirrel};
+//! use songbird_test_utils::mocks::{MockAiProvider, MockSecurityProvider};
 //!
 //! let security = MockSecurityProvider::new();
 //! security.start().await?;
@@ -34,7 +34,7 @@
 //!
 //! - **Security** - Authentication, encryption, authorization (was beardog)
 //! - **Storage** - Data persistence, caching, backup (was storage provider)
-//! - **Compute** - Workload execution, container orchestration (was toadstool)
+//! - **Compute** - Workload execution, container orchestration (`compute` capability domain)
 //! - **AI** - ML inference, training, analysis (was squirrel)
 
 #![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]

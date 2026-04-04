@@ -303,8 +303,10 @@ pub struct TierQualityReport {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
-    use songbird_types::config::stun_relay::StunServerConfig;
+    use songbird_types::config::stun_relay::{StunRelayConfig, StunServerConfig, StunStrategy};
 
     #[tokio::test]
     async fn test_coordinator_creation() {
@@ -356,5 +358,34 @@ mod tests {
         let report = coordinator.check_tier_quality().await;
         assert!(report.user_provided_latency.is_none());
         assert!(report.public_stun_latency.is_none());
+    }
+
+    #[tokio::test]
+    async fn discover_public_address_lineage_only_errors_without_network() {
+        let mut config = StunRelayConfig::default();
+        config.strategy = StunStrategy::LineageOnly;
+        let coordinator = MultiTierCoordinator::new(config);
+        let err = coordinator.discover_public_address().await.expect_err("lineage-only skips STUN");
+        assert!(
+            err.to_string().contains("LineageOnly") || err.to_string().contains("STUN"),
+            "{}",
+            err
+        );
+    }
+
+    #[tokio::test]
+    async fn establish_connection_returns_configuration_error_string() {
+        let config = StunRelayConfig::default();
+        let coordinator = MultiTierCoordinator::new(config);
+        let err =
+            coordinator.establish_connection(NodeId::from("p"), None).await.expect_err("not wired");
+        assert!(err.to_string().contains("orchestrator") || err.to_string().contains("pipeline"));
+    }
+
+    #[test]
+    fn tier_quality_report_default_is_empty() {
+        let r = TierQualityReport::default();
+        assert!(r.user_provided_latency.is_none());
+        assert!(r.lineage_relay_latency.is_none());
     }
 }

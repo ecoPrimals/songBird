@@ -84,17 +84,19 @@ impl Default for TlsConnector {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
-    fn test_tls_connector_creation() {
+    fn tls_connector_new_is_zero_sized() {
         let connector = TlsConnector::new();
         assert_eq!(std::mem::size_of_val(&connector), 0);
     }
 
     #[test]
-    fn test_tls_connector_default() {
-        let connector = TlsConnector::new();
-        let _ = connector; // unit struct — default() is not needed
+    fn tls_connector_default_is_zero_sized() {
+        let c = TlsConnector::default();
+        assert_eq!(std::mem::size_of_val(&c), 0);
     }
 }

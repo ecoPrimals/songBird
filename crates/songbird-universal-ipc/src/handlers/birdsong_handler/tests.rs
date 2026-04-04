@@ -24,7 +24,7 @@ fn test_handler_creation() {
     let _handler = BirdSongHandler::new();
     // Verify handler can be created (no panics)
     // Deep debt: Zero allocation on creation (lazy init)
-    assert!(true);
+    // Reached without panic — construction succeeded
 }
 
 #[tokio::test]

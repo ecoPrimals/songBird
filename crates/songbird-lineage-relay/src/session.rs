@@ -165,6 +165,8 @@ impl RelayedConnection {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::types::MaskingLevel;
     use std::sync::Arc;
@@ -218,5 +220,54 @@ mod tests {
 
         let stats = session.stats().await;
         assert_eq!(stats.bytes_sent, 5);
+    }
+
+    #[tokio::test]
+    async fn attempt_upgrade_direct_reports_already_direct() {
+        let mut session = ConnectionSession::Direct(DirectConnection::new(
+            NodeId::from("peer-1"),
+            "127.0.0.1:8080".parse().unwrap(),
+        ));
+        assert!(session.attempt_upgrade().await.expect("upgrade"));
+    }
+
+    #[tokio::test]
+    async fn attempt_upgrade_relayed_returns_false_without_socket_upgrade() {
+        let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let server_addr = server_socket.local_addr().unwrap();
+        let relay_session = RelaySession::new(
+            NodeId::from("relay-1"),
+            server_addr,
+            NodeId::from("requester"),
+            NodeId::from("target"),
+            MaskingLevel::Masked,
+        )
+        .await
+        .unwrap();
+        let mut session =
+            ConnectionSession::Relayed(RelayedConnection::new(Arc::new(relay_session)));
+        assert!(!session.attempt_upgrade().await.expect("upgrade attempt"));
+    }
+
+    #[tokio::test]
+    async fn relayed_stats_reflects_session_counter_not_local_mutex_after_send() {
+        let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let server_addr = server_socket.local_addr().unwrap();
+        let relay_session = Arc::new(
+            RelaySession::new(
+                NodeId::from("relay-1"),
+                server_addr,
+                NodeId::from("requester"),
+                NodeId::from("target"),
+                MaskingLevel::None,
+            )
+            .await
+            .unwrap(),
+        );
+        relay_session.send(b"abc").await.unwrap();
+        let conn = RelayedConnection::new(relay_session.clone());
+        let stats = conn.stats().await;
+        assert_eq!(stats.bytes_sent, relay_session.stats());
+        assert_eq!(stats.bytes_sent, 3);
     }
 }

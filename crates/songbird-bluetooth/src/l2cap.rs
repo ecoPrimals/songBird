@@ -270,6 +270,8 @@ impl Default for L2capManager {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -389,5 +391,50 @@ mod tests {
     fn test_channel_with_mtu() {
         let channel = L2capChannel::new_att(0x0040).with_mtu(512);
         assert_eq!(channel.mtu, 512);
+    }
+
+    #[test]
+    fn l2cap_channel_constants_match_le_att_usage() {
+        assert_eq!(ATT_CHANNEL_ID, 0x0004);
+        assert_eq!(SIGNALING_CHANNEL_ID, 0x0001);
+        assert_eq!(LE_SIGNALING_CHANNEL_ID, 0x0005);
+        assert_eq!(LE_DEFAULT_MTU, 23);
+    }
+
+    #[test]
+    fn parse_acl_rejects_packet_shorter_than_acl_header_claims() {
+        let ch = L2capChannel::new_att(0x0040);
+        let bad = vec![0x40u8, 0x00, 0x64, 0x00];
+        assert!(ch.parse_acl_packet(&bad).is_err());
+    }
+
+    #[test]
+    fn parse_acl_rejects_truncated_l2cap_payload() {
+        let ch = L2capChannel::new_att(0x0040);
+        let packet = vec![
+            0x40, 0x00, 0x0B, 0x00, // ACL data length 11 bytes after header
+            0x05, 0x00, // L2CAP PDU len 5
+            0x04, 0x00, // CID ATT
+            0x01, 0x02, // truncated payload (need 5 bytes)
+        ];
+        assert!(ch.parse_acl_packet(&packet).is_err());
+    }
+
+    #[test]
+    fn build_and_parse_acl_round_trips_payload() {
+        let ch = L2capChannel::new_att(0x00AA).with_mtu(247);
+        let payload = vec![0x12u8, 0x34];
+        let pkt = ch.build_acl_packet(&payload);
+        let out = ch.parse_acl_packet(&pkt).expect("round-trip");
+        assert_eq!(out, payload);
+    }
+
+    #[tokio::test]
+    async fn l2cap_manager_channels_lists_all() {
+        let m = L2capManager::new();
+        m.create_att_channel(0x10).await.expect("c1");
+        m.create_att_channel(0x20).await.expect("c2");
+        let list = m.channels().await;
+        assert_eq!(list.len(), 2);
     }
 }

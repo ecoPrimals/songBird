@@ -455,9 +455,9 @@ mod tests {
     #[test]
     fn test_register_service_request_default_health_interval() {
         let json = r#"{
-            "primal_name": "ToadStool",
+            "primal_name": "compute-provider",
             "capabilities": ["compute"],
-            "endpoint": "/tmp/toadstool.sock",
+            "endpoint": "/tmp/biomeos/compute.sock",
             "protocol": "json-rpc"
         }"#;
 

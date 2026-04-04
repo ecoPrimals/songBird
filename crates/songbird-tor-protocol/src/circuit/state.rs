@@ -105,6 +105,8 @@ impl CircuitHop {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use std::net::IpAddr;
 
@@ -143,5 +145,59 @@ mod tests {
 
         assert_eq!(circuit.hop_count(), 3);
         assert!(circuit.is_complete());
+    }
+
+    #[test]
+    fn circuit_purpose_variants_are_distinct() {
+        assert_ne!(CircuitPurpose::General, CircuitPurpose::HSDir);
+        assert_ne!(CircuitPurpose::HSDir, CircuitPurpose::Rendezvous);
+        assert_eq!(CircuitPurpose::Rendezvous, CircuitPurpose::Rendezvous);
+    }
+
+    #[test]
+    fn circuit_two_hops_is_not_complete() {
+        let mut circuit = Circuit::new(7, CircuitPurpose::HSDir);
+        for i in 0..2 {
+            let relay = RelayInfo {
+                nickname: format!("r{i}"),
+                fingerprint: [u8::try_from(i).expect("i in 0..2"); 20],
+                address: std::net::IpAddr::from([127, 0, 0, 1]),
+                or_port: 443,
+                dir_port: None,
+                flags: crate::directory::RelayFlags::empty(),
+                bandwidth: 1,
+                ntor_key: None,
+                version: None,
+            };
+            let hop = CircuitHop::new(relay, [0u8; 32], [0u8; 32], [0u8; 16], [0u8; 16]);
+            circuit.add_hop(hop);
+        }
+        assert_eq!(circuit.hop_count(), 2);
+        assert!(!circuit.is_complete());
+    }
+
+    #[test]
+    fn circuit_age_secs_is_well_defined() {
+        let c = Circuit::new(1, CircuitPurpose::Rendezvous);
+        assert_eq!(c.age_secs(), 0);
+    }
+
+    #[test]
+    fn circuit_hop_keys_roundtrip_clone() {
+        let relay = RelayInfo {
+            nickname: "g".to_string(),
+            fingerprint: [7u8; 20],
+            address: std::net::IpAddr::from([10, 0, 0, 1]),
+            or_port: 9001,
+            dir_port: Some(9030),
+            flags: crate::directory::RelayFlags::empty(),
+            bandwidth: 100,
+            ntor_key: Some([9u8; 32]),
+            version: Some("0.4.8".to_string()),
+        };
+        let hop = CircuitHop::new(relay.clone(), [1u8; 32], [2u8; 32], [3u8; 16], [4u8; 16]);
+        let cloned = hop.clone();
+        assert_eq!(cloned.relay.nickname, relay.nickname);
+        assert_eq!(cloned.forward_key, [3u8; 16]);
     }
 }

@@ -56,13 +56,44 @@ pub use crate::canonical::environment::LogConfig;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[expect(clippy::struct_field_names, reason = "intentional pattern; clippy false positive for this API")] // Endpoint suffix is intentional and clear
 pub struct ServiceEndpoints {
-    pub beardog_endpoint: String,
-    pub nestgate_endpoint: String,
-    pub toadstool_endpoint: String,
-    pub squirrel_endpoint: String,
+    /// Security provider HTTP endpoint (capability domain `security`; JSON alias `beardog_endpoint`).
+    #[serde(alias = "beardog_endpoint")]
+    pub security_provider_endpoint: String,
+    /// Storage capability provider HTTP endpoint (capability domain `storage`).
+    #[serde(alias = "nestgate_endpoint")]
+    pub storage_provider_endpoint: String,
+    /// Compute capability provider HTTP endpoint (`compute`; JSON accepts `toadstool_endpoint` alias).
+    #[serde(alias = "toadstool_endpoint")]
+    pub compute_provider_endpoint: String,
+    /// AI capability provider HTTP endpoint (`ai`; JSON accepts `squirrel_endpoint` alias).
+    #[serde(alias = "squirrel_endpoint")]
+    pub ai_provider_endpoint: String,
     pub discovery_endpoint: String,
     pub health_endpoint: String,
     pub metrics_endpoint: String,
+}
+
+impl ServiceEndpoints {
+    /// Deprecated alias for [`ServiceEndpoints::security_provider_endpoint`].
+    #[deprecated(note = "use security_provider_endpoint (capability-based naming)")]
+    #[must_use]
+    pub fn beardog_endpoint(&self) -> &str {
+        &self.security_provider_endpoint
+    }
+
+    /// Deprecated alias for [`ServiceEndpoints::storage_provider_endpoint`].
+    #[deprecated(note = "use storage_provider_endpoint (capability-based naming)")]
+    #[must_use]
+    pub fn nestgate_endpoint(&self) -> &str {
+        &self.storage_provider_endpoint
+    }
+
+    /// Deprecated alias for [`ServiceEndpoints::ai_provider_endpoint`].
+    #[deprecated(note = "use ai_provider_endpoint (capability-based naming)")]
+    #[must_use]
+    pub fn squirrel_endpoint(&self) -> &str {
+        &self.ai_provider_endpoint
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,31 +149,32 @@ impl Default for ServiceEndpoints {
             // ZERO HARDCODING: Use environment variables for explicit configuration
             // Discovery happens at runtime via RuntimeDiscoveryEngine
             // No hardcoded fallback endpoints - fail fast if not configured
-            beardog_endpoint: songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            security_provider_endpoint: songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
                 .or_else(|_| songbird_process_env::var("BEARDOG_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
-                        "BEARDOG_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"security\") for dynamic discovery"
+                        "SECURITY_PROVIDER_ENDPOINT / BEARDOG_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"security\") for dynamic discovery"
                     );
                     String::new() // Empty string signals discovery needed
                 }),
-            nestgate_endpoint: songbird_process_env::var("STORAGE_PROVIDER_ENDPOINT")
+            storage_provider_endpoint: songbird_process_env::var("STORAGE_PROVIDER_ENDPOINT")
                 .or_else(|_| songbird_process_env::var("NESTGATE_ENDPOINT"))
+                .or_else(|_| songbird_process_env::var("STORAGE_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
-                        "NESTGATE_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"storage\") for dynamic discovery"
+                        "No storage endpoint (STORAGE_PROVIDER_ENDPOINT, STORAGE_ENDPOINT, or legacy NESTGATE_ENDPOINT). Use RuntimeDiscoveryEngine::discover_by_capability(\"storage\") for dynamic discovery"
                     );
                     String::new()
                 }),
-            toadstool_endpoint: songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT")
+            compute_provider_endpoint: songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT")
                 .or_else(|_| songbird_process_env::var("TOADSTOOL_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
-                        "TOADSTOOL_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"compute\") for dynamic discovery"
+                        "COMPUTE_PROVIDER_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"compute\") for dynamic discovery"
                     );
                     String::new()
                 }),
-            squirrel_endpoint: songbird_process_env::var("AI_PROVIDER_ENDPOINT")
+            ai_provider_endpoint: songbird_process_env::var("AI_PROVIDER_ENDPOINT")
                 .or_else(|_| songbird_process_env::var("SQUIRREL_ENDPOINT"))
                 .unwrap_or_else(|_| {
                     tracing::warn!(
@@ -482,10 +514,10 @@ impl EnvironmentConfig {
         let mut ports = Vec::new();
 
         for endpoint in [
-            &endpoints.beardog_endpoint,
-            &endpoints.nestgate_endpoint,
-            &endpoints.toadstool_endpoint,
-            &endpoints.squirrel_endpoint,
+            &endpoints.security_provider_endpoint,
+            &endpoints.storage_provider_endpoint,
+            &endpoints.compute_provider_endpoint,
+            &endpoints.ai_provider_endpoint,
             &endpoints.discovery_endpoint,
             &endpoints.health_endpoint,
             &endpoints.metrics_endpoint,

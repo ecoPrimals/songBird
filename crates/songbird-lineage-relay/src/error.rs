@@ -118,4 +118,61 @@ mod tests {
         assert!(LineageRelayError::ConfigError("c".into()).to_string().contains('c'));
         assert!(LineageRelayError::SessionError("e".into()).to_string().contains('e'));
     }
+
+    #[test]
+    fn no_relay_available_and_birdsong_error_display() {
+        let e = LineageRelayError::NoRelayAvailable("east".into());
+        assert!(e.to_string().contains("east"));
+        let b = LineageRelayError::BirdSongError("decrypt".into());
+        assert!(b.to_string().contains("decrypt"));
+    }
+
+    #[test]
+    fn direct_connection_failed_display() {
+        let e = LineageRelayError::DirectConnectionFailed("nat".into());
+        assert!(e.to_string().contains("nat"));
+    }
+
+    #[test]
+    fn serialization_error_from_serde_value() {
+        let err = serde_json::from_str::<serde_json::Value>("{").unwrap_err();
+        let e: LineageRelayError = err.into();
+        assert!(e.to_string().contains("Serialization"), "expected serde wrapper, got {e}");
+    }
+
+    #[test]
+    fn io_error_from_into() {
+        let io = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "pipe");
+        let e: LineageRelayError = io.into();
+        assert!(e.to_string().contains("pipe"), "{e}");
+    }
+
+    #[test]
+    fn other_variant_preserves_message() {
+        let e = LineageRelayError::Other("custom failure".into());
+        assert_eq!(e.to_string(), "custom failure");
+    }
+
+    #[test]
+    fn lineage_verification_failed_contains_prefix() {
+        let e = LineageRelayError::LineageVerificationFailed("sig bad".into());
+        assert!(e.to_string().contains("Lineage verification failed"));
+        assert!(e.to_string().contains("sig bad"));
+    }
+
+    #[test]
+    fn no_relay_available_contains_detail() {
+        let e = LineageRelayError::NoRelayAvailable("no path".into());
+        assert!(e.to_string().contains("No ancestors available"));
+        assert!(e.to_string().contains("no path"));
+    }
+
+    #[test]
+    fn session_error_and_not_found_distinct() {
+        let s = LineageRelayError::SessionError("alloc".into());
+        let n = LineageRelayError::SessionNotFound("sid".into());
+        assert!(s.to_string().contains("Relay session error"));
+        assert!(s.to_string().contains("alloc"));
+        assert!(n.to_string().contains("Relay session not found"));
+    }
 }

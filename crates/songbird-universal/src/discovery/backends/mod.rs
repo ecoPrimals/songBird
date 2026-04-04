@@ -13,4 +13,3 @@ pub mod network;
 pub use container::discover_from_containers;
 pub use environment::discover_from_environment;
 pub use network::discover_from_network;
-// pub use network::discover_from_network_scan; // Removed - function doesn't exist

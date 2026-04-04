@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Mock HTTP API server for testing HTTP gateway
 //!
 //! Provides a lightweight mock implementation of external HTTP APIs

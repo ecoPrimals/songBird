@@ -21,10 +21,10 @@ mod protocol_detection_unit_tests {
     #[tokio::test]
     async fn test_unix_socket_detection() {
         // Test that unix:// URLs are detected for JSON-RPC protocol
-        let adapter = SecurityAdapter::new("unix:///tmp/beardog.sock".to_string()).await.unwrap();
+        let adapter = SecurityAdapter::new("unix:///tmp/security.sock".to_string()).await.unwrap();
 
         // Verify adapter is created (can't inspect internal enum, but we can verify it works)
-        assert_eq!(adapter.endpoint(), "unix:///tmp/beardog.sock");
+        assert_eq!(adapter.endpoint(), "unix:///tmp/security.sock");
     }
 
     #[tokio::test]
@@ -279,13 +279,13 @@ mod jsonrpc_e2e_tests {
         // E2E test: Connect to real security provider Unix socket and collect metrics
         //
         // Prerequisites:
-        // 1. BearDog running with Unix socket at /tmp/beardog-test.sock
+        // 1. Security provider running with Unix socket at /tmp/security-provider-test.sock
         // 2. security provider configured to respond to get_metrics JSON-RPC calls
         //
         // Run with: cargo test --features e2e test_jsonrpc_collect_metrics_e2e -- --ignored
 
         let adapter =
-            SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).await.unwrap();
+            SecurityAdapter::new("unix:///tmp/security-provider-test.sock".to_string()).await.unwrap();
 
         let metrics = adapter.collect_metrics().await.expect("Should collect metrics via JSON-RPC");
 
@@ -306,7 +306,7 @@ mod jsonrpc_e2e_tests {
         // Run with: cargo test --features e2e test_jsonrpc_verify_auth_e2e -- --ignored
 
         let adapter =
-            SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).await.unwrap();
+            SecurityAdapter::new("unix:///tmp/security-provider-test.sock".to_string()).await.unwrap();
 
         // Test with valid token (configure security provider to accept "test-valid-token")
         let result = adapter.verify_auth("test-valid-token").await.unwrap();
@@ -335,7 +335,7 @@ mod jsonrpc_e2e_tests {
         // Run with: cargo test --features e2e test_genetic_lineage_trust_e2e -- --ignored
 
         let adapter =
-            SecurityAdapter::new("unix:///tmp/beardog-nat0-tower1.sock".to_string()).await.unwrap();
+            SecurityAdapter::new("unix:///tmp/security-nat0-tower1.sock".to_string()).await.unwrap();
 
         // Verify health (should work via JSON-RPC)
         let health = adapter.check_health().await.expect("Health check should work");

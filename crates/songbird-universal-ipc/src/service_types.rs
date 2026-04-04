@@ -6,8 +6,17 @@
 //! These DTOs define the stable API surface for inter-primal communication.
 //! Other primals use these types (indirectly, via JSON) when calling Songbird's
 //! IPC broker over Unix sockets.
+//!
+//! For raw wire buffers (serialized JSON-RPC frames, opaque bodies), prefer
+//! `Bytes` or `SharedBytes` on hot paths to avoid extra copies and to align
+//! with the wateringHole zero-copy IPC convention.
 
 use serde::{Deserialize, Serialize};
+
+/// `bytes::Bytes` re-export for zero-copy IPC payload fields and wire buffers.
+pub use bytes::Bytes;
+/// Reference-counted IPC byte buffer (see [`crate::service_types`] module docs).
+pub use songbird_types::SharedBytes;
 
 /// IPC service request parameters for registration
 #[derive(Debug, Clone, Deserialize)]
@@ -94,11 +103,11 @@ mod tests {
 
     #[test]
     fn register_params_deserializes_from_json() {
-        let json = r#"{"primal_id":"beardog","capabilities":["crypto","auth"],"endpoint":"/tmp/beardog.sock"}"#;
+        let json = r#"{"primal_id":"security","capabilities":["crypto","auth"],"endpoint":"/tmp/security.sock"}"#;
         let params: RegisterParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.primal_id, "beardog");
+        assert_eq!(params.primal_id, "security");
         assert_eq!(params.capabilities, vec!["crypto", "auth"]);
-        assert_eq!(params.endpoint, "/tmp/beardog.sock");
+        assert_eq!(params.endpoint, "/tmp/security.sock");
     }
 
     #[test]
@@ -125,23 +134,23 @@ mod tests {
     #[test]
     fn register_result_serializes() {
         let result = RegisterResult {
-            virtual_endpoint: "/primal/beardog".to_string(),
+            virtual_endpoint: "/primal/security".to_string(),
             registered_at: "2026-03-27T12:00:00Z".to_string(),
         };
         let json = serde_json::to_value(&result).unwrap();
-        assert_eq!(json["virtual_endpoint"], "/primal/beardog");
+        assert_eq!(json["virtual_endpoint"], "/primal/security");
         assert_eq!(json["registered_at"], "2026-03-27T12:00:00Z");
     }
 
     #[test]
     fn resolve_result_serializes_with_capabilities() {
         let result = ResolveResult {
-            virtual_endpoint: "/primal/beardog".to_string(),
-            native_endpoint: "/tmp/beardog.sock".to_string(),
+            virtual_endpoint: "/primal/security".to_string(),
+            native_endpoint: "/tmp/security.sock".to_string(),
             capabilities: vec!["crypto".to_string(), "auth".to_string()],
         };
         let json = serde_json::to_value(&result).unwrap();
-        assert_eq!(json["native_endpoint"], "/tmp/beardog.sock");
+        assert_eq!(json["native_endpoint"], "/tmp/security.sock");
         let caps = json["capabilities"].as_array().unwrap();
         assert_eq!(caps.len(), 2);
     }
@@ -176,8 +185,8 @@ mod tests {
         let result = ListResult {
             services: vec![
                 ServiceInfo {
-                    primal_id: "beardog".to_string(),
-                    virtual_endpoint: "/primal/beardog".to_string(),
+                    primal_id: "security".to_string(),
+                    virtual_endpoint: "/primal/security".to_string(),
                     capabilities: vec!["crypto".to_string()],
                 },
                 ServiceInfo {
@@ -190,7 +199,7 @@ mod tests {
         let json = serde_json::to_value(&result).unwrap();
         let services = json["services"].as_array().unwrap();
         assert_eq!(services.len(), 2);
-        assert_eq!(services[0]["primal_id"], "beardog");
+        assert_eq!(services[0]["primal_id"], "security");
         assert_eq!(services[1]["capabilities"].as_array().unwrap().len(), 2);
     }
 
@@ -233,7 +242,7 @@ mod tests {
 
     #[test]
     fn register_params_rejects_missing_fields() {
-        let json = r#"{"primal_id":"beardog"}"#;
+        let json = r#"{"primal_id":"security"}"#;
         assert!(serde_json::from_str::<RegisterParams>(json).is_err());
     }
 }

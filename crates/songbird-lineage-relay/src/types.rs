@@ -199,11 +199,11 @@ pub struct ConnectionStats {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::{
-        ConnectionStats, ConnectionType, LineageProof, LineageRelationship, MaskingLevel, NodeId,
-        RelayAuthorization, SimpleRelayAuth,
+        ConnectionEndpoint, ConnectionStats, ConnectionType, LineageProof, LineageRelationship,
+        MaskingLevel, NodeId, RelayAuthorization, SimpleRelayAuth,
     };
     use std::time::{Duration, SystemTime};
 
@@ -270,5 +270,61 @@ mod tests {
         let json = serde_json::to_string(&t).expect("ser");
         let back: ConnectionType = serde_json::from_str(&json).expect("de");
         assert_eq!(back, ConnectionType::Relayed);
+    }
+
+    #[test]
+    fn lineage_relationship_all_variants_roundtrip_json() {
+        for rel in [
+            LineageRelationship::Parent,
+            LineageRelationship::Ancestor(2),
+            LineageRelationship::Child,
+            LineageRelationship::Descendant(4),
+            LineageRelationship::Sibling,
+            LineageRelationship::Unrelated,
+        ] {
+            let json = serde_json::to_string(&rel).expect("ser");
+            let back: LineageRelationship = serde_json::from_str(&json).expect("de");
+            assert_eq!(back, rel);
+        }
+    }
+
+    #[test]
+    fn connection_endpoint_serde_roundtrip() {
+        use std::net::SocketAddr;
+        let ep = ConnectionEndpoint {
+            node_id: NodeId::from("n"),
+            addresses: vec!["192.0.2.1:9000".parse::<SocketAddr>().unwrap()],
+            discovered_at: std::time::SystemTime::UNIX_EPOCH,
+        };
+        let json = serde_json::to_string(&ep).expect("ser");
+        let back: ConnectionEndpoint = serde_json::from_str(&json).expect("de");
+        assert_eq!(back.node_id, ep.node_id);
+        assert_eq!(back.addresses, ep.addresses);
+    }
+
+    #[test]
+    fn simple_relay_auth_from_unauthorized_token() {
+        let u = RelayAuthorization::unauthorized("r".into(), "q".into());
+        let s: SimpleRelayAuth = u.into();
+        assert!(!s.authorized);
+        assert_eq!(s.ttl, Duration::ZERO);
+    }
+
+    #[test]
+    fn connection_stats_merge_manual_fields() {
+        let mut s = ConnectionStats::default();
+        s.bytes_sent = 10;
+        s.packets_received = 3;
+        s.connection_type = Some(ConnectionType::Upgrading);
+        assert_eq!(s.bytes_sent, 10);
+        assert!(matches!(s.connection_type, Some(ConnectionType::Upgrading)));
+    }
+
+    #[test]
+    fn connection_type_upgrading_roundtrips_json() {
+        let t = ConnectionType::Upgrading;
+        let json = serde_json::to_string(&t).expect("ser");
+        let back: ConnectionType = serde_json::from_str(&json).expect("de");
+        assert_eq!(back, ConnectionType::Upgrading);
     }
 }

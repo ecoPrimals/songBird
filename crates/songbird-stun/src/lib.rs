@@ -27,16 +27,15 @@
 //!
 //! ```no_run
 //! use songbird_stun::StunClient;
+//! use songbird_types::constants::DEFAULT_STUN_SERVER_1;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let client = StunClient::new();
-//!     
+//!
 //!     // Discover public address via STUN
-//!     let public_addr = client
-//!         .discover_public_address("stun.nextcloud.com:3478")
-//!         .await?;
-//!     
+//!     let public_addr = client.discover_public_address(DEFAULT_STUN_SERVER_1).await?;
+//!
 //!     println!("My public address: {}", public_addr);
 //!     Ok(())
 //! }

@@ -122,4 +122,36 @@ mod tests {
         assert_eq!(decoded.beacons, creds.beacons);
         assert_eq!(decoded.timestamp, creds.timestamp);
     }
+
+    #[test]
+    fn decode_hex_or_b64_prefers_valid_hex_over_ascii_fallback() {
+        let result = decode_hex_or_b64("deadbeef").unwrap();
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn decode_hex_or_b64_invalid_hex_falls_back_to_raw_bytes() {
+        let result = decode_hex_or_b64("not-hex!").unwrap();
+        assert_eq!(result, b"not-hex!".as_slice());
+    }
+
+    #[test]
+    fn hex_decode_rejects_non_hex_digit() {
+        assert!(hex::decode("0g").is_err());
+    }
+
+    #[test]
+    fn genesis_credentials_empty_vectors_roundtrip() {
+        let creds = GenesisCredentials {
+            identity: vec![],
+            family_seed: vec![],
+            lineage: vec![],
+            beacons: vec![],
+            timestamp: 0,
+        };
+        let json = serde_json::to_vec(&creds).unwrap();
+        let back: GenesisCredentials = serde_json::from_slice(&json).unwrap();
+        assert_eq!(back.timestamp, 0);
+        assert!(back.lineage.is_empty());
+    }
 }

@@ -62,9 +62,10 @@ pub enum Error {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::Error;
+    use std::error::Error as StdError;
     use std::io;
 
     #[test]
@@ -72,6 +73,13 @@ mod tests {
         let e: Error = io::Error::new(io::ErrorKind::PermissionDenied, "denied").into();
         assert!(e.to_string().contains("I/O error"));
         assert!(e.to_string().contains("denied"));
+    }
+
+    #[test]
+    fn io_error_preserves_source_chain() {
+        let inner = io::Error::new(io::ErrorKind::Other, "inner");
+        let e: Error = inner.into();
+        assert!(e.source().is_some());
     }
 
     #[test]
@@ -87,5 +95,27 @@ mod tests {
         assert!(Error::Stream("st".into()).to_string().contains("Stream"));
         assert_eq!(Error::Timeout.to_string(), "Operation timed out");
         assert!(Error::NotFound("nf".into()).to_string().contains("Not found"));
+    }
+
+    #[test]
+    fn error_debug_includes_variant_name() {
+        let e = Error::Stream("s".into());
+        let dbg = format!("{e:?}");
+        assert!(dbg.contains("Stream"));
+    }
+
+    #[test]
+    fn http_variant_display_includes_message() {
+        let e = Error::Http("status 502 bad gateway".to_string());
+        assert!(e.to_string().contains("502"));
+        assert!(e.to_string().contains("HTTP"));
+    }
+
+    #[test]
+    fn consensus_and_not_found_roundtrip_display() {
+        let c = Error::Consensus("stale microdesc".to_string());
+        assert!(c.to_string().contains("stale"));
+        let n = Error::NotFound("relay fingerprint".to_string());
+        assert!(n.to_string().contains("relay"));
     }
 }

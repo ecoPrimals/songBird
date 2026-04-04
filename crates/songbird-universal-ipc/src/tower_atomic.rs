@@ -95,6 +95,7 @@
 use crate::endpoint::VirtualEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::ipc;
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::future::Future;
@@ -376,7 +377,8 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
         match serde_json::to_vec(response) {
             Ok(mut buf) => {
                 buf.push(b'\n');
-                writer.write_all(&buf).await.map_err(|e| IpcError::Other(e.to_string()))?;
+                let payload = Bytes::from(buf);
+                writer.write_all(&payload).await.map_err(|e| IpcError::Other(e.to_string()))?;
             }
             Err(e) => {
                 error!("JSON-RPC response serialization failed: {e}");
@@ -475,21 +477,19 @@ impl TowerAtomicClient {
 
         let request = JsonRpcRequest::new(method, Some(params), id);
 
-        // Serialize request
-        let request_json = serde_json::to_string(&request)
+        // Serialize request (`to_vec` avoids a UTF-8 `String` intermediate; `Bytes` shares cheaply).
+        let mut request_bytes = serde_json::to_vec(&request)
             .map_err(|e| IpcError::Other(format!("Failed to serialize request: {e}")))?;
 
-        debug!("Sending JSON-RPC request: {}", request_json);
+        debug!("Sending JSON-RPC request: {}", String::from_utf8_lossy(&request_bytes));
 
         // Send request and read response (lock scope minimized)
         let response_line = {
             let mut stream = self.stream.lock().await;
 
-            stream
-                .write_all(request_json.as_bytes())
-                .await
-                .map_err(|e| IpcError::Other(e.to_string()))?;
-            stream.write_all(b"\n").await.map_err(|e| IpcError::Other(e.to_string()))?;
+            request_bytes.push(b'\n');
+            let payload = Bytes::from(request_bytes);
+            stream.write_all(&payload).await.map_err(|e| IpcError::Other(e.to_string()))?;
 
             let mut line = String::new();
             {

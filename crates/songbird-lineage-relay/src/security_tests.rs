@@ -3,7 +3,7 @@
 
 //! Unit tests for [`crate::security`] (security-provider lineage relay integration and mocks).
 
-#![allow(clippy::unwrap_used, reason = "test assertions")]
+#![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -426,6 +426,47 @@ async fn bear_dog_birdsong_decrypt_missing_plaintext_errors() {
 
     let provider = SecurityBirdSongProvider::new(&path, None);
     let err = provider.decrypt_birdsong(b"cipher", &NodeId::from("sender")).await;
+    assert!(err.is_err());
+    serve.await.unwrap();
+}
+
+#[tokio::test]
+async fn bear_dog_authorize_relay_jsonrpc_authorized_false() {
+    let path = unique_socket_path();
+    let _ = std::fs::remove_file(&path);
+    let listener = UnixListener::bind(&path).expect("bind unix listener");
+    let result = serde_json::json!({
+        "authorized": false,
+        "masking_level": "masked",
+        "ttl_seconds": 99,
+        "audit_token": "denied_token"
+    });
+    let serve = tokio::spawn(jsonrpc_accept_write_shutdown(listener, result));
+    tokio::task::yield_now().await;
+
+    let auth = SecurityRelayAuthority::with_socket_path(&path)
+        .authorize_relay(&NodeId::from("relay-x"), &NodeId::from("req-y"))
+        .await
+        .unwrap();
+
+    assert!(!auth.authorized);
+    assert_eq!(auth.masking_level, MaskingLevel::Masked);
+    assert_eq!(auth.ttl_seconds, 99);
+    assert_eq!(auth.audit_token, "denied_token");
+    serve.await.unwrap();
+}
+
+#[tokio::test]
+async fn bear_dog_birdsong_encrypt_missing_ciphertext_errors() {
+    let path = unique_socket_path();
+    let _ = std::fs::remove_file(&path);
+    let listener = UnixListener::bind(&path).expect("bind");
+    let result = serde_json::json!({});
+    let serve = tokio::spawn(jsonrpc_accept_write_shutdown(listener, result));
+    tokio::task::yield_now().await;
+
+    let provider = SecurityBirdSongProvider::new(&path, None);
+    let err = provider.encrypt_for_lineage(b"plain", LineageHint::DirectParent).await;
     assert!(err.is_err());
     serve.await.unwrap();
 }

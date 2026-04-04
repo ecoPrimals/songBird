@@ -10,7 +10,7 @@
 //! ## XDG Base Directory Compliance
 //!
 //! Following XDG Base Directory Specification for runtime files:
-//! - Priority 1: `${primal_name}_SOCKET` (explicit override); for `beardog`, `SECURITY_PROVIDER_SOCKET` is checked first
+//! - Priority 1: `${primal_name}_SOCKET` (explicit override); for the security-domain primal (legacy id `BEARDOG`), `SECURITY_PROVIDER_SOCKET` is checked first
 //! - Priority 2: `BIOMEOS_SOCKET_DIR/{primal}.sock` (shared directory)
 //! - Priority 3: `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` (XDG standard)
 //! - Priority 4: `/run/user/$UID/biomeos/{primal}.sock` (fallback XDG)
@@ -20,7 +20,7 @@
 //!
 //! ## Socket Naming Standard
 //!
-//! - Uses primal name only: `beardog.sock` (NOT `beardog-orchestrator.sock`)
+//! - Uses primal name only: e.g. `security.sock` or legacy `beardog.sock` (NOT `*-orchestrator.sock`)
 //! - Family ID NOT in socket name (biomeOS compliance)
 //! - Consistent with wateringHole standards
 //!
@@ -249,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_socket_path_beardog_security_provider_first() {
+    fn test_get_socket_path_security_primal_security_provider_first() {
         let env = mock_env(HashMap::from([
             ("SECURITY_PROVIDER_SOCKET", "/cap/security.sock"),
             ("BEARDOG_SOCKET", "/legacy/beardog.sock"),
@@ -414,6 +414,6 @@ mod tests {
         // Verify UnixIPC implementation uses zero unsafe code
         // This is enforced by #![deny(unsafe_code)] in lib.rs
         // get_socket_path() uses only env vars (Pure Rust!)
-        assert!(true);
+        // Reached without panic — crate-level unsafe denial is the real guarantee
     }
 }

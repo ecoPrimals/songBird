@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Test environment management for E2E and integration testing
 //!
 //! Provides a comprehensive test environment that manages service lifecycles,

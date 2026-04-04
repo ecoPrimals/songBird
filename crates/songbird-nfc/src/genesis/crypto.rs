@@ -263,7 +263,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_keypair_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         let key = ex.generate_x25519_keypair().await.unwrap();
@@ -273,7 +273,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_nonce_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         let nonce = ex.generate_nonce().await.unwrap();
@@ -283,7 +283,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_dh_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         let shared = ex.x25519_dh(&[0u8; 32]).await.unwrap();
@@ -293,7 +293,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_sign_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         let sig = ex.ed25519_sign(b"test data").await.unwrap();
@@ -303,7 +303,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_verify_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         ex.ed25519_verify(b"data", &[0u8; 64]).await.unwrap();
@@ -312,7 +312,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_encrypt_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         let ct = ex.encrypt(b"plaintext", &[0u8; 32], &[0u8; 24]).await.unwrap();
@@ -322,7 +322,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_decrypt_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         let pt = ex.decrypt(b"ciphertext", &[0u8; 32], &[0u8; 24]).await.unwrap();
@@ -332,7 +332,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_destroy_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-beardog.sock".to_string(),
+            "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
         ex.destroy_ephemeral_keys().await.unwrap();

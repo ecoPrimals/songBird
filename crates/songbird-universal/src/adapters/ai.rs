@@ -4,7 +4,7 @@
 //! AI Capability Adapter
 //!
 //! **SOVEREIGNTY**: This adapter works with ANY AI capability provider.
-//! It does NOT know about specific primals (Squirrel is just one example).
+//! It does NOT know about specific primal implementations — only the `ai` capability domain.
 //! Discovery is capability-based through environment hints or zero-knowledge bootstrap.
 
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
@@ -141,7 +141,7 @@ impl AIAdapter {
     /// # tokio_test::block_on(async {
     /// use songbird_universal::adapters::AIAdapter;
     ///
-    /// // Discovers any AI provider (could be Squirrel, or anyone)
+    /// // Discovers any AI provider (any `ai` capability implementation)
     /// let adapter = AIAdapter::from_discovery().await?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// # });

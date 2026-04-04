@@ -38,3 +38,31 @@ impl Storage for MemoryStorage {
         Ok(None)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use crate::directory::Consensus;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn memory_storage_store_succeeds_and_load_is_none() {
+        let store = MemoryStorage::default();
+        let c = Consensus {
+            valid_after: SystemTime::UNIX_EPOCH,
+            fresh_until: SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            valid_until: SystemTime::UNIX_EPOCH + Duration::from_secs(2),
+            relays: vec![],
+        };
+        store.store_consensus(&c).expect("store");
+        assert!(store.load_consensus().expect("load").is_none());
+    }
+
+    #[test]
+    fn memory_storage_default_is_empty_loader() {
+        let s = MemoryStorage::default();
+        assert!(s.load_consensus().expect("load").is_none());
+    }
+}

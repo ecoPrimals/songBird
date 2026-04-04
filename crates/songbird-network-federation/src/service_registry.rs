@@ -176,7 +176,7 @@ pub struct ServiceRegistration {
     /// Human-readable service name
     pub service_name: String,
 
-    /// Service type (e.g., "beardog", "squirrel", "biome")
+    /// Service type / capability domain label (e.g., `"security"`, `"ai"`, `"biome"`)
     pub service_type: String,
 
     /// Tower this service is running on

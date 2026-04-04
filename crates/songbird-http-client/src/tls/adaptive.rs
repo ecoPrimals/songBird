@@ -7,7 +7,7 @@
 //! to automatically adjust extension sets based on server requirements and profiles.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, PoisonError, RwLock};
 
 /// Strategy for extension negotiation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,7 +156,7 @@ impl AdaptiveExtensions {
 
     /// Adaptive extension set based on server profile
     fn adaptive_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
-        let profiles = self.profiles.read().expect("lock poisoned");
+        let profiles = self.profiles.read().unwrap_or_else(PoisonError::into_inner);
 
         if let Some(profile) = profiles.get(hostname) {
             // Use known successful extension set
@@ -171,16 +171,12 @@ impl AdaptiveExtensions {
     }
 
     /// Record successful handshake
-    ///
-    /// # Panics
-    ///
-    /// Panics if the internal lock is poisoned.
     #[expect(
         clippy::significant_drop_tightening,
         reason = "RwLock guard must be held while modifying profile"
     )]
     pub fn record_success(&self, hostname: &str, extensions: Vec<ExtensionType>) {
-        let mut profiles = self.profiles.write().expect("lock poisoned");
+        let mut profiles = self.profiles.write().unwrap_or_else(PoisonError::into_inner);
 
         let profile = profiles.entry(hostname.to_string()).or_insert_with(|| ServerProfile {
             hostname: hostname.to_string(),
@@ -197,16 +193,12 @@ impl AdaptiveExtensions {
     }
 
     /// Record failed handshake
-    ///
-    /// # Panics
-    ///
-    /// Panics if the internal lock is poisoned.
     #[expect(
         clippy::significant_drop_tightening,
         reason = "RwLock guard must be held while modifying profile"
     )]
     pub fn record_failure(&self, hostname: &str, extensions: Vec<ExtensionType>) {
-        let mut profiles = self.profiles.write().expect("lock poisoned");
+        let mut profiles = self.profiles.write().unwrap_or_else(PoisonError::into_inner);
 
         let profile = profiles.entry(hostname.to_string()).or_insert_with(|| ServerProfile {
             hostname: hostname.to_string(),
@@ -223,34 +215,22 @@ impl AdaptiveExtensions {
     }
 
     /// Get server profile
-    ///
-    /// # Panics
-    ///
-    /// Panics if the internal lock is poisoned.
     #[must_use]
     pub fn get_profile(&self, hostname: &str) -> Option<ServerProfile> {
-        let profiles = self.profiles.read().expect("lock poisoned");
+        let profiles = self.profiles.read().unwrap_or_else(PoisonError::into_inner);
         profiles.get(hostname).cloned()
     }
 
     /// Clear all profiles (for testing)
-    ///
-    /// # Panics
-    ///
-    /// Panics if the internal lock is poisoned.
     pub fn clear_profiles(&self) {
-        let mut profiles = self.profiles.write().expect("lock poisoned");
+        let mut profiles = self.profiles.write().unwrap_or_else(PoisonError::into_inner);
         profiles.clear();
     }
 
     /// Get profile count (for testing)
-    ///
-    /// # Panics
-    ///
-    /// Panics if the internal lock is poisoned.
     #[must_use]
     pub fn profile_count(&self) -> usize {
-        let profiles = self.profiles.read().expect("lock poisoned");
+        let profiles = self.profiles.read().unwrap_or_else(PoisonError::into_inner);
         profiles.len()
     }
 }

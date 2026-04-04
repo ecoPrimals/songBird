@@ -304,6 +304,8 @@ impl RelayHandler {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use crate::types::MaskingLevel;
     use async_trait::async_trait;
@@ -465,6 +467,92 @@ mod tests {
         assert_eq!(result["request"]["requester"], "pixel");
 
         // Cleanup
+        let _ = handler.handle_stop(json!({})).await;
+    }
+
+    #[tokio::test]
+    async fn handle_allocate_errors_without_relay_node() {
+        let authority = Arc::new(MockRelayAuthority::new(true));
+        let handler = RelayHandler::new(authority);
+        handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
+        let err = handler
+            .handle_allocate(json!({
+                "requester": "pixel",
+                "target_addr": "192.168.1.1:5000"
+            }))
+            .await
+            .expect_err("missing relay_node");
+        assert!(err.contains("relay_node"), "{err}");
+        let _ = handler.handle_stop(json!({})).await;
+    }
+
+    #[tokio::test]
+    async fn handle_allocate_errors_without_requester() {
+        let authority = Arc::new(MockRelayAuthority::new(true));
+        let handler = RelayHandler::new(authority);
+        handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
+        let err = handler
+            .handle_allocate(json!({
+                "relay_node": "tower",
+                "target_addr": "192.168.1.1:5000"
+            }))
+            .await
+            .expect_err("missing requester");
+        assert!(err.contains("requester"), "{err}");
+        let _ = handler.handle_stop(json!({})).await;
+    }
+
+    #[tokio::test]
+    async fn handle_allocate_errors_on_invalid_target_addr() {
+        let authority = Arc::new(MockRelayAuthority::new(true));
+        let handler = RelayHandler::new(authority);
+        handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
+        let err = handler
+            .handle_allocate(json!({
+                "relay_node": "tower",
+                "requester": "pixel",
+                "target_addr": "not-a-socket-addr"
+            }))
+            .await
+            .expect_err("bad addr");
+        assert!(err.contains("target_addr"), "{err}");
+        let _ = handler.handle_stop(json!({})).await;
+    }
+
+    #[tokio::test]
+    async fn handle_allocate_errors_when_server_not_running() {
+        let authority = Arc::new(MockRelayAuthority::new(true));
+        let handler = RelayHandler::new(authority);
+        let err = handler
+            .handle_allocate(json!({
+                "relay_node": "tower",
+                "requester": "pixel",
+                "target_addr": "192.168.1.1:5000"
+            }))
+            .await
+            .expect_err("server down");
+        assert!(err.contains("not running"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn handle_allocate_decodes_base64_lineage_proof() {
+        let authority = Arc::new(MockRelayAuthority::new(true));
+        let handler = RelayHandler::new(authority);
+        handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
+        use base64::{Engine as _, engine::general_purpose};
+        let proof = general_purpose::STANDARD.encode([1, 2, 3, 4]);
+        let result = handler
+            .handle_allocate(json!({
+                "relay_node": "tower",
+                "requester": "pixel",
+                "target_addr": "10.0.0.1:9000",
+                "lineage_proof": proof,
+                "ttl_seconds": 60
+            }))
+            .await
+            .unwrap();
+        assert_eq!(result["method"], "allocate");
+        assert_eq!(result["request"]["ttl_seconds"], 60);
         let _ = handler.handle_stop(json!({})).await;
     }
 }

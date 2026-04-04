@@ -49,6 +49,9 @@ pub struct AccessToken {
 pub enum TokenType {
     JWT,
     /// Reserved for security provider–issued tokens (future integration)
+    SecurityProvider,
+    /// Deprecated alias for [`TokenType::SecurityProvider`].
+    #[deprecated(note = "use TokenType::SecurityProvider (capability-based naming)")]
     BearDog,
 }
 
@@ -164,9 +167,9 @@ impl AccessToken {
                 // Future: Add explicit 2fa_verified claim to JWT
                 matches!(self.role, Role::Admin { .. } | Role::RemoteAdmin { .. })
             }
-            TokenType::BearDog => {
+            #[allow(deprecated, reason = "match arm handles legacy variant")]
+            TokenType::SecurityProvider | TokenType::BearDog => {
                 // Security provider tokens with hardware entropy automatically satisfy 2FA
-                // This will be properly implemented with security provider integration (Q1 2025)
                 true
             }
         }
@@ -356,7 +359,7 @@ mod tests {
         let admin = AccessToken::admin("a");
         assert!(admin.has_2fa_verified());
         let mut bd = AccessToken::anonymous();
-        bd.token_type = TokenType::BearDog;
+        bd.token_type = TokenType::SecurityProvider;
         assert!(bd.has_2fa_verified());
         let st = AccessToken::student("s", "c");
         assert!(!st.has_2fa_verified());

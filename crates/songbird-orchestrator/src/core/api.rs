@@ -9,9 +9,6 @@ pub mod ai_first_response;
 pub mod ai_workload_classification;
 
 use serde::{Deserialize, Serialize};
-// use songbird_types::constants::canonical; // Not yet available
-// use songbird_types::SongbirdResult;
-// use songbird_config;
 
 /// API configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

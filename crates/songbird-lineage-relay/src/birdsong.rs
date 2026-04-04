@@ -369,4 +369,118 @@ mod tests {
             assert_eq!(v, to_value(&back).unwrap());
         }
     }
+
+    #[tokio::test]
+    async fn wait_for_message_by_type_times_out_when_no_listener_and_no_traffic() {
+        use std::sync::Arc;
+        let crypto = Arc::new(MockCrypto);
+        let broadcaster = BirdSongBroadcaster::new(
+            crypto,
+            NodeId::from("me"),
+            "127.0.0.1:0".parse().unwrap(),
+            "127.0.0.1:2".parse().unwrap(),
+        )
+        .await
+        .expect("bind broadcaster");
+        let err = broadcaster
+            .wait_for_message_by_type(BirdSongType::Presence, std::time::Duration::from_millis(5))
+            .await
+            .expect_err("no messages without recv loop");
+        assert!(
+            matches!(err, crate::error::LineageRelayError::NoRelayAvailable(_)),
+            "expected timeout mapping, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_messages_drains_buffer() {
+        use std::sync::Arc;
+        let crypto = Arc::new(MockCrypto);
+        let broadcaster = BirdSongBroadcaster::new(
+            crypto,
+            NodeId::from("self"),
+            "127.0.0.1:0".parse().unwrap(),
+            "127.0.0.1:3".parse().unwrap(),
+        )
+        .await
+        .expect("bind");
+        let mut inner = broadcaster.received_messages.write().await;
+        inner.push(BirdSongMessage {
+            version: 1,
+            message_type: BirdSongType::RelayRequest,
+            sender: NodeId::from("other"),
+            lineage_hint: LineageHint::DirectParent,
+            payload: vec![1],
+            timestamp: 1,
+        });
+        drop(inner);
+        let drained = broadcaster.get_messages().await;
+        assert_eq!(drained.len(), 1);
+        assert!(broadcaster.get_messages().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn get_messages_by_type_keeps_non_matching() {
+        use std::sync::Arc;
+        let crypto = Arc::new(MockCrypto);
+        let broadcaster = BirdSongBroadcaster::new(
+            crypto,
+            NodeId::from("self"),
+            "127.0.0.1:0".parse().unwrap(),
+            "127.0.0.1:4".parse().unwrap(),
+        )
+        .await
+        .expect("bind");
+        let mut inner = broadcaster.received_messages.write().await;
+        inner.push(BirdSongMessage {
+            version: 1,
+            message_type: BirdSongType::RelayRequest,
+            sender: NodeId::from("a"),
+            lineage_hint: LineageHint::DirectParent,
+            payload: vec![1],
+            timestamp: 1,
+        });
+        inner.push(BirdSongMessage {
+            version: 1,
+            message_type: BirdSongType::Presence,
+            sender: NodeId::from("b"),
+            lineage_hint: LineageHint::DirectAncestors,
+            payload: vec![2],
+            timestamp: 2,
+        });
+        drop(inner);
+        let presence = broadcaster.get_messages_by_type(BirdSongType::Presence).await;
+        assert_eq!(presence.len(), 1);
+        assert_eq!(presence[0].payload, vec![2]);
+        let remaining = broadcaster.get_messages().await;
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].payload, vec![1]);
+    }
+
+    #[tokio::test]
+    async fn get_messages_by_type_empty_when_no_match() {
+        use std::sync::Arc;
+        let crypto = Arc::new(MockCrypto);
+        let broadcaster = BirdSongBroadcaster::new(
+            crypto,
+            NodeId::from("self"),
+            "127.0.0.1:0".parse().unwrap(),
+            "127.0.0.1:5".parse().unwrap(),
+        )
+        .await
+        .expect("bind");
+        let mut inner = broadcaster.received_messages.write().await;
+        inner.push(BirdSongMessage {
+            version: 1,
+            message_type: BirdSongType::FederationEvent,
+            sender: NodeId::from("x"),
+            lineage_hint: LineageHint::DirectParent,
+            payload: vec![],
+            timestamp: 0,
+        });
+        drop(inner);
+        let out = broadcaster.get_messages_by_type(BirdSongType::RelayOffer).await;
+        assert!(out.is_empty());
+        assert_eq!(broadcaster.get_messages().await.len(), 1);
+    }
 }

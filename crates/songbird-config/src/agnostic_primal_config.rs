@@ -5,15 +5,15 @@
 //!
 //! **ZERO PRIMAL NAME HARDCODING** - Evolution from specific to agnostic
 //!
-//! This module replaces hardcoded primal names (security provider, Toadstool, storage provider, Squirrel)
+//! This module replaces hardcoded primal names (security, storage, compute, AI capability routing)
 //! with capability-based discovery.
 //!
 //! ## Evolution Pattern
 //!
 //! **BEFORE (Specific)**:
 //! ```rust,ignore
-//! let beardog = connect_to_beardog("localhost:8443");
-//! let keys = beardog.generate_keys().await?;
+//! let security_provider = connect_to_security_provider("localhost:8443");
+//! let keys = security_provider.generate_keys().await?;
 //! ```
 //!
 //! **AFTER (Agnostic)**:
@@ -301,7 +301,7 @@ impl Default for AgnosticPrimalConfig {
 
 /// Migration helper: Convert legacy primal-specific config to agnostic config
 ///
-/// **USE THIS** to migrate from hardcoded `beardog_endpoint` to capability-based
+/// **USE THIS** to migrate from hardcoded `security_provider_endpoint` (legacy env: `SONGBIRD_BEARDOG_ENDPOINT`) to capability-based
 pub struct PrimalConfigMigration;
 
 impl PrimalConfigMigration {

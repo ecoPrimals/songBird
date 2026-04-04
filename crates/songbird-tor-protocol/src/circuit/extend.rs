@@ -15,15 +15,15 @@ use std::net::IpAddr;
 
 /// Circuit extension handler
 pub struct CircuitExtender {
-    beardog: CryptoProvider,
+    security_provider: CryptoProvider,
 }
 
 impl CircuitExtender {
     /// Create new circuit extender
     #[must_use]
-    pub const fn new(beardog: CryptoProvider) -> Self {
+    pub const fn new(security_provider: CryptoProvider) -> Self {
         Self {
-            beardog,
+            security_provider,
         }
     }
 
@@ -49,8 +49,13 @@ impl CircuitExtender {
             Error::Protocol(format!("Relay {} has no ntor_key", next_relay.nickname))
         })?;
 
+        // Reject IPv6 before any security-provider I/O (handshake is IPv4 link specifier only).
+        if !matches!(next_relay.address, IpAddr::V4(_)) {
+            return Err(Error::Protocol("IPv6 not yet supported for EXTEND2".to_string()));
+        }
+
         // 1. Generate ephemeral X25519 keypair via security provider
-        let client_ephemeral = self.beardog.x25519_generate_ephemeral().await?;
+        let client_ephemeral = self.security_provider.x25519_generate_ephemeral().await?;
 
         // 2. Construct EXTEND2 relay cell payload
         let mut payload = Vec::new();
@@ -61,11 +66,10 @@ impl CircuitExtender {
         // Link specifier type 0: IPv4 address (6 bytes: IP + port)
         payload.push(0); // Type: IPv4
         payload.push(6); // Length: 6 bytes
-        if let IpAddr::V4(ipv4) = next_relay.address {
-            payload.extend_from_slice(&ipv4.octets());
-        } else {
-            return Err(Error::Protocol("IPv6 not yet supported for EXTEND2".to_string()));
-        }
+        let IpAddr::V4(ipv4) = next_relay.address else {
+            unreachable!("IPv6 rejected above");
+        };
+        payload.extend_from_slice(&ipv4.octets());
         payload.extend_from_slice(&next_relay.or_port.to_be_bytes());
 
         // Link specifier type 2: Legacy RSA identity (20-byte fingerprint)
@@ -142,7 +146,7 @@ impl CircuitExtender {
         let handshake_response = &response.data[2..66]; // 64 bytes
 
         // Complete handshake using ntor
-        let ntor = super::NtorHandshake::new(self.beardog.clone());
+        let ntor = super::NtorHandshake::new(self.security_provider.clone());
         let key_material = ntor.complete_handshake(state, handshake_response).await?;
 
         // Create circuit hop
@@ -158,20 +162,130 @@ impl CircuitExtender {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::circuit::{Circuit, CircuitPurpose, HandshakeState};
+    use crate::directory::{RelayFlags, RelayInfo};
+    use crate::error::Error;
+    use crate::protocol::{RelayCell, RelayCommand};
+    use std::net::{IpAddr, Ipv6Addr};
 
-    #[test]
-    fn test_circuit_extender_creation() {
-        let beardog = CryptoProvider::from_env();
-        let _extender = CircuitExtender::new(beardog);
-
-        // Test passes if it creates successfully
+    fn ipv4_relay(ntor: Option<[u8; 32]>) -> RelayInfo {
+        RelayInfo {
+            nickname: "hop".to_string(),
+            fingerprint: [0x5Au8; 20],
+            address: IpAddr::from([192, 0, 2, 1]),
+            or_port: 443,
+            dir_port: None,
+            flags: RelayFlags::empty(),
+            bandwidth: 1,
+            ntor_key: ntor,
+            version: None,
+        }
     }
 
     #[test]
-    fn test_relay_command_extend() {
-        use crate::protocol::RelayCommand;
+    fn circuit_extender_new_does_not_panic() {
+        let ext = CircuitExtender::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
+        ));
+        assert_eq!(std::mem::size_of_val(&ext), std::mem::size_of::<CircuitExtender>());
+    }
+
+    #[test]
+    fn relay_command_extend_wire_values() {
         assert_eq!(RelayCommand::Extend as u8, 6);
         assert_eq!(RelayCommand::Extended as u8, 7);
+    }
+
+    #[tokio::test]
+    async fn create_extend2_errors_without_ntor_key_before_any_socket_io() {
+        let ext = CircuitExtender::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
+        ));
+        let circuit = Circuit::new(0x8000_0001, CircuitPurpose::General);
+        let relay = ipv4_relay(None);
+        let err = ext.create_extend2(&circuit, &relay).await.expect_err("missing ntor key");
+        assert!(
+            matches!(err, Error::Protocol(ref s) if s.contains("ntor_key")),
+            "unexpected err: {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn create_extend2_rejects_ipv6_even_with_ntor_key() {
+        let ext = CircuitExtender::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
+        ));
+        let circuit = Circuit::new(1, CircuitPurpose::General);
+        let relay = RelayInfo {
+            address: IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+            ntor_key: Some([0x11u8; 32]),
+            ..ipv4_relay(None)
+        };
+        assert!(relay.address.is_ipv6());
+        let err = ext.create_extend2(&circuit, &relay).await.expect_err("ipv6");
+        assert!(
+            matches!(err, Error::Protocol(ref s) if s.contains("IPv6")),
+            "unexpected err: {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn process_extended2_rejects_non_extended_relay_command() {
+        let ext = CircuitExtender::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
+        ));
+        let circuit = Circuit::new(1, CircuitPurpose::General);
+        let state = HandshakeState {
+            client_ephemeral_secret: [1u8; 32],
+            client_ephemeral_public: [2u8; 32],
+            node_id: [3u8; 20],
+            relay_ntor_key: [4u8; 32],
+        };
+        let response = RelayCell {
+            command: RelayCommand::Data,
+            recognized: 0,
+            stream_id: 1,
+            digest: [0u8; 4],
+            length: 0,
+            data: vec![],
+        };
+        let err = ext
+            .process_extended2(&circuit, &state, &response, ipv4_relay(Some([0u8; 32])))
+            .await
+            .expect_err("wrong command");
+        assert!(matches!(err, Error::Protocol(_)));
+    }
+
+    #[tokio::test]
+    async fn process_extended2_rejects_short_handshake_blob() {
+        let ext = CircuitExtender::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
+        ));
+        let circuit = Circuit::new(1, CircuitPurpose::General);
+        let state = HandshakeState {
+            client_ephemeral_secret: [1u8; 32],
+            client_ephemeral_public: [2u8; 32],
+            node_id: [3u8; 20],
+            relay_ntor_key: [4u8; 32],
+        };
+        let response = RelayCell {
+            command: RelayCommand::Extended,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0u8; 4],
+            length: 10,
+            data: vec![0u8; 10],
+        };
+        let err = ext
+            .process_extended2(&circuit, &state, &response, ipv4_relay(Some([0u8; 32])))
+            .await
+            .expect_err("short extended");
+        assert!(
+            matches!(err, Error::Protocol(ref s) if s.contains("too short")),
+            "unexpected err: {err:?}"
+        );
     }
 }

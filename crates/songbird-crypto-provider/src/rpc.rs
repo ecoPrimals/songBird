@@ -13,7 +13,7 @@ use tokio::net::TcpStream as PlatformStream;
 use tokio::net::UnixStream as PlatformStream;
 use tracing::{trace, warn};
 
-use super::{CryptoProvider, CryptoProviderError, Result};
+use super::{CryptoProvider, Result, RpcError};
 
 /// Routing mode for crypto operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,6 +47,17 @@ struct JsonRpcError {
     message: String,
     #[expect(dead_code, reason = "consumed via Deserialize")]
     data: Option<Value>,
+}
+
+fn truncate_for_error(s: &str, max_bytes: usize) -> String {
+    if s.len() <= max_bytes {
+        return s.to_string();
+    }
+    let mut end = max_bytes;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}… ({} bytes total)", &s[..end], s.len())
 }
 
 impl CryptoProvider {
@@ -93,8 +104,7 @@ impl CryptoProvider {
             }
         };
 
-        let request_json = serde_json::to_string(&request)
-            .map_err(|e| CryptoProviderError::Rpc(format!("Failed to serialize request: {e}")))?;
+        let request_json = serde_json::to_string(&request).map_err(RpcError::RequestSerialize)?;
 
         trace!(
             "Crypto RPC request ({}): {}",
@@ -106,49 +116,44 @@ impl CryptoProvider {
             request_json
         );
 
-        let mut stream = Self::connect_platform(&self.socket_path).await.map_err(|e| {
-            CryptoProviderError::Rpc(format!(
-                "Failed to connect to {} at {}: {}",
-                if self.mode == RoutingMode::NeuralApi {
-                    "Neural API"
-                } else {
-                    "crypto provider"
-                },
-                self.socket_path,
-                e
-            ))
+        let target = if self.mode == RoutingMode::NeuralApi {
+            "Neural API"
+        } else {
+            "crypto provider"
+        };
+        let mut stream = Self::connect_platform(&self.socket_path).await.map_err(|source| {
+            RpcError::Connect {
+                target,
+                path: self.socket_path.clone(),
+                source,
+            }
         })?;
 
-        stream
-            .write_all(request_json.as_bytes())
-            .await
-            .map_err(|e| CryptoProviderError::Rpc(format!("Failed to send request: {e}")))?;
-        stream
-            .shutdown()
-            .await
-            .map_err(|e| CryptoProviderError::Rpc(format!("Failed to shutdown write: {e}")))?;
+        stream.write_all(request_json.as_bytes()).await.map_err(RpcError::SendRequest)?;
+        stream.shutdown().await.map_err(RpcError::ShutdownWrite)?;
 
         let mut response_bytes = Vec::new();
-        stream
-            .read_to_end(&mut response_bytes)
-            .await
-            .map_err(|e| CryptoProviderError::Rpc(format!("Failed to read response: {e}")))?;
+        stream.read_to_end(&mut response_bytes).await.map_err(RpcError::ReadResponse)?;
 
         let response_str = String::from_utf8_lossy(&response_bytes);
         trace!("Crypto RPC response: {}", response_str);
 
-        let response: JsonRpcResponse = serde_json::from_slice(&response_bytes).map_err(|e| {
-            CryptoProviderError::Rpc(format!("Failed to parse response: {e} (raw: {response_str})"))
-        })?;
+        let raw_preview = truncate_for_error(&response_str, 512);
+        let response: JsonRpcResponse =
+            serde_json::from_slice(&response_bytes).map_err(|source| RpcError::ResponseParse {
+                raw_preview,
+                source,
+            })?;
 
         if let Some(err) = response.error {
-            return Err(CryptoProviderError::Rpc(format!(
-                "RPC error: {} (code: {})",
-                err.message, err.code
-            )));
+            return Err(RpcError::Remote {
+                code: err.code,
+                message: err.message,
+            }
+            .into());
         }
 
-        response.result.ok_or_else(|| CryptoProviderError::Rpc("Null result".to_string()))
+        response.result.ok_or_else(|| RpcError::NullResult.into())
     }
 
     pub fn method_to_capability(method: &str) -> (&'static str, &'static str) {
@@ -238,11 +243,13 @@ impl CryptoProvider {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test harness I/O and tokio::spawn")]
 mod tests {
     use super::*;
-    use crate::CryptoProviderError;
+    use crate::{CryptoProviderError, RpcError};
     use serde_json::json;
+
+    type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
     #[test]
     fn semantic_to_actual_translates_aes_and_x25519_aliases() {
@@ -286,29 +293,24 @@ mod tests {
     }
 
     #[test]
-    fn direct_json_rpc_request_serializes_expected_shape() {
+    fn direct_json_rpc_request_serializes_expected_shape() -> TestResult {
         let req = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             method: CryptoProvider::semantic_to_actual("crypto.encrypt_aes_256_gcm").to_string(),
             params: json!({ "k": "v" }),
             id: 42,
         };
-        let s = match serde_json::to_string(&req) {
-            Ok(s) => s,
-            Err(e) => panic!("serialize request: {e}"),
-        };
-        let v: Value = match serde_json::from_str(&s) {
-            Ok(v) => v,
-            Err(e) => panic!("parse serialized request: {e}"),
-        };
+        let s = serde_json::to_string(&req)?;
+        let v: Value = serde_json::from_str(&s)?;
         assert_eq!(v["jsonrpc"], "2.0");
         assert_eq!(v["method"], "crypto.aes256_gcm_encrypt");
         assert_eq!(v["id"], 42);
         assert_eq!(v["params"]["k"], "v");
+        Ok(())
     }
 
     #[test]
-    fn neural_json_rpc_request_wraps_capability_call_params() {
+    fn neural_json_rpc_request_wraps_capability_call_params() -> TestResult {
         let (cap, op) = CryptoProvider::method_to_capability("crypto.sha256");
         assert_eq!((cap, op), ("crypto", "sha256"));
         let inner = json!({
@@ -322,54 +324,49 @@ mod tests {
             params: inner,
             id: 7,
         };
-        let s = match serde_json::to_string(&req) {
-            Ok(s) => s,
-            Err(e) => panic!("serialize neural request: {e}"),
-        };
-        let v: Value = match serde_json::from_str(&s) {
-            Ok(v) => v,
-            Err(e) => panic!("parse neural request json: {e}"),
-        };
+        let s = serde_json::to_string(&req)?;
+        let v: Value = serde_json::from_str(&s)?;
         assert_eq!(v["method"], "capability.call");
         assert_eq!(v["params"]["capability"], "crypto");
         assert_eq!(v["params"]["operation"], "sha256");
         assert_eq!(v["params"]["args"]["data"], "abc");
+        Ok(())
     }
 
     #[test]
-    fn json_rpc_response_deserializes_result() {
+    fn json_rpc_response_deserializes_result() -> TestResult {
         let raw = r#"{"jsonrpc":"2.0","result":{"ok":true},"id":1}"#;
-        let r: JsonRpcResponse = match serde_json::from_str(raw) {
-            Ok(r) => r,
-            Err(e) => panic!("deserialize result response: {e}"),
-        };
+        let r: JsonRpcResponse = serde_json::from_str(raw)?;
         assert_eq!(r.jsonrpc, "2.0");
-        let Some(result) = r.result else {
-            panic!("expected result field");
-        };
+        let result = r.result.as_ref().ok_or_else(|| {
+            Box::<dyn std::error::Error + Send + Sync>::from(std::io::Error::other(
+                "expected result field",
+            ))
+        })?;
         assert_eq!(result["ok"], true);
         assert!(r.error.is_none());
+        Ok(())
     }
 
     #[test]
-    fn json_rpc_response_deserializes_error() {
+    fn json_rpc_response_deserializes_error() -> TestResult {
         let raw = r#"{"jsonrpc":"2.0","error":{"code":-1,"message":"oops","data":null},"id":2}"#;
-        let r: JsonRpcResponse = match serde_json::from_str(raw) {
-            Ok(r) => r,
-            Err(e) => panic!("deserialize error response: {e}"),
-        };
-        let Some(err) = r.error else {
-            panic!("expected error field");
-        };
+        let r: JsonRpcResponse = serde_json::from_str(raw)?;
+        let err = r.error.as_ref().ok_or_else(|| {
+            Box::<dyn std::error::Error + Send + Sync>::from(std::io::Error::other(
+                "expected error field",
+            ))
+        })?;
         assert_eq!(err.code, -1);
         assert_eq!(err.message, "oops");
         assert!(r.result.is_none());
+        Ok(())
     }
 
     #[test]
     fn crypto_provider_error_display() {
-        let e = CryptoProviderError::Rpc("connection failed".to_string());
-        assert_eq!(e.to_string(), "RPC error: connection failed");
+        let e = CryptoProviderError::from(RpcError::NullResult);
+        assert_eq!(e.to_string(), "JSON-RPC response contained null result");
     }
 
     #[test]
@@ -436,14 +433,17 @@ mod tests {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::UnixListener;
 
-        async fn read_json_rpc_request(stream: &mut tokio::net::UnixStream) -> serde_json::Value {
+        async fn read_json_rpc_request(
+            stream: &mut tokio::net::UnixStream,
+        ) -> std::result::Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>>
+        {
             let mut buf = Vec::new();
-            stream.read_to_end(&mut buf).await.expect("read request");
-            serde_json::from_slice(&buf).expect("request json")
+            stream.read_to_end(&mut buf).await?;
+            Ok(serde_json::from_slice(&buf)?)
         }
 
         #[tokio::test(start_paused = true)]
-        async fn call_direct_mode_sends_translated_wire_method_and_returns_result() {
+        async fn call_direct_mode_sends_translated_wire_method_and_returns_result() -> TestResult {
             let dir = tempfile::tempdir().expect("tempdir");
             let path = dir.path().join("sock");
             let path_str = path.to_string_lossy().to_string();
@@ -451,7 +451,7 @@ mod tests {
 
             tokio::spawn(async move {
                 let (mut stream, _) = listener.accept().await.expect("accept");
-                let req = read_json_rpc_request(&mut stream).await;
+                let req = read_json_rpc_request(&mut stream).await.expect("read_json_rpc_request");
                 assert_eq!(
                     req["method"], "crypto.aes256_gcm_encrypt",
                     "direct mode should translate semantic method to security provider wire name"
@@ -463,14 +463,16 @@ mod tests {
 
             let provider = CryptoProvider::with_mode(&path_str, RoutingMode::Direct);
             let result = provider.call("crypto.encrypt_aes_256_gcm", json!({ "k": "v" })).await;
-            let Ok(val) = result else {
-                panic!("expected Ok, got {:?}", result.err());
+            let val = match result {
+                Ok(v) => v,
+                Err(e) => return Err(format!("expected Ok, got {e}").into()),
             };
             assert_eq!(val["digest"], "abc", "result payload should match server");
+            Ok(())
         }
 
         #[tokio::test(start_paused = true)]
-        async fn call_neural_mode_wraps_capability_call() {
+        async fn call_neural_mode_wraps_capability_call() -> TestResult {
             let dir = tempfile::tempdir().expect("tempdir");
             let path = dir.path().join("sock");
             let path_str = path.to_string_lossy().to_string();
@@ -478,7 +480,7 @@ mod tests {
 
             tokio::spawn(async move {
                 let (mut stream, _) = listener.accept().await.expect("accept");
-                let req = read_json_rpc_request(&mut stream).await;
+                let req = read_json_rpc_request(&mut stream).await.expect("read_json_rpc_request");
                 assert_eq!(req["method"], "capability.call");
                 let params = &req["params"];
                 assert_eq!(params["capability"], "crypto");
@@ -491,14 +493,16 @@ mod tests {
 
             let provider = CryptoProvider::with_mode(&path_str, RoutingMode::NeuralApi);
             let result = provider.call("crypto.sha256", json!({ "data": [] })).await;
-            let Ok(val) = result else {
-                panic!("expected Ok, got {:?}", result.err());
+            let val = match result {
+                Ok(v) => v,
+                Err(e) => return Err(format!("expected Ok, got {e}").into()),
             };
             assert_eq!(val["ok"], true);
+            Ok(())
         }
 
         #[tokio::test(start_paused = true)]
-        async fn call_returns_rpc_error_when_server_returns_jsonrpc_error() {
+        async fn call_returns_rpc_error_when_server_returns_jsonrpc_error() -> TestResult {
             let dir = tempfile::tempdir().expect("tempdir");
             let path = dir.path().join("sock");
             let path_str = path.to_string_lossy().to_string();
@@ -506,7 +510,7 @@ mod tests {
 
             tokio::spawn(async move {
                 let (mut stream, _) = listener.accept().await.expect("accept");
-                let req = read_json_rpc_request(&mut stream).await;
+                let req = read_json_rpc_request(&mut stream).await.expect("read_json_rpc_request");
                 let id = req["id"].as_u64().expect("id");
                 let body = format!(
                     r#"{{"jsonrpc":"2.0","error":{{"code":-32000,"message":"denied","data":null}},"id":{id}}}"#
@@ -516,17 +520,28 @@ mod tests {
 
             let provider = CryptoProvider::new(&path_str);
             let result = provider.call("crypto.sha256", json!({})).await;
-            let Err(CryptoProviderError::Rpc(msg)) = result else {
-                panic!("expected Rpc error, got {:?}", result);
+            let err = match result {
+                Err(e) => e,
+                Ok(v) => return Err(format!("expected Rpc error, got Ok({v})").into()),
             };
-            assert!(
-                msg.contains("denied") && msg.contains("-32000"),
-                "message should include server error details, got {msg:?}"
-            );
+            match err {
+                CryptoProviderError::Rpc(RpcError::Remote {
+                    code,
+                    message,
+                }) => {
+                    assert_eq!(code, -32000);
+                    assert!(
+                        message.contains("denied"),
+                        "message should include server error details, got {message:?}"
+                    );
+                }
+                e => return Err(format!("expected Rpc Remote error, got {e:?}").into()),
+            }
+            Ok(())
         }
 
         #[tokio::test(start_paused = true)]
-        async fn call_returns_error_when_result_is_null() {
+        async fn call_returns_error_when_result_is_null() -> TestResult {
             let dir = tempfile::tempdir().expect("tempdir");
             let path = dir.path().join("sock");
             let path_str = path.to_string_lossy().to_string();
@@ -534,7 +549,7 @@ mod tests {
 
             tokio::spawn(async move {
                 let (mut stream, _) = listener.accept().await.expect("accept");
-                let req = read_json_rpc_request(&mut stream).await;
+                let req = read_json_rpc_request(&mut stream).await.expect("read_json_rpc_request");
                 let id = req["id"].as_u64().expect("id");
                 let body = format!(r#"{{"jsonrpc":"2.0","result":null,"id":{id}}}"#);
                 stream.write_all(body.as_bytes()).await.expect("write response");
@@ -542,14 +557,19 @@ mod tests {
 
             let provider = CryptoProvider::new(&path_str);
             let result = provider.call("crypto.sha256", json!({})).await;
-            let Err(CryptoProviderError::Rpc(msg)) = result else {
-                panic!("expected Rpc error for null result, got {:?}", result);
+            let err = match result {
+                Err(e) => e,
+                Ok(v) => return Err(format!("expected error for null result, got Ok({v})").into()),
             };
-            assert_eq!(msg, "Null result", "null JSON result should map to fixed message");
+            match err {
+                CryptoProviderError::Rpc(RpcError::NullResult) => {}
+                e => return Err(format!("expected Rpc NullResult, got {e:?}").into()),
+            }
+            Ok(())
         }
 
         #[tokio::test(start_paused = true)]
-        async fn call_returns_error_when_response_is_not_json() {
+        async fn call_returns_error_when_response_is_not_json() -> TestResult {
             let dir = tempfile::tempdir().expect("tempdir");
             let path = dir.path().join("sock");
             let path_str = path.to_string_lossy().to_string();
@@ -557,44 +577,71 @@ mod tests {
 
             tokio::spawn(async move {
                 let (mut stream, _) = listener.accept().await.expect("accept");
-                let _req = read_json_rpc_request(&mut stream).await;
+                let _req = read_json_rpc_request(&mut stream).await.expect("read_json_rpc_request");
                 stream.write_all(b"not-json").await.expect("write garbage");
             });
 
             let provider = CryptoProvider::new(&path_str);
             let result = provider.call("crypto.sha256", json!({})).await;
-            let Err(CryptoProviderError::Rpc(msg)) = result else {
-                panic!("expected Rpc parse error, got {:?}", result);
+            let err = match result {
+                Err(e) => e,
+                Ok(v) => return Err(format!("expected parse error, got Ok({v})").into()),
             };
-            assert!(
-                msg.contains("Failed to parse response"),
-                "expected parse failure in message, got {msg:?}"
-            );
+            match err {
+                CryptoProviderError::Rpc(RpcError::ResponseParse {
+                    raw_preview,
+                    ..
+                }) => {
+                    assert!(
+                        raw_preview.contains("not-json"),
+                        "raw preview should include server bytes, got {raw_preview:?}"
+                    );
+                }
+                e => return Err(format!("expected Rpc ResponseParse, got {e:?}").into()),
+            }
+            Ok(())
         }
 
         #[tokio::test(start_paused = true)]
-        async fn call_connection_refused_reports_neural_or_crypto_in_message() {
+        async fn call_connection_refused_reports_neural_or_crypto_in_message() -> TestResult {
             let provider =
                 CryptoProvider::with_mode("/nonexistent/path/to.sock", RoutingMode::Direct);
             let result = provider.call("crypto.sha256", json!({})).await;
-            let Err(CryptoProviderError::Rpc(msg)) = result else {
-                panic!("expected connect failure");
+            let err = match result {
+                Err(e) => e,
+                Ok(v) => return Err(format!("expected connect failure, got Ok({v})").into()),
             };
-            assert!(
-                msg.contains("Failed to connect") && msg.contains("crypto provider"),
-                "direct mode error should mention crypto provider, got {msg:?}"
-            );
+            match err {
+                CryptoProviderError::Rpc(RpcError::Connect {
+                    target,
+                    path,
+                    ..
+                }) => {
+                    assert_eq!(target, "crypto provider");
+                    assert_eq!(path, "/nonexistent/path/to.sock");
+                }
+                e => return Err(format!("expected Rpc Connect, got {e:?}").into()),
+            }
 
             let neural =
                 CryptoProvider::with_mode("/nonexistent/neural.sock", RoutingMode::NeuralApi);
             let result = neural.call("crypto.sha256", json!({})).await;
-            let Err(CryptoProviderError::Rpc(msg)) = result else {
-                panic!("expected neural connect failure");
+            let err = match result {
+                Err(e) => e,
+                Ok(v) => return Err(format!("expected neural connect failure, got Ok({v})").into()),
             };
-            assert!(
-                msg.contains("Neural API"),
-                "neural mode error should mention Neural API, got {msg:?}"
-            );
+            match err {
+                CryptoProviderError::Rpc(RpcError::Connect {
+                    target,
+                    path,
+                    ..
+                }) => {
+                    assert_eq!(target, "Neural API");
+                    assert_eq!(path, "/nonexistent/neural.sock");
+                }
+                e => return Err(format!("expected Rpc Connect, got {e:?}").into()),
+            }
+            Ok(())
         }
 
         #[tokio::test(start_paused = true)]
@@ -610,7 +657,8 @@ mod tests {
             tokio::spawn(async move {
                 for _ in 0..2 {
                     let (mut stream, _) = listener.accept().await.expect("accept");
-                    let req = read_json_rpc_request(&mut stream).await;
+                    let req =
+                        read_json_rpc_request(&mut stream).await.expect("read_json_rpc_request");
                     let id = req["id"].as_u64().expect("id");
                     seen_clone.lock().expect("lock").push(id);
                     let body = format!(r#"{{"jsonrpc":"2.0","result":{{}},"id":{id}}}"#);

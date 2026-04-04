@@ -167,12 +167,12 @@ async fn test_get_registry_stats_empty() {
 async fn test_adapter_async_methods_are_available() {
     let adapter = UnifiedUniversalAdapter::new();
 
-    // Test that async methods can be called
-    let _providers = adapter.find_capability_providers("test").await;
-    let _stats = adapter.get_registry_stats().await;
+    let providers = adapter.find_capability_providers("test").await.unwrap();
+    let stats = adapter.get_registry_stats().await;
 
-    // If we got here, async methods work
-    assert!(true);
+    assert!(providers.is_empty());
+    assert_eq!(stats.total_services, 0);
+    assert_eq!(stats.total_capabilities, 0);
 }
 
 #[tokio::test]

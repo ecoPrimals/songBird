@@ -94,6 +94,23 @@ impl AnonymousDiscoveryListener {
         self
     }
 
+    /// Returns `true` when this listener would skip `message` as its own broadcast (`node_id` match).
+    ///
+    /// Exposed for unit tests that assert self-filtering without UDP. Production receive path uses
+    /// the same condition before inserting into `peers`.
+    #[cfg(test)]
+    #[must_use]
+    pub fn would_skip_as_own_broadcast(
+        &self,
+        message: &super::messages::AnonymousDiscoveryMessage,
+    ) -> bool {
+        if let (Some(my_node_id), Some(peer_node_id)) = (&self.node_id, &message.node_id) {
+            my_node_id == peer_node_id
+        } else {
+            false
+        }
+    }
+
     /// Enable `BirdSong` encrypted discovery (NEW - Jan 3, 2026)
     ///
     /// Adds `BirdSong` decryption for privacy-preserving discovery.

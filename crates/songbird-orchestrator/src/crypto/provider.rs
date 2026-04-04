@@ -179,15 +179,15 @@ impl UnixSocketCryptoProvider {
 #[async_trait]
 impl CryptoProvider for UnixSocketCryptoProvider {
     async fn blake3_hash(&self, data: &[u8]) -> Result<Vec<u8>> {
-        super::beardog_crypto_client::blake3_hash(&self.socket_path, data).await
+        super::security_crypto_client::blake3_hash(&self.socket_path, data).await
     }
 
     async fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
-        super::beardog_crypto_client::hmac_sha256(&self.socket_path, key, data).await
+        super::security_crypto_client::hmac_sha256(&self.socket_path, key, data).await
     }
 
     async fn sign_ed25519(&self, message: &[u8], key_id: &str, purpose: &str) -> Result<Vec<u8>> {
-        super::beardog_crypto_client::sign_ed25519(&self.socket_path, message, key_id, purpose)
+        super::security_crypto_client::sign_ed25519(&self.socket_path, message, key_id, purpose)
             .await
     }
 
@@ -197,7 +197,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         signature: &[u8],
         public_key: &[u8],
     ) -> Result<bool> {
-        super::beardog_crypto_client::verify_ed25519(
+        super::security_crypto_client::verify_ed25519(
             &self.socket_path,
             message,
             signature,
@@ -207,7 +207,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
     }
 
     async fn x25519_generate_ephemeral(&self, purpose: &str) -> Result<(Vec<u8>, Vec<u8>)> {
-        super::beardog_crypto_client::x25519_generate_ephemeral(&self.socket_path, purpose).await
+        super::security_crypto_client::x25519_generate_ephemeral(&self.socket_path, purpose).await
     }
 
     async fn x25519_derive_secret(
@@ -215,7 +215,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         our_secret_key: &[u8],
         their_public_key: &[u8],
     ) -> Result<Vec<u8>> {
-        super::beardog_crypto_client::x25519_derive_secret(
+        super::security_crypto_client::x25519_derive_secret(
             &self.socket_path,
             our_secret_key,
             their_public_key,
@@ -229,7 +229,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         key: &[u8],
         aad: Option<&[u8]>,
     ) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
-        super::beardog_crypto_client::chacha20_poly1305_encrypt(
+        super::security_crypto_client::chacha20_poly1305_encrypt(
             &self.socket_path,
             plaintext,
             key,
@@ -246,7 +246,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         tag: &[u8],
         aad: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
-        super::beardog_crypto_client::chacha20_poly1305_decrypt(
+        super::security_crypto_client::chacha20_poly1305_decrypt(
             &self.socket_path,
             ciphertext,
             key,

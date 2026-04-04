@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Integration Tests Module
 //!
 //! This module contains integration tests that test Songbird components

@@ -189,46 +189,31 @@ fn test_service_commands_unicode_service_name() -> SongbirdResult<()> {
 #[test]
 fn test_status_commands_overview() {
     let cmd = StatusCommands::Overview;
-    match cmd {
-        StatusCommands::Overview => assert!(true),
-        _ => panic!("Expected Overview variant"),
-    }
+    assert!(matches!(cmd, StatusCommands::Overview));
 }
 
 #[test]
 fn test_status_commands_services() {
     let cmd = StatusCommands::Services;
-    match cmd {
-        StatusCommands::Services => assert!(true),
-        _ => panic!("Expected Services variant"),
-    }
+    assert!(matches!(cmd, StatusCommands::Services));
 }
 
 #[test]
 fn test_status_commands_network() {
     let cmd = StatusCommands::Network;
-    match cmd {
-        StatusCommands::Network => assert!(true),
-        _ => panic!("Expected Network variant"),
-    }
+    assert!(matches!(cmd, StatusCommands::Network));
 }
 
 #[test]
 fn test_status_commands_health() {
     let cmd = StatusCommands::Health;
-    match cmd {
-        StatusCommands::Health => assert!(true),
-        _ => panic!("Expected Health variant"),
-    }
+    assert!(matches!(cmd, StatusCommands::Health));
 }
 
 #[test]
 fn test_service_list_command_match() {
     let cmd = ServiceCommands::List;
-    match cmd {
-        ServiceCommands::List => assert!(true),
-        _ => panic!("Expected List variant"),
-    }
+    assert!(matches!(cmd, ServiceCommands::List));
 }
 
 #[test]
@@ -352,9 +337,7 @@ fn test_status_commands_pattern_matching() {
             StatusCommands::Overview
             | StatusCommands::Services
             | StatusCommands::Network
-            | StatusCommands::Health => {
-                assert!(true);
-            }
+            | StatusCommands::Health => {}
         }
     }
 }
@@ -480,10 +463,7 @@ fn test_service_commands_list_no_parameters() {
     let cmd = ServiceCommands::List;
 
     match cmd {
-        ServiceCommands::List => {
-            // List command has no parameters to validate
-            assert!(true);
-        }
+        ServiceCommands::List => {}
         _ => panic!("Expected List command"),
     }
 }

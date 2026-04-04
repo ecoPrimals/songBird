@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_universal_trust_request_creation() {
         let attestations =
-            vec![IdentityAttestation::tag_list(vec!["beardog:family:iidn:tower1".to_string()])];
+            vec![IdentityAttestation::tag_list(vec!["crypto:family:iidn:tower1".to_string()])];
 
         let request = UniversalTrustRequest::new("tower1", attestations)
             .with_discovery_method("udp_multicast")
@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn test_identity_attestation_tag_list() {
         let attestation = IdentityAttestation::tag_list_with_family(
-            vec!["beardog:family:iidn:tower1".to_string()],
+            vec!["crypto:family:iidn:tower1".to_string()],
             "iidn",
         );
 

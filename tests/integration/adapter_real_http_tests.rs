@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Real HTTP Integration Tests for Capability-Based Adapters
 //!
 //! 🍼 MIGRATED: These tests now use capability-based adapters instead of hardcoded primal names

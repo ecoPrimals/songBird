@@ -51,10 +51,8 @@ pub(super) async fn udp_multicast_discover(
 
     let beacon_bytes = serde_json::to_vec(&beacon).unwrap_or_default();
 
-    let multicast_addr: SocketAddr =
-        format!("239.255.77.77:{port}").parse().expect("valid multicast socket address");
-    let broadcast_addr: SocketAddr =
-        format!("255.255.255.255:{port}").parse().expect("valid broadcast socket address");
+    let multicast_addr = SocketAddr::from(([239, 255, 77, 77], port));
+    let broadcast_addr = SocketAddr::from(([255, 255, 255, 255], port));
 
     let _ = socket.send_to(&beacon_bytes, multicast_addr).await;
     let _ = socket.send_to(&beacon_bytes, broadcast_addr).await;

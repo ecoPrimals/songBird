@@ -399,6 +399,8 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::birdsong::LineageHint;
+    use crate::error::LineageRelayError;
     use serde_json::{from_value, to_value};
 
     struct MockRelayAuthority;
@@ -546,5 +548,118 @@ mod tests {
             .unwrap();
             assert_eq!(session.stats(), 0);
         });
+    }
+
+    /// Always denies relay authorization (exercises [`RelayDiscovery::offer_relay`] deny path).
+    struct DenyRelayAuthority;
+
+    #[async_trait]
+    impl RelayAuthority for DenyRelayAuthority {
+        async fn authorize_relay(
+            &self,
+            relay_node: &NodeId,
+            requester: &NodeId,
+        ) -> Result<RelayAuthorization> {
+            Ok(RelayAuthorization::unauthorized(relay_node.clone(), requester.clone()))
+        }
+
+        async fn determine_masking(
+            &self,
+            _relay_node: &NodeId,
+            _requester: &NodeId,
+        ) -> Result<MaskingLevel> {
+            Ok(MaskingLevel::FullVisibility)
+        }
+    }
+
+    #[tokio::test]
+    async fn offer_relay_denied_when_authority_rejects() {
+        use crate::birdsong::{BirdSongBroadcaster, BirdSongCrypto};
+        use std::sync::Arc;
+
+        struct PassthroughCrypto;
+
+        #[async_trait]
+        impl BirdSongCrypto for PassthroughCrypto {
+            async fn encrypt_for_lineage(
+                &self,
+                message: &[u8],
+                _hint: LineageHint,
+            ) -> Result<Vec<u8>> {
+                Ok(message.to_vec())
+            }
+
+            async fn decrypt_birdsong(
+                &self,
+                encrypted: &[u8],
+                _sender: &NodeId,
+            ) -> Result<Option<Vec<u8>>> {
+                Ok(Some(encrypted.to_vec()))
+            }
+        }
+
+        let broadcaster = Arc::new(
+            BirdSongBroadcaster::new(
+                Arc::new(PassthroughCrypto),
+                NodeId::from("ancestor"),
+                "127.0.0.1:0".parse().unwrap(),
+                "127.0.0.1:2".parse().unwrap(),
+            )
+            .await
+            .unwrap(),
+        );
+        let discovery = RelayDiscovery::new(
+            broadcaster,
+            Arc::new(DenyRelayAuthority),
+            NodeId::from("ancestor"),
+        );
+        let req = RelayRequest {
+            requester: NodeId::from("child"),
+            target: NodeId::from("peer"),
+            target_address: None,
+            timestamp: SystemTime::UNIX_EPOCH,
+        };
+        let err =
+            discovery.offer_relay(req, "127.0.0.1:9".parse().unwrap()).await.expect_err("denied");
+        assert!(
+            matches!(err, LineageRelayError::RelayDenied(_)),
+            "expected RelayDenied, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn relay_session_refresh_and_close_sends_wire_messages() {
+        let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let server_addr = server_socket.local_addr().unwrap();
+        let session = RelaySession::new(
+            NodeId::from("relay-1"),
+            server_addr,
+            NodeId::from("requester"),
+            NodeId::from("target"),
+            MaskingLevel::Masked,
+        )
+        .await
+        .unwrap();
+        session.refresh().await.unwrap();
+        session.close().await.unwrap();
+        let mut buf = [0u8; 64];
+        let (n1, _) = tokio::time::timeout(
+            std::time::Duration::from_millis(200),
+            server_socket.recv_from(&mut buf),
+        )
+        .await
+        .expect("timeout")
+        .expect("recv 1");
+        assert_eq!(buf[0], 0x20);
+        let (n2, _) = tokio::time::timeout(
+            std::time::Duration::from_millis(200),
+            server_socket.recv_from(&mut buf),
+        )
+        .await
+        .expect("timeout")
+        .expect("recv 2");
+        assert_eq!(buf[0], 0x30);
+        assert!(n1 >= 17);
+        assert!(n2 >= 17);
     }
 }

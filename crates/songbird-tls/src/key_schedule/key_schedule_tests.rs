@@ -350,3 +350,65 @@ async fn test_hmac_prefers_test_hook_over_security_client() {
     let out = ks.hkdf_extract(b"a", b"b").await.expect("uses test hmac");
     assert_eq!(out, ref_hmac_sha256(b"b", b"a"));
 }
+
+#[tokio::test]
+async fn hkdf_expand_single_byte_output_truncates_hmac_block() {
+    let ks = schedule_with_hmac();
+    let prk = [0xabu8; 32];
+    let out = ks.hkdf_expand(&prk, b"lbl", 1).await.expect("one byte");
+    assert_eq!(out.len(), 1);
+    let full = ks.hkdf_expand(&prk, b"lbl", 32).await.expect("full block");
+    assert_eq!(out[0], full[0]);
+}
+
+#[tokio::test]
+async fn derive_secret_empty_label_is_valid() {
+    let ks = schedule_with_hmac();
+    let out = ks.derive_secret(&[1u8; 32], "", &[]).await.expect("empty label");
+    assert_eq!(out.len(), 32);
+}
+
+#[tokio::test]
+async fn compute_handshake_secret_accepts_empty_ecdhe_material() {
+    let mut ks = schedule_with_hmac();
+    ks.compute_handshake_secret(&[]).await.expect("empty IKM is still a valid HKDF-Extract input");
+    assert_eq!(ks.current_secret.len(), 32);
+}
+
+#[tokio::test]
+async fn derive_traffic_keys_produces_12_byte_iv_for_chacha() {
+    let ks = schedule_with_hmac();
+    let ts = [0x33u8; 32];
+    let (key, iv) = ks.derive_traffic_keys(&ts).await.expect("traffic keys");
+    assert_eq!(key.len(), 32);
+    assert_eq!(iv.len(), 12);
+}
+
+#[tokio::test]
+async fn transcript_hash_isolation_between_schedule_instances() {
+    let mut a = schedule_with_hmac();
+    let mut b = schedule_with_hmac();
+    a.update_transcript(b"alpha");
+    b.update_transcript(b"beta");
+    let sa = a.derive_secret(&[1u8; 32], "x", a.transcript_hash()).await.expect("a");
+    let sb = b.derive_secret(&[1u8; 32], "x", b.transcript_hash()).await.expect("b");
+    assert_ne!(sa, sb);
+}
+
+#[tokio::test]
+async fn derive_handshake_traffic_keys_change_when_transcript_updates_mid_flow() {
+    let mut ks = schedule_with_hmac();
+    ks.update_transcript(b"first");
+    ks.compute_handshake_secret(&[9u8; 32]).await.expect("hs");
+    let before = ks.derive_handshake_traffic_keys().await.expect("before");
+    ks.update_transcript(b"second");
+    let after = ks.derive_handshake_traffic_keys().await.expect("after");
+    assert_ne!(before.0, after.0);
+}
+
+#[tokio::test]
+async fn hkdf_expand_supports_output_len_8128_without_hitting_u8_counter_limit() {
+    let ks = schedule_with_hmac();
+    let out = ks.hkdf_expand(&[2u8; 32], b"i", 8128).await.expect("254 full HMAC blocks");
+    assert_eq!(out.len(), 8128);
+}

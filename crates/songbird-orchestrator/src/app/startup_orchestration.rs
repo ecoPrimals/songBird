@@ -467,7 +467,9 @@ impl<'a> StartupOrchestrator<'a> {
     /// **Actions**:
     /// - Start trust escalation cleanup task (every 5 minutes)
     /// - Start federation coordinator (if enabled)
-    /// - Initialize security provider integration (disabled)
+    ///
+    /// Security credentials and capability discovery run in Stage 1; construction-time
+    /// [`super::security_setup::SecurityIntegration`] resolution happens in [`SongbirdOrchestrator::new`].
     ///
     /// **Why Fifth**: Needs discovery system running to coordinate federation
     #[expect(
@@ -505,13 +507,6 @@ impl<'a> StartupOrchestrator<'a> {
                     info!("✅ Federation coordinator started successfully");
                 }
             });
-        }
-
-        // Initialize real security provider security integration
-        info!("🐕 Initializing security provider security integration...");
-        // Temporarily disabled security integration initialization
-        {
-            info!("✅ security provider security integration initialized successfully");
         }
 
         Ok(())

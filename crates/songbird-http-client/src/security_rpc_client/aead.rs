@@ -49,13 +49,13 @@ impl SecurityRpcClient {
                 e
             })?;
 
-        let ciphertext = result["ciphertext"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
+        let ciphertext = result["ciphertext"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing ciphertext in response".to_string())
+        })?;
 
         let decoded = BASE64_STANDARD
             .decode(ciphertext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid ciphertext base64: {e}")))?;
 
         trace!(
             "✅ Encrypted: {} bytes plaintext → {} bytes ciphertext",
@@ -81,13 +81,13 @@ impl SecurityRpcClient {
 
         // Validate lengths
         if key.len() != 16 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "AES-128-GCM requires 16-byte key, got {}",
                 key.len()
             )));
         }
         if nonce.len() != 12 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "GCM nonce must be 12 bytes, got {}",
                 nonce.len()
             )));
@@ -105,13 +105,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let ciphertext = result["ciphertext"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
+        let ciphertext = result["ciphertext"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing ciphertext in response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(ciphertext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid ciphertext base64: {e}")))
     }
 
     /// Encrypt data with AES-256-GCM (for `TLS_AES_256_GCM_SHA384` cipher suite)
@@ -130,13 +130,13 @@ impl SecurityRpcClient {
 
         // Validate lengths
         if key.len() != 32 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "AES-256-GCM requires 32-byte key, got {}",
                 key.len()
             )));
         }
         if nonce.len() != 12 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "GCM nonce must be 12 bytes, got {}",
                 nonce.len()
             )));
@@ -154,13 +154,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let ciphertext = result["ciphertext"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
+        let ciphertext = result["ciphertext"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing ciphertext in response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(ciphertext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid ciphertext base64: {e}")))
     }
 
     /// Decrypt data with ChaCha20-Poly1305 (TLS 1.3 cipher suite 0x1303)
@@ -187,7 +187,7 @@ impl SecurityRpcClient {
 
         // ChaCha20-Poly1305 AEAD: Last 16 bytes are the authentication tag
         if ciphertext.len() < 16 {
-            return Err(Error::BearDogRpc(
+            return Err(Error::SecurityProviderRpc(
                 "Ciphertext too short for ChaCha20-Poly1305 (need at least 16 bytes for tag)"
                     .to_string(),
             ));
@@ -214,13 +214,13 @@ impl SecurityRpcClient {
                 e
             })?;
 
-        let plaintext = result["plaintext"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
+        let plaintext = result["plaintext"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing plaintext in response".to_string())
+        })?;
 
         let decoded = BASE64_STANDARD
             .decode(plaintext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid plaintext base64: {e}")))?;
 
         info!("✅ Decrypted: {} bytes → {} bytes", ciphertext.len(), decoded.len());
         Ok(decoded)
@@ -245,16 +245,18 @@ impl SecurityRpcClient {
 
         // Validate lengths
         if ciphertext.len() < 16 {
-            return Err(Error::BearDogRpc("Ciphertext too short for AES-128-GCM".to_string()));
+            return Err(Error::SecurityProviderRpc(
+                "Ciphertext too short for AES-128-GCM".to_string(),
+            ));
         }
         if key.len() != 16 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "AES-128-GCM requires 16-byte key, got {}",
                 key.len()
             )));
         }
         if nonce.len() != 12 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "GCM nonce must be 12 bytes, got {}",
                 nonce.len()
             )));
@@ -274,13 +276,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let plaintext = result["plaintext"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
+        let plaintext = result["plaintext"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing plaintext in response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(plaintext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid plaintext base64: {e}")))
     }
 
     /// Decrypt data with AES-256-GCM (for `TLS_AES_256_GCM_SHA384` cipher suite)
@@ -302,16 +304,18 @@ impl SecurityRpcClient {
 
         // Validate lengths
         if ciphertext.len() < 16 {
-            return Err(Error::BearDogRpc("Ciphertext too short for AES-256-GCM".to_string()));
+            return Err(Error::SecurityProviderRpc(
+                "Ciphertext too short for AES-256-GCM".to_string(),
+            ));
         }
         if key.len() != 32 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "AES-256-GCM requires 32-byte key, got {}",
                 key.len()
             )));
         }
         if nonce.len() != 12 {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "GCM nonce must be 12 bytes, got {}",
                 nonce.len()
             )));
@@ -330,13 +334,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let plaintext = result["plaintext"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
+        let plaintext = result["plaintext"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing plaintext in response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(plaintext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid plaintext base64: {e}")))
     }
 }
 

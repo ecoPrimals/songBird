@@ -35,7 +35,7 @@ pub struct ZeroCopyServiceRegistration {
     #[serde(with = "arc_str_serde")]
     pub service_name: Arc<str>,
 
-    /// Service type (e.g., "beardog", "squirrel", "biome")
+    /// Service type / capability domain label (e.g., `"security"`, `"ai"`, `"biome"`)
     #[serde(with = "arc_str_serde")]
     pub service_type: Arc<str>,
 

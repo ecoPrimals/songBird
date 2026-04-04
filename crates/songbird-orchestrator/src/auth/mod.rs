@@ -21,12 +21,6 @@
 
 pub mod security_jwt_client; // Security provider JWT delegation (Pure Rust!)
 
-/// Deprecated: use [`security_jwt_client`].
-#[deprecated(note = "Renamed to security_jwt_client (capability-based naming)")]
-pub mod beardog_jwt_client {
-    pub use super::security_jwt_client::*;
-}
-
 pub mod capability_discovery; // Capability-based security discovery (TRUE PRIMAL!)
 
 #[cfg(test)]
@@ -37,19 +31,8 @@ pub use security_jwt_client::{
     fetch_jwt_secret_from_security_provider, generate_secure_random_jwt, provision_jwt_secret,
 };
 
-// Backward-compatible alias (deprecated)
-#[allow(deprecated)]
-pub use security_jwt_client::fetch_jwt_secret_from_beardog;
-
 // Capability-based security discovery (preferred API)
 pub use capability_discovery::{
     discover_security_socket, discover_security_socket_for_family, discover_security_socket_with,
     get_security_socket_for_jwt, get_security_socket_for_jwt_with,
-};
-
-// Backward-compatible aliases (deprecated, kept for downstream callers)
-#[allow(deprecated)]
-pub use capability_discovery::{
-    discover_beardog_socket, discover_beardog_socket_for_family, discover_beardog_socket_with,
-    get_beardog_socket_for_jwt, get_beardog_socket_for_jwt_with,
 };

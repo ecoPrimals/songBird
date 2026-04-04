@@ -7,6 +7,7 @@
 //! across the codebase. Prefer runtime discovery over these defaults.
 
 pub mod hosts;
+pub mod network;
 pub mod paths;
 pub mod ports;
 pub mod timeouts;

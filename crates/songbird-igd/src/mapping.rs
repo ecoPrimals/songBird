@@ -336,4 +336,30 @@ mod tests {
         assert_eq!(req.internal_client, back.internal_client);
         assert_eq!(req.lease_duration, back.lease_duration);
     }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn protocol_from_str_rejects_sctp_and_quic_tokens() {
+        assert_eq!(Protocol::from_str("SCTP"), None);
+        assert_eq!(Protocol::from_str("QUIC"), None);
+        assert_eq!(
+            Protocol::from_str(" TCP "),
+            None,
+            "no trimming; must be exact match after uppercasing"
+        );
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn port_mapping_debug_includes_ports_and_protocol() {
+        let req = PortMappingRequest::new(
+            80,
+            8080,
+            IpAddr::V4(Ipv4Addr::new(10, 0, 0, 3)),
+            Protocol::Udp,
+        );
+        let m = PortMapping::from_request(&req);
+        let s = format!("{m:?}");
+        assert!(s.contains("80") && s.contains("8080"), "debug should mention ports: {s}");
+    }
 }

@@ -26,13 +26,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let hash_b64 = result["hash"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing hash in sha256 response".to_string()))?;
+        let hash_b64 = result["hash"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing hash in sha256 response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid hash base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid hash base64: {e}")))
     }
 
     /// Compute SHA-384 hash
@@ -50,13 +50,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let hash_b64 = result["hash"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing hash in sha384 response".to_string()))?;
+        let hash_b64 = result["hash"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing hash in sha384 response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid hash base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid hash base64: {e}")))
     }
 
     /// HKDF-Extract: Extract a PRK from salt and input keying material
@@ -77,13 +77,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let prk_b64 = result["prk"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing prk in hkdf_extract response".to_string()))?;
+        let prk_b64 = result["prk"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing prk in hkdf_extract response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(prk_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid prk base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid prk base64: {e}")))
     }
 
     /// HKDF-Expand: Expand a PRK to the desired length
@@ -105,13 +105,13 @@ impl SecurityRpcClient {
             )
             .await?;
 
-        let okm_b64 = result["okm"]
-            .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing okm in hkdf_expand response".to_string()))?;
+        let okm_b64 = result["okm"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing okm in hkdf_expand response".to_string())
+        })?;
 
         BASE64_STANDARD
             .decode(okm_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid okm base64: {e}")))
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid okm base64: {e}")))
     }
 }
 

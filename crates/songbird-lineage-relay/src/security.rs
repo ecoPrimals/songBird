@@ -65,7 +65,7 @@ impl SecurityBirdSongProvider {
     ///
     /// # async fn example() {
     /// let provider = SecurityBirdSongProvider::new(
-    ///     "/tmp/beardog.sock",
+    ///     "/tmp/security.sock",
     ///     Some("ecoPrimals-family-123".to_string())
     /// );
     /// # }

@@ -175,6 +175,8 @@ impl KeccakState {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -185,16 +187,6 @@ mod tests {
         assert_eq!(hash[1], 0xff);
         assert_eq!(hash[2], 0xc6);
         assert_eq!(hash[31], 0x4a);
-    }
-
-    #[test]
-    fn test_sha3_256_abc() {
-        // SHA3-256("abc") = 3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532
-        let hash = sha3_256(b"abc");
-        assert_eq!(hash[0], 0x3a);
-        assert_eq!(hash[1], 0x98);
-        assert_eq!(hash[2], 0x5d);
-        assert_eq!(hash[31], 0x32);
     }
 
     #[test]
@@ -238,5 +230,22 @@ mod tests {
         assert_eq!(hash.len(), 32);
         // Non-trivial output
         assert!(hash.iter().any(|&b| b != 0));
+    }
+
+    #[test]
+    fn test_sha3_256_abc_matches_full_digest() {
+        let expected: [u8; 32] = [
+            0x3a, 0x98, 0x5d, 0xa7, 0x4f, 0xe2, 0x25, 0xb2, 0x04, 0x5c, 0x17, 0x2d, 0x6b, 0xd3,
+            0x90, 0xbd, 0x85, 0x5f, 0x08, 0x6e, 0x3e, 0x9d, 0x52, 0x5b, 0x46, 0xbf, 0xe2, 0x45,
+            0x11, 0x43, 0x15, 0x32,
+        ];
+        assert_eq!(sha3_256(b"abc"), expected);
+    }
+
+    #[test]
+    fn test_sha3_256_single_byte() {
+        let h0 = sha3_256(&[0u8]);
+        let h1 = sha3_256(&[1u8]);
+        assert_ne!(h0, h1);
     }
 }

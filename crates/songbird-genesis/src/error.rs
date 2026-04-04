@@ -55,6 +55,10 @@ pub enum GenesisError {
     #[error("Hardware key error: {0}")]
     HardwareKeyError(String),
 
+    /// FIDO2 / CTAP2 hardware key path not integrated (the `solokey` feature compiles the channel only).
+    #[error("SoloKey / FIDO2 not integrated: {0}")]
+    SoloKeyNotIntegrated(String),
+
     /// QR code error
     #[error("QR code error: {0}")]
     QrCodeError(String),
@@ -125,6 +129,10 @@ mod tests {
             ),
             (GenesisError::SigningFailed("s".into()), "Signing failed: s"),
             (GenesisError::HardwareKeyError("h".into()), "Hardware key error: h"),
+            (
+                GenesisError::SoloKeyNotIntegrated("detail".into()),
+                "SoloKey / FIDO2 not integrated: detail",
+            ),
             (GenesisError::QrCodeError("q".into()), "QR code error: q"),
             (GenesisError::BluetoothError("b".into()), "Bluetooth error: b"),
             (GenesisError::FeatureUnavailable("f".into()), "Feature unavailable: f"),
@@ -152,5 +160,26 @@ mod tests {
 
         let from_str: GenesisError = GenesisError::from("slice");
         assert_eq!(from_str.to_string(), "slice");
+
+        let other = GenesisError::Other("custom failure".to_string());
+        assert_eq!(other.to_string(), "custom failure");
+    }
+
+    #[test]
+    fn ceremony_timeout_zero_seconds_display() {
+        let err = GenesisError::CeremonyTimeout(0);
+        assert_eq!(err.to_string(), "Genesis ceremony timed out after 0s");
+    }
+
+    #[test]
+    fn ceremony_timeout_large_u64_display() {
+        let err = GenesisError::CeremonyTimeout(u64::MAX);
+        assert!(err.to_string().contains("18446744073709551615"));
+    }
+
+    #[test]
+    fn feature_unavailable_allows_empty_detail() {
+        let err = GenesisError::FeatureUnavailable(String::new());
+        assert_eq!(err.to_string(), "Feature unavailable: ");
     }
 }

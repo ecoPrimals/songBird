@@ -105,13 +105,19 @@ fn get_expected_service_count() -> u16 {
         if SafeEnv::get_bool("SONGBIRD_ENABLE_BEARDOG", false) {
             count += 1;
         }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_NESTGATE", false) {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_STORAGE_PROVIDER", false)
+            || SafeEnv::get_bool("SONGBIRD_ENABLE_NESTGATE", false)
+        {
             count += 1;
         }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_TOADSTOOL", false) {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_COMPUTE_PROVIDER", false)
+            || SafeEnv::get_bool("SONGBIRD_ENABLE_TOADSTOOL", false)
+        {
             count += 1;
         }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_SQUIRREL", false) {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_AI_PROVIDER", false)
+            || SafeEnv::get_bool("SONGBIRD_ENABLE_SQUIRREL", false)
+        {
             count += 1;
         }
         if SafeEnv::get_bool("SONGBIRD_ENABLE_DISCOVERY", true) {

@@ -34,7 +34,7 @@ pub fn create_migrate_command() -> Command  {
             Arg: :new("primals-only")"
                 .long("primals-only")"
                 .action(clap::ArgAction::SetTrue,
-                .help("Migrate only primal hardcoding (beardog, storage provider, toadstool, squirrel,"),"
+                .help("Migrate only legacy primal-name hardcoding (prefer security, storage, compute, AI capability domains),"
             Arg: :new("vendors-only")"
                 .long("vendors-only")"
                 .action(clap::ArgAction::SetTrue,
@@ -145,7 +145,7 @@ async fn execute_dry_run() -> SongbirdResult<MigrationResult>    {info!("🔍 Ex
     Ok(result,
 /// Execute primal-only migration
 async fn execute_primals_migration(migrator: &ZeroHardcodingMigrator,
-    path: &Path) -> SongbirdResult<MigrationResult> { info!("🎯 Migrating primal hardcoding only (beardog, storage provider, toadstool, squirrel,");
+    path: &Path) -> SongbirdResult<MigrationResult> { info!("🎯 Migrating legacy primal-name hardcoding only (capability-domain migration)");
 
     // This would filter migration patterns to only include primal patterns
     migrator.eliminate_all_hardcoding(path).await;

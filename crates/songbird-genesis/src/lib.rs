@@ -74,4 +74,18 @@ mod tests {
     fn version_constant_is_non_empty() {
         assert!(!VERSION.is_empty(), "crate version should be defined");
     }
+
+    #[test]
+    fn version_matches_cargo_pkg_version() {
+        assert_eq!(VERSION, env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn public_reexports_resolve_for_callers() {
+        let _ = std::mem::size_of::<GenesisError>();
+        let _ = std::mem::size_of::<PhysicalChannelType>();
+        let _ = std::mem::size_of::<NewNodeIdentity>();
+        let _ = std::mem::size_of::<GenesisWitness>();
+        let _ = std::mem::size_of::<GenesisCeremony>();
+    }
 }

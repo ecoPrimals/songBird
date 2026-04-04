@@ -69,7 +69,7 @@ impl SongbirdHttpClient {
     ///
     /// # Arguments
     ///
-    /// * `socket_path` - Path to crypto provider socket (e.g., "/tmp/beardog.sock")
+    /// * `socket_path` - Path to crypto provider socket (e.g., `/tmp/security-provider.sock`; routing is env-driven in most constructors)
     ///
     /// # Note
     ///
@@ -82,9 +82,9 @@ impl SongbirdHttpClient {
     /// Create from environment variable with standard HTTP config
     ///
     /// Automatically detects Neural API mode or Direct mode based on environment:
-    /// - `SECURITY_PROVIDER_MODE` or `BEARDOG_MODE`: `neural` (default) routes through Neural API for `capability.call`; `direct` uses the security/crypto provider socket.
+    /// - `SECURITY_PROVIDER_MODE` (or legacy `BEARDOG_MODE`): `neural` (default) routes through Neural API for `capability.call`; `direct` uses the security provider socket.
     ///
-    /// Uses `NEURAL_API_SOCKET` / `NEURALS_SOCKET` in neural mode, or `SECURITY_PROVIDER_SOCKET` / `BEARDOG_SOCKET` in direct mode (via provider discovery).
+    /// Uses `NEURAL_API_SOCKET` / `NEURALS_SOCKET` in neural mode, or security provider discovery (`SECURITY_PROVIDER_SOCKET`, `CRYPTO_PROVIDER_SOCKET`, and legacy `BEARDOG_*`) in direct mode.
     pub fn from_env() -> Self {
         info!("🌐 Creating Songbird HTTP client from environment");
 
@@ -112,7 +112,7 @@ impl SongbirdHttpClient {
 
         // v5.28.0: ALWAYS use environment-based routing (TRUE PRIMAL pattern)
         // This ensures capability.call routing via Neural API
-        // The socket_path parameter is ignored - routing determined by SECURITY_PROVIDER_MODE / BEARDOG_MODE
+        // The socket_path parameter is ignored — routing determined by `SECURITY_PROVIDER_MODE` (legacy: `BEARDOG_MODE`)
         Self {
             crypto: Arc::new(SecurityCryptoProvider::from_env()),
             tls_config,
@@ -533,13 +533,13 @@ mod tests {
 
     #[test]
     fn test_client_creation() {
-        let _client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let _client = SongbirdHttpClient::new("/tmp/security-provider.sock");
         // Client created successfully if we got here
     }
 
     #[test]
     fn test_build_http_request() {
-        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let client = SongbirdHttpClient::new("/tmp/security-provider.sock");
         let uri: Uri = "http://example.com/test".parse().unwrap();
         let headers = HashMap::new();
 
@@ -616,7 +616,7 @@ mod tests {
 
     #[test]
     fn songbird_http_client_debug_includes_tls_and_config() {
-        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let client = SongbirdHttpClient::new("/tmp/security-provider.sock");
         let dbg = format!("{client:?}");
         assert!(dbg.contains("SongbirdHttpClient"));
         assert!(dbg.contains("tls_config"));
@@ -631,14 +631,14 @@ mod tests {
 
     #[tokio::test]
     async fn request_rejects_invalid_url() {
-        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let client = SongbirdHttpClient::new("/tmp/security-provider.sock");
         let err = client.request("GET", "not-a-valid-url", HashMap::new(), None).await.unwrap_err();
         assert!(matches!(err, Error::InvalidUrl(_)));
     }
 
     #[tokio::test]
     async fn request_rejects_missing_scheme() {
-        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+        let client = SongbirdHttpClient::new("/tmp/security-provider.sock");
         let err = client.request("GET", "example.com", HashMap::new(), None).await.unwrap_err();
         assert!(matches!(err, Error::InvalidUrl(_)));
     }

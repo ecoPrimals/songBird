@@ -181,6 +181,7 @@ impl StorageAdapter {
                 // Fallback 1: Legacy environment variables
                 if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_STORAGE_ENDPOINT")
                     .or_else(|_| SafeEnv::get_required("STORAGE_PROVIDER_ENDPOINT"))
+                    .or_else(|_| SafeEnv::get_required("STORAGE_ENDPOINT"))
                     .or_else(|_| SafeEnv::get_required("NESTGATE_ENDPOINT"))
                 {
                     debug!("⚠️ Using legacy environment variable for storage endpoint");

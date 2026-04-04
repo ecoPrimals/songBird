@@ -12,7 +12,7 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct NfcConfig {
     /// Security provider Unix socket path for crypto operations (see discovery order below)
-    pub beardog_socket: PathBuf,
+    pub security_provider_socket: PathBuf,
 
     /// Exchange timeout (including timing protection delays)
     pub exchange_timeout: Duration,
@@ -34,7 +34,7 @@ impl Default for NfcConfig {
     fn default() -> Self {
         Self {
             // Security provider socket discovered at runtime (no hardcoding)
-            beardog_socket: Self::discover_security_socket(),
+            security_provider_socket: Self::discover_security_socket(),
 
             exchange_timeout: Duration::from_secs(30),
             timing_protection: true,
@@ -52,11 +52,18 @@ impl NfcConfig {
         Self::default()
     }
 
-    /// Set security provider socket path (field name retains legacy `beardog_socket`)
+    /// Set security provider socket path
     #[must_use]
-    pub fn with_beardog_socket(mut self, socket: PathBuf) -> Self {
-        self.beardog_socket = socket;
+    pub fn with_security_provider_socket(mut self, socket: PathBuf) -> Self {
+        self.security_provider_socket = socket;
         self
+    }
+
+    /// Deprecated alias for [`NfcConfig::with_security_provider_socket`].
+    #[deprecated(note = "use with_security_provider_socket")]
+    #[must_use]
+    pub fn with_beardog_socket(self, socket: PathBuf) -> Self {
+        self.with_security_provider_socket(socket)
     }
 
     /// Set exchange timeout
@@ -144,7 +151,22 @@ impl NfcConfig {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
     use std::time::Duration;
+
+    /// Serialize overlay mutations for `discover_security_socket` resolution order tests.
+    static ENV_OVERLAY_LOCK: Mutex<()> = Mutex::new(());
+
+    fn clear_socket_overlay_keys() {
+        for key in [
+            "SECURITY_PROVIDER_SOCKET",
+            "CRYPTO_PROVIDER_SOCKET",
+            "SONGBIRD_SECURITY_PROVIDER",
+            "BEARDOG_SOCKET",
+        ] {
+            songbird_process_env::remove_var(key);
+        }
+    }
 
     #[test]
     fn new_matches_default() {
@@ -159,12 +181,15 @@ mod tests {
     fn builder_methods_override_fields() {
         let socket = PathBuf::from("/tmp/custom-security.sock");
         let cfg = NfcConfig::default()
-            .with_beardog_socket(socket.clone())
+            .with_security_provider_socket(socket.clone())
             .with_timeout(Duration::from_secs(60))
             .with_timing_protection(false)
             .with_timing_protection(true);
 
-        assert_eq!(cfg.beardog_socket, socket, "with_beardog_socket should stick");
+        assert_eq!(
+            cfg.security_provider_socket, socket,
+            "with_security_provider_socket should stick"
+        );
         assert_eq!(cfg.exchange_timeout, Duration::from_secs(60));
         assert!(cfg.timing_protection, "last with_timing_protection wins");
     }
@@ -173,5 +198,71 @@ mod tests {
     fn with_timeout_is_const_path() {
         let cfg = NfcConfig::default().with_timeout(Duration::from_nanos(1));
         assert_eq!(cfg.exchange_timeout, Duration::from_nanos(1));
+    }
+
+    #[test]
+    fn discover_security_socket_prefers_security_provider_overlay() {
+        let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
+        clear_socket_overlay_keys();
+        songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/tmp/overlay-security.sock");
+        songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/overlay-crypto.sock");
+        let cfg = NfcConfig::default();
+        assert_eq!(
+            cfg.security_provider_socket,
+            PathBuf::from("/tmp/overlay-security.sock"),
+            "SECURITY_PROVIDER_SOCKET should win over CRYPTO_PROVIDER_SOCKET"
+        );
+        clear_socket_overlay_keys();
+    }
+
+    #[test]
+    fn discover_security_socket_falls_through_to_crypto_when_security_unset() {
+        let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
+        clear_socket_overlay_keys();
+        songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/only-crypto.sock");
+        let cfg = NfcConfig::default();
+        assert_eq!(cfg.security_provider_socket, PathBuf::from("/tmp/only-crypto.sock"));
+        clear_socket_overlay_keys();
+    }
+
+    #[test]
+    fn timing_protection_fields_are_independent() {
+        let cfg =
+            NfcConfig::default().with_timing_protection(false).with_timeout(Duration::from_secs(5));
+        assert!(!cfg.timing_protection);
+        assert_eq!(cfg.exchange_timeout, Duration::from_secs(5));
+        assert!(
+            cfg.target_exchange_duration > Duration::ZERO,
+            "default target exchange duration should remain positive"
+        );
+    }
+
+    #[test]
+    fn validate_connection_defaults_true() {
+        assert!(NfcConfig::default().validate_connection);
+    }
+
+    #[test]
+    fn with_timeout_can_be_zero() {
+        let cfg = NfcConfig::default().with_timeout(Duration::from_secs(0));
+        assert_eq!(cfg.exchange_timeout, Duration::ZERO);
+    }
+
+    #[test]
+    fn discover_security_socket_prefers_songbird_security_provider_over_beardog() {
+        let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
+        clear_socket_overlay_keys();
+        songbird_process_env::set_var("SONGBIRD_SECURITY_PROVIDER", "/tmp/songbird.sock");
+        songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/beardog.sock");
+        let cfg = NfcConfig::default();
+        assert_eq!(cfg.security_provider_socket, PathBuf::from("/tmp/songbird.sock"));
+        clear_socket_overlay_keys();
+    }
+
+    #[test]
+    fn explicit_builder_socket_skips_discovery_order() {
+        let explicit = PathBuf::from("/tmp/explicit-only.sock");
+        let cfg = NfcConfig::default().with_security_provider_socket(explicit.clone());
+        assert_eq!(cfg.security_provider_socket, explicit);
     }
 }

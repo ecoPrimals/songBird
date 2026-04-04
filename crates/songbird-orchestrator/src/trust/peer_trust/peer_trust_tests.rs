@@ -12,7 +12,7 @@ use crate::security_capability_client::TrustEvaluationResponse;
 fn test_extract_family_from_tags_found() {
     let tags = vec![
         "some:other:tag".to_string(),
-        "beardog:family:nat0".to_string(),
+        "crypto:family:nat0".to_string(),
         "another:tag".to_string(),
     ];
 
@@ -30,7 +30,7 @@ fn test_extract_family_from_tags_not_found() {
 
 #[test]
 fn test_extract_family_from_tags_empty_family() {
-    let tags = vec!["beardog:family:".to_string()];
+    let tags = vec!["crypto:family:".to_string()];
 
     let family = extract_family_from_tags(&tags);
     assert_eq!(family, None);
@@ -38,7 +38,7 @@ fn test_extract_family_from_tags_empty_family() {
 
 #[test]
 fn test_extract_family_from_tags_multiple_families() {
-    let tags = vec!["beardog:family:nat0".to_string(), "beardog:family:acmecorp".to_string()];
+    let tags = vec!["crypto:family:nat0".to_string(), "crypto:family:acmecorp".to_string()];
 
     let family = extract_family_from_tags(&tags);
     assert_eq!(family, Some("nat0".to_string()));
@@ -46,7 +46,7 @@ fn test_extract_family_from_tags_multiple_families() {
 
 #[test]
 fn test_extract_family_from_tags_complex_family_id() {
-    let tags = vec!["beardog:family:acmecorp-engineering-prod".to_string()];
+    let tags = vec!["crypto:family:acmecorp-engineering-prod".to_string()];
 
     let family = extract_family_from_tags(&tags);
     assert_eq!(family, Some("acmecorp-engineering-prod".to_string()));
@@ -81,7 +81,7 @@ fn test_handle_auto_accept_response() {
         trust_level: "high".to_string(),
         confidence: 1.0,
         reason: "same_genetic_family".to_string(),
-        encryption_tag: Some("beardog:family:a3f2".to_string()),
+        encryption_tag: Some("crypto:family:a3f2".to_string()),
         metadata: HashMap::new(),
     };
 
@@ -219,8 +219,14 @@ fn handle_prompt_user_low_confidence_recommends_neutral() {
 
 #[test]
 fn extract_family_ignores_wrong_prefix() {
-    let tags = vec!["Beardog:family:nat0".to_string()];
+    let tags = vec!["Crypto:family:nat0".to_string()];
     assert_eq!(extract_family_from_tags(&tags), None);
+}
+
+#[test]
+fn test_extract_family_from_tags_legacy_beardog_wire_still_parsed() {
+    let tags = vec!["beardog:family:legacy-only".to_string()];
+    assert_eq!(extract_family_from_tags(&tags), Some("legacy-only".to_string()));
 }
 
 #[test]

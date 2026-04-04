@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! End-to-End Tests for Multi-Service Coordination
 //!
 //! These tests validate that multiple services can coordinate effectively

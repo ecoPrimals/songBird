@@ -235,10 +235,10 @@ impl TorHandler {
         info!(port = port, "Starting Tor hidden service via pure Rust");
 
         // Create security provider client for service key operations
-        let beardog = CryptoProvider::from_env();
+        let security_provider = CryptoProvider::from_env();
 
         // Create Tor service
-        match songbird_tor_protocol::TorService::new(beardog, port).await {
+        match songbird_tor_protocol::TorService::new(security_provider, port).await {
             Ok(service) => {
                 let onion_address = service.onion_address().unwrap_or("pending").to_string();
 
@@ -314,10 +314,10 @@ impl TorHandler {
         info!("Fetching Tor network consensus via pure Rust");
 
         // Create security provider crypto client
-        let beardog = CryptoProvider::from_env();
+        let security_provider = CryptoProvider::from_env();
 
         // Fetch consensus using songbird-tor-protocol
-        match Consensus::fetch(&beardog).await {
+        match Consensus::fetch(&security_provider).await {
             Ok(consensus) => {
                 let relay_count = consensus.relays.len();
                 let is_valid = consensus.is_valid();

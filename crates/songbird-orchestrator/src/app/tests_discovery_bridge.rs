@@ -21,7 +21,7 @@ mod unit_tests {
         // Simulate same-family detection logic
         let my_family = "nat0";
         let peer_tags =
-            ["beardog:family:nat0:tower1".to_string(), "capability:encryption".to_string()];
+            ["crypto:family:nat0:tower1".to_string(), "capability:encryption".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
             tag.contains(&format!(":family:{my_family}:"))
@@ -35,7 +35,7 @@ mod unit_tests {
     fn test_same_family_detection_with_non_matching_tags() {
         let my_family = "nat0";
         let peer_tags =
-            ["beardog:family:nat1:tower1".to_string(), "capability:encryption".to_string()];
+            ["crypto:family:nat1:tower1".to_string(), "capability:encryption".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
             tag.contains(&format!(":family:{my_family}:"))
@@ -74,7 +74,7 @@ mod unit_tests {
     #[test]
     fn test_same_family_detection_hyphenated_family_id() {
         let my_family = "nat-0";
-        let peer_tags = ["beardog:family:nat-0:tower1".to_string()];
+        let peer_tags = ["crypto:family:nat-0:tower1".to_string()];
         let same_family = peer_tags.iter().any(|tag| {
             tag.contains(&format!(":family:{my_family}:"))
                 || tag.contains(&format!("family_{my_family}"))
@@ -86,7 +86,7 @@ mod unit_tests {
     fn test_option_chaining_pattern() {
         // Test the Option chaining pattern used in same-family detection
         let my_family_env = Some("nat0".to_string());
-        let peer_tags = Some(vec!["beardog:family:nat0:tower1".to_string()]);
+        let peer_tags = Some(vec!["crypto:family:nat0:tower1".to_string()]);
 
         let same_family = my_family_env.is_some_and(|my_family| {
             peer_tags.as_ref().is_some_and(|tags| {
@@ -100,7 +100,7 @@ mod unit_tests {
     #[test]
     fn test_option_chaining_with_none_family() {
         let my_family_env: Option<String> = None;
-        let peer_tags = Some(vec!["beardog:family:nat0:tower1".to_string()]);
+        let peer_tags = Some(vec!["crypto:family:nat0:tower1".to_string()]);
 
         let same_family = my_family_env.is_some_and(|my_family| {
             peer_tags.as_ref().is_some_and(|tags| {

@@ -39,4 +39,33 @@ mod version_tests {
             super::VERSION
         );
     }
+
+    #[test]
+    fn version_is_ascii_printable() {
+        assert!(
+            super::VERSION.is_ascii(),
+            "CARGO_PKG_VERSION should be ASCII for logging and HTTP headers; got {:?}",
+            super::VERSION
+        );
+        assert!(
+            !super::VERSION.contains(|c: char| c.is_control()),
+            "version should not contain control characters: {:?}",
+            super::VERSION
+        );
+    }
+
+    #[test]
+    fn version_has_semver_like_segments() {
+        let parts: Vec<&str> = super::VERSION.split('.').collect();
+        assert!(
+            parts.len() >= 2,
+            "workspace versions are typically major.minor.patch; got segments {:?}",
+            parts
+        );
+        assert!(
+            parts.iter().all(|p| !p.is_empty()),
+            "no empty semver segment in {:?}",
+            super::VERSION
+        );
+    }
 }

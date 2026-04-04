@@ -241,4 +241,77 @@ mod tests {
         assert_eq!(back.metadata.get("k"), Some(&"v".to_string()));
         assert_eq!(back.ceremony_id, identity.ceremony_id);
     }
+
+    #[test]
+    fn new_node_identity_allows_empty_node_id_string() {
+        let witness = create_test_witness();
+        let lineage = create_lineage_with_primals(&["songbird"]);
+        let id = NewNodeIdentity::new(String::new(), vec![], witness, lineage);
+        assert!(id.node_id.is_empty(), "API does not forbid empty node_id (callers may validate)");
+        assert_eq!(id.primal_signature_count(), 1);
+    }
+
+    #[test]
+    fn has_primal_lineage_empty_key_is_false() {
+        let witness = create_test_witness();
+        let lineage = create_test_lineage();
+        let identity = NewNodeIdentity::new("n".into(), vec![], witness, lineage);
+        assert!(!identity.has_primal_lineage(""));
+    }
+
+    #[test]
+    fn genesis_trust_level_follows_witness_channel_type() {
+        let witness = GenesisWitness::new("w".into(), vec![], PhysicalChannelType::QrCodeWithOob);
+        let lineage = create_lineage_with_primals(&["songbird"]);
+        let identity = NewNodeIdentity::new("n".into(), vec![], witness, lineage);
+        assert_eq!(identity.genesis_trust_level(), TrustLevel::High);
+    }
+
+    #[test]
+    fn get_primal_lineage_returns_none_for_unknown_primal() {
+        let witness = create_test_witness();
+        let lineage = create_test_lineage();
+        let identity = NewNodeIdentity::new("n".into(), vec![], witness, lineage);
+        assert!(identity.get_primal_lineage("nonexistent").is_none());
+    }
+
+    #[test]
+    fn metadata_defaults_empty_and_roundtrips() {
+        let witness = create_test_witness();
+        let lineage = create_test_lineage();
+        let identity = NewNodeIdentity::new("n".into(), vec![1], witness, lineage);
+        assert!(identity.metadata.is_empty());
+        let json = serde_json::to_string(&identity).expect("serde");
+        let back: NewNodeIdentity = serde_json::from_str(&json).expect("de");
+        assert!(back.metadata.is_empty());
+    }
+
+    #[test]
+    fn new_node_identity_copies_ceremony_id_and_birth_from_lineage() {
+        let witness = create_test_witness();
+        let mut lineage = create_lineage_with_primals(&["songbird"]);
+        let cid = Uuid::nil();
+        lineage.ceremony_id = cid;
+        let ts = lineage.birth_timestamp;
+        let identity = NewNodeIdentity::new("sync".into(), vec![1], witness, lineage);
+        assert_eq!(identity.ceremony_id, cid);
+        assert_eq!(identity.birth_timestamp, ts);
+    }
+
+    #[test]
+    fn primal_lineage_map_duplicate_key_retains_last_insert() {
+        let witness = create_test_witness();
+        let mut lineage = create_lineage_with_primals(&["dup"]);
+        lineage.primal_lineages.insert(
+            "dup".to_string(),
+            PrimalLineage {
+                primal_name: "dup".to_string(),
+                lineage_data: vec![99],
+                signature: vec![],
+                timestamp: Utc::now(),
+            },
+        );
+        let identity = NewNodeIdentity::new("n".into(), vec![], witness, lineage);
+        assert_eq!(identity.get_primal_lineage("dup").expect("dup primal").lineage_data, vec![99]);
+    }
 }

@@ -12,8 +12,7 @@
 //! # API surface
 //!
 //! Prefer [`discover_security_socket`], [`get_security_socket_for_jwt`], and related
-//! `*_security_*` helpers. Deprecated compatibility wrappers (see `#[deprecated]` items below)
-//! remain for older callers.
+//! `*_security_*` helpers.
 
 use crate::primal_discovery::Capability;
 use std::path::PathBuf;
@@ -31,13 +30,6 @@ use tracing::{info, warn};
 #[must_use]
 pub fn discover_security_socket() -> Option<PathBuf> {
     discover_security_socket_with(|key| songbird_process_env::var(key))
-}
-
-/// Backward-compatible alias for [`discover_security_socket`].
-#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
-#[must_use]
-pub fn discover_beardog_socket() -> Option<PathBuf> {
-    discover_security_socket()
 }
 
 /// Discover security provider socket with injectable env reader (concurrent-safe, testable).
@@ -87,26 +79,10 @@ where
     None
 }
 
-/// Backward-compatible alias for [`discover_security_socket_with`].
-#[deprecated(note = "Use discover_security_socket_with (capability-based naming)")]
-pub fn discover_beardog_socket_with<F>(env_reader: F) -> Option<PathBuf>
-where
-    F: Fn(&str) -> Result<String, std::env::VarError>,
-{
-    discover_security_socket_with(env_reader)
-}
-
 /// Discover security provider socket for a specific family.
 #[must_use]
 pub fn discover_security_socket_for_family(family_id: &str) -> Option<PathBuf> {
     discover_security_socket_for_family_with(family_id, |key| songbird_process_env::var(key))
-}
-
-/// Backward-compatible alias for [`discover_security_socket_for_family`].
-#[deprecated(note = "Use discover_security_socket_for_family (capability-based naming)")]
-#[must_use]
-pub fn discover_beardog_socket_for_family(family_id: &str) -> Option<PathBuf> {
-    discover_security_socket_for_family(family_id)
 }
 
 /// Injectable version for concurrent-safe testing.
@@ -122,26 +98,10 @@ where
     discover_security_socket_with(env_reader)
 }
 
-/// Backward-compatible alias for [`discover_security_socket_for_family_with`].
-#[deprecated(note = "Use discover_security_socket_for_family_with (capability-based naming)")]
-pub fn discover_beardog_socket_for_family_with<F>(family_id: &str, env_reader: F) -> Option<PathBuf>
-where
-    F: Fn(&str) -> Result<String, std::env::VarError>,
-{
-    discover_security_socket_for_family_with(family_id, env_reader)
-}
-
 /// Get security provider socket path for JWT provisioning.
 #[must_use]
 pub fn get_security_socket_for_jwt() -> Option<String> {
     discover_security_socket().map(|path| path.to_string_lossy().to_string())
-}
-
-/// Backward-compatible alias for [`get_security_socket_for_jwt`].
-#[deprecated(note = "Use get_security_socket_for_jwt (capability-based naming)")]
-#[must_use]
-pub fn get_beardog_socket_for_jwt() -> Option<String> {
-    get_security_socket_for_jwt()
 }
 
 /// Injectable version for concurrent-safe testing.
@@ -150,15 +110,6 @@ where
     F: Fn(&str) -> Result<String, std::env::VarError>,
 {
     discover_security_socket_with(env_reader).map(|path| path.to_string_lossy().to_string())
-}
-
-/// Backward-compatible alias for [`get_security_socket_for_jwt_with`].
-#[deprecated(note = "Use get_security_socket_for_jwt_with (capability-based naming)")]
-pub fn get_beardog_socket_for_jwt_with<F>(env_reader: F) -> Option<String>
-where
-    F: Fn(&str) -> Result<String, std::env::VarError>,
-{
-    get_security_socket_for_jwt_with(env_reader)
 }
 
 #[cfg(test)]
@@ -182,7 +133,7 @@ mod tests {
     }
 
     #[test]
-    fn test_discover_legacy_beardog_socket_env() {
+    fn test_discover_legacy_socket_env_var() {
         let env =
             mock_env(HashMap::from([("BEARDOG_SOCKET", "/run/user/1000/biomeos/beardog.sock")]));
         let socket = discover_security_socket_with(env);
@@ -191,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn test_discover_priority_security_over_beardog() {
+    fn test_discover_priority_security_provider_over_legacy_env() {
         let env = mock_env(HashMap::from([
             ("SECURITY_PROVIDER", "/high-priority.sock"),
             ("BEARDOG_SOCKET", "/low-priority.sock"),

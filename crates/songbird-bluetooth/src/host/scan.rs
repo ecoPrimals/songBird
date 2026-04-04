@@ -293,3 +293,76 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         None
     }
 }
+
+#[cfg(test)]
+mod scan_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::BluetoothHost;
+    use crate::device::Address;
+    use crate::transport::{Transport, TransportType};
+
+    struct MockTransport;
+
+    #[async_trait::async_trait]
+    impl Transport for MockTransport {
+        fn transport_type(&self) -> TransportType {
+            TransportType::Usb
+        }
+
+        async fn send_command(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_event(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(vec![])
+        }
+
+        async fn send_acl(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_acl(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(vec![])
+        }
+
+        fn is_connected(&self) -> bool {
+            true
+        }
+
+        async fn close(&mut self) -> crate::error::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn parse_advertisement_extracts_address_and_rssi() {
+        let event = [0x3Eu8, 0x08, 0x02, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xC9];
+        let info = BluetoothHost::<MockTransport>::parse_advertisement(&event).expect("some");
+        assert_eq!(info.address, Address::from_bytes([1, 2, 3, 4, 5, 6]));
+        assert_eq!(info.rssi, -55);
+    }
+
+    #[test]
+    fn parse_advertisement_rejects_short_buffer() {
+        assert!(BluetoothHost::<MockTransport>::parse_advertisement(&[0x3E, 0x02]).is_none());
+    }
+
+    #[test]
+    fn parse_advertisement_rejects_non_meta_event() {
+        assert!(BluetoothHost::<MockTransport>::parse_advertisement(&[0x00; 16]).is_none());
+    }
+
+    #[test]
+    fn parse_device_name_reads_complete_local_name() {
+        let ad = [0x06u8, 0x09, b'T', b'e', b's', b't', b'!'];
+        let name = BluetoothHost::<MockTransport>::parse_device_name(&ad).expect("name");
+        assert_eq!(name, "Test!");
+    }
+
+    #[test]
+    fn parse_device_name_returns_none_for_unknown_ad_type() {
+        let ad = [0x02u8, 0x01, 0x06];
+        assert!(BluetoothHost::<MockTransport>::parse_device_name(&ad).is_none());
+    }
+}

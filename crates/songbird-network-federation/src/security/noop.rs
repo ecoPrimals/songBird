@@ -1,39 +1,81 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! No-op security provider
+//! No-op security provider — **fallback when no security provider process is available**.
 //!
-//! Production-ready placeholder when no security provider is available.
-//! Unlike mocks, this clearly communicates unavailability.
+//! ## Role
 //!
-//! **Production Safe**: Explicitly returns errors rather than faking functionality.
+//! `SecurityProviderFactory::discover` walks UPA /
+//! environment / well-known sockets (see wateringHole v1.2 capability layout). When nothing
+//! responds, callers may use `SecurityProviderFactory::create_noop` to obtain a
+//! [`NoOpSecurityProvider`] instead of holding `Option<dyn SecurityProvider>` everywhere.
+//!
+//! This type is **not** a mock: crypto and lineage RPCs return [`Result::Err`] with
+//! [`NoOpSecurityError`], not fake ciphertext. [`LineageRelay::get_visibility_level`] is a
+//! pure local mapping ([`AccessLevel::from_lineage_depth`]) and does not contact a remote.
+//! [`SecurityProvider::is_available`] is `false`; [`SecurityProvider::shutdown`] is a no-op
+//! success.
+//!
+//! ## Runtime selection (not Cargo feature-gated)
+//!
+//! The real provider is chosen at runtime via capability discovery and env vars
+//! (`SECURITY_PROVIDER_SOCKET`, `BEARDOG_SOCKET`, `SECURITY_SOCKET`, `BEARDOG_URL` / `SECURITY_URL`
+//! for `unix://` paths). This module is always compiled so binaries can degrade gracefully
+//! without a separate feature flag.
 
 use super::{
     AccessLevel, BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageChain, LineageHint,
     LineageProof, LineageProvider, LineageRelay, RelaySession, SecurityProvider,
 };
-use anyhow::{Result, anyhow};
+use thiserror::Error;
 
-/// No-op provider for when the security provider is not configured
+/// Errors from [`NoOpSecurityProvider`] — all operations that require a remote security primal fail.
+#[derive(Debug, Error)]
+pub enum NoOpSecurityError {
+    /// No security provider; lineage operations are unavailable.
+    #[error(
+        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or discover the security capability (see SecurityProviderFactory)"
+    )]
+    LineageUnavailable {
+        /// Operation name for logs and diagnostics.
+        operation: &'static str,
+    },
+
+    /// No security provider; `BirdSong` crypto operations are unavailable.
+    #[error(
+        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or discover the security capability"
+    )]
+    BirdSongUnavailable {
+        /// Operation name for logs and diagnostics.
+        operation: &'static str,
+    },
+
+    /// No security provider; relay operations are unavailable.
+    #[error(
+        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or discover the security capability"
+    )]
+    RelayUnavailable {
+        /// Operation name for logs and diagnostics.
+        operation: &'static str,
+    },
+}
+
+/// No-op provider when the security primal is not configured or discoverable.
 ///
-/// This is NOT a mock - it explicitly returns errors indicating
-/// that security-provider functionality is not available.
-///
-/// Use this in production when:
-/// - The security provider is not deployed
-/// - Security features are optional
-/// - Graceful degradation is acceptable
+/// Prefer `SecurityProviderFactory::discover` first; use [`NoOpSecurityProvider::new`] only when
+/// you explicitly need a [`SecurityProvider`] trait object that reports unavailable for crypto.
 pub struct NoOpSecurityProvider;
 
 #[deprecated(note = "use NoOpSecurityProvider")]
 pub type NoOpBearDogProvider = NoOpSecurityProvider;
 
 impl NoOpSecurityProvider {
-    /// Create new no-op provider
+    /// Create a new no-op provider (logs once at `warn` level).
     pub fn new() -> Self {
         tracing::warn!(
-            "NoOpSecurityProvider created - security provider features unavailable. \
-             Set BEARDOG_URL or SECURITY_URL to enable encryption."
+            "NoOpSecurityProvider: no security primal — encryption and lineage RPCs will fail. \
+             Set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or SECURITY_SOCKET, or ensure UPA \
+             discovers the security capability."
         );
         Self
     }
@@ -47,36 +89,40 @@ impl Default for NoOpSecurityProvider {
 
 #[async_trait::async_trait]
 impl LineageProvider for NoOpSecurityProvider {
-    async fn generate_lineage(&self, _node_id: &str, _parent_id: &str) -> Result<LineageChain> {
-        Err(anyhow!(
-            "security provider not available: Cannot generate lineage. \
-             Configure security provider with BEARDOG_URL environment variable."
-        ))
+    async fn generate_lineage(
+        &self,
+        _node_id: &str,
+        _parent_id: &str,
+    ) -> anyhow::Result<LineageChain> {
+        Err(NoOpSecurityError::LineageUnavailable {
+            operation: "generate_lineage",
+        }
+        .into())
     }
 
-    async fn verify_lineage(&self, _proof: &LineageProof) -> Result<bool> {
-        Err(anyhow!(
-            "Security provider not available: Cannot verify lineage. \
-             Set BEARDOG_URL environment variable."
-        ))
+    async fn verify_lineage(&self, _proof: &LineageProof) -> anyhow::Result<bool> {
+        Err(NoOpSecurityError::LineageUnavailable {
+            operation: "verify_lineage",
+        }
+        .into())
     }
 
-    async fn get_descendants(&self, _root_id: &str) -> Result<Vec<String>> {
-        Err(anyhow!(
-            "Security provider not available: Cannot retrieve descendants. \
-             Set BEARDOG_URL environment variable."
-        ))
+    async fn get_descendants(&self, _root_id: &str) -> anyhow::Result<Vec<String>> {
+        Err(NoOpSecurityError::LineageUnavailable {
+            operation: "get_descendants",
+        }
+        .into())
     }
 
     async fn get_lineage_depth(
         &self,
         _ancestor_id: &str,
         _descendant_id: &str,
-    ) -> Result<Option<usize>> {
-        Err(anyhow!(
-            "Security provider not available: Cannot calculate lineage depth. \
-             Set BEARDOG_URL environment variable."
-        ))
+    ) -> anyhow::Result<Option<usize>> {
+        Err(NoOpSecurityError::LineageUnavailable {
+            operation: "get_lineage_depth",
+        }
+        .into())
     }
 }
 
@@ -86,39 +132,42 @@ impl BirdSongCrypto for NoOpSecurityProvider {
         &self,
         _payload: &[u8],
         _lineage_hint: LineageHint,
-    ) -> Result<EncryptedBirdSong> {
-        Err(anyhow!(
-            "Security provider not available: Cannot encrypt for lineage. \
-             Set BEARDOG_URL environment variable."
-        ))
+    ) -> anyhow::Result<EncryptedBirdSong> {
+        Err(NoOpSecurityError::BirdSongUnavailable {
+            operation: "encrypt_for_lineage",
+        }
+        .into())
     }
 
-    async fn decrypt_birdsong(&self, _encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
-        Err(anyhow!(
-            "security provider not available: Cannot decrypt birdsong. \
-             Configure security provider with BEARDOG_URL environment variable."
-        ))
+    async fn decrypt_birdsong(
+        &self,
+        _encrypted: &EncryptedBirdSong,
+    ) -> anyhow::Result<Option<Vec<u8>>> {
+        Err(NoOpSecurityError::BirdSongUnavailable {
+            operation: "decrypt_birdsong",
+        }
+        .into())
     }
 
     async fn request_key(
         &self,
         _lineage_hint: &LineageHint,
         _proof: LineageProof,
-    ) -> Result<BroadcastKey> {
-        Err(anyhow!(
-            "Security provider not available: Cannot request key. \
-             Set BEARDOG_URL environment variable."
-        ))
+    ) -> anyhow::Result<BroadcastKey> {
+        Err(NoOpSecurityError::BirdSongUnavailable {
+            operation: "request_key",
+        }
+        .into())
     }
 
     async fn request_keys_batch(
         &self,
         _requests: Vec<(LineageHint, LineageProof)>,
-    ) -> Result<Vec<BroadcastKey>> {
-        Err(anyhow!(
-            "Security provider not available: Cannot request keys batch. \
-             Set BEARDOG_URL environment variable."
-        ))
+    ) -> anyhow::Result<Vec<BroadcastKey>> {
+        Err(NoOpSecurityError::BirdSongUnavailable {
+            operation: "request_keys_batch",
+        }
+        .into())
     }
 }
 
@@ -129,37 +178,35 @@ impl LineageRelay for NoOpSecurityProvider {
         _requester: &str,
         _target: &str,
         _lineage_proof: LineageProof,
-    ) -> Result<RelaySession> {
-        Err(anyhow!(
-            "Security provider not available: Cannot offer relay service. \
-             Set BEARDOG_URL environment variable."
-        ))
+    ) -> anyhow::Result<RelaySession> {
+        Err(NoOpSecurityError::RelayUnavailable {
+            operation: "offer_relay",
+        }
+        .into())
     }
 
     fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
-        // Even without security provider, we can provide the standard mapping
         AccessLevel::from_lineage_depth(lineage_depth)
     }
 
-    async fn relay_packet(&self, _session: &RelaySession, _packet: &[u8]) -> Result<()> {
-        Err(anyhow!(
-            "Security provider not available: Cannot relay packet. \
-             Set BEARDOG_URL environment variable."
-        ))
+    async fn relay_packet(&self, _session: &RelaySession, _packet: &[u8]) -> anyhow::Result<()> {
+        Err(NoOpSecurityError::RelayUnavailable {
+            operation: "relay_packet",
+        }
+        .into())
     }
 
-    async fn revoke_relay(&self, _session_id: &str) -> Result<()> {
-        Err(anyhow!(
-            "Security provider not available: Cannot revoke relay. \
-             Set BEARDOG_URL environment variable."
-        ))
+    async fn revoke_relay(&self, _session_id: &str) -> anyhow::Result<()> {
+        Err(NoOpSecurityError::RelayUnavailable {
+            operation: "revoke_relay",
+        }
+        .into())
     }
 }
 
 #[async_trait::async_trait]
 impl SecurityProvider for NoOpSecurityProvider {
     async fn is_available(&self) -> bool {
-        // NoOp provider is explicitly NOT available
         false
     }
 
@@ -167,8 +214,7 @@ impl SecurityProvider for NoOpSecurityProvider {
         "0.0.0-noop"
     }
 
-    async fn shutdown(&self) -> Result<()> {
-        // Nothing to shut down
+    async fn shutdown(&self) -> anyhow::Result<()> {
         Ok(())
     }
 }
@@ -191,7 +237,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn lineage_methods_return_bear_dog_unavailable() {
+    async fn lineage_methods_return_unavailable() {
         let p = NoOpSecurityProvider::new();
         assert!(LineageProvider::generate_lineage(&p, "n", "p").await.is_err());
         let proof = LineageProof {
@@ -209,7 +255,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn birdsong_crypto_methods_return_bear_dog_unavailable() {
+    async fn birdsong_crypto_methods_return_unavailable() {
         let p = NoOpSecurityProvider::new();
         assert!(
             BirdSongCrypto::encrypt_for_lineage(&p, b"hi", LineageHint::Universal).await.is_err()

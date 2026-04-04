@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! BTSP Integration Tests with BearDog
 //!
 //! These tests validate the Unix socket-based BTSP client integration

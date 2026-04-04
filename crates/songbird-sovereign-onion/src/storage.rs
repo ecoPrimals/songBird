@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-/// Sync persistence backend for onion service data (SB-03: abstraction for sled → nestGate).
+/// Sync persistence backend for onion service data (SB-03: abstraction for sled → storage capability IPC).
 ///
 /// The sled implementation (`OnionStorage`) is the current default when `sled-storage` is enabled.
-/// When nestGate exposes `storage.*` IPC (NG-01), a `NestGateOnionBackend` can implement this trait
+/// When a storage capability provider exposes `storage.*` IPC (NG-01), a `StorageProviderOnionBackend` can implement this trait
 /// to delegate persistence over JSON-RPC.
 pub trait OnionStorageBackend: Send + Sync {
     /// Load an existing identity from persistent storage.
@@ -91,7 +91,7 @@ impl InMemoryOnionStorage {
         }
 
         let identity = OnionIdentity::generate();
-        let bytes = identity.to_stored_bytes();
+        let bytes = identity.to_stored_bytes()?;
         *slot = Some(bytes);
 
         tracing::info!(
@@ -137,7 +137,7 @@ impl OnionStorageBackend for InMemoryOnionStorage {
     }
 
     fn store_identity(&self, identity: &OnionIdentity) -> Result<()> {
-        self.store_identity_bytes(identity.to_stored_bytes())
+        self.store_identity_bytes(identity.to_stored_bytes()?)
     }
 
     fn store_peer(&self, peer: &PeerInfo) -> Result<()> {
@@ -315,6 +315,42 @@ mod tests {
         addresses.sort();
         addresses.dedup();
         assert_eq!(addresses.len(), 5);
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn store_peer_overwrites_same_onion_address() {
+        let storage = InMemoryOnionStorage::new();
+        let a = PeerInfo {
+            onion_address: "dup.onion".to_string(),
+            last_seen: 1,
+            actual_addr: Some("10.0.0.1:1".to_string()),
+        };
+        let b = PeerInfo {
+            onion_address: "dup.onion".to_string(),
+            last_seen: 2,
+            actual_addr: None,
+        };
+        storage.store_peer(&a).unwrap();
+        storage.store_peer(&b).unwrap();
+        let got = storage.get_peer("dup.onion").unwrap().expect("peer");
+        assert_eq!(got.last_seen, 2);
+        assert_eq!(got.actual_addr, None);
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn remove_peer_missing_is_noop() {
+        let storage = InMemoryOnionStorage::new();
+        storage.remove_peer("nope.onion").unwrap();
+        assert!(storage.list_peers().unwrap().is_empty());
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn flush_on_in_memory_is_ok() {
+        let storage = InMemoryOnionStorage::new();
+        storage.flush().unwrap();
     }
 
     #[cfg(feature = "sled-storage")]

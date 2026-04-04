@@ -73,14 +73,23 @@ pub async fn get(url: &str, request_timeout: Duration) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::Error;
 
     #[test]
     fn test_invalid_url() {
         let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
         rt.block_on(async {
             let result = get("not a url", Duration::from_secs(5)).await;
-            assert!(result.is_err());
+            let err = result.expect_err("invalid URL must fail");
+            match err {
+                Error::Network(msg) => {
+                    assert!(msg.contains("not a url") || msg.contains("Invalid URL"));
+                }
+                other => panic!("expected Network error, got {other:?}"),
+            }
         });
     }
 }

@@ -153,12 +153,6 @@ impl ServiceInstance {
     }
 }
 
-//  trait is now imported directly from traits module where needed
-
-/*
-// REPLACED: Local trait replaced with canonical trait from traits module
-// This code has been moved to the canonical traits module
-*/
 pub struct ComputeResources {
     /// Cpu Cores field
     pub cpu_cores: u32,

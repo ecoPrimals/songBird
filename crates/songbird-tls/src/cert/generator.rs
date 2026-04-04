@@ -23,6 +23,9 @@ pub enum CertGenerationMode {
     /// Standalone: Use built-in ed25519-dalek (100% Pure Rust)
     Standalone,
     /// Security-provider mode: delegate to the crypto provider for enhanced capabilities
+    SecurityProvider,
+    /// Deprecated alias for [`CertGenerationMode::SecurityProvider`].
+    #[deprecated(note = "use CertGenerationMode::SecurityProvider")]
     BearDog,
     /// Auto: try the security provider, fallback to standalone (default)
     #[default]
@@ -55,7 +58,10 @@ impl CertificateGenerator {
     /// Returns an error if security-provider mode is requested but the provider is not available.
     pub fn with_mode(mode: CertGenerationMode) -> Result<Self> {
         let security_client = match &mode {
-            CertGenerationMode::BearDog | CertGenerationMode::Auto => {
+            #[allow(deprecated, reason = "match arm handles legacy variant")]
+            CertGenerationMode::SecurityProvider
+            | CertGenerationMode::BearDog
+            | CertGenerationMode::Auto => {
                 // Try to discover the security (crypto) provider socket
                 match SecurityTlsCryptoClient::new() {
                     Ok(client) => {
@@ -66,7 +72,11 @@ impl CertificateGenerator {
                     }
                     Err(e) => {
                         tracing::debug!("Security provider not available: {}", e);
-                        if matches!(mode, CertGenerationMode::BearDog) {
+                        #[allow(deprecated, reason = "match arm handles legacy variant")]
+                        if matches!(
+                            mode,
+                            CertGenerationMode::SecurityProvider | CertGenerationMode::BearDog
+                        ) {
                             return Err(anyhow::anyhow!(
                                 "Security provider mode requested but crypto provider not available"
                             )
@@ -200,6 +210,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
     fn test_standalone_cert_generation() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
@@ -212,6 +223,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
     fn test_auto_mode_fallback() {
         let generator = CertificateGenerator::new().unwrap();
 
@@ -221,6 +233,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
     fn test_standalone_multiple_certs() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
@@ -235,6 +248,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
     fn test_cert_validity_period() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
@@ -244,5 +258,57 @@ mod tests {
 
         // Certificate should be valid for the specified period
         // (validation logic would be in certificate usage, not generation)
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_cert_der_includes_domain_prefix_and_public_key_material() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let domain = "edge-case.songbird";
+        let (cert, signing_key) = generator.generate_self_signed(domain, 1).unwrap();
+        let der = &cert.certificate_list[0].cert_data;
+        assert!(
+            der.windows(domain.len()).any(|w| w == domain.as_bytes()),
+            "placeholder DER should embed the subject CN bytes for discovery"
+        );
+        assert!(
+            der.windows(32).any(|w| w == signing_key.verifying_key().as_bytes()),
+            "placeholder DER should embed the Ed25519 public key bytes"
+        );
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_zero_day_validity_still_emits_non_empty_cert() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (cert, _) = generator.generate_self_signed("zero-day.local", 0).unwrap();
+        assert!(!cert.certificate_list[0].cert_data.is_empty());
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn successive_standalone_generations_produce_distinct_signing_keys() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (_, a) = generator.generate_self_signed("a.local", 10).unwrap();
+        let (_, b) = generator.generate_self_signed("b.local", 10).unwrap();
+        assert_ne!(a.to_bytes(), b.to_bytes(), "OsRng-backed keys should almost never collide");
+    }
+
+    #[test]
+    fn bear_dog_mode_errors_when_security_provider_unavailable() {
+        let err = CertificateGenerator::with_mode(CertGenerationMode::SecurityProvider)
+            .err()
+            .expect("BearDog without a reachable provider should not construct");
+        assert!(
+            err.to_string().contains("crypto provider") || err.to_string().contains("Security"),
+            "BearDog without a provider should fail fast: {err}"
+        );
+    }
+
+    #[test]
+    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    fn cert_generation_mode_equality() {
+        assert_eq!(CertGenerationMode::Standalone, CertGenerationMode::Standalone);
+        assert_ne!(CertGenerationMode::Standalone, CertGenerationMode::Auto);
     }
 }

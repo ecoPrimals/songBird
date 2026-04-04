@@ -94,3 +94,80 @@ pub struct CircuitPath {
     /// Exit/HSDir relay
     pub exit: RelayInfo,
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    fn relay(name: &str, fp_byte: u8, flags: RelayFlags) -> RelayInfo {
+        let mut fingerprint = [0u8; 20];
+        fingerprint[0] = fp_byte;
+        RelayInfo {
+            nickname: name.to_string(),
+            fingerprint,
+            address: IpAddr::V4(Ipv4Addr::new(10, 0, 0, fp_byte)),
+            or_port: 443,
+            dir_port: None,
+            flags,
+            bandwidth: 10_000,
+            ntor_key: None,
+            version: None,
+        }
+    }
+
+    #[test]
+    fn is_guard_requires_full_flag_set() {
+        let base = RelayFlags::GUARD
+            | RelayFlags::FAST
+            | RelayFlags::STABLE
+            | RelayFlags::VALID
+            | RelayFlags::RUNNING;
+        let ok = relay("g", 1, base);
+        assert!(ok.is_guard());
+
+        let no_stable = base & !RelayFlags::STABLE;
+        assert!(!relay("g2", 2, no_stable).is_guard());
+    }
+
+    #[test]
+    fn is_middle_rejects_missing_fast() {
+        let flags = RelayFlags::STABLE | RelayFlags::VALID | RelayFlags::RUNNING;
+        assert!(!relay("m", 3, flags).is_middle());
+    }
+
+    #[test]
+    fn is_hsdir_requires_hsdir_valid_running() {
+        let ok = RelayFlags::HSDIR | RelayFlags::VALID | RelayFlags::RUNNING;
+        assert!(relay("h", 4, ok).is_hsdir());
+
+        let no_hsdir = RelayFlags::VALID | RelayFlags::RUNNING;
+        assert!(!relay("h2", 5, no_hsdir).is_hsdir());
+    }
+
+    #[test]
+    fn relay_flags_bit_assignment_distinct() {
+        assert_ne!(RelayFlags::EXIT.bits(), RelayFlags::GUARD.bits());
+        assert!(RelayFlags::AUTHORITY.contains(RelayFlags::AUTHORITY));
+    }
+
+    #[test]
+    fn circuit_path_holds_three_distinct_relays() {
+        let g = RelayFlags::GUARD
+            | RelayFlags::FAST
+            | RelayFlags::STABLE
+            | RelayFlags::VALID
+            | RelayFlags::RUNNING;
+        let m = RelayFlags::FAST | RelayFlags::STABLE | RelayFlags::VALID | RelayFlags::RUNNING;
+        let e = RelayFlags::HSDIR | RelayFlags::VALID | RelayFlags::RUNNING;
+        let path = CircuitPath {
+            guard: relay("guard", 1, g),
+            middle: relay("mid", 2, m),
+            exit: relay("exit", 3, e),
+        };
+        assert_ne!(path.guard.fingerprint, path.middle.fingerprint);
+        assert_ne!(path.exit.fingerprint, path.guard.fingerprint);
+    }
+}

@@ -46,7 +46,6 @@ pub mod output {
 
 /// CLI testing utilities
 pub mod testing {
-    // use super::*; // Unused import
     use std::sync::{Arc, Mutex};
 
     /// Capture CLI output for testing

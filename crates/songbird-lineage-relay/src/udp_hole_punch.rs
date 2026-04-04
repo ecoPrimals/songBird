@@ -225,7 +225,11 @@ pub async fn create_hole_punch_socket(bind_addr: Option<SocketAddr>) -> Result<U
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::LineageRelayError;
+    use std::net::SocketAddr;
     use tokio::time::sleep;
 
     #[tokio::test]
@@ -244,6 +248,49 @@ mod tests {
         // Should bind to any address with OS-assigned port
         assert_eq!(local_addr.ip().to_string(), "0.0.0.0");
         assert!(local_addr.port() > 0);
+    }
+
+    #[tokio::test]
+    async fn udp_hole_punch_returns_error_when_peer_never_responds_before_total_timeout() {
+        let socket =
+            create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap())).await.expect("bind");
+        let config = HolePunchConfig {
+            max_attempts: 50,
+            attempt_timeout: Duration::from_millis(1),
+            attempt_delay: Duration::ZERO,
+            total_timeout: Duration::from_millis(40),
+            ..HolePunchConfig::default()
+        };
+        let peer_addr: SocketAddr = "127.0.0.1:7".parse().unwrap();
+        let r = udp_hole_punch(socket, NodeId::from("silent-peer"), peer_addr, config).await;
+        let err = r.err().expect("no listener on peer port");
+        assert!(
+            matches!(err, LineageRelayError::DirectConnectionFailed(_)),
+            "expected DirectConnectionFailed, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn coordinated_hole_punch_propagates_udp_failure() {
+        let socket =
+            create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap())).await.expect("bind");
+        let config = HolePunchConfig {
+            total_timeout: Duration::from_millis(25),
+            attempt_timeout: Duration::from_millis(1),
+            attempt_delay: Duration::ZERO,
+            max_attempts: 20,
+            ..HolePunchConfig::default()
+        };
+        let peer_public: SocketAddr = "127.0.0.1:8".parse().unwrap();
+        let r = coordinated_hole_punch(
+            socket,
+            NodeId::from("coord-peer"),
+            "127.0.0.1:1".parse().unwrap(),
+            peer_public,
+            config,
+        )
+        .await;
+        assert!(r.is_err());
     }
 
     #[tokio::test]
@@ -281,5 +328,39 @@ mod tests {
 
         // At least one should succeed (loopback is permissive)
         assert!(result1.is_ok() || result2.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_hole_punch_socket_explicit_loopback_binds() {
+        let socket =
+            create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap())).await.expect("bind");
+        let a = socket.local_addr().expect("local");
+        assert_eq!(a.ip().to_string(), "127.0.0.1");
+        assert!(a.port() > 0);
+    }
+
+    #[test]
+    fn hole_punch_config_clone_matches() {
+        let c = HolePunchConfig::default();
+        let c2 = c.clone();
+        assert_eq!(c2.max_attempts, c.max_attempts);
+        assert_eq!(c2.attempt_delay, c.attempt_delay);
+    }
+
+    #[tokio::test]
+    async fn udp_hole_punch_total_timeout_envelope_returns_timeout_error_message() {
+        let socket =
+            create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap())).await.expect("bind");
+        let config = HolePunchConfig {
+            max_attempts: 100,
+            attempt_timeout: Duration::from_millis(1),
+            attempt_delay: Duration::ZERO,
+            total_timeout: Duration::from_millis(15),
+        };
+        let r = udp_hole_punch(socket, NodeId::from("t"), "127.0.0.1:11".parse().unwrap(), config)
+            .await;
+        let err = r.err().expect("expected hole punch failure");
+        let s = err.to_string();
+        assert!(s.contains("timeout") || s.contains("UDP hole punch"), "unexpected: {s}");
     }
 }

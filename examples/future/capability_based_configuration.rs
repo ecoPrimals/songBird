@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Capability-Based Configuration Example
 //!
 //! This example demonstrates the evolution from hardcoded configuration

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! # Real Adapter Discovery E2E Tests
 //!
 //! **Purpose**: Test actual adapter discovery and connection workflows

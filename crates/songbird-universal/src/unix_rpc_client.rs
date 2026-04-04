@@ -30,7 +30,7 @@
 //! }
 //!
 //! async fn encrypt_data() -> Result<Vec<u8>> {
-//!     let client = UnixRpcClient::new("/tmp/beardog.sock")?;
+//!     let client = UnixRpcClient::new("/tmp/biomeos/security.sock")?;
 //!     let request = EncryptRequest { data: vec![1, 2, 3] };
 //!     let response: EncryptResponse = client.call("encrypt", request).await?;
 //!     Ok(response.ciphertext)
@@ -105,12 +105,12 @@ impl UnixRpcClient {
     ///
     /// ## Arguments
     ///
-    /// * `socket_path` - Path to the Unix socket (e.g., "/tmp/beardog.sock")
+    /// * `socket_path` - Path to the Unix socket (e.g., "/tmp/biomeos/security.sock")
     ///
     /// ## Example
     ///
     /// ```rust,ignore
-    /// let client = UnixRpcClient::new("/tmp/beardog.sock")?;
+    /// let client = UnixRpcClient::new("/tmp/biomeos/security.sock")?;
     /// ```
     ///
     /// # Errors

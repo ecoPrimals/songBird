@@ -3,8 +3,8 @@
 
 //! Mock physical channel for testing
 //!
-//! **Test-Only Module**: This mock is only available during testing
-//! and should not be used in production code.
+//! **Test-only module**: compiled for `cfg(test)` or the `testing` crate feature.
+//! Do not enable `testing` in production binaries.
 //!
 //! For production, use actual physical channel providers:
 //! - `SoloKeyChannel` for hardware keys
@@ -97,6 +97,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::error::GenesisError;
 
     #[tokio::test]
     async fn test_mock_channel_success() {
@@ -132,5 +133,51 @@ mod tests {
 
         let bt = MockPhysicalChannel::with_channel_type(PhysicalChannelType::Bluetooth);
         assert_eq!(bt.trust_level(), TrustLevel::Medium);
+    }
+
+    #[tokio::test]
+    async fn failing_mock_returns_distinct_errors_for_proximity_and_exchange() {
+        let ch = MockPhysicalChannel::failing();
+        let prox = ch.verify_proximity().await.expect_err("proximity");
+        let ex = ch.secure_exchange().await.expect_err("exchange");
+        assert!(
+            matches!(prox, GenesisError::ProximityVerificationFailed(_)),
+            "expected proximity failure, got {prox:?}"
+        );
+        assert!(
+            matches!(ex, GenesisError::PhysicalChannelError(_)),
+            "expected physical channel error for exchange, got {ex:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn default_mock_matches_new() {
+        let a = MockPhysicalChannel::new();
+        let b = MockPhysicalChannel::default();
+        assert_eq!(a.channel_type, b.channel_type);
+        assert_eq!(a.should_succeed, b.should_succeed);
+    }
+
+    #[tokio::test]
+    async fn proximity_proof_includes_channel_type() {
+        let ch = MockPhysicalChannel::with_channel_type(PhysicalChannelType::QrCodeWithOob);
+        let proof = ch.verify_proximity().await.expect("proof");
+        assert_eq!(proof.channel_type, PhysicalChannelType::QrCodeWithOob);
+        assert!(!proof.proof_data.is_empty());
+    }
+
+    #[tokio::test]
+    async fn mock_nfc_maps_to_high_trust() {
+        let ch = MockPhysicalChannel::with_channel_type(PhysicalChannelType::Nfc);
+        assert_eq!(ch.channel_type(), PhysicalChannelType::Nfc);
+        assert_eq!(ch.trust_level(), TrustLevel::High);
+    }
+
+    #[test]
+    fn mock_physical_channel_debug_includes_fields() {
+        let ch = MockPhysicalChannel::with_channel_type(PhysicalChannelType::Bluetooth);
+        let s = format!("{ch:?}");
+        assert!(s.contains("Bluetooth"), "Debug should name channel: {s}");
+        assert!(s.contains("should_succeed"), "Debug should expose flags: {s}");
     }
 }

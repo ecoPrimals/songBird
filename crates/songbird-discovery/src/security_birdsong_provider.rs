@@ -21,7 +21,7 @@ use crate::birdsong::BirdSongEncryption;
 
 /// `security provider` encryption request (for JSON-RPC birdsong.encrypt method)
 #[derive(Debug, Clone, Serialize)]
-struct BearDogEncryptRequest {
+struct SecurityProviderEncryptRequest {
     /// Plaintext data to encrypt (base64 encoded automatically by serde)
     #[serde(with = "base64_serde")]
     plaintext: Vec<u8>,
@@ -57,7 +57,7 @@ mod base64_serde {
 /// Handles both v1 ("encrypted") and v2 ("ciphertext") field names
 /// for backward compatibility and graceful API evolution.
 #[derive(Debug, Clone, Deserialize)]
-struct BearDogEncryptResponse {
+struct SecurityProviderEncryptResponse {
     /// Encrypted data (deserialized from base64 automatically)
     /// Supports both "ciphertext" (v2) and "encrypted" (v1) field names
     #[serde(alias = "encrypted")] // v1 compatibility
@@ -70,7 +70,7 @@ struct BearDogEncryptResponse {
 
 /// Security-provider decryption request
 #[derive(Debug, Clone, Serialize)]
-struct BearDogDecryptRequest {
+struct SecurityProviderDecryptRequest {
     /// Ciphertext to decrypt (base64 encoded automatically)
     #[serde(with = "base64_serde")]
     ciphertext: Vec<u8>,
@@ -82,7 +82,7 @@ struct BearDogDecryptRequest {
 
 /// Security-provider decryption response
 #[derive(Debug, Clone, Deserialize)]
-struct BearDogDecryptResponse {
+struct SecurityProviderDecryptResponse {
     /// Decrypted plaintext (deserialized from base64 automatically)
     #[serde(with = "base64_serde")]
     plaintext: Vec<u8>,
@@ -115,7 +115,7 @@ enum SecurityConnection {
 ///
 /// ## Connection Formats
 ///
-/// - Unix socket: `/path/to/beardog.sock`
+/// - Unix socket: `/path/to/security.sock` (or legacy provider-specific path)
 /// - TCP socket: `tcp:host:port` (e.g., `tcp:127.0.0.1:9900`)
 pub struct SecurityBirdSongProvider {
     /// Connection type (Unix socket or TCP)
@@ -146,7 +146,7 @@ impl SecurityBirdSongProvider {
     /// # Arguments
     ///
     /// * `socket_path` - Crypto provider socket path. Supports:
-    ///   - Unix socket: `/tmp/beardog.sock`
+    ///   - Unix socket: `/tmp/security.sock` (or capability-discovered path)
     ///   - TCP socket: `tcp:host:port` (e.g., `tcp:127.0.0.1:9900`)
     /// * `family_id` - Optional family ID (will query the provider if not provided)
     ///
@@ -158,7 +158,7 @@ impl SecurityBirdSongProvider {
     /// # async fn example() {
     /// // Unix socket
     /// let provider = SecurityBirdSongProvider::new(
-    ///     "/tmp/beardog.sock",
+    ///     "/tmp/security.sock",
     ///     Some("ecoPrimals-family-123".to_string())
     /// ).await.unwrap();
     ///
@@ -340,7 +340,7 @@ impl SecurityBirdSongProvider {
     /// Uses `birdsong.encrypt` JSON-RPC method for inter-primal communication.
     /// Supports both Unix socket and TCP connections.
     async fn encrypt_internal(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
-        let request = BearDogEncryptRequest {
+        let request = SecurityProviderEncryptRequest {
             plaintext: plaintext.to_vec(),
             family_id: self.family_id.clone(),
         };
@@ -350,7 +350,7 @@ impl SecurityBirdSongProvider {
         debug!("   Family ID: {:?}", self.family_id);
 
         // Call birdsong.encrypt JSON-RPC method (TCP or Unix)
-        let encrypt_response: BearDogEncryptResponse = if self.tcp_endpoint.is_some() {
+        let encrypt_response: SecurityProviderEncryptResponse = if self.tcp_endpoint.is_some() {
             self.tcp_call("birdsong.encrypt", &request).await?
         } else if let Some(ref client) = self.client {
             client
@@ -376,7 +376,7 @@ impl SecurityBirdSongProvider {
     /// Uses `birdsong.decrypt` JSON-RPC method for inter-primal communication.
     /// Supports both Unix socket and TCP connections.
     async fn decrypt_internal(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>, String> {
-        let request = BearDogDecryptRequest {
+        let request = SecurityProviderDecryptRequest {
             ciphertext: ciphertext.to_vec(),
             family_id: self.family_id.clone(),
         };
@@ -385,7 +385,7 @@ impl SecurityBirdSongProvider {
         debug!("   Ciphertext size: {} bytes", ciphertext.len());
 
         // Call birdsong.decrypt JSON-RPC method (TCP or Unix)
-        let decrypt_response: BearDogDecryptResponse = if self.tcp_endpoint.is_some() {
+        let decrypt_response: SecurityProviderDecryptResponse = if self.tcp_endpoint.is_some() {
             match self.tcp_call("birdsong.decrypt", &request).await {
                 Ok(r) => r,
                 Err(e) => {

@@ -209,22 +209,29 @@ impl StreamProtocol {
     /// # Returns
     /// * `RelayCell` with BEGIN command
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the address byte length does not fit in `u16`.
-    #[must_use]
-    pub fn create_begin(stream_id: u16, address: &str) -> RelayCell {
+    /// Returns an error if the address payload length does not fit in `u16`.
+    pub fn create_begin(stream_id: u16, address: &str) -> Result<RelayCell> {
         let mut data = address.as_bytes().to_vec();
         data.push(0); // Null terminator
 
-        RelayCell {
+        let length = u16::try_from(data.len()).map_err(|_| {
+            Error::Protocol(format!(
+                "RELAY_BEGIN address too long: {} bytes (max {})",
+                data.len(),
+                u16::MAX
+            ))
+        })?;
+
+        Ok(RelayCell {
             command: RelayCommand::Begin,
             recognized: 0,
             stream_id,
             digest: [0u8; 4], // Populated by onion layer before encryption
-            length: u16::try_from(data.len()).expect("address length fits in u16"),
+            length,
             data,
-        }
+        })
     }
 
     /// Create `RELAY_DATA` cell
@@ -236,19 +243,26 @@ impl StreamProtocol {
     /// # Returns
     /// * `RelayCell` with DATA command
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the data length does not fit in `u16`.
-    #[must_use]
-    pub fn create_data(stream_id: u16, data: &[u8]) -> RelayCell {
-        RelayCell {
+    /// Returns an error if the payload length does not fit in `u16`.
+    pub fn create_data(stream_id: u16, data: &[u8]) -> Result<RelayCell> {
+        let length = u16::try_from(data.len()).map_err(|_| {
+            Error::Protocol(format!(
+                "RELAY_DATA payload too long: {} bytes (max {})",
+                data.len(),
+                u16::MAX
+            ))
+        })?;
+
+        Ok(RelayCell {
             command: RelayCommand::Data,
             recognized: 0,
             stream_id,
             digest: [0u8; 4], // Populated by onion layer before encryption
-            length: u16::try_from(data.len()).expect("address length fits in u16"),
+            length,
             data: data.to_vec(),
-        }
+        })
     }
 
     /// Create `RELAY_END` cell
@@ -334,7 +348,11 @@ impl StreamProtocol {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::error::Error;
+    use crate::protocol::{MAX_RELAY_PAYLOAD, RelayCell, RelayCommand};
 
     #[test]
     fn test_stream_creation() {
@@ -394,8 +412,112 @@ mod tests {
     }
 
     #[test]
+    fn stream_connecting_cannot_send_even_with_window() {
+        let s = Stream::new(1, 1);
+        assert_eq!(s.state, StreamState::Connecting);
+        assert!(!s.can_send());
+    }
+
+    #[test]
+    fn stream_recv_window_default_matches_send() {
+        let s = Stream::new(0, 0);
+        assert_eq!(s.recv_window, 500);
+        assert_eq!(s.send_window, 500);
+    }
+
+    #[test]
+    fn parse_connected_accepts_connected_command() {
+        let cell = RelayCell {
+            command: RelayCommand::Connected,
+            recognized: 0,
+            stream_id: 9,
+            digest: [0u8; 4],
+            length: 0,
+            data: vec![],
+        };
+        StreamProtocol::parse_connected(&cell).expect("connected");
+    }
+
+    #[test]
+    fn parse_connected_rejects_wrong_command() {
+        let cell = RelayCell {
+            command: RelayCommand::Data,
+            recognized: 0,
+            stream_id: 1,
+            digest: [0u8; 4],
+            length: 0,
+            data: vec![],
+        };
+        let err = StreamProtocol::parse_connected(&cell).expect_err("expected protocol error");
+        assert!(matches!(err, Error::Protocol(_)));
+    }
+
+    #[test]
+    fn parse_end_accepts_end_and_reason() {
+        let cell = RelayCell {
+            command: RelayCommand::End,
+            recognized: 0,
+            stream_id: 2,
+            digest: [0u8; 4],
+            length: 1,
+            data: vec![0x07],
+        };
+        assert_eq!(StreamProtocol::parse_end(&cell).expect("reason"), 0x07);
+    }
+
+    #[test]
+    fn parse_end_empty_payload_means_normal_close() {
+        let cell = RelayCell {
+            command: RelayCommand::End,
+            recognized: 0,
+            stream_id: 2,
+            digest: [0u8; 4],
+            length: 0,
+            data: vec![],
+        };
+        assert_eq!(StreamProtocol::parse_end(&cell).expect("zero"), 0);
+    }
+
+    #[test]
+    fn parse_end_rejects_non_end_command() {
+        let cell = RelayCell {
+            command: RelayCommand::SendMe,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0u8; 4],
+            length: 0,
+            data: vec![],
+        };
+        let err = StreamProtocol::parse_end(&cell).expect_err("wrong cmd");
+        assert!(matches!(err, Error::Protocol(_)));
+    }
+
+    #[test]
+    fn stream_manager_get_missing_returns_error() {
+        let manager = StreamManager::new(42);
+        let err = manager.get_stream(999).expect_err("missing");
+        assert!(matches!(err, Error::Stream(_)));
+    }
+
+    #[test]
+    fn stream_manager_update_missing_returns_error() {
+        let manager = StreamManager::new(42);
+        let err = manager.update_stream(7, |s| s.mark_connected()).expect_err("missing stream");
+        assert!(matches!(err, Error::Stream(_)));
+    }
+
+    #[test]
+    fn stream_manager_allocate_sequential_stream_ids() {
+        let manager = StreamManager::new(100);
+        assert_eq!(manager.allocate_stream().expect("a"), 1);
+        assert_eq!(manager.allocate_stream().expect("b"), 2);
+        assert_eq!(manager.allocate_stream().expect("c"), 3);
+        assert_eq!(manager.stream_count(), 3);
+    }
+
+    #[test]
     fn test_begin_cell() {
-        let cell = StreamProtocol::create_begin(42, "example.com:80");
+        let cell = StreamProtocol::create_begin(42, "example.com:80").unwrap();
         assert_eq!(cell.command, RelayCommand::Begin);
         assert_eq!(cell.stream_id, 42);
         assert!(cell.data.ends_with(&[0])); // Null terminator
@@ -404,7 +526,7 @@ mod tests {
     #[test]
     fn test_data_cell() {
         let data = b"Hello, Tor!";
-        let cell = StreamProtocol::create_data(42, data);
+        let cell = StreamProtocol::create_data(42, data).unwrap();
         assert_eq!(cell.command, RelayCommand::Data);
         assert_eq!(cell.stream_id, 42);
         assert_eq!(cell.data, data);
@@ -424,5 +546,74 @@ mod tests {
         assert_eq!(cell.command, RelayCommand::SendMe);
         assert_eq!(cell.stream_id, 42);
         assert_eq!(cell.data.len(), 0);
+    }
+
+    #[test]
+    fn create_begin_empty_address_still_has_null_terminator() {
+        let cell = StreamProtocol::create_begin(3, "").expect("begin");
+        assert_eq!(cell.command, RelayCommand::Begin);
+        assert_eq!(cell.data, vec![0u8]);
+        assert_eq!(cell.length, 1);
+    }
+
+    #[test]
+    fn create_begin_rejects_when_address_exceeds_u16_max_with_null() {
+        let addr = vec![b'a'; usize::from(u16::MAX)];
+        let s = String::from_utf8(addr).expect("utf8");
+        let err = StreamProtocol::create_begin(1, &s).expect_err("too long");
+        assert!(matches!(err, Error::Protocol(_)));
+    }
+
+    #[test]
+    fn create_data_accepts_max_relay_payload() {
+        let payload = vec![0x7Fu8; MAX_RELAY_PAYLOAD];
+        let cell = StreamProtocol::create_data(9, &payload).expect("max data");
+        assert_eq!(cell.length as usize, payload.len());
+        assert_eq!(cell.data.len(), MAX_RELAY_PAYLOAD);
+    }
+
+    #[test]
+    fn create_data_rejects_payload_when_len_exceeds_u16() {
+        // `create_data` bounds length by `u16` (Tor relay data length field); it does not
+        // additionally clamp to `MAX_RELAY_PAYLOAD` — exercise the `u16` guard.
+        let payload = vec![0u8; usize::from(u16::MAX) + 1];
+        let err = StreamProtocol::create_data(1, &payload).expect_err("overflow");
+        assert!(matches!(err, Error::Protocol(_)));
+    }
+
+    #[test]
+    fn relay_cell_encode_roundtrip_by_manual_parse() {
+        let original = RelayCell {
+            command: RelayCommand::Connected,
+            recognized: 0x0102,
+            stream_id: 0x0304,
+            digest: [0x0A, 0x0B, 0x0C, 0x0D],
+            length: 2,
+            data: vec![0xEE, 0xFF],
+        };
+        let wire = original.encode();
+        assert_eq!(wire[0], RelayCommand::Connected as u8);
+        assert_eq!(&wire[1..3], &[0x01, 0x02]);
+        assert_eq!(&wire[3..5], &[0x03, 0x04]);
+        assert_eq!(&wire[5..9], &[0x0A, 0x0B, 0x0C, 0x0D]);
+        assert_eq!(u16::from_be_bytes([wire[9], wire[10]]), 2);
+        assert_eq!(&wire[11..], &[0xEE, 0xFF]);
+    }
+
+    #[test]
+    fn stream_manager_remove_unknown_stream_succeeds_noop() {
+        let manager = StreamManager::new(7);
+        manager.remove_stream(999).expect("remove missing");
+        assert_eq!(manager.stream_count(), 0);
+    }
+
+    #[test]
+    fn stream_manager_update_stream_applies_closure() {
+        let manager = StreamManager::new(0xCAFE);
+        let sid = manager.allocate_stream().expect("alloc");
+        manager.update_stream(sid, |s| s.mark_connected()).expect("update");
+        let stream = manager.get_stream(sid).expect("get");
+        assert_eq!(stream.state, StreamState::Open);
+        assert!(stream.can_send());
     }
 }

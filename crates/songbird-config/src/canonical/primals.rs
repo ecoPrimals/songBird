@@ -324,7 +324,7 @@ impl PrimalRegistry {
 /// Simplified from experimental `universal_primals` patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalConfiguration {
-    /// Primal type identifier (e.g., "beardog", "nestgate", "toadstool", "squirrel")
+    /// Primal type identifier (legacy deployments used primal names; prefer capability domains in discovery)
     pub primal_type: String,
 
     /// Human-readable name

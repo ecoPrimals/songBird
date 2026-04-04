@@ -9,7 +9,6 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-// use serde_json::json;  // Unused (JSON-RPC handled manually)
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 // Platform-agnostic IPC transport
 #[cfg(windows)]
@@ -28,6 +27,14 @@ async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
     PlatformStream::connect(address).await
 }
 use tracing::{info, warn};
+
+/// JWT `purpose` parameter for storage capability provider authentication (`crypto.generate.jwt_secret`).
+pub const STORAGE_PROVIDER_AUTHENTICATION_PURPOSE: &str = "storage_provider_authentication";
+
+/// Legacy JWT `purpose` id used by some deployments (prefer [`STORAGE_PROVIDER_AUTHENTICATION_PURPOSE`]).
+#[deprecated(note = "use STORAGE_PROVIDER_AUTHENTICATION_PURPOSE (capability-based naming)")]
+#[allow(dead_code, reason = "public wire-compat constant for legacy integrations")]
+pub const NESTGATE_AUTHENTICATION_PURPOSE: &str = "nestgate_authentication";
 
 /// Request for JWT secret generation
 #[derive(Debug, Serialize)]
@@ -80,7 +87,7 @@ struct JwtSecretResult {
 ///
 /// # Arguments
 /// * `socket_path` - Path to the security provider's Unix socket
-/// * `purpose` - Purpose of the JWT secret (e.g., storage provider authentication; existing RPC payloads may still use the `nestgate_authentication` purpose id)
+/// * `purpose` - Purpose of the JWT secret (typically [`STORAGE_PROVIDER_AUTHENTICATION_PURPOSE`]; legacy peers may still expect the `nestgate_authentication` purpose string)
 ///
 /// # Returns
 /// * `Ok(String)` - Base64-encoded JWT secret (512 bits / 88 characters)
@@ -172,15 +179,6 @@ pub async fn fetch_jwt_secret_from_security_provider(
     Ok(secret)
 }
 
-/// Backward-compatible alias for [`fetch_jwt_secret_from_security_provider`].
-#[deprecated(note = "Use fetch_jwt_secret_from_security_provider (capability-based naming)")]
-/// # Errors
-///
-/// Returns an error if the operation fails.
-pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> Result<String> {
-    fetch_jwt_secret_from_security_provider(socket_path, purpose).await
-}
-
 /// Generate secure random JWT secret as fallback
 ///
 /// This is used when `security provider` is unavailable. Still cryptographically secure,
@@ -218,7 +216,7 @@ pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
 /// Tries `security provider` first (preferred), falls back to secure random if unavailable.
 ///
 /// # Arguments
-/// * `beardog_socket` - Optional path to the security provider socket
+/// * `security_provider_socket` - Optional path to the security provider socket
 /// * `purpose` - Purpose of the JWT secret
 ///
 /// # Returns
@@ -226,9 +224,12 @@ pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-pub async fn provision_jwt_secret(beardog_socket: Option<&str>, purpose: &str) -> Result<String> {
+pub async fn provision_jwt_secret(
+    security_provider_socket: Option<&str>,
+    purpose: &str,
+) -> Result<String> {
     // Try security provider first (preferred)
-    if let Some(socket_path) = beardog_socket {
+    if let Some(socket_path) = security_provider_socket {
         match fetch_jwt_secret_from_security_provider(socket_path, purpose).await {
             Ok(secret) => {
                 info!("✅ Using security provider-provided JWT secret (preferred)");
@@ -306,14 +307,14 @@ mod tests {
             jsonrpc: "2.0".to_string(),
             method: "crypto.generate.jwt_secret".to_string(),
             params: JwtSecretParams {
-                purpose: "nestgate_authentication".to_string(),
+                purpose: STORAGE_PROVIDER_AUTHENTICATION_PURPOSE.to_string(),
                 strength: "high".to_string(),
             },
             id: 42,
         };
         let v = serde_json::to_value(&req).unwrap();
         assert_eq!(v["method"], "crypto.generate.jwt_secret");
-        assert_eq!(v["params"]["purpose"], "nestgate_authentication");
+        assert_eq!(v["params"]["purpose"], STORAGE_PROVIDER_AUTHENTICATION_PURPOSE);
     }
 
     #[tokio::test]

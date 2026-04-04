@@ -8,6 +8,7 @@ use crate::client::StunClient;
 use crate::error::StunError;
 use crate::types::NatType;
 use songbird_config::timeouts::TimeoutConfig;
+use songbird_types::constants::DEFAULT_STUN_SERVER_1;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::sync::oneshot;
@@ -104,7 +105,7 @@ fn nat_type_default_is_unknown() {
 async fn test_discover_public_address_live() {
     let client = StunClient::new();
 
-    let result = client.discover_public_address("stun.nextcloud.com:3478").await;
+    let result = client.discover_public_address(DEFAULT_STUN_SERVER_1).await;
 
     match result {
         Ok(addr) => {
@@ -139,4 +140,27 @@ fn test_default_client() {
     let expected = TimeoutConfig::from_env().connect;
     let client = StunClient::default();
     assert_eq!(client.timeout, expected, "default() should match StunClient::new()");
+}
+
+#[tokio::test(start_paused = true)]
+async fn discover_public_address_invalid_host_fails_before_long_timeout() {
+    let client = StunClient::with_timeout(Duration::from_millis(100));
+    let err = client
+        .discover_public_address("not-a-valid-host.example.invalid")
+        .await
+        .expect_err("unresolvable host should fail");
+    assert!(
+        matches!(err, StunError::Network(_)),
+        "expected network error from resolution/IO, got {err:?}"
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn discover_public_endpoint_invalid_host_surfaces_network_error() {
+    let client = StunClient::with_timeout(Duration::from_millis(100));
+    let err = client
+        .discover_public_endpoint("nonexistent.invalid")
+        .await
+        .expect_err("endpoint discovery should fail");
+    assert!(matches!(err, StunError::Network(_)), "expected network error, got {err:?}");
 }

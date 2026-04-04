@@ -47,7 +47,7 @@ pub struct ServiceConfig {
 pub struct SecurityConfig {
     pub encryption_key_size: usize,
     pub session_timeout: Duration,
-    pub beardog_endpoint: String,
+    pub security_provider_endpoint: String,
     pub oauth_redirect_uri: String,
     pub tls_cert_path: String,
 }
@@ -85,8 +85,10 @@ pub struct PerformanceConfig {
 
 #[derive(Debug, Clone)]
 pub struct PrimalConfig {
-    pub beardog_endpoint: Arc<str>,
-    pub nestgate_endpoint: Arc<str>,
+    /// Security capability HTTP endpoint (security provider).
+    pub security_provider_endpoint: Arc<str>,
+    /// Storage capability HTTP endpoint (canonical; capability domain `storage`).
+    pub storage_provider_endpoint: Arc<str>,
     /// Compute capability HTTP endpoint (canonical).
     pub compute_provider_endpoint: Arc<str>,
     /// AI / neural capability HTTP endpoint (canonical).
@@ -97,9 +99,25 @@ pub struct PrimalConfig {
     /// Deprecated: use [`PrimalConfig::ai_provider_endpoint`].
     #[deprecated(note = "use ai_provider_endpoint (capability-based naming)")]
     pub squirrel_endpoint: Arc<str>,
+    /// Deprecated: use [`PrimalConfig::security_provider_endpoint`].
+    #[deprecated(note = "use security_provider_endpoint (capability-based naming)")]
+    pub beardog_endpoint: Arc<str>,
     pub discovery_endpoints: Vec<String>,
     pub base_port: u16,
     pub port_range: (u16, u16),
+}
+
+impl PrimalConfig {
+    /// Deprecated alias for [`PrimalConfig::storage_provider_endpoint`].
+    #[deprecated(note = "use storage_provider_endpoint (capability-based naming)")]
+    #[allow(
+        deprecated,
+        reason = "accesses PrimalConfig fields inside deprecated `config` module; shim for legacy name"
+    )]
+    #[must_use]
+    pub fn nestgate_endpoint(&self) -> Arc<str> {
+        Arc::clone(&self.storage_provider_endpoint)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -117,9 +135,12 @@ impl Default for SecurityConfig {
         Self {
             encryption_key_size: 256,
             session_timeout: Duration::from_secs(3600),
-            beardog_endpoint: env_or_default(
-                "SONGBIRD_BEARDOG_ENDPOINT",
-                &format!("https://{}:8443", crate::canonical::constants::get_bind_address()),
+            security_provider_endpoint: env_or_default(
+                "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
+                &env_or_default(
+                    "SONGBIRD_BEARDOG_ENDPOINT",
+                    &format!("https://{}:8443", crate::canonical::constants::get_bind_address()),
+                ),
             ),
             oauth_redirect_uri: env_or_default(
                 "SONGBIRD_OAUTH_REDIRECT",
@@ -198,8 +219,14 @@ impl Default for NetworkConfig {
                 IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
             }),
             stun_servers: vec![
-                env_or_default("SONGBIRD_STUN_SERVER_1", "stun.nextcloud.com:3478"),
-                env_or_default("SONGBIRD_STUN_SERVER_2", "stun.cloudflare.com:3478"),
+                env_or_default(
+                    "SONGBIRD_STUN_SERVER_1",
+                    songbird_types::constants::DEFAULT_STUN_SERVER_1,
+                ),
+                env_or_default(
+                    "SONGBIRD_STUN_SERVER_2",
+                    songbird_types::constants::DEFAULT_STUN_SERVER_2,
+                ),
             ],
             port_ranges: {
                 let base = crate::canonical::constants::get_port_range_start();
@@ -292,19 +319,29 @@ impl Default for PrimalConfig {
             &env_or_default("SONGBIRD_SQUIRREL_ENDPOINT", &format!("http://{base_ip}:8083")),
         ));
 
+        let security_provider_endpoint: Arc<str> = Arc::from(env_or_default(
+            "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
+            &env_or_default("SONGBIRD_BEARDOG_ENDPOINT", &format!("https://{base_ip}:8443")),
+        ));
+
         Self {
-            beardog_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_BEARDOG_ENDPOINT",
-                &format!("https://{base_ip}:8443"),
-            )),
-            nestgate_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_NESTGATE_ENDPOINT",
-                &format!("http://{base_ip}:{base_port}/storage"),
-            )),
+            security_provider_endpoint: Arc::clone(&security_provider_endpoint),
+            storage_provider_endpoint: Arc::from(
+                songbird_process_env::var("SONGBIRD_STORAGE_PROVIDER_ENDPOINT")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| {
+                        songbird_process_env::var("SONGBIRD_NESTGATE_ENDPOINT")
+                            .ok()
+                            .filter(|s| !s.is_empty())
+                    })
+                    .unwrap_or_else(|| format!("http://{base_ip}:{base_port}/storage")),
+            ),
             compute_provider_endpoint: Arc::clone(&compute_provider_endpoint),
             ai_provider_endpoint: Arc::clone(&ai_provider_endpoint),
             toadstool_endpoint: compute_provider_endpoint,
             squirrel_endpoint: ai_provider_endpoint,
+            beardog_endpoint: security_provider_endpoint,
             discovery_endpoints: vec![
                 env_or_default(
                     "SONGBIRD_DISCOVERY_ENDPOINT_1",
@@ -426,13 +463,13 @@ pub mod replace {
     /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8443`"
     #[must_use]
     pub fn security_provider_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().primals.beardog_endpoint)
+        Arc::clone(&get_config().primals.security_provider_endpoint)
     }
 
     /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8080/storage`"
     #[must_use]
     pub fn storage_provider_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().primals.nestgate_endpoint)
+        Arc::clone(&get_config().primals.storage_provider_endpoint)
     }
 
     /// Deprecated alias for [`security_provider_endpoint`].
@@ -493,7 +530,7 @@ pub mod replace {
         get_config().federation.cluster_endpoints.clone()
     }
 
-    /// Replace hardcoded compute capability endpoint (legacy primal: toadstool).
+    /// Replace hardcoded compute capability endpoint.
     #[must_use]
     pub fn compute_provider_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.compute_provider_endpoint)

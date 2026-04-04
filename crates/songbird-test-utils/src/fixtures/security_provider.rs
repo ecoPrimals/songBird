@@ -3,13 +3,13 @@
 
 //! Live `security provider` process fixture for integration testing.
 //!
-//! Discovers the beardog binary from `plasmidBin/`, starts it on a temporary
-//! Unix socket, waits for `health.liveness`, and tears it down on drop.
+//! Discovers the security provider binary (legacy artifact name `beardog` under `plasmidBin/primals/`),
+//! starts it on a temporary Unix socket, waits for `health.liveness`, and tears it down on drop.
 //!
 //! ## Binary Discovery Order
 //!
-//! 1. `$BEARDOG_BIN` — explicit path
-//! 2. `$ECOPRIMALS_PLASMID_BIN/primals/beardog` — ecosystem override
+//! 1. `$BEARDOG_BIN` — explicit path (legacy env; artifact name on disk)
+//! 2. `$ECOPRIMALS_PLASMID_BIN/primals/beardog` — ecosystem override (on-disk layout unchanged)
 //! 3. Walk up from workspace root: `../../infra/plasmidBin/primals/beardog`
 
 use std::io::{BufRead, BufReader};
@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
-/// How long to wait for beardog to respond to health.liveness
+/// How long to wait for the security provider process to respond to health.liveness
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Live `security provider` process managed for the lifetime of a test.
@@ -34,13 +34,13 @@ impl SecurityProviderFixture {
     /// Returns `Err` if the binary is not found, fails to start, or
     /// does not become healthy within the timeout.
     pub fn start() -> Result<Self, String> {
-        let binary = discover_beardog_binary().ok_or_else(|| {
-            "beardog binary not found: set $BEARDOG_BIN, $ECOPRIMALS_PLASMID_BIN, or place it in infra/plasmidBin/primals/".to_string()
+        let binary = discover_security_provider_binary().ok_or_else(|| {
+            "security provider binary not found: set $BEARDOG_BIN, $ECOPRIMALS_PLASMID_BIN, or place it in infra/plasmidBin/primals/".to_string()
         })?;
 
         let socket_dir =
             tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {e}"))?;
-        let socket_path = socket_dir.path().join("beardog-test.sock");
+        let socket_path = socket_dir.path().join("security-provider-test.sock");
         // Keep the temp dir alive so we can use the socket path
         let _socket_dir_keep = socket_dir.keep();
 
@@ -52,7 +52,9 @@ impl SecurityProviderFixture {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("Failed to start beardog at {}: {e}", binary.display()))?;
+            .map_err(|e| {
+                format!("Failed to start security provider at {}: {e}", binary.display())
+            })?;
 
         let mut fixture = Self {
             process: child,
@@ -76,18 +78,18 @@ impl SecurityProviderFixture {
         self.socket_path.to_string_lossy().to_string()
     }
 
-    /// Returns `true` if the beardog binary is discoverable.
+    /// Returns `true` if the security provider binary is discoverable.
     #[must_use]
     pub fn is_available() -> bool {
-        discover_beardog_binary().is_some()
+        discover_security_provider_binary().is_some()
     }
 
-    /// Skip the current test if beardog is not available.
+    /// Skip the current test if the security provider binary is not available.
     ///
     /// Prints a message and returns `Ok(())` — callers should `return` immediately.
     /// Use: `if !SecurityProviderFixture::is_available() { return SecurityProviderFixture::skip(); }`
     pub fn skip() -> Result<(), String> {
-        eprintln!("SKIP: beardog binary not available (set $BEARDOG_BIN to enable)");
+        eprintln!("SKIP: security provider binary not available (set $BEARDOG_BIN to enable)");
         Ok(())
     }
 
@@ -103,7 +105,7 @@ impl SecurityProviderFixture {
             if let Some(status) = self
                 .process
                 .try_wait()
-                .map_err(|e| format!("Failed to check beardog status: {e}"))?
+                .map_err(|e| format!("Failed to check security provider status: {e}"))?
             {
                 let stderr = self
                     .process
@@ -118,13 +120,13 @@ impl SecurityProviderFixture {
                             .join("\n")
                     })
                     .unwrap_or_default();
-                return Err(format!("beardog exited early with {status}:\n{stderr}"));
+                return Err(format!("security provider exited early with {status}:\n{stderr}"));
             }
             std::thread::sleep(Duration::from_millis(100));
         }
 
         Err(format!(
-            "beardog did not create socket at {} within {STARTUP_TIMEOUT:?}",
+            "security provider did not create socket at {} within {STARTUP_TIMEOUT:?}",
             self.socket_path.display()
         ))
     }
@@ -141,8 +143,13 @@ impl Drop for SecurityProviderFixture {
     }
 }
 
-/// Discover the beardog binary following the ecosystem convention.
-fn discover_beardog_binary() -> Option<PathBuf> {
+/// Discover the security provider binary following the ecosystem convention (legacy primal artifact name on disk).
+#[must_use]
+pub fn discover_security_provider_binary() -> Option<PathBuf> {
+    discover_security_provider_binary_impl()
+}
+
+fn discover_security_provider_binary_impl() -> Option<PathBuf> {
     // 1. Explicit $BEARDOG_BIN
     if let Ok(bin) = std::env::var("BEARDOG_BIN") {
         let p = PathBuf::from(bin);
@@ -190,6 +197,13 @@ fn discover_beardog_binary() -> Option<PathBuf> {
     None
 }
 
+/// Deprecated alias for [`discover_security_provider_binary`].
+#[deprecated(note = "Use discover_security_provider_binary")]
+#[must_use]
+pub fn discover_beardog_binary() -> Option<PathBuf> {
+    discover_security_provider_binary_impl()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,12 +211,12 @@ mod tests {
     #[test]
     fn discover_reports_availability() {
         // Just checks that discovery doesn't panic
-        let available = discover_beardog_binary();
+        let available = discover_security_provider_binary();
         if let Some(path) = &available {
             assert!(path.is_file(), "discovered path should be a file");
         }
         eprintln!(
-            "beardog binary: {}",
+            "security provider binary: {}",
             available.map_or_else(|| "not found".to_string(), |p| p.display().to_string())
         );
     }

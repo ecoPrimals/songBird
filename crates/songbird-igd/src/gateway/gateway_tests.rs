@@ -276,6 +276,26 @@ fn extract_xml_value_empty_element_returns_none() {
 }
 
 #[test]
+fn gateway_protocol_none_serde_roundtrip() {
+    let p = GatewayProtocol::None;
+    let json = serde_json::to_string(&p).expect("serialize");
+    let back: GatewayProtocol = serde_json::from_str(&json).expect("deserialize");
+    assert!(matches!(back, GatewayProtocol::None));
+}
+
+#[test]
+fn gateway_protocol_upnp_igd_serde_roundtrip() {
+    let p = GatewayProtocol::UpnpIgd {
+        control_url: "http://192.168.1.254/ctl".to_string(),
+        service_type: crate::WANIP_SERVICE_TYPE.to_string(),
+        device_name: Some("gw".to_string()),
+    };
+    let json = serde_json::to_string(&p).expect("serialize");
+    let back: GatewayProtocol = serde_json::from_str(&json).expect("deserialize");
+    assert!(matches!(back, GatewayProtocol::UpnpIgd { .. }));
+}
+
+#[test]
 fn extract_control_url_relative_without_leading_slash() {
     let xml = r"
         <service>

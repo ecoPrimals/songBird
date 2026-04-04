@@ -96,7 +96,7 @@ impl SecurityCryptoProvider {
         };
 
         let request_json = serde_json::to_string(&request)
-            .map_err(|e| Error::BearDogRpc(format!("Failed to serialize request: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to serialize request: {e}")))?;
 
         trace!(
             "Security provider RPC request ({}): {}",
@@ -109,7 +109,7 @@ impl SecurityCryptoProvider {
         );
 
         let mut stream = Self::connect_platform_static(&self.socket_path).await.map_err(|e| {
-            Error::BearDogRpc(format!(
+            Error::SecurityProviderRpc(format!(
                 "Failed to connect to security provider at {}: {}",
                 self.socket_path, e
             ))
@@ -118,35 +118,37 @@ impl SecurityCryptoProvider {
         stream
             .write_all(request_json.as_bytes())
             .await
-            .map_err(|e| Error::BearDogRpc(format!("Failed to send request: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to send request: {e}")))?;
         stream
             .shutdown()
             .await
-            .map_err(|e| Error::BearDogRpc(format!("Failed to shutdown write: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to shutdown write: {e}")))?;
 
         let mut response_bytes = Vec::new();
         stream
             .read_to_end(&mut response_bytes)
             .await
-            .map_err(|e| Error::BearDogRpc(format!("Failed to read response: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to read response: {e}")))?;
 
         let response_str = String::from_utf8_lossy(&response_bytes);
         trace!("Security provider RPC response: {}", response_str);
 
         let response: JsonRpcResponse = serde_json::from_slice(&response_bytes).map_err(|e| {
-            Error::BearDogRpc(format!("Failed to parse response: {e} (raw: {response_str})"))
+            Error::SecurityProviderRpc(format!(
+                "Failed to parse response: {e} (raw: {response_str})"
+            ))
         })?;
 
         if let Some(err) = response.error {
-            return Err(Error::BearDogRpc(format!(
+            return Err(Error::SecurityProviderRpc(format!(
                 "Security provider error: {} (code: {})",
                 err.message, err.code
             )));
         }
 
-        response
-            .result
-            .ok_or_else(|| Error::BearDogRpc("Security provider returned null result".to_string()))
+        response.result.ok_or_else(|| {
+            Error::SecurityProviderRpc("Security provider returned null result".to_string())
+        })
     }
 
     pub(crate) fn method_to_capability(method: &str) -> (&'static str, &'static str) {

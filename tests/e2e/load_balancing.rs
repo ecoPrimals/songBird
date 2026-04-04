@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! End-to-End Load Balancing Tests
 //!
 //! Tests load balancing across multiple service providers
@@ -88,10 +89,6 @@ async fn test_health_based_routing() {
     TestAssertions::assert_healthy(
         env.get_service_health("provider-2").await.unwrap()
     );
-    
-    // 3. In a real implementation, only provider-0 and provider-2 would receive traffic
-    // Test infrastructure validates the pattern
-    assert!(true);
 }
 
 #[tokio::test]
@@ -120,11 +117,6 @@ async fn test_failover_on_degraded_service() {
     TestAssertions::assert_healthy(
         env.get_service_health("backup").await.unwrap()
     );
-    
-    // 4. Simulate primary degradation (in real implementation)
-    // Would trigger automatic failover to backup
-    // Test infrastructure is ready for this pattern
-    assert!(true);
 }
 
 #[tokio::test]
@@ -153,8 +145,6 @@ async fn test_weighted_load_balancing() {
         let health = env.get_service_health(name).await.unwrap();
         TestAssertions::assert_healthy(health);
     }
-    
-    assert!(true);
 }
 
 #[tokio::test]
@@ -205,10 +195,6 @@ async fn test_circuit_breaker_integration() {
     let circuit_open = simulated_failures >= 3;  // Threshold
     
     assert!(circuit_open, "Circuit should open after threshold failures");
-    
-    // 3. Verify traffic is blocked
-    // In real implementation, requests would be rejected
-    assert!(true);
 }
 
 #[tokio::test]

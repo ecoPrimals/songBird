@@ -8,7 +8,6 @@
 //! This module provides canonical service discovery patterns that work
 //! with any service discovery mechanism through capability-based interfaces.
 
-// use async_trait::async_trait; // Unused after trait consolidation
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

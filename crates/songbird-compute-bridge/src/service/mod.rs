@@ -5,7 +5,7 @@
 //!
 //! **Philosophy:** Zero hardcoding, works with ANY compute service
 //!
-//! This bridge enables any compute service (Toadstool, K8s, Lambda, etc.) to
+//! This bridge enables any compute service (Kubernetes, Lambda, custom providers, etc.) to
 //! participate in Songbird federation by exposing a standard API and registering
 //! its capabilities dynamically.
 //!

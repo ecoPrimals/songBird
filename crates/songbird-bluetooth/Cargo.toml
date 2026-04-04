@@ -49,11 +49,11 @@ async-trait.workspace = true
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 tokio-test = "0.4"
-criterion = "0.5"
-proptest = "1.4"
+
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait.workspace = true
 rand.workspace = true
+serde_json = "1.0"
 
 [features]
 default = ["usb-rust"]

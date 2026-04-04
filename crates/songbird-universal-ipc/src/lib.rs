@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
     clippy::clone_on_ref_ptr,
@@ -30,7 +31,7 @@
 //!
 //! ```text
 //! Application Layer:
-//!   - BearDog, Squirrel, etc. use virtual paths: "/primal/beardog"
+//!   - Other primals use virtual paths by capability domain (e.g. `/primal/beardog` for legacy IDs)
 //!
 //! Universal IPC Layer (this crate):
 //!   - Translates virtual paths to native endpoints

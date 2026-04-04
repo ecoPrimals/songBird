@@ -187,7 +187,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read By Type Response for characteristics
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[expect(dead_code, reason = "reserved for Phase 3 characteristic discovery parsing")]
+    #[allow(dead_code, reason = "used by unit tests; wired to L2CAP in a later phase")]
     fn parse_read_by_type_response(response: &[u8]) -> Result<Vec<Characteristic>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -335,7 +335,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[expect(dead_code, reason = "reserved for Phase 3 ATT read response parsing")]
+    #[allow(dead_code, reason = "used by unit tests; wired to L2CAP in a later phase")]
     fn parse_read_response(response: &[u8]) -> Result<Vec<u8>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -434,10 +434,10 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Write Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[expect(
+    #[allow(
         dead_code,
         clippy::unused_self,
-        reason = "reserved for Phase 3 write response parsing; &self for API consistency"
+        reason = "used by unit tests; &self for symmetry with other parse helpers"
     )]
     fn parse_write_response(&self, response: &[u8]) -> Result<()> {
         if response.is_empty() {
@@ -460,5 +460,137 @@ impl<T: Transport + 'static> GattClient<T> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::att_opcode;
+    use crate::error::BluetoothError;
+    use crate::gatt::GattClient;
+    use crate::transport::{Transport, TransportType};
+    use uuid::Uuid;
+
+    struct MockTransport;
+
+    #[async_trait::async_trait]
+    impl Transport for MockTransport {
+        fn transport_type(&self) -> TransportType {
+            TransportType::Usb
+        }
+
+        async fn send_command(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_event(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        async fn send_acl(&mut self, _data: &[u8]) -> crate::error::Result<()> {
+            Ok(())
+        }
+
+        async fn receive_acl(&mut self) -> crate::error::Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        fn is_connected(&self) -> bool {
+            true
+        }
+
+        async fn close(&mut self) -> crate::error::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn build_read_by_type_request_encodes_opcode_handles_and_type_le() {
+        let req = GattClient::<MockTransport>::build_read_by_type_request(0x0001, 0xFFFF, 0x2803);
+        assert_eq!(req[0], att_opcode::READ_BY_TYPE_REQ);
+        assert_eq!(&req[1..3], &[0x01, 0x00]);
+        assert_eq!(&req[3..5], &[0xFF, 0xFF]);
+        assert_eq!(&req[5..7], &[0x03, 0x28]);
+    }
+
+    #[test]
+    fn build_read_request_encodes_handle_little_endian() {
+        let req = GattClient::<MockTransport>::build_read_request(0x1234);
+        assert_eq!(req, vec![att_opcode::READ_REQ, 0x34, 0x12]);
+    }
+
+    #[test]
+    fn parse_read_response_extracts_value_after_opcode() {
+        let mut rsp = vec![att_opcode::READ_RSP, 0xDE, 0xAD];
+        let v = GattClient::<MockTransport>::parse_read_response(&rsp).expect("ok");
+        assert_eq!(v, vec![0xDE, 0xAD]);
+        rsp[0] = att_opcode::ERROR_RSP;
+        rsp.resize(5, 0);
+        let e = GattClient::<MockTransport>::parse_read_response(&rsp).expect_err("err");
+        assert!(matches!(e, BluetoothError::Gatt(_)));
+    }
+
+    #[test]
+    fn build_write_request_and_command_include_payload() {
+        let data = [1u8, 2, 3];
+        let req = GattClient::<MockTransport>::build_write_request(0x0002, &data);
+        assert_eq!(req[0], att_opcode::WRITE_REQ);
+        assert_eq!(&req[1..3], &[0x02, 0x00]);
+        assert_eq!(&req[3..], &data);
+
+        let client = sample_client();
+        let cmd = client.build_write_command(0x0003, &data);
+        assert_eq!(cmd[0], att_opcode::WRITE_CMD);
+        assert_eq!(&cmd[1..3], &[0x03, 0x00]);
+        assert_eq!(&cmd[3..], &data);
+    }
+
+    #[test]
+    fn parse_write_response_accepts_write_rsp() {
+        let client = sample_client();
+        client.parse_write_response(&[att_opcode::WRITE_RSP]).expect("ok");
+        let e = client.parse_write_response(&[]).expect_err("empty");
+        assert!(matches!(e, BluetoothError::Gatt(_)));
+    }
+
+    fn sample_client() -> GattClient<MockTransport> {
+        use crate::device::{Address, Device, DeviceInfo};
+        use crate::l2cap::L2capChannel;
+        use std::sync::Arc;
+        use tokio::sync::Mutex;
+
+        let info = DeviceInfo::new(Address::from_bytes([1, 2, 3, 4, 5, 6]));
+        let device = Arc::new(Device::new(info, 0x0040));
+        let l2cap = L2capChannel::new_att(0x0040);
+        GattClient::new(device, l2cap, Arc::new(Mutex::new(MockTransport)))
+    }
+
+    #[test]
+    fn parse_read_by_type_response_empty_yields_error() {
+        let e = GattClient::<MockTransport>::parse_read_by_type_response(&[]).expect_err("empty");
+        assert!(matches!(e, BluetoothError::Gatt(_)));
+    }
+
+    #[test]
+    fn parse_read_by_type_response_error_not_found_returns_empty_list() {
+        let rsp = [att_opcode::ERROR_RSP, att_opcode::READ_BY_TYPE_REQ, 0x01, 0x00, 0x0A];
+        let v = GattClient::<MockTransport>::parse_read_by_type_response(&rsp).expect("ok");
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn parse_read_by_type_response_parses_16_bit_characteristic_declaration() {
+        // length 7: handle(2) props(1) value_handle(2) uuid16(2)
+        let rsp = [att_opcode::READ_BY_TYPE_RSP, 7, 0x05, 0x00, 0x02, 0x06, 0x00, 0x2A, 0x18];
+        let chars = GattClient::<MockTransport>::parse_read_by_type_response(&rsp).expect("parse");
+        assert_eq!(chars.len(), 1);
+        assert_eq!(chars[0].handle, 0x0006);
+        let expected = Uuid::from_u128(
+            0x0000_0000_1000_8000_8000_0080_5F9B_34FB | (u128::from(0x182Au16) << 96),
+        );
+        assert_eq!(chars[0].uuid, expected);
+        assert!(chars[0].properties.read());
     }
 }

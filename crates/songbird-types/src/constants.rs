@@ -153,6 +153,27 @@ pub const DEFAULT_HEALTH_ENDPOINT: &str = "/health";
 // DISCOVERY CONSTANTS
 // ============================================================================
 
+/// Default multicast group for ecosystem discovery (IPv4 link-local)
+pub const DISCOVERY_MULTICAST_GROUP: &str = "239.255.42.99";
+
+/// Default multicast port for discovery announcements
+pub const DISCOVERY_MULTICAST_PORT: u16 = 4242;
+
+/// Default mDNS multicast address (RFC 6762)
+pub const MDNS_MULTICAST_GROUP: &str = "224.0.0.251";
+
+/// Default mDNS port (IANA)
+pub const MDNS_PORT: u16 = 5353;
+
+/// Default broadcast discovery port (UDP peer announcements)
+pub const BROADCAST_DISCOVERY_PORT: u16 = 2300;
+
+/// Default public STUN server (primary) — host:port
+pub const DEFAULT_STUN_SERVER_1: &str = "stun.nextcloud.com:3478";
+
+/// Default public STUN server (secondary) — host:port
+pub const DEFAULT_STUN_SERVER_2: &str = "stun.cloudflare.com:3478";
+
 /// Discovery interval
 pub const DISCOVERY_INTERVAL: Duration = Duration::from_secs(30);
 

@@ -3,7 +3,7 @@
 
 //! Agnostic Compute Coordinator
 //!
-//! **ZERO HARDCODING**: Replaces hardcoded Toadstool references with capability-based compute discovery
+//! **ZERO HARDCODING**: Capability-based compute discovery (no primal-name routing)
 
 use serde::{Deserialize, Serialize};
 use songbird_http_client::IpcHttpClient;
@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 /// Agnostic compute coordinator - discovers compute providers by capability
 ///
-/// **BEFORE**: `connect_to_toadstool("localhost:8082")`
+/// **BEFORE**: hardcoded compute host strings
 /// **AFTER**: `coordinator.request_compute_capability().await?`
 pub struct AgnosticComputeCoordinator {
     /// Discovered compute providers (by capability)
@@ -426,5 +426,48 @@ mod tests {
             "expected local fallback id, got {}",
             deployment_id.0
         );
+    }
+
+    #[test]
+    fn workload_serde_preserves_unicode_and_requirements() {
+        let mut req = HashMap::new();
+        req.insert("locale".into(), "日本語".into());
+        let w = Workload {
+            id: "id-α".into(),
+            service_type: "infer-β".into(),
+            requirements: req,
+        };
+        let json = serde_json::to_string(&w).expect("serialize");
+        let back: Workload = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.id, "id-α");
+        assert_eq!(back.requirements.get("locale").map(String::as_str), Some("日本語"));
+    }
+
+    #[test]
+    fn deployment_id_clone_and_equality() {
+        let a = DeploymentId("dep-a".into());
+        let b = a.clone();
+        assert_eq!(a.0, b.0);
+    }
+
+    #[test]
+    fn compute_error_no_provider_display_includes_hint() {
+        let e = ComputeError::NoProviderAvailable("none".into());
+        let s = e.to_string();
+        assert!(s.contains("none"));
+        assert!(s.contains("No compute provider"));
+    }
+
+    #[test]
+    fn compute_coordinator_config_clone_preserves_fields() {
+        let a = ComputeCoordinatorConfig {
+            discovery_timeout_secs: 7,
+            enable_cache: false,
+            cache_ttl_secs: 1,
+        };
+        let b = a.clone();
+        assert_eq!(a.discovery_timeout_secs, b.discovery_timeout_secs);
+        assert_eq!(a.enable_cache, b.enable_cache);
+        assert_eq!(a.cache_ttl_secs, b.cache_ttl_secs);
     }
 }

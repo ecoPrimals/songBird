@@ -1,37 +1,59 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Placeholder / demo implementation of a hardware-key genesis channel.
+//! `SoloKey` / FIDO2 hardware channel — **integration point, not a live CTAP2 implementation**.
 //!
-//! **Not production-ready:** this module does not talk to a real security key or perform
-//! FIDO2/WebAuthn. [`SoloKeyChannel`] returns static dummy proximity and exchange bytes so
-//! callers can compile and exercise APIs. Enable the `solokey` Cargo feature explicitly
-//! when you need this stub; it is off by default.
+//! ## Status
+//!
+//! The Cargo feature `solokey` exposes [`SoloKeyChannel`] so callers can type-check and route
+//! genesis flows toward a hardware-backed path. **There is no USB HID / CTAP2 client in this
+//! crate yet**; [`PhysicalChannelProvider::verify_proximity`] and [`PhysicalChannelProvider::secure_exchange`]
+//! return [`crate::error::GenesisError::SoloKeyNotIntegrated`] until a real stack is wired in.
+//!
+//! ## wateringHole / capability alignment
+//!
+//! - **Runtime crypto** for Songbird is delegated to the **security capability** (discoverable
+//!   primal / `SECURITY_PROVIDER_SOCKET`, `BEARDOG_SOCKET`, etc.); see
+//!   `songbird-network-federation::security::SecurityProviderFactory` and wateringHole v1.2
+//!   capability sockets under `$XDG_RUNTIME_DIR/biomeos/`.
+//! - **Local FIDO2** (this module) is orthogonal: it would talk to a token over CTAP2 for
+//!   proximity and credential material *before* or *alongside* that delegation, not as a
+//!   substitute for the security primal.
+//!
+//! ## Integration path (future work)
+//!
+//! 1. **Pure Rust CTAP2** over USB HID (or platform HID abstractions), or a thin FFI to an
+//!    audited library, behind a dedicated feature if dependencies are heavy.
+//! 2. **Delegate to security primal**: IPC to the capability-discovered security endpoint for
+//!    operations that must stay centralized (policy, attestation verification, key handles).
+//! 3. Map CTAP2 assertion / credential outputs into [`crate::types::ProximityProof`] and
+//!    genesis credential blobs — **never** return static demo bytes in production paths.
+//!
+//! Until then, [`SoloKeyChannel`] reports [`TrustLevel::Low`] for metadata (the channel kind is
+//! still [`PhysicalChannelType::HardwareKey`]) because no hardware-backed attestation is performed.
 
-use crate::error::Result;
+use crate::error::{GenesisError, Result};
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
-use chrono::Utc;
 
 use super::PhysicalChannelProvider;
 
-/// `SoloKey` hardware key channel
+const NOT_INTEGRATED_MSG: &str = "CTAP2/FIDO2 USB HID not integrated; enable a future \
+    `solokey-ctap` (or similar) feature and wire CTAP2 or security-provider delegation. \
+    See module documentation in physical_channels::solokey.";
+
+/// Hardware security key channel (`SoloKey`, `YubiKey`, etc.) — type shell for the FIDO2 path.
 ///
-/// **Status:** Placeholder implementation for future Pure Rust FIDO2/WebAuthn support
-///
-/// **Future Implementation:**
-/// - Use Pure Rust FIDO2/WebAuthn library (when available)
-/// - Or delegate to `security provider` for hardware key operations via IPC
-/// - Zero C dependencies (no OpenSSL)
+/// Construct with [`SoloKeyChannel::new`] when the `solokey` Cargo feature is enabled.
+/// Cryptographic operations are not implemented in-tree yet; call sites must handle
+/// [`GenesisError::SoloKeyNotIntegrated`].
 #[derive(Debug)]
-pub struct SoloKeyChannel {
-    // Future: Add Pure Rust FIDO2/WebAuthn integration
-}
+pub struct SoloKeyChannel;
 
 impl SoloKeyChannel {
-    /// Create new `SoloKey` channel
+    /// Create a new hardware-key channel handle (integration pending).
     #[must_use]
     pub const fn new() -> Self {
-        Self {}
+        Self
     }
 }
 
@@ -43,22 +65,15 @@ impl Default for SoloKeyChannel {
 
 impl PhysicalChannelProvider for SoloKeyChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
-        // Placeholder attestation: real SoloKey/FIDO2 verification is not invoked here.
-        Ok(ProximityProof {
-            channel_type: PhysicalChannelType::HardwareKey,
-            timestamp: Utc::now(),
-            proof_data: b"solokey_proof".to_vec(),
-            attestation: Some(b"hardware_attestation".to_vec()),
-        })
+        Err(GenesisError::SoloKeyNotIntegrated(NOT_INTEGRATED_MSG.into()))
     }
 
     async fn secure_exchange(&self) -> Result<Vec<u8>> {
-        // Returns static demo material: hardware key exchange path is stubbed.
-        Ok(b"solokey_genesis_creds".to_vec())
+        Err(GenesisError::SoloKeyNotIntegrated(NOT_INTEGRATED_MSG.into()))
     }
 
     fn trust_level(&self) -> TrustLevel {
-        TrustLevel::Maximum
+        TrustLevel::Low
     }
 
     fn channel_type(&self) -> PhysicalChannelType {
@@ -71,26 +86,23 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::SoloKeyChannel;
+    use crate::error::GenesisError;
     use crate::physical_channels::PhysicalChannelProvider;
     use crate::types::{PhysicalChannelType, TrustLevel};
 
     #[test]
-    fn solokey_channel_constructors() {
-        let a = SoloKeyChannel::new();
-        let b = SoloKeyChannel::default();
-        assert_eq!(a.channel_type(), b.channel_type());
-        assert_eq!(a.channel_type(), PhysicalChannelType::HardwareKey);
-        assert_eq!(a.trust_level(), TrustLevel::Maximum);
+    fn solokey_channel_metadata_honest_until_ctap2() {
+        let ch = SoloKeyChannel::new();
+        assert_eq!(ch.channel_type(), PhysicalChannelType::HardwareKey);
+        assert_eq!(ch.trust_level(), TrustLevel::Low);
     }
 
     #[tokio::test]
-    async fn solokey_placeholder_proximity_and_exchange() {
+    async fn proximity_and_exchange_return_not_integrated() {
         let ch = SoloKeyChannel::new();
-        let proof = ch.verify_proximity().await.expect("placeholder proximity");
-        assert_eq!(proof.channel_type, PhysicalChannelType::HardwareKey);
-        assert!(proof.attestation.is_some());
-
-        let creds = ch.secure_exchange().await.expect("placeholder exchange");
-        assert_eq!(creds, b"solokey_genesis_creds");
+        let prox = ch.verify_proximity().await;
+        let ex = ch.secure_exchange().await;
+        assert!(matches!(prox, Err(GenesisError::SoloKeyNotIntegrated(_))));
+        assert!(matches!(ex, Err(GenesisError::SoloKeyNotIntegrated(_))));
     }
 }

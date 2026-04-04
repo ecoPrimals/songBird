@@ -11,17 +11,17 @@ use songbird_crypto_provider::CryptoProvider;
 
 /// ntor handshake protocol for circuit creation
 ///
-/// **TRUE PRIMAL**: All crypto operations delegated to `security provider`.
+/// **TRUE PRIMAL**: All crypto operations delegated to the security provider.
 pub struct NtorHandshake {
-    beardog: CryptoProvider,
+    security_provider: CryptoProvider,
 }
 
 impl NtorHandshake {
     /// Create new ntor handshake handler
     #[must_use]
-    pub const fn new(beardog: CryptoProvider) -> Self {
+    pub const fn new(security_provider: CryptoProvider) -> Self {
         Self {
-            beardog,
+            security_provider,
         }
     }
 
@@ -43,7 +43,7 @@ impl NtorHandshake {
         relay_ntor_key: &[u8; 32],
     ) -> Result<(Vec<u8>, HandshakeState)> {
         // 1. Generate ephemeral X25519 keypair via security provider
-        let client_ephemeral = self.beardog.x25519_generate_ephemeral().await?;
+        let client_ephemeral = self.security_provider.x25519_generate_ephemeral().await?;
 
         // 2. Construct CREATE2 payload (84 bytes per Tor ntor spec)
         // Format: ID (20 bytes) || B (32 bytes) || X (32 bytes)
@@ -102,12 +102,12 @@ impl NtorHandshake {
         // 1. EXP(Y,x) - our ephemeral secret with server's ephemeral public
         // 2. EXP(B,x) - our ephemeral secret with server's static ntor key
         let xy = self
-            .beardog
+            .security_provider
             .x25519_derive_secret(&state.client_ephemeral_secret, &server_pubkey)
             .await?;
 
         let xb = self
-            .beardog
+            .security_provider
             .x25519_derive_secret(&state.client_ephemeral_secret, &state.relay_ntor_key)
             .await?;
 
@@ -128,14 +128,16 @@ impl NtorHandshake {
         // KEY_SEED = H(secret_input, t_key) using HMAC-SHA256
         // t_key = "ntor-curve25519-sha256-1:key_extract"
         let key_seed = self
-            .beardog
+            .security_provider
             .hmac_sha256(b"ntor-curve25519-sha256-1:key_extract", &secret_input)
             .await?;
 
         // verify = H(secret_input, t_verify)
         // t_verify = "ntor-curve25519-sha256-1:verify"
-        let verify =
-            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:verify", &secret_input).await?;
+        let verify = self
+            .security_provider
+            .hmac_sha256(b"ntor-curve25519-sha256-1:verify", &secret_input)
+            .await?;
 
         // auth_input = verify | ID | B | Y | X | PROTOID | "Server"
         let auth_input = [
@@ -151,8 +153,10 @@ impl NtorHandshake {
 
         // AUTH = H(auth_input, t_mac)
         // t_mac = "ntor-curve25519-sha256-1:mac"
-        let expected_auth =
-            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:mac", &auth_input).await?;
+        let expected_auth = self
+            .security_provider
+            .hmac_sha256(b"ntor-curve25519-sha256-1:mac", &auth_input)
+            .await?;
 
         if auth != expected_auth {
             return Err(Error::Protocol("ntor auth verification failed".to_string()));
@@ -189,7 +193,7 @@ impl NtorHandshake {
             input.push(i);
 
             // K_i = HMAC-SHA256(key_seed, input)
-            let k_i = self.beardog.hmac_sha256(key_seed, &input).await?;
+            let k_i = self.security_provider.hmac_sha256(key_seed, &input).await?;
             expanded.extend_from_slice(&k_i);
             prev = k_i.to_vec();
         }
@@ -244,7 +248,10 @@ pub struct KeyMaterial {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn test_handshake_state_creation() {
@@ -270,5 +277,43 @@ mod tests {
 
         assert_eq!(keys.forward_digest.len(), 32);
         assert_eq!(keys.forward_key.len(), 16);
+    }
+
+    #[tokio::test]
+    async fn complete_handshake_rejects_empty_response() {
+        let ntor = NtorHandshake::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-ntor-test.sock".to_string(),
+        ));
+        let state = HandshakeState {
+            client_ephemeral_secret: [9u8; 32],
+            client_ephemeral_public: [8u8; 32],
+            node_id: [7u8; 20],
+            relay_ntor_key: [6u8; 32],
+        };
+        let err = ntor.complete_handshake(&state, &[]).await.expect_err("empty");
+        assert!(
+            matches!(err, Error::Protocol(ref s) if s.contains("64")),
+            "unexpected err: {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn complete_handshake_rejects_non_64_byte_response() {
+        let ntor = NtorHandshake::new(CryptoProvider::new(
+            "/tmp/songbird-tor-protocol-ntor-test.sock".to_string(),
+        ));
+        let state = HandshakeState {
+            client_ephemeral_secret: [1u8; 32],
+            client_ephemeral_public: [2u8; 32],
+            node_id: [3u8; 20],
+            relay_ntor_key: [4u8; 32],
+        };
+        let wrong = [0xabu8; 63];
+        let err = ntor.complete_handshake(&state, &wrong).await.expect_err("wrong len");
+        assert!(matches!(err, Error::Protocol(_)));
+
+        let wrong65 = [0xabu8; 65];
+        let err2 = ntor.complete_handshake(&state, &wrong65).await.expect_err("wrong len 65");
+        assert!(matches!(err2, Error::Protocol(_)));
     }
 }

@@ -35,8 +35,8 @@
 //!
 //! - ⚠️ `MockSecurityProvider` → Use `MockCapabilityServer::new(CapabilityType::Security)`
 //! - ⚠️ `MockStorageProvider` → Use `MockCapabilityServer::new(CapabilityType::Storage)`
-//! - ⚠️ `MockToadStool` → Use `MockCapabilityServer::new(CapabilityType::Compute)`
-//! - ⚠️ `MockSquirrel` → Use `MockCapabilityServer::new(CapabilityType::Ai)`
+//! - ⚠️ `MockComputeProvider` (legacy name: `MockToadStool`) → Use `MockCapabilityServer::new(CapabilityType::Compute)`
+//! - ⚠️ `MockAiProvider` / legacy `MockSquirrel` → Use `MockCapabilityServer::new(CapabilityType::Ai)`
 //!
 //! ## Migration Guide
 //!
@@ -56,11 +56,23 @@
 pub mod capability_mocks;
 
 // ⚠️ DEPRECATED: Primal-specific mocks (hardcoded names)
+pub mod ai_provider;
 pub mod common;
 pub mod security_provider;
-pub mod squirrel;
+
+/// Deprecated alias for [`ai_provider`].
+#[deprecated(note = "use module `ai_provider` (capability-based naming)")]
+pub mod squirrel {
+    pub use super::ai_provider::*;
+}
+pub mod compute_provider;
 pub mod storage_provider;
-pub mod toadstool;
+
+/// Deprecated alias for [`compute_provider`].
+#[deprecated(note = "use module `compute_provider` (capability-based naming)")]
+pub mod toadstool {
+    pub use super::compute_provider::*;
+}
 
 /// Deprecated alias for [`security_provider`].
 #[deprecated(note = "use module `security_provider` (capability-based naming)")]
@@ -82,6 +94,7 @@ pub use capability_mocks::{
 
 // ✅ REMOVED: Deprecated legacy exports (Nov 9, 2025)
 // Use MockCapabilityServer::new(CapabilityType::*) instead
+pub use ai_provider::MockAiProvider;
 pub use common::{HealthStatus, MockPrimalServer, MockResponse};
 
 /// Deprecated alias for [`security_provider::MockSecurityProvider`].

@@ -7,7 +7,7 @@
 //! Tasks are intelligently routed based on complexity:
 //! - Lightweight → Local or peer Songbird
 //! - Moderate → Peer Songbird (with fallback)
-//! - Heavy → Specialized capability (Toadstool, etc.)
+//! - Heavy → Specialized compute / capability provider
 //! - External providers → Registered capability providers
 
 mod compute_handlers;

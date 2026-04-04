@@ -404,7 +404,7 @@ mod tests {
 
     #[test]
     fn peer_matches_when_tag_contains_family_token() {
-        let tags = vec!["beardog:family:nat0:tower1".to_string()];
+        let tags = vec!["crypto:family:nat0:tower1".to_string()];
         let families = vec!["nat0".to_string()];
         assert!(peer_matches_family_tags(Some(&tags), &families));
     }
@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn peer_no_match_when_family_list_nonmatching() {
-        let tags = vec!["beardog:family:other:node".to_string()];
+        let tags = vec!["crypto:family:other:node".to_string()];
         let families = vec!["nat0".to_string()];
         assert!(!peer_matches_family_tags(Some(&tags), &families));
     }

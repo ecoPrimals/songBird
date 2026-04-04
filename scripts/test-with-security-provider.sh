@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # test-with-security-provider.sh — Run the full Songbird test suite with a live security provider.
 #
-# Fetches beardog from plasmidBin if not present, starts it on a temp Unix socket,
-# runs `cargo test --workspace --all-features`, then reports results.
+# Discovers the security provider (beardog) from plasmidBin, starts it on a temp
+# Unix socket, runs `cargo test --workspace --all-features`, then reports results.
 #
 # Usage:
 #   ./scripts/test-with-security-provider.sh              # Full test suite
@@ -26,7 +26,7 @@ if [ -z "$PLASMID_BIN" ]; then
     fi
 fi
 
-# --- Discover or fetch beardog binary -------------------------------------
+# --- Discover or fetch security provider binary ---------------------------
 BEARDOG="${BEARDOG_BIN:-""}"
 if [ -z "$BEARDOG" ] && [ -n "$PLASMID_BIN" ]; then
     BEARDOG="$PLASMID_BIN/primals/beardog"
@@ -34,23 +34,23 @@ fi
 
 if [ -z "$BEARDOG" ] || [ ! -f "$BEARDOG" ]; then
     if [ -n "$PLASMID_BIN" ] && [ -f "$PLASMID_BIN/fetch.sh" ]; then
-        echo "--- Fetching beardog via plasmidBin/fetch.sh ---"
+        echo "--- Fetching security provider via plasmidBin/fetch.sh ---"
         bash "$PLASMID_BIN/fetch.sh" --primal beardog
         BEARDOG="$PLASMID_BIN/primals/beardog"
     fi
 fi
 
 if [ -z "$BEARDOG" ] || [ ! -f "$BEARDOG" ]; then
-    echo "ERROR: beardog binary not found."
+    echo "ERROR: security provider binary not found."
     echo "  Set \$BEARDOG_BIN, place it in infra/plasmidBin/primals/beardog,"
-    echo "  or ensure plasmidBin/fetch.sh can download it."
+    echo "  or ensure plasmidBin/fetch.sh can retrieve it."
     exit 1
 fi
 
 chmod +x "$BEARDOG"
-echo "--- beardog binary: $BEARDOG ---"
+echo "--- security provider binary: $BEARDOG ---"
 
-# --- Start beardog on a temp socket ----------------------------------------
+# --- Start security provider on a temp socket --------------------------------
 SOCKET_DIR="$(mktemp -d)"
 SOCKET_PATH="$SOCKET_DIR/beardog-test.sock"
 BEARDOG_PID=""
@@ -68,10 +68,10 @@ trap cleanup EXIT
 "$BEARDOG" --socket "$SOCKET_PATH" --mode json-rpc &
 BEARDOG_PID=$!
 
-echo "--- Waiting for beardog (PID $BEARDOG_PID) on $SOCKET_PATH ---"
+echo "--- Waiting for security provider (PID $BEARDOG_PID) on $SOCKET_PATH ---"
 for i in $(seq 1 50); do
     if [ -S "$SOCKET_PATH" ]; then
-        echo "--- beardog ready (${i}00 ms) ---"
+        echo "--- security provider ready (${i}00 ms) ---"
         break
     fi
     if ! kill -0 "$BEARDOG_PID" 2>/dev/null; then
@@ -82,7 +82,7 @@ for i in $(seq 1 50); do
 done
 
 if [ ! -S "$SOCKET_PATH" ]; then
-    echo "ERROR: beardog did not create socket within 5 seconds"
+    echo "ERROR: security provider did not create socket within 5 seconds"
     exit 1
 fi
 
@@ -122,8 +122,8 @@ IGNORED_AFTER=$(cargo test --workspace --all-features -- --list 2>/dev/null | gr
 echo ""
 echo "=== Results ==="
 echo "  Exit code: $TEST_EXIT"
-echo "  Ignored tests (before BearDog): ~$IGNORED_BEFORE"
-echo "  Ignored tests (with BearDog):   ~$IGNORED_AFTER"
+echo "  Ignored tests (before security provider): ~$IGNORED_BEFORE"
+echo "  Ignored tests (with security provider):   ~$IGNORED_AFTER"
 echo ""
 
 exit $TEST_EXIT

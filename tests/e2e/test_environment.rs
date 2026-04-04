@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 // E2E Test Environment Infrastructure
 // Created: October 30, 2025
 // Updated: December 2, 2025 - Modernized for concurrent execution

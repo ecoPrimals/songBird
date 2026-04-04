@@ -31,23 +31,30 @@ impl RendezvousPoint {
     /// HANDSHAKE_INFO     [variable] - ntor handshake response (typically 64 bytes)
     /// ```
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the cell payload length does not fit in `u16`.
-    #[must_use]
-    pub fn create_rendezvous1(&self, handshake_data: &[u8]) -> RelayCell {
+    /// Returns an error if the cell payload length does not fit in `u16`.
+    pub fn create_rendezvous1(&self, handshake_data: &[u8]) -> crate::error::Result<RelayCell> {
         let mut data = Vec::with_capacity(20 + handshake_data.len());
         data.extend_from_slice(&self.cookie);
         data.extend_from_slice(handshake_data);
 
-        RelayCell {
+        let length = u16::try_from(data.len()).map_err(|_| {
+            crate::error::Error::Protocol(format!(
+                "RENDEZVOUS1 payload too long: {} bytes (max {})",
+                data.len(),
+                u16::MAX
+            ))
+        })?;
+
+        Ok(RelayCell {
             command: crate::protocol::RelayCommand::Rendezvous1,
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: u16::try_from(data.len()).expect("data length fits in u16"),
+            length,
             data,
-        }
+        })
     }
 
     /// Parse RENDEZVOUS2 cell (rendezvous point -> client)
@@ -115,15 +122,14 @@ impl RendezvousPoint {
     ///   CLIENT_PK        [32 bytes] - X25519 ephemeral
     /// ```
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the cell payload length does not fit in `u16`.
-    #[must_use]
+    /// Returns an error if the cell payload length does not fit in `u16`.
     pub fn create_introduce1(
         rendezvous_point: &[u8; 32],
         cookie: &[u8; 20],
         client_public_key: &[u8; 32],
-    ) -> RelayCell {
+    ) -> crate::error::Result<RelayCell> {
         let mut data = Vec::with_capacity(140);
 
         // LEGACY_KEY_ID (20 bytes, zeros for v3)
@@ -135,7 +141,8 @@ impl RendezvousPoint {
         // AUTH_KEY_LEN: 32
         data.extend_from_slice(&32u16.to_be_bytes());
 
-        // AUTH_KEY: placeholder (in production, this is the service's intro auth key)
+        // AUTH_KEY — BLOCKED: service intro Ed25519 auth key must come from security provider
+        // delegation (tracked in REMAINING_WORK.md). Zeros are a wire stub for layout tests only.
         data.extend_from_slice(&[0u8; 32]);
 
         // N_EXTENSIONS: 0
@@ -147,14 +154,22 @@ impl RendezvousPoint {
         data.extend_from_slice(cookie);
         data.extend_from_slice(client_public_key);
 
-        RelayCell {
+        let length = u16::try_from(data.len()).map_err(|_| {
+            crate::error::Error::Protocol(format!(
+                "INTRODUCE1 payload too long: {} bytes (max {})",
+                data.len(),
+                u16::MAX
+            ))
+        })?;
+
+        Ok(RelayCell {
             command: crate::protocol::RelayCommand::Introduce1,
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: u16::try_from(data.len()).expect("data length fits in u16"),
+            length,
             data,
-        }
+        })
     }
 }
 
@@ -167,6 +182,8 @@ pub struct RendezvousResponse {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     #[test]
@@ -190,7 +207,7 @@ mod tests {
         };
 
         let handshake = vec![0u8; 64];
-        let cell = rp.create_rendezvous1(&handshake);
+        let cell = rp.create_rendezvous1(&handshake).unwrap();
 
         assert_eq!(cell.command, crate::protocol::RelayCommand::Rendezvous1);
         assert_eq!(cell.data.len(), 84); // 20 (cookie) + 64 (handshake)
@@ -211,7 +228,7 @@ mod tests {
         let cookie = [2u8; 20];
         let client_key = [3u8; 32];
 
-        let cell = RendezvousPoint::create_introduce1(&rp, &cookie, &client_key);
+        let cell = RendezvousPoint::create_introduce1(&rp, &cookie, &client_key).unwrap();
 
         assert_eq!(cell.command, crate::protocol::RelayCommand::Introduce1);
         // 20 (legacy_key_id) + 1 (auth_type) + 2 (auth_len) + 32 (auth_key) +
@@ -236,5 +253,58 @@ mod tests {
         };
 
         assert_eq!(response.handshake_data.len(), 64);
+    }
+
+    #[test]
+    fn parse_rendezvous2_rejects_wrong_command() {
+        let cell = crate::protocol::RelayCell {
+            command: crate::protocol::RelayCommand::Rendezvous1,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0u8; 4],
+            length: 0,
+            data: vec![],
+        };
+        let err = RendezvousPoint::parse_rendezvous2(&cell).expect_err("wrong command");
+        assert!(matches!(err, crate::error::Error::Protocol(_)));
+    }
+
+    #[test]
+    fn parse_rendezvous2_accepts_payload() {
+        let cell = crate::protocol::RelayCell {
+            command: crate::protocol::RelayCommand::Rendezvous2,
+            recognized: 0,
+            stream_id: 0,
+            digest: [0u8; 4],
+            length: 3,
+            data: vec![0x01, 0x02, 0x03],
+        };
+        let r = RendezvousPoint::parse_rendezvous2(&cell).expect("ok");
+        assert_eq!(r.handshake_data, vec![0x01, 0x02, 0x03]);
+    }
+
+    #[test]
+    fn establish_rendezvous_cell_uses_rendezvous1_command() {
+        let cell = RendezvousPoint::create_establish_rendezvous(&[0xEE; 20]);
+        assert_eq!(cell.command, crate::protocol::RelayCommand::Rendezvous1);
+        assert_eq!(cell.length, 20);
+    }
+
+    #[test]
+    fn rendezvous1_preserves_cookie_with_empty_handshake() {
+        let rp = RendezvousPoint {
+            relay_identity: [0u8; 32],
+            cookie: [0xCC; 20],
+            circuit_id: 1,
+        };
+        let cell = rp.create_rendezvous1(&[]).unwrap();
+        assert_eq!(&cell.data[..20], &[0xCCu8; 20]);
+        assert_eq!(cell.data.len(), 20);
+    }
+
+    #[test]
+    fn introduce1_length_matches_data_len() {
+        let cell = RendezvousPoint::create_introduce1(&[5u8; 32], &[6u8; 20], &[7u8; 32]).unwrap();
+        assert_eq!(usize::from(cell.length), cell.data.len());
     }
 }

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 //! Example: Using Genetic Lineage for Automatic Peer Trust
 //!
 //! This example demonstrates how to use genetic lineage to automatically

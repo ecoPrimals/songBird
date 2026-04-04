@@ -58,7 +58,7 @@ pub enum AuthMode {
     Standalone,
 
     /// Security provider–backed genetic identity (when available)
-    BearDogEnhanced {
+    SecurityProviderEnhanced {
         genetic_verification_endpoint: String,
         hardware_binding_required: bool,
     },
@@ -342,7 +342,7 @@ impl AccessControl {
                         // Do not add infrastructure layer without 2FA
                     }
                 }
-                AuthMode::BearDogEnhanced {
+                AuthMode::SecurityProviderEnhanced {
                     ..
                 } => {
                     // Security provider mode: Verify hardware key entropy level

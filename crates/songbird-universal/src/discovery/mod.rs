@@ -48,9 +48,6 @@ pub use engine::UniversalPrimalDiscovery;
 pub use errors::{DiscoveryError, DiscoveryResult};
 pub use types::{DiscoveredPrimal, DiscoveryMethod, PrimalHealth};
 
-// Re-export health checking (when implemented)
-// pub use health::{check_primal_health, PrimalHealthStatus};
-
 #[cfg(test)]
 mod types_tests;
 

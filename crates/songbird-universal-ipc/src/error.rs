@@ -45,10 +45,10 @@ pub enum IpcError {
     #[error("Registry error: {0}")]
     RegistryError(String),
 
-    /// Storage-provider integration error (optional feature; feature flag remains `nestgate`)
-    #[cfg(feature = "nestgate")]
+    /// Storage capability provider integration error (optional; enable with `storage_provider` or legacy `nestgate` feature).
+    #[cfg(any(feature = "storage_provider", feature = "nestgate"))]
     #[error("Storage provider error: {0}")]
-    NestGateError(String),
+    StorageProviderError(String),
 
     /// RPC error
     #[error("RPC error: {0}")]
@@ -69,6 +69,16 @@ pub enum IpcError {
 
 /// Result type for universal IPC operations
 pub type IpcResult<T> = Result<T, IpcError>;
+
+#[cfg(any(feature = "storage_provider", feature = "nestgate"))]
+impl IpcError {
+    /// Deprecated constructor matching the former `NestGateError` variant.
+    #[deprecated(note = "use IpcError::StorageProviderError(String)")]
+    #[must_use]
+    pub fn nest_gate_error(msg: impl Into<String>) -> Self {
+        Self::StorageProviderError(msg.into())
+    }
+}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]

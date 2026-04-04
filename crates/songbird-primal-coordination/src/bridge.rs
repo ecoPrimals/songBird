@@ -413,4 +413,57 @@ mod tests {
         assert!(conn.supports_capability(&CapabilityType::Security).await);
         assert!(conn.supports_capability(&CapabilityType::Compute).await);
     }
+
+    #[tokio::test(start_paused = true)]
+    async fn send_request_generate_keys_errors_without_ipc() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn = PrimalConnection::new("gk".into(), "http://127.0.0.1:9/base", caps);
+        let err =
+            conn.send_request(PrimalRequest::GenerateKeys).await.expect_err("IPC unavailable");
+        assert!(
+            matches!(err, PrimalCoordinationError::Internal(_)),
+            "expected Internal from HTTP client/network path, got {err:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn send_request_deploy_workload_errors_without_ipc() {
+        let caps = PrimalCapabilities {
+            services: vec!["compute".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn = PrimalConnection::new("dep".into(), "http://127.0.0.1:9/", caps);
+        let w = crate::types::Workload {
+            id: "w".into(),
+            service_type: "compute".into(),
+            requirements: std::collections::HashMap::new(),
+            payload: serde_json::json!({}),
+        };
+        let err =
+            conn.send_request(PrimalRequest::DeployWorkload(w)).await.expect_err("IPC unavailable");
+        assert!(
+            matches!(err, PrimalCoordinationError::Internal(_)),
+            "expected Internal from client/network, got {err:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn primal_connection_metadata_starts_empty() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn = PrimalConnection::new("m".into(), "http://127.0.0.1/", caps);
+        let m = conn.metadata.read().await;
+        assert!(m.is_empty());
+    }
 }

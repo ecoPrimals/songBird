@@ -446,7 +446,7 @@ mod tests {
             if let Ok(resp) = response {
                 let primal = resp["result"]["primal"].as_str();
                 assert!(
-                    matches!(primal, Some("security provider" | "beardog")),
+                    matches!(primal, Some("security provider" | "security" | "beardog")),
                     "unexpected primal name in BTSP ping: {primal:?}"
                 );
             }

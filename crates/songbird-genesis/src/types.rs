@@ -232,4 +232,125 @@ mod tests {
             "paused clock should advance only via `time::advance` in tests"
         );
     }
+
+    #[test]
+    fn physical_channel_type_serde_roundtrip_all_variants() {
+        for ch in [
+            PhysicalChannelType::HardwareKey,
+            PhysicalChannelType::QrCodeWithOob,
+            PhysicalChannelType::Bluetooth,
+            PhysicalChannelType::Nfc,
+        ] {
+            let json = serde_json::to_string(&ch).expect("serialize channel type");
+            let back: PhysicalChannelType = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, ch, "round-trip should preserve {ch:?}");
+        }
+    }
+
+    #[test]
+    fn trust_level_serde_roundtrip_all_variants() {
+        for level in [TrustLevel::Low, TrustLevel::Medium, TrustLevel::High, TrustLevel::Maximum] {
+            let json = serde_json::to_string(&level).expect("serialize trust");
+            let back: TrustLevel = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, level);
+        }
+    }
+
+    #[test]
+    fn genesis_lineage_serde_roundtrip_with_multiple_primals() {
+        use std::collections::HashMap;
+        use uuid::Uuid;
+
+        let mut primal_lineages = HashMap::new();
+        primal_lineages.insert(
+            "a".to_string(),
+            PrimalLineage {
+                primal_name: "a".to_string(),
+                lineage_data: vec![1, 2],
+                signature: vec![3],
+                timestamp: Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap(),
+            },
+        );
+        primal_lineages.insert(
+            "b".to_string(),
+            PrimalLineage {
+                primal_name: "b".to_string(),
+                lineage_data: vec![],
+                signature: vec![9, 9],
+                timestamp: Utc.with_ymd_and_hms(2025, 6, 2, 0, 0, 0).unwrap(),
+            },
+        );
+
+        let gl = GenesisLineage {
+            witness_device_id: "witness-1".to_string(),
+            primal_lineages,
+            birth_timestamp: Utc.with_ymd_and_hms(2025, 6, 3, 0, 0, 0).unwrap(),
+            ceremony_id: Uuid::nil(),
+        };
+
+        let json = serde_json::to_string(&gl).expect("serialize lineage");
+        let back: GenesisLineage = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.witness_device_id, "witness-1");
+        assert_eq!(back.primal_lineages.len(), 2);
+        assert_eq!(back.ceremony_id, Uuid::nil());
+        assert!(back.primal_lineages.contains_key("a"));
+    }
+
+    #[test]
+    fn primal_genesis_request_and_response_serde_roundtrip() {
+        let req = PrimalGenesisRequest {
+            new_node_id: "child".to_string(),
+            witness_device_id: "w".to_string(),
+            witness_pubkey: vec![0xab, 0xcd],
+            proximity_proof: ProximityProof {
+                channel_type: PhysicalChannelType::Nfc,
+                timestamp: Utc.with_ymd_and_hms(2024, 2, 2, 2, 2, 2).unwrap(),
+                proof_data: vec![7],
+                attestation: Some(vec![8, 8]),
+            },
+            timestamp: Utc.with_ymd_and_hms(2024, 2, 3, 0, 0, 0).unwrap(),
+        };
+        let req_json = serde_json::to_string(&req).expect("req serde");
+        let req_back: PrimalGenesisRequest = serde_json::from_str(&req_json).expect("req de");
+        assert_eq!(req_back.new_node_id, "child");
+        assert_eq!(req_back.proximity_proof.attestation, Some(vec![8, 8]));
+
+        let resp = PrimalGenesisResponse {
+            primal_name: "songbird".to_string(),
+            lineage: PrimalLineage {
+                primal_name: "songbird".to_string(),
+                lineage_data: vec![1],
+                signature: vec![2],
+                timestamp: Utc.with_ymd_and_hms(2024, 3, 3, 3, 3, 3).unwrap(),
+            },
+            success: false,
+            error: Some("temporary".to_string()),
+        };
+        let resp_json = serde_json::to_string(&resp).expect("resp serde");
+        let resp_back: PrimalGenesisResponse = serde_json::from_str(&resp_json).expect("resp de");
+        assert!(!resp_back.success);
+        assert_eq!(resp_back.error.as_deref(), Some("temporary"));
+        assert_eq!(resp_back.lineage.primal_name, "songbird");
+    }
+
+    #[test]
+    fn proximity_proof_roundtrip_preserves_empty_proof_data() {
+        let proof = ProximityProof {
+            channel_type: PhysicalChannelType::HardwareKey,
+            timestamp: Utc::now(),
+            proof_data: vec![],
+            attestation: None,
+        };
+        let json = serde_json::to_string(&proof).expect("serialize");
+        let back: ProximityProof = serde_json::from_str(&json).expect("deserialize");
+        assert!(back.proof_data.is_empty());
+        assert!(back.attestation.is_none());
+    }
+
+    #[test]
+    fn trust_level_from_u8_maps_star_counts_and_saturates_low() {
+        assert_eq!(TrustLevel::from(6_u8), TrustLevel::Low);
+        assert_eq!(TrustLevel::from(1_u8), TrustLevel::Low);
+        assert_eq!(TrustLevel::from(u8::MAX), TrustLevel::Low);
+    }
 }

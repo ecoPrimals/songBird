@@ -298,7 +298,7 @@ impl AllocationResponse {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -611,5 +611,80 @@ mod tests {
         let w2 = d.encode();
         assert_eq!(w2.len(), 17);
         assert!(RelayProtocol::parse(&w2).is_ok());
+    }
+
+    #[test]
+    fn parse_allocate_response_invalid_json_errors() {
+        let mut b = vec![0x02];
+        b.extend_from_slice(br#"{"success":}"#);
+        let err = RelayProtocol::parse(&b).expect_err("invalid json");
+        let msg = err.to_string();
+        assert!(msg.contains("AllocationResponse") || msg.contains("Invalid protocol"), "{msg}");
+    }
+
+    #[test]
+    fn parse_allocate_response_failure_response_roundtrips() {
+        let resp = AllocationResponse::error("policy reject".into());
+        let wire = RelayProtocol::AllocateResponse(resp.clone()).encode();
+        let parsed = RelayProtocol::parse(&wire).expect("parse");
+        match parsed {
+            RelayProtocol::AllocateResponse(r) => {
+                assert!(!r.success);
+                assert_eq!(r.error.as_deref(), Some("policy reject"));
+                assert!(r.session_id.is_none());
+            }
+            _ => panic!("expected AllocateResponse"),
+        }
+    }
+
+    #[test]
+    fn unknown_message_type_error_includes_hex_byte() {
+        let err = RelayProtocol::parse(&[0xab, 1, 2]).expect_err("unknown type");
+        assert!(err.to_string().contains("0xab") || err.to_string().contains("Unknown"));
+    }
+
+    #[test]
+    fn parse_allocate_request_rejects_non_object_json() {
+        let mut b = vec![0x01];
+        b.extend_from_slice(b"42");
+        assert!(RelayProtocol::parse(&b).is_err());
+    }
+
+    #[test]
+    fn allocation_request_new_preserves_fields() {
+        let req = AllocationRequest::new(
+            "relay".into(),
+            "req".into(),
+            "198.51.100.2:4444".parse().unwrap(),
+            vec![9, 8],
+            120,
+        );
+        assert_eq!(req.relay_node.0, "relay");
+        assert_eq!(req.lineage_proof, vec![9, 8]);
+        assert_eq!(req.ttl_seconds, 120);
+    }
+
+    #[test]
+    fn encode_allocate_response_empty_error_object_still_valid() {
+        let resp = AllocationResponse {
+            success: false,
+            session_id: None,
+            relay_addr: None,
+            ttl_seconds: 0,
+            error: None,
+        };
+        let wire = RelayProtocol::AllocateResponse(resp).encode();
+        let back = RelayProtocol::parse(&wire).expect("parse");
+        match back {
+            RelayProtocol::AllocateResponse(r) => assert!(!r.success),
+            _ => panic!("expected AllocateResponse"),
+        }
+    }
+
+    #[test]
+    fn parse_refresh_payload_longer_than_uuid_errors() {
+        let mut b = vec![0x20];
+        b.extend_from_slice(&[0u8; 17]);
+        assert!(RelayProtocol::parse(&b).is_err());
     }
 }

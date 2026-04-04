@@ -21,11 +21,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ipc::register("beardog", vec!["crypto".to_string(), "btsp".to_string()]).await?;
     println!("✅ Registered beardog [crypto, btsp]");
 
-    ipc::register("squirrel", vec!["ai".to_string(), "nlp".to_string()]).await?;
-    println!("✅ Registered squirrel [ai, nlp]");
+    ipc::register("ai", vec!["ai".to_string(), "nlp".to_string()]).await?;
+    println!("✅ Registered ai capability [ai, nlp]");
 
-    ipc::register("toadstool", vec!["compute".to_string(), "container".to_string()]).await?;
-    println!("✅ Registered toadstool [compute, container]");
+    ipc::register("compute", vec!["compute".to_string(), "container".to_string()]).await?;
+    println!("✅ Registered compute capability [compute, container]");
 
     ipc::register("storage provider", vec!["storage".to_string(), "kv".to_string()]).await?;
     println!("✅ Registered storage provider [storage, kv]");

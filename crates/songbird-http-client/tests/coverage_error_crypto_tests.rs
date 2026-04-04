@@ -22,7 +22,7 @@ use songbird_http_client::error::Error;
 
 #[test]
 fn test_error_security_provider_rpc() {
-    let err = Error::BearDogRpc("connection refused".to_string());
+    let err = Error::SecurityProviderRpc("connection refused".to_string());
     assert!(err.to_string().contains("Security provider RPC error"));
     assert!(err.to_string().contains("connection refused"));
 }

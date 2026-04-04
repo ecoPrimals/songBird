@@ -212,3 +212,55 @@ async fn finalize_chunked_upload<S: BuildHasher>(
 
     Ok(deployment)
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{FinalizeRequest, NegotiationRequest, NegotiationResponse};
+
+    #[test]
+    fn negotiation_request_serializes_expected_keys() {
+        let req = NegotiationRequest {
+            binary_size_mb: 12.5,
+            service_name: "svc-a".into(),
+            compression: None,
+        };
+        let v = serde_json::to_value(&req).expect("NegotiationRequest is Serialize");
+        assert_eq!(v["binary_size_mb"], 12.5);
+        assert_eq!(v["service_name"], "svc-a");
+        assert!(v["compression"].is_null());
+    }
+
+    #[test]
+    fn negotiation_response_deserializes_sample() {
+        let json = r#"{
+            "negotiation_id": "neg-1",
+            "accepted_method": "chunked",
+            "chunk_size_mb": 4,
+            "total_chunks": 3,
+            "chunk_upload_path": "/chunk",
+            "finalize_path": "/fin",
+            "timeout_seconds": 120
+        }"#;
+        let n: NegotiationResponse = serde_json::from_str(json).expect("NegotiationResponse");
+        assert_eq!(n.negotiation_id, "neg-1");
+        assert_eq!(n.chunk_size_mb, 4);
+        assert_eq!(n.total_chunks, 3);
+    }
+
+    #[test]
+    fn finalize_request_serializes_env_map() {
+        let mut env = std::collections::HashMap::new();
+        env.insert("A".into(), "1".into());
+        let req = FinalizeRequest {
+            service_name: "s".into(),
+            env_vars: env,
+            auto_start: false,
+        };
+        let v = serde_json::to_value(&req).expect("FinalizeRequest");
+        assert_eq!(v["service_name"], "s");
+        assert_eq!(v["auto_start"], false);
+        assert!(v["env_vars"].is_object());
+    }
+}
