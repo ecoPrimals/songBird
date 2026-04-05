@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Core configuration management for Songbird
@@ -59,36 +59,25 @@ use serde::{Deserialize, Serialize};
 use songbird_types::SafeEnv;
 use songbird_types::primal_names::SELF_NAME;
 use std::collections::HashMap;
-// use songbird_config; // FIXED: Circular import removed
 
-// Import canonical configs for consolidation (Nov 10, 2025)
 use songbird_types::config::consolidated_canonical::network::CanonicalTlsConfig;
 
-// Archived modules (moved to _archived_q2_2026/ on November 8, 2025):
-// pub mod agnostic_primals; // Use canonical::primals instead
-
-// Backward compatibility re-exports - Module archived (Phase 4: November 8, 2025)
-#[expect(deprecated, reason = "migration to evolved config API planned")]
-pub mod universal_primals; // DEPRECATED: Use canonical::primals instead - kept for re-exports only
+#[allow(deprecated, reason = "migration to evolved config API planned")]
+pub mod universal_primals;
 
 pub mod constants;
-// pub mod environment; // ✅ REMOVED: Fully consolidated into canonical::environment (Nov 9, 2025)
 pub mod hardcoded_elimination;
-mod security;
-// pub mod network; // ✅ REMOVED: Fully consolidated into canonical::network (Nov 9, 2025)
 pub mod paths;
 pub mod providers;
+mod security;
 pub mod validation;
 
-// Re-export commonly used types
-#[expect(deprecated, reason = "migration to evolved config API planned")]
+#[allow(deprecated, reason = "migration to evolved config API planned")]
 pub use constants::get_default_bind_address;
 pub use security::{
     AuditConfig, AuditLevel, AuthConfig, AuthMethod, AuthzConfig, AuthzModel, EncryptionAlgorithm,
     EncryptionConfig, SecurityConfig,
 };
-// ✅ REMOVED: Use canonical::environment::EnvironmentConfig instead (Nov 9, 2025)
-// pub use environment::EnvironmentConfig;
 
 /// Main Songbird configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,7 +112,7 @@ pub struct SongbirdConfig {
 }
 
 impl Default for SongbirdConfig {
-    #[expect(deprecated, reason = "migration to evolved config API planned")]
+    #[allow(deprecated, reason = "migration to evolved config API planned")]
     fn default() -> Self {
         Self {
             environment: SafeEnv::get_or_default("SONGBIRD_ENV", "development"),
@@ -190,15 +179,15 @@ impl SongbirdConfig {
 
     /// Enable a primal in the universal registry
     pub fn enable_primal(&mut self, primal_name: &str, endpoint: &str) {
-        #[expect(deprecated, reason = "migration to evolved config API planned")]
+        #[allow(deprecated, reason = "migration to evolved config API planned")]
         if self.primal_registry.is_none() {
-            #[expect(deprecated, reason = "migration to evolved config API planned")]
+            #[allow(deprecated, reason = "migration to evolved config API planned")]
             {
                 self.primal_registry = Some(crate::canonical::primals::PrimalRegistry::default());
             }
         }
 
-        #[expect(deprecated, reason = "migration to evolved config API planned")]
+        #[allow(deprecated, reason = "migration to evolved config API planned")]
         if let Some(registry) = &mut self.primal_registry {
             let mut primal_config = crate::canonical::primals::PrimalConfiguration::new_template(
                 primal_name,
@@ -214,7 +203,7 @@ impl SongbirdConfig {
     /// Check if a primal is enabled
     #[must_use]
     pub fn is_primal_enabled(&self, primal_name: &str) -> bool {
-        #[expect(deprecated, reason = "migration to evolved config API planned")]
+        #[allow(deprecated, reason = "migration to evolved config API planned")]
         let result = self
             .primal_registry
             .as_ref()
@@ -229,7 +218,7 @@ impl SongbirdConfig {
         &self,
         primal_name: &str,
     ) -> Option<&crate::canonical::primals::PrimalConfiguration> {
-        #[expect(deprecated, reason = "migration to evolved config API planned")]
+        #[allow(deprecated, reason = "migration to evolved config API planned")]
         let result =
             self.primal_registry.as_ref().and_then(|registry| registry.get_primal(primal_name));
         result
@@ -237,7 +226,7 @@ impl SongbirdConfig {
 
     /// Disable a primal
     pub fn disable_primal(&mut self, primal_name: &str) {
-        #[expect(deprecated, reason = "migration to evolved config API planned")]
+        #[allow(deprecated, reason = "migration to evolved config API planned")]
         if let Some(registry) = &mut self.primal_registry
             && let Some(primal) = registry.primals.get_mut(primal_name)
         {
@@ -245,7 +234,7 @@ impl SongbirdConfig {
         }
     }
 
-    #[expect(deprecated, reason = "migration to evolved config API planned")]
+    #[allow(deprecated, reason = "migration to evolved config API planned")]
     /// Get all enabled primals
     #[must_use]
     pub fn get_enabled_primals(&self) -> Vec<&crate::canonical::primals::PrimalConfiguration> {

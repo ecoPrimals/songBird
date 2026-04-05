@@ -3,19 +3,19 @@
 **Version**: 1.0  
 **Date**: January 27, 2026  
 **Status**: ACTIVE - Security Policy Specification  
-**Authority**: BearDog delegates transport security decisions
+**Authority**: Security Provider delegates transport security decisions
 
 ---
 
 ## 🎯 Overview
 
-This specification defines how Songbird establishes secure communications across all transport layers, with security policy delegated to BearDog's crypto authority.
+This specification defines how Songbird establishes secure communications across all transport layers, with security policy delegated to Security Provider's crypto authority.
 
 ### Core Principle
 
-**"BearDog Decides What Goes Where"**
+**"Security Provider Decides What Goes Where"**
 
-Songbird provides the transport mechanisms (TLS 1.3, TLS 1.2, TLS 1.0, plaintext), but **BearDog determines**:
+Songbird provides the transport mechanisms (TLS 1.3, TLS 1.2, TLS 1.0, plaintext), but **Security Provider determines**:
 - Which data can be transmitted over which transport
 - Minimum TLS version for different data classifications
 - Whether plaintext is acceptable for specific operations
@@ -30,7 +30,7 @@ Songbird provides the transport mechanisms (TLS 1.3, TLS 1.2, TLS 1.0, plaintext
 ```
 Application Layer (Songbird, other primals)
          ↓
-Security Policy Layer (BearDog)
+Security Policy Layer (Security Provider)
          ↓ [Policy Decision]
          ↓
 Transport Layer (Songbird)
@@ -40,7 +40,7 @@ Transport Layer (Songbird)
     └── Plaintext (local/dev only)
 ```
 
-**BearDog's Role**:
+**Security Provider's Role**:
 1. Classify data sensitivity
 2. Determine minimum acceptable transport security
 3. Approve or reject connection based on policy
@@ -49,14 +49,14 @@ Transport Layer (Songbird)
 **Songbird's Role**:
 1. Implement transport protocols (TLS 1.x)
 2. Negotiate highest available version
-3. Execute crypto operations via BearDog
-4. Report connection security to BearDog for policy check
+3. Execute crypto operations via Security Provider
+4. Report connection security to Security Provider for policy check
 
 ---
 
 ## 🔐 Security Policy Framework
 
-### Data Classification (BearDog Managed)
+### Data Classification (Security Provider Managed)
 
 **Sensitivity Levels**:
 
@@ -79,7 +79,7 @@ pub enum DataClassification {
 }
 ```
 
-### Transport Security Matrix (BearDog Policy)
+### Transport Security Matrix (Security Provider Policy)
 
 | Data Classification | Minimum TLS | Allowed Transports | Fallback Allowed |
 |---------------------|-------------|-------------------|------------------|
@@ -89,7 +89,7 @@ pub enum DataClassification {
 | **Secret** | TLS 1.3 | TLS 1.3 only | No |
 | **Top Secret** | TLS 1.3 | TLS 1.3 + mTLS | No |
 
-**BearDog enforces these policies at runtime.**
+**Security Provider enforces these policies at runtime.**
 
 ---
 
@@ -119,9 +119,9 @@ let request = SecureRequest {
 };
 ```
 
-### Phase 3: BearDog Policy Check
+### Phase 3: Security Provider Policy Check
 
-**Songbird** asks BearDog for policy:
+**Songbird** asks Security Provider for policy:
 ```json
 {
   "jsonrpc": "2.0",
@@ -140,7 +140,7 @@ let request = SecureRequest {
 }
 ```
 
-**BearDog** responds with policy decision:
+**Security Provider** responds with policy decision:
 ```json
 {
   "jsonrpc": "2.0",
@@ -163,7 +163,7 @@ let request = SecureRequest {
 **Songbird** negotiates connection:
 1. Attempts TLS 1.3 (preferred)
 2. Falls back to TLS 1.2 if server doesn't support 1.3
-3. Validates negotiated version meets BearDog's requirement
+3. Validates negotiated version meets Security Provider's requirement
 4. Proceeds if approved, fails if policy violated
 
 ### Phase 5: Policy Enforcement
@@ -183,7 +183,7 @@ let request = SecureRequest {
 }
 ```
 
-**BearDog** confirms or rejects:
+**Security Provider** confirms or rejects:
 ```json
 {
   "jsonrpc": "2.0",
@@ -230,12 +230,12 @@ let request = SecureRequest {
 - ⚠️ NEVER for sensitive data
 - ⚠️ NEVER over untrusted networks
 
-### BearDog Policy Enforcement
+### Security Provider Policy Enforcement
 
 **At Connection Time**:
 1. Data classification determined
 2. Transport capability assessed
-3. Policy checked (BearDog query)
+3. Policy checked (Security Provider query)
 4. Connection approved/rejected
 5. Audit logged
 
@@ -247,9 +247,9 @@ let request = SecureRequest {
 
 ---
 
-## 📋 BearDog Security Methods
+## 📋 Security Provider Security Methods
 
-### Required BearDog JSON-RPC Methods
+### Required Security Provider JSON-RPC Methods
 
 **1. Transport Validation**
 ```json
@@ -321,9 +321,9 @@ let response = http_client.post("https://api.openai.com/v1/chat/completions")
 
 // Internal flow:
 // 1. Songbird: Offers TLS 1.3
-// 2. BearDog: Requires TLS 1.3 for Secret data
+// 2. Security Provider: Requires TLS 1.3 for Secret data
 // 3. Songbird: Negotiates TLS 1.3 with server
-// 4. BearDog: Approves (policy met)
+// 4. Security Provider: Approves (policy met)
 // 5. Songbird: Sends data
 ```
 
@@ -343,8 +343,8 @@ let response = http_client.post("https://legacy-bank.com/api/transfer")
 // Internal flow:
 // 1. Songbird: Attempts TLS 1.3, server only supports 1.2
 // 2. Songbird: Negotiates TLS 1.2 (ECDHE+AES-GCM)
-// 3. BearDog: Checks policy (Confidential allows TLS 1.2)
-// 4. BearDog: Approves (policy met)
+// 3. Security Provider: Checks policy (Confidential allows TLS 1.2)
+// 4. Security Provider: Approves (policy met)
 // 5. Songbird: Sends data
 ```
 
@@ -363,8 +363,8 @@ let response = http_client.get("https://factory-iot.local/status")
 // Internal flow:
 // 1. Songbird: Attempts TLS 1.3, 1.2, device only supports 1.0
 // 2. Songbird: Negotiates TLS 1.0
-// 3. BearDog: Checks policy (Internal allows TLS 1.0)
-// 4. BearDog: Approves with warning (weak security logged)
+// 3. Security Provider: Checks policy (Internal allows TLS 1.0)
+// 4. Security Provider: Approves with warning (weak security logged)
 // 5. Songbird: Sends data
 ```
 
@@ -383,8 +383,8 @@ let response = http_client.post("https://old-server.com/api")
 
 // Internal flow:
 // 1. Songbird: Negotiates TLS 1.2 (server doesn't support 1.3)
-// 2. BearDog: Checks policy (Secret requires TLS 1.3)
-// 3. BearDog: REJECTS (policy violated)
+// 2. Security Provider: Checks policy (Secret requires TLS 1.3)
+// 3. Security Provider: REJECTS (policy violated)
 // 4. Songbird: Returns error
 ```
 
@@ -403,8 +403,8 @@ let response = http_client.get("http://localhost:8080/test")
 
 // Internal flow:
 // 1. Songbird: Plaintext connection (local)
-// 2. BearDog: Checks policy (Public allows plaintext on localhost)
-// 3. BearDog: Approves (dev mode + public data)
+// 2. Security Provider: Checks policy (Public allows plaintext on localhost)
+// 3. Security Provider: Approves (dev mode + public data)
 // 4. Songbird: Sends data (no encryption)
 ```
 
@@ -414,7 +414,7 @@ let response = http_client.get("http://localhost:8080/test")
 
 ## 🔧 Configuration
 
-### BearDog Policy Configuration
+### Security Provider Policy Configuration
 
 **Default Policy** (secure by default):
 ```toml
@@ -460,7 +460,7 @@ top_secret.audit_all_connections = true
 enabled_versions = ["1.3", "1.2"] # default
 # enabled_versions = ["1.3", "1.2", "1.0"] # ancient systems mode
 
-# Cipher suites (BearDog enforces, Songbird offers)
+# Cipher suites (Security Provider enforces, Songbird offers)
 tls_1_3_ciphers = [
     "TLS_AES_128_GCM_SHA256",
     "TLS_AES_256_GCM_SHA384",
@@ -486,7 +486,7 @@ allow_self_signed_dev = true # only if dev mode
 
 ### Security Events Logged
 
-**BearDog Audit Log**:
+**Security Provider Audit Log**:
 1. **Policy Decisions**:
    - Data classification determined
    - Transport requirement specified
@@ -513,7 +513,7 @@ allow_self_signed_dev = true # only if dev mode
 
 ### Compliance Reporting
 
-**BearDog provides**:
+**Security Provider provides**:
 - Real-time security dashboard
 - Policy compliance reports
 - Violation alerts
@@ -531,7 +531,7 @@ allow_self_signed_dev = true # only if dev mode
 | **Low** | TLS optional | Any encryption | Public data, dev/test |
 | **None** | Plaintext OK | N/A | Public data, localhost only |
 
-**BearDog determines which level applies to each connection.**
+**Security Provider determines which level applies to each connection.**
 
 ---
 
@@ -539,13 +539,13 @@ allow_self_signed_dev = true # only if dev mode
 
 ### Current (v8.11.0)
 - ✅ TLS 1.3 support
-- ✅ BearDog crypto delegation
+- ✅ Security Provider crypto delegation
 - ✅ Tower Atomic pattern
 - ⏳ Policy framework (design phase)
 - ⏳ TLS 1.2 support (planned)
 
 ### Planned
-- [ ] BearDog security.transport.* methods
+- [ ] Security Provider security.transport.* methods
 - [ ] Data classification API
 - [ ] Policy enforcement framework
 - [ ] TLS 1.2 + 1.0 support
@@ -562,27 +562,27 @@ allow_self_signed_dev = true # only if dev mode
 
 - **SONGBIRD_TLS_13_COMPLETE.md** - Current TLS 1.3 implementation
 - **TARPC_JSON_RPC_PROTOCOL_SPEC.md** - RPC protocol
-- **SONGBIRD_BEARDOG_INTEGRATION.md** - BearDog integration
+- **Archived security provider integration spec** (`specs/archive/SONGBIRD_BEARDOG_INTEGRATION.md`) — Security Provider integration
 - **SONGBIRD_ACCESS_CONTROL.md** - Access control framework
 
 ---
 
 ## 🎯 Key Takeaways
 
-1. **BearDog Decides Security** - Policy authority delegated to crypto primal
+1. **Security Provider Decides Security** - Policy authority delegated to crypto primal
 2. **Songbird Implements Transports** - TLS 1.0/1.2/1.3 + plaintext
 3. **Version Negotiation** - Always try highest, fall back if needed
-4. **Policy Enforcement** - BearDog approves/rejects based on data classification
+4. **Policy Enforcement** - Security Provider approves/rejects based on data classification
 5. **Audit Everything** - All security decisions logged
 6. **Flexibility** - Support ancient to modern systems
 7. **Security First** - No connection if policy violated
 
-**Bottom Line**: Songbird provides the pipes, BearDog controls what flows through them.
+**Bottom Line**: Songbird provides the pipes, Security Provider controls what flows through them.
 
 ---
 
 **Version**: 1.0  
 **Last Updated**: January 27, 2026  
 **Status**: ACTIVE  
-**Authority**: BearDog Security Team
+**Authority**: Security Provider Security Team
 

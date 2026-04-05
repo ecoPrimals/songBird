@@ -205,7 +205,7 @@ pub enum ObservabilityEvent {
 /// Coordinates in-memory health, cluster rollups, and event subscribers for the observability stack.
 #[derive(Debug)]
 pub struct ObservabilityManager {
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     metrics_store: Arc<RwLock<HashMap<String, SystemMetrics>>>,
     /// Latest [`ServiceHealth`] per service id.
     health_store: Arc<RwLock<HashMap<String, ServiceHealth>>>,

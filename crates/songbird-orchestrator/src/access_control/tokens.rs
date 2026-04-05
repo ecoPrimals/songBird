@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Token generation and validation
@@ -49,10 +49,8 @@ pub struct AccessToken {
 pub enum TokenType {
     JWT,
     /// Reserved for security provider–issued tokens (future integration)
+    #[serde(alias = "BearDog")]
     SecurityProvider,
-    /// Deprecated alias for [`TokenType::SecurityProvider`].
-    #[deprecated(note = "use TokenType::SecurityProvider (capability-based naming)")]
-    BearDog,
 }
 
 impl AccessToken {
@@ -167,8 +165,7 @@ impl AccessToken {
                 // Future: Add explicit 2fa_verified claim to JWT
                 matches!(self.role, Role::Admin { .. } | Role::RemoteAdmin { .. })
             }
-            #[allow(deprecated, reason = "match arm handles legacy variant")]
-            TokenType::SecurityProvider | TokenType::BearDog => {
+            TokenType::SecurityProvider => {
                 // Security provider tokens with hardware entropy automatically satisfy 2FA
                 true
             }

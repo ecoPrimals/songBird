@@ -277,19 +277,16 @@ async fn test_rendezvous_register_missing_params() {
     });
     let result = handler.handle("rendezvous.register", params).await;
 
-    match result {
-        Err(e) => {
-            assert!(!e.contains("Unknown method"), "Should be routed");
-            // Should mention missing parameters
-            assert!(
-                e.contains("node_id")
-                    || e.contains("family_id")
-                    || e.contains("public_address")
-                    || e.contains("parameter"),
-                "Should mention missing params: {e}"
-            );
-        }
-        Ok(_) => {}
+    if let Err(e) = result {
+        assert!(!e.contains("Unknown method"), "Should be routed");
+        // Should mention missing parameters
+        assert!(
+            e.contains("node_id")
+                || e.contains("family_id")
+                || e.contains("public_address")
+                || e.contains("parameter"),
+            "Should mention missing params: {e}"
+        );
     }
 }
 
@@ -405,15 +402,12 @@ async fn test_peer_connect_missing_target() {
     let params = json!({});
     let result = handler.handle("peer.connect", params).await;
 
-    match result {
-        Err(e) => {
-            assert!(!e.contains("Unknown method"), "Should be routed");
-            assert!(
-                e.contains("target_address") || e.contains("parameter"),
-                "Should mention missing target: {e}"
-            );
-        }
-        Ok(_) => {}
+    if let Err(e) = result {
+        assert!(!e.contains("Unknown method"), "Should be routed");
+        assert!(
+            e.contains("target_address") || e.contains("parameter"),
+            "Should mention missing target: {e}"
+        );
     }
 }
 

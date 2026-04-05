@@ -8,7 +8,7 @@
 //! via [`songbird::try_parse_delegated`], which implements the same `clap::Parser::try_parse_from`
 //! invocation).
 
-#![expect(
+#![allow(
     clippy::expect_used,
     reason = "test assertions use expect/expect_err for clear failure messages"
 )]

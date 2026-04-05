@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security-provider RPC communication
@@ -118,7 +118,7 @@ impl SecurityRpcClient {
         id: u64,
     ) -> Result<Value> {
         // Note: Direct mode is deprecated for production use
-        #[allow(deprecated, reason = "migration to successor API planned")]
+        #[expect(deprecated, reason = "migration to successor API planned")]
         let method = Self::semantic_to_actual(capability)?;
 
         let request = JsonRpcRequest {
@@ -343,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn test_semantic_mapping_unknown_returns_bear_dog_rpc_error() {
+    fn test_semantic_mapping_unknown_returns_security_rpc_error() {
         #[allow(deprecated, reason = "calling deprecated API until migration completes")]
         let err = SecurityRpcClient::semantic_to_actual("not.mapped.here").unwrap_err();
         let msg = err.to_string();

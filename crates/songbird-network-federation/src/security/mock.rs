@@ -39,9 +39,6 @@ pub struct MockSecurityProvider {
     sessions: Arc<RwLock<HashMap<String, RelaySession>>>,
 }
 
-#[deprecated(note = "use MockSecurityProvider")]
-pub type MockBearDogProvider = MockSecurityProvider;
-
 impl MockSecurityProvider {
     /// Create new mock provider
     #[must_use]

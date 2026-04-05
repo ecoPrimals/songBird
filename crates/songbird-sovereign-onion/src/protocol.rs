@@ -438,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn wire_decode_rejects_unknown_message_type_byte() {
         let mut buf = vec![0u8; 6];
         buf[0..4].copy_from_slice(&5u32.to_be_bytes());
@@ -448,7 +448,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn key_exchange_decode_ignores_trailing_payload_bytes() {
         let mut v = KeyExchangeMessage::new([1u8; 32], [2u8; 24]).encode();
         v.extend_from_slice(&[0xAB, 0xCD]);
@@ -457,7 +457,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn wire_message_data_rejects_length_too_short_for_declared_payload() {
         let mut buf = vec![0u8; 8];
         buf[0..4].copy_from_slice(&100u32.to_be_bytes());
@@ -468,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn message_type_try_from_boundary_values() {
         assert!(MessageType::try_from(0x00).is_err());
         assert!(MessageType::try_from(0x04).is_err());

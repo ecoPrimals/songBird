@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Mock AI capability provider (HTTP test harness)
@@ -14,10 +14,6 @@ use std::sync::{Arc, RwLock};
 
 /// AI model type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[expect(
-    clippy::upper_case_acronyms,
-    reason = "intentional pattern; clippy false positive for this API"
-)]
 pub enum ModelType {
     /// Large language model
     LLM,
@@ -86,7 +82,7 @@ pub struct MockAiProvider {
     responses: Arc<RwLock<HashMap<String, InferenceResponse>>>,
 }
 
-/// Deprecated alias for [`MockAiProvider`] (legacy primal name).
+/// Deprecated alias for [`MockAiProvider`] (legacy type name).
 #[deprecated(note = "use MockAiProvider (capability-based naming)")]
 pub type MockSquirrel = MockAiProvider;
 
@@ -243,7 +239,7 @@ impl MockPrimalServer for MockAiProvider {
     }
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -251,31 +247,26 @@ impl MockPrimalServer for MockAiProvider {
     reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
-#[expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
-#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
-#[expect(
+#[allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[allow(
     clippy::cast_possible_truncation,
     reason = "intentional pattern; clippy false positive for this API"
 )]
-#[expect(
-    clippy::cast_sign_loss,
-    reason = "intentional pattern; clippy false positive for this API"
-)]
+#[allow(clippy::cast_sign_loss, reason = "intentional pattern; clippy false positive for this API")]
 mod tests {
-    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
-    #![expect(unused, reason = "test assertions and harness ergonomics")]
-    #![allow(deprecated, reason = "exercises legacy MockSquirrel alias")]
-
+    #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![allow(unused, reason = "test assertions and harness ergonomics")]
     use super::*;
     use songbird_types::SongbirdError;
 
     #[tokio::test]
-    async fn test_mock_squirrel_inference() {
-        let mock = MockSquirrel::new();
+    async fn test_mock_ai_provider_inference() {
+        let mock = MockAiProvider::new();
 
         // Configure canned response
         let response = InferenceResponse {
@@ -300,8 +291,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_mock_squirrel_scenarios() {
-        let mock = MockSquirrel::new();
+    async fn test_mock_ai_provider_scenarios() {
+        let mock = MockAiProvider::new();
 
         // Test high load
         mock.simulate_high_load();
@@ -319,8 +310,8 @@ mod tests {
     // ========== NEW TESTS (5 tests to improve coverage) ==========
 
     #[tokio::test]
-    async fn test_squirrel_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
-        let mut mock = MockSquirrel::new();
+    async fn test_ai_provider_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
+        let mut mock = MockAiProvider::new();
         let port = mock
             .start()
             .await
@@ -333,7 +324,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_ai_metrics_default() {
-        let mock = MockSquirrel::new();
+        let mock = MockAiProvider::new();
         let metrics = mock.get_metrics();
         assert_eq!(metrics.active_models, 3);
         assert_eq!(metrics.total_requests, 1_500);
@@ -343,7 +334,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_inference_with_different_models() {
-        let mock = MockSquirrel::new();
+        let mock = MockAiProvider::new();
 
         let llm_response = InferenceResponse {
             output: "LLM output".to_string(),
@@ -365,7 +356,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_status_changes() {
-        let mock = MockSquirrel::new();
+        let mock = MockAiProvider::new();
         assert_eq!(mock.get_health(), HealthStatus::Healthy);
 
         mock.set_health(HealthStatus::Degraded);
@@ -376,8 +367,8 @@ mod tests {
     }
 
     #[test]
-    fn test_squirrel_default_trait() {
-        let mock = MockSquirrel::default();
+    fn test_ai_provider_default_trait() {
+        let mock = MockAiProvider::default();
         assert_eq!(mock.port(), 0);
         assert_eq!(mock.get_health(), HealthStatus::Healthy);
     }

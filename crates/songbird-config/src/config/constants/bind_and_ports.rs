@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Bind address, dynamic port range, and common primal port discovery.
@@ -99,25 +99,19 @@ fn calculate_user_port_offset() -> u16 {
 /// Get expected service count from configuration or environment
 fn get_expected_service_count() -> u16 {
     SafeEnv::parse("SONGBIRD_EXPECTED_SERVICES", {
-        // Calculate based on enabled primals and features
+        // Calculate based on enabled providers and features
         let mut count = 1; // Base Songbird service
 
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_BEARDOG", false) {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_SECURITY_PROVIDER", false) {
             count += 1;
         }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_STORAGE_PROVIDER", false)
-            || SafeEnv::get_bool("SONGBIRD_ENABLE_NESTGATE", false)
-        {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_STORAGE_PROVIDER", false) {
             count += 1;
         }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_COMPUTE_PROVIDER", false)
-            || SafeEnv::get_bool("SONGBIRD_ENABLE_TOADSTOOL", false)
-        {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_COMPUTE_PROVIDER", false) {
             count += 1;
         }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_AI_PROVIDER", false)
-            || SafeEnv::get_bool("SONGBIRD_ENABLE_SQUIRREL", false)
-        {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_AI_PROVIDER", false) {
             count += 1;
         }
         if SafeEnv::get_bool("SONGBIRD_ENABLE_DISCOVERY", true) {

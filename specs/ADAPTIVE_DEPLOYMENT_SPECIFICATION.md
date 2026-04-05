@@ -288,7 +288,7 @@ Request:
 {
   "binary_size_mb": 85,
   "binary_hash": "sha256:abc123...",
-  "service_name": "Toadstool Compute",
+  "service_name": "Compute provider Compute",
   "preferred_method": "chunked",
   "compression": "zstd"
 }
@@ -332,7 +332,7 @@ Response:
 Request:
 ```json
 {
-  "service_name": "Toadstool Compute",
+  "service_name": "Compute provider Compute",
   "env_vars": {...},
   "auto_start": true
 }
@@ -367,11 +367,11 @@ pub struct PrimalProfile {
 
 ### 5.2 Built-in Profiles
 
-#### 5.2.1 Toadstool (Compute)
+#### 5.2.1 Compute provider (Compute)
 
 ```rust
 PrimalProfile {
-    primal_type: "toadstool",
+    primal_type: "compute_provider",
     typical_size_range_mb: (10.0, 200.0),
     preferred_method: DeploymentMethod::Chunked { chunk_size_mb: 10.0 },
     preferred_compression: Some(Compression::Gzip),
@@ -379,11 +379,11 @@ PrimalProfile {
 }
 ```
 
-#### 5.2.2 NestGate (Storage)
+#### 5.2.2 Storage Provider (Storage)
 
 ```rust
 PrimalProfile {
-    primal_type: "nestgate",
+    primal_type: "storage_provider",
     typical_size_range_mb: (100.0, 10000.0),
     preferred_method: DeploymentMethod::Streaming,
     preferred_compression: Some(Compression::Zstd),
@@ -391,11 +391,11 @@ PrimalProfile {
 }
 ```
 
-#### 5.2.3 BearDog (Security)
+#### 5.2.3 Security Provider (Security)
 
 ```rust
 PrimalProfile {
-    primal_type: "beardog",
+    primal_type: "security",
     typical_size_range_mb: (5.0, 50.0),
     preferred_method: DeploymentMethod::Single,
     preferred_compression: None, // Don't compress encrypted data
@@ -530,7 +530,7 @@ async fn upload_chunks_parallel(
 
 ### 8.2 Authentication
 
-For internet deployments with BearDog:
+For internet deployments with Security Provider:
 - Bearer token authentication
 - mTLS certificate verification
 - Signature validation

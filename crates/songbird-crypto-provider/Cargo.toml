@@ -6,7 +6,7 @@ authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Shared crypto provider for Songbird crates — Neural API + Direct BearDog routing"
 license.workspace = true
 repository = "https://github.com/ecoPrimals/SongBird"
-keywords = ["crypto", "neural-api", "beardog", "ipc", "tower-atomic"]
+keywords = ["crypto", "neural-api", "security-provider", "ipc", "tower-atomic"]
 categories = ["cryptography"]
 readme = "README.md"
 

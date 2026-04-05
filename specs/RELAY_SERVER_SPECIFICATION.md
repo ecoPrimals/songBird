@@ -48,7 +48,7 @@ Implement Pure Rust relay server with genetic lineage-based authorization to ena
 │                           ▼                                     │
 │                  ┌──────────────────┐                           │
 │                  │ Lineage Authority│                           │
-│                  │   (BearDog)      │                           │
+│                  │   (Security Provider)      │                           │
 │                  └──────────────────┘                           │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -64,7 +64,7 @@ Requester                 Relay Server                    Target
    │ + lineage_proof          │                               │
    │─────────────────────────>│                               │
    │                          │ 2. Verify lineage             │
-   │                          │    (BearDog)                  │
+   │                          │    (Security Provider)                  │
    │                          │                               │
    │ 3. ALLOCATE_RESP         │                               │
    │ + session_id             │                               │
@@ -107,7 +107,7 @@ impl RelayServer {
     /// # Arguments
     ///
     /// * `bind_addr` - Address to bind for relay service
-    /// * `authority` - Lineage authority provider (BearDog)
+    /// * `authority` - Lineage authority provider (Security Provider)
     ///
     /// # Returns
     ///
@@ -195,7 +195,7 @@ pub struct AllocationRequest {
     /// Target peer address
     pub target_addr: SocketAddr,
     
-    /// Lineage proof (BearDog signature)
+    /// Lineage proof (Security Provider signature)
     pub lineage_proof: Vec<u8>,
     
     /// Requested TTL (seconds)
@@ -783,7 +783,7 @@ credentials: TurnCredentials {
 
 // Songbird: Genetic lineage proof
 lineage_proof: vec![
-    // BearDog signature proving family relationship
+    // Security Provider signature proving family relationship
 ]
 ```
 
@@ -854,7 +854,7 @@ Traditional TURN:          Lineage Relay:
 - `crates/songbird-lineage-relay/src/relay.rs` - Session management
 - `crates/songbird-lineage-relay/src/udp_hole_punch.rs` - Direct connection
 - `crates/songbird-stun/src/server.rs` - STUN server reference
-- `crates/songbird-lineage-relay/src/beardog.rs` - Lineage authority
+- `crates/songbird-lineage-relay/src/security_provider.rs` - Lineage authority
 
 ### Documentation
 

@@ -33,9 +33,6 @@ bitflags = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Storage (optional)
-sled = { version = "0.34", optional = true }
-
 # HTTP client for directory fetching (pure Rust, zero ring)
 # Tor directory authorities serve plain HTTP - no TLS needed
 hyper = { version = "1.0", features = ["client", "http1"] }
@@ -60,7 +57,6 @@ tracing-subscriber = "0.3"
 
 [features]
 default = []
-persistent-cache = ["sled"]
 
 [[example]]
 name = "fetch_consensus"

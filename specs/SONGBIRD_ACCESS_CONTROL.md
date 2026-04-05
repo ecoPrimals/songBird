@@ -2,13 +2,13 @@
 
 **Status:** Design - Implementation Planned Q1 2025  
 **Version:** 0.2.0  
-**Dependencies:** None (Standalone), Enhanced by BearDog  
+**Dependencies:** None (Standalone), Enhanced by Security Provider  
 
 ---
 
 ## Overview
 
-Songbird provides **graduated information disclosure** and **capability-based access control** for federated compute coordination. It operates as a sovereign primal with built-in security, with optional integration with BearDog for enhanced cryptographic guarantees.
+Songbird provides **graduated information disclosure** and **capability-based access control** for federated compute coordination. It operates as a sovereign primal with built-in security, with optional integration with Security Provider for enhanced cryptographic guarantees.
 
 ---
 
@@ -20,9 +20,9 @@ Songbird provides **graduated information disclosure** and **capability-based ac
 - ✅ Built-in access control (no external dependencies)
 - ✅ Standalone authentication (tokens, API keys)
 - ✅ Default-deny security posture
-- ✅ Graceful degradation if BearDog unavailable
+- ✅ Graceful degradation if Security Provider unavailable
 
-**Enhanced by BearDog:**
+**Enhanced by Security Provider:**
 - 🔐 Genetic encryption for user identity
 - 🔐 Hardware-backed key storage
 - 🔐 Cryptographic capability delegation
@@ -445,14 +445,14 @@ pub struct StudentAccess {
 }
 ```
 
-**Token Example (BearDog-Enhanced):**
+**Token Example (Security Provider-Enhanced):**
 ```json
 {
-  "token_type": "beardog_student",
-  "beardog_identity": "genetics:abc123...",  // Genetic encryption
+  "token_type": "security_provider_student",
+  "security_provider_identity": "genetics:abc123...",  // Genetic encryption
   "capabilities_delegated": "zkproof:xyz...",  // Zero-knowledge proof
   "hardware_bound": true,  // Bound to student's device
-  "issued_by": "beardog:professor-key",
+  "issued_by": "security_provider:professor-key",
   "signature": "ed25519:..."
 }
 ```
@@ -677,7 +677,7 @@ If you have `ViewInfrastructureInfo`, you implicitly have all lower layers.
 
 ## Authentication Modes
 
-### Mode 1: Standalone (No BearDog)
+### Mode 1: Standalone (No Security Provider)
 
 **JWT-based tokens:**
 ```rust
@@ -705,16 +705,16 @@ pub struct StandaloneToken {
 
 ---
 
-### Mode 2: BearDog-Enhanced
+### Mode 2: Security Provider-Enhanced
 
 **Genetic identity + capability delegation:**
 ```rust
-pub struct BearDogToken {
-    pub genetic_identity: GeneticIdentity,  // BearDog genetic encryption
+pub struct SecurityProviderToken {
+    pub genetic_identity: GeneticIdentity,  // Security Provider genetic encryption
     pub capability_proof: ZkProof,          // Zero-knowledge capability proof
     pub hardware_binding: Option<DeviceId>, // Bound to specific device
     pub delegation_chain: Vec<DelegationStep>,
-    pub signature: BearDogSignature,
+    pub signature: SecurityProviderSignature,
 }
 
 pub struct GeneticIdentity {
@@ -757,8 +757,8 @@ pub struct AccessControl {
     /// Audit logger
     audit_log: AuditLog,
     
-    /// Optional BearDog integration
-    beardog: Option<BearDogClient>,
+    /// Optional Security Provider integration
+    security_provider: Option<SecurityProviderClient>,
 }
 
 impl AccessControl {
@@ -776,9 +776,9 @@ impl AccessControl {
         // 3. Check capability
         let has_capability = caps.iter().any(|c| c.implies(capability));
         
-        // 4. If BearDog available, verify genetic identity
-        if let Some(beardog) = &self.beardog {
-            if !beardog.verify_genetic_identity(&identity).await? {
+        // 4. If Security Provider available, verify genetic identity
+        if let Some(security_provider) = &self.security_provider {
+            if !security_provider.verify_genetic_identity(&identity).await? {
                 return Ok(false);  // Genetic identity invalid
             }
         }
@@ -841,7 +841,7 @@ impl AccessControl {
 ```toml
 [access_control]
 # Authentication mode
-mode = "standalone"  # or "beardog-enhanced"
+mode = "standalone"  # or "security_provider-enhanced"
 
 # Default access level
 default_visibility = "public"
@@ -906,9 +906,9 @@ anonymize_node_names = false  # Show "Eastgate", hide "192.0.2.10"
 show_sharding_to_students = true
 show_topology_to_students = "anonymized"
 
-[beardog_integration]
-# Optional BearDog integration
-enabled = false  # Set true when BearDog available
+[security_provider_integration]
+# Optional Security Provider integration
+enabled = false  # Set true when Security Provider available
 genetic_identity_verification = true
 hardware_key_binding = true
 zero_knowledge_proofs = true
@@ -930,7 +930,7 @@ zero_knowledge_proofs = true
 - VPN requirement for infrastructure access
 - Capability composition
 
-### Phase 3: BearDog Integration (Q2 2025)
+### Phase 3: Security Provider Integration (Q2 2025)
 - Genetic identity verification
 - Hardware-bound tokens
 - Zero-knowledge capability proofs
@@ -960,7 +960,7 @@ zero_knowledge_proofs = true
 - ⚠️ No hardware binding (unless SoloKey added)
 - ⚠️ Revocation requires distributed state
 
-### BearDog-Enhanced Mode
+### Security Provider-Enhanced Mode
 
 **Additional Guarantees:**
 - 🔐 Identity theft impossible (genetic encryption)
@@ -1051,12 +1051,12 @@ Response includes full infrastructure layer:
 
 ## References
 
-- BearDog Specification: `../beardog/specs/GENETIC_ENCRYPTION.md` (when available)
+- Security Provider Specification: `../security_provider/specs/GENETIC_ENCRYPTION.md` (when available)
 - RhizoCrypt Specification: `../rhizocrypt/specs/DAG_CRYPTOGRAPHY.md`
 - Federation Protocol: `SONGBIRD_FEDERATION.md`
 
 ---
 
 **Status:** Design Complete  
-**Next Steps:** Implementation Q1 2025, BearDog integration Q2 2025
+**Next Steps:** Implementation Q1 2025, Security Provider integration Q2 2025
 

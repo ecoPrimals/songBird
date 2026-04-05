@@ -222,8 +222,8 @@ impl Default for ServiceRegistry {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::endpoint::NativeEndpoint;
@@ -339,7 +339,7 @@ mod tests {
     #[tokio::test]
     async fn test_resolve_invalid_virtual_path() {
         let registry = ServiceRegistry::new();
-        let err = registry.resolve("/wrong/beardog").await.expect_err("bad path");
+        let err = registry.resolve("/wrong/security-provider").await.expect_err("bad path");
         assert!(matches!(err, crate::error::IpcError::InvalidVirtualPath(_)));
     }
 

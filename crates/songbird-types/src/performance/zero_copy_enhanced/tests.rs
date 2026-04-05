@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::all, reason = "test assertions and harness ergonomics")]
 
 use std::time::Duration;
 

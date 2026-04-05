@@ -230,8 +230,8 @@ pub async fn decode_with_crypto<T: for<'de> Deserialize<'de>>(
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};

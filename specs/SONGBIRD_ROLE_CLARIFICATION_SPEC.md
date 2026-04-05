@@ -21,10 +21,10 @@ Songbird is the **Universal Service Mesh Orchestrator** for the ecoPrimals ecosy
 - **🎮 Gaming Protocol Coordination**: Bridge gaming protocols across primals
 
 ### **❌ What Songbird DOES NOT DO (Other Primals' Expertise)**
-- **🔒 Security Operations**: Delegate to BearDog (authentication, encryption, threat detection)
-- **💾 Data Storage**: Delegate to NestGate (file systems, object storage, backups)  
-- **⚙️ Compute Operations**: Delegate to ToadStool (containers, serverless, GPU processing)
-- **🤖 AI/ML Processing**: Delegate to Squirrel (model inference, training, agents)
+- **🔒 Security Operations**: Delegate to Security Provider (authentication, encryption, threat detection)
+- **💾 Data Storage**: Delegate to Storage Provider (file systems, object storage, backups)  
+- **⚙️ Compute Operations**: Delegate to Compute Provider (containers, serverless, GPU processing)
+- **🤖 AI/ML Processing**: Delegate to AI provider (model inference, training, agents)
 - **🌱 OS Management**: Delegate to biomeOS (system lifecycle, resource management)
 
 ---
@@ -35,10 +35,10 @@ Songbird is the **Universal Service Mesh Orchestrator** for the ecoPrimals ecosy
 ```rust
 // Songbird ingests metrics through universal capability adapters
 pub trait MetricsCapabilityAdapter {
-    async fn collect_compute_metrics(&self) -> ComputeMetrics;  // From ToadStool
-    async fn collect_security_metrics(&self) -> SecurityMetrics; // From BearDog  
-    async fn collect_storage_metrics(&self) -> StorageMetrics;   // From NestGate
-    async fn collect_ai_metrics(&self) -> AIMetrics;           // From Squirrel
+    async fn collect_compute_metrics(&self) -> ComputeMetrics;  // From Compute Provider
+    async fn collect_security_metrics(&self) -> SecurityMetrics; // From Security Provider  
+    async fn collect_storage_metrics(&self) -> StorageMetrics;   // From Storage Provider
+    async fn collect_ai_metrics(&self) -> AIMetrics;           // From AI provider
 }
 
 // We route requests by capability, not primal name
@@ -53,21 +53,21 @@ pub trait CapabilityRouter {
 ```
 External Request → 🎼 Songbird Service Mesh → Capability-Based Routing → Target Primal
                       ↓
-🍄 ToadStool (CPU/Memory metrics) ← Universal Metrics Adapter ← 🎼 Songbird
-🐕 BearDog (Security metrics) ← Universal Metrics Adapter ← 🎼 Songbird  
-🏠 NestGate (Storage metrics) ← Universal Metrics Adapter ← 🎼 Songbird
-🐿️ Squirrel (AI metrics) ← Universal Metrics Adapter ← 🎼 Songbird
+🍄 Compute Provider (CPU/Memory metrics) ← Universal Metrics Adapter ← 🎼 Songbird
+🐕 Security Provider (Security metrics) ← Universal Metrics Adapter ← 🎼 Songbird  
+🏠 Storage Provider (Storage metrics) ← Universal Metrics Adapter ← 🎼 Songbird
+🐿️ AI provider (AI metrics) ← Universal Metrics Adapter ← 🎼 Songbird
 ```
 
 ---
 
-## 📋 **ToadStool Integration Specification**
+## 📋 **Compute Provider Integration Specification**
 
-### **What We Get FROM ToadStool**
+### **What We Get FROM Compute Provider**
 ```rust
-/// Metrics we ingest from ToadStool via capability adapter
+/// Metrics we ingest from Compute Provider via capability adapter
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToadStoolMetrics {
+pub struct ComputeProviderMetrics {
     pub cpu_usage_percent: f64,           // Real-time CPU utilization
     pub memory_usage_bytes: u64,          // Current memory usage
     pub memory_available_bytes: u64,      // Available memory
@@ -75,14 +75,14 @@ pub struct ToadStoolMetrics {
     pub network_io_bytes_per_sec: u64,    // Network throughput
     pub active_containers: u32,           // Running containers
     pub queued_jobs: u32,                 // Pending compute jobs
-    pub performance_score: f64,           // ToadStool's zero-copy performance metrics
+    pub performance_score: f64,           // Compute Provider's zero-copy performance metrics
 }
 ```
 
-### **What We Provide TO ToadStool**
+### **What We Provide TO Compute Provider**
 ```rust
-/// Orchestration services we provide to ToadStool
-impl ToadStoolOrchestrationService {
+/// Orchestration services we provide to Compute Provider
+impl ComputeProviderOrchestrationService {
     pub async fn load_balance_compute_requests(&self) -> Result<()>;
     pub async fn route_container_workloads(&self) -> Result<()>;
     pub async fn coordinate_multi_node_jobs(&self) -> Result<()>;
@@ -92,13 +92,13 @@ impl ToadStoolOrchestrationService {
 
 ---
 
-## 🛡️ **BearDog Integration Specification**
+## 🛡️ **Security Provider Integration Specification**
 
-### **What We Get FROM BearDog**
+### **What We Get FROM Security Provider**
 ```rust
-/// Security metrics and services we consume from BearDog
+/// Security metrics and services we consume from Security Provider
 #[derive(Debug, Clone, Serialize, Deserialize)]  
-pub struct BearDogSecurityMetrics {
+pub struct SecurityProviderSecurityMetrics {
     pub threat_level: SecurityLevel,      // Current threat assessment
     pub active_sessions: u32,             // Authenticated sessions
     pub failed_auth_attempts: u32,        // Security incidents
@@ -107,10 +107,10 @@ pub struct BearDogSecurityMetrics {
 }
 ```
 
-### **What We Provide TO BearDog**
+### **What We Provide TO Security Provider**
 ```rust
-/// Orchestration services we provide to BearDog
-impl BearDogOrchestrationService {
+/// Orchestration services we provide to Security Provider
+impl SecurityProviderOrchestrationService {
     pub async fn route_authentication_requests(&self) -> Result<()>;
     pub async fn load_balance_crypto_operations(&self) -> Result<()>;
     pub async fn coordinate_security_policies(&self) -> Result<()>;
@@ -125,13 +125,13 @@ impl BearDogOrchestrationService {
 ### **Phase 1: Fix Compilation & Federation (Week 1)**
 1. **Fix clippy/formatting issues** blocking builds
 2. **Complete federation TODOs** with real system monitoring
-3. **Implement capability-based ToadStool metrics ingestion**
+3. **Implement capability-based Compute Provider metrics ingestion**
 
 ### **Phase 2: Universal Metrics Adapters (Week 2)**
-1. **Create ToadStool metrics capability adapter**
-2. **Create BearDog security metrics adapter**  
-3. **Create NestGate storage metrics adapter**
-4. **Create Squirrel AI metrics adapter**
+1. **Create Compute Provider metrics capability adapter**
+2. **Create Security Provider security metrics adapter**  
+3. **Create Storage Provider storage metrics adapter**
+4. **Create AI provider AI metrics adapter**
 
 ### **Phase 3: Enhanced Load Balancing (Week 3)**
 1. **Capability-aware load balancing algorithms**
@@ -144,17 +144,17 @@ impl BearDogOrchestrationService {
 ## 🚫 **Boundary Enforcement**
 
 ### **What We Will NOT Implement**
-- ❌ **Direct CPU monitoring** (get from ToadStool via adapter)
-- ❌ **Cryptographic operations** (delegate to BearDog)
-- ❌ **File system operations** (delegate to NestGate)  
-- ❌ **AI model inference** (delegate to Squirrel)
-- ❌ **Container runtime** (delegate to ToadStool)
+- ❌ **Direct CPU monitoring** (get from Compute Provider via adapter)
+- ❌ **Cryptographic operations** (delegate to Security Provider)
+- ❌ **File system operations** (delegate to Storage Provider)  
+- ❌ **AI model inference** (delegate to AI provider)
+- ❌ **Container runtime** (delegate to Compute Provider)
 
 ### **What We Will ALWAYS Delegate**
-- ✅ **System metrics** → ToadStool capability adapter
-- ✅ **Security operations** → BearDog capability adapter
-- ✅ **Storage operations** → NestGate capability adapter
-- ✅ **AI operations** → Squirrel capability adapter
+- ✅ **System metrics** → Compute Provider capability adapter
+- ✅ **Security operations** → Security Provider capability adapter
+- ✅ **Storage operations** → Storage Provider capability adapter
+- ✅ **AI operations** → AI provider capability adapter
 
 ---
 

@@ -33,17 +33,17 @@ cargo test --workspace
 | `songbird-orchestrator` | ~3,500 | JSON-RPC handlers, startup, health, federation, consent |
 | `songbird-universal-ipc` | ~1,200 | Service handler, introspection, tower atomic, mesh |
 | `songbird-tor-protocol` | ~800 | Directory, consensus, relay selection, circuit |
-| `songbird-http-client` | ~700 | TLS 1.3, redirect, connection pool, BearDog RPC |
+| `songbird-http-client` | ~700 | TLS 1.3, redirect, connection pool, security provider RPC |
 | `songbird-config` | ~600 | Discovery, endpoints, constants, environment |
 | `songbird-discovery` | ~500 | Federation-aware, mDNS, SSDP, dark forest |
 
 ## Running Tests
 
 ```bash
-cargo test --workspace --all-features            # full suite (11,831 tests)
+cargo test --workspace --all-features            # full suite (12,613 tests)
 cargo test --workspace --lib                     # unit tests only
 cargo test -p songbird-orchestrator              # single crate
-./scripts/test-with-beardog.sh                   # with live BearDog from plasmidBin
+./scripts/test-with-security-provider.sh         # with live security provider from plasmidBin
 ./scripts/coverage.sh                            # llvm-cov HTML report
 ```
 
@@ -52,14 +52,15 @@ cargo test -p songbird-orchestrator              # single crate
 - **Zero serial tests** — all tests run fully concurrent (`--test-threads=16`)
 - **Injectable env readers** — `_with` variants replace `std::env::set_var` for isolation
 - **No production mocks** — all mocks behind `#[cfg(test)]` or `feature = "test-mocks"`
-- **No sleep-based synchronization** — `tokio::sync::Notify` and `oneshot` channels
+- **No sleep-based synchronization** — `tokio::time::pause()` + `advance()` for deterministic time; `tokio::task::yield_now()` for yields; `tokio::sync::Notify` and `oneshot` channels for coordination
+- **No hardcoded ports** — all network binds use port 0 (OS-assigned) with oneshot readiness signals
 - **`--all-features`** — many tests are feature-gated; always use `--all-features` for full coverage
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 11,831 |
+| Total tests | 12,613 |
 | Failed | 0 |
-| Coverage | ~68.48% (llvm-cov, target 90%) |
-| `#[ignore]` | ~269 (100% with reason strings) |
+| Ignored | 252 (100% with reason strings — hardware, network, API gaps) |
+| Coverage | ~77% (llvm-cov, target 90%) |

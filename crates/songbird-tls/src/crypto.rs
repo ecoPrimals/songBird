@@ -201,15 +201,18 @@ impl SecurityTlsCryptoClient {
         {
             tracing::warn!("⚠️  Windows: Using TCP localhost fallback for security provider");
 
+            if let Ok(socket) = songbird_process_env::var("CRYPTO_PROVIDER_SOCKET") {
+                return Ok(socket);
+            }
             if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET") {
                 return Ok(socket);
             }
-            if let Ok(socket) = songbird_process_env::var("CRYPTO_PROVIDER_SOCKET") {
+            if let Ok(socket) = songbird_process_env::var("SECURITY_SOCKET") {
                 return Ok(socket);
             }
             if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
                 tracing::warn!(
-                    "⚠️  Using deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET"
+                    "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET"
                 );
                 return Ok(socket);
             }
@@ -217,11 +220,12 @@ impl SecurityTlsCryptoClient {
                 return Ok(socket);
             }
 
-            let port = songbird_process_env::var("SECURITY_PROVIDER_PORT")
-                .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_PORT"))
+            let port = songbird_process_env::var("CRYPTO_PROVIDER_PORT")
+                .or_else(|_| songbird_process_env::var("SECURITY_PROVIDER_PORT"))
+                .or_else(|_| songbird_process_env::var("SECURITY_PORT"))
                 .or_else(|_| {
                     tracing::warn!(
-                        "⚠️  Using deprecated $BEARDOG_PORT — migrate to $SECURITY_PROVIDER_PORT"
+                        "BEARDOG_PORT is deprecated — migrate to SECURITY_PROVIDER_PORT or SECURITY_PORT"
                     );
                     songbird_process_env::var("BEARDOG_PORT")
                 })
@@ -235,11 +239,12 @@ impl SecurityTlsCryptoClient {
         #[cfg(not(any(unix, windows)))]
         {
             tracing::warn!("⚠️  Platform: Using TCP localhost fallback for security provider");
-            let port = songbird_process_env::var("SECURITY_PROVIDER_PORT")
-                .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_PORT"))
+            let port = songbird_process_env::var("CRYPTO_PROVIDER_PORT")
+                .or_else(|_| songbird_process_env::var("SECURITY_PROVIDER_PORT"))
+                .or_else(|_| songbird_process_env::var("SECURITY_PORT"))
                 .or_else(|_| {
                     tracing::warn!(
-                        "⚠️  Using deprecated $BEARDOG_PORT — migrate to $SECURITY_PROVIDER_PORT"
+                        "BEARDOG_PORT is deprecated — migrate to SECURITY_PROVIDER_PORT or SECURITY_PORT"
                     );
                     songbird_process_env::var("BEARDOG_PORT")
                 })
@@ -573,7 +578,7 @@ impl SecurityTlsCryptoClient {
 ///
 /// Note: Fields are used during deserialization but not directly accessed in code.
 /// The response is parsed and converted to domain types immediately.
-#[expect(dead_code, reason = "deserialized from external data")]
+#[allow(dead_code, reason = "deserialized from external data")]
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,

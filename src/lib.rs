@@ -243,7 +243,7 @@ pub fn run_rendezvous(args: Vec<String>) -> Result<()> {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use clap::Parser;

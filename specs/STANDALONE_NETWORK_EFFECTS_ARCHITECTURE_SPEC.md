@@ -42,7 +42,7 @@ pub trait PrimalProvider {
 ### **Principle 2: Network Effect Amplification**
 ```
 🌐 When ecosystem primals available:
-├── 🔍 Auto-discover capabilities (toadstool, nestgate, squirrel, beardog)
+├── 🔍 Auto-discover capabilities (compute_provider, storage_provider, ai_provider, security_provider)
 ├── 🎯 Route workloads to best-suited primal
 ├── 🔗 Enable Songbird-to-Songbird federation
 ├── 📈 Amplify overall system performance
@@ -52,10 +52,10 @@ pub trait PrimalProvider {
 ### **Principle 3: Universal Compatibility**
 ```
 🌌 ANY primal can participate:
-├── ✅ Core primals (toadstool, nestgate, squirrel, beardog)
+├── ✅ Core primals (compute_provider, storage_provider, ai_provider, security_provider)
 ├── ✅ Future primals (phoenix-ai, quantum-compute, neural-mesh)
 ├── ✅ Community primals (custom, specialized)
-├── ✅ Multiple instances (toadstool-1, toadstool-2, etc.)
+├── ✅ Multiple instances (compute_provider-1, compute_provider-2, etc.)
 └── ✅ Zero code changes required for new primal types
 ```
 
@@ -80,7 +80,7 @@ pub struct UniversalPrimalRegistry {
 
 **Capabilities**:
 - ✅ Auto-discovery of ecosystem primals
-- ✅ Capability-based routing (compute → toadstool, storage → nestgate)
+- ✅ Capability-based routing (compute → compute_provider, storage → storage_provider)
 - ✅ Multi-instance primal support
 - ✅ User/device-specific routing
 - ✅ Dynamic port management
@@ -138,12 +138,12 @@ Songbird Behavior:
 
 ### **Mode 2: Network Effects** 
 ```yaml
-Ecosystem Status: Primals detected (toadstool, nestgate, squirrel, beardog)
+Ecosystem Status: Primals detected (compute_provider, storage_provider, ai_provider, security_provider)
 Songbird Behavior:
-  - 🌐 Routes compute tasks to toadstool (metal performance)
-  - 🌐 Routes storage tasks to nestgate (ZFS, distributed storage)
-  - 🌐 Routes AI tasks to squirrel (ML inference, analytics)
-  - 🌐 Routes security tasks to beardog (encryption, authentication)
+  - 🌐 Routes compute tasks to compute_provider (metal performance)
+  - 🌐 Routes storage tasks to storage_provider (ZFS, distributed storage)
+  - 🌐 Routes AI tasks to ai_provider (ML inference, analytics)
+  - 🌐 Routes security tasks to security_provider (encryption, authentication)
   - 🎼 Orchestrates the entire ecosystem
   - ⚡ Performance: Exceptional (distributed optimization)
 ```
@@ -199,22 +199,22 @@ songbird gaming quick-setup --game "starcraft"
 ```
 🌐 Ecosystem primals detected - enabling network effects:
 
-🍄 Toadstool (Metal Compute):
+🍄 Compute provider (Metal Compute):
 ├── Routes game hosting to dedicated metal server
 ├── Handles compute-intensive game logic
 └── Provides GPU acceleration for graphics processing
 
-🏠 NestGate (Storage/Network):
+🏠 Storage Provider (Storage/Network):
 ├── Caches game assets for fast loading
 ├── Provides VPN tunneling for secure connections  
 └── Handles file synchronization between players
 
-🐿️ Squirrel (AI/Analytics):
+🐿️ AI provider (AI/Analytics):
 ├── Provides intelligent matchmaking
 ├── Analyzes network conditions for optimal routing
 └── Offers AI-powered game coaching/assistance
 
-🐻🐕 BearDog (Security):
+🐻🐕 Security Provider (Security):
 ├── Encrypts all game communications
 ├── Provides player authentication
 └── Detects and prevents cheating
@@ -240,10 +240,10 @@ songbird gaming quick-setup --game "starcraft"
 
 | Capability Type | Primary Primal | Fallback | Songbird Local |
 |----------------|---------------|----------|----------------|
-| **Compute** | 🍄 Toadstool | Multiple Toadstool instances | ✅ Basic orchestration |
-| **Storage** | 🏠 NestGate | Multiple NestGate instances | ✅ Local file management |
-| **AI/ML** | 🐿️ Squirrel | Multiple Squirrel instances | ✅ Basic analytics |
-| **Security** | 🐻🐕 BearDog | Multiple BearDog instances | ✅ Basic encryption |
+| **Compute** | 🍄 Compute provider | Multiple Compute provider instances | ✅ Basic orchestration |
+| **Storage** | 🏠 Storage Provider | Multiple Storage Provider instances | ✅ Local file management |
+| **AI/ML** | 🐿️ AI provider | Multiple AI provider instances | ✅ Basic analytics |
+| **Security** | 🐻🐕 Security Provider | Multiple Security Provider instances | ✅ Basic encryption |
 | **Networking** | 🎼 Songbird | Other Songbird instances | ✅ Core networking |
 | **Gaming** | 🎼 Songbird | Federation cluster | ✅ Protocol detection |
 
@@ -287,10 +287,10 @@ scan_ranges = ["127.0.0.1", "192.0.2.0/24"]
 scan_ports = [8080, 8081, 8082, 8083, 8084]
 
 [routing]
-compute_preference = ["toadstool", "local"]
-storage_preference = ["nestgate", "local"]
-ai_preference = ["squirrel", "local"]
-security_preference = ["beardog", "local"]
+compute_preference = ["compute_provider", "local"]
+storage_preference = ["storage_provider", "local"]
+ai_preference = ["ai_provider", "local"]
+security_preference = ["security", "local"]
 ```
 
 ### **Federation Configuration**
@@ -334,14 +334,14 @@ Validation: ✅ All capabilities work without external dependencies
 
 #### **Scenario 2: Partial Ecosystem**
 ```
-Environment: Only Toadstool available
-Expected: Route compute to Toadstool, handle rest locally
+Environment: Only Compute provider available
+Expected: Route compute to Compute provider, handle rest locally
 Validation: ✅ Intelligent capability routing with graceful fallback
 ```
 
 #### **Scenario 3: Full Ecosystem**
 ```  
-Environment: All primals available (toadstool, nestgate, squirrel, beardog)
+Environment: All primals available (compute_provider, storage_provider, ai_provider, security_provider)
 Expected: Optimal routing to all primals
 Validation: ✅ Maximum performance through network effects
 ```
@@ -432,7 +432,7 @@ kubectl apply -f k8s/songbird-federation.yaml
 | **Universal Registry** | ✅ Complete | `crates/songbird-universal-primals/src/registry.rs` |
 | **Discovery Engine** | ✅ Complete | `crates/songbird-universal-primals/src/discovery/` |  
 | **Capability Router** | ✅ Complete | `crates/songbird-universal-primals/src/router.rs` |
-| **Primal Adapters** | ✅ Complete | `crates/songbird-universal-primals/src/{toadstool,nestgate,squirrel}.rs` |
+| **Primal Adapters** | ✅ Complete | `crates/songbird-universal-primals/src/{compute_provider,storage_provider,ai_provider}.rs` |
 | **Configuration System** | ✅ Complete | `examples/config/songbird-ecosystem.toml` |
 | **Testing Framework** | ✅ Complete | `scripts/test-ecosystem-integration.sh` |
 | **Gaming Bridge** | ✅ Complete | Gaming protocol detection and NAT traversal |

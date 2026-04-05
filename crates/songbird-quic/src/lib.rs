@@ -72,6 +72,7 @@
     reason = "intentional pattern; clippy false positive for this API"
 )]
 
+#[cfg(feature = "local-certs")]
 pub mod cert_gen;
 mod client;
 mod config;
@@ -79,9 +80,6 @@ mod connection;
 pub mod crypto;
 pub use crypto::{QuicCipherSuite, QuicCryptoProvider, SecurityQuicCrypto};
 
-/// Deprecated alias for [`SecurityQuicCrypto`].
-#[deprecated(note = "use SecurityQuicCrypto (capability-based naming)")]
-pub type BeardogQuicCrypto = SecurityQuicCrypto;
 mod endpoint;
 mod error;
 pub mod packet;

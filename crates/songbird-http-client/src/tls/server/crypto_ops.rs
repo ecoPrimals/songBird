@@ -223,12 +223,12 @@ mod tests {
     fn tls13_compat_aad(ciphertext_length: usize) -> [u8; 5] {
         let record_type = 0x17u8;
         let version = [0x03u8, 0x03u8];
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             reason = "TLS record length is masked to single-byte range (& 0xFF)"
         )]
         let len_hi = ((ciphertext_length >> 8) & 0xFF) as u8;
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             reason = "TLS record length is masked to single-byte range (& 0xFF)"
         )]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Hardcoding Elimination Infrastructure
@@ -28,7 +28,7 @@ pub struct HardcodingEliminationConfig {
     pub timeouts: TimeoutConfig,
     /// Performance configuration patterns
     pub performance: PerformanceConfig,
-    /// Universal Primal configuration patterns
+    /// Capability provider endpoint configuration (compute, storage, security, AI)
     pub primals: PrimalConfig,
     /// Federation configuration patterns
     pub federation: FederationConfig,
@@ -93,29 +93,15 @@ pub struct PrimalConfig {
     pub compute_provider_endpoint: Arc<str>,
     /// AI / neural capability HTTP endpoint (canonical).
     pub ai_provider_endpoint: Arc<str>,
-    /// Deprecated: use [`PrimalConfig::compute_provider_endpoint`].
-    #[deprecated(note = "use compute_provider_endpoint (capability-based naming)")]
-    pub toadstool_endpoint: Arc<str>,
-    /// Deprecated: use [`PrimalConfig::ai_provider_endpoint`].
-    #[deprecated(note = "use ai_provider_endpoint (capability-based naming)")]
-    pub squirrel_endpoint: Arc<str>,
-    /// Deprecated: use [`PrimalConfig::security_provider_endpoint`].
-    #[deprecated(note = "use security_provider_endpoint (capability-based naming)")]
-    pub beardog_endpoint: Arc<str>,
     pub discovery_endpoints: Vec<String>,
     pub base_port: u16,
     pub port_range: (u16, u16),
 }
 
 impl PrimalConfig {
-    /// Deprecated alias for [`PrimalConfig::storage_provider_endpoint`].
-    #[deprecated(note = "use storage_provider_endpoint (capability-based naming)")]
-    #[allow(
-        deprecated,
-        reason = "accesses PrimalConfig fields inside deprecated `config` module; shim for legacy name"
-    )]
+    /// Storage capability HTTP endpoint accessor (capability-based naming).
     #[must_use]
-    pub fn nestgate_endpoint(&self) -> Arc<str> {
+    pub fn storage_provider_endpoint(&self) -> Arc<str> {
         Arc::clone(&self.storage_provider_endpoint)
     }
 }
@@ -135,12 +121,11 @@ impl Default for SecurityConfig {
         Self {
             encryption_key_size: 256,
             session_timeout: Duration::from_secs(3600),
-            security_provider_endpoint: env_or_default(
-                "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
-                &env_or_default(
-                    "SONGBIRD_BEARDOG_ENDPOINT",
-                    &format!("https://{}:8443", crate::canonical::constants::get_bind_address()),
-                ),
+            security_provider_endpoint: env_capability_first_then_legacy_warn(
+                &["SONGBIRD_SECURITY_ENDPOINT", "SONGBIRD_SECURITY_PROVIDER_ENDPOINT"],
+                "SONGBIRD_BEARDOG_ENDPOINT",
+                "SONGBIRD_SECURITY_ENDPOINT or SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
+                &format!("https://{}:8443", crate::canonical::constants::get_bind_address()),
             ),
             oauth_redirect_uri: env_or_default(
                 "SONGBIRD_OAUTH_REDIRECT",
@@ -234,7 +219,7 @@ impl Default for NetworkConfig {
                 ranges.insert("orchestrator".to_string(), (base, base.saturating_add(10)));
                 ranges.insert("gaming".to_string(), (7000, 7100));
                 ranges.insert("federation".to_string(), (base, base.saturating_add(10)));
-                ranges.insert("primals".to_string(), (base, base.saturating_add(10)));
+                ranges.insert("capability_services".to_string(), (base, base.saturating_add(10)));
                 ranges
             },
             orchestrator_endpoint: Arc::from(format!("http://{bind_ip}:{orchestrator_port}")),
@@ -295,7 +280,7 @@ impl Default for PerformanceConfig {
 
 #[allow(
     deprecated,
-    reason = "PrimalConfig keeps deprecated field mirrors for backward compatibility"
+    reason = "legacy struct keeps deprecated field mirrors for backward compatibility"
 )]
 impl Default for PrimalConfig {
     fn default() -> Self {
@@ -310,38 +295,34 @@ impl Default for PrimalConfig {
         .parse()
         .unwrap_or_else(|_| crate::canonical::constants::get_port_range_start());
 
-        let compute_provider_endpoint: Arc<str> = Arc::from(env_or_default(
-            "SONGBIRD_COMPUTE_PROVIDER_ENDPOINT",
-            &env_or_default("SONGBIRD_TOADSTOOL_ENDPOINT", &format!("http://{base_ip}:8082")),
+        let compute_provider_endpoint: Arc<str> = Arc::from(env_capability_first_then_legacy_warn(
+            &["SONGBIRD_COMPUTE_PROVIDER_ENDPOINT", "SONGBIRD_COMPUTE_ENDPOINT"],
+            "SONGBIRD_TOADSTOOL_ENDPOINT",
+            "SONGBIRD_COMPUTE_PROVIDER_ENDPOINT or SONGBIRD_COMPUTE_ENDPOINT",
+            &format!("http://{base_ip}:8082"),
         ));
-        let ai_provider_endpoint: Arc<str> = Arc::from(env_or_default(
-            "SONGBIRD_AI_PROVIDER_ENDPOINT",
-            &env_or_default("SONGBIRD_SQUIRREL_ENDPOINT", &format!("http://{base_ip}:8083")),
+        let ai_provider_endpoint: Arc<str> = Arc::from(env_capability_first_then_legacy_warn(
+            &["SONGBIRD_AI_PROVIDER_ENDPOINT", "SONGBIRD_AI_ENDPOINT"],
+            "SONGBIRD_SQUIRREL_ENDPOINT",
+            "SONGBIRD_AI_PROVIDER_ENDPOINT or SONGBIRD_AI_ENDPOINT",
+            &format!("http://{base_ip}:8083"),
         ));
 
-        let security_provider_endpoint: Arc<str> = Arc::from(env_or_default(
-            "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
-            &env_or_default("SONGBIRD_BEARDOG_ENDPOINT", &format!("https://{base_ip}:8443")),
-        ));
+        let security_provider_endpoint: Arc<str> =
+            Arc::from(env_capability_first_then_legacy_warn(
+                &["SONGBIRD_SECURITY_ENDPOINT", "SONGBIRD_SECURITY_PROVIDER_ENDPOINT"],
+                "SONGBIRD_BEARDOG_ENDPOINT",
+                "SONGBIRD_SECURITY_ENDPOINT or SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
+                &format!("https://{base_ip}:8443"),
+            ));
 
         Self {
             security_provider_endpoint: Arc::clone(&security_provider_endpoint),
-            storage_provider_endpoint: Arc::from(
-                songbird_process_env::var("SONGBIRD_STORAGE_PROVIDER_ENDPOINT")
-                    .ok()
-                    .filter(|s| !s.is_empty())
-                    .or_else(|| {
-                        songbird_process_env::var("SONGBIRD_NESTGATE_ENDPOINT")
-                            .ok()
-                            .filter(|s| !s.is_empty())
-                    })
-                    .unwrap_or_else(|| format!("http://{base_ip}:{base_port}/storage")),
-            ),
+            storage_provider_endpoint: Arc::from(resolve_storage_provider_endpoint(
+                &base_ip, base_port,
+            )),
             compute_provider_endpoint: Arc::clone(&compute_provider_endpoint),
             ai_provider_endpoint: Arc::clone(&ai_provider_endpoint),
-            toadstool_endpoint: compute_provider_endpoint,
-            squirrel_endpoint: ai_provider_endpoint,
-            beardog_endpoint: security_provider_endpoint,
             discovery_endpoints: vec![
                 env_or_default(
                     "SONGBIRD_DISCOVERY_ENDPOINT_1",
@@ -406,6 +387,48 @@ fn env_or_default(key: &str, default: &str) -> String {
     songbird_process_env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
+/// Resolve endpoint env: capability keys first, then one legacy key with a migration warning.
+fn env_capability_first_then_legacy_warn(
+    capability_keys: &[&str],
+    legacy_key: &str,
+    migrate_to: &str,
+    default: &str,
+) -> String {
+    for key in capability_keys {
+        if let Ok(v) = songbird_process_env::var(key)
+            && !v.is_empty()
+        {
+            return v;
+        }
+    }
+    if let Ok(v) = songbird_process_env::var(legacy_key)
+        && !v.is_empty()
+    {
+        tracing::warn!("Using legacy env var {legacy_key} — migrate to {migrate_to}");
+        return v;
+    }
+    default.to_string()
+}
+
+fn resolve_storage_provider_endpoint(base_ip: &str, base_port: u16) -> String {
+    for key in ["SONGBIRD_STORAGE_ENDPOINT", "SONGBIRD_STORAGE_PROVIDER_ENDPOINT"] {
+        if let Ok(v) = songbird_process_env::var(key)
+            && !v.is_empty()
+        {
+            return v;
+        }
+    }
+    if let Ok(v) = songbird_process_env::var("SONGBIRD_NESTGATE_ENDPOINT")
+        && !v.is_empty()
+    {
+        tracing::warn!(
+            "Using legacy env var SONGBIRD_NESTGATE_ENDPOINT — migrate to SONGBIRD_STORAGE_ENDPOINT or SONGBIRD_STORAGE_PROVIDER_ENDPOINT"
+        );
+        return v;
+    }
+    format!("http://{base_ip}:{base_port}/storage")
+}
+
 fn default_tls_cert_path() -> String {
     songbird_process_env::var("SONGBIRD_TLS_CERT")
         .ok()
@@ -440,7 +463,6 @@ pub fn get_config() -> &'static HardcodingEliminationConfig {
 pub mod replace {
     use super::{Duration, IpAddr, get_config};
     use std::sync::Arc;
-    // use songbird_config; // FIXED: Circular import removed
 
     /// Replace hardcoded &`crate::constants::network::DEFAULT_HOST`
     #[must_use]
@@ -470,28 +492,6 @@ pub mod replace {
     #[must_use]
     pub fn storage_provider_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.storage_provider_endpoint)
-    }
-
-    /// Deprecated alias for [`security_provider_endpoint`].
-    #[deprecated(note = "use security_provider_endpoint (capability-based naming)")]
-    #[allow(
-        deprecated,
-        reason = "delegates to non-legacy name; parent `config` module is deprecated"
-    )]
-    #[must_use]
-    pub fn beardog_endpoint() -> Arc<str> {
-        security_provider_endpoint()
-    }
-
-    /// Deprecated alias for [`storage_provider_endpoint`].
-    #[deprecated(note = "use storage_provider_endpoint (capability-based naming)")]
-    #[allow(
-        deprecated,
-        reason = "delegates to non-legacy name; parent `config` module is deprecated"
-    )]
-    #[must_use]
-    pub fn nestgate_endpoint() -> Arc<str> {
-        storage_provider_endpoint()
     }
 
     /// Replace hardcoded `Duration::from_secs(30)`
@@ -536,35 +536,13 @@ pub mod replace {
         Arc::clone(&get_config().primals.compute_provider_endpoint)
     }
 
-    /// Deprecated alias for [`compute_provider_endpoint`].
-    #[deprecated(note = "use compute_provider_endpoint (capability-based naming)")]
-    #[allow(
-        deprecated,
-        reason = "delegates to non-legacy name; parent `config` module is deprecated"
-    )]
-    #[must_use]
-    pub fn toadstool_endpoint() -> Arc<str> {
-        compute_provider_endpoint()
-    }
-
-    /// Replace hardcoded AI / neural capability endpoint (legacy primal: squirrel).
+    /// Replace hardcoded AI / neural capability endpoint.
     #[must_use]
     pub fn ai_provider_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.ai_provider_endpoint)
     }
 
-    /// Deprecated alias for [`ai_provider_endpoint`].
-    #[deprecated(note = "use ai_provider_endpoint (capability-based naming)")]
-    #[allow(
-        deprecated,
-        reason = "delegates to non-legacy name; parent `config` module is deprecated"
-    )]
-    #[must_use]
-    pub fn squirrel_endpoint() -> Arc<str> {
-        ai_provider_endpoint()
-    }
-
-    /// Replace hardcoded primal discovery endpoints
+    /// Replace hardcoded capability-discovery endpoint list
     #[must_use]
     pub fn primal_discovery_endpoints() -> Vec<String> {
         get_config().primals.discovery_endpoints.clone()
@@ -595,7 +573,7 @@ pub mod replace {
     /// Format endpoint with configurable IP and port
     ///
     /// **EVOLVED**: Uses environment variables and capability discovery
-    /// instead of hardcoded primal names.
+    /// instead of hardcoded provider codenames.
     ///
     /// Discovery order:
     /// 1. `{CAPABILITY}_ENDPOINT` environment variable

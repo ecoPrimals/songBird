@@ -18,7 +18,7 @@ type Result<T> = SongbirdResult<T>;
 #[derive(Debug)]
 pub struct HealthMonitor {
     services: Arc<RwLock<HashMap<String, ServiceHealth>>>,
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     nodes: Arc<RwLock<HashMap<String, NodeHealth>>>,
 }
 

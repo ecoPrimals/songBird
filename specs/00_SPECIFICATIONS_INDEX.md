@@ -1,504 +1,86 @@
 # Songbird Specifications Index
 
-**Last Updated:** April 2, 2026  
-**Version:** v0.2.1  
-**Status:** Active Development — Capability-Based Discovery Compliant, Zero Warnings, Module Refactoring
+**Last Updated:** April 5, 2026
+**Version:** v0.2.1
 
 ---
 
-## 🎉 LATEST: IGD ROUTER CONFIGURATION (February 8, 2026)
-
-### 🌐 Sovereign Router Configuration — #1 Blocker for Cross-Network
-
-1. **[IGD_ROUTER_CONFIGURATION_SPECIFICATION.md](IGD_ROUTER_CONFIGURATION_SPECIFICATION.md)** ⭐ **COMPLETE** ⭐
-   - **Pure Rust UPnP IGD + NAT-PMP** - Automatic router port forwarding
-   - ✅ **COMPLETE** (Feb 8, 2026) - SSDP + SOAP + NAT-PMP from scratch
-   - Zero external protocol crates (SSDP/SOAP implemented directly)
-   - Protocols: UPnP IGD (RFC 6970) + NAT-PMP (RFC 6886)
-   - JSON-RPC: 6 methods (discover, map_port, unmap_port, status, external_ip, auto_configure)
-   - Enables zero-touch deployment (router auto-configured on startup)
-   - Cross-architecture: Tower (x86_64) + Pixel (aarch64) validated
-   - 19 unit tests + 1 doc-test passing
-
-**Status**: ✅ **COMPLETE** - All modules implemented and tested  
-**Validated**: Cross-network crypto chain proven (Tower encrypts → Pixel decrypts ✅)  
-**Blocker**: AT&T gateway at 192.0.2.254 has no UPnP — IGD will auto-detect and guide
-
-**Related Documents**:
-- Crate: `crates/songbird-igd/` - Implementation
-- Session: `docs/sessions/2026-02-february/IGD_IMPLEMENTATION_PROGRESS_FEB_08_2026.md`
-- Spec: `SOVEREIGN_MULTIPATH_PROTOCOL.md` - Multi-path tier integration
-
----
-
-## 🎉 LATEST: QUIC + NFC PROTOCOLS (February 8, 2026)
-
-### 🚀 New Protocol Crates
-
-2. **QUIC Protocol** (`crates/songbird-quic/`) ⭐ **COMPLETE** ⭐
-   - Native pure-Rust QUIC engine (RFC 9000/9001/9002, BearDog crypto delegation)
-   - 0-RTT, connection migration, stream multiplexing, NewReno congestion control
-   - BearDog crypto integration points ready
-
-3. **NFC Genesis** (`crates/songbird-nfc/`) ⭐ **COMPLETE** ⭐
-   - Dark Forest compliant mobile pairing
-   - Ephemeral keys, timing protection
-   - Platform abstraction (Android/iOS/Linux)
-
-4. **WireGuard Beacon Extension** ✅ COMPLETE
-   - External tunnel advertising in encrypted beacons
-   - Extends `dark_forest_beacon.rs`
-
-**Status**: ✅ **COMPLETE** - All three protocols implemented and tested
-
----
-
-## 🎉 PREVIOUS: TOR PROTOCOL EVOLUTION (February 7, 2026)
-
-### 🧅 Pure Rust Tor Protocol (Phase 2)
-
-1. **[TOR_PROTOCOL_PURE_RUST.md](TOR_PROTOCOL_PURE_RUST.md)** ⭐ **SPECIFICATION** ⭐
-   - **Pure Rust Tor Protocol** - Minimal implementation for .onion services
-   - ✅ **PHASE 2A COMPLETE** (Directory protocol)
-   - Zero external dependencies (no Tor daemon, no Arti, no C)
-   - 100% TRUE PRIMAL (BearDog crypto delegation)
-   - ~2,600 lines total (vs. Tor's 220k+ lines)
-   - Components: Directory, Circuit, Onion Service, Stream protocols
-
-2. **[NTOR_HANDSHAKE.md](NTOR_HANDSHAKE.md)** ⭐ **NEW** ⭐
-   - **ntor Handshake Protocol** - Detailed CREATE2/CREATED2 specification
-   - Key derivation function (KDF) via SHA3-256
-   - BearDog integration patterns
-   - Test vectors for validation
-   - Ready for Phase 2B implementation
-
-**Status**: ✅ **PHASE 2A COMPLETE** - Directory protocol implemented, tested, pushed  
-**Blocked**: Phase 2B awaiting BearDog AES-128-CTR + SHA3-256 extensions
-
-**Related Documents**:
-- Root: `TOR_INTEGRATION_ROADMAP_FEB_07_2026.md` - Overall roadmap
-- Root: `TOR_PHASE2_EVOLUTION_TRACKER.md` - Daily progress tracking
-- Root: `PHASE_2A_COMPLETE_FEB_07_2026.md` - Phase 2A completion report
-- Root: `PHASE_2B_PREPARATION.md` - Phase 2B design (ready for implementation)
-
----
-
-## 🎉 LATEST: SOVEREIGN MULTI-PATH PROTOCOL (February 8, 2026)
-
-### 🌐 7-Tier Connection Strategy ACTIVE
-
-1. **[SOVEREIGN_MULTIPATH_PROTOCOL.md](SOVEREIGN_MULTIPATH_PROTOCOL.md)** ⭐ **NEW MASTER SPEC** ⭐
-   - **Comprehensive Multi-Path Protocol** - 7-tier resilient connectivity
-   - ✅ **IPv6 Dual-Stack** (Feb 8, 2026) - Global reachability without port forwarding
-   - ✅ **Sovereign Onion** (Feb 8, 2026) - X25519 + ChaCha20Poly1305 active
-   - 🔨 **IGD/UPnP** - Router evolution for sovereign port forwarding
-   - 🔨 **STUN Coordinator** - Hole-punch coordinator wiring needed
-   - 🔨 **Family Relay** - Mesh peer connection integration needed
-   - Complete architecture: IPv6 → Onion → IPv4 → LAN → STUN → Relay → Beacon
-
-**Status**: ✅ **IPv6 + Onion WORKING** - IGD + Coordinator + Relay wiring next
-
-**Related Documents**:
-- Root: Session handoff with complete multi-path design
-- Specs: `SOVEREIGN_BEACON_MESH_SPECIFICATION.md` - Mesh topology
-- Specs: `SOVEREIGN_ONION_PROTOCOL.md` - Onion protocol details
-- Specs: `STUN_SERVER_CAPABILITY_SPECIFICATION.md` - STUN implementation
-- Specs: `RELAY_SERVER_SPECIFICATION.md` - Relay server
-- Specs: `SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md` - IPv6 binding
-
----
-
-## 🎉 RECENT: P2P SOVEREIGN ONION (February 6, 2026)
-
-### 🌐 P2P Service + Connector Complete
-
-2. **[SOVEREIGN_ONION_PROTOCOL.md](SOVEREIGN_ONION_PROTOCOL.md)** ⭐ **COMPLETE** ⭐
-   - **Custom Onion Service Protocol** - P2P encrypted communication
-   - ✅ **IMPLEMENTED** (Feb 6, 2026) - OnionService + OnionConnector
-   - 100% BearDog crypto delegation (Ed25519, X25519, ChaCha20Poly1305)
-   - TCP listener + handshake + encrypted data transfer
-   - Protocol: KeyExchange → Data (encrypted) → Close
-   - 199 lines (service) + 160 lines (connector) + OnionConnection
-   - Zero direct crypto, production ready
-
-**Status**: ✅ **COMPLETE** - Production ready, integrated with Multi-Path Protocol
-
-**Related Documents**:
-- Root: `P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md` - Completion report
-- Root: `P2P_IMPLEMENTATION_ROADMAP_FEB_06_2026.md` - Implementation guide
-- Crate: `crates/songbird-sovereign-onion/` - Source code
-
----
-
-## 🎉 PREVIOUS: NAT TRAVERSAL STACK (February 5, 2026)
-
-### 🌐 NEW: Complete Sovereign NAT Traversal
-
-3. **[STUN_SERVER_CAPABILITY_SPECIFICATION.md](STUN_SERVER_CAPABILITY_SPECIFICATION.md)** ⭐ **COMPLETE** ⭐
-   - **Pure Rust STUN Server** - RFC 5389 compliant NAT traversal
-   - ✅ **IMPLEMENTED** (Feb 5, 2026) - 958 lines, 24 tests passing
-   - Eliminates coturn C dependency (ecoBin compliance)
-   - JSON-RPC integration (`stun.serve`, `stun.stop`, `stun.status`)
-   - Performance: <1ms response (~0.2ms measured)
-   - Zero unsafe code, zero new dependencies
-
-**Status**: ✅ **COMPLETE** - Production ready, coturn STUN eliminated
-
-4. **[RELAY_SERVER_SPECIFICATION.md](RELAY_SERVER_SPECIFICATION.md)** ⭐ **NEW** ⭐
-   - **Lineage Relay Server** - Evolution of TURN RFC 5766
-   - Packet forwarding for symmetric NAT (30% of connections)
-   - Genetic lineage authorization (not username/password)
-   - Privacy masking based on family relationship
-   - Distributed relay network (any ancestor can help)
-   - 80% infrastructure exists (2,910 lines of relay code)
-   - Phase 1-5: 5 days implementation (~1,250 new lines)
-   - Completes sovereign NAT traversal stack
-   - Eliminates coturn completely
-
-**Status**: 📋 **PLANNED** - Ready for Implementation (investigation complete, spec approved)
-
----
-
-## 🎉 PREVIOUS: SECURE COMMUNICATIONS PROTOCOL (January 27, 2026)
-
-### 🔒 BearDog Policy Delegation Architecture
-
-5. **[SECURE_COMMUNICATIONS_PROTOCOL.md](SECURE_COMMUNICATIONS_PROTOCOL.md)**
-   - **"BearDog Decides What Goes Where"** - Security policy delegation
-   - Tower Atomic pattern for transport security
-   - 5-level data classification (Public → Top Secret)
-   - Multi-version TLS support (1.0/1.2/1.3 based on policy)
-   - 4 JSON-RPC security methods defined
-   - 5 detailed use cases (modern API, legacy bank, IoT, policy violation, dev)
-   - Per-connection security guarantees
-   - Audit & compliance framework
-
----
-
-## 🎉 PREVIOUS: TLS 1.3 HTTPS COMPLETE + CAPABILITY ABSTRACTION (January 24, 2026)
-
-### ⭐ CURRENT WORK - NAT TRAVERSAL & SECURITY
-
-6. **[STUN_SERVER_CAPABILITY_SPECIFICATION.md](STUN_SERVER_CAPABILITY_SPECIFICATION.md)** ⭐ READY TO IMPLEMENT (Feb 5, 2026)
-   - Pure Rust STUN server for NAT traversal
-   - Eliminates coturn C dependency
-   - 3-5 days for Phase 1 MVP
-   - Investigation: (archived to `ecoPrimals/archive/songbird-sessions-fossil-mar28-2026/`)
-
-7. **[SECURE_COMMUNICATIONS_PROTOCOL.md](SECURE_COMMUNICATIONS_PROTOCOL.md)** ✅ COMPLETE (Jan 27, 2026)
-   - BearDog policy delegation architecture
-   - Data classification → Transport security mapping
-   - Multi-version TLS support (1.0/1.2/1.3)
-   - JSON-RPC security API (4 methods)
-   - 5 use cases documented
-
-8. **[SONGBIRD_TLS_13_COMPLETE (archived)](archive/SONGBIRD_TLS_13_COMPLETE_JAN2026.md)** ✅ COMPLETE
-   - Full RFC 8446 TLS 1.3 implementation
-   - 100% Pure Rust, zero C dependencies
-   - 93% success rate (81/87 sites)
-   - Tested: AI/ML (100%), Cloud (90%), GitHub (100%)
-
-9. **[SONGBIRD_FUTURE_WORK (archived)](archive/SONGBIRD_FUTURE_WORK_V520_JAN2026.md)** 📋 ROADMAP (superseded by REMAINING_WORK.md)
-   - Security hardening roadmap (certificate validation)
-   - Performance improvements (session resumption, connection pooling)
-   - Protocol extensions (HTTP/2, TLS 1.2 implementation)
-   - Production cleanup tasks
-
-10. **[SONGBIRD_EVOLUTION_EXECUTION (archived)](archive/SONGBIRD_EVOLUTION_EXECUTION_JAN2026.md)** ✅ IMPLEMENTED
-   - Capability-based crypto abstraction (`CryptoCapability` trait)
-   - Runtime provider discovery (no hardcoded sockets)
-   - Large file refactoring (HTTP client: 1,193 → 592 lines)
-   - biomeOS semantic translation ready
-
----
-
-## 🏗️ CORE ARCHITECTURE
-
-### Foundational Principles
-
-11. **[PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md](PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md)** ⭐ CRITICAL
-   - **"Each Primal Knows Only Itself"** principle
-   - No hardcoded knowledge of other primals
-   - Discovery happens dynamically at runtime
-
-12. **[CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md](CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md)** ⭐ CRITICAL
-   - Pure capability-based routing
-   - Zero hardcoded primal names
-   - Universal adapter pattern
-
-13. **[STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md](STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md)**
-   - Build for self + sovereignty
-   - Network effects emerge when primals connect
-
-### Access Control & Privacy
-
-14. **[SONGBIRD_ACCESS_CONTROL.md](SONGBIRD_ACCESS_CONTROL.md)**
-   - 5 Trust Levels (Anonymous → Hardware-Verified)
-   - Graduated information disclosure
-
-15. **[CONSENT_MANAGEMENT.md](CONSENT_MANAGEMENT.md)**
-   - Explicit consent for sensitive operations
-   - User-controlled data sharing
-
-16. **[INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md](INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md)**
-   - Human dignity as architectural principle
-   - User agency and autonomy
-
----
-
-## 🔌 PROTOCOLS & INTEGRATION
-
-### BearDog Integration
-
-17. **[archive/SONGBIRD_BEARDOG_INTEGRATION.md](archive/SONGBIRD_BEARDOG_INTEGRATION.md)** *(archived — see capability-based discovery standard)*
-   - Cryptographic delegation model (historical)
-   - JSON-RPC over Unix socket
-   - Capability-based discovery
-
-18. **[archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md](archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md)** *(archived)*
-    - Security primal integration (historical)
-    - Trust verification
-
-### Protocol Framework
-
-19. **[UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md](UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md)**
-    - Multi-protocol support
-    - Protocol negotiation
-
-20. **[HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md)**
-    - HTTP/HTTPS + JSON-RPC
-    - Protocol selection
-
-21. **[TARPC_JSON_RPC_PROTOCOL_SPEC.md](TARPC_JSON_RPC_PROTOCOL_SPEC.md)**
-    - tarpc implementation
-    - High-performance RPC
-
-### Specific Integrations
-
-22. **[archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md](archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md)** *(archived)*
-    - AI/coordination routing integration (historical)
-    - MCP protocol support
-
----
-
-## 🌐 FEDERATION & DISCOVERY
-
-### Federation
-
-23. **[FEDERATION_IMPLEMENTATION_SPECIFICATION.md](FEDERATION_IMPLEMENTATION_SPECIFICATION.md)**
-    - Multi-tower federation
-    - Cross-tower communication
-
-24. **Archived** — [FRACTAL_FEDERATION_SPECIFICATION.md](archive/FRACTAL_FEDERATION_SPECIFICATION.md) (stale; obsolete crate references)
-
-25. **[SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md](SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md)**
-    - Sovereignty-preserving federation
-    - Peer-to-peer coordination
-
-### Discovery & Routing
-
-26. **[INTELLIGENT_CAPABILITY_ROUTING_SPEC.md](INTELLIGENT_CAPABILITY_ROUTING_SPEC.md)**
-    - Smart routing based on capabilities
-    - QoS-aware routing
-
-27. **[CAPABILITY_REGISTRATION_API.md](CAPABILITY_REGISTRATION_API.md)**
-    - How primals register capabilities
-    - Dynamic capability updates
-
-28. **[PRIMAL_REGISTRATION_PROTOCOL.md](PRIMAL_REGISTRATION_PROTOCOL.md)**
-    - Universal Port Authority principle
-    - 5-phase registration lifecycle
-
----
-
-## 🏛️ UNIVERSAL ARCHITECTURE
-
-### Universal Adapters
-
-29. **[UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md](UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md)**
-    - Zero-cost universal adapter
-    - Capability-based routing
-
-30. **[UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md](UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md)**
-    - Primal-agnostic adapter
-    - Dynamic primal discovery
-
-31. **[UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md](UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md)**
-    - Universal primal registry
-    - Environment-adaptive discovery
-
----
-
-## 🧪 TESTING & QUALITY
-
-32. **Archived** — [COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md](archive/COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md) (stale)
-
-33. **Archived** — [UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md](archive/UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md) (stale)
-
----
-
-## ⚡ PERFORMANCE & OPTIMIZATION
-
-34. **Archived** — [ZERO_COST_ARCHITECTURE_SPECIFICATION.md](archive/ZERO_COST_ARCHITECTURE_SPECIFICATION.md) (stale)
-
-35. **Archived** — [ZERO_COST_PERFORMANCE_SPECIFICATION.md](archive/ZERO_COST_PERFORMANCE_SPECIFICATION.md) (stale)
-
----
-
-## 🏢 DEPLOYMENT & OPERATIONS
-
-36. **[ADAPTIVE_DEPLOYMENT_SPECIFICATION.md](ADAPTIVE_DEPLOYMENT_SPECIFICATION.md)**
-    - Adaptive deployment patterns
-    - Auto-configuration
-
-37. **[STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md](STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md)**
-    - Single tower → Multi-tower
-    - Migration guide
-
----
-
-## 🔧 IMPLEMENTATION GUIDES
-
-### Error Handling
-
-38. **Archived** — [UNIFIED_ERROR_HANDLING_SPECIFICATION.md](archive/UNIFIED_ERROR_HANDLING_SPECIFICATION.md) (stale)
-
-39. **[ERROR_RECOVERY.md](ERROR_RECOVERY.md)**
-    - Recovery strategies
-    - Graceful degradation
-
-### Task & Resource Management
-
-40. **[TASK_LIFECYCLE.md](TASK_LIFECYCLE.md)**
-    - Task lifecycle management
-    - State transitions
-
-41. **[RESOURCE_MANAGEMENT.md](RESOURCE_MANAGEMENT.md)**
-    - Resource allocation
-    - Resource cleanup
-
-42. **[OBSERVABILITY.md](OBSERVABILITY.md)**
-    - Logging and tracing
-    - Monitoring
-
-### API Specifications
-
-43. **Archived** — [AI_FIRST_CITIZEN_API_SPECIFICATION.md](archive/AI_FIRST_CITIZEN_API_SPECIFICATION.md) (stale)
-
-44. **[REMOTE_EXECUTION_API_SPEC.md](REMOTE_EXECUTION_API_SPEC.md)**
-    - Remote execution API
-    - Task submission
-
----
-
-## 🔄 MIGRATION & EVOLUTION
-
-45. **[ASYNC_TRAIT_MIGRATION_SPECIFICATION.md](ASYNC_TRAIT_MIGRATION_SPECIFICATION.md)**
-    - async/await patterns
-    - Trait migration
-
-46. **Archived** — [MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md](archive/MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md) (stale; obsolete crate references)
-
----
-
-## 📚 SPECIAL TOPICS
-
-47. **[SONGBIRD_NATIVE_RPC_SPECIFICATION.md](SONGBIRD_NATIVE_RPC_SPECIFICATION.md)**
-    - Native RPC implementation
-    - Performance optimization
-
-48. **[SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md](SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md)**
-    - IPv6 support
-    - Dual-stack networking
-
-49. **[BIRDSONG_PROTOCOL.md](BIRDSONG_PROTOCOL.md)**
-    - Songbird messaging protocol
-    - Inter-primal communication
-
-50. **[LINEAGE_GATED_RELAY_PROTOCOL.md](LINEAGE_GATED_RELAY_PROTOCOL.md)**
-    - Genetic lineage verification
-    - Trust hierarchies
-
----
-
-## 🗂️ ARCHIVE
-
-### Pre-HTTPS Success (Historical)
-
-- `archive/pre-https-success/PURE_SONGBIRD_TLS.md` - Original TLS spec (superseded)
-- `archive/pre-https-success/CURRENT_IMPLEMENTATION_STATUS.md` - Old status
-
-### Deprecated Protocols
-
-- `archive/deprecated-protocols/GRPC_GATEWAY_ADAPTER_SPECIFICATION.md.deprecated`
-
-### Stale specifications (March 2026)
-
-Moved from `specs/` or `docs/architecture/` for historical reference (obsolete or non-existent crate names such as songbird-core, songbird-network, songbird-errors, songbird-security, songbird-lib):
-
-- `archive/ZERO_COST_ARCHITECTURE_SPECIFICATION.md`
-- `archive/MODERN_CRATE_CONSOLIDATION_SPECIFICATION.md`
-- `archive/UNIVERSAL_PROVIDER_ARCHITECTURE_COMPLETE_SPECIFICATION.md`
-- `archive/UNIVERSAL_ECOSYSTEM_INTEGRATION_SPEC.md`
-- `archive/UNIVERSAL_STANDARDS_IMPLEMENTATION_ROADMAP.md`
-- `archive/PHASE_2_HUMAN_AI_COLLABORATION_COMPLETE.md`
-- `archive/HISTORIC_TEST_COVERAGE_BREAKTHROUGH_SPECIFICATION.md`
-- `archive/PHASE_3_OPTIMIZATION_INFRASTRUCTURE_SPECIFICATION.md`
-- `archive/ECOSYSTEM_COMPLIANCE_ROADMAP.md`
-- `archive/ARCHITECTURAL_CONSOLIDATION_SPECIFICATION.md`
-- `archive/ZERO_COST_PERFORMANCE_SPECIFICATION.md`
-- `archive/SERVICE_REGISTRY_AI_FIRST_ENHANCEMENT_SPEC.md`
-- `archive/AI_FIRST_CITIZEN_API_SPECIFICATION.md`
-- `archive/COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md`
-- `archive/UNIFIED_TESTING_FRAMEWORK_SPECIFICATION_2025.md`
-- `archive/UNIFIED_ERROR_HANDLING_SPECIFICATION.md`
-- `archive/NETWORK_PACKAGE_MODERNIZATION_COMPLETE.md`
-- `archive/FRACTAL_FEDERATION_SPECIFICATION.md`
-- `archive/COMPREHENSIVE_TEST_COVERAGE_ACHIEVEMENT_STATUS.md`
-- `archive/RUSTLS_CRYPTO_PROVIDER_RESEARCH.md` (from `docs/architecture/`)
-- `archive/PURE_RUST_TLS_EXECUTION_PLAN.md` (from `docs/architecture/`)
-- `archive/SPECS_README_SEPT2025.md` (original specs/README.md from September 2025 layout)
-- `archive/UNIVERSAL_PROVIDER_MIGRATION_GUIDE.md` (references `songbird-security` / `songbird-core`)
-- `archive/ASYNC_TRAIT_MIGRATION_SPECIFICATION.md` (references `songbird-core`)
-- `archive/FEDERATION_IMPLEMENTATION_SPECIFICATION.md` (references `songbird-core` / `songbird-network`)
-- `archive/PRODUCTION_READINESS_ACHIEVEMENT_REPORT.md` (Jan 2025 achievement report — historical)
-- `archive/DOCUMENTATION_UPDATE_SUMMARY.md` (Jan 2025 cleanup summary — historical)
-- `archive/ORGANIZATION_SUMMARY.md` (Jan 2025 simplification summary — historical)
-- `archive/TEAM_HANDOFF_SUMMARY.md` (Nov 2025 handoff — historical; current handoffs in wateringHole)
-- `archive/PROVIDER_TRAIT_UNIFICATION_ACHIEVEMENT_SPEC.md` (Sept 2025 achievement — historical)
-
----
-
-## 🎯 NAVIGATION
-
-### By Topic
-
-| Topic | Start Here |
-|-------|------------|
-| **TLS/HTTPS** | archive/SONGBIRD_TLS_13_COMPLETE_JAN2026.md (see CHANGELOG for current) |
-| **Architecture** | PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md |
-| **Discovery** | CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md |
-| **Federation** | FEDERATION_IMPLEMENTATION_SPECIFICATION.md |
-| **Testing** | `CONTRIBUTING.md`, crate `tests/`; superseded specs in `specs/archive/` |
-| **Security Provider** | archive/SONGBIRD_BEARDOG_INTEGRATION.md (historical); see capability-based discovery |
-
-### By Priority
-
-- ⭐ **CRITICAL** - Core architectural principles
-- 📋 **IMPORTANT** - Implementation specifications  
-- 📚 **REFERENCE** - Detailed specifications
-
----
-
-## 📊 Summary
-
-| Category | Count |
-|----------|-------|
-| **Active Specs** | 43 |
-| **Archived** | 24 |
-| **Current Focus** | IGD Router Configuration (cross-network blocker) |
-| **Status** | QUIC + NFC Complete, IGD Implementing |
-
----
-
-**Built with:** 100% Pure Rust | Zero C Dependencies | 9-Tier Multi-Path Protocol | S+ Deep Debt
+## Core Architecture
+
+- [UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md](./UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md) — Capability adapter patterns
+- [CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md](./CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md) — Discovery system
+- [ECOSYSTEM_DELEGATION_SPECIFICATION.md](./ECOSYSTEM_DELEGATION_SPECIFICATION.md) — Primal delegation boundaries
+- [CAPABILITY_BASED_CLIENT_ANALYSIS.md](./CAPABILITY_BASED_CLIENT_ANALYSIS.md) — Client capability analysis
+- [CAPABILITY_BASED_SECURITY_DISCOVERY.md](./CAPABILITY_BASED_SECURITY_DISCOVERY.md) — Security capability discovery
+- [CAPABILITY_REGISTRATION_API.md](./CAPABILITY_REGISTRATION_API.md) — Capability registration
+- [PRIMAL_COORDINATION_ARCHITECTURE.md](./PRIMAL_COORDINATION_ARCHITECTURE.md) — Primal coordination
+- [PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md](./PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md) — Self-knowledge principle
+- [ECOPRIMALS_ARCHITECTURE_CLARITY.md](./ECOPRIMALS_ARCHITECTURE_CLARITY.md) — Architecture clarity
+- [SONGBIRD_ROLE_CLARIFICATION_SPEC.md](./SONGBIRD_ROLE_CLARIFICATION_SPEC.md) — Songbird vs other primals
+
+## Protocols
+
+- [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — JSON-RPC 2.0 + tarpc
+- [TARPC_JSON_RPC_PROTOCOL_SPEC.md](./TARPC_JSON_RPC_PROTOCOL_SPEC.md) — Dual-protocol IPC
+- [HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Hybrid protocol architecture
+- [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Multi-path connectivity
+- [SOVEREIGN_BEACON_MESH_SPECIFICATION.md](./SOVEREIGN_BEACON_MESH_SPECIFICATION.md) — Encrypted beacon mesh
+- [SOVEREIGN_ONION_PROTOCOL.md](./SOVEREIGN_ONION_PROTOCOL.md) — P2P onion service
+- [SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md](./SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md) — Federation
+- [SOVEREIGN_QUORUM_FEDERATION_SPECIFICATION.md](./SOVEREIGN_QUORUM_FEDERATION_SPECIFICATION.md) — Quorum federation
+- [BIRDSONG_PROTOCOL.md](./BIRDSONG_PROTOCOL.md) — Encrypted beacon protocol
+- [LINEAGE_GATED_RELAY_PROTOCOL.md](./LINEAGE_GATED_RELAY_PROTOCOL.md) — Lineage relay
+- [NTOR_HANDSHAKE.md](./NTOR_HANDSHAKE.md) — Tor ntor handshake
+- [TOR_PROTOCOL_PURE_RUST.md](./TOR_PROTOCOL_PURE_RUST.md) — Pure Rust Tor
+- [TOR_TRANSPORT_INTEGRATION.md](./TOR_TRANSPORT_INTEGRATION.md) — Tor transport integration
+- [SECURE_COMMUNICATIONS_PROTOCOL.md](./SECURE_COMMUNICATIONS_PROTOCOL.md) — Secure communications
+- [RENDEZVOUS_PROTOCOL_SPEC.md](./RENDEZVOUS_PROTOCOL_SPEC.md) — Rendezvous protocol
+- [RELAY_SERVER_SPECIFICATION.md](./RELAY_SERVER_SPECIFICATION.md) — Relay server
+- [STUN_SERVER_CAPABILITY_SPECIFICATION.md](./STUN_SERVER_CAPABILITY_SPECIFICATION.md) — STUN server
+- [IGD_ROUTER_CONFIGURATION_SPECIFICATION.md](./IGD_ROUTER_CONFIGURATION_SPECIFICATION.md) — UPnP IGD + NAT-PMP
+
+## Transport & Networking
+
+- [TRANSPORT_SYSTEM_EVOLUTION_SPEC.md](./TRANSPORT_SYSTEM_EVOLUTION_SPEC.md) — Transport evolution
+- [UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md](./UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md) — Universal protocol framework
+- [INTELLIGENT_CAPABILITY_ROUTING_SPEC.md](./INTELLIGENT_CAPABILITY_ROUTING_SPEC.md) — Capability routing
+- [PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md](./PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md) — Progressive protocol enhancement
+- [SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md](./SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md) — IPv6 dual-stack
+- [FRACTAL_FEDERATION_IMPLEMENTATION_GUIDE.md](./FRACTAL_FEDERATION_IMPLEMENTATION_GUIDE.md) — Fractal federation
+- [STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md](./STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md) — Standalone network effects
+
+## Deployment & Operations
+
+- [ADAPTIVE_DEPLOYMENT_SPECIFICATION.md](./ADAPTIVE_DEPLOYMENT_SPECIFICATION.md) — Adaptive deployment
+- [STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md](./STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md) — Deployment guide
+- [REMOTE_EXECUTION_API_SPEC.md](./REMOTE_EXECUTION_API_SPEC.md) — Remote execution API
+- [CLI_VS_CLIENT_ARCHITECTURE.md](./CLI_VS_CLIENT_ARCHITECTURE.md) — CLI architecture
+
+## Governance & Operational
+
+- [INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md](./INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md) — Human dignity
+- [SONGBIRD_ACCESS_CONTROL.md](./SONGBIRD_ACCESS_CONTROL.md) — Access control
+- [CONSENT_MANAGEMENT.md](./CONSENT_MANAGEMENT.md) — Consent management
+- [TASK_LIFECYCLE.md](./TASK_LIFECYCLE.md) — Task lifecycle
+- [ERROR_RECOVERY.md](./ERROR_RECOVERY.md) — Error recovery
+- [RESOURCE_MANAGEMENT.md](./RESOURCE_MANAGEMENT.md) — Resource management
+- [OBSERVABILITY.md](./OBSERVABILITY.md) — Observability
+- [LIFECYCLE_ORCHESTRATION_EVOLUTION.md](./LIFECYCLE_ORCHESTRATION_EVOLUTION.md) — Lifecycle orchestration
+
+## Evolution
+
+- [ZERO_COST_ARCHITECTURE_EVOLUTION_PLAN.md](./ZERO_COST_ARCHITECTURE_EVOLUTION_PLAN.md) — Zero-cost evolution
+- [UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md](./UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md) — Universal adapter
+- [UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md](./UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md) — SDK integration
+- [PRIMAL_REGISTRATION_PROTOCOL.md](./PRIMAL_REGISTRATION_PROTOCOL.md) — Primal registration
+- [DISTRIBUTED_ML_DEMO_REQUIREMENTS.md](./DISTRIBUTED_ML_DEMO_REQUIREMENTS.md) — Distributed ML demo
+- [COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md](./COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md) — Intelligence graph
+
+## Archived (fossil record)
+
+Specs in [archive/](./archive/) retain historical primal codenames and filenames. Fossil record only.
+
+- [Security provider integration (archived spec)](./archive/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
+- [Entropy hierarchy (archived spec)](./archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
+- [AI provider integration (archived spec)](./archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
+- [Storage discovery (archived spec)](./archive/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved

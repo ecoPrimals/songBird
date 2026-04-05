@@ -320,18 +320,18 @@ pub struct GraphEdge {
     "details": {
       "node-1": {
         "status": "available",
-        "primal": "BearDog",
-        "service_id": "beardog-nat0-abc123",
-        "endpoint": "/run/user/1000/beardog-nat0.sock",
+        "primal": "Security Provider",
+        "service_id": "security_provider-nat0-abc123",
+        "endpoint": "/run/user/1000/security_provider-nat0.sock",
         "protocol": "json-rpc",
         "health_status": "healthy",
         "last_seen": "2026-01-11T10:00:00Z"
       },
       "node-2": {
         "status": "available",
-        "primal": "NestGate",
-        "service_id": "nestgate-nat0-def456",
-        "endpoint": "/run/user/1000/nestgate-nat0.sock",
+        "primal": "Storage Provider",
+        "service_id": "storage_provider-nat0-def456",
+        "endpoint": "/run/user/1000/storage_provider-nat0.sock",
         "protocol": "json-rpc",
         "health_status": "healthy",
         "last_seen": "2026-01-11T10:00:05Z"
@@ -340,7 +340,7 @@ pub struct GraphEdge {
         "status": "unavailable",
         "required_capability": "compute",
         "reason": "No primal registered with capability 'compute'",
-        "suggested_action": "Deploy ToadStool or register alternative compute provider"
+        "suggested_action": "Deploy Compute Provider or register alternative compute provider"
       }
     },
     "summary": {
@@ -374,7 +374,7 @@ pub struct GraphEdge {
     "node": {
       "id": "node-1",
       "capability": "encryption",
-      "preferred_primal": "BearDog",
+      "preferred_primal": "Security Provider",
       "preferred_protocol": "json-rpc"
     }
   },
@@ -390,9 +390,9 @@ pub struct GraphEdge {
     "alternatives": [
       {
         "rank": 1,
-        "service_id": "beardog-nat0-abc123",
-        "primal_name": "BearDog",
-        "endpoint": "/run/user/1000/beardog-nat0.sock",
+        "service_id": "security_provider-nat0-abc123",
+        "primal_name": "Security Provider",
+        "endpoint": "/run/user/1000/security_provider-nat0.sock",
         "protocol": "json-rpc",
         "health_status": "healthy",
         "last_seen": "2026-01-11T10:00:00Z",
@@ -401,7 +401,7 @@ pub struct GraphEdge {
       }
     ],
     "recommendation": {
-      "service_id": "beardog-nat0-abc123",
+      "service_id": "security_provider-nat0-abc123",
       "reason": "Best match: healthy, protocol compatible, primary provider"
     },
     "unavailable_reason": null
@@ -532,8 +532,8 @@ pub struct GraphEdge {
 ### Integration Tests (Week 4)
 
 **With Other Primals**:
-- Test with real BearDog registration
-- Test with real NestGate registration
+- Test with real Security Provider registration
+- Test with real Storage Provider registration
 - Test with multiple primals registered
 - Test with primal health status changes
 
@@ -668,7 +668,7 @@ pub struct GraphEdge {
 - [ ] Don't log sensitive graph data
 - [ ] Don't expose internal service details
 - [ ] Audit all validation requests
-- [ ] Respect user permissions (via BearDog)
+- [ ] Respect user permissions (via Security Provider)
 
 ---
 
@@ -713,7 +713,7 @@ pub struct GraphEdge {
 ### Blocks
 - petalTongue graph editor validation
 - biomeOS graph deployment
-- Squirrel graph learning
+- AI provider graph learning
 
 ---
 

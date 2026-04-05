@@ -47,7 +47,7 @@ The **Sovereign Onion Protocol** provides cryptographically-derived addresses (`
 ### Derivation Chain
 
 ```
-Device ID (BearDog UUID)
+Device ID (Security Provider UUID)
     ↓
 Ed25519 Identity Key (persistent in Sled)
     ↓

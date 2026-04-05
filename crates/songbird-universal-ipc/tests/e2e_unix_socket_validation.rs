@@ -368,8 +368,8 @@ async fn test_e2e_connection_stays_open_after_response() {
 
     assert!(response1.contains("\"result\""));
 
-    // Wait a bit - connection should still be open
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // Advance virtual time — connection should survive idle (start_paused = true)
+    tokio::time::advance(Duration::from_millis(200)).await;
 
     // Send second request on SAME connection
     write_half

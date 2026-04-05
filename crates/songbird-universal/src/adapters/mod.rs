@@ -28,13 +28,14 @@
 //! code here doesn't know about them!
 
 pub mod ai;
+#[cfg(test)]
+#[path = "capability_adapter_coverage_tests.rs"]
+mod capability_adapter_coverage_tests;
+#[cfg(test)]
+#[path = "capability_transport_tests.rs"]
+mod capability_transport_tests;
 pub mod compute;
-
-/// Deprecated module path for compute adapters (use [`compute`]).
-#[deprecated(note = "use `adapters::compute` (capability domain: compute)")]
-pub mod toadstool {
-    pub use super::compute::*;
-}
+pub(crate) mod transport;
 
 pub mod security;
 #[cfg(test)]
@@ -45,8 +46,5 @@ pub mod storage;
 pub use ai::{AIAdapter, AIHealth, AIMetrics, ModelType};
 pub use compute::{ComputeAdapter, ComputeMetrics, HealthStatus as ComputeHealth};
 
-/// Deprecated alias for [`ComputeAdapter`].
-#[deprecated(note = "use ComputeAdapter (capability-based naming)")]
-pub type ToadStoolMetricsAdapter = ComputeAdapter;
 pub use security::{SecurityAdapter, SecurityHealth, SecurityMetrics};
 pub use storage::{StorageAdapter, StorageHealth, StorageMetrics};

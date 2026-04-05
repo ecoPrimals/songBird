@@ -3,7 +3,7 @@
 **Date**: December 21, 2025  
 **Status**: Architectural Specification  
 **Phase**: 3 (NAT Traversal) Design Evolution  
-**Integration**: BearDog + Songbird Federation
+**Integration**: Security Provider + Songbird Federation
 
 ---
 
@@ -31,7 +31,7 @@ Benefit: Decentralized, self-healing, no permanent observers
 
 ### Core Principle
 
-> **BearDog nodes with genetic lineage can act as conditional relays, where visibility and authority are governed by lineage depth and masking rules rather than network topology.**
+> **Security Provider nodes with genetic lineage can act as conditional relays, where visibility and authority are governed by lineage depth and masking rules rather than network topology.**
 
 ### What This Replaces
 
@@ -127,7 +127,7 @@ Benefit: Decentralized, self-healing, no permanent observers
 ### Phase 1: Discovery
 
 1. Node A and Node B fail direct NAT traversal
-2. Query lineage graph via BearDog
+2. Query lineage graph via Security Provider
 3. Identify suitable ancestor or cousin node
 4. Verify lineage proof
 
@@ -234,9 +234,9 @@ Lineage is:
 - Phase 3.2: Implement **Lineage-Gated Relay** (replaces TURN)
 - Phase 3.3: Implement lineage-aware ICE negotiation
 
-### BearDog Handoff Update
+### Security Provider Handoff Update
 
-**BearDog Responsibilities:**
+**Security Provider Responsibilities:**
 1. Generate and maintain lineage chains
 2. Sign child nodes
 3. Provide lineage proofs
@@ -244,7 +244,7 @@ Lineage is:
 5. Enforce masking rules
 
 **Songbird Responsibilities:**
-1. Query BearDog for lineage proofs
+1. Query Security Provider for lineage proofs
 2. Request relay service when NAT traversal fails
 3. Maintain masked session state
 4. Fall back to traditional TURN if lineage unavailable
@@ -492,7 +492,7 @@ Root (Generation 0)
 2. Lineage verification protocol
 3. Relay offering mechanism
 4. Masking layer implementation
-5. BearDog relay service
+5. Security Provider relay service
 6. Songbird relay client
 
 **Timeline:** 2-3 weeks
@@ -515,9 +515,9 @@ Root (Generation 0)
 
 ## 📚 Related Specifications
 
-**BearDog:**
-- `BEARDOG_BTSP_HANDOFF.md` - BTSP integration
-- `specs/PRIMAL_RESPONSIBILITY_SEPARATION_SPEC.md` - BearDog security role
+**Security Provider:**
+- Security provider BTSP handoff (historical filename `BEARDOG_BTSP_HANDOFF.md`) — BTSP integration
+- `specs/PRIMAL_RESPONSIBILITY_SEPARATION_SPEC.md` - Security Provider security role
 - `specs/BIRDSONG_PROTOCOL.md` - ✨ **NEW**: Lineage-gated broadcasts
 
 **Federation:**
@@ -581,7 +581,7 @@ Root (Generation 0)
    - Wire protocol details
    - Lineage proof format
 
-3. **Update BearDog Handoff**
+3. **Update Security Provider Handoff**
    - Add relay service responsibilities
    - Define lineage proof API
 
@@ -592,7 +592,7 @@ Root (Generation 0)
    - Verification functions
    - Test suite
 
-5. **BearDog Relay Service** (Week 2-3)
+5. **Security Provider Relay Service** (Week 2-3)
    - Relay offering mechanism
    - Masking implementation
    - Descendant discovery
@@ -639,7 +639,7 @@ Root (Generation 0)
 
 ### One Sentence Verdict
 
-> **BearDog lineage can safely and correctly act as a TURN-like startup and fallback relay system, with masking and sub-masking governed by cryptographic ancestry rather than central authority.**
+> **Security Provider lineage can safely and correctly act as a TURN-like startup and fallback relay system, with masking and sub-masking governed by cryptographic ancestry rather than central authority.**
 
 ### Deep Insight
 

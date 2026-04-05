@@ -5,7 +5,7 @@
 //!
 //! Tests the CanonicalUniversalAdapter, configs, enums, and supporting types.
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     reason = "test assertions and harness ergonomics"

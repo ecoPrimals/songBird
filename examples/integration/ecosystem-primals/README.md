@@ -10,30 +10,30 @@ Like in ecology, **each organism exists independently**:
 
 - **Songbird doesn't "know" these primals exist**
 - Production code uses capability-based adapters
-- These examples show "how ToadStool implements compute capability"
+- These examples show "how Compute Provider implements compute capability"
 - But they're just ONE possible implementation
 
 ## 📁 Files
 
-- `toadstool.rs` - Example: How ToadStool implements compute capability
-- `beardog.rs` - Example: How BearDog implements security capability
-- `nestgate.rs` - Example: How NestGate implements storage capability
-- `squirrel.rs` - Example: How Squirrel implements AI capability
+- `compute_provider.rs` - Example: How Compute Provider implements compute capability
+- `security_provider.rs` - Example: How Security Provider implements security capability
+- `storage_provider.rs` - Example: How Storage Provider implements storage capability
+- `ai_provider.rs` - Example: How AI Provider implements AI capability
 
 ## ✅ Production Code
 
 Production code in `crates/songbird-universal/src/adapters/` uses:
 
-- `ComputeAdapter` - Generic compute capability (not ToadStool-specific)
-- `SecurityAdapter` - Generic security capability (not BearDog-specific)
-- `StorageAdapter` - Generic storage capability (not NestGate-specific)
-- `AIAdapter` - Generic AI capability (not Squirrel-specific)
+- `ComputeAdapter` - Generic compute capability (not Compute Provider-specific)
+- `SecurityAdapter` - Generic security capability (not Security Provider-specific)
+- `StorageAdapter` - Generic storage capability (not Storage Provider-specific)
+- `AIAdapter` - Generic AI capability (not AI Provider-specific)
 
 ## 🎯 Key Principle
 
 **Songbird has local storage for sovereign standalone operation**, but can
-utilize whatever storage provider is available (happens to be NestGate in our
+utilize whatever storage provider is available (happens to be Storage Provider in our
 ecosystem) for network effects.
 
-The code does **NOT** know about NestGate - only we do as observers of the
+The code does **NOT** know about Storage Provider - only we do as observers of the
 ecosystem.

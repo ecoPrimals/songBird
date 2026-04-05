@@ -181,13 +181,6 @@ impl NfcProtocol {
     pub fn security_provider_socket(&self) -> &std::path::Path {
         &self.config.security_provider_socket
     }
-
-    /// Deprecated alias for [`NfcProtocol::security_provider_socket`].
-    #[deprecated(note = "use security_provider_socket")]
-    #[must_use]
-    pub fn beardog_socket(&self) -> &std::path::Path {
-        self.security_provider_socket()
-    }
 }
 
 #[cfg(test)]

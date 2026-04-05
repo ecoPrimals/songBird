@@ -287,7 +287,7 @@ ws.onmessage = (event) => {
 - Rich dashboard UI (separate project)
 - Grafana integration
 - Alert rules
-- Anomaly detection (Squirrel integration)
+- Anomaly detection (AI provider integration)
 
 ---
 

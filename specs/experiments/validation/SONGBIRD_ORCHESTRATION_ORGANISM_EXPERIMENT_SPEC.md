@@ -55,7 +55,7 @@
 ```bash
 # Control Group - Hardcoded System
 ./setup_hardcoded_orchestrator.sh
-# - Hardcoded beardog:8443, nestgate:8080, toadstool:8082, squirrel:8084
+# - Hardcoded security_provider:8443, storage_provider:8080, compute_provider:8082, ai_provider:8084
 # - Fixed routing, no discovery, manual configuration
 
 # Experimental Group - Songbird

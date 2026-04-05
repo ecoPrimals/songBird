@@ -34,7 +34,7 @@ pub use types::{
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use crate::traits::canonical::{

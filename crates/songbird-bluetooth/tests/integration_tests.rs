@@ -51,13 +51,12 @@ impl MockTransport {
         self.commands_sent.lock().unwrap().clone()
     }
 
-    #[expect(dead_code, reason = "test assertions and harness ergonomics")]
+    #[allow(dead_code, reason = "test assertions and harness ergonomics")]
     fn add_response(&self, response: Vec<u8>) {
         self.event_responses.lock().unwrap().push(response);
     }
 }
 
-#[async_trait::async_trait]
 impl Transport for MockTransport {
     fn transport_type(&self) -> TransportType {
         TransportType::Usb
@@ -299,7 +298,7 @@ async fn test_error_display() {
         duration: std::time::Duration::from_secs(5),
     };
     let display = format!("{}", err);
-    assert!(display.contains("5"));
+    assert!(display.contains('5'));
 
     let err2 = BluetoothError::Device("test error".to_string());
     let display2 = format!("{}", err2);

@@ -15,10 +15,10 @@ The ecoPrimals ecosystem has evolved from basic HTTP communication to sophistica
 
 | Primal | Transport Status | Capabilities | Notes |
 |--------|------------------|--------------|-------|
-| **�� ToadStool** | ✅ **tarpc RPC** | Bidirectional, zero-copy, streaming | **GOLD STANDARD** |
-| **🐻 BearDog** | ✅ **HTTP/REST + tarpc** | Encrypted tunnels, universal protocols | Security-focused |
-| **🐿️ Squirrel** | ✅ **MCP Protocol + tarpc** | AI-optimized streaming, multi-provider | AI-specialized |
-| **🏠 NestGate** | ✅ **tarpc + Storage API** | Storage-optimized communication | Performance-focused |
+| **�� Compute Provider** | ✅ **tarpc RPC** | Bidirectional, zero-copy, streaming | **GOLD STANDARD** |
+| **🐻 Security Provider** | ✅ **HTTP/REST + tarpc** | Encrypted tunnels, universal protocols | Security-focused |
+| **🐿️ AI provider** | ✅ **MCP Protocol + tarpc** | AI-optimized streaming, multi-provider | AI-specialized |
+| **🏠 Storage Provider** | ✅ **tarpc + Storage API** | Storage-optimized communication | Performance-focused |
 | **🌱 biomeOS** | ✅ **Orchestration** | Universal primal coordination | Platform layer |
 | **🎼 Songbird** | 🚧 **HTTP/WebSocket → tarpc** | Transitioning to tarpc for internal communication | **UPGRADING** |
 
@@ -66,15 +66,15 @@ The ecoPrimals ecosystem is built on **transport resilience** - every communicat
 
 #### **Goals**
 - Implement pure Rust bidirectional RPC for Songbird
-- Match ToadStool's RPC performance benchmarks
+- Match Compute Provider's RPC performance benchmarks
 - Maintain backward compatibility with existing HTTP/WebSocket
 
 #### **Deliverables**
 - `songbird-rpc` crate with core RPC infrastructure
 - Bidirectional streaming support
 - Multi-fallback transport negotiation
-- ToadStool RPC adapter for direct integration
-- BearDog security layer integration
+- Compute Provider RPC adapter for direct integration
+- Security Provider security layer integration
 
 ### **Phase 2: Ecosystem RPC Standardization (Weeks 7-10)**
 
@@ -129,26 +129,26 @@ pub async fn ai_assisted_storage_workflow(
     coordinator: &UniversalRPCCoordinator,
     request: StorageRequest,
 ) -> Result<StorageResponse> {
-    // 1. Consult Squirrel for AI analysis
+    // 1. Consult AI provider for AI analysis
     let analysis = coordinator
-        .call_primal(PrimalType::Squirrel, AnalysisRequest::new(request.clone()))
+        .call_primal(PrimalType::AI, AnalysisRequest::new(request.clone()))
         .await?;
     
-    // 2. Use BearDog for security validation
+    // 2. Use Security Provider for security validation
     let security_context = coordinator
-        .call_primal(PrimalType::BearDog, SecurityRequest::validate(request.clone()))
+        .call_primal(PrimalType::Security, SecurityRequest::validate(request.clone()))
         .await?;
     
-    // 3. Execute storage operation via NestGate
+    // 3. Execute storage operation via Storage Provider
     let storage_result = coordinator
-        .call_primal(PrimalType::NestGate, 
+        .call_primal(PrimalType::Storage, 
                     StorageOperation::new(request, security_context))
         .await?;
     
-    // 4. Optional: Use ToadStool for post-processing
+    // 4. Optional: Use Compute Provider for post-processing
     if analysis.requires_processing {
         coordinator
-            .call_primal(PrimalType::ToadStool, ProcessingRequest::new(storage_result))
+            .call_primal(PrimalType::Compute, ProcessingRequest::new(storage_result))
             .await?;
     }
     
@@ -211,18 +211,18 @@ pub async fn communicate_with_primal(
 ### **Integration Benchmarks**
 
 ```rust
-/// Performance benchmark: ToadStool compute via Songbird orchestration
+/// Performance benchmark: Compute Provider compute via Songbird orchestration
 #[tokio::test]
-async fn benchmark_toadstool_integration() {
+async fn benchmark_compute_provider_integration() {
     let coordinator = UniversalRPCCoordinator::new().await;
     
-    // Benchmark: 1000 compute requests via Songbird → ToadStool RPC
+    // Benchmark: 1000 compute requests via Songbird → Compute Provider RPC
     let start = Instant::now();
     
     let mut tasks = Vec::new();
     for i in 0..1000 {
         let task = coordinator.call_primal(
-            PrimalType::ToadStool,
+            PrimalType::Compute,
             ComputeRequest::new(format!("task-{}", i))
         );
         tasks.push(task);
@@ -242,28 +242,28 @@ async fn benchmark_toadstool_integration() {
 
 ## 🔒 **Security Integration Strategy**
 
-### **BearDog Security Integration**
+### **Security Provider Security Integration**
 
-Every RPC message in the ecosystem will be secured via BearDog integration:
+Every RPC message in the ecosystem will be secured via Security Provider integration:
 
 ```rust
 /// Security-first RPC message structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecureRpcMessage {
-    /// Message content (encrypted by BearDog)
+    /// Message content (encrypted by Security Provider)
     pub encrypted_payload: Vec<u8>,
     
-    /// BearDog security context
-    pub security_context: BeardogSecurityContext,
+    /// Security Provider security context
+    pub security_context: SecurityProviderContext,
     
     /// Message integrity hash
     pub integrity_hash: [u8; 32],
     
     /// Authentication token
-    pub auth_token: BeardogAuthToken,
+    pub auth_token: SecurityProviderAuthToken,
 }
 
-/// Automatic security via BearDog for all inter-primal communication
+/// Automatic security via Security Provider for all inter-primal communication
 impl UniversalRPCCoordinator {
     pub async fn secure_call_primal<T, R>(
         &self,
@@ -277,24 +277,24 @@ impl UniversalRPCCoordinator {
         // 1. Serialize request
         let payload = serde_json::to_vec(&request)?;
         
-        // 2. Encrypt via BearDog
-        let encrypted_payload = self.beardog
+        // 2. Encrypt via Security Provider
+        let encrypted_payload = self.security_provider
             .encrypt_payload(payload, target)
             .await?;
         
         // 3. Create secure message
         let secure_message = SecureRpcMessage {
             encrypted_payload,
-            security_context: self.beardog.create_security_context(target).await?,
-            integrity_hash: self.beardog.compute_integrity_hash(&payload)?,
-            auth_token: self.beardog.create_auth_token().await?,
+            security_context: self.security_provider.create_security_context(target).await?,
+            integrity_hash: self.security_provider.compute_integrity_hash(&payload)?,
+            auth_token: self.security_provider.create_auth_token().await?,
         };
         
         // 4. Send via RPC transport
         let response = self.send_secure_rpc(target, secure_message).await?;
         
         // 5. Decrypt and deserialize response
-        let decrypted_response = self.beardog
+        let decrypted_response = self.security_provider
             .decrypt_payload(response.encrypted_payload)
             .await?;
         
@@ -319,9 +319,9 @@ gantt
     Multi-Fallback System      :p3, after p1, 1w
     
     section Phase 2: Integration
-    ToadStool RPC Adapter      :i1, after p2, 1w
-    BearDog Security Layer     :i2, after p3, 1w
-    Squirrel MCP Integration   :i3, after i1, 1w
+    Compute Provider RPC Adapter      :i1, after p2, 1w
+    Security Provider Security Layer     :i2, after p3, 1w
+    AI provider MCP Integration   :i3, after i1, 1w
     
     section Phase 3: Ecosystem
     Cross-Primal Testing       :e1, after i2, 1w
@@ -335,7 +335,7 @@ gantt
 |------|-------------|--------|-------------------|
 | **Breaking Changes** | Medium | High | Parallel implementation with feature flags |
 | **Performance Regression** | Low | High | Comprehensive benchmarking at each phase |
-| **Security Vulnerabilities** | Low | Critical | BearDog security audit for all RPC traffic |
+| **Security Vulnerabilities** | Low | Critical | Security Provider security audit for all RPC traffic |
 | **Integration Complexity** | Medium | Medium | Staged rollout with extensive testing |
 
 ---
@@ -347,7 +347,7 @@ gantt
 1. **Performance**: Sub-millisecond inter-primal RPC calls
 2. **Reliability**: 99.9% transport uptime with automatic fallback
 3. **Scalability**: 100K+ concurrent RPC streams
-4. **Security**: Zero security incidents with BearDog integration
+4. **Security**: Zero security incidents with Security Provider integration
 5. **Compatibility**: 100% backward compatibility during migration
 
 ### **Ecosystem Success Criteria**
@@ -381,13 +381,13 @@ gantt
 
 ## 📚 **Reference Implementation**
 
-### **ToadStool RPC Integration Example**
+### **Compute Provider RPC Integration Example**
 
 ```rust
-/// Reference: How to integrate Songbird RPC with ToadStool's existing RPC
-use toadstool_rpc::{ToadstoolRPC, ComputeRequest, ComputeResponse};
+/// Reference: How to integrate Songbird RPC with Compute Provider's existing RPC
+use compute_provider_rpc::{ComputeProviderRpc, ComputeRequest, ComputeResponse};
 
-impl ToadstoolRPCAdapter {
+impl ComputeProviderRpcAdapter {
     pub async fn forward_compute_request(
         &self,
         request: SongbirdRpcMessage,
@@ -395,8 +395,8 @@ impl ToadstoolRPCAdapter {
         // 1. Extract compute request from Songbird message
         let compute_request: ComputeRequest = request.payload.try_into()?;
         
-        // 2. Call ToadStool's native RPC directly
-        let compute_response = self.toadstool_client
+        // 2. Call Compute Provider's native RPC directly
+        let compute_response = self.compute_provider_client
             .compute(compute_request)
             .await?;
         
@@ -404,7 +404,7 @@ impl ToadstoolRPCAdapter {
         let response = SongbirdRpcMessage {
             id: request.id,
             message_type: MessageType::Response,
-            source: PrimalIdentifier::Toadstool,
+            source: PrimalIdentifier::Compute provider,
             target: request.source,
             payload: compute_response.into(),
             stream_context: None,
@@ -430,8 +430,8 @@ impl ToadstoolRPCAdapter {
 
 ### **Next Sprint Planning**
 
-1. **ToadStool Integration** - Direct RPC communication
-2. **BearDog Security Layer** - Secure all inter-primal communication
+1. **Compute Provider Integration** - Direct RPC communication
+2. **Security Provider Security Layer** - Secure all inter-primal communication
 3. **Performance Benchmarking** - Validate 10x improvement claims
 4. **Community Documentation** - Enable third-party primal integration
 
@@ -444,4 +444,4 @@ impl ToadstoolRPCAdapter {
 
 ---
 
-*This specification transforms Songbird from the weakest transport layer in the ecosystem to the most robust and capable universal RPC coordinator, matching the sophistication of ToadStool while adding orchestration-specific capabilities.* 
+*This specification transforms Songbird from the weakest transport layer in the ecosystem to the most robust and capable universal RPC coordinator, matching the sophistication of Compute Provider while adding orchestration-specific capabilities.* 

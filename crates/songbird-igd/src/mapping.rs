@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn protocol_from_str_rejects_sctp_and_quic_tokens() {
         assert_eq!(Protocol::from_str("SCTP"), None);
         assert_eq!(Protocol::from_str("QUIC"), None);
@@ -350,7 +350,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn port_mapping_debug_includes_ports_and_protocol() {
         let req = PortMappingRequest::new(
             80,

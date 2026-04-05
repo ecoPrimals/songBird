@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTP Client Configuration - Adaptive & Routing-Based
@@ -384,7 +384,7 @@ impl HttpClientConfig {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 #[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;

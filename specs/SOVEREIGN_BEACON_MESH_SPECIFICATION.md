@@ -436,7 +436,7 @@ struct RelayEndpoint {
 - ✅ Rendezvous server compromise (can't read beacons)
 
 **Out of Scope** (assumed trusted):
-- BearDog (family key management)
+- Security Provider (family key management)
 - Local device security
 - Family member devices
 
@@ -472,7 +472,7 @@ struct RelayEndpoint {
 
 **Trusted**:
 - Family members (by design - we want to connect to them)
-- BearDog (holds family keys)
+- Security Provider (holds family keys)
 - Local OS (process isolation)
 
 **Untrusted**:
@@ -625,7 +625,7 @@ pub struct TorTransport {
 **Scope**:
 - Design layered encryption format
 - Implement `LayeredBirdSong`
-- Integrate with BearDog for keys
+- Integrate with Security Provider for keys
 
 ### Phase 5: Testing & Validation
 

@@ -52,24 +52,24 @@
       }
     },
     {
-      "id": "toadstool",
-      "name": "ToadStool Local GPU",
+      "id": "compute_provider",
+      "name": "Compute Provider Local GPU",
       "capabilities": [
         {
           "id": "ai:text-generation:local",
-          "description": "Local GPU text generation via ToadStool",
+          "description": "Local GPU text generation via Compute Provider",
           "category": "ai",
           "capability_type": "text-generation",
           "sub_type": "local",
           "metadata": {
-            "provider_name": "ToadStool",
+            "provider_name": "Compute Provider",
             "is_local": true,
             "cost_per_1k_tokens": 0.0,
             "privacy": "100% local"
           }
         }
       ],
-      "socket_path": "/run/user/1000/toadstool-ai.sock",
+      "socket_path": "/run/user/1000/compute-provider-ai.sock",
       "backend": null,
       "metadata": {
         "rate_limit_requests_per_minute": 100,

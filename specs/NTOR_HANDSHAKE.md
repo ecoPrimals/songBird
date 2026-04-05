@@ -1,7 +1,7 @@
 # 🔐 ntor Handshake Specification
 
 **Version**: 1.0  
-**Status**: Design Complete (Implementation blocked by BearDog)  
+**Status**: Design Complete (Implementation blocked by Security Provider)  
 **Date**: February 7, 2026
 
 ---
@@ -14,7 +14,7 @@ The **ntor** (nickname: "the ntor") handshake is Tor's authenticated key agreeme
 - Forward secrecy via ephemeral X25519 keys
 - Relay authentication via long-term identity
 - Key derivation for cell encryption
-- ~100ms per hop via BearDog delegation
+- ~100ms per hop via Security Provider delegation
 
 ---
 
@@ -54,8 +54,8 @@ The **ntor** (nickname: "the ntor") handshake is Tor's authenticated key agreeme
 ### Client Side (CREATE2)
 
 ```rust
-// 1. Generate ephemeral X25519 keypair via BearDog
-let client_ephemeral = beardog.x25519_generate_ephemeral()?;
+// 1. Generate ephemeral X25519 keypair via Security Provider
+let client_ephemeral = security_provider.x25519_generate_ephemeral()?;
 
 // 2. Construct CREATE2 payload
 let mut payload = Vec::with_capacity(84);
@@ -83,13 +83,13 @@ let cell = Cell::decode(&buffer)?;
 let server_pubkey = &cell.payload[0..32];
 let auth = &cell.payload[32..64];
 
-// 2. Derive shared secret via BearDog X25519
-let shared_secret = beardog.x25519_derive_secret(
+// 2. Derive shared secret via Security Provider X25519
+let shared_secret = security_provider.x25519_derive_secret(
     &state.client_ephemeral_secret,
     server_pubkey,
 )?;
 
-// 3. Compute key material via BearDog SHA3-256 (KDF)
+// 3. Compute key material via Security Provider SHA3-256 (KDF)
 let secret_input = [
     &shared_secret[..],
     &relay_identity[..],
@@ -99,10 +99,10 @@ let secret_input = [
     b"ntor-curve25519-sha3-256-1",
 ].concat();
 
-let key_material = beardog.sha3_256(&secret_input)?;
+let key_material = security_provider.sha3_256(&secret_input)?;
 
 // 4. Verify auth
-let expected_auth = beardog.sha3_256(&[
+let expected_auth = security_provider.sha3_256(&[
     &key_material[..],
     &relay_identity[..],
     &relay_ntor_key[..],
@@ -117,7 +117,7 @@ if auth != &expected_auth[..32] {
 
 // 5. Derive forward/backward keys via KDF
 let (forward_digest, backward_digest, forward_key, backward_key) = 
-    derive_circuit_keys(&key_material, &beardog)?;
+    derive_circuit_keys(&key_material, &security_provider)?;
 ```
 
 ### Key Derivation Function (KDF)
@@ -127,7 +127,7 @@ let (forward_digest, backward_digest, forward_key, backward_key) =
 ```rust
 async fn derive_circuit_keys(
     key_material: &[u8; 32],
-    beardog: &BeardogCryptoClient,
+    security_provider: &CryptoProvider,
 ) -> Result<KeyMaterial> {
     // HKDF-style expansion using SHA3-256
     // Output: 5 * 32 bytes = 160 bytes total
@@ -147,7 +147,7 @@ async fn derive_circuit_keys(
             b"ntor-curve25519-sha3-256-1:key_expand",
         ].concat();
         
-        prev = beardog.sha3_256(&input)?.to_vec();
+        prev = security_provider.sha3_256(&input)?.to_vec();
         expanded.extend_from_slice(&prev);
     }
     
@@ -192,7 +192,7 @@ async fn derive_circuit_keys(
 
 ---
 
-## BearDog Integration Points
+## Security Provider Integration Points
 
 ### Required Methods
 
@@ -220,9 +220,9 @@ aes_128_ctr_decrypt(key: &[u8; 16], iv: &[u8; 16], data: &[u8]) -> Vec<u8>
 - 2x `sha3_256()` (forward/backward digest updates)
 
 **Estimated Load**:
-- Circuit build: ~8 BearDog calls (~100ms total)
-- Cell relay: ~5 BearDog calls per cell (~1-2ms per cell)
-- 100 circuits: ~800 BearDog calls (~10s total)
+- Circuit build: ~8 Security Provider calls (~100ms total)
+- Cell relay: ~5 Security Provider calls per cell (~1-2ms per cell)
+- 100 circuits: ~800 Security Provider calls (~10s total)
 
 ---
 
@@ -296,6 +296,6 @@ Backward key: 0x8b7a6f5e4d3c2b1a...
 
 ---
 
-**Ready for implementation once BearDog extensions are available!**
+**Ready for implementation once Security Provider extensions are available!**
 
-**TRUE PRIMAL** | **Pure Rust** | **Zero Unsafe** | **100% BearDog Delegation**
+**TRUE PRIMAL** | **Pure Rust** | **Zero Unsafe** | **100% Security Provider Delegation**

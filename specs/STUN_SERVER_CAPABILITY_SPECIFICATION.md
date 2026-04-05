@@ -344,9 +344,9 @@ All infrastructure exists in `songbird-stun` crate.
 
 ### Phase 3: Lineage Integration (3-4 days) 🧬 FUTURE
 
-**Scope**: Family-only STUN with BearDog verification
+**Scope**: Family-only STUN with Security Provider verification
 
-**Deferred**: Requires BearDog lineage API
+**Deferred**: Requires Security Provider lineage API
 
 ---
 

@@ -44,17 +44,6 @@ pub async fn encrypt_data_via_security_provider(
     client.chacha20_poly1305_encrypt(key, &nonce, plaintext).await
 }
 
-/// Deprecated alias for [`encrypt_data_via_security_provider`].
-#[deprecated(note = "use encrypt_data_via_security_provider")]
-pub async fn encrypt_data_via_beardog(
-    client: &SecurityCryptoClient,
-    key: &[u8; 32],
-    sequence: u64,
-    plaintext: &[u8],
-) -> Result<Vec<u8>> {
-    encrypt_data_via_security_provider(client, key, sequence, plaintext).await
-}
-
 /// Decrypt data via the security provider
 ///
 /// # Arguments
@@ -82,17 +71,6 @@ pub async fn decrypt_data_via_security_provider(
     nonce[..8].copy_from_slice(&sequence.to_le_bytes());
 
     client.chacha20_poly1305_decrypt(key, &nonce, ciphertext).await
-}
-
-/// Deprecated alias for [`decrypt_data_via_security_provider`].
-#[deprecated(note = "use decrypt_data_via_security_provider")]
-pub async fn decrypt_data_via_beardog(
-    client: &SecurityCryptoClient,
-    key: &[u8; 32],
-    sequence: u64,
-    ciphertext: &[u8],
-) -> Result<Vec<u8>> {
-    decrypt_data_via_security_provider(client, key, sequence, ciphertext).await
 }
 
 /// Standalone: Encrypt data with ChaCha20-Poly1305

@@ -191,7 +191,7 @@ impl RuntimeEndpointResolver {
     ///
     /// Panics if called with an empty `endpoints` slice. The caller must ensure the slice
     /// is non-empty before calling this function.
-    #[expect(clippy::expect_used, reason = "invariant enforced at call site (non-empty endpoints)")]
+    #[allow(clippy::expect_used, reason = "invariant enforced at call site (non-empty endpoints)")]
     fn select_best_endpoint(endpoints: &[ServiceEndpoint]) -> &ServiceEndpoint {
         endpoints
             .iter()
@@ -274,7 +274,7 @@ impl EndpointMigrationHelper {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

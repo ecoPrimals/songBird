@@ -4,28 +4,14 @@
 //! Protocol selection, endpoint discovery, and RPC/HTTP dispatch for compute.
 
 use super::metrics::{ComputeMetrics, HealthStatus};
-use crate::JsonRpcClient;
-use songbird_http_client::SongbirdHttpClient;
+use crate::adapters::transport::{
+    AdapterTransportKind, CapabilityTransport, build_default_transport, transport_kind_for_endpoint,
+};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
+use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, warn};
-
-/// Protocol for communication (v3.12.0 - tarpc PRIMARY)
-enum Protocol {
-    Tarpc(crate::TarpcClient), // PRIMARY - high-performance binary RPC
-    JsonRpc(JsonRpcClient),    // SECONDARY - universal, port-free
-    Http(SongbirdHttpClient),  // FALLBACK - direct HTTP (no IPC delegation)
-}
-
-impl std::fmt::Debug for Protocol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Tarpc(_) => write!(f, "Protocol::Tarpc"),
-            Self::JsonRpc(_) => write!(f, "Protocol::JsonRpc"),
-            Self::Http(_) => write!(f, "Protocol::Http"),
-        }
-    }
-}
 
 /// Generic adapter for compute capability providers
 ///
@@ -34,14 +20,28 @@ impl std::fmt::Debug for Protocol {
 /// the compute capability interface.
 ///
 /// **v3.11.0**: Protocol-agnostic - supports Unix sockets (PRIMARY) or HTTP (FALLBACK)
-#[derive(Debug)]
 pub struct ComputeAdapter {
     /// Endpoint URL for the compute service (discovered dynamically)
     endpoint: String,
-    /// Protocol (Unix socket JSON-RPC or HTTP)
-    protocol: Protocol,
+    transport: Arc<dyn CapabilityTransport>,
+    transport_kind: AdapterTransportKind,
     /// Request timeout (`pub(super)` so `compute` integration tests can assert defaults.)
     pub(super) timeout: Duration,
+}
+
+impl fmt::Debug for ComputeAdapter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let protocol = match self.transport_kind {
+            AdapterTransportKind::Tarpc => "Protocol::Tarpc",
+            AdapterTransportKind::JsonRpc => "Protocol::JsonRpc",
+            AdapterTransportKind::Http => "Protocol::Http",
+        };
+        f.debug_struct("ComputeAdapter")
+            .field("endpoint", &self.endpoint)
+            .field("protocol", &protocol)
+            .field("timeout", &self.timeout)
+            .finish()
+    }
 }
 
 impl ComputeAdapter {
@@ -92,12 +92,23 @@ impl ComputeAdapter {
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
 
-                // Fallback 1: Legacy environment variables
-                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_COMPUTE_ENDPOINT")
-                    .or_else(|_| SafeEnv::get_required("COMPUTE_CAPABILITY_ENDPOINT"))
-                    .or_else(|_| SafeEnv::get_required("TOADSTOOL_ENDPOINT"))
-                {
-                    debug!("⚠️ Using legacy environment variable for compute endpoint");
+                // Fallback 1: Environment variables (capability-first, then deprecated primal)
+                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_COMPUTE_ENDPOINT") {
+                    debug!("Using SONGBIRD_COMPUTE_ENDPOINT after resolver miss");
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("COMPUTE_CAPABILITY_ENDPOINT") {
+                    debug!("Using COMPUTE_CAPABILITY_ENDPOINT after resolver miss");
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("COMPUTE_ENDPOINT") {
+                    debug!("Using COMPUTE_ENDPOINT after resolver miss");
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("TOADSTOOL_ENDPOINT") {
+                    warn!(
+                        "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT or COMPUTE_PROVIDER_ENDPOINT"
+                    );
                     return Self::new(endpoint).await;
                 }
 
@@ -147,23 +158,39 @@ impl ComputeAdapter {
     /// Returns an error if the protocol client cannot be created.
     #[expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")] // async retained for API stability
     pub async fn new(endpoint: String) -> SongbirdResult<Self> {
-        // Protocol detection (v3.12.0 - tarpc PRIMARY)
-        let protocol = if endpoint.starts_with("tarpc://") {
+        let transport_kind = transport_kind_for_endpoint(&endpoint);
+        if endpoint.starts_with("tarpc://") {
             debug!("🚀 Detected tarpc endpoint for compute (PRIMARY): {}", endpoint);
-            Protocol::Tarpc(crate::TarpcClient::new(&endpoint)?)
         } else if endpoint.starts_with("unix://") {
             debug!("🔌 Detected Unix socket endpoint for compute (SECONDARY): {}", endpoint);
-            Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
         } else {
             debug!("🌐 Detected HTTP endpoint for compute (FALLBACK): {}", endpoint);
-            Protocol::Http(SongbirdHttpClient::from_env())
-        };
+        }
+
+        let transport = build_default_transport(&endpoint)?;
 
         Ok(Self {
             endpoint,
-            protocol,
+            transport,
+            transport_kind,
             timeout: Duration::from_secs(5),
         })
+    }
+
+    /// Construct with an explicit transport (crate tests and advanced injection).
+    #[cfg(test)]
+    pub(crate) fn with_transport(
+        endpoint: String,
+        transport: Arc<dyn CapabilityTransport>,
+        transport_kind: AdapterTransportKind,
+        timeout: Duration,
+    ) -> Self {
+        Self {
+            endpoint,
+            transport,
+            transport_kind,
+            timeout,
+        }
     }
 
     /// Set custom request timeout
@@ -186,61 +213,32 @@ impl ComputeAdapter {
     pub async fn collect_metrics(&self) -> SongbirdResult<ComputeMetrics> {
         debug!("Collecting compute metrics from: {}", self.endpoint);
 
-        let mut metrics: ComputeMetrics = match &self.protocol {
-            Protocol::Tarpc(client) => {
-                // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY - ~10-20 μs latency!)
-                debug!("🚀 Using tarpc (PRIMARY protocol)");
-                let result = client.call_method("get_compute_metrics", None).await?;
-                serde_json::from_value(result).map_err(|e| {
-                    warn!("Failed to parse compute metrics from tarpc: {e}");
-                    SongbirdError::serialization(format!("Failed to parse compute metrics: {e}"))
-                })?
-            }
-            Protocol::JsonRpc(client) => {
-                // JSON-RPC protocol over Unix socket (SECONDARY - ~50-100 μs latency)
-                debug!("🔌 Using JSON-RPC (SECONDARY protocol)");
-                let result = client.call_method("get_compute_metrics", None).await?;
-                serde_json::from_value(result).map_err(|e| {
-                    warn!("Failed to parse compute metrics from JSON-RPC: {e}");
-                    SongbirdError::serialization(format!("Failed to parse compute metrics: {e}"))
-                })?
-            }
-            Protocol::Http(client) => {
-                // HTTP protocol (FALLBACK - direct TCP connection)
-                debug!("🌐 Using HTTP (FALLBACK protocol)");
-                let url = format!("{}/metrics/compute", self.endpoint);
-
-                let response = tokio::time::timeout(self.timeout, client.get(&url))
-                    .await
-                    .map_err(|_| {
-                        SongbirdError::network(format!(
-                            "Timeout after {:?} reaching compute service",
-                            self.timeout
-                        ))
-                    })?
-                    .map_err(|e| {
-                        warn!("Failed to reach compute service via HTTP: {e}");
-                        SongbirdError::network(format!("Failed to reach compute service: {e}"))
-                    })?;
-
-                if !(200..300).contains(&response.status) {
-                    let status = response.status;
-                    warn!("Compute service returned error status: {}", status);
-                    return Err(SongbirdError::service(
-                        "compute",
-                        format!("HTTP {status}: Metrics unavailable"),
-                    ));
+        let result = tokio::time::timeout(self.timeout, self.transport.get("metrics/compute"))
+            .await
+            .map_err(|_| {
+                SongbirdError::network(format!(
+                    "Timeout after {:?} reaching compute service",
+                    self.timeout
+                ))
+            })?
+            .map_err(|e| {
+                warn!("Failed to collect compute metrics: {e}");
+                match self.transport_kind {
+                    AdapterTransportKind::Http => e,
+                    _ => SongbirdError::network(format!("Failed to reach compute service: {e}")),
                 }
+            })?;
 
-                serde_json::from_value(response.body).map_err(|e| {
-                    warn!("Failed to parse compute metrics from HTTP: {e}");
-                    SongbirdError::service(
-                        "compute",
-                        format!("Failed to parse compute metrics: {e}"),
-                    )
-                })?
+        let mut metrics: ComputeMetrics = serde_json::from_value(result).map_err(|e| {
+            warn!("Failed to parse compute metrics: {e}");
+            match self.transport_kind {
+                AdapterTransportKind::Http => SongbirdError::service(
+                    "compute",
+                    format!("Failed to parse compute metrics: {e}"),
+                ),
+                _ => SongbirdError::serialization(format!("Failed to parse compute metrics: {e}")),
             }
-        };
+        })?;
 
         // Set timestamp if not provided
         if metrics.timestamp.timestamp() == 0 {

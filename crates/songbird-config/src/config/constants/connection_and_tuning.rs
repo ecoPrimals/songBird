@@ -98,7 +98,7 @@ pub fn get_buffer_pool_size() -> usize {
             .and_then(|memory_limit| memory_limit.parse::<u64>().ok())
             .map_or(base_size, |limit_mb| {
                 // Use 1% of available memory for buffer pool
-                #[expect(
+                #[allow(
                     clippy::cast_possible_truncation,
                     reason = "MEMORY_LIMIT parsed as u64; product scaled down for pool sizing"
                 )]

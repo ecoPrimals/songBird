@@ -59,13 +59,6 @@ impl NfcConfig {
         self
     }
 
-    /// Deprecated alias for [`NfcConfig::with_security_provider_socket`].
-    #[deprecated(note = "use with_security_provider_socket")]
-    #[must_use]
-    pub fn with_beardog_socket(self, socket: PathBuf) -> Self {
-        self.with_security_provider_socket(socket)
-    }
-
     /// Set exchange timeout
     #[must_use]
     pub const fn with_timeout(mut self, timeout: Duration) -> Self {
@@ -90,19 +83,24 @@ impl NfcConfig {
     /// 4. `BEARDOG_SOCKET` - Provider-specific (backward compatibility)
     /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` - Capability-named
     /// 6. XDG: `$XDG_RUNTIME_DIR/biomeos/crypto.sock` - Capability-named
-    /// 7. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` - Provider hint
+    /// 7. XDG: `$XDG_RUNTIME_DIR/biomeos/<legacy-socket-name>` — optional hint on some installs (see implementation)
     /// 8. Legacy: `/tmp/biomeos/security.sock` - Fallback
     fn discover_security_socket() -> PathBuf {
         // 1. Capability-based env vars (preferred - primal agnostic)
         for env_var in &[
             "SECURITY_PROVIDER_SOCKET",
             "CRYPTO_PROVIDER_SOCKET",
+            "SECURITY_SOCKET",
             "SONGBIRD_SECURITY_PROVIDER",
-            "BEARDOG_SOCKET", // backward compatibility
         ] {
             if let Ok(socket) = songbird_process_env::var(env_var) {
                 return PathBuf::from(socket);
             }
+        }
+        // Legacy fallback
+        if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
+            tracing::warn!("BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET");
+            return PathBuf::from(socket);
         }
 
         // 2. XDG runtime directory (capability names first, then provider hints)
@@ -125,6 +123,7 @@ impl NfcConfig {
                 biomeos_socket_dir_tmp, security_socket_default_path,
             };
 
+            // Last entry: legacy on-disk socket name on some installs (not a Rust identifier).
             let fallback_paths = [
                 security_socket_default_path(),
                 biomeos_socket_dir_tmp().join("crypto.sock"),
@@ -253,9 +252,13 @@ mod tests {
         let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
         clear_socket_overlay_keys();
         songbird_process_env::set_var("SONGBIRD_SECURITY_PROVIDER", "/tmp/songbird.sock");
-        songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/beardog.sock");
+        songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/legacy-env-security.sock");
         let cfg = NfcConfig::default();
-        assert_eq!(cfg.security_provider_socket, PathBuf::from("/tmp/songbird.sock"));
+        assert_eq!(
+            cfg.security_provider_socket,
+            PathBuf::from("/tmp/songbird.sock"),
+            "SONGBIRD_SECURITY_PROVIDER should win over deprecated BEARDOG_SOCKET"
+        );
         clear_socket_overlay_keys();
     }
 

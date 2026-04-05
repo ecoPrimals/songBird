@@ -42,13 +42,13 @@ pub struct SongbirdConfig {
     
     // Legacy fields (deprecated but backward compatible)
     #[deprecated(note = "Use primal_registry instead")]
-    pub beardog: Option<serde_json::Value>,
+    pub security_provider: Option<serde_json::Value>,
     #[deprecated(note = "Use primal_registry instead")]
-    pub toadstool: Option<serde_json::Value>,
+    pub compute_provider: Option<serde_json::Value>,
     #[deprecated(note = "Use primal_registry instead")]
-    pub nestgate: Option<serde_json::Value>,
+    pub storage_provider: Option<serde_json::Value>,
     #[deprecated(note = "Use primal_registry instead")]
-    pub squirrel: Option<serde_json::Value>,
+    pub ai_provider: Option<serde_json::Value>,
 }
 
 /// Universal API methods that work with ANY primal name
@@ -143,8 +143,8 @@ impl UniversalCapabilityAdapter {
         match capability_type {
             "security" | "encryption" | "authentication" => {
                 // Look for security-related primals
-                if std::env::var("BEARDOG_ENDPOINT").is_ok() {
-                    providers.push("beardog".to_string());
+                if std::env::var("SECURITY_PROVIDER_ENDPOINT").is_ok() {
+                    providers.push("security".to_string());
                 }
                 // Check for custom security services
                 for i in 1..=10 {
@@ -159,8 +159,8 @@ impl UniversalCapabilityAdapter {
             }
             "compute" | "processing" | "execution" => {
                 // Look for compute-related primals  
-                if std::env::var("TOADSTOOL_ENDPOINT").is_ok() {
-                    providers.push("toadstool".to_string());
+                if std::env::var("COMPUTE_PROVIDER_ENDPOINT").is_ok() {
+                    providers.push("compute_provider".to_string());
                 }
                 // Check for custom compute services
                 for i in 1..=10 {
@@ -175,8 +175,8 @@ impl UniversalCapabilityAdapter {
             }
             "storage" | "data" | "persistence" => {
                 // Look for storage-related primals
-                if std::env::var("NESTGATE_ENDPOINT").is_ok() {
-                    providers.push("nestgate".to_string());
+                if std::env::var("STORAGE_PROVIDER_ENDPOINT").is_ok() {
+                    providers.push("storage_provider".to_string());
                 }
                 // Check for custom storage services
                 for i in 1..=10 {
@@ -191,8 +191,8 @@ impl UniversalCapabilityAdapter {
             }
             "ai" | "ml" | "intelligence" | "model" => {
                 // Look for AI-related primals
-                if std::env::var("SQUIRREL_ENDPOINT").is_ok() {
-                    providers.push("squirrel".to_string());
+                if std::env::var("AI_PROVIDER_ENDPOINT").is_ok() {
+                    providers.push("ai_provider".to_string());
                 }
                 // Check for custom AI services
                 for i in 1..=10 {
@@ -290,10 +290,10 @@ pub fn calculate_port_for_primal(primal_name: &str) -> u16 {
 
 ```rust
 // ❌ BEFORE: Hardcoded and brittle
-let beardog_endpoint = "https://beardog.local:8443";
-let toadstool_client = ToadstoolClient::new(...);
-self.nestgate_config = Some(config);
-if self.squirrel_endpoint.is_some() { ... }
+let security_provider_endpoint = "https://security-provider.local:8443";
+let compute_provider_client = ComputeProviderClient::new(...);
+self.storage_provider_config = Some(config);
+if self.ai_provider_endpoint.is_some() { ... }
 
 // ✅ AFTER: Universal and extensible
 let endpoint = get_primal_endpoint("any-primal-name");
@@ -308,8 +308,8 @@ if self.primal_registry.has_capability("ai") { ... }
 
 ```rust
 // ✅ Traditional primals (backward compatible)
-config.enable_primal("beardog", "https://beardog.example.com:8443");
-config.enable_primal("toadstool", "http://toadstool.example.com:8082");
+config.enable_primal("security", "https://security-provider.example.com:8443");
+config.enable_primal("compute_provider", "http://compute_provider.example.com:8082");
 
 // ✅ Custom/Community primals (seamless integration)
 config.enable_primal("phoenix-ai", "https://phoenix.ai:8444");
@@ -321,7 +321,7 @@ config.enable_primal("my-awesome-neural-blockchain-quantum-ai-service",
                     "https://awesome.service:8080");
 
 // ✅ All return true - infinite extensibility verified
-assert!(config.is_primal_enabled("beardog"));
+assert!(config.is_primal_enabled("security"));
 assert!(config.is_primal_enabled("phoenix-ai"));
 assert!(config.is_primal_enabled("quantum-compute"));
 assert!(config.is_primal_enabled("my-awesome-neural-blockchain-quantum-ai-service"));
@@ -366,25 +366,25 @@ fn test_universal_primal_integration() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Test universal primal integration (replaces old hardcoded tests)
-    assert!(!config.is_primal_enabled("beardog"));
+    assert!(!config.is_primal_enabled("security"));
 
-    // Enable BearDog through universal primal system
-    config.enable_primal("beardog", "https://beardog.example.com:8443");
-    assert!(config.is_primal_enabled("beardog"));
+    // Enable Security Provider through universal primal system
+    config.enable_primal("security", "https://security-provider.example.com:8443");
+    assert!(config.is_primal_enabled("security"));
 
     // Verify primal configuration
-    let beardog_config = config.get_primal_config("beardog");
-    assert!(beardog_config.is_some());
-    let beardog = beardog_config.unwrap();
-    assert!(beardog.enabled);
-    assert_eq!(beardog.primal_type, "beardog");
-    assert_eq!(beardog.endpoint.primary_url, "https://beardog.example.com:8443");
+    let security_config = config.get_primal_config("security");
+    assert!(security_config.is_some());
+    let security_provider = security_config.unwrap();
+    assert!(security_provider.enabled);
+    assert_eq!(security_provider.primal_type, "security");
+    assert_eq!(security_provider.endpoint.primary_url, "https://security-provider.example.com:8443");
 
     // Test multiple primals (universal extensibility)
-    config.enable_primal("toadstool", "http://toadstool.example.com:8080");
+    config.enable_primal("compute_provider", "http://compute_provider.example.com:8080");
     config.enable_primal("phoenix-ai", "https://phoenix.example.com:8888");
 
-    assert!(config.is_primal_enabled("toadstool"));
+    assert!(config.is_primal_enabled("compute_provider"));
     assert!(config.is_primal_enabled("phoenix-ai"));
 
     // Verify primal registry contains all enabled primals
@@ -392,11 +392,11 @@ fn test_universal_primal_integration() -> Result<()> {
     assert!(enabled_primals.len() >= 3);
 
     // Disable a primal
-    config.disable_primal("beardog");
-    assert!(!config.is_primal_enabled("beardog"));
+    config.disable_primal("security");
+    assert!(!config.is_primal_enabled("security"));
 
     // Verify other primals are still enabled
-    assert!(config.is_primal_enabled("toadstool"));
+    assert!(config.is_primal_enabled("compute_provider"));
     assert!(config.is_primal_enabled("phoenix-ai"));
 
     Ok(())
@@ -415,7 +415,7 @@ export SONGBIRD_ENV="development"
 # Primals auto-discovered at: localhost:8XXX (hashed ports)
 
 # Manual override still works
-export BEARDOG_ENDPOINT="http://localhost:8443"
+export SECURITY_PROVIDER_ENDPOINT="http://localhost:8443"
 export PHOENIX_AI_ENDPOINT="http://localhost:8444"
 ```
 
@@ -423,8 +423,8 @@ export PHOENIX_AI_ENDPOINT="http://localhost:8444"
 
 ```bash
 export SONGBIRD_ENV="docker"
-export BEARDOG_ENDPOINT="http://beardog-container:8443"
-export TOADSTOOL_ENDPOINT="http://toadstool-container:8082"
+export SECURITY_PROVIDER_ENDPOINT="http://security-provider-container:8443"
+export COMPUTE_PROVIDER_ENDPOINT="http://compute_provider-container:8082"
 export PHOENIX_AI_ENDPOINT="http://phoenix-ai:8444"
 export QUANTUM_COMPUTE_ENDPOINT="http://quantum-compute:9000"
 ```
@@ -438,7 +438,7 @@ metadata:
   name: songbird-config
 data:
   SONGBIRD_ENV: "kubernetes"
-  BEARDOG_ENDPOINT: "https://beardog-service.default.svc.cluster.local:8443"
+  SECURITY_PROVIDER_ENDPOINT: "https://security-provider-service.default.svc.cluster.local:8443"
   PHOENIX_AI_ENDPOINT: "https://phoenix-ai-service.ai-namespace.svc.cluster.local:8444"
   QUANTUM_COMPUTE_ENDPOINT: "https://quantum-compute.compute-namespace.svc.cluster.local:9000"
 ```
@@ -447,7 +447,7 @@ data:
 
 ```bash
 export SONGBIRD_ENV="production"
-export BEARDOG_ENDPOINT="https://beardog.prod.company.com:8443"
+export SECURITY_PROVIDER_ENDPOINT="https://security-provider.prod.company.com:8443"
 export PHOENIX_AI_ENDPOINT="https://phoenix-ai.prod.company.com:8444" 
 export CUSTOM_SECURITY_ENDPOINT="https://enterprise-security.prod.company.com:8445"
 ```

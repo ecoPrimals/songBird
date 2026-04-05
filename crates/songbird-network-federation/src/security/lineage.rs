@@ -128,8 +128,15 @@ impl LineageChain {
     /// In development mode without `security provider`, returns Ok(true) with warning.
     async fn verify_signatures(&self) -> anyhow::Result<bool> {
         // Check if security provider is available
-        let Ok(security_provider_base) = songbird_process_env::var("BEARDOG_ENDPOINT")
-            .or_else(|_| songbird_process_env::var("SECURITY_ENDPOINT"))
+        let Ok(security_provider_base) = songbird_process_env::var("SECURITY_ENDPOINT")
+            .or_else(|_| songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT"))
+            .or_else(|_| {
+                songbird_process_env::var("BEARDOG_ENDPOINT").inspect(|_| {
+                    tracing::warn!(
+                        "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
+                    );
+                })
+            })
         else {
             tracing::warn!(
                 "security provider not configured, skipping signature verification (dev mode)"

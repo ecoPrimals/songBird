@@ -33,7 +33,7 @@ pub fn test_health_endpoint(service_name: &str) -> String {
     )
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave118] - 2026-04-05 - Deep Debt Evolution: Legacy Elimination, Test Hardening, Coverage Expansion
+
+### Changed — Legacy Primal Name Elimination
+- 50+ deprecated Rust identifiers (functions, types, modules) removed across 12 crates
+- `beardog`, `toadstool`, `squirrel`, `nestgate` removed from: sovereign-onion, crypto-provider, tls, execution-agent, nfc, config, types, quic, http-client, federation, orchestrator, universal
+- Environment variable string fallbacks kept with `tracing::warn!` deprecation messages
+- `serde(alias)` entries preserved for deserialization backward compatibility
+
+### Changed — Test Infrastructure Hardening
+- 25+ `tokio::time::sleep` / `std::thread::sleep` calls eliminated from tests
+- All time-dependent tests migrated to `#[tokio::test(start_paused = true)]` + `tokio::time::advance()`
+- Hardcoded ports 18443-18446 → `TcpListener::bind("127.0.0.1:0")` with oneshot readiness
+- `ConnectionPool` migrated from `std::time::Instant` → `tokio::time::Instant`
+- `http://localhost:1` → `http://192.0.2.1:1` (RFC 5737 TEST-NET-1) in unreachable-endpoint tests
+
+### Changed — Lint Hardening
+- ~1,092 `#[allow(` → `#[expect(reason)]` in production code
+- ~352 stable `#[expect(reason)]` attributes in production
+- `#[allow(` retained only in `#[cfg(test)]` modules and cfg interaction edge cases
+
+### Added — Coverage Expansion
+- 42 new adapter tests using `MockTransport` pattern (10 compute, 21 security, 11 AI)
+- `CapabilityTransport` trait extracted; protocol dispatch unified across all adapters
+- `songbird-universal` lib tests: 738 → 780
+
+### Changed — Documentation
+- Specs/docs: legacy primal names replaced with capability-based names (48 files, 2282 lines)
+- `specs/00_SPECIFICATIONS_INDEX.md` rebuilt to match actual file inventory
+- `tests/README.md` updated (test count, script name, coverage, test principles)
+- `scripts/test-with-security-provider.sh` modernized (SECURITY_PROVIDER_BIN env var)
+- WateringHole Wave 118 handoff created
+
+### Audited — async-trait
+- All 99 remaining `#[async_trait]` uses confirmed to require `dyn Trait` dispatch — no migration possible
+
+### Stats
+- Tests: 12,613 passed, 0 failed, 252 ignored
+- Coverage: ~77% estimated (target 90%)
+- Total Rust: ~410,000 lines across 30 crates
+
+---
+
 ## [v0.2.1-wave102] - 2026-04-03 - Deep Debt Evolution: TLS Safety, Capability Completion, Smart Refactoring
 
 ### Changed — Production Safety

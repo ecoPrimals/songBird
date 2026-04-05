@@ -9,7 +9,7 @@
 
 ## 🎯 **Executive Summary**
 
-Songbird requires a **pure Rust bidirectional RPC system** to match the transport sophistication of other primals in the ecosystem. While ToadStool, BearDog, and Squirrel have implemented advanced RPC systems, Songbird remains limited to HTTP/WebSocket, creating a transport bottleneck in the universal orchestration layer.
+Songbird requires a **pure Rust bidirectional RPC system** to match the transport sophistication of other primals in the ecosystem. While Compute Provider, Security Provider, and AI provider have implemented advanced RPC systems, Songbird remains limited to HTTP/WebSocket, creating a transport bottleneck in the universal orchestration layer.
 
 ### **🏆 Design Goals**
 
@@ -45,8 +45,8 @@ pub struct SongbirdRPC {
     /// Health monitor for connection status
     health_monitor: ConnectionHealthMonitor,
     
-    /// Security layer integrated with BearDog tunnels
-    security_layer: BeardogTunnelIntegration,
+    /// Security layer integrated with Security Provider tunnels
+    security_layer: SecurityTunnelIntegration,
 }
 ```
 
@@ -64,7 +64,7 @@ pub struct SongbirdRPC {
 │  Primary: tarpc | Fallback-1: WebSocket+JSON | Fallback-2: HTTP│
 ├─────────────────────────────────────────────────────────────┤
 │                    Security Layer                           │
-│  BearDog Tunnel Integration | TLS | Custom Encryption      │
+│  Security Provider Tunnel Integration | TLS | Custom Encryption      │
 ├─────────────────────────────────────────────────────────────┤
 │                    Network Layer                            │
 │              TCP/UDP | IPv4/IPv6 | Custom Protocols        │
@@ -77,10 +77,10 @@ pub struct SongbirdRPC {
 
 ### **Phase 1: Core RPC Foundation (Week 1-2)**
 
-#### **1.1 tarpc Service Definition (Based on BearDog Implementation)**
+#### **1.1 tarpc Service Definition (Based on Security Provider Implementation)**
 ```rust
 /// Universal RPC service for Songbird orchestration
-/// Based on proven beardog-tunnel tarpc implementation
+/// Based on proven security_provider-tunnel tarpc implementation
 #[tarpc::service]
 pub trait SongbirdOrchestrator {
     /// Route capability request to appropriate primal
@@ -88,7 +88,7 @@ pub trait SongbirdOrchestrator {
         request: CapabilityRequest
     ) -> Result<CapabilityResponse, OrchestrationError>;
     
-    /// Establish secure tunnel to primal (BearDog integration)
+    /// Establish secure tunnel to primal (Security Provider integration)
     async fn establish_tunnel(
         target_primal: PrimalType,
         tunnel_config: TunnelConfig
@@ -460,14 +460,14 @@ pub trait PrimalRPCProtocol {
 
 /// Integration with other primal RPC systems
 pub struct PrimalRPCAdapter {
-    /// ToadStool RPC integration
-    pub toadstool_adapter: ToadstoolRPCAdapter,
+    /// Compute Provider RPC integration
+    pub compute_provider_adapter: ComputeProviderRpcAdapter,
     
-    /// BearDog security integration
-    pub beardog_adapter: BeardogRPCAdapter,
+    /// Security Provider security integration
+    pub security_provider_adapter: SecurityProviderRpcAdapter,
     
-    /// Squirrel MCP integration
-    pub squirrel_adapter: SquirrelMCPAdapter,
+    /// AI provider MCP integration
+    pub ai_provider_adapter: AiProviderMcpAdapter,
     
     /// Generic adapter for community primals
     pub generic_adapter: GenericRPCAdapter,
@@ -528,7 +528,7 @@ pub enum ServiceMeshEvent {
 ## 🚀 **Performance Targets**
 
 ### **Latency Targets**
-- **Inter-primal RPC**: <1ms (ToadStool compatibility)
+- **Inter-primal RPC**: <1ms (Compute Provider compatibility)
 - **Stream establishment**: <5ms
 - **Message throughput**: 100K+ messages/second
 - **Concurrent connections**: 10K+ connections
@@ -548,10 +548,10 @@ pub enum ServiceMeshEvent {
 
 ## 🔒 **Security Integration**
 
-### **BearDog Integration**
+### **Security Provider Integration**
 ```rust
-/// Security layer integration with BearDog
-pub struct BeardogSecurityLayer {
+/// Security layer integration with Security Provider
+pub struct SecurityProviderSecurityLayer {
     /// Authentication provider
     pub auth_provider: Arc<dyn AuthenticationProvider>,
     
@@ -628,10 +628,10 @@ pub struct SecurityContext {
 - Maintain backward compatibility
 
 ### **Phase 2: Primal-by-Primal Migration**
-- Start with ToadStool (already has RPC)
-- Move to Squirrel (MCP integration)
-- Integrate with BearDog (security focus)
-- Finally migrate NestGate
+- Start with Compute Provider (already has RPC)
+- Move to AI provider (MCP integration)
+- Integrate with Security Provider (security focus)
+- Finally migrate Storage Provider
 
 ### **Phase 3: HTTP/WebSocket Deprecation**
 - Mark old transport as deprecated
@@ -664,10 +664,10 @@ pub struct SecurityContext {
 
 ## 📚 **References and Prior Art**
 
-### **ToadStool RPC System**
+### **Compute Provider RPC System**
 - **Status**: Production-ready bidirectional RPC
 - **Lessons**: Zero-copy optimization, compression strategies
-- **Integration**: Direct adapter for ToadStool communication
+- **Integration**: Direct adapter for Compute Provider communication
 
 ### **Industry Standards**
 - **Inspiration**: Apache Arrow Flight (columnar data)
@@ -678,4 +678,4 @@ pub struct SecurityContext {
 
 **Status**: Ready for Implementation  
 **Next Steps**: Begin Phase 1 development with core RPC foundation  
-**Success Measure**: Match ToadStool RPC performance while adding universal orchestration capabilities 
+**Success Measure**: Match Compute Provider RPC performance while adding universal orchestration capabilities 

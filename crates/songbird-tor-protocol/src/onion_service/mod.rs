@@ -418,8 +418,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_duplicate_rendezvous_cookie_rejected() {
-        let beardog = test_crypto();
-        let manager = OnionServiceManager::new(beardog, 8080);
+        let security_crypto = test_crypto();
+        let manager = OnionServiceManager::new(security_crypto, 8080);
         manager.set_state(ServiceState::Running).expect("set state failed");
 
         let cookie = [0x42u8; 20];

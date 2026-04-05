@@ -40,7 +40,7 @@ impl SongbirdConfig {
     
     /// Check if ANY primal is enabled - universal compatibility
     pub fn is_primal_enabled(&self, primal_name: &str) -> bool {
-        // Works with: beardog, phoenix-ai, quantum-compute, my-custom-service, etc.
+        // Works with: security_provider, phoenix-ai, quantum-compute, my-custom-service, etc.
     }
     
     /// Get configuration for ANY primal - no limitations
@@ -53,8 +53,8 @@ impl SongbirdConfig {
 let mut config = SongbirdConfig::default();
 
 // Traditional primals (backward compatible)
-config.enable_primal("beardog", "https://beardog.example.com:8443");
-config.enable_primal("toadstool", "http://toadstool.example.com:8082");
+config.enable_primal("security", "https://security-provider.example.com:8443");
+config.enable_primal("compute_provider", "http://compute_provider.example.com:8082");
 
 // Custom primals (infinite extensibility)
 config.enable_primal("phoenix-ai", "https://phoenix.ai:8444");
@@ -62,7 +62,7 @@ config.enable_primal("quantum-compute", "http://quantum.lab:9000");
 config.enable_primal("my-awesome-service", "https://awesome.service:8080");
 
 // ALL return true - universal functionality verified
-assert!(config.is_primal_enabled("beardog"));           // ✅ PASSES
+assert!(config.is_primal_enabled("security"));           // ✅ PASSES
 assert!(config.is_primal_enabled("phoenix-ai"));        // ✅ PASSES  
 assert!(config.is_primal_enabled("quantum-compute"));   // ✅ PASSES
 assert!(config.is_primal_enabled("my-awesome-service")); // ✅ PASSES
@@ -80,16 +80,16 @@ let adapter = UniversalCapabilityAdapter::new(Default::default());
 
 // ✅ IMPLEMENTED: Find ALL primals that provide specific capabilities
 let security_primals = adapter.find_capability_providers("security").await;
-// Returns: ["beardog", "vault-service", "enterprise-crypto", "my-security"]
+// Returns: ["security", "vault-service", "enterprise-crypto", "my-security"]
 
 let ai_primals = adapter.find_capability_providers("ai").await;
-// Returns: ["squirrel", "phoenix-ai", "neural-engine", "gpt-service"]
+// Returns: ["ai_provider", "phoenix-ai", "neural-engine", "gpt-service"]
 
 let storage_primals = adapter.find_capability_providers("storage").await;  
-// Returns: ["nestgate", "ipfs-storage", "quantum-storage", "s3-adapter"]
+// Returns: ["storage_provider", "ipfs-storage", "quantum-storage", "s3-adapter"]
 
 let compute_primals = adapter.find_capability_providers("compute").await;
-// Returns: ["toadstool", "quantum-compute", "k8s-compute", "lambda-service"]
+// Returns: ["compute_provider", "quantum-compute", "k8s-compute", "lambda-service"]
 ```
 
 ### **3. Environment-Adaptive Smart Defaults - ✅ WORKING**
@@ -125,10 +125,10 @@ pub fn calculate_port_for_primal(primal_name: &str) -> u16 {
 
 ```bash
 # ✅ Traditional primals (backward compatible)
-export BEARDOG_ENDPOINT="https://beardog.internal:8443"
-export TOADSTOOL_ENDPOINT="http://toadstool.internal:8082"
-export NESTGATE_ENDPOINT="https://nestgate.internal:8084"
-export SQUIRREL_ENDPOINT="http://squirrel.internal:8085"
+export SECURITY_PROVIDER_ENDPOINT="https://security-provider.internal:8443"
+export COMPUTE_PROVIDER_ENDPOINT="http://compute_provider.internal:8082"
+export STORAGE_PROVIDER_ENDPOINT="https://storage_provider.internal:8084"
+export AI_PROVIDER_ENDPOINT="http://ai_provider.internal:8085"
 
 # ✅ Custom primals (infinite extensibility)
 export PHOENIX_AI_ENDPOINT="https://phoenix.ai:8444"
@@ -145,9 +145,9 @@ export PRIMAL_3_ENDPOINT="https://my-service-3:8082"
 export PRIMAL_3_NAME="quantum-neural-blockchain-ai"  # ANY name works!
 
 # ✅ Capability-based discovery patterns
-export SECURITY_PROVIDERS="beardog,vault-service,enterprise-auth"
-export AI_PROVIDERS="squirrel,phoenix-ai,neural-engine"
-export COMPUTE_PROVIDERS="toadstool,quantum-compute,lambda-service"
+export SECURITY_PROVIDERS="security,vault-service,enterprise-auth"
+export AI_PROVIDERS="ai_provider,phoenix-ai,neural-engine"
+export COMPUTE_PROVIDERS="compute_provider,quantum-compute,lambda-service"
 ```
 
 ---
@@ -160,10 +160,10 @@ export COMPUTE_PROVIDERS="toadstool,quantum-compute,lambda-service"
 ```rust
 // ❌ OLD: Hardcoded primal assumptions
 pub struct SongbirdConfig {
-    pub beardog: Option<BearDogConfig>,     // Hardcoded!
-    pub toadstool: Option<ToadstoolConfig>, // Hardcoded!
-    pub nestgate: Option<NestGateConfig>,   // Hardcoded!
-    pub squirrel: Option<SquirrelConfig>,   // Hardcoded!
+    pub security_provider: Option<SecurityProviderConfig>,     // Hardcoded!
+    pub compute_provider: Option<ComputeProviderConfig>, // Hardcoded!
+    pub storage_provider: Option<StorageProviderConfig>,   // Hardcoded!
+    pub ai_provider: Option<AiProviderConfig>,   // Hardcoded!
     // Adding new primal = major code changes required
 }
 ```
@@ -177,7 +177,7 @@ pub struct SongbirdConfig {
     
     // Legacy fields (deprecated but backward compatible)
     #[deprecated(note = "Use primal_registry instead")]
-    pub beardog: Option<serde_json::Value>,
+    pub security_provider: Option<serde_json::Value>,
     // ... other deprecated fields with migration path
 }
 ```
@@ -203,13 +203,13 @@ pub async fn route_request_by_capability(
 }
 
 // ✅ REAL EXAMPLES:
-// Security request routes to: beardog, vault-service, enterprise-auth, etc.
+// Security request routes to: security_provider, vault-service, enterprise-auth, etc.
 route_request_by_capability("security", security_request).await;
 
-// AI request routes to: squirrel, phoenix-ai, gpt-service, etc.  
+// AI request routes to: ai_provider, phoenix-ai, gpt-service, etc.  
 route_request_by_capability("ai", ai_request).await;
 
-// Storage request routes to: nestgate, s3-adapter, ipfs-storage, etc.
+// Storage request routes to: storage_provider, s3-adapter, ipfs-storage, etc.
 route_request_by_capability("storage", storage_request).await;
 ```
 
@@ -269,7 +269,7 @@ assert!(config.is_primal_enabled("community-ai"));
 
 // ✅ Automatic capability discovery
 let ai_providers = adapter.find_capability_providers("ai").await;
-// Now includes: ["squirrel", "phoenix-ai", "community-ai"]
+// Now includes: ["ai_provider", "phoenix-ai", "community-ai"]
 ```
 
 ### **Enterprise Integration**
@@ -287,7 +287,7 @@ export ENTERPRISE_AI_ENDPOINT="https://ai-platform.enterprise.com:8080"
 
 ```bash
 # ✅ Different primals in different clouds
-export BEARDOG_ENDPOINT="https://security.aws.company.com:8443"      # AWS
+export SECURITY_PROVIDER_ENDPOINT="https://security.aws.company.com:8443"      # AWS
 export PHOENIX_AI_ENDPOINT="https://ai.gcp.company.com:8444"         # GCP  
 export QUANTUM_COMPUTE_ENDPOINT="https://compute.azure.company.com:9000"  # Azure
 

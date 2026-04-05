@@ -5,6 +5,8 @@
 
 use super::*;
 use serde_json::json;
+use std::net::SocketAddr;
+use std::time::Duration;
 
 #[tokio::test]
 async fn test_mesh_handler_uninitialized() {
@@ -241,7 +243,6 @@ fn endpoint_to_strings_relay_and_onion() {
 #[test]
 fn path_to_json_includes_expected_fields() {
     let handler = MeshHandler::new();
-    use std::net::SocketAddr;
     let addr: SocketAddr = "10.0.0.2:9000".parse().expect("addr");
     let path = RelayEndpoint {
         node_id: "peer-9".into(),
@@ -305,8 +306,6 @@ fn mesh_handler_default_matches_new() {
 #[test]
 fn path_to_json_respects_found_flag_and_latency() {
     let handler = MeshHandler::new();
-    use std::net::SocketAddr;
-    use std::time::Duration;
     let addr: SocketAddr = "10.0.0.2:9000".parse().expect("addr");
     let path = RelayEndpoint {
         node_id: "peer-x".into(),

@@ -120,7 +120,7 @@ impl UniversalPrimalDiscovery {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::*;
     use crate::discovery::config::DiscoveryMechanisms;

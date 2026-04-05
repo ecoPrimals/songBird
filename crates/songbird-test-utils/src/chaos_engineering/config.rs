@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! # 🧪 Chaos Engineering Configuration
@@ -16,11 +16,7 @@ mod systemtime_option {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::time::SystemTime;
 
-    #[expect(
-        clippy::ref_option,
-        clippy::trivially_copy_pass_by_ref,
-        reason = "intentional pattern; clippy false positive for this API"
-    )]
+    #[allow(clippy::ref_option, reason = "intentional pattern; clippy false positive for this API")]
     pub fn serialize<S>(time: &Option<SystemTime>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -217,10 +213,6 @@ pub struct PerformanceImpact {
 
 /// Resource utilization changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[expect(
-    clippy::struct_field_names,
-    reason = "intentional pattern; clippy false positive for this API"
-)]
 pub struct ResourceUtilizationChange {
     /// CPU utilization change (percentage)
     pub cpu_change_percent: f64,

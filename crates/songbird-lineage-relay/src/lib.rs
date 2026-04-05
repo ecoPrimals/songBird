@@ -163,12 +163,6 @@ pub mod universal_coordinator_adapter;
 // Security-provider integration (BirdSong + relay authority; discovered by capability at runtime)
 pub mod security;
 
-/// Deprecated alias for [`security`].
-#[deprecated(note = "use module `security` (capability-based naming)")]
-pub mod beardog {
-    pub use crate::security::*;
-}
-
 #[cfg(test)]
 mod security_tests;
 

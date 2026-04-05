@@ -369,7 +369,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated, reason = "calling deprecated API until migration completes")]
+    #[allow(deprecated, reason = "calling deprecated API until migration completes")]
     fn test_well_known_ports_backwards_compat() {
         assert_eq!(well_known::orchestrator(), 8080);
         assert_eq!(well_known::discovery(), 8081);

@@ -18,8 +18,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Register some services with capabilities
     println!("📝 Registering services...");
 
-    ipc::register("beardog", vec!["crypto".to_string(), "btsp".to_string()]).await?;
-    println!("✅ Registered beardog [crypto, btsp]");
+    ipc::register("security_provider", vec!["crypto".to_string(), "btsp".to_string()]).await?;
+    println!("✅ Registered security_provider [crypto, btsp]");
 
     ipc::register("ai", vec!["ai".to_string(), "nlp".to_string()]).await?;
     println!("✅ Registered ai capability [ai, nlp]");

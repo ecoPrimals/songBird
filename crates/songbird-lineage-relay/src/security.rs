@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security-provider `BirdSong` integration - Production & Test Implementations
@@ -74,7 +74,7 @@ impl SecurityBirdSongProvider {
     pub fn new(socket_path: impl Into<PathBuf>, family_id: Option<String>) -> Self {
         let socket_path = socket_path.into();
 
-        info!("🐻 Security-provider BirdSong client created (Unix socket)");
+        info!("Security-provider BirdSong client created (Unix socket)");
         info!("   Socket: {:?}", socket_path);
         if let Some(ref fam) = family_id {
             info!("   Family ID: {}", fam);
@@ -269,7 +269,7 @@ impl SecurityRelayAuthority {
     /// Create a new relay authority using the discovered security-provider socket
     ///
     /// Discovers security provider socket path at runtime:
-    /// 1. `SECURITY_PROVIDER_SOCKET` / `CRYPTO_PROVIDER_SOCKET` / `BEARDOG_SOCKET` (see `Self::discover_socket_path`)
+    /// 1. Capability socket env vars (see `Self::discover_socket_path`)
     /// 2. XDG runtime dir capability-named sockets under `biomeos/`
     /// 3. Legacy fallbacks under `/tmp/biomeos/` or `/tmp/`
     pub fn new() -> Self {
@@ -289,31 +289,32 @@ impl SecurityRelayAuthority {
 
     /// Discover security provider socket path at runtime (capability-first)
     ///
-    /// ## Resolution Order (capability-first, primal-agnostic)
+    /// ## Resolution Order (capability-first, identity-agnostic)
     ///
     /// 1. `SECURITY_PROVIDER_SOCKET` - Capability-based (preferred)
     /// 2. `CRYPTO_PROVIDER_SOCKET` - Capability-based alternative
-    /// 3. `BEARDOG_SOCKET` - Provider-specific (backward compatibility)
+    /// 3. Legacy security socket env — backward compatibility
     /// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` - Capability-named
-    /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` - Provider hint
+    /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/` legacy filename — optional hint on some installs
     /// 6. Legacy: `/tmp/biomeos/security.sock` - Fallback
     fn discover_socket_path() -> PathBuf {
-        // 1. Capability-based env vars (preferred - primal agnostic)
-        for env_var in &[
-            "SECURITY_PROVIDER_SOCKET",
-            "CRYPTO_PROVIDER_SOCKET",
-            "BEARDOG_SOCKET", // backward compatibility
-        ] {
+        // 1. Capability-based env vars (preferred — identity-agnostic)
+        for env_var in &["SECURITY_PROVIDER_SOCKET", "CRYPTO_PROVIDER_SOCKET", "SECURITY_SOCKET"] {
             if let Ok(path) = songbird_process_env::var(env_var) {
                 return PathBuf::from(path);
             }
         }
+        // Legacy fallback
+        if let Ok(path) = songbird_process_env::var("BEARDOG_SOCKET") {
+            tracing::warn!("BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET");
+            return PathBuf::from(path);
+        }
 
-        // 2. XDG runtime directory (capability names first, then provider hints)
+        // 2. XDG runtime directory (capability-named sockets first)
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
             let biomeos = PathBuf::from(&xdg).join("biomeos");
 
-            // Capability-named sockets only — no primal identities
+            // Capability-named sockets only
             for socket_name in &["security.sock", "crypto.sock"] {
                 let path = biomeos.join(socket_name);
                 if path.exists() {
@@ -328,6 +329,7 @@ impl SecurityRelayAuthority {
         };
 
         let b = biomeos_socket_dir_tmp();
+        // Legacy on-disk filename (some installs); not a public API name.
         let fallback_paths =
             [security_socket_default_path(), b.join("beardog.sock"), tmp_flat_security_sock_path()];
 
@@ -492,15 +494,6 @@ impl RelayAuthority for SecurityRelayAuthority {
         )
     }
 }
-
-// Deprecated public names (same types as above)
-/// Deprecated alias for [`SecurityBirdSongProvider`].
-#[deprecated(note = "use SecurityBirdSongProvider")]
-pub type BearDogBirdSongProvider = SecurityBirdSongProvider;
-
-/// Deprecated alias for [`SecurityRelayAuthority`].
-#[deprecated(note = "use SecurityRelayAuthority")]
-pub type BearDogRelayAuthority = SecurityRelayAuthority;
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST MOCKS - Gated behind cfg(test) or feature = "test-utils"

@@ -330,11 +330,11 @@ mod tests {
 
     /// Mirrors `negotiate_chunked_upload` chunk count (10 MiB chunks, at least 1).
     fn total_chunks_for_binary_mb(binary_size_mb: f64, chunk_size_mb: u32) -> usize {
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             reason = "test: same cast as production negotiate_chunked_upload"
         )]
-        #[expect(clippy::cast_sign_loss, reason = "test: positive MB inputs match production")]
+        #[allow(clippy::cast_sign_loss, reason = "test: positive MB inputs match production")]
         let n = ((binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
         n
     }

@@ -182,12 +182,12 @@ impl CanonicalUniversalAdapter {
             metrics.successful_requests += 1;
 
             let processing_time = start_time.elapsed().unwrap_or(Duration::ZERO);
-            #[expect(
+            #[allow(
                 clippy::cast_possible_truncation,
                 reason = "truncation acceptable: nanos fit in u64 for running average window"
             )]
             let avg_nanos = metrics.avg_response_time.as_nanos() as u64;
-            #[expect(
+            #[allow(
                 clippy::cast_possible_truncation,
                 reason = "truncation acceptable: nanos fit in u64 for running average window"
             )]

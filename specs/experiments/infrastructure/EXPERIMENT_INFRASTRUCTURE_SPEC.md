@@ -225,21 +225,21 @@ pub struct ExperimentDashboard {
 ```rust
 // Location: tests/experiment_infrastructure/control_implementations/hardcoded.rs
 pub struct HardcodedOrchestrator {
-    pub security_endpoint: String, // "http://beardog:8443"
-    pub storage_endpoint: String,  // "http://nestgate:8080"
-    pub compute_endpoint: String,  // "http://toadstool:8082"
-    pub ai_endpoint: String,       // "http://squirrel:8084"
+    pub security_endpoint: String, // "http://security-provider:8443"
+    pub storage_endpoint: String,  // "http://storage_provider:8080"
+    pub compute_endpoint: String,  // "http://compute_provider:8082"
+    pub ai_endpoint: String,       // "http://ai_provider:8084"
 }
 
 impl HardcodedOrchestrator {
     pub async fn authenticate(&self, request: AuthRequest) -> Result<AuthResponse> {
-        // Direct HTTP call to hardcoded beardog endpoint
+        // Direct HTTP call to hardcoded security_provider endpoint
         let client = HttpClient::new();
         client.post(&self.security_endpoint, request).await
     }
     
     pub async fn store_data(&self, data: Vec<u8>) -> Result<StorageResponse> {
-        // Direct HTTP call to hardcoded nestgate endpoint
+        // Direct HTTP call to hardcoded storage_provider endpoint
         let client = HttpClient::new();
         client.post(&self.storage_endpoint, data).await
     }

@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Bind addresses, port ranges, and discovery-related port defaults.
 
 use std::net::IpAddr;
+
+use tracing::warn;
 
 use super::{env_get_bool_with, env_parse_with, env_port_with, read_process_env};
 
@@ -140,25 +142,49 @@ fn get_expected_service_count_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
 ) -> u16 {
     env_parse_with(env, "SONGBIRD_EXPECTED_SERVICES", {
-        // Calculate based on enabled primals and features
+        // Calculate based on enabled providers and features
         let mut count = 1; // Base Songbird service
 
-        if env_get_bool_with(env, "SONGBIRD_ENABLE_BEARDOG", false) {
+        let legacy_beardog_enabled = env_get_bool_with(env, "SONGBIRD_ENABLE_BEARDOG", false);
+        if legacy_beardog_enabled {
+            warn!(
+                "SONGBIRD_ENABLE_BEARDOG is deprecated; use SONGBIRD_ENABLE_SECURITY_PROVIDER instead"
+            );
+        }
+        if env_get_bool_with(env, "SONGBIRD_ENABLE_SECURITY_PROVIDER", false)
+            || legacy_beardog_enabled
+        {
             count += 1;
+        }
+        let legacy_nestgate_enabled = env_get_bool_with(env, "SONGBIRD_ENABLE_NESTGATE", false);
+        if legacy_nestgate_enabled {
+            warn!(
+                "SONGBIRD_ENABLE_NESTGATE is deprecated; use SONGBIRD_ENABLE_STORAGE_PROVIDER instead"
+            );
         }
         if env_get_bool_with(env, "SONGBIRD_ENABLE_STORAGE_PROVIDER", false)
-            || env_get_bool_with(env, "SONGBIRD_ENABLE_NESTGATE", false)
+            || legacy_nestgate_enabled
         {
             count += 1;
+        }
+        let legacy_toadstool_enabled = env_get_bool_with(env, "SONGBIRD_ENABLE_TOADSTOOL", false);
+        if legacy_toadstool_enabled {
+            warn!(
+                "SONGBIRD_ENABLE_TOADSTOOL is deprecated; use SONGBIRD_ENABLE_COMPUTE_PROVIDER instead"
+            );
         }
         if env_get_bool_with(env, "SONGBIRD_ENABLE_COMPUTE_PROVIDER", false)
-            || env_get_bool_with(env, "SONGBIRD_ENABLE_TOADSTOOL", false)
+            || legacy_toadstool_enabled
         {
             count += 1;
         }
-        if env_get_bool_with(env, "SONGBIRD_ENABLE_AI_PROVIDER", false)
-            || env_get_bool_with(env, "SONGBIRD_ENABLE_SQUIRREL", false)
-        {
+        let legacy_squirrel_enabled = env_get_bool_with(env, "SONGBIRD_ENABLE_SQUIRREL", false);
+        if legacy_squirrel_enabled {
+            warn!(
+                "SONGBIRD_ENABLE_SQUIRREL is deprecated; use SONGBIRD_ENABLE_AI_PROVIDER instead"
+            );
+        }
+        if env_get_bool_with(env, "SONGBIRD_ENABLE_AI_PROVIDER", false) || legacy_squirrel_enabled {
             count += 1;
         }
         if env_get_bool_with(env, "SONGBIRD_ENABLE_DISCOVERY", true) {

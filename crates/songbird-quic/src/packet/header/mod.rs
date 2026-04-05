@@ -397,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn decode_initial_packet_truncated_token_errors() {
         // Long header Initial: after SCID, VarInt token length claims 4 bytes but only 1 byte follows.
         let buf = [
@@ -416,7 +416,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn decode_long_header_truncated_packet_number_errors() {
         // Handshake: version 1, empty CIDs, payload length 0 (one-byte varint), then PN missing.
         let buf = [

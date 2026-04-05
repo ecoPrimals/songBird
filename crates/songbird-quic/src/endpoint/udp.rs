@@ -84,7 +84,7 @@ impl UdpEndpoint {
 
     /// Get a reference to the underlying socket (for advanced usage).
     #[must_use]
-    #[expect(dead_code, reason = "public API for advanced socket configuration")]
+    #[allow(dead_code, reason = "public API for advanced socket configuration")]
     pub const fn socket(&self) -> &UdpSocket {
         &self.socket
     }

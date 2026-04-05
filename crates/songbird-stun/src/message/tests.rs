@@ -160,7 +160,7 @@ fn mapped_address_ipv6_roundtrip() {
 }
 
 #[test]
-#[expect(clippy::unwrap_used, reason = "test assertion")]
+#[allow(clippy::unwrap_used, reason = "test assertion")]
 fn decode_binding_error_response_without_attributes() {
     let mut buf = vec![0u8; 20];
     buf[0] = 0x01;
@@ -176,7 +176,7 @@ fn decode_binding_error_response_without_attributes() {
 }
 
 #[test]
-#[expect(clippy::unwrap_used, reason = "test assertion")]
+#[allow(clippy::unwrap_used, reason = "test assertion")]
 fn xor_ipv4_mapped_address_port_xor_matches_rfc_5389() {
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 10)), 45_678);
     let mut msg = StunMessage::new_binding_request();
@@ -191,7 +191,7 @@ fn xor_ipv4_mapped_address_port_xor_matches_rfc_5389() {
 }
 
 #[test]
-#[expect(clippy::unwrap_used, reason = "test assertion")]
+#[allow(clippy::unwrap_used, reason = "test assertion")]
 fn message_type_from_u16_rejects_non_binding_variants() {
     assert!(MessageType::from_u16(0x0002).is_err());
     assert!(MessageType::from_u16(0x0100).is_err());
@@ -200,7 +200,7 @@ fn message_type_from_u16_rejects_non_binding_variants() {
 }
 
 #[test]
-#[expect(clippy::unwrap_used, reason = "test assertion")]
+#[allow(clippy::unwrap_used, reason = "test assertion")]
 fn binding_request_roundtrip_preserves_transaction_id_for_correlation() {
     let a = StunMessage::new_binding_request();
     let b = StunMessage::new_binding_request();

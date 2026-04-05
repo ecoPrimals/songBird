@@ -625,7 +625,7 @@ mod tests {
     #[test]
     fn parse_allocate_response_failure_response_roundtrips() {
         let resp = AllocationResponse::error("policy reject".into());
-        let wire = RelayProtocol::AllocateResponse(resp.clone()).encode();
+        let wire = RelayProtocol::AllocateResponse(resp).encode();
         let parsed = RelayProtocol::parse(&wire).expect("parse");
         match parsed {
             RelayProtocol::AllocateResponse(r) => {

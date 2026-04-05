@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Socket discovery for Neural API and security provider.
 //!
 //! After Gate 5.2, songbird crates only need to find the Neural API socket.
-//! Direct security-provider discovery is kept for legacy `BEARDOG_MODE=direct` bootstrap.
+//! Direct security-provider discovery is kept for legacy direct-mode bootstrap (`BEARDOG_MODE=direct`).
 //!
 //! ## Capability-Based Discovery (wateringHole v1.2)
 //!
@@ -48,13 +48,6 @@ pub fn crypto_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: &
         format!("crypto-{family_id}.sock")
     };
     PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(socket_name)
-}
-
-/// Deprecated alias for [`crypto_socket_path_in_biomeos_runtime`].
-#[deprecated(note = "Use security_socket_path_in_biomeos_runtime (capability-based naming)")]
-#[must_use]
-pub fn beardog_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: &str) -> PathBuf {
-    crypto_socket_path_in_biomeos_runtime(xdg_runtime_dir, family_id)
 }
 
 /// Discover the Neural API socket (preferred for all crypto routing).
@@ -116,10 +109,11 @@ where
 /// Priority (wateringHole v1.2 compliant):
 /// 1. `$SECURITY_PROVIDER_SOCKET` (capability-standard env var)
 /// 2. `$CRYPTO_PROVIDER_SOCKET` (alternate capability name)
-/// 3. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
-/// 4. `$XDG_RUNTIME_DIR/biomeos/crypto.sock` (domain socket, with family suffix)
-/// 5. `$BEARDOG_SOCKET` (legacy — logged as deprecated)
-/// 6. `{temp_dir}/biomeos/security.sock` (temp fallback)
+/// 3. `$SECURITY_SOCKET` (capability domain)
+/// 4. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
+/// 5. `$XDG_RUNTIME_DIR/biomeos/crypto.sock` (domain socket, with family suffix)
+/// 6. `$BEARDOG_SOCKET` (legacy — logged as deprecated)
+/// 7. `{temp_dir}/biomeos/security.sock` (temp fallback)
 #[must_use]
 pub fn discover_security_socket() -> String {
     discover_security_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
@@ -136,6 +130,13 @@ where
         && !socket.is_empty()
     {
         info!("✅ Security provider via $SECURITY_PROVIDER_SOCKET: {socket}");
+        return socket;
+    }
+
+    if let Some(socket) = get_var("SECURITY_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Security provider via $SECURITY_SOCKET: {socket}");
         return socket;
     }
 
@@ -166,7 +167,9 @@ where
     if let Some(socket) = get_var("BEARDOG_SOCKET")
         && !socket.is_empty()
     {
-        warn!("⚠️  Using deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET");
+        warn!(
+            "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET"
+        );
         return socket;
     }
 
@@ -191,24 +194,6 @@ pub fn discover_security_provider_socket() -> String {
 #[deprecated(note = "Use discover_security_socket_with (capability-based naming)")]
 #[must_use]
 pub fn discover_security_provider_socket_with<G, P>(get_var: G, path_exists: P) -> String
-where
-    G: Fn(&str) -> Option<String>,
-    P: Fn(&Path) -> bool,
-{
-    discover_security_socket_with(get_var, path_exists)
-}
-
-/// Deprecated alias for [`discover_security_socket`].
-#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
-#[must_use]
-pub fn discover_beardog_socket() -> String {
-    discover_security_socket()
-}
-
-/// Deprecated alias for [`discover_security_socket_with`].
-#[deprecated(note = "Use discover_security_socket_with (capability-based naming)")]
-#[must_use]
-pub fn discover_beardog_socket_with<G, P>(get_var: G, path_exists: P) -> String
 where
     G: Fn(&str) -> Option<String>,
     P: Fn(&Path) -> bool,
@@ -344,30 +329,23 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn deprecated_beardog_socket_path_alias_matches_crypto_path() {
-        assert_eq!(
-            beardog_socket_path_in_biomeos_runtime("/r", "id"),
-            crypto_socket_path_in_biomeos_runtime("/r", "id")
-        );
-    }
-
-    #[test]
     fn security_socket_path_capability_symlink() {
         let p = security_socket_path_in_biomeos_runtime("/run/user/1000");
         assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/security.sock"));
     }
 
+    /// Backward-compat: ensures `SECURITY_PROVIDER_SOCKET` wins when both it and the deprecated
+    /// `BEARDOG_SOCKET` env var are set (migration shim for the legacy socket key).
     #[test]
     fn discover_security_prefers_security_provider_socket_env() {
         let map: HashMap<&str, String> = [
             ("SECURITY_PROVIDER_SOCKET", "/cap/security.sock".to_string()),
-            ("BEARDOG_SOCKET", "/legacy/bd.sock".to_string()),
+            ("BEARDOG_SOCKET", "/legacy/security-fallback.sock".to_string()),
         ]
         .into_iter()
         .collect();
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/cap/security.sock", "$SECURITY_PROVIDER_SOCKET beats $BEARDOG_SOCKET");
+        assert_eq!(out, "/cap/security.sock", "$SECURITY_PROVIDER_SOCKET beats legacy socket env");
     }
 
     #[test]
@@ -406,14 +384,17 @@ mod tests {
         assert_eq!(out, crypto.to_string_lossy());
     }
 
+    /// Backward-compat: when no canonical env keys match, the deprecated `BEARDOG_SOCKET` value
+    /// is still honored as the last-resort env fallback (see production `discover_security_socket`).
     #[test]
-    fn discover_security_falls_back_to_legacy_beardog_socket_env() {
+    fn discover_security_falls_back_to_legacy_socket_env() {
         let map: HashMap<&str, String> =
-            std::iter::once(("BEARDOG_SOCKET", "/legacy/bd.sock".to_string())).collect();
+            std::iter::once(("BEARDOG_SOCKET", "/legacy/security-fallback.sock".to_string()))
+                .collect();
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(
-            out, "/legacy/bd.sock",
-            "legacy $BEARDOG_SOCKET still works as last env fallback"
+            out, "/legacy/security-fallback.sock",
+            "legacy security socket env still works as last env fallback"
         );
     }
 
@@ -423,14 +404,5 @@ mod tests {
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
         let expected = std::env::temp_dir().join("security-provider.sock");
         assert_eq!(PathBuf::from(out), expected);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn discover_beardog_socket_deprecated_alias_delegates_to_security_discovery() {
-        let map: HashMap<&str, String> =
-            std::iter::once(("SECURITY_PROVIDER_SOCKET", "/new/sec.sock".to_string())).collect();
-        let out = discover_beardog_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/new/sec.sock", "deprecated alias should delegate to new impl");
     }
 }

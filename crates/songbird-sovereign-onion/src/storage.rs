@@ -318,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn store_peer_overwrites_same_onion_address() {
         let storage = InMemoryOnionStorage::new();
         let a = PeerInfo {
@@ -339,7 +339,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn remove_peer_missing_is_noop() {
         let storage = InMemoryOnionStorage::new();
         storage.remove_peer("nope.onion").unwrap();
@@ -347,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn flush_on_in_memory_is_ok() {
         let storage = InMemoryOnionStorage::new();
         storage.flush().unwrap();

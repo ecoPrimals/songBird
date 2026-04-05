@@ -16,7 +16,7 @@
 
 | Problem | Previous State | ✅ Current Implementation | Impact |
 |---------|---------------|---------------------------|---------|
-| **Hardcoded Names** | `beardog`, `toadstool`, `nestgate` everywhere | Pure capability routing (`"security"`, `"compute"`, `"storage"`) | Infinite extensibility |
+| **Hardcoded Names** | `security_provider`, `compute_provider`, `storage_provider` everywhere | Pure capability routing (`"security"`, `"compute"`, `"storage"`) | Infinite extensibility |
 | **Mock Implementations** | 47+ mock services for other primals | Real universal adapter routing | Production ready |
 | **Static Endpoints** | Hardcoded URLs and ports | Dynamic discovery via environment | Deployment flexibility |
 | **Primal Assumptions** | Direct API integrations | Universal capability interfaces | True ecosystem architecture |
@@ -58,12 +58,12 @@ PRIMAL_{UNIQUE_ID}_CAPABILITIES="capability1,capability2,capability3"
 
 # Examples of infinite extensibility:
 
-# Multiple BearDog versions coexist
-PRIMAL_BEARDOG_V1_ENDPOINT="https://beardog-v1.internal:8443"
-PRIMAL_BEARDOG_V1_CAPABILITIES="security,encryption,audit"
+# Multiple Security Provider versions coexist
+PRIMAL_SECURITY_PROVIDER_V1_ENDPOINT="https://security-provider-v1.internal:8443"
+PRIMAL_SECURITY_PROVIDER_V1_CAPABILITIES="security,encryption,audit"
 
-PRIMAL_BEARDOG_V2_ENDPOINT="https://beardog-v2.internal:8444"  
-PRIMAL_BEARDOG_V2_CAPABILITIES="security,encryption,audit,ml_detection"
+PRIMAL_SECURITY_PROVIDER_V2_ENDPOINT="https://security-provider-v2.internal:8444"  
+PRIMAL_SECURITY_PROVIDER_V2_CAPABILITIES="security,encryption,audit,ml_detection"
 
 # Completely new primal types work instantly
 PRIMAL_QUANTUM_LAB_ENDPOINT="https://quantum.research.edu:9000"
@@ -90,12 +90,12 @@ The universal adapter automatically:
 
 ### **Scenario 1: Multiple Versions Coexisting**
 ```bash
-# ToadStool compute - multiple versions working together
-PRIMAL_TOADSTOOL_STABLE_ENDPOINT="http://toadstool-v1.internal:8082"
-PRIMAL_TOADSTOOL_STABLE_CAPABILITIES="compute,metrics,scaling"
+# Compute Provider compute - multiple versions working together
+PRIMAL_COMPUTE_PROVIDER_STABLE_ENDPOINT="http://compute-provider-v1.internal:8082"
+PRIMAL_COMPUTE_PROVIDER_STABLE_CAPABILITIES="compute,metrics,scaling"
 
-PRIMAL_TOADSTOOL_EXPERIMENTAL_ENDPOINT="http://toadstool-v2.internal:8083"
-PRIMAL_TOADSTOOL_EXPERIMENTAL_CAPABILITIES="compute,metrics,scaling,gpu_acceleration"
+PRIMAL_COMPUTE_PROVIDER_EXPERIMENTAL_ENDPOINT="http://compute-provider-v2.internal:8083"
+PRIMAL_COMPUTE_PROVIDER_EXPERIMENTAL_CAPABILITIES="compute,metrics,scaling,gpu_acceleration"
 
 # Result: Songbird load-balances between both, prefers v2 for GPU workloads
 ```

@@ -101,8 +101,22 @@ impl TorHandler {
     /// Get security provider socket path from environment (capability-based discovery)
     fn get_security_socket_from_env() -> Option<String> {
         songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
-            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
-            .or_else(|_| songbird_process_env::var("BEARDOG_CRYPTO_SOCKET"))
+            .or_else(|_| songbird_process_env::var("SECURITY_SOCKET"))
+            .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_SOCKET"))
+            .or_else(|_| {
+                songbird_process_env::var("BEARDOG_SOCKET").inspect(|_| {
+                    tracing::warn!(
+                        "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET"
+                    );
+                })
+            })
+            .or_else(|_| {
+                songbird_process_env::var("BEARDOG_CRYPTO_SOCKET").inspect(|_| {
+                    tracing::warn!(
+                        "BEARDOG_CRYPTO_SOCKET is deprecated — migrate to CRYPTO_PROVIDER_SOCKET"
+                    );
+                })
+            })
             .or_else(|_| songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER"))
             .ok()
             .or_else(|| {

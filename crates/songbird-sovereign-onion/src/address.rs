@@ -72,15 +72,6 @@ pub async fn derive_onion_address_via_security_provider(
     derive_onion_address_with_security_provider(client, pubkey_bytes).await
 }
 
-/// Deprecated alias for [`derive_onion_address_via_security_provider`].
-#[deprecated(note = "use derive_onion_address_via_security_provider")]
-pub async fn derive_onion_address_via_beardog(
-    client: &SecurityCryptoClient,
-    pubkey_bytes: &[u8; 32],
-) -> Result<String> {
-    derive_onion_address_via_security_provider(client, pubkey_bytes).await
-}
-
 /// Validate .onion address via the security provider
 ///
 /// # Errors
@@ -135,15 +126,6 @@ pub async fn validate_onion_address_via_security_provider(
         pubkey_bytes.try_into().map_err(|_| OnionError::InvalidPublicKey)?;
 
     Ok(pubkey_array)
-}
-
-/// Deprecated alias for [`validate_onion_address_via_security_provider`].
-#[deprecated(note = "use validate_onion_address_via_security_provider")]
-pub async fn validate_onion_address_via_beardog(
-    client: &SecurityCryptoClient,
-    onion: &str,
-) -> Result<[u8; 32]> {
-    validate_onion_address_via_security_provider(client, onion).await
 }
 
 /// Standalone derivation (for testing/offline only)

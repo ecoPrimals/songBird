@@ -27,6 +27,7 @@ docker = ["dep:bollard"]
 full-discovery = ["mdns", "dns-sd", "k8s", "docker"]
 
 [dependencies]
+async-trait = "0.1"
 anyhow = "1.0" # Used by unix_rpc_client (Pure Rust RPC!)
 chrono = { version = "0.4", features = ["serde"] } 
 futures = "0.3"

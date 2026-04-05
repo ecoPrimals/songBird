@@ -43,7 +43,7 @@ pub struct SecurityProviderValidator {
 
 /// Deprecated alias for [`SecurityProviderValidator`].
 #[deprecated(note = "use SecurityProviderValidator")]
-pub type BearDogSecurityValidator = SecurityProviderValidator;
+pub type LegacySecurityProviderValidator = SecurityProviderValidator;
 
 impl SecurityProviderValidator {
     /// Create a new security provider-integrated security validator

@@ -2,10 +2,10 @@
 # This file eliminates all hardcoded values from examples and demos
 # 
 # ✅ ROLE COMPLIANCE: Songbird operates as pure orchestrator
-# - Security operations → Delegated to BearDog SecurityCapability
-# - Storage operations → Delegated to NestGate StorageCapability  
-# - Compute monitoring → Delegated to ToadStool ComputeCapability
-# - AI processing → Delegated to Squirrel AICapability
+# - Security operations → Delegated to Security Provider SecurityCapability
+# - Storage operations → Delegated to Storage Provider StorageCapability  
+# - Compute monitoring → Delegated to Compute Provider ComputeCapability
+# - AI processing → Delegated to AI Provider AICapability
 
 [global]
 service_name = "songbird-demo"

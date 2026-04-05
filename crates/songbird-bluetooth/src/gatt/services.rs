@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! GATT service type and primary service discovery.
@@ -46,10 +46,6 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if service discovery fails
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "ATT primary service discovery kept as one loop for clarity"
-    )]
     pub async fn discover_services(&mut self) -> Result<&[Service]> {
         debug!("Discovering services on {}", self.device.address());
 
@@ -228,7 +224,6 @@ mod tests {
 
     struct MockTransport;
 
-    #[async_trait::async_trait]
     impl Transport for MockTransport {
         fn transport_type(&self) -> TransportType {
             TransportType::Usb

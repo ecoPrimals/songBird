@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Relay endpoint descriptors and transport kinds for the beacon mesh.
@@ -63,6 +63,168 @@ impl EndpointType {
             Self::TorOnion {
                 ..
             } => 3,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{EndpointType, RelayEndpoint};
+    use std::net::SocketAddr;
+    use std::time::Instant;
+
+    #[test]
+    fn endpoint_type_priority_local_is_best() {
+        let local = EndpointType::Local {
+            addr: "192.168.1.1:9000".parse().unwrap(),
+        };
+        assert_eq!(local.priority(), 0);
+    }
+
+    #[test]
+    fn endpoint_type_priority_ordering_strictly_increases() {
+        let local = EndpointType::Local {
+            addr: "10.0.0.2:1".parse().unwrap(),
+        };
+        let direct = EndpointType::Direct {
+            addr: "198.51.100.1:2".parse().unwrap(),
+        };
+        let family = EndpointType::FamilyRelay {
+            relay_node_id: "relay-a".into(),
+        };
+        let tor = EndpointType::TorOnion {
+            onion_addr: "abcdefghijklmnop.onion".into(),
+        };
+        assert!(local.priority() < direct.priority());
+        assert!(direct.priority() < family.priority());
+        assert!(family.priority() < tor.priority());
+    }
+
+    #[test]
+    fn endpoint_type_direct_equality_matches_addr() {
+        let a: SocketAddr = "203.0.113.5:4444".parse().unwrap();
+        let b: SocketAddr = "203.0.113.5:4444".parse().unwrap();
+        assert_eq!(
+            EndpointType::Direct {
+                addr: a,
+            },
+            EndpointType::Direct {
+                addr: b,
+            }
+        );
+    }
+
+    #[test]
+    fn endpoint_type_direct_inequality_when_addr_differs() {
+        let x = EndpointType::Direct {
+            addr: "198.18.0.1:1".parse().unwrap(),
+        };
+        let y = EndpointType::Direct {
+            addr: "198.18.0.2:1".parse().unwrap(),
+        };
+        assert_ne!(x, y);
+    }
+
+    #[test]
+    fn endpoint_type_family_relay_clone_and_eq() {
+        let a = EndpointType::FamilyRelay {
+            relay_node_id: "node-7".into(),
+        };
+        let b = a.clone();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn endpoint_type_tor_onion_preserves_hostname() {
+        let t = EndpointType::TorOnion {
+            onion_addr: "service.onion".into(),
+        };
+        match t {
+            EndpointType::TorOnion {
+                onion_addr,
+            } => assert_eq!(onion_addr, "service.onion"),
+            _ => panic!("expected TorOnion"),
+        }
+    }
+
+    #[test]
+    fn relay_endpoint_clone_preserves_node_id() {
+        let ep = RelayEndpoint {
+            node_id: "beacon-1".into(),
+            endpoint_type: EndpointType::Direct {
+                addr: "127.0.0.1:9".parse().unwrap(),
+            },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+        let cloned = ep.clone();
+        assert_eq!(cloned.node_id, ep.node_id);
+        assert_eq!(cloned.node_id.as_str(), "beacon-1");
+        assert!(cloned.reachable);
+    }
+
+    #[test]
+    fn relay_endpoint_latency_some_duration() {
+        let ep = RelayEndpoint {
+            node_id: "n".into(),
+            endpoint_type: EndpointType::Local {
+                addr: "[::1]:1234".parse().unwrap(),
+            },
+            latency: Some(std::time::Duration::from_millis(12)),
+            last_seen: Instant::now(),
+            reachable: false,
+        };
+        assert_eq!(ep.latency, Some(std::time::Duration::from_millis(12)));
+        assert!(!ep.reachable);
+    }
+
+    #[test]
+    fn endpoint_type_debug_contains_variant_name() {
+        let d = format!(
+            "{:?}",
+            EndpointType::Direct {
+                addr: "0.0.0.0:0".parse().unwrap(),
+            }
+        );
+        assert!(d.contains("Direct"), "{d}");
+    }
+
+    #[test]
+    fn endpoint_type_priority_tor_is_worst_among_documented_classes() {
+        let tor = EndpointType::TorOnion {
+            onion_addr: "x.onion".into(),
+        };
+        assert_eq!(tor.priority(), 3);
+    }
+
+    #[test]
+    fn endpoint_type_local_priority_zero_even_with_ipv6() {
+        let local = EndpointType::Local {
+            addr: "[fd00::1]:8080".parse().unwrap(),
+        };
+        assert_eq!(local.priority(), 0);
+    }
+
+    #[test]
+    fn relay_endpoint_unreachable_still_constructible() {
+        let ep = RelayEndpoint {
+            node_id: "offline".into(),
+            endpoint_type: EndpointType::FamilyRelay {
+                relay_node_id: "other".into(),
+            },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: false,
+        };
+        assert!(!ep.reachable);
+        match ep.endpoint_type {
+            EndpointType::FamilyRelay {
+                relay_node_id,
+            } => assert_eq!(relay_node_id, "other"),
+            _ => panic!("expected FamilyRelay"),
         }
     }
 }

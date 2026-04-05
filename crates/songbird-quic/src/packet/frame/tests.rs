@@ -425,7 +425,7 @@ fn ack_ecn_decode_requires_ecn_varints() {
 }
 
 #[test]
-#[expect(clippy::unwrap_used, reason = "test assertion")]
+#[allow(clippy::unwrap_used, reason = "test assertion")]
 fn connection_close_app_truncated_reason_errors() {
     let mut buf = [0u8; 24];
     let mut off =
@@ -440,13 +440,13 @@ fn connection_close_app_truncated_reason_errors() {
 }
 
 #[test]
-#[expect(clippy::unwrap_used, reason = "test assertion")]
+#[allow(clippy::unwrap_used, reason = "test assertion")]
 fn stop_sending_truncated_second_varint_errors() {
     let mut buf = [0u8; 8];
     let n = VarInt::new(super::frame_type::STOP_SENDING).unwrap().encode(&mut buf).unwrap();
     assert_eq!(n, 1);
     buf[n] = 0x08; // stream id varint 8, no error code follows
-    let err = Frame::decode(&buf[..n + 1]).expect_err("truncated STOP_SENDING");
+    let err = Frame::decode(&buf[..=n]).expect_err("truncated STOP_SENDING");
     assert!(
         err.to_string().contains("VarInt") || err.to_string().contains("bytes"),
         "unexpected: {err}"
@@ -454,7 +454,7 @@ fn stop_sending_truncated_second_varint_errors() {
 }
 
 #[test]
-#[expect(clippy::unwrap_used, reason = "test assertion")]
+#[allow(clippy::unwrap_used, reason = "test assertion")]
 fn new_connection_id_missing_cid_length_byte_errors() {
     let mut buf = [0u8; 16];
     let mut off =

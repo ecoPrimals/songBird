@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
 
     use crate::trust::TrustLevel;
     use serde_json::json;

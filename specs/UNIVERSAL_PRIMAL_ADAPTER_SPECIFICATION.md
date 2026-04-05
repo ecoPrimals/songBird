@@ -9,18 +9,18 @@
 
 ## 🎯 **Actual Implementation Architecture**
 
-Based on verification of the beardog-tunnel tarpc implementation and songbird universal adapters, this specification reflects the **real hybrid protocol approach** used in the ecoPrimals ecosystem.
+Based on verification of the security_provider-tunnel tarpc implementation and songbird universal adapters, this specification reflects the **real hybrid protocol approach** used in the ecoPrimals ecosystem.
 
 ### **🏆 Protocol Implementation Matrix**
 
 ```
 Primal          | Primary Protocol    | Fallback Protocol      | Adapter Status
 ----------------|--------------------|-----------------------|----------------
-🐻 BearDog      | tarpc (tunnel)     | HTTP/REST + JSON      | ✅ Implemented  
+🐻 Security Provider      | tarpc (tunnel)     | HTTP/REST + JSON      | ✅ Implemented  
 🎼 Songbird     | Custom JSON RPC    | HTTP/REST + JSON      | ✅ Implemented
-🐿️ Squirrel    | MCP Extensions     | WebSocket + JSON      | ✅ Implemented
-🏠 NestGate     | Custom JSON RPC    | HTTP/REST + JSON      | 🚧 Planning
-🍄 ToadStool    | Custom JSON RPC    | HTTP/REST + JSON      | 🚧 Planning
+🐿️ AI provider    | MCP Extensions     | WebSocket + JSON      | ✅ Implemented
+🏠 Storage Provider     | Custom JSON RPC    | HTTP/REST + JSON      | 🚧 Planning
+🍄 Compute Provider    | Custom JSON RPC    | HTTP/REST + JSON      | 🚧 Planning
 ```
 
 ### **🔧 Universal Adapter Architecture**
@@ -40,8 +40,8 @@ pub struct UniversalAdapter {
     /// Protocol negotiation and selection
     protocol_selector: ProtocolSelector,
     
-    /// Security integration with BearDog tunnels
-    security_integration: BeardogTunnelIntegration,
+    /// Security integration with Security Provider tunnels
+    security_integration: SecurityTunnelIntegration,
 }
 
 impl UniversalAdapter {
@@ -69,15 +69,15 @@ impl UniversalAdapter {
 
 ## 🌐 **Protocol Implementations**
 
-### **1. tarpc Implementation (BearDog Pattern)**
+### **1. tarpc Implementation (Security Provider Pattern)**
 ```rust
-// Based on verified beardog-tunnel implementation
+// Based on verified security_provider-tunnel implementation
 use tarpc::{client, context, server};
 use tokio_serde::formats::Json;
 
-/// BearDog secure tunnel service (VERIFIED IMPLEMENTATION)
+/// Security Provider secure tunnel service (VERIFIED IMPLEMENTATION)
 #[tarpc::service]
-pub trait BeardogTunnel {
+pub trait SecurityProviderTunnel {
     /// Establish secure encrypted tunnel
     async fn establish_tunnel(
         tunnel_config: TunnelConfig
@@ -97,7 +97,7 @@ pub trait BeardogTunnel {
 
 /// Songbird tarpc client implementation
 pub struct SongbirdTarpcClient {
-    beardog_client: BeardogTunnelClient,
+    security_provider_client: SecurityTunnelClient,
     connection_pool: ConnectionPool,
 }
 ```
@@ -142,17 +142,17 @@ impl JsonRpcClient {
 impl ProtocolSelector {
     pub fn select_protocol(&self, target: &PrimalType, requirements: &Requirements) -> Protocol {
         match target {
-            PrimalType::BearDog => {
-                // BearDog has tarpc in tunnel module - use if high performance needed
-                if requirements.needs_high_performance() && self.beardog_tunnel_available() {
+            PrimalType::Security => {
+                // Security Provider has tarpc in tunnel module - use if high performance needed
+                if requirements.needs_high_performance() && self.security_tunnel_available() {
                     Protocol::TarpcTunnel
                 } else {
-                    Protocol::HttpRest  // BearDog's primary interface
+                    Protocol::HttpRest  // Security Provider's primary interface
                 }
             },
             
-            PrimalType::Squirrel => {
-                // Squirrel uses MCP protocol extensions
+            PrimalType::AI => {
+                // AI provider uses MCP protocol extensions
                 if requirements.needs_streaming() {
                     Protocol::McpWebSocket
                 } else {
@@ -160,7 +160,7 @@ impl ProtocolSelector {
                 }
             },
             
-            PrimalType::Songbird | PrimalType::NestGate | PrimalType::ToadStool => {
+            PrimalType::Songbird | PrimalType::Storage | PrimalType::Compute => {
                 // Use custom JSON RPC for compatibility
                 if requirements.needs_realtime() {
                     Protocol::JsonRpcWebSocket

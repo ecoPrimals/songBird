@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -7,8 +7,6 @@
     clippy::expect_used,
     reason = "test assertions"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (c) 2024-2026 ecoPrimals
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_lossless,
@@ -24,16 +22,20 @@
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::time::{Duration, sleep};
+use tokio::sync::oneshot;
+use tokio::time::Duration;
 
-/// Helper: Mock TLS server that follows protocol
-async fn mock_tls_server(port: u16) -> tokio::task::JoinHandle<()> {
-    tokio::spawn(async move {
-        let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await.unwrap();
+/// Spawns a mock TLS server on an OS-assigned port, returning (port, handle).
+/// The returned port is guaranteed to be listening before this function returns.
+async fn mock_tls_server() -> (u16, tokio::task::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let (ready_tx, ready_rx) = oneshot::channel::<()>();
 
+    let handle = tokio::spawn(async move {
+        ready_tx.send(()).ok();
         let (mut socket, _) = listener.accept().await.unwrap();
 
-        // Read ClientHello
         let mut header = [0u8; 5];
         socket.read_exact(&mut header).await.unwrap();
 
@@ -43,72 +45,69 @@ async fn mock_tls_server(port: u16) -> tokio::task::JoinHandle<()> {
         let mut client_hello = vec![0u8; length];
         socket.read_exact(&mut client_hello).await.unwrap();
 
-        // Send ServerHello
-        let mut server_hello = vec![];
-        server_hello.push(0x16); // Handshake
-        server_hello.extend_from_slice(&[0x03, 0x03]); // TLS 1.2
-
-        // Handshake message
-        let mut hs_msg = vec![];
-        hs_msg.push(0x02); // ServerHello
-        hs_msg.extend_from_slice(&[0x00, 0x00, 0x50]); // Length placeholder
-        hs_msg.extend_from_slice(&[0x03, 0x03]); // Version
-        hs_msg.extend_from_slice(&[0x42u8; 32]); // Server random
-        hs_msg.push(0x00); // Session ID length
-        hs_msg.extend_from_slice(&[0x13, 0x01]); // Cipher suite
-        hs_msg.push(0x00); // Compression
-
-        // Extensions with key_share
-        let mut extensions = vec![];
-        extensions.extend_from_slice(&[0x00, 0x33]); // key_share
-        extensions.extend_from_slice(&[0x00, 0x24]); // Length: 36
-        extensions.extend_from_slice(&[0x00, 0x1d]); // x25519
-        extensions.extend_from_slice(&[0x00, 0x20]); // Key length: 32
-        extensions.extend_from_slice(&[0x88u8; 32]); // Server public key
-
-        hs_msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
-        hs_msg.extend_from_slice(&extensions);
-
-        // Fix length
-        let hs_len = hs_msg.len() - 4;
-        hs_msg[1] = ((hs_len >> 16) & 0xFF) as u8;
-        hs_msg[2] = ((hs_len >> 8) & 0xFF) as u8;
-        hs_msg[3] = (hs_len & 0xFF) as u8;
-
-        server_hello.extend_from_slice(&(hs_msg.len() as u16).to_be_bytes());
-        server_hello.extend_from_slice(&hs_msg);
-
+        let server_hello = build_server_hello();
         socket.write_all(&server_hello).await.unwrap();
         socket.flush().await.unwrap();
 
-        // Send mock encrypted messages (ChangeCipherSpec + encrypted handshake)
-        let ccs = vec![0x14, 0x03, 0x03, 0x00, 0x01, 0x01]; // ChangeCipherSpec
+        let ccs = [0x14, 0x03, 0x03, 0x00, 0x01, 0x01]; // ChangeCipherSpec
         socket.write_all(&ccs).await.unwrap();
 
-        // Encrypted handshake messages (mock)
         for _ in 0..3 {
-            let encrypted = vec![0x17, 0x03, 0x03, 0x00, 0x20]; // ApplicationData header
+            let encrypted = [0x17, 0x03, 0x03, 0x00, 0x20]; // ApplicationData header
             socket.write_all(&encrypted).await.unwrap();
-            socket.write_all(&[0x99u8; 32]).await.unwrap(); // Encrypted payload
-            sleep(Duration::from_millis(50)).await;
+            socket.write_all(&[0x99u8; 32]).await.unwrap();
         }
 
         socket.flush().await.unwrap();
 
-        // Keep connection open
-        sleep(Duration::from_secs(2)).await;
-    })
+        // Keep alive until client finishes reading
+        let mut buf = [0u8; 1];
+        let _ = tokio::time::timeout(Duration::from_secs(5), socket.read(&mut buf)).await;
+    });
+
+    ready_rx.await.ok();
+    (port, handle)
+}
+
+fn build_server_hello() -> Vec<u8> {
+    let mut server_hello = vec![];
+    server_hello.push(0x16); // Handshake
+    server_hello.extend_from_slice(&[0x03, 0x03]); // TLS 1.2
+
+    let mut hs_msg = vec![];
+    hs_msg.push(0x02); // ServerHello
+    hs_msg.extend_from_slice(&[0x00, 0x00, 0x50]); // Length placeholder
+    hs_msg.extend_from_slice(&[0x03, 0x03]); // Version
+    hs_msg.extend_from_slice(&[0x42u8; 32]); // Server random
+    hs_msg.push(0x00); // Session ID length
+    hs_msg.extend_from_slice(&[0x13, 0x01]); // Cipher suite
+    hs_msg.push(0x00); // Compression
+
+    let mut extensions = vec![];
+    extensions.extend_from_slice(&[0x00, 0x33]); // key_share
+    extensions.extend_from_slice(&[0x00, 0x24]); // Length: 36
+    extensions.extend_from_slice(&[0x00, 0x1d]); // x25519
+    extensions.extend_from_slice(&[0x00, 0x20]); // Key length: 32
+    extensions.extend_from_slice(&[0x88u8; 32]); // Server public key
+
+    hs_msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
+    hs_msg.extend_from_slice(&extensions);
+
+    let hs_len = hs_msg.len() - 4;
+    hs_msg[1] = ((hs_len >> 16) & 0xFF) as u8;
+    hs_msg[2] = ((hs_len >> 8) & 0xFF) as u8;
+    hs_msg[3] = (hs_len & 0xFF) as u8;
+
+    server_hello.extend_from_slice(&(hs_msg.len() as u16).to_be_bytes());
+    server_hello.extend_from_slice(&hs_msg);
+    server_hello
 }
 
 #[tokio::test]
 async fn test_complete_tls_handshake_flow() {
-    let port = 18443;
-    let _server = mock_tls_server(port).await;
+    let (port, _server) = mock_tls_server().await;
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Connect as client
-    let mut stream = TcpStream::connect(format!("127.0.0.1:{}", port)).await.unwrap();
+    let mut stream = TcpStream::connect(format!("127.0.0.1:{port}")).await.unwrap();
 
     // Send ClientHello
     let client_hello = build_minimal_client_hello();
@@ -165,13 +164,10 @@ async fn test_client_hello_format_validation() {
 
 #[tokio::test]
 async fn test_multiple_handshakes_sequential() {
-    let port = 18444;
+    for _ in 0..3 {
+        let (port, _server) = mock_tls_server().await;
 
-    for i in 0..3 {
-        let _server = mock_tls_server(port + i).await;
-        sleep(Duration::from_millis(100)).await;
-
-        let mut stream = TcpStream::connect(format!("127.0.0.1:{}", port + i)).await.unwrap();
+        let mut stream = TcpStream::connect(format!("127.0.0.1:{port}")).await.unwrap();
 
         stream.write_all(&build_minimal_client_hello()).await.unwrap();
         stream.flush().await.unwrap();
@@ -180,7 +176,7 @@ async fn test_multiple_handshakes_sequential() {
         let result =
             tokio::time::timeout(Duration::from_secs(2), stream.read_exact(&mut header)).await;
 
-        assert!(result.is_ok(), "Handshake {} should succeed", i);
+        assert!(result.is_ok(), "Handshake should succeed");
     }
 }
 
@@ -237,26 +233,25 @@ mod e2e_scenarios {
     #[tokio::test]
     #[ignore = "Integration: artificial TCP/TLS delay scenario; run with --ignored"]
     async fn test_handshake_with_delays() {
-        // Server that responds slowly
-        let port = 18445;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let (ready_tx, ready_rx) = oneshot::channel::<()>();
+
         tokio::spawn(async move {
-            let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await.unwrap();
+            ready_tx.send(()).ok();
             let (mut socket, _) = listener.accept().await.unwrap();
 
-            // Read ClientHello
             let mut buf = vec![0u8; 1024];
             let _ = socket.read(&mut buf).await;
 
-            // Wait before responding
-            sleep(Duration::from_millis(500)).await;
+            tokio::time::sleep(Duration::from_millis(500)).await;
 
-            // Send minimal ServerHello
             socket.write_all(&[0x16, 0x03, 0x03, 0x00, 0x02, 0x02, 0x00]).await.ok();
         });
 
-        sleep(Duration::from_millis(100)).await;
+        ready_rx.await.ok();
 
-        let mut stream = TcpStream::connect(format!("127.0.0.1:{}", port)).await.unwrap();
+        let mut stream = TcpStream::connect(format!("127.0.0.1:{port}")).await.unwrap();
         stream.write_all(&build_minimal_client_hello()).await.unwrap();
 
         let mut buf = vec![0u8; 1024];

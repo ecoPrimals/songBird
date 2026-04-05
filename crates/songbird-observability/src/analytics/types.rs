@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Analytics type definitions for production monitoring
@@ -6,7 +6,7 @@
 //! Data points, time series, trend analysis, anomaly detection,
 //! prediction results, and analytics configuration.
 
-#![allow(missing_docs)]
+#![allow(missing_docs, reason = "analytics DTOs mirror wire and JSON field names")]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

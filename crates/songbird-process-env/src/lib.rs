@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![warn(missing_docs)]
@@ -142,7 +142,7 @@ pub fn reset_overlay() {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
-#[allow(
+#[expect(
     clippy::items_after_statements,
     reason = "test KEY constants declared after lock() guard for clarity"
 )]

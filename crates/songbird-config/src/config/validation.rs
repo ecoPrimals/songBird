@@ -103,7 +103,7 @@ impl Default for ValidationResult {
 /// Configuration validation implementation
 impl SongbirdConfig {
     /// Validate the entire configuration
-    #[expect(
+    #[allow(
         deprecated,
         reason = "`SongbirdConfig::primal_registry` remains the validated surface until migration completes"
     )]

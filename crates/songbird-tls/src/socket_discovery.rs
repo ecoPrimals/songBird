@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! XDG-compliant socket discovery for TLS layer
@@ -93,9 +93,9 @@ impl EnvReader for MockEnv {
     }
 }
 
-/// Discover an XDG-compliant socket path for a given primal (legacy family-ID support).
+/// Discover an XDG-compliant socket path for a given service label (legacy family-ID support).
 ///
-/// Constructs a path like `/run/user/<UID>/biomeos/<primal>-<family_id>.sock`
+/// Constructs a path like `/run/user/<UID>/biomeos/<label>-<family_id>.sock`
 /// if `XDG_RUNTIME_DIR` and `FAMILY_ID` are set.
 ///
 /// NOTE: Capability-first discovery is now preferred. This function is retained
@@ -105,22 +105,22 @@ impl EnvReader for MockEnv {
     reason = "retained for backward compatibility with legacy family-ID socket paths"
 )]
 fn discover_xdg_socket_with_env(
-    primal_name: &str,
+    socket_name_prefix: &str,
     family_id: &str,
     env: &impl EnvReader,
 ) -> Option<String> {
     if let Ok(runtime_dir) = env.var("XDG_RUNTIME_DIR") {
         let path = PathBuf::from(runtime_dir)
             .join(BIOMEOS_RUNTIME_SUBDIR)
-            .join(format!("{primal_name}-{family_id}.sock"));
+            .join(format!("{socket_name_prefix}-{family_id}.sock"));
         if path.exists() {
             let path_str = path.to_string_lossy().into_owned();
-            debug!("Found XDG socket for {}: {}", primal_name, path_str);
+            debug!("Found XDG socket for {}: {}", socket_name_prefix, path_str);
             return Some(path_str);
         }
         trace!("XDG socket path does not exist: {}", path.display());
     } else {
-        trace!("XDG_RUNTIME_DIR not set for {}", primal_name);
+        trace!("XDG_RUNTIME_DIR not set for {}", socket_name_prefix);
     }
     None
 }
@@ -130,8 +130,8 @@ fn discover_xdg_socket_with_env(
 /// ## Resolution Order (capability-first, primal-agnostic)
 ///
 /// 1. `explicit_path` (from CLI)
-/// 2. Capability-based env vars: `CRYPTO_PROVIDER_SOCKET`, `SECURITY_PROVIDER_SOCKET`
-/// 3. Legacy provider-specific: `BEARDOG_SOCKET`, `BEARDOG_CRYPTO_SOCKET`
+/// 2. Capability-based env vars: `CRYPTO_PROVIDER_SOCKET`, `SECURITY_PROVIDER_SOCKET`, `SECURITY_SOCKET`
+/// 3. Legacy security-provider env keys (`BEARDOG_*` socket vars)
 /// 4. Legacy Songbird: `SONGBIRD_CRYPTO_SOCKET`, `SONGBIRD_SECURITY_PROVIDER`
 /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/{socket}.sock` (capability names first)
 /// 6. UID fallback: `/run/user/$UID/biomeos/security.sock`
@@ -146,8 +146,10 @@ fn discover_security_socket_with_env(
         return path_str;
     }
 
-    // 1. Capability-based env vars (preferred - primal agnostic)
-    let capability_env_vars = ["CRYPTO_PROVIDER_SOCKET", "SECURITY_PROVIDER_SOCKET"];
+    // 1. Capability-based env vars (preferred - primal agnostic).
+    // `CRYPTO_PROVIDER_SOCKET` before `SECURITY_PROVIDER_SOCKET` when both are set (see unit tests).
+    let capability_env_vars =
+        ["CRYPTO_PROVIDER_SOCKET", "SECURITY_PROVIDER_SOCKET", "SECURITY_SOCKET"];
 
     for env_var in capability_env_vars {
         if let Ok(env_path) = env.var(env_var)
@@ -170,7 +172,13 @@ fn discover_security_socket_with_env(
         if let Ok(env_path) = env.var(env_var)
             && !env_path.is_empty()
         {
-            debug!("Using {} env var (legacy): {}", env_var, env_path);
+            if matches!(env_var, "BEARDOG_SOCKET" | "BEARDOG_CRYPTO_SOCKET") {
+                warn!(
+                    "{env_var} is deprecated — migrate to SECURITY_PROVIDER_SOCKET or CRYPTO_PROVIDER_SOCKET"
+                );
+            } else {
+                debug!("Using {} env var (legacy): {}", env_var, env_path);
+            }
             return env_path;
         }
     }
@@ -222,8 +230,8 @@ fn discover_security_socket_with_env(
 /// ## Resolution Order (capability-first, primal-agnostic)
 ///
 /// 1. `explicit_path` (from CLI)
-/// 2. Capability-based: `CRYPTO_PROVIDER_SOCKET`, `SECURITY_PROVIDER_SOCKET`
-/// 3. Legacy: `BEARDOG_SOCKET`, `BEARDOG_CRYPTO_SOCKET`, `SONGBIRD_*` env vars
+/// 2. Capability-based: `CRYPTO_PROVIDER_SOCKET`, `SECURITY_PROVIDER_SOCKET`, `SECURITY_SOCKET`
+/// 3. Legacy security-provider socket env keys (`BEARDOG_*`, `SONGBIRD_*`)
 /// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/{capability}.sock` (capability names first)
 /// 5. UID: `/run/user/$UID/biomeos/security.sock`
 /// 6. Legacy: `/tmp/biomeos/security.sock` (fallback)
@@ -236,13 +244,6 @@ pub fn discover_security_socket(explicit_path: Option<&PathBuf>) -> String {
 #[deprecated(note = "Use discover_security_socket (capability-based naming)")]
 #[must_use]
 pub fn discover_security_provider_socket(explicit_path: Option<&PathBuf>) -> String {
-    discover_security_socket(explicit_path)
-}
-
-/// Deprecated alias for [`discover_security_socket`].
-#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
-#[must_use]
-pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_security_socket(explicit_path)
 }
 
@@ -372,24 +373,24 @@ mod tests {
     }
 
     #[test]
-    fn test_env_var_priority_legacy_beardog_env_vars() {
-        // Test BEARDOG_SOCKET priority
-        let env = MockEnv::new().set("BEARDOG_SOCKET", "/env/security-via-beardog-socket.sock");
+    fn test_env_var_priority_legacy_security_socket_env_vars() {
+        // Legacy security socket env (BEARDOG_SOCKET): highest priority among legacy keys tested here
+        let env = MockEnv::new().set("BEARDOG_SOCKET", "/env/security-via-legacy-socket.sock");
         let discovered = discover_security_socket_with_env(None, &env);
-        assert_eq!(discovered, "/env/security-via-beardog-socket.sock");
+        assert_eq!(discovered, "/env/security-via-legacy-socket.sock");
 
-        // Test BEARDOG_CRYPTO_SOCKET priority (when BEARDOG_SOCKET not set)
+        // Legacy BEARDOG_CRYPTO_SOCKET when primary legacy key not set
         let env =
-            MockEnv::new().set("BEARDOG_CRYPTO_SOCKET", "/env/security-via-beardog-crypto.sock");
+            MockEnv::new().set("BEARDOG_CRYPTO_SOCKET", "/env/security-via-legacy-crypto.sock");
         let discovered = discover_security_socket_with_env(None, &env);
-        assert_eq!(discovered, "/env/security-via-beardog-crypto.sock");
+        assert_eq!(discovered, "/env/security-via-legacy-crypto.sock");
 
-        // Test SONGBIRD_CRYPTO_SOCKET priority (when others not set)
+        // SONGBIRD_CRYPTO_SOCKET when other legacy keys not set
         let env = MockEnv::new().set("SONGBIRD_CRYPTO_SOCKET", "/env/songbird-crypto.sock");
         let discovered = discover_security_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/songbird-crypto.sock");
 
-        // Test priority order: BEARDOG_SOCKET > BEARDOG_CRYPTO_SOCKET
+        // Order: primary legacy socket env wins over secondary legacy socket env
         let env = MockEnv::new()
             .set("BEARDOG_SOCKET", "/env/security-primary.sock")
             .set("BEARDOG_CRYPTO_SOCKET", "/env/security-secondary.sock");
@@ -464,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_security_provider_env_var() {
-        // SONGBIRD_SECURITY_PROVIDER takes priority after BEARDOG_* vars
+        // SONGBIRD_SECURITY_PROVIDER after empty legacy security socket env vars
         let env = MockEnv::new()
             .set("SONGBIRD_SECURITY_PROVIDER", "/run/user/1000/biomeos/security.sock");
         let discovered = discover_security_socket_with_env(None, &env);
@@ -557,7 +558,7 @@ mod tests {
     fn security_discovery_prefers_crypto_provider_socket() {
         let env = MockEnv::new()
             .set("CRYPTO_PROVIDER_SOCKET", "/run/crypto.sock")
-            .set("BEARDOG_SOCKET", "/run/legacy-beardog.sock");
+            .set("BEARDOG_SOCKET", "/run/legacy-security-provider.sock");
         let p = discover_security_socket_with_env(None, &env);
         assert_eq!(p, "/run/crypto.sock");
     }

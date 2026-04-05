@@ -186,7 +186,7 @@ mod tests {
     #[test]
     fn result_type_alias_compiles_for_ok() {
         let r: Result<u32> = Ok(42);
-        assert_eq!(r.expect("ok"), 42);
+        assert!(matches!(r, Ok(42)));
     }
 
     #[cfg(any(feature = "usb-rust", feature = "usb-c"))]

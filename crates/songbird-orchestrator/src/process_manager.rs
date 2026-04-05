@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -437,7 +437,7 @@ impl Drop for SingletonGuard {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
     use std::env;

@@ -316,7 +316,7 @@ impl PerformanceResults {
             return Duration::ZERO;
         }
 
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             reason = "intentional pattern; clippy false positive for this API"
         )]
@@ -354,7 +354,7 @@ impl PerformanceResults {
         let mid = sorted.len() / 2;
         if sorted.len().is_multiple_of(2) {
             let sum_nanos = sorted[mid - 1].as_nanos() + sorted[mid].as_nanos();
-            #[expect(
+            #[allow(
                 clippy::cast_possible_truncation,
                 reason = "intentional pattern; clippy false positive for this API"
             )]
@@ -373,13 +373,13 @@ impl PerformanceResults {
         }
 
         let avg = self.average();
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             reason = "intentional pattern; clippy false positive for this API"
         )]
         let avg_nanos = avg.as_nanos() as f64;
 
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             reason = "intentional pattern; clippy false positive for this API"
         )]
@@ -387,7 +387,7 @@ impl PerformanceResults {
             .durations
             .iter()
             .map(|d| {
-                #[expect(
+                #[allow(
                     clippy::cast_precision_loss,
                     reason = "intentional pattern; clippy false positive for this API"
                 )]
@@ -397,7 +397,7 @@ impl PerformanceResults {
             .sum::<f64>()
             / (self.durations.len() - 1) as f64;
 
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
             reason = "intentional pattern; clippy false positive for this API"

@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async service contexts"
 )]
-#![allow(
+#![expect(
     clippy::expect_used,
     reason = "TLS protocol invariants use expect() for panic-on-violation semantics"
 )]
@@ -44,7 +44,7 @@
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! // Create client with automatic crypto discovery
-//! let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+//! let client = SongbirdHttpClient::new("/tmp/security-provider.sock");
 //!
 //! // Make HTTPS request
 //! let response = client.request(
@@ -73,13 +73,7 @@
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod security_rpc_client;
 
-/// Deprecated alias for [`security_rpc_client`].
-#[deprecated(note = "use module `security_rpc_client` (capability-based naming)")]
-pub mod beardog_client {
-    pub use crate::security_rpc_client::*;
-}
 /// High-level `SongbirdHttpClient` and HTTP/HTTPS request execution.
-#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod client;
 mod connection; // ✅ NEW: Connection management (HTTP/HTTPS) (extracted from client.rs)
 /// Bounded connection pool with acquire/return and health-aware cleanup.
@@ -89,13 +83,10 @@ pub mod connection_pool;
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod crypto;
 /// Error types and `Result` alias for this crate.
-#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod error;
 /// Adaptive HTTP client config: headers, redirects, timeouts, domain rules.
-#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod http_config;
 /// IPC-backed HTTP client, multipart forms, and request builders.
-#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod ipc_client;
 mod redirect; // ✅ NEW: HTTP redirect handling (extracted from client.rs)
 mod request; // ✅ NEW: HTTP request building (extracted from client.rs)
@@ -104,12 +95,7 @@ mod response; // ✅ NEW: HTTP response parsing (extracted from client.rs)
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod tls;
 /// HTTP request/response value types shared by the client stack.
-#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod types;
-
-// Legacy implementation moved to archive/legacy_implementations/beardog_client_jan_26_2026/
-// Refactored into security_rpc_client/ module (7 sub-modules) on January 26, 2026
-// Use security_rpc_client module for all new code
 
 /// High-level HTTP/HTTPS client built on the internal stack and TLS integration.
 pub use client::SongbirdHttpClient;
@@ -126,18 +112,15 @@ pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
 /// Crypto capability traits, TLS secret bags, and runtime discovery helpers for security-provider sockets.
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub use crypto::{
-    BearDogProvider, CryptoCapability, IpcEndpoint, SecurityCryptoProvider, TlsApplicationSecrets,
+    CryptoCapability, IpcEndpoint, SecurityCryptoProvider, TlsApplicationSecrets,
     TlsHandshakeSecrets, discover_crypto_capability, discover_ipc_endpoint,
     discover_neural_api_socket, discover_security_provider_socket, discover_security_socket,
 };
 
 /// Lower-level security-provider RPC client and TLS secret handles for advanced use.
 pub use security_rpc_client::{SecurityRpcClient, SecurityRpcMode, TlsSecrets};
-
-#[allow(deprecated)]
-pub use security_rpc_client::{BearDogClient, BearDogMode};
 
 // Re-export HTTP configuration types for adaptive behavior
 /// Adaptive HTTP client configuration (headers, redirects, and version string constant).

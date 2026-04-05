@@ -32,6 +32,48 @@ async fn test_new_selects_tarpc_protocol() -> SongbirdResult<()> {
     Ok(())
 }
 
+/// Explicit `localhost` + port form (tarpc hostname resolution path).
+#[tokio::test]
+async fn test_security_adapter_new_tarpc_localhost_1234() -> SongbirdResult<()> {
+    let adapter = SecurityAdapter::new("tarpc://localhost:1234".to_string()).await?;
+    assert_eq!(adapter.endpoint(), "tarpc://localhost:1234");
+    assert_adapter_debug_protocol(&adapter, "Tarpc");
+    Ok(())
+}
+
+/// User-facing example shape: `/tmp/test.sock` (protocol detection for unix).
+#[tokio::test]
+async fn test_security_adapter_new_unix_tmp_test_sock() -> SongbirdResult<()> {
+    let adapter = SecurityAdapter::new("unix:///tmp/test.sock".to_string()).await?;
+    assert_eq!(adapter.endpoint(), "unix:///tmp/test.sock");
+    assert_adapter_debug_protocol(&adapter, "JsonRpc");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_security_adapter_new_tarpc_invalid_hostname_err() {
+    let err = SecurityAdapter::new("tarpc://test:1234".to_string())
+        .await
+        .expect_err("non-localhost non-IP hostname should fail tarpc parse");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("Invalid hostname") || msg.contains("configuration"),
+        "unexpected error: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_security_adapter_new_unix_empty_path_err() {
+    let err = SecurityAdapter::new("unix://".to_string())
+        .await
+        .expect_err("empty unix path should fail JSON-RPC client init");
+    assert!(
+        err.to_string().to_lowercase().contains("empty")
+            || err.to_string().contains("configuration"),
+        "unexpected error: {err}"
+    );
+}
+
 #[tokio::test]
 async fn test_new_selects_jsonrpc_protocol_for_unix() -> SongbirdResult<()> {
     let adapter =
@@ -150,6 +192,25 @@ async fn test_from_discovery_fallback_legacy_beardog_env_endpoint() -> SongbirdR
         .await
         .expect("adapter should build from BEARDOG_ENDPOINT fallback");
     assert_eq!(adapter.endpoint(), "http://from-beardog:7555");
+
+    songbird_process_env::reset_overlay();
+    Ok(())
+}
+
+/// When multiple legacy env vars are set, `SONGBIRD_SECURITY_ENDPOINT` wins (first in the chain).
+#[tokio::test]
+async fn test_from_discovery_fallback_prefers_songbird_security_over_legacy_provider()
+-> SongbirdResult<()> {
+    let _g = lock_discovery_env();
+    songbird_process_env::reset_overlay();
+    songbird_process_env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+    songbird_process_env::set_var("SONGBIRD_SECURITY_ENDPOINT", "http://songbird-wins:1111");
+    songbird_process_env::set_var("SECURITY_PROVIDER_ENDPOINT", "http://legacy-should-lose:2222");
+
+    let adapter = SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new())
+        .await
+        .expect("adapter should build from SONGBIRD_SECURITY_ENDPOINT");
+    assert_eq!(adapter.endpoint(), "http://songbird-wins:1111");
 
     songbird_process_env::reset_overlay();
     Ok(())

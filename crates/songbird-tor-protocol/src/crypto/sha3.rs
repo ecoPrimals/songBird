@@ -118,9 +118,10 @@ impl KeccakState {
     fn xor_block(&mut self, block: &[u8]) {
         for i in 0..(RATE / 8) {
             if i * 8 + 8 <= block.len() {
-                let word = u64::from_le_bytes(
-                    block[i * 8..i * 8 + 8].try_into().expect("slice is exactly 8 bytes"),
-                );
+                let chunk: [u8; 8] = block[i * 8..i * 8 + 8]
+                    .try_into()
+                    .unwrap_or([0u8; 8]);
+                let word = u64::from_le_bytes(chunk);
                 self.state[i] ^= word;
             }
         }

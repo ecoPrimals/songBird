@@ -50,7 +50,6 @@ use songbird_types::SongbirdError;
 use songbird_universal::capabilities::{
     CapabilityWorkflow, DiscoveryConfig, UniversalCapabilityAdapter, WorkflowStep,
 };
-use std::time::Duration;
 
 #[tokio::test]
 async fn test_service_not_found_returns_empty() {
@@ -152,7 +151,7 @@ async fn test_retry_on_transient_error() {
             adapter.find_capability_providers(cap).await.len(),
             "discovery should be stable across attempt {attempt}"
         );
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        tokio::task::yield_now().await;
     }
     assert_eq!(last.len(), adapter.find_capability_providers(cap).await.len());
 }

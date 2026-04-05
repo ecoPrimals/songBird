@@ -38,5 +38,5 @@ pub use primal::{primal_capabilities, primal_info};
 pub use rpc::{discover_capabilities, normalize_method, rpc_discover_standard, rpc_methods};
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests;

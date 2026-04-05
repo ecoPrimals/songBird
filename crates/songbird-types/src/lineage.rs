@@ -28,7 +28,7 @@ impl LineageId {
     ///
     /// # Errors
     /// Returns error if the string is not a valid lineage ID format
-    #[expect(
+    #[allow(
         clippy::should_implement_trait,
         reason = "explicit from_str API; std::str::FromStr reserved for a stricter contract"
     )]
@@ -225,11 +225,6 @@ pub enum LineageError {
     /// Security provider API error
     #[error("security provider API error: {0}")]
     SecurityProviderError(String),
-
-    /// Deprecated alias for [`LineageError::SecurityProviderError`].
-    #[deprecated(note = "use LineageError::SecurityProviderError")]
-    #[error("security provider API error: {0}")]
-    BearDogError(String),
 }
 
 /// Current lineage information for this node
@@ -290,8 +285,8 @@ mod base64 {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::expect_used, reason = "test assertions")]
-    #![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

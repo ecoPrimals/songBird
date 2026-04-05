@@ -148,7 +148,7 @@ impl OnionCrypto {
     /// each circuit hop, used for integrity verification.
     ///
     /// Requires `security provider` SHA3-256 integration.
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     async fn update_digest(&self, current_digest: &[u8; 32], data: &[u8]) -> Result<[u8; 32]> {
         let input = [&current_digest[..], data].concat();
         self.security_provider.sha3_256(&input).await
@@ -196,8 +196,8 @@ mod tests {
 
     #[test]
     fn test_iv_generation() {
-        let beardog = CryptoProvider::from_env();
-        let _crypto = OnionCrypto::new(beardog);
+        let crypto_provider = CryptoProvider::from_env();
+        let _crypto = OnionCrypto::new(crypto_provider);
 
         let iv = OnionCrypto::generate_iv(12345, 0);
         assert_eq!(iv.len(), 16);
@@ -218,8 +218,8 @@ mod tests {
 
     #[test]
     fn test_onion_crypto_creation() {
-        let beardog = CryptoProvider::from_env();
-        let crypto = OnionCrypto::new(beardog);
+        let crypto_provider = CryptoProvider::from_env();
+        let crypto = OnionCrypto::new(crypto_provider);
 
         assert_eq!(crypto.forward_sequence(), 0);
         assert_eq!(crypto.backward_sequence(), 0);
@@ -240,8 +240,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "Requires security provider AES-128-CTR implementation"]
     async fn test_encrypt_decrypt_roundtrip() {
-        let beardog = CryptoProvider::from_env();
-        let crypto = OnionCrypto::new(beardog);
+        let crypto_provider = CryptoProvider::from_env();
+        let crypto = OnionCrypto::new(crypto_provider);
 
         let hops = vec![create_test_hop(1), create_test_hop(2), create_test_hop(3)];
 

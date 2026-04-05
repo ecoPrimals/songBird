@@ -71,7 +71,7 @@ async fn test_connection_return_on_drop() {
         let _conn = pool.acquire().await.unwrap();
     }
 
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    tokio::time::advance(Duration::from_millis(10)).await;
 
     let stats = pool.stats().await;
     assert!(stats.idle_connections > 0 || stats.total_connections > 0);
@@ -212,7 +212,7 @@ async fn connection_pool_new_sets_max_size() {
     assert_eq!(stats.max_connections, 6);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn stale_idle_connection_is_not_acquired() {
     let pool = ConnectionPool::<MockConnection>::builder()
         .max_size(3)
@@ -227,7 +227,7 @@ async fn stale_idle_connection_is_not_acquired() {
     .await
     .unwrap();
 
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::time::advance(Duration::from_millis(50)).await;
 
     match pool.acquire().await {
         Err(e) => assert!(matches!(e, PoolError::UnhealthyConnection)),
@@ -334,7 +334,7 @@ async fn acquire_then_release_roundtrip_multiple_times() {
         let c = pool.acquire().await.unwrap();
         assert_eq!(c.id, 100);
         drop(c);
-        tokio::time::sleep(Duration::from_millis(2)).await;
+        tokio::time::advance(Duration::from_millis(2)).await;
     }
 }
 
@@ -356,7 +356,7 @@ async fn concurrent_acquire_return_no_panic() {
         let p = std::sync::Arc::clone(&pool);
         handles.push(tokio::spawn(async move {
             if let Ok(c) = p.acquire().await {
-                tokio::time::sleep(Duration::from_millis(1)).await;
+                tokio::time::advance(Duration::from_millis(1)).await;
                 drop(c);
             }
         }));
@@ -366,7 +366,7 @@ async fn concurrent_acquire_return_no_panic() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn pooled_connection_is_unhealthy_after_idle_exceeds_max_while_held() {
     let pool = ConnectionPool::<MockConnection>::builder()
         .max_size(2)
@@ -381,7 +381,7 @@ async fn pooled_connection_is_unhealthy_after_idle_exceeds_max_while_held() {
     .unwrap();
 
     let conn = pool.acquire().await.unwrap();
-    tokio::time::sleep(Duration::from_millis(60)).await;
+    tokio::time::advance(Duration::from_millis(60)).await;
     assert!(!conn.is_healthy());
 }
 
@@ -398,7 +398,7 @@ async fn dropped_connection_after_shutdown_does_not_repopulate_pool() {
     pool.shutdown().await;
     drop(conn);
 
-    tokio::time::sleep(Duration::from_millis(30)).await;
+    tokio::time::advance(Duration::from_millis(30)).await;
 
     let stats = pool.stats().await;
     assert_eq!(stats.total_connections, 0);
@@ -424,7 +424,7 @@ async fn pool_stats_idle_equals_total_when_nothing_checked_out() {
     assert_eq!(stats.idle_connections, 2);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn acquire_skips_stale_head_and_returns_next_fresh_connection() {
     let pool = ConnectionPool::<MockConnection>::builder()
         .max_size(4)
@@ -438,7 +438,7 @@ async fn acquire_skips_stale_head_and_returns_next_fresh_connection() {
     })
     .await
     .unwrap();
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    tokio::time::advance(Duration::from_millis(150)).await;
     pool.add_connection(MockConnection {
         id: 2,
     })
@@ -486,12 +486,12 @@ async fn add_connection_after_acquire_increments_idle_when_returned() {
     .unwrap();
     let c = pool.acquire().await.unwrap();
     drop(c);
-    tokio::time::sleep(Duration::from_millis(15)).await;
+    tokio::time::advance(Duration::from_millis(15)).await;
     let stats = pool.stats().await;
     assert!(stats.total_connections >= 1);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn multiple_stale_connections_all_skipped_yields_unhealthy() {
     let pool = ConnectionPool::<MockConnection>::builder()
         .max_size(5)
@@ -506,7 +506,7 @@ async fn multiple_stale_connections_all_skipped_yields_unhealthy() {
         .await
         .unwrap();
     }
-    tokio::time::sleep(Duration::from_millis(40)).await;
+    tokio::time::advance(Duration::from_millis(40)).await;
     let err = pool.acquire().await;
     assert!(matches!(err, Err(PoolError::UnhealthyConnection)));
 }

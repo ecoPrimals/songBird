@@ -125,7 +125,6 @@ mod tests {
     // Mock transport for testing
     struct MockTransport;
 
-    #[async_trait::async_trait]
     impl Transport for MockTransport {
         fn transport_type(&self) -> TransportType {
             TransportType::Usb
@@ -192,7 +191,6 @@ mod tests {
         }
     }
 
-    #[async_trait::async_trait]
     impl Transport for EchoAclTransport {
         fn transport_type(&self) -> TransportType {
             TransportType::Usb

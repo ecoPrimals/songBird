@@ -163,7 +163,7 @@ fn serde_roundtrip_enums() {
 }
 
 #[test]
-#[expect(
+#[allow(
     clippy::cast_precision_loss,
     reason = "Test fixture: loop index cast to f64 for synthetic series values"
 )]

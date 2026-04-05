@@ -8,7 +8,7 @@
 
 Songbird's intelligent routing system enables dynamic task distribution across the federation:
 - **Small/Simple tasks** → Route to peer Songbird instances (lightweight federation)
-- **Large/Complex tasks** → Analyze requirements and relay to specialized capabilities (Toadstool, BearDog, Squirrel, NestGate)
+- **Large/Complex tasks** → Analyze requirements and relay to specialized capabilities (Compute provider, Security Provider, AI provider, Storage Provider)
 
 ## Motivation
 
@@ -106,13 +106,13 @@ Response:
 **Examples**: Data transformation, CSV processing, batch jobs  
 **Requirements**: 2-4 CPU, 1-4GB, 30s-5min  
 **Routing**: Prefer `RouteToSongbird`, fallback to `RouteToCapability`  
-**Handled By**: Available Songbird with capacity, or Toadstool if needed
+**Handled By**: Available Songbird with capacity, or Compute provider if needed
 
 ### Type 3: Heavy Compute Tasks
 **Examples**: ML training, GPU workloads, video processing  
 **Requirements**: GPU, > 4GB, > 5min  
 **Routing**: Always `RouteToCapability(Compute)`  
-**Handled By**: Toadstool compute platform
+**Handled By**: Compute provider compute platform
 
 ## Routing Algorithm
 
@@ -146,12 +146,12 @@ Task requirements map to capability types:
 
 | Requirement | Capability | Provider |
 |------------|------------|----------|
-| `gpu_required: true` | Compute | Toadstool |
-| `task_type: "ml_training"` | Compute | Toadstool |
-| `task_type: "encrypt"` | Security | BearDog |
-| `task_type: "sign"` | Security | BearDog |
-| `task_type: "inference"` | AI | Squirrel |
-| `task_type: "store"` | Storage | NestGate |
+| `gpu_required: true` | Compute | Compute provider |
+| `task_type: "ml_training"` | Compute | Compute provider |
+| `task_type: "encrypt"` | Security | Security Provider |
+| `task_type: "sign"` | Security | Security Provider |
+| `task_type: "inference"` | AI | AI provider |
+| `task_type: "store"` | Storage | Storage Provider |
 
 ## Integration Points
 
@@ -169,12 +169,12 @@ Task requirements map to capability types:
    - Router uses `ComputeAdapter`, `SecurityAdapter`, etc.
    - Adapters handle capability-specific communication
 
-### With Toadstool
+### With Compute provider
 
-Router forwards heavy compute tasks to Toadstool via HTTP:
+Router forwards heavy compute tasks to Compute provider via HTTP:
 
 ```rust
-POST http://toadstool-endpoint:9000/api/v1/jobs/submit
+POST http://compute_provider-endpoint:9000/api/v1/jobs/submit
 {
   "job_id": "uuid",
   "job_payload": {...},
@@ -182,7 +182,7 @@ POST http://toadstool-endpoint:9000/api/v1/jobs/submit
 }
 ```
 
-Toadstool responds with job status and execution results.
+Compute provider responds with job status and execution results.
 
 ## Implementation Plan
 
@@ -200,15 +200,15 @@ Toadstool responds with job status and execution results.
 - [ ] Add routes to server router
 - [ ] Write integration tests
 
-### Phase 3: Toadstool Integration (Week 2)
-- [ ] Add job receiver endpoint to Toadstool: `/api/v1/jobs/submit`
-- [ ] Implement job execution via Toadstool runtime engines
+### Phase 3: Compute provider Integration (Week 2)
+- [ ] Add job receiver endpoint to Compute provider: `/api/v1/jobs/submit`
+- [ ] Implement job execution via Compute provider runtime engines
 - [ ] Add job status tracking
-- [ ] Test end-to-end: Songbird → Toadstool → GPU
+- [ ] Test end-to-end: Songbird → Compute provider → GPU
 
 ### Phase 4: Testing & Validation (Week 3)
 - [ ] Test lightweight task routing (Songbird-to-Songbird)
-- [ ] Test heavy task routing (Songbird-to-Toadstool)
+- [ ] Test heavy task routing (Songbird-to-Compute provider)
 - [ ] Test load balancing across multiple Songbirds
 - [ ] Test failover when capabilities unavailable
 - [ ] Performance benchmarks
@@ -217,7 +217,7 @@ Toadstool responds with job status and execution results.
 
 1. **Routing Accuracy**: 95%+ tasks routed to correct destination
 2. **Load Distribution**: Even task distribution across healthy Songbirds
-3. **Capability Utilization**: GPU tasks always reach Toadstool
+3. **Capability Utilization**: GPU tasks always reach Compute provider
 4. **Response Time**: < 100ms routing decision latency
 5. **Fault Tolerance**: Graceful degradation when providers unavailable
 6. **Scalability**: Support 100+ concurrent routing decisions

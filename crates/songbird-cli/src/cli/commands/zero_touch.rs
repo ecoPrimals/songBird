@@ -17,7 +17,7 @@ use tracing::{error, info};
 use uuid;
 /// Zero-touch deployment command
 #[derive(Debug)]
-pub struct ZeroTouchCommand  {#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Used in future implementation phases
+pub struct ZeroTouchCommand  {#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Used in future implementation phases
     deployment: ZeroTouchDeployment,
 }
 impl Default for ZeroTouchCommand {
@@ -127,7 +127,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
         print_success(&format!("Summary saved to: {}", path.display());"
         Ok(()),
     }
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Used for enhanced error reporting in future phases
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Used for enhanced error reporting in future phases
     async fn display_error_with_troubleshooting(&self, error: &SongbirdError) {
         println!("{}", "🔧 TROUBLESHOOTING SUGGESTIONS".bright_yellow().bold();"
 
@@ -176,7 +176,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
     }
 }
 /// Print the zero-touch deployment banner
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 fn print_banner() {
     println!("{}", "🪄 ✨ SONGBIRD ZERO-TOUCH DEPLOYMENT ✨ 🪄".bright_magenta().bold();"
     println!("{}", "   Completely automatic setup and deployment".bright_white()"

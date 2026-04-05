@@ -430,7 +430,7 @@ pub struct CustomRendezvousConfig {
 
 /// Advanced STUN configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[expect(
+#[allow(
     clippy::struct_excessive_bools,
     reason = "intentional pattern; clippy false positive for this API"
 )] // Configuration struct - bools are appropriate for feature flags
@@ -543,7 +543,7 @@ const fn default_packet_loss_threshold() -> f32 {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+    #![allow(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

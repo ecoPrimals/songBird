@@ -193,7 +193,7 @@ pub trait FromTestEnv: Sized {
     fn from_test_env(env: &TestEnv) -> Self;
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

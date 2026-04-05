@@ -34,7 +34,7 @@ pub fn compute_routes() -> Router<ComputeApiState> {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use axum::extract::{Json, Path, State};

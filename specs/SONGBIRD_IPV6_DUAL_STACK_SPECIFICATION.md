@@ -5,7 +5,7 @@
 **Date**: November 10, 2025  
 **Status**: 🔴 CRITICAL SHORTFALL IDENTIFIED  
 **Priority**: P0 - Immediate Fix Required  
-**Discovery**: NestGate Integration Session
+**Discovery**: Storage Provider Integration Session
 
 ---
 
@@ -14,7 +14,7 @@
 **Problem**: Songbird currently binds only to IPv4 (`0.0.0.0`), causing connection failures when clients use `localhost` (which resolves to IPv6 `[::1]` on modern systems).
 
 **Impact**: 
-- ❌ NestGate cannot connect via `localhost`
+- ❌ Storage Provider cannot connect via `localhost`
 - ❌ Modern systems fail discovery
 - ❌ Non-compliant with RFC standards
 - ❌ Blocks service mesh federation
@@ -43,7 +43,7 @@ let addr: SocketAddr = format!("{bind_address}:{port}").parse()?;
 ### **The Discovery Flow That Failed**
 
 ```rust
-// NestGate Discovery Sequence
+// Storage Provider Discovery Sequence
 let discovery_order = [
     "http://localhost:8080",       // Resolves to [::1] → FAILS
     "http://127.0.0.1:8080",       // Works (IPv4)
@@ -321,8 +321,8 @@ curl -v http://127.0.0.1:8080/health
 curl -v http://localhost:8080/health
 # Expected: 200 OK (uses IPv6 [::1])
 
-# 5. NestGate can connect
-# From NestGate:
+# 5. Storage Provider can connect
+# From Storage Provider:
 curl http://localhost:8080/api/federation/services
 # Expected: 200 OK with service list
 ```
@@ -394,7 +394,7 @@ Legacy:   ✅ Still works
 ## 🎯 SUCCESS METRICS
 
 **Immediate** (After Phase 1):
-- ✅ NestGate connects via `localhost`
+- ✅ Storage Provider connects via `localhost`
 - ✅ Both IPv4 and IPv6 work
 - ✅ Zero breaking changes
 - ✅ Discovery works universally
@@ -413,7 +413,7 @@ Legacy:   ✅ Still works
    - [ ] Change default binding to `[::]`
    - [ ] Add `parse_bind_address()` helper
    - [ ] Test with curl (IPv4 + IPv6)
-   - [ ] Verify NestGate connection
+   - [ ] Verify Storage Provider connection
 
 2. **This Week**:
    - [ ] Add configuration structures
@@ -430,7 +430,7 @@ Legacy:   ✅ Still works
 
 ## 📝 REFERENCES
 
-- **Discovery Source**: NestGate Integration Session (Nov 10, 2025)
+- **Discovery Source**: Storage Provider Integration Session (Nov 10, 2025)
 - **Related Specs**: 
   - `UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md` (to be created)
   - `HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md` (existing)
@@ -440,7 +440,7 @@ Legacy:   ✅ Still works
 
 **Status**: 🔴 **CRITICAL - REQUIRES IMMEDIATE FIX**  
 **Owner**: Songbird Core Team  
-**Reporter**: NestGate Integration Team  
+**Reporter**: Storage Provider Integration Team  
 **Date Identified**: November 10, 2025
 
 **This specification documents a critical shortfall that blocks service mesh federation. Implementation should begin immediately.**

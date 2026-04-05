@@ -11,7 +11,3 @@ pub mod packet_protection;
 pub mod provider;
 
 pub use provider::{QuicCipherSuite, QuicCryptoProvider, SecurityQuicCrypto};
-
-/// Deprecated alias for [`SecurityQuicCrypto`].
-#[deprecated(note = "use SecurityQuicCrypto (capability-based naming)")]
-pub type BeardogQuicCrypto = SecurityQuicCrypto;

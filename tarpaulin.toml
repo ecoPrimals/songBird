@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2024-2026 ecoPrimals
+#
+# Coverage gate for CI. The ecosystem standard (wateringHole) targets 80%+;
+# this gate is set conservatively to fail only on severe regression.
+
+[songbird]
+fail-under = 60.0
+workspace = true
+out = ["html", "lcov"]
+output-dir = "target/tarpaulin"
+skip-clean = true
+# Exclude test-utils crate from coverage (test infrastructure, not production)
+exclude-files = ["crates/songbird-test-utils/*"]

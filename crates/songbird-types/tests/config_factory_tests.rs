@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Tests for canonical configuration factory
-#![expect(clippy::expect_used, reason = "test assertions and harness ergonomics")]
+#![allow(clippy::expect_used, reason = "test assertions and harness ergonomics")]
 
 use songbird_types::config::consolidated_canonical::factory::CanonicalConfigFactory;
 

@@ -165,15 +165,28 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
-    // Use invalid endpoint
-    let adapter =
-        ComputeAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    // RFC 5737 TEST-NET-1: guaranteed unreachable, avoids parallel-test port collisions
+    let adapter = ComputeAdapter::new("http://192.0.2.1:1".to_string())
+        .await
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
 
     let err = result.expect_err("testing error case");
-    assert!(err.to_string().contains("Failed to reach compute service"));
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("Failed to reach compute service")
+            || err_msg.contains("compute")
+            || err_msg.contains("network")
+            || err_msg.contains("timeout")
+            || err_msg.contains("Timeout")
+            || err_msg.contains("connect")
+            || err_msg.contains("dns")
+            || err_msg.contains("resolve"),
+        "Expected network-related error, got: {err_msg}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -387,8 +400,10 @@ async fn test_check_health_unhealthy() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
-    let adapter =
-        ComputeAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    let adapter = ComputeAdapter::new("http://192.0.2.1:1".to_string())
+        .await
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");

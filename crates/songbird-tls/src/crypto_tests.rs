@@ -98,7 +98,8 @@ async fn call_capability_connect_failure() {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("addr");
     drop(listener);
-    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    // Port/TIME_WAIT is OS wall-clock; Tokio mock time does not model it.
+    tokio::time::advance(std::time::Duration::from_millis(20)).await;
     let client = SecurityTlsCryptoClient::with_socket_path(format!("tcp:{addr}"));
     let err = client.call_capability("c", "o", json!({})).await.expect_err("connection refused");
     match err {
@@ -338,7 +339,7 @@ fn test_with_socket_path_various_locations() {
     let paths = [
         "/var/run/custom/socket.sock",
         "/tmp/my-app.sock",
-        "/run/beardog/test.sock",
+        "/run/security-provider/test.sock",
         "tcp:127.0.0.1:9900",
     ];
     for path in paths {

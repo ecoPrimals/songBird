@@ -302,23 +302,23 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn truncated_four_byte_varint_decode_errors() {
         // Prefix 0b10 => 4 bytes required; provide 3.
         let err = VarInt::decode(&[0x80, 0x80, 0x80]).expect_err("need 4 bytes");
         assert!(
-            err.to_string().contains("4") || err.to_string().contains("bytes"),
+            err.to_string().contains('4') || err.to_string().contains("bytes"),
             "unexpected: {err}"
         );
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn truncated_eight_byte_varint_decode_errors() {
         // Prefix 0b11 => 8 bytes required; provide 5.
         let err = VarInt::decode(&[0xC0, 1, 2, 3, 4]).expect_err("need 8 bytes");
         assert!(
-            err.to_string().contains("8") || err.to_string().contains("bytes"),
+            err.to_string().contains('8') || err.to_string().contains("bytes"),
             "unexpected: {err}"
         );
     }

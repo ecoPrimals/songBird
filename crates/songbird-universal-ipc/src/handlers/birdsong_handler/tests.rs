@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::BirdSongHandler;
@@ -8,9 +8,7 @@ use serde_json::{Value, json};
 #[cfg(test)]
 fn is_expected_crypto_delegate_connectivity_error(msg: &str) -> bool {
     let m = msg.to_lowercase();
-    #[allow(deprecated)]
-    let beardog_name = songbird_types::primal_names::BEARDOG;
-    m.contains(beardog_name)
+    m.contains("security provider")
         || m.contains("socket")
         || m.contains("ipc")
         || m.contains("connection refused")

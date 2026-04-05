@@ -87,7 +87,7 @@ impl IntroductionPoint {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: u16::try_from(data.len()).expect("cell data length fits in u16"),
+            length: u16::try_from(data.len()).unwrap_or(u16::MAX),
             data,
         }
     }
@@ -297,7 +297,7 @@ mod tests {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: u16::try_from(data.len()).expect("cell data length fits in u16"),
+            length: u16::try_from(data.len()).unwrap_or(u16::MAX),
             data,
         };
 
@@ -340,7 +340,7 @@ mod tests {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: u16::try_from(data.len()).expect("cell data length fits in u16"),
+            length: u16::try_from(data.len()).unwrap_or(u16::MAX),
             data,
         };
 

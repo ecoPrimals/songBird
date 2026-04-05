@@ -9,11 +9,11 @@
 
 ## 🎯 Overview
 
-The Capability Registration API allows external compute providers (like Toadstool) to dynamically register their capabilities with Songbird, enabling intelligent routing of tasks to specialized compute resources.
+The Capability Registration API allows external compute providers (like Compute provider) to dynamically register their capabilities with Songbird, enabling intelligent routing of tasks to specialized compute resources.
 
 **Flow**:
 ```
-External Provider (Toadstool) → POST /api/v1/federation/register → Songbird
+External Provider (Compute provider) → POST /api/v1/federation/register → Songbird
                               ← Registration Response ←
                               
 Provider sends heartbeats → POST /api/v1/federation/heartbeat → Songbird
@@ -37,11 +37,11 @@ User submits task → Songbird Compute API → Complexity Analysis
 
 ```json
 {
-  "provider_id": "toadstool-node-1",
-  "provider_name": "Toadstool Compute Node",
+  "provider_id": "compute_provider-node-1",
+  "provider_name": "Compute provider Compute Node",
   "provider_type": "compute",
   "version": "1.0.0",
-  "endpoint": "http://toadstool-node-1.local:9000",
+  "endpoint": "http://compute_provider-node-1.local:9000",
   "capabilities": [
     {
       "name": "compute_gpu",
@@ -133,7 +133,7 @@ pub struct CapabilityDescriptor {
 {
   "success": true,
   "data": {
-    "provider_id": "toadstool-node-1",
+    "provider_id": "compute_provider-node-1",
     "registration_id": "reg-550e8400-e29b-41d4-a716-446655440000",
     "status": "registered",
     "heartbeat_interval_ms": 5000,
@@ -151,7 +151,7 @@ pub struct CapabilityDescriptor {
   "success": false,
   "error": {
     "code": "DUPLICATE_PROVIDER",
-    "message": "Provider with ID 'toadstool-node-1' is already registered",
+    "message": "Provider with ID 'compute_provider-node-1' is already registered",
     "suggestion": "Use a different provider_id or unregister the existing provider first"
   },
   "timestamp": "2025-11-10T10:30:00Z"
@@ -169,7 +169,7 @@ pub struct CapabilityDescriptor {
 
 ```json
 {
-  "provider_id": "toadstool-node-1",
+  "provider_id": "compute_provider-node-1",
   "registration_id": "reg-550e8400-e29b-41d4-a716-446655440000",
   "health_status": {
     "status": "healthy",
@@ -211,7 +211,7 @@ pub struct CapabilityDescriptor {
 {
   "success": true,
   "data": {
-    "provider_id": "toadstool-node-1",
+    "provider_id": "compute_provider-node-1",
     "status": "unregistered"
   },
   "message": "Provider successfully unregistered",
@@ -234,8 +234,8 @@ pub struct CapabilityDescriptor {
   "data": {
     "providers": [
       {
-        "provider_id": "toadstool-node-1",
-        "provider_name": "Toadstool Compute Node",
+        "provider_id": "compute_provider-node-1",
+        "provider_name": "Compute provider Compute Node",
         "status": "healthy",
         "capabilities": ["compute_gpu", "compute_heavy", "ml_training"],
         "last_heartbeat": "2025-11-10T10:30:05Z",
@@ -562,7 +562,7 @@ mod tests {
 ### Integration Tests
 
 1. **Full Registration Flow**: Provider registers → Heartbeats → Unregisters
-2. **Task Routing**: Submit GPU task → Routes to Toadstool → Executes → Returns results
+2. **Task Routing**: Submit GPU task → Routes to Compute provider → Executes → Returns results
 3. **Failover**: Provider goes offline → Tasks route to backup provider
 4. **Load Balancing**: Multiple providers with same capability → Even distribution
 
@@ -588,7 +588,7 @@ mod tests {
 
 - **Intelligent Routing**: `specs/INTELLIGENT_CAPABILITY_ROUTING_SPEC.md`
 - **Compute API**: `specs/COMPUTE_API_INTEGRATION.md`
-- **Integration Plan**: `TOADSTOOL_SONGBIRD_INTEGRATION_PLAN.md`
+- **Integration Plan**: `COMPUTE_PROVIDER_SONGBIRD_INTEGRATION_PLAN.md` (historical drafts may use the old filename)
 - **Architecture**: `PRIMAL_RESPONSIBILITY_MATRIX.md`
 
 ---

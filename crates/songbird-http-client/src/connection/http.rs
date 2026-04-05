@@ -145,7 +145,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[expect(
+    #[allow(
         clippy::no_effect_underscore_binding,
         reason = "test assertions and harness ergonomics"
     )] // Compilation test only

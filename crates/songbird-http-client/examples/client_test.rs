@@ -19,7 +19,7 @@ use songbird_http_client::SongbirdHttpClient;
 use tracing::{error, info};
 
 #[tokio::main]
-#[expect(
+#[allow(
     clippy::too_many_lines,
     reason = "example binary: argument parsing and logging-heavy self-test flow"
 )]

@@ -163,8 +163,8 @@ async fn test_unit_uptime_tracking() {
     let result1 = handler.handle("health", json!({})).await.unwrap();
     let uptime1 = result1["uptime_seconds"].as_u64().unwrap();
 
-    // Wait a bit
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Advance virtual time (start_paused = true)
+    tokio::time::advance(tokio::time::Duration::from_millis(100)).await;
 
     // Second call
     let result2 = handler.handle("health", json!({})).await.unwrap();

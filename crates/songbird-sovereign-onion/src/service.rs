@@ -81,12 +81,6 @@ impl OnionService {
         })
     }
 
-    /// Deprecated alias for [`Self::new_via_security_provider`].
-    #[deprecated(note = "use new_via_security_provider")]
-    pub async fn new_via_beardog(port: u16, beardog: SecurityCryptoClient) -> Result<Self> {
-        Self::new_via_security_provider(port, beardog).await
-    }
-
     /// Create new onion service (standalone mode - testing only)
     ///
     /// ⚠️ **Testing only** - Uses direct crypto without `security provider`

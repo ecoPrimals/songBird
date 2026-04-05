@@ -29,7 +29,7 @@ use std::env::VarError;
 /// assert!(config.cache.enabled);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[expect(
+#[allow(
     clippy::struct_excessive_bools,
     reason = "intentional pattern; clippy false positive for this API"
 )]

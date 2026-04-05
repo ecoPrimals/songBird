@@ -343,7 +343,7 @@ async fn test_workflow_retry_logic() {
             Some(adapter.find_capability_providers(cap).await.len()),
             "same discovery path should be stable on retry attempt {attempt}"
         );
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        tokio::task::yield_now().await;
     }
     assert!(last_len.is_some());
 }

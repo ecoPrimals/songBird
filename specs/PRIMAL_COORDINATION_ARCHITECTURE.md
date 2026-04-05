@@ -24,8 +24,8 @@ Songbird is the **nervous system** of the ecoPrimals ecosystem, coordinating spe
 ### 2. Evolution Pattern: Specific → Generic → Agnostic
 ```
 Phase 1: Specific Implementation
-  ├─ BearDog integration (security operations)
-  ├─ Toadstool integration (compute operations)
+  ├─ Security Provider integration (security operations)
+  ├─ Compute provider integration (compute operations)
   └─ Concrete types, direct calls
 
 Phase 2: Generic Abstraction
@@ -79,13 +79,13 @@ Phase 3: Agnostic Coordination
 ### What Songbird DOES NOT Own
 
 ```
-❌ Security Operations (BearDog's Domain)
+❌ Security Operations (Security Provider's Domain)
   - Entropy collection
   - Key generation
   - Signing/verification
   - Certificate management
 
-❌ Compute Operations (Toadstool's Domain)
+❌ Compute Operations (Compute provider's Domain)
   - ML workload execution
   - Resource allocation
   - Result computation
@@ -129,17 +129,17 @@ pub trait PrimalBridge: Send + Sync {
 ### Layer 2: Specific Primal Implementations
 
 ```rust
-/// BearDog Bridge (Security Operations)
-pub struct BearDogBridge {
+/// Security Provider Bridge (Security Operations)
+pub struct SecurityProviderBridge {
     connection: P2PConnection,
-    capabilities: BearDogCapabilities,
+    capabilities: SecurityProviderCapabilities,
 }
 
 #[async_trait]
-impl PrimalBridge for BearDogBridge {
+impl PrimalBridge for SecurityProviderBridge {
     fn metadata(&self) -> &PrimalMetadata {
         &PrimalMetadata {
-            name: "BearDog",
+            name: "Security Provider",
             version: "1.0.0",
             domain: PrimalDomain::Security,
             capabilities: vec![
@@ -160,8 +160,8 @@ impl PrimalBridge for BearDogBridge {
     // ... implement trait methods
 }
 
-impl BearDogBridge {
-    /// Request signature (BearDog-specific operation)
+impl SecurityProviderBridge {
+    /// Request signature (Security Provider-specific operation)
     pub async fn request_signature(&self, 
         data: &[u8]
     ) -> Result<Signature> {
@@ -170,7 +170,7 @@ impl BearDogBridge {
         response.parse_signature()
     }
     
-    /// Verify signature (delegate to BearDog)
+    /// Verify signature (delegate to Security Provider)
     pub async fn verify_signature(&self,
         data: &[u8],
         signature: &Signature
@@ -184,17 +184,17 @@ impl BearDogBridge {
     }
 }
 
-/// Toadstool Bridge (Compute Operations)
-pub struct ToadstoolBridge {
+/// Compute provider Bridge (Compute Operations)
+pub struct ComputeProviderBridge {
     connection: P2PConnection,
-    capabilities: ToadstoolCapabilities,
+    capabilities: ComputeProviderCapabilities,
 }
 
 #[async_trait]
-impl PrimalBridge for ToadstoolBridge {
+impl PrimalBridge for ComputeProviderBridge {
     fn metadata(&self) -> &PrimalMetadata {
         &PrimalMetadata {
-            name: "Toadstool",
+            name: "Compute provider",
             version: "1.0.0",
             domain: PrimalDomain::Compute,
             capabilities: vec![
@@ -209,8 +209,8 @@ impl PrimalBridge for ToadstoolBridge {
     // ... implement trait methods
 }
 
-impl ToadstoolBridge {
-    /// Deploy compute workload (Toadstool-specific)
+impl ComputeProviderBridge {
+    /// Deploy compute workload (Compute provider-specific)
     pub async fn deploy_workload(&self,
         workload: Workload
     ) -> Result<DeploymentHandle> {
@@ -319,7 +319,7 @@ impl PrimalCoordinator {
 
 ```rust
 /// Genesis Ceremony Coordinator
-/// Orchestrates BearDog + network without doing crypto
+/// Orchestrates Security Provider + network without doing crypto
 pub struct GenesisCoordinator {
     coordinator: PrimalCoordinator,
 }
@@ -328,12 +328,12 @@ impl GenesisCoordinator {
     pub async fn conduct_genesis(&self,
         new_node: NodeId
     ) -> Result<Identity> {
-        // 1. Discover BearDog primal
-        let beardog = self.coordinator
+        // 1. Discover Security Provider primal
+        let security_provider = self.coordinator
             .discover_by_capability("genesis_witness")
             .await?;
         
-        // 2. Request key generation (BearDog does the crypto)
+        // 2. Request key generation (Security Provider does the crypto)
         let keys_request = Request::new("generate_keys", json!({
             "node_id": new_node
         }));
@@ -344,7 +344,7 @@ impl GenesisCoordinator {
         // 3. Establish witness connections (Songbird's job)
         let witnesses = self.discover_witnesses().await?;
         
-        // 4. Request lineage signature (BearDog does signing)
+        // 4. Request lineage signature (Security Provider does signing)
         let lineage_request = Request::new("sign_lineage", json!({
             "node_id": new_node,
             "witnesses": witnesses
@@ -359,7 +359,7 @@ impl GenesisCoordinator {
 }
 
 /// Compute Deployment Coordinator
-/// Routes workloads to Toadstool without executing them
+/// Routes workloads to Compute provider without executing them
 pub struct ComputeCoordinator {
     coordinator: PrimalCoordinator,
 }
@@ -368,7 +368,7 @@ impl ComputeCoordinator {
     pub async fn deploy_compute(&self,
         workload: Workload
     ) -> Result<DeploymentHandle> {
-        // 1. Discover capable Toadstool nodes
+        // 1. Discover capable Compute provider nodes
         let compute_nodes = self.coordinator
             .discover_by_capability("ml_inference")
             .await?;
@@ -380,7 +380,7 @@ impl ComputeCoordinator {
         // 2. Select best node (could add load balancing)
         let selected = compute_nodes[0].clone();
         
-        // 3. Route deployment (Toadstool does execution)
+        // 3. Route deployment (Compute provider does execution)
         let deploy_request = Request::new("deploy", json!({
             "workload": workload
         }));
@@ -397,7 +397,7 @@ impl ComputeCoordinator {
     pub async fn monitor_deployment(&self,
         handle: &DeploymentHandle
     ) -> Result<WorkloadStatus> {
-        // Query Toadstool for status (don't compute ourselves)
+        // Query Compute provider for status (don't compute ourselves)
         let status_request = Request::new("status", json!({
             "handle": handle
         }));
@@ -455,12 +455,12 @@ impl GamingCoordinator {
 **Phase 1: Specific** (Start Here)
 ```rust
 // Concrete implementations for known primals
-pub struct BearDogBridge { /* ... */ }
-pub struct ToadstoolBridge { /* ... */ }
+pub struct SecurityProviderBridge { /* ... */ }
+pub struct ComputeProviderBridge { /* ... */ }
 
 // Direct usage
-let beardog = BearDogBridge::new(connection);
-let signature = beardog.request_signature(data).await?;
+let security_provider = SecurityProviderBridge::new(connection);
+let signature = security_provider.request_signature(data).await?;
 ```
 
 **Phase 2: Generic** (Next)
@@ -468,11 +468,11 @@ let signature = beardog.request_signature(data).await?;
 // Generic trait for any primal
 pub trait PrimalBridge { /* ... */ }
 
-impl PrimalBridge for BearDogBridge { /* ... */ }
-impl PrimalBridge for ToadstoolBridge { /* ... */ }
+impl PrimalBridge for SecurityProviderBridge { /* ... */ }
+impl PrimalBridge for ComputeProviderBridge { /* ... */ }
 
 // Generic usage
-let primal: Box<dyn PrimalBridge> = Box::new(BearDogBridge::new());
+let primal: Box<dyn PrimalBridge> = Box::new(SecurityProviderBridge::new());
 let response = primal.request(request).await?;
 ```
 
@@ -497,17 +497,17 @@ let response = coordinator.route_request(
 
 ### Milestone 1: Specific Implementations (1-2 weeks)
 
-**Goal**: Get BearDog and Toadstool integration working
+**Goal**: Get Security Provider and Compute provider integration working
 
 ```
 Tasks:
-1. Create BearDogBridge struct
+1. Create SecurityProviderBridge struct
    - Connect via P2P
    - Request/response protocol
    - Signature operations
    - Genesis coordination
 
-2. Enhance ToadstoolBridge
+2. Enhance ComputeProviderBridge
    - Workload deployment
    - Progress monitoring
    - Result retrieval
@@ -531,8 +531,8 @@ Tasks:
    - Health checks
 
 2. Implement trait for existing bridges
-   - BearDogBridge
-   - ToadstoolBridge
+   - SecurityProviderBridge
+   - ComputeProviderBridge
 
 3. Create PrimalCoordinator
    - Registry management
@@ -577,7 +577,7 @@ Tasks:
 
 ```rust
 pub struct PrimalMetadata {
-    /// Primal name (e.g., "BearDog", "Toadstool")
+    /// Primal name (e.g., "Security Provider", "Compute provider")
     pub name: String,
     
     /// Version (semver)
@@ -594,8 +594,8 @@ pub struct PrimalMetadata {
 }
 
 pub enum PrimalDomain {
-    Security,       // BearDog
-    Compute,        // Toadstool
+    Security,       // Security Provider
+    Compute,        // Compute provider
     Communication,  // Songbird
     Storage,        // Future: Could have data primal
     Analytics,      // Future: Could have analytics primal
@@ -684,7 +684,7 @@ pub enum ResponseStatus {
 ## 🔐 Security Considerations
 
 ### 1. Primal Authentication
-- Each primal must authenticate via BearDog
+- Each primal must authenticate via Security Provider
 - Mutual TLS for all inter-primal communication
 - Capability-based access control
 
@@ -724,8 +724,8 @@ pub enum ResponseStatus {
 ### Unit Tests
 ```rust
 #[tokio::test]
-async fn test_beardog_signature_request() {
-    let bridge = MockBearDogBridge::new();
+async fn test_security_provider_signature_request() {
+    let bridge = MockSecurityProviderBridge::new();
     let signature = bridge.request_signature(b"test").await.unwrap();
     assert!(signature.is_valid());
 }
@@ -734,8 +734,8 @@ async fn test_beardog_signature_request() {
 async fn test_capability_discovery() {
     let coordinator = PrimalCoordinator::new();
     coordinator.register(
-        "beardog".into(),
-        Box::new(MockBearDogBridge::new())
+        "security".into(),
+        Box::new(MockSecurityProviderBridge::new())
     ).unwrap();
     
     let capable = coordinator
@@ -813,8 +813,8 @@ impl PrimalBridge for AnalyticsPrimal {
 ```rust
 // Multi-step workflows
 let workflow = Workflow::new()
-    .step("generate_keys", "BearDog")
-    .step("allocate_compute", "Toadstool")
+    .step("generate_keys", "Security Provider")
+    .step("allocate_compute", "Compute provider")
     .step("store_results", "Storage")
     .execute();
 
@@ -825,8 +825,8 @@ coordinator.on_event("workload_complete", |event| {
 
 // Parallel coordination
 coordinator.parallel()
-    .task("beardog", sign_operation)
-    .task("toadstool", compute_operation)
+    .task("security", sign_operation)
+    .task("compute_provider", compute_operation)
     .await_all()
     .unwrap();
 ```
@@ -836,8 +836,8 @@ coordinator.parallel()
 ## ✅ Success Criteria
 
 ### Technical
-- [ ] BearDog bridge operational
-- [ ] Toadstool bridge operational
+- [ ] Security Provider bridge operational
+- [ ] Compute provider bridge operational
 - [ ] PrimalBridge trait abstraction complete
 - [ ] Capability-based discovery working
 - [ ] All tests passing
@@ -861,7 +861,7 @@ coordinator.parallel()
 - **Gaming System Evolution**: [crates/songbird-gaming/](../../crates/songbird-gaming/) - Example of specific → agnostic pattern
 - **Compute Bridge**: [crates/songbird-compute-bridge/](../../crates/songbird-compute-bridge/) - Existing bridge pattern
 - **Federation**: [crates/songbird-network-federation/](../../crates/songbird-network-federation/) - Coordination patterns
-- **BearDog Genesis Spec**: [BEARDOG_GENESIS_HANDOFF_DEC_22_2025.md](../BEARDOG_GENESIS_HANDOFF_DEC_22_2025.md) - Genesis requirements
+- **Security provider genesis handoff** (historical document, Dec 2025) — genesis requirements; filename retained in older check-ins only
 
 ---
 

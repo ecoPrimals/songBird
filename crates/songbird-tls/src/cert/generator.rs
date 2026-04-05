@@ -26,7 +26,7 @@ pub enum CertGenerationMode {
     SecurityProvider,
     /// Deprecated alias for [`CertGenerationMode::SecurityProvider`].
     #[deprecated(note = "use CertGenerationMode::SecurityProvider")]
-    BearDog,
+    LegacySecurityProvider,
     /// Auto: try the security provider, fallback to standalone (default)
     #[default]
     Auto,
@@ -60,7 +60,7 @@ impl CertificateGenerator {
         let security_client = match &mode {
             #[allow(deprecated, reason = "match arm handles legacy variant")]
             CertGenerationMode::SecurityProvider
-            | CertGenerationMode::BearDog
+            | CertGenerationMode::LegacySecurityProvider
             | CertGenerationMode::Auto => {
                 // Try to discover the security (crypto) provider socket
                 match SecurityTlsCryptoClient::new() {
@@ -75,7 +75,8 @@ impl CertificateGenerator {
                         #[allow(deprecated, reason = "match arm handles legacy variant")]
                         if matches!(
                             mode,
-                            CertGenerationMode::SecurityProvider | CertGenerationMode::BearDog
+                            CertGenerationMode::SecurityProvider
+                                | CertGenerationMode::LegacySecurityProvider
                         ) {
                             return Err(anyhow::anyhow!(
                                 "Security provider mode requested but crypto provider not available"
@@ -210,7 +211,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn test_standalone_cert_generation() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
@@ -223,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn test_auto_mode_fallback() {
         let generator = CertificateGenerator::new().unwrap();
 
@@ -233,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn test_standalone_multiple_certs() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
@@ -248,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn test_cert_validity_period() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
@@ -261,7 +262,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn standalone_cert_der_includes_domain_prefix_and_public_key_material() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
         let domain = "edge-case.songbird";
@@ -278,7 +279,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn standalone_zero_day_validity_still_emits_non_empty_cert() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
         let (cert, _) = generator.generate_self_signed("zero-day.local", 0).unwrap();
@@ -286,7 +287,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn successive_standalone_generations_produce_distinct_signing_keys() {
         let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
         let (_, a) = generator.generate_self_signed("a.local", 10).unwrap();
@@ -306,7 +307,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn cert_generation_mode_equality() {
         assert_eq!(CertGenerationMode::Standalone, CertGenerationMode::Standalone);
         assert_ne!(CertGenerationMode::Standalone, CertGenerationMode::Auto);

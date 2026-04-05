@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTP-based deployment client with capability negotiation
@@ -467,5 +467,150 @@ mod tests {
         let caps: DeploymentCapabilities = serde_json::from_str(json).expect("zero resources");
         assert_eq!(caps.resources.cpu_cores, 0);
         assert_eq!(caps.resources.available_storage_gb, 0);
+    }
+
+    #[test]
+    fn select_deployment_method_equal_to_chunked_max_skips_chunked_when_streaming_off() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {"type": "wan", "bandwidth_estimate": {"download_mbps":1,"upload_mbps":1,"latency_ms":1,"confidence":"low"}},
+            "deployment_methods": {
+                "single": {"enabled": true, "max_size_mb": 10, "compression_supported": [], "recommended_for": ""},
+                "chunked": {"enabled": true, "max_total_size_mb": 100, "chunk_size_mb": 10, "max_chunks": 10, "compression_supported": [], "recommended_for": ""},
+                "streaming": {"enabled": false, "unlimited": false, "compression_supported": [], "recommended_for": ""}
+            },
+            "resources": {"available_storage_gb": 1, "available_memory_gb": 1, "cpu_cores": 1, "cpu_load_percent": 0.0, "max_concurrent_deployments": 1, "current_deployments": 0}
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("caps");
+        let m = select_deployment_method(Some(&caps), 100.0);
+        assert!(
+            matches!(m, SelectedMethod::Fallback),
+            "chunked path uses strict `<` for max_total; equal size should fall through: {m:?}"
+        );
+    }
+
+    #[test]
+    fn select_deployment_method_just_under_chunked_max_selects_chunked() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {"type": "wan", "bandwidth_estimate": {"download_mbps":1,"upload_mbps":1,"latency_ms":1,"confidence":"low"}},
+            "deployment_methods": {
+                "single": {"enabled": true, "max_size_mb": 10, "compression_supported": [], "recommended_for": ""},
+                "chunked": {"enabled": true, "max_total_size_mb": 100, "chunk_size_mb": 7, "max_chunks": 20, "compression_supported": [], "recommended_for": ""},
+                "streaming": {"enabled": false, "unlimited": false, "compression_supported": [], "recommended_for": ""}
+            },
+            "resources": {"available_storage_gb": 1, "available_memory_gb": 1, "cpu_cores": 1, "cpu_load_percent": 0.0, "max_concurrent_deployments": 1, "current_deployments": 0}
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("caps");
+        let m = select_deployment_method(Some(&caps), 99.5);
+        assert!(
+            matches!(
+                m,
+                SelectedMethod::Chunked {
+                    chunk_size_mb: 7
+                }
+            ),
+            "expected Chunked with tower chunk_size_mb: {m:?}"
+        );
+    }
+
+    #[test]
+    fn select_deployment_method_chunked_disabled_skips_to_streaming_when_oversized() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {"type": "wan", "bandwidth_estimate": {"download_mbps":1,"upload_mbps":1,"latency_ms":1,"confidence":"low"}},
+            "deployment_methods": {
+                "single": {"enabled": true, "max_size_mb": 5, "compression_supported": [], "recommended_for": ""},
+                "chunked": {"enabled": false, "max_total_size_mb": 500, "chunk_size_mb": 10, "max_chunks": 10, "compression_supported": [], "recommended_for": ""},
+                "streaming": {"enabled": true, "unlimited": true, "compression_supported": [], "recommended_for": ""}
+            },
+            "resources": {"available_storage_gb": 1, "available_memory_gb": 1, "cpu_cores": 1, "cpu_load_percent": 0.0, "max_concurrent_deployments": 1, "current_deployments": 0}
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("caps");
+        let m = select_deployment_method(Some(&caps), 100.0);
+        assert!(
+            matches!(m, SelectedMethod::Streaming),
+            "with chunked disabled, over single max should reach streaming when enabled: {m:?}"
+        );
+    }
+
+    #[test]
+    fn selected_method_chunked_clone_preserves_chunk_size() {
+        let a = SelectedMethod::Chunked {
+            chunk_size_mb: 42,
+        };
+        assert!(matches!(
+            a,
+            SelectedMethod::Chunked {
+                chunk_size_mb: 42
+            }
+        ));
+    }
+
+    #[test]
+    fn bandwidth_estimate_deserialize_accepts_extreme_latency() {
+        let json =
+            r#"{"download_mbps":0,"upload_mbps":0,"latency_ms":4294967295,"confidence":"none"}"#;
+        let b: BandwidthEstimate = serde_json::from_str(json).expect("bandwidth");
+        assert_eq!(b.latency_ms, 4_294_967_295);
+        assert_eq!(b.confidence, "none");
+    }
+
+    #[test]
+    fn single_upload_method_deserializes_compression_list() {
+        let json = r#"{
+            "enabled": true,
+            "max_size_mb": 9,
+            "compression_supported": ["zstd", "gzip"],
+            "recommended_for": "small"
+        }"#;
+        let s: SingleUploadMethod = serde_json::from_str(json).expect("single method");
+        assert_eq!(s.compression_supported, vec!["zstd", "gzip"]);
+        assert!(s.enabled);
+        assert_eq!(s.max_size_mb, 9);
+    }
+
+    #[test]
+    fn select_deployment_method_negative_size_still_selects_single_when_under_limits() {
+        let caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).expect("sample caps");
+        let m = select_deployment_method(Some(&caps), -1.0);
+        assert!(
+            matches!(m, SelectedMethod::Single),
+            "negative MB is still `<` single max; selection uses raw float compare: {m:?}"
+        );
+    }
+
+    #[test]
+    fn network_capabilities_wan_type_round_trips_json() {
+        let caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).expect("caps");
+        assert_eq!(caps.network.network_type, "lan");
+        let v = serde_json::to_value(&caps.network.network_type).expect("serialize type string");
+        assert_eq!(v, serde_json::json!("lan"));
+    }
+
+    #[test]
+    fn resource_info_cpu_load_percent_deserializes_fraction() {
+        let json = r#"{
+            "node_id": "n",
+            "network": {"type": "x", "bandwidth_estimate": {"download_mbps":1,"upload_mbps":1,"latency_ms":1,"confidence":"low"}},
+            "deployment_methods": {
+                "single": {"enabled": true, "max_size_mb": 50, "compression_supported": [], "recommended_for": ""},
+                "chunked": {"enabled": true, "max_total_size_mb": 500, "chunk_size_mb": 10, "max_chunks": 100, "compression_supported": [], "recommended_for": ""},
+                "streaming": {"enabled": false, "unlimited": false, "compression_supported": [], "recommended_for": ""}
+            },
+            "resources": {
+                "available_storage_gb": 1,
+                "available_memory_gb": 1,
+                "cpu_cores": 2,
+                "cpu_load_percent": 0.33333334,
+                "max_concurrent_deployments": 2,
+                "current_deployments": 1
+            }
+        }"#;
+        let caps: DeploymentCapabilities = serde_json::from_str(json).expect("caps");
+        assert!((caps.resources.cpu_load_percent - 0.333_333_34).abs() < f32::EPSILON);
+        assert_eq!(caps.resources.current_deployments, 1);
     }
 }

@@ -182,7 +182,7 @@ async fn operation_timeout_returns_timeout_error() {
     let handle = tokio::spawn(async move {
         breaker
             .call(|| async {
-                tokio::time::sleep(Duration::from_millis(200)).await;
+                std::future::pending::<()>().await;
                 Ok::<(), std::io::Error>(())
             })
             .await

@@ -163,9 +163,11 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
-    // Use invalid endpoint
-    let adapter =
-        SecurityAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    // RFC 5737 TEST-NET-1: guaranteed unreachable, avoids parallel-test port collisions
+    let adapter = SecurityAdapter::new("http://192.0.2.1:1".to_string())
+        .await
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
@@ -347,8 +349,10 @@ async fn test_verify_auth_invalid() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_network_error() {
-    let adapter =
-        SecurityAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    let adapter = SecurityAdapter::new("http://192.0.2.1:1".to_string())
+        .await
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.verify_auth("some-token").await;
     assert!(result.is_err(), "Should fail with network error");
@@ -486,8 +490,10 @@ async fn test_check_health_critical() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
-    let adapter =
-        SecurityAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    let adapter = SecurityAdapter::new("http://192.0.2.1:1".to_string())
+        .await
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");

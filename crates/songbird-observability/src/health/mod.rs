@@ -6,12 +6,16 @@
 //!
 //! Comprehensive health monitoring system
 
+#![expect(
+    async_fn_in_trait,
+    reason = "native async HealthMonitor; HealthCheckAsync remains async_trait for dyn objects"
+)]
+
 use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 use std::sync::Arc;
 
 /// Health monitor trait for implementing custom health monitoring
-#[async_trait::async_trait]
 pub trait HealthMonitor: Send + Sync {
     /// Get overall health status
     async fn get_health_status(&self) -> Result<HealthStatusDetails>;

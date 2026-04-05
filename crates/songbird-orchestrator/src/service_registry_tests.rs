@@ -292,7 +292,7 @@ async fn cleanup_stale_services_removes_expired() {
 
     assert_eq!(registry.list_services().await.len(), 1);
 
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    tokio::time::advance(std::time::Duration::from_millis(50)).await;
     let removed = registry.cleanup_stale_services().await;
     assert_eq!(removed, 1);
     assert!(registry.list_services().await.is_empty());
@@ -404,7 +404,7 @@ async fn cleanup_releases_ports() {
     let stats_before = registry.get_stats().await;
     assert!(stats_before.allocated_ports >= 1);
 
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    tokio::time::advance(std::time::Duration::from_millis(50)).await;
     registry.cleanup_stale_services().await;
 
     let stats_after = registry.get_stats().await;

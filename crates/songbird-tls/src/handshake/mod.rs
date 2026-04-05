@@ -430,8 +430,9 @@ mod tests {
         let mut hsm = HandshakeStateMachine::new();
 
         // Create a mock crypto client (using explicit socket path for testing)
-        let crypto_client =
-            SecurityTlsCryptoClient::with_socket_path("/tmp/test-beardog.sock".to_string());
+        let crypto_client = SecurityTlsCryptoClient::with_socket_path(
+            "/tmp/test-security-provider.sock".to_string(),
+        );
         hsm.set_crypto_client(crypto_client);
 
         assert!(hsm.crypto_client.is_some());

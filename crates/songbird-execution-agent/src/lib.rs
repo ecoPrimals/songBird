@@ -27,7 +27,7 @@ pub mod security_provider;
 
 /// Deprecated alias for [`security_provider`].
 #[deprecated(note = "use module security_provider")]
-pub mod security_beardog {
+pub mod security_provider_legacy {
     pub use crate::security_provider::*;
 }
 pub mod security_sovereign;

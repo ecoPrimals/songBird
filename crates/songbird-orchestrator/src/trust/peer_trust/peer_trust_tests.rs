@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(clippy::unwrap_used, reason = "test assertions")]
-#![expect(clippy::expect_used, reason = "test assertions")]
+#![allow(clippy::expect_used, reason = "test assertions")]
 
 use super::evaluation::{extract_family_from_tags, handle_trust_response};
 use super::types::PeerTrustDecision;
@@ -224,7 +224,7 @@ fn extract_family_ignores_wrong_prefix() {
 }
 
 #[test]
-fn test_extract_family_from_tags_legacy_beardog_wire_still_parsed() {
+fn test_extract_family_from_tags_legacy_wire_still_parsed() {
     let tags = vec!["beardog:family:legacy-only".to_string()];
     assert_eq!(extract_family_from_tags(&tags), Some("legacy-only".to_string()));
 }

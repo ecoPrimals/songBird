@@ -22,7 +22,7 @@ pub struct TlsHandshake {
     /// Configuration (strategy-based, not hardcoded)
     pub(super) config: TlsConfig,
     /// Optional server profiler for adaptive learning (future feature)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) profiler: Option<Arc<ServerProfiler>>,
 }
 

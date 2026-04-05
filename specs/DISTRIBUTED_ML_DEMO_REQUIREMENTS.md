@@ -29,7 +29,7 @@ Demonstrate a **production-ready distributed machine learning training system** 
   - Tower C (Southgate): RTX 3090 24GB
 - [x] Sub-millisecond network latency verified (ping, iperf3)
 - [x] All towers have CUDA 12.8, PyTorch 2.9
-- [x] Squirrel services running on all towers
+- [x] AI provider services running on all towers
 
 **Data Pipeline:**
 - [x] Tiny ImageNet dataset downloaded (100K images)
@@ -317,7 +317,7 @@ Discuss:
 - [x] 3 physical towers with GPUs
 - [x] Local network (< 1ms latency)
 - [x] Songbird orchestrator running
-- [x] Squirrel services on all towers
+- [x] AI provider services on all towers
 
 ### Software
 - [x] PyTorch 2.9 + CUDA 12.8

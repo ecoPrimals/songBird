@@ -39,13 +39,6 @@ impl DiscoveryMode {
         matches!(self, Self::BirdSong)
     }
 
-    /// Deprecated alias for [`Self::requires_security_provider`].
-    #[deprecated(note = "use requires_security_provider")]
-    #[must_use]
-    pub const fn requires_beardog(&self) -> bool {
-        self.requires_security_provider()
-    }
-
     /// Check if this mode is privacy-preserving
     #[must_use]
     pub const fn is_private(&self) -> bool {

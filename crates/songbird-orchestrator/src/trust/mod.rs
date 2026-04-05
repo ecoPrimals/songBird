@@ -50,9 +50,6 @@ pub mod universal_trust_api; // Universal, provider-agnostic trust API
 
 pub use escalation::{SecurityTrustClient, TrustEscalationManager, TrustTimeouts};
 
-/// Deprecated alias for [`SecurityTrustClient`].
-#[deprecated(note = "renamed to SecurityTrustClient")]
-pub type BearDogClient = SecurityTrustClient;
 pub use lineage_auth::{
     LineageAuthenticator, LineageStatus, PeerAcceptanceDecision, PeerInfo, RejectionSeverity,
     UserRecommendation,

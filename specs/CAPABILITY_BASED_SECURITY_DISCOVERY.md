@@ -10,15 +10,15 @@
 
 **Primal code should only have self-knowledge.**
 
-The fact that "BearDog" will provide security is **developer knowledge**, not **code knowledge**.
+The fact that "Security Provider" will provide security is **developer knowledge**, not **code knowledge**.
 
 ### What This Means
 
 **❌ WRONG** (Hardcoded Primal Names):
 ```rust
-// BAD: Songbird code "knows" about BearDog
-if primal_name == "beardog" {
-    connect_to_beardog();
+// BAD: Songbird code "knows" about Security Provider
+if primal_name == "security" {
+    connect_to_security_provider();
 }
 ```
 
@@ -27,7 +27,7 @@ if primal_name == "beardog" {
 // GOOD: Songbird code only knows about capabilities
 let providers = query_capability("security + btsp");
 for provider in providers {
-    // Works with BearDog, future alternatives, or community primals
+    // Works with Security Provider, future alternatives, or community primals
     connect_to_provider(provider);
 }
 ```
@@ -46,16 +46,16 @@ Each primal only knows about **itself**:
 - "I query UPA for these capabilities"
 
 **Songbird does NOT know**:
-- "BearDog exists"
-- "BearDog provides security"
-- "BearDog's port is 9000"
+- "Security Provider exists"
+- "Security Provider provides security"
+- "Security Provider's port is 9000"
 
-**BearDog knows**:
+**Security Provider knows**:
 - "I provide security capability"
 - "I provide BTSP support"
 - "I register with UPA"
 
-**BearDog does NOT know**:
+**Security Provider does NOT know**:
 - "Songbird exists"
 - "Songbird needs security"
 - "Songbird's port is 8080"
@@ -64,13 +64,13 @@ Each primal only knows about **itself**:
 
 ## 🔍 Discovery Flow
 
-### 1. Registration (BearDog Side)
+### 1. Registration (Security Provider Side)
 
 ```bash
-# BearDog starts up and registers with UPA
+# Security Provider starts up and registers with UPA
 POST https://localhost:8080/api/v1/services/register
 {
-  "primal_name": "beardog",  # Self-identification
+  "primal_name": "security",  # Self-identification
   "primal_version": "0.1.0",
   "capabilities": [
     {"name": "security", "type": "security"},
@@ -84,7 +84,7 @@ POST https://localhost:8080/api/v1/services/register
 }
 ```
 
-**Key Point**: BearDog self-identifies. Songbird doesn't need to know BearDog exists.
+**Key Point**: Security Provider self-identifies. Songbird doesn't need to know Security Provider exists.
 
 ---
 
@@ -102,7 +102,7 @@ for service in services {
     });
     
     if has_btsp {
-        // Connect to this provider (could be BearDog, could be anything)
+        // Connect to this provider (could be Security Provider, could be anything)
         return connect_to_provider(service.endpoint);
     }
 }
@@ -116,19 +116,19 @@ for service in services {
 
 ### Extensibility
 
-**Today**: BearDog provides security  
+**Today**: Security Provider provides security  
 **Tomorrow**: Community creates "SecurePrimal" with better performance  
 **Result**: Songbird works with both, zero code changes
 
 ### Primal Evolution
 
-**Today**: BearDog v0.1 with basic BTSP  
-**Tomorrow**: BearDog v2.0 with quantum-resistant crypto  
+**Today**: Security Provider v0.1 with basic BTSP  
+**Tomorrow**: Security Provider v2.0 with quantum-resistant crypto  
 **Result**: Songbird auto-discovers new capabilities
 
 ### Community Primals
 
-**Today**: Core primals (Songbird, BearDog, Toadstool, etc.)  
+**Today**: Core primals (Songbird, Security Provider, Compute provider, etc.)  
 **Tomorrow**: Community creates custom primals for specific needs  
 **Result**: All primals interoperate via capabilities
 
@@ -162,7 +162,7 @@ async fn connect_to_security_provider(&self, endpoint: &str)
 
 3. **Environment Variable** (capability-based):
 ```rust
-// Changed from SONGBIRD_BEARDOG_ENDPOINT
+// Changed from legacy `SONGBIRD_*` security env keys; use `SONGBIRD_SECURITY_PROVIDER_ENDPOINT`
 // to SONGBIRD_SECURITY_PROVIDER_ENDPOINT
 std::env::var("SONGBIRD_SECURITY_PROVIDER_ENDPOINT")
 ```
@@ -174,9 +174,9 @@ std::env::var("SONGBIRD_SECURITY_PROVIDER_ENDPOINT")
 **Any security primal** can register:
 
 ```rust
-// BearDog registers
+// Security Provider registers
 {
-  "primal_name": "beardog",
+  "primal_name": "security",
   "capabilities": [
     {"name": "btsp", "type": "security"}
   ]
@@ -209,7 +209,7 @@ std::env::var("SONGBIRD_SECURITY_PROVIDER_ENDPOINT")
 
 ### 3. Testability
 - Mock providers via capability
-- No need to fake "BearDog"
+- No need to fake "Security Provider"
 - Generic test infrastructure
 
 ### 4. Sovereignty
@@ -225,14 +225,14 @@ std::env::var("SONGBIRD_SECURITY_PROVIDER_ENDPOINT")
 
 ```rust
 // ❌ BAD: Hardcoded primal name
-if primal_name == "beardog" {
-    connect_to_beardog("https://localhost:9000");
+if primal_name == "security" {
+    connect_to_security_provider("https://localhost:9000");
 }
 
 // Problems:
-// - What if BearDog changes ports?
+// - What if Security Provider changes ports?
 // - What if community creates alternative?
-// - What if BearDog renames itself?
+// - What if Security Provider renames itself?
 ```
 
 ### After (Capability-Based)
@@ -256,13 +256,13 @@ for provider in providers {
 
 ## 🔮 Future Scenarios
 
-### Scenario 1: BearDog v2.0
+### Scenario 1: Security Provider v2.0
 
-**Change**: BearDog adds "quantum-resistant" capability
+**Change**: Security Provider adds "quantum-resistant" capability
 
 **Impact on Songbird**: Zero code changes
 - Songbird queries for "security + btsp"
-- BearDog v2.0 responds with enhanced capabilities
+- Security Provider v2.0 responds with enhanced capabilities
 - Songbird auto-discovers and uses new features
 
 ---
@@ -275,13 +275,13 @@ for provider in providers {
 - SecurePrimal registers with UPA
 - Advertises "security + btsp" capability
 - Songbird discovers and uses it
-- BearDog and SecurePrimal coexist
+- Security Provider and SecurePrimal coexist
 
 ---
 
 ### Scenario 3: Multiple Security Providers
 
-**Change**: User runs BearDog + SecurePrimal simultaneously
+**Change**: User runs Security Provider + SecurePrimal simultaneously
 
 **Impact on Songbird**: Intelligent selection
 - Songbird discovers both
@@ -296,9 +296,9 @@ for provider in providers {
 ### Developer Knowledge (Documentation)
 
 **In specs, docs, handoff documents**:
-- "BearDog will implement security"
-- "BearDog provides BTSP"
-- "BearDog timeline: 14-20 weeks"
+- "Security Provider will implement security"
+- "Security Provider provides BTSP"
+- "Security Provider timeline: 14-20 weeks"
 
 **Purpose**: Coordination, planning, communication
 
@@ -319,7 +319,7 @@ for provider in providers {
 
 **Specifications**:
 - `specs/PRIMAL_RESPONSIBILITY_SEPARATION_SPEC.md` - Primal roles
-- `specs/SONGBIRD_BEARDOG_INTEGRATION.md` - Integration spec (dev knowledge)
+- Archived integration spec: `specs/archive/SONGBIRD_BEARDOG_INTEGRATION.md` (historical path; dev knowledge)
 - `specs/BIRDSONG_PROTOCOL.md` - BirdSong protocol
 
 **Implementation**:
@@ -328,22 +328,22 @@ for provider in providers {
 - `crates/songbird-primal-sdk/src/registration.rs` - Primal registration
 
 **Handoff Documents** (Developer Knowledge):
-- `BEARDOG_TEAM_BLURB.md` - High-level overview
-- `BEARDOG_BTSP_HANDOFF.md` - Technical handoff
+- Security provider team blurb (historical filename `BEARDOG_TEAM_BLURB.md`) — high-level overview
+- Security provider BTSP handoff (historical filename `BEARDOG_BTSP_HANDOFF.md`) — technical handoff
 - `WHATS_LEFT_FOR_P2P.md` - Remaining work
 
 ---
 
 ## ✅ Verification
 
-### Test 1: BearDog Registration
+### Test 1: Security Provider Registration
 
 ```bash
-# BearDog registers with UPA
+# Security Provider registers with UPA
 curl -k -X POST https://localhost:8080/api/v1/services/register \
   -H "Content-Type: application/json" \
   -d '{
-    "primal_name": "beardog",
+    "primal_name": "security",
     "capabilities": [{"name": "btsp", "type": "security"}]
   }'
 ```
@@ -354,10 +354,10 @@ curl -k -X POST https://localhost:8080/api/v1/services/register \
 # Songbird queries for security capability
 curl -k https://localhost:8080/api/v1/services/query/security
 
-# Response includes BearDog (or any other security provider)
+# Response includes Security Provider (or any other security provider)
 [
   {
-    "primal_name": "beardog",  # Name is for logging only
+    "primal_name": "security",  # Name is for logging only
     "capabilities": [...],
     "endpoint": "https://localhost:9000"
   }
@@ -386,7 +386,7 @@ curl -k -X POST https://localhost:8080/api/v1/services/register \
 
 **Implementation**:
 - ✅ Songbird queries by capability, not name
-- ✅ BearDog self-registers with capabilities
+- ✅ Security Provider self-registers with capabilities
 - ✅ Any primal can provide security
 - ✅ Zero hardcoded primal names in code
 

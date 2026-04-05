@@ -100,7 +100,7 @@ impl PerformanceTestFramework {
         }
 
         let total_duration: Duration = durations.iter().sum();
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             reason = "intentional pattern; clippy false positive for this API"
         )]
@@ -116,12 +116,12 @@ impl PerformanceTestFramework {
             field: Some("performance_test".to_string()),
             suggestion: Some("Ensure iterations > 0".to_string()),
         })?;
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             reason = "intentional pattern; clippy false positive for this API"
         )]
         let throughput = self.config.iterations as f64 / total_duration.as_secs_f64();
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             reason = "intentional pattern; clippy false positive for this API"
         )]

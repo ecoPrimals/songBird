@@ -66,7 +66,7 @@ pub async fn clear_cache() {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::capability::strategy::EnvironmentStrategy;

@@ -79,12 +79,6 @@ impl FederationCoordinator {
         self.security_provider.read().await.is_some()
     }
 
-    /// Deprecated alias for [`Self::has_security_provider`].
-    #[deprecated(note = "use has_security_provider")]
-    pub async fn has_beardog(&self) -> bool {
-        self.has_security_provider().await
-    }
-
     /// Get discovery mode based on security-provider availability
     pub async fn discovery_mode(&self) -> DiscoveryMode {
         if self.has_security_provider().await {

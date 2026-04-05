@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Memory-Optimized Types
@@ -88,10 +88,6 @@ impl OptimizedHost {
     ///
     /// # Errors
     /// This function never returns an error - it always succeeds
-    #[allow(
-        clippy::unnecessary_wraps,
-        reason = "infallible parse returns Result for API consistency"
-    )]
     #[allow(clippy::should_implement_trait, reason = "custom from_str name; not std::str::FromStr")]
     pub fn from_str(host: &str) -> Result<Self, String> {
         match host {

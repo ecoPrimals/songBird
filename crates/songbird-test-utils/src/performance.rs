@@ -49,7 +49,7 @@ impl PerformanceMeasurement {
             return None;
         }
 
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             reason = "intentional pattern; clippy false positive for this API"
         )]
@@ -73,7 +73,7 @@ impl PerformanceMeasurement {
         let mut sorted = self.measurements.clone();
         sorted.sort();
 
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -219,7 +219,7 @@ impl LoadTester {
 
         // Calculate ramp-up delay between users
         let ramp_up_delay = if self.concurrent_users > 1 {
-            #[expect(
+            #[allow(
                 clippy::cast_possible_truncation,
                 reason = "intentional pattern; clippy false positive for this API"
             )]
@@ -340,7 +340,7 @@ impl LoadTestResults {
 
         let successful_samples: Vec<_> = self.samples.iter().filter(|s| s.success).collect();
 
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             reason = "intentional pattern; clippy false positive for this API"
         )]
@@ -349,7 +349,7 @@ impl LoadTestResults {
         }
 
         if !successful_samples.is_empty() {
-            #[expect(
+            #[allow(
                 clippy::cast_possible_truncation,
                 reason = "intentional pattern; clippy false positive for this API"
             )]
@@ -365,7 +365,7 @@ impl LoadTestResults {
         }
 
         if self.total_duration.as_secs_f32() > 0.0 {
-            #[expect(
+            #[allow(
                 clippy::cast_precision_loss,
                 reason = "intentional pattern; clippy false positive for this API"
             )]

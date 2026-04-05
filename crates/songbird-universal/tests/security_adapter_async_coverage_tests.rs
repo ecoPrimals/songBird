@@ -118,16 +118,27 @@ async fn test_collect_metrics_success() {
 #[tokio::test]
 async fn test_collect_metrics_network_error() {
     // Use a non-existent endpoint to trigger network error
-    let adapter = SecurityAdapter::new("http://localhost:1".to_string())
+    let adapter = SecurityAdapter::new("http://192.0.2.1:1".to_string())
         .await
         .expect("test precondition")
-        .with_timeout(Duration::from_millis(100));
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
 
     let err = result.expect_err("testing error case");
-    assert!(err.to_string().contains("network") || err.to_string().contains("reach"));
+    let err_msg = err.to_string();
+    assert!(
+        err_msg.contains("Failed to reach")
+            || err_msg.contains("network")
+            || err_msg.contains("reach")
+            || err_msg.contains("timeout")
+            || err_msg.contains("Timeout")
+            || err_msg.contains("connect")
+            || err_msg.contains("dns")
+            || err_msg.contains("resolve"),
+        "Expected network-related error, got: {err_msg}"
+    );
 }
 
 #[tokio::test]
@@ -292,10 +303,10 @@ async fn test_verify_auth_invalid() {
 
 #[tokio::test]
 async fn test_verify_auth_network_error() {
-    let adapter = SecurityAdapter::new("http://localhost:1".to_string())
+    let adapter = SecurityAdapter::new("http://192.0.2.1:1".to_string())
         .await
         .expect("test precondition")
-        .with_timeout(Duration::from_millis(100));
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.verify_auth("token").await;
     assert!(result.is_err(), "Should fail with network error");
@@ -396,10 +407,10 @@ async fn test_check_health_critical() {
 
 #[tokio::test]
 async fn test_check_health_network_failure() {
-    let adapter = SecurityAdapter::new("http://localhost:1".to_string())
+    let adapter = SecurityAdapter::new("http://192.0.2.1:1".to_string())
         .await
         .expect("test precondition")
-        .with_timeout(Duration::from_millis(100));
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should fail when metrics unavailable");

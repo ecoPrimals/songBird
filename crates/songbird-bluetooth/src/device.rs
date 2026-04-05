@@ -240,7 +240,7 @@ mod tests {
         assert!(!info.has_service(&uuid::Uuid::from_u128(1)));
         assert_eq!(info.manufacturer_data.as_ref().map(Vec::len), Some(2));
         let s = info.to_string();
-        assert!(s.contains("N") && s.contains("rssi=-30"));
+        assert!(s.contains('N') && s.contains("rssi=-30"));
     }
 
     #[test]

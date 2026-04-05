@@ -22,7 +22,7 @@
 //! let crypto = discover_crypto_capability().await?;
 //!
 //! // Or explicit `SecurityCryptoProvider`
-//! let crypto = SecurityCryptoProvider::new("/tmp/beardog.sock");
+//! let crypto = SecurityCryptoProvider::new("/tmp/security-provider.sock");
 //! ```
 
 mod capability;
@@ -36,15 +36,6 @@ pub use capability::{
 
 pub use security_provider::SecurityCryptoProvider;
 
-/// Deprecated alias for [`SecurityCryptoProvider`].
-#[deprecated(note = "use SecurityCryptoProvider (capability-based naming)")]
-pub type BearDogProvider = SecurityCryptoProvider;
-
-/// Deprecated alias for `security_provider` module.
-#[deprecated(note = "use module `security_provider` (capability-based naming)")]
-pub mod beardog_provider {
-    pub use super::security_provider::*;
-}
 pub use discovery::discover_crypto_capability;
 /// Deprecated; see [`socket_discovery::discover_security_socket`].
 #[allow(deprecated)]

@@ -55,7 +55,7 @@ burst_size = 200
 [federation]
 enabled = false
 mode = "standalone"  # Options: standalone, client, server, hybrid, clustered
-# Federation discovery port (override with SONGBIRD_BEARDOG_PORT env var)
+# Federation discovery port (override with SONGBIRD_SECURITY_PROVIDER_PORT env var)
 discovery_port = 8082  # Example default - set via environment in production
 # cluster_name = "songbird-cluster"
 max_nodes = 100
@@ -69,11 +69,11 @@ backend = "static"  # Options: static, consul, kubernetes
 health_check_interval_secs = 60
 service_registration_enabled = true
 
-[security.beardog_integration]
+[security.security_provider_integration]
 enabled = false
 # Endpoint should use CAPABILITY_SECURITY_ENDPOINT env var in production
-# Example: export CAPABILITY_SECURITY_ENDPOINT="https://beardog.internal:${SONGBIRD_BEARDOG_PORT}"
-# endpoint = "https://beardog.internal:8443"  # Example only - use env vars
+# Example: export CAPABILITY_SECURITY_ENDPOINT="https://security-provider.internal:${SONGBIRD_SECURITY_PROVIDER_PORT}"
+# endpoint = "https://security-provider.internal:8443"  # Example only - use env vars
 # api_key = "your-api-key-here"
 fallback_to_wireguard = true
 
@@ -90,33 +90,33 @@ session_timeout_minutes = 30
 [primals]
 auto_discovery_enabled = true
 
-[primals.beardog]
+[primals.security_provider]
 enabled = false
 # Use CAPABILITY_SECURITY_ENDPOINT env var in production (auto-discovery preferred)
-# endpoint = "https://beardog.internal:8443"  # Example only - use capability-based discovery
+# endpoint = "https://security-provider.internal:8443"  # Example only - use capability-based discovery
 fallback_endpoints = []
 health_check_enabled = true
 timeout_secs = 30
 
-[primals.nestgate]
+[primals.storage_provider]
 enabled = false
 # Use CAPABILITY_STORAGE_ENDPOINT env var in production (auto-discovery preferred)
-# endpoint = "http://nestgate.internal:8080"  # Example only - use capability-based discovery
+# endpoint = "http://storage-provider.internal:8080"  # Example only - use capability-based discovery
 fallback_endpoints = []
 health_check_enabled = true
 timeout_secs = 30
 
-[primals.toadstool]
+[primals.compute_provider]
 enabled = false
 # Use CAPABILITY_COMPUTE_ENDPOINT env var in production (auto-discovery preferred)
-# endpoint = "http://toadstool.internal:8080"  # Example only - use capability-based discovery
+# endpoint = "http://compute-provider.internal:8080"  # Example only - use capability-based discovery
 fallback_endpoints = []
 health_check_enabled = true
 timeout_secs = 30
 
-[primals.squirrel]
+[primals.ai_provider]
 enabled = false
-# endpoint = "http://squirrel.internal:8080"
+# endpoint = "http://ai-provider.internal:8080"
 fallback_endpoints = []
 health_check_enabled = true
 timeout_secs = 30
@@ -162,7 +162,7 @@ batch_size = 100
 # Examples:
 # export SONGBIRD_NETWORK_PORT=8080
 # export SONGBIRD_FEDERATION_ENABLED=true
-# export SONGBIRD_BEARDOG_ENDPOINT=https://beardog.prod:8443
+# export SONGBIRD_SECURITY_PROVIDER_ENDPOINT=https://security-provider.prod:8443
 # export SONGBIRD_LOG_LEVEL=debug
 #
 # Loading Priority (highest to lowest):

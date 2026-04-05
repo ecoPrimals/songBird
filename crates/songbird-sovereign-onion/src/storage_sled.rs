@@ -81,15 +81,6 @@ impl OnionStorage {
         }
     }
 
-    /// Deprecated alias for [`Self::load_or_generate_identity_via_security_provider`].
-    #[deprecated(note = "use load_or_generate_identity_via_security_provider")]
-    pub async fn load_or_generate_identity_via_beardog(
-        &self,
-        client: &crate::security_crypto::SecurityCryptoClient,
-    ) -> Result<OnionIdentity> {
-        self.load_or_generate_identity_via_security_provider(client).await
-    }
-
     /// Load existing identity from storage (production safe)
     ///
     /// Returns None if no identity exists yet.

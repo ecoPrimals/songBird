@@ -16,9 +16,9 @@
 - Friends/family can use it immediately
 
 ### **Phase 2: Network Effects Stronger** 🌐
-- Songbird connects to Squirrel (MCP expert)
-- Squirrel handles AI model management
-- Songbird orchestrates, Squirrel specializes
+- Songbird connects to AI provider (MCP expert)
+- AI provider handles AI model management
+- Songbird orchestrates, AI provider specializes
 - Distributed intelligence across ecosystem
 
 ---
@@ -105,14 +105,14 @@ Home Network
 │   ├── Capability discovery
 │   ├── Service routing
 │   └── Workflow orchestration
-└── Squirrel (MCP Expert)
+└── AI provider (MCP Expert)
     ├── AI model management
     ├── Context protocol handling
     └── Model switching/optimization
 
 Internet
 ├── Friend's Songbird ←→ Your Songbird
-├── Family Songbird ←→ Squirrel cluster
+├── Family Songbird ←→ AI provider cluster
 └── Distributed capability sharing
 ```
 
@@ -173,7 +173,7 @@ CMD ["./target/release/songbird-orchestrator"]
    - Process management
    - Basic automation
 
-### **Extended Capabilities** (With Squirrel)
+### **Extended Capabilities** (With AI provider)
 1. **Advanced AI**
    - Model routing optimization
    - Context management
@@ -260,29 +260,29 @@ songbird request storage-backup dad-desktop
 ### **Week 6 Success**
 - ✅ 3+ family members using daily
 - ✅ Internet access working
-- ✅ Ready for Squirrel integration
+- ✅ Ready for AI provider integration
 
 ---
 
 ## 🔄 **TRANSITION TO NETWORK EFFECTS**
 
-### **Songbird + Squirrel Integration**
+### **Songbird + AI provider Integration**
 ```
 Phase 1: Songbird Standalone (Weeks 1-6)
 ├── Self-contained orchestration
 ├── Basic AI/storage/network capabilities
 └── Family deployment proven
 
-Phase 2: Squirrel Integration (Weeks 7-12)  
-├── Songbird discovers Squirrel as MCP provider
-├── AI requests route through Squirrel
-├── Squirrel optimizes model selection
+Phase 2: AI provider Integration (Weeks 7-12)  
+├── Songbird discovers AI provider as MCP provider
+├── AI requests route through AI provider
+├── AI provider optimizes model selection
 └── Network effects amplify capabilities
 ```
 
 ### **Specialization Benefits**
 - **Songbird**: Orchestration expert, capability routing, workflow management
-- **Squirrel**: MCP expert, model management, AI optimization
+- **AI provider**: MCP expert, model management, AI optimization
 - **Together**: Distributed intelligence with specialized components
 
 ---

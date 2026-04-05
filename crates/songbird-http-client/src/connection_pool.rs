@@ -56,8 +56,9 @@
 
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::{RwLock, Semaphore};
+use tokio::time::Instant;
 use tracing::{debug, info, warn};
 
 /// Connection pool error types
@@ -199,7 +200,7 @@ impl PoolConfigBuilder {
 pub struct PooledConnection<T: Send + Sync + 'static> {
     inner: Option<T>,
     pool: Arc<ConnectionPoolInner<T>>,
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     // Reserved for future connection age tracking
     created_at: Instant,
     last_used: Instant,

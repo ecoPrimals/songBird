@@ -27,7 +27,7 @@ pub struct QuicConnection {
 pub struct ConnectionInner {
     pub(crate) transport: TransportConnection,
     pub(crate) streams: StreamManager,
-    #[expect(dead_code, reason = "used by transport layer for flow control enforcement")]
+    #[allow(dead_code, reason = "used by transport layer for flow control enforcement")]
     pub(crate) flow_control: ConnectionFlowControl,
 }
 
@@ -218,7 +218,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     async fn accept_bi_and_accept_uni_return_errors() {
         let conn = QuicConnection::new(
             false,
@@ -233,7 +233,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertion")]
     async fn open_bi_fails_when_stream_limit_reached() {
         let cfg = Arc::new(QuicConfig {
             max_concurrent_bidi_streams: 1,

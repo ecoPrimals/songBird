@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#![allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 
 // Module declarations
 pub mod command_handler; // v4.0.0 (Feb 6): Deep Debt - command handling extraction

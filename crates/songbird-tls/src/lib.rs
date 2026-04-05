@@ -79,7 +79,7 @@ pub mod socket_discovery; // NEW: XDG-compliant socket discovery
 pub use crypto::SecurityTlsCryptoClient;
 /// Deprecated alias for [`SecurityTlsCryptoClient`].
 #[deprecated(note = "use SecurityTlsCryptoClient (capability-based naming)")]
-pub type BeardogCryptoClient = SecurityTlsCryptoClient;
+pub type LegacySecurityTlsCryptoClient = SecurityTlsCryptoClient;
 
 // Error types
 pub mod error;

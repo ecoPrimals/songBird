@@ -115,7 +115,7 @@ impl ServiceMeshApi for QuicAdapter { ... }
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Client Applications                   │
-│  (NestGate, BearDog, Squirrel, Toadstool, etc.)        │
+│  (Storage Provider, Security Provider, AI provider, Compute provider, etc.)        │
 └─────────────────────────────────────────────────────────┘
                           │
         ┌─────────────────┼─────────────────┐
@@ -192,12 +192,12 @@ pub struct ProtocolHealth {
 **Tasks**:
 1. ✅ Change binding from `0.0.0.0` to `[::]`
 2. ✅ Add `parse_bind_address()` helper
-3. ✅ Test with NestGate connection
+3. ✅ Test with Storage Provider connection
 4. ✅ Verify `localhost` works
 
 **Deliverables**:
 - Dual-stack HTTP server
-- NestGate integration working
+- Storage Provider integration working
 - Discovery flow fixed
 
 **Reference**: `SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md`
@@ -296,7 +296,7 @@ impl SongbirdFederation for GrpcAdapter {
 3. Implement `GrpcAdapter`
 4. Add gRPC to main server
 5. Create gRPC client examples
-6. Update NestGate to support gRPC option
+6. Update Storage Provider to support gRPC option
 
 ---
 
@@ -507,7 +507,7 @@ let server = UniversalProtocolServer::new(core)
 ## ✅ SUCCESS CRITERIA
 
 ### **Phase 1 (IPv6)**: ✅ Complete When
-- [ ] NestGate connects via `localhost`
+- [ ] Storage Provider connects via `localhost`
 - [ ] Both IPv4 and IPv6 work
 - [ ] Discovery flow works universally
 - [ ] No breaking changes
@@ -518,7 +518,7 @@ let server = UniversalProtocolServer::new(core)
 - [ ] Discovery works via gRPC
 - [ ] Streaming updates working
 - [ ] 7-10x performance improvement demonstrated
-- [ ] NestGate has gRPC client option
+- [ ] Storage Provider has gRPC client option
 
 ### **Phase 3 (WebSocket)**: ✅ Complete When
 - [ ] WebSocket endpoint at `/api/ws`

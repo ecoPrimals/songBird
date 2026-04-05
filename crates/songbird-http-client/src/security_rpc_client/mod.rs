@@ -29,7 +29,7 @@
 //! let client = SecurityRpcClient::new_neural_api("/tmp/neural-api.sock");
 //!
 //! // Testing: Use Direct mode
-//! let client = SecurityRpcClient::new_direct("/tmp/beardog.sock");
+//! let client = SecurityRpcClient::new_direct("/tmp/security-provider.sock");
 //!
 //! // From environment (recommended)
 //! let client = SecurityRpcClient::from_env();
@@ -49,14 +49,6 @@ mod types;
 // Re-export public API
 pub use core::{SecurityRpcClient, SecurityRpcMode};
 pub use types::TlsSecrets;
-
-/// Deprecated alias for [`SecurityRpcClient`].
-#[deprecated(note = "use SecurityRpcClient (capability-based naming)")]
-pub type BearDogClient = SecurityRpcClient;
-
-/// Deprecated alias for [`SecurityRpcMode`].
-#[deprecated(note = "use SecurityRpcMode (capability-based naming)")]
-pub type BearDogMode = SecurityRpcMode;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NOTE: Semantic capability.call Integration

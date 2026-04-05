@@ -495,7 +495,6 @@ mod tests {
         }
     }
 
-    #[async_trait::async_trait]
     impl TransportTrait for MockTransport {
         fn transport_type(&self) -> TransportType {
             TransportType::Usb

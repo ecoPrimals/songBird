@@ -144,7 +144,7 @@ pub mod hosts {
     pub const TEST_INTERFACE: &str = "192.168.1.100";
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

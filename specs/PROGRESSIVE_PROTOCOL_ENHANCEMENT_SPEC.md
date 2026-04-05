@@ -161,7 +161,7 @@ Phase 4: MULTI-PROTOCOL REINFORCEMENT
 **Request**:
 ```json
 {
-  "client_id": "nestgate-primal-001",
+  "client_id": "storage_provider-primal-001",
   "client_protocols": ["http", "tarpc", "websocket"],
   "preferred": "tarpc",
   "capabilities": {

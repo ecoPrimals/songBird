@@ -18,14 +18,14 @@
     since = "0.2.0",
     note = "Use `canonical::core::*` instead. This module is being phased out."
 )]
-#[expect(deprecated, reason = "calling deprecated API until migration completes")]
+#[allow(deprecated, reason = "calling deprecated API until migration completes")]
 pub use core::*;
 
 #[deprecated(
     since = "0.2.0",
     note = "Use `canonical::federation::*` instead. This module is being phased out."
 )]
-#[expect(deprecated, reason = "calling deprecated API until migration completes")]
+#[allow(deprecated, reason = "calling deprecated API until migration completes")]
 pub use federation::*;
 
 // Re-export canonical observability with deprecation notice
@@ -53,5 +53,5 @@ pub mod robustness;
     since = "0.2.0",
     note = "Use `crate::canonical::CanonicalSongbirdConfig` instead. Migration: `unified::core::SongbirdConfig` → `canonical::CanonicalSongbirdConfig`"
 )]
-#[expect(deprecated, reason = "calling deprecated API until migration completes")]
+#[allow(deprecated, reason = "calling deprecated API until migration completes")]
 pub use core::SongbirdConfig;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! GATT characteristic types and characteristic read/write operations.
@@ -187,7 +187,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read By Type Response for characteristics
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[allow(dead_code, reason = "used by unit tests; wired to L2CAP in a later phase")]
+    #[allow(dead_code, reason = "called from unit tests; production path wires L2CAP later")]
     fn parse_read_by_type_response(response: &[u8]) -> Result<Vec<Characteristic>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -335,7 +335,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[allow(dead_code, reason = "used by unit tests; wired to L2CAP in a later phase")]
+    #[allow(dead_code, reason = "called from unit tests; production path wires L2CAP later")]
     fn parse_read_response(response: &[u8]) -> Result<Vec<u8>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -434,11 +434,8 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Write Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[allow(
-        dead_code,
-        clippy::unused_self,
-        reason = "used by unit tests; &self for symmetry with other parse helpers"
-    )]
+    #[allow(dead_code, reason = "called from unit tests; production path wires L2CAP later")]
+    #[expect(clippy::unused_self, reason = "instance method for symmetry with other parse helpers")]
     fn parse_write_response(&self, response: &[u8]) -> Result<()> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -475,7 +472,6 @@ mod tests {
 
     struct MockTransport;
 
-    #[async_trait::async_trait]
     impl Transport for MockTransport {
         fn transport_type(&self) -> TransportType {
             TransportType::Usb

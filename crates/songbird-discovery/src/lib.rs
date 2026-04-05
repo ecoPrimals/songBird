@@ -201,15 +201,6 @@
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod security_birdsong_provider;
 
-/// Deprecated alias for [`security_birdsong_provider`].
-#[deprecated(note = "use module `security_birdsong_provider` (capability-based naming)")]
-pub mod beardog_birdsong_provider {
-    pub use crate::security_birdsong_provider::*;
-
-    /// Deprecated alias for [`crate::SecurityBirdSongProvider`].
-    #[deprecated(note = "use SecurityBirdSongProvider")]
-    pub type BearDogBirdSongProvider = crate::SecurityBirdSongProvider;
-}
 /// BirdSong encryption configuration and processing for discovery.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod birdsong;
@@ -262,9 +253,6 @@ mod tests_self_filtering;
 /// Security-provider-backed `BirdSong` provider for encrypted discovery.
 pub use security_birdsong_provider::SecurityBirdSongProvider;
 
-/// Deprecated alias for [`SecurityBirdSongProvider`].
-#[deprecated(note = "use SecurityBirdSongProvider")]
-pub type BearDogBirdSongProvider = SecurityBirdSongProvider;
 /// `BirdSong` encryption types and processor for discovery traffic.
 pub use birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor}; // REFACTORED v3.22.0
 /// Factory for creating discovery backends from configuration or auto-detection.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Sovereign Onion Service JSON-RPC Handler
@@ -338,9 +338,7 @@ impl Default for OnionHandler {
 #[cfg(test)]
 fn is_expected_crypto_delegate_connectivity_error(msg: &str) -> bool {
     let m = msg.to_lowercase();
-    #[allow(deprecated)]
-    let beardog_name = songbird_types::primal_names::BEARDOG;
-    m.contains(beardog_name)
+    m.contains("security provider")
         || m.contains("socket")
         || m.contains("ipc")
         || m.contains("rpc")
@@ -397,7 +395,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_onion_start_without_beardog() {
+    async fn test_onion_start_without_security_provider() {
         // This test verifies the handler attempts to find security provider
         // In CI/test env without security provider, it should fail gracefully
         let handler = OnionHandler::new();
@@ -413,7 +411,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_onion_connect_without_beardog() {
+    async fn test_onion_connect_without_security_provider() {
         // This test verifies the handler attempts to find security provider
         let handler = OnionHandler::new();
         let result = handler

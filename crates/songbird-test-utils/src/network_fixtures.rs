@@ -128,7 +128,7 @@ pub fn test_websocket_url() -> String {
     format!("ws://{}:{}", test_bind_ip_str(), test_port())
 }
 
-#[expect(
+#[allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,

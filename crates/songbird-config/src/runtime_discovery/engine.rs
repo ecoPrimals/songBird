@@ -18,7 +18,7 @@ use super::types::{DiscoveredService, DiscoveryMethod};
 /// Discovers services by capability at runtime with zero hardcoded knowledge.
 pub struct RuntimeDiscoveryEngine {
     /// Required capabilities for this primal
-    #[expect(dead_code, reason = "future: multi-capability queries")]
+    #[allow(dead_code, reason = "future: multi-capability queries")]
     capabilities: Vec<String>,
 
     /// Discovery timeout (will be used in timeout wrapper around discovery methods)

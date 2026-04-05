@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Unit tests for [`crate::security`] (security-provider lineage relay integration and mocks).
@@ -60,11 +60,13 @@ async fn jsonrpc_accept_write_shutdown(listener: UnixListener, result: serde_jso
 }
 
 #[tokio::test]
-async fn test_beardog_provider_creation() {
-    let provider =
-        SecurityBirdSongProvider::new("/tmp/beardog.sock", Some("test-family".to_string()));
+async fn test_security_provider_creation() {
+    let provider = SecurityBirdSongProvider::new(
+        "/tmp/security-provider.sock",
+        Some("test-family".to_string()),
+    );
 
-    assert_eq!(provider.test_socket_path().to_str().unwrap(), "/tmp/beardog.sock");
+    assert_eq!(provider.test_socket_path().to_str().unwrap(), "/tmp/security-provider.sock");
     assert_eq!(provider.test_family_id(), Some(&"test-family".to_string()));
 }
 
@@ -180,17 +182,17 @@ async fn test_mock_relay_determine_masking() {
 }
 
 #[test]
-fn beardog_birdsong_provider_constructed_without_panicking() {
-    let _p = SecurityBirdSongProvider::new("/tmp/beardog-unit.sock", Some("fam".into()));
+fn security_birdsong_provider_constructed_without_panicking() {
+    let _p = SecurityBirdSongProvider::new("/tmp/security-provider-unit.sock", Some("fam".into()));
 }
 
 #[test]
-fn beardog_relay_authority_with_explicit_path_constructed() {
+fn security_relay_authority_with_explicit_path_constructed() {
     let _a = SecurityRelayAuthority::with_socket_path("/tmp/relay-auth.sock");
 }
 
 #[test]
-fn bear_dog_relay_authority_default_constructed() {
+fn security_relay_authority_default_constructed() {
     let _a = SecurityRelayAuthority::default();
 }
 
@@ -212,7 +214,7 @@ async fn mock_birdsong_rejects_unknown_prefix() {
 }
 
 #[tokio::test]
-async fn bear_dog_authorize_relay_jsonrpc_success_parses_fields() {
+async fn security_authorize_relay_jsonrpc_success_parses_fields() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind unix listener");
@@ -241,7 +243,7 @@ async fn bear_dog_authorize_relay_jsonrpc_success_parses_fields() {
 }
 
 #[tokio::test]
-async fn bear_dog_determine_masking_jsonrpc_parses_each_level() {
+async fn security_determine_masking_jsonrpc_parses_each_level() {
     let cases = [
         ("none", MaskingLevel::None),
         ("timing_only", MaskingLevel::TimingOnly),
@@ -271,7 +273,7 @@ async fn bear_dog_determine_masking_jsonrpc_parses_each_level() {
 }
 
 #[tokio::test]
-async fn bear_dog_authorize_relay_defaults_when_fields_missing() {
+async fn security_authorize_relay_defaults_when_fields_missing() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");
@@ -292,9 +294,9 @@ async fn bear_dog_authorize_relay_defaults_when_fields_missing() {
 }
 
 #[tokio::test]
-async fn bear_dog_authorize_relay_socket_failure_denies_securely() {
+async fn security_authorize_relay_socket_failure_denies_securely() {
     let auth = SecurityRelayAuthority::with_socket_path(
-        "/nonexistent/songbird/beardog/does_not_exist.sock",
+        "/nonexistent/songbird/security-provider/does_not_exist.sock",
     )
     .authorize_relay(&NodeId::from("r"), &NodeId::from("q"))
     .await
@@ -307,9 +309,9 @@ async fn bear_dog_authorize_relay_socket_failure_denies_securely() {
 }
 
 #[tokio::test]
-async fn bear_dog_determine_masking_socket_failure_full_visibility() {
+async fn security_determine_masking_socket_failure_full_visibility() {
     let level = SecurityRelayAuthority::with_socket_path(
-        "/nonexistent/songbird/beardog/does_not_exist.sock",
+        "/nonexistent/songbird/security-provider/does_not_exist.sock",
     )
     .determine_masking(&NodeId::from("r"), &NodeId::from("q"))
     .await
@@ -319,11 +321,11 @@ async fn bear_dog_determine_masking_socket_failure_full_visibility() {
 }
 
 #[tokio::test]
-async fn bear_dog_birdsong_encrypt_jsonrpc_roundtrip() {
+async fn security_birdsong_encrypt_jsonrpc_roundtrip() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");
-    let ciphertext = b"cipher-bytes-from-beardog";
+    let ciphertext = b"cipher-bytes-from-security-provider";
     let b64 = general_purpose::STANDARD.encode(ciphertext);
     let result = serde_json::json!({ "ciphertext": b64 });
     let serve = tokio::spawn(jsonrpc_accept_write_shutdown(listener, result));
@@ -336,7 +338,7 @@ async fn bear_dog_birdsong_encrypt_jsonrpc_roundtrip() {
 }
 
 #[tokio::test]
-async fn bear_dog_birdsong_encrypt_accepts_v1_encrypted_field_name() {
+async fn security_birdsong_encrypt_accepts_v1_encrypted_field_name() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");
@@ -353,7 +355,7 @@ async fn bear_dog_birdsong_encrypt_accepts_v1_encrypted_field_name() {
 }
 
 #[tokio::test]
-async fn bear_dog_birdsong_decrypt_jsonrpc_success() {
+async fn security_birdsong_decrypt_jsonrpc_success() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");
@@ -372,7 +374,7 @@ async fn bear_dog_birdsong_decrypt_jsonrpc_success() {
 }
 
 #[tokio::test]
-async fn bear_dog_birdsong_decrypt_success_false_returns_none() {
+async fn security_birdsong_decrypt_success_false_returns_none() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");
@@ -390,7 +392,7 @@ async fn bear_dog_birdsong_decrypt_success_false_returns_none() {
 }
 
 #[tokio::test]
-async fn bear_dog_birdsong_decrypt_jsonrpc_error_returns_none() {
+async fn security_birdsong_decrypt_jsonrpc_error_returns_none() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");
@@ -416,7 +418,7 @@ async fn bear_dog_birdsong_decrypt_jsonrpc_error_returns_none() {
 }
 
 #[tokio::test]
-async fn bear_dog_birdsong_decrypt_missing_plaintext_errors() {
+async fn security_birdsong_decrypt_missing_plaintext_errors() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");
@@ -431,7 +433,7 @@ async fn bear_dog_birdsong_decrypt_missing_plaintext_errors() {
 }
 
 #[tokio::test]
-async fn bear_dog_authorize_relay_jsonrpc_authorized_false() {
+async fn security_authorize_relay_jsonrpc_authorized_false() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind unix listener");
@@ -457,7 +459,7 @@ async fn bear_dog_authorize_relay_jsonrpc_authorized_false() {
 }
 
 #[tokio::test]
-async fn bear_dog_birdsong_encrypt_missing_ciphertext_errors() {
+async fn security_birdsong_encrypt_missing_ciphertext_errors() {
     let path = unique_socket_path();
     let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind");

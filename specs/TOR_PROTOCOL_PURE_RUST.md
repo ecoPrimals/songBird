@@ -12,7 +12,7 @@
 This specification defines a **minimal Tor protocol implementation** in Pure Rust for Songbird, enabling .onion service hosting and client connectivity without external dependencies.
 
 **Key Principles**:
-- ✅ **TRUE PRIMAL**: 100% BearDog crypto delegation
+- ✅ **TRUE PRIMAL**: 100% security provider crypto delegation (`CryptoProvider`)
 - ✅ **Pure Rust**: Zero external dependencies (no Tor daemon, no Arti, no C)
 - ✅ **Minimal Subset**: Onion services only (not full Tor functionality)
 - ✅ **Memory Safe**: No unsafe blocks, async/await, modern Rust
@@ -44,9 +44,9 @@ This specification defines a **minimal Tor protocol implementation** in Pure Rus
 │                                                              │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │ PUBLIC API                                             │ │
-│  │ ├─ TorClient::new(beardog)                            │ │
+│  │ ├─ TorClient::new(crypto)                            │ │
 │  │ ├─ TorClient::connect(onion_addr) -> TorStream       │ │
-│  │ ├─ TorService::new(beardog, port)                     │ │
+│  │ ├─ TorService::new(crypto, port)                     │ │
 │  │ └─ TorService::listen() -> TorListener               │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                             │                                │
@@ -74,7 +74,7 @@ This specification defines a **minimal Tor protocol implementation** in Pure Rus
 │  └────────────────────────────────────────────────────────┘ │
 │                             │                                │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ CRYPTO DELEGATION (BearDog)                           │ │
+│  │ CRYPTO DELEGATION (Security Provider)                           │ │
 │  │ ├─ ed25519_sign/verify (onion identity)              │ │
 │  │ ├─ x25519_derive_secret (ntor handshake)             │ │
 │  │ ├─ aes_128_ctr_encrypt/decrypt (cell encryption)     │ │
@@ -113,7 +113,7 @@ default = []
 persistent-cache = ["sled"]  # Optional consensus caching
 ```
 
-**Note**: Zero crypto dependencies - all delegated to BearDog!
+**Note**: Zero crypto dependencies - all delegated to Security Provider!
 
 ---
 
@@ -203,7 +203,7 @@ bitflags! {
 
 impl Consensus {
     /// Fetch consensus from directory authorities
-    pub async fn fetch(beardog: &BeardogCryptoClient) -> Result<Self> {
+    pub async fn fetch(crypto: &CryptoProvider) -> Result<Self> {
         // 1. Connect to random authority
         let authority = Self::select_random_authority();
         
@@ -218,13 +218,13 @@ impl Consensus {
         ).await??;
         
         // 4. Parse consensus
-        Self::parse(&response, beardog).await
+        Self::parse(&response, crypto).await
     }
     
     /// Parse consensus document
-    async fn parse(data: &[u8], beardog: &BeardogCryptoClient) -> Result<Self> {
+    async fn parse(data: &[u8], crypto: &CryptoProvider) -> Result<Self> {
         // Parse using nom
-        // Verify signatures using BearDog ed25519_verify
+        // Verify signatures using Security Provider ed25519_verify
         // Extract relay entries
         todo!()
     }
@@ -333,10 +333,10 @@ impl NtorHandshake {
     /// Client side: Generate CREATE2 cell
     pub async fn create_cell(
         &self,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<(Cell, [u8; 32])> {
         // 1. Generate ephemeral X25519 keypair
-        let client_ephemeral = beardog.x25519_generate_ephemeral()?;
+        let client_ephemeral = crypto.x25519_generate_ephemeral()?;
         
         // 2. Construct CREATE2 payload (ntor)
         // Format: NODEID | KEYID | CLIENT_PK
@@ -360,35 +360,35 @@ impl NtorHandshake {
         &self,
         cell: &Cell,
         client_secret: &[u8; 32],
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<CircuitKeys> {
         // 1. Extract server ephemeral public key (32 bytes)
         let server_pk = &cell.payload[0..32];
         
-        // 2. Derive shared secret via BearDog X25519
-        let shared_secret = beardog.x25519_derive_secret(
+        // 2. Derive shared secret via Security Provider X25519
+        let shared_secret = crypto.x25519_derive_secret(
             client_secret,
             server_pk.try_into()?
         )?;
         
         // 3. KDF to derive circuit keys using SHA3
-        self.derive_keys(&shared_secret, beardog).await
+        self.derive_keys(&shared_secret, crypto).await
     }
     
     /// Derive circuit keys from shared secret
     async fn derive_keys(
         &self,
         shared_secret: &[u8; 32],
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<CircuitKeys> {
-        // Tor spec: KDF using HMAC-SHA256, but we use SHA3 for BearDog
+        // Tor spec: KDF using HMAC-SHA256, but we use SHA3 for Security Provider
         // Keys needed:
         // - Kf (forward key, 16 bytes for AES-128)
         // - Kb (backward key, 16 bytes for AES-128)
         // - Df (forward digest, 20 bytes for SHA1)
         // - Db (backward digest, 20 bytes for SHA1)
         
-        let key_material = beardog.sha3_256(shared_secret)?;
+        let key_material = crypto.sha3_256(shared_secret)?;
         
         Ok(CircuitKeys {
             forward_key: key_material[0..16].try_into()?,
@@ -422,7 +422,7 @@ impl CircuitExtender {
         &mut self,
         stream: &mut TcpStream,
         next_relay: &RelayInfo,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<()> {
         // 1. Create EXTEND2 relay cell
         let handshake = NtorHandshake {
@@ -430,7 +430,7 @@ impl CircuitExtender {
             relay_ntor_key: next_relay.ntor_onion_key,
         };
         
-        let (create_cell, client_secret) = handshake.create_cell(beardog).await?;
+        let (create_cell, client_secret) = handshake.create_cell(crypto).await?;
         
         // 2. Wrap in RELAY_COMMAND_EXTEND2
         let relay_cell = self.create_relay_cell(
@@ -439,7 +439,7 @@ impl CircuitExtender {
         )?;
         
         // 3. Encrypt with all hop keys (onion encryption)
-        let encrypted = self.encrypt_onion(&relay_cell, beardog).await?;
+        let encrypted = self.encrypt_onion(&relay_cell, crypto).await?;
         
         // 4. Send to circuit
         stream.write_all(&encrypted.encode()).await?;
@@ -450,8 +450,8 @@ impl CircuitExtender {
         let response = Cell::decode(&buf)?;
         
         // 6. Decrypt and process
-        let created = self.decrypt_onion(&response, beardog).await?;
-        let keys = handshake.process_created(&created, &client_secret, beardog).await?;
+        let created = self.decrypt_onion(&response, crypto).await?;
+        let keys = handshake.process_created(&created, &client_secret, crypto).await?;
         
         // 7. Add keys to circuit
         self.keys.push(keys);
@@ -463,13 +463,13 @@ impl CircuitExtender {
     async fn encrypt_onion(
         &self,
         cell: &Cell,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<Cell> {
         let mut payload = cell.payload.clone();
         
         // Encrypt in reverse order (last hop first)
         for keys in self.keys.iter().rev() {
-            payload = beardog.aes_128_ctr_encrypt(
+            payload = crypto.aes_128_ctr_encrypt(
                 &keys.forward_key,
                 &[0u8; 16],  // IV (simplified)
                 &payload
@@ -525,7 +525,7 @@ impl OnionDescriptor {
     pub async fn generate(
         identity: &OnionIdentity,
         intro_points: Vec<IntroductionPoint>,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<Self> {
         // 1. Serialize descriptor content
         let mut content = Vec::new();
@@ -538,8 +538,8 @@ impl OnionDescriptor {
             Self::serialize_intro_point(&mut content, ip);
         }
         
-        // 2. Sign with identity key via BearDog
-        let signature = beardog.ed25519_sign(
+        // 2. Sign with identity key via Security Provider
+        let signature = crypto.ed25519_sign(
             identity.secret_key_bytes(),
             &content
         )?;
@@ -555,7 +555,7 @@ impl OnionDescriptor {
     pub async fn upload(
         &self,
         circuit: &mut Circuit,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<()> {
         // 1. Encode descriptor
         let encoded = self.encode()?;
@@ -586,10 +586,10 @@ impl IntroductionHandler {
     pub async fn handle_introduce(
         &mut self,
         cell: &Cell,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<()> {
         // 1. Decrypt INTRODUCE1 payload
-        let intro1 = self.decrypt_introduce(cell, beardog).await?;
+        let intro1 = self.decrypt_introduce(cell, crypto).await?;
         
         // 2. Extract rendezvous point
         let rend_point = intro1.rendezvous_point;
@@ -627,10 +627,10 @@ impl RendezvousHandler {
     pub async fn rendezvous(
         &self,
         request: RendezvousRequest,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<TorStream> {
         // 1. Build circuit to rendezvous point
-        let mut circuit = Circuit::build_to(&request.rend_point, beardog).await?;
+        let mut circuit = Circuit::build_to(&request.rend_point, crypto).await?;
         
         // 2. Send RENDEZVOUS1 with cookie
         circuit.send_relay(
@@ -641,7 +641,7 @@ impl RendezvousHandler {
         // 3. Derive session keys with client
         let session_keys = self.derive_session_keys(
             &request.client_pk,
-            beardog
+            crypto
         ).await?;
         
         // 4. Return encrypted stream
@@ -717,7 +717,7 @@ impl TorStream {
         circuit: Arc<Mutex<Circuit>>,
         target: &str,
         port: u16,
-        beardog: &BeardogCryptoClient,
+        crypto: &CryptoProvider,
     ) -> Result<Self> {
         let stream_id = circuit.lock().await.allocate_stream_id();
         
@@ -731,7 +731,7 @@ impl TorStream {
             data: format!("{}:{}", target, port).into_bytes(),
         };
         
-        circuit.lock().await.send_relay_cell(begin_cell, beardog).await?;
+        circuit.lock().await.send_relay_cell(begin_cell, crypto).await?;
         
         // Wait for RELAY_CONNECTED
         let response = circuit.lock().await.recv_relay_cell().await?;
@@ -780,71 +780,72 @@ impl TorStream {
 
 ## Crypto Delegation
 
-### BearDog Interface
+### Security Provider Interface
 
-All cryptographic operations are delegated to BearDog via IPC.
+All cryptographic operations are delegated to the security provider via IPC (`CryptoProvider`).
 
 ```rust
-// src/crypto/beardog_client.rs
+// Implemented in-tree as `songbird_crypto_provider::CryptoProvider` (async trait; IPC to the security provider).
+// Low-level JSON-RPC helpers: `songbird-orchestrator/src/crypto/security_crypto_client.rs`.
 
-pub struct BeardogCryptoClient {
-    // IPC client to BearDog
+pub struct CryptoProviderClient {
+    // IPC client to security provider JSON-RPC socket (`SECURITY_PROVIDER_SOCKET` / discovery)
 }
 
-impl BeardogCryptoClient {
+impl CryptoProviderClient {
     // ===== Ed25519 Operations (Identity) =====
     
     /// Sign data with Ed25519
     pub async fn ed25519_sign(&self, secret_key: &[u8; 32], data: &[u8]) -> Result<[u8; 64]> {
-        // IPC call to BearDog
+        // IPC call to Security Provider
     }
     
     /// Verify Ed25519 signature
     pub async fn ed25519_verify(&self, public_key: &[u8; 32], data: &[u8], signature: &[u8; 64]) -> Result<bool> {
-        // IPC call to BearDog
+        // IPC call to Security Provider
     }
     
     // ===== X25519 Operations (Key Exchange) =====
     
     /// Generate ephemeral X25519 keypair
     pub fn x25519_generate_ephemeral(&self) -> Result<X25519Keypair> {
-        // IPC call to BearDog
+        // IPC call to Security Provider
     }
     
     /// Derive shared secret (ECDH)
     pub fn x25519_derive_secret(&self, secret: &[u8; 32], public: &[u8; 32]) -> Result<[u8; 32]> {
-        // IPC call to BearDog
+        // IPC call to Security Provider
     }
     
     // ===== AES-128-CTR Operations (Cell Encryption) =====
     
     /// Encrypt with AES-128-CTR
     pub fn aes_128_ctr_encrypt(&self, key: &[u8; 16], iv: &[u8; 16], data: &[u8]) -> Result<Vec<u8>> {
-        // IPC call to BearDog - NEW METHOD NEEDED
+        // IPC call to Security Provider - NEW METHOD NEEDED
     }
     
     /// Decrypt with AES-128-CTR
     pub fn aes_128_ctr_decrypt(&self, key: &[u8; 16], iv: &[u8; 16], data: &[u8]) -> Result<Vec<u8>> {
-        // IPC call to BearDog - NEW METHOD NEEDED
+        // IPC call to Security Provider - NEW METHOD NEEDED
     }
     
     // ===== SHA3-256 Operations (KDF, Onion Addresses) =====
     
     /// Hash with SHA3-256
     pub fn sha3_256(&self, data: &[u8]) -> Result<[u8; 32]> {
-        // IPC call to BearDog - NEW METHOD NEEDED
+        // IPC call to Security Provider - NEW METHOD NEEDED
     }
     
     // ===== ChaCha20Poly1305 Operations (Optional Relay Encryption) =====
     
     /// Encrypt with ChaCha20Poly1305
     pub fn chacha20_poly1305_encrypt(&self, key: &[u8; 32], nonce: &[u8; 12], data: &[u8]) -> Result<Vec<u8>> {
-        // IPC call to BearDog - ALREADY EXISTS
+        // IPC call to Security Provider - ALREADY EXISTS
     }
 }
 ```
 
-### BearDog Extensions Required
+### Security Provider Extensions Required
 
 **NEW Methods Needed**:
 
@@ -874,7 +875,7 @@ impl BeardogCryptoClient {
 |------------|-----------|---------------|-------------|----------|
 | **Minimal** (Cold Spore) | In-memory | In-memory | None | Fetch on demand |
 | **Standard** (Live Spore) | Sled (1h TTL) | In-memory | Sled (24h TTL) | Cache hot data |
-| **Robust** (Nest Atomic) | NestGate | In-memory | NestGate | Persistent cache |
+| **Robust** (Nest Atomic) | Storage provider | In-memory | Storage provider | Persistent cache |
 
 ### Storage Interface
 
@@ -928,7 +929,7 @@ pub struct SledStorage {
 2. Implement ntor handshake (CREATE2/CREATED2)
 3. Implement circuit extension (EXTEND2/EXTENDED2)
 4. Implement onion encryption (multi-hop)
-5. Add BearDog AES-128-CTR delegation
+5. Add Security Provider AES-128-CTR delegation
 
 **Deliverable**: Can build circuits through Tor network
 
@@ -992,7 +993,7 @@ pub struct SledStorage {
 ## Security Considerations
 
 1. **TRUE PRIMAL Compliance**
-   - ✅ All crypto via BearDog (no direct crypto)
+   - ✅ All crypto via Security Provider (no direct crypto)
    - ✅ Zero external dependencies
    - ✅ Memory safe (no unsafe blocks)
 

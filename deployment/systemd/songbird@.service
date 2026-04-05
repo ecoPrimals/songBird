@@ -21,9 +21,9 @@ Description=Songbird Network Orchestrator (Family: %i)
 Documentation=https://github.com/ecoPrimals/songbird
 After=network-online.target
 Wants=network-online.target
-# Optional: Wait for BearDog instance
-After=beardog@%i.service
-Wants=beardog@%i.service
+# Optional: Wait for Security Provider instance
+After=security-provider@%i.service
+Wants=security-provider@%i.service
 
 [Service]
 Type=notify

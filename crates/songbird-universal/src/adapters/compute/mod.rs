@@ -42,8 +42,17 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
     use songbird_types::{SongbirdError, SongbirdResult};
+    use std::collections::HashMap;
+    use std::sync::Mutex;
     use std::time::Duration;
+
+    static DISCOVERY_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn lock_discovery_env() -> std::sync::MutexGuard<'static, ()> {
+        DISCOVERY_ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
 
     #[test]
     fn test_compute_metrics_calculations() {
@@ -456,5 +465,165 @@ mod tests {
         };
         assert!(m.is_high_load());
         assert_eq!(m.health_status(), HealthStatus::Degraded);
+    }
+
+    // --- ComputeAdapter protocol detection & discovery (no live services) ---
+
+    #[tokio::test]
+    async fn test_compute_adapter_new_tarpc_localhost_port() -> SongbirdResult<()> {
+        let adapter = ComputeAdapter::new("tarpc://localhost:1234".to_string()).await?;
+        assert_eq!(adapter.endpoint(), "tarpc://localhost:1234");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_new_unix_tmp_test_sock() -> SongbirdResult<()> {
+        let adapter = ComputeAdapter::new("unix:///tmp/test.sock".to_string()).await?;
+        assert_eq!(adapter.endpoint(), "unix:///tmp/test.sock");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_new_tarpc_invalid_hostname_err() {
+        let err = ComputeAdapter::new("tarpc://test:1234".to_string())
+            .await
+            .expect_err("tarpc hostname must be localhost or IP");
+        assert!(
+            err.to_string().contains("Invalid hostname")
+                || err.to_string().contains("configuration"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_from_discovery_resolver_injected_tarpc() -> SongbirdResult<()> {
+        let mut m = HashMap::new();
+        m.insert(CapabilityType::Compute, "tarpc://127.0.0.1:9102".to_string());
+        let adapter = ComputeAdapter::new_from_discovery_with_resolver(
+            CapabilityEndpointResolver::with_endpoint_overrides(m),
+        )
+        .await?;
+        assert_eq!(adapter.endpoint(), "tarpc://127.0.0.1:9102");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_from_discovery_resolver_injected_unix() -> SongbirdResult<()> {
+        let mut m = HashMap::new();
+        m.insert(CapabilityType::Compute, "unix:///tmp/injected-compute.sock".to_string());
+        let adapter = ComputeAdapter::new_from_discovery_with_resolver(
+            CapabilityEndpointResolver::with_endpoint_overrides(m),
+        )
+        .await?;
+        assert_eq!(adapter.endpoint(), "unix:///tmp/injected-compute.sock");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_from_discovery_fallback_songbird_compute_endpoint()
+    -> SongbirdResult<()> {
+        let _g = lock_discovery_env();
+        songbird_process_env::reset_overlay();
+        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        songbird_process_env::set_var(
+            "SONGBIRD_COMPUTE_ENDPOINT",
+            "http://from-songbird-compute:6688",
+        );
+
+        let adapter =
+            ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::new())
+                .await
+                .expect("adapter from SONGBIRD_COMPUTE_ENDPOINT");
+        assert_eq!(adapter.endpoint(), "http://from-songbird-compute:6688");
+
+        songbird_process_env::reset_overlay();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_from_discovery_fallback_compute_capability_endpoint()
+    -> SongbirdResult<()> {
+        let _g = lock_discovery_env();
+        songbird_process_env::reset_overlay();
+        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        songbird_process_env::set_var(
+            "COMPUTE_CAPABILITY_ENDPOINT",
+            "http://from-legacy-compute:6699",
+        );
+
+        let adapter =
+            ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::new())
+                .await
+                .expect("adapter from COMPUTE_CAPABILITY_ENDPOINT");
+        assert_eq!(adapter.endpoint(), "http://from-legacy-compute:6699");
+
+        songbird_process_env::reset_overlay();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_from_discovery_fallback_toadstool_endpoint() -> SongbirdResult<()>
+    {
+        let _g = lock_discovery_env();
+        songbird_process_env::reset_overlay();
+        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        songbird_process_env::set_var("TOADSTOOL_ENDPOINT", "http://from-toadstool:6600");
+
+        let adapter =
+            ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::new())
+                .await
+                .expect("adapter from TOADSTOOL_ENDPOINT");
+        assert_eq!(adapter.endpoint(), "http://from-toadstool:6600");
+
+        songbird_process_env::reset_overlay();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_from_discovery_fallback_host_and_port_env() -> SongbirdResult<()>
+    {
+        let _g = lock_discovery_env();
+        songbird_process_env::reset_overlay();
+        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        songbird_process_env::set_var("SONGBIRD_HOST", "http://custom-compute-host");
+        songbird_process_env::set_var("SONGBIRD_COMPUTE_PORT", "9922");
+
+        let adapter =
+            ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::new())
+                .await
+                .expect("adapter from host+port fallback");
+        assert_eq!(adapter.endpoint(), "http://custom-compute-host:9922");
+
+        songbird_process_env::reset_overlay();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_from_discovery_fallback_prefers_songbird_compute_env()
+    -> SongbirdResult<()> {
+        let _g = lock_discovery_env();
+        songbird_process_env::reset_overlay();
+        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        songbird_process_env::set_var("SONGBIRD_COMPUTE_ENDPOINT", "http://songbird-wins:1111");
+        songbird_process_env::set_var("COMPUTE_CAPABILITY_ENDPOINT", "http://legacy-loses:2222");
+
+        let adapter =
+            ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::new())
+                .await
+                .expect("adapter");
+        assert_eq!(adapter.endpoint(), "http://songbird-wins:1111");
+
+        songbird_process_env::reset_overlay();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_adapter_with_timeout_and_endpoint_tarpc() -> SongbirdResult<()> {
+        let adapter = ComputeAdapter::new("tarpc://127.0.0.1:9000".to_string())
+            .await?
+            .with_timeout(Duration::from_millis(350));
+        assert_eq!(adapter.endpoint(), "tarpc://127.0.0.1:9000");
+        assert_eq!(adapter.timeout, Duration::from_millis(350));
+        Ok(())
     }
 }

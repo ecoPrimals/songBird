@@ -10,7 +10,7 @@
 ### Current Design (As Specified)
 
 ```rust
-// In Toadstool's main.rs
+// In Compute provider's main.rs
 use songbird_client::SongbirdClient;  // ❌ HARDCODED DEPENDENCY!
 
 let client = SongbirdClient::discover_local().await?;  // ❌ KNOWS "Songbird"
@@ -22,9 +22,9 @@ let registration = client.register_service(...).await?;
 ### Why It Violates Architecture
 
 1. **Hardcoded Primal Name:** `songbird_client` explicitly names Songbird
-2. **Compile-Time Dependency:** Toadstool knows Songbird exists before runtime
+2. **Compile-Time Dependency:** Compute provider knows Songbird exists before runtime
 3. **Not Extensible:** What if a different orchestrator appears?
-4. **Violates Self-Knowledge:** Toadstool should only know itself
+4. **Violates Self-Knowledge:** Compute provider should only know itself
 
 ---
 
@@ -67,13 +67,13 @@ pub async fn capability_request(
 **Name:** `primal-orchestrator-client` or `orchestrator-client`
 
 ```rust
-// Toadstool's Cargo.toml
+// Compute provider's Cargo.toml
 [dependencies]
 orchestrator-client = { path = "../orchestrator-client" }  # ✅ GENERIC!
 ```
 
 ```rust
-// Toadstool's main.rs
+// Compute provider's main.rs
 use orchestrator_client::OrchestratorClient;  // ✅ No "Songbird" mentioned!
 
 #[tokio::main]
@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
     
     // 2. Register with whoever we found
     let registration = orchestrator.register_service(
-        "Toadstool",
+        "Compute provider",
         vec![Capability { name: "compute", ... }]
     ).await?;
     
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
 **Benefits:**
 - ✅ No hardcoded "Songbird" dependency
 - ✅ Works with ANY orchestrator that supports the protocol
-- ✅ Toadstool only knows itself
+- ✅ Compute provider only knows itself
 - ✅ Follows existing Songbird architecture
 
 ### Option 2: Universal Primal SDK (ALIGN WITH EXISTING)
@@ -106,13 +106,13 @@ async fn main() -> Result<()> {
 **Songbird ALREADY has this!** `crates/songbird-primal-sdk/`
 
 ```rust
-// Toadstool's Cargo.toml
+// Compute provider's Cargo.toml
 [dependencies]
 songbird-primal-sdk = { path = "../songbird/crates/songbird-primal-sdk" }
 ```
 
 ```rust
-// Toadstool's main.rs
+// Compute provider's main.rs
 use songbird_primal_sdk::discovery::{discover_capability, CapabilityType};
 use songbird_primal_sdk::registration::{register_service, ServiceInfo};
 
@@ -126,7 +126,7 @@ async fn main() -> Result<()> {
     // 2. Register with the best one
     let registration = register_service(
         ServiceInfo {
-            name: "Toadstool",
+            name: "Compute provider",
             capabilities: vec!["compute", "gpu"],
             ...
         }
@@ -218,10 +218,10 @@ pub async fn register_with_orchestrator(
 }
 ```
 
-**Usage in Toadstool:**
+**Usage in Compute provider:**
 
 ```rust
-// toadstool/src/main.rs
+// compute_provider/src/main.rs
 use songbird_primal_sdk::registration::{
     discover_orchestrators,
     register_with_orchestrator,
@@ -233,7 +233,7 @@ use songbird_primal_sdk::registration::{
 async fn main() -> Result<()> {
     // 1. Know thyself
     let my_info = ServiceInfo {
-        name: "Toadstool".to_string(),
+        name: "Compute provider".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         capabilities: vec![
             Capability {
@@ -266,7 +266,7 @@ async fn main() -> Result<()> {
     info!("Registered! Assigned endpoint: {}", registration.assigned_endpoint);
     
     // 4. Bind to assigned endpoint
-    let server = ToadstoolServer::new().await?;
+    let server = ComputeProviderServer::new().await?;
     server.bind(registration.assigned_endpoint).await?;
     
     // 5. Start heartbeat
@@ -278,7 +278,7 @@ async fn main() -> Result<()> {
 ```
 
 **Key Points:**
-- ✅ Toadstool never mentions "Songbird"
+- ✅ Compute provider never mentions "Songbird"
 - ✅ Works with ANY orchestrator that implements the protocol
 - ✅ Follows "Each Primal Knows Only Itself"
 - ✅ Aligns with existing `songbird-primal-sdk`
@@ -289,7 +289,7 @@ async fn main() -> Result<()> {
 
 ```
 ┌──────────────┐
-│  TOADSTOOL   │  "I am Toadstool. I can compute."
+│ COMPUTE PROV. │  "I am Compute provider. I can compute."
 └──────┬───────┘
        │
        ↓ (Discovers via UDP/mDNS/env)
@@ -306,7 +306,7 @@ async fn main() -> Result<()> {
      ↓ "Register with me!"
      
 ┌──────────────┐
-│  TOADSTOOL   │  "OK, here are my capabilities: [compute, gpu]"
+│ COMPUTE PROV. │  "OK, here are my capabilities: [compute, gpu]"
 └──────┬───────┘
        ↓
        
@@ -338,10 +338,10 @@ Same as before, but Songbird implements the **generic protocol**
 
 **Time:** 2-3 hours
 
-### Step 3: Wire Toadstool
+### Step 3: Wire Compute provider
 
 ```rust
-// toadstool/Cargo.toml
+// compute_provider/Cargo.toml
 [dependencies]
 songbird-primal-sdk = { path = "../songbird/crates/songbird-primal-sdk" }
 ```
@@ -350,7 +350,7 @@ songbird-primal-sdk = { path = "../songbird/crates/songbird-primal-sdk" }
 
 ### Step 4: Test End-to-End
 
-Verify Toadstool can:
+Verify Compute provider can:
 - Discover Songbird (without knowing it's Songbird)
 - Register capabilities
 - Receive tasks
@@ -367,14 +367,14 @@ Verify Toadstool can:
 ```rust
 // Phoenix-Orchestrator appears on the network
 // Implements same service_registry protocol
-// Toadstool discovers it and registers
+// Compute provider discovers it and registers
 // NO CODE CHANGES NEEDED!
 ```
 
 ### Scenario 2: Multiple Orchestrators
 
 ```rust
-// Toadstool discovers both Songbird and Phoenix
+// Compute provider discovers both Songbird and Phoenix
 // Registers with both
 // Load balances between them
 // Network effects!
@@ -405,7 +405,7 @@ But it **SHOULD BE** capability-based! ✅
 1. ~~Don't create `songbird-client`~~ (hardcoded name)
 2. ✅ Enhance existing `songbird-primal-sdk` (generic, capability-based)
 3. ✅ Add generic `registration` module
-4. ✅ Toadstool uses SDK, discovers "orchestrators", not "Songbird"
+4. ✅ Compute provider uses SDK, discovers "orchestrators", not "Songbird"
 5. ✅ Follows "Each Primal Knows Only Itself" principle
 
 **Result:** Pure capability-based integration that works with ANY orchestrator! 🎉
@@ -418,7 +418,7 @@ But it **SHOULD BE** capability-based! ✅
 |---------------|--------------|-----|
 | Create `songbird-client` crate | Enhance `songbird-primal-sdk` | Aligns with existing architecture |
 | `SongbirdClient::discover()` | `discover_orchestrators()` | Generic, not hardcoded |
-| Wire Toadstool to Songbird | Wire Toadstool to ANY orchestrator | Capability-based |
+| Wire Compute provider to Songbird | Wire Compute provider to ANY orchestrator | Capability-based |
 
 ---
 

@@ -407,8 +407,8 @@ let (public_key, key_id) = beardog.ed25519_generate("onion_service").await?;
 ### Latency Breakdown
 
 **Onion Address Generation**:
-1. Songbird → BearDog: `ed25519_generate()` - ~10 µs IPC + 50 µs crypto = 60 µs
-2. Songbird → BearDog: `sha3_256()` - ~10 µs IPC + 30 µs crypto = 40 µs
+1. Songbird → security provider: `ed25519_generate()` - ~10 µs IPC + 50 µs crypto = 60 µs
+2. Songbird → security provider: `sha3_256()` - ~10 µs IPC + 30 µs crypto = 40 µs
 3. Songbird local: base32 encode - ~5 µs
 
 **Total**: ~105 µs (one-time operation)

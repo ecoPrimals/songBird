@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! No-op security provider — **fallback when no security provider process is available**.
@@ -19,8 +19,8 @@
 //! ## Runtime selection (not Cargo feature-gated)
 //!
 //! The real provider is chosen at runtime via capability discovery and env vars
-//! (`SECURITY_PROVIDER_SOCKET`, `BEARDOG_SOCKET`, `SECURITY_SOCKET`, `BEARDOG_URL` / `SECURITY_URL`
-//! for `unix://` paths). This module is always compiled so binaries can degrade gracefully
+//! (`SECURITY_PROVIDER_SOCKET`, `SECURITY_SOCKET`, legacy `BEARDOG_SOCKET`; `SECURITY_URL` or
+//! legacy `BEARDOG_URL` for `unix://` paths). This module is always compiled so binaries can degrade gracefully
 //! without a separate feature flag.
 
 use super::{
@@ -29,12 +29,12 @@ use super::{
 };
 use thiserror::Error;
 
-/// Errors from [`NoOpSecurityProvider`] — all operations that require a remote security primal fail.
+/// Errors from [`NoOpSecurityProvider`] — all operations that require a remote security provider fail.
 #[derive(Debug, Error)]
 pub enum NoOpSecurityError {
     /// No security provider; lineage operations are unavailable.
     #[error(
-        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or discover the security capability (see SecurityProviderFactory)"
+        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET (legacy BEARDOG_SOCKET), or discover the security capability (see SecurityProviderFactory)"
     )]
     LineageUnavailable {
         /// Operation name for logs and diagnostics.
@@ -43,7 +43,7 @@ pub enum NoOpSecurityError {
 
     /// No security provider; `BirdSong` crypto operations are unavailable.
     #[error(
-        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or discover the security capability"
+        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET (legacy BEARDOG_SOCKET), or discover the security capability"
     )]
     BirdSongUnavailable {
         /// Operation name for logs and diagnostics.
@@ -52,7 +52,7 @@ pub enum NoOpSecurityError {
 
     /// No security provider; relay operations are unavailable.
     #[error(
-        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or discover the security capability"
+        "security provider unavailable: cannot {operation}; set SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET (legacy BEARDOG_SOCKET), or discover the security capability"
     )]
     RelayUnavailable {
         /// Operation name for logs and diagnostics.
@@ -60,21 +60,18 @@ pub enum NoOpSecurityError {
     },
 }
 
-/// No-op provider when the security primal is not configured or discoverable.
+/// No-op provider when the security provider is not configured or discoverable.
 ///
 /// Prefer `SecurityProviderFactory::discover` first; use [`NoOpSecurityProvider::new`] only when
 /// you explicitly need a [`SecurityProvider`] trait object that reports unavailable for crypto.
 pub struct NoOpSecurityProvider;
 
-#[deprecated(note = "use NoOpSecurityProvider")]
-pub type NoOpBearDogProvider = NoOpSecurityProvider;
-
 impl NoOpSecurityProvider {
     /// Create a new no-op provider (logs once at `warn` level).
     pub fn new() -> Self {
         tracing::warn!(
-            "NoOpSecurityProvider: no security primal — encryption and lineage RPCs will fail. \
-             Set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or SECURITY_SOCKET, or ensure UPA \
+            "NoOpSecurityProvider: no security provider — encryption and lineage RPCs will fail. \
+             Set SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET (legacy BEARDOG_SOCKET), or ensure UPA \
              discovers the security capability."
         );
         Self

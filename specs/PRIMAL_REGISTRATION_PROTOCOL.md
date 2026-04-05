@@ -14,9 +14,9 @@
 ### Old Way (Hardcoded)
 ```rust
 // ❌ Each primal binds its own port
-ToadstoolServer::bind("0.0.0.0:8091").await?;
-BeardogServer::bind("0.0.0.0:8092").await?;
-NestgateServer::bind("0.0.0.0:8093").await?;
+ComputeProviderServer::bind("0.0.0.0:8091").await?;
+SecurityProviderServer::bind("0.0.0.0:8092").await?;
+StorageProviderServer::bind("0.0.0.0:8093").await?;
 ```
 
 **Problems:**
@@ -30,7 +30,7 @@ NestgateServer::bind("0.0.0.0:8093").await?;
 // ✅ Primals register with Songbird
 let songbird = SongbirdClient::discover_local().await?;
 let endpoint = songbird.register_service(my_capabilities).await?;
-ToadstoolServer::bind(endpoint).await?; // Songbird-assigned port
+ComputeProviderServer::bind(endpoint).await?; // Songbird-assigned port
 ```
 
 **Benefits:**
@@ -88,7 +88,7 @@ let songbird = SongbirdClient::discover_local().await?;
 POST https://songbird:8080/api/v1/services/register
 
 {
-  "primal_name": "Toadstool",
+  "primal_name": "Compute provider",
   "primal_version": "0.1.0",
   "capabilities": [
     {
@@ -121,7 +121,7 @@ POST https://songbird:8080/api/v1/services/register
   "preferred_protocol": "tarpc",
   "health_check_path": "/health",
   "metadata": {
-    "node_id": "toadstool-eastgate-abc123",
+    "node_id": "compute_provider-eastgate-abc123",
     "hostname": "eastgate",
     "platform": "linux-x86_64"
   }
@@ -133,7 +133,7 @@ POST https://songbird:8080/api/v1/services/register
 ```json
 {
   "status": "registered",
-  "service_id": "svc-toadstool-abc123",
+  "service_id": "svc-compute_provider-abc123",
   "assigned_endpoint": {
     "protocol": "tarpc",
     "host": "0.0.0.0",
@@ -161,10 +161,10 @@ POST https://songbird:8080/api/v1/services/register
 let endpoint = registration_response.assigned_endpoint;
 
 // Bind server
-ToadstoolServer::bind(endpoint.host, endpoint.port).await?;
+ComputeProviderServer::bind(endpoint.host, endpoint.port).await?;
 
 // Start serving
-info!("✅ Toadstool registered with Songbird at {}", endpoint.full_url);
+info!("✅ Compute provider registered with Songbird at {}", endpoint.full_url);
 ```
 
 ### 4. Heartbeat Phase
@@ -175,7 +175,7 @@ info!("✅ Toadstool registered with Songbird at {}", endpoint.full_url);
 POST https://songbird:8080/api/v1/services/{service_id}/heartbeat
 
 {
-  "service_id": "svc-toadstool-abc123",
+  "service_id": "svc-compute_provider-abc123",
   "token": "sb-reg-xyz789-abc123",
   "status": "operational",
   "current_load": {
@@ -212,7 +212,7 @@ POST https://songbird:8080/api/v1/services/{service_id}/heartbeat
 DELETE https://songbird:8080/api/v1/services/{service_id}
 
 {
-  "service_id": "svc-toadstool-abc123",
+  "service_id": "svc-compute_provider-abc123",
   "token": "sb-reg-xyz789-abc123",
   "reason": "graceful_shutdown"
 }
@@ -266,7 +266,7 @@ DELETE https://songbird:8080/api/v1/services/{service_id}
 
 ## 🎯 Implementation Checklist
 
-### For Primal Developers (Toadstool, BearDog, Nestgate, Squirrel)
+### For Primal Developers (compute provider, security provider, storage provider, AI provider)
 
 - [ ] **Add Songbird Client Dependency**
   ```toml
@@ -293,7 +293,7 @@ DELETE https://songbird:8080/api/v1/services/{service_id}
 - [ ] **Register with Songbird**
   ```rust
   let registration = songbird.register_service(
-      "Toadstool",
+      "Compute provider",
       capabilities,
   ).await?;
   ```
@@ -350,12 +350,12 @@ DELETE https://songbird:8080/api/v1/services/{service_id}
 
 ---
 
-## 📊 Example: Toadstool Registration
+## 📊 Example: Compute provider Registration
 
-### Toadstool Code
+### Compute provider Code
 
 ```rust
-// toadstool/crates/server/src/main.rs
+// compute_provider/crates/server/src/main.rs
 
 use songbird_client::{SongbirdClient, Capability, CapabilityType};
 use anyhow::Result;
@@ -364,7 +364,7 @@ use anyhow::Result;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     
-    info!("🍄 Starting Toadstool Compute Server...");
+    info!("🍄 Starting Compute provider Compute Server...");
     
     // 1. Discover Songbird
     info!("🔍 Discovering Songbird orchestrator...");
@@ -393,7 +393,7 @@ async fn main() -> Result<()> {
     // 3. Register with Songbird
     info!("📝 Registering with Songbird...");
     let registration = songbird.register_service(
-        "Toadstool",
+        "Compute provider",
         env!("CARGO_PKG_VERSION"),
         capabilities,
     ).await?;
@@ -402,7 +402,7 @@ async fn main() -> Result<()> {
           registration.assigned_endpoint.full_url);
     
     // 4. Create server
-    let server = ToadstoolServer::new().await?;
+    let server = ComputeProviderServer::new().await?;
     
     // 5. Bind to assigned endpoint
     server.bind(
@@ -423,7 +423,7 @@ async fn main() -> Result<()> {
     });
     
     // 7. Start serving
-    info!("🚀 Toadstool is operational!");
+    info!("🚀 Compute provider is operational!");
     info!("   Endpoint: {}", registration.assigned_endpoint.full_url);
     info!("   Capabilities: compute, ml_training");
     info!("   Managed by: Songbird");
@@ -449,9 +449,9 @@ async fn main() -> Result<()> {
 ```
 Eastgate:
   Songbird (port 8080)
-  ├─ Toadstool (port 8091)
-  ├─ BearDog (port 8092)
-  └─ Nestgate (port 8093)
+  ├─ Compute provider (port 8091)
+  ├─ Security Provider (port 8092)
+  └─ Storage provider (port 8093)
 ```
 
 ### Cross-Tower Discovery
@@ -459,9 +459,9 @@ Eastgate:
 **Songbird broadcasts service capabilities to other towers:**
 
 ```json
-// Westgate discovers Eastgate's Toadstool
+// Westgate discovers Eastgate's Compute provider
 {
-  "service": "Toadstool",
+  "service": "Compute provider",
   "tower": "eastgate",
   "endpoint": "tarpc://192.0.2.10:8091",
   "capabilities": ["compute", "ml_training"],
@@ -476,8 +476,8 @@ Eastgate:
 ```rust
 // User on Westgate submits GPU task
 // Westgate's Songbird:
-//   - Checks local Toadstool (no GPU)
-//   - Discovers Eastgate's Toadstool (RTX 3090)
+//   - Checks local Compute provider (no GPU)
+//   - Discovers Eastgate's Compute provider (RTX 3090)
 //   - Routes task to Eastgate
 //   - Returns result to user
 ```
@@ -494,7 +494,7 @@ Eastgate:
 
 **Level 3 (Identity-Verified):**
 - Primal provides node_id, hostname
-- Songbird verifies via BearDog
+- Songbird verifies via Security Provider
 - Full service mesh access
 
 ### Authentication
@@ -516,7 +516,7 @@ Eastgate:
 1. Create `songbird-client` crate
 2. Implement basic discovery (env var, well-known port)
 3. Add registration endpoint to Songbird
-4. Wire Toadstool as proof-of-concept
+4. Wire Compute provider as proof-of-concept
 
 ### Short-Term (Phase 2)
 1. Add UDP/mDNS discovery
@@ -525,9 +525,9 @@ Eastgate:
 4. Test cross-tower routing
 
 ### Medium-Term (Phase 3)
-1. Wire BearDog (security)
-2. Wire Nestgate (storage)
-3. Wire Squirrel (AI-MCP)
+1. Wire Security Provider (security)
+2. Wire storage provider
+3. Wire AI provider (AI-MCP)
 4. Full ecosystem demo
 
 ---
@@ -535,9 +535,9 @@ Eastgate:
 ## 🎯 Success Criteria
 
 **Phase 1 Complete When:**
-- [ ] Toadstool registers with Songbird
-- [ ] Songbird assigns port to Toadstool
-- [ ] Task submitted to Songbird routes to Toadstool
+- [ ] Compute provider registers with Songbird
+- [ ] Songbird assigns port to Compute provider
+- [ ] Task submitted to Songbird routes to Compute provider
 - [ ] Zero manual configuration
 - [ ] Live demo working
 
@@ -551,6 +551,6 @@ Eastgate:
 ---
 
 **Status:** Specification Ready for Implementation  
-**Next:** Build `songbird-client` crate and wire Toadstool  
+**Next:** Build `songbird-client` crate and wire Compute provider  
 **Vision:** Universal Port Authority + Zero-Config Ecosystem 🎵
 

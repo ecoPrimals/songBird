@@ -206,6 +206,7 @@ mod unit_tests {
 
 #[cfg(test)]
 mod integration_tests {
+    #![allow(clippy::expect_used, reason = "test task joins")]
 
     use std::time::Duration;
 
@@ -322,6 +323,7 @@ mod integration_tests {
 
         let start = tokio::time::Instant::now();
         interval.tick().await;
+        tokio::time::advance(expected).await;
         interval.tick().await;
         let elapsed = start.elapsed();
 
@@ -336,11 +338,12 @@ mod integration_tests {
         let timeout = Duration::from_secs(3);
 
         let start = tokio::time::Instant::now();
-        let result = tokio::time::timeout(timeout, async {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            "never_reached"
-        })
-        .await;
+        let handle = tokio::spawn(async move {
+            tokio::time::timeout(timeout, std::future::pending::<()>()).await
+        });
+        tokio::task::yield_now().await;
+        tokio::time::advance(timeout).await;
+        let result = handle.await.expect("join");
 
         let elapsed = start.elapsed();
 

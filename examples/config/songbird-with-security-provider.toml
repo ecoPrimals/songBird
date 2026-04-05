@@ -51,16 +51,16 @@ enabled = true
 # Use SONGBIRD_SECURITY_PROVIDER_PORT env var (defaults to security_provider_port())
 primary_url = "https://security.internal.company.com:8443"  # Example default
 fallback_urls = [
-    "https://beardog-backup.internal.company.com:8443",  # Example default
-    "https://beardog-dr.internal.company.com:8443"  # Example default
+    "https://security-provider-backup.internal.company.com:8443",  # Example default
+    "https://security-provider-dr.internal.company.com:8443"  # Example default
 ]
 connection_timeout_secs = 30
 request_timeout_secs = 60
 verify_tls = true
 ca_cert_path = "/etc/ssl/certs/company-ca.pem"
 
-# BearDog Authentication Configuration
-[beardog.authentication]
+# Security Provider Authentication Configuration
+[security_provider.authentication]
 auth_method = "mutual_tls"  # Options: api_key, mutual_tls, service_account, oauth2
 
 # For mTLS authentication (recommended for production)
@@ -68,16 +68,16 @@ client_cert_path = "/etc/songbird/certs/songbird-client.pem"
 client_key_path = "/etc/songbird/certs/songbird-client-key.pem"
 
 # Alternative: API Key authentication (for development/testing)
-# api_key = "your-beardog-api-key-here"
+# api_key = "your-security-provider-api-key-here"
 
 # Alternative: Service Account authentication
-# [beardog.authentication.service_account]
+# [security_provider.authentication.service_account]
 # account_id = "songbird-orchestrator@company.com"
-# key_file_path = "/etc/songbird/beardog-service-account.json"
+# key_file_path = "/etc/songbird/security-provider-service-account.json"
 # scopes = ["encryption", "key_management", "audit"]
 
-# BearDog Security Configuration
-[beardog.security]
+# Security Provider Security Configuration
+[security_provider.security]
 default_security_level = "confidential"  # Options: public, internal, confidential, secret, top_secret
 auto_key_rotation = true
 key_rotation_interval_days = 30
@@ -85,47 +85,47 @@ compliance_mode = "soc2"  # Options: standard, fips140, soc2, gdpr
 secure_federation_channels = true
 
 # Encryption Algorithm Preferences
-[beardog.security.encryption_preferences]
+[security_provider.security.encryption_preferences]
 symmetric_algorithm = "aes-256-gcm"        # Options: aes-256-gcm, chacha20-poly1305
 asymmetric_algorithm = "ed25519"           # Options: rsa-4096, ed25519
 kdf = "argon2"                            # Options: pbkdf2, scrypt, argon2
 hash_algorithm = "sha3-256"               # Options: sha256, sha3-256, blake3
 
-# BearDog Key Management Configuration
-[beardog.key_management]
+# Security Provider Key Management Configuration
+[security_provider.key_management]
 storage_backend = "hsm"  # Options: hsm, kms, vault, file
 usage_tracking = true
 
 # Key Backup Configuration
-[beardog.key_management.backup]
+[security_provider.key_management.backup]
 enabled = true
-storage_location = "/secure/beardog/backups"
-backup_encryption_key = "/etc/songbird/beardog-backup.key"
+storage_location = "/secure/security-provider/backups"
+backup_encryption_key = "/etc/songbird/security-provider-backup.key"
 schedule = "0 2 * * *"  # Daily at 2 AM (cron format)
 retention_days = 90
 
 # Key Lifecycle Configuration
-[beardog.key_management.lifecycle]
+[security_provider.key_management.lifecycle]
 expiration_days = 365
 expiration_warning_days = 30
 auto_renewal = true
 grace_period_days = 7
 
-# BearDog Audit Configuration
-[beardog.audit]
+# Security Provider Audit Configuration
+[security_provider.audit]
 audit_level = "comprehensive"  # Options: minimal, standard, comprehensive, paranoid
 log_retention_days = 365
 real_time_alerts = true
 
 # Audit Log Export Configuration
-[beardog.audit.export]
+[security_provider.audit.export]
 enabled = true
 format = "json"  # Options: json, csv, syslog, splunk
 destination = "syslog://audit.internal.company.com:514"
 schedule = "0 * * * *"  # Hourly (cron format)
 
 # Compliance Reporting Configuration
-[beardog.audit.compliance_reporting]
+[security_provider.audit.compliance_reporting]
 enabled = true
 schedule = "0 0 1 * *"  # Monthly on the 1st (cron format)
 recipients = [
@@ -136,21 +136,21 @@ recipients = [
 format = "pdf"  # Options: pdf, html, json
 include_audit_logs = false
 
-# BearDog Performance Configuration
-[beardog.performance]
+# Security Provider Performance Configuration
+[security_provider.performance]
 connection_pool_size = 10
 max_concurrent_operations = 100
 operation_timeout_secs = 30
 
 # Retry Configuration
-[beardog.performance.retry]
+[security_provider.performance.retry]
 max_attempts = 3
 initial_delay_ms = 1000
 max_delay_ms = 10000
 backoff_multiplier = 2.0
 
 # Caching Configuration
-[beardog.performance.caching]
+[security_provider.performance.caching]
 enable_key_caching = true
 key_cache_ttl_secs = 300  # 5 minutes
 enable_access_control_caching = true
@@ -167,8 +167,8 @@ company_name = "Your Company Name"
 deployment_region = "us-east-1"
 environment_tier = "production"
 
-# Custom BearDog integration settings
-[custom.beardog_integration]
+# Custom Security Provider integration settings
+[custom.security_provider_integration]
 enable_snapshot_encryption = true
 enable_federation_security = true
 enable_compliance_mode = true

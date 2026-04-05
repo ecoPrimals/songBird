@@ -10,10 +10,13 @@
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
 #![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
-use crate::JsonRpcClient;
+use crate::adapters::transport::{
+    AdapterTransportKind, CapabilityTransport, build_default_transport, transport_kind_for_endpoint,
+};
 use serde::{Deserialize, Serialize};
-use songbird_http_client::SongbirdHttpClient;
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
+use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, warn};
 
@@ -84,23 +87,6 @@ pub enum ModelType {
     Embedding,
 }
 
-/// Protocol for communication (v3.12.0 - tarpc PRIMARY)
-enum Protocol {
-    Tarpc(crate::TarpcClient), // PRIMARY - high-performance binary RPC
-    JsonRpc(JsonRpcClient),    // SECONDARY - universal, port-free
-    Http(SongbirdHttpClient),  // FALLBACK - direct HTTP (no IPC delegation)
-}
-
-impl std::fmt::Debug for Protocol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Tarpc(_) => write!(f, "Protocol::Tarpc"),
-            Self::JsonRpc(_) => write!(f, "Protocol::JsonRpc"),
-            Self::Http(_) => write!(f, "Protocol::Http"),
-        }
-    }
-}
-
 /// **CAPABILITY-BASED AI ADAPTER**
 ///
 /// Works with ANY AI provider discovered through:
@@ -112,14 +98,14 @@ impl std::fmt::Debug for Protocol {
 pub struct AIAdapter {
     /// Endpoint URL for the AI capability provider
     endpoint: String,
-    /// Protocol (Unix socket JSON-RPC or HTTP)
-    protocol: Protocol,
+    transport: Arc<dyn CapabilityTransport>,
+    transport_kind: AdapterTransportKind,
     /// Request timeout
     timeout: Duration,
 }
 
-impl std::fmt::Debug for AIAdapter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for AIAdapter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AIAdapter")
             .field("endpoint", &self.endpoint)
             .field("timeout", &self.timeout)
@@ -222,23 +208,39 @@ impl AIAdapter {
     /// Returns an error if the protocol client cannot be created.
     #[expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")] // async retained for API stability; protocol init may need await
     pub async fn new(endpoint: String) -> SongbirdResult<Self> {
-        // Protocol detection (v3.12.0 - tarpc PRIMARY)
-        let protocol = if endpoint.starts_with("tarpc://") {
+        let transport_kind = transport_kind_for_endpoint(&endpoint);
+        if endpoint.starts_with("tarpc://") {
             debug!("🚀 Detected tarpc endpoint for AI (PRIMARY): {}", endpoint);
-            Protocol::Tarpc(crate::TarpcClient::new(&endpoint)?)
         } else if endpoint.starts_with("unix://") {
             debug!("🔌 Detected Unix socket endpoint for AI (SECONDARY): {}", endpoint);
-            Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
         } else {
             debug!("🌐 Detected HTTP endpoint for AI (FALLBACK): {}", endpoint);
-            Protocol::Http(SongbirdHttpClient::from_env())
-        };
+        }
+
+        let transport = build_default_transport(&endpoint)?;
 
         Ok(Self {
             endpoint,
-            protocol,
+            transport,
+            transport_kind,
             timeout: Duration::from_secs(15),
         })
+    }
+
+    /// Construct with an explicit transport (crate tests and advanced injection).
+    #[cfg(test)]
+    pub(crate) fn with_transport(
+        endpoint: String,
+        transport: Arc<dyn CapabilityTransport>,
+        transport_kind: AdapterTransportKind,
+        timeout: Duration,
+    ) -> Self {
+        Self {
+            endpoint,
+            transport,
+            transport_kind,
+            timeout,
+        }
     }
 
     /// Set custom request timeout
@@ -261,58 +263,31 @@ impl AIAdapter {
     pub async fn collect_metrics(&self) -> SongbirdResult<AIMetrics> {
         debug!("Collecting AI metrics from: {}", self.endpoint);
 
-        let mut metrics: AIMetrics = match &self.protocol {
-            Protocol::Tarpc(client) => {
-                // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY - ~10-20 μs latency!)
-                debug!("🚀 Using tarpc (PRIMARY protocol)");
-                let result = client.call_method("get_ai_metrics", None).await?;
-                serde_json::from_value(result).map_err(|e| {
-                    warn!("Failed to parse AI metrics from tarpc: {e}");
-                    SongbirdError::serialization(format!("Failed to parse AI metrics: {e}"))
-                })?
-            }
-            Protocol::JsonRpc(client) => {
-                // JSON-RPC protocol over Unix socket (SECONDARY - ~50-100 μs latency)
-                debug!("🔌 Using JSON-RPC (SECONDARY protocol)");
-                let result = client.call_method("get_ai_metrics", None).await?;
-                serde_json::from_value(result).map_err(|e| {
-                    warn!("Failed to parse AI metrics from JSON-RPC: {e}");
-                    SongbirdError::serialization(format!("Failed to parse AI metrics: {e}"))
-                })?
-            }
-            Protocol::Http(client) => {
-                // HTTP protocol (FALLBACK - direct TCP connection)
-                debug!("🌐 Using HTTP (FALLBACK protocol)");
-                let url = format!("{}/metrics/ai", self.endpoint);
-
-                let response = tokio::time::timeout(self.timeout, client.get(&url))
-                    .await
-                    .map_err(|_| {
-                        SongbirdError::network(format!(
-                            "Timeout after {:?} reaching AI provider",
-                            self.timeout
-                        ))
-                    })?
-                    .map_err(|e| {
-                        warn!("Failed to reach AI capability provider via HTTP: {e}");
-                        SongbirdError::network(format!("Failed to reach AI provider: {e}"))
-                    })?;
-
-                if !(200..300).contains(&response.status) {
-                    let status = response.status;
-                    warn!("AI capability provider returned error status: {}", status);
-                    return Err(SongbirdError::service(
-                        "ai",
-                        format!("HTTP {status}: AI metrics unavailable"),
-                    ));
+        let result = tokio::time::timeout(self.timeout, self.transport.get("metrics/ai"))
+            .await
+            .map_err(|_| {
+                SongbirdError::network(format!(
+                    "Timeout after {:?} reaching AI provider",
+                    self.timeout
+                ))
+            })?
+            .map_err(|e| {
+                warn!("Failed to collect AI metrics: {e}");
+                match self.transport_kind {
+                    AdapterTransportKind::Http => e,
+                    _ => SongbirdError::network(format!("Failed to reach AI provider: {e}")),
                 }
+            })?;
 
-                serde_json::from_value(response.body).map_err(|e| {
-                    warn!("Failed to parse AI metrics from HTTP: {e}");
+        let mut metrics: AIMetrics = serde_json::from_value(result).map_err(|e| {
+            warn!("Failed to parse AI metrics: {e}");
+            match self.transport_kind {
+                AdapterTransportKind::Http => {
                     SongbirdError::service("ai", format!("Failed to parse AI metrics: {e}"))
-                })?
+                }
+                _ => SongbirdError::serialization(format!("Failed to parse AI metrics: {e}")),
             }
-        };
+        })?;
 
         // Set timestamp if not provided
         if metrics.timestamp.timestamp() == 0 {

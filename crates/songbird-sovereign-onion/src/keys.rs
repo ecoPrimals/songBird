@@ -85,12 +85,6 @@ impl OnionIdentity {
         })
     }
 
-    /// Deprecated alias for [`Self::generate_via_security_provider`].
-    #[deprecated(note = "use generate_via_security_provider")]
-    pub async fn generate_via_beardog(client: &SecurityCryptoClient) -> Result<Self> {
-        Self::generate_via_security_provider(client).await
-    }
-
     /// Load identity from stored bytes via the security provider
     ///
     /// # Errors
@@ -141,15 +135,6 @@ impl OnionIdentity {
                 created_at: stored.created_at,
             })
         }
-    }
-
-    /// Deprecated alias for [`Self::from_stored_via_security_provider`].
-    #[deprecated(note = "use from_stored_via_security_provider")]
-    pub async fn from_stored_via_beardog(
-        client: &SecurityCryptoClient,
-        bytes: &[u8],
-    ) -> Result<Self> {
-        Self::from_stored_via_security_provider(client, bytes).await
     }
 
     /// Standalone generation (for testing/offline only)
@@ -299,12 +284,6 @@ impl EphemeralKeypair {
         })
     }
 
-    /// Deprecated alias for [`Self::generate_via_security_provider`].
-    #[deprecated(note = "use generate_via_security_provider")]
-    pub async fn generate_via_beardog(client: &SecurityCryptoClient) -> Result<Self> {
-        Self::generate_via_security_provider(client).await
-    }
-
     /// Derive shared secret via the security provider
     ///
     /// # Errors
@@ -316,16 +295,6 @@ impl EphemeralKeypair {
         peer_public: &[u8; 32],
     ) -> Result<[u8; 32]> {
         client.x25519_derive_secret(&self.secret_key, peer_public).await
-    }
-
-    /// Deprecated alias for [`Self::derive_shared_secret_via_security_provider`].
-    #[deprecated(note = "use derive_shared_secret_via_security_provider")]
-    pub async fn derive_shared_secret_via_beardog(
-        self,
-        client: &SecurityCryptoClient,
-        peer_public: &[u8; 32],
-    ) -> Result<[u8; 32]> {
-        self.derive_shared_secret_via_security_provider(client, peer_public).await
     }
 
     /// Standalone generation (for testing/offline only)
@@ -418,25 +387,6 @@ impl SessionKeys {
                 recv_key: client_key,
             })
         }
-    }
-
-    /// Deprecated alias for [`Self::derive_via_security_provider`].
-    #[deprecated(note = "use derive_via_security_provider")]
-    pub async fn derive_via_beardog(
-        client: &SecurityCryptoClient,
-        shared_secret: &[u8; 32],
-        client_nonce: &[u8; 24],
-        server_nonce: &[u8; 24],
-        is_client: bool,
-    ) -> Result<Self> {
-        Self::derive_via_security_provider(
-            client,
-            shared_secret,
-            client_nonce,
-            server_nonce,
-            is_client,
-        )
-        .await
     }
 
     /// Standalone derivation (for testing/offline only)

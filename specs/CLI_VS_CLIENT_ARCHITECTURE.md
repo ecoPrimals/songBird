@@ -11,7 +11,7 @@
 
 | Aspect | `songbird-cli` | `songbird-client` |
 |--------|----------------|-------------------|
-| **Who uses it?** | **Humans** (operators, admins) | **Other primals** (Toadstool, BearDog, etc.) |
+| **Who uses it?** | **Humans** (operators, admins) | **Other primals** (Compute provider, Security Provider, etc.) |
 | **What is it?** | Command-line tool | Library/SDK |
 | **Interface** | Terminal commands (`songbird status`) | Rust API (`client.register_service()`) |
 | **Purpose** | Manage Songbird via CLI | Integrate with Songbird programmatically |
@@ -113,7 +113,7 @@ let client = SongbirdClient::discover_local().await?;
 
 // Registration
 let registration = client.register_service(
-    "Toadstool",
+    "Compute provider",
     vec![Capability { name: "compute", ... }]
 ).await?;
 
@@ -130,7 +130,7 @@ let services = client.query_services("compute").await?;
 ### Architecture
 ```
 ┌──────────────┐
-│  TOADSTOOL   │  (Or BearDog, Nestgate, Squirrel)
+│ COMPUTE PROV. │  (Or Security Provider, Storage Provider, AI provider)
 │  (Binary)    │
 └──────┬───────┘
        │ (imports as library)
@@ -148,10 +148,10 @@ let services = client.query_services("compute").await?;
 ```
 
 ### Use Cases
-- **Toadstool:** Register compute capabilities, receive tasks
-- **BearDog:** Register security capabilities, verify trust
-- **Nestgate:** Register storage capabilities, handle data
-- **Squirrel:** Register AI capabilities, route requests
+- **Compute provider:** Register compute capabilities, receive tasks
+- **Security Provider:** Register security capabilities, verify trust
+- **Storage provider:** Register storage capabilities, handle data
+- **AI provider:** Register AI capabilities, route requests
 
 ### Key Dependencies (Planned)
 - `tokio` - Async runtime
@@ -162,7 +162,7 @@ let services = client.query_services("compute").await?;
 
 ### Examples
 ```rust
-// In Toadstool's main.rs
+// In Compute provider's main.rs
 use songbird_client::{SongbirdClient, Capability};
 
 #[tokio::main]
@@ -172,7 +172,7 @@ async fn main() -> Result<()> {
     
     // 2. Register our capabilities
     let registration = songbird.register_service(
-        "Toadstool",
+        "Compute provider",
         vec![
             Capability {
                 name: "compute".to_string(),
@@ -206,14 +206,14 @@ async fn main() -> Result<()> {
 
 ## 🔄 How They Interact
 
-### Scenario: Developer Checks Toadstool Status
+### Scenario: Developer Checks Compute provider Status
 
 ```
 ┌──────────┐
 │  HUMAN   │
 └────┬─────┘
      │
-     │ "Is Toadstool registered?"
+     │ "Is Compute provider registered?"
      ↓
 ┌─────────────────┐
 │ songbird-cli    │  $ songbird services list
@@ -223,17 +223,17 @@ async fn main() -> Result<()> {
 ┌─────────────────┐
 │ Songbird        │  Service Registry
 │ Orchestrator    │  {
-└────┬────────────┘    "Toadstool": { ... }
+└────┬────────────┘    "Compute provider": { ... }
      ↑               }
      │ (Registered via songbird-client)
      │
 ┌─────────────────┐
-│ Toadstool       │  (Using songbird-client library)
+│ Compute provider       │  (Using songbird-client library)
 └─────────────────┘
 ```
 
 **Flow:**
-1. Toadstool uses `songbird-client` to register
+1. Compute provider uses `songbird-client` to register
 2. Songbird stores registration in service registry
 3. Human uses `songbird-cli` to query status
 4. CLI fetches data from orchestrator
@@ -254,7 +254,7 @@ async fn main() -> Result<()> {
 
 ### 3. Different Consumers
 - **CLI consumers:** Operators, admins, developers (humans)
-- **Client consumers:** Toadstool, BearDog, Nestgate, Squirrel (primals)
+- **Client consumers:** Compute provider, Security Provider, Storage provider, AI provider (primals)
 
 ### 4. Different Interfaces
 - **CLI interface:** Subcommands, flags, help text
@@ -334,16 +334,16 @@ impl SongbirdClient {
 }
 ```
 
-### Phase 2: Use songbird-client in Toadstool
+### Phase 2: Use songbird-client in Compute provider
 
 ```toml
-# toadstool/Cargo.toml
+# compute_provider/Cargo.toml
 [dependencies]
 songbird-client = { path = "../songbird/crates/songbird-client" }
 ```
 
 ```rust
-// toadstool/src/main.rs
+// compute_provider/src/main.rs
 use songbird_client::SongbirdClient;
 
 #[tokio::main]
@@ -416,7 +416,7 @@ pub async fn handle_status() -> Result<()> {
 
 ### songbird-client (New)
 - **Purpose:** Primal-facing integration library
-- **Users:** Toadstool, BearDog, Nestgate, Squirrel
+- **Users:** Compute provider, Security Provider, Storage provider, AI provider
 - **Interface:** Rust API
 - **Examples:** `client.register_service()`, `client.heartbeat()`
 
@@ -430,7 +430,7 @@ pub async fn handle_status() -> Result<()> {
 1. ✅ Understand the distinction (done!)
 2. 🎯 Create `songbird-client` crate
 3. 🎯 Add registration endpoints to orchestrator
-4. 🎯 Wire Toadstool to use client
+4. 🎯 Wire Compute provider to use client
 5. 🎯 Optionally: Refactor CLI to use client internally
 
 ---

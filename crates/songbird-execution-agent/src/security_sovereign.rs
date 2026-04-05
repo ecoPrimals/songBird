@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Sovereign Security with Optional Network Effects
@@ -46,7 +46,7 @@ pub struct SovereignSecurityValidator {
     security_provider: Arc<RwLock<Option<SecurityProviderIntegration>>>,
 
     /// Configuration
-    #[expect(dead_code, reason = "stored for future validator configuration hooks")]
+    #[allow(dead_code, reason = "stored for future validator configuration hooks")]
     config: SecurityConfig,
 }
 
@@ -72,14 +72,22 @@ impl SovereignSecurityValidator {
     pub async fn discover_security_provider(&self) -> SongbirdResult<bool> {
         info!("🔍 Attempting security provider capability discovery...");
 
-        // In production, this would use Songbird's discovery system:
-        // let songbird_discovery = UniversalAdapter::new("songbird")?;
-        // let services = songbird_discovery.discover_capability("enhanced_security").await?;
-
-        // For now, check environment or config (capability-based names first)
-        let security_provider_configured = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
-            .or_else(|_| songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT"))
-            .is_ok();
+        // Check environment (capability-domain names first; legacy primal-specific last)
+        let security_provider_configured = if songbird_process_env::var(
+            "SECURITY_PROVIDER_ENDPOINT",
+        )
+        .is_ok()
+            || songbird_process_env::var("SECURITY_ENDPOINT").is_ok()
+        {
+            true
+        } else if songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT").is_ok() {
+            warn!(
+                "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
+            );
+            true
+        } else {
+            false
+        };
 
         if security_provider_configured {
             info!("✅ Security provider discovered - enabling enhanced security network effect");
@@ -90,12 +98,6 @@ impl SovereignSecurityValidator {
             info!("ℹ️  Security provider not discovered - continuing with sovereign security");
             Ok(false)
         }
-    }
-
-    /// Discover optional legacy `security provider` integration (deprecated alias).
-    #[deprecated(note = "use discover_security_provider (capability-based naming)")]
-    pub async fn discover_beardog(&self) -> SongbirdResult<bool> {
-        self.discover_security_provider().await
     }
 
     /// Validate execution request
@@ -224,7 +226,7 @@ struct SecurityProviderIntegration {
     /// HTTP client for provider requests
     client: IpcHttpClient,
     /// Request timeout for security operations (reserved for timeout enforcement)
-    #[expect(dead_code, reason = "reserved for security-provider request timeout enforcement")]
+    #[allow(dead_code, reason = "reserved for security-provider request timeout enforcement")]
     timeout: std::time::Duration,
 }
 
@@ -233,37 +235,46 @@ impl SecurityProviderIntegration {
     ///
     /// Resolves base URL via:
     /// 1. `SECURITY_PROVIDER_ENDPOINT` (capability-based)
-    /// 2. `BEARDOG_SECURITY_ENDPOINT` (legacy)
-    /// 3. `SONGBIRD_SECURITY_ENDPOINT` (legacy)
-    /// 4. Development-only fallback to `localhost:DEFAULT_HTTPS_PORT`
+    /// 2. `SECURITY_ENDPOINT` (capability domain)
+    /// 3. `BEARDOG_SECURITY_ENDPOINT` (deprecated legacy)
+    /// 4. `SONGBIRD_SECURITY_ENDPOINT` (deprecated legacy)
+    /// 5. Development-only fallback to `localhost:DEFAULT_HTTPS_PORT`
     ///
     /// # Errors
     ///
     /// Returns an error if HTTP client cannot be created, or if no endpoint
     /// is configured in release builds.
     async fn connect() -> SongbirdResult<Self> {
-        let endpoint = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
-            .or_else(|_| songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT"))
-            .or_else(|_| songbird_process_env::var("SONGBIRD_SECURITY_ENDPOINT"))
-            .or_else(|_| -> Result<String, std::env::VarError> {
-                #[cfg(debug_assertions)]
-                {
-                    use songbird_types::constants::{DEFAULT_HTTPS_PORT, LOCALHOST};
-                    let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
-                    warn!("⚠️ Using development fallback for security provider security: {fallback}");
-                    Ok(fallback)
-                }
-                #[cfg(not(debug_assertions))]
-                {
-                    Err(std::env::VarError::NotPresent)
-                }
-            })
-            .map_err(|_| {
-                SongbirdError::configuration(
+        let endpoint = if let Ok(v) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT") {
+            v
+        } else if let Ok(v) = songbird_process_env::var("SECURITY_ENDPOINT") {
+            v
+        } else if let Ok(v) = songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT") {
+            warn!(
+                "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
+            );
+            v
+        } else if let Ok(v) = songbird_process_env::var("SONGBIRD_SECURITY_ENDPOINT") {
+            warn!(
+                "Using legacy env var SONGBIRD_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
+            );
+            v
+        } else {
+            #[cfg(debug_assertions)]
+            {
+                use songbird_types::constants::{DEFAULT_HTTPS_PORT, LOCALHOST};
+                let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
+                warn!("⚠️ Using development fallback for security provider security: {fallback}");
+                fallback
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                return Err(SongbirdError::configuration(
                     "Security provider endpoint not configured. \
-                     Set SECURITY_PROVIDER_ENDPOINT, BEARDOG_SECURITY_ENDPOINT, or SONGBIRD_SECURITY_ENDPOINT.",
-                )
-            })?;
+                     Set SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT (legacy: BEARDOG_SECURITY_ENDPOINT, SONGBIRD_SECURITY_ENDPOINT).",
+                ));
+            }
+        };
 
         // Create HTTP client
         let client = IpcHttpClient::new().await.map_err(|e| {
@@ -375,7 +386,7 @@ impl SecurityProviderIntegration {
     /// Check if `security provider` is currently reachable
     ///
     /// Non-blocking health check to determine if `security provider` integration is active
-    #[expect(dead_code, reason = "reserved for security provider availability probing")]
+    #[allow(dead_code, reason = "reserved for security provider availability probing")]
     async fn is_available(&self) -> bool {
         let url = format!("{}/health", self.endpoint);
 
@@ -384,7 +395,7 @@ impl SecurityProviderIntegration {
 
     /// Get `security provider` endpoint URL
     #[must_use]
-    #[expect(dead_code, reason = "accessor reserved for diagnostics and future callers")]
+    #[allow(dead_code, reason = "accessor reserved for diagnostics and future callers")]
     fn endpoint(&self) -> &str {
         &self.endpoint
     }
@@ -418,7 +429,10 @@ pub struct SecurityConfig {
     /// Maximum timeout (seconds)
     pub max_timeout_seconds: u64,
 
-    /// Enable discovery of optional delegated security provider
+    /// Enable discovery of optional delegated security provider.
+    ///
+    /// Serialized as `enable_security_provider_discovery`; for wire compatibility the key
+    /// `enable_beardog_discovery` is also accepted (via serde alias).
     #[serde(default, alias = "enable_beardog_discovery")]
     pub enable_security_provider_discovery: bool,
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! # 🍼 Zero Touch Module
@@ -143,16 +143,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated, reason = "test exercises deprecated deploy API until migration")]
-    fn test_zero_touch_orchestrator_deploy() {
-        let result = ZeroTouchOrchestrator::deploy();
-        assert!(result.config.is_some());
-
-        let _config = result.config.expect("config should exist");
-        // Config was created successfully
-    }
-
-    #[test]
     fn test_serde_zero_touch_config() {
         let config = ZeroTouchConfig::default();
 
@@ -178,5 +168,27 @@ mod tests {
         let cloned = config.clone();
         assert_eq!(cloned.auto_deploy, config.auto_deploy);
         assert_eq!(cloned.environment_detection, config.environment_detection);
+    }
+
+    #[test]
+    #[allow(deprecated, reason = "deploy path returns legacy SongbirdConfig until migration")]
+    fn test_orchestrator_deploy_config_passes_validation() {
+        let result = ZeroTouchOrchestrator::deploy();
+        let cfg = result.config.expect("deploy should attach a config");
+        let report = cfg.validate().expect("validate");
+        assert!(report.is_valid());
+        assert!(report.errors.is_empty());
+    }
+
+    #[test]
+    fn test_zero_touch_config_json_roundtrip_preserves_fields() {
+        let original = ZeroTouchConfig {
+            auto_deploy: true,
+            environment_detection: false,
+        };
+        let json = serde_json::to_string(&original).expect("serialize");
+        let back: ZeroTouchConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.auto_deploy, original.auto_deploy);
+        assert_eq!(back.environment_detection, original.environment_detection);
     }
 }

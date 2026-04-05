@@ -35,8 +35,6 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
-#[allow(deprecated)]
-use songbird_types::primal_names::BEARDOG;
 use songbird_types::primal_names::BIOMEOS_DIR;
 use std::path::PathBuf;
 use tokio::net::{UnixListener, UnixStream};
@@ -48,8 +46,7 @@ use tracing::{debug, info, warn};
 pub struct UnixIPC;
 
 /// Primals known to serve the security/crypto capability domain.
-#[allow(deprecated)]
-const SECURITY_CAPABILITY_PRIMALS: &[&str] = &[BEARDOG];
+const SECURITY_CAPABILITY_PRIMALS: &[&str] = &["security-provider"];
 
 /// Get XDG-compliant Unix socket path for a primal
 ///
@@ -254,7 +251,7 @@ mod tests {
             ("SECURITY_PROVIDER_SOCKET", "/cap/security.sock"),
             ("BEARDOG_SOCKET", "/legacy/beardog.sock"),
         ]));
-        let path = resolve_socket_path(BEARDOG, env);
+        let path = resolve_socket_path("security-provider", env);
         assert_eq!(path, PathBuf::from("/cap/security.sock"));
     }
 

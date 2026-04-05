@@ -47,9 +47,6 @@ pub struct ProductionSecurityProvider {
     family_id: Option<String>,
 }
 
-#[deprecated(note = "use ProductionSecurityProvider")]
-pub type ProductionBearDogProvider = ProductionSecurityProvider;
-
 impl ProductionSecurityProvider {
     /// Create new production `security provider` provider
     ///

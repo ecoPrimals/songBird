@@ -44,6 +44,8 @@ async fn test_cache_functionality() {
     let services2 = engine.discover_by_capability(CAP).await;
     assert_eq!(services1, services2, "Cache should return same results");
 
+    // Cache TTL uses `std::time::SystemTime` (`discovered_at`); do not use `start_paused` here —
+    // this async sleep advances real time so the entry ages past `cache_ttl`.
     tokio::time::sleep(Duration::from_millis(15)).await;
 
     let services3 = engine.discover_by_capability(CAP).await;

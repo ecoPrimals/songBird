@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn qr_code_default_matches_new() {
         let a = QrCodeChannel::new();
-        let b = QrCodeChannel::default();
+        let b = QrCodeChannel;
         assert_eq!(a.channel_type(), b.channel_type());
         assert_eq!(a.trust_level(), b.trust_level());
     }

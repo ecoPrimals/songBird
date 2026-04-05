@@ -16,9 +16,9 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
 1. **Privacy First**: IPs treated as private identifiers, never exposed publicly
 2. **Zero Trust**: End-to-end encryption, rendezvous can't read content
 3. **Capability-Based**: Nodes discover each other by capability, not name
-4. **Signed Communications**: All messages cryptographically signed (via BearDog)
+4. **Signed Communications**: All messages cryptographically signed (via Security Provider)
 5. **Ephemeral Sessions**: Session IDs rotate frequently
-6. **Graceful Degradation**: Works with or without BearDog (different security levels)
+6. **Graceful Degradation**: Works with or without Security Provider (different security levels)
 
 ---
 
@@ -31,7 +31,7 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
 │   Mobile Device     │         │  Rendezvous       │         │   Home Network      │
 │   (Roaming)         │◄───────►│  Server           │◄───────►│   (Static)          │
 │                     │         │  (Coordinator)     │         │                     │
-│  Songbird + BearDog │         │                    │         │  Songbird + BearDog │
+│  Songbird + Security Provider │         │                    │         │  Songbird + Security Provider │
 └─────────────────────┘         └───────────────────┘         └─────────────────────┘
          │                               │                               │
          │                               │                               │
@@ -55,7 +55,7 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
 - Coordinate connection attempts
 - Maintain ephemeral session IDs
 
-**BearDog (Security):**
+**Security Provider (Security):**
 - Sign all rendezvous messages
 - Verify peer signatures
 - Establish encrypted tunnels
@@ -92,7 +92,7 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
   },
   
   "security": {
-    "signature": "..." // BearDog signs entire message
+    "signature": "..." // Security Provider signs entire message
   }
 }
 ```
@@ -126,7 +126,7 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
   
   "requester": {
     "session_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-    "signature": "..." // BearDog signature
+    "signature": "..." // Security Provider signature
   },
   
   "query": {
@@ -183,7 +183,7 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
   
   "requester": {
     "session_id": "7c9e6679-...",
-    "signature": "..." // BearDog signature
+    "signature": "..." // Security Provider signature
   },
   
   "target": {
@@ -309,7 +309,7 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
 | Rendezvous learns IPs | ✅ Nodes connect directly after coordination |
 | Rendezvous reads messages | ✅ End-to-end encryption (BTSP) |
 | IP exposure in ICE candidates | ✅ Encrypted with target's public key |
-| Node impersonation | ✅ All messages signed by BearDog |
+| Node impersonation | ✅ All messages signed by Security Provider |
 | Session hijacking | ✅ Ephemeral session IDs, short TTLs |
 | DOS attacks | ✅ Rate limiting, signature verification |
 | Traffic analysis | ⚠️ Mitigated but not eliminated (use Tor if needed) |
@@ -317,12 +317,12 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
 ### Trust Levels
 
 **Level 0: Anonymous Discovery**
-- No BearDog available
+- No Security Provider available
 - Uses ephemeral session IDs only
 - Basic capability matching
 - ⚠️ Lower security (suitable for public demo nodes)
 
-**Level 1: Capability-Verified** (BearDog Available)
+**Level 1: Capability-Verified** (Security Provider Available)
 - All messages signed
 - Public key fingerprints verified
 - Capability-based authorization
@@ -341,22 +341,22 @@ This specification defines a **privacy-first rendezvous protocol** for Songbird 
 
 ### Signature Verification
 
-**Without BearDog (Graceful Degradation):**
+**Without Security Provider (Graceful Degradation):**
 ```rust
 // No signatures, rely on TLS only
 // Suitable for testing and public networks
 // Lower security, but still functional
 ```
 
-**With BearDog (Full Security):**
+**With Security Provider (Full Security):**
 ```rust
 // Message signing
 let message = serde_json::to_vec(&register_msg)?;
-let signature = beardog.sign_message(&message).await?;
+let signature = security_provider.sign_message(&message).await?;
 
 // Message verification (rendezvous side)
 let public_key = get_public_key_for_session(session_id).await?;
-beardog.verify_signature(&message, &signature, &public_key).await?;
+security_provider.verify_signature(&message, &signature, &public_key).await?;
 ```
 
 ---
@@ -505,9 +505,9 @@ impl RendezvousClient {
 }
 ```
 
-### Phase 2.3: BearDog Integration
+### Phase 2.3: Security Provider Integration
 
-**Timeline:** 3 days (after BearDog BTSP implementation)
+**Timeline:** 3 days (after Security Provider BTSP implementation)
 
 ```rust
 // Message signing
@@ -531,7 +531,7 @@ impl RendezvousClient {
         if let Some(btsp) = &self.btsp_provider {
             btsp.verify(msg, signature, peer_pubkey_fingerprint).await
         } else {
-            // No verification without BearDog
+            // No verification without Security Provider
             Ok(true)
         }
     }
@@ -595,7 +595,7 @@ cargo test rendezvous
 
 ## 🔗 Related Specifications
 
-- `specs/PRIMAL_RESPONSIBILITY_SEPARATION_SPEC.md` - Songbird vs BearDog
+- `specs/PRIMAL_RESPONSIBILITY_SEPARATION_SPEC.md` - Songbird vs Security Provider
 - `INTERNET_DEPLOYMENT_ROADMAP.md` - Overall roadmap
 - `docs/PRIVACY_FIRST_FEDERATION.md` - Privacy principles
 - `docs/BTSP_INTERFACE_GUIDE.md` - BTSP details
@@ -632,7 +632,7 @@ cargo test rendezvous
 - [ ] HTTP API for registration, query, connection
 - [ ] WebSocket server for real-time coordination
 - [ ] Session management (register, heartbeat, expire)
-- [ ] Signature verification (with BearDog support)
+- [ ] Signature verification (with Security Provider support)
 - [ ] Rate limiting
 - [ ] Relay fallback (basic TURN)
 

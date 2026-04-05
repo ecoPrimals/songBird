@@ -186,7 +186,7 @@ Edit service file to add custom environment variables:
 Environment="SONGBIRD_FAMILY_ID=production"
 Environment="RUST_LOG=debug"
 Environment="SONGBIRD_HTTP_PORT=8080"
-Environment="BEARDOG_SOCKET=/custom/path/beardog.sock"
+Environment="SECURITY_PROVIDER_SOCKET=/custom/path/security-provider.sock"
 ```
 
 Or use override file (recommended):
@@ -344,7 +344,7 @@ sudo systemctl start songbird
 - [ ] Health check passing
 - [ ] Logs verified in journald
 - [ ] Firewall rules configured (if needed)
-- [ ] BearDog integration verified (if available)
+- [ ] Security Provider integration verified (if available)
 - [ ] Monitoring/alerting configured
 
 ---

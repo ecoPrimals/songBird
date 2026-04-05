@@ -74,12 +74,6 @@ pub mod toadstool {
     pub use super::compute_provider::*;
 }
 
-/// Deprecated alias for [`security_provider`].
-#[deprecated(note = "use module `security_provider` (capability-based naming)")]
-pub mod beardog {
-    pub use super::security_provider::*;
-}
-
 /// Deprecated alias for [`storage_provider`].
 #[deprecated(note = "use module `storage_provider` (capability-based naming)")]
 pub mod nestgate {
@@ -96,10 +90,6 @@ pub use capability_mocks::{
 // Use MockCapabilityServer::new(CapabilityType::*) instead
 pub use ai_provider::MockAiProvider;
 pub use common::{HealthStatus, MockPrimalServer, MockResponse};
-
-/// Deprecated alias for [`security_provider::MockSecurityProvider`].
-#[deprecated(note = "use `MockSecurityProvider`")]
-pub type MockBearDog = security_provider::MockSecurityProvider;
 
 /// Deprecated alias for [`storage_provider::MockStorageProvider`].
 #[deprecated(note = "use `MockStorageProvider`")]

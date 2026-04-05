@@ -264,15 +264,15 @@ impl EmergentNetworkEffects {
         new_emergent_capabilities
     }
     
-    /// SPECIFICATION: Example - Songbird + BearDog = Enhanced Security Federation
-    async fn detect_songbird_beardog_emergence(&self) -> Option<EmergentCapability> {
+    /// SPECIFICATION: Example - Songbird + Security Provider = Enhanced Security Federation
+    async fn detect_songbird_security_provider_emergence(&self) -> Option<EmergentCapability> {
         let has_songbird = self.connected_primals.contains_key("songbird");
-        let has_beardog = self.connected_primals.contains_key("beardog");
+        let has_security_provider = self.connected_primals.contains_key("security");
         
-        if has_songbird && has_beardog {
+        if has_songbird && has_security_provider {
             Some(EmergentCapability {
                 name: "entropy-aware-sovereign-federation".to_string(),
-                contributing_primals: vec!["songbird".to_string(), "beardog".to_string()],
+                contributing_primals: vec!["songbird".to_string(), "security".to_string()],
                 emergence_mechanism: EmergenceMechanism::Multiplicative {
                     interacting_capabilities: vec![
                         ("federation".to_string(), "genetic-spawning".to_string()),
@@ -429,8 +429,8 @@ pub struct FederationAwareDiscovery {
     /// Federation-enhanced discovery patterns
     pub federation_patterns: FederationDiscoveryPatterns,
     
-    /// BearDog entropy integration
-    pub entropy_integration: BearDogEntropyIntegration,
+    /// Security Provider entropy integration
+    pub entropy_integration: SecurityProviderEntropyIntegration,
     
     /// Sovereign networking awareness
     pub sovereign_networking: SovereignNetworkingAwareness,
@@ -445,7 +445,7 @@ impl FederationAwareDiscovery {
         // 2. Enhance with federation patterns
         let federation_enhanced = self.enhance_with_federation_patterns(base_discovery).await?;
         
-        // 3. Apply BearDog entropy assessment
+        // 3. Apply Security Provider entropy assessment
         let entropy_assessed = self.apply_entropy_assessment(federation_enhanced).await?;
         
         // 4. Add sovereign networking awareness
@@ -525,7 +525,7 @@ pub struct Phase1Enhancements {
     /// Add federation awareness to existing discovery
     pub federation_discovery_patterns: FederationDiscoveryPatterns,
     
-    /// Add BearDog entropy integration to existing discovery
+    /// Add Security Provider entropy integration to existing discovery
     pub entropy_discovery_integration: EntropyDiscoveryIntegration,
     
     /// Add sovereignty assessment to existing universal adapter
@@ -593,12 +593,12 @@ pub struct Phase3Evolution {
 
 **🧠 Each Primal Builds for Itself + Sovereignty:**
 - ✅ Songbird builds complete sovereignty for itself
-- ✅ BearDog builds complete sovereignty for itself  
+- ✅ Security Provider builds complete sovereignty for itself  
 - ✅ Each primal has no hardcoded knowledge of others
 - ✅ Each primal can operate completely standalone
 
 **🌐 Network Effects Emerge When Connected:**
-- ✅ Songbird + BearDog → Entropy-Aware Sovereign Federation
+- ✅ Songbird + Security Provider → Entropy-Aware Sovereign Federation
 - ✅ Network effects make all primals better
 - ✅ Collective intelligence emerges from the network
 - ✅ Capabilities multiply and evolve through interaction

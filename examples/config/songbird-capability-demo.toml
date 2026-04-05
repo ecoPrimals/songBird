@@ -75,24 +75,24 @@ tracing_enabled = true
 #
 # Examples (use environment-aware ports from songbird_config::defaults::ports):
 #
-# # Security capabilities (uses SONGBIRD_BEARDOG_PORT or auto-discovery)
-# PRIMAL_BEARDOG_V1_ENDPOINT="https://security.internal:${SONGBIRD_BEARDOG_PORT}"
-# PRIMAL_BEARDOG_V1_CAPABILITIES="security,encryption,audit"
+# # Security capabilities (uses SONGBIRD_SECURITY_PROVIDER_PORT or auto-discovery)
+# PRIMAL_SECURITY_PROVIDER_V1_ENDPOINT="https://security.internal:${SONGBIRD_SECURITY_PROVIDER_PORT}"
+# PRIMAL_SECURITY_PROVIDER_V1_CAPABILITIES="security,encryption,audit"
 # # Or better: Use CAPABILITY_SECURITY_ENDPOINT for auto-discovery
 #
 # # Storage capabilities (uses SONGBIRD_METRICS_PORT or auto-discovery)
-# PRIMAL_NESTGATE_V1_ENDPOINT="https://storage.internal:${SONGBIRD_METRICS_PORT}"
-# PRIMAL_NESTGATE_V1_CAPABILITIES="storage,backup,archival"
+# PRIMAL_STORAGE_PROVIDER_V1_ENDPOINT="https://storage.internal:${SONGBIRD_METRICS_PORT}"
+# PRIMAL_STORAGE_PROVIDER_V1_CAPABILITIES="storage,backup,archival"
 # # Or better: Use CAPABILITY_STORAGE_ENDPOINT for auto-discovery
 #
-# # Compute capabilities (uses SONGBIRD_BEARDOG_PORT or auto-discovery)
-# PRIMAL_TOADSTOOL_V1_ENDPOINT="https://compute.internal:${SONGBIRD_BEARDOG_PORT}"
-# PRIMAL_TOADSTOOL_V1_CAPABILITIES="compute,metrics,scaling"
+# # Compute capabilities (uses SONGBIRD_SECURITY_PROVIDER_PORT or auto-discovery)
+# PRIMAL_COMPUTE_PROVIDER_V1_ENDPOINT="https://compute.internal:${SONGBIRD_SECURITY_PROVIDER_PORT}"
+# PRIMAL_COMPUTE_PROVIDER_V1_CAPABILITIES="compute,metrics,scaling"
 # # Or better: Use CAPABILITY_COMPUTE_ENDPOINT for auto-discovery
 #
 # # AI capabilities (uses custom port or auto-discovery)
-# PRIMAL_SQUIRREL_V1_ENDPOINT="https://ai.internal:${AI_SERVICE_PORT:-8002}"
-# PRIMAL_SQUIRREL_V1_CAPABILITIES="ai,inference,training"
+# PRIMAL_AI_PROVIDER_V1_ENDPOINT="https://ai.internal:${AI_SERVICE_PORT:-8002}"
+# PRIMAL_AI_PROVIDER_V1_CAPABILITIES="ai,inference,training"
 # # Or better: Use CAPABILITY_AI_ENDPOINT for auto-discovery
 #
 # # Future/Custom capabilities (no code changes needed!)

@@ -404,6 +404,7 @@ fn test_songbird_response_unit() {
 #[test]
 fn test_songbird_response_finish_processing() {
     let start = Instant::now();
+    // `finish_processing` measures `std::time::Instant::elapsed()`; requires wall-clock delay.
     std::thread::sleep(std::time::Duration::from_millis(10));
     let response = SongbirdResult::success("test data").finish_processing(start);
 

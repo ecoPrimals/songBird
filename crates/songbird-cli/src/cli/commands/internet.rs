@@ -45,7 +45,7 @@ impl PortDiscoveryResult  {fn get_all_required_ports(&self) -> Vec<u16>  {let mu
 }
 
 #[derive(Debug)]
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 struct InternetConnectionWizard  {config: InternetConnectionConfig,
 }
 
@@ -55,7 +55,7 @@ impl InternetConnectionWizard  {fn new(config: InternetConnectionConfig) -> Self
         }
     }
 
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     async fn setup(&self) -> SongbirdResult<()> {
         // Internet connection setup is delegated to external network APIs
         // Production implementations should integrate with:
@@ -250,7 +250,7 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::errors
     }
 }
 /// Save internet configuration to file
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 async fn save_internet_config(
     config: &InternetConnectionConfig,
     path: &PathBuf,

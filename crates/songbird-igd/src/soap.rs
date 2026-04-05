@@ -339,7 +339,7 @@ mod tests {
         let req = PortMappingRequest::new(
             3492,
             3492,
-            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 144)),
+            IpAddr::V4(Ipv4Addr::new(192, 0, 2, 10)),
             Protocol::Tcp,
         );
 
@@ -413,7 +413,7 @@ mod tests {
 </s:Envelope>"#;
 
         let ip = SoapClient::parse_external_ip(response).expect("valid SOAP body");
-        assert_eq!(ip, IpAddr::V4(Ipv4Addr::new(162, 226, 225, 148)));
+        assert_eq!(ip, IpAddr::V4(Ipv4Addr::new(198, 51, 100, 1)));
     }
 
     #[test]

@@ -41,14 +41,14 @@ impl MemoryInfo {
 
     /// Available memory in gigabytes (floating point).
     #[must_use]
-    #[expect(clippy::cast_precision_loss, reason = "GB-scale values fit f64 mantissa")]
+    #[allow(clippy::cast_precision_loss, reason = "GB-scale values fit f64 mantissa")]
     pub fn available_gb(&self) -> f64 {
         self.available as f64 / BYTES_PER_GB as f64
     }
 
     /// Memory usage as a percentage (0.0-100.0).
     #[must_use]
-    #[expect(clippy::cast_precision_loss, reason = "byte counts in practical range fit f64")]
+    #[allow(clippy::cast_precision_loss, reason = "byte counts in practical range fit f64")]
     pub fn usage_percent(&self) -> f64 {
         if self.total == 0 {
             return 0.0;
@@ -80,7 +80,7 @@ pub fn total_memory_bytes() -> u64 {
 
 /// Total physical memory in gigabytes (integer).
 #[must_use]
-#[expect(clippy::cast_possible_truncation, reason = "memory GB always fits usize")]
+#[allow(clippy::cast_possible_truncation, reason = "memory GB always fits usize")]
 pub fn total_memory_gb() -> usize {
     memory_info().map_or(0, |m| m.total_gb() as usize)
 }
@@ -97,7 +97,7 @@ pub struct DiskInfo {
 impl DiskInfo {
     /// Total space in gigabytes.
     #[must_use]
-    #[expect(clippy::cast_precision_loss, reason = "disk GB values fit f64 mantissa")]
+    #[allow(clippy::cast_precision_loss, reason = "disk GB values fit f64 mantissa")]
     pub fn total_gb(&self) -> f64 {
         self.total_bytes as f64 / BYTES_PER_GB as f64
     }

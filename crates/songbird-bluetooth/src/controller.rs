@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HCI Controller adapter for trouble-host
@@ -48,7 +48,10 @@ impl<T: Transport> ControllerAdapter<T> {
     /// Check if controller is connected
     ///
     /// Note: Awaiting hardware validation - will be used in Phase 3 testing
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "reserved for connection health checks; may be referenced by tests"
+    )]
     pub async fn is_connected(&self) -> bool {
         let transport = self.transport.lock().await;
         transport.is_connected()
@@ -56,7 +59,7 @@ impl<T: Transport> ControllerAdapter<T> {
 }
 
 /// HCI packet types
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "reserved for Phase 3 HCI framing")]
 mod hci_packet {
     pub const COMMAND: u8 = 0x01;
     pub const ACL_DATA: u8 = 0x02;
@@ -65,7 +68,7 @@ mod hci_packet {
 }
 
 /// HCI Command opcodes
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "reserved for Phase 3 HCI command path")]
 mod hci_opcode {
     pub const RESET: u16 = 0x0C03;
     pub const LE_SET_SCAN_PARAMETERS: u16 = 0x200B;
@@ -92,7 +95,6 @@ mod tests {
         }
     }
 
-    #[async_trait::async_trait]
     impl Transport for MockTransport {
         fn transport_type(&self) -> crate::transport::TransportType {
             crate::transport::TransportType::Usb

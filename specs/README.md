@@ -1,6 +1,6 @@
 # Songbird Specifications
 
-**Date**: March 2026
+**Date**: April 2026
 **Workspace**: 30-crate Rust workspace (see root `Cargo.toml`)
 **Version**: v0.2.1
 
@@ -36,15 +36,16 @@ songbird-remote-deploy  songbird-genesis          (root: songbird)
 ### Implementation
 - [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — Native JSON-RPC + tarpc protocol
 
-### Archived (fossil record)
-- [UNIVERSAL_ECOSYSTEM_INTEGRATION_SPEC.md](./archive/UNIVERSAL_ECOSYSTEM_INTEGRATION_SPEC.md) — Universal integration patterns (archived)
-- [UNIFIED_ERROR_HANDLING_SPECIFICATION.md](./archive/UNIFIED_ERROR_HANDLING_SPECIFICATION.md) — Error handling patterns (archived)
-- [COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md](./archive/COMPREHENSIVE_TESTING_INFRASTRUCTURE_SPECIFICATION.md) — Testing infrastructure (archived)
+### Archived (fossil record — legacy primal integration specs)
+- [Security provider integration (archived spec)](./archive/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
+- [Entropy hierarchy (archived spec)](./archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
+- [AI provider integration (archived spec)](./archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
+- [Storage discovery (archived spec)](./archive/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved
 
 ### Protocol
 - [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Sovereign multipath protocol
 - [SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md](./SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md) — Federation implementation
-- [SONGBIRD_NEURALAPI_ALIGNMENT_V3_12_1.md](./SONGBIRD_NEURALAPI_ALIGNMENT_V3_12_1.md) — Neural API alignment
+- ~~SONGBIRD_NEURALAPI_ALIGNMENT_V3_12_1.md~~ — Neural API alignment (absorbed into `HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md` and `TARPC_JSON_RPC_PROTOCOL_SPEC.md`)
 - [SONGBIRD_ROLE_CLARIFICATION_SPEC.md](./SONGBIRD_ROLE_CLARIFICATION_SPEC.md) — Songbird vs other primals
 
 ## Archived Specifications

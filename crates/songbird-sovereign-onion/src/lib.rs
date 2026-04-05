@@ -1,13 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
-)]
-#![allow(
-    clippy::expect_used,
-    reason = "onion protocol invariants use expect() for panic-on-violation semantics"
 )]
 #![cfg_attr(test, allow(clippy::unwrap_used, reason = "test assertions"))]
 //! # Songbird Sovereign Onion
@@ -53,9 +49,8 @@
 pub mod address;
 pub mod security_crypto;
 
-/// Deprecated alias for [`security_crypto`].
-#[deprecated(note = "use module security_crypto")]
-pub mod beardog_crypto {
+/// Re-exports [`security_crypto`] for capability-oriented naming.
+pub mod security_provider_crypto {
     pub use crate::security_crypto::*;
 }
 pub mod connector;
@@ -69,19 +64,13 @@ pub mod storage;
 mod storage_sled;
 
 // Re-exports — delegated cryptography via capability-discovered security provider
-#[allow(deprecated)]
-pub use address::{derive_onion_address_via_beardog, validate_onion_address_via_beardog};
 pub use address::{
     derive_onion_address_via_security_provider, validate_onion_address_via_security_provider,
 };
 pub use connector::OnionConnector;
-#[allow(deprecated)]
-pub use crypto::{decrypt_data_via_beardog, encrypt_data_via_beardog};
 pub use crypto::{decrypt_data_via_security_provider, encrypt_data_via_security_provider};
 pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
-#[allow(deprecated)]
-pub use security_crypto::BeardogCryptoClient;
 pub use security_crypto::{Ed25519Keypair, SecurityCryptoClient, X25519Keypair};
 pub use storage::{InMemoryOnionStorage, OnionStorageBackend, PeerInfo};
 #[cfg(feature = "sled-storage")]

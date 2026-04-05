@@ -19,7 +19,7 @@ pub struct GenesisExchange {
     pub(super) config: NfcConfig,
 
     /// Protocol handler
-    #[expect(dead_code, reason = "reserved for future NFC frame operations")]
+    #[allow(dead_code, reason = "reserved for future NFC frame operations")]
     pub(super) protocol: NfcProtocol,
 
     /// Timing protector

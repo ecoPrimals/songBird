@@ -56,7 +56,7 @@
 #![allow(unfulfilled_lint_expectations)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![expect(
+#![allow(
     clippy::uninlined_format_args,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,

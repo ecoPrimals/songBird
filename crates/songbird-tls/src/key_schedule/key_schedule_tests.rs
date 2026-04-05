@@ -344,7 +344,7 @@ async fn compute_finished_verify_data_matches_reference() {
 async fn test_hmac_prefers_test_hook_over_security_client() {
     let mut ks = KeySchedule::new();
     ks.set_crypto_client(SecurityTlsCryptoClient::with_socket_path(
-        "/nonexistent/beardog.sock".to_string(),
+        "/nonexistent/security-provider.sock".to_string(),
     ));
     ks.set_test_hmac(ref_hmac_sha256);
     let out = ks.hkdf_extract(b"a", b"b").await.expect("uses test hmac");

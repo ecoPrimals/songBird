@@ -67,6 +67,7 @@ fn ttl_expires_on_get() {
     cfg.default_ttl = None;
     let c = AdvancedCache::with_config(cfg);
     c.set_with_ttl(CacheKey::from("t"), "v", Some(StdDuration::from_millis(1))).unwrap();
+    // AdvancedCache TTL uses `std::time::Instant`; wall-clock delay required for expiry.
     thread::sleep(StdDuration::from_millis(20));
     let got = c.get(&CacheKey::from("t")).unwrap().value;
     assert!(got.is_none());
@@ -78,6 +79,7 @@ fn cleanup_expired_removes_stale_entries() {
     cfg.default_ttl = None;
     let c = AdvancedCache::with_config(cfg);
     c.set_with_ttl(CacheKey::from("e"), "v", Some(StdDuration::from_millis(1))).unwrap();
+    // TTL/expiry checks use `std::time::Instant`, not Tokio's mock clock.
     thread::sleep(StdDuration::from_millis(15));
     let n = c.cleanup_expired().unwrap();
     assert_eq!(n, 1);
@@ -120,6 +122,7 @@ fn fifo_evicts_oldest_created() {
     cfg.eviction_policy = EvictionPolicy::Fifo;
     let c = AdvancedCache::with_config(cfg);
     c.set(CacheKey::from("first"), "1").unwrap();
+    // FIFO ordering uses `Instant::now()` per entry; brief wall delay differentiates creation time.
     thread::sleep(StdDuration::from_millis(5));
     c.set(CacheKey::from("second"), "2").unwrap();
     c.set(CacheKey::from("third"), "3").unwrap();

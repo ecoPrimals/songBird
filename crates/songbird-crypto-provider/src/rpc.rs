@@ -33,7 +33,7 @@ struct JsonRpcRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[expect(dead_code, reason = "fields consumed via Deserialize")]
+#[allow(dead_code, reason = "fields consumed via Deserialize")]
 struct JsonRpcResponse {
     jsonrpc: String,
     result: Option<Value>,
@@ -45,7 +45,7 @@ struct JsonRpcResponse {
 struct JsonRpcError {
     code: i32,
     message: String,
-    #[expect(dead_code, reason = "consumed via Deserialize")]
+    #[allow(dead_code, reason = "consumed via Deserialize")]
     data: Option<Value>,
 }
 
@@ -535,7 +535,9 @@ mod tests {
                         "message should include server error details, got {message:?}"
                     );
                 }
-                e => return Err(format!("expected Rpc Remote error, got {e:?}").into()),
+                e @ CryptoProviderError::Rpc(_) => {
+                    return Err(format!("expected Rpc Remote error, got {e:?}").into());
+                }
             }
             Ok(())
         }
@@ -563,7 +565,9 @@ mod tests {
             };
             match err {
                 CryptoProviderError::Rpc(RpcError::NullResult) => {}
-                e => return Err(format!("expected Rpc NullResult, got {e:?}").into()),
+                e @ CryptoProviderError::Rpc(_) => {
+                    return Err(format!("expected Rpc NullResult, got {e:?}").into());
+                }
             }
             Ok(())
         }
@@ -597,7 +601,9 @@ mod tests {
                         "raw preview should include server bytes, got {raw_preview:?}"
                     );
                 }
-                e => return Err(format!("expected Rpc ResponseParse, got {e:?}").into()),
+                e @ CryptoProviderError::Rpc(_) => {
+                    return Err(format!("expected Rpc ResponseParse, got {e:?}").into());
+                }
             }
             Ok(())
         }
@@ -620,7 +626,9 @@ mod tests {
                     assert_eq!(target, "crypto provider");
                     assert_eq!(path, "/nonexistent/path/to.sock");
                 }
-                e => return Err(format!("expected Rpc Connect, got {e:?}").into()),
+                e @ CryptoProviderError::Rpc(_) => {
+                    return Err(format!("expected Rpc Connect, got {e:?}").into());
+                }
             }
 
             let neural =
@@ -639,7 +647,9 @@ mod tests {
                     assert_eq!(target, "Neural API");
                     assert_eq!(path, "/nonexistent/neural.sock");
                 }
-                e => return Err(format!("expected Rpc Connect, got {e:?}").into()),
+                e @ CryptoProviderError::Rpc(_) => {
+                    return Err(format!("expected Rpc Connect, got {e:?}").into());
+                }
             }
             Ok(())
         }

@@ -16,7 +16,7 @@
 │                                                                 │
 │  CORE:      100% Pure Rust (Performance + Safety)              │
 │  INTERFACE: Universal Gateways (Language Agnostic)             │
-│  COMPUTE:   Toadstool (Multi-Language Execution)               │
+│  COMPUTE:   Compute provider (Multi-Language Execution)               │
 │                                                                 │
 │             Pure Rust Core + Universal Compatibility           │
 │                                                                 │
@@ -99,15 +99,15 @@
 
 ---
 
-### **Layer 3: Toadstool (Multi-Language Compute)**
+### **Layer 3: Compute provider (Multi-Language Compute)**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         TOADSTOOL                            │
+│                      COMPUTE PROVIDER                          │
 │                (Universal Language Compute System)           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Location: ../toadstool                                    │
+│  Location: ../compute_provider                                    │
 │                                                             │
 │  Purpose:                                                  │
 │    • Execute Python code                                   │
@@ -116,20 +116,20 @@
 │    • Provide sandboxed execution environments              │
 │                                                             │
 │  Integration with Songbird:                                │
-│    • Songbird routes compute requests to Toadstool        │
-│    • Toadstool executes in appropriate language           │
+│    • Songbird routes compute requests to Compute provider        │
+│    • Compute provider executes in appropriate language           │
 │    • Results returned to Songbird for distribution        │
 │                                                             │
 │  Separation of Concerns:                                   │
 │    • Songbird: Orchestration, routing, mesh (Rust)        │
-│    • Toadstool: Multi-language execution (Universal)      │
+│    • Compute provider: Multi-language execution (Universal)      │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Why Toadstool Separation:**
+**Why Compute provider Separation:**
 - ✅ Songbird stays 100% Rust (fast, safe)
-- ✅ Toadstool handles multi-language complexity
+- ✅ Compute provider handles multi-language complexity
 - ✅ Clean separation: orchestration vs execution
 - ✅ Each system optimized for its purpose
 
@@ -179,8 +179,8 @@ External Client (Python/JS/Java)
         │                     │                        │
         ▼                     ▼                        ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   TOADSTOOL     │  │  Native Rust    │  │  NestGate,      │
-│ Multi-Language  │  │   Primal        │  │  BearDog, etc.  │
+│ COMPUTE PROVIDER │  │  Native Rust    │  │  Storage Provider,      │
+│ Multi-Language  │  │   Primal        │  │  Security Provider, etc.  │
 │   Compute       │  │  (e.g., OwlBot) │  │  (Rust Primals) │
 │                 │  │                 │  │                 │
 │ • Python exec   │  │ • Fast          │  │ • Specialized   │
@@ -221,11 +221,11 @@ Python Client ←JSON-RPC→ Songbird Gateway ←tarpc→ Songbird Core
 ### **Compute Task (Multi-Language)**
 
 ```
-Client ←→ Songbird ←→ Toadstool ←→ Python/JS Execution
+Client ←→ Songbird ←→ Compute provider ←→ Python/JS Execution
   
   External: ~2ms (gateway)
   Routing: ~50μs (internal)
-  Toadstool: ~10-100ms (depends on task)
+  Compute provider: ~10-100ms (depends on task)
   Total: ~12-102ms
   
   ✅ Appropriate for compute tasks
@@ -265,7 +265,7 @@ All implemented in Rust!
 "Right tool for the right job"
 
 Songbird:  Orchestration, routing, mesh (Rust)
-Toadstool: Multi-language compute (Universal)
+Compute provider: Multi-language compute (Universal)
 Primals:   Specialized services (Rust native)
 ```
 
@@ -353,7 +353,7 @@ let client = tarpc::client::connect("songbird:8081").await?;
 ```
 Songbird orchestrator: 100% Rust
 Internal RPC (tarpc): 100% Rust
-All primals: 100% Rust (OwlBot, NestGate, BearDog, etc.)
+All primals: 100% Rust (OwlBot, Storage Provider, Security Provider, etc.)
 Gateway implementations: 100% Rust (tonic, axum, etc.)
 
 NO C++ dependencies
@@ -376,7 +376,7 @@ NO language lock-in
 ### **Goal 3: Separation of Concerns** ✅
 ```
 Songbird: Orchestration (Rust) ← What it does best
-Toadstool: Multi-language compute ← What it does best
+Compute provider: Multi-language compute ← What it does best
 Primals: Specialized services (Rust) ← What they do best
 
 Each system optimized for its purpose
@@ -457,7 +457,7 @@ let tls_transport = TlsConnector::new()
 │  CORE:      100% Pure Rust (Songbird + Primals)       │
 │  GATEWAYS:  100% Rust (tonic, axum, tokio, etc.)      │
 │  PROTOCOLS: Universal (JSON-RPC, HTTP, WebSocket)      │
-│  COMPUTE:   Toadstool (multi-language execution)       │
+│  COMPUTE:   Compute provider (multi-language execution)       │
 │                                                         │
 │  Result: Fast Rust Core + Universal Compatibility      │
 │                                                         │
@@ -480,9 +480,9 @@ let tls_transport = TlsConnector::new()
    - tarpc for Rust-to-Rust communication
    - Multi-protocol reinforcement
 
-2. **Toadstool Integration**
-   - Songbird routes compute tasks to Toadstool
-   - Toadstool handles Python/JS execution
+2. **Compute provider Integration**
+   - Songbird routes compute tasks to Compute provider
+   - Compute provider handles Python/JS execution
    - Results returned via tarpc
 
 3. **Client Libraries**

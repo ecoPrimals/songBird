@@ -194,7 +194,6 @@ impl UartTransport {
     }
 }
 
-#[async_trait::async_trait]
 impl Transport for UartTransport {
     fn transport_type(&self) -> TransportType {
         TransportType::Uart

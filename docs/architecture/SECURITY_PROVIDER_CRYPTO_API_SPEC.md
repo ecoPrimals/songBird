@@ -1,17 +1,17 @@
-# BearDog Crypto JSON-RPC API Specification
+# Security Provider Crypto JSON-RPC API Specification
 
-**Date**: January 18, 2026  
-**Version**: 1.0.0  
-**Status**: 🎯 Specification for TLS Crypto Delegation
+**Date**: April 4, 2026  
+**Version**: 2.0.0  
+**Status**: Implemented — TLS + Onion + Discovery crypto delegation
 
 ---
 
 ## Overview
 
-This document specifies the JSON-RPC API that BearDog exposes for crypto operations, specifically designed to support Songbird's Pure Rust TLS implementation.
+This document specifies the JSON-RPC API that the security provider capability exposes for crypto operations, supporting Songbird's Pure Rust TLS, onion service, and discovery delegation.
 
-**Purpose**: Enable Songbird to perform TLS crypto operations via BearDog delegation  
-**Transport**: JSON-RPC 2.0 over Unix sockets  
+**Purpose**: Enable Songbird to perform all crypto operations via security provider delegation  
+**Transport**: JSON-RPC 2.0 over Unix sockets (`security.sock`)  
 **Security**: Unix socket permissions (peer authentication)
 
 ---
@@ -20,7 +20,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ### 1. Ed25519 Signing
 
-**Method**: `beardog.crypto.sign_ed25519`
+**Method**: `crypto.sign_ed25519`
 
 **Purpose**: Sign a message with Ed25519 (for TLS CertificateVerify)
 
@@ -28,7 +28,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.sign_ed25519",
+  "method": "crypto.sign_ed25519",
   "params": {
     "message": "base64_encoded_message",
     "key_id": "tls_signing_key",
@@ -53,7 +53,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ### 2. Ed25519 Verification
 
-**Method**: `beardog.crypto.verify_ed25519`
+**Method**: `crypto.verify_ed25519`
 
 **Purpose**: Verify an Ed25519 signature (for TLS Certificate validation)
 
@@ -61,7 +61,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.verify_ed25519",
+  "method": "crypto.verify_ed25519",
   "params": {
     "message": "base64_encoded_message",
     "signature": "base64_encoded_signature",
@@ -86,7 +86,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ### 3. X25519 Ephemeral Key Generation
 
-**Method**: `beardog.crypto.x25519_generate_ephemeral`
+**Method**: `crypto.x25519_generate_ephemeral`
 
 **Purpose**: Generate ephemeral X25519 key pair (for TLS ECDHE)
 
@@ -94,7 +94,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.x25519_generate_ephemeral",
+  "method": "crypto.x25519_generate_ephemeral",
   "params": {
     "purpose": "tls_key_exchange"
   },
@@ -114,13 +114,13 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 }
 ```
 
-**Note**: Secret key is stored in BearDog, only ID is returned
+**Note**: Secret key is stored in security provider, only ID is returned
 
 ---
 
 ### 4. X25519 Shared Secret Derivation
 
-**Method**: `beardog.crypto.x25519_derive_secret`
+**Method**: `crypto.x25519_derive_secret`
 
 **Purpose**: Derive shared secret from X25519 key exchange
 
@@ -128,7 +128,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.x25519_derive_secret",
+  "method": "crypto.x25519_derive_secret",
   "params": {
     "our_secret_key_id": "ephemeral_key_12345",
     "their_public_key": "base64_encoded_public_key"
@@ -152,7 +152,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ### 5. ChaCha20-Poly1305 Encryption
 
-**Method**: `beardog.crypto.chacha20_poly1305_encrypt`
+**Method**: `crypto.chacha20_poly1305_encrypt`
 
 **Purpose**: Encrypt data with ChaCha20-Poly1305 AEAD (for TLS records)
 
@@ -160,7 +160,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.chacha20_poly1305_encrypt",
+  "method": "crypto.chacha20_poly1305_encrypt",
   "params": {
     "plaintext": "base64_encoded_plaintext",
     "key": "base64_encoded_key",
@@ -188,7 +188,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ### 6. ChaCha20-Poly1305 Decryption
 
-**Method**: `beardog.crypto.chacha20_poly1305_decrypt`
+**Method**: `crypto.chacha20_poly1305_decrypt`
 
 **Purpose**: Decrypt data with ChaCha20-Poly1305 AEAD (for TLS records)
 
@@ -196,7 +196,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.chacha20_poly1305_decrypt",
+  "method": "crypto.chacha20_poly1305_decrypt",
   "params": {
     "ciphertext": "base64_encoded_ciphertext",
     "key": "base64_encoded_key",
@@ -234,7 +234,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ### 7. Blake3 Hashing
 
-**Method**: `beardog.crypto.blake3_hash`
+**Method**: `crypto.blake3_hash`
 
 **Purpose**: Hash data with Blake3 (for TLS transcript hash)
 
@@ -242,7 +242,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.blake3_hash",
+  "method": "crypto.blake3_hash",
   "params": {
     "data": "base64_encoded_data"
   },
@@ -265,7 +265,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ### 8. HMAC-SHA256
 
-**Method**: `beardog.crypto.hmac_sha256`
+**Method**: `crypto.hmac_sha256`
 
 **Purpose**: Compute HMAC-SHA256 (for TLS key derivation)
 
@@ -273,7 +273,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "beardog.crypto.hmac_sha256",
+  "method": "crypto.hmac_sha256",
   "params": {
     "key": "base64_encoded_key",
     "data": "base64_encoded_data"
@@ -302,7 +302,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 | -32600 | Invalid Request | Malformed JSON-RPC |
 | -32601 | Method not found | Unknown method |
 | -32602 | Invalid params | Invalid parameters |
-| -32603 | Internal error | BearDog internal error |
+| -32603 | Internal error | security provider internal error |
 | -32001 | Crypto error | Generic crypto error |
 | -32002 | Key not found | Key ID not found |
 | -32003 | Authentication failed | AEAD auth tag failed |
@@ -329,7 +329,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ## Security Considerations
 
 ### Key Management
-- Long-term TLS keys stored in BearDog
+- Long-term TLS keys stored in security provider
 - Ephemeral keys generated per-connection
 - Automatic key cleanup after use
 
@@ -347,15 +347,15 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 
 ## Implementation Notes
 
-### BearDog Side
-- Implement handlers in `beardog-crypto-service/src/json_rpc_handlers.rs`
-- Use existing BearDog crypto primitives (already Pure Rust!)
+### Security provider side
+- Implement handlers in the security provider JSON-RPC service (e.g. `json_rpc_handlers.rs`)
+- Use existing security provider crypto primitives (already Pure Rust!)
 - Add to existing JSON-RPC server
 
-### Songbird Side
-- Create `BeardogCryptoClient` in `songbird-orchestrator/src/crypto/beardog_client.rs`
+### Songbird side
+- Implement delegation via `songbird-orchestrator/src/crypto/security_crypto_client.rs` (JSON-RPC to the security provider socket; see also [`CryptoProvider`](../../crates/songbird-crypto-provider/src/lib.rs))
 - Implement `rustls::CryptoProvider` trait
-- Delegate all crypto operations to BearDog
+- Delegate all crypto operations to security provider
 
 ---
 
@@ -367,7 +367,7 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 - Test error handling
 
 ### Integration Tests
-- Full TLS handshake via BearDog crypto
+- Full TLS handshake via security provider crypto
 - Performance benchmarks
 - Concurrent connection tests
 
@@ -381,12 +381,12 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ## Migration Path
 
 ### Phase 1 (Week 1-2)
-- Implement BearDog JSON-RPC handlers
+- Implement security provider JSON-RPC handlers
 - Test crypto operations in isolation
 - Document API
 
 ### Phase 2 (Week 3-4)
-- Implement Songbird `BeardogCryptoClient`
+- Wire Songbird’s security-provider delegation (`security_crypto_client` / `CryptoProvider`)
 - Integrate with rustls fork
 - Test TLS handshake
 
@@ -398,8 +398,8 @@ This document specifies the JSON-RPC API that BearDog exposes for crypto operati
 ---
 
 **Status**: 🎯 Ready for implementation!  
-**Timeline**: ~2-3 days for BearDog API  
+**Timeline**: ~2-3 days for security provider API  
 **Result**: Pure Rust crypto provider for TLS!
 
-🐻🐕✨ **BearDog Crypto API - Foundation for Pure Rust TLS!** ✨🐕🐻
+🐻🐕✨ **security provider Crypto API - Foundation for Pure Rust TLS!** ✨🐕🐻
 

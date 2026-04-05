@@ -117,7 +117,7 @@ mod tests {
         let mut header = [0u8; 5];
         header[0] = content_type::HANDSHAKE;
         header[1..3].copy_from_slice(&TLS_1_2.to_be_bytes());
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             reason = "TLS record payload is bounded to u16::MAX by the protocol"
         )]

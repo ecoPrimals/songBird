@@ -16,6 +16,11 @@
 //! - `usb-c`: C-based USB via `rusb` - maximum compatibility fallback
 //! - `uart`: Serial port transport
 
+#![expect(
+    async_fn_in_trait,
+    reason = "native async Transport; generic `T: Transport` only, not dyn"
+)]
+
 use crate::error::Result;
 use std::fmt;
 
@@ -74,7 +79,6 @@ impl fmt::Display for TransportType {
 /// - Thread-safe send/receive operations
 /// - Proper error handling and recovery
 /// - No data corruption or loss
-#[async_trait::async_trait]
 pub trait Transport: Send + Sync {
     /// Get the transport type
     fn transport_type(&self) -> TransportType;

@@ -321,7 +321,7 @@ async fn test_relay_session_deallocation() {
             start.elapsed() <= Duration::from_secs(2),
             "Timeout waiting for session to be active"
         );
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        tokio::task::yield_now().await;
     }
     let stats = server_clone.stats().await;
     assert_eq!(stats.sessions_active, 1);
@@ -339,7 +339,7 @@ async fn test_relay_session_deallocation() {
         if stats.sessions_active == 0 {
             break;
         }
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        tokio::task::yield_now().await;
     }
 
     // Session should be removed

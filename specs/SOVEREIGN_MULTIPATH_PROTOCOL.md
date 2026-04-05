@@ -20,13 +20,13 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 | **IPv4 Direct** | ⚠️ MANUAL | Requires port forward OR IGD |
 | **STUN Client** | ✅ BUILT | Concurrent racing, multiple servers |
 | **Mesh Relay** | ✅ BUILT | `mesh.init`, `relay_enabled: true` |
-| **DNS Beacon** | ✅ WORKING | BearDog-encrypted endpoint discovery |
+| **DNS Beacon** | ✅ WORKING | Security provider–encrypted endpoint discovery |
 | **IGD/UPnP** | ❌ PLANNED | Router becomes tool, not dependency |
 
 ### What Was Achieved This Session
 
 1. **IPv6 Fix**: Reversed binding order to IPv6-first, dual-stack serving both protocols
-2. **Onion Activation**: Wired BearDog correctly, onion service running at `p6m5exqn44xpjtvpal6juhdzh3s7zvlpysrjcknzrxada6mny54ltiyd.onion:3492`
+2. **Onion Activation**: Wired security provider correctly, onion service running at `p6m5exqn44xpjtvpal6juhdzh3s7zvlpysrjcknzrxada6mny54ltiyd.onion:3492`
 3. **Multi-Path Strategy**: Documented complete 7-tier connection priority system
 4. **Router Evolution Design**: Specified IGD/UPnP implementation for sovereign port forwarding
 
@@ -42,7 +42,7 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  TIER 1: IPv6 Direct (via DNS)                                  │
-│    → tower.example.net AAAA → [2600:1700:b0b0:5b90::27]:3492   │
+│    → tower.storage-provider.example AAAA → [2600:1700:b0b0:5b90::27]:3492   │
 │    → No NAT, no port forward, globally routable                 │
 │    → STATUS: ✅ WORKING NOW                                      │
 │                                                                  │
@@ -53,7 +53,7 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 │    → STATUS: ✅ WORKING NOW                                      │
 │                                                                  │
 │  TIER 3: IPv4 Direct (via DNS)                                  │
-│    → tower.example.net A → 198.51.100.1:3492                │
+│    → tower.storage-provider.example A → 198.51.100.1:3492                │
 │    → REQUIRES: Router port forward OR IGD                       │
 │    → STATUS: ⚠️ NEEDS IGD EVOLUTION                             │
 │                                                                  │
@@ -72,7 +72,7 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 │    → STATUS: ⚠️ NEEDS PEER CONNECTIONS                          │
 │                                                                  │
 │  TIER 7: DNS Beacon Discovery                                   │
-│    → beacon.nestgate.io TXT (BearDog-encrypted)                 │
+│    → beacon.storage-provider.example TXT (security-provider–encrypted)                 │
 │    → Family members decrypt to discover all endpoints           │
 │    → STATUS: ✅ WORKING NOW                                      │
 │                                                                  │
@@ -83,7 +83,7 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 
 ```
 Running Processes:
-  BearDog:  /run/user/1000/biomeos/beardog.sock  (crypto provider)
+  Security provider:  `$SECURITY_PROVIDER_SOCKET` (e.g. `/run/user/1000/biomeos/crypto.sock`)  (crypto provider)
   Songbird: /run/user/1000/biomeos/songbird.sock  (network, port 3492)
 
 Songbird Capabilities (Active):
@@ -101,10 +101,10 @@ Active Services:
   STUN Server: Can start via stun.serve (binds 0.0.0.0:3478)
   Birdsong:   family_id: 1894e909e454, encryption: chacha20_poly1305
 
-DNS Records (nestgate.io):
-  tower.example.net  A     198.51.100.1
-  tower.example.net  AAAA  2600:1700:b0b0:5b90::27
-  beacon.nestgate.io TXT   v=biomeos2 (BearDog-encrypted beacon blob)
+DNS Records (storage-provider.example):
+  tower.storage-provider.example  A     198.51.100.1
+  tower.storage-provider.example  AAAA  2600:1700:b0b0:5b90::27
+  beacon.storage-provider.example TXT   v=biomeos2 (security-provider–encrypted beacon blob)
 ```
 
 ---
@@ -132,7 +132,7 @@ LISTEN *:3492 (serves both protocols)
 **Why This Matters**:
 - IPv6 means globally reachable without port forwarding
 - ISP provides global IPv6 address automatically
-- `tower.example.net` AAAA record already resolves correctly
+- `tower.storage-provider.example` AAAA record already resolves correctly
 - No NAT traversal needed (Tier 1 priority)
 
 **Code Reference** (`sovereign_socket.rs`):
@@ -164,7 +164,7 @@ fn try_ipv6_dual_stack(port: u16) -> io::Result<TcpListener> {
 **Protocol Details**:
 - **NOT full Tor** - Simplified sovereign protocol
 - Direct TCP connection with X25519 handshake
-- Every byte encrypted with BearDog-delegated ChaCha20-Poly1305
+- Every byte encrypted with security-provider–delegated ChaCha20-Poly1305
 - Ed25519 identity → deterministic `.onion` address
 - Session key derived per-connection with forward secrecy
 
@@ -176,7 +176,7 @@ fn try_ipv6_dual_stack(port: u16) -> io::Result<TcpListener> {
 ```
 Application Data
       ↓
-ChaCha20-Poly1305 (BearDog)
+ChaCha20-Poly1305 (security provider)
       ↓
 Session Key (X25519 ECDH)
       ↓
@@ -200,7 +200,7 @@ echo '{"jsonrpc":"2.0","method":"onion.status","params":{},"id":1}' \
 - Uses `.onion` address format for consistency
 - Direct TCP, not routed through Tor relays
 - Cryptographic identity prevents address spoofing
-- BearDog handles all crypto operations
+- Security provider handles all crypto operations
 - Zero C dependencies, pure Rust throughout
 
 ### Layer 3: IGD/UPnP Router Evolution (PLANNED)
@@ -474,9 +474,9 @@ Options (in priority order):
 
 **Current State**: ✅ Fully functional
 
-**DNS Record**: `beacon.nestgate.io TXT v=biomeos2 <encrypted_beacon_blob>`
+**DNS Record**: `beacon.storage-provider.example TXT v=biomeos2 <encrypted_beacon_blob>`
 
-**Encryption**: BearDog-encrypted with family beacon seed
+**Encryption**: Security-provider–encrypted with family beacon seed
 
 **Contents**:
 - family_id
@@ -488,10 +488,10 @@ Options (in priority order):
 **How It Works**:
 
 ```
-1. Peer queries DNS: beacon.nestgate.io TXT
+1. Peer queries DNS: beacon.storage-provider.example TXT
 2. Gets encrypted beacon blob (base64)
-3. Requests BearDog to decrypt with family seed
-4. BearDog verifies family membership
+3. Requests security provider to decrypt with family seed
+4. Security provider verifies family membership
 5. If authorized, decrypts and returns all endpoints
 6. Peer tries tiers in order (IPv6 → Onion → IPv4 → etc.)
 ```
@@ -595,7 +595,7 @@ Tier 3 (IPv4):        Application → TLS → TCP → IPv4
 Tier 4 (LAN):         Application → TLS → TCP → IPv4 (local)
 Tier 5 (STUN Punch):  Application → TLS → UDP hole-punch → IPv4/IPv6
 Tier 6 (Family Relay): Application → BirdSong → Relay → BirdSong → Application
-Tier 7 (Beacon):      BearDog decryption → family verification → endpoint list
+Tier 7 (Beacon):      Security provider decryption → family verification → endpoint list
 ```
 
 ### Threat Model
@@ -605,10 +605,10 @@ Tier 7 (Beacon):      BearDog decryption → family verification → endpoint li
 - ✅ Malicious relay (end-to-end encryption via BirdSong)
 - ✅ DNS snooping (beacon is encrypted)
 - ✅ Address spoofing (.onion cryptographic identity)
-- ✅ Man-in-the-middle (BearDog key verification)
+- ✅ Man-in-the-middle (security provider key verification)
 
 **Trusted Components**:
-- BearDog (family key management)
+- Security provider (family key management)
 - Family members (by design - goal is to connect to them)
 - Local device security
 - Dark Forest lineage verification
@@ -617,7 +617,7 @@ Tier 7 (Beacon):      BearDog decryption → family verification → endpoint li
 - ⚠️ IPv6 address potentially correlates to ISP/location (mitigated: common for residential)
 - ⚠️ STUN reveals public IP (necessary for hole punch, minimal exposure)
 - ✅ Onion address is pseudonymous (not tied to physical identity)
-- ✅ Beacon content only readable by family (BearDog encryption)
+- ✅ Beacon content only readable by family (security provider encryption)
 
 ### Dark Forest Lineage Gating
 
@@ -631,8 +631,8 @@ All connections verified by Dark Forest lineage:
 ```
 1. Connection attempt received
 2. Extract family_id from handshake
-3. Query BearDog: birdsong.verify_lineage(family_id, peer_public_key)
-4. BearDog checks: peer derives from same family seed?
+3. Query security provider: birdsong.verify_lineage(family_id, peer_public_key)
+4. Security provider checks: peer derives from same family seed?
 5. If YES: Accept connection
 6. If NO: Reject with "lineage_verification_failed"
 ```
@@ -687,15 +687,15 @@ All connections verified by Dark Forest lineage:
 
 ```bash
 #!/bin/bash
-# Start BearDog
+# Start security provider
 FAMILY_ID=1894e909e454 NODE_ID=gate \
-  BIOMEOS_ROOT=/path/to/biomeOS \
-  /path/to/beardog server --socket /run/user/1000/biomeos/beardog.sock &
+  BIOMEOS_ROOT=/path/to/ecoPrimals/phase2/biomeOS \
+  /path/to/security-provider server --socket "${SECURITY_PROVIDER_SOCKET:-/run/user/1000/biomeos/crypto.sock}" &
 
 # Start Songbird
 FAMILY_ID=1894e909e454 NODE_ID=gate BIOMEOS_BIND_ALL=true \
   SECURITY_PROVIDER_SOCKET=/run/user/1000/biomeos/security.sock \
-  BIOMEOS_ROOT=/path/to/biomeOS \
+  BIOMEOS_ROOT=/path/to/ecoPrimals/phase2/biomeOS \
   /path/to/songbird server --port 3492 --socket /run/user/1000/biomeos/songbird.sock --verbose &
 
 # Wait for Songbird to be ready
@@ -760,7 +760,7 @@ adb push target/aarch64-unknown-linux-gnu/release/songbird /data/local/tmp/prima
 **Why Low Priority**:
 - Current sovereign-onion provides encrypted connections
 - Cryptographic identity via .onion addresses
-- BearDog-delegated crypto (no embedded secrets)
+- Security-provider–delegated crypto (no embedded secrets)
 - Full Tor only needed if ISP blocks Tower IP (rare)
 - Full Tor only needed for anonymity between family (not a requirement)
 
@@ -782,15 +782,15 @@ adb push target/aarch64-unknown-linux-gnu/release/songbird /data/local/tmp/prima
 **Start Full Stack (Tower/Gate)**:
 
 ```bash
-# BearDog (if not running)
+# Security provider (if not running)
 FAMILY_ID=1894e909e454 NODE_ID=gate \
-  BIOMEOS_ROOT=/path/to/biomeOS \
-  /path/to/beardog server --socket /run/user/1000/biomeos/beardog.sock &
+  BIOMEOS_ROOT=/path/to/ecoPrimals/phase2/biomeOS \
+  /path/to/security-provider server --socket "${SECURITY_PROVIDER_SOCKET:-/run/user/1000/biomeos/crypto.sock}" &
 
 # Songbird (IPv6 dual-stack + security provider wired)
 FAMILY_ID=1894e909e454 NODE_ID=gate BIOMEOS_BIND_ALL=true \
   SECURITY_PROVIDER_SOCKET=/run/user/1000/biomeos/security.sock \
-  BIOMEOS_ROOT=/path/to/biomeOS \
+  BIOMEOS_ROOT=/path/to/ecoPrimals/phase2/biomeOS \
   /path/to/songbird server --port 3492 --socket /run/user/1000/biomeos/songbird.sock --verbose &
 
 # Activate onion + mesh (via IPC)
@@ -916,12 +916,12 @@ echo '{"jsonrpc":"2.0","method":"birdsong.get_lineage","params":{},"id":1}' \
 ```bash
 # Tower (gate) - No special config needed
 # IPv6 works automatically
-tower.example.net AAAA 2600:1700:b0b0:5b90::27
+tower.storage-provider.example AAAA 2600:1700:b0b0:5b90::27
 ```
 
 **Peer Connection**:
 ```
-Peer → DNS lookup tower.example.net AAAA
+Peer → DNS lookup tower.storage-provider.example AAAA
      → Connect to [2600:1700:b0b0:5b90::27]:3492
      → Direct connection, no NAT
      → Latency: ~1ms (regional), ~50ms (cross-country)
@@ -948,7 +948,7 @@ SONGBIRD_IGD_ENABLED=true songbird server
 
 **Peer Connection**:
 ```
-Peer → DNS lookup tower.example.net A
+Peer → DNS lookup tower.storage-provider.example A
      → Connect to 198.51.100.1:3492
      → Router forwards to 192.0.2.10:3492
      → Latency: ~1ms (regional), ~50ms (cross-country)
@@ -1041,7 +1041,7 @@ Peer → mDNS discovery: _songbird._tcp.local
 # Core Songbird
 export FAMILY_ID="1894e909e454"
 export NODE_ID="gate"
-export BIOMEOS_ROOT="/path/to/biomeOS"
+export BIOMEOS_ROOT="/path/to/ecoPrimals/phase2/biomeOS"
 export BIOMEOS_BIND_ALL=true
 
 # Sockets
@@ -1065,7 +1065,7 @@ export MESH_MAX_HOPS=3                       # Max relay hops
 
 # Beacon
 export BEACON_UPDATE_INTERVAL=21600          # 6 hours
-export BEACON_DNS_DOMAIN="nestgate.io"
+export BEACON_DNS_DOMAIN="storage-provider.example"
 export BEACON_DNS_RECORD="beacon"
 ```
 
@@ -1194,10 +1194,10 @@ This specification focuses on the **core 7-tier internet connectivity strategy**
 **Last Updated**: February 8, 2026  
 **Status**: IPv6 + Onion WORKING | Router Evolution + Coordinator Wiring Needed
 
-🦀 **Pure Rust** | 🌐 **Multi-Path Resilience** | 🧬 **Sovereign Architecture** | 🐕 **BearDog Crypto**
+🦀 **Pure Rust** | 🌐 **Multi-Path Resilience** | 🧬 **Sovereign Architecture** | 🔐 **Security Provider Crypto**
 
 ## License
 
-Licensed under AGPL-3.0-only as part of the ecoPrimals ecosystem.
+Licensed under AGPL-3.0-or-later as part of the ecoPrimals ecosystem.
 
-Part of the scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0
+Part of the scyBorg provenance trio: AGPL-3.0-or-later + ORC + CC-BY-SA 4.0

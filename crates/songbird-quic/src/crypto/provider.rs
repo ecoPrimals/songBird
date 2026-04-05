@@ -403,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn decode_base64_field_errors_on_missing_key() {
         let v = serde_json::json!({ "other": "YQ==" });
         let e = decode_base64_field(&v, "prk").expect_err("missing prk");
@@ -414,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn decode_base64_field_errors_on_invalid_base64() {
         let v = serde_json::json!({ "hash": "@@@not-base64@@@" });
         let e = decode_base64_field(&v, "hash").expect_err("invalid base64");
@@ -425,7 +425,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn decode_base64_field_multi_errors_when_no_candidate_present() {
         let v = serde_json::json!({ "foo": "YQ==" });
         let e = decode_base64_field_multi(&v, &["public_key", "public"]).expect_err("no fields");

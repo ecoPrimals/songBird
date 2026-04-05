@@ -1,7 +1,7 @@
 # Songbird Universal Primal Configuration Example
 # 
 # This configuration demonstrates the NEW universal primal registry system
-# that replaces hardcoded primal-specific configurations (BearDog, Toadstool, etc.)
+# that replaces hardcoded primal-specific configurations (Security Provider, Compute Provider, etc.)
 # with a flexible, extensible approach supporting any primal type.
 #
 # Benefits:
@@ -55,23 +55,23 @@ default_request_timeout = "60s"
 default_auth_method = "none"
 default_capabilities = ["basic"]
 
-# BearDog Security Primal Configuration
+# Security Provider Configuration
 [[primal_registry.primals]]
-primal_type = "beardog"
-display_name = "BearDog Security"
+primal_type = "security_provider"
+display_name = "Security Provider"
 enabled = true
 
 [primal_registry.primals.endpoint]
 # Recommended: Use CAPABILITY_SECURITY_ENDPOINT for auto-discovery
-# Use SONGBIRD_BEARDOG_PORT env var (defaults to beardog_port())
-primary_url = "https://beardog.internal:8443"  # Example default
-fallback_urls = ["https://beardog-backup.internal:8443"]  # Example default
+# Use SONGBIRD_SECURITY_PROVIDER_PORT env var (defaults to security_provider_port())
+primary_url = "https://security-provider.internal:8443"  # Example default
+fallback_urls = ["https://security-provider-backup.internal:8443"]  # Example default
 use_tls = true
 load_balancing = "health_based"
 
 [primal_registry.primals.authentication]
 method = "mutual_tls"
-credentials = { cert_path = "/etc/ssl/certs/beardog.crt", key_path = "/etc/ssl/private/beardog.key" }
+credentials = { cert_path = "/etc/ssl/certs/security-provider.crt", key_path = "/etc/ssl/private/security-provider.key" }
 
 [primal_registry.primals.connection_settings]
 connection_timeout = "30s"
@@ -98,7 +98,7 @@ expected_status_codes = [200]
 timeout = "10s"
 failure_threshold = 3
 
-# BearDog Security Capabilities
+# Security Provider Capabilities
 [[primal_registry.primals.capabilities]]
 capability_type = "security"
 version = "2.0"
@@ -114,25 +114,25 @@ throughput_ops_sec = 10000.0
 availability = 0.999
 reliability = 0.995
 
-# NestGate Storage Primal Configuration  
+# Storage Provider Configuration  
 [[primal_registry.primals]]
-primal_type = "nestgate"
-display_name = "NestGate Storage"
+primal_type = "storage_provider"
+display_name = "Storage Provider"
 enabled = true
 
 [primal_registry.primals.endpoint]
 # Recommended: Use CAPABILITY_STORAGE_ENDPOINT for auto-discovery
 # Use SONGBIRD_PORT env var (defaults to orchestrator_port())
-primary_url = "http://nestgate.internal:8080"  # Example default
-fallback_urls = ["http://nestgate-replica.internal:8080"]  # Example default
+primary_url = "http://storage-provider.internal:8080"  # Example default
+fallback_urls = ["http://storage-provider-replica.internal:8080"]  # Example default
 use_tls = false
 load_balancing = "least_connections"
 
 [primal_registry.primals.authentication]
 method = "api_key"
-credentials = { api_key = "${NESTGATE_API_KEY}" }
+credentials = { api_key = "${STORAGE_PROVIDER_API_KEY}" }
 
-# NestGate Storage Capabilities
+# Storage Provider Capabilities
 [[primal_registry.primals.capabilities]]
 capability_type = "storage"
 version = "1.5"
@@ -149,23 +149,23 @@ throughput_ops_sec = 5000.0
 availability = 0.995
 reliability = 0.99
 
-# Toadstool Compute Primal Configuration
+# Compute Provider Configuration
 [[primal_registry.primals]]
-primal_type = "toadstool"
-display_name = "Toadstool Compute"
+primal_type = "compute_provider"
+display_name = "Compute Provider"
 enabled = true
 
 [primal_registry.primals.endpoint]
 # Recommended: Use CAPABILITY_COMPUTE_ENDPOINT for auto-discovery
-# Use SONGBIRD_BEARDOG_PORT env var (defaults to beardog_port())
-primary_url = "http://toadstool.internal:8082"  # Example default
+# Use SONGBIRD_SECURITY_PROVIDER_PORT env var (defaults to security_provider_port())
+primary_url = "http://compute-provider.internal:8082"  # Example default
 use_tls = false
 
 [primal_registry.primals.authentication]
 method = "oauth2"
-credentials = { client_id = "${TOADSTOOL_CLIENT_ID}", client_secret = "${TOADSTOOL_CLIENT_SECRET}" }
+credentials = { client_id = "${COMPUTE_PROVIDER_CLIENT_ID}", client_secret = "${COMPUTE_PROVIDER_CLIENT_SECRET}" }
 
-# Toadstool Compute Capabilities
+# Compute Provider Capabilities
 [[primal_registry.primals.capabilities]]
 capability_type = "compute"
 version = "3.0"
@@ -182,22 +182,22 @@ throughput_ops_sec = 1000.0
 availability = 0.99
 reliability = 0.98
 
-# Squirrel Analytics Primal Configuration (NEW - no code changes needed!)
+# AI Provider Configuration (NEW - no code changes needed!)
 [[primal_registry.primals]]
-primal_type = "squirrel"
-display_name = "Squirrel Analytics"
+primal_type = "ai_provider"
+display_name = "AI Provider"
 enabled = true
 
 [primal_registry.primals.endpoint]
 # Recommended: Use CAPABILITY_AI_ENDPOINT or CAPABILITY_ANALYTICS_ENDPOINT for auto-discovery
 # Use SONGBIRD_METRICS_PORT env var (defaults to metrics_port())
-primary_url = "http://squirrel.internal:8083"  # Example default
+primary_url = "http://ai-provider.internal:8083"  # Example default
 use_tls = false
 
 [primal_registry.primals.authentication]
 method = "none"
 
-# Squirrel Analytics Capabilities
+# AI Provider Capabilities
 [[primal_registry.primals.capabilities]]
 capability_type = "analytics"
 version = "1.0"
@@ -267,17 +267,17 @@ analytics = "mock_mode"  # Analytics can run in mock mode
 # New deployments should use the universal primal_registry above.
 # The system will automatically migrate these to the universal registry.
 
-[beardog]
+[security_provider_deprecated]
 enabled = false  # Disabled - using primal_registry instead
-[beardog.endpoint]
+[security_provider_deprecated.endpoint]
 # DEPRECATED: Use primal_registry or CAPABILITY_SECURITY_ENDPOINT instead
 primary_url = "https://localhost:8443"  # Example default - legacy only
 connection_timeout_secs = 30
 verify_tls = true
 
-[toadstool]
+[compute_provider_deprecated]
 enabled = false  # Disabled - using primal_registry instead
-[toadstool.endpoint]  
+[compute_provider_deprecated.endpoint]  
 # DEPRECATED: Use primal_registry or CAPABILITY_COMPUTE_ENDPOINT instead
 primary_url = "http://localhost:8082"  # Example default - legacy only
 connection_timeout_secs = 30

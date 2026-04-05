@@ -207,7 +207,7 @@ mod tests_support {
 // ============================================================================
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::tests_support::MockPeerRegistry;
     use super::*;

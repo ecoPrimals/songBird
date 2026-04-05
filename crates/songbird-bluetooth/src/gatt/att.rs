@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! ATT opcodes and attribute UUID constants used by the GATT client.
 
 /// ATT opcodes
 /// Note: Constants awaiting hardware validation - will be used in Phase 3
-#[allow(dead_code, reason = "public API surface; referenced by GATT and tests")]
 pub mod att_opcode {
     pub const ERROR_RSP: u8 = 0x01;
     pub const READ_BY_GROUP_TYPE_REQ: u8 = 0x10;
@@ -17,12 +16,12 @@ pub mod att_opcode {
     pub const WRITE_REQ: u8 = 0x12;
     pub const WRITE_RSP: u8 = 0x13;
     pub const WRITE_CMD: u8 = 0x52;
+    #[allow(dead_code, reason = "reserved for notify/indicate handling")]
     pub const HANDLE_VALUE_NTF: u8 = 0x1B;
 }
 
 /// ATT UUIDs
 /// Note: Constants awaiting hardware validation - will be used in Phase 3
-#[allow(dead_code, reason = "public API surface; referenced by GATT and tests")]
 pub mod att_uuid {
     /// Primary Service UUID (0x2800)
     pub const PRIMARY_SERVICE: u16 = 0x2800;
@@ -31,6 +30,7 @@ pub mod att_uuid {
     pub const CHARACTERISTIC: u16 = 0x2803;
 
     /// Client Characteristic Configuration Descriptor (0x2902)
+    #[allow(dead_code, reason = "reserved for CCCD reads/writes")]
     pub const CLIENT_CHAR_CONFIG: u16 = 0x2902;
 }
 

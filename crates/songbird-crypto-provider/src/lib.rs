@@ -35,13 +35,6 @@ pub fn routing_mode_from_env(mode_value: Option<&str>) -> RoutingMode {
     }
 }
 
-/// Deprecated alias for [`routing_mode_from_env`].
-#[deprecated(note = "Use routing_mode_from_env (capability-based naming)")]
-#[must_use]
-pub fn routing_mode_from_beardog_env_value(mode_value: Option<&str>) -> RoutingMode {
-    routing_mode_from_env(mode_value)
-}
-
 /// JSON-RPC transport and wire-format errors from [`CryptoProvider::call`](CryptoProvider::call).
 #[derive(Debug, thiserror::Error)]
 pub enum RpcError {
@@ -133,7 +126,11 @@ impl CryptoProvider {
     {
         use tracing::info;
 
-        let mode_val = get_var("SECURITY_PROVIDER_MODE").or_else(|| get_var("BEARDOG_MODE"));
+        let mode_val = get_var("SECURITY_PROVIDER_MODE").or_else(|| {
+            get_var("BEARDOG_MODE").inspect(|_| {
+                tracing::warn!("BEARDOG_MODE is deprecated — migrate to SECURITY_PROVIDER_MODE");
+            })
+        });
         let mode = routing_mode_from_env(mode_val.as_deref());
         match mode {
             RoutingMode::Direct => {
@@ -243,13 +240,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn routing_mode_from_beardog_env_value_deprecated_alias() {
-        assert_eq!(routing_mode_from_beardog_env_value(Some("direct")), RoutingMode::Direct);
-        assert_eq!(routing_mode_from_beardog_env_value(None), RoutingMode::NeuralApi);
-    }
-
-    #[test]
     fn from_env_with_neural_uses_neural_socket_from_env() {
         let p = CryptoProvider::from_env_with(|key| match key {
             "SECURITY_PROVIDER_MODE" => Some("neural".to_string()),
@@ -270,6 +260,8 @@ mod tests {
         assert_eq!(p.socket_path, "/only/neural.sock");
     }
 
+    /// Backward-compat: `BEARDOG_MODE` / `BEARDOG_SOCKET` still select direct routing and socket
+    /// path when canonical `SECURITY_*` keys are absent (deprecated env shim).
     #[test]
     fn from_env_with_direct_prefers_legacy_beardog_socket_env() {
         let p = CryptoProvider::from_env_with(|key| match key {
@@ -281,6 +273,8 @@ mod tests {
         assert_eq!(p.socket_path, "/custom/security-provider.sock");
     }
 
+    /// Backward-compat: direct mode via deprecated `BEARDOG_MODE` still discovers XDG crypto.sock
+    /// when `BEARDOG_SOCKET` is unset (same behavior as production `from_env`).
     #[test]
     fn from_env_with_direct_discovers_xdg_biomeos_crypto_when_file_exists() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -297,7 +291,7 @@ mod tests {
         assert_eq!(
             p.socket_path,
             socket_path.to_string_lossy(),
-            "direct mode without BEARDOG_SOCKET should use XDG biomeos crypto.sock when present"
+            "direct mode without legacy BEARDOG_SOCKET should use XDG biomeos crypto.sock when present"
         );
     }
 }

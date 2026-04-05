@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Default port configuration with environment variable support
@@ -92,6 +92,33 @@ pub fn websocket_port() -> u16 {
         .unwrap_or(8080)
 }
 
+fn parse_port_env_first(keys: &[&str]) -> Option<u16> {
+    for key in keys {
+        if let Ok(p) = songbird_process_env::var(key)
+            && let Ok(n) = p.parse::<u16>()
+        {
+            return Some(n);
+        }
+    }
+    None
+}
+
+fn parse_port_env_with_legacy_warn(
+    capability_keys: &[&str],
+    legacy_key: &str,
+    migrate_to: &str,
+) -> Option<u16> {
+    parse_port_env_first(capability_keys).or_else(|| {
+        if let Ok(p) = songbird_process_env::var(legacy_key)
+            && let Ok(n) = p.parse::<u16>()
+        {
+            tracing::warn!("Using legacy env var {legacy_key} — migrate to {migrate_to}");
+            return Some(n);
+        }
+        None
+    })
+}
+
 /// Get gaming server port from environment or default
 ///
 /// # Environment Variable
@@ -118,90 +145,70 @@ pub fn health_port() -> u16 {
 
 /// Get security provider service port from environment or default
 ///
-/// # Environment Variables (checked in order)
-/// 1. `SONGBIRD_SECURITY_PROVIDER_PORT` (preferred)
-/// 2. `SONGBIRD_BEARDOG_PORT` (legacy fallback)
-/// 3. Default: 8443
+/// # Environment variables (checked in order)
+/// 1. `SONGBIRD_SECURITY_PORT` (capability domain)
+/// 2. `SONGBIRD_SECURITY_PROVIDER_PORT`
+/// 3. `SONGBIRD_BEARDOG_PORT` (deprecated legacy — logs a migration warning)
+/// 4. Default: 8443
 #[must_use]
 pub fn security_provider_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER_PORT")
-        .or_else(|_| songbird_process_env::var("SONGBIRD_BEARDOG_PORT"))
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8443)
-}
-
-/// Deprecated alias for [`security_provider_port`].
-#[deprecated(note = "use security_provider_port (capability-based naming)")]
-#[must_use]
-pub fn beardog_port() -> u16 {
-    security_provider_port()
+    parse_port_env_with_legacy_warn(
+        &["SONGBIRD_SECURITY_PORT", "SONGBIRD_SECURITY_PROVIDER_PORT"],
+        "SONGBIRD_BEARDOG_PORT",
+        "SONGBIRD_SECURITY_PORT or SONGBIRD_SECURITY_PROVIDER_PORT",
+    )
+    .unwrap_or(8443)
 }
 
 /// Get compute capability provider port from environment or default
 ///
-/// # Environment Variables (checked in order)
-/// 1. `SONGBIRD_COMPUTE_PROVIDER_PORT` (preferred)
-/// 2. `SONGBIRD_TOADSTOOL_PORT` (legacy fallback)
-/// 3. Default: 8001
+/// # Environment variables (checked in order)
+/// 1. `SONGBIRD_COMPUTE_PORT` (capability domain)
+/// 2. `SONGBIRD_COMPUTE_PROVIDER_PORT`
+/// 3. `SONGBIRD_TOADSTOOL_PORT` (deprecated legacy — logs a migration warning)
+/// 4. Default: 8001
 #[must_use]
 pub fn compute_provider_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_COMPUTE_PROVIDER_PORT")
-        .or_else(|_| songbird_process_env::var("SONGBIRD_TOADSTOOL_PORT"))
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8001)
-}
-
-/// Deprecated alias for [`compute_provider_port`].
-#[deprecated(note = "use compute_provider_port (capability-based naming)")]
-#[must_use]
-pub fn toadstool_port() -> u16 {
-    compute_provider_port()
+    parse_port_env_with_legacy_warn(
+        &["SONGBIRD_COMPUTE_PORT", "SONGBIRD_COMPUTE_PROVIDER_PORT"],
+        "SONGBIRD_TOADSTOOL_PORT",
+        "SONGBIRD_COMPUTE_PORT or SONGBIRD_COMPUTE_PROVIDER_PORT",
+    )
+    .unwrap_or(8001)
 }
 
 /// Get AI / neural capability provider port from environment or default
 ///
-/// # Environment Variables (checked in order)
-/// 1. `SONGBIRD_AI_PROVIDER_PORT` (preferred)
-/// 2. `SONGBIRD_SQUIRREL_PORT` (legacy fallback)
-/// 3. Default: 8002
+/// # Environment variables (checked in order)
+/// 1. `SONGBIRD_AI_PORT` (capability domain)
+/// 2. `SONGBIRD_AI_PROVIDER_PORT`
+/// 3. `SONGBIRD_SQUIRREL_PORT` (deprecated legacy — logs a migration warning)
+/// 4. Default: 8002
 #[must_use]
 pub fn ai_provider_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_AI_PROVIDER_PORT")
-        .or_else(|_| songbird_process_env::var("SONGBIRD_SQUIRREL_PORT"))
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8002)
-}
-
-/// Deprecated alias for [`ai_provider_port`].
-#[deprecated(note = "use ai_provider_port (capability-based naming)")]
-#[must_use]
-pub fn squirrel_port() -> u16 {
-    ai_provider_port()
+    parse_port_env_with_legacy_warn(
+        &["SONGBIRD_AI_PORT", "SONGBIRD_AI_PROVIDER_PORT"],
+        "SONGBIRD_SQUIRREL_PORT",
+        "SONGBIRD_AI_PORT or SONGBIRD_AI_PROVIDER_PORT",
+    )
+    .unwrap_or(8002)
 }
 
 /// Get storage provider gateway service port from environment or default
 ///
-/// # Environment Variables (checked in order)
-/// 1. `SONGBIRD_STORAGE_PROVIDER_PORT` (preferred)
-/// 2. `SONGBIRD_NESTGATE_PORT` (legacy fallback)
-/// 3. Default: 8003
+/// # Environment variables (checked in order)
+/// 1. `SONGBIRD_STORAGE_PORT` (capability domain)
+/// 2. `SONGBIRD_STORAGE_PROVIDER_PORT`
+/// 3. `SONGBIRD_NESTGATE_PORT` (deprecated legacy — logs a migration warning)
+/// 4. Default: 8003
 #[must_use]
 pub fn storage_provider_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_STORAGE_PROVIDER_PORT")
-        .or_else(|_| songbird_process_env::var("SONGBIRD_NESTGATE_PORT"))
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8003)
-}
-
-/// Deprecated alias for [`storage_provider_port`].
-#[deprecated(note = "use storage_provider_port (capability-based naming)")]
-#[must_use]
-pub fn nestgate_port() -> u16 {
-    storage_provider_port()
+    parse_port_env_with_legacy_warn(
+        &["SONGBIRD_STORAGE_PORT", "SONGBIRD_STORAGE_PROVIDER_PORT"],
+        "SONGBIRD_NESTGATE_PORT",
+        "SONGBIRD_STORAGE_PORT or SONGBIRD_STORAGE_PROVIDER_PORT",
+    )
+    .unwrap_or(8003)
 }
 
 /// Get gaming port range start from environment or default
@@ -299,12 +306,12 @@ pub fn tarpc_port() -> u16 {
         .unwrap_or(8091)
 }
 
-/// Collect all known primal scan ports from env-driven defaults.
+/// Collect all known provider scan ports from env-driven defaults (orchestrator, discovery, federation, security, dashboard, compute, storage).
 ///
 /// Returns the canonical set of ports that discovery scanning should probe.
 /// Each port is resolved from its environment variable, falling back to its default.
 #[must_use]
-pub fn primal_scan_ports() -> Vec<u16> {
+pub fn provider_capability_scan_ports() -> Vec<u16> {
     let mut ports = vec![
         orchestrator_port(),
         discovery_port(),
@@ -317,6 +324,13 @@ pub fn primal_scan_ports() -> Vec<u16> {
     ports.sort_unstable();
     ports.dedup();
     ports
+}
+
+/// Deprecated alias for [`provider_capability_scan_ports`].
+#[deprecated(note = "use provider_capability_scan_ports (capability-based naming)")]
+#[must_use]
+pub fn primal_scan_ports() -> Vec<u16> {
+    provider_capability_scan_ports()
 }
 
 /// Get service port by name from environment or default

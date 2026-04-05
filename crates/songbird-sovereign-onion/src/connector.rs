@@ -31,12 +31,6 @@ impl OnionConnector {
         }
     }
 
-    /// Deprecated alias for [`Self::new_via_security_provider`].
-    #[deprecated(note = "use new_via_security_provider")]
-    pub fn new_via_beardog(beardog: SecurityCryptoClient) -> Self {
-        Self::new_via_security_provider(beardog)
-    }
-
     /// Create new onion connector (standalone mode - testing only)
     #[cfg(feature = "standalone")]
     #[must_use]

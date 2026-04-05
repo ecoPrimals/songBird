@@ -169,23 +169,23 @@ impl RetryConfig {
             return Duration::from_millis(0);
         }
 
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             reason = "intentional pattern; clippy false positive for this API"
         )]
         let base_delay = self.initial_delay.as_millis() as f64;
-        #[expect(
+        #[allow(
             clippy::cast_possible_wrap,
             reason = "intentional pattern; clippy false positive for this API"
         )]
         let multiplied_delay = base_delay * self.backoff_multiplier.powi(attempt as i32 - 1);
-        #[expect(
+        #[allow(
             clippy::cast_precision_loss,
             reason = "intentional pattern; clippy false positive for this API"
         )]
         let capped_delay = multiplied_delay.min(self.max_delay.as_millis() as f64);
 
-        #[expect(
+        #[allow(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
             reason = "intentional pattern; clippy false positive for this API"

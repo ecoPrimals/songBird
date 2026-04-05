@@ -544,7 +544,7 @@ curl -X POST http://localhost:8080/api/v1/execution/command \
   -H "Content-Type: application/json" \
   -d '{
     "tower_id": "southgate",
-    "command": "journalctl -u squirrel -n 100",
+    "command": "journalctl -u ai_provider -n 100",
     "background": false
   }'
 ```

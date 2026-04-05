@@ -376,7 +376,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn initiate_close_is_idempotent_after_closed() {
         let mut conn = test_conn();
         conn.start_handshake().unwrap();
@@ -389,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn enter_draining_is_idempotent_when_already_draining() {
         let mut conn = test_conn();
         conn.start_handshake().unwrap();
@@ -410,7 +410,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn finish_close_from_handshaking_sets_closed_without_connected() {
         let mut conn = test_conn();
         conn.start_handshake().unwrap();
@@ -419,7 +419,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn enter_draining_from_handshaking_skips_connected() {
         let mut conn = test_conn();
         conn.start_handshake().unwrap();

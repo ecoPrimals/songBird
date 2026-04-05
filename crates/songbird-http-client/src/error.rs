@@ -15,11 +15,6 @@ pub enum Error {
     #[error("Security provider RPC error: {0}")]
     SecurityProviderRpc(String),
 
-    /// Deprecated alias for [`Error::SecurityProviderRpc`].
-    #[deprecated(note = "Use SecurityProviderRpc")]
-    #[error("Security provider RPC error: {0}")]
-    BearDogRpc(String),
-
     /// Crypto provider delegation required but not available for this operation
     #[error("Crypto provider unavailable: {0}")]
     CryptoUnavailable(String),

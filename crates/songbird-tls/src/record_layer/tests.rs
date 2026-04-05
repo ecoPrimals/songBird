@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(clippy::expect_used, reason = "test assertions")]
+#![allow(clippy::expect_used, reason = "test assertions")]
 
 use std::sync::Arc;
 
@@ -343,7 +343,7 @@ async fn test_encryption_with_sequence_increment() {
 }
 
 #[test]
-#[expect(clippy::cast_possible_truncation, reason = "test: value masked to u8 range")]
+#[allow(clippy::cast_possible_truncation, reason = "test: value masked to u8 range")]
 fn parse_record_rejects_oversized_length_field() {
     let mut record_layer = RecordLayer::new();
     let oversized = MAX_RECORD_SIZE + 1;

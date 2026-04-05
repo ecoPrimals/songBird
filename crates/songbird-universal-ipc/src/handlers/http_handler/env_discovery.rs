@@ -3,7 +3,7 @@
 
 use crate::error::IpcResult;
 use async_trait::async_trait;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use super::traits::CryptoCapabilityDiscovery;
 
@@ -11,8 +11,8 @@ use super::traits::CryptoCapabilityDiscovery;
 ///
 /// Priority:
 /// 1. `{CAPABILITY}_ENDPOINT` derived from the capability string
-/// 2. `SECURITY_PROVIDER_SOCKET` (capability-standard)
-/// 3. `BEARDOG_SOCKET` (legacy)
+/// 2. `SECURITY_PROVIDER_SOCKET` / `SECURITY_SOCKET` (capability-standard)
+/// 3. `BEARDOG_SOCKET` (legacy; logs deprecation)
 /// 4. Default: /primal/security
 pub struct EnvCryptoDiscovery;
 
@@ -43,8 +43,15 @@ impl EnvCryptoDiscovery {
             return Ok(socket);
         }
 
+        if let Some(socket) = env_reader("SECURITY_SOCKET") {
+            info!("Found crypto provider at {} (via SECURITY_SOCKET)", socket);
+            return Ok(socket);
+        }
+
         if let Some(socket) = env_reader("BEARDOG_SOCKET") {
-            info!("Found crypto provider at {} (via BEARDOG_SOCKET)", socket);
+            warn!(
+                "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET"
+            );
             return Ok(socket);
         }
 

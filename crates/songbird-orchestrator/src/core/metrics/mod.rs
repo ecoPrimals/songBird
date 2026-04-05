@@ -7,6 +7,11 @@
 //! capability-based adapters. `ComputeMetrics` is a point-in-time snapshot;
 //! `ComputeMetricsCounters` tracks thread-safe totals as collections run.
 
+#![expect(
+    async_fn_in_trait,
+    reason = "native async MetricsCapabilityAdapter; concrete UniversalMetricsAdapter only"
+)]
+
 pub mod capability_adapters;
 
 pub use capability_adapters::{MetricsError, UniversalMetricsAdapter};
@@ -82,7 +87,6 @@ impl Default for ComputeMetrics {
 }
 
 /// Capability adapters expose compute metrics snapshots and async collection.
-#[async_trait::async_trait]
 pub trait MetricsCapabilityAdapter: Send + Sync {
     /// Return the last computed snapshot (cheap; may reflect discovery/counters only).
     fn get_compute_metrics(&self) -> ComputeMetrics;
@@ -97,7 +101,6 @@ pub trait MetricsCapabilityAdapter: Send + Sync {
     ) -> Result<ComputeMetrics, Box<dyn std::error::Error + Send + Sync>>;
 }
 
-#[async_trait::async_trait]
 impl MetricsCapabilityAdapter for UniversalMetricsAdapter {
     fn get_compute_metrics(&self) -> ComputeMetrics {
         self.snapshot_compute_metrics()

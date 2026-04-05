@@ -219,6 +219,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn request_capability_without_pooling_calls_connect_each_time() {
         let inner: Arc<CountingBridge> = Arc::new(CountingBridge::new());
+        #[allow(clippy::clone_on_ref_ptr, reason = "coerce concrete Arc to trait object")]
         let bridge: Arc<dyn PrimalBridge> = inner.clone();
         let config = CoordinatorConfig {
             max_connections_per_capability: 10,

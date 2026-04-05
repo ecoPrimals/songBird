@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Onion service descriptor generation
@@ -337,8 +337,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_descriptor_new_requires_beardog_signing() {
-        let beardog = CryptoProvider::from_env();
+    async fn test_descriptor_new_requires_security_signing() {
+        let crypto_provider = CryptoProvider::from_env();
 
         let keys = OnionServiceKeys {
             identity_secret: [0u8; 32],
@@ -349,7 +349,7 @@ mod tests {
         };
 
         assert!(matches!(
-            OnionServiceDescriptor::new(&keys, &[], &beardog).await,
+            OnionServiceDescriptor::new(&keys, &[], &crypto_provider).await,
             Err(Error::CryptoUnavailable(_))
         ));
     }
@@ -507,5 +507,44 @@ mod tests {
         let back: serde_json::Value = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(back["lifetime_minutes"], 180);
         assert_eq!(back["signing_key_hex"].as_str().expect("hex").len(), 64);
+    }
+
+    #[test]
+    fn descriptor_encode_emits_configured_lifetime_minutes() {
+        let d = OnionServiceDescriptor {
+            signing_key: [0xEEu8; 32],
+            lifetime_minutes: 42,
+            intro_points: vec![],
+            signature: vec![0x11; 64],
+        };
+        let out = d.encode().expect("encode");
+        let s = String::from_utf8_lossy(&out);
+        assert!(
+            s.contains("descriptor-lifetime 42\n"),
+            "expected literal lifetime line, got: {s:?}"
+        );
+    }
+
+    #[test]
+    fn descriptor_encode_output_ends_with_signature_newline() {
+        let d = OnionServiceDescriptor {
+            signing_key: [0u8; 32],
+            lifetime_minutes: 60,
+            intro_points: vec![],
+            signature: vec![0xAB; 64],
+        };
+        let out = d.encode().expect("encode");
+        assert!(out.ends_with(b"\n"), "descriptor must end with newline");
+        let text = String::from_utf8_lossy(&out);
+        let last_line = text.lines().last().expect("non-empty encoded output");
+        assert!(
+            last_line.starts_with("signature "),
+            "last line should be signature: {last_line:?}"
+        );
+    }
+
+    #[test]
+    fn base64_encode_preserves_incoming_byte_order_in_chunks() {
+        assert_eq!(base64_encode(&[0x01, 0x02, 0x03, 0x04]), "AQIDBA==");
     }
 }

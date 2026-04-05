@@ -1,15 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
-    clippy::clone_on_ref_ptr,
-    reason = "Arc::clone() is idiomatic for shared ownership in async contexts"
-)]
-#![allow(
-    clippy::expect_used,
-    reason = "Tor protocol invariants use expect() for panic-on-violation semantics"
-)]
-#![cfg_attr(test, allow(clippy::unwrap_used, reason = "test assertions"))]
 //! # songbird-tor-protocol
 //!
 //! Pure Rust Tor protocol implementation for Songbird.
@@ -30,8 +21,16 @@
 //! 100% security-provider crypto delegation — zero direct crypto in this crate.
 
 #![forbid(unsafe_code)]
-#![warn(clippy::unwrap_used)]
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
 #![warn(missing_docs)]
+#![cfg_attr(
+    test,
+    allow(
+        warnings,
+        clippy::cast_possible_truncation,
+        reason = "test assertions and harness ergonomics"
+    )
+)]
 
 pub mod circuit;
 pub mod connection;

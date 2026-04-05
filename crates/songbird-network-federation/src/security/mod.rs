@@ -37,10 +37,6 @@ pub trait SecurityProvider: LineageProvider + BirdSongCrypto + LineageRelay + Se
     async fn shutdown(&self) -> anyhow::Result<()>;
 }
 
-/// Deprecated alias for [`SecurityProvider`].
-#[deprecated(note = "use SecurityProvider")]
-pub use SecurityProvider as BearDogProvider;
-
 /// Factory for discovering security providers
 ///
 /// Supports multiple discovery strategies:
@@ -49,9 +45,6 @@ pub use SecurityProvider as BearDogProvider;
 /// 3. Development fallback socket (debug builds)
 /// 4. Mock provider — testing
 pub struct SecurityProviderFactory;
-
-#[deprecated(note = "use SecurityProviderFactory")]
-pub use SecurityProviderFactory as BearDogProviderFactory;
 
 impl SecurityProviderFactory {
     /// Discover a security provider via multiple strategies
@@ -134,12 +127,18 @@ impl SecurityProviderFactory {
     }
 
     async fn discover_via_env() -> anyhow::Result<Option<Box<dyn SecurityProvider>>> {
-        // Capability-based socket first, then legacy BEARDOG_SOCKET (Unix sockets)
-        for (env_key, label) in [
-            ("SECURITY_PROVIDER_SOCKET", "SECURITY_PROVIDER_SOCKET"),
-            ("BEARDOG_SOCKET", "BEARDOG_SOCKET"),
+        // Capability-based sockets first (SECURITY_*), then legacy BEARDOG_* with migration warning.
+        for (env_key, label, legacy) in [
+            ("SECURITY_PROVIDER_SOCKET", "SECURITY_PROVIDER_SOCKET", false),
+            ("SECURITY_SOCKET", "SECURITY_SOCKET", false),
+            ("BEARDOG_SOCKET", "BEARDOG_SOCKET", true),
         ] {
             if let Ok(socket_path) = songbird_process_env::var(env_key) {
+                if legacy {
+                    tracing::warn!(
+                        "Using legacy env var BEARDOG_SOCKET — migrate to SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET"
+                    );
+                }
                 tracing::info!("Using security provider socket from {label}: {socket_path}");
                 match crate::security::production::ProductionSecurityProvider::new(&socket_path)
                     .await
@@ -150,21 +149,20 @@ impl SecurityProviderFactory {
             }
         }
 
-        // Check SECURITY_SOCKET (generic)
-        if let Ok(socket_path) = songbird_process_env::var("SECURITY_SOCKET") {
-            tracing::info!("Using security provider socket from SECURITY_SOCKET: {}", socket_path);
-            match crate::security::production::ProductionSecurityProvider::new(&socket_path).await {
-                Ok(provider) => return Ok(Some(Box::new(provider))),
-                Err(e) => tracing::warn!("Failed to connect to SECURITY_SOCKET: {}", e),
+        // URL-based env vars: SECURITY_URL first, then legacy BEARDOG_URL
+        let url_result = match (
+            songbird_process_env::var("SECURITY_URL"),
+            songbird_process_env::var("BEARDOG_URL"),
+        ) {
+            (Ok(url), _) => Some(url),
+            (Err(_), Ok(url)) => {
+                tracing::warn!("Using legacy env var BEARDOG_URL — migrate to SECURITY_URL");
+                Some(url)
             }
-        }
+            (Err(_), Err(_)) => None,
+        };
 
-        // Legacy: Check URL-based env vars (convert to socket if possible)
-        if songbird_process_env::var("BEARDOG_URL").is_ok()
-            || songbird_process_env::var("SECURITY_URL").is_ok()
-        {
-            let url = songbird_process_env::var("BEARDOG_URL")
-                .or_else(|_| songbird_process_env::var("SECURITY_URL"))?;
+        if let Some(url) = url_result {
             tracing::info!("Found security provider via environment at: {}", url);
 
             // Try to extract Unix socket path from URL
@@ -178,7 +176,7 @@ impl SecurityProviderFactory {
             } else {
                 tracing::warn!("Security URL is not a Unix socket URL: {}", url);
                 tracing::warn!(
-                    "Use SECURITY_PROVIDER_SOCKET or BEARDOG_SOCKET for Unix socket paths, or prefix with unix://"
+                    "Set SECURITY_PROVIDER_SOCKET (or legacy BEARDOG_SOCKET), SECURITY_SOCKET, or use unix:// URLs"
                 );
             }
         }
@@ -197,7 +195,7 @@ impl SecurityProviderFactory {
                     default_socket.display()
                 );
                 tracing::warn!(
-                    "Set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or SECURITY_SOCKET for production"
+                    "Set SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET (legacy BEARDOG_SOCKET) for production"
                 );
                 match crate::security::production::ProductionSecurityProvider::new(default_socket)
                     .await
@@ -211,7 +209,7 @@ impl SecurityProviderFactory {
         #[cfg(not(debug_assertions))]
         {
             tracing::error!(
-                "Security provider not found. Set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or SECURITY_SOCKET"
+                "Security provider not found. Set SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET (legacy: BEARDOG_SOCKET)"
             );
         }
 

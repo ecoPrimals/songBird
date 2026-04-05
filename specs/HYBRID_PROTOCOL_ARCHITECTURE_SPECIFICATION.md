@@ -9,7 +9,7 @@
 
 ## 🎯 **Actual Implementation Architecture**
 
-Based on review of beardog and songbird implementations, the ecoPrimals ecosystem uses a **hybrid protocol approach** with different protocols optimized for different use cases.
+Based on review of security_provider and songbird implementations, the ecoPrimals ecosystem uses a **hybrid protocol approach** with different protocols optimized for different use cases.
 
 ### **🏆 Protocol Selection Matrix (CORRECTED)**
 
@@ -18,10 +18,10 @@ Use Case                    | Protocol Choice              | Implementation Stat
 ---------------------------|------------------------------|---------------------|---------------------------
 Web UI ↔ Songbird          | WebSocket + Custom JSON      | ✅ Implemented      | Browser compatibility, real-time
 External API ↔ Songbird     | HTTP/REST + JSON             | ✅ Implemented      | Universal compatibility  
-Songbird ↔ BearDog          | tarpc + HTTP fallback        | 🚧 Tunnel module    | High performance + security
-Songbird ↔ NestGate         | Custom JSON RPC              | 🚧 Planning         | Storage-optimized
-Songbird ↔ ToadStool        | Custom JSON RPC              | 🚧 Planning         | Resource coordination
-Songbird ↔ Squirrel         | MCP Protocol Extensions       | ✅ Implemented      | AI agent streaming
+Songbird ↔ Security Provider          | tarpc + HTTP fallback        | 🚧 Tunnel module    | High performance + security
+Songbird ↔ Storage Provider         | Custom JSON RPC              | 🚧 Planning         | Storage-optimized
+Songbird ↔ Compute Provider        | Custom JSON RPC              | 🚧 Planning         | Resource coordination
+Songbird ↔ AI provider         | MCP Protocol Extensions       | ✅ Implemented      | AI agent streaming
 Cross-Primal Events         | Event System + JSON          | ✅ Implemented      | Reactive, pub/sub pattern
 Internal Service Mesh       | tarpc (where supported)      | 🚧 Transitioning    | Zero-copy, type safety
 ```
@@ -62,17 +62,17 @@ pub struct InternalCommunicationLayer {
 
 1. **NO gRPC ANYWHERE** - Pure Rust ecosystem using tarpc + JSON
 2. **Gradual tarpc adoption** - Not universal yet, HTTP/JSON still primary
-3. **BearDog uses HTTP/REST primarily** - tarpc only in tunnel module
-4. **MCP protocol for AI** - Specialized for Squirrel integration
+3. **Security Provider uses HTTP/REST primarily** - tarpc only in tunnel module
+4. **MCP protocol for AI** - Specialized for AI provider integration
 5. **Custom JSON RPC** - Not standard JSON-RPC, optimized for primals
 
 ---
 
 ## 🏗️ **Protocol Implementation Details**
 
-### **tarpc Implementation (BearDog Tunnel Example)**
+### **tarpc Implementation (Security Provider Tunnel Example)**
 ```rust
-// Based on ../beardog/crates/beardog-tunnel/
+// Based on ../security_provider/crates/security_provider-tunnel/
 use tarpc::{client, context, server};
 
 #[tarpc::service]
@@ -136,7 +136,7 @@ pub struct CustomRpcResponse {
 - ✅ MCP protocol for AI integration
 
 ### **Phase 2: tarpc Integration (In Progress)**
-- 🚧 BearDog tunnel module using tarpc
+- 🚧 Security Provider tunnel module using tarpc
 - 🚧 Universal adapters support tarpc fallback
 - 🚧 Service discovery includes protocol capabilities
 

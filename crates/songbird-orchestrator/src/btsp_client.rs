@@ -70,7 +70,15 @@ impl BtspClient {
 
     fn discover_socket_path() -> PathBuf {
         let path = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
-            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
+            .or_else(|_| match songbird_process_env::var("BEARDOG_SOCKET") {
+                Ok(p) => {
+                    warn!(
+                        "Using legacy env var BEARDOG_SOCKET — migrate to SECURITY_PROVIDER_SOCKET"
+                    );
+                    Ok(p)
+                }
+                Err(e) => Err(e),
+            })
             .or_else(|_| songbird_process_env::var("BIOMEOS_SOCKET_PATH"))
             .or_else(|_| {
                 // Try XDG runtime directory (capability-based, primal-agnostic)

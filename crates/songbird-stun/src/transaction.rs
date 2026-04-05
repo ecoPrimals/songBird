@@ -48,14 +48,14 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn parse_response_rejects_transaction_id_mismatch() {
         let txn = BindingTransaction::new();
         let mut response = StunMessage::new_binding_request();
         response.message_type = MessageType::BindingResponse;
         response.transaction_id = [0xEE; 12];
         response.attributes.push(StunAttribute::XorMappedAddress(SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
             9,
         )));
         let wire = response.encode();
@@ -67,7 +67,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn parse_response_requires_mapped_address() {
         let txn = BindingTransaction::new();
         let mut response = StunMessage::new_binding_request();
@@ -83,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn parse_response_accepts_xor_mapped_on_success() {
         let txn = BindingTransaction::new();
         let tid: [u8; 12] = txn.encode_request().as_ref()[8..20].try_into().unwrap();
@@ -98,7 +98,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::unwrap_used, reason = "test assertion")]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
     fn parse_response_rejects_binding_error_without_address() {
         let txn = BindingTransaction::new();
         let tid: [u8; 12] = txn.encode_request().as_ref()[8..20].try_into().unwrap();

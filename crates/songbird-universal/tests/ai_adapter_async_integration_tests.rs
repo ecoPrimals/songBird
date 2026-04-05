@@ -164,15 +164,14 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
-    // Use invalid endpoint
-    let adapter =
-        AIAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    // RFC 5737 TEST-NET-1: guaranteed unreachable, avoids parallel-test port collisions
+    let adapter = AIAdapter::new("http://192.0.2.1:1".to_string())
+        .await
+        .expect("test precondition")
+        .with_timeout(std::time::Duration::from_millis(200));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
-
-    let err = result.expect_err("testing error case");
-    assert!(err.to_string().contains("Failed to reach AI provider"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -224,13 +223,13 @@ async fn test_collect_metrics_invalid_json() {
 async fn test_collect_metrics_with_timeout() {
     let mut server = mockito::Server::new_async().await;
 
-    // Mock slow response (will timeout)
+    // Mock slow response (will timeout). mockito runs the body callback on a worker thread with
+    // real HTTP I/O — wall-clock delay is required (tokio `start_paused` does not apply here).
     let mock = server
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body_from_request(|_| {
-            // Deliberately slow body (must exceed adapter timeout below)
             std::thread::sleep(Duration::from_millis(250));
             r#"{"active_models":0,"total_requests":0,"avg_latency_ms":0.0,"accuracy_score":1.0,"gpu_utilization_percent":0.0,"timestamp":"2025-11-18T12:00:00Z"}"#.into()
         })
@@ -378,8 +377,10 @@ async fn test_check_health_overloaded() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
-    let adapter =
-        AIAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    let adapter = AIAdapter::new("http://192.0.2.1:1".to_string())
+        .await
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(200));
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");

@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Primal Discovery Functions
+//! Capability endpoint discovery
 //!
-//! Modern replacement for deprecated hardcoded primal endpoints.
-//! These functions discover primals through environment variables and
+//! Modern replacement for deprecated hardcoded provider URLs.
+//! These functions resolve provider endpoints through environment variables and
 //! capability-based discovery, respecting sovereignty principles.
 //!
 //! ## Modern Async Pattern (v5.22.0 - Jan 25, 2026)
@@ -12,7 +12,7 @@
 //! Uses dependency injection for zero global state coupling:
 //!
 //! ```rust,ignore
-//! // ❌ OLD: Hardcoded primal endpoints (DEPRECATED — use capability discovery)
+//! // ❌ OLD: Hardcoded provider endpoints (DEPRECATED — use capability discovery)
 //!
 //! // ✅ NEW: Environment + Discovery (Production)
 //! use songbird_config::primal_discovery::{get_compute_endpoint, DiscoveryOptions};
@@ -86,13 +86,6 @@ impl DiscoveryOptionsBuilder {
         self
     }
 
-    /// Deprecated alias for [`Self::compute_provider_endpoint`].
-    #[deprecated(note = "use compute_provider_endpoint (capability-based naming)")]
-    #[must_use]
-    pub fn toadstool_endpoint(mut self, endpoint: impl Into<String>) -> Self {
-        self.compute_provider_endpoint(endpoint)
-    }
-
     /// Sets runtime discovery timeout for the capability-discovery fallback path.
     #[must_use]
     pub fn discovery_timeout(mut self, timeout: Duration) -> Self {
@@ -107,16 +100,18 @@ impl DiscoveryOptionsBuilder {
     }
 }
 
-/// Get compute provider endpoint (replaces legacy `DEFAULT_TOADSTOOL_ENDPOINT` / hardcoded primal endpoints)
+/// Get compute provider endpoint (replaces legacy hardcoded compute URLs and the old default constant)
 ///
 /// Uses dependency injection for zero global state coupling.
 ///
 /// Discovery order:
 /// 1. Explicit option (if provided)
 /// 2. `COMPUTE_ENDPOINT` environment variable
-/// 3. `TOADSTOOL_ENDPOINT` environment variable (backwards compatibility)
-/// 4. Capability-based discovery (future)
-/// 5. Error - no hardcoded fallback
+/// 3. `COMPUTE_PROVIDER_ENDPOINT` environment variable
+/// 4. Explicit legacy compute provider option (dependency injection)
+/// 5. Legacy compute env alias (backwards compatibility)
+/// 6. Capability-based discovery (future)
+/// 7. Error - no hardcoded fallback
 ///
 /// ## Modern Async Pattern
 ///
@@ -135,7 +130,7 @@ impl DiscoveryOptionsBuilder {
 /// # Errors
 ///
 /// Returns an error if:
-/// - No `COMPUTE_ENDPOINT` or `TOADSTOOL_ENDPOINT` environment variable is set
+/// - Neither `COMPUTE_ENDPOINT` nor the legacy compute env alias is set
 /// - Capability-based discovery fails to find a compute provider
 pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<String> {
     // 0. Try explicit option first (dependency injection)
@@ -150,19 +145,27 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
         return Ok(endpoint);
     }
 
-    // 2. Try explicit legacy compute provider option (dependency injection)
+    // 2. Try COMPUTE_PROVIDER_ENDPOINT (capability domain)
+    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT") {
+        debug!("Using COMPUTE_PROVIDER_ENDPOINT from environment: {}", endpoint);
+        return Ok(endpoint);
+    }
+
+    // 3. Try explicit legacy compute provider option (dependency injection)
     if let Some(endpoint) = options.compute_provider_endpoint {
         warn!("Using explicit compute_provider_endpoint from options — prefer compute_endpoint");
         return Ok(endpoint);
     }
 
-    // 3. Try legacy TOADSTOOL_ENDPOINT from environment (backwards compatibility)
+    // 4. Legacy compute env branch (backwards compatibility)
     if let Ok(endpoint) = songbird_process_env::var("TOADSTOOL_ENDPOINT") {
-        warn!("Using deprecated TOADSTOOL_ENDPOINT - migrate to COMPUTE_ENDPOINT");
+        warn!(
+            "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT or COMPUTE_PROVIDER_ENDPOINT"
+        );
         return Ok(endpoint);
     }
 
-    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
+    // 5. Try capability-based discovery (RuntimeDiscoveryEngine)
     let rt_timeout = options.discovery_timeout.unwrap_or_else(|| Duration::from_secs(5));
     match crate::runtime_discovery::discover_by_capability_timed("compute", rt_timeout).await {
         Ok(service) => {
@@ -175,7 +178,7 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
         }
     }
 
-    // 5. No hardcoded fallback - fail with helpful message
+    // 6. No hardcoded fallback - fail with helpful message
     Err(SongbirdError::Configuration {
         message: "No compute provider configured.".to_string(),
         field: Some("compute_endpoint".to_string()),
@@ -183,12 +186,12 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     })
 }
 
-/// Get storage provider endpoint (replaces legacy `DEFAULT_NESTGATE_ENDPOINT` naming)
+/// Get storage provider endpoint (replaces legacy hardcoded storage URL naming)
 ///
 /// Discovery order:
 /// 1. `STORAGE_ENDPOINT` environment variable
 /// 2. `STORAGE_PROVIDER_ENDPOINT` environment variable
-/// 3. `NESTGATE_ENDPOINT` environment variable (legacy compatibility)
+/// 3. Legacy storage env alias (compatibility; same key as runtime `var` lookup below)
 /// 4. Capability-based discovery (`runtime_discovery`)
 /// 5. Error - no hardcoded fallback
 ///
@@ -218,10 +221,10 @@ where
         return Ok(endpoint);
     }
 
-    // 3. Try legacy NESTGATE_ENDPOINT (backwards compatibility)
+    // 3. Legacy storage env branch (backwards compatibility)
     if let Ok(endpoint) = env_reader("NESTGATE_ENDPOINT") {
         warn!(
-            "Using deprecated NESTGATE_ENDPOINT - migrate to STORAGE_ENDPOINT or STORAGE_PROVIDER_ENDPOINT"
+            "NESTGATE_ENDPOINT is deprecated — migrate to STORAGE_ENDPOINT or STORAGE_PROVIDER_ENDPOINT"
         );
         return Ok(endpoint);
     }
@@ -245,18 +248,19 @@ where
     })
 }
 
-/// Get security provider endpoint (replaces `DEFAULT_BEARDOG_ENDPOINT`)
+/// Get security provider endpoint (replaces legacy hardcoded security URL defaults)
 ///
 /// Discovery order:
 /// 1. `SECURITY_ENDPOINT` environment variable
-/// 2. `BEARDOG_ENDPOINT` environment variable (backwards compatibility)
-/// 3. Capability-based discovery (future)
-/// 4. Error - no hardcoded fallback
+/// 2. `SECURITY_PROVIDER_ENDPOINT` environment variable
+/// 3. Legacy security env alias (backwards compatibility; same key as runtime `var` lookup below)
+/// 4. Capability-based discovery (future)
+/// 5. Error - no hardcoded fallback
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - No `SECURITY_ENDPOINT` or `BEARDOG_ENDPOINT` environment variable is set
+/// - Neither `SECURITY_ENDPOINT` nor the legacy security env alias is set
 /// - Capability-based discovery fails to find a security provider
 pub async fn get_security_endpoint() -> SongbirdResult<String> {
     get_security_endpoint_with(|k| songbird_process_env::var(k)).await
@@ -273,13 +277,21 @@ where
         return Ok(endpoint);
     }
 
-    // 2. Try legacy BEARDOG_ENDPOINT (backwards compatibility)
-    if let Ok(endpoint) = env_reader("BEARDOG_ENDPOINT") {
-        warn!("Using deprecated BEARDOG_ENDPOINT - migrate to SECURITY_ENDPOINT");
+    // 2. Try SECURITY_PROVIDER_ENDPOINT (capability domain)
+    if let Ok(endpoint) = env_reader("SECURITY_PROVIDER_ENDPOINT") {
+        debug!("Using SECURITY_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
-    // 3. Try capability-based discovery (RuntimeDiscoveryEngine)
+    // 3. Legacy security env branch (backwards compatibility)
+    if let Ok(endpoint) = env_reader("BEARDOG_ENDPOINT") {
+        warn!(
+            "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
+        );
+        return Ok(endpoint);
+    }
+
+    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
     match crate::runtime_discovery::discover_security().await {
         Ok(service) => {
             debug!("Discovered security via RuntimeDiscoveryEngine: {}", service.endpoint);
@@ -298,18 +310,19 @@ where
     })
 }
 
-/// Get AI provider endpoint (replaces `DEFAULT_SQUIRREL_ENDPOINT`)
+/// Get AI provider endpoint (replaces legacy hardcoded AI / neural URL defaults)
 ///
 /// Discovery order:
 /// 1. `AI_ENDPOINT` environment variable
-/// 2. `SQUIRREL_ENDPOINT` environment variable (backwards compatibility)
-/// 3. Capability-based discovery (future)
-/// 4. Error - no hardcoded fallback
+/// 2. `AI_PROVIDER_ENDPOINT` environment variable
+/// 3. Legacy AI env alias (backwards compatibility; same key as runtime `var` lookup below)
+/// 4. Capability-based discovery (future)
+/// 5. Error - no hardcoded fallback
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - No `AI_ENDPOINT` or `SQUIRREL_ENDPOINT` environment variable is set
+/// - Neither `AI_ENDPOINT` nor the legacy AI env alias is set
 /// - Capability-based discovery fails to find an AI provider
 pub async fn get_ai_endpoint() -> SongbirdResult<String> {
     get_ai_endpoint_with(|k| songbird_process_env::var(k)).await
@@ -326,13 +339,19 @@ where
         return Ok(endpoint);
     }
 
-    // 2. Try legacy SQUIRREL_ENDPOINT (backwards compatibility)
-    if let Ok(endpoint) = env_reader("SQUIRREL_ENDPOINT") {
-        warn!("Using deprecated SQUIRREL_ENDPOINT - migrate to AI_ENDPOINT");
+    // 2. Try AI_PROVIDER_ENDPOINT (capability domain)
+    if let Ok(endpoint) = env_reader("AI_PROVIDER_ENDPOINT") {
+        debug!("Using AI_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
-    // 3. Try capability-based discovery (RuntimeDiscoveryEngine)
+    // 3. Legacy AI env branch (backwards compatibility)
+    if let Ok(endpoint) = env_reader("SQUIRREL_ENDPOINT") {
+        warn!("SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT or AI_PROVIDER_ENDPOINT");
+        return Ok(endpoint);
+    }
+
+    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
     match crate::runtime_discovery::discover_ai().await {
         Ok(service) => {
             debug!("Discovered AI via RuntimeDiscoveryEngine: {}", service.endpoint);
@@ -351,10 +370,10 @@ where
     })
 }
 
-/// Get any primal endpoint by capability
+/// Get an endpoint for a capability
 ///
-/// This is the most flexible function - discovers ANY provider offering
-/// the specified capability, not just specific primals.
+/// This is the most flexible function — discovers any provider offering
+/// the specified capability (identity-agnostic).
 ///
 /// ## Example
 ///
@@ -426,10 +445,36 @@ where
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unwrap_used, reason = "test assertions")]
-    #![expect(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+
+    /// Restores a previous env value (or removal) on drop for isolated env tests.
+    struct EnvRestore {
+        key: &'static str,
+        previous: Option<String>,
+    }
+
+    impl EnvRestore {
+        fn set(key: &'static str, value: &str) -> Self {
+            let previous = songbird_process_env::var(key).ok();
+            songbird_process_env::set_var(key, value);
+            Self {
+                key,
+                previous,
+            }
+        }
+    }
+
+    impl Drop for EnvRestore {
+        fn drop(&mut self) {
+            match &self.previous {
+                Some(v) => songbird_process_env::set_var(self.key, v),
+                None => songbird_process_env::remove_var(self.key),
+            }
+        }
+    }
 
     // ✅ Modern async pattern: NO #[serial] needed!
     // ✅ Zero global state - fully concurrent tests!
@@ -447,19 +492,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_compute_endpoint_legacy_fallback() {
+    async fn test_compute_endpoint_explicit_compute_provider_option() {
         // Skip if another test leaked COMPUTE_ENDPOINT into the process env
         if songbird_process_env::var("COMPUTE_ENDPOINT").is_ok() {
             return;
         }
 
         let options = DiscoveryOptions::for_testing()
-            .toadstool_endpoint("http://legacy-toadstool:8001")
+            .compute_provider_endpoint("http://legacy-compute-provider:8001")
             .build();
 
         let result = get_compute_endpoint(options).await;
         assert!(result.is_ok());
-        assert_eq!(result.expect("should resolve"), "http://legacy-toadstool:8001");
+        assert_eq!(result.expect("should resolve"), "http://legacy-compute-provider:8001");
     }
 
     #[tokio::test]
@@ -572,5 +617,76 @@ mod tests {
         .await
         .expect("ai env");
         assert_eq!(ep, "http://ai-test:5");
+    }
+
+    #[tokio::test]
+    async fn test_compute_endpoint_env_prefers_compute_over_toadstool() {
+        let _c = EnvRestore::set("COMPUTE_ENDPOINT", "http://compute-wins:8001");
+        let _t = EnvRestore::set("TOADSTOOL_ENDPOINT", "http://toadstool-loses:9001");
+        let options =
+            DiscoveryOptions::for_testing().discovery_timeout(Duration::from_millis(1)).build();
+        let ep = get_compute_endpoint(options).await.expect("compute from env");
+        assert_eq!(ep, "http://compute-wins:8001");
+    }
+
+    #[tokio::test]
+    async fn test_get_storage_endpoint_provider_before_nestgate() {
+        let ep = get_storage_endpoint_with(|k| match k {
+            "STORAGE_PROVIDER_ENDPOINT" => Ok("http://provider-priority:8003".to_string()),
+            "NESTGATE_ENDPOINT" => Ok("http://nestgate-should-not-win:8003".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .expect("storage");
+        assert_eq!(ep, "http://provider-priority:8003");
+    }
+
+    #[tokio::test]
+    async fn test_get_security_endpoint_legacy_beardog() {
+        let ep = get_security_endpoint_with(|k| match k {
+            "BEARDOG_ENDPOINT" => Ok("http://beardog-legacy:7443".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .expect("security");
+        assert_eq!(ep, "http://beardog-legacy:7443");
+    }
+
+    #[tokio::test]
+    async fn test_get_ai_endpoint_legacy_squirrel() {
+        let ep = get_ai_endpoint_with(|k| match k {
+            "SQUIRREL_ENDPOINT" => Ok("http://squirrel-legacy:9200".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .expect("ai");
+        assert_eq!(ep, "http://squirrel-legacy:9200");
+    }
+
+    #[tokio::test]
+    async fn test_endpoint_by_capability_uppercases_capability_in_env_key() {
+        use std::collections::HashMap;
+
+        let vars: HashMap<String, String> =
+            HashMap::from([("MIXEDCAP_ENDPOINT".to_string(), "http://mixed:1".to_string())]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let ep =
+            get_endpoint_by_capability_with("mixedcap", env, Some(Duration::from_millis(1))).await;
+        assert_eq!(ep.expect("endpoint"), "http://mixed:1");
+    }
+
+    #[tokio::test]
+    async fn test_endpoint_by_capability_accepts_non_url_string_from_env() {
+        use std::collections::HashMap;
+
+        let vars: HashMap<String, String> =
+            HashMap::from([("RAW_ENDPOINT".to_string(), "not-a-valid-url:::broken".to_string())]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let ep = get_endpoint_by_capability_with("raw", env, Some(Duration::from_millis(1))).await;
+        assert_eq!(ep.expect("opaque string preserved"), "not-a-valid-url:::broken");
     }
 }

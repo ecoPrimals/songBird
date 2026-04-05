@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Configuration providers for Songbird components
 //!
 //! This module provides configuration provider functionality.
 
-#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
+#![allow(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 #![allow(missing_docs, reason = "generic provider trait; document at call sites")]
 
 use serde::de::DeserializeOwned;

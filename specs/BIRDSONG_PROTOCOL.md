@@ -2,7 +2,7 @@
 
 **Date**: December 21, 2025  
 **Status**: Architectural Specification  
-**Joint Effort**: BearDog (genetics/encryption) + Songbird (broadcast/routing)
+**Joint Effort**: Security Provider (genetics/encryption) + Songbird (broadcast/routing)
 
 ---
 
@@ -27,7 +27,7 @@
 
 ## 🔐 Responsibility Division
 
-### BearDog Responsibilities
+### Security Provider Responsibilities
 
 **Genetics & Lineage:**
 - Generate lineage chains
@@ -55,7 +55,7 @@
 - Message structure
 
 **Use Lineage:**
-- Request decryption keys from BearDog
+- Request decryption keys from Security Provider
 - Apply keys to incoming birdSong
 - "Hear" family vs "hear" noise
 - React to decrypted messages
@@ -182,11 +182,11 @@ enum BirdSongContent {
 
 ## 🔑 Key Derivation & Distribution
 
-### BearDog Key Generation
+### Security Provider Key Generation
 
 ```rust
-/// BearDog generates keys from lineage
-impl BearDog {
+/// Security Provider generates keys from lineage
+impl Security Provider {
     /// Generate broadcast key for a lineage root
     fn generate_lineage_broadcast_key(&self, root_id: &str) -> Result<BroadcastKey> {
         // Derive key from lineage root's identity
@@ -228,16 +228,16 @@ impl BearDog {
 ```rust
 /// Songbird requests and uses keys
 impl Songbird {
-    /// Request broadcast key from BearDog
+    /// Request broadcast key from Security Provider
     async fn request_broadcast_key(&self, lineage_hint: &LineageHint) -> Result<BroadcastKey> {
-        // Query BearDog for the key
+        // Query Security Provider for the key
         let key_request = KeyRequest {
             lineage_hint: lineage_hint.clone(),
             requester_proof: self.get_lineage_proof()?,
         };
         
-        // BearDog verifies we're in the lineage, returns key
-        let key = self.beardog_client.request_key(key_request).await?;
+        // Security Provider verifies we're in the lineage, returns key
+        let key = self.security_client.request_key(key_request).await?;
         
         Ok(key)
     }
@@ -265,9 +265,9 @@ impl Songbird {
 ```
 Songbird Node A:
   1. Create payload (presence, capabilities, etc.)
-  2. Request encryption from BearDog
+  2. Request encryption from Security Provider
      - "Encrypt this for my lineage"
-  3. BearDog encrypts with lineage key
+  3. Security Provider encrypts with lineage key
   4. Songbird broadcasts encrypted birdSong (UDP)
 ```
 
@@ -277,18 +277,18 @@ Songbird Node A:
 Songbird Node B (Family):
   1. Receive UDP broadcast
   2. See lineage hint
-  3. Request decryption key from BearDog
+  3. Request decryption key from Security Provider
      - "I'm in this lineage, give me the key"
-  4. BearDog verifies lineage, provides key
+  4. Security Provider verifies lineage, provides key
   5. Decrypt and process message
   6. "Oh, Node A is announcing presence!"
 
 Songbird Node C (Not Family):
   1. Receive UDP broadcast
   2. See lineage hint
-  3. Request decryption key from BearDog
+  3. Request decryption key from Security Provider
      - "I'm in this lineage, give me the key"
-  4. BearDog verifies: "You're not in this lineage"
+  4. Security Provider verifies: "You're not in this lineage"
   5. No key provided
   6. Message remains encrypted (noise)
 ```
@@ -349,7 +349,7 @@ let relay_request = BirdSongPayload {
 };
 
 // Encrypt for my lineage
-let birdsong = beardog.encrypt_for_lineage(relay_request, LineageHint::AllDescendants)?;
+let birdsong = security_provider.encrypt_for_lineage(relay_request, LineageHint::AllDescendants)?;
 
 // Broadcast (UDP)
 songbird.broadcast(birdsong)?;
@@ -477,8 +477,8 @@ impl BirdSongKeyCache {
             }
         }
         
-        // Cache miss or expired, fetch from BearDog
-        let key = self.fetch_from_beardog(hint)?;
+        // Cache miss or expired, fetch from Security Provider
+        let key = self.fetch_from_security_provider(hint)?;
         self.cache_key(hint, key.clone())?;
         
         Ok(key)
@@ -486,7 +486,7 @@ impl BirdSongKeyCache {
 }
 ```
 
-**Benefit**: Don't query BearDog for every broadcast
+**Benefit**: Don't query Security Provider for every broadcast
 
 ### Batch Decryption
 
@@ -529,19 +529,19 @@ fn process_birdsong_batch(&self, songs: Vec<BirdSong>) -> Vec<BirdSongPayload> {
 
 ### Phase 2: Gradual Adoption
 
-**As BearDog deploys:**
-- Nodes with BearDog: Prefer birdSong, support plaintext
-- Nodes without BearDog: Use plaintext only
+**As Security Provider deploys:**
+- Nodes with Security Provider: Prefer birdSong, support plaintext
+- Nodes without Security Provider: Use plaintext only
 - Graceful interoperability
 
 ### Phase 3: BirdSong Only
 
-**When all nodes have BearDog:**
+**When all nodes have Security Provider:**
 - Deprecate plaintext discovery
 - BirdSong becomes standard
 - Privacy by default
 
-**Timeline:** 3-6 months after BearDog integration complete
+**Timeline:** 3-6 months after Security Provider integration complete
 
 ---
 
@@ -596,8 +596,8 @@ Private Lineages within
 
 ## 📚 Related Specifications
 
-**BearDog Integration:**
-- `BEARDOG_BTSP_HANDOFF.md` - Overall integration
+**Security Provider Integration:**
+- Security provider BTSP handoff (historical filename `BEARDOG_BTSP_HANDOFF.md`) — overall integration
 - `specs/PRIMAL_RESPONSIBILITY_SEPARATION_SPEC.md` - Role separation
 
 **Lineage System:**
@@ -615,7 +615,7 @@ Private Lineages within
 
 ## 🚀 Implementation Plan
 
-### Phase 1: BearDog Integration (BearDog team)
+### Phase 1: Security Provider Integration (Security Provider team)
 
 **Week 1-2:**
 - Lineage key generation
@@ -659,14 +659,14 @@ Private Lineages within
 
 ### The Elegant Solution
 
-> **BearDog handles**: Genetics, lineage, encryption  
+> **Security Provider handles**: Genetics, lineage, encryption  
 > **Songbird uses**: That in its "birdSong"  
 > **Result**: Broadcast that's obvious to family, noise to others
 
 ### Joint Responsibility
 
 **BTSP = Joint Effort:**
-- BearDog: The cryptography
+- Security Provider: The cryptography
 - Songbird: The networking
 - Together: Secure, private, sovereign federation
 
@@ -692,7 +692,7 @@ Private Lineages within
 ---
 
 **Status**: Architectural specification complete  
-**Dependencies**: BearDog lineage + key distribution  
+**Dependencies**: Security Provider lineage + key distribution  
 **Timeline**: 8-12 weeks (parallel with Phase 3)  
 **Impact**: Privacy-preserving discovery and coordination
 

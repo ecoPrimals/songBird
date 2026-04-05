@@ -61,13 +61,13 @@ struct JsonRpcRequest<P> {
 /// JSON-RPC 2.0 Response
 #[derive(Debug, Clone, Deserialize)]
 struct JsonRpcResponse<R> {
-    #[expect(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
+    #[allow(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
     jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<R>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<JsonRpcError>,
-    #[expect(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
+    #[allow(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
     id: u64,
 }
 
@@ -76,7 +76,7 @@ struct JsonRpcResponse<R> {
 struct JsonRpcError {
     code: i32,
     message: String,
-    #[expect(dead_code, reason = "deserialized from JSON-RPC error object; not read by client")]
+    #[allow(dead_code, reason = "deserialized from JSON-RPC error object; not read by client")]
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<serde_json::Value>,
 }

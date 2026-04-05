@@ -502,7 +502,7 @@ mod tests {
     #[test]
     fn stream_manager_update_missing_returns_error() {
         let manager = StreamManager::new(42);
-        let err = manager.update_stream(7, |s| s.mark_connected()).expect_err("missing stream");
+        let err = manager.update_stream(7, Stream::mark_connected).expect_err("missing stream");
         assert!(matches!(err, Error::Stream(_)));
     }
 
@@ -611,7 +611,7 @@ mod tests {
     fn stream_manager_update_stream_applies_closure() {
         let manager = StreamManager::new(0xCAFE);
         let sid = manager.allocate_stream().expect("alloc");
-        manager.update_stream(sid, |s| s.mark_connected()).expect("update");
+        manager.update_stream(sid, Stream::mark_connected).expect("update");
         let stream = manager.get_stream(sid).expect("get");
         assert_eq!(stream.state, StreamState::Open);
         assert!(stream.can_send());

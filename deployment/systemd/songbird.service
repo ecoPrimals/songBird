@@ -16,9 +16,9 @@ Description=Songbird Network Orchestrator (ecoPrimals)
 Documentation=https://github.com/ecoPrimals/songbird
 After=network-online.target
 Wants=network-online.target
-# Optional: Wait for BearDog if available
-After=beardog.service
-Wants=beardog.service
+# Optional: Wait for Security Provider if available
+After=security-provider.service
+Wants=security-provider.service
 
 [Service]
 Type=notify

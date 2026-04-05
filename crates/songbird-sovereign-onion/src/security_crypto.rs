@@ -4,8 +4,8 @@
 //! Neural API / security-provider crypto delegation via [`songbird_crypto_provider::CryptoProvider`]
 //!
 //! All cryptographic operations are routed through `CryptoProvider::from_env()` (Neural API by
-//! default; set `SECURITY_PROVIDER_MODE=direct` or legacy `BEARDOG_MODE=direct` for bootstrap). See `songbird-crypto-provider` for
-//! environment variables and socket discovery.
+//! default; set `SECURITY_PROVIDER_MODE=direct` for local bootstrap). See `songbird-crypto-provider` for
+//! environment variables, legacy aliases, and socket discovery.
 //!
 //! ## Usage
 //!
@@ -24,10 +24,6 @@ use songbird_crypto_provider::{CryptoProvider, RoutingMode};
 pub struct SecurityCryptoClient {
     provider: CryptoProvider,
 }
-
-/// Deprecated alias for [`SecurityCryptoClient`].
-#[deprecated(note = "use SecurityCryptoClient")]
-pub type BeardogCryptoClient = SecurityCryptoClient;
 
 impl SecurityCryptoClient {
     /// Create client using [`CryptoProvider::from_env`] (Neural API socket by default).

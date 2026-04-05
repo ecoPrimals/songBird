@@ -22,9 +22,11 @@ impl SecurityCapabilityClient {
     /// Create new security client
     ///
     /// Attempts to discover security provider endpoint using:
-    /// 1. `SECURITY_ENDPOINT` environment variable
-    /// 2. Capability discovery (via songbird-config)
-    /// 3. Well-known default (localhost:8200)
+    /// 1. `SECURITY_ENDPOINT` (capability domain)
+    /// 2. `SECURITY_PROVIDER_ENDPOINT`
+    /// 3. `BEARDOG_ENDPOINT` (deprecated legacy; logs a migration warning)
+    /// 4. Capability discovery (via songbird-config)
+    /// 5. Well-known default (localhost:8200, debug builds only)
     ///
     /// # Errors
     ///
@@ -238,16 +240,7 @@ impl SecurityCapabilityClient {
 
     /// Discover `security provider` endpoint using multiple strategies
     async fn discover_endpoint() -> Result<String> {
-        // Strategy 1: BEARDOG_ENDPOINT environment variable
-        if let Ok(endpoint) = songbird_process_env::var("BEARDOG_ENDPOINT") {
-            tracing::info!(
-                "🐻 Using security provider endpoint from BEARDOG_ENDPOINT: {}",
-                endpoint
-            );
-            return Ok(endpoint);
-        }
-
-        // Strategy 2: SECURITY_ENDPOINT environment variable
+        // Strategy 1: SECURITY_ENDPOINT (capability domain — preferred)
         if let Ok(endpoint) = songbird_process_env::var("SECURITY_ENDPOINT") {
             tracing::info!(
                 "🐻 Using security provider endpoint from SECURITY_ENDPOINT: {}",
@@ -256,7 +249,28 @@ impl SecurityCapabilityClient {
             return Ok(endpoint);
         }
 
-        // Strategy 3: Capability discovery (via songbird-config)
+        // Strategy 2: SECURITY_PROVIDER_ENDPOINT
+        if let Ok(endpoint) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT") {
+            tracing::info!(
+                "🐻 Using security provider endpoint from SECURITY_PROVIDER_ENDPOINT: {}",
+                endpoint
+            );
+            return Ok(endpoint);
+        }
+
+        // Strategy 3: BEARDOG_ENDPOINT (deprecated primal-specific name)
+        if let Ok(endpoint) = songbird_process_env::var("BEARDOG_ENDPOINT") {
+            tracing::warn!(
+                "Using legacy env var BEARDOG_ENDPOINT — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
+            );
+            tracing::info!(
+                "🐻 Using security provider endpoint from BEARDOG_ENDPOINT (legacy): {}",
+                endpoint
+            );
+            return Ok(endpoint);
+        }
+
+        // Strategy 4: Capability discovery (via songbird-config)
         #[cfg(feature = "capability-discovery")]
         {
             use songbird_config::discovery_helpers::discover_primal;
@@ -271,7 +285,7 @@ impl SecurityCapabilityClient {
             }
         }
 
-        // Strategy 4: Well-known default (only in development)
+        // Strategy 5: Well-known default (only in development)
         #[cfg(debug_assertions)]
         {
             let default_endpoint = "http://localhost:8200".to_string();
@@ -285,7 +299,7 @@ impl SecurityCapabilityClient {
         #[cfg(not(debug_assertions))]
         {
             anyhow::bail!(
-                "security provider endpoint not configured. Set BEARDOG_ENDPOINT environment variable."
+                "security provider endpoint not configured. Set SECURITY_ENDPOINT (or SECURITY_PROVIDER_ENDPOINT), or enable capability discovery."
             );
         }
     }

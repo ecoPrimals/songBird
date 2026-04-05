@@ -89,11 +89,6 @@
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod security;
 
-/// Deprecated alias for [`security`].
-#[deprecated(note = "use module `security` (capability-based naming)")]
-pub mod beardog {
-    pub use crate::security::*;
-}
 /// BirdSong wire payloads and federation message types.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod birdsong_payload;

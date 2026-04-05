@@ -74,10 +74,10 @@ Our Solution:
 │  tarpc (Binary)    JSON-RPC (Universal) │
 │  ↓                 ↓                     │
 │  Primal ←→ Primal  External Clients     │
-│  • BearDog         • Python              │
-│  • Squirrel        • JavaScript          │
-│  • Toadstool       • Any language        │
-│  • NestGate        • curl/httpie         │
+│  • Security Provider         • Python              │
+│  • AI provider        • JavaScript          │
+│  • Compute provider       • Any language        │
+│  • Storage Provider        • curl/httpie         │
 │                                          │
 │  Both protocols access same service mesh │
 └─────────────────────────────────────────┘
@@ -272,7 +272,7 @@ impl SongbirdTarpcClient {
 // Usage example
 let client = SongbirdTarpcClient::connect("localhost:8081").await?;
 let service_id = client.register_service(ServiceInfo {
-    name: "nestgate".to_string(),
+    name: "storage_provider".to_string(),
     address: "localhost".to_string(),
     port: 8090,
     capabilities: vec!["gateway".to_string()],
@@ -389,7 +389,7 @@ curl -X POST http://localhost:8080/jsonrpc \
     "jsonrpc": "2.0",
     "method": "songbird.registerService",
     "params": {
-      "name": "nestgate",
+      "name": "storage_provider",
       "address": "localhost",
       "port": 8090,
       "capabilities": ["gateway"]
@@ -421,7 +421,7 @@ curl -X POST http://localhost:8080/jsonrpc \
   "jsonrpc": "2.0",
   "result": [
     {
-      "name": "nestgate",
+      "name": "storage_provider",
       "address": "localhost",
       "port": 8090,
       "capabilities": ["gateway"]
@@ -468,7 +468,7 @@ class SongbirdClient:
 # Usage
 client = SongbirdClient()
 service_id = client.register_service(
-    name="toadstool",
+    name="compute_provider",
     address="localhost",
     port=8093,
     capabilities=["ml", "training"]
@@ -569,7 +569,7 @@ tokio = { version = "1", features = ["full"] }
 - [ ] Client choice enabled
 - [ ] Performance benchmarks published
 - [ ] Documentation complete
-- [ ] NestGate using optimal protocol
+- [ ] Storage Provider using optimal protocol
 
 ---
 

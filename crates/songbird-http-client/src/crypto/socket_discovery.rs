@@ -404,13 +404,6 @@ pub fn discover_security_provider_socket() -> String {
     discover_security_socket()
 }
 
-/// Deprecated alias for [`discover_security_socket`].
-#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
-#[must_use]
-pub fn discover_beardog_socket() -> String {
-    discover_security_socket()
-}
-
 /// Discover Neural API socket with full fallback chain
 ///
 /// Checks in order:
