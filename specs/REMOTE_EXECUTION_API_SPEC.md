@@ -21,7 +21,7 @@ Manual SSH/terminal access to each tower to run commands.
 - Remote task orchestration
 - Dynamic workload distribution
 - HPC job scheduling
-- Prof. Murillo demo automation
+- collaborator demo automation
 
 ---
 
@@ -94,7 +94,7 @@ Authorization: Bearer <federation-token>
   "command": "python3 train.py --rank 1",
   "working_dir": "/home/user/project",
   "env": {
-    "MASTER_ADDR": "192.168.1.144",
+    "MASTER_ADDR": "192.0.2.10",
     "CUDA_VISIBLE_DEVICES": "0"
   },
   "background": true,

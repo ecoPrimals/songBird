@@ -251,7 +251,7 @@ Submit a compute task for intelligent routing.
 ```json
 {
   "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "routed_to": "capability:compute:http://192.168.1.144:9000",
+  "routed_to": "capability:compute:http://192.0.2.10:9000",
   "status": "submitted",
   "estimated_completion": "2025-11-09T18:30:00Z"
 }

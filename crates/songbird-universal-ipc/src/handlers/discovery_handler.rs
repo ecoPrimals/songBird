@@ -284,7 +284,7 @@ mod tests {
         let mock_peers = vec![DiscoveredPeerInfo {
             node_id: "node-gamma".to_string(),
             family_id: "nat0".to_string(),
-            address: "192.168.1.144:2300".to_string(),
+            address: "192.0.2.10:2300".to_string(),
             tcp_port: Some(8082),
             capabilities: vec!["crypto".to_string(), "tls".to_string()],
             last_seen: "2026-01-29T02:26:00Z".to_string(),

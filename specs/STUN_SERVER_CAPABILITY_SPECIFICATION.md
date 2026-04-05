@@ -237,7 +237,7 @@ Client                                Server
 fn test_binding_response_generation() {
     let server = StunServer::new("127.0.0.1:3478".parse().unwrap());
     let request = StunMessage::new_binding_request();
-    let client_addr = "192.168.1.100:54321".parse().unwrap();
+    let client_addr = "192.0.2.100:54321".parse().unwrap();
     
     let response = server.create_binding_response(&request, client_addr).unwrap();
     

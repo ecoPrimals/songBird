@@ -30,7 +30,7 @@
 //!   --env COMPUTE_SERVICE_NAME="Tower B Compute" \
 //!   --env COMPUTE_HOST=192.168.1.134 \
 //!   --env COMPUTE_PORT=9000 \
-//!   --env SONGBIRD_FEDERATION_ENDPOINT=http://192.168.1.144:8080
+//!   --env SONGBIRD_FEDERATION_ENDPOINT=http://192.0.2.10:8080
 //! ```
 
 mod args;

@@ -21,9 +21,9 @@
 //! # Required
 //! export COMPUTE_SERVICE_TYPE="compute"          # Service type
 //! export COMPUTE_SERVICE_NAME="My Compute Node"  # Human-readable name
-//! export COMPUTE_HOST="192.168.1.144"           # This node's address
+//! export COMPUTE_HOST="192.0.2.10"           # This node's address
 //! export COMPUTE_PORT="9000"                     # This node's port
-//! export SONGBIRD_FEDERATION_ENDPOINT="http://192.168.1.144:8080"
+//! export SONGBIRD_FEDERATION_ENDPOINT="http://192.0.2.10:8080"
 //!
 //! # Optional - Auto-detected if not provided
 //! export COMPUTE_CAPABILITIES="compute,cpu,gpu,batch-processing"

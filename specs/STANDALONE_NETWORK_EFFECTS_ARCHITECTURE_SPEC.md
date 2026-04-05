@@ -283,7 +283,7 @@ enable_discovery = true
 
 [discovery]
 auto_discovery = true
-scan_ranges = ["127.0.0.1", "192.168.1.0/24"]
+scan_ranges = ["127.0.0.1", "192.0.2.0/24"]
 scan_ports = [8080, 8081, 8082, 8083, 8084]
 
 [routing]

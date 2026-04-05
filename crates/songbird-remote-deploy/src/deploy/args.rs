@@ -66,7 +66,7 @@ pub(super) enum Commands {
 
     /// Deploy a service via HTTP deployment API (adaptive)
     DeployHttp {
-        /// Target tower HTTP endpoint (e.g. <http://192.168.1.144:8080>)
+        /// Target tower HTTP endpoint (e.g. <http://192.0.2.10:8080>)
         #[arg(long)]
         tower: String,
 

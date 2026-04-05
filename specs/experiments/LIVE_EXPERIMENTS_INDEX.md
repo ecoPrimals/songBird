@@ -102,19 +102,19 @@ This experimental program validates that **Songbird represents a genuine evoluti
 ## 🔧 **SHARED INFRASTRUCTURE**
 
 ### **🔐 Testing Secrets Management**
-**Location**: `/home/eastgate/Development/ecoPrimals/testing-secrets/`  
-**Purpose**: Secure API key storage shared across all primal teams  
-**Status**: ✅ **CONFIGURED**
+**Location**: Use `$SECRETS_DIR/` (or your own env var) pointing to a directory **outside** the repository for API credentials and tokens.  
+**Purpose**: Keep secrets out of version control; each environment supplies its own directory.  
+**Status**: ✅ **CONFIGURED** (pattern documented; populate locally as needed)
 
-#### **Available Credentials**:
-- ✅ **Anthropic Claude API**: Ready for AI capability testing
-- ✅ **OpenAI GPT API**: Ready for AI capability testing
-- ✅ **OpenWeather API**: Ready for environmental data testing
-- ✅ **JSONPlaceholder API**: Ready for mock data workflows (no auth)
-- ✅ **Cat Facts API**: Ready for fun data integration (no auth)
-- ⏳ **GitHub API**: Pending (optional for Stage 1)
-- ⏳ **Telegram Bot**: Alternative to Discord (much easier setup)
-- ⏳ **AWS Services**: Pending (needed for Stage 2)
+#### **Credential types used in experiments** (configure via your secrets directory — no repo paths):
+- **Anthropic Claude API**: AI capability testing
+- **OpenAI GPT API**: AI capability testing
+- **OpenWeather API**: Environmental data testing
+- **JSONPlaceholder API**: Mock data workflows (no auth)
+- **Cat Facts API**: Fun data integration (no auth)
+- **GitHub API**: Optional for Stage 1
+- **Telegram Bot**: Alternative to Discord (much easier setup)
+- **AWS Services**: Needed for Stage 2
 
 ### **📊 Monitoring and Telemetry**
 - **Real-time Metrics**: Performance, latency, throughput

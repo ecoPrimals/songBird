@@ -42,7 +42,7 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  TIER 1: IPv6 Direct (via DNS)                                  │
-│    → tower.nestgate.io AAAA → [2600:1700:b0b0:5b90::27]:3492   │
+│    → tower.example.net AAAA → [2600:1700:b0b0:5b90::27]:3492   │
 │    → No NAT, no port forward, globally routable                 │
 │    → STATUS: ✅ WORKING NOW                                      │
 │                                                                  │
@@ -53,12 +53,12 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 │    → STATUS: ✅ WORKING NOW                                      │
 │                                                                  │
 │  TIER 3: IPv4 Direct (via DNS)                                  │
-│    → tower.nestgate.io A → 162.226.225.148:3492                │
+│    → tower.example.net A → 198.51.100.1:3492                │
 │    → REQUIRES: Router port forward OR IGD                       │
 │    → STATUS: ⚠️ NEEDS IGD EVOLUTION                             │
 │                                                                  │
 │  TIER 4: LAN Direct                                             │
-│    → 192.168.1.144:3492 (same subnet only)                      │
+│    → 192.0.2.10:3492 (same subnet only)                      │
 │    → STATUS: ✅ WORKING NOW                                      │
 │                                                                  │
 │  TIER 5: STUN Hole-Punch                                        │
@@ -102,8 +102,8 @@ Active Services:
   Birdsong:   family_id: 1894e909e454, encryption: chacha20_poly1305
 
 DNS Records (nestgate.io):
-  tower.nestgate.io  A     162.226.225.148
-  tower.nestgate.io  AAAA  2600:1700:b0b0:5b90::27
+  tower.example.net  A     198.51.100.1
+  tower.example.net  AAAA  2600:1700:b0b0:5b90::27
   beacon.nestgate.io TXT   v=biomeos2 (BearDog-encrypted beacon blob)
 ```
 
@@ -132,7 +132,7 @@ LISTEN *:3492 (serves both protocols)
 **Why This Matters**:
 - IPv6 means globally reachable without port forwarding
 - ISP provides global IPv6 address automatically
-- `tower.nestgate.io` AAAA record already resolves correctly
+- `tower.example.net` AAAA record already resolves correctly
 - No NAT traversal needed (Tier 1 priority)
 
 **Code Reference** (`sovereign_socket.rs`):
@@ -241,9 +241,9 @@ echo '{"jsonrpc":"2.0","method":"onion.status","params":{},"id":1}' \
 // Discover router IGD capabilities
 {"method": "igd.discover", "params": {}}
 → {
-  "gateway_ip": "192.168.1.1",
-  "control_url": "http://192.168.1.1:5000/ctl/IPConn",
-  "external_ip": "162.226.225.148"
+  "gateway_ip": "192.0.2.1",
+  "control_url": "http://192.0.2.1:5000/ctl/IPConn",
+  "external_ip": "198.51.100.1"
 }
 
 // Request port mapping
@@ -256,8 +256,8 @@ echo '{"jsonrpc":"2.0","method":"onion.status","params":{},"id":1}' \
 }}
 → {
   "mapped": true,
-  "external": "162.226.225.148:3492",
-  "internal": "192.168.1.144:3492",
+  "external": "198.51.100.1:3492",
+  "internal": "192.0.2.10:3492",
   "ttl": 86400
 }
 
@@ -270,7 +270,7 @@ echo '{"jsonrpc":"2.0","method":"onion.status","params":{},"id":1}' \
     "protocol": "TCP",
     "ttl_remaining": 85200
   }],
-  "external_ip": "162.226.225.148"
+  "external_ip": "198.51.100.1"
 }
 
 // Remove mapping
@@ -304,7 +304,7 @@ SONGBIRD_IGD_ENABLED=true songbird server
 
 **Current State**: Works automatically via standard TCP binding
 
-**Address**: `192.168.1.144:3492`
+**Address**: `192.0.2.10:3492`
 
 **Scope**: Same subnet only (no routing)
 
@@ -689,13 +689,13 @@ All connections verified by Dark Forest lineage:
 #!/bin/bash
 # Start BearDog
 FAMILY_ID=1894e909e454 NODE_ID=gate \
-  BIOMEOS_ROOT=/home/eastgate/Development/ecoPrimals/phase2/biomeOS \
+  BIOMEOS_ROOT=/path/to/biomeOS \
   /path/to/beardog server --socket /run/user/1000/biomeos/beardog.sock &
 
 # Start Songbird
 FAMILY_ID=1894e909e454 NODE_ID=gate BIOMEOS_BIND_ALL=true \
   SECURITY_PROVIDER_SOCKET=/run/user/1000/biomeos/security.sock \
-  BIOMEOS_ROOT=/home/eastgate/Development/ecoPrimals/phase2/biomeOS \
+  BIOMEOS_ROOT=/path/to/biomeOS \
   /path/to/songbird server --port 3492 --socket /run/user/1000/biomeos/songbird.sock --verbose &
 
 # Wait for Songbird to be ready
@@ -784,13 +784,13 @@ adb push target/aarch64-unknown-linux-gnu/release/songbird /data/local/tmp/prima
 ```bash
 # BearDog (if not running)
 FAMILY_ID=1894e909e454 NODE_ID=gate \
-  BIOMEOS_ROOT=/home/eastgate/Development/ecoPrimals/phase2/biomeOS \
+  BIOMEOS_ROOT=/path/to/biomeOS \
   /path/to/beardog server --socket /run/user/1000/biomeos/beardog.sock &
 
 # Songbird (IPv6 dual-stack + security provider wired)
 FAMILY_ID=1894e909e454 NODE_ID=gate BIOMEOS_BIND_ALL=true \
   SECURITY_PROVIDER_SOCKET=/run/user/1000/biomeos/security.sock \
-  BIOMEOS_ROOT=/home/eastgate/Development/ecoPrimals/phase2/biomeOS \
+  BIOMEOS_ROOT=/path/to/biomeOS \
   /path/to/songbird server --port 3492 --socket /run/user/1000/biomeos/songbird.sock --verbose &
 
 # Activate onion + mesh (via IPC)
@@ -860,8 +860,8 @@ echo '{"jsonrpc":"2.0","method":"birdsong.get_lineage","params":{},"id":1}' \
 | IPv4 localhost | 127.0.0.1:3492 | 3 | Direct | ✅ PASS |
 | IPv6 global | [2600:...::27]:3492 | 1 | Direct | ✅ PASS |
 | Onion client | p6m5exqn...onion:3492 | 2 | Encrypted | ✅ PASS |
-| LAN | 192.168.1.144:3492 | 4 | Direct | ✅ PASS |
-| IPv4 external | 162.226.225.148:3492 | 3 | Port forward | ⚠️ NEEDS IGD |
+| LAN | 192.0.2.10:3492 | 4 | Direct | ✅ PASS |
+| IPv4 external | 198.51.100.1:3492 | 3 | Port forward | ⚠️ NEEDS IGD |
 | STUN punch | Discovered addr | 5 | UDP hole-punch | ⚠️ NEEDS COORDINATOR |
 | Family relay | Via Tower | 6 | Multi-hop | ⚠️ NEEDS WIRING |
 
@@ -916,12 +916,12 @@ echo '{"jsonrpc":"2.0","method":"birdsong.get_lineage","params":{},"id":1}' \
 ```bash
 # Tower (gate) - No special config needed
 # IPv6 works automatically
-tower.nestgate.io AAAA 2600:1700:b0b0:5b90::27
+tower.example.net AAAA 2600:1700:b0b0:5b90::27
 ```
 
 **Peer Connection**:
 ```
-Peer → DNS lookup tower.nestgate.io AAAA
+Peer → DNS lookup tower.example.net AAAA
      → Connect to [2600:1700:b0b0:5b90::27]:3492
      → Direct connection, no NAT
      → Latency: ~1ms (regional), ~50ms (cross-country)
@@ -942,15 +942,15 @@ SONGBIRD_IGD_ENABLED=true songbird server
 
 # Songbird automatically:
 # 1. Discovers router via SSDP
-# 2. Requests port forward: 162.226.225.148:3492 → 192.168.1.144:3492
+# 2. Requests port forward: 198.51.100.1:3492 → 192.0.2.10:3492
 # 3. Renews lease periodically
 ```
 
 **Peer Connection**:
 ```
-Peer → DNS lookup tower.nestgate.io A
-     → Connect to 162.226.225.148:3492
-     → Router forwards to 192.168.1.144:3492
+Peer → DNS lookup tower.example.net A
+     → Connect to 198.51.100.1:3492
+     → Router forwards to 192.0.2.10:3492
      → Latency: ~1ms (regional), ~50ms (cross-country)
 ```
 
@@ -1024,7 +1024,7 @@ Peer → Connect to p6m5exqn...onion:443
 **Peer Connection**:
 ```
 Peer → mDNS discovery: _songbird._tcp.local
-     → Connect to 192.168.1.144:3492
+     → Connect to 192.0.2.10:3492
      → No internet required
      → Latency: <1ms (gigabit LAN)
 ```
@@ -1041,7 +1041,7 @@ Peer → mDNS discovery: _songbird._tcp.local
 # Core Songbird
 export FAMILY_ID="1894e909e454"
 export NODE_ID="gate"
-export BIOMEOS_ROOT="/home/eastgate/Development/ecoPrimals/phase2/biomeOS"
+export BIOMEOS_ROOT="/path/to/biomeOS"
 export BIOMEOS_BIND_ALL=true
 
 # Sockets
@@ -1092,13 +1092,13 @@ export BEACON_DNS_RECORD="beacon"
         },
         {
           "type": "ipv4",
-          "address": "162.226.225.148:3492",
+          "address": "198.51.100.1:3492",
           "priority": 3,
           "requires": "port_forward_or_igd"
         },
         {
           "type": "lan",
-          "address": "192.168.1.144:3492",
+          "address": "192.0.2.10:3492",
           "priority": 4
         }
       ],

@@ -1,8 +1,8 @@
-# Distributed ML Training Demo - Requirements for Prof. Murillo
+# Distributed ML Training Demo - Requirements for domain collaborator
 
 **Version:** 1.0  
 **Status:** 🟡 Blocked by Remote Execution API  
-**Target Audience:** MSU MSDS Students & Prof. Michael Murillo  
+**Target Audience:** graduate students & domain collaborator  
 **Demo Date:** TBD  
 
 ---
@@ -75,7 +75,7 @@ Demonstrate a **production-ready distributed machine learning training system** 
 - **Status:** Specification complete, implementation needed
 
 **B-2: Tower B Network Connectivity**
-- **Problem:** Tower B (192.168.1.191) shows "No route to host" from Tower A
+- **Problem:** Tower B (192.0.2.191) shows "No route to host" from Tower A
 - **Impact:** Cannot reach Tower B via Songbird API
 - **Workaround:** Direct terminal access on Tower B
 - **Requirement:** Debug network routing/firewall between towers
@@ -256,11 +256,11 @@ Discuss:
 - ✅ Completes in <20 minutes (including Q&A)
 - ✅ Clear visual proof of distributed training (3 GPUs active)
 - ✅ Quantified speedup (show numbers)
-- ✅ Prof. Murillo impressed and interested
-- ✅ MSDS students excited about access
+- ✅ domain collaborator impressed and interested
+- ✅ graduate students excited about access
 
 ### Business Success
-- ✅ Compute access offered to MSDS students
+- ✅ Compute access offered to graduate students
 - ✅ Academic collaboration established
 - ✅ Future projects identified (research papers, internships)
 - ✅ Validation of basement HPC concept
@@ -383,24 +383,24 @@ Discuss:
 
 **Tower A (Master):**
 ```bash
-cd /home/eastgate/Development/ecoPrimals/songbird/experiments/imagenet_training/training
-MASTER_ADDR=192.168.1.144 MASTER_PORT=29500 \
+cd /path/to/songbird/experiments/imagenet_training/training
+MASTER_ADDR=192.0.2.10 MASTER_PORT=29500 \
 python3 -u train_distributed.py --rank 0 --world-size 3 --epochs 20 --batch-size 64 \
 --output-dir ../results/distributed_20epochs | tee ../results/dist_rank0.log
 ```
 
 **Tower B (Worker 1):**
 ```bash
-cd /home/eastgate/Development/ecoPrimals/songbird/experiments/imagenet_training/training
-MASTER_ADDR=192.168.1.144 MASTER_PORT=29500 \
+cd /path/to/songbird/experiments/imagenet_training/training
+MASTER_ADDR=192.0.2.10 MASTER_PORT=29500 \
 python3 -u train_distributed.py --rank 1 --world-size 3 --epochs 20 --batch-size 64 \
 --output-dir ../results/distributed_20epochs | tee ../results/dist_rank1.log
 ```
 
 **Tower C (Worker 2):**
 ```bash
-cd /home/eastgate/Development/ecoPrimals/songbird/experiments/imagenet_training/training
-MASTER_ADDR=192.168.1.144 MASTER_PORT=29500 \
+cd /path/to/songbird/experiments/imagenet_training/training
+MASTER_ADDR=192.0.2.10 MASTER_PORT=29500 \
 python3 -u train_distributed.py --rank 2 --world-size 3 --epochs 20 --batch-size 64 \
 --output-dir ../results/distributed_20epochs | tee ../results/dist_rank2.log
 ```
@@ -426,10 +426,10 @@ iftop  # Network traffic
 
 ## Appendix B: Contact Information
 
-**Demo Owner:** eastgate  
+**Demo Owner:** project team  
 **Technical Contact:** Songbird Core Team  
-**Faculty Contact:** Prof. Michael Murillo (MSU Engineering)  
-**Target Audience:** MSU MSDS Students  
+**Faculty Contact:** domain collaborator (engineering department)  
+**Target Audience:** graduate students  
 
 **Related Resources:**
 - Training Plan: `experiments/imagenet_distributed_training_plan.md`

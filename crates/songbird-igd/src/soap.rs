@@ -347,7 +347,7 @@ mod tests {
 
         assert!(xml.contains("<NewExternalPort>3492</NewExternalPort>"));
         assert!(xml.contains("<NewInternalPort>3492</NewInternalPort>"));
-        assert!(xml.contains("<NewInternalClient>192.168.1.144</NewInternalClient>"));
+        assert!(xml.contains("<NewInternalClient>192.0.2.10</NewInternalClient>"));
         assert!(xml.contains("<NewProtocol>TCP</NewProtocol>"));
         assert!(xml.contains("<NewLeaseDuration>86400</NewLeaseDuration>"));
     }
@@ -407,7 +407,7 @@ mod tests {
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
   <s:Body>
     <u:GetExternalIPAddressResponse xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1">
-      <NewExternalIPAddress>162.226.225.148</NewExternalIPAddress>
+      <NewExternalIPAddress>198.51.100.1</NewExternalIPAddress>
     </u:GetExternalIPAddressResponse>
   </s:Body>
 </s:Envelope>"#;

@@ -22,7 +22,7 @@
 
 **Status**: ✅ **COMPLETE** - All modules implemented and tested  
 **Validated**: Cross-network crypto chain proven (Tower encrypts → Pixel decrypts ✅)  
-**Blocker**: AT&T gateway at 192.168.1.254 has no UPnP — IGD will auto-detect and guide
+**Blocker**: AT&T gateway at 192.0.2.254 has no UPnP — IGD will auto-detect and guide
 
 **Related Documents**:
 - Crate: `crates/songbird-igd/` - Implementation

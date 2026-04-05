@@ -130,7 +130,7 @@ pub struct InfrastructureInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeFull {
     pub name: String,
-    pub internal_ip: String, // "192.168.1.144:8000"
+    pub internal_ip: String, // "192.0.2.10:8000"
     pub uptime_hours: f64,
     pub temperature_c: Option<f32>,
 }
@@ -337,7 +337,7 @@ impl super::InformationLayerBuilder {
 
             vec![NodeFull {
                 name: tower.as_str().to_string(),
-                internal_ip: "192.168.1.144:8000".to_string(), // Would be looked up from service registry
+                internal_ip: "192.0.2.10:8000".to_string(), // Would be looked up from service registry
                 uptime_hours,
                 temperature_c: if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
                     Some(65.0) // Would query actual GPU temperature

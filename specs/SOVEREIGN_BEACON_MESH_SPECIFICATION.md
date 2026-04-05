@@ -179,7 +179,7 @@ The signaling protocol works over **any** byte stream:
   "peer_info": {
     "node_id": "tower-abc123",
     "public_addr": "203.0.113.42:54321",
-    "local_addr": "192.168.1.100:54321",
+    "local_addr": "192.0.2.100:54321",
     "nat_type": "symmetric",
     "timestamp": "2026-02-06T12:00:00Z",
     "capabilities": ["relay", "stun"]

@@ -453,7 +453,7 @@ mod tests {
         // Add Ethernet endpoint
         identity.add_endpoint(TransportEndpoint {
             interface_type: "ethernet".to_string(),
-            address: "192.168.1.144:8080".parse().unwrap(),
+            address: "192.0.2.10:8080".parse().unwrap(),
             protocols: vec!["https".to_string()],
             preference: 100,
         });
@@ -485,7 +485,7 @@ mod tests {
             lineage_proof: None,
         };
 
-        let addr: SocketAddr = "192.168.1.144:8080".parse().unwrap();
+        let addr: SocketAddr = "192.0.2.10:8080".parse().unwrap();
 
         // Add endpoint
         identity.add_endpoint(TransportEndpoint {

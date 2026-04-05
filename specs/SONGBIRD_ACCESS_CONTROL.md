@@ -365,7 +365,7 @@ pub struct NetworkTopology {
 
 pub struct NodeFull {
     pub name: String,           // "Eastgate"
-    pub internal_ip: SocketAddr,  // "192.168.1.144:8000"
+    pub internal_ip: SocketAddr,  // "192.0.2.10:8000"
     pub vpn_ip: Option<IpAddr>,   // "10.8.0.2"
     pub public_endpoint: Option<String>,
     pub ssh_access: SshInfo,
@@ -902,7 +902,7 @@ audit_all_actions = true
 [information_disclosure]
 # What gets anonymized
 anonymize_ips = true
-anonymize_node_names = false  # Show "Eastgate", hide "192.168.1.144"
+anonymize_node_names = false  # Show "Eastgate", hide "192.0.2.10"
 show_sharding_to_students = true
 show_topology_to_students = "anonymized"
 
@@ -1030,13 +1030,13 @@ Response includes full infrastructure layer:
     "nodes": [
       {
         "name": "Eastgate",
-        "internal_ip": "192.168.1.144:8000",
+        "internal_ip": "192.0.2.10:8000",
         "gpu": "RTX 3090",
         "utilization": 0.73
       },
       {
         "name": "Strandgate",
-        "internal_ip": "192.168.1.134:8081",
+        "internal_ip": "192.0.2.134:8081",
         "gpu": "RTX 3070",
         "utilization": 0.89
       }

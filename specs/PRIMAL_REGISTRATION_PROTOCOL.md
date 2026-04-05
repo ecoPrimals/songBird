@@ -61,7 +61,7 @@ let songbird = SongbirdClient::discover_local().await?;
 2. **UDP Broadcast (Anonymous Discovery):**
    ```rust
    // Listen for Songbird broadcasts on UDP 2300
-   // Message: "I am Songbird at https://192.168.1.144:8080"
+   // Message: "I am Songbird at https://192.0.2.10:8080"
    ```
 
 3. **Well-Known Port:**
@@ -463,7 +463,7 @@ Eastgate:
 {
   "service": "Toadstool",
   "tower": "eastgate",
-  "endpoint": "tarpc://192.168.1.144:8091",
+  "endpoint": "tarpc://192.0.2.10:8091",
   "capabilities": ["compute", "ml_training"],
   "resources": {
     "gpu": "RTX 3090",

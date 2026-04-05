@@ -237,7 +237,7 @@ impl RelayHandler {
     /// {
     ///   "success": true,
     ///   "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    ///   "relay_addr": "162.226.225.148:3479",
+    ///   "relay_addr": "198.51.100.1:3479",
     ///   "ttl_seconds": 300
     /// }
     /// ```

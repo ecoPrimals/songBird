@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn test_protocol_encode_decode_allocate_response() {
         let session_id = Uuid::new_v4();
-        let relay_addr: SocketAddr = "162.226.225.148:3479".parse().unwrap();
+        let relay_addr: SocketAddr = "198.51.100.1:3479".parse().unwrap();
 
         let resp = AllocationResponse::success(session_id, relay_addr, 300);
         let msg = RelayProtocol::AllocateResponse(resp);

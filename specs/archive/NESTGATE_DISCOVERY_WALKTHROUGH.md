@@ -146,7 +146,7 @@ Connection refused  ❌
 $ curl http://127.0.0.1:8080/health  
 {"status": "healthy"}  ✅
 
-$ curl http://192.168.1.144:8080/health
+$ curl http://192.0.2.10:8080/health
 {"status": "healthy"}  ✅
 ```
 

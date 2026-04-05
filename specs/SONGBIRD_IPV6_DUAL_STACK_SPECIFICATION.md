@@ -47,7 +47,7 @@ let addr: SocketAddr = format!("{bind_address}:{port}").parse()?;
 let discovery_order = [
     "http://localhost:8080",       // Resolves to [::1] → FAILS
     "http://127.0.0.1:8080",       // Works (IPv4)
-    "http://192.168.1.144:8080",   // Works (IPv4)
+    "http://192.0.2.10:8080",   // Works (IPv4)
 ];
 ```
 
@@ -97,7 +97,7 @@ enum BindMode {
     DualStack,    // [::] - RECOMMENDED
     IPv6Only,     // [::1] - Specific IPv6
     IPv4Only,     // 0.0.0.0 - Legacy
-    Specific(IP), // 192.168.1.144 - Custom
+    Specific(IP), // 192.0.2.10 - Custom
 }
 
 fn parse_bind_address(addr: &str, port: u16) -> Result<SocketAddr> {
@@ -140,7 +140,7 @@ export SONGBIRD_BIND_ADDRESS="0.0.0.0"
 export SONGBIRD_BIND_ADDRESS="[::1]"
 
 # Specific interface
-export SONGBIRD_BIND_ADDRESS="192.168.1.144"
+export SONGBIRD_BIND_ADDRESS="192.0.2.10"
 export SONGBIRD_BIND_ADDRESS="[fe80::1]"
 ```
 
@@ -214,7 +214,7 @@ ss -tlnp | grep :8080
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkBindingConfig {
     /// Bind address (supports IPv4, IPv6, dual-stack)
-    /// Examples: "[::]", "0.0.0.0", "[::1]", "192.168.1.144"
+    /// Examples: "[::]", "0.0.0.0", "[::1]", "192.0.2.10"
     pub bind_address: String,
     
     /// Primary port
@@ -367,7 +367,7 @@ Legacy:   ✅ Still works
    - Consider firewall rules for production
 
 3. **IPv4-mapped Addresses**: Automatic translation is secure
-   - Kernel handles mapping: `::ffff:192.168.1.1`
+   - Kernel handles mapping: `::ffff:192.0.2.1`
    - No application-level translation needed
 
 ---
