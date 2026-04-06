@@ -17,8 +17,6 @@ categories = ["command-line-utilities", "game-engines", "network-programming"]
 [lints.rust]
 unsafe_code = "forbid"
 unused_must_use = "warn"
-dead_code = "allow"
-unused_variables = "allow"
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
@@ -113,43 +111,43 @@ songbird-igd = { path = "../songbird-igd" }  # IGD router auto-configure (Feb 8,
 # Runtime
 tokio = { workspace = true }
 chrono = { workspace = true }
-async-trait = { version = "0.1" }
+async-trait = { workspace = true }
 futures = { version = "0.3" }
-futures-util = { version = "0.3" }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-clap = { version = "4.0", features = ["derive", "env"] }
-anyhow = "1.0"
+futures-util = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
 thiserror = { workspace = true }
-uuid = { version = "1.0", features = ["v4", "v5", "v7"] }
+uuid = { workspace = true, features = ["v5", "v7"] }
 
 sled = { version = "0.34", optional = true }
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"], optional = true }
 sha2 = "0.10"
 base64 = "0.22"
 
-colored = "2.0"
-parking_lot = "0.12"
-fastrand = "2.0"
+colored = { workspace = true }
+parking_lot = { workspace = true }
+fastrand = { workspace = true }
 rand = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
 socket2 = { workspace = true }
-toml = "0.8"
+toml = { workspace = true }
 hostname = "0.4"
-dirs = "5.0"
+dirs = { workspace = true }
 async-stream = "0.3"
 tokio-stream = "0.1"
 
 # HTTP server for web dashboard
-axum = { version = "0.7", features = ["multipart", "ws"] }
+axum = { workspace = true, features = ["multipart", "ws"] }
 # Modern pure Rust TLS stack (no axum-server needed!)
-hyper = { version = "1.0", features = ["server", "http1"] }
+hyper = { workspace = true }
 hyper-util = { version = "0.1", features = ["tokio"] }
 songbird-tls = { path = "../songbird-tls" }  # ✅ Pure Rust TLS implementation (future)
-tower = "0.5"
-tower-http = { version = "0.5", features = ["cors", "fs", "trace", "limit"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 bytes = { workspace = true }
 
 # Access control and authentication
@@ -172,5 +170,5 @@ tokio-tungstenite = "0.24"
 assert_cmd = "2.0"  # UniBin CLI testing
 predicates = "3.0"  # UniBin assertion helpers
 tempfile = "3.8"    # UniBin config testing (also used in tests)
-futures-util = "0.3"
+futures-util = { workspace = true }
 

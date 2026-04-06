@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Pure Rust Tor Protocol JSON-RPC Handler
@@ -106,14 +106,14 @@ impl TorHandler {
             .or_else(|_| {
                 songbird_process_env::var("BEARDOG_SOCKET").inspect(|_| {
                     tracing::warn!(
-                        "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET"
+                        "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                     );
                 })
             })
             .or_else(|_| {
                 songbird_process_env::var("BEARDOG_CRYPTO_SOCKET").inspect(|_| {
                     tracing::warn!(
-                        "BEARDOG_CRYPTO_SOCKET is deprecated — migrate to CRYPTO_PROVIDER_SOCKET"
+                        "BEARDOG_CRYPTO_SOCKET is deprecated — migrate to CRYPTO_PROVIDER_SOCKET or SECURITY_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                     );
                 })
             })

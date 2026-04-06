@@ -35,13 +35,13 @@ songbird-http-client = { path = "../songbird-http-client" }
 url = "2.5"
 
 # Random number generation (missing dependency that caused errors)
-fastrand = "2.0"
+fastrand = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
 
 # Time and date handling
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"

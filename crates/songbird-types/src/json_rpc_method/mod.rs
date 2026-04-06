@@ -1,8 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(missing_docs, reason = "variant names mirror `domain.verb` wire strings")]
-#![allow(
+#![expect(
+    missing_docs,
+    reason = "variant names mirror `domain.verb` wire strings — self-documenting"
+)]
+#![expect(
     clippy::too_many_lines,
     reason = "`as_wire_str` / `from_wire_str` are exhaustive mechanical dispatch tables"
 )]
@@ -14,7 +17,8 @@
 
 use core::fmt;
 use core::str::FromStr;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::{self, Deserializer, Visitor};
+use serde::{Deserialize, Serialize, Serializer};
 use thiserror::Error;
 
 mod domain_methods;
@@ -373,10 +377,33 @@ impl Serialize for JsonRpcMethod {
     }
 }
 
+/// Deserialize via `deserialize_str` so serde can borrow wire names without allocating a `String`
+/// when the underlying format supports it.
+struct JsonRpcMethodDeserializeVisitor;
+
+impl<'de> Visitor<'de> for JsonRpcMethodDeserializeVisitor {
+    type Value = JsonRpcMethod;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a JSON-RPC method name string")
+    }
+
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        JsonRpcMethod::from_str(v).map_err(de::Error::custom)
+    }
+
+    fn visit_borrowed_str<E: de::Error>(self, v: &'de str) -> Result<Self::Value, E> {
+        JsonRpcMethod::from_str(v).map_err(de::Error::custom)
+    }
+
+    fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+        JsonRpcMethod::from_str(&v).map_err(de::Error::custom)
+    }
+}
+
 impl<'de> Deserialize<'de> for JsonRpcMethod {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        Self::from_str(&s).map_err(serde::de::Error::custom)
+        deserializer.deserialize_str(JsonRpcMethodDeserializeVisitor)
     }
 }
 

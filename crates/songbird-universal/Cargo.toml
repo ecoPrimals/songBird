@@ -27,18 +27,18 @@ docker = ["dep:bollard"]
 full-discovery = ["mdns", "dns-sd", "k8s", "docker"]
 
 [dependencies]
-async-trait = "0.1"
-anyhow = "1.0" # Used by unix_rpc_client (Pure Rust RPC!)
-chrono = { version = "0.4", features = ["serde"] } 
+async-trait = { workspace = true }
+anyhow = { workspace = true } # Used by unix_rpc_client (Pure Rust RPC!)
+chrono = { workspace = true }
 futures = "0.3"
-rand = "0.8"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { version = "1.0", features = ["full"] }
-tracing = "0.1"
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
 url = "2.0"
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { workspace = true }
 base64 = "0.22"
 
 # tarpc dependencies for high-performance primal-to-primal RPC (v3.12.0)

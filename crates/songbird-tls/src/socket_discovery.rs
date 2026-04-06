@@ -174,7 +174,7 @@ fn discover_security_socket_with_env(
         {
             if matches!(env_var, "BEARDOG_SOCKET" | "BEARDOG_CRYPTO_SOCKET") {
                 warn!(
-                    "{env_var} is deprecated — migrate to SECURITY_PROVIDER_SOCKET or CRYPTO_PROVIDER_SOCKET"
+                    "{env_var} is deprecated — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                 );
             } else {
                 debug!("Using {} env var (legacy): {}", env_var, env_path);

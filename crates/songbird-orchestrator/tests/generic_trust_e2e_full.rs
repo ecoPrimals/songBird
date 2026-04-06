@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -249,7 +249,7 @@ fn e2e_multiple_attestation_types() {
             format: "x509".to_string(),
             data: json!({
                 "certificate": "-----BEGIN CERTIFICATE-----...",
-                "issuer": "ToadStool CA"
+                "issuer": "Compute Provider CA"
             }),
         },
     ];

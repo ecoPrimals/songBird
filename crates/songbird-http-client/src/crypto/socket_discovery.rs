@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! XDG-Compliant Socket Discovery (Isomorphic - TRUE ecoBin v2.0)
@@ -382,7 +382,9 @@ pub fn discover_security_socket() -> String {
     if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
         && !socket.is_empty()
     {
-        warn!("⚠️  Using deprecated $BEARDOG_SOCKET — migrate to $SECURITY_PROVIDER_SOCKET");
+        warn!(
+            "DEPRECATED: BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+        );
         return socket;
     }
 
@@ -398,7 +400,10 @@ pub fn discover_security_socket() -> String {
 }
 
 /// Deprecated alias for [`discover_security_socket`].
-#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
+#[deprecated(
+    since = "0.3.0",
+    note = "Use discover_security_socket; prefer CAPABILITY_* or SECURITY_PROVIDER_* env vars (capability-first)"
+)]
 #[must_use]
 pub fn discover_security_provider_socket() -> String {
     discover_security_socket()

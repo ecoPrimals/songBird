@@ -11,7 +11,7 @@ categories = ["network-programming", "cryptography"]
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["net", "io-util", "time", "macros", "rt", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt", "rt-multi-thread"] }
 
 # Parsing
 nom = "7"
@@ -20,25 +20,25 @@ nom = "7"
 thiserror = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Encoding
 base64 = "0.22"
 base32 = "0.5"
 
 # Bitflags
-bitflags = "2"
+bitflags = { workspace = true }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # HTTP client for directory fetching (pure Rust, zero ring)
 # Tor directory authorities serve plain HTTP - no TLS needed
-hyper = { version = "1.0", features = ["client", "http1"] }
+hyper = { workspace = true }
 hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio", "http1"] }
-http-body-util = "0.1"
-bytes = "1.0"
+http-body-util = { workspace = true }
+bytes = { workspace = true }
 
 # TLS for relay connections (pure Rust, security provider crypto delegation)
 # songbird-tls delegates all crypto to the security provider — ZERO ring, ZERO C
@@ -53,7 +53,7 @@ workspace = true
 
 [dev-dependencies]
 tokio-test = "0.4"
-tracing-subscriber = "0.3"
+tracing-subscriber = { workspace = true }
 
 [features]
 default = []

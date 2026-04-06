@@ -11,13 +11,13 @@ description = "Pure Rust STUN (RFC 5389) client for NAT traversal - zero C depen
 authors = ["ecoPrimals Team"]
 
 [dependencies]
-tokio = { version = "1", features = ["net", "time", "sync"] }
-async-trait = "0.1"
-serde = { version = "1.0", features = ["derive"] }
+tokio = { workspace = true, features = ["net", "time", "sync"] }
+async-trait = { workspace = true }
+serde = { workspace = true }
 thiserror = { workspace = true }
-tracing = "0.1"
-bytes = "1.5"
-rand = "0.8"
+tracing = { workspace = true }
+bytes = { workspace = true }
+rand = { workspace = true }
 futures = "0.3"
 
 # Internal dependencies
@@ -28,8 +28,8 @@ songbird-config = { path = "../songbird-config" }
 workspace = true
 
 [dev-dependencies]
-serde_json = "1"
-tokio = { version = "1", features = ["full", "test-util"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }
 tokio-test = "0.4"
 
 [lib]

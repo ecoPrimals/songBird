@@ -21,4 +21,4 @@ let services = registry.discover_services("compute").await?;
 
 ## License
 
-Licensed under AGPL-3.0-only - the harshest copyleft license ensuring all derivatives remain open source. 
+Licensed under AGPL-3.0-or-later - the harshest copyleft license ensuring all derivatives remain open source. 

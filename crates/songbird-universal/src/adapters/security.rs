@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security Capability Adapter
@@ -28,7 +28,7 @@ pub use security_types::{AuthResult, SecurityHealth, SecurityMetrics};
 mod security_types_tests;
 
 #[cfg(test)]
-#[path = "security_tests.rs"]
+#[path = "security_tests/mod.rs"]
 mod security_tests;
 
 #[cfg(test)]

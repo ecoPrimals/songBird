@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 //! Real HTTP Integration Tests for Capability-Based Adapters
 //!
@@ -55,10 +55,10 @@ async fn test_compute_adapter_creation_and_config() {
     assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8080");
 }
 
-// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
+// ⚠️ DEPRECATED: Legacy adapter type — backward compatibility coverage
 #[tokio::test]
 #[allow(deprecated)]
-async fn test_toadstool_adapter_creation_and_config() {
+async fn test_backward_compat_legacy_toadstool_metrics_adapter_creation_and_config() {
     let adapter = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
         .expect("Adapter creation should succeed");
     assert_eq!(adapter.endpoint(), "http://localhost:8080");
@@ -79,10 +79,10 @@ async fn test_compute_adapter_network_error_handling() {
     );
 }
 
-// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
+// ⚠️ DEPRECATED: Legacy adapter type — backward compatibility coverage
 #[tokio::test]
 #[allow(deprecated)]
-async fn test_toadstool_adapter_network_error_handling() {
+async fn test_backward_compat_legacy_toadstool_metrics_adapter_network_errors() {
     let adapter = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
         .expect("Adapter creation should succeed");
     let result = adapter.collect_metrics().await;
@@ -113,10 +113,10 @@ async fn test_compute_metrics_validation() {
     assert_eq!(metrics.health_status(), HealthStatus::Healthy);
 }
 
-// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
+// ⚠️ DEPRECATED: Legacy adapter type — backward compatibility coverage
 #[tokio::test]
 #[allow(deprecated)]
-async fn test_toadstool_metrics_validation() {
+async fn test_backward_compat_legacy_toadstool_metrics_validation() {
     use songbird_universal::adapters::toadstool::ComputeMetrics;
     let metrics = ComputeMetrics {
         cpu_usage_percent: 75.0,
@@ -150,17 +150,18 @@ async fn test_security_adapter_creation_and_config() {
     assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8081");
 }
 
-// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
+// ⚠️ DEPRECATED: Legacy adapter type — backward compatibility coverage
 #[tokio::test]
 #[allow(deprecated)]
-async fn test_beardog_adapter_creation_and_config() {
+async fn test_backward_compat_legacy_beardog_security_adapter_creation_and_config() {
     let adapter = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
         .expect("Adapter creation should succeed");
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
 }
 
 #[tokio::test]
-async fn test_beardog_adapter_network_error_handling() {
+#[allow(deprecated)]
+async fn test_backward_compat_legacy_beardog_security_adapter_network_errors() {
     // Test: Adapter handles unreachable endpoints gracefully
     let adapter = BearDogSecurityAdapter::new("http://localhost:59998".to_string())
         .expect("Adapter creation should succeed");
@@ -205,7 +206,8 @@ async fn test_beardog_security_metrics_validation() {
 }
 
 #[tokio::test]
-async fn test_beardog_auth_result_types() {
+#[allow(deprecated)]
+async fn test_legacy_beardog_auth_result_types() {
     // Test: AuthResult enum variants
     use songbird_universal::adapters::beardog::AuthResult;
 
@@ -220,7 +222,8 @@ async fn test_beardog_auth_result_types() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_nestgate_adapter_creation_and_config() {
+#[allow(deprecated)]
+async fn test_backward_compat_legacy_nestgate_storage_adapter_creation_and_config() {
     // Test: Adapter can be created with custom configuration
     let adapter = NestGateStorageAdapter::new("http://localhost:8082".to_string())
         .expect("Adapter creation should succeed");
@@ -236,7 +239,8 @@ async fn test_nestgate_adapter_creation_and_config() {
 }
 
 #[tokio::test]
-async fn test_nestgate_adapter_network_error_handling() {
+#[allow(deprecated)]
+async fn test_backward_compat_legacy_nestgate_storage_adapter_network_errors() {
     // Test: Adapter handles unreachable endpoints gracefully
     let adapter = NestGateStorageAdapter::new("http://localhost:59997".to_string())
         .expect("Adapter creation should succeed");
@@ -251,7 +255,8 @@ async fn test_nestgate_adapter_network_error_handling() {
 }
 
 #[tokio::test]
-async fn test_nestgate_storage_metrics_validation() {
+#[allow(deprecated)]
+async fn test_legacy_nestgate_storage_metrics_validation() {
     // Test: Storage metrics structure and calculations
     use songbird_universal::adapters::nestgate::{StorageHealth, StorageMetrics};
 
@@ -291,7 +296,8 @@ async fn test_nestgate_storage_metrics_validation() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_squirrel_adapter_creation_and_config() {
+#[allow(deprecated)]
+async fn test_backward_compat_legacy_squirrel_ai_adapter_creation_and_config() {
     // Test: Adapter can be created with custom configuration
     let adapter = SquirrelAIAdapter::new("http://localhost:8083".to_string())
         .expect("Adapter creation should succeed");
@@ -307,7 +313,8 @@ async fn test_squirrel_adapter_creation_and_config() {
 }
 
 #[tokio::test]
-async fn test_squirrel_adapter_network_error_handling() {
+#[allow(deprecated)]
+async fn test_backward_compat_legacy_squirrel_ai_adapter_network_errors() {
     // Test: Adapter handles unreachable endpoints gracefully
     let adapter = SquirrelAIAdapter::new("http://localhost:59996".to_string())
         .expect("Adapter creation should succeed");
@@ -322,7 +329,8 @@ async fn test_squirrel_adapter_network_error_handling() {
 }
 
 #[tokio::test]
-async fn test_squirrel_ai_metrics_validation() {
+#[allow(deprecated)]
+async fn test_legacy_squirrel_ai_metrics_validation() {
     // Test: AI metrics structure and calculations
     use songbird_universal::adapters::squirrel::{AIHealth, AIMetrics};
 
@@ -356,7 +364,8 @@ async fn test_squirrel_ai_metrics_validation() {
 }
 
 #[tokio::test]
-async fn test_squirrel_model_types() {
+#[allow(deprecated)]
+async fn test_legacy_squirrel_model_types() {
     // Test: ModelType enum variants
     use songbird_universal::adapters::squirrel::ModelType;
 
@@ -371,57 +380,60 @@ async fn test_squirrel_model_types() {
 // ============================================================================
 
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_all_adapters_can_be_created_simultaneously() {
     // Test: All adapters can coexist and be created together
-    let toadstool = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
-        .expect("ToadStool adapter should be created");
+    let legacy_compute = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+        .expect("legacy compute adapter should be created");
 
-    let beardog = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
-        .expect("BearDog adapter should be created");
+    let legacy_security = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+        .expect("legacy security adapter should be created");
 
-    let nestgate = NestGateStorageAdapter::new("http://localhost:8082".to_string())
-        .expect("NestGate adapter should be created");
+    let legacy_storage = NestGateStorageAdapter::new("http://localhost:8082".to_string())
+        .expect("legacy storage adapter should be created");
 
-    let squirrel = SquirrelAIAdapter::new("http://localhost:8083".to_string())
-        .expect("Squirrel adapter should be created");
+    let legacy_ai = SquirrelAIAdapter::new("http://localhost:8083".to_string())
+        .expect("legacy AI adapter should be created");
 
     // Verify all have correct endpoints
-    assert_eq!(toadstool.endpoint(), "http://localhost:8080");
-    assert_eq!(beardog.endpoint(), "http://localhost:8081");
-    assert_eq!(nestgate.endpoint(), "http://localhost:8082");
-    assert_eq!(squirrel.endpoint(), "http://localhost:8083");
+    assert_eq!(legacy_compute.endpoint(), "http://localhost:8080");
+    assert_eq!(legacy_security.endpoint(), "http://localhost:8081");
+    assert_eq!(legacy_storage.endpoint(), "http://localhost:8082");
+    assert_eq!(legacy_ai.endpoint(), "http://localhost:8083");
 }
 
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_adapters_handle_concurrent_failures_gracefully() {
     // Test: Multiple adapters failing simultaneously doesn't cause cascading issues
-    let toadstool = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
+    let legacy_compute = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
         .expect("Adapter creation should succeed");
 
-    let beardog = BearDogSecurityAdapter::new("http://localhost:59998".to_string())
+    let legacy_security = BearDogSecurityAdapter::new("http://localhost:59998".to_string())
         .expect("Adapter creation should succeed");
 
-    let nestgate = NestGateStorageAdapter::new("http://localhost:59997".to_string())
+    let legacy_storage = NestGateStorageAdapter::new("http://localhost:59997".to_string())
         .expect("Adapter creation should succeed");
 
-    let squirrel = SquirrelAIAdapter::new("http://localhost:59996".to_string())
+    let legacy_ai = SquirrelAIAdapter::new("http://localhost:59996".to_string())
         .expect("Adapter creation should succeed");
 
     // All should fail gracefully (return errors, not panic)
     let results = tokio::join!(
-        toadstool.collect_metrics(),
-        beardog.collect_metrics(),
-        nestgate.collect_metrics(),
-        squirrel.collect_metrics()
+        legacy_compute.collect_metrics(),
+        legacy_security.collect_metrics(),
+        legacy_storage.collect_metrics(),
+        legacy_ai.collect_metrics()
     );
 
-    assert!(results.0.is_err(), "ToadStool should error");
-    assert!(results.1.is_err(), "BearDog should error");
-    assert!(results.2.is_err(), "NestGate should error");
-    assert!(results.3.is_err(), "Squirrel should error");
+    assert!(results.0.is_err(), "legacy compute adapter should error");
+    assert!(results.1.is_err(), "legacy security adapter should error");
+    assert!(results.2.is_err(), "legacy storage adapter should error");
+    assert!(results.3.is_err(), "legacy AI adapter should error");
 }
 
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_adapter_timeout_behavior() {
     // Test: Adapters respect configured timeouts
     let short_timeout_adapter =
@@ -447,6 +459,7 @@ async fn test_adapter_timeout_behavior() {
 // ============================================================================
 
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_compute_metrics_provider_trait() {
     // Test: ToadStool implements the ComputeMetricsProvider trait
     use songbird_universal::adapters::toadstool::ComputeMetricsProvider;
@@ -460,6 +473,7 @@ async fn test_compute_metrics_provider_trait() {
 }
 
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_security_provider_trait() {
     // Test: BearDog implements the SecurityProvider trait
     use songbird_universal::adapters::beardog::SecurityProvider;
@@ -473,6 +487,7 @@ async fn test_security_provider_trait() {
 }
 
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_storage_provider_trait() {
     // Test: NestGate implements the StorageProvider trait
     use songbird_universal::adapters::nestgate::StorageProvider;
@@ -486,6 +501,7 @@ async fn test_storage_provider_trait() {
 }
 
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_ai_provider_trait() {
     // Test: Squirrel implements the AIProvider trait
     use songbird_universal::adapters::squirrel::AIProvider;

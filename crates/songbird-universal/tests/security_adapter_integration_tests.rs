@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -44,7 +44,7 @@
 //! Integration Tests for Security Adapter
 //!
 //! **Purpose**: Test actual async HTTP functionality that was missing coverage.
-//! The existing security_tests.rs (819 lines) only tests sync functions.
+//! The existing `adapters/security_tests/` module only tests sync-style adapter and type behavior.
 //! This file adds coverage for async HTTP methods that make up the uncovered 85% of security.rs.
 
 use songbird_types::SongbirdResult;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 use songbird_types::{SongbirdError, SongbirdResult};
@@ -8,7 +8,7 @@ use tracing::debug;
 use super::{CapabilityDiscoveryEngine, DiscoveryBackend};
 
 /// Register with a specific backend
-pub(super) async fn register_with_backend(
+pub async fn register_with_backend(
     _engine: &CapabilityDiscoveryEngine,
     backend: &DiscoveryBackend,
     capabilities: &[String],
@@ -102,5 +102,102 @@ pub(super) async fn register_with_backend(
             // Kubernetes uses service definitions, no dynamic registration needed
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::register_with_backend;
+    use crate::discovery::runtime_engine::{CapabilityDiscoveryEngine, DiscoveryBackend};
+    use std::net::SocketAddr;
+    use std::time::Duration;
+
+    fn test_addr() -> SocketAddr {
+        "127.0.0.1:0".parse().expect("loopback with dynamic port")
+    }
+
+    #[tokio::test]
+    async fn register_environment_backend_always_succeeds() {
+        let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
+        let addr = test_addr();
+        register_with_backend(&engine, &DiscoveryBackend::Environment, &["cap1".to_string()], addr)
+            .await
+            .expect("environment registration is a no-op");
+    }
+
+    #[tokio::test]
+    async fn register_kubernetes_backend_always_succeeds() {
+        let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
+        let addr = test_addr();
+        register_with_backend(
+            &engine,
+            &DiscoveryBackend::Kubernetes {
+                namespace: None,
+            },
+            &["x".to_string()],
+            addr,
+        )
+        .await
+        .expect("k8s registration is a no-op");
+    }
+
+    #[tokio::test]
+    async fn register_consul_unreachable_returns_discovery_error() {
+        let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
+        let addr = test_addr();
+        let err = register_with_backend(
+            &engine,
+            &DiscoveryBackend::Consul {
+                endpoint: "http://198.51.100.199:59999".to_string(),
+            },
+            &["cap".to_string()],
+            addr,
+        )
+        .await
+        .expect_err("consul HTTP should fail without a server");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Consul") || msg.contains("discovery") || msg.contains("IPC"),
+            "{msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn register_etcd_unreachable_ok_or_ipc_error() {
+        let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
+        let addr = test_addr();
+        let result = register_with_backend(
+            &engine,
+            &DiscoveryBackend::Etcd {
+                endpoints: vec!["http://198.51.100.198:59998".to_string()],
+            },
+            &["only-if-post-succeeds".to_string()],
+            addr,
+        )
+        .await;
+        match result {
+            Ok(()) => {}
+            Err(e) => {
+                let s = e.to_string();
+                assert!(
+                    s.contains("IPC") || s.contains("discovery"),
+                    "unexpected etcd registration error: {s}"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn register_mdns_backend_completes_without_panic() {
+        let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
+        let addr = test_addr();
+        let _ = register_with_backend(
+            &engine,
+            &DiscoveryBackend::MDNS,
+            &["mdns-cap".to_string()],
+            addr,
+        )
+        .await;
     }
 }

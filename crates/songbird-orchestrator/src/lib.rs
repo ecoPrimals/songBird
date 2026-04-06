@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![warn(missing_docs)]
@@ -222,6 +222,9 @@ mod storage_memory;
 /// Task lifecycle and scheduling hooks for orchestrated work.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod task_lifecycle;
+/// Test-only synchronous env locking (unit tests).
+#[cfg(test)]
+pub(crate) mod test_sync_env;
 /// Trust escalation, evaluation, and progressive trust policy.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod trust;

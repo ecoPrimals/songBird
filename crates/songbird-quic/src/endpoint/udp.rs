@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! UDP socket management for QUIC endpoints.
@@ -18,7 +18,7 @@ pub const MAX_DATAGRAM_SIZE: usize = 1200;
 #[derive(Debug)]
 pub struct Datagram {
     /// Raw datagram bytes.
-    #[allow(dead_code, reason = "QUIC datagram payload — used by connection/stream layer")]
+    #[expect(dead_code, reason = "QUIC datagram payload — used by connection/stream layer")]
     pub data: Vec<u8>,
     /// Source address of the sender.
     pub source: SocketAddr,
@@ -57,7 +57,7 @@ impl UdpEndpoint {
     }
 
     /// Send a datagram to the specified address.
-    #[allow(dead_code, reason = "QUIC send path — activated by connection manager")]
+    #[expect(dead_code, reason = "QUIC send path — activated by connection manager")]
     pub async fn send_to(&self, data: &[u8], addr: SocketAddr) -> Result<usize> {
         if data.len() > MAX_DATAGRAM_SIZE {
             return Err(QuicError::Config(format!(
@@ -84,7 +84,7 @@ impl UdpEndpoint {
 
     /// Get a reference to the underlying socket (for advanced usage).
     #[must_use]
-    #[allow(dead_code, reason = "public API for advanced socket configuration")]
+    #[expect(dead_code, reason = "public API for advanced socket configuration")]
     pub const fn socket(&self) -> &UdpSocket {
         &self.socket
     }

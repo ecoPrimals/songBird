@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -56,7 +56,7 @@
 
 //!
 //! Tests all 4 production adapters working together in various scenarios.
-//! This validates the complete adapter system for `ToadStool`, `security provider`, `storage_provider`, and Squirrel.
+//! This validates the complete adapter system for compute, security, storage, and AI capability providers.
 
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
@@ -72,20 +72,26 @@ mod integration_tests {
     #[tokio::test]
     async fn test_all_adapters_creation() -> SongbirdResult<()> {
         // Create all 4 production adapters
-        let toadstool =
+        let compute_adapter =
             ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port())).await?;
-        let beardog =
+        let security_adapter =
             SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port())).await?;
         let storage_provider =
             StorageAdapter::new(format!("http://localhost:{}", test_health_port())).await?;
-        let squirrel =
+        let ai_adapter =
             AIAdapter::new(format!("http://localhost:{}", test_federation_port())).await?;
 
         // Verify endpoints
-        assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
-        assert_eq!(beardog.endpoint(), format!("http://localhost:{}", test_discovery_port()));
+        assert_eq!(
+            compute_adapter.endpoint(),
+            format!("http://localhost:{}", test_orchestrator_port())
+        );
+        assert_eq!(
+            security_adapter.endpoint(),
+            format!("http://localhost:{}", test_discovery_port())
+        );
         assert_eq!(storage_provider.endpoint(), format!("http://localhost:{}", test_health_port()));
-        assert_eq!(squirrel.endpoint(), format!("http://localhost:{}", test_federation_port()));
+        assert_eq!(ai_adapter.endpoint(), format!("http://localhost:{}", test_federation_port()));
         Ok(())
     }
 
@@ -94,28 +100,35 @@ mod integration_tests {
     async fn test_all_adapters_custom_timeouts() -> SongbirdResult<()> {
         use std::time::Duration;
 
-        let toadstool =
+        let compute_adapter =
             ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))
                 .await?
                 .with_timeout(Duration::from_secs(10));
 
-        let beardog = SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()))
-            .await?
-            .with_timeout(Duration::from_secs(10));
+        let security_adapter =
+            SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()))
+                .await?
+                .with_timeout(Duration::from_secs(10));
 
         let storage_provider =
             StorageAdapter::new(format!("http://localhost:{}", test_health_port()))
                 .await?
                 .with_timeout(Duration::from_secs(10));
 
-        let squirrel = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))
+        let ai_adapter = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))
             .await?
             .with_timeout(Duration::from_secs(20));
 
-        assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
-        assert_eq!(beardog.endpoint(), format!("http://localhost:{}", test_discovery_port()));
+        assert_eq!(
+            compute_adapter.endpoint(),
+            format!("http://localhost:{}", test_orchestrator_port())
+        );
+        assert_eq!(
+            security_adapter.endpoint(),
+            format!("http://localhost:{}", test_discovery_port())
+        );
         assert_eq!(storage_provider.endpoint(), format!("http://localhost:{}", test_health_port()));
-        assert_eq!(squirrel.endpoint(), format!("http://localhost:{}", test_federation_port()));
+        assert_eq!(ai_adapter.endpoint(), format!("http://localhost:{}", test_federation_port()));
         Ok(())
     }
 
@@ -133,16 +146,16 @@ mod integration_tests {
         fn create_adapter_endpoint(adapter_type: AdapterType) -> String {
             match adapter_type {
                 AdapterType::Compute => {
-                    format!("http://toadstool:{}", test_orchestrator_port())
+                    format!("http://compute-provider:{}", test_orchestrator_port())
                 }
                 AdapterType::Security => {
-                    format!("http://beardog:{}", test_discovery_port())
+                    format!("http://security-provider:{}", test_discovery_port())
                 }
                 AdapterType::Storage => {
                     format!("http://storage_provider:{}", test_health_port())
                 }
                 AdapterType::AI => {
-                    format!("http://squirrel:{}", test_federation_port())
+                    format!("http://ai-provider:{}", test_federation_port())
                 }
             }
         }
@@ -152,10 +165,16 @@ mod integration_tests {
         let storage_endpoint = create_adapter_endpoint(AdapterType::Storage);
         let ai_endpoint = create_adapter_endpoint(AdapterType::AI);
 
-        assert_eq!(compute_endpoint, format!("http://toadstool:{}", test_orchestrator_port()));
-        assert_eq!(security_endpoint, format!("http://beardog:{}", test_discovery_port()));
+        assert_eq!(
+            compute_endpoint,
+            format!("http://compute-provider:{}", test_orchestrator_port())
+        );
+        assert_eq!(
+            security_endpoint,
+            format!("http://security-provider:{}", test_discovery_port())
+        );
         assert_eq!(storage_endpoint, format!("http://storage_provider:{}", test_health_port()));
-        assert_eq!(ai_endpoint, format!("http://squirrel:{}", test_federation_port()));
+        assert_eq!(ai_endpoint, format!("http://ai-provider:{}", test_federation_port()));
     }
 
     /// Test: Metrics type system completeness
@@ -450,7 +469,7 @@ mod integration_tests {
                 .await?
                 .endpoint()
                 .to_string(),
-            SecurityAdapter::new("https://secure-beardog:8081".to_string())
+            SecurityAdapter::new("https://secure-security-provider:8081".to_string())
                 .await?
                 .endpoint()
                 .to_string(),
@@ -465,7 +484,7 @@ mod integration_tests {
         ];
 
         assert_eq!(adapters[0], format!("http://localhost:{}", test_orchestrator_port()));
-        assert_eq!(adapters[1], "https://secure-beardog:8081");
+        assert_eq!(adapters[1], "https://secure-security-provider:8081");
         assert_eq!(adapters[2], format!("http://storage_provider.local:{}", test_health_port()));
         assert_eq!(adapters[3], format!("http://192.168.1.100:{}", test_federation_port()));
         Ok(())

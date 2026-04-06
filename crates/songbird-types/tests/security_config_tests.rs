@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Tests for security configuration types
@@ -220,9 +220,9 @@ fn test_security_config_with_custom_values() {
             providers: {
                 let mut providers = HashMap::new();
                 providers.insert(
-                    "beardog".to_string(),
+                    "security-provider".to_string(),
                     SecurityProviderConfig {
-                        name: "beardog".to_string(),
+                        name: "security-provider".to_string(),
                         endpoint: "https://security.example.com:443".to_string(),
                         credentials: HashMap::new(),
                     },

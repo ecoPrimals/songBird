@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Line-delimited JSON-RPC over Unix stream sockets (`health.liveness`, `capabilities.list`).
@@ -87,4 +87,70 @@ fn read_line(stream: &mut std::os::unix::net::UnixStream) -> Result<String, std:
         }
     }
     String::from_utf8(buf).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::probe_capabilities_list;
+    use std::io::{Read, Write};
+    use std::os::unix::net::UnixListener;
+    use std::path::{Path, PathBuf};
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    fn run_line_server(sock_path: PathBuf, tx: mpsc::Sender<()>) {
+        thread::spawn(move || {
+            let _ = std::fs::remove_file(&sock_path);
+            let listener = UnixListener::bind(&sock_path).expect("bind");
+            tx.send(()).expect("ready");
+            let (mut stream, _) = listener.accept().expect("accept");
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            stream.set_write_timeout(Some(Duration::from_secs(2))).unwrap();
+
+            let mut line1 = String::new();
+            let mut buf = [0u8; 1];
+            while !line1.ends_with('\n') && line1.len() < 65536 {
+                stream.read_exact(&mut buf).expect("read");
+                line1.push(buf[0] as char);
+            }
+
+            writeln!(stream, "{}", serde_json::json!({"jsonrpc":"2.0","id":1,"result":true}))
+                .expect("write1");
+
+            let mut line2 = String::new();
+            while !line2.ends_with('\n') && line2.len() < 65536 {
+                stream.read_exact(&mut buf).expect("read2");
+                line2.push(buf[0] as char);
+            }
+
+            writeln!(
+                stream,
+                "{}",
+                serde_json::json!({"jsonrpc":"2.0","id":2,"result":["alpha","beta"]})
+            )
+            .expect("write2");
+        });
+    }
+
+    #[test]
+    fn probe_capabilities_list_parses_flat_array() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let sock = dir.path().join("probe.sock");
+        let (tx, rx) = mpsc::channel();
+        run_line_server(sock.clone(), tx);
+        rx.recv_timeout(Duration::from_secs(2)).expect("server ready");
+        thread::sleep(Duration::from_millis(20));
+
+        let caps = probe_capabilities_list(&sock);
+        assert_eq!(caps, Some(vec!["alpha".into(), "beta".into()]));
+    }
+
+    #[test]
+    fn probe_capabilities_list_missing_socket_returns_none() {
+        let caps = probe_capabilities_list(Path::new("/no/such/socket/path/primal.sock"));
+        assert!(caps.is_none());
+    }
 }

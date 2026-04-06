@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -7,7 +7,7 @@
     clippy::expect_used,
     reason = "test assertions"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for `songbird_http_client::error` and `songbird_http_client::crypto::capability`
 //!
 //! Tests error type construction, Display impls, From conversions,

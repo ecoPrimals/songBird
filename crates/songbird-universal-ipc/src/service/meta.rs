@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::{FederationPeersResponse, FederationStatusResponse, IpcServiceHandler};
@@ -115,5 +115,274 @@ impl IpcServiceHandler {
             active_connections: fed_stats.active_nodes,
         })
         .map_err(|e| format!("Serialization error: {e}"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use crate::registry::ServiceRegistry;
+    use crate::service::{FederationPeersResponse, FederationStatusResponse, IpcServiceHandler};
+    use crate::tower_atomic::JsonRpcHandler;
+    use serde_json::{Value, json};
+    use songbird_network_federation::state::{FederationState, NodeRegistration, NodeStatus};
+    use std::env::VarError;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    fn is_expected_birdsong_delegate_error(msg: &str) -> bool {
+        let m = msg.to_lowercase();
+        m.contains("missing node_id")
+            || m.contains("security provider")
+            || m.contains("socket")
+            || m.contains("ipc")
+            || m.contains("connection refused")
+            || m.contains("no such file")
+            || m.contains("crypto")
+            || m.contains("rpc")
+            || m.contains("encryption failed")
+            || m.contains("invalid params")
+    }
+
+    #[tokio::test]
+    async fn health_check_includes_uptime_and_registry_service_count() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(Arc::clone(&registry));
+
+        let v = handler.handle("health.check", json!({})).await.expect("health.check");
+        assert_eq!(v["status"], "healthy");
+        assert!(v["uptime_seconds"].as_u64().is_some());
+        assert_eq!(v["services"], json!(0));
+
+        handler
+            .handle(
+                "ipc.register",
+                json!({
+                    "primal_id": "meta-health-peer",
+                    "capabilities": ["test.cap"],
+                    "endpoint": "/tmp/meta-health.sock"
+                }),
+            )
+            .await
+            .expect("register");
+
+        let v2 = handler.handle("health.check", json!({})).await.expect("health.check 2");
+        assert_eq!(v2["services"], json!(1));
+        assert!(v2["uptime_seconds"].as_u64().unwrap() >= v["uptime_seconds"].as_u64().unwrap());
+    }
+
+    #[tokio::test]
+    async fn identity_uses_injected_env_for_family_id() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::with_family_id_env(Arc::clone(&registry), |key| {
+            if key == "FAMILY_ID" {
+                Ok("injected-family-42".to_string())
+            } else {
+                Err(VarError::NotPresent)
+            }
+        });
+
+        let v = handler.handle("identity", json!({})).await.expect("identity");
+        assert_eq!(v["family_id"], "injected-family-42");
+        assert_eq!(v["primal"], json!("songbird"));
+        assert!(v["capabilities"].is_array());
+        assert!(v["version"].is_string());
+    }
+
+    #[tokio::test]
+    async fn identity_defaults_when_injected_env_missing_all_keys() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::with_family_id_env(Arc::clone(&registry), |_| {
+            Err(VarError::NotPresent)
+        });
+
+        let v = handler.handle("identity", json!({})).await.expect("identity");
+        assert_eq!(v["family_id"], "default");
+    }
+
+    #[tokio::test]
+    async fn birdsong_advertise_errors_when_node_id_missing() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry);
+        let err = handler
+            .handle("birdsong.advertise", json!({ "capabilities": [] }))
+            .await
+            .expect_err("missing node_id");
+        assert!(err.contains("Missing node_id"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn birdsong_advertise_errors_when_node_id_not_a_string() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry);
+        let err = handler
+            .handle("birdsong.advertise", json!({ "node_id": 12345 }))
+            .await
+            .expect_err("node_id not string");
+        assert!(err.contains("Missing node_id"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn birdsong_advertise_capabilities_non_array_becomes_empty() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry);
+        let params = json!({
+            "node_id": "n1",
+            "capabilities": "not-an-array",
+            "endpoint_hints": null
+        });
+        let r = handler.handle("birdsong.advertise", params).await;
+        match r {
+            Ok(v) => {
+                let beacon = v["beacon"].as_object().expect("beacon object");
+                let inner = beacon["encrypted_beacon"].as_str().expect("encrypted_beacon");
+                assert!(!inner.is_empty());
+            }
+            Err(e) => assert!(is_expected_birdsong_delegate_error(&e), "unexpected error: {e}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn birdsong_advertise_capabilities_filters_non_string_entries() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry);
+        let params = json!({
+            "node_id": "n2",
+            "capabilities": ["keep", 99, "also-keep", {"x": 1}]
+        });
+        let r = handler.handle("birdsong.advertise", params).await;
+        match r {
+            Ok(v) => {
+                assert_eq!(v["onion_running"], json!(false));
+                assert!(v.get("onion_endpoint").is_none() || v["onion_endpoint"].is_null());
+            }
+            Err(e) => assert!(is_expected_birdsong_delegate_error(&e), "unexpected error: {e}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn birdsong_advertise_preserves_endpoint_hints_metadata() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry);
+        let hints = json!({ "lan": "192.168.0.10:0", "note": "port 0 hint" });
+        let params = json!({
+            "node_id": "n-hints",
+            "capabilities": [],
+            "endpoint_hints": hints.clone()
+        });
+        let r = handler.handle("birdsong.advertise", params).await;
+        match r {
+            Ok(v) => {
+                let beacon = &v["beacon"];
+                assert!(beacon.is_object(), "expected beacon object: {beacon:?}");
+            }
+            Err(e) => assert!(is_expected_birdsong_delegate_error(&e), "unexpected error: {e}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn birdsong_advertise_onion_not_running_sets_onion_fields() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry);
+        let r = handler
+            .handle("birdsong.advertise", json!({ "node_id": "n-onion", "capabilities": [] }))
+            .await;
+        match r {
+            Ok(v) => {
+                assert_eq!(v["onion_running"], json!(false));
+                assert!(v.get("onion_endpoint").is_none() || v["onion_endpoint"].is_null());
+            }
+            Err(e) => assert!(is_expected_birdsong_delegate_error(&e), "unexpected error: {e}"),
+        }
+    }
+
+    #[test]
+    fn federation_peers_response_serializes_stable_wire_shape() {
+        let r = FederationPeersResponse {
+            peers: vec!["z".into(), "a".into()],
+            total_count: 2,
+            federation_enabled: true,
+        };
+        let v: Value = serde_json::to_value(&r).expect("serialize FederationPeersResponse");
+        assert_eq!(v["peers"], json!(["z", "a"]));
+        assert_eq!(v["total_count"], json!(2));
+        assert_eq!(v["federation_enabled"], json!(true));
+        let round: Value = serde_json::from_str(&serde_json::to_string(&v).expect("stringify"))
+            .expect("parse json string");
+        assert_eq!(round, v);
+    }
+
+    #[test]
+    fn federation_status_response_serializes_stable_wire_shape() {
+        let r = FederationStatusResponse {
+            enabled: false,
+            active_connections: 0,
+        };
+        let v: Value = serde_json::to_value(&r).expect("serialize FederationStatusResponse");
+        assert_eq!(v["enabled"], json!(false));
+        assert_eq!(v["active_connections"], json!(0));
+        let round: Value = serde_json::from_str(&serde_json::to_string(&v).expect("stringify"))
+            .expect("parse json string");
+        assert_eq!(round, v);
+    }
+
+    #[tokio::test]
+    async fn federation_peers_sorts_node_ids_and_matches_status() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let federation = Arc::new(FederationState::new("meta-sort-test".into()));
+        let now = chrono::Utc::now();
+        for id in ["gamma", "alpha", "beta"] {
+            federation
+                .register_node(NodeRegistration {
+                    node_id: id.into(),
+                    node_name: id.into(),
+                    node_address: "127.0.0.1:0".into(),
+                    endpoints: None,
+                    cpu_cores: 0,
+                    memory_gb: 0,
+                    gpu_model: None,
+                    storage_gb: None,
+                    capabilities: vec![],
+                    status: NodeStatus::Active,
+                    joined_at: now,
+                    last_heartbeat: now,
+                })
+                .await;
+        }
+
+        let handler = IpcServiceHandler::with_federation_state(registry, Arc::clone(&federation));
+
+        let p = handler.handle("federation.peers", json!({})).await.expect("peers");
+        assert_eq!(p["peers"], json!(["alpha", "beta", "gamma"]));
+        assert_eq!(p["total_count"], json!(3));
+        assert_eq!(p["federation_enabled"], json!(true));
+
+        let st = handler.handle("songbird.federation.status", json!({})).await.expect("status");
+        assert_eq!(st["enabled"], json!(true));
+        assert_eq!(st["active_connections"], json!(3));
+    }
+
+    #[tokio::test]
+    async fn federation_peers_empty_state_serializes_like_meta_defaults() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry);
+
+        let p = handler.handle("songbird.federation.peers", json!({})).await.expect("peers");
+        let expected = serde_json::to_value(FederationPeersResponse {
+            peers: vec![],
+            total_count: 0,
+            federation_enabled: false,
+        })
+        .expect("to_value");
+        assert_eq!(p, expected);
+
+        let st = handler.handle("federation.status", json!({})).await.expect("status");
+        let expected_st = serde_json::to_value(FederationStatusResponse {
+            enabled: false,
+            active_connections: 0,
+        })
+        .expect("to_value status");
+        assert_eq!(st, expected_st);
     }
 }

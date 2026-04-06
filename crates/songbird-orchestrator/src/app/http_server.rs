@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTP/HTTPS Server Management
@@ -211,29 +211,16 @@ async fn start_http_server_plain(app: Router, listener: tokio::net::TcpListener)
     Ok(())
 }
 
-/// Get local IP address for certificate SANs
+/// Get local IP address for certificate SANs via [`crate::network::route_detect::resolve_local_ipv4`].
+///
+/// Uses the default interface from `netdev` first, then `SONGBIRD_ROUTE_DETECT_ADDR` (default
+/// [RFC 5737] `192.0.2.1:80`).
 #[expect(
     clippy::unused_async,
     reason = "async signature required by Axum, trait objects, or future I/O"
 )]
 async fn get_local_ip() -> Result<String> {
-    use std::net::{IpAddr, Ipv4Addr};
-
-    // Try to get local IP by creating a UDP socket (doesn't actually send data)
-    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("8.8.8.8:80")?; // Doesn't actually connect, just determines route
-
-    if let Ok(local_addr) = socket.local_addr() {
-        let ip = local_addr.ip();
-        match ip {
-            IpAddr::V4(ipv4) if ipv4 != Ipv4Addr::LOCALHOST => {
-                return Ok(ip.to_string());
-            }
-            _ => {}
-        }
-    }
-
-    Err(anyhow::anyhow!("Could not determine local IP"))
+    crate::network::route_detect::resolve_local_ipv4()
 }
 
 /// Start HTTPS server with Pure Rust TLS (songbird-tls + `security provider`)

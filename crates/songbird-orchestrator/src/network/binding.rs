@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Network Binding Strategy
@@ -185,6 +185,10 @@ struct NetworkCapabilities {
     interface_count: usize,
 
     /// Primary interface name (if detectable)
+    #[expect(
+        dead_code,
+        reason = "populated by detection; exposed when binding UI needs iface name"
+    )]
     primary_interface: Option<String>,
 }
 
@@ -219,12 +223,21 @@ impl NetworkCapabilities {
     async fn detect_via_udp_socket() -> Result<Self> {
         use std::net::UdpSocket;
 
-        let mut has_ipv4 = false;
-        let mut has_ipv6 = false;
+        use crate::network::route_detect::{
+            primary_ipv4_from_default_interface, primary_ipv6_from_default_interface,
+            route_detect_addr_v4, route_detect_addr_v6,
+        };
 
-        // Test IPv4: Try to determine route to public IPv4 address
-        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0")
-            && socket.connect("8.8.8.8:80").is_ok()
+        let mut has_ipv4 = false;
+        if let Some(ip) = primary_ipv4_from_default_interface() {
+            has_ipv4 = true;
+            debug!("IPv4 detected via default interface: {ip}");
+        }
+
+        // Test IPv4: route probe to documentation / configured address (no public DNS IPs)
+        if !has_ipv4
+            && let Ok(socket) = UdpSocket::bind("0.0.0.0:0")
+            && socket.connect(route_detect_addr_v4().as_str()).is_ok()
             && let Ok(local_addr) = socket.local_addr()
         {
             let ip = local_addr.ip();
@@ -234,17 +247,22 @@ impl NetworkCapabilities {
             }
         }
 
-        // Test IPv6: Try to determine route to public IPv6 address
-        if let Ok(socket) = UdpSocket::bind("[::]:0") {
-            // Use Google's public DNS IPv6 address
-            if socket.connect("[2001:4860:4860::8888]:80").is_ok()
-                && let Ok(local_addr) = socket.local_addr()
-            {
-                let ip = local_addr.ip();
-                if !ip.is_loopback() && !ip.is_unspecified() {
-                    has_ipv6 = true;
-                    debug!("IPv6 detected via routing check: {}", ip);
-                }
+        let mut has_ipv6 = false;
+        if let Some(ip) = primary_ipv6_from_default_interface() {
+            has_ipv6 = true;
+            debug!("IPv6 detected via default interface: {ip}");
+        }
+
+        // Test IPv6: route probe to documentation IPv6 (RFC 3849) or env override
+        if !has_ipv6
+            && let Ok(socket) = UdpSocket::bind("[::]:0")
+            && socket.connect(route_detect_addr_v6().as_str()).is_ok()
+            && let Ok(local_addr) = socket.local_addr()
+        {
+            let ip = local_addr.ip();
+            if !ip.is_loopback() && !ip.is_unspecified() {
+                has_ipv6 = true;
+                debug!("IPv6 detected via routing check: {}", ip);
             }
         }
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Discovery → Federation Bridge
@@ -622,6 +622,10 @@ impl SongbirdOrchestrator {
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
+    use crate::SongbirdOrchestrator;
+    use crate::test_sync_env::{VarGuard, env_lock};
+    use songbird_types::config::CanonicalSongbirdConfig;
+
     /// Mirrors same-family tag matching used when evaluating discovered peers (colon + legacy forms).
     fn tag_indicates_same_family(my_family: &str, tag: &str) -> bool {
         tag.contains(&format!(":family:{my_family}:"))
@@ -646,5 +650,18 @@ mod tests {
     #[test]
     fn empty_tag_never_matches() {
         assert!(!tag_indicates_same_family("x", ""));
+    }
+
+    /// Bridge with no discovery listener is a no-op (no background task); still success.
+    #[tokio::test]
+    async fn start_discovery_federation_bridge_without_listener_ok() -> anyhow::Result<()> {
+        let port = songbird_test_utils::test_port("discovery_bridge_sec");
+        let url = format!("http://127.0.0.1:{port}");
+        let _serial = env_lock();
+        let _sec = VarGuard::set("SONGBIRD_SECURITY_PROVIDER", url.as_str());
+        let config = CanonicalSongbirdConfig::default();
+        let orch = SongbirdOrchestrator::new(config).await?;
+        orch.start_discovery_federation_bridge().await?;
+        Ok(())
     }
 }

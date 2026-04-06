@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -7,7 +7,7 @@
     clippy::expect_used,
     reason = "test assertions"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Integration tests for Songbird HTTP Client
@@ -18,7 +18,7 @@ use std::collections::HashMap;
 /// Test client creation
 #[test]
 fn test_client_creation() {
-    let client = SongbirdHttpClient::new("/tmp/beardog-nat0.sock");
+    let client = SongbirdHttpClient::new("/tmp/security-provider-nat0.sock");
     // If this doesn't panic, client was created successfully
     drop(client);
 }

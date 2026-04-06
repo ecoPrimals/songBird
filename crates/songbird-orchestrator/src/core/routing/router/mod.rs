@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Intelligent Capability Router
@@ -28,6 +28,7 @@ pub struct CapabilityRouter {
     federation_state: Arc<FederationState>,
 
     /// Service registry for capability discovery
+    #[expect(dead_code, reason = "retained for capability discovery wiring")]
     service_registry: Arc<FederatedServiceRegistry>,
 
     /// Capability endpoint resolver

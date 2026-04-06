@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Primal endpoint discovery and capability-based filtering.
@@ -374,13 +374,13 @@ mod tests {
     #[test]
     fn test_get_primal_endpoint_with_primary_env_wins() {
         let ep = get_primal_endpoint_with(
-            "squirrel",
+            "ai_provider",
             &env_map(&[
-                ("SQUIRREL_ENDPOINT", "http://explicit-squirrel:1"),
-                ("PRIMAL_SQUIRREL_ENDPOINT", "http://generic:2"),
+                ("AI_PROVIDER_ENDPOINT", "http://explicit-ai-provider:1"),
+                ("PRIMAL_AI_PROVIDER_ENDPOINT", "http://generic:2"),
             ]),
         );
-        assert_eq!(ep, "http://explicit-squirrel:1");
+        assert_eq!(ep, "http://explicit-ai-provider:1");
     }
 
     #[test]
@@ -404,13 +404,13 @@ mod tests {
     #[test]
     fn test_get_configured_primal_names_in_env_collects_endpoints() {
         let mut m = HashMap::new();
-        m.insert("BEARDOG_ENDPOINT".to_string(), "http://x".to_string());
-        m.insert("PRIMAL_TOADSTOOL_ENDPOINT".to_string(), "http://y".to_string());
+        m.insert("SECURITY_PROVIDER_ENDPOINT".to_string(), "http://x".to_string());
+        m.insert("PRIMAL_COMPUTE_PROVIDER_ENDPOINT".to_string(), "http://y".to_string());
         m.insert("SONGBIRD_IGNORED_ENDPOINT".to_string(), "http://z".to_string());
         let mut names = get_configured_primal_names_in_env(&m);
         names.sort();
-        assert!(names.contains(&"beardog".to_string()));
-        assert!(names.contains(&"toadstool".to_string()));
+        assert!(names.contains(&"security_provider".to_string()));
+        assert!(names.contains(&"compute_provider".to_string()));
         assert!(!names.contains(&"songbird_ignored".to_string()));
     }
 

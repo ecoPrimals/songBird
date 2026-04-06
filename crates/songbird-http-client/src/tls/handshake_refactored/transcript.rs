@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Transcript management for TLS 1.3 handshake
@@ -18,7 +18,7 @@ impl TlsHandshake {
     /// - `ClientHello`: Must strip 5-byte TLS record header before calling
     /// - `ServerHello`: Already stripped by `read_record()`
     /// - Post-handshake messages: Already stripped by `read_record()`
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) fn update_transcript(&mut self, message: &[u8]) {
         let before = self.transcript.len();
         let after = before + message.len();
@@ -96,7 +96,7 @@ impl TlsHandshake {
                     error!("🚨 LENGTH MISMATCH!");
                     error!("   Declared: {} bytes", declared_length);
                     error!("   Actual: {} bytes", actual_length);
-                    #[allow(
+                    #[expect(
                         clippy::cast_possible_wrap,
                         reason = "intentional pattern; clippy false positive for this API"
                     )] // Handshake message lengths are < 16MB
@@ -142,8 +142,8 @@ impl TlsHandshake {
     ///
     /// A single TLS record may contain MULTIPLE handshake messages concatenated together!
     /// This function parses them individually so they can be added to the transcript separately.
-    #[allow(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency
-    #[allow(
+    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency
+    #[expect(
         clippy::too_many_lines,
         reason = "intentional pattern; clippy false positive for this API"
     )] // Handshake parsing has many validation branches
@@ -287,7 +287,7 @@ impl TlsHandshake {
     ///
     /// NOTE: This uses local SHA-256 only. For cipher-aware hashing (SHA-384 for 0x1302),
     /// use `compute_transcript_hash_for_cipher` instead.
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) fn compute_transcript_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(&self.transcript);

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security-provider RPC client core
@@ -8,7 +8,7 @@
 use crate::crypto::socket_discovery::IpcEndpoint;
 use songbird_types::primal_names::NEURAL_API;
 use std::sync::atomic::AtomicU64;
-use tracing::info;
+use tracing::{info, warn};
 
 /// Security-provider communication mode
 ///
@@ -137,7 +137,13 @@ impl SecurityRpcClient {
         use crate::crypto::socket_discovery;
 
         let mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")
-            .or_else(|_| songbird_process_env::var("BEARDOG_MODE"))
+            .or_else(|_| {
+                songbird_process_env::var("BEARDOG_MODE").inspect(|_| {
+                    warn!(
+                        "BEARDOG_MODE is deprecated — migrate to SECURITY_PROVIDER_MODE; prefer CAPABILITY_* or SECURITY_PROVIDER_* env vars (capability-first)"
+                    );
+                })
+            })
             .unwrap_or_else(|_| "neural".to_string());
 
         if mode.to_lowercase() == "direct" {
@@ -164,7 +170,7 @@ impl SecurityRpcClient {
     }
 
     /// Get endpoint based on mode (for diagnostics/debugging)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) const fn endpoint(&self) -> &IpcEndpoint {
         match &self.mode {
             SecurityRpcMode::Direct {
@@ -179,7 +185,7 @@ impl SecurityRpcClient {
     }
 
     /// Check if in Neural API mode (for diagnostics/debugging)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) const fn is_neural_api(&self) -> bool {
         matches!(self.mode, SecurityRpcMode::NeuralApi { .. })
     }

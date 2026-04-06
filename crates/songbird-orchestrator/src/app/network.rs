@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Network utilities for orchestrator
@@ -7,8 +7,10 @@
 //! idiomatic Rust patterns.
 
 use anyhow::Result;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use tracing::{info, warn};
+
+use crate::network::route_detect::{ROUTE_GET_TARGET_V4, resolve_local_ipv4};
 
 /// Get local IP address for connectivity testing
 ///
@@ -18,20 +20,7 @@ use tracing::{info, warn};
 ///
 /// Returns an error if the operation fails.
 pub async fn get_local_ip_for_connectivity_test() -> Result<String> {
-    // Try to get local IP by creating a UDP socket (doesn't actually send data)
-    let socket = UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("8.8.8.8:80")?; // Doesn't actually connect, just determines route
-
-    if let Ok(local_addr) = socket.local_addr() {
-        let ip = local_addr.ip();
-        if let std::net::IpAddr::V4(ipv4) = ip
-            && ipv4 != Ipv4Addr::LOCALHOST
-        {
-            return Ok(ip.to_string());
-        }
-    }
-
-    Err(anyhow::anyhow!("Could not determine local IP"))
+    resolve_local_ipv4()
 }
 
 /// Parse bind address with support for IPv4, IPv6, and dual-stack
@@ -102,18 +91,9 @@ pub fn parse_bind_address(addr: &str, port: u16) -> Result<SocketAddr> {
 ///
 /// Returns `None` if no suitable interface is found.
 pub fn detect_primary_ip() -> Option<String> {
-    // Try to detect by creating a UDP socket to a public DNS server
-    // This doesn't actually send data, just determines which interface would be used
-    if let Ok(socket) = UdpSocket::bind("0.0.0.0:0")
-        && matches!(socket.connect("8.8.8.8:80"), Ok(()))
-        && let Ok(addr) = socket.local_addr()
-    {
-        let ip = addr.ip();
-        // Only return if it's a real IP (not 0.0.0.0 or loopback)
-        if !ip.is_loopback() && !ip.is_unspecified() {
-            info!("🌐 Detected primary network IP: {}", ip);
-            return Some(ip.to_string());
-        }
+    if let Ok(ip) = resolve_local_ipv4() {
+        info!("🌐 Detected primary network IP: {ip}");
+        return Some(ip);
     }
 
     // Fallback: Try to get from network interfaces
@@ -121,11 +101,11 @@ pub fn detect_primary_ip() -> Option<String> {
     {
         use std::process::Command;
 
-        // Try ip command first
-        if let Ok(output) = Command::new("ip").args(["route", "get", "1.1.1.1"]).output()
+        // Try ip command first (documentation IPv4 — [RFC 5737] TEST-NET-1)
+        if let Ok(output) = Command::new("ip").args(["route", "get", ROUTE_GET_TARGET_V4]).output()
             && let Ok(stdout) = String::from_utf8(output.stdout)
         {
-            // Parse output like: "1.1.1.1 via X.X.X.X dev eth0 src Y.Y.Y.Y"
+            // Parse output like: "192.0.2.1 via X.X.X.X dev eth0 src Y.Y.Y.Y"
             for line in stdout.lines() {
                 if let Some(src_pos) = line.find(" src ") {
                     let after_src = &line[src_pos + 5..];

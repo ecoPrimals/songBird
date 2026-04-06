@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! NFC configuration with security-provider (crypto) socket discovery
@@ -99,7 +99,9 @@ impl NfcConfig {
         }
         // Legacy fallback
         if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
-            tracing::warn!("BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET");
+            tracing::warn!(
+                "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+            );
             return PathBuf::from(socket);
         }
 
@@ -248,7 +250,8 @@ mod tests {
     }
 
     #[test]
-    fn discover_security_socket_prefers_songbird_security_provider_over_beardog() {
+    fn discover_security_socket_backward_compat_prefers_songbird_security_provider_over_legacy_beardog_socket()
+     {
         let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
         clear_socket_overlay_keys();
         songbird_process_env::set_var("SONGBIRD_SECURITY_PROVIDER", "/tmp/songbird.sock");

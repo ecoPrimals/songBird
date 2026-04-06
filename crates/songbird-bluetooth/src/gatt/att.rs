@@ -16,7 +16,7 @@ pub mod att_opcode {
     pub const WRITE_REQ: u8 = 0x12;
     pub const WRITE_RSP: u8 = 0x13;
     pub const WRITE_CMD: u8 = 0x52;
-    #[allow(dead_code, reason = "reserved for notify/indicate handling")]
+    #[expect(dead_code, reason = "reserved for notify/indicate handling")]
     pub const HANDLE_VALUE_NTF: u8 = 0x1B;
 }
 
@@ -30,7 +30,7 @@ pub mod att_uuid {
     pub const CHARACTERISTIC: u16 = 0x2803;
 
     /// Client Characteristic Configuration Descriptor (0x2902)
-    #[allow(dead_code, reason = "reserved for CCCD reads/writes")]
+    #[expect(dead_code, reason = "reserved for CCCD reads/writes")]
     pub const CLIENT_CHAR_CONFIG: u16 = 0x2902;
 }
 

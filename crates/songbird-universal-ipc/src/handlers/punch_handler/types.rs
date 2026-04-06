@@ -1,16 +1,17 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Hole-punch attempt state exposed to JSON-RPC callers.
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Status of a punch attempt
 #[derive(Debug, Clone)]
 pub struct PunchAttempt {
     /// Target node ID
-    pub target_node_id: String,
+    pub target_node_id: Arc<str>,
     /// Current status
     pub status: PunchStatus,
     /// Number of attempts made
@@ -34,6 +35,6 @@ pub enum PunchStatus {
     Succeeded,
     /// Punch failed - will use relay fallback
     Failed {
-        reason: String,
+        reason: Arc<str>,
     },
 }

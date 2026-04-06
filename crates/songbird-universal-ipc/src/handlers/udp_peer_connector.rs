@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! UDP Peer Connector
@@ -38,7 +38,7 @@ pub struct UdpPeerConnector {
 
 /// Active UDP binding entry
 #[derive(Debug, Clone)]
-#[allow(dead_code, reason = "reserved for active binding tracking when hole punch is wired")]
+#[expect(dead_code, reason = "reserved for active binding tracking when hole punch is wired")]
 struct BindingEntry {
     local_addr: SocketAddr,
     connection_id: String,
@@ -161,7 +161,10 @@ impl PeerConnector for UdpPeerConnector {
             Some(addr) => {
                 addr.parse().map_err(|e| format!("Invalid binding address '{addr}': {e}"))?
             }
-            None => "0.0.0.0:0".parse().expect("valid static address"), // Ephemeral port
+            None => {
+                #[expect(clippy::expect_used, reason = "compile-time constant address")]
+                "0.0.0.0:0".parse().expect("valid static address") // Ephemeral port
+            }
         };
 
         let socket = UdpSocket::bind(bind_addr)

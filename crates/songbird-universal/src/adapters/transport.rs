@@ -326,3 +326,231 @@ impl CapabilityTransport for MockTransport {
         self.pop()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        AdapterTransportKind, CapabilityTransport, DelayTransport, HttpTransport, JsonRpcTransport,
+        MockTransport, TarpcTransport, build_default_transport, transport_kind_for_endpoint,
+    };
+    use crate::{JsonRpcClient, TarpcClient};
+    use serde_json::json;
+    use songbird_http_client::SongbirdHttpClient;
+    use songbird_types::SongbirdError;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    #[test]
+    fn transport_kind_for_endpoint_variants() {
+        assert_eq!(
+            transport_kind_for_endpoint("tarpc://127.0.0.1:9000"),
+            AdapterTransportKind::Tarpc
+        );
+        assert_eq!(
+            transport_kind_for_endpoint("unix:///tmp/s.sock"),
+            AdapterTransportKind::JsonRpc
+        );
+        assert_eq!(
+            transport_kind_for_endpoint("http://localhost:8080"),
+            AdapterTransportKind::Http
+        );
+        assert_eq!(
+            transport_kind_for_endpoint("https://a.example/path"),
+            AdapterTransportKind::Http
+        );
+        assert_eq!(transport_kind_for_endpoint("ftp://x"), AdapterTransportKind::Http);
+        assert_eq!(transport_kind_for_endpoint(""), AdapterTransportKind::Http);
+    }
+
+    #[tokio::test]
+    async fn build_default_transport_tarpc_jsonrpc_http() -> songbird_types::SongbirdResult<()> {
+        let _t = build_default_transport("tarpc://127.0.0.1:9101")?;
+        let _j = build_default_transport("unix:///tmp/songbird-transport-unit.sock")?;
+
+        let server = mockito::Server::new_async().await;
+        let _h = build_default_transport(server.url().as_str())?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_default_transport_invalid_tarpc() {
+        let err = build_default_transport("tarpc://not-a-host:99999").expect_err("invalid port");
+        assert!(err.to_string().contains("tarpc") || err.to_string().contains("configuration"));
+    }
+
+    #[tokio::test]
+    async fn tarpc_transport_unknown_get_returns_error() -> songbird_types::SongbirdResult<()> {
+        let client = TarpcClient::new("tarpc://127.0.0.1:9102")?;
+        let t = TarpcTransport(client);
+        let err = t.get("unknown/path").await.expect_err("unknown path");
+        assert!(err.to_string().contains("Unknown GET path for tarpc"), "{}", err);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_transport_unknown_get_returns_error() -> songbird_types::SongbirdResult<()> {
+        let client = JsonRpcClient::new("unix:///tmp/songbird-jsonrpc-transport.sock")?;
+        let t = JsonRpcTransport(client);
+        let err = t.get("foo/bar").await.expect_err("unknown path");
+        assert!(err.to_string().contains("Unknown GET path for JSON-RPC"), "{}", err);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn http_transport_get_inner_success_and_errors() -> songbird_types::SongbirdResult<()> {
+        let mut server = mockito::Server::new_async().await;
+        let base = server.url();
+
+        let _m_sec = server
+            .mock("GET", "/metrics/security")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"ok":true}"#)
+            .create_async()
+            .await;
+        let transport = HttpTransport::new(base.clone(), SongbirdHttpClient::from_env());
+        let v = transport.get("metrics/security").await?;
+        assert_eq!(v, json!({"ok": true}));
+
+        let mut server2 = mockito::Server::new_async().await;
+        let base2 = server2.url();
+        let _m503 = server2
+            .mock("GET", "/metrics/security")
+            .with_status(503)
+            .with_body("no")
+            .create_async()
+            .await;
+        let t2 = HttpTransport::new(base2, SongbirdHttpClient::from_env());
+        let e = t2.get("metrics/security").await.expect_err("503");
+        assert!(e.to_string().contains("503") || e.to_string().contains("Security"));
+
+        let mut server3 = mockito::Server::new_async().await;
+        let base3 = server3.url();
+        let _m_comp = server3.mock("GET", "/metrics/compute").with_status(502).create_async().await;
+        let t3 = HttpTransport::new(base3, SongbirdHttpClient::from_env());
+        let e3 = t3.get("metrics/compute").await.expect_err("502");
+        assert!(e3.to_string().contains("compute") || e3.to_string().contains("502"));
+
+        let mut server4 = mockito::Server::new_async().await;
+        let base4 = server4.url();
+        let _m_ai = server4.mock("GET", "/metrics/ai").with_status(500).create_async().await;
+        let t4 = HttpTransport::new(base4, SongbirdHttpClient::from_env());
+        let e4 = t4.get("metrics/ai").await.expect_err("500");
+        assert!(e4.to_string().contains("ai") || e4.to_string().contains("500"));
+
+        let mut server5 = mockito::Server::new_async().await;
+        let base5 = server5.url();
+        let _m_id = server5
+            .mock("GET", "/api/v1/identity")
+            .with_status(401)
+            .with_body(r#"{"err":"no"}"#)
+            .create_async()
+            .await;
+        let t5 = HttpTransport::new(base5, SongbirdHttpClient::from_env());
+        let e5 = t5.get("api/v1/identity").await.expect_err("401");
+        assert!(e5.to_string().contains("401") || e5.to_string().contains("Identity"));
+
+        let mut server6 = mockito::Server::new_async().await;
+        let base6 = server6.url();
+        let _m_misc = server6.mock("GET", "/other").with_status(404).create_async().await;
+        let t6 = HttpTransport::new(base6, SongbirdHttpClient::from_env());
+        let e6 = t6.get("other").await.expect_err("404");
+        assert!(e6.to_string().contains("404") || e6.to_string().contains("HTTP"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn http_transport_post_auth_verify_non_2xx_returns_unauthorized_json()
+    -> songbird_types::SongbirdResult<()> {
+        let mut server = mockito::Server::new_async().await;
+        let _m = server
+            .mock("POST", "/auth/verify")
+            .with_status(401)
+            .with_body(r#"{"error":"bad"}"#)
+            .create_async()
+            .await;
+
+        let t = HttpTransport::new(server.url(), SongbirdHttpClient::from_env());
+        let v = t.post("auth/verify", json!({"token":"x"})).await?;
+        assert_eq!(v, json!("Unauthorized"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn http_transport_post_trust_evaluate_error_maps_to_security() {
+        let mut server = mockito::Server::new_async().await;
+        let _m = server
+            .mock("POST", "/api/v1/trust/evaluate")
+            .with_status(403)
+            .with_body(r#"{"denied":true}"#)
+            .create_async()
+            .await;
+
+        let t = HttpTransport::new(server.url(), SongbirdHttpClient::from_env());
+        let err = t.post("api/v1/trust/evaluate", json!({})).await.expect_err("403");
+        assert!(err.to_string().contains("Trust") || err.to_string().contains("403"), "{}", err);
+    }
+
+    #[tokio::test]
+    async fn http_transport_call_method_posts_to_method_path() -> songbird_types::SongbirdResult<()>
+    {
+        let mut server = mockito::Server::new_async().await;
+        let _m = server
+            .mock("POST", "/some_method")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"r":1}"#)
+            .create_async()
+            .await;
+
+        let t = HttpTransport::new(server.url(), SongbirdHttpClient::from_env());
+        let v = t.call_method("some_method", None).await?;
+        assert_eq!(v, json!({"r": 1}));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn http_transport_debug_smoke() {
+        let t = HttpTransport::new("http://localhost:1", SongbirdHttpClient::from_env());
+        let s = format!("{t:?}");
+        assert!(s.contains("HttpTransport"));
+        assert!(s.contains("http://localhost:1"));
+    }
+
+    #[tokio::test]
+    async fn mock_transport_fifo_and_exhausted() {
+        let m = MockTransport::new(vec![Ok(json!({"a":1})), Err(SongbirdError::network("boom"))]);
+        assert_eq!(m.call_method("x", None).await.unwrap(), json!({"a":1}));
+        assert!(m.call_method("x", None).await.is_err());
+        assert!(m.get("p").await.expect_err("empty").to_string().contains("exhausted"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn delay_transport_waits_before_delegating() {
+        let inner = Arc::new(MockTransport::new(vec![Ok(json!({"delayed":true}))]));
+        let delayed = DelayTransport {
+            inner: inner.clone(),
+            delay: Duration::from_secs(2),
+        };
+
+        let handle = tokio::spawn(async move { delayed.call_method("m", None).await });
+
+        tokio::time::advance(Duration::from_secs(1)).await;
+        tokio::task::yield_now().await;
+        assert!(!handle.is_finished());
+
+        tokio::time::advance(Duration::from_secs(1)).await;
+        let out = handle.await.expect("join").expect("ok");
+        assert_eq!(out, json!({"delayed": true}));
+    }
+
+    /// Ensures `CapabilityTransport` object safety for [`MockTransport`].
+    #[tokio::test]
+    async fn mock_transport_as_dyn_trait() {
+        let m: Arc<dyn super::CapabilityTransport> =
+            Arc::new(MockTransport::new(vec![Ok(json!([]))]));
+        let v = m.call_method("any", None).await.unwrap();
+        assert_eq!(v, json!([]));
+    }
+}

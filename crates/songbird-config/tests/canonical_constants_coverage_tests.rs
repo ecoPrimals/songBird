@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -335,9 +335,9 @@ fn test_disable_zero_copy() {
 #[test]
 fn test_get_primal_endpoint_uses_env() {
     let mut m: HashMap<String, String> = HashMap::new();
-    m.insert("BEARDOG_ENDPOINT".into(), "https://custom.beardog:9000".into());
-    let endpoint = C::get_primal_endpoint_with("beardog", &env_reader(&m));
-    assert_eq!(endpoint, "https://custom.beardog:9000");
+    m.insert("SECURITY_PROVIDER_ENDPOINT".into(), "https://security-provider.example:9000".into());
+    let endpoint = C::get_primal_endpoint_with("security_provider", &env_reader(&m));
+    assert_eq!(endpoint, "https://security-provider.example:9000");
 }
 
 #[test]

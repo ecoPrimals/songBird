@@ -1,8 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::*;
+use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_types::{SongbirdError, SongbirdResult};
+use std::collections::HashMap;
 use std::time::Duration;
 
 #[test]
@@ -652,4 +654,160 @@ async fn test_storage_provider_trait_impl() -> SongbirdResult<()> {
     let health = provider.check_storage_health().await?;
     assert_eq!(health, metrics.health_status());
     Ok(())
+}
+
+// --- HTTP + discovery (mockito): exercise `collect_metrics` / `check_health` / trait on adapter ---
+
+#[tokio::test]
+async fn unit_http_collect_metrics_success() -> SongbirdResult<()> {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("GET", "/metrics/storage")
+        .expect(2)
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            r#"{
+            "total_capacity_bytes": 10000000000,
+            "used_bytes": 3500000000,
+            "available_bytes": 6500000000,
+            "object_count": 5000,
+            "avg_read_latency_ms": 12.5,
+            "avg_write_latency_ms": 18.0,
+            "timestamp": "2025-11-18T12:00:00Z"
+        }"#,
+        )
+        .create_async()
+        .await;
+
+    let adapter = StorageAdapter::new(server.url()).await?;
+    let metrics = adapter.collect_metrics().await?;
+    assert_eq!(metrics.total_capacity_bytes, 10_000_000_000);
+    assert_eq!(metrics.object_count, 5000);
+    assert!((metrics.avg_read_latency_ms - 12.5).abs() < 0.01);
+
+    let again = StorageProvider::collect_storage_metrics(&adapter).await?;
+    assert_eq!(again.object_count, metrics.object_count);
+
+    mock.assert_async().await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn unit_http_check_health_maps_from_metrics() -> SongbirdResult<()> {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("GET", "/metrics/storage")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            r#"{
+            "total_capacity_bytes": 10000000000,
+            "used_bytes": 8700000000,
+            "available_bytes": 1300000000,
+            "object_count": 8000,
+            "avg_read_latency_ms": 15.0,
+            "avg_write_latency_ms": 20.0,
+            "timestamp": "2025-11-18T12:00:00Z"
+        }"#,
+        )
+        .create_async()
+        .await;
+
+    let adapter = StorageAdapter::new(server.url()).await?;
+    let health = adapter.check_health().await?;
+    assert_eq!(health, StorageHealth::Warning);
+
+    mock.assert_async().await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn unit_http_collect_metrics_http_error_status() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("GET", "/metrics/storage")
+        .with_status(503)
+        .with_body("Service Unavailable")
+        .create_async()
+        .await;
+
+    let adapter = StorageAdapter::new(server.url()).await.expect("adapter");
+    let err = adapter.collect_metrics().await.expect_err("expected HTTP error");
+    assert!(err.to_string().contains("503"), "{}", err);
+
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn unit_http_collect_metrics_invalid_json_body() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("GET", "/metrics/storage")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body("not valid json {{{")
+        .create_async()
+        .await;
+
+    let adapter = StorageAdapter::new(server.url()).await.expect("adapter");
+    let err = adapter.collect_metrics().await.expect_err("parse error");
+    assert!(err.to_string().contains("Failed to parse storage metrics"), "{}", err);
+
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn unit_http_collect_metrics_epoch_timestamp_is_replaced() -> SongbirdResult<()> {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("GET", "/metrics/storage")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            r#"{
+            "total_capacity_bytes": 5000000000,
+            "used_bytes": 1000000000,
+            "available_bytes": 4000000000,
+            "object_count": 2000,
+            "avg_read_latency_ms": 8.0,
+            "avg_write_latency_ms": 10.0,
+            "timestamp": "1970-01-01T00:00:00Z"
+        }"#,
+        )
+        .create_async()
+        .await;
+
+    let adapter = StorageAdapter::new(server.url()).await?;
+    let metrics = adapter.collect_metrics().await?;
+    let now = chrono::Utc::now();
+    assert!((now - metrics.timestamp).num_seconds().abs() < 10);
+
+    mock.assert_async().await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn unit_from_discovery_with_resolver_injected_endpoint() -> SongbirdResult<()> {
+    let server = mockito::Server::new_async().await;
+    let endpoint = server.url();
+    let mut m = HashMap::new();
+    m.insert(CapabilityType::Storage, endpoint.clone());
+    let resolver = CapabilityEndpointResolver::with_endpoint_overrides(m);
+
+    let adapter = StorageAdapter::from_discovery_with_resolver(resolver).await?;
+    assert_eq!(adapter.endpoint(), endpoint.as_str());
+    Ok(())
+}
+
+/// `songbird-test-utils` mock storage primal: smoke test (metrics shape used in integration scenarios).
+#[test]
+fn storage_mock_provider_fixture_from_test_utils() {
+    use songbird_test_utils::mocks::storage_provider::MockStorageProvider;
+
+    let mock = MockStorageProvider::new();
+    let m = mock.get_metrics();
+    assert!(m.total_capacity_bytes > 0);
+    mock.simulate_near_capacity();
+    assert!(mock.get_metrics().available_bytes < 100_000_000_000);
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -50,7 +50,7 @@
 //! 4. /tmp/{primal}.sock (legacy)
 //!
 //! Socket Naming:
-//! - beardog.sock (NOT beardog-nat0.sock)
+//! - security.sock / crypto.sock (capability-based; legacy: beardog.sock — NOT *-nat0.sock)
 //! - songbird.sock (NOT songbird-nat0.sock)
 //! - neural-api.sock (NOT neural-api-nat0.sock)
 //! ```
@@ -386,7 +386,7 @@ async fn test_e2e_capability_registration_discovers_xdg_neural_api() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_e2e_security_client_discovers_xdg_beardog() {
+async fn test_e2e_security_client_discovers_xdg_neural_api_path() {
     let _guard = ENV_MUTEX.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
 
     let temp_dir = std::env::temp_dir().join("test-sec-client-e2e");

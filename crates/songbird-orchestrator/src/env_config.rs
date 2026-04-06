@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Environment Configuration - TRUE PRIMAL Self-Knowledge
@@ -22,9 +22,9 @@
 //!
 //! ### Paths (Self-Knowledge)
 //! - `SONGBIRD_SOCKET`: This primal's IPC socket path
-//! - `SONGBIRD_DATA_DIR`: Data directory (default: "/tmp/songbird-data")
-//! - `SONGBIRD_DEPLOY_DIR`: Deployment directory (default: "/tmp/songbird-deployments")
-//! - `SONGBIRD_CACHE_DIR`: Cache directory (default: "/tmp/songbird-cache")
+//! - `SONGBIRD_DATA_DIR`: Data directory (default under `XDG_RUNTIME_DIR`/`TMPDIR`, else `/tmp`: `…/songbird-data`)
+//! - `SONGBIRD_DEPLOY_DIR`: Deployment directory (default: `…/songbird-deployments`)
+//! - `SONGBIRD_CACHE_DIR`: Cache directory (default: `…/songbird-cache`)
 //!
 //! ### Discovery (Other Primals)
 //! - See `primal_discovery` module for discovering other primals
@@ -37,6 +37,45 @@ use songbird_types::primal_names;
 /// Convenience alias — reads from overlay first, then OS.
 fn env(key: &str) -> Result<String, std::env::VarError> {
     songbird_process_env::var(key)
+}
+
+/// Prefer `XDG_RUNTIME_DIR`, then `TMPDIR`, then `/tmp` (same resolution as peer socket fallbacks).
+fn runtime_or_tmp_base() -> String {
+    env("XDG_RUNTIME_DIR").or_else(|_| env("TMPDIR")).unwrap_or_else(|_| "/tmp".to_string())
+}
+
+/// Default Unix socket path for a peer when `*_SOCKET_PATH` / `PEER_SOCKET_PATH` are unset.
+#[must_use]
+pub(crate) fn peer_fallback_socket_path(peer_id: &str) -> PathBuf {
+    let base = runtime_or_tmp_base();
+    PathBuf::from(format!("{base}/biomeos/{peer_id}.sock"))
+}
+
+/// Resolve security/crypto provider Unix socket from environment (capability-first).
+///
+/// Order: `SECURITY_PROVIDER_SOCKET`, `CRYPTO_PROVIDER_SOCKET`, `SECURITY_SOCKET`, then
+/// deprecated `BEARDOG_SOCKET` (emits [`tracing::warn!`]).
+///
+/// Prefer `CAPABILITY_SECURITY_ENDPOINT` (capability discovery) or `SECURITY_PROVIDER_*` /
+/// `SECURITY_*` variables over legacy primal-named env keys.
+#[must_use]
+pub(crate) fn security_crypto_ipc_socket_from_env(default_fn: impl FnOnce() -> String) -> String {
+    if let Ok(p) = env("SECURITY_PROVIDER_SOCKET") {
+        return p;
+    }
+    if let Ok(p) = env("CRYPTO_PROVIDER_SOCKET") {
+        return p;
+    }
+    if let Ok(p) = env("SECURITY_SOCKET") {
+        return p;
+    }
+    if let Ok(p) = env("BEARDOG_SOCKET") {
+        tracing::warn!(
+            "DEPRECATED: BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT or SECURITY_PROVIDER_* for capability-first configuration"
+        );
+        return p;
+    }
+    default_fn()
 }
 
 /// Get this primal's name (self-knowledge)
@@ -76,7 +115,7 @@ pub fn node_id() -> String {
 /// 1. `SONGBIRD_SOCKET` (explicit override - full path)
 /// 2. `BIOMEOS_SOCKET_DIR` + socket name (shared socket directory)
 /// 3. `/run/user/$UID/biomeos/` + socket name (XDG-compliant default)
-/// 4. `/tmp/` + socket name (legacy fallback if XDG unavailable)
+/// 4. `{TMPDIR|/tmp}` + socket name (legacy fallback if XDG unavailable)
 ///
 /// **Socket Naming Standard**:
 /// - Default: `songbird.sock` (single-family mode, biomeOS compliant)
@@ -107,7 +146,7 @@ pub fn socket_path() -> PathBuf {
     let xdg_socket = env("XDG_RUNTIME_DIR").map_or_else(
         |_| {
             env("UID").map_or_else(
-                |_| PathBuf::from(format!("/tmp/{sock_name}")),
+                |_| PathBuf::from(format!("{}/{}", runtime_or_tmp_base(), sock_name)),
                 |uid_str| PathBuf::from(format!("/run/user/{uid_str}/biomeos/{sock_name}")),
             )
         },
@@ -121,8 +160,8 @@ pub fn socket_path() -> PathBuf {
         return xdg_socket;
     }
 
-    // Priority 4: Legacy /tmp fallback (if XDG unavailable or directory creation failed)
-    PathBuf::from(format!("/tmp/{sock_name}"))
+    // Priority 4: Legacy fallback (if XDG unavailable or directory creation failed)
+    PathBuf::from(format!("{}/{}", runtime_or_tmp_base(), sock_name))
 }
 
 /// Get the socket filename based on multi-family configuration
@@ -155,28 +194,36 @@ pub fn socket_name() -> String {
 ///
 /// Resolution order:
 /// 1. `SONGBIRD_DATA_DIR` (explicit override)
-/// 2. `/tmp/songbird-data` (default)
+/// 2. `{XDG_RUNTIME_DIR|TMPDIR|/tmp}/songbird-data` (default)
 pub fn data_dir() -> PathBuf {
-    env("SONGBIRD_DATA_DIR").map_or_else(|_| PathBuf::from("/tmp/songbird-data"), PathBuf::from)
+    env("SONGBIRD_DATA_DIR").map_or_else(
+        |_| PathBuf::from(format!("{}/songbird-data", runtime_or_tmp_base())),
+        PathBuf::from,
+    )
 }
 
 /// Get deployment directory (self-knowledge)
 ///
 /// Resolution order:
 /// 1. `SONGBIRD_DEPLOY_DIR` (explicit override)
-/// 2. `/tmp/songbird-deployments` (default)
+/// 2. `{XDG_RUNTIME_DIR|TMPDIR|/tmp}/songbird-deployments` (default)
 pub fn deployment_dir() -> PathBuf {
-    env("SONGBIRD_DEPLOY_DIR")
-        .map_or_else(|_| PathBuf::from("/tmp/songbird-deployments"), PathBuf::from)
+    env("SONGBIRD_DEPLOY_DIR").map_or_else(
+        |_| PathBuf::from(format!("{}/songbird-deployments", runtime_or_tmp_base())),
+        PathBuf::from,
+    )
 }
 
 /// Get cache directory (self-knowledge)
 ///
 /// Resolution order:
 /// 1. `SONGBIRD_CACHE_DIR` (explicit override)
-/// 2. `/tmp/songbird-cache` (default)
+/// 2. `{XDG_RUNTIME_DIR|TMPDIR|/tmp}/songbird-cache` (default)
 pub fn cache_dir() -> PathBuf {
-    env("SONGBIRD_CACHE_DIR").map_or_else(|_| PathBuf::from("/tmp/songbird-cache"), PathBuf::from)
+    env("SONGBIRD_CACHE_DIR").map_or_else(
+        |_| PathBuf::from(format!("{}/songbird-cache", runtime_or_tmp_base())),
+        PathBuf::from,
+    )
 }
 
 /// Get HTTP server bind address (self-knowledge)

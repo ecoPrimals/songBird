@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! # Service Registry for Songbird Orchestrator
@@ -257,6 +257,7 @@ impl PortAllocator {
     }
 
     /// Check if a port is allocated
+    #[expect(dead_code, reason = "helper for allocation checks when registration flow is extended")]
     fn is_allocated(&self, port: u16) -> bool {
         self.allocated.contains_key(&port)
     }

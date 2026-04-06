@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![cfg_attr(
@@ -28,6 +28,10 @@ pub struct PerformanceMetrics {
 /// Performance monitor implementation
 #[derive(Debug)]
 pub struct PerformanceMonitor {
+    #[expect(
+        dead_code,
+        reason = "retained for threshold-based tuning when metrics pipeline is active"
+    )]
     config: PerformanceConfig,
     metrics: PerformanceMetrics,
 }

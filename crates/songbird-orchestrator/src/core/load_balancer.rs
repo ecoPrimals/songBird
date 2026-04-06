@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! # ⚖️ Load Balancer
@@ -23,7 +23,9 @@ pub use LoadBalancingAlgorithm as LoadBalancingStrategy;
 /// **ZERO-COPY**: Config is shared via Arc to avoid clones during request routing (hot path).
 #[derive(Debug, Clone)]
 pub struct LoadBalancer {
+    #[expect(dead_code, reason = "retained for routing integration; hot path may read later")]
     config: Arc<CanonicalLoadBalancerConfig>,
+    #[expect(dead_code, reason = "retained for algorithm dispatch when balancer is fully wired")]
     strategy: LoadBalancingAlgorithm,
 }
 

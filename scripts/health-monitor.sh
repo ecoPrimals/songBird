@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# BTSP Endpoint Health Monitor
-# Continuously monitors registered BTSP providers for health and performance
+# Songbird Security Provider Health Monitor
+# Continuously monitors registered security providers for health and performance
 
 set -euo pipefail
 
@@ -19,7 +19,7 @@ ALERT_THRESHOLD_MS="${ALERT_THRESHOLD_MS:-1000}"
 echo -e "${BLUE}"
 echo "╔═══════════════════════════════════════════════════════════════════╗"
 echo "║                                                                   ║"
-echo "║  🏥 BTSP Endpoint Health Monitor                                  ║"
+echo "║  Songbird Security Provider Health Monitor                         ║"
 echo "║  Real-time monitoring of security providers                       ║"
 echo "║                                                                   ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
@@ -45,9 +45,9 @@ check_endpoint_health() {
     echo "${http_code}:${response_time}"
 }
 
-# Function to query for BTSP providers
-get_btsp_providers() {
-    curl -k -s "${SONGBIRD_URL}/api/v1/services?capability=btsp" 2>/dev/null || echo "[]"
+# Function to query for security providers
+get_security_providers() {
+    curl -k -s "${SONGBIRD_URL}/api/v1/services?capability=crypto.delegate" 2>/dev/null || echo "[]"
 }
 
 # Function to display health status
@@ -82,13 +82,13 @@ while true; do
     echo -e "${BLUE}Check #${iteration} - ${timestamp}${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
     
-    # Query for BTSP providers
-    providers=$(get_btsp_providers)
+    # Query for security providers
+    providers=$(get_security_providers)
     provider_count=$(echo "${providers}" | jq '. | length' 2>/dev/null || echo "0")
     
     if [ "${provider_count}" -eq 0 ]; then
-        echo -e "${YELLOW}⚠️  No BTSP providers registered${NC}"
-        echo -e "${YELLOW}   Waiting for BearDog or other security provider...${NC}"
+        echo -e "${YELLOW}⚠️  No security providers registered${NC}"
+        echo -e "${YELLOW}   Waiting for security provider (crypto.delegate capability)...${NC}"
     else
         echo -e "${GREEN}Found ${provider_count} BTSP provider(s):${NC}\n"
         
@@ -106,11 +106,11 @@ while true; do
                 
                 display_health "${provider_name}" "${endpoint}" "${http_code}" "${response_time}"
                 
-                # Check BTSP-specific endpoints
-                echo -e "   ${BLUE}BTSP Capabilities:${NC}"
+                # Check security provider endpoints
+                echo -e "   ${BLUE}Security Provider Capabilities:${NC}"
                 
                 # Check tunnel establishment endpoint
-                tunnel_check=$(curl -k -s -o /dev/null -w "%{http_code}" "${endpoint}/btsp/tunnel/establish" -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
+                tunnel_check=$(curl -k -s -o /dev/null -w "%{http_code}" "${endpoint}/security/tunnel/establish" -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
                 if [ "${tunnel_check}" == "400" ] || [ "${tunnel_check}" == "200" ]; then
                     echo -e "     ${GREEN}✅ Tunnel establishment endpoint active${NC}"
                 else

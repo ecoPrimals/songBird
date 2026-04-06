@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![cfg_attr(
@@ -103,12 +103,18 @@ pub struct SongbirdOrchestrator {
 
     /// Resource management (Week 2)
     quota_manager: Option<Arc<QuotaManager>>,
+    #[expect(
+        dead_code,
+        reason = "fair scheduler integration reserved for resource-aware dispatch"
+    )]
     scheduler: Option<Arc<FairScheduler>>,
     admission_controller: Option<Arc<AdmissionController>>,
+    #[expect(dead_code, reason = "usage accounting reserved for quota enforcement hooks")]
     usage_tracker: Option<Arc<UsageTracker>>,
 
     /// Error recovery (Week 3)
     circuit_breaker: Arc<CircuitBreaker>,
+    #[expect(dead_code, reason = "retry policy retained for transient failure recovery paths")]
     retry_policy: RetryPolicy,
 
     /// Observability (Week 4)
@@ -119,6 +125,7 @@ pub struct SongbirdOrchestrator {
     consent_enforcer: Option<Arc<ConsentEnforcer>>,
 
     /// Configuration
+    #[expect(dead_code, reason = "retained for reconfiguration and diagnostics accessors")]
     config: OrchestratorConfig,
 }
 
@@ -241,7 +248,7 @@ impl SongbirdOrchestrator {
                 }
                 EnforcementResult::Pending {
                     consent_id,
-                    timeout,
+                    timeout: _,
                 } => {
                     info!("Task {} awaiting consent: {}", task_id, consent_id);
 

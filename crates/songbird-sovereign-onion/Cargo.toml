@@ -11,7 +11,7 @@ categories = ["network-programming", "distributed-systems"]  # Removed "cryptogr
 
 [dependencies]
 # Async runtime (Pure Rust)
-tokio = { version = "1.35", features = ["full"] }
+tokio = { workspace = true, features = ["full"] }
 
 # Cryptography (100% Pure Rust - RustCrypto)
 # ⚠️ TRUE PRIMAL FIX (Feb 6, 2026): Crypto dependencies now OPTIONAL
@@ -32,13 +32,13 @@ base32 = "0.5"               # For .onion address encoding
 base64 = "0.22"              # For JSON-RPC data encoding
 
 # Utilities (Pure Rust)
-rand = "0.8"                 # Random number generation
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tracing = "0.1"
+rand = { workspace = true }                 # Random number generation
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
 thiserror = { workspace = true }
-anyhow = "1.0"
-uuid = { version = "1.6", features = ["v4", "serde"] }
+anyhow = { workspace = true }
+uuid = { workspace = true }
 
 # Internal dependencies
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }

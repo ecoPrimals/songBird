@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Enhanced Capability Router with Universal Port Authority Integration
@@ -32,6 +32,7 @@ pub struct EnhancedCapabilityRouter {
     federation_state: Arc<FederationState>,
 
     /// Legacy federated service registry
+    #[expect(dead_code, reason = "retained for federation registry integration paths")]
     federated_service_registry: Arc<FederatedServiceRegistry>,
 
     /// Capability endpoint resolver
@@ -445,7 +446,37 @@ impl EnhancedCapabilityRouter {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::core::routing::types::Task;
+    use crate::service_registry::{RegistrationRequest, ServiceCapability, ServiceRegistry};
+    use songbird_network_federation::state::{
+        EndpointStatus, NodeRegistration, NodeStatus, TransportEndpointInfo,
+    };
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    async fn router_with_compute_registration() -> EnhancedCapabilityRouter {
+        let service_registry = Arc::new(ServiceRegistry::new());
+        let reg = RegistrationRequest {
+            primal_name: "compute-svc".into(),
+            primal_version: "1".into(),
+            capabilities: vec![ServiceCapability {
+                name: "compute".into(),
+                capability_type: "compute".into(),
+                metadata: HashMap::new(),
+            }],
+            protocols: vec!["https".into()],
+            preferred_protocol: "https".into(),
+            health_check_path: None,
+            metadata: None,
+        };
+        service_registry.register(reg).await.expect("register");
+        let federation_state = Arc::new(FederationState::new("test-fed".into()));
+        let federated = Arc::new(FederatedServiceRegistry::new());
+        EnhancedCapabilityRouter::new(service_registry, federation_state, federated)
+    }
 
     #[test]
     fn test_capability_type_to_name() {
@@ -457,5 +488,89 @@ mod tests {
             EnhancedCapabilityRouter::capability_type_to_name(&CapabilityType::Security),
             "security"
         );
+    }
+
+    #[test]
+    fn determine_capability_from_metadata_gpu() {
+        let mut t = Task::builder("any").build();
+        t.metadata.insert("requires_gpu".into(), "true".into());
+        assert_eq!(
+            EnhancedCapabilityRouter::determine_capability_type(&t),
+            CapabilityType::Compute
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn heavy_task_routes_to_registered_compute_service() {
+        let router = router_with_compute_registration().await;
+        let task = Task::builder("ml_training").with_gpu().build();
+        let d = router.route_task(&task).await.expect("route");
+        match d {
+            RoutingDecision::RouteToRegisteredService {
+                endpoint,
+                service_name,
+                ..
+            } => {
+                assert!(endpoint.contains("https://"));
+                assert_eq!(service_name, "compute-svc");
+            }
+            other => panic!("unexpected decision: {other:?}"),
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn moderate_task_routes_to_federation_peer_when_present() {
+        let service_registry = Arc::new(ServiceRegistry::new());
+        let federation_state = Arc::new(FederationState::new("test-fed".into()));
+        let federated = Arc::new(FederatedServiceRegistry::new());
+        let ep = TransportEndpointInfo {
+            interface_type: "eth".into(),
+            address: "127.0.0.1:5555".into(),
+            protocols: vec!["https".into()],
+            preference: 10,
+            status: EndpointStatus::Active,
+            last_check: chrono::Utc::now(),
+        };
+        let node = NodeRegistration {
+            node_id: "n1".into(),
+            node_name: "peer-a".into(),
+            node_address: "https://127.0.0.1:5555".into(),
+            endpoints: Some(vec![ep]),
+            cpu_cores: 1,
+            memory_gb: 1,
+            gpu_model: None,
+            storage_gb: None,
+            capabilities: vec![],
+            status: NodeStatus::Active,
+            joined_at: chrono::Utc::now(),
+            last_heartbeat: chrono::Utc::now(),
+        };
+        federation_state.register_node(node).await;
+
+        let router = EnhancedCapabilityRouter::new(service_registry, federation_state, federated);
+
+        let task = Task::builder("data_transform").with_cpu(2.0).build();
+        let d = router.route_task(&task).await.expect("route");
+        match d {
+            RoutingDecision::RouteToSongbird {
+                endpoint,
+                ..
+            } => {
+                assert!(endpoint.starts_with("https://"));
+            }
+            other => panic!("unexpected decision: {other:?}"),
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn moderate_task_fallback_to_capability_when_no_peer() {
+        let service_registry = Arc::new(ServiceRegistry::new());
+        let federation_state = Arc::new(FederationState::new("test-fed".into()));
+        let federated = Arc::new(FederatedServiceRegistry::new());
+        let router = EnhancedCapabilityRouter::new(service_registry, federation_state, federated);
+
+        let task = Task::builder("data_transform").with_cpu(2.0).build();
+        let res = router.route_task(&task).await;
+        assert!(res.is_err(), "expected no static endpoint in minimal env: {res:?}");
     }
 }

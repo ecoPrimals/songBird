@@ -156,8 +156,8 @@ pub fn get_common_primal_ports() -> Vec<u16> {
         // Always include the main service port
         ports.push(base_port);
 
-        // Dynamically discover enabled primals from env vars
-        for (key, value) in std::env::vars() {
+        // Dynamically discover enabled primals from env vars (use overlay-aware iteration)
+        for (key, value) in songbird_process_env::vars() {
             if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_")
                 && (value.eq_ignore_ascii_case("true") || value == "1")
             {
@@ -171,4 +171,77 @@ pub fn get_common_primal_ports() -> Vec<u16> {
     .split(',')
     .filter_map(|s| s.trim().parse().ok())
     .collect()
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use songbird_test_utils::ScopedEnv;
+
+    #[test]
+    fn public_string_constants_match_expected() {
+        assert_eq!(DEFAULT_CONFIG_PATH, "songbird.toml");
+        assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
+        assert_eq!(DEFAULT_LOCALHOST, "127.0.0.1");
+        assert!(DEFAULT_BIND_ADDRESS.contains(':'));
+    }
+
+    #[tokio::test]
+    async fn get_bind_address_uses_valid_env_ip() {
+        let _bind = ScopedEnv::set("SONGBIRD_BIND_ADDRESS", "10.11.12.13").await;
+        assert_eq!(get_bind_address(), "10.11.12.13");
+    }
+
+    #[tokio::test]
+    async fn get_bind_address_ignores_invalid_env_ip_and_uses_localhost_in_dev() {
+        let _e = ScopedEnv::remove_and_set_many(
+            ["KUBERNETES_SERVICE_HOST", "CONTAINER", "SONGBIRD_ENV"],
+            [("SONGBIRD_BIND_ADDRESS", "not-an-ip-address")],
+        )
+        .await;
+        assert_eq!(get_bind_address(), "127.0.0.1");
+    }
+
+    #[tokio::test]
+    async fn get_bind_address_production_container_binds_all_interfaces() {
+        let _e =
+            ScopedEnv::remove_and_set_many(["SONGBIRD_BIND_ADDRESS"], [("CONTAINER", "1")]).await;
+        assert_eq!(get_bind_address(), "0.0.0.0");
+    }
+
+    #[tokio::test]
+    async fn get_port_range_start_end_respect_explicit_env() {
+        let _e = ScopedEnv::set_multiple([
+            ("SONGBIRD_PORT_START", "9100"),
+            ("SONGBIRD_PORT_END", "9200"),
+            ("SONGBIRD_PORT_RANGE_SIZE", "50"),
+        ])
+        .await;
+        assert_eq!(get_port_range_start(), 9100);
+        assert_eq!(get_port_range_end(), 9200);
+    }
+
+    #[tokio::test]
+    async fn get_common_primal_ports_parses_override_list() {
+        let _e = ScopedEnv::set("SONGBIRD_COMMON_PORTS", "7001, 7002 ,7003").await;
+        let ports = get_common_primal_ports();
+        assert_eq!(ports, vec![7001, 7002, 7003]);
+    }
+
+    #[tokio::test]
+    async fn get_common_primal_ports_includes_base_and_enabled_primal_offsets() {
+        let _e = ScopedEnv::remove_and_set_many(
+            ["SONGBIRD_COMMON_PORTS"],
+            [("SONGBIRD_PORT_START", "8000"), ("SONGBIRD_ENABLE_ALPHA", "true")],
+        )
+        .await;
+        let ports = get_common_primal_ports();
+        assert!(ports.contains(&8000));
+        let name = "alpha";
+        let hash =
+            name.bytes().fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
+        let offset = 10 + (hash % 990) as u16;
+        assert!(ports.contains(&(8000 + offset)));
+    }
 }

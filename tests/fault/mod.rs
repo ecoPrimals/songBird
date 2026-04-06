@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 //! Fault Injection Tests for Songbird
 //!
@@ -9,6 +9,8 @@
 //! - Deterministic and repeatable
 //! - Target specific failure modes
 //! - Verify specific error handling code paths
+//!
+//! **CI (local)**: `tests/local_infrastructure_ci.rs` — malformed JSON-RPC line handling.
 
 #![cfg(test)]
 

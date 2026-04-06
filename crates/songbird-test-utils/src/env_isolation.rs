@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Environment Variable Isolation for Tests
@@ -205,6 +205,37 @@ impl ScopedEnv {
             let key_string = key.into();
             let old_value = songbird_process_env::var(&key_string).ok();
             env_remove_var(&key_string);
+            restorations.push((key_string, old_value));
+        }
+
+        ScopedEnvMultiple {
+            restorations,
+            _guard: guard,
+        }
+    }
+
+    /// Remove keys then set others under a single lock (avoids deadlock from nested `ScopedEnv` calls).
+    pub async fn remove_and_set_many<I, K, J, S, V>(remove: I, set: J) -> ScopedEnvMultiple
+    where
+        I: IntoIterator<Item = K>,
+        K: Into<String>,
+        J: IntoIterator<Item = (S, V)>,
+        S: Into<String>,
+        V: AsRef<str>,
+    {
+        let guard = get_env_lock().lock().await;
+
+        let mut restorations = Vec::new();
+        for key in remove {
+            let key_string = key.into();
+            let old_value = songbird_process_env::var(&key_string).ok();
+            env_remove_var(&key_string);
+            restorations.push((key_string, old_value));
+        }
+        for (key, value) in set {
+            let key_string = key.into();
+            let old_value = songbird_process_env::var(&key_string).ok();
+            env_set_var(&key_string, value.as_ref());
             restorations.push((key_string, old_value));
         }
 

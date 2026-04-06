@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Mesh Network JSON-RPC Handler
@@ -52,7 +52,7 @@ pub struct MeshHandler {
     /// Start time for uptime tracking
     start_time: Instant,
     /// Our node ID
-    node_id: Arc<RwLock<String>>,
+    node_id: Arc<RwLock<Arc<str>>>,
 }
 
 impl MeshHandler {
@@ -62,16 +62,16 @@ impl MeshHandler {
         Self {
             mesh: Arc::new(RwLock::new(None::<Arc<BeaconMesh>>)),
             start_time: Instant::now(),
-            node_id: Arc::new(RwLock::new(String::new())),
+            node_id: Arc::new(RwLock::new(Arc::from(""))),
         }
     }
 
     /// Create with an existing mesh instance
-    pub fn with_mesh(mesh: BeaconMesh, node_id: String) -> Self {
+    pub fn with_mesh(mesh: BeaconMesh, node_id: impl Into<Arc<str>>) -> Self {
         Self {
             mesh: Arc::new(RwLock::new(Some(Arc::new(mesh)))),
             start_time: Instant::now(),
-            node_id: Arc::new(RwLock::new(node_id)),
+            node_id: Arc::new(RwLock::new(node_id.into())),
         }
     }
 
@@ -91,11 +91,11 @@ impl MeshHandler {
     /// }
     /// ```
     pub async fn handle_init(&self, params: Value) -> Result<Value, String> {
-        let node_id = params
+        let node_id: Arc<str> = params
             .get("node_id")
             .and_then(|v| v.as_str())
             .ok_or("Missing node_id parameter")?
-            .to_string();
+            .into();
 
         let bootstrap_onions: Vec<String> = params
             .get("bootstrap_onions")
@@ -105,17 +105,17 @@ impl MeshHandler {
 
         info!(
             "🌐 Initializing mesh for node {} with {} bootstrap onions",
-            &node_id[..8.min(node_id.len())],
+            &node_id.as_ref()[..8.min(node_id.len())],
             bootstrap_onions.len()
         );
 
-        let mesh = BeaconMesh::new(node_id.clone(), bootstrap_onions);
+        let mesh = BeaconMesh::new(node_id.as_ref().to_string(), bootstrap_onions);
         *self.mesh.write().await = Some(Arc::new(mesh));
         *self.node_id.write().await = node_id.clone();
 
         Ok(json!({
             "initialized": true,
-            "node_id": node_id
+            "node_id": node_id.as_ref()
         }))
     }
 
@@ -163,7 +163,7 @@ impl MeshHandler {
         let uptime = self.start_time.elapsed().as_secs();
 
         Ok(json!({
-            "node_id": node_id,
+            "node_id": node_id.as_ref(),
             "reachable_peers": reachable.len(),
             "relay_enabled": true,
             "uptime_seconds": uptime,
@@ -235,11 +235,11 @@ impl MeshHandler {
 
         let node_id = self.node_id.read().await.clone();
 
-        info!("📢 Announced {} as relay to mesh", &node_id[..8.min(node_id.len())]);
+        info!("📢 Announced {} as relay to mesh", &node_id.as_ref()[..8.min(node_id.len())]);
 
         Ok(json!({
             "announced": true,
-            "node_id": node_id,
+            "node_id": node_id.as_ref(),
             "ttl_seconds": 300
         }))
     }
@@ -316,8 +316,9 @@ impl MeshHandler {
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
 
+        let self_id = node_id.clone();
         nodes.push(json!({
-            "id": node_id,
+            "id": self_id.as_ref(),
             "role": "self",
             "reachable": true
         }));
@@ -339,7 +340,7 @@ impl MeshHandler {
             for path in &paths {
                 let (path_type, address) = json::endpoint_to_strings(&path.endpoint_type);
                 edges.push(json!({
-                    "from": node_id,
+                    "from": self_id.as_ref(),
                     "to": peer_id,
                     "path_type": path_type,
                     "address": address,
@@ -355,7 +356,7 @@ impl MeshHandler {
             "edges": edges,
             "node_count": nodes.len(),
             "edge_count": edges.len(),
-            "self_node_id": node_id,
+            "self_node_id": node_id.as_ref(),
             "uptime_seconds": self.start_time.elapsed().as_secs()
         }))
     }
@@ -432,7 +433,7 @@ impl MeshHandler {
         );
 
         let discovered = udp_discovery::udp_multicast_discover(
-            &node_id,
+            node_id.as_ref(),
             broadcast_port,
             Duration::from_millis(timeout_ms),
         )
@@ -449,8 +450,9 @@ impl MeshHandler {
 
             let mut peers_found = Vec::new();
             for (peer_id, addr) in &discovered {
+                let peer_str = peer_id.as_ref().to_string();
                 let endpoint = RelayEndpoint {
-                    node_id: peer_id.clone(),
+                    node_id: peer_str.clone(),
                     endpoint_type: EndpointType::Local {
                         addr: *addr,
                     },
@@ -458,10 +460,10 @@ impl MeshHandler {
                     last_seen: Instant::now(),
                     reachable: true,
                 };
-                mesh.add_endpoint(peer_id.clone(), endpoint).await;
+                mesh.add_endpoint(peer_str, endpoint).await;
 
                 peers_found.push(json!({
-                    "node_id": peer_id,
+                    "node_id": peer_id.as_ref(),
                     "address": addr.to_string(),
                     "path_type": "local"
                 }));

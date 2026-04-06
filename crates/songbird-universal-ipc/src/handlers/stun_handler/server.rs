@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Embedded STUN server lifecycle for the JSON-RPC handler (`stun.serve` / `stun.stop` / `stun.status`).
@@ -35,8 +35,14 @@ impl StunHandler {
             }
         }
 
+        const DEFAULT_STUN_PORT: u16 = 3478;
+        let default_port = songbird_process_env::var("SONGBIRD_STUN_PORT")
+            .ok()
+            .and_then(|s| s.parse::<u16>().ok())
+            .unwrap_or(DEFAULT_STUN_PORT);
+        let default_bind = format!("0.0.0.0:{default_port}");
         let bind_addr_str =
-            params.get("bind_addr").and_then(|v| v.as_str()).unwrap_or("0.0.0.0:3478");
+            params.get("bind_addr").and_then(|v| v.as_str()).unwrap_or(default_bind.as_str());
 
         let bind_addr: SocketAddr = bind_addr_str
             .parse()

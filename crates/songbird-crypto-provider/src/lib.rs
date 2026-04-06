@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![forbid(unsafe_code)]
@@ -128,7 +128,9 @@ impl CryptoProvider {
 
         let mode_val = get_var("SECURITY_PROVIDER_MODE").or_else(|| {
             get_var("BEARDOG_MODE").inspect(|_| {
-                tracing::warn!("BEARDOG_MODE is deprecated — migrate to SECURITY_PROVIDER_MODE");
+                tracing::warn!(
+                    "BEARDOG_MODE is deprecated — migrate to SECURITY_PROVIDER_MODE; prefer CAPABILITY_* or SECURITY_PROVIDER_* env vars (capability-first)"
+                );
             })
         });
         let mode = routing_mode_from_env(mode_val.as_deref());
@@ -160,7 +162,6 @@ impl CryptoProvider {
         }
     }
 
-    #[allow(dead_code, reason = "public API reserved for security provider integration consumers")]
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }

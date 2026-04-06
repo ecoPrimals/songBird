@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 #![allow(
     clippy::unwrap_used,
@@ -33,7 +33,7 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for `songbird_discovery::primal_self_knowledge`
 //!
 //! Tests the self-knowledge discovery architecture with env-safe patterns.
@@ -112,7 +112,7 @@ fn test_primal_identity_clone_debug() {
 #[test]
 fn test_primal_info_serialization() {
     let info = PrimalInfo {
-        name: "beardog".to_string(),
+        name: "security-provider".to_string(),
         host: "localhost".to_string(),
         port: 9090,
         capabilities: vec!["security".to_string(), "crypto".to_string()],
@@ -122,7 +122,7 @@ fn test_primal_info_serialization() {
 
     let json = serde_json::to_string(&info).unwrap();
     let deserialized: PrimalInfo = serde_json::from_str(&json).unwrap();
-    assert_eq!(deserialized.name, "beardog");
+    assert_eq!(deserialized.name, "security-provider");
     assert_eq!(deserialized.host, "localhost");
     assert_eq!(deserialized.port, 9090);
     assert_eq!(deserialized.capabilities.len(), 2);

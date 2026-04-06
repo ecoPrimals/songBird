@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Rendezvous Client
@@ -216,10 +216,18 @@ impl RendezvousClient {
             }
         }
 
-        let legacy_socket_path =
-            ["SECURITY_PROVIDER_SOCKET", "BEARDOG_SOCKET", "BEARDOG_SOCKET_PATH"]
-                .iter()
-                .find_map(|k| songbird_process_env::var(k).ok());
+        let mut legacy_socket_path = None;
+        for k in ["SECURITY_PROVIDER_SOCKET", "BEARDOG_SOCKET", "BEARDOG_SOCKET_PATH"] {
+            if let Ok(p) = songbird_process_env::var(k) {
+                if matches!(k, "BEARDOG_SOCKET" | "BEARDOG_SOCKET_PATH") {
+                    tracing::warn!(
+                        "{k} is deprecated — migrate to SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+                    );
+                }
+                legacy_socket_path = Some(p);
+                break;
+            }
+        }
         if let Some(socket_path) = legacy_socket_path
             && let Ok(security_client) = UnixRpcClient::new(PathBuf::from(socket_path))
         {
@@ -255,9 +263,15 @@ impl RendezvousClient {
     /// In production, this would use the security provider service to
     /// cryptographically sign the registration message.
     async fn sign_message_for_registration(&self) -> Option<String> {
-        if let Ok(security_url) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
-            .or_else(|_| songbird_process_env::var("BEARDOG_ENDPOINT"))
-        {
+        if let Ok(security_url) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT").or_else(
+            |_| {
+                songbird_process_env::var("BEARDOG_ENDPOINT").inspect(|_| {
+                    tracing::warn!(
+                        "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+                    );
+                })
+            },
+        ) {
             debug!(
                 "Security provider endpoint configured at {}, signature integration pending",
                 security_url

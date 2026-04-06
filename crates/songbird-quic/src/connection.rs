@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! QUIC connection handling (pure Rust, native engine).
@@ -27,7 +27,7 @@ pub struct QuicConnection {
 pub struct ConnectionInner {
     pub(crate) transport: TransportConnection,
     pub(crate) streams: StreamManager,
-    #[allow(dead_code, reason = "used by transport layer for flow control enforcement")]
+    #[expect(dead_code, reason = "used by transport layer for flow control enforcement")]
     pub(crate) flow_control: ConnectionFlowControl,
 }
 

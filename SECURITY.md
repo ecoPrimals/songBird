@@ -67,4 +67,4 @@ Report security vulnerabilities through secure channels to the ecoPrimals develo
 
 ## License
 
-AGPL-3.0-only — Ensures full transparency of security implementations.
+AGPL-3.0-or-later — Ensures full transparency of security implementations.

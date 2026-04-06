@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTP Gateway Service - Universal HTTP proxy for pure Rust ecosystem
@@ -88,6 +88,10 @@ pub struct HttpGatewayService {
     credentials: Arc<CredentialManager>,
 
     /// HTTP client for external requests (Tower Atomic: Pure Rust + `security provider` crypto!)
+    #[expect(
+        dead_code,
+        reason = "retained for proxied HTTP calls when gateway methods are extended"
+    )]
     http_client: SongbirdHttpClient,
 }
 
@@ -104,15 +108,12 @@ impl HttpGatewayService {
     pub fn new() -> Result<Self> {
         info!("🌐 Initializing HTTP Gateway Service");
 
-        let crypto_socket = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
-            .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_SOCKET"))
-            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
-            .unwrap_or_else(|_| {
-                let family = crate::env_config::family_id();
-                songbird_types::defaults::paths::family_scoped_security_socket_path(&family)
-                    .to_string_lossy()
-                    .into_owned()
-            });
+        let crypto_socket = crate::env_config::security_crypto_ipc_socket_from_env(|| {
+            let family = crate::env_config::family_id();
+            songbird_types::defaults::paths::family_scoped_security_socket_path(&family)
+                .to_string_lossy()
+                .into_owned()
+        });
 
         let http_client = SongbirdHttpClient::new(crypto_socket);
 
@@ -137,6 +138,16 @@ impl HttpGatewayService {
             credentials,
             http_client,
         })
+    }
+
+    /// Construct with default configuration (same as [`Self::new`]).
+    ///
+    /// Use this for fallible default construction; handle the error instead of unwrapping.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    pub fn try_default() -> Result<Self> {
+        Self::new()
     }
 
     /// Start the HTTP gateway service
@@ -222,16 +233,6 @@ impl HttpGatewayService {
     #[must_use]
     pub fn get_api_key(&self, service: &str) -> Option<String> {
         self.credentials.get_api_key(service)
-    }
-}
-
-impl Default for HttpGatewayService {
-    fn default() -> Self {
-        #[expect(
-            clippy::expect_used,
-            reason = "intentional pattern; clippy false positive for this API"
-        )] // Default impl must succeed or is a fatal misconfiguration
-        Self::new().expect("Failed to create default HTTP gateway service")
     }
 }
 

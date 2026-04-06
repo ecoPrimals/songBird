@@ -39,31 +39,31 @@ songbird-observability = { path = "../songbird-observability" }
 songbird-orchestrator = { path = "../songbird-orchestrator" }  # ✅ ADDED: For standalone binary (no cargo run)
 
 # External dependencies
-chrono = { version = "0.4", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-toml = "0.8"
-dirs = "5.0"
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+dirs = { workspace = true }
 whoami = "1.4"
 hostname = "0.4"
-rand = "0.8"
+rand = { workspace = true }
 term_size = "0.3"
 # libc removed - not used, evolved to pure Rust alternatives
 tokio = { workspace = true }
 fastrand = { workspace = true }
-clap = { version = "4.0", features = ["derive", "env"] }
-colored = "2.0"
+clap = { workspace = true }
+colored = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
 hickory-resolver = { workspace = true }
-tracing = "0.1"
+tracing = { workspace = true }
 dialoguer = "0.11"
 console = "0.15"
 indicatif = "0.17"
-uuid = { version = "1.6", features = ["v4"] }
+uuid = { workspace = true }
 thiserror = { workspace = true }
-futures-util = "0.3"
+futures-util = { workspace = true }
 regex = "1.10"
-tracing-subscriber = "0.3"
+tracing-subscriber = { workspace = true }
 # TLS provider: rustls-rustcrypto (pure Rust, zero C) by default.
 # The `ring-crypto` feature below enables `rustls/ring` for environments without
 # BearDog (standalone testing only). Production MUST use BearDog via Tower Atomic.
@@ -71,7 +71,7 @@ tracing-subscriber = "0.3"
 # retains the opt-in gate for offline bootstrap scenarios.
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 rustls-rustcrypto = "0.0.2-alpha"
-anyhow = "1.0"
+anyhow = { workspace = true }
 
 [features]
 default = []

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Relay server JSON-RPC handler for biomeOS integration
@@ -35,7 +35,7 @@ use crate::relay_protocol::AllocationRequest;
 use crate::relay_server::RelayServer;
 use crate::types::NodeId;
 use serde_json::{Value, json};
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
@@ -69,7 +69,7 @@ impl RelayHandler {
     ///
     /// ```json
     /// {
-    ///   "bind_addr": "0.0.0.0:3479"  // Optional, defaults to 0.0.0.0:3479
+    ///   "bind_addr": "0.0.0.0:3479"  // Optional; default port from `SONGBIRD_RELAY_PORT` (3479)
     /// }
     /// ```
     ///
@@ -95,11 +95,16 @@ impl RelayHandler {
         }
 
         // Parse parameters
-        let bind_addr: SocketAddr = params
-            .get("bind_addr")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| "0.0.0.0:3479".parse().expect("valid static default bind address"));
+        const DEFAULT_RELAY_PORT: u16 = 3479;
+        let default_port = songbird_process_env::var("SONGBIRD_RELAY_PORT")
+            .ok()
+            .and_then(|s| s.parse::<u16>().ok())
+            .unwrap_or(DEFAULT_RELAY_PORT);
+
+        let bind_addr: SocketAddr = match params.get("bind_addr").and_then(|v| v.as_str()) {
+            Some(s) => s.parse().map_err(|e| format!("Invalid bind address '{s}': {e}"))?,
+            None => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), default_port),
+        };
 
         info!("🚀 Starting relay server on {}", bind_addr);
 

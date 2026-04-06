@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTP-based Rendezvous Client
@@ -290,10 +290,10 @@ impl RendezvousClient for HttpRendezvousClient {
                             .peers
                             .into_iter()
                             .map(|p| RendezvousPeer {
-                                node_id: p.node_id,
-                                family_id: p.family_id,
-                                public_address: p.public_address,
-                                rendezvous_token: p.rendezvous_token,
+                                node_id: std::sync::Arc::from(p.node_id),
+                                family_id: std::sync::Arc::from(p.family_id),
+                                public_address: std::sync::Arc::from(p.public_address),
+                                rendezvous_token: std::sync::Arc::from(p.rendezvous_token),
                             })
                             .collect();
 

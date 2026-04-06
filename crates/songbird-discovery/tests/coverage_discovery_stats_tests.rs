@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 #![allow(
     clippy::unwrap_used,
@@ -33,7 +33,7 @@
     clippy::cast_possible_wrap,
     reason = "test assertions and harness ergonomics"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for `songbird_discovery::discovery_stats`
 //!
 //! Tests the atomic stats, snapshot, status manager, and network info.

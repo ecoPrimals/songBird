@@ -160,7 +160,7 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     // 4. Legacy compute env branch (backwards compatibility)
     if let Ok(endpoint) = songbird_process_env::var("TOADSTOOL_ENDPOINT") {
         warn!(
-            "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT or COMPUTE_PROVIDER_ENDPOINT"
+            "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT, COMPUTE_PROVIDER_ENDPOINT, or CAPABILITY_COMPUTE_ENDPOINT (capability-first)"
         );
         return Ok(endpoint);
     }
@@ -224,7 +224,7 @@ where
     // 3. Legacy storage env branch (backwards compatibility)
     if let Ok(endpoint) = env_reader("NESTGATE_ENDPOINT") {
         warn!(
-            "NESTGATE_ENDPOINT is deprecated — migrate to STORAGE_ENDPOINT or STORAGE_PROVIDER_ENDPOINT"
+            "NESTGATE_ENDPOINT is deprecated — migrate to STORAGE_ENDPOINT, STORAGE_PROVIDER_ENDPOINT, or CAPABILITY_STORAGE_ENDPOINT (capability-first)"
         );
         return Ok(endpoint);
     }
@@ -286,7 +286,7 @@ where
     // 3. Legacy security env branch (backwards compatibility)
     if let Ok(endpoint) = env_reader("BEARDOG_ENDPOINT") {
         warn!(
-            "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
+            "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT, SECURITY_PROVIDER_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
         );
         return Ok(endpoint);
     }
@@ -347,7 +347,9 @@ where
 
     // 3. Legacy AI env branch (backwards compatibility)
     if let Ok(endpoint) = env_reader("SQUIRREL_ENDPOINT") {
-        warn!("SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT or AI_PROVIDER_ENDPOINT");
+        warn!(
+            "SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT, AI_PROVIDER_ENDPOINT, or CAPABILITY_AI_ENDPOINT (capability-first)"
+        );
         return Ok(endpoint);
     }
 
@@ -449,6 +451,10 @@ mod tests {
     #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use std::sync::Mutex;
+
+    /// Serialize tests that mutate `COMPUTE_*` / `TOADSTOOL_*` process env (parallel runs share one env).
+    static COMPUTE_ENDPOINT_ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     /// Restores a previous env value (or removal) on drop for isolated env tests.
     struct EnvRestore {
@@ -460,6 +466,16 @@ mod tests {
         fn set(key: &'static str, value: &str) -> Self {
             let previous = songbird_process_env::var(key).ok();
             songbird_process_env::set_var(key, value);
+            Self {
+                key,
+                previous,
+            }
+        }
+
+        /// Remove `key` for the scope of the test; restore previous value on drop.
+        fn clear(key: &'static str) -> Self {
+            let previous = songbird_process_env::var(key).ok();
+            songbird_process_env::remove_var(key);
             Self {
                 key,
                 previous,
@@ -493,10 +509,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_compute_endpoint_explicit_compute_provider_option() {
-        // Skip if another test leaked COMPUTE_ENDPOINT into the process env
-        if songbird_process_env::var("COMPUTE_ENDPOINT").is_ok() {
-            return;
-        }
+        let _env_lock = COMPUTE_ENDPOINT_ENV_MUTEX.lock().expect("compute env mutex");
+        // `get_compute_endpoint` honors env before injected `compute_provider_endpoint`; isolate env
+        // so this test always exercises the option (parallel tests may set COMPUTE_*).
+        let _compute_endpoint_guard = EnvRestore::clear("COMPUTE_ENDPOINT");
+        let _compute_provider_endpoint_guard = EnvRestore::clear("COMPUTE_PROVIDER_ENDPOINT");
 
         let options = DiscoveryOptions::for_testing()
             .compute_provider_endpoint("http://legacy-compute-provider:8001")
@@ -620,9 +637,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_compute_endpoint_env_prefers_compute_over_toadstool() {
+    async fn test_compute_endpoint_backward_compat_prefers_compute_over_legacy_toadstool_env() {
+        let _env_lock = COMPUTE_ENDPOINT_ENV_MUTEX.lock().expect("compute env mutex");
         let _c = EnvRestore::set("COMPUTE_ENDPOINT", "http://compute-wins:8001");
-        let _t = EnvRestore::set("TOADSTOOL_ENDPOINT", "http://toadstool-loses:9001");
+        let _t = EnvRestore::set("TOADSTOOL_ENDPOINT", "http://legacy-compute-fallback:9001");
         let options =
             DiscoveryOptions::for_testing().discovery_timeout(Duration::from_millis(1)).build();
         let ep = get_compute_endpoint(options).await.expect("compute from env");
@@ -630,10 +648,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_storage_endpoint_provider_before_nestgate() {
+    async fn test_get_storage_endpoint_backward_compat_provider_before_legacy_nestgate_env() {
         let ep = get_storage_endpoint_with(|k| match k {
             "STORAGE_PROVIDER_ENDPOINT" => Ok("http://provider-priority:8003".to_string()),
-            "NESTGATE_ENDPOINT" => Ok("http://nestgate-should-not-win:8003".to_string()),
+            "NESTGATE_ENDPOINT" => Ok("http://legacy-storage-fallback:8003".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         })
         .await
@@ -642,25 +660,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_security_endpoint_legacy_beardog() {
+    async fn test_get_security_endpoint_backward_compat_legacy_beardog_env_var() {
         let ep = get_security_endpoint_with(|k| match k {
-            "BEARDOG_ENDPOINT" => Ok("http://beardog-legacy:7443".to_string()),
+            "BEARDOG_ENDPOINT" => Ok("http://security-provider-legacy:7443".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         })
         .await
         .expect("security");
-        assert_eq!(ep, "http://beardog-legacy:7443");
+        assert_eq!(ep, "http://security-provider-legacy:7443");
     }
 
     #[tokio::test]
-    async fn test_get_ai_endpoint_legacy_squirrel() {
+    async fn test_get_ai_endpoint_backward_compat_legacy_squirrel_env_var() {
         let ep = get_ai_endpoint_with(|k| match k {
-            "SQUIRREL_ENDPOINT" => Ok("http://squirrel-legacy:9200".to_string()),
+            "SQUIRREL_ENDPOINT" => Ok("http://ai-provider-legacy:9200".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         })
         .await
         .expect("ai");
-        assert_eq!(ep, "http://squirrel-legacy:9200");
+        assert_eq!(ep, "http://ai-provider-legacy:9200");
     }
 
     #[tokio::test]

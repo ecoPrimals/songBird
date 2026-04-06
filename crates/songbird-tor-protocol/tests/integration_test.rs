@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -7,7 +7,7 @@
     clippy::expect_used,
     reason = "test assertions"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Integration tests for Tor protocol
@@ -17,9 +17,9 @@ use songbird_tor_protocol::{Consensus, CryptoProvider, TorConnection};
 #[tokio::test]
 async fn test_fetch_consensus_live() {
     // This test requires network access
-    let beardog = CryptoProvider::from_env();
+    let crypto_provider = CryptoProvider::from_env();
 
-    let result = Consensus::fetch(&beardog).await;
+    let result = Consensus::fetch(&crypto_provider).await;
 
     // Note: This will fail if no network, but that's OK for integration test
     match result {
@@ -96,10 +96,10 @@ fn test_consensus_freshness() {
 async fn test_connect_to_relay() {
     use songbird_tor_protocol::directory::RelayFlags;
 
-    let beardog = CryptoProvider::from_env();
+    let crypto_provider = CryptoProvider::from_env();
 
     // Fetch consensus to get a real relay
-    let consensus = match Consensus::fetch(&beardog).await {
+    let consensus = match Consensus::fetch(&crypto_provider).await {
         Ok(c) => c,
         Err(e) => {
             println!("⚠️  Skipping: could not fetch consensus: {e}");
@@ -139,10 +139,10 @@ async fn test_connect_to_relay() {
 async fn test_build_circuit() {
     use songbird_tor_protocol::circuit::{CircuitManager, CircuitPurpose};
 
-    let beardog = CryptoProvider::from_env();
+    let crypto_provider = CryptoProvider::from_env();
 
     // Fetch consensus
-    let consensus = match Consensus::fetch(&beardog).await {
+    let consensus = match Consensus::fetch(&crypto_provider).await {
         Ok(c) => c,
         Err(e) => {
             println!("⚠️  Skipping: could not fetch consensus: {e}");
@@ -158,7 +158,7 @@ async fn test_build_circuit() {
     println!("📡 Building circuit with {} relays available", consensus.relays.len());
 
     // Create circuit manager
-    let manager = CircuitManager::new(beardog, consensus);
+    let manager = CircuitManager::new(crypto_provider, consensus);
 
     // Try to build a circuit
     match manager.build_circuit(CircuitPurpose::General).await {

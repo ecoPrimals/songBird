@@ -12,18 +12,18 @@ categories = ["network-programming"]
 
 [dependencies]
 # Async runtime (Pure Rust)
-tokio = { version = "1.35", features = ["net", "time", "io-util", "macros", "rt"] }
+tokio = { workspace = true, features = ["net", "time", "io-util", "macros", "rt"] }
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
-anyhow = "1.0"
+anyhow = { workspace = true }
 
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }

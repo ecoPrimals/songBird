@@ -20,4 +20,4 @@ Values set only in the overlay are not visible to child processes. Pass them exp
 
 ## License
 
-AGPL-3.0-only (scyBorg provenance trio)
+AGPL-3.0-or-later (scyBorg provenance trio)

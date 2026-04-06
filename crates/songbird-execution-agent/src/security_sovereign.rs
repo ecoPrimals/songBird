@@ -46,7 +46,7 @@ pub struct SovereignSecurityValidator {
     security_provider: Arc<RwLock<Option<SecurityProviderIntegration>>>,
 
     /// Configuration
-    #[allow(dead_code, reason = "stored for future validator configuration hooks")]
+    #[expect(dead_code, reason = "stored for future validator configuration hooks")]
     config: SecurityConfig,
 }
 
@@ -82,7 +82,7 @@ impl SovereignSecurityValidator {
             true
         } else if songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT").is_ok() {
             warn!(
-                "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
+                "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
             );
             true
         } else {
@@ -226,7 +226,7 @@ struct SecurityProviderIntegration {
     /// HTTP client for provider requests
     client: IpcHttpClient,
     /// Request timeout for security operations (reserved for timeout enforcement)
-    #[allow(dead_code, reason = "reserved for security-provider request timeout enforcement")]
+    #[expect(dead_code, reason = "reserved for security-provider request timeout enforcement")]
     timeout: std::time::Duration,
 }
 
@@ -251,7 +251,7 @@ impl SecurityProviderIntegration {
             v
         } else if let Ok(v) = songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT") {
             warn!(
-                "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
+                "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
             );
             v
         } else if let Ok(v) = songbird_process_env::var("SONGBIRD_SECURITY_ENDPOINT") {
@@ -271,7 +271,7 @@ impl SecurityProviderIntegration {
             {
                 return Err(SongbirdError::configuration(
                     "Security provider endpoint not configured. \
-                     Set SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT (legacy: BEARDOG_SECURITY_ENDPOINT, SONGBIRD_SECURITY_ENDPOINT).",
+                     Set SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (legacy fallbacks: BEARDOG_SECURITY_ENDPOINT, SONGBIRD_SECURITY_ENDPOINT).",
                 ));
             }
         };
@@ -386,7 +386,7 @@ impl SecurityProviderIntegration {
     /// Check if `security provider` is currently reachable
     ///
     /// Non-blocking health check to determine if `security provider` integration is active
-    #[allow(dead_code, reason = "reserved for security provider availability probing")]
+    #[expect(dead_code, reason = "reserved for security provider availability probing")]
     async fn is_available(&self) -> bool {
         let url = format!("{}/health", self.endpoint);
 
@@ -395,7 +395,7 @@ impl SecurityProviderIntegration {
 
     /// Get `security provider` endpoint URL
     #[must_use]
-    #[allow(dead_code, reason = "accessor reserved for diagnostics and future callers")]
+    #[expect(dead_code, reason = "accessor reserved for diagnostics and future callers")]
     fn endpoint(&self) -> &str {
         &self.endpoint
     }

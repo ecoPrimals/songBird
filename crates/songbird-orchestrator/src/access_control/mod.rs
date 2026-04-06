@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Access Control System for Songbird
@@ -298,7 +298,7 @@ impl AccessControl {
         token: &AccessToken,
         task: &crate::task_lifecycle::TaskLifecycle,
     ) -> Result<information_layers::TaskInfo> {
-        let identity = self.token_validator.validate(token).await?;
+        let _identity = self.token_validator.validate(token).await?;
 
         let mut info = information_layers::TaskInfo::new(task.id);
 

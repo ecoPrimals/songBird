@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! CLI Discovery Utilities
 //!
 //! Network discovery utilities for the CLI
 
-#![allow(missing_docs, reason = "discovery probe structs are internal to the CLI")]
+#![expect(missing_docs, reason = "CLI command module — doc coverage not required")]
 
 use crate::errors::{CliError, SongbirdResult};
 use songbird_types::SafeEnv;
@@ -51,7 +51,7 @@ impl NetworkScanner {
         let simulation_mode = SafeEnv::get_bool("SONGBIRD_DISCOVERY_SIMULATION", false);
 
         if simulation_mode {
-            return Ok(self.generate_simulated_nodes(subnet));
+            return Ok(Self::generate_simulated_nodes(subnet));
         }
 
         // Real subnet scanning implementation
@@ -73,8 +73,7 @@ impl NetworkScanner {
         ];
 
         // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)"
-        let subnet_parts: Vec<&str> = subnet.split('.').collect();
-        if subnet_parts.len() != 3 {
+        if subnet.split('.').count() != 3 {
             return Err(CliError::Network {
                 message: "Invalid subnet format. Use format like '192.168.1'".to_string(),
                 interface: Some(subnet.to_string()),
@@ -162,7 +161,8 @@ impl NetworkScanner {
         // Try to connect to the address
         match tokio::time::timeout(self.timeout, TcpStream::connect(socket_addr)).await {
             Ok(Ok(_stream)) => {
-                let response_time = start_time.elapsed().as_millis() as u64;
+                let response_time =
+                    u64::try_from(start_time.elapsed().as_millis()).unwrap_or(u64::MAX);
 
                 // Try to identify if it's a Songbird node
                 match self.identify_songbird_node(address, port).await {
@@ -188,8 +188,7 @@ impl NetworkScanner {
                     }
                 }
             }
-            Ok(Err(_)) => Ok(None), // Connection failed
-            Err(_) => Ok(None),     // Timeout
+            Ok(Err(_)) | Err(_) => Ok(None), // Connection failed or timeout
         }
     }
 
@@ -205,7 +204,7 @@ impl NetworkScanner {
             let url = format!("http://{address}:{port}{endpoint}");
 
             if let Ok(body) = self.http_probe(&url).await {
-                let version = self.extract_version_from_response(&body);
+                let version = Self::extract_version_from_response(&body);
                 let node_type = if body.contains("orchestrator") {
                     NodeType::Orchestrator
                 } else {
@@ -269,7 +268,7 @@ impl NetworkScanner {
         })?;
 
         let raw = String::from_utf8_lossy(&buf[..n]);
-        let body = raw.split_once("\r\n\r\n").map_or(raw.as_ref(), |(_, b)| b).to_string();
+        let body = raw.split_once("\r\n\r\n").map_or_else(|| raw.as_ref(), |(_, b)| b).to_string();
 
         if raw.starts_with("HTTP/") && raw.contains(" 200") {
             Ok(body)
@@ -284,8 +283,7 @@ impl NetworkScanner {
     }
 
     /// Extract version from API response
-    #[allow(dead_code, reason = "reserved for version parsing when discovery HTTP client is wired")]
-    fn extract_version_from_response(&self, response: &str) -> Option<String> {
+    fn extract_version_from_response(response: &str) -> Option<String> {
         // Try to parse JSON response for version
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(response) {
             if let Some(version) = json.get("version").and_then(|v| v.as_str()) {
@@ -310,7 +308,7 @@ impl NetworkScanner {
     }
 
     /// Generate simulated nodes for testing/demo purposes
-    fn generate_simulated_nodes(&self, subnet: &str) -> Vec<DiscoveredNode> {
+    fn generate_simulated_nodes(subnet: &str) -> Vec<DiscoveredNode> {
         let node_count = SafeEnv::get_usize("SONGBIRD_SIM_NODE_COUNT", 3); // Default 3 simulated nodes
 
         let mut nodes = Vec::new();
@@ -322,7 +320,7 @@ impl NetworkScanner {
                 nodes.push(DiscoveredNode {
                     name: format!("🎭 [SIM] Songbird-Node-{i}"),
                     address,
-                    port: config.network.base_port + (i as u16 % 10),
+                    port: config.network.base_port + u16::try_from(i % 10).unwrap_or(0),
                     version: Some(format!("1.0.{i}-sim")),
                     node_type: if i == 1 {
                         NodeType::Orchestrator

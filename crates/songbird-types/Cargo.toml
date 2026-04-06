@@ -27,21 +27,19 @@ unsafe-reference = []  # Feature flag for deprecated unsafe SafeZeroCopyBuffer (
 bytes = { workspace = true }
 songbird-process-env = { workspace = true }
 thiserror = { workspace = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
-async-trait = "0.1"
-serde_json = { version = "1.0", optional = true }
+serde = { workspace = true, optional = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true, optional = true }
 # Added for consolidated types from federation and primal communication
-chrono = { version = "0.4", features = ["serde"], optional = true }
-uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { workspace = true, optional = true }
+uuid = { workspace = true }
 bitflags = { workspace = true }
 regex = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-toml = "0.8"
-# Performance optimizations
-arrayvec = "0.7"
+tokio = { workspace = true, features = ["full"] }
+toml = { workspace = true }
 tracing = { workspace = true }
 # Added for consolidated traits Stream support
-futures-util = "0.3"
+futures-util = { workspace = true }
 # Added for canonical adapters
 rand = { workspace = true }
 # Hostname detection for federation
@@ -50,7 +48,7 @@ hostname = "0.4"
 base64 = "0.22"
 
 [dev-dependencies]
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true, features = ["full"] }
 tokio-test = "0.4"
 tempfile = "3.0"
 

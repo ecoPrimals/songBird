@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! JSON-RPC 2.0 Client for Unix Socket IPC
@@ -49,6 +49,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use songbird_types::{SongbirdError, SongbirdResult};
+use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -75,33 +76,35 @@ pub struct JsonRpcClient {
     next_id: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
-/// JSON-RPC 2.0 Request
+/// JSON-RPC 2.0 Request (serialization only; avoids allocating `"2.0"` and method name per call).
 #[derive(Debug, Clone, Serialize)]
-struct JsonRpcRequest {
-    jsonrpc: String,
-    method: String,
+struct JsonRpcRequest<'a> {
+    jsonrpc: &'static str,
+    method: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     params: Option<Value>,
     id: u64,
 }
 
-/// JSON-RPC 2.0 Response
+/// JSON-RPC 2.0 Response — borrows strings from the response line buffer when possible.
 #[derive(Debug, Clone, Deserialize)]
-struct JsonRpcResponse {
-    #[allow(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
-    jsonrpc: String,
+struct JsonRpcResponse<'a> {
+    #[expect(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
+    #[serde(borrow)]
+    jsonrpc: Cow<'a, str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<JsonRpcError>,
+    error: Option<JsonRpcError<'a>>,
     id: u64,
 }
 
 /// JSON-RPC 2.0 Error
 #[derive(Debug, Clone, Deserialize, Serialize)]
-struct JsonRpcError {
+struct JsonRpcError<'a> {
     code: i64,
-    message: String,
+    #[serde(borrow)]
+    message: Cow<'a, str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<Value>,
 }
@@ -224,8 +227,8 @@ impl JsonRpcClient {
 
         // Build request
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: method.to_string(),
+            jsonrpc: "2.0",
+            method,
             params,
             id,
         };
@@ -278,10 +281,10 @@ impl JsonRpcClient {
     /// # Returns
     ///
     /// * `Result<Value>` - Response result or error
-    async fn send_request(&self, request: &JsonRpcRequest) -> SongbirdResult<Value> {
-        // Serialize request (uses From<serde_json::Error> for SongbirdError)
-        let request_json = serde_json::to_string(request)?;
-        let request_bytes = format!("{request_json}\n"); // JSON-RPC over newline-delimited stream
+    async fn send_request(&self, request: &JsonRpcRequest<'_>) -> SongbirdResult<Value> {
+        // `to_vec` + newline: one allocation for the wire payload (no `String` + `format!` chain).
+        let mut request_bytes = serde_json::to_vec(request)?;
+        request_bytes.push(b'\n');
 
         debug!("🔌 Connecting to Unix socket: {}", self.socket_path.display());
 
@@ -303,12 +306,12 @@ impl JsonRpcClient {
         let mut reader = BufReader::new(reader);
 
         // Send request with timeout
-        timeout(self.timeout, writer.write_all(request_bytes.as_bytes()))
+        timeout(self.timeout, writer.write_all(&request_bytes))
             .await
             .map_err(|_| SongbirdError::network("Write timeout"))
             .and_then(|r| r.map_err(|e| SongbirdError::network(format!("Write failed: {e}"))))?;
 
-        debug!("📤 Sent request: {}", request_json);
+        debug!("📤 Sent request: {}", std::str::from_utf8(&request_bytes).unwrap_or("<non-utf8>"));
 
         // Read response with timeout
         let mut response_line = String::new();
@@ -319,8 +322,8 @@ impl JsonRpcClient {
 
         debug!("📥 Received response: {}", response_line.trim());
 
-        // Parse response (uses From<serde_json::Error> for SongbirdError)
-        let response: JsonRpcResponse = serde_json::from_str(&response_line)?;
+        // Parse response (uses From<serde_json::Error> for SongbirdError); borrows from `response_line`.
+        let response: JsonRpcResponse<'_> = serde_json::from_str(&response_line)?;
 
         // Validate response ID matches request ID
         if response.id != request.id {
@@ -331,7 +334,8 @@ impl JsonRpcClient {
         if let Some(error) = response.error {
             return Err(SongbirdError::protocol(format!(
                 "JSON-RPC error {}: {}",
-                error.code, error.message
+                error.code,
+                error.message.as_ref()
             )));
         }
 
@@ -389,8 +393,8 @@ mod tests {
     #[test]
     fn test_request_serialization() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: "test_method".to_string(),
+            jsonrpc: "2.0",
+            method: "test_method",
             params: Some(json!({"key": "value"})),
             id: 1,
         };
@@ -404,7 +408,7 @@ mod tests {
     #[test]
     fn test_response_deserialization_success() {
         let json = r#"{"jsonrpc":"2.0","result":{"status":"ok"},"id":1}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let response: JsonRpcResponse<'_> = serde_json::from_str(json).unwrap();
 
         assert_eq!(response.jsonrpc, "2.0");
         assert_eq!(response.id, 1);
@@ -416,7 +420,7 @@ mod tests {
     fn test_response_deserialization_error() {
         let json =
             r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid Request"},"id":1}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let response: JsonRpcResponse<'_> = serde_json::from_str(json).unwrap();
 
         assert_eq!(response.jsonrpc, "2.0");
         assert_eq!(response.id, 1);
@@ -440,11 +444,11 @@ mod tests {
     fn test_jsonrpc_error_roundtrip_serialize() {
         let err = JsonRpcError {
             code: -32700,
-            message: "Parse error".to_string(),
+            message: Cow::Borrowed("Parse error"),
             data: Some(json!({"detail": "x"})),
         };
         let s = serde_json::to_string(&err).expect("serialize");
-        let back: JsonRpcError = serde_json::from_str(&s).expect("deserialize");
+        let back: JsonRpcError<'_> = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(back.code, -32700);
         assert_eq!(back.message, "Parse error");
         assert!(back.data.is_some());
@@ -453,8 +457,8 @@ mod tests {
     #[test]
     fn test_jsonrpc_request_omits_none_params() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: "ping".to_string(),
+            jsonrpc: "2.0",
+            method: "ping",
             params: None,
             id: 42,
         };
@@ -465,14 +469,14 @@ mod tests {
     #[test]
     fn test_response_deserialization_invalid_json() {
         let bad = "{not json";
-        let parsed: Result<JsonRpcResponse, _> = serde_json::from_str(bad);
+        let parsed: Result<JsonRpcResponse<'_>, _> = serde_json::from_str(bad);
         assert!(parsed.is_err());
     }
 
     #[test]
     fn test_response_id_mismatch_still_deserializes() {
         let json = r#"{"jsonrpc":"2.0","result":{},"id":99}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).expect("parse");
+        let response: JsonRpcResponse<'_> = serde_json::from_str(json).expect("parse");
         assert_eq!(response.id, 99);
     }
 
@@ -497,7 +501,7 @@ mod tests {
     #[test]
     fn test_protocol_error_mapping_from_missing_result() {
         let json = r#"{"jsonrpc":"2.0","id":1}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).expect("parse");
+        let response: JsonRpcResponse<'_> = serde_json::from_str(json).expect("parse");
         assert!(response.result.is_none() && response.error.is_none());
     }
 
@@ -510,8 +514,8 @@ mod tests {
     #[test]
     fn test_jsonrpc_request_id_zero_serializes() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: "noop".to_string(),
+            jsonrpc: "2.0",
+            method: "noop",
             params: Some(json!([])),
             id: 0,
         };
@@ -523,7 +527,7 @@ mod tests {
     fn test_jsonrpc_error_with_null_data() {
         let err = JsonRpcError {
             code: -32603,
-            message: "Internal".to_string(),
+            message: Cow::Borrowed("Internal"),
             data: None,
         };
         let s = serde_json::to_string(&err).expect("serialize");
@@ -542,7 +546,7 @@ mod tests {
     #[test]
     fn test_response_with_both_error_and_result_prefers_error_handling_path() {
         let json = r#"{"jsonrpc":"2.0","result":1,"error":{"code":1,"message":"x"},"id":1}"#;
-        let response: JsonRpcResponse = serde_json::from_str(json).expect("parse");
+        let response: JsonRpcResponse<'_> = serde_json::from_str(json).expect("parse");
         assert!(response.error.is_some());
         assert!(response.result.is_some());
     }
@@ -550,8 +554,8 @@ mod tests {
     #[test]
     fn test_empty_method_in_request_serializes() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: String::new(),
+            jsonrpc: "2.0",
+            method: "",
             params: None,
             id: 3,
         };

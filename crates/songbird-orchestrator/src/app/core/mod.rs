@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Core orchestrator types and state management
@@ -28,7 +28,7 @@ use crate::trust::TrustEscalationManager;
 ///
 /// Coordinates all Songbird subsystems including federation, discovery,
 /// observability, and service registry.
-#[allow(dead_code, reason = "reserved for future use: phased subsystem wiring")]
+#[expect(dead_code, reason = "reserved for future use: phased subsystem wiring")]
 pub struct SongbirdOrchestrator {
     pub(super) _config: CanonicalSongbirdConfig,
     pub(super) _service_registry: Arc<FederatedServiceRegistry>,
@@ -155,7 +155,7 @@ impl SongbirdOrchestrator {
         // This is the CORRECT way: runtime discovery, ANY provider, no hardcoded endpoints.
         // Songbird knows about "security" capability, NOT about specific providers like security provider.
         // This reduces core.rs by ~56 lines while showcasing modern capability-based architecture.
-        let security_integration = super::security_setup::setup_security().await?;
+        let _security_integration = super::security_setup::setup_security().await?;
 
         // Initialize discovery status manager for observability (Jan 5, 2026)
         let discovery_status_manager = Arc::new(songbird_discovery::DiscoveryStatusManager::new(
@@ -308,7 +308,15 @@ impl SongbirdOrchestrator {
     pub(crate) fn discover_broadcast_addresses(
         configured_addrs: &[String],
     ) -> Vec<std::net::SocketAddr> {
-        use std::net::SocketAddr;
+        use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+        // UDP broadcast/multicast port for LAN discovery (default 2300). `SONGBIRD_DISCOVERY_PORT`
+        // is also read elsewhere for HTTP discovery; align or override per deployment.
+        const DEFAULT_DISCOVERY_PORT: u16 = 2300;
+        let port = songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
+            .ok()
+            .and_then(|s| s.parse::<u16>().ok())
+            .unwrap_or(DEFAULT_DISCOVERY_PORT);
 
         // Priority 1: Environment variable (runtime override)
         if let Ok(env_addrs) = songbird_process_env::var("SONGBIRD_BROADCAST_ADDRESSES")
@@ -331,33 +339,24 @@ impl SongbirdOrchestrator {
         // Priority 3: Add subnet broadcast fallback if not already present
         // This enables cross-interface discovery (eth ↔ wifi) on consumer routers
         let default_fallbacks = [
-            "192.168.1.255:2300", // Common home subnet
-            "192.168.0.255:2300", // Alternative home subnet
-            "10.0.0.255:2300",    // Corporate subnet
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 255)), port), // Common home subnet
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 0, 255)), port), // Alternative home subnet
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 255)), port),    // Corporate subnet
         ];
 
-        for fallback in &default_fallbacks {
-            if let Ok(fallback_addr) = fallback.parse::<SocketAddr>() {
-                // Only add if not already configured
-                if !addrs.iter().any(|a| a.ip() == fallback_addr.ip()) {
-                    addrs.push(fallback_addr);
-                }
+        for fallback_addr in &default_fallbacks {
+            // Only add if not already configured
+            if !addrs.iter().any(|a| a.ip() == fallback_addr.ip()) {
+                addrs.push(*fallback_addr);
             }
         }
 
         if addrs.is_empty() {
             warn!("⚠️  No broadcast addresses configured, using defaults");
-            // These are constant valid addresses — parse is infallible
-            #[expect(
-                clippy::expect_used,
-                reason = "intentional pattern; clippy false positive for this API"
-            )]
-            {
-                addrs = vec![
-                    "224.0.0.251:2300".parse().expect("valid multicast address constant"),
-                    "192.168.1.255:2300".parse().expect("valid broadcast address constant"),
-                ];
-            }
+            addrs = vec![
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(224, 0, 0, 251)), port),
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 255)), port),
+            ];
         }
 
         info!("🌐 Discovery broadcast addresses: {:?}", addrs);
@@ -402,17 +401,14 @@ impl SongbirdOrchestrator {
 
         // v5.28.0: Discover crypto provider via capability-based discovery (zero identity hardcoding)
         // Priority: explicit env → capability env → family-scoped fallback
-        let crypto_socket = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
-            .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_SOCKET"))
-            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
-            .unwrap_or_else(|_| {
-                let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
-                    .or_else(|_| songbird_process_env::var("FAMILY_ID"))
-                    .unwrap_or_else(|_| "default".to_string());
-                songbird_types::defaults::paths::family_scoped_crypto_socket_path(&family_id)
-                    .to_string_lossy()
-                    .into_owned()
-            });
+        let crypto_socket = crate::env_config::security_crypto_ipc_socket_from_env(|| {
+            let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+                .or_else(|_| songbird_process_env::var("FAMILY_ID"))
+                .unwrap_or_else(|_| "default".to_string());
+            songbird_types::defaults::paths::family_scoped_crypto_socket_path(&family_id)
+                .to_string_lossy()
+                .into_owned()
+        });
 
         info!("🔐 HTTP Handler: Using crypto provider at {}", crypto_socket);
         let security_client = Arc::new(songbird_http_client::SecurityRpcClient::new(crypto_socket));

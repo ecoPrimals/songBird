@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Full Trust Connection (Trust Level 3)
@@ -42,12 +42,15 @@ impl FullTrustConnection {
     /// # Errors
     ///
     /// Returns an error if the operation fails.
-    pub fn new(peer_id: String, endpoint: String) -> Result<Self> {
+    pub fn new(peer_id: String, _endpoint: String) -> Result<Self> {
         // Convert endpoint to Unix socket path
         let socket_path =
             songbird_process_env::var(format!("{}_SOCKET_PATH", peer_id.to_uppercase()))
                 .or_else(|_| songbird_process_env::var("PEER_SOCKET_PATH"))
-                .map_or_else(|_| PathBuf::from(format!("/tmp/{peer_id}.sock")), PathBuf::from);
+                .map_or_else(
+                    |_| crate::env_config::peer_fallback_socket_path(&peer_id),
+                    PathBuf::from,
+                );
 
         let rpc_client = UnixRpcClient::new(&socket_path)
             .context(format!("Failed to create RPC client for peer {peer_id}"))?;

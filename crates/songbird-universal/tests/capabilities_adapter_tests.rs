@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -164,7 +164,7 @@ async fn test_find_capability_providers_deduplication() {
     let mut config = DiscoveryConfig::default();
     config.provider_endpoints.insert(
         "security".to_string(),
-        format!("http://beardog-security:{}", test_discovery_port()),
+        format!("http://security-provider:{}", test_discovery_port()),
     );
     let adapter = UniversalCapabilityAdapter::new(config);
 
@@ -194,15 +194,16 @@ async fn test_get_best_primal_for_capability_empty() {
 #[tokio::test]
 async fn test_get_best_primal_for_capability_security() {
     let mut config = DiscoveryConfig::default();
-    config
-        .provider_endpoints
-        .insert("security".to_string(), format!("http://beardog:{}", test_discovery_port()));
+    config.provider_endpoints.insert(
+        "security".to_string(),
+        format!("http://security-provider:{}", test_discovery_port()),
+    );
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let best = adapter.get_best_primal_for_capability("security").await;
 
     if let Some(primal) = best {
-        assert!(primal.contains("security") || primal.contains("beardog"));
+        assert!(primal.contains("security") || primal.contains("security-provider"));
     }
 }
 

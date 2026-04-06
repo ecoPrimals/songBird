@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 // E2E Scenario 1: Service Discovery and Registration
 // Created: October 30, 2025
@@ -18,7 +18,7 @@ use test_environment::TestEnvironment;
 /// 
 /// Flow:
 /// 1. Start orchestrator (zero-knowledge state)
-/// 2. Start compute service (toadstool-like)
+/// 2. Start compute service (compute-provider-like)
 /// 3. Verify service discovers orchestrator
 /// 4. Verify service registers capabilities
 /// 5. Verify orchestrator can route requests to service

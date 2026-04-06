@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Comprehensive tests for `env_config` module
@@ -291,6 +291,8 @@ fn test_socket_name_multi_family_disabled() {
 fn test_data_dir_default() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_DATA_DIR");
+    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
+    songbird_process_env::remove_var("TMPDIR");
     assert_eq!(env_config::data_dir().to_string_lossy(), "/tmp/songbird-data");
 }
 
@@ -307,6 +309,8 @@ fn test_data_dir_from_env() {
 fn test_deployment_dir_default() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_DEPLOY_DIR");
+    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
+    songbird_process_env::remove_var("TMPDIR");
     assert_eq!(env_config::deployment_dir().to_string_lossy(), "/tmp/songbird-deployments");
 }
 
@@ -323,6 +327,8 @@ fn test_deployment_dir_from_env() {
 fn test_cache_dir_default() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_CACHE_DIR");
+    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
+    songbird_process_env::remove_var("TMPDIR");
     assert_eq!(env_config::cache_dir().to_string_lossy(), "/tmp/songbird-cache");
 }
 

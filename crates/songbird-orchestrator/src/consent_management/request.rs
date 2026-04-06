@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Consent request helpers
 
 /// Consent request builder
 pub struct ConsentRequestBuilder {
+    #[expect(dead_code, reason = "captured for future consent payload serialization")]
     operation: String,
     estimated_cost: Option<f64>,
     justification: Option<String>,

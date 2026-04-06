@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! UDP multicast / broadcast discovery for local mesh peers.
 
 use serde_json::Value;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
@@ -15,7 +16,7 @@ pub(super) async fn udp_multicast_discover(
     our_node_id: &str,
     port: u16,
     timeout: Duration,
-) -> Vec<(String, SocketAddr)> {
+) -> Vec<(Arc<str>, SocketAddr)> {
     let mut discovered = Vec::new();
 
     let socket = match tokio::net::UdpSocket::bind("0.0.0.0:0").await {
@@ -88,7 +89,7 @@ pub(super) async fn udp_multicast_discover(
                         "🔍 Discovered peer {} at {} (jsonrpc_port: {})",
                         peer_id, peer_addr, jsonrpc_port
                     );
-                    discovered.push((peer_id.to_string(), peer_addr));
+                    discovered.push((Arc::from(peer_id), peer_addr));
                 }
             }
             Ok(Err(e)) => {

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -7,7 +7,7 @@
     clippy::expect_used,
     reason = "test assertions"
 )]
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 #![allow(
     clippy::unwrap_used,
@@ -82,7 +82,7 @@ async fn test_e2e_json_rpc_to_http_headers() {
     // In a full integration test, we'd use httpbin.org or a mock server
 
     // For now, verify no errors in the handler itself
-    // (Actual network call may fail if no beardog socket, but handler should process correctly)
+    // (Actual network call may fail if no security provider socket, but handler should process correctly)
     match result {
         Ok(response) => {
             // If it succeeds, great! Headers reached the server
@@ -95,7 +95,9 @@ async fn test_e2e_json_rpc_to_http_headers() {
                 !error_msg.contains("header") || !error_msg.contains("missing"),
                 "Should not have header-related errors: {error_msg}"
             );
-            println!("⚠️  E2E test: Network error (expected without live beardog): {error_msg}");
+            println!(
+                "⚠️  E2E test: Network error (expected without live security provider): {error_msg}"
+            );
         }
     }
 }
@@ -103,7 +105,7 @@ async fn test_e2e_json_rpc_to_http_headers() {
 /// Test that verifies headers are correctly extracted from JSON-RPC params structure
 #[tokio::test]
 async fn test_e2e_headers_extraction_from_json() {
-    // Simulate the exact JSON-RPC structure that Squirrel AI would send
+    // Simulate the exact JSON-RPC structure that an AI capability provider would send
     let json_rpc_params = json!({
         "url": "https://api.example.com/endpoint",
         "body": "eyJ0ZXN0IjoidmFsdWUifQ==",  // base64: {"test":"value"}

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::IpcServiceHandler;
@@ -67,5 +67,311 @@ impl IpcServiceHandler {
             .map_err(|e| format!("HTTP POST failed: {e}"))?;
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::expect_used, reason = "test assertions")]
+
+    use super::super::IpcServiceHandler;
+    use crate::error::{IpcError, IpcResult};
+    use crate::handlers::http_handler::{
+        HttpClientCapability, HttpClientFactory, HttpHandler, HttpResponse,
+    };
+    use crate::registry::ServiceRegistry;
+    use crate::tower_atomic::JsonRpcHandler;
+    use async_trait::async_trait;
+    use serde_json::json;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    struct MockHttpClient {
+        responses: Vec<HttpResponse>,
+    }
+
+    impl MockHttpClient {
+        fn new(responses: Vec<HttpResponse>) -> Self {
+            Self {
+                responses,
+            }
+        }
+    }
+
+    #[async_trait]
+    impl HttpClientCapability for MockHttpClient {
+        async fn request(
+            &self,
+            _method: &str,
+            _url: &str,
+            _headers: &HashMap<String, String>,
+            _body: Option<&[u8]>,
+        ) -> IpcResult<HttpResponse> {
+            Ok(self.responses.first().cloned().expect("mock response"))
+        }
+    }
+
+    struct MockClientFactory {
+        client: Arc<dyn HttpClientCapability>,
+    }
+
+    #[async_trait]
+    impl HttpClientFactory for MockClientFactory {
+        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
+            Ok(Arc::clone(&self.client))
+        }
+    }
+
+    struct FailingClientFactory;
+
+    #[async_trait]
+    impl HttpClientFactory for FailingClientFactory {
+        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
+            Err(IpcError::Internal("injected factory failure".into()))
+        }
+    }
+
+    struct AlwaysFailingClient;
+
+    #[async_trait]
+    impl HttpClientCapability for AlwaysFailingClient {
+        async fn request(
+            &self,
+            _method: &str,
+            _url: &str,
+            _headers: &HashMap<String, String>,
+            _body: Option<&[u8]>,
+        ) -> IpcResult<HttpResponse> {
+            Err(IpcError::ConnectionFailed("injected request failure".into()))
+        }
+    }
+
+    fn handler_with_ok_response() -> IpcServiceHandler {
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::from([("X-Test".to_string(), "ok".to_string())]),
+            body: json!({"hello": "world"}),
+        };
+        let client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory {
+            client,
+        });
+        let http_handler = Arc::new(HttpHandler::new(factory));
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        IpcServiceHandler::with_http_handler(registry, http_handler)
+    }
+
+    fn handler_with_failing_factory() -> IpcServiceHandler {
+        let http_handler = Arc::new(HttpHandler::new(Arc::new(FailingClientFactory)));
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        IpcServiceHandler::with_http_handler(registry, http_handler)
+    }
+
+    fn handler_with_failing_client() -> IpcServiceHandler {
+        let client = Arc::new(AlwaysFailingClient);
+        let factory = Arc::new(MockClientFactory {
+            client,
+        });
+        let http_handler = Arc::new(HttpHandler::new(factory));
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        IpcServiceHandler::with_http_handler(registry, http_handler)
+    }
+
+    #[tokio::test]
+    async fn http_request_happy_path_via_json_rpc() {
+        let handler = handler_with_ok_response();
+        let params = json!({
+            "url": "https://example.com/path",
+            "method": "GET",
+            "headers": {},
+            "body": null,
+            "timeout_ms": 5000_u64
+        });
+        let v = handler.handle("http.request", params).await.expect("http.request");
+        assert_eq!(v["status_code"], 200);
+        assert_eq!(v["body"], json!({"hello": "world"}).to_string());
+        assert_eq!(v["headers"]["X-Test"], "ok");
+        assert!(v["elapsed_ms"].is_number());
+    }
+
+    #[tokio::test]
+    async fn http_request_invalid_params_returns_error() {
+        let handler = handler_with_ok_response();
+        let err = handler
+            .handle("http.request", json!("not-an-object"))
+            .await
+            .expect_err("invalid params");
+        assert!(err.contains("Invalid params"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_request_missing_required_url_field_fails_deserialize() {
+        let handler = handler_with_ok_response();
+        let err = handler
+            .handle("http.request", json!({"method": "GET"}))
+            .await
+            .expect_err("missing url");
+        assert!(err.contains("Invalid params"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_request_propagates_upstream_failure() {
+        let handler = handler_with_failing_client();
+        let err = handler
+            .handle(
+                "http.request",
+                json!({
+                    "url": "https://example.com",
+                    "method": "GET"
+                }),
+            )
+            .await
+            .expect_err("upstream");
+        assert!(err.contains("HTTP request failed"), "unexpected: {err}");
+        assert!(err.contains("injected request failure"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_request_propagates_factory_failure() {
+        let handler = handler_with_failing_factory();
+        let err = handler
+            .handle(
+                "http.request",
+                json!({
+                    "url": "https://example.com",
+                    "method": "GET"
+                }),
+            )
+            .await
+            .expect_err("factory");
+        assert!(err.contains("HTTP request failed"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_get_happy_path_via_json_rpc() {
+        let handler = handler_with_ok_response();
+        let v = handler
+            .handle("http.get", json!({ "url": "https://example.com" }))
+            .await
+            .expect("http.get");
+        assert_eq!(v["status_code"], 200);
+        assert_eq!(v["body"], json!({"hello": "world"}).to_string());
+    }
+
+    #[tokio::test]
+    async fn http_get_missing_url_parameter() {
+        let handler = handler_with_ok_response();
+        let err = handler.handle("http.get", json!({})).await.expect_err("missing url");
+        assert!(err.contains("Missing 'url'"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_get_propagates_upstream_failure() {
+        let handler = handler_with_failing_client();
+        let err = handler
+            .handle("http.get", json!({ "url": "https://example.com" }))
+            .await
+            .expect_err("upstream");
+        assert!(err.contains("HTTP GET failed"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_post_happy_path_with_content_type_and_headers() {
+        let handler = handler_with_ok_response();
+        let v = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://api.example.com/v1",
+                    "body": r#"{"a":1}"#,
+                    "content_type": "application/json",
+                    "headers": { "X-Token": "abc" }
+                }),
+            )
+            .await
+            .expect("http.post");
+        assert_eq!(v["status_code"], 200);
+        assert_eq!(v["body"], json!({"hello": "world"}).to_string());
+    }
+
+    #[tokio::test]
+    async fn http_post_without_content_type_or_headers() {
+        let handler = handler_with_ok_response();
+        let v = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://api.example.com/v1",
+                    "body": "plain"
+                }),
+            )
+            .await
+            .expect("http.post");
+        assert_eq!(v["status_code"], 200);
+    }
+
+    #[tokio::test]
+    async fn http_post_missing_url() {
+        let handler = handler_with_ok_response();
+        let err = handler
+            .handle(
+                "http.post",
+                json!({
+                    "body": "x"
+                }),
+            )
+            .await
+            .expect_err("missing url");
+        assert!(err.contains("Missing 'url'"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_post_missing_body() {
+        let handler = handler_with_ok_response();
+        let err = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://example.com"
+                }),
+            )
+            .await
+            .expect_err("missing body");
+        assert!(err.contains("Missing 'body'"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_post_malformed_headers_json_falls_back_to_empty_map() {
+        let handler = handler_with_ok_response();
+        let v = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://example.com",
+                    "body": "b",
+                    "headers": "not-a-map"
+                }),
+            )
+            .await
+            .expect("headers ignored");
+        assert_eq!(v["status_code"], 200);
+    }
+
+    #[tokio::test]
+    async fn http_post_propagates_upstream_failure() {
+        let handler = handler_with_failing_client();
+        let err = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://example.com",
+                    "body": "{}"
+                }),
+            )
+            .await
+            .expect_err("upstream");
+        assert!(err.contains("HTTP POST failed"), "unexpected: {err}");
     }
 }

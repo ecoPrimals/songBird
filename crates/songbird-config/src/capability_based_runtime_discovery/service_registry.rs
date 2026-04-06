@@ -22,10 +22,10 @@ pub struct ServiceRegistryDiscovery {
     /// Registry endpoint
     registry_endpoint: String,
     /// Query timeout (reserved for async timeout implementation)
-    #[allow(dead_code, reason = "wired when async discovery timeout is added")]
+    #[expect(dead_code, reason = "wired when async discovery timeout is added")]
     timeout: Duration,
     /// Cache TTL for future caching implementation
-    #[allow(dead_code, reason = "wired when distributed discovery cache is added")]
+    #[expect(dead_code, reason = "wired when distributed discovery cache is added")]
     cache_ttl: Duration,
 }
 
@@ -192,7 +192,7 @@ impl ServiceRegistryDiscovery {
     /// Check if service meets SLA requirements
     ///
     /// Pure function kept as method for potential future use of instance state.
-    #[allow(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")]
+    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")]
     fn meets_sla_requirements(
         &self,
         service: &RegistryService,
@@ -209,7 +209,7 @@ impl ServiceRegistryDiscovery {
     ///
     /// Uses f64 for scoring as precision loss is acceptable for ranking.
     /// Millisecond-level latency doesn't require u64 precision.
-    #[allow(
+    #[expect(
         clippy::cast_precision_loss,
         reason = "intentional pattern; clippy false positive for this API"
     )]

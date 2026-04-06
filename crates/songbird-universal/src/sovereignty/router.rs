@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Sovereignty-Aware Router
@@ -29,7 +29,7 @@ pub struct SovereigntyRouter {
     sovereignty_preferences: SovereigntyPreferences,
 
     /// Path assessment cache (reserved for future caching implementation)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     path_assessments: HashMap<String, PathSovereigntyAssessment>,
 }
 

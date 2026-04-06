@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security / crypto provider for `CryptoCapability`
@@ -48,7 +48,13 @@ impl SecurityCryptoProvider {
         use tracing::info;
 
         let mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")
-            .or_else(|_| songbird_process_env::var("BEARDOG_MODE"))
+            .or_else(|_| {
+                songbird_process_env::var("BEARDOG_MODE").inspect(|_| {
+                    tracing::warn!(
+                        "BEARDOG_MODE is deprecated — migrate to SECURITY_PROVIDER_MODE; prefer CAPABILITY_* or SECURITY_PROVIDER_* env vars (capability-first)"
+                    );
+                })
+            })
             .unwrap_or_else(|_| "neural".to_string());
 
         if mode.as_str() == "direct" {
@@ -70,7 +76,6 @@ impl SecurityCryptoProvider {
         }
     }
 
-    #[allow(dead_code, reason = "public accessor retained for IPC diagnostics and future callers")]
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }

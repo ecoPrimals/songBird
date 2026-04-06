@@ -1,7 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
-
-#![allow(dead_code, reason = "integration helpers reserved for extended startup/shutdown paths")]
 
 use crate::app::{SongbirdOrchestrator, start_orchestrator};
 use anyhow::Result;
@@ -110,7 +108,7 @@ impl IntegrationManager {
         clippy::unused_async,
         reason = "async signature required by Axum, trait objects, or future I/O"
     )]
-    async fn run_integration_checks(&self, orchestrator: &SongbirdOrchestrator) -> Result<()> {
+    async fn run_integration_checks(&self, _orchestrator: &SongbirdOrchestrator) -> Result<()> {
         info!("🔍 Running integration checks...");
 
         // Check service registry availability

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security (crypto) provider integration for TLS
@@ -212,7 +212,7 @@ impl SecurityTlsCryptoClient {
             }
             if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
                 tracing::warn!(
-                    "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET"
+                    "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                 );
                 return Ok(socket);
             }
@@ -225,7 +225,7 @@ impl SecurityTlsCryptoClient {
                 .or_else(|_| songbird_process_env::var("SECURITY_PORT"))
                 .or_else(|_| {
                     tracing::warn!(
-                        "BEARDOG_PORT is deprecated — migrate to SECURITY_PROVIDER_PORT or SECURITY_PORT"
+                        "BEARDOG_PORT is deprecated — migrate to SECURITY_PROVIDER_PORT, SECURITY_PORT, or CRYPTO_PROVIDER_PORT; prefer CAPABILITY_* for capability-first configuration"
                     );
                     songbird_process_env::var("BEARDOG_PORT")
                 })
@@ -244,7 +244,7 @@ impl SecurityTlsCryptoClient {
                 .or_else(|_| songbird_process_env::var("SECURITY_PORT"))
                 .or_else(|_| {
                     tracing::warn!(
-                        "BEARDOG_PORT is deprecated — migrate to SECURITY_PROVIDER_PORT or SECURITY_PORT"
+                        "BEARDOG_PORT is deprecated — migrate to SECURITY_PROVIDER_PORT, SECURITY_PORT, or CRYPTO_PROVIDER_PORT; prefer CAPABILITY_* for capability-first configuration"
                     );
                     songbird_process_env::var("BEARDOG_PORT")
                 })
@@ -355,7 +355,7 @@ impl SecurityTlsCryptoClient {
     }
 
     /// Make a JSON-RPC call with a direct method name (legacy/testing)
-    #[allow(dead_code, reason = "only exercised by unit tests in `crypto::tests`")]
+    #[expect(dead_code, reason = "only exercised by unit tests in `crypto::tests`")]
     async fn call_jsonrpc(
         &self,
         method: &str,
@@ -578,7 +578,7 @@ impl SecurityTlsCryptoClient {
 ///
 /// Note: Fields are used during deserialization but not directly accessed in code.
 /// The response is parsed and converted to domain types immediately.
-#[allow(dead_code, reason = "deserialized from external data")]
+#[expect(dead_code, reason = "deserialized from external data")]
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,

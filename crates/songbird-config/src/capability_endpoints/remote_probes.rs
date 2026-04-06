@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTP registry, container metadata, and DNS-based endpoint probing.
@@ -10,7 +10,7 @@ use tracing::debug;
 use super::types::{CapabilityEndpoint, CapabilityType, DiscoveryMethod};
 
 /// Discover from service registry
-pub(super) async fn discover_from_registry(
+pub async fn discover_from_registry(
     capability: &CapabilityType,
 ) -> SongbirdResult<Option<CapabilityEndpoint>> {
     let Ok(registry_endpoint) = songbird_process_env::var("SERVICE_REGISTRY_ENDPOINT") else {
@@ -120,7 +120,7 @@ pub(super) async fn discover_from_container_metadata(
 }
 
 /// Discover from DNS
-pub(super) async fn discover_from_dns(
+pub async fn discover_from_dns(
     capability: &CapabilityType,
 ) -> SongbirdResult<Option<CapabilityEndpoint>> {
     let Ok(dns_domain) = songbird_process_env::var("SERVICE_DISCOVERY_DOMAIN") else {
@@ -153,4 +153,44 @@ pub(super) async fn discover_from_dns(
     }
 
     Ok(None)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::{discover_from_container_metadata, discover_from_dns, discover_from_registry};
+    use crate::capability_endpoints::types::CapabilityType;
+    use songbird_test_utils::ScopedEnv;
+
+    #[tokio::test]
+    async fn discover_from_registry_returns_none_without_endpoint_env() {
+        let _e = ScopedEnv::remove("SERVICE_REGISTRY_ENDPOINT").await;
+        let out = discover_from_registry(&CapabilityType::Security)
+            .await
+            .expect("query without registry env");
+        assert!(out.is_none());
+    }
+
+    #[tokio::test]
+    async fn discover_from_container_metadata_returns_none_without_api_env() {
+        let _e = ScopedEnv::remove("CONTAINER_METADATA_API").await;
+        let out = discover_from_container_metadata(&CapabilityType::Storage)
+            .await
+            .expect("query without metadata API");
+        assert!(out.is_none());
+    }
+
+    #[tokio::test]
+    async fn discover_from_dns_returns_none_without_domain_env() {
+        let _e = ScopedEnv::remove("SERVICE_DISCOVERY_DOMAIN").await;
+        let out = discover_from_dns(&CapabilityType::Compute).await.expect("query without domain");
+        assert!(out.is_none());
+    }
+
+    #[tokio::test]
+    async fn discover_from_dns_invalid_srv_name_yields_none() {
+        let _e = ScopedEnv::set("SERVICE_DISCOVERY_DOMAIN", "invalid-label-.invalid.").await;
+        let out = discover_from_dns(&CapabilityType::Ai).await.expect("dns probe");
+        assert!(out.is_none());
+    }
 }

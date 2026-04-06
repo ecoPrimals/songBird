@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security-provider integration traits
@@ -136,7 +136,7 @@ impl SecurityProviderFactory {
             if let Ok(socket_path) = songbird_process_env::var(env_key) {
                 if legacy {
                     tracing::warn!(
-                        "Using legacy env var BEARDOG_SOCKET — migrate to SECURITY_PROVIDER_SOCKET or SECURITY_SOCKET"
+                        "Using legacy env var BEARDOG_SOCKET — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                     );
                 }
                 tracing::info!("Using security provider socket from {label}: {socket_path}");
@@ -156,7 +156,9 @@ impl SecurityProviderFactory {
         ) {
             (Ok(url), _) => Some(url),
             (Err(_), Ok(url)) => {
-                tracing::warn!("Using legacy env var BEARDOG_URL — migrate to SECURITY_URL");
+                tracing::warn!(
+                    "Using legacy env var BEARDOG_URL — migrate to SECURITY_URL or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+                );
                 Some(url)
             }
             (Err(_), Err(_)) => None,

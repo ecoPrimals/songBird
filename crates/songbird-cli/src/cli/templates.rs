@@ -1,7 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Configuration templates for various deployment scenarios
+
+use std::fmt::Write;
 
 /// Configuration template generator
 pub struct ConfigTemplate;
@@ -13,8 +15,8 @@ impl ConfigTemplate {
         let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
-        config.push_str(&format!("port = {}\n", cfg.network.base_port));
+        let _ = writeln!(config, "bind_address = \"{}\"", cfg.network.bind_host);
+        let _ = writeln!(config, "port = {}", cfg.network.base_port);
         config.push_str("log_level = \"info\"\n\n");
         config.push_str("[network]\n");
         config.push_str("enable_tls = false\n");
@@ -34,8 +36,8 @@ impl ConfigTemplate {
         let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
-        config.push_str(&format!("port = {}\n", cfg.network.base_port));
+        let _ = writeln!(config, "bind_address = \"{}\"", cfg.network.bind_host);
+        let _ = writeln!(config, "port = {}", cfg.network.base_port);
         config.push_str("log_level = \"debug\"\n");
         config.push_str("enable_metrics = true\n\n");
         config.push_str("[network]\n");
@@ -56,8 +58,8 @@ impl ConfigTemplate {
         let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
-        config.push_str(&format!("port = {}\n", cfg.network.base_port));
+        let _ = writeln!(config, "bind_address = \"{}\"", cfg.network.bind_host);
+        let _ = writeln!(config, "port = {}", cfg.network.base_port);
         config.push_str("log_level = \"warn\"\n");
         config.push_str("enable_metrics = true\n\n");
         config.push_str("[network]\n");
@@ -78,8 +80,8 @@ impl ConfigTemplate {
         let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
-        config.push_str(&format!("port = {}\n", cfg.network.base_port));
+        let _ = writeln!(config, "bind_address = \"{}\"", cfg.network.bind_host);
+        let _ = writeln!(config, "port = {}", cfg.network.base_port);
         config.push_str("log_level = \"info\"\n\n");
         config.push_str("[network]\n");
         config.push_str("enable_discovery = true\n");
@@ -107,7 +109,7 @@ impl ConfigTemplate {
         dockerfile.push_str(
             "COPY --from=builder /app/target/release/songbird /usr/local/bin/songbird\n\n",
         );
-        dockerfile.push_str(&format!("EXPOSE {}\n\n", cfg.network.base_port));
+        let _ = write!(dockerfile, "EXPOSE {}\n\n", cfg.network.base_port);
         dockerfile.push_str("CMD [\"songbird\", \"start\"]\n");
         dockerfile
     }

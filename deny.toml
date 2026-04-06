@@ -34,7 +34,6 @@ skip = [
     { name = "getrandom" },
     { name = "indexmap" },
     { name = "generic-array" },
-    { name = "tower" },
     { name = "thiserror" },
     { name = "thiserror-impl" },
 ]
@@ -51,7 +50,6 @@ allow = [
     "Unicode-DFS-2016",
     "Unicode-3.0",
     "Zlib",
-    "AGPL-3.0-only",
     "AGPL-3.0-or-later",
 ]
 

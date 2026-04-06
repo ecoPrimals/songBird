@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Enhanced status command with improved UI and error handling
 
-#![allow(missing_docs, reason = "status DTOs map directly to rendered tables")]
+#![expect(missing_docs, reason = "CLI command module — doc coverage not required")]
 
 use crate::cli::types::OutputFormat;
 use crate::cli::ui::{
@@ -205,8 +205,8 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> Songbird
             service.name.clone(),
             format_health_status(&service.status),
             format_health_status(&service.health),
-            service.port.map_or("N/A".to_string(), |p| p.to_string()),
-            service.uptime.map_or("N/A".to_string(), format_duration),
+            service.port.map_or_else(|| "N/A".to_string(), |p| p.to_string()),
+            service.uptime.map_or_else(|| "N/A".to_string(), format_duration),
         ]);
     }
 
@@ -432,7 +432,7 @@ async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> So
         }
 
         // Show next update time
-        let next_update = chrono::Utc::now() + chrono::Duration::seconds(interval as i64);
+        let next_update = chrono::Utc::now() + chrono::Duration::seconds(interval.cast_signed());
         println!(
             "\n{} {}",
             "Next update:".dimmed(),

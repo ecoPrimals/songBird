@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Trust Escalation Manager
@@ -75,6 +75,7 @@ impl Default for TrustTimeouts {
 /// - Without an endpoint, callers should treat verification as unavailable (use capability discovery)
 pub struct SecurityTrustClient {
     /// Optional security provider endpoint (discovered at runtime)
+    #[expect(dead_code, reason = "stored from env for future direct security-provider calls")]
     endpoint: Option<String>,
 }
 
@@ -90,13 +91,11 @@ impl SecurityTrustClient {
         let endpoint = songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER")
             .or_else(|_| songbird_process_env::var("SECURITY_ENDPOINT"))
             .or_else(|_| {
-                if let Ok(url) = songbird_process_env::var("BEARDOG_URL") {
-                    tracing::warn!("⚠️  DEPRECATED: BEARDOG_URL is deprecated");
-                    tracing::warn!("   Use SONGBIRD_SECURITY_PROVIDER instead");
-                    Ok(url)
-                } else {
-                    Err(std::env::VarError::NotPresent)
-                }
+                songbird_process_env::var("BEARDOG_URL").inspect(|_| {
+                    tracing::warn!(
+                        "DEPRECATED: BEARDOG_URL is deprecated — migrate to SECURITY_URL, SONGBIRD_SECURITY_PROVIDER, SECURITY_ENDPOINT, SECURITY_PROVIDER_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+                    );
+                })
             })
             .ok();
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Security capability client implementation
@@ -90,18 +90,15 @@ impl SecurityCapabilityClient {
 
         // Create Pure Rust HTTP client for lineage methods (Phase 1.5) ✅
         // Uses capability-based discovery for crypto provider (XDG-compliant)
-        let crypto_socket = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
-            .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_SOCKET"))
-            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
-            .unwrap_or_else(|_| {
-                if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-                    format!("{runtime_dir}/biomeos/security.sock")
-                } else {
-                    songbird_types::defaults::paths::security_socket_default_path()
-                        .to_string_lossy()
-                        .into_owned()
-                }
-            });
+        let crypto_socket = crate::env_config::security_crypto_ipc_socket_from_env(|| {
+            if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+                format!("{runtime_dir}/biomeos/security.sock")
+            } else {
+                songbird_types::defaults::paths::security_socket_default_path()
+                    .to_string_lossy()
+                    .into_owned()
+            }
+        });
 
         let http_client = Arc::new(SongbirdHttpClient::new(crypto_socket));
 

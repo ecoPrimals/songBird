@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 //! Chaos Engineering Tests for Songbird
 //!
@@ -10,6 +10,9 @@
 //! 2. Inject: Introduce controlled failures
 //! 3. Observe: Monitor system response
 //! 4. Verify: Confirm system meets expectations
+//!
+//! **CI (local)**: `tests/local_infrastructure_ci.rs` — connection-drop and concurrent
+//! registration stress tests over line-delimited JSON-RPC on `127.0.0.1:0`.
 
 #![cfg(test)]
 

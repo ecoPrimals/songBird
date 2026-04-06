@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -188,7 +188,7 @@ fn test_capability_endpoint_serialization() {
     let ep = CapabilityEndpoint {
         capability: CapabilityType::Compute,
         endpoint: "http://localhost:8080".to_string(),
-        provider_id: Some("toadstool".to_string()),
+        provider_id: Some("compute-provider".to_string()),
         discovery_method: DiscoveryMethod::Environment,
         confidence: 0.95,
         discovered_at: std::time::SystemTime::now(),

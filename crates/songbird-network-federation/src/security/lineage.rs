@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Lineage Management Trait
@@ -133,7 +133,7 @@ impl LineageChain {
             .or_else(|_| {
                 songbird_process_env::var("BEARDOG_ENDPOINT").inspect(|_| {
                     tracing::warn!(
-                        "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
+                        "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT, SECURITY_PROVIDER_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                     );
                 })
             })

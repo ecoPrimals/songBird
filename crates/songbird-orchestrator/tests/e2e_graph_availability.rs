@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! End-to-end tests for graph availability checking
@@ -87,21 +87,21 @@ async fn test_e2e_availability_workflow() {
         .await
         .unwrap();
 
-    let toadstool_id = registry
+    let compute_provider_id = registry
         .register_service(
-            "ToadStool".to_string(),
+            "compute-provider".to_string(),
             vec!["compute".to_string()],
-            "/run/user/1000/toadstool.sock".to_string(),
+            "/run/user/1000/compute-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
         .await
         .unwrap();
 
-    // Mark security provider and storage provider as healthy, ToadStool as degraded
+    // Mark security provider and storage provider as healthy, compute provider as degraded
     registry.update_health(&security_provider_id, "healthy".to_string()).await.unwrap();
     registry.update_health(&storage_provider_id, "healthy".to_string()).await.unwrap();
-    registry.update_health(&toadstool_id, "degraded".to_string()).await.unwrap();
+    registry.update_health(&compute_provider_id, "degraded".to_string()).await.unwrap();
 
     // Step 2: Create a graph needing encryption, storage, and compute
     let graph = create_test_graph(vec![
@@ -130,7 +130,7 @@ async fn test_e2e_availability_workflow() {
 
     let compute_status = report.details.get("compute").unwrap();
     assert_eq!(compute_status.status, NodeAvailabilityStatus::Degraded);
-    assert_eq!(compute_status.primal, Some("ToadStool".to_string()));
+    assert_eq!(compute_status.primal, Some("compute-provider".to_string()));
 }
 
 #[tokio::test]
@@ -245,11 +245,11 @@ async fn test_e2e_real_registry_integration() {
         .await
         .unwrap();
 
-    let toadstool_id = registry
+    let compute_provider_id = registry
         .register_service(
-            "ToadStool".to_string(),
+            "compute-provider".to_string(),
             vec!["compute".to_string(), "execution".to_string()],
-            "/run/user/1000/toadstool-nat0-node-alpha.sock".to_string(),
+            "/run/user/1000/compute-provider-nat0-node-alpha.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -257,7 +257,7 @@ async fn test_e2e_real_registry_integration() {
         .unwrap();
 
     // Simulate health checks (all healthy after startup)
-    for service_id in [&security_provider_id, &storage_provider_id, &toadstool_id] {
+    for service_id in [&security_provider_id, &storage_provider_id, &compute_provider_id] {
         registry.update_health(service_id, "healthy".to_string()).await.unwrap();
     }
 
@@ -291,7 +291,7 @@ async fn test_e2e_real_registry_integration() {
     }
 
     // Step 4: Simulate a primal going down
-    registry.update_health(&toadstool_id, "down".to_string()).await.unwrap();
+    registry.update_health(&compute_provider_id, "down".to_string()).await.unwrap();
 
     // Step 5: Re-check availability
     let report2 = checker.check_availability(&graph).await.unwrap();
@@ -303,9 +303,9 @@ async fn test_e2e_real_registry_integration() {
     let process_node = create_test_node("process-data", "compute", Some("json-rpc"));
     let alternatives = checker.suggest_alternatives(&process_node).await.unwrap();
 
-    // Should still find ToadStool (even though unhealthy) and show status
+    // Should still find compute provider (even though unhealthy) and show status
     assert_eq!(alternatives.alternatives.len(), 1);
-    assert_eq!(alternatives.alternatives[0].primal_name, "ToadStool");
+    assert_eq!(alternatives.alternatives[0].primal_name, "compute-provider");
     assert_eq!(alternatives.alternatives[0].health_status, "down");
     // Score: down=0 + json-rpc protocol=40 + timestamp=10 = 50
     assert_eq!(alternatives.alternatives[0].compatibility_score, 50);

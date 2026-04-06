@@ -112,7 +112,9 @@ fn parse_port_env_with_legacy_warn(
         if let Ok(p) = songbird_process_env::var(legacy_key)
             && let Ok(n) = p.parse::<u16>()
         {
-            tracing::warn!("Using legacy env var {legacy_key} — migrate to {migrate_to}");
+            tracing::warn!(
+                "Using legacy env var {legacy_key} — migrate to {migrate_to}; prefer CAPABILITY_*_ENDPOINT for capability-first configuration"
+            );
             return Some(n);
         }
         None

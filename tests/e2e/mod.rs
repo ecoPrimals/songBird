@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 //! # End-to-End Test Framework
 //!
@@ -10,6 +10,10 @@
 //! - Load balancing scenarios
 //! - Circuit breaker behavior
 //! - Federation coordination
+//!
+//! **CI (no external deps)**: see `tests/local_infrastructure_ci.rs` at the workspace root for
+//! `#[tokio::test]` scenarios that exercise capability discovery, JSON-RPC health over TCP,
+//! and IPC registration/discovery against real in-process handlers.
 
 // Existing E2E test modules
 pub mod capability_based_orchestration;

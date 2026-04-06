@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 // Chaos Engineering Manager
@@ -27,10 +27,10 @@ pub struct ChaosEngineeringManager {
     /// Active experiments
     experiments: Arc<RwLock<HashMap<String, ChaosExperiment>>>,
     /// Fault injection state
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     faults: Arc<RwLock<HashMap<String, FaultInjection>>>,
     /// Metrics collection
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     metrics: Arc<RwLock<Vec<MetricSnapshot>>>,
 }
 

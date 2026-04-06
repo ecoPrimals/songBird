@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Network Discovery API
@@ -106,8 +106,10 @@ async fn discover_via_subnet_scan(timeout_ms: u64) -> SongbirdResult<Vec<Discove
             interface: None,
             suggestion: Some("Check network permissions".to_string()),
         })?;
-        let _ = probe.connect("8.8.8.8:53");
-        probe.local_addr().map(|a| a.ip()).unwrap_or(IpAddr::from([127, 0, 0, 1]))
+        let route_target = songbird_process_env::var("SONGBIRD_ROUTE_DETECT_ADDR")
+            .unwrap_or_else(|_| "192.0.2.1:80".to_string());
+        let _ = probe.connect(route_target.as_str());
+        probe.local_addr().map_or_else(|_| IpAddr::from([127, 0, 0, 1]), |a| a.ip())
     };
 
     let mut networks = Vec::new();
@@ -115,7 +117,7 @@ async fn discover_via_subnet_scan(timeout_ms: u64) -> SongbirdResult<Vec<Discove
     if let IpAddr::V4(ipv4) = local_ip {
         let octets = ipv4.octets();
 
-        let candidates: Vec<u8> = (1u8..=10).chain([254].into_iter()).collect();
+        let candidates: Vec<u8> = (1u8..=10).chain(std::iter::once(254)).collect();
         for last in candidates {
             if last == octets[3] {
                 continue;
@@ -300,7 +302,7 @@ async fn discover_via_broadcast(timeout_ms: u64) -> SongbirdResult<Vec<Discovere
 fn parse_discovery_response(response: &str, source_ip: IpAddr) -> Option<DiscoveredNetwork> {
     if let Ok(data) = serde_json::from_str::<serde_json::Value>(response) {
         let name = data["name"].as_str()?.to_string();
-        let node_count = data["nodes"].as_u64()? as usize;
+        let node_count = usize::try_from(data["nodes"].as_u64()?).ok()?;
         let network_type = data["type"].as_str()?.to_string();
         let institution = data["institution"].as_str().map(std::string::ToString::to_string);
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Authentication endpoints and middleware
@@ -382,7 +382,7 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     // `BEARDOG_2FA_ENDPOINT` is deprecated — migrate to the security capability endpoint above.
     if let Ok(_auth_endpoint) = songbird_process_env::var("BEARDOG_2FA_ENDPOINT") {
         tracing::warn!(
-            "DEPRECATED: BEARDOG_2FA_ENDPOINT (primal identity) — migrate to SONGBIRD_SECURITY_PROVIDER_ENDPOINT or SONGBIRD_2FA_SERVICE"
+            "DEPRECATED: BEARDOG_2FA_ENDPOINT (primal-named env) — migrate to SONGBIRD_SECURITY_PROVIDER_ENDPOINT, SONGBIRD_2FA_SERVICE, CAPABILITY_SECURITY_ENDPOINT, or other SECURITY_PROVIDER_* settings"
         );
         tracing::warn!("2FA via security provider delegation not yet fully implemented");
         // Fallthrough to other methods
@@ -410,6 +410,7 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
 }
 
 /// Validate 2FA via security provider hardware key service
+#[expect(dead_code, reason = "reserved for security-provider 2FA path wiring")]
 async fn validate_security_provider_2fa(
     user_id: &str,
     token: &str,
@@ -533,7 +534,13 @@ async fn validate_external_2fa(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
+    use crate::test_sync_env::{VarGuard, env_lock};
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode, header::AUTHORIZATION};
+    use axum::response::IntoResponse;
 
     #[test]
     fn test_login_request() {
@@ -548,5 +555,128 @@ mod tests {
         assert_eq!(req.user_id, "student-123");
         assert_eq!(req.role, "student");
         assert_eq!(req.credential, Some("hashed_password_123".into()));
+    }
+
+    #[test]
+    fn auth_error_maps_to_expected_http_status() {
+        assert_eq!(AuthError::MissingToken.into_response().status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(AuthError::InvalidToken.into_response().status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(AuthError::ExpiredToken.into_response().status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            AuthError::InsufficientPermissions.into_response().status(),
+            StatusCode::FORBIDDEN
+        );
+    }
+
+    #[tokio::test]
+    async fn login_dev_mode_accepts_student_without_backend() {
+        let _serial = env_lock();
+        let _dev = VarGuard::set("SONGBIRD_DEV_MODE", "1");
+        let req = LoginRequest {
+            user_id: "stu".into(),
+            role: "student".into(),
+            course_id: Some("c1".into()),
+            credential: None,
+            two_factor_token: None,
+        };
+        let Ok(Json(resp)) = login(Json(req)).await else {
+            panic!("login ok");
+        };
+        assert!(!resp.token.is_empty());
+        assert!(resp.expires_at > 0);
+    }
+
+    #[tokio::test]
+    async fn login_unknown_role_rejected() {
+        let _serial = env_lock();
+        let _dev = VarGuard::set("SONGBIRD_DEV_MODE", "1");
+        let req = LoginRequest {
+            user_id: "u".into(),
+            role: "not-a-real-role".into(),
+            course_id: None,
+            credential: None,
+            two_factor_token: None,
+        };
+        match login(Json(req)).await {
+            Err(e) => assert!(matches!(e, AuthError::InvalidToken)),
+            Ok(_) => panic!("expected invalid role error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn login_admin_requires_two_factor() {
+        let _serial = env_lock();
+        let _dev = VarGuard::set("SONGBIRD_DEV_MODE", "1");
+        let req = LoginRequest {
+            user_id: "alice".into(),
+            role: "admin".into(),
+            course_id: None,
+            credential: Some("x".into()),
+            two_factor_token: None,
+        };
+        match login(Json(req)).await {
+            Err(e) => assert!(matches!(e, AuthError::InsufficientPermissions)),
+            Ok(_) => panic!("expected insufficient permissions"),
+        }
+    }
+
+    #[tokio::test]
+    async fn login_admin_with_sqlite_and_totp_succeeds() {
+        let _serial = env_lock();
+        let _auth_db = VarGuard::set("SONGBIRD_AUTH_DB", "sqlite::memory:");
+        let _totp = VarGuard::set("SONGBIRD_TOTP_SECRET_alice", "notemptysecret");
+        let _dev_off = VarGuard::remove("SONGBIRD_DEV_MODE");
+        let req = LoginRequest {
+            user_id: "alice".into(),
+            role: "admin".into(),
+            course_id: None,
+            credential: Some("password".into()),
+            two_factor_token: Some("123456".into()),
+        };
+        let Ok(Json(resp)) = login(Json(req)).await else {
+            panic!("admin login");
+        };
+        assert!(!resp.token.is_empty());
+    }
+
+    #[tokio::test]
+    async fn authenticated_user_rejects_missing_header() {
+        let req = Request::builder().uri("/x").body(Body::empty()).unwrap();
+        let (mut parts, _) = req.into_parts();
+        match AuthenticatedUser::from_request_parts(&mut parts, &()).await {
+            Err(e) => assert!(matches!(e, AuthError::MissingToken)),
+            Ok(_) => panic!("expected missing token"),
+        }
+    }
+
+    #[tokio::test]
+    async fn authenticated_user_rejects_malformed_bearer() {
+        let req = Request::builder()
+            .uri("/x")
+            .header(AUTHORIZATION, "NotBearer x")
+            .body(Body::empty())
+            .unwrap();
+        let (mut parts, _) = req.into_parts();
+        match AuthenticatedUser::from_request_parts(&mut parts, &()).await {
+            Err(e) => assert!(matches!(e, AuthError::InvalidToken)),
+            Ok(_) => panic!("expected invalid bearer"),
+        }
+    }
+
+    #[tokio::test]
+    async fn authenticated_user_accepts_valid_jwt() {
+        let secret = b"songbird-dev-secret-change-in-production";
+        let token = super::super::AccessToken::student("s1", "c1");
+        let jwt = token.encode(secret).expect("encode");
+        let req = Request::builder()
+            .uri("/x")
+            .header(AUTHORIZATION, format!("Bearer {jwt}"))
+            .body(Body::empty())
+            .unwrap();
+        let (mut parts, _) = req.into_parts();
+        let Ok(user) = AuthenticatedUser::from_request_parts(&mut parts, &()).await else {
+            panic!("expected valid jwt");
+        };
+        assert_eq!(user.token.sub, "s1");
     }
 }

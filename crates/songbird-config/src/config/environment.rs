@@ -38,7 +38,7 @@
 //! **Status**: This module is maintained for backward compatibility only.  
 //! **Timeline**: Will be removed in v0.3.0 (Q2 2026)
 
-#![allow(deprecated, reason = "calling deprecated API until migration completes")]
+#![expect(deprecated, reason = "calling deprecated API until migration completes")]
 #[deprecated(since = "0.2.0", note = "Use canonical::environment instead")]
 
 use crate::canonical::constants::{
@@ -54,7 +54,7 @@ use std::time::Duration;
 pub use crate::canonical::environment::LogConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names, reason = "intentional pattern; clippy false positive for this API")] // Endpoint suffix is intentional and clear
+#[expect(clippy::struct_field_names, reason = "intentional pattern; clippy false positive for this API")] // Endpoint suffix is intentional and clear
 pub struct ServiceEndpoints {
     /// Security provider HTTP endpoint (capability domain `security`).
     #[serde(alias = "beardog_endpoint")]
@@ -101,7 +101,7 @@ impl ServiceEndpoints {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names, reason = "intentional pattern; clippy false positive for this API")] // Max prefix is intentional for limits
+#[expect(clippy::struct_field_names, reason = "intentional pattern; clippy false positive for this API")] // Max prefix is intentional for limits
 pub struct ResourceLimits {
     pub max_connections: usize,
     pub max_memory_mb: Option<u64>,
@@ -158,7 +158,7 @@ impl Default for ServiceEndpoints {
                 .or_else(|_| {
                     songbird_process_env::var("BEARDOG_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
+                            "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT, SECURITY_PROVIDER_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                         );
                     })
                 })
@@ -173,7 +173,7 @@ impl Default for ServiceEndpoints {
                 .or_else(|_| {
                     songbird_process_env::var("NESTGATE_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "NESTGATE_ENDPOINT is deprecated — migrate to STORAGE_ENDPOINT or STORAGE_PROVIDER_ENDPOINT"
+                            "NESTGATE_ENDPOINT is deprecated — migrate to STORAGE_ENDPOINT, STORAGE_PROVIDER_ENDPOINT, or CAPABILITY_STORAGE_ENDPOINT (capability-first)"
                         );
                     })
                 })
@@ -188,7 +188,7 @@ impl Default for ServiceEndpoints {
                 .or_else(|_| {
                     songbird_process_env::var("TOADSTOOL_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT or COMPUTE_PROVIDER_ENDPOINT"
+                            "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT, COMPUTE_PROVIDER_ENDPOINT, or CAPABILITY_COMPUTE_ENDPOINT (capability-first)"
                         );
                     })
                 })
@@ -203,7 +203,7 @@ impl Default for ServiceEndpoints {
                 .or_else(|_| {
                     songbird_process_env::var("SQUIRREL_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT or AI_PROVIDER_ENDPOINT"
+                            "SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT, AI_PROVIDER_ENDPOINT, or CAPABILITY_AI_ENDPOINT (capability-first)"
                         );
                     })
                 })
@@ -459,7 +459,7 @@ fn get_cpu_limit() -> Option<f64> {
                 (quota.trim().parse::<i64>(), period.trim().parse::<i64>())
             {
                 if quota_val > 0 && period_val > 0 {
-                    #[allow(clippy::cast_precision_loss, reason = "intentional pattern; clippy false positive for this API")] // CPU cores as f64 is acceptable
+                    #[expect(clippy::cast_precision_loss, reason = "intentional pattern; clippy false positive for this API")] // CPU cores as f64 is acceptable
                     return Some(quota_val as f64 / period_val as f64);
                 }
             }
@@ -467,7 +467,7 @@ fn get_cpu_limit() -> Option<f64> {
     }
 
     // Use available parallelism as fallback
-    #[allow(clippy::cast_precision_loss, reason = "intentional pattern; clippy false positive for this API")] // CPU cores as f64 is acceptable
+    #[expect(clippy::cast_precision_loss, reason = "intentional pattern; clippy false positive for this API")] // CPU cores as f64 is acceptable
     std::thread::available_parallelism().map(|n| n.get() as f64).ok()
 }
 
@@ -509,7 +509,7 @@ impl EnvironmentConfig {
                 self.performance_config.buffer_pool_size =
                     (self.performance_config.buffer_pool_size * 3) / 2; // 1.5x buffering
                                                                         // Scale connections by 1.5x for staging
-                #[allow(
+                #[expect(
                     clippy::cast_precision_loss,
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss, reason = "intentional pattern; clippy false positive for this API")]

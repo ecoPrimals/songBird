@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! TLS connector for Tor relay connections
@@ -36,7 +36,7 @@ pub struct TlsConnector;
 /// Tor's link protocol v4+ can operate over plain TCP with in-protocol
 /// encryption via the ntor handshake. The TLS layer is only required
 /// for backward compatibility with older relays.
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 pub enum RelayStream {
     /// Raw TCP stream (Tor handles encryption at protocol layer)
     Tcp(TcpStream),

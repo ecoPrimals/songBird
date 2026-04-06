@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Network Management
@@ -7,6 +7,7 @@
 
 pub mod binding;
 pub mod connectivity_test;
+pub(crate) mod route_detect;
 pub mod sovereign_socket;
 
 // Re-export commonly used types

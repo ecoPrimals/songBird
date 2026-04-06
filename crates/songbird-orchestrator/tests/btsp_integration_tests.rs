@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! BTSP Integration Tests - Week 4 Part 2
@@ -615,7 +615,7 @@ fn test_helper_socket_path() {
     let path = test_socket_path();
     assert!(!path.is_empty());
     assert!(
-        path.contains("security-provider") || path.contains("beardog") || path.contains("/tmp/"),
+        path.contains("security-provider") || path.contains("/tmp/"),
         "unexpected test socket path: {path}"
     );
 }

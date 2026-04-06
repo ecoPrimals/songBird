@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Hole Punch JSON-RPC Handler
@@ -47,7 +47,7 @@ use tracing::{info, warn};
 #[derive(Clone)]
 pub struct PunchHandler {
     /// Active punch attempts
-    attempts: Arc<RwLock<HashMap<String, PunchAttempt>>>,
+    attempts: Arc<RwLock<HashMap<Arc<str>, PunchAttempt>>>,
     /// Hole punch coordinator (optional - may not be initialized)
     coordinator: Arc<RwLock<Option<Arc<HolePunchCoordinator>>>>,
     /// Default max attempts
@@ -111,11 +111,11 @@ impl PunchHandler {
     /// }
     /// ```
     pub async fn handle_request(&self, params: Value) -> Result<Value, String> {
-        let target_node_id = params
+        let target_node_id: Arc<str> = params
             .get("target_node_id")
             .and_then(|v| v.as_str())
             .ok_or("Missing target_node_id parameter")?
-            .to_string();
+            .into();
 
         let timeout_seconds =
             params.get("timeout_seconds").and_then(serde_json::Value::as_u64).unwrap_or(10);
@@ -130,7 +130,7 @@ impl PunchHandler {
 
         info!(
             "🥊 Starting hole punch to {} (timeout: {}s, max: {} attempts)",
-            &target_node_id[..8.min(target_node_id.len())],
+            &target_node_id.as_ref()[..8.min(target_node_id.len())],
             timeout_seconds,
             max_attempts
         );
@@ -164,7 +164,7 @@ impl PunchHandler {
                 }
 
                 // Use the real coordinator's punch_to_peer
-                match coord.punch_to_peer(&target_id).await {
+                match coord.punch_to_peer(target_id.as_ref()).await {
                     Ok(songbird_onion_relay::coordinator::PunchResult::Direct {
                         peer_addr,
                         latency,
@@ -181,7 +181,8 @@ impl PunchHandler {
                     }) => {
                         if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
                             attempt.status = PunchStatus::Failed {
-                                reason: format!("fell back to relay after {punch_count} attempts"),
+                                reason: format!("fell back to relay after {punch_count} attempts")
+                                    .into(),
                             };
                             attempt.attempts = punch_count;
                         }
@@ -189,7 +190,7 @@ impl PunchHandler {
                     Err(e) => {
                         if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
                             attempt.status = PunchStatus::Failed {
-                                reason: format!("{e}"),
+                                reason: format!("{e}").into(),
                             };
                         }
                     }
@@ -199,7 +200,7 @@ impl PunchHandler {
             // Return immediately - caller should poll status
             Ok(json!({
                 "started": true,
-                "target_node_id": target_node_id,
+                "target_node_id": target_node_id.as_ref(),
                 "status": "in_progress",
                 "timeout_seconds": timeout_seconds,
                 "max_attempts": max_attempts
@@ -210,7 +211,7 @@ impl PunchHandler {
                 let mut attempts = self.attempts.write().await;
                 if let Some(attempt) = attempts.get_mut(&target_node_id) {
                     attempt.status = PunchStatus::Failed {
-                        reason: "no_coordinator".to_string(),
+                        reason: Arc::from("no_coordinator"),
                     };
                     attempt.attempts = 0;
                 }
@@ -218,7 +219,7 @@ impl PunchHandler {
 
             Ok(json!({
                 "success": false,
-                "target_node_id": target_node_id,
+                "target_node_id": target_node_id.as_ref(),
                 "attempts": 0,
                 "reason": "hole_punch_coordinator_not_initialized",
                 "fallback": "family_relay"
@@ -283,7 +284,7 @@ impl PunchHandler {
                 }
 
                 if let Some(r) = reason {
-                    response["reason"] = json!(r);
+                    response["reason"] = json!(r.as_ref());
                     if status_str == "failed" {
                         response["fallback"] = json!("family_relay");
                     }
@@ -319,7 +320,13 @@ impl PunchHandler {
     }
 
     /// Record a failed punch (called by coordinator callback)
-    pub async fn record_failure(&self, target_node_id: &str, reason: String, attempts: u32) {
+    pub async fn record_failure(
+        &self,
+        target_node_id: &str,
+        reason: impl Into<Arc<str>>,
+        attempts: u32,
+    ) {
+        let reason = reason.into();
         if let Some(attempt) = self.attempts.write().await.get_mut(target_node_id) {
             attempt.status = PunchStatus::Failed {
                 reason: reason.clone(),
@@ -329,7 +336,7 @@ impl PunchHandler {
             warn!(
                 "❌ Hole punch to {} failed: {} ({} attempts)",
                 &target_node_id[..8.min(target_node_id.len())],
-                reason,
+                reason.as_ref(),
                 attempts
             );
         }
@@ -381,11 +388,11 @@ impl PunchHandler {
     /// }
     /// ```
     pub async fn handle_coordinate(&self, params: Value) -> Result<Value, String> {
-        let target_node_id = params
+        let target_node_id: Arc<str> = params
             .get("target_node_id")
             .and_then(|v| v.as_str())
             .ok_or("Missing target_node_id parameter")?
-            .to_string();
+            .into();
 
         let peer_predicted_port = params
             .get("peer_predicted_port")
@@ -431,7 +438,7 @@ impl PunchHandler {
                 latency,
                 ports_tried,
             } => {
-                self.record_success(&target_node_id, from_addr, latency, ports_tried).await;
+                self.record_success(target_node_id.as_ref(), from_addr, latency, ports_tried).await;
 
                 info!("✅ Coordinated punch SUCCESS: {} (latency: {:?})", from_addr, latency);
 
@@ -448,7 +455,7 @@ impl PunchHandler {
                 ports_tried,
             } => {
                 self.record_failure(
-                    &target_node_id,
+                    target_node_id.as_ref(),
                     format!("coordinated_punch_timeout ({ports_tried} ports sprayed)"),
                     ports_tried,
                 )

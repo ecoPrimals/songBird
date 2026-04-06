@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! JSON-RPC request/response types for the IPC service wire protocol.
@@ -119,9 +119,9 @@ mod tests {
 
     #[test]
     fn resolve_params_deserializes() {
-        let json = r#"{"primal_id":"squirrel"}"#;
+        let json = r#"{"primal_id":"ai-provider"}"#;
         let params: ResolveParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.primal_id, "squirrel");
+        assert_eq!(params.primal_id, "ai-provider");
     }
 
     #[test]

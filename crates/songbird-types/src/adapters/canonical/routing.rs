@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Protocol routing, load balancing, and circuit breaking for the canonical adapter.
@@ -275,7 +275,7 @@ impl CanonicalLoadBalancer {
 pub struct CanonicalCircuitBreaker {
     states: Arc<RwLock<HashMap<String, CanonicalCircuitState>>>,
     /// Retained for threshold / timeout tuning when failure counting is wired.
-    #[allow(dead_code, reason = "stored for future per-service breaker tuning")]
+    #[expect(dead_code, reason = "stored for future per-service breaker tuning")]
     config: CanonicalCircuitBreakerConfig,
 }
 

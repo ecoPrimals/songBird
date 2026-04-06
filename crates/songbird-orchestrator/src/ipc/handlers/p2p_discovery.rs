@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! P2P Discovery API Handlers (v3.19.1, refactored v3.22.1)
@@ -210,7 +210,7 @@ pub async fn create_genetic_tunnel(
     reason = "async signature required by Axum, trait objects, or future I/O"
 )]
 pub async fn announce_capabilities(
-    handlers: &IpcHandlers,
+    _handlers: &IpcHandlers,
     params: serde_json::Value,
 ) -> Result<AnnounceCapabilitiesResponse, JsonRpcError> {
     info!("📢 P2P Discovery API: announce_capabilities");

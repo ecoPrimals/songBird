@@ -14,32 +14,32 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
 | Pure Rust | 100% — native QUIC engine with security provider crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` opt-in feature gate remains on CLI only |
 | Crypto Delegation | Security provider via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
-| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing |
+| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing; netdev-based IP detection; all ports env-configurable (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`); XDG-compliant socket paths |
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
-| Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` only in `#[cfg(test)]` modules |
+| Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` only in `#[cfg(test)]` modules; production `dead_code` allows removed (Apr 6 audit) |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 12,613 passed, 0 failed, 252 ignored |
-| Line Coverage | ~77% est. (llvm-cov `--workspace --all-features`; target 90%) |
+| Tests | 12,764 passed, 0 failed, 252 ignored |
+| Line Coverage | **72.16%** (`llvm-cov --workspace --lib`, Apr 6 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings) |
-| Formatting | Clean (`cargo fmt --check`) |
+| Formatting | Clean (`cargo fmt --check`; Apr 6 audit: no drift) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | 0 (largest production file 709 lines; all test files refactored under 800) |
-| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` |
-| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
+| Files >800 lines | 0 (largest file 519 lines; `tower_atomic.rs` refactored into 4 modules) |
+| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (Apr 6: `AGPL-3.0-only` drift eliminated) |
+| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body (Apr 6 audit) |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
 | Nest Atomic | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (14 capability tokens) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
-| Dependencies | `sled` feature-gated with in-memory fallback; `kube`/`k8s-openapi`/`bollard` feature-gated |
+| Dependencies | `sled` feature-gated with in-memory fallback; `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~410,000 lines across 30 crates |
+| Total Rust | ~423,800 lines across 30 crates (1,573 files) |
 
 ## Architecture
 
@@ -98,6 +98,10 @@ export SONGBIRD_HTTP_PORT=3492
 export SONGBIRD_BIND_ADDRESS=0.0.0.0
 export SONGBIRD_IGD_ENABLED=true
 export SONGBIRD_FAMILY_ID=myfamily
+export SONGBIRD_DISCOVERY_PORT=2300
+export SONGBIRD_STUN_PORT=3478
+export SONGBIRD_RELAY_PORT=3479
+export SONGBIRD_ROUTE_DETECT_ADDR=192.0.2.1:80
 ```
 
 ## Crate Structure (30 crates)
@@ -162,7 +166,7 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ## Testing
 
 ```bash
-cargo test --workspace --all-features          # Full suite (12,613 tests, ~70s)
+cargo test --workspace --all-features          # Full suite (12,764 tests, ~70s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
 ./scripts/test-with-security-provider.sh        # With live security provider from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report
@@ -172,7 +176,7 @@ cargo test -p songbird-tor-protocol --lib      # Single crate
 
 | Document | Purpose |
 |----------|---------|
-| [`REMAINING_WORK.md`](REMAINING_WORK.md) | Current status and pending work |
+| [`REMAINING_WORK.md`](REMAINING_WORK.md) | Current status, metrics, and pending work |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
 | [`CONTEXT.md`](CONTEXT.md) | AI-ingestible project context |

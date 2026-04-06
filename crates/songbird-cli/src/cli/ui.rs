@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! CLI UI utilities for beautiful terminal output
@@ -185,7 +185,17 @@ pub fn format_bytes(bytes: u64) -> String {
     }
 
     if unit_index == 0 {
-        format!("{} {}", size as u64, UNITS[unit_index])
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "display-only human-readable size; integer part only"
+        )]
+        #[expect(
+            clippy::cast_sign_loss,
+            reason = "display-only; value is non-negative after unit scaling"
+        )]
+        {
+            format!("{} {}", size as u64, UNITS[unit_index])
+        }
     } else {
         format!("{:.1} {}", size, UNITS[unit_index])
     }

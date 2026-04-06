@@ -1,6 +1,6 @@
 # Contributing to Songbird
 
-**License**: AGPL-3.0-only (scyBorg provenance trio)  
+**License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024
 
 ---
@@ -50,7 +50,7 @@ instead of calling `std::env::set_var`/`remove_var`, eliminating the Rust 2024
 Every `.rs` file must have:
 
 ```rust
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 ```
 
@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: ~69% (llvm-cov measured, Apr 2 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: **72.16%** (llvm-cov measured, Apr 6 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html
@@ -107,7 +107,7 @@ run fully concurrently with zero global state mutation:
 #[tokio::test]
 async fn test_discovery() {
     let env = HashMap::from([
-        ("BEARDOG_SOCKET".to_string(), "/tmp/test.sock".to_string()),
+        ("SECURITY_PROVIDER_SOCKET".into(), "/run/user/1000/biomeos/security.sock".into()),
     ]);
     let result = discover_with(|k| env.get(k).cloned()).await;
     assert!(result.is_ok());
@@ -170,4 +170,4 @@ See `specs/INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md`.
 ## License
 
 By contributing, you agree that your contributions will be licensed under
-AGPL-3.0-only (scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0).
+AGPL-3.0-or-later (scyBorg provenance trio: AGPL-3.0-or-later + ORC + CC-BY-SA 4.0).

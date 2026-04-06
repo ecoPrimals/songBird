@@ -52,6 +52,6 @@ let response = adapter.handle_request(request).await?;
 
 ## License
 
-Licensed under AGPL-3.0-only as part of the ecoPrimals ecosystem.
+Licensed under AGPL-3.0-or-later as part of the ecoPrimals ecosystem.
 
-Part of the scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0
+Part of the scyBorg provenance trio: AGPL-3.0-or-later + ORC + CC-BY-SA 4.0

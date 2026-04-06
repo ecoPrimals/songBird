@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Headless Quick Setup API
@@ -9,7 +9,7 @@
 //! All interactive UI elements have been removed - this module provides
 //! clean JSON APIs following the songbird headless architecture.
 
-#![allow(missing_docs, reason = "quick-setup DTOs mirror JSON schema consumed by biomeOS")]
+#![expect(missing_docs, reason = "CLI command module — doc coverage not required")]
 
 use crate::errors::{CliError, SongbirdResult};
 use clap::ValueEnum;
@@ -186,7 +186,7 @@ pub async fn execute_quick_setup_api(
     request: QuickSetupRequest,
 ) -> SongbirdResult<QuickSetupResponse> {
     // Step 1: Detect system resources
-    let _resources = resources::detect_system_resources_api().await?;
+    let resources = resources::detect_system_resources_api().await?;
 
     // Step 2: Discover networks
     let discovery_params = DiscoveryParameters {
@@ -245,8 +245,8 @@ pub async fn execute_quick_setup_api(
         security,
         resource_limits: ResourceLimits {
             max_cpu_percent: 80,
-            max_memory_gb: _resources.memory_gb,
-            max_storage_gb: _resources.storage_gb,
+            max_memory_gb: resources.memory_gb,
+            max_storage_gb: resources.storage_gb,
         },
     };
 
@@ -255,7 +255,7 @@ pub async fn execute_quick_setup_api(
     Ok(QuickSetupResponse {
         success: true,
         node_name,
-        system_resources: _resources,
+        system_resources: resources,
         discovered_networks,
         recommended_config: config,
         setup_status: SetupStatus::SystemReady,

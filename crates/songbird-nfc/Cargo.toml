@@ -44,7 +44,7 @@ songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 [dev-dependencies]
 tokio-test = "0.4"
-tracing-subscriber = "0.3"
+tracing-subscriber = { workspace = true }
 
 [features]
 default = []

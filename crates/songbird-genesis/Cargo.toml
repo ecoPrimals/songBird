@@ -12,12 +12,12 @@ authors = ["ecoPrimals Team"]
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["full"] }
-async-trait = "0.1"
+tokio = { workspace = true, features = ["full"] }
+async-trait = { workspace = true }
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Cryptography & Hardware Keys
 # Future: SoloKey support will use Pure Rust FIDO2/WebAuthn implementation
@@ -29,17 +29,17 @@ rqrr = { version = "0.6", optional = true }                  # QR code scanning
 btleplug = { version = "0.11", optional = true }             # Bluetooth LE
 
 # Error handling
-anyhow = "1.0"
+anyhow = { workspace = true }
 thiserror = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Time
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 # UUID
-uuid = { version = "1.6", features = ["v4", "serde"] }
+uuid = { workspace = true }
 
 # Internal dependencies
 songbird-process-env.workspace = true

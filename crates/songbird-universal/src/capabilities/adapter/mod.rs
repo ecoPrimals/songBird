@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Adapter Module - Orchestration Layer
@@ -579,5 +579,5 @@ mod tests {
     }
 }
 
-#[allow(dead_code, reason = "QoS metrics calculation hook reserved; callers not wired yet")]
+#[expect(dead_code, reason = "QoS metrics calculation hook reserved; callers not wired yet")]
 const fn calculate_metrics() {}

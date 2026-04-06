@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Discovery strategies for finding capability providers
@@ -7,6 +7,7 @@ use crate::capability::provider::Provider;
 use crate::error::IpcResult;
 use async_trait::async_trait;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tracing::{debug, info};
 
 /// Discovery strategy trait
@@ -54,9 +55,9 @@ impl EnvironmentStrategy {
             let provider_id = extract_provider_id(&socket_path);
 
             let mut provider = Provider::new(
-                provider_id.clone(),
+                provider_id.as_ref(),
                 vec![capability.to_string()],
-                format!("/primal/{provider_id}"),
+                format!("/primal/{}", provider_id.as_ref()),
             );
             provider.metadata.discovery_method = format!("env:{env_var_socket}");
 
@@ -74,9 +75,9 @@ impl EnvironmentStrategy {
             let provider_id = extract_provider_id(&socket_path);
 
             let mut provider = Provider::new(
-                provider_id.clone(),
+                provider_id.as_ref(),
                 vec![capability.to_string()],
-                format!("/primal/{provider_id}"),
+                format!("/primal/{}", provider_id.as_ref()),
             );
             provider.metadata.discovery_method = format!("env:{env_var}");
 
@@ -93,9 +94,9 @@ impl EnvironmentStrategy {
             let provider_id = extract_provider_id(&socket_path);
 
             let mut provider = Provider::new(
-                provider_id.clone(),
+                provider_id.as_ref(),
                 vec![capability.to_string()],
-                format!("/primal/{provider_id}"),
+                format!("/primal/{}", provider_id.as_ref()),
             );
             provider.metadata.discovery_method = format!("env:{generic_env}");
 
@@ -129,7 +130,7 @@ impl DiscoveryStrategy for EnvironmentStrategy {
 /// - `/var/run/` - System runtime directory
 pub struct FilesystemStrategy {
     /// Directories to scan
-    search_paths: Vec<PathBuf>,
+    search_paths: Arc<Vec<PathBuf>>,
 }
 
 impl FilesystemStrategy {
@@ -147,15 +148,15 @@ impl FilesystemStrategy {
         search_paths.push(PathBuf::from("/var/run"));
 
         Self {
-            search_paths,
+            search_paths: Arc::new(search_paths),
         }
     }
 
     /// Create with custom search paths
     #[must_use]
-    pub const fn with_paths(search_paths: Vec<PathBuf>) -> Self {
+    pub fn with_paths(search_paths: Vec<PathBuf>) -> Self {
         Self {
-            search_paths,
+            search_paths: Arc::new(search_paths),
         }
     }
 }
@@ -175,15 +176,14 @@ impl DiscoveryStrategy for FilesystemStrategy {
     async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
         debug!("🔍 [{}] Discovering {} providers...", self.name(), capability);
 
-        let search_paths = self.search_paths.clone();
+        let search_paths = Arc::clone(&self.search_paths);
         let cap = capability.to_string();
 
-        let providers =
-            tokio::task::spawn_blocking(move || discover_on_filesystem(&search_paths, &cap))
-                .await
-                .map_err(|e| {
-                    crate::error::IpcError::Internal(format!("spawn_blocking join: {e}"))
-                })?;
+        let providers = tokio::task::spawn_blocking(move || {
+            discover_on_filesystem(search_paths.as_ref(), &cap)
+        })
+        .await
+        .map_err(|e| crate::error::IpcError::Internal(format!("spawn_blocking join: {e}")))?;
 
         if providers.is_empty() {
             debug!("   ⏭️  No {} providers found via filesystem", capability);
@@ -213,9 +213,9 @@ fn discover_on_filesystem(search_paths: &[PathBuf], capability: &str) -> Vec<Pro
                     let provider_id = extract_provider_id(path.to_string_lossy().as_ref());
 
                     let mut provider = Provider::new(
-                        provider_id.clone(),
+                        provider_id.as_ref(),
                         vec![capability.to_string()],
-                        format!("/primal/{provider_id}"),
+                        format!("/primal/{}", provider_id.as_ref()),
                     );
                     provider.metadata.discovery_method =
                         format!("filesystem:{}", search_path.display());
@@ -235,8 +235,11 @@ fn discover_on_filesystem(search_paths: &[PathBuf], capability: &str) -> Vec<Pro
 /// - `/tmp/beardog.sock` → `beardog`
 /// - `/tmp/beardog-nat0.sock` → `beardog-nat0`
 /// - `/run/user/1000/crypto.sock` → `crypto`
-fn extract_provider_id(socket_path: &str) -> String {
-    PathBuf::from(socket_path).file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string()
+fn extract_provider_id(socket_path: &str) -> Arc<str> {
+    PathBuf::from(socket_path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map_or_else(|| Arc::from("unknown"), Arc::from)
 }
 
 #[cfg(test)]
@@ -247,10 +250,10 @@ mod tests {
 
     #[test]
     fn test_extract_provider_id() {
-        assert_eq!(extract_provider_id("/tmp/beardog.sock"), "beardog");
-        assert_eq!(extract_provider_id("/tmp/beardog-nat0.sock"), "beardog-nat0");
-        assert_eq!(extract_provider_id("/run/user/1000/crypto.sock"), "crypto");
-        assert_eq!(extract_provider_id("storage provider.sock"), "storage provider");
+        assert_eq!(extract_provider_id("/tmp/beardog.sock").as_ref(), "beardog");
+        assert_eq!(extract_provider_id("/tmp/beardog-nat0.sock").as_ref(), "beardog-nat0");
+        assert_eq!(extract_provider_id("/run/user/1000/crypto.sock").as_ref(), "crypto");
+        assert_eq!(extract_provider_id("storage provider.sock").as_ref(), "storage provider");
     }
 
     #[tokio::test]
@@ -280,12 +283,12 @@ mod tests {
 
     #[test]
     fn extract_provider_id_empty_path_uses_unknown() {
-        assert_eq!(extract_provider_id(""), "unknown");
+        assert_eq!(extract_provider_id("").as_ref(), "unknown");
     }
 
     #[test]
     fn extract_provider_id_hidden_file() {
-        assert_eq!(extract_provider_id("/tmp/.hidden.sock"), ".hidden");
+        assert_eq!(extract_provider_id("/tmp/.hidden.sock").as_ref(), ".hidden");
     }
 
     #[tokio::test]

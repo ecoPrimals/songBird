@@ -5,7 +5,7 @@
 //!
 //! Systematic replacement of hardcoded values with configurable alternatives.
 
-#![allow(missing_docs, reason = "legacy mirror of canonical defaults; fields self-descriptive")]
+#![expect(missing_docs, reason = "canonical defaults module — fields are self-descriptive")]
 
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -278,10 +278,6 @@ impl Default for PerformanceConfig {
     }
 }
 
-#[allow(
-    deprecated,
-    reason = "legacy struct keeps deprecated field mirrors for backward compatibility"
-)]
 impl Default for PrimalConfig {
     fn default() -> Self {
         let base_ip = env_or_default(
@@ -404,7 +400,9 @@ fn env_capability_first_then_legacy_warn(
     if let Ok(v) = songbird_process_env::var(legacy_key)
         && !v.is_empty()
     {
-        tracing::warn!("Using legacy env var {legacy_key} — migrate to {migrate_to}");
+        tracing::warn!(
+            "Using legacy env var {legacy_key} — migrate to {migrate_to}; prefer CAPABILITY_*_ENDPOINT for capability-first configuration"
+        );
         return v;
     }
     default.to_string()
@@ -422,7 +420,7 @@ fn resolve_storage_provider_endpoint(base_ip: &str, base_port: u16) -> String {
         && !v.is_empty()
     {
         tracing::warn!(
-            "Using legacy env var SONGBIRD_NESTGATE_ENDPOINT — migrate to SONGBIRD_STORAGE_ENDPOINT or SONGBIRD_STORAGE_PROVIDER_ENDPOINT"
+            "Using legacy env var SONGBIRD_NESTGATE_ENDPOINT — migrate to SONGBIRD_STORAGE_ENDPOINT, SONGBIRD_STORAGE_PROVIDER_ENDPOINT, or CAPABILITY_STORAGE_ENDPOINT (capability-first)"
         );
         return v;
     }

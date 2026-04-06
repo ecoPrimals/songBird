@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! High-Performance tarpc Server for Songbird
@@ -229,6 +229,10 @@ impl SongbirdRpc for TarpcServerSimple {
 /// **Legacy**: Kept for backward compatibility. New code should use `TarpcServerSimple`.
 #[derive(Clone)]
 pub struct TarpcServer {
+    #[expect(
+        dead_code,
+        reason = "legacy tarpc surface; retained for future orchestrator-scoped RPC"
+    )]
     orchestrator: Arc<SongbirdOrchestrator>,
     service_registry: Arc<FederatedServiceRegistry>,
     start_time: std::time::Instant,
@@ -573,6 +577,13 @@ impl Default for TarpcConfig {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::test_sync_env::{VarGuard, env_lock};
+    use songbird_network_federation::service_registry::{
+        ServiceHealthStatus, ServiceRegistration as FedServiceRegistration,
+    };
+    use songbird_universal::tarpc_types::SongbirdRpc;
+    use std::collections::HashMap;
+    use tarpc::context;
 
     #[test]
     fn test_tarpc_config_default() {
@@ -597,6 +608,95 @@ mod tests {
         assert_eq!(info.id, deserialized.id);
     }
 
-    // Integration tests would go here
-    // Require full orchestrator setup
+    fn sample_fed_registration(id: &str, cap: &str, endpoint: &str) -> FedServiceRegistration {
+        FedServiceRegistration {
+            service_id: id.into(),
+            service_name: format!("svc-{id}"),
+            service_type: cap.into(),
+            tower_id: "t1".into(),
+            tower_name: "Tower".into(),
+            endpoint: endpoint.into(),
+            capabilities: vec![cap.into()],
+            metadata: HashMap::new(),
+            health_status: ServiceHealthStatus::Healthy,
+            registered_at: chrono::Utc::now(),
+            last_seen: chrono::Utc::now(),
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn tarpc_simple_discover_filters_by_capability() {
+        let reg = Arc::new(FederatedServiceRegistry::new());
+        reg.register_local(sample_fed_registration("a", "compute", "http://127.0.0.1:0")).await;
+        reg.register_local(sample_fed_registration("b", "storage", "http://127.0.0.1:0")).await;
+
+        let srv = TarpcServerSimple::new(Arc::clone(&reg));
+        tokio::time::sleep(std::time::Duration::from_secs(0)).await;
+        let list = srv.clone().discover(context::current(), "compute".into()).await;
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].id, "a");
+        assert_eq!(list[0].capability, "compute");
+    }
+
+    #[tokio::test]
+    async fn tarpc_simple_register_and_unregister_round_trip() {
+        let reg = Arc::new(FederatedServiceRegistry::new());
+        let srv = TarpcServerSimple::new(Arc::clone(&reg));
+
+        let registration = ServiceRegistration {
+            service_id: "svc-1".into(),
+            service_name: "n".into(),
+            capability: "ai".into(),
+            endpoint: "http://127.0.0.1:0".into(),
+            tower_id: None,
+            tower_name: None,
+            metadata: HashMap::new(),
+        };
+
+        let ok = srv.clone().register(context::current(), registration).await;
+        assert!(ok.success);
+
+        let not_found = srv.clone().unregister(context::current(), "missing".into()).await;
+        assert!(!not_found.success);
+
+        let removed = srv.unregister(context::current(), "svc-1".into()).await;
+        assert!(removed.success);
+    }
+
+    #[tokio::test]
+    async fn tarpc_simple_health_and_version() {
+        let reg = Arc::new(FederatedServiceRegistry::new());
+        let srv = TarpcServerSimple::new(Arc::clone(&reg));
+
+        let h = srv.clone().health(context::current()).await;
+        assert_eq!(h.status, "healthy");
+        assert_eq!(h.services_count, 0);
+
+        let v = srv.clone().version(context::current()).await;
+        assert_eq!(v.protocol, "tarpc");
+
+        let _serial = env_lock();
+        let _tp = VarGuard::set("SONGBIRD_TARPC_PORT", "0");
+        let _hp = VarGuard::set("SONGBIRD_HTTP_PORT", "0");
+        let protos = srv.protocols(context::current()).await;
+        assert!(protos.iter().any(|p| p.name == "tarpc"));
+    }
+
+    #[tokio::test]
+    async fn tarpc_legacy_server_dispatch_matches_simple() {
+        let port = songbird_test_utils::test_port("tarpc_orch_sec");
+        let url = format!("http://127.0.0.1:{port}");
+        let _serial = env_lock();
+        let _sec = VarGuard::set("SONGBIRD_SECURITY_PROVIDER", url.as_str());
+        let config = songbird_types::config::CanonicalSongbirdConfig::default();
+        let orch = crate::SongbirdOrchestrator::new(config).await.expect("orch");
+        let fed = Arc::new(FederatedServiceRegistry::new());
+        let arc_orch = Arc::new(orch);
+        let srv = TarpcServer::new(Arc::clone(&arc_orch), Arc::clone(&fed));
+
+        fed.register_local(sample_fed_registration("x", "compute", "http://127.0.0.1:0")).await;
+        let out = srv.discover(context::current(), "compute".into()).await;
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].id, "x");
+    }
 }

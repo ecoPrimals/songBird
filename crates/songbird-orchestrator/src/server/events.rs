@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 /// Real-Time Event Broadcasting System
@@ -199,6 +199,10 @@ pub struct EventBroadcaster {
     subscriptions: Arc<RwLock<HashMap<String, Subscription>>>,
 
     /// Global event channel
+    #[expect(
+        dead_code,
+        reason = "retained for global broadcast fan-out when subscriptions are extended"
+    )]
     global_tx: broadcast::Sender<Event>,
 
     /// Event statistics

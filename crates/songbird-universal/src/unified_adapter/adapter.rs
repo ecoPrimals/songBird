@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::error::UniversalAdapterError;
@@ -21,7 +21,7 @@ pub struct UnifiedUniversalAdapter {
     /// Registry of discovered capabilities
     capability_registry: Arc<RwLock<CapabilityRegistry>>,
     /// Active service connections (reserved for connection pooling implementation)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     service_connections: Arc<RwLock<HashMap<String, super::types::ServiceConnection>>>,
     /// Adapter configuration
     config: UnifiedAdapterConfig,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Songbird Types Library
@@ -96,8 +96,6 @@ pub mod errors;
 pub mod health;
 pub mod lineage; // Genetic lineage types
 pub mod memory_optimized;
-#[path = "performance/mod.rs"]
-mod performance_helpers;
 pub mod primal;
 pub mod response;
 pub mod service;

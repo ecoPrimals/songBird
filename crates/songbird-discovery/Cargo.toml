@@ -24,22 +24,22 @@ songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rus
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 # External dependencies
-tokio = { version = "1.0", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
-tracing = "0.1"
-async-trait = "0.1"
-futures-util = "0.3"
+tracing = { workspace = true }
+async-trait = { workspace = true }
+futures-util = { workspace = true }
 tokio-stream = { version = "0.1", features = ["sync"] }
-parking_lot = "0.12"
+parking_lot = { workspace = true }
 base64 = "0.22"  # For BearDog BirdSong provider
 uuid = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 hickory-resolver = { workspace = true }
 sha2 = "0.10"  # For session ID generation in anonymous discovery
-anyhow = "1.0"  # For lineage discovery error handling
+anyhow = { workspace = true }  # For lineage discovery error handling
 hex = "0.4"  # For discovery packet hashing
 socket2 = { workspace = true }  # For multicast socket configuration (aligned with workspace 0.6)
 # `pure`: pure Rust BLAKE3 (no C/assembly build) for ecoBin compliance
@@ -60,5 +60,6 @@ orchestration = []
 dns-srv = []
 
 [dev-dependencies]
-tracing-subscriber = "0.3"
+songbird-test-utils = { path = "../songbird-test-utils" }
+tracing-subscriber = { workspace = true }
 

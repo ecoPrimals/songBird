@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Universal Primal Adapter (UPA)
@@ -319,7 +319,7 @@ impl UniversalAdapter {
         &self,
         provider: &DiscoveredProvider,
         method: &str,
-        params: serde_json::Value,
+        _params: serde_json::Value,
     ) -> Result<serde_json::Value> {
         let url = format!("{}/api/v1/{}", provider.endpoint, method);
         debug!("Calling HTTP provider: GET {}", url);

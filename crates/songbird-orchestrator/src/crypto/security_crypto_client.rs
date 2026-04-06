@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! `security provider` Crypto Client for TLS Delegation
@@ -439,6 +439,114 @@ async fn read_json_rpc_response(stream: &mut PlatformStream) -> Result<String> {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    mod unix_mock_rpc {
+        use super::*;
+        use serde_json::json;
+        use std::time::Duration;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::UnixListener;
+
+        /// Single-request JSON-RPC mock: one accept per RPC, newline-delimited.
+        pub(super) async fn spawn_mock_crypto_socket(
+            response_body: serde_json::Value,
+        ) -> tempfile::TempDir {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let path = dir.path().join("security_crypto_mock.sock");
+            let _ = std::fs::remove_file(&path);
+            let listener = UnixListener::bind(&path).expect("bind unix listener");
+            let body = response_body.to_string();
+            tokio::spawn(async move {
+                let (mut stream, _) = listener.accept().await.expect("accept");
+                let mut buf = Vec::new();
+                let mut chunk = [0u8; 512];
+                while !buf.contains(&b'\n') {
+                    let n = stream.read(&mut chunk).await.expect("read req");
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&chunk[..n]);
+                }
+                stream.write_all(body.as_bytes()).await.expect("write");
+                stream.write_all(b"\n").await.expect("newline");
+            });
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            dir
+        }
+
+        #[tokio::test]
+        async fn sign_ed25519_mock_ok_decodes_signature() {
+            let sig = vec![7u8; 64];
+            let b64sig = B64.encode(&sig);
+            let dir = spawn_mock_crypto_socket(json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": { "signature": b64sig }
+            }))
+            .await;
+            let path = dir.path().join("security_crypto_mock.sock");
+            let path_str = path.to_string_lossy();
+            let out = sign_ed25519(path_str.as_ref(), b"msg", "k", "p").await.expect("sign");
+            assert_eq!(out, sig);
+        }
+
+        #[tokio::test]
+        async fn rpc_jsonrpc_error_propagates() {
+            let dir = spawn_mock_crypto_socket(json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "error": { "code": -1, "message": "nope" }
+            }))
+            .await;
+            let path = dir.path().join("security_crypto_mock.sock");
+            let err = blake3_hash(path.to_string_lossy().as_ref(), b"x")
+                .await
+                .expect_err("expected rpc error");
+            let s = format!("{err:#}");
+            assert!(s.contains("crypto.blake3_hash") || s.contains("nope"), "{s}");
+        }
+
+        #[tokio::test]
+        async fn rpc_missing_result_errors() {
+            let dir = spawn_mock_crypto_socket(json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "not_result": true
+            }))
+            .await;
+            let path = dir.path().join("security_crypto_mock.sock");
+            let err = verify_ed25519(path.to_string_lossy().as_ref(), b"m", b"s", b"p")
+                .await
+                .expect_err("missing result");
+            let s = format!("{err:#}");
+            assert!(s.contains("Missing 'result'"), "{s}");
+        }
+
+        #[tokio::test]
+        async fn verify_ed25519_reads_valid_flag() {
+            let dir = spawn_mock_crypto_socket(json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": { "valid": false }
+            }))
+            .await;
+            let path = dir.path().join("security_crypto_mock.sock");
+            let ok = verify_ed25519(path.to_string_lossy().as_ref(), b"m", b"s", b"p")
+                .await
+                .expect("verify");
+            assert!(!ok);
+        }
+
+        #[tokio::test]
+        async fn connection_refused_is_error() {
+            let err = hmac_sha256("/nonexistent/path/to/sock", b"k", b"d")
+                .await
+                .expect_err("connect fails");
+            let s = format!("{err:#}");
+            assert!(s.contains("Failed to connect") || s.contains("security provider"), "{s}");
+        }
+    }
 
     // NOTE: These tests require a running security provider instance with crypto API
     // They are marked #[ignore = "..."] to avoid CI failures without security provider

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! # 🎮 Songbird Gaming CLI
@@ -119,13 +119,7 @@
         clippy::case_sensitive_file_extension_comparisons,
     )
 )]
-// unsafe_code is already forbidden at crate level
-#![warn(clippy::all)]
-#![warn(rust_2018_idioms)]
-// CLI tool: Allow pedantic lints for user-facing code (lower test coverage ~5%, style flexibility)
-#![expect(clippy::pedantic, reason = "intentional pattern; clippy false positive for this API")]
-#![expect(clippy::nursery, reason = "intentional pattern; clippy false positive for this API")] // Allow nursery lints in CLI
-// CLI tool: Allow specific patterns common in user-facing tools
+// CLI tool: targeted lint expectations for user-facing code patterns
 #![expect(
     clippy::cast_precision_loss,
     reason = "intentional pattern; clippy false positive for this API"

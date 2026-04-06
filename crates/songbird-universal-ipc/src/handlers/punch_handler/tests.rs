@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::*;
 use serde_json::json;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[tokio::test]
@@ -250,7 +251,7 @@ async fn punch_status_includes_elapsed_ms() {
 #[test]
 fn punch_status_and_attempt_enum_debug() {
     let s = PunchStatus::Failed {
-        reason: "r".to_string(),
+        reason: Arc::from("r"),
     };
     assert!(format!("{s:?}").contains("Failed"));
 }

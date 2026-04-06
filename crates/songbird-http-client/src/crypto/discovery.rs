@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Crypto Capability Discovery
@@ -75,7 +75,10 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 
     // 3. Try legacy BEARDOG_SOCKET env var (backward compatibility)
     if let Ok(socket_path) = songbird_process_env::var("BEARDOG_SOCKET") {
-        info!("   Legacy security provider socket (BEARDOG_SOCKET): {}", socket_path);
+        warn!(
+            "DEPRECATED: BEARDOG_SOCKET is set — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first). Path: {}",
+            socket_path
+        );
         let provider = SecurityCryptoProvider::new(&socket_path);
         if provider.is_available().await {
             info!("✅ Using security provider at {} (legacy env BEARDOG_SOCKET)", socket_path);
@@ -119,7 +122,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 /// ```rust,ignore
 /// let crypto = discover_crypto_capability_at("/custom/path/crypto.sock").await?;
 /// ```
-#[allow(dead_code, reason = "API surface for downstream consumers and explicit-socket discovery")]
+#[expect(dead_code, reason = "API surface for downstream consumers and explicit-socket discovery")]
 pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn CryptoCapability>> {
     let provider = SecurityCryptoProvider::new(socket_path);
 
@@ -135,7 +138,7 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
 /// Create crypto capability without availability check (for testing)
 ///
 /// Use this in tests where you control the provider lifecycle.
-#[allow(
+#[expect(
     dead_code,
     reason = "test helper and explicit provider construction for controlled lifecycles"
 )]

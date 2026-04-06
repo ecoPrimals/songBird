@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Node capability discovery for deployment endpoints.
@@ -26,7 +26,7 @@ pub async fn get_capabilities(
         total: 0,
         available: 0,
     });
-    let total_memory = mem.total_gb();
+    let _total_memory = mem.total_gb();
     let available_memory = mem.available / (1024 * 1024 * 1024);
     let cpu_cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
     let cpu_load = 0.0_f32;

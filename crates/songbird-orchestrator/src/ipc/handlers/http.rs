@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTP/HTTPS Request Handler - Pure Rust Tower Atomic
@@ -144,6 +144,10 @@ impl HttpMethod {
 ///
 /// Holds the security provider RPC client for crypto operations
 pub struct HttpHandler {
+    #[expect(
+        dead_code,
+        reason = "retained for security-backed HTTP requests when handler is extended"
+    )]
     security_client: Arc<SecurityRpcClient>,
 }
 
@@ -236,17 +240,14 @@ impl HttpHandler {
         let method = HttpMethod::from_str(method_str)
             .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?;
 
-        let security_socket = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
-            .or_else(|_| songbird_process_env::var("CRYPTO_PROVIDER_SOCKET"))
-            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
-            .unwrap_or_else(|_| {
-                let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
-                    .or_else(|_| songbird_process_env::var("FAMILY_ID"))
-                    .unwrap_or_else(|_| "default".to_string());
-                songbird_types::defaults::paths::family_scoped_security_socket_path(&family_id)
-                    .to_string_lossy()
-                    .into_owned()
-            });
+        let security_socket = crate::env_config::security_crypto_ipc_socket_from_env(|| {
+            let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
+                .or_else(|_| songbird_process_env::var("FAMILY_ID"))
+                .unwrap_or_else(|_| "default".to_string());
+            songbird_types::defaults::paths::family_scoped_security_socket_path(&family_id)
+                .to_string_lossy()
+                .into_owned()
+        });
 
         let client = SongbirdHttpClient::new(&security_socket);
 

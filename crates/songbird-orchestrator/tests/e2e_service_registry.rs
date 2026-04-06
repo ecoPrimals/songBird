@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! E2E tests for service registry
@@ -30,19 +30,19 @@ async fn test_e2e_full_registration_discovery_workflow() {
 
     assert!(security_provider_id.starts_with("security-provider-"));
 
-    // Step 2: ToadStool registers with compute capability
-    let toadstool_id = registry
+    // Step 2: Compute capability provider registers
+    let compute_provider_id = registry
         .register_service(
-            "ToadStool".to_string(),
+            "compute-provider".to_string(),
             vec!["compute".to_string(), "execution".to_string()],
-            "/run/user/1000/toadstool-nat0.sock".to_string(),
+            "/run/user/1000/compute-provider-nat0.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
         .await
         .unwrap();
 
-    assert!(toadstool_id.starts_with("toadstool-"));
+    assert!(compute_provider_id.starts_with("compute-provider-"));
 
     // Step 3: storage provider registers with storage capability
     let storage_provider_id = registry
@@ -82,7 +82,7 @@ async fn test_e2e_full_registration_discovery_workflow() {
     // Verify all primals are present
     let names: Vec<String> = all_primals.iter().map(|p| p.primal_name.clone()).collect();
     assert!(names.contains(&"security-provider".to_string()));
-    assert!(names.contains(&"ToadStool".to_string()));
+    assert!(names.contains(&"compute-provider".to_string()));
     assert!(names.contains(&"storage-provider".to_string()));
 
     // Step 7: Check health of a specific service
@@ -301,9 +301,9 @@ async fn test_e2e_wildcard_discovery_returns_all() {
         .unwrap();
     registry
         .register_service(
-            "ToadStool".to_string(),
+            "compute-provider".to_string(),
             vec!["compute".to_string()],
-            "/tmp/toadstool.sock".to_string(),
+            "/tmp/compute-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -321,9 +321,9 @@ async fn test_e2e_wildcard_discovery_returns_all() {
         .unwrap();
     registry
         .register_service(
-            "Squirrel".to_string(),
+            "ai-provider".to_string(),
             vec!["ai_coordination".to_string()],
-            "/tmp/squirrel.sock".to_string(),
+            "/tmp/ai-provider.sock".to_string(),
             "json-rpc".to_string(),
             30,
         )
@@ -357,9 +357,9 @@ async fn test_e2e_wildcard_discovery_returns_all() {
     // Verify all expected primals are present
     let names: Vec<String> = all_primals.iter().map(|p| p.primal_name.clone()).collect();
     assert!(names.contains(&"security-provider".to_string()));
-    assert!(names.contains(&"ToadStool".to_string()));
+    assert!(names.contains(&"compute-provider".to_string()));
     assert!(names.contains(&"storage-provider".to_string()));
-    assert!(names.contains(&"Squirrel".to_string()));
+    assert!(names.contains(&"ai-provider".to_string()));
     assert!(names.contains(&"biomeOS".to_string()));
     assert!(names.contains(&"petalTongue".to_string()));
 }

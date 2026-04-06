@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Multicast UDP listener for JSON capability announcements (slow path).
@@ -13,7 +13,7 @@ use super::constants::{
 };
 use super::types::{DiscoveredService, DiscoveryMethod};
 
-pub(super) async fn wait_for_announcement(
+pub async fn wait_for_announcement(
     discovery_timeout: Duration,
     capability: &str,
 ) -> SongbirdResult<DiscoveredService> {
@@ -127,5 +127,40 @@ pub(super) async fn wait_for_announcement(
                 "Timeout waiting for announcement for capability '{capability}'"
             )))
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::super::constants::MIN_TIMEOUT_FOR_SLOW_DISCOVERY_PATHS;
+    use super::wait_for_announcement;
+    use songbird_types::SongbirdError;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn wait_for_announcement_errors_when_timeout_below_slow_path_minimum() {
+        let err = wait_for_announcement(Duration::from_millis(1), "sb-cap-too-fast")
+            .await
+            .expect_err("below-min timeout must fail fast");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+        let text = err.to_string();
+        assert!(text.contains("sb-cap-too-fast") || text.contains("timeout"));
+    }
+
+    #[tokio::test]
+    async fn min_timeout_constant_matches_slow_path_contract() {
+        assert!(MIN_TIMEOUT_FOR_SLOW_DISCOVERY_PATHS >= Duration::from_millis(50));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn wait_for_announcement_times_out_when_no_sender() {
+        let cap = "sb_ann_pause_cap";
+        let h = tokio::spawn(wait_for_announcement(Duration::from_millis(60), cap));
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_millis(200)).await;
+        let err = h.await.expect("join").expect_err("expected timeout or closed channel");
+        assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
+        assert!(err.to_string().contains(cap), "{err}");
     }
 }

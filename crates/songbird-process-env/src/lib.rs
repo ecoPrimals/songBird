@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 //! Process environment overlay — zero `unsafe`, fully safe Rust.

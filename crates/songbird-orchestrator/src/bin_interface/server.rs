@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Server mode implementation
@@ -140,7 +140,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         }
     });
     let socket_path_for_registration = args.socket.clone().or_else(|| effective_listen.clone());
-    let ipc_handle = if let Some(ref listen_addr) = effective_listen {
+    let _ipc_handle = if let Some(ref listen_addr) = effective_listen {
         // TCP IPC mode (Android/Universal)
         tracing::info!("");
         tracing::info!("🌐 Starting TCP IPC Server (Android/Universal mode)...");
@@ -243,7 +243,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         () = async {
             #[cfg(unix)]
             {
-                #[expect(clippy::expect_used, reason = "intentional pattern; clippy false positive for this API")] // signal handler setup is infallible in practice
+                #[expect(clippy::expect_used, reason = "process-level signal handler — panicking is correct on setup failure")]
                 let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
                     .expect("Failed to setup SIGTERM handler");
                 sigterm.recv().await;

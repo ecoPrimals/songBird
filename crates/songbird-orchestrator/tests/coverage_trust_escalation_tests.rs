@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(
@@ -455,7 +455,7 @@ fn test_security_trust_client_default_no_endpoint() {
 }
 
 #[test]
-fn test_beardog_client_new_with_security_provider() {
+fn test_security_trust_client_new_with_songbird_security_provider_env() {
     let _g = lock_env();
     songbird_process_env::set_var("SONGBIRD_SECURITY_PROVIDER", "http://localhost:9090");
     let _client = SecurityTrustClient::new();

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Rendezvous Handler for JSON-RPC
@@ -35,13 +35,13 @@ use tracing::info;
 #[derive(Debug, Deserialize)]
 pub struct RendezvousRegisterParams {
     /// Rendezvous server URL
-    pub server: String,
+    pub server: Arc<str>,
     /// Our node ID
-    pub node_id: String,
+    pub node_id: Arc<str>,
     /// Our family ID (for family-scoped discovery)
-    pub family_id: String,
+    pub family_id: Arc<str>,
     /// Public address (from STUN)
-    pub public_address: String,
+    pub public_address: Arc<str>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -57,9 +57,9 @@ pub struct RendezvousRegisterResult {
 #[derive(Debug, Deserialize)]
 pub struct RendezvousLookupParams {
     /// Rendezvous server URL
-    pub server: String,
+    pub server: Arc<str>,
     /// Target node ID or family ID
-    pub target: String,
+    pub target: Arc<str>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -70,10 +70,10 @@ pub struct RendezvousLookupResult {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct RendezvousPeer {
-    pub node_id: String,
-    pub family_id: String,
-    pub public_address: String,
-    pub rendezvous_token: String,
+    pub node_id: Arc<str>,
+    pub family_id: Arc<str>,
+    pub public_address: Arc<str>,
+    pub rendezvous_token: Arc<str>,
 }
 
 // ============================================================================
@@ -119,12 +119,19 @@ impl RendezvousHandler {
 
         info!(
             "🌐 Registering with rendezvous server: {} (node: {}, family: {})",
-            params.server, params.node_id, params.family_id
+            params.server.as_ref(),
+            params.node_id.as_ref(),
+            params.family_id.as_ref()
         );
 
         let result = self
             .client
-            .register(&params.server, &params.node_id, &params.family_id, &params.public_address)
+            .register(
+                params.server.as_ref(),
+                params.node_id.as_ref(),
+                params.family_id.as_ref(),
+                params.public_address.as_ref(),
+            )
             .await
             .map_err(|e| IpcError::Internal(format!("Rendezvous registration failed: {e}")))?;
 
@@ -140,12 +147,13 @@ impl RendezvousHandler {
 
         info!(
             "🔍 Looking up peer via rendezvous server: {} (target: {})",
-            params.server, params.target
+            params.server.as_ref(),
+            params.target.as_ref()
         );
 
         let peers = self
             .client
-            .lookup(&params.server, &params.target)
+            .lookup(params.server.as_ref(), params.target.as_ref())
             .await
             .map_err(|e| IpcError::Internal(format!("Rendezvous lookup failed: {e}")))?;
 
@@ -165,9 +173,10 @@ impl RendezvousHandler {
 mod tests_support {
     use super::{RendezvousClient, RendezvousPeer, RendezvousRegisterResult};
     use async_trait::async_trait;
+    use std::sync::Arc;
 
     pub struct MockRendezvousClient {
-        registered: std::sync::RwLock<Vec<(String, String, String, String)>>,
+        registered: std::sync::RwLock<Vec<(Arc<str>, Arc<str>, Arc<str>, Arc<str>)>>,
     }
 
     impl Default for MockRendezvousClient {
@@ -187,10 +196,10 @@ mod tests_support {
         pub fn add_peer(&self, node_id: &str, family_id: &str, public_address: &str, token: &str) {
             let mut registered = self.registered.write().unwrap();
             registered.push((
-                node_id.to_string(),
-                family_id.to_string(),
-                public_address.to_string(),
-                token.to_string(),
+                Arc::from(node_id),
+                Arc::from(family_id),
+                Arc::from(public_address),
+                Arc::from(token),
             ));
         }
     }
@@ -223,12 +232,14 @@ mod tests_support {
                 let registered = self.registered.read().unwrap();
                 registered
                     .iter()
-                    .filter(|(node_id, family_id, _, _)| node_id == target || family_id == target)
+                    .filter(|(node_id, family_id, _, _)| {
+                        node_id.as_ref() == target || family_id.as_ref() == target
+                    })
                     .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
-                        node_id: node_id.clone(),
-                        family_id: family_id.clone(),
-                        public_address: public_address.clone(),
-                        rendezvous_token: token.clone(),
+                        node_id: Arc::clone(node_id),
+                        family_id: Arc::clone(family_id),
+                        public_address: Arc::clone(public_address),
+                        rendezvous_token: Arc::clone(token),
                     })
                     .collect()
             };
@@ -299,9 +310,9 @@ mod tests {
         let result = handler.handle_lookup(params).await.unwrap();
 
         assert_eq!(result.peers.len(), 1);
-        assert_eq!(result.peers[0].node_id, "node-gamma");
-        assert_eq!(result.peers[0].family_id, "nat0");
-        assert_eq!(result.peers[0].public_address, "203.0.113.100:5000");
+        assert_eq!(result.peers[0].node_id.as_ref(), "node-gamma");
+        assert_eq!(result.peers[0].family_id.as_ref(), "nat0");
+        assert_eq!(result.peers[0].public_address.as_ref(), "203.0.113.100:5000");
     }
 
     #[tokio::test]
@@ -323,8 +334,8 @@ mod tests {
         let result = handler.handle_lookup(params).await.unwrap();
 
         assert_eq!(result.peers.len(), 2); // Should find alpha and beta
-        assert!(result.peers.iter().any(|p| p.node_id == "node-alpha"));
-        assert!(result.peers.iter().any(|p| p.node_id == "node-beta"));
+        assert!(result.peers.iter().any(|p| p.node_id.as_ref() == "node-alpha"));
+        assert!(result.peers.iter().any(|p| p.node_id.as_ref() == "node-beta"));
     }
 
     #[tokio::test]
@@ -366,7 +377,10 @@ mod tests {
         let lookup_result = handler.handle_lookup(lookup_params).await.unwrap();
 
         assert_eq!(lookup_result.peers.len(), 1);
-        assert_eq!(lookup_result.peers[0].node_id, "node-delta");
-        assert_eq!(lookup_result.peers[0].rendezvous_token, register_result.rendezvous_token);
+        assert_eq!(lookup_result.peers[0].node_id.as_ref(), "node-delta");
+        assert_eq!(
+            lookup_result.peers[0].rendezvous_token.as_ref(),
+            register_result.rendezvous_token.as_str()
+        );
     }
 }

@@ -27,7 +27,7 @@ serde_json = { workspace = true }
 bytes = { workspace = true }
 
 # Time handling
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 # HTTP client (for IPC handlers)
 songbird-http-client = { path = "../songbird-http-client" }
@@ -57,7 +57,7 @@ songbird-network-federation = { path = "../songbird-network-federation" }
 songbird-igd = { path = "../songbird-igd" }
 
 # UUID generation
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { workspace = true }
 
 # Base64 encoding (for BirdSong beacons)
 base64 = "0.22"
@@ -82,6 +82,7 @@ tokio-test = "0.4"
 tempfile = "3.0"
 tracing-subscriber = { workspace = true }
 futures = "0.3"  # For join_all in chaos tests
+songbird-test-utils = { path = "../songbird-test-utils" }
 
 [features]
 default = []
