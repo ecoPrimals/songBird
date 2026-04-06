@@ -42,6 +42,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 /// Helper to simulate a tower with potential port conflict
+#[allow(dead_code)]
 struct SimulatedTower {
     name: String,
     configured_port: u16,
@@ -212,6 +213,7 @@ async fn test_e2e_discovery_broadcast_actual_port() {
     // Test that discovery message contains actual port, not configured
 
     #[derive(Debug, Clone)]
+    #[allow(dead_code)]
     struct DiscoveryMessage {
         node_name: String,
         advertised_port: u16,

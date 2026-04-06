@@ -64,7 +64,7 @@ mod jsonrpc_line_tcp {
         loop {
             line.clear();
             match reader.read_line(&mut line).await {
-                Ok(0) => break,
+                Ok(0) | Err(_) => break,
                 Ok(_) => {
                     if line.trim().is_empty() {
                         continue;
@@ -73,7 +73,16 @@ mod jsonrpc_line_tcp {
                     let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
                         Ok(request) => {
                             let id = request.id.clone().unwrap_or(Value::Null);
-                            if request.jsonrpc != "2.0" {
+                            if request.jsonrpc == "2.0" {
+                                let params = request.params.unwrap_or(Value::Null);
+                                match handler.handle(&request.method, params).await {
+                                    Ok(result) => JsonRpcResponse::success(result, id),
+                                    Err(message) => JsonRpcResponse::error(
+                                        JsonRpcError::internal_error(message),
+                                        id,
+                                    ),
+                                }
+                            } else {
                                 JsonRpcResponse::error(
                                     JsonRpcError {
                                         code: JsonRpcError::INVALID_REQUEST,
@@ -83,15 +92,6 @@ mod jsonrpc_line_tcp {
                                     },
                                     id,
                                 )
-                            } else {
-                                let params = request.params.unwrap_or(Value::Null);
-                                match handler.handle(&request.method, params).await {
-                                    Ok(result) => JsonRpcResponse::success(result, id),
-                                    Err(message) => JsonRpcResponse::error(
-                                        JsonRpcError::internal_error(message),
-                                        id,
-                                    ),
-                                }
                             }
                         }
                         Err(e) => JsonRpcResponse::error(
@@ -115,7 +115,6 @@ mod jsonrpc_line_tcp {
                     // Match orchestrator TCP IPC: one request per connection.
                     break;
                 }
-                Err(_) => break,
             }
         }
     }

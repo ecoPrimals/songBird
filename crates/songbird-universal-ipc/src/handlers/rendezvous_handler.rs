@@ -176,6 +176,7 @@ mod tests_support {
     use std::sync::Arc;
 
     pub struct MockRendezvousClient {
+        #[allow(clippy::type_complexity)]
         registered: std::sync::RwLock<Vec<(Arc<str>, Arc<str>, Arc<str>, Arc<str>)>>,
     }
 

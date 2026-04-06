@@ -9,6 +9,7 @@ static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 /// Process-wide lock for tests that mutate `songbird_process_env`.
 #[must_use = "hold until test completes"]
+#[allow(clippy::expect_used)]
 pub fn env_lock() -> std::sync::MutexGuard<'static, ()> {
     ENV_LOCK.get_or_init(|| Mutex::new(())).lock().expect("test env lock poisoned")
 }

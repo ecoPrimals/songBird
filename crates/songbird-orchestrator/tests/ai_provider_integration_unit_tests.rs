@@ -15,6 +15,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
 /// Helper: Clean environment for isolated test
+#[allow(dead_code)]
 fn clean_env() -> std::collections::HashMap<String, String> {
     let mut env = std::collections::HashMap::new();
     env.insert("PATH".to_string(), std::env::var("PATH").unwrap_or_default());
@@ -22,6 +23,7 @@ fn clean_env() -> std::collections::HashMap<String, String> {
 }
 
 /// Helper: Send JSON-RPC request to Unix socket
+#[allow(dead_code)]
 async fn send_jsonrpc_request(
     socket_path: &str,
     method: &str,

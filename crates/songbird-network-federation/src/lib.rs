@@ -25,11 +25,12 @@
     clippy::pub_use,
     reason = "consolidated crate re-exports federation/network entry points"
 )]
-#![expect(
+#![allow(
     clippy::missing_errors_doc,
-    clippy::cast_possible_truncation,
+    reason = "network federation: large API; # Errors docs added incrementally"
+)]
+#![expect(
     clippy::unused_async,
-    clippy::unused_self,
     clippy::struct_excessive_bools,
     clippy::items_after_statements,
     clippy::match_same_arms,

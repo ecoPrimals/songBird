@@ -300,7 +300,7 @@ mod tests {
 
     #[async_trait]
     impl CryptoProvider for MockCryptoProvider {
-        async fn blake3_hash(&self, data: &[u8]) -> Result<Vec<u8>> {
+        async fn blake3_hash(&self, _data: &[u8]) -> Result<Vec<u8>> {
             // Mock: return deterministic hash
             Ok(vec![0u8; 32])
         }

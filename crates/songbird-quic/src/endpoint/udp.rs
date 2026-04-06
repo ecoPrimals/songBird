@@ -18,7 +18,7 @@ pub const MAX_DATAGRAM_SIZE: usize = 1200;
 #[derive(Debug)]
 pub struct Datagram {
     /// Raw datagram bytes.
-    #[expect(dead_code, reason = "QUIC datagram payload — used by connection/stream layer")]
+    #[allow(dead_code)]
     pub data: Vec<u8>,
     /// Source address of the sender.
     pub source: SocketAddr,
@@ -57,7 +57,7 @@ impl UdpEndpoint {
     }
 
     /// Send a datagram to the specified address.
-    #[expect(dead_code, reason = "QUIC send path — activated by connection manager")]
+    #[allow(dead_code)]
     pub async fn send_to(&self, data: &[u8], addr: SocketAddr) -> Result<usize> {
         if data.len() > MAX_DATAGRAM_SIZE {
             return Err(QuicError::Config(format!(

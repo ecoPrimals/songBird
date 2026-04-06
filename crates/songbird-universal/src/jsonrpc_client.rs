@@ -89,8 +89,8 @@ struct JsonRpcRequest<'a> {
 /// JSON-RPC 2.0 Response — borrows strings from the response line buffer when possible.
 #[derive(Debug, Clone, Deserialize)]
 struct JsonRpcResponse<'a> {
-    #[expect(dead_code, reason = "deserialized from JSON-RPC envelope; not read by client")]
     #[serde(borrow)]
+    #[allow(dead_code)]
     jsonrpc: Cow<'a, str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<Value>,

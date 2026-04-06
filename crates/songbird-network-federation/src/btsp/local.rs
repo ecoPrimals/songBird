@@ -188,6 +188,7 @@ impl LocalKeyManager {
     }
 
     /// Encrypt data using AES-256-GCM
+    #[allow(clippy::unused_self, reason = "instance method for symmetry with decrypt and future context")]
     fn encrypt(
         &self,
         data: &[u8],
@@ -228,6 +229,7 @@ impl LocalKeyManager {
     }
 
     /// Decrypt data using AES-256-GCM
+    #[allow(clippy::unused_self, reason = "instance method for symmetry with encrypt and future context")]
     fn decrypt(
         &self,
         data: &[u8],

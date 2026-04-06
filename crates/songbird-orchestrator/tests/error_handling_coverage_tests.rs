@@ -271,6 +271,7 @@ async fn execute_task_with_bad_response(_task_id: &str) -> Result<(), SongbirdEr
 // ============================================================================
 
 /// Simple task request struct for testing
+#[allow(dead_code)]
 struct TaskRequest {
     id: String,
     payload: Vec<u8>,

@@ -27,17 +27,18 @@ use tempfile::{TempDir, tempdir};
 // TEST HELPERS
 // ====================
 
+#[allow(dead_code)]
+fn create_test_config(dir: &TempDir, content: &str) -> PathBuf {
+    let config_path = dir.path().join("test-config.toml");
+    fs::write(&config_path, content).expect("Failed to write test config");
+    config_path
+}
+
 fn clean_cmd() -> Command {
     let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd
-}
-
-fn create_test_config(dir: &TempDir, content: &str) -> PathBuf {
-    let config_path = dir.path().join("test-config.toml");
-    fs::write(&config_path, content).expect("Failed to write test config");
-    config_path
 }
 
 // ====================

@@ -170,7 +170,7 @@ impl SecurityRpcClient {
     }
 
     /// Get endpoint based on mode (for diagnostics/debugging)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code)]
     pub(super) const fn endpoint(&self) -> &IpcEndpoint {
         match &self.mode {
             SecurityRpcMode::Direct {
@@ -185,7 +185,7 @@ impl SecurityRpcClient {
     }
 
     /// Check if in Neural API mode (for diagnostics/debugging)
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code)]
     pub(super) const fn is_neural_api(&self) -> bool {
         matches!(self.mode, SecurityRpcMode::NeuralApi { .. })
     }

@@ -355,7 +355,7 @@ impl SecurityTlsCryptoClient {
     }
 
     /// Make a JSON-RPC call with a direct method name (legacy/testing)
-    #[expect(dead_code, reason = "only exercised by unit tests in `crypto::tests`")]
+    #[allow(dead_code)]
     async fn call_jsonrpc(
         &self,
         method: &str,

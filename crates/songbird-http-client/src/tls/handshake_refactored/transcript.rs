@@ -18,7 +18,7 @@ impl TlsHandshake {
     /// - `ClientHello`: Must strip 5-byte TLS record header before calling
     /// - `ServerHello`: Already stripped by `read_record()`
     /// - Post-handshake messages: Already stripped by `read_record()`
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code)]
     pub(super) fn update_transcript(&mut self, message: &[u8]) {
         let before = self.transcript.len();
         let after = before + message.len();
@@ -287,7 +287,7 @@ impl TlsHandshake {
     ///
     /// NOTE: This uses local SHA-256 only. For cipher-aware hashing (SHA-384 for 0x1302),
     /// use `compute_transcript_hash_for_cipher` instead.
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code)]
     pub(super) fn compute_transcript_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(&self.transcript);

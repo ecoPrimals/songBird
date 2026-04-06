@@ -279,7 +279,7 @@ mod tests {
         let result = SovereignBinder::bind_sovereign(0).await;
         assert!(result.is_ok(), "Should bind to ephemeral port");
 
-        if let Ok((listener, addr)) = result {
+        if let Ok((_listener, addr)) = result {
             assert!(addr.port() > 0, "Should have assigned port");
             println!("Sovereign bind successful: {addr}");
         }

@@ -136,6 +136,7 @@ where
 /// # Returns
 ///
 /// `Ok(T)` if successful, `Err` if timeout or error
+#[allow(dead_code)]
 pub async fn poll_until_ok<F, T, E>(mut check: F, timeout: Duration) -> Result<T, PollError<E>>
 where
     F: FnMut() -> Result<T, E>,
@@ -178,6 +179,7 @@ where
 }
 
 /// Poll until collection equals expected count (exact match)
+#[allow(dead_code)]
 pub async fn poll_until_eq<F>(get_count: F, expected: usize, timeout: Duration) -> bool
 where
     F: Fn() -> usize,
@@ -211,6 +213,7 @@ where
 }
 
 /// Poll error types
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum PollError<E> {
     /// Timeout reached

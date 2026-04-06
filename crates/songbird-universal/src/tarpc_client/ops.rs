@@ -124,7 +124,7 @@ mod tests {
         async fn discover(self, _ctx: Context, capability: String) -> Vec<ServiceInfo> {
             vec![ServiceInfo {
                 id: format!("svc-{capability}"),
-                capability: capability.clone(),
+                capability,
                 endpoint: "tarpc://127.0.0.1:7001".into(),
                 status: "active".into(),
                 // `serde_json::Value` does not round-trip through bincode the same way as JSON;
@@ -199,9 +199,8 @@ mod tests {
         let addr = listener.local_addr().expect("local_addr");
         let handle = tokio::spawn(async move {
             loop {
-                let (stream, _) = match listener.accept().await {
-                    Ok(c) => c,
-                    Err(_) => break,
+                let Ok((stream, _)) = listener.accept().await else {
+                    break;
                 };
                 let server = server.clone();
                 tokio::spawn(async move {

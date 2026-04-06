@@ -203,6 +203,7 @@ fn test_circuit_breaker_in_box() {
 
 #[test]
 fn test_circuit_breaker_nested_structures() {
+    #[allow(dead_code)]
     struct Service {
         name: String,
         inner: InnerService,

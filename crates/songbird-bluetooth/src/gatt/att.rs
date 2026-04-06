@@ -10,13 +10,16 @@ pub mod att_opcode {
     pub const READ_BY_GROUP_TYPE_REQ: u8 = 0x10;
     pub const READ_BY_GROUP_TYPE_RSP: u8 = 0x11;
     pub const READ_BY_TYPE_REQ: u8 = 0x08;
+    #[allow(dead_code)]
     pub const READ_BY_TYPE_RSP: u8 = 0x09;
     pub const READ_REQ: u8 = 0x0A;
+    #[allow(dead_code)]
     pub const READ_RSP: u8 = 0x0B;
     pub const WRITE_REQ: u8 = 0x12;
+    #[allow(dead_code)]
     pub const WRITE_RSP: u8 = 0x13;
     pub const WRITE_CMD: u8 = 0x52;
-    #[expect(dead_code, reason = "reserved for notify/indicate handling")]
+    #[allow(dead_code)]
     pub const HANDLE_VALUE_NTF: u8 = 0x1B;
 }
 
@@ -30,7 +33,7 @@ pub mod att_uuid {
     pub const CHARACTERISTIC: u16 = 0x2803;
 
     /// Client Characteristic Configuration Descriptor (0x2902)
-    #[expect(dead_code, reason = "reserved for CCCD reads/writes")]
+    #[allow(dead_code)]
     pub const CLIENT_CHAR_CONFIG: u16 = 0x2902;
 }
 

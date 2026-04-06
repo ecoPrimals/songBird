@@ -132,6 +132,7 @@ impl GamingManager {
     /// Get health status
     pub async fn health_check(&self) -> SongbirdResult<GamingHealth> {
         // Status is Healthy regardless of session count - simplify the logic
+        #[allow(clippy::cast_possible_truncation)]
         Ok(GamingHealth {
             status: NetworkStatus::Healthy,
             active_sessions: self.active_sessions.len() as u32,

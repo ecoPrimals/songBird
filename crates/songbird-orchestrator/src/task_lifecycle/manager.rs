@@ -603,7 +603,7 @@ mod tests {
         };
 
         // Create task (should emit Created event)
-        let task_id = manager.create_task(owner.clone(), spec).await?;
+        let _task_id = manager.create_task(owner.clone(), spec).await?;
 
         // Receive event
         let event = rx.recv().await?;

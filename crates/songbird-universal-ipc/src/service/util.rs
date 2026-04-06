@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn wrap_result_err_includes_context_and_display() {
         let err = IpcServiceHandler::wrap_result::<i32>(
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "boom")),
+            Err(std::io::Error::other("boom")),
             "my_operation",
         )
         .unwrap_err();

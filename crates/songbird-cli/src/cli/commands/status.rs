@@ -551,9 +551,9 @@ mod tests {
 
     #[test]
     fn detailed_memory_fraction_matches_expected_ratio() {
-        let memory_usage: u64 = 268_435_456;
-        let memory_total: u64 = 8_589_934_592;
-        let ratio = memory_usage as f64 / memory_total as f64;
+        let memory_usage: f64 = 268_435_456.0;
+        let memory_total: f64 = 8_589_934_592.0;
+        let ratio = memory_usage / memory_total;
         assert!((ratio - 0.03125).abs() < f64::EPSILON);
     }
 }
