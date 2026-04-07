@@ -9,11 +9,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-/// Sync persistence backend for onion service data (SB-03: abstraction for sled → storage capability IPC).
+/// Sync persistence backend for onion service data.
 ///
-/// The sled implementation (`OnionStorage`) is the current default when `sled-storage` is enabled.
-/// When a storage capability provider exposes `storage.*` IPC (NG-01), a `StorageProviderOnionBackend` can implement this trait
-/// to delegate persistence over JSON-RPC.
+/// Production path: [`NestGateOnionStorage`](crate::storage_nestgate::NestGateOnionStorage) delegates
+/// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
+/// Fallback: [`InMemoryOnionStorage`] when no provider is available.
+/// Legacy: `OnionStorage` (sled, behind deprecated `sled-storage` feature).
 pub trait OnionStorageBackend: Send + Sync {
     /// Load an existing identity from persistent storage.
     fn load_identity(&self) -> Result<Option<OnionIdentity>>;

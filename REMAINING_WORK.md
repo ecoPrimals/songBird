@@ -33,7 +33,7 @@
 | **License** | `AGPL-3.0-or-later` (workspace + per-crate; **Apr 6**: inconsistent `AGPL-3.0-only` strings eliminated) via workspace inheritance + ORC + CC-BY-SA 4.0 |
 | **SPDX headers** | 100% `.rs` coverage — **Apr 6**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
-| **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): already correctly **feature-gated** — native deps only when `bluetooth` feature enabled |
+| **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** (`sled-storage` feature): deprecated, non-default — NestGate `storage.*` capability is the production path |
 | **`async-trait`** | 99 `#[async_trait]` across 50 files — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`); no further mechanical migration possible without architectural changes; `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
@@ -43,25 +43,17 @@
 
 ## Active Blockers
 
-### SB-03: Sled → Storage Provider Migration (Blocked on NG-01)
+### SB-03: Sled → NestGate Storage Migration (Resolved — NestGate backend wired)
 
-**Status**: Abstraction layer complete; migration blocked until storage provider exposes `storage.*` IPC.
+**Status**: `NestGateStorage` and `NestGateOnionStorage` implemented. Runtime capability discovery delegates to `storage.*` JSON-RPC provider (NestGate) when available; in-memory fallback otherwise. `sled-storage` feature deprecated in both crates (optional, non-default, legacy only).
 
-**What exists:**
-- `storage.*` JSON-RPC methods in `songbird-types::JsonRpcMethod`
-- `ConsentStorageBackend` trait (orchestrator)
-- `TaskStorageBackend` trait (orchestrator)
-- `OnionStorageBackend` trait (sovereign-onion)
-- Sled implements all three; storage provider backends ready to wire when NG-01 lands
+**Architecture:**
+- `NestGateStorage` → `ConsentStorageBackend` + `TaskStorageBackend` via `storage.*` JSON-RPC
+- `NestGateOnionStorage` → `OnionStorageBackend` via `storage.*` JSON-RPC
+- `InMemoryStorage` / `InMemoryOnionStorage` → fallback when no storage provider available
+- `ConsentStorage` / `TaskStorage` / `OnionStorage` → sled, deprecated, behind `sled-storage` feature
 
-**Remaining sled locations:**
-
-| Crate | Module | Backend |
-|-------|--------|---------|
-| `songbird-orchestrator` | `consent_management/storage_sled.rs` | `ConsentStorage` → `ConsentStorageBackend` |
-| `songbird-orchestrator` | `task_lifecycle/storage_sled.rs` | `TaskStorage` → `TaskStorageBackend` |
-| `songbird-sovereign-onion` | `storage.rs` | `OnionStorage` → `OnionStorageBackend` |
-| `songbird-tor-protocol` | `Cargo.toml` only | Optional dep, no Rust usage yet |
+**Remaining**: NestGate must expose live `storage.*` IPC endpoints for end-to-end validation.
 
 ### Tor Onion Service — Security Provider Crypto (BLOCKED)
 

@@ -60,6 +60,7 @@ pub mod keys;
 pub mod protocol;
 pub mod service;
 pub mod storage;
+pub mod storage_nestgate;
 #[cfg(feature = "sled-storage")]
 mod storage_sled;
 
@@ -73,6 +74,7 @@ pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
 pub use security_crypto::{Ed25519Keypair, SecurityCryptoClient, X25519Keypair};
 pub use storage::{InMemoryOnionStorage, OnionStorageBackend, PeerInfo};
+pub use storage_nestgate::NestGateOnionStorage;
 #[cfg(feature = "sled-storage")]
 pub use storage_sled::OnionStorage;
 

@@ -123,18 +123,84 @@ impl TaskLifecycleManager {
     /// Returns an error if the operation fails.
     pub async fn new(database_url: &str) -> Result<Self> {
         let storage: Arc<dyn TaskStorageBackend> = {
-            #[cfg(feature = "sled-storage")]
+            #[cfg(unix)]
             {
-                Arc::new(
-                    super::TaskStorage::new(database_url)
-                        .await
-                        .context("Failed to create task storage")?,
-                )
+                if let Ok(ep) = songbird_config::primal_discovery::get_storage_endpoint().await
+                    && let Some(path) =
+                        crate::storage_nestgate::storage_socket_path_from_endpoint(&ep)
+                {
+                    match songbird_universal_ipc::tower_atomic::TowerAtomicClient::connect_unix_path(
+                        &path,
+                    )
+                    .await
+                    {
+                        Ok(_) => {
+                            info!(
+                                path = %path.display(),
+                                "Task storage: NestGate JSON-RPC (storage.* capability)"
+                            );
+                            Arc::new(crate::storage_nestgate::NestGateStorage::new(path))
+                        }
+                        Err(e) => {
+                            if cfg!(feature = "sled-storage") {
+                                debug!(
+                                    error = %e,
+                                    path = %path.display(),
+                                    "NestGate task storage unreachable; trying sled"
+                                );
+                            } else {
+                                warn!(
+                                    error = %e,
+                                    path = %path.display(),
+                                    "NestGate task storage unreachable; using in-memory task storage"
+                                );
+                            }
+                            #[cfg(feature = "sled-storage")]
+                            {
+                                Arc::new(
+                                    super::TaskStorage::new(database_url)
+                                        .await
+                                        .context("Failed to create task storage")?,
+                                )
+                            }
+                            #[cfg(not(feature = "sled-storage"))]
+                            {
+                                let _ = database_url;
+                                Arc::new(crate::storage_memory::InMemoryStorage::new())
+                            }
+                        }
+                    }
+                } else {
+                    #[cfg(feature = "sled-storage")]
+                    {
+                        Arc::new(
+                            super::TaskStorage::new(database_url)
+                                .await
+                                .context("Failed to create task storage")?,
+                        )
+                    }
+                    #[cfg(not(feature = "sled-storage"))]
+                    {
+                        let _ = database_url;
+                        Arc::new(crate::storage_memory::InMemoryStorage::new())
+                    }
+                }
             }
-            #[cfg(not(feature = "sled-storage"))]
+            #[cfg(not(unix))]
             {
-                let _ = database_url;
-                Arc::new(crate::storage_memory::InMemoryStorage::new())
+                #[cfg(feature = "sled-storage")]
+                {
+                    Arc::new(
+                        super::TaskStorage::new(database_url)
+                            .await
+                            .context("Failed to create task storage")?,
+                    )
+                }
+                #[cfg(not(feature = "sled-storage"))]
+                {
+                    let _ = database_url;
+                    Arc::new(crate::storage_memory::InMemoryStorage::new())
+                }
             }
         };
 

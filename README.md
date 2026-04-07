@@ -37,7 +37,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
-| Dependencies | `sled` feature-gated with in-memory fallback; `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature |
+| Dependencies | `sled` deprecated (`sled-storage` feature, non-default — NestGate `storage.*` capability is production path); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
 | Total Rust | ~423,800 lines across 30 crates (1,573 files) |
 

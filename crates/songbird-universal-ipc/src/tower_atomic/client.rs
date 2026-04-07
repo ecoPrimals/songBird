@@ -8,6 +8,7 @@ use crate::error::{IpcError, IpcResult};
 use crate::ipc;
 use bytes::Bytes;
 use serde_json::Value;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -24,6 +25,38 @@ pub struct TowerAtomicClient {
 }
 
 impl TowerAtomicClient {
+    /// Connect to a JSON-RPC peer listening on a filesystem Unix domain socket (no Universal IPC registry).
+    ///
+    /// This is used by `NestGate` and other providers that expose a raw socket path from capability discovery.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::error::IpcError`] if the socket cannot be reached or on non-Unix platforms.
+    #[cfg(unix)]
+    pub async fn connect_unix_path(path: &Path) -> IpcResult<Self> {
+        debug!("Tower Atomic: connecting to Unix socket {}", path.display());
+
+        let stream = tokio::net::UnixStream::connect(path).await.map_err(|e| {
+            IpcError::ConnectionFailed(format!(
+                "Failed to connect to Unix socket at {}: {e}",
+                path.display()
+            ))
+        })?;
+
+        Ok(Self {
+            stream: Arc::new(Mutex::new(crate::ipc::Stream::from_boxed_async(Box::new(stream)))),
+            next_id: Arc::new(AtomicU64::new(1)),
+        })
+    }
+
+    /// [`Self::connect_unix_path`] is Unix-only; on other platforms this always fails.
+    #[cfg(not(unix))]
+    pub async fn connect_unix_path(_path: &Path) -> IpcResult<Self> {
+        Err(crate::error::IpcError::PlatformError(
+            "Tower Atomic Unix socket connections are only supported on Unix platforms".to_string(),
+        ))
+    }
+
     /// Connect to a service via virtual endpoint path
     ///
     /// # Example

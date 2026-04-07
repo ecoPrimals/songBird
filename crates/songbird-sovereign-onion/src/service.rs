@@ -14,10 +14,22 @@ use crate::security_crypto::SecurityCryptoClient;
 #[cfg(not(feature = "sled-storage"))]
 use crate::storage::InMemoryOnionStorage;
 use crate::storage::OnionStorageBackend;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
+
+fn nestgate_socket_from_endpoint(endpoint: &str) -> Option<PathBuf> {
+    let t = endpoint.trim();
+    if let Some(p) = t.strip_prefix("unix://") {
+        return Some(PathBuf::from(p));
+    }
+    if t.starts_with('/') {
+        return Some(PathBuf::from(t));
+    }
+    None
+}
 
 #[cfg(any(test, feature = "sled-storage"))]
 fn onion_data_dir() -> String {
@@ -51,10 +63,73 @@ impl OnionService {
         port: u16,
         security: SecurityCryptoClient,
     ) -> Result<Self> {
-        #[cfg(feature = "sled-storage")]
-        let storage: Arc<dyn OnionStorageBackend> = Arc::new(OnionStorage::open(onion_data_dir())?);
-        #[cfg(not(feature = "sled-storage"))]
-        let storage: Arc<dyn OnionStorageBackend> = Arc::new(InMemoryOnionStorage::new());
+        let storage: Arc<dyn OnionStorageBackend> = {
+            #[cfg(unix)]
+            {
+                if let Ok(ep) = songbird_config::primal_discovery::get_storage_endpoint().await {
+                    if let Some(path) = nestgate_socket_from_endpoint(&ep) {
+                        match tokio::net::UnixStream::connect(&path).await {
+                            Ok(_) => {
+                                info!(
+                                    path = %path.display(),
+                                    "Onion service: NestGate storage (storage.* JSON-RPC)"
+                                );
+                                Arc::new(crate::storage_nestgate::NestGateOnionStorage::new(path))
+                            }
+                            Err(e) => {
+                                #[cfg(feature = "sled-storage")]
+                                {
+                                    debug!(
+                                        error = %e,
+                                        path = %path.display(),
+                                        "NestGate onion storage unreachable; opening sled"
+                                    );
+                                    Arc::new(OnionStorage::open(onion_data_dir())?)
+                                }
+                                #[cfg(not(feature = "sled-storage"))]
+                                {
+                                    warn!(
+                                        error = %e,
+                                        path = %path.display(),
+                                        "NestGate onion storage unreachable; using in-memory onion storage"
+                                    );
+                                    Arc::new(InMemoryOnionStorage::new())
+                                }
+                            }
+                        }
+                    } else {
+                        #[cfg(feature = "sled-storage")]
+                        {
+                            Arc::new(OnionStorage::open(onion_data_dir())?)
+                        }
+                        #[cfg(not(feature = "sled-storage"))]
+                        {
+                            Arc::new(InMemoryOnionStorage::new())
+                        }
+                    }
+                } else {
+                    #[cfg(feature = "sled-storage")]
+                    {
+                        Arc::new(OnionStorage::open(onion_data_dir())?)
+                    }
+                    #[cfg(not(feature = "sled-storage"))]
+                    {
+                        Arc::new(InMemoryOnionStorage::new())
+                    }
+                }
+            }
+            #[cfg(not(unix))]
+            {
+                #[cfg(feature = "sled-storage")]
+                {
+                    Arc::new(OnionStorage::open(onion_data_dir())?)
+                }
+                #[cfg(not(feature = "sled-storage"))]
+                {
+                    Arc::new(InMemoryOnionStorage::new())
+                }
+            }
+        };
 
         // Load or generate identity via security provider
         let identity = if let Some(stored) = storage.load_identity()? {

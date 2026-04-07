@@ -15,8 +15,10 @@ use crate::task_lifecycle::{TaskId, UserId};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::info;
 
 mod enforcement;
 #[cfg(test)]
@@ -30,11 +32,12 @@ mod storage_sled;
 #[cfg(feature = "sled-storage")]
 pub use storage_sled::ConsentStorage;
 
-/// Async consent persistence backend (SB-03: abstraction for sled → storage provider migration).
+/// Async consent persistence backend.
 ///
-/// The sled implementation (`ConsentStorage`) is the current default.
-/// When storage provider exposes `storage.*` IPC (NG-01), a `StorageProviderConsentBackend`
-/// can implement this trait to delegate persistence over JSON-RPC.
+/// Production path: [`NestGateStorage`](crate::storage_nestgate::NestGateStorage) delegates
+/// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
+/// Fallback: [`InMemoryStorage`](crate::storage_memory::InMemoryStorage) when no provider is available.
+/// Legacy: `ConsentStorage` (sled, behind deprecated `sled-storage` feature).
 #[async_trait::async_trait]
 pub trait ConsentStorageBackend: Send + Sync {
     /// Persist a consent record.
@@ -113,10 +116,51 @@ impl ConsentManager {
 
     /// Create a new consent manager with sled-backed persistent storage
     ///
+    /// SB-03: tries NestGate (`storage.*` JSON-RPC on a capability-discovered Unix socket) first,
+    /// then sled when the `sled-storage` feature is enabled, otherwise in-memory.
+    ///
     /// # Errors
     ///
     /// Returns an error if the sled database cannot be opened.
     pub async fn with_storage(database_url: &str) -> anyhow::Result<Self> {
+        #[cfg(unix)]
+        {
+            if let Ok(ep) = songbird_config::primal_discovery::get_storage_endpoint().await
+                && let Some(path) = crate::storage_nestgate::storage_socket_path_from_endpoint(&ep)
+            {
+                match songbird_universal_ipc::tower_atomic::TowerAtomicClient::connect_unix_path(
+                    &path,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        info!(
+                            path = %path.display(),
+                            "Consent storage: NestGate JSON-RPC (storage.* capability)"
+                        );
+                        return Ok(Self::with_backend(Arc::new(
+                            crate::storage_nestgate::NestGateStorage::new(path),
+                        )));
+                    }
+                    Err(e) => {
+                        if cfg!(feature = "sled-storage") {
+                            tracing::debug!(
+                                error = %e,
+                                path = %path.display(),
+                                "NestGate storage unreachable; trying sled"
+                            );
+                        } else {
+                            tracing::warn!(
+                                error = %e,
+                                path = %path.display(),
+                                "NestGate storage unreachable; using in-memory consent storage"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         #[cfg(feature = "sled-storage")]
         {
             let storage = ConsentStorage::new(database_url).await?;
@@ -127,6 +171,16 @@ impl ConsentManager {
             let _ = database_url;
             Ok(Self::with_backend(Arc::new(crate::storage_memory::InMemoryStorage::new())))
         }
+    }
+
+    /// Create a consent manager using an explicit NestGate Unix socket (JSON-RPC `storage.*`).
+    #[must_use]
+    pub fn with_nestgate(socket_path: PathBuf) -> Self {
+        info!(
+            path = %socket_path.display(),
+            "Consent storage: explicit NestGate socket path"
+        );
+        Self::with_backend(Arc::new(crate::storage_nestgate::NestGateStorage::new(socket_path)))
     }
 
     /// Create a consent manager with an arbitrary [`ConsentStorageBackend`].

@@ -159,6 +159,16 @@ pub struct Stream {
     inner: Box<dyn AsyncStream>,
 }
 
+impl Stream {
+    /// Wrap a boxed async stream (for example a raw [`tokio::net::UnixStream`]) for Tower Atomic JSON-RPC.
+    #[must_use]
+    pub fn from_boxed_async(inner: Box<dyn crate::platform::AsyncStream>) -> Self {
+        Self {
+            inner,
+        }
+    }
+}
+
 impl AsyncRead for Stream {
     fn poll_read(
         mut self: std::pin::Pin<&mut Self>,

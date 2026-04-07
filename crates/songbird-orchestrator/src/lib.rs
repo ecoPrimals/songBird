@@ -219,6 +219,8 @@ pub mod server;
 pub mod service_registry;
 /// In-memory consent/task storage when `sled-storage` is disabled.
 mod storage_memory;
+/// NestGate JSON-RPC `storage.*` delegation (SB-03).
+pub mod storage_nestgate;
 /// Task lifecycle and scheduling hooks for orchestrated work.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod task_lifecycle;
@@ -237,6 +239,8 @@ pub mod universal_adapter;
 pub use app::SongbirdOrchestrator;
 /// Non-durable storage backend used when the `sled-storage` feature is off.
 pub use storage_memory::InMemoryStorage;
+/// NestGate-backed durable storage over JSON-RPC `storage.*`.
+pub use storage_nestgate::NestGateStorage;
 
 // Re-export security capability client (provider-agnostic!)
 /// HTTP client for security-capability RPC against `security provider` (trust evaluation and related calls).
