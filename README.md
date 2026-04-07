@@ -18,20 +18,20 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
-| Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` only in `#[cfg(test)]` modules; production `dead_code` allows removed (Apr 6 audit) |
+| Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` only in `#[cfg(test)]` modules; production `dead_code` allows removed (Apr 7 audit) |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
 | Tests | 12,811 passed, 0 failed, 252 ignored |
-| Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 6 2026; target 90%) |
+| Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 7 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings) |
-| Formatting | Clean (`cargo fmt --check`; Apr 6 audit: no drift) |
+| Formatting | Clean (`cargo fmt --check`; Apr 7 audit: no drift) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >800 lines | 0 (largest file 519 lines; `tower_atomic.rs` refactored into 4 modules) |
-| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (Apr 6: `AGPL-3.0-only` drift eliminated) |
-| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body (Apr 6 audit) |
+| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (Apr 7: `AGPL-3.0-only` drift eliminated) |
+| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body (Apr 7 audit) |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
 | Nest Atomic | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (14 capability tokens) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
@@ -39,7 +39,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | Dependencies | `sled` deprecated (`sled-storage` feature, non-default — NestGate `storage.*` capability is production path); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~423,800 lines across 30 crates (1,573 files) |
+| Total Rust | ~427,000 lines across 30 crates (1,578 files) |
 
 ## Architecture
 

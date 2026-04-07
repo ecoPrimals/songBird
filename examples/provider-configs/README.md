@@ -30,7 +30,7 @@ Each provider configuration defines:
 
 ### Local Primal Providers
 
-- `toadstool-local.json` - ToadStool local GPU provider
+- `toadstool-local.json` - Local GPU compute provider
 
 ## Usage
 

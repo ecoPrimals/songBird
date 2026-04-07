@@ -1,8 +1,8 @@
-# tower_genome.toml - Deploy TOWER (BearDog + Songbird)
+# tower_genome.toml - Deploy TOWER (Security Provider + Songbird)
 #
 # This graph deploys the complete TOWER foundation:
-#   1. BearDog (security primal)
-#   2. Songbird (discovery primal)
+#   1. Security provider (crypto.delegate capability) — binary: beardog
+#   2. Songbird (network.discovery capability)
 #   3. Cross-primal capability wiring
 #
 # The TOWER provides the security and discovery foundation for all other primals.
@@ -16,11 +16,11 @@
 [graph]
 id = "tower_deploy"
 version = "1.0"
-description = "Deploy TOWER: BearDog + Songbird with cross-primal wiring"
+description = "Deploy TOWER: security provider + Songbird with cross-primal capability wiring"
 author = "ecoPrimals Team"
 created = "2026-01-31"
 
-# === PHASE 1: BEARDOG DEPLOYMENT (Security Foundation) ===
+# === PHASE 1: SECURITY PROVIDER DEPLOYMENT (Security Foundation) ===
 
 [[nodes]]
 id = "detect_platform"
@@ -31,11 +31,11 @@ description = "Auto-detect target platform"
 detect_arch = true
 detect_os = true
 
-# Deploy BearDog first (security foundation)
+# Deploy security provider first (security foundation)
 [[nodes]]
 id = "deploy_beardog"
 type = "genome.deploy"
-description = "Deploy BearDog security primal"
+description = "Deploy security provider primal (crypto.delegate)"
 depends_on = ["detect_platform"]
 
 [nodes.config]
@@ -49,11 +49,11 @@ deploy_mode = "systemd"
 beardog_path = "string"
 beardog_socket = "string"
 
-# Health check BearDog
+# Health check security provider
 [[nodes]]
 id = "health_check_beardog"
 type = "health.check_primal"
-description = "Validate BearDog is operational"
+description = "Validate security provider is operational"
 depends_on = ["deploy_beardog"]
 
 [nodes.config]
@@ -70,7 +70,7 @@ beardog_healthy = "bool"
 id = "deploy_songbird"
 type = "genome.deploy"
 description = "Deploy Songbird discovery primal"
-depends_on = ["health_check_beardog"]  # Wait for BearDog to be healthy
+depends_on = ["health_check_beardog"]  # Wait for security provider to be healthy
 
 [nodes.config]
 genome = "songbird.genome"
@@ -78,7 +78,7 @@ target = "auto"
 install_dir = "/opt/biomeos"
 family_id = "tower"
 deploy_mode = "systemd"
-# Environment: Point to BearDog socket
+# Environment: Point to security provider socket
 env = [
     "SONGBIRD_SECURITY_PROVIDER=${beardog_socket}",
 ]
@@ -107,7 +107,7 @@ songbird_healthy = "bool"
 [[nodes]]
 id = "verify_tower"
 type = "health.check_atomic"
-description = "Atomic health check: Both BearDog and Songbird operational"
+description = "Atomic health check: security provider + Songbird operational"
 depends_on = ["health_check_beardog", "health_check_songbird"]
 
 [nodes.config]
@@ -130,7 +130,7 @@ depends_on = ["verify_tower"]
 [nodes.config]
 tower_primals = ["beardog", "songbird"]
 wiring = [
-    # Songbird uses BearDog for crypto
+    # Songbird delegates crypto to security provider
     {
         from = "songbird",
         to = "beardog",
@@ -143,14 +143,14 @@ wiring = [
         capability = "crypto.verify",
         protocol = "ipc"
     },
-    # Songbird uses BearDog for JWT
+    # Songbird delegates JWT to security provider
     {
         from = "songbird",
         to = "beardog",
         capability = "auth.jwt_provision",
         protocol = "ipc"
     },
-    # BearDog discovers other BearDogs via Songbird
+    # Security provider discovers peers via Songbird
     {
         from = "beardog",
         to = "songbird",
@@ -195,7 +195,7 @@ description = "TOWER deployment successful"
 depends_on = ["register_tower"]
 
 [nodes.config]
-message = "🏰 TOWER (BearDog + Songbird) deployed successfully!"
+message = "🏰 TOWER (security provider + Songbird) deployed successfully!"
 level = "info"
 channels = ["log", "stdout"]
 
@@ -220,7 +220,7 @@ description = "Rollback Songbird deployment"
 [nodes.config]
 primal = "songbird"
 
-# Rollback BearDog if it fails (critical!)
+# Rollback security provider if it fails (critical!)
 [[edges]]
 from = "deploy_beardog"
 to = "rollback_beardog"
@@ -234,7 +234,7 @@ condition = "on_error"
 [[nodes]]
 id = "rollback_beardog"
 type = "genome.rollback"
-description = "Rollback BearDog deployment"
+description = "Rollback security provider deployment"
 
 [nodes.config]
 primal = "beardog"
@@ -275,7 +275,7 @@ channels = ["log", "stdout", "stderr"]
 # === EXECUTION SETTINGS ===
 
 [execution]
-mode = "sequential"  # BearDog → Songbird → Wiring
+mode = "sequential"  # Security provider → Songbird → Wiring
 timeout_seconds = 180
 retry_on_failure = false  # Rollback instead
 parallel_where_possible = true

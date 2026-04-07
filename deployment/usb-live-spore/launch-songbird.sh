@@ -138,11 +138,15 @@ export SONGBIRD_MODE="usb-live-spore"
 export RUST_LOG="${RUST_LOG:-info}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}"
 
-# Optional: BearDog integration (auto-discover)
-if [ -f "${USB_BIN}/beardog" ]; then
-    export BEARDOG_SOCKET="${RUNTIME_DIR}/beardog.sock"
-    echo -e "${GREEN}[INFO]${NC} BearDog binary found, integration enabled"
-    echo "  Socket: ${BEARDOG_SOCKET}"
+# Optional: security provider integration (auto-discover by capability)
+if [ -f "${USB_BIN}/security-provider" ]; then
+    export SECURITY_PROVIDER_SOCKET="${RUNTIME_DIR}/security.sock"
+    echo -e "${GREEN}[INFO]${NC} Security provider binary found, integration enabled"
+    echo "  Socket: ${SECURITY_PROVIDER_SOCKET}"
+elif [ -f "${USB_BIN}/beardog" ]; then
+    echo -e "${YELLOW}[WARN]${NC} Legacy 'beardog' binary found — migrate to 'security-provider'"
+    export SECURITY_PROVIDER_SOCKET="${RUNTIME_DIR}/security.sock"
+    export BEARDOG_SOCKET="${RUNTIME_DIR}/security.sock"
 fi
 
 # Launch Songbird

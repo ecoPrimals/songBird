@@ -81,7 +81,7 @@ process_name(&service.name);
 
 ### Module Organization
 
-- Files under 1000 lines
+- Files under 800 lines
 - Tests in `tests.rs` submodule or `tests/` directory
 - Split by domain concern, not arbitrary line count
 
@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: **72.16%** (llvm-cov measured, Apr 6 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: **72.29%** (llvm-cov measured, Apr 7 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html

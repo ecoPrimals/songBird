@@ -90,7 +90,7 @@ while true; do
         echo -e "${YELLOW}⚠️  No security providers registered${NC}"
         echo -e "${YELLOW}   Waiting for security provider (crypto.delegate capability)...${NC}"
     else
-        echo -e "${GREEN}Found ${provider_count} BTSP provider(s):${NC}\n"
+        echo -e "${GREEN}Found ${provider_count} security provider(s):${NC}\n"
         
         # Check each provider
         for i in $(seq 0 $((provider_count - 1))); do

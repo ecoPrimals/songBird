@@ -29,20 +29,30 @@ fi
 # --- Discover or fetch security provider binary ---------------------------
 PROVIDER="${SECURITY_PROVIDER_BIN:-${BEARDOG_BIN:-""}}"
 if [ -z "$PROVIDER" ] && [ -n "$PLASMID_BIN" ]; then
-    PROVIDER="$PLASMID_BIN/primals/beardog"
-fi
-
-if [ -z "$PROVIDER" ] || [ ! -f "$PROVIDER" ]; then
-    if [ -n "$PLASMID_BIN" ] && [ -f "$PLASMID_BIN/fetch.sh" ]; then
-        echo "--- Fetching security provider via plasmidBin/fetch.sh ---"
-        bash "$PLASMID_BIN/fetch.sh" --primal beardog
+    # Try capability-based name first, then legacy
+    if [ -f "$PLASMID_BIN/primals/security-provider" ]; then
+        PROVIDER="$PLASMID_BIN/primals/security-provider"
+    elif [ -f "$PLASMID_BIN/primals/beardog" ]; then
+        echo "WARN: using legacy binary name 'beardog' — migrate to 'security-provider'"
         PROVIDER="$PLASMID_BIN/primals/beardog"
     fi
 fi
 
 if [ -z "$PROVIDER" ] || [ ! -f "$PROVIDER" ]; then
+    if [ -n "$PLASMID_BIN" ] && [ -f "$PLASMID_BIN/fetch.sh" ]; then
+        echo "--- Fetching security provider via plasmidBin/fetch.sh ---"
+        bash "$PLASMID_BIN/fetch.sh" --capability crypto.delegate
+        PROVIDER="$PLASMID_BIN/primals/security-provider"
+        # Fallback to legacy name if capability-based fetch not yet supported
+        if [ ! -f "$PROVIDER" ]; then
+            PROVIDER="$PLASMID_BIN/primals/beardog"
+        fi
+    fi
+fi
+
+if [ -z "$PROVIDER" ] || [ ! -f "$PROVIDER" ]; then
     echo "ERROR: security provider binary not found."
-    echo "  Set \$SECURITY_PROVIDER_BIN, place it in infra/plasmidBin/primals/beardog,"
+    echo "  Set \$SECURITY_PROVIDER_BIN, place it in infra/plasmidBin/primals/security-provider,"
     echo "  or ensure plasmidBin/fetch.sh can retrieve it."
     exit 1
 fi

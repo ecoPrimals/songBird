@@ -33,7 +33,7 @@ service_mesh:
 
 # Service definitions - replace hardcoded primals
 services:
-  # Security service (replaces BearDog)
+  # Security service (crypto.delegate capability)
   - name: "security-service"
     type:
       name: "security"

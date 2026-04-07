@@ -25,22 +25,22 @@ networking:
 # Universal Primal coordination - works with ANY Primal implementation
 primals:
   # Standard Primals
-  toadstool:
+  compute-provider:
     enabled: true
     endpoint: "http://localhost:8082"
     capabilities: ["compute", "execution"]
   
-  nestgate:
+  storage-provider:
     enabled: true
     endpoint: "http://localhost:8081"
-    capabilities: ["storage", "data"]
+    capabilities: ["storage.get", "storage.put", "storage.list"]
   
-  beardog:
+  security-provider:
     enabled: true
     endpoint: "http://localhost:8083"
-    capabilities: ["security", "authentication"]
+    capabilities: ["crypto.delegate", "security", "authentication"]
   
-  squirrel:
+  ai-provider:
     enabled: true
     endpoint: "http://localhost:8084"
     capabilities: ["ai", "ml", "agents"]
@@ -51,7 +51,7 @@ primals:
     endpoint: "http://localhost:9000"
     capabilities: ["custom", "blockchain", "distributed-ledger"]
   
-  forked-toadstool:
+  forked-compute-provider:
     enabled: true
     endpoint: "http://localhost:9001"
     capabilities: ["compute", "execution", "gpu-acceleration"]

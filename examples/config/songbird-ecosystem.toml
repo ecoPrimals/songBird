@@ -26,14 +26,15 @@ scan_ranges = ["127.0.0.1", "192.168.1.0/24", "10.0.0.0/24"]
 scan_ports = [8080, 8081, 8082, 8083, 8084, 8085, 9090, 9091, 9092]  # Example defaults
 
 # Well-known primal endpoints (if available)
-# Recommended: Use CAPABILITY_* endpoints for auto-discovery in production
+# Recommended: Use CAPABILITY_* endpoints for auto-discovery in production.
+# Primal names are examples — capability-based discovery is preferred.
 [discovery.well_known]
-# Use capability-based discovery or env vars: CAPABILITY_COMPUTE_ENDPOINT, etc.
-toadstool = "http://localhost:8082"  # Example - use CAPABILITY_COMPUTE_ENDPOINT
-nestgate = "http://localhost:8081"  # Example - use CAPABILITY_STORAGE_ENDPOINT
-squirrel = "http://localhost:8084"  # Example - use CAPABILITY_AI_ENDPOINT
-beardog = "https://localhost:8443"  # Example - use CAPABILITY_SECURITY_ENDPOINT
-biomeos = "http://localhost:8085"  # Example - use auto-discovery
+# Use capability-based env vars: CAPABILITY_COMPUTE_ENDPOINT, CAPABILITY_SECURITY_ENDPOINT, etc.
+compute-provider = "http://localhost:8082"    # CAPABILITY_COMPUTE_ENDPOINT
+storage-provider = "http://localhost:8081"    # CAPABILITY_STORAGE_ENDPOINT
+ai-provider = "http://localhost:8084"         # CAPABILITY_AI_ENDPOINT
+security-provider = "https://localhost:8443"  # CAPABILITY_SECURITY_ENDPOINT / SECURITY_PROVIDER_SOCKET
+biomeos = "http://localhost:8085"             # auto-discovery via lifecycle.register
 
 # Other Songbird instances for clustering
 [discovery.federation]
@@ -45,10 +46,10 @@ federation_ports = [8080, 8081, 8082]  # Example defaults
 # Capability-based routing preferences
 [routing]
 # When multiple primals can handle a capability, prefer:
-compute_preference = ["toadstool", "local"] # Prefer Toadstool for CPU/metal, fallback to local
-storage_preference = ["nestgate", "local"]  # Prefer NestGate for storage, fallback to local
-ai_preference = ["squirrel", "local"]       # Prefer Squirrel for AI, fallback to local
-security_preference = ["beardog", "local"]  # Prefer BearDog for security, fallback to local
+compute_preference = ["compute-provider", "local"]   # Prefer compute provider, fallback to local
+storage_preference = ["storage-provider", "local"]   # Prefer storage provider, fallback to local
+ai_preference = ["ai-provider", "local"]             # Prefer AI provider, fallback to local
+security_preference = ["security-provider", "local"] # Prefer security provider, fallback to local
 
 # Load balancing for network effects
 load_balancing = "latency_based"  # Route to lowest latency primal
@@ -78,34 +79,34 @@ stun_support = true
 # Integration with ecosystem primals
 [integrations]
 
-# Toadstool integration (compute/metal)
-[integrations.toadstool]
+# Compute provider integration (container_runtime, gpu, metal)
+[integrations.compute-provider]
 enabled = true
 capabilities_requested = ["container_runtime", "native_execution", "gpu_acceleration"]
 prefer_for = ["high_cpu", "metal_access", "gpu_workloads"]
 connection_timeout = "30s"
 health_check_interval = "15s"
 
-# NestGate integration (storage/network)
-[integrations.nestgate]
+# Storage provider integration (file_system, object_storage)
+[integrations.storage-provider]
 enabled = true
-capabilities_requested = ["file_system", "object_storage", "network_routing"]
-prefer_for = ["file_storage", "network_gateway", "vpn"]
+capabilities_requested = ["file_system", "object_storage", "storage.get", "storage.put"]
+prefer_for = ["file_storage", "network_gateway", "storage"]
 connection_timeout = "30s"
 health_check_interval = "15s"
 
-# Squirrel integration (AI/analytics)
-[integrations.squirrel]
+# AI provider integration (inference, analytics)
+[integrations.ai-provider]
 enabled = true
 capabilities_requested = ["model_inference", "agent_framework", "analytics"]
 prefer_for = ["ai_inference", "data_analysis", "mcp_agents"]
-connection_timeout = "60s"  # AI operations may take longer
+connection_timeout = "60s"
 health_check_interval = "30s"
 
-# BearDog integration (security)
-[integrations.beardog]
+# Security provider integration (crypto.delegate, auth)
+[integrations.security-provider]
 enabled = true
-capabilities_requested = ["encryption", "authentication", "threat_detection"]
+capabilities_requested = ["crypto.delegate", "authentication", "threat_detection"]
 prefer_for = ["security", "encryption", "auth"]
 connection_timeout = "30s"
 health_check_interval = "10s"

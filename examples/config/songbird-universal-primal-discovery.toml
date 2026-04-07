@@ -34,12 +34,12 @@ enable_fallback = true
 
 # Example Environment Variables for Primal Discovery:
 # 
-# Instead of hardcoded primal names like BEARDOG_ENDPOINT, use capability-based discovery
+# Instead of hardcoded primal names, use capability-based discovery
 # with environment-aware ports (automatically uses songbird_config::defaults::ports):
 # 
-# PRIMAL_1_NAME=beardog-security-service
-# PRIMAL_1_ENDPOINT=https://127.0.0.1:${SONGBIRD_BEARDOG_PORT}  # Or use auto-discovery
-# PRIMAL_1_CAPABILITIES=security,encryption,authentication
+# PRIMAL_1_NAME=security-provider
+# PRIMAL_1_ENDPOINT=https://127.0.0.1:${SECURITY_PROVIDER_PORT}  # Or SECURITY_PROVIDER_SOCKET
+# PRIMAL_1_CAPABILITIES=crypto.delegate,encryption,authentication
 # PRIMAL_1_TYPE=security
 # 
 # PRIMAL_2_NAME=custom-ai-service  

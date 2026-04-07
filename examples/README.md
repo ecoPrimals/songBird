@@ -29,7 +29,7 @@ cargo run --example ipc_client_primal
 
 ### Configuration
 
-- `config/` — Example TOML configurations for capability discovery, ecosystem integration, and BearDog delegation
+- `config/` — Example TOML configurations for capability discovery, ecosystem integration, and security provider delegation
 
 ## Experimental
 

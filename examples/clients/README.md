@@ -138,7 +138,7 @@ All client libraries provide these methods:
 - `registerService(config)` - Register new service
 
 ### **Compute Tasks**
-- `scheduleCompute(taskConfig)` - Schedule task on Toadstool
+- `scheduleCompute(taskConfig)` - Schedule task on compute provider
 - `getComputeStatus(taskId)` - Get task status
 - `waitForCompute(taskId, ...)` - Wait for task completion
 
@@ -160,7 +160,7 @@ from songbird_client import SongbirdClient
 
 client = SongbirdClient("http://localhost:8080")
 
-# Schedule Python code on Toadstool
+# Schedule Python code on compute provider
 task = client.schedule_compute({
     "task": "train_model",
     "language": "python",
