@@ -45,6 +45,9 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Capabilities(CapabilitiesMethod::List) => {
                 Ok(crate::introspection::capabilities_list())
             }
+            JsonRpcMethod::Capabilities(CapabilitiesMethod::Methods) => {
+                Ok(crate::introspection::capabilities_methods())
+            }
             JsonRpcMethod::Identity => self.handle_identity().await,
 
             // ── IPC registry ─────────────────────────────────────────

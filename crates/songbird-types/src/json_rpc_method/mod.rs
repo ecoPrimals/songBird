@@ -26,6 +26,10 @@ mod domain_methods;
 pub use domain_methods::*;
 
 /// Normalize known aliases before parsing (same rules as `songbird-universal-ipc` introspection).
+///
+/// Also maps NEST capability tokens to their primary callable method so that
+/// calling e.g. `network.discovery` dispatches to `discovery.peers` instead of
+/// returning "unknown JSON-RPC method".
 #[must_use]
 pub fn normalize_json_rpc_method_name(method: &str) -> &str {
     match method {
@@ -33,6 +37,19 @@ pub fn normalize_json_rpc_method_name(method: &str) -> &str {
         "ping" => "health.liveness",
         "register_service" => "ipc.register",
         "health_check" | "status" | "check" | "health" => "health.check",
+
+        // NEST capability tokens → primary callable method
+        "network.discovery" => "discovery.peers",
+        "network.federation" => "songbird.federation.peers",
+        "network.relay" => "relay.status",
+        "network.stun" => "stun.status",
+        "network.igd" => "igd.status",
+        "network.tls" => "http.request",
+        "network.tor" => "tor.status",
+        "network.onion" => "onion.status",
+        "ipc.jsonrpc" | "ipc.tarpc" => "rpc.methods",
+        "network.quic" | "crypto.delegate" | "nfc.genesis" | "bluetooth.pair" => "health.readiness",
+
         other => other,
     }
 }
@@ -104,6 +121,7 @@ impl JsonRpcMethod {
             Self::Health(HealthMethod::Readiness) => "health.readiness",
             Self::Health(HealthMethod::Check) => "health.check",
             Self::Capabilities(CapabilitiesMethod::List) => "capabilities.list",
+            Self::Capabilities(CapabilitiesMethod::Methods) => "capabilities.methods",
             Self::Ipc(IpcMethod::Register) => "ipc.register",
             Self::Ipc(IpcMethod::Resolve) => "ipc.resolve",
             Self::Ipc(IpcMethod::Discover) => "ipc.discover",
@@ -235,6 +253,7 @@ impl JsonRpcMethod {
             "health.readiness" => Self::Health(HealthMethod::Readiness),
             "health.check" => Self::Health(HealthMethod::Check),
             "capabilities.list" => Self::Capabilities(CapabilitiesMethod::List),
+            "capabilities.methods" => Self::Capabilities(CapabilitiesMethod::Methods),
             "ipc.register" => Self::Ipc(IpcMethod::Register),
             "ipc.resolve" => Self::Ipc(IpcMethod::Resolve),
             "ipc.discover" => Self::Ipc(IpcMethod::Discover),

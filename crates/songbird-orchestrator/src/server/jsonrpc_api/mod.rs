@@ -213,6 +213,9 @@ async fn handle_jsonrpc_request(
         Ok(JsonRpcMethod::Capabilities(CapabilitiesMethod::List)) => {
             Ok(songbird_universal_ipc::introspection::capabilities_list())
         }
+        Ok(JsonRpcMethod::Capabilities(CapabilitiesMethod::Methods)) => {
+            Ok(songbird_universal_ipc::introspection::capabilities_methods())
+        }
         Ok(JsonRpcMethod::Identity) => handle_identity().await,
         Ok(JsonRpcMethod::Network(NetworkMethod::BeaconExchange)) => {
             handle_beacon_exchange(params).await

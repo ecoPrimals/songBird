@@ -46,11 +46,13 @@ pub enum HealthMethod {
     Check,
 }
 
-/// `capabilities.list`
+/// `capabilities.*`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CapabilitiesMethod {
     /// `capabilities.list`
     List,
+    /// `capabilities.methods` — map of capability token → callable JSON-RPC methods
+    Methods,
 }
 
 /// `ipc.*`

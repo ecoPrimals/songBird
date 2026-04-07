@@ -63,7 +63,10 @@ impl ClientHelloBuilder {
         // ClientHello content
         msg.extend_from_slice(&TLS_1_2.to_be_bytes()); // Legacy version
         msg.extend_from_slice(client_random); // Random (32 bytes)
-        msg.push(0); // Legacy session ID length
+
+        // RFC 8446 Appendix D.4: non-empty legacy_session_id for middlebox compatibility
+        msg.push(32); // Legacy session ID length
+        msg.extend_from_slice(&client_random[..32]);
 
         // Cipher suites
         msg.extend_from_slice(&((CIPHER_SUITES.len() * 2) as u16).to_be_bytes());

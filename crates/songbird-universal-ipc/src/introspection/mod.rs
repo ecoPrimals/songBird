@@ -31,7 +31,9 @@ mod identity_payloads;
 mod primal;
 mod rpc;
 
-pub use capability_tokens::{SONGBIRD_CAPABILITY_STRINGS, capabilities_list};
+pub use capability_tokens::{
+    CAPABILITY_METHOD_MAP, SONGBIRD_CAPABILITY_STRINGS, capabilities_list, capabilities_methods,
+};
 pub use health_payloads::{health, health_check, health_liveness, health_readiness};
 pub use identity_payloads::{canonical_family_id, identity};
 pub use primal::{primal_capabilities, primal_info};

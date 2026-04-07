@@ -35,3 +35,51 @@ pub fn capabilities_list() -> Value {
             .collect(),
     )
 }
+
+/// Mapping from NEST capability tokens to their primary callable JSON-RPC methods.
+///
+/// Returned by `capabilities.methods` so callers know which method to invoke
+/// for each advertised capability.
+pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
+    ("network.discovery", &["discovery.peers", "discovery.announce", "discovery.list_peers"]),
+    ("network.federation", &["songbird.federation.peers", "songbird.federation.status"]),
+    ("network.relay", &["relay.serve", "relay.stop", "relay.status", "relay.allocate"]),
+    (
+        "network.stun",
+        &["stun.serve", "stun.stop", "stun.status", "stun.get_public_address", "stun.bind"],
+    ),
+    (
+        "network.igd",
+        &["igd.discover", "igd.map_port", "igd.unmap_port", "igd.status", "igd.external_ip"],
+    ),
+    ("network.quic", &["health.readiness"]),
+    ("network.tls", &["http.request", "http.get", "http.post"]),
+    ("network.tor", &["tor.status", "tor.connect", "tor.circuit.build"]),
+    (
+        "network.onion",
+        &["onion.start", "onion.stop", "onion.status", "onion.connect", "onion.address"],
+    ),
+    (
+        "ipc.jsonrpc",
+        &["rpc.methods", "rpc.discover", "ipc.register", "ipc.resolve", "ipc.discover"],
+    ),
+    ("ipc.tarpc", &["rpc.methods"]),
+    ("crypto.delegate", &["health.readiness"]),
+    ("nfc.genesis", &["health.readiness"]),
+    ("bluetooth.pair", &["health.readiness"]),
+];
+
+/// JSON object mapping capability tokens to their callable methods (`capabilities.methods`).
+#[must_use]
+pub fn capabilities_methods() -> Value {
+    let map: serde_json::Map<String, Value> = CAPABILITY_METHOD_MAP
+        .iter()
+        .map(|(token, methods)| {
+            (
+                (*token).to_string(),
+                Value::Array(methods.iter().map(|m| Value::String((*m).to_string())).collect()),
+            )
+        })
+        .collect();
+    Value::Object(map)
+}

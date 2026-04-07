@@ -70,12 +70,16 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x00, 0x17]); // secp256r1 (P-256 fallback)
 
         // 3. Signature algorithms (0x000d) - REQUIRED for TLS 1.3
+        // Compact set with PSS variants required by CDN cert chains
         ext.extend_from_slice(&[0x00, 0x0d]);
-        ext.extend_from_slice(&[0x00, 0x08]); // Extension length (minimal set)
-        ext.extend_from_slice(&[0x00, 0x06]); // List length
+        ext.extend_from_slice(&[0x00, 0x0e]); // Extension length (6 algorithms * 2 + 2 = 14)
+        ext.extend_from_slice(&[0x00, 0x0c]); // List length (6 algorithms * 2 = 12)
         ext.extend_from_slice(&[0x04, 0x03]); // ecdsa_secp256r1_sha256
         ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
+        ext.extend_from_slice(&[0x08, 0x05]); // rsa_pss_rsae_sha384
+        ext.extend_from_slice(&[0x08, 0x06]); // rsa_pss_rsae_sha512
         ext.extend_from_slice(&[0x04, 0x01]); // rsa_pkcs1_sha256
+        ext.extend_from_slice(&[0x05, 0x01]); // rsa_pkcs1_sha384
 
         // 4. Supported versions (0x002b) - REQUIRED for TLS 1.3
         ext.extend_from_slice(&[0x00, 0x2b]);
@@ -117,18 +121,24 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x00, 0x17]); // secp256r1 (P-256 fallback)
 
         // 3. Signature algorithms (0x000d) - REQUIRED for TLS 1.3
+        // Full set including RSA-PSS variants required by Cloudflare/CDN cert chains
         ext.extend_from_slice(&[0x00, 0x0d]);
-        ext.extend_from_slice(&[0x00, 0x14]); // Extension length
-        ext.extend_from_slice(&[0x00, 0x12]); // List length
+        ext.extend_from_slice(&[0x00, 0x1e]); // Extension length (14 algorithms * 2 + 2 = 30)
+        ext.extend_from_slice(&[0x00, 0x1c]); // List length (14 algorithms * 2 = 28)
         ext.extend_from_slice(&[0x04, 0x03]); // ecdsa_secp256r1_sha256
         ext.extend_from_slice(&[0x05, 0x03]); // ecdsa_secp384r1_sha384
         ext.extend_from_slice(&[0x06, 0x03]); // ecdsa_secp521r1_sha512
         ext.extend_from_slice(&[0x08, 0x07]); // ed25519
         ext.extend_from_slice(&[0x08, 0x08]); // ed448
+        ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
+        ext.extend_from_slice(&[0x08, 0x05]); // rsa_pss_rsae_sha384
+        ext.extend_from_slice(&[0x08, 0x06]); // rsa_pss_rsae_sha512
+        ext.extend_from_slice(&[0x08, 0x09]); // rsa_pss_pss_sha256
+        ext.extend_from_slice(&[0x08, 0x0a]); // rsa_pss_pss_sha384
+        ext.extend_from_slice(&[0x08, 0x0b]); // rsa_pss_pss_sha512
         ext.extend_from_slice(&[0x04, 0x01]); // rsa_pkcs1_sha256
         ext.extend_from_slice(&[0x05, 0x01]); // rsa_pkcs1_sha384
         ext.extend_from_slice(&[0x06, 0x01]); // rsa_pkcs1_sha512
-        ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
 
         // 4. Supported versions (0x002b) - REQUIRED for TLS 1.3
         // RFC 8446: This is how servers know we want TLS 1.3
@@ -198,15 +208,18 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x00, 0x23]);
         ext.extend_from_slice(&[0x00, 0x00]); // Empty ticket
 
-        // 12. Supported Signature Algorithms Cert (0x0032)
+        // 12. Supported Signature Algorithms Cert (0x0032) — full set for CDN cert chains
         ext.extend_from_slice(&[0x00, 0x32]);
-        ext.extend_from_slice(&[0x00, 0x0c]);
-        ext.extend_from_slice(&[0x00, 0x0a]);
+        ext.extend_from_slice(&[0x00, 0x12]); // Extension length (8 algorithms * 2 + 2 = 18)
+        ext.extend_from_slice(&[0x00, 0x10]); // List length (8 algorithms * 2 = 16)
         ext.extend_from_slice(&[0x04, 0x03]); // ecdsa_secp256r1_sha256
         ext.extend_from_slice(&[0x05, 0x03]); // ecdsa_secp384r1_sha384
+        ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
+        ext.extend_from_slice(&[0x08, 0x05]); // rsa_pss_rsae_sha384
+        ext.extend_from_slice(&[0x08, 0x06]); // rsa_pss_rsae_sha512
         ext.extend_from_slice(&[0x04, 0x01]); // rsa_pkcs1_sha256
         ext.extend_from_slice(&[0x05, 0x01]); // rsa_pkcs1_sha384
-        ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
+        ext.extend_from_slice(&[0x06, 0x01]); // rsa_pkcs1_sha512
 
         Ok(ext)
     }
