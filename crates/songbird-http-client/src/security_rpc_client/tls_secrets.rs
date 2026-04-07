@@ -319,7 +319,11 @@ impl SecurityRpcClient {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::TlsSecrets;
+    use super::decode_b64_field;
+    use crate::error::Error;
+    use base64::prelude::*;
+    use serde_json::json;
 
     #[test]
     fn test_tls_secrets_structure() {
@@ -334,5 +338,50 @@ mod tests {
 
         assert_eq!(secrets.client_write_key.len(), 32);
         assert_eq!(secrets.client_write_iv.len(), 12);
+    }
+
+    #[test]
+    fn decode_b64_field_missing_field() {
+        let err = decode_b64_field(&json!({}), "client_write_key").expect_err("missing");
+        assert!(matches!(err, Error::SecurityProviderRpc(_)));
+    }
+
+    #[test]
+    fn decode_b64_field_invalid_base64() {
+        let err = decode_b64_field(&json!({"client_write_key": "!!!"}), "client_write_key")
+            .expect_err("bad b64");
+        assert!(matches!(err, Error::SecurityProviderRpc(_)));
+    }
+
+    #[test]
+    fn decode_b64_field_roundtrip() {
+        let bytes = b"secret-bytes";
+        let v = json!({"client_write_key": BASE64_STANDARD.encode(bytes)});
+        let got = decode_b64_field(&v, "client_write_key").expect("decode");
+        assert_eq!(got, bytes);
+    }
+
+    #[test]
+    fn application_secrets_missing_client_write_key_errors_like_production() {
+        let result = json!({});
+        let err: crate::error::Result<Vec<u8>> = (|| {
+            BASE64_STANDARD
+                .decode(result["client_write_key"].as_str().ok_or_else(|| {
+                    Error::SecurityProviderRpc("Missing client_write_key in response".to_string())
+                })?)
+                .map_err(|e| {
+                    Error::SecurityProviderRpc(format!("Invalid client_write_key base64: {e}"))
+                })
+        })();
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn finished_verify_data_response_decode() {
+        let tag = b"verify";
+        let result = json!({"verify_data": BASE64_STANDARD.encode(tag)});
+        let verify_data = result["verify_data"].as_str().expect("str");
+        let decoded = BASE64_STANDARD.decode(verify_data).expect("b64");
+        assert_eq!(decoded, tag);
     }
 }

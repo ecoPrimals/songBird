@@ -122,9 +122,9 @@ impl Default for SecurityConfig {
             encryption_key_size: 256,
             session_timeout: Duration::from_secs(3600),
             security_provider_endpoint: env_capability_first_then_legacy_warn(
-                &["SONGBIRD_SECURITY_ENDPOINT", "SONGBIRD_SECURITY_PROVIDER_ENDPOINT"],
+                &["SONGBIRD_SECURITY_PROVIDER_ENDPOINT", "SONGBIRD_SECURITY_ENDPOINT"],
                 "SONGBIRD_BEARDOG_ENDPOINT",
-                "SONGBIRD_SECURITY_ENDPOINT or SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
+                "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
                 &format!("https://{}:8443", crate::canonical::constants::get_bind_address()),
             ),
             oauth_redirect_uri: env_or_default(
@@ -294,21 +294,21 @@ impl Default for PrimalConfig {
         let compute_provider_endpoint: Arc<str> = Arc::from(env_capability_first_then_legacy_warn(
             &["SONGBIRD_COMPUTE_PROVIDER_ENDPOINT", "SONGBIRD_COMPUTE_ENDPOINT"],
             "SONGBIRD_TOADSTOOL_ENDPOINT",
-            "SONGBIRD_COMPUTE_PROVIDER_ENDPOINT or SONGBIRD_COMPUTE_ENDPOINT",
+            "SONGBIRD_COMPUTE_PROVIDER_ENDPOINT",
             &format!("http://{base_ip}:8082"),
         ));
         let ai_provider_endpoint: Arc<str> = Arc::from(env_capability_first_then_legacy_warn(
             &["SONGBIRD_AI_PROVIDER_ENDPOINT", "SONGBIRD_AI_ENDPOINT"],
             "SONGBIRD_SQUIRREL_ENDPOINT",
-            "SONGBIRD_AI_PROVIDER_ENDPOINT or SONGBIRD_AI_ENDPOINT",
+            "SONGBIRD_AI_PROVIDER_ENDPOINT",
             &format!("http://{base_ip}:8083"),
         ));
 
         let security_provider_endpoint: Arc<str> =
             Arc::from(env_capability_first_then_legacy_warn(
-                &["SONGBIRD_SECURITY_ENDPOINT", "SONGBIRD_SECURITY_PROVIDER_ENDPOINT"],
+                &["SONGBIRD_SECURITY_PROVIDER_ENDPOINT", "SONGBIRD_SECURITY_ENDPOINT"],
                 "SONGBIRD_BEARDOG_ENDPOINT",
-                "SONGBIRD_SECURITY_ENDPOINT or SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
+                "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
                 &format!("https://{base_ip}:8443"),
             ));
 
@@ -400,16 +400,14 @@ fn env_capability_first_then_legacy_warn(
     if let Ok(v) = songbird_process_env::var(legacy_key)
         && !v.is_empty()
     {
-        tracing::warn!(
-            "Using legacy env var {legacy_key} — migrate to {migrate_to}; prefer CAPABILITY_*_ENDPOINT for capability-first configuration"
-        );
+        tracing::warn!("deprecated: use {migrate_to} instead of {legacy_key}");
         return v;
     }
     default.to_string()
 }
 
 fn resolve_storage_provider_endpoint(base_ip: &str, base_port: u16) -> String {
-    for key in ["SONGBIRD_STORAGE_ENDPOINT", "SONGBIRD_STORAGE_PROVIDER_ENDPOINT"] {
+    for key in ["SONGBIRD_STORAGE_PROVIDER_ENDPOINT", "SONGBIRD_STORAGE_ENDPOINT"] {
         if let Ok(v) = songbird_process_env::var(key)
             && !v.is_empty()
         {
@@ -420,7 +418,7 @@ fn resolve_storage_provider_endpoint(base_ip: &str, base_port: u16) -> String {
         && !v.is_empty()
     {
         tracing::warn!(
-            "Using legacy env var SONGBIRD_NESTGATE_ENDPOINT — migrate to SONGBIRD_STORAGE_ENDPOINT, SONGBIRD_STORAGE_PROVIDER_ENDPOINT, or CAPABILITY_STORAGE_ENDPOINT (capability-first)"
+            "deprecated: use SONGBIRD_STORAGE_PROVIDER_ENDPOINT instead of SONGBIRD_NESTGATE_ENDPOINT"
         );
         return v;
     }

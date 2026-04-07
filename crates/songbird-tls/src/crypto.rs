@@ -119,7 +119,6 @@ impl SecurityTlsCryptoClient {
         // Verify socket exists (Unix only - Windows uses TCP)
         #[cfg(unix)]
         {
-            use std::path::Path;
             if !Path::new(&socket_path).exists() {
                 return Err(TlsError::CryptoError(format!("Socket not found at: {socket_path}")));
             }
@@ -138,6 +137,96 @@ impl SecurityTlsCryptoClient {
         }
     }
 
+    #[cfg(unix)]
+    fn discover_socket_unix() -> Result<String> {
+        use crate::socket_discovery::{discover_neural_api_socket, discover_security_socket};
+
+        let security_socket = discover_security_socket(None);
+
+        if security_socket.starts_with("tcp:") {
+            tracing::info!("✅ Discovered security provider TCP socket: {}", security_socket);
+            return Ok(security_socket);
+        }
+
+        if Path::new(&security_socket).exists() {
+            tracing::info!("✅ Discovered security provider socket: {}", security_socket);
+            return Ok(security_socket);
+        }
+
+        let neural_socket = discover_neural_api_socket(None);
+
+        if neural_socket.starts_with("tcp:") {
+            tracing::info!("✅ Discovered Neural API TCP socket: {}", neural_socket);
+            return Ok(neural_socket);
+        }
+
+        if Path::new(&neural_socket).exists() {
+            tracing::info!("✅ Discovered Neural API socket: {}", neural_socket);
+            return Ok(neural_socket);
+        }
+
+        // Env-first and XDG before fixed legacy paths (last resort warns).
+        if let Ok(p) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            && !p.starts_with("tcp:")
+            && Path::new(&p).exists()
+        {
+            tracing::info!("Using SECURITY_PROVIDER_SOCKET path (exists on disk): {}", p);
+            return Ok(p);
+        }
+
+        if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+            let sec = std::path::PathBuf::from(&xdg).join("biomeos/security.sock");
+            if sec.exists() {
+                tracing::info!("Using XDG biomeOS security socket: {}", sec.display());
+                return Ok(sec.to_string_lossy().into_owned());
+            }
+            for name in ["neural-api.sock", "ai.sock"] {
+                let p = std::path::PathBuf::from(&xdg).join("biomeos").join(name);
+                if p.exists() {
+                    tracing::info!("Using XDG biomeOS neural socket: {}", p.display());
+                    return Ok(p.to_string_lossy().into_owned());
+                }
+            }
+        }
+
+        if let Ok(p) = songbird_process_env::var("BIOMEOS_SOCKET")
+            && !p.starts_with("tcp:")
+            && Path::new(&p).exists()
+        {
+            tracing::info!("Using BIOMEOS_SOCKET: {}", p);
+            return Ok(p);
+        }
+
+        let legacy_paths = [
+            (
+                "/var/run/biomeos/security.sock",
+                "SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR/biomeos/security.sock",
+            ),
+            (
+                "/run/biomeos/security.sock",
+                "SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR/biomeos/security.sock",
+            ),
+            ("/var/run/neural-api/socket", "BIOMEOS_SOCKET or XDG discovery for neural-api"),
+        ];
+
+        for (path, migrate_hint) in legacy_paths {
+            if Path::new(path).exists() {
+                tracing::warn!("using legacy socket path: {path} ({migrate_hint})");
+                return Ok(path.to_string());
+            }
+        }
+
+        Err(TlsError::CryptoError(format!(
+            "Could not discover security provider or Neural API socket. Tried:\n\
+             - Security: {security_socket} (not found)\n\
+             - Neural API: {neural_socket} (not found)\n\
+             - SECURITY_PROVIDER_SOCKET, XDG_RUNTIME_DIR/biomeos/{{security,neural-api,ai}}.sock, BIOMEOS_SOCKET\n\
+             - Legacy: /var/run/biomeos/security.sock, /run/biomeos/security.sock, /var/run/neural-api/socket (not found)\n\
+             \n\
+             Set one of: SECURITY_PROVIDER_SOCKET, NEURAL_API_SOCKET, BIOMEOS_SOCKET, or XDG_RUNTIME_DIR"
+        )))
+    }
+
     /// Discover Neural API socket for capability.call routing
     ///
     /// **Platform-agnostic discovery (TRUE PRIMAL pattern)**
@@ -148,53 +237,7 @@ impl SecurityTlsCryptoClient {
     fn discover_socket() -> Result<String> {
         #[cfg(unix)]
         {
-            use crate::socket_discovery::{discover_neural_api_socket, discover_security_socket};
-
-            let security_socket = discover_security_socket(None);
-
-            if security_socket.starts_with("tcp:") {
-                tracing::info!("✅ Discovered security provider TCP socket: {}", security_socket);
-                return Ok(security_socket);
-            }
-
-            if Path::new(&security_socket).exists() {
-                tracing::info!("✅ Discovered security provider socket: {}", security_socket);
-                return Ok(security_socket);
-            }
-
-            let neural_socket = discover_neural_api_socket(None);
-
-            if neural_socket.starts_with("tcp:") {
-                tracing::info!("✅ Discovered Neural API TCP socket: {}", neural_socket);
-                return Ok(neural_socket);
-            }
-
-            if Path::new(&neural_socket).exists() {
-                tracing::info!("✅ Discovered Neural API socket: {}", neural_socket);
-                return Ok(neural_socket);
-            }
-
-            let legacy_paths = vec![
-                "/var/run/neural-api/socket",
-                "/var/run/biomeos/security.sock",
-                "/run/biomeos/security.sock",
-            ];
-
-            for path in legacy_paths {
-                if Path::new(path).exists() {
-                    tracing::warn!("⚠️  Using legacy socket path: {}", path);
-                    return Ok(path.to_string());
-                }
-            }
-
-            Err(TlsError::CryptoError(format!(
-                "Could not discover security provider or Neural API socket. Tried:\n\
-                 - Security: {security_socket} (not found)\n\
-                 - Neural API: {neural_socket} (not found)\n\
-                 - Legacy: /var/run/neural-api/socket, /var/run/biomeos/security.sock (not found)\n\
-                 \n\
-                 Set one of: SECURITY_PROVIDER_SOCKET, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR"
-            )))
+            Self::discover_socket_unix()
         }
 
         #[cfg(windows)]

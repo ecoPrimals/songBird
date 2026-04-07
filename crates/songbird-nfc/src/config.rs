@@ -83,8 +83,7 @@ impl NfcConfig {
     /// 4. `BEARDOG_SOCKET` - Provider-specific (backward compatibility)
     /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` - Capability-named
     /// 6. XDG: `$XDG_RUNTIME_DIR/biomeos/crypto.sock` - Capability-named
-    /// 7. XDG: `$XDG_RUNTIME_DIR/biomeos/<legacy-socket-name>` — optional hint on some installs (see implementation)
-    /// 8. Legacy: `/tmp/biomeos/security.sock` - Fallback
+    /// 7. Fallback: temp-dir `biomeos/` sockets (`security.sock`, `crypto.sock`) then default path
     fn discover_security_socket() -> PathBuf {
         // 1. Capability-based env vars (preferred - primal agnostic)
         for env_var in &[
@@ -99,9 +98,7 @@ impl NfcConfig {
         }
         // Legacy fallback
         if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
-            tracing::warn!(
-                "BEARDOG_SOCKET is deprecated — migrate to SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or CRYPTO_PROVIDER_SOCKET; prefer CAPABILITY_SECURITY_ENDPOINT (capability-first)"
-            );
+            tracing::warn!("deprecated: use SECURITY_PROVIDER_SOCKET instead of BEARDOG_SOCKET");
             return PathBuf::from(socket);
         }
 
@@ -125,12 +122,8 @@ impl NfcConfig {
                 biomeos_socket_dir_tmp, security_socket_default_path,
             };
 
-            // Last entry: legacy on-disk socket name on some installs (not a Rust identifier).
-            let fallback_paths = [
-                security_socket_default_path(),
-                biomeos_socket_dir_tmp().join("crypto.sock"),
-                biomeos_socket_dir_tmp().join("beardog.sock"),
-            ];
+            let fallback_paths =
+                [security_socket_default_path(), biomeos_socket_dir_tmp().join("crypto.sock")];
 
             for path in &fallback_paths {
                 if path.exists() {

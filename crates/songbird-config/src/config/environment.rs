@@ -63,10 +63,10 @@ pub struct ServiceEndpoints {
     #[serde(alias = "nestgate_endpoint")]
     pub storage_provider_endpoint: String,
     /// Compute capability provider HTTP endpoint (capability domain `compute`).
-    #[serde(alias = "toadstool_endpoint")]
+    #[serde(alias = "compute-provider", alias = "toadstool_endpoint")]
     pub compute_provider_endpoint: String,
     /// AI capability provider HTTP endpoint (capability domain `ai`).
-    #[serde(alias = "squirrel_endpoint")]
+    #[serde(alias = "ai-provider", alias = "squirrel_endpoint")]
     pub ai_provider_endpoint: String,
     pub discovery_endpoint: String,
     pub health_endpoint: String,
@@ -153,12 +153,12 @@ impl Default for ServiceEndpoints {
             // ZERO HARDCODING: Use environment variables for explicit configuration
             // Discovery happens at runtime via RuntimeDiscoveryEngine
             // No hardcoded fallback endpoints - fail fast if not configured
-            security_provider_endpoint: songbird_process_env::var("SECURITY_ENDPOINT")
-                .or_else(|_| songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT"))
+            security_provider_endpoint: songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("SECURITY_ENDPOINT"))
                 .or_else(|_| {
                     songbird_process_env::var("BEARDOG_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT, SECURITY_PROVIDER_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+                            "deprecated: use SECURITY_PROVIDER_ENDPOINT instead of BEARDOG_ENDPOINT"
                         );
                     })
                 })
@@ -168,12 +168,12 @@ impl Default for ServiceEndpoints {
                     );
                     String::new() // Empty string signals discovery needed
                 }),
-            storage_provider_endpoint: songbird_process_env::var("STORAGE_ENDPOINT")
-                .or_else(|_| songbird_process_env::var("STORAGE_PROVIDER_ENDPOINT"))
+            storage_provider_endpoint: songbird_process_env::var("STORAGE_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("STORAGE_ENDPOINT"))
                 .or_else(|_| {
                     songbird_process_env::var("NESTGATE_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "NESTGATE_ENDPOINT is deprecated — migrate to STORAGE_ENDPOINT, STORAGE_PROVIDER_ENDPOINT, or CAPABILITY_STORAGE_ENDPOINT (capability-first)"
+                            "deprecated: use STORAGE_PROVIDER_ENDPOINT instead of NESTGATE_ENDPOINT"
                         );
                     })
                 })
@@ -183,12 +183,12 @@ impl Default for ServiceEndpoints {
                     );
                     String::new()
                 }),
-            compute_provider_endpoint: songbird_process_env::var("COMPUTE_ENDPOINT")
-                .or_else(|_| songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT"))
+            compute_provider_endpoint: songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("COMPUTE_ENDPOINT"))
                 .or_else(|_| {
                     songbird_process_env::var("TOADSTOOL_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT, COMPUTE_PROVIDER_ENDPOINT, or CAPABILITY_COMPUTE_ENDPOINT (capability-first)"
+                            "deprecated: use COMPUTE_PROVIDER_ENDPOINT instead of TOADSTOOL_ENDPOINT"
                         );
                     })
                 })
@@ -198,12 +198,12 @@ impl Default for ServiceEndpoints {
                     );
                     String::new()
                 }),
-            ai_provider_endpoint: songbird_process_env::var("AI_ENDPOINT")
-                .or_else(|_| songbird_process_env::var("AI_PROVIDER_ENDPOINT"))
+            ai_provider_endpoint: songbird_process_env::var("AI_PROVIDER_ENDPOINT")
+                .or_else(|_| songbird_process_env::var("AI_ENDPOINT"))
                 .or_else(|_| {
                     songbird_process_env::var("SQUIRREL_ENDPOINT").inspect(|_| {
                         tracing::warn!(
-                            "SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT, AI_PROVIDER_ENDPOINT, or CAPABILITY_AI_ENDPOINT (capability-first)"
+                            "deprecated: use AI_PROVIDER_ENDPOINT instead of SQUIRREL_ENDPOINT"
                         );
                     })
                 })

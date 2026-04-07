@@ -200,7 +200,7 @@ pub mod registry;
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service;
 /// Wire-protocol DTOs for JSON-RPC requests and responses.
-#[allow(missing_docs, reason = "DTO struct fields are self-documenting via field names")]
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service_types;
 /// JSON-RPC over universal IPC (Tower Atomic integration).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]

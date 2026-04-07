@@ -106,8 +106,8 @@ impl DiscoveryOptionsBuilder {
 ///
 /// Discovery order:
 /// 1. Explicit option (if provided)
-/// 2. `COMPUTE_ENDPOINT` environment variable
-/// 3. `COMPUTE_PROVIDER_ENDPOINT` environment variable
+/// 2. `COMPUTE_PROVIDER_ENDPOINT` environment variable
+/// 3. `COMPUTE_ENDPOINT` environment variable
 /// 4. Explicit legacy compute provider option (dependency injection)
 /// 5. Legacy compute env alias (backwards compatibility)
 /// 6. Capability-based discovery (future)
@@ -139,15 +139,15 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
         return Ok(endpoint);
     }
 
-    // 1. Try modern COMPUTE_ENDPOINT from environment
-    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_ENDPOINT") {
-        debug!("Using COMPUTE_ENDPOINT from environment: {}", endpoint);
+    // 1. Try COMPUTE_PROVIDER_ENDPOINT (capability domain) first
+    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT") {
+        debug!("Using COMPUTE_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
-    // 2. Try COMPUTE_PROVIDER_ENDPOINT (capability domain)
-    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT") {
-        debug!("Using COMPUTE_PROVIDER_ENDPOINT from environment: {}", endpoint);
+    // 2. Try COMPUTE_ENDPOINT from environment
+    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_ENDPOINT") {
+        debug!("Using COMPUTE_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
@@ -159,9 +159,7 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
 
     // 4. Legacy compute env branch (backwards compatibility)
     if let Ok(endpoint) = songbird_process_env::var("TOADSTOOL_ENDPOINT") {
-        warn!(
-            "TOADSTOOL_ENDPOINT is deprecated — migrate to COMPUTE_ENDPOINT, COMPUTE_PROVIDER_ENDPOINT, or CAPABILITY_COMPUTE_ENDPOINT (capability-first)"
-        );
+        warn!("deprecated: use COMPUTE_PROVIDER_ENDPOINT instead of TOADSTOOL_ENDPOINT");
         return Ok(endpoint);
     }
 
@@ -189,8 +187,8 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
 /// Get storage provider endpoint (replaces legacy hardcoded storage URL naming)
 ///
 /// Discovery order:
-/// 1. `STORAGE_ENDPOINT` environment variable
-/// 2. `STORAGE_PROVIDER_ENDPOINT` environment variable
+/// 1. `STORAGE_PROVIDER_ENDPOINT` environment variable
+/// 2. `STORAGE_ENDPOINT` environment variable
 /// 3. Legacy storage env alias (compatibility; same key as runtime `var` lookup below)
 /// 4. Capability-based discovery (`runtime_discovery`)
 /// 5. Error - no hardcoded fallback
@@ -209,23 +207,21 @@ pub async fn get_storage_endpoint_with<F>(env_reader: F) -> SongbirdResult<Strin
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
 {
-    // 1. Try modern STORAGE_ENDPOINT
-    if let Ok(endpoint) = env_reader("STORAGE_ENDPOINT") {
-        debug!("Using STORAGE_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 2. Try STORAGE_PROVIDER_ENDPOINT (aligns with capability-based config)
+    // 1. Try STORAGE_PROVIDER_ENDPOINT (aligns with capability-based config) first
     if let Ok(endpoint) = env_reader("STORAGE_PROVIDER_ENDPOINT") {
         debug!("Using STORAGE_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
+    // 2. Try STORAGE_ENDPOINT
+    if let Ok(endpoint) = env_reader("STORAGE_ENDPOINT") {
+        debug!("Using STORAGE_ENDPOINT from environment: {}", endpoint);
+        return Ok(endpoint);
+    }
+
     // 3. Legacy storage env branch (backwards compatibility)
     if let Ok(endpoint) = env_reader("NESTGATE_ENDPOINT") {
-        warn!(
-            "NESTGATE_ENDPOINT is deprecated — migrate to STORAGE_ENDPOINT, STORAGE_PROVIDER_ENDPOINT, or CAPABILITY_STORAGE_ENDPOINT (capability-first)"
-        );
+        warn!("deprecated: use STORAGE_PROVIDER_ENDPOINT instead of NESTGATE_ENDPOINT");
         return Ok(endpoint);
     }
 
@@ -251,8 +247,8 @@ where
 /// Get security provider endpoint (replaces legacy hardcoded security URL defaults)
 ///
 /// Discovery order:
-/// 1. `SECURITY_ENDPOINT` environment variable
-/// 2. `SECURITY_PROVIDER_ENDPOINT` environment variable
+/// 1. `SECURITY_PROVIDER_ENDPOINT` environment variable
+/// 2. `SECURITY_ENDPOINT` environment variable
 /// 3. Legacy security env alias (backwards compatibility; same key as runtime `var` lookup below)
 /// 4. Capability-based discovery (future)
 /// 5. Error - no hardcoded fallback
@@ -271,23 +267,21 @@ pub async fn get_security_endpoint_with<F>(env_reader: F) -> SongbirdResult<Stri
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
 {
-    // 1. Try modern SECURITY_ENDPOINT
-    if let Ok(endpoint) = env_reader("SECURITY_ENDPOINT") {
-        debug!("Using SECURITY_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 2. Try SECURITY_PROVIDER_ENDPOINT (capability domain)
+    // 1. Try SECURITY_PROVIDER_ENDPOINT (capability domain) first
     if let Ok(endpoint) = env_reader("SECURITY_PROVIDER_ENDPOINT") {
         debug!("Using SECURITY_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
+    // 2. Try SECURITY_ENDPOINT
+    if let Ok(endpoint) = env_reader("SECURITY_ENDPOINT") {
+        debug!("Using SECURITY_ENDPOINT from environment: {}", endpoint);
+        return Ok(endpoint);
+    }
+
     // 3. Legacy security env branch (backwards compatibility)
     if let Ok(endpoint) = env_reader("BEARDOG_ENDPOINT") {
-        warn!(
-            "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT, SECURITY_PROVIDER_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
-        );
+        warn!("deprecated: use SECURITY_PROVIDER_ENDPOINT instead of BEARDOG_ENDPOINT");
         return Ok(endpoint);
     }
 
@@ -313,8 +307,8 @@ where
 /// Get AI provider endpoint (replaces legacy hardcoded AI / neural URL defaults)
 ///
 /// Discovery order:
-/// 1. `AI_ENDPOINT` environment variable
-/// 2. `AI_PROVIDER_ENDPOINT` environment variable
+/// 1. `AI_PROVIDER_ENDPOINT` environment variable
+/// 2. `AI_ENDPOINT` environment variable
 /// 3. Legacy AI env alias (backwards compatibility; same key as runtime `var` lookup below)
 /// 4. Capability-based discovery (future)
 /// 5. Error - no hardcoded fallback
@@ -333,23 +327,21 @@ pub async fn get_ai_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
 {
-    // 1. Try modern AI_ENDPOINT
-    if let Ok(endpoint) = env_reader("AI_ENDPOINT") {
-        debug!("Using AI_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 2. Try AI_PROVIDER_ENDPOINT (capability domain)
+    // 1. Try AI_PROVIDER_ENDPOINT (capability domain) first
     if let Ok(endpoint) = env_reader("AI_PROVIDER_ENDPOINT") {
         debug!("Using AI_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
+    // 2. Try AI_ENDPOINT
+    if let Ok(endpoint) = env_reader("AI_ENDPOINT") {
+        debug!("Using AI_ENDPOINT from environment: {}", endpoint);
+        return Ok(endpoint);
+    }
+
     // 3. Legacy AI env branch (backwards compatibility)
     if let Ok(endpoint) = env_reader("SQUIRREL_ENDPOINT") {
-        warn!(
-            "SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT, AI_PROVIDER_ENDPOINT, or CAPABILITY_AI_ENDPOINT (capability-first)"
-        );
+        warn!("deprecated: use AI_PROVIDER_ENDPOINT instead of SQUIRREL_ENDPOINT");
         return Ok(endpoint);
     }
 
@@ -453,7 +445,7 @@ mod tests {
     use super::*;
     use std::sync::Mutex;
 
-    /// Serialize tests that mutate `COMPUTE_*` / `TOADSTOOL_*` process env (parallel runs share one env).
+    /// Serialize tests that mutate `COMPUTE_*` process env (parallel runs share one env).
     static COMPUTE_ENDPOINT_ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     /// Restores a previous env value (or removal) on drop for isolated env tests.

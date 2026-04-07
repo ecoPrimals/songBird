@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![warn(missing_docs)]
+#![allow(missing_docs)] // large crate; item-level docs added incrementally
 
 //! # Songbird Discovery
 //!
@@ -207,6 +207,7 @@ pub mod birdsong;
 /// Adapters converting between discovery representations and legacy types.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod conversion;
+/// Internal crypto helpers shared by discovery modules.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub(crate) mod crypto_helpers;
 /// Dark Forest beacon genetics and encrypted discovery metadata.

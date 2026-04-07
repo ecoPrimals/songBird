@@ -2,7 +2,7 @@
 
 **Date**: April 6, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 119 — deep debt elimination pass: all remaining `8.8.8.8`/`1.1.1.1` hardcoded IPs in orchestrator network/binding replaced with `netdev`-based discovery + `SONGBIRD_ROUTE_DETECT_ADDR` env fallback (RFC 5737 `192.0.2.1`); `/tmp/` fallback socket paths evolved to XDG-compliant (`XDG_RUNTIME_DIR` → `TMPDIR` → `/tmp`); hardcoded ports 2300/3478/3479 made env-configurable (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`); 4 production `unwrap()`/`expect()` eliminated or documented with `#[expect]` + reason; `tower_atomic.rs` (990 lines) refactored into `tower_atomic/{mod,types,server,client,tests}.rs` (max 519L); remaining `#[allow(` in production CLI/config/federation/http-client/bluetooth converted to `#[expect(` with reasons; unfulfilled lint expectations removed; zero-copy `Arc<str>` evolution in mesh/punch/rendezvous/capability IPC handlers (replaces per-message `String::clone`); coverage expanded to **72.16%** (+0.74pp): 50+ new tests across `bind_and_ports`, `register`, `announcement`, `remote_probes`, `anonymous/protocol`, `security_crypto_client`, `auth`, `enhanced_router`, `unix_transport`, `discovery_bridge`, `tarpc_server`.
+**Last Deep Debt Audit**: Wave 119 — deep debt elimination pass: all remaining `8.8.8.8`/`1.1.1.1` hardcoded IPs in orchestrator network/binding replaced with `netdev`-based discovery + `SONGBIRD_ROUTE_DETECT_ADDR` env fallback (RFC 5737 `192.0.2.1`); `/tmp/` fallback socket paths evolved to XDG-compliant (`XDG_RUNTIME_DIR` → `TMPDIR` → `/tmp`); hardcoded ports 2300/3478/3479 made env-configurable (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`); 4 production `unwrap()`/`expect()` eliminated or documented with `#[expect]` + reason; `tower_atomic.rs` (990 lines) refactored into `tower_atomic/{mod,types,server,client,tests}.rs` (max 519L); remaining `#[allow(` in production CLI/config/federation/http-client/bluetooth converted to `#[expect(` with reasons; unfulfilled lint expectations removed; zero-copy `Arc<str>` evolution in mesh/punch/rendezvous/capability IPC handlers (replaces per-message `String::clone`); coverage expanded to **72.29%** (+0.74pp): 50+ new tests across `bind_and_ports`, `register`, `announcement`, `remote_probes`, `anonymous/protocol`, `security_crypto_client`, `auth`, `enhanced_router`, `unix_transport`, `discovery_bridge`, `tarpc_server`.
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,764 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
-| **Line Coverage** | **72.16%** measured (llvm-cov `--workspace --lib`, Apr 6 2026; target 90%) |
+| **Tests** | 12,811 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 6 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`) |
@@ -68,7 +68,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ---
 
-## Pending: Coverage Expansion (72.16% → 90% target)
+## Pending: Coverage Expansion (72.29% → 90% target)
 
 **Note (Apr 6, 2026)**: The percentage above is from the prior llvm-cov run; a new coverage total will be recorded **after** the planned test expansion and dedicated coverage pass (not part of today’s audit).
 

@@ -93,6 +93,7 @@ pub mod birdsong_payload;
 /// security provider Secure Tunnel Protocol configuration and provider traits.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod btsp;
+/// Internal cryptography helpers shared by federation modules.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 mod crypto_helpers;
 /// Discovery mode selection (plaintext vs BirdSong-encrypted).

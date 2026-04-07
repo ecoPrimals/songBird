@@ -346,7 +346,8 @@ impl SecurityRpcClient {
 
 #[cfg(test)]
 mod tests {
-    // Integration tests require a running security provider instance
+    use crate::SecurityRpcClient;
+    use crate::error::Error;
 
     #[test]
     fn test_aes_key_sizes() {
@@ -356,5 +357,96 @@ mod tests {
         // GCM tag = 16 bytes
         assert_eq!(128 / 8, 16);
         assert_eq!(256 / 8, 32);
+    }
+
+    #[tokio::test]
+    async fn encrypt_aes_128_gcm_rejects_bad_key_length() {
+        let client = SecurityRpcClient::new_direct("/tmp/songbird-aead-test.sock");
+        let err = client
+            .encrypt_aes_128_gcm(&[0u8; 15], &[0u8; 12], b"pt", b"aad")
+            .await
+            .expect_err("wrong key length");
+        match err {
+            Error::SecurityProviderRpc(msg) => assert!(msg.contains("16-byte key")),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn encrypt_aes_128_gcm_rejects_bad_nonce_length() {
+        let client = SecurityRpcClient::new_direct("/tmp/songbird-aead-test.sock");
+        let err = client
+            .encrypt_aes_128_gcm(&[0u8; 16], &[0u8; 11], b"pt", b"aad")
+            .await
+            .expect_err("wrong nonce length");
+        match err {
+            Error::SecurityProviderRpc(msg) => assert!(msg.contains("12 bytes")),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn encrypt_aes_256_gcm_rejects_bad_key_length() {
+        let client = SecurityRpcClient::new_direct("/tmp/songbird-aead-test.sock");
+        let err = client
+            .encrypt_aes_256_gcm(&[0u8; 31], &[0u8; 12], b"pt", b"aad")
+            .await
+            .expect_err("wrong key length");
+        match err {
+            Error::SecurityProviderRpc(msg) => assert!(msg.contains("32-byte key")),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn decrypt_chacha_rejects_short_ciphertext() {
+        let client = SecurityRpcClient::new_direct("/tmp/songbird-aead-test.sock");
+        let err = client
+            .decrypt(&[0u8; 32], &[0u8; 12], &[0u8; 10], b"aad")
+            .await
+            .expect_err("ciphertext too short");
+        match err {
+            Error::SecurityProviderRpc(msg) => assert!(msg.contains("too short")),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn decrypt_aes_128_gcm_rejects_short_ciphertext_before_rpc() {
+        let client = SecurityRpcClient::new_direct("/tmp/songbird-aead-test.sock");
+        let err = client
+            .decrypt_aes_128_gcm(&[0u8; 16], &[0u8; 12], &[0u8; 10], b"aad")
+            .await
+            .expect_err("ciphertext too short");
+        match err {
+            Error::SecurityProviderRpc(msg) => assert!(msg.contains("too short")),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn decrypt_aes_128_gcm_rejects_bad_key_length() {
+        let client = SecurityRpcClient::new_direct("/tmp/songbird-aead-test.sock");
+        let err = client
+            .decrypt_aes_128_gcm(&[0u8; 15], &[0u8; 12], &[0u8; 20], b"aad")
+            .await
+            .expect_err("wrong key length");
+        match err {
+            Error::SecurityProviderRpc(msg) => assert!(msg.contains("16-byte key")),
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn decrypt_aes_256_gcm_rejects_bad_nonce_length() {
+        let client = SecurityRpcClient::new_direct("/tmp/songbird-aead-test.sock");
+        let err = client
+            .decrypt_aes_256_gcm(&[0u8; 32], &[0u8; 11], &[0u8; 32], b"aad")
+            .await
+            .expect_err("wrong nonce length");
+        match err {
+            Error::SecurityProviderRpc(msg) => assert!(msg.contains("12 bytes")),
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 }

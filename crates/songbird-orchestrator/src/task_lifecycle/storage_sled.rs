@@ -560,7 +560,7 @@ impl super::TaskStorageBackend for TaskStorage {
 }
 
 #[cfg(all(test, feature = "sled-storage"))]
-#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::task_lifecycle::{Priority, ResourceRequirements, TaskSpec, UserId};

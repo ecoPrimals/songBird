@@ -366,5 +366,5 @@ impl StorageProvider for StorageAdapter {
 }
 
 #[cfg(test)]
-#[path = "storage_tests.rs"]
+#[path = "storage_tests/mod.rs"]
 mod tests;

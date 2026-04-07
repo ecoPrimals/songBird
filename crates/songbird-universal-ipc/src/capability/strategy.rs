@@ -126,7 +126,8 @@ impl DiscoveryStrategy for EnvironmentStrategy {
 ///
 /// Discovers providers by scanning common socket directories:
 /// - `/tmp/` - Temporary sockets
-/// - `/run/user/{uid}/` - User runtime directory
+/// - `$XDG_RUNTIME_DIR` - User session runtime (when set)
+/// - `/run/user/{uid}/` - User runtime directory (when `UID` is set)
 /// - `/var/run/` - System runtime directory
 pub struct FilesystemStrategy {
     /// Directories to scan
@@ -138,6 +139,10 @@ impl FilesystemStrategy {
     #[must_use]
     pub fn new() -> Self {
         let mut search_paths = vec![PathBuf::from("/tmp")];
+
+        if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+            search_paths.push(PathBuf::from(xdg));
+        }
 
         // Add user runtime directory if available
         if let Ok(uid) = songbird_process_env::var("UID") {

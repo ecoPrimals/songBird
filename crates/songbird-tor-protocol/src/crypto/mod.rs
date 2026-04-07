@@ -587,6 +587,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn test_crypto_provider_from_env() {
@@ -632,5 +633,31 @@ mod tests {
         };
         assert_eq!(kp.secret_key[0], 9);
         assert_eq!(kp.public_key[0], 8);
+    }
+
+    #[test]
+    fn map_crypto_err_wraps_provider_error_display() {
+        use songbird_crypto_provider::{CryptoProviderError, RpcError};
+        let e = CryptoProviderError::Rpc(RpcError::Remote {
+            code: -1,
+            message: "capability missing".into(),
+        });
+        let err = super::map_crypto_err(&e);
+        match err {
+            Error::Crypto(s) => assert!(s.contains("capability missing")),
+            other => panic!("unexpected variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_crypto_err_preserves_io_style_rpc_errors() {
+        use songbird_crypto_provider::{CryptoProviderError, RpcError};
+        let inner = std::io::Error::new(std::io::ErrorKind::Other, "broken pipe");
+        let e = CryptoProviderError::Rpc(RpcError::ReadResponse(inner));
+        let err = super::map_crypto_err(&e);
+        let Error::Crypto(s) = err else {
+            panic!("expected Crypto");
+        };
+        assert!(!s.is_empty());
     }
 }

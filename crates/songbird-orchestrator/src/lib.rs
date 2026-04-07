@@ -218,8 +218,10 @@ pub mod server;
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service_registry;
 /// In-memory consent/task storage when `sled-storage` is disabled.
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 mod storage_memory;
 /// NestGate JSON-RPC `storage.*` delegation (SB-03).
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod storage_nestgate;
 /// Task lifecycle and scheduling hooks for orchestrated work.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]

@@ -425,3 +425,92 @@ pub fn completion_message(message: &str, next_steps: &[&str]) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn success_info_warn_error_debug_progress_contain_message_text() {
+        let msg = "network-timeout";
+        assert!(success(msg).contains(msg));
+        assert!(info(msg).contains(msg));
+        assert!(warn(msg).contains(msg));
+        assert!(error(msg).contains(msg));
+        assert!(debug(msg).contains(msg));
+        assert!(progress(msg).contains(msg));
+    }
+
+    #[test]
+    fn format_bytes_scales_units() {
+        assert_eq!(format_bytes(0), "0 B");
+        assert_eq!(format_bytes(1023), "1023 B");
+        assert!(format_bytes(1024).contains("KB"));
+        assert!(format_bytes(1024 * 1024).contains("MB"));
+    }
+
+    #[test]
+    fn format_duration_human_readable() {
+        assert_eq!(format_duration(Duration::from_secs(45)), "45s");
+        assert_eq!(format_duration(Duration::from_secs(125)), "2m 5s");
+        assert_eq!(format_duration(Duration::from_secs(3725)), "1h 2m");
+        assert_eq!(format_duration(Duration::from_secs(90061)), "1d 1h 1m");
+    }
+
+    #[test]
+    fn format_percentage_uses_threshold_colors() {
+        let s_high = format_percentage(0.95);
+        let s_mid = format_percentage(0.80);
+        let s_low = format_percentage(0.50);
+        assert!(s_high.contains("95.0%"));
+        assert!(s_mid.contains("80.0%"));
+        assert!(s_low.contains("50.0%"));
+    }
+
+    #[test]
+    fn format_health_status_branches() {
+        assert!(format_health_status("Healthy").contains("Healthy"));
+        assert!(format_health_status("WARNING").contains("WARNING"));
+        assert!(format_health_status("Failed").contains("Failed"));
+        assert!(format_health_status("unknown").contains("unknown"));
+    }
+
+    #[test]
+    fn title_and_terminal_dimensions_are_sensible() {
+        let t = title("Songbird");
+        assert!(t.to_string().contains("Songbird"));
+        assert!(terminal_width() > 0);
+        assert!(terminal_height() > 0);
+    }
+
+    #[test]
+    fn table_builder_chains() {
+        let _table =
+            Table::new().headers(vec!["a".into(), "bb".into()]).row(vec!["ccc".into(), "d".into()]);
+    }
+
+    #[tokio::test]
+    async fn with_loading_completes_future() {
+        let out = with_loading("test-op", async { 7_u32 }).await;
+        assert_eq!(out, 7);
+    }
+
+    #[test]
+    fn error_with_suggestions_and_warning_with_context_run() {
+        error_with_suggestions("main failure", &["retry", "check logs"]);
+        warning_with_context("degraded", "queue depth high");
+    }
+
+    #[test]
+    fn system_info_and_config_summary_run() {
+        system_info(&[("os", "linux"), ("arch", "x86_64")]);
+        config_summary(&[("region", "local")]);
+    }
+
+    #[test]
+    fn step_and_completion_message_run() {
+        step(2, 5, "deploy");
+        completion_message("All set.", &["Run status", "Open dashboard"]);
+    }
+}

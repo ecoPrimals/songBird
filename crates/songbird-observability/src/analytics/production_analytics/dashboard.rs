@@ -70,3 +70,21 @@ impl ProductionAnalyticsEngine {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{AnalyticsConfig, ProductionAnalyticsEngine};
+
+    #[tokio::test]
+    async fn get_analytics_statistics_clones_snapshot() {
+        let engine = ProductionAnalyticsEngine::new(AnalyticsConfig::default());
+        let s = engine.get_analytics_statistics().await;
+        assert_eq!(s.total_data_points, 0);
+    }
+
+    #[tokio::test]
+    async fn start_background_processing_returns_ok() {
+        let engine = ProductionAnalyticsEngine::new(AnalyticsConfig::default());
+        engine.start_background_processing().expect("starts");
+    }
+}

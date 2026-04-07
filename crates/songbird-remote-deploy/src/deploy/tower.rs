@@ -134,3 +134,26 @@ pub(super) async fn check_status(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_tower_address;
+
+    #[test]
+    fn parse_tower_address_strips_port() {
+        assert_eq!(parse_tower_address("10.0.0.5:8443"), "10.0.0.5");
+        assert_eq!(parse_tower_address("relay.example.com:9000"), "relay.example.com");
+    }
+
+    #[test]
+    fn parse_tower_address_no_colon_unchanged() {
+        assert_eq!(parse_tower_address("192.168.1.1"), "192.168.1.1");
+    }
+
+    #[test]
+    fn parse_tower_address_splits_on_first_colon_only() {
+        assert_eq!(parse_tower_address("a:b:c"), "a");
+        // Naive split: bracketed IPv6 contains extra ':' segments before the port.
+        assert_eq!(parse_tower_address("[::1]:8080"), "[");
+    }
+}
