@@ -64,9 +64,10 @@ impl TlsHandshake {
 
         // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
         ext.extend_from_slice(&[0x00, 0x0a]);
-        ext.extend_from_slice(&[0x00, 0x04]); // Extension length
-        ext.extend_from_slice(&[0x00, 0x02]); // Named group list length
+        ext.extend_from_slice(&[0x00, 0x06]); // Extension length
+        ext.extend_from_slice(&[0x00, 0x04]); // Named group list length
         ext.extend_from_slice(&[0x00, 0x1d]); // x25519
+        ext.extend_from_slice(&[0x00, 0x17]); // secp256r1 (P-256 fallback)
 
         // 3. Signature algorithms (0x000d) - REQUIRED for TLS 1.3
         ext.extend_from_slice(&[0x00, 0x0d]);
@@ -110,9 +111,10 @@ impl TlsHandshake {
 
         // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
         ext.extend_from_slice(&[0x00, 0x0a]);
-        ext.extend_from_slice(&[0x00, 0x04]); // Extension length
-        ext.extend_from_slice(&[0x00, 0x02]); // Named group list length
+        ext.extend_from_slice(&[0x00, 0x06]); // Extension length
+        ext.extend_from_slice(&[0x00, 0x04]); // Named group list length
         ext.extend_from_slice(&[0x00, 0x1d]); // x25519
+        ext.extend_from_slice(&[0x00, 0x17]); // secp256r1 (P-256 fallback)
 
         // 3. Signature algorithms (0x000d) - REQUIRED for TLS 1.3
         ext.extend_from_slice(&[0x00, 0x0d]);

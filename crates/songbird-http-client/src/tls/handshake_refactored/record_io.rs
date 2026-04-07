@@ -366,24 +366,13 @@ impl TlsHandshake {
     /// Generate 32-byte random (for testing, production should use the `crypto provider`)
     #[expect(clippy::unused_self, reason = "API consistency with other TlsHandshake methods")]
     pub(crate) fn generate_random(&self) -> Vec<u8> {
-        use std::time::{SystemTime, UNIX_EPOCH};
+        let mut random = vec![0u8; 32];
 
-        let mut random = Vec::with_capacity(32);
-
-        // Use timestamp for first 4 bytes (not cryptographically secure, but good enough for testing)
-        let timestamp = u32::try_from(
-            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
-        )
-        .unwrap_or(0);
-        random.extend_from_slice(&timestamp.to_be_bytes());
-
-        // Fill rest with pseudo-random (in production, the crypto provider should provide this)
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "truncation acceptable: test-only pseudo-random filler bytes"
-        )]
-        for i in 4u8..32 {
-            random.push(i.wrapping_mul(7).wrapping_add(timestamp as u8));
+        if getrandom::fill(&mut random).is_err() {
+            warn!("⚠️  getrandom failed, falling back to fastrand");
+            for byte in &mut random {
+                *byte = fastrand::u8(..);
+            }
         }
 
         random
@@ -403,11 +392,12 @@ mod tests {
         let handshake = TlsHandshake::new(crypto);
 
         let random1 = handshake.generate_random();
+        let random2 = handshake.generate_random();
 
         assert_eq!(random1.len(), 32);
-        // Verify first 4 bytes are a reasonable timestamp (after 2020)
-        let timestamp = u32::from_be_bytes([random1[0], random1[1], random1[2], random1[3]]);
-        assert!(timestamp > 1_600_000_000, "Timestamp should be after 2020");
+        assert_eq!(random2.len(), 32);
+        assert_ne!(random1, random2, "CSPRNG should produce distinct values");
+        assert_ne!(random1, vec![0u8; 32], "should not be all zeros");
     }
 
     #[test]

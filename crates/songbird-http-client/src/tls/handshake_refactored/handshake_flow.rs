@@ -405,7 +405,12 @@ impl TlsHandshake {
         // ClientHello content
         msg.extend_from_slice(&TLS_1_2.to_be_bytes()); // Legacy version
         msg.extend_from_slice(client_random); // Random (32 bytes)
-        msg.push(0); // Legacy session ID length
+
+        // RFC 8446 Appendix D.4: non-empty legacy_session_id for middlebox compat.
+        // Servers behind CDNs/load balancers (Cloudflare, etc.) require this.
+        let session_id = self.generate_random();
+        msg.push(32); // Legacy session ID length
+        msg.extend_from_slice(&session_id);
 
         // Cipher suites
         msg.extend_from_slice(&tls_wire_u16(CIPHER_SUITES.len().saturating_mul(2))?.to_be_bytes());
@@ -488,7 +493,10 @@ mod tests {
         assert_eq!(&msg[body_start..body_start + 2], &TLS_1_2.to_be_bytes());
         assert_eq!(&msg[body_start + 2..body_start + 34], random.as_slice());
 
-        let cs_len_pos = body_start + 34 + 1; // + legacy session id len byte (0)
+        // Session ID: 1 byte length (32) + 32 bytes random
+        let session_id_len = msg[body_start + 34] as usize;
+        assert_eq!(session_id_len, 32, "legacy_session_id must be 32 bytes for middlebox compat");
+        let cs_len_pos = body_start + 34 + 1 + session_id_len;
         let cs_len = u16::from_be_bytes([msg[cs_len_pos], msg[cs_len_pos + 1]]) as usize;
         assert_eq!(cs_len, CIPHER_SUITES.len() * 2);
     }
