@@ -6,8 +6,9 @@ use crate::tower_atomic::JsonRpcHandler;
 use serde_json::Value;
 use songbird_types::json_rpc_method::{
     BirdsongMethod, CapabilitiesMethod, DiscoveryMethod, FederationMethod, HealthMethod,
-    HttpMethod, IgdMethod, IpcMethod, JsonRpcMethod, MeshMethod, OnionMethod, PeerMethod,
-    PrimalMethod, PunchMethod, RelayMethod, RendezvousMethod, RpcMethod, StunMethod, TorMethod,
+    HttpMethod, IdentityMethod, IgdMethod, IpcMethod, JsonRpcMethod, MeshMethod, OnionMethod,
+    PeerMethod, PrimalMethod, PunchMethod, RelayMethod, RendezvousMethod, RpcMethod, StunMethod,
+    TorMethod,
 };
 
 impl JsonRpcHandler for IpcServiceHandler {
@@ -49,6 +50,9 @@ impl JsonRpcHandler for IpcServiceHandler {
                 Ok(crate::introspection::capabilities_methods())
             }
             JsonRpcMethod::Identity => self.handle_identity().await,
+            JsonRpcMethod::IdentityGet(IdentityMethod::Get) => {
+                Ok(crate::introspection::identity_get())
+            }
 
             // ── IPC registry ─────────────────────────────────────────
             JsonRpcMethod::Ipc(IpcMethod::Register) => self.handle_register(params).await,
@@ -318,7 +322,8 @@ mod dispatch_tests {
         assert_eq!(resolved["virtual_endpoint"], "/primal/alias-route");
 
         let caps = h.handle("capability.list", json!({})).await.expect("capability.list alias");
-        assert!(caps.is_array());
+        assert_eq!(caps["primal"], "songbird");
+        assert!(caps["methods"].is_array());
     }
 
     #[tokio::test]
@@ -407,7 +412,9 @@ mod dispatch_tests {
         ok!("health.readiness", json!({}));
         ok!("health.check", json!({}));
         ok!("capabilities.list", json!({}));
+        ok!("capabilities.methods", json!({}));
         ok!("identity", json!({}));
+        ok!("identity.get", json!({}));
 
         h.handle(
             "ipc.register",

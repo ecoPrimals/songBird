@@ -35,7 +35,7 @@ pub use capability_tokens::{
     CAPABILITY_METHOD_MAP, SONGBIRD_CAPABILITY_STRINGS, capabilities_list, capabilities_methods,
 };
 pub use health_payloads::{health, health_check, health_liveness, health_readiness};
-pub use identity_payloads::{canonical_family_id, identity};
+pub use identity_payloads::{canonical_family_id, identity, identity_get};
 pub use primal::{primal_capabilities, primal_info};
 pub use rpc::{discover_capabilities, normalize_method, rpc_discover_standard, rpc_methods};
 

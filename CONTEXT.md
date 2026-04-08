@@ -34,7 +34,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 12,860 passed (0 failed, 252 ignored env-dependent, full suite ~70s) |
+| Tests | 12,863 passed (0 failed, 252 ignored env-dependent, full suite ~70s) |
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
@@ -50,7 +50,8 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard `domain.verb` naming):
 
 - `health.liveness`, `health.readiness`, `health.check`
-- `capabilities.list`
+- `capabilities.list` (Wire Standard L2 envelope: `{primal, version, methods}`), `capabilities.methods`
+- `identity.get` (Wire Standard L2: `{primal, version, domain, license}`), `identity`
 - `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`
 - `http.request`, `http.get`, `http.post`
 - `stun.*`, `igd.*`, `relay.*`, `mesh.*`, `punch.*`

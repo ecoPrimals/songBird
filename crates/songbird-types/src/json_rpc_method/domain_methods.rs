@@ -55,6 +55,13 @@ pub enum CapabilitiesMethod {
     Methods,
 }
 
+/// `identity.*` — Wire Standard Level 2 self-identification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum IdentityMethod {
+    /// `identity.get` — returns `{primal, version, domain, license}`
+    Get,
+}
+
 /// `ipc.*`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IpcMethod {

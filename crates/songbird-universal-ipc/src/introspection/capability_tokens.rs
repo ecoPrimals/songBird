@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Flat capability token list for NEST / inter-primal discovery.
+//! Capability tokens, callable method catalog, and Wire Standard envelope
+//! for NEST / inter-primal discovery.
 
-use serde_json::Value;
+use serde_json::{Value, json};
+use songbird_types::primal_names;
 
-/// Canonical capability tokens for [`capabilities_list`] (NEST / inter-primal discovery).
+/// Canonical capability tokens (NEST / inter-primal discovery).
 ///
 /// Kept as a single source of truth for `capabilities.list` JSON-RPC and gateways.
 pub const SONGBIRD_CAPABILITY_STRINGS: &[&str] = &[
@@ -25,15 +27,112 @@ pub const SONGBIRD_CAPABILITY_STRINGS: &[&str] = &[
     "bluetooth.pair",
 ];
 
-/// Flat capability string list for `capabilities.list` (JSON array result).
+/// Every callable JSON-RPC method Songbird's dispatch accepts.
+///
+/// Built from [`CAPABILITY_METHOD_MAP`] plus meta/introspection methods that are
+/// not part of any capability group. This is the `methods` field required by
+/// the Capability Wire Standard Level 2 envelope.
+const CALLABLE_METHODS: &[&str] = &[
+    // ── Meta / introspection ──
+    "health.liveness",
+    "health.readiness",
+    "health.check",
+    "capabilities.list",
+    "capabilities.methods",
+    "identity",
+    "identity.get",
+    "primal.info",
+    "primal.capabilities",
+    "rpc.methods",
+    "rpc.discover",
+    "discover_capabilities",
+    // ── IPC registry ──
+    "ipc.register",
+    "ipc.resolve",
+    "ipc.discover",
+    "ipc.list",
+    // ── HTTP/HTTPS ──
+    "http.request",
+    "http.get",
+    "http.post",
+    // ── STUN / NAT traversal ──
+    "stun.serve",
+    "stun.stop",
+    "stun.status",
+    "stun.get_public_address",
+    "stun.bind",
+    "stun.probe_port_pattern",
+    "stun.detect_nat_type",
+    // ── IGD ──
+    "igd.discover",
+    "igd.map_port",
+    "igd.unmap_port",
+    "igd.status",
+    "igd.external_ip",
+    "igd.auto_configure",
+    // ── Relay ──
+    "relay.serve",
+    "relay.stop",
+    "relay.status",
+    "relay.allocate",
+    // ── Discovery / rendezvous / peers ──
+    "discovery.peers",
+    "discovery.announce",
+    "rendezvous.register",
+    "rendezvous.lookup",
+    "peer.connect",
+    // ── BirdSong encrypted discovery ──
+    "birdsong.generate_encrypted_beacon",
+    "birdsong.decrypt_beacon",
+    "birdsong.verify_lineage",
+    "birdsong.get_lineage",
+    "birdsong.advertise",
+    "birdsong.schema",
+    // ── Mesh networking ──
+    "mesh.init",
+    "mesh.status",
+    "mesh.find_path",
+    "mesh.announce",
+    "mesh.peers",
+    "mesh.topology",
+    "mesh.health_check",
+    "mesh.auto_discover",
+    // ── Hole punching ──
+    "punch.request",
+    "punch.coordinate",
+    "punch.status",
+    // ── Sovereign onion ──
+    "onion.start",
+    "onion.stop",
+    "onion.status",
+    "onion.connect",
+    "onion.address",
+    // ── Federation ──
+    "federation.peers",
+    "federation.status",
+    // ── Tor ──
+    "tor.status",
+    "tor.connect",
+    "tor.service.start",
+    "tor.service.stop",
+    "tor.consensus.fetch",
+    "tor.circuit.build",
+    "tor.circuit.close",
+];
+
+/// Wire Standard Level 2 envelope for `capabilities.list`.
+///
+/// Returns `{"primal": "songbird", "version": "<semver>", "methods": [...]}` per
+/// the Capability Wire Standard v1.0.
 #[must_use]
 pub fn capabilities_list() -> Value {
-    serde_json::Value::Array(
-        SONGBIRD_CAPABILITY_STRINGS
-            .iter()
-            .map(|s| serde_json::Value::String((*s).to_string()))
-            .collect(),
-    )
+    let methods: Vec<Value> =
+        CALLABLE_METHODS.iter().map(|s| Value::String((*s).to_string())).collect();
+    json!({
+        "primal": primal_names::SELF_NAME,
+        "version": env!("CARGO_PKG_VERSION"),
+        "methods": methods
+    })
 }
 
 /// Mapping from NEST capability tokens to their primary callable JSON-RPC methods.

@@ -61,6 +61,7 @@ pub enum JsonRpcMethod {
     Rpc(RpcMethod),
     DiscoverCapabilities,
     Identity,
+    IdentityGet(IdentityMethod),
     /// Raw `health` on the orchestrator Unix socket (biomeOS); not `health.check`.
     BiomeOsHealth,
     Health(HealthMethod),
@@ -116,6 +117,7 @@ impl JsonRpcMethod {
             Self::Rpc(RpcMethod::Discover) => "rpc.discover",
             Self::DiscoverCapabilities => "discover_capabilities",
             Self::Identity => "identity",
+            Self::IdentityGet(IdentityMethod::Get) => "identity.get",
             Self::BiomeOsHealth => "health",
             Self::Health(HealthMethod::Liveness) => "health.liveness",
             Self::Health(HealthMethod::Readiness) => "health.readiness",
@@ -248,6 +250,7 @@ impl JsonRpcMethod {
             "rpc.discover" => Self::Rpc(RpcMethod::Discover),
             "discover_capabilities" => Self::DiscoverCapabilities,
             "identity" => Self::Identity,
+            "identity.get" => Self::IdentityGet(IdentityMethod::Get),
             "health" => Self::BiomeOsHealth,
             "health.liveness" => Self::Health(HealthMethod::Liveness),
             "health.readiness" => Self::Health(HealthMethod::Readiness),

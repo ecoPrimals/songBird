@@ -290,16 +290,25 @@ async fn health_liveness_returns_healthy_status_only() {
 }
 
 #[tokio::test]
-async fn capabilities_list_returns_expected_tokens() {
+async fn capabilities_list_returns_wire_standard_envelope() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
     let v = handler.handle("capabilities.list", json!({})).await.expect("caps");
-    let arr = v.as_array().expect("capabilities.list must return a JSON array");
-    let strings: Vec<&str> = arr.iter().filter_map(|x| x.as_str()).collect();
-    for expected in crate::introspection::SONGBIRD_CAPABILITY_STRINGS {
-        assert!(strings.contains(expected), "missing capability token {expected}");
-    }
-    assert_eq!(strings.len(), crate::introspection::SONGBIRD_CAPABILITY_STRINGS.len());
+    assert_eq!(v["primal"].as_str().unwrap(), "songbird");
+    assert!(v["version"].as_str().is_some(), "version must be present");
+    let methods = v["methods"].as_array().expect("methods must be a JSON array");
+    assert!(methods.iter().any(|m| m == "health.liveness"), "must include health.liveness");
+    assert!(methods.iter().any(|m| m == "identity.get"), "must include identity.get");
+}
+
+#[tokio::test]
+async fn identity_get_returns_wire_standard_response() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+    let v = handler.handle("identity.get", json!({})).await.expect("identity.get");
+    assert_eq!(v["primal"].as_str().unwrap(), "songbird");
+    assert_eq!(v["domain"].as_str().unwrap(), "network");
+    assert_eq!(v["license"].as_str().unwrap(), "AGPL-3.0-or-later");
 }
 
 #[test]

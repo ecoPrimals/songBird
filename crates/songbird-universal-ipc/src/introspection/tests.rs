@@ -5,8 +5,8 @@
 
 use super::{
     SONGBIRD_CAPABILITY_STRINGS, canonical_family_id, capabilities_list, discover_capabilities,
-    health, health_check, health_liveness, health_readiness, identity, normalize_method,
-    primal_capabilities, primal_info, rpc_discover_standard, rpc_methods,
+    health, health_check, health_liveness, health_readiness, identity, identity_get,
+    normalize_method, primal_capabilities, primal_info, rpc_discover_standard, rpc_methods,
 };
 
 use std::collections::HashMap;
@@ -45,12 +45,31 @@ fn health_liveness_is_minimal() {
 }
 
 #[test]
-fn capabilities_list_matches_const_table() {
+fn capabilities_list_wire_standard_envelope() {
     let v = capabilities_list();
-    let arr = v.as_array().unwrap();
-    assert_eq!(arr.len(), SONGBIRD_CAPABILITY_STRINGS.len());
-    for (i, s) in SONGBIRD_CAPABILITY_STRINGS.iter().enumerate() {
-        assert_eq!(arr[i].as_str().unwrap(), *s);
+    assert_eq!(v["primal"].as_str().unwrap(), "songbird");
+    assert!(v["version"].as_str().unwrap().contains('.'), "version must be semver");
+    let methods = v["methods"].as_array().unwrap();
+    assert!(!methods.is_empty());
+    assert!(methods.iter().any(|m| m == "health.liveness"));
+    assert!(methods.iter().any(|m| m == "capabilities.list"));
+    assert!(methods.iter().any(|m| m == "identity.get"));
+    assert!(methods.iter().any(|m| m == "http.request"));
+    assert!(methods.iter().any(|m| m == "stun.serve"));
+    assert!(methods.iter().any(|m| m == "tor.status"));
+    assert!(methods.iter().any(|m| m == "federation.peers"));
+}
+
+#[test]
+fn capabilities_list_envelope_methods_all_strings() {
+    let v = capabilities_list();
+    let legacy_aliases = ["identity", "discover_capabilities"];
+    for m in v["methods"].as_array().unwrap() {
+        let s = m.as_str().unwrap();
+        assert!(
+            s.contains('.') || legacy_aliases.contains(&s),
+            "method {s} should follow domain.verb (or be a known legacy alias)"
+        );
     }
 }
 
@@ -60,6 +79,15 @@ fn identity_includes_family_id() {
     assert_eq!(v["family_id"], "fam-test");
     let caps = v["capabilities"].as_array().unwrap();
     assert!(caps.iter().any(|c| c == "ipc.register"));
+}
+
+#[test]
+fn identity_get_wire_standard() {
+    let v = identity_get();
+    assert_eq!(v["primal"].as_str().unwrap(), "songbird");
+    assert!(v["version"].as_str().unwrap().contains('.'), "version must be semver");
+    assert_eq!(v["domain"].as_str().unwrap(), "network");
+    assert_eq!(v["license"].as_str().unwrap(), "AGPL-3.0-or-later");
 }
 
 #[test]

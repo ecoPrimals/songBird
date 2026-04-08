@@ -20,7 +20,7 @@ pub fn canonical_family_id(env: impl Fn(&str) -> Result<String, std::env::VarErr
         .unwrap_or_else(|_| "default".to_string())
 }
 
-/// Generate identity response
+/// Generate legacy identity response (backward-compat `identity` method).
 #[must_use]
 pub fn identity(family_id: &str) -> Value {
     serde_json::json!({
@@ -48,5 +48,18 @@ pub fn identity(family_id: &str) -> Value {
             "peer.connect",
             "discover_capabilities"
         ]
+    })
+}
+
+/// Wire Standard Level 2 `identity.get` response.
+///
+/// Returns `{primal, version, domain, license}` per Capability Wire Standard v1.0.
+#[must_use]
+pub fn identity_get() -> Value {
+    serde_json::json!({
+        "primal": primal_names::SELF_NAME,
+        "version": env!("CARGO_PKG_VERSION"),
+        "domain": "network",
+        "license": "AGPL-3.0-or-later"
     })
 }
