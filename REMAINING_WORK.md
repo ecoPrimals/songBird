@@ -2,7 +2,7 @@
 
 **Date**: April 8, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 127 — coverage expansion: AI adapter MockTransport tests (metrics, health, timeout, HTTP error, `SQUIRREL_ENDPOINT` deprecation warning), tarpc_client/ops edge-case tests (empty capability, sequential ops, serde round-trips), storage adapter discovery/transport tests (env fallback chain, MockTransport, DelayTransport timeout, error paths), global discovery test synchronization (`discovery_test_sync.rs`); +30 tests (12,916 total). Wave 126: security adapter + tower_atomic tests (+23 tests). Wave 125: Wire Standard L2 (`capabilities.list` envelope, `identity.get`). Wave 124: lint hygiene, commented-out code scrub, `// FIX:` resolved, coverage +49 tests. Wave 123: TLS 1.3 middlebox compat, capability method gap. Wave 122: doc/debris cleanup. Wave 121: legacy primal scrub. Wave 120: sled → NestGate. Wave 119: hardcoded elimination, zero-copy.
+**Last Deep Debt Audit**: Wave 128 — **Songbird Socket Gap (Medium) resolved**: Wire Standard L2 methods (`capabilities.list`, `capabilities.methods`, `identity`, `identity.get`) wired through orchestrator `songbird.sock` Unix socket handler (`pure_rust_server/server/handlers.rs`); +6 dispatch tests. biomeOS can now probe `songbird.sock` and receive correct L2 responses. Wave 127: coverage expansion (+30 tests). Wave 126: security adapter + tower_atomic tests (+23 tests). Wave 125: Wire Standard L2 (`capabilities.list` envelope, `identity.get`). Wave 124: lint hygiene, commented-out code scrub. Wave 123: TLS 1.3 middlebox compat. Wave 122: doc/debris cleanup. Wave 121: legacy primal scrub. Wave 120: sled → NestGate. Wave 119: hardcoded elimination, zero-copy.
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,916 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 12,922 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |

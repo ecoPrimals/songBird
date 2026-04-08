@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave128] - 2026-04-08 - Songbird Socket Gap: Wire Standard L2 on songbird.sock
+
+### Fixed — Socket Gap (Medium, primalSpring audit)
+- Wire Standard L2 methods (`capabilities.list`, `capabilities.methods`, `identity`, `identity.get`) now dispatched on orchestrator `songbird.sock` Unix socket handler
+- Previously: biomeOS probed `songbird.sock` and received "Unknown method" for L2 introspection
+- Root cause: `UnixSocketServer::handle_jsonrpc_request` had explicit arms only for health triad + HTTP/IPC methods; all other parsed variants hit catch-all `method_not_found`
+- Fix: added dispatch arms in `pure_rust_server/server/handlers.rs` calling same `songbird_universal_ipc::introspection::*` helpers as HTTP gateway
+
+### Added — Tests
+- +6 Wire Standard L2 socket dispatch tests (capabilities.list envelope, capabilities.methods map, identity.get fields, identity legacy, health triad, unknown method negative)
+
+### Stats
+- Tests: 12,922 passed, 0 failed, 252 ignored
+
+---
+
 ## [v0.2.1-wave127] - 2026-04-08 - Coverage Expansion: MockTransport Adapters, Storage Discovery, Test Sync
 
 ### Added — Coverage Expansion

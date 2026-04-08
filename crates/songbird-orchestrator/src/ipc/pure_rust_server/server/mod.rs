@@ -234,12 +234,98 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    use crate::app::connection_manager::ConnectionManager;
+    use crate::ipc::pure_rust_server::protocol::{JsonRpcRequest, JsonRpcResponse};
+    use crate::ipc::registry::ServiceRegistry;
+
     fn mock_env(
         vars: HashMap<&str, &str>,
     ) -> impl Fn(&str) -> std::result::Result<String, std::env::VarError> {
         let owned: HashMap<String, String> =
             vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
         move |key: &str| owned.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+    }
+
+    fn test_server() -> Arc<UnixSocketServer> {
+        let registry = Arc::new(ServiceRegistry::new());
+        let conn_mgr = Arc::new(ConnectionManager::new());
+        let security = Arc::new(songbird_http_client::SecurityRpcClient::new_direct(
+            "/tmp/songbird-test-l2.sock",
+        ));
+        Arc::new(UnixSocketServer::new(registry, None, conn_mgr, security))
+    }
+
+    fn jsonrpc_req(method: &str) -> JsonRpcRequest {
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: method.to_string(),
+            params: None,
+            id: Some(serde_json::json!(1)),
+        }
+    }
+
+    fn assert_success(resp: &JsonRpcResponse, label: &str) {
+        assert!(resp.error.is_none(), "{label}: expected success, got error: {:?}", resp.error);
+        assert!(resp.result.is_some(), "{label}: expected result payload");
+    }
+
+    #[tokio::test]
+    async fn wire_standard_l2_capabilities_list_on_socket() {
+        let server = test_server();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("capabilities.list")).await;
+        assert_success(&resp, "capabilities.list");
+        let result = resp.result.unwrap();
+        assert_eq!(result["primal"].as_str().unwrap(), "songbird");
+        assert!(result["version"].is_string());
+        assert!(result["methods"].is_array());
+    }
+
+    #[tokio::test]
+    async fn wire_standard_l2_capabilities_methods_on_socket() {
+        let server = test_server();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("capabilities.methods")).await;
+        assert_success(&resp, "capabilities.methods");
+        let result = resp.result.unwrap();
+        assert!(result.is_object(), "capabilities.methods should return a map");
+    }
+
+    #[tokio::test]
+    async fn wire_standard_l2_identity_get_on_socket() {
+        let server = test_server();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("identity.get")).await;
+        assert_success(&resp, "identity.get");
+        let result = resp.result.unwrap();
+        assert_eq!(result["primal"].as_str().unwrap(), "songbird");
+        assert_eq!(result["domain"].as_str().unwrap(), "network");
+        assert_eq!(result["license"].as_str().unwrap(), "AGPL-3.0-or-later");
+        assert!(result["version"].is_string());
+    }
+
+    #[tokio::test]
+    async fn wire_standard_l2_identity_on_socket() {
+        let server = test_server();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("identity")).await;
+        assert_success(&resp, "identity");
+        let result = resp.result.unwrap();
+        assert_eq!(result["primal"].as_str().unwrap(), "songbird");
+        assert!(result["version"].is_string());
+    }
+
+    #[tokio::test]
+    async fn wire_standard_l2_health_triad_on_socket() {
+        let server = test_server();
+        for method in &["health.liveness", "health.readiness", "health.check"] {
+            let resp = server.handle_jsonrpc_request(jsonrpc_req(method)).await;
+            assert_success(&resp, method);
+        }
+    }
+
+    #[tokio::test]
+    async fn socket_unknown_method_returns_error() {
+        let server = test_server();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("nonexistent.method")).await;
+        assert!(resp.error.is_some(), "unknown method should return error");
+        assert!(resp.result.is_none());
     }
 
     #[test]
