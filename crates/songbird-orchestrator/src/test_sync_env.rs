@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg(test)]
+
 //! Synchronous env locking for async unit tests (avoids holding `tokio::sync::Mutex` across `await`).
 
 use std::sync::{Mutex, OnceLock};
@@ -9,7 +11,10 @@ static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 /// Process-wide lock for tests that mutate `songbird_process_env`.
 #[must_use = "hold until test completes"]
-#[allow(clippy::expect_used)]
+#[expect(
+    clippy::expect_used,
+    reason = "poisoned test mutex is unrecoverable; panic matches test harness expectations"
+)]
 pub fn env_lock() -> std::sync::MutexGuard<'static, ()> {
     ENV_LOCK.get_or_init(|| Mutex::new(())).lock().expect("test env lock poisoned")
 }

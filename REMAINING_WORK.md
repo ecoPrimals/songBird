@@ -1,8 +1,8 @@
 # Songbird Remaining Work
 
-**Date**: April 7, 2026  
+**Date**: April 8, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 121 — legacy primal name scrub (`beardog`/`toadstool`/`squirrel` → capability-based env vars with `tracing::warn!` fallback across 11+ crates); XDG-first socket discovery in `songbird-tls`, `songbird-nfc`, capability strategy; 39 new tests across 8 low-coverage modules (+coverage); large test files refactored (851L `load_balancer_error_paths` → 9 submodules, 813L `storage_tests` → 3 submodules); remaining `#[allow(` → `#[expect(` with reasons; `sled` → NestGate `storage.*` migration (Wave 120: `NestGateStorage` + `NestGateOnionStorage` backends, `sled-storage` deprecated non-default); hardcoded IPs/ports/paths fully env-driven (Wave 119: netdev + RFC 5737 fallback, XDG socket paths, env-configurable ports); zero-copy `Arc<str>` in mesh/punch/rendezvous/capability IPC handlers; `tower_atomic.rs` refactored 990→4 files (max 519L); coverage **72.29%** (Apr 7 2026).
+**Last Deep Debt Audit**: Wave 124 — lint hygiene (`#[allow(` → `#[expect(reason)]` across 15+ production sites); commented-out code scrub (14 locations); legacy doc comments evolved to capability-based naming; `// FIX:` comments resolved (6 locations); production `unreachable!()` evolved (QUIC `LongPacketType` to lookup table, Tor `create_extend2` to `Err`); `test_sync_env.rs` gated `#[cfg(test)]`; `/tmp/beardog.sock` test paths evolved to `songbird-test-security.sock`; coverage expansion (+49 tests: compute adapter, STUN client, HTTP handler dispatch); Wave 123: TLS 1.3 middlebox compat (32-byte session ID, RSA-PSS signature algorithms), capability method gap (`capabilities.methods` endpoint, 14-token normalization map); Wave 122: doc/debris cleanup; Wave 121: legacy primal scrub, XDG socket discovery; Wave 120: sled → NestGate migration; Wave 119: hardcoded elimination, zero-copy; coverage **72.29%** (Apr 8 2026).
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,811 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 12,860 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 7 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |

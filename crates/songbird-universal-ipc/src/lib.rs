@@ -31,15 +31,15 @@
 //!
 //! ```text
 //! Application Layer:
-//!   - Other primals use virtual paths by capability domain (e.g. `/primal/beardog` for legacy IDs)
+//!   - Other primals use virtual paths by capability (e.g. security provider, capability crypto.delegate; formerly virtual id `beardog`)
 //!
 //! Universal IPC Layer (this crate):
 //!   - Translates virtual paths to native endpoints
 //!   - Platform abstraction via PlatformIPC trait
 //!
 //! Platform Layer:
-//!   - Unix: /tmp/primal-beardog.sock
-//!   - Windows: \\.\pipe\primal-beardog
+//!   - Unix: e.g. `/tmp/primal-security.sock` (legacy deployments: `primal-beardog.sock`)
+//!   - Windows: e.g. `\\.\pipe\primal-security` (legacy: `primal-beardog`)
 //!   - Fallback: 127.0.0.1:{port}
 //! ```
 //!
@@ -77,8 +77,8 @@
 //! use songbird_universal_ipc::ipc;
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //!
-//! // Connect to a primal
-//! let mut stream = ipc::connect("/primal/beardog").await?;
+//! // Connect to a capability provider (e.g. security provider / crypto.delegate; legacy path `/primal/beardog`)
+//! let mut stream = ipc::connect("/primal/security-provider").await?;
 //!
 //! // Use stream (works the same on ALL platforms!)
 //! use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -102,8 +102,8 @@
 //! ```rust,no_run
 //! # use songbird_universal_ipc::ipc;
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Get universal stream
-//! let stream = ipc::connect("/primal/beardog").await?;
+//! // Get universal stream (security provider example; legacy: `/primal/beardog`)
+//! let stream = ipc::connect("/primal/security-provider").await?;
 //!
 //! // Use with Tower Atomic (JSON-RPC)
 //! // ... Tower Atomic code here ...

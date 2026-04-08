@@ -11,6 +11,10 @@ use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
+fn test_security_socket_path() -> String {
+    std::env::temp_dir().join("songbird-test-security.sock").to_string_lossy().into_owned()
+}
+
 async fn spawn_one_shot_jsonrpc_mock(response: Value) -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -51,7 +55,7 @@ where
 
 #[tokio::test]
 async fn test_provider_creation() {
-    let socket_path = "/tmp/beardog.sock";
+    let socket_path = test_security_socket_path();
     match SecurityBirdSongProvider::new(socket_path, Some("test-family".to_string())).await {
         Ok(provider) => {
             assert_eq!(provider.provider_name(), "Security provider");
@@ -65,7 +69,7 @@ async fn test_provider_creation() {
 
 #[tokio::test]
 async fn test_provider_creation_no_family() {
-    let socket_path = "/tmp/beardog.sock";
+    let socket_path = test_security_socket_path();
     match SecurityBirdSongProvider::new(socket_path, None).await {
         Ok(provider) => {
             assert_eq!(provider.provider_name(), "Security provider");
@@ -127,7 +131,7 @@ async fn test_health_check_unavailable() {
 
 #[tokio::test]
 async fn test_encrypt_decrypt_roundtrip() {
-    let socket_path = "/tmp/beardog.sock";
+    let socket_path = test_security_socket_path();
     let provider = if let Ok(p) =
         SecurityBirdSongProvider::new(socket_path, Some("test-family".to_string())).await
     {
@@ -161,9 +165,9 @@ async fn test_encrypt_decrypt_roundtrip() {
 
 #[tokio::test]
 async fn test_different_family_decryption() {
-    let socket_path = "/tmp/beardog.sock";
+    let socket_path = test_security_socket_path();
     let provider1 = if let Ok(p) =
-        SecurityBirdSongProvider::new(socket_path, Some("family-1".to_string())).await
+        SecurityBirdSongProvider::new(socket_path.clone(), Some("family-1".to_string())).await
     {
         p
     } else {
@@ -197,10 +201,11 @@ async fn test_different_family_decryption() {
 
 #[tokio::test]
 async fn test_socket_path_formatting() {
-    let socket_path = "/tmp/beardog.sock";
+    let socket_path = test_security_socket_path();
+    let expected = socket_path.clone();
     match SecurityBirdSongProvider::new(socket_path, Some("test-family".to_string())).await {
         Ok(provider) => {
-            assert_eq!(provider.socket_path.to_str().unwrap(), socket_path);
+            assert_eq!(provider.socket_path.to_str().unwrap(), expected.as_str());
         }
         Err(_) => {
             println!("Skipping socket path test - security provider not available");
@@ -210,7 +215,7 @@ async fn test_socket_path_formatting() {
 
 #[tokio::test]
 async fn test_concurrent_encrypt_requests() {
-    let socket_path = "/tmp/beardog.sock";
+    let socket_path = test_security_socket_path();
     let provider = if let Ok(p) =
         SecurityBirdSongProvider::new(socket_path, Some("test-family".to_string())).await
     {

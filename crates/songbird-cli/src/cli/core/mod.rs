@@ -12,5 +12,4 @@ pub mod types;
 
 // Constants re-exported from songbird_config::canonical::constants
 
-// CLI Types and enums
-// pub use types::{ColorMode, ConfigAction, DeploymentType, OutputFormat};
+// CLI types (`ColorMode`, `ConfigAction`, etc.): import from `crate::cli::core::types` at use sites.

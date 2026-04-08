@@ -6,8 +6,6 @@
 //! Long headers are used during the handshake (Initial, Handshake, 0-RTT, Retry).
 //! Short headers (1-RTT) are used after the handshake is complete.
 
-use crate::error::Result;
-
 /// QUIC version 1 (RFC 9000).
 pub const QUIC_VERSION_1: u32 = 0x0000_0001;
 
@@ -26,19 +24,16 @@ pub enum LongPacketType {
 }
 
 impl LongPacketType {
-    /// Decode from the two type bits in the first byte.
-    ///
-    /// # Errors
-    ///
-    /// Never returns `Err`; all two-bit patterns map to a variant.
-    pub fn from_bits(bits: u8) -> Result<Self> {
-        match bits & 0x03 {
-            0x00 => Ok(Self::Initial),
-            0x01 => Ok(Self::ZeroRtt),
-            0x02 => Ok(Self::Handshake),
-            0x03 => Ok(Self::Retry),
-            _ => unreachable!(),
-        }
+    /// Decode from the two type bits in the first byte (low two bits of the nibble; `bits & 0x03`).
+    #[must_use]
+    pub fn from_bits(bits: u8) -> Self {
+        const BY_PREFIX: [LongPacketType; 4] = [
+            LongPacketType::Initial,
+            LongPacketType::ZeroRtt,
+            LongPacketType::Handshake,
+            LongPacketType::Retry,
+        ];
+        BY_PREFIX[usize::from(bits & 0x03)]
     }
 }
 
@@ -211,10 +206,10 @@ mod tests {
 
     #[test]
     fn packet_type_from_bits() {
-        assert_eq!(LongPacketType::from_bits(0).unwrap(), LongPacketType::Initial);
-        assert_eq!(LongPacketType::from_bits(1).unwrap(), LongPacketType::ZeroRtt);
-        assert_eq!(LongPacketType::from_bits(2).unwrap(), LongPacketType::Handshake);
-        assert_eq!(LongPacketType::from_bits(3).unwrap(), LongPacketType::Retry);
+        assert_eq!(LongPacketType::from_bits(0), LongPacketType::Initial);
+        assert_eq!(LongPacketType::from_bits(1), LongPacketType::ZeroRtt);
+        assert_eq!(LongPacketType::from_bits(2), LongPacketType::Handshake);
+        assert_eq!(LongPacketType::from_bits(3), LongPacketType::Retry);
     }
 
     #[test]

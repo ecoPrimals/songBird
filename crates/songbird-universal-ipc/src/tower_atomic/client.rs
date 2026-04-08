@@ -27,7 +27,7 @@ pub struct TowerAtomicClient {
 impl TowerAtomicClient {
     /// Connect to a JSON-RPC peer listening on a filesystem Unix domain socket (no Universal IPC registry).
     ///
-    /// This is used by `NestGate` and other providers that expose a raw socket path from capability discovery.
+    /// This is used by the storage provider (capability: storage.*; formerly `NestGate`) and other providers that expose a raw socket path from capability discovery.
     ///
     /// # Errors
     ///
@@ -63,7 +63,7 @@ impl TowerAtomicClient {
     /// ```rust,no_run
     /// # use songbird_universal_ipc::tower_atomic::TowerAtomicClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = TowerAtomicClient::connect("/primal/beardog").await?;
+    /// let client = TowerAtomicClient::connect("/primal/security-provider").await?;
     /// # Ok(())
     /// # }
     /// ```

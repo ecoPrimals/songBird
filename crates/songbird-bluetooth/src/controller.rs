@@ -48,7 +48,10 @@ impl<T: Transport> ControllerAdapter<T> {
     /// Check if controller is connected
     ///
     /// Note: Awaiting hardware validation - will be used in Phase 3 testing
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "public HCI helper; only exercised from unit tests in this crate today"
+    )]
     pub async fn is_connected(&self) -> bool {
         let transport = self.transport.lock().await;
         transport.is_connected()

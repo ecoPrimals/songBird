@@ -186,7 +186,10 @@ impl LineageProvider for ProductionSecurityProvider {
         });
 
         let result = self.call_security_rpc("genetic.get_lineage_depth", params).await?;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "lineage depth from JSON u64 fits usize on supported platforms"
+        )]
         Ok(result.get("depth").and_then(serde_json::Value::as_u64).map(|d| d as usize))
     }
 }

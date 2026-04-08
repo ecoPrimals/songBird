@@ -58,7 +58,8 @@ impl SecurityRpcClient {
     /// # Example
     /// ```rust,ignore
     /// use songbird_http_client::SecurityRpcClient;
-    /// let client = SecurityRpcClient::new_direct("/tmp/beardog.sock");
+    /// let sock = std::env::temp_dir().join("songbird-test-security.sock");
+    /// let client = SecurityRpcClient::new_direct(sock.to_string_lossy());
     /// ```
     pub fn new_direct(socket_path: impl Into<String>) -> Self {
         info!("🔧 Security provider client: DIRECT mode (testing/simple deployments)");
@@ -128,7 +129,7 @@ impl SecurityRpcClient {
 
     /// Create from environment variable with isomorphic discovery
     ///
-    /// Checks `SECURITY_PROVIDER_MODE` (preferred) or `BEARDOG_MODE` to determine mode:
+    /// Checks `SECURITY_PROVIDER_MODE` (preferred) or legacy `BEARDOG_MODE` (prefer `SECURITY_PROVIDER_MODE`) to determine mode:
     /// - "direct" → Direct mode (discovers `security provider` endpoint) - DEPRECATED for production
     /// - "neural" or default → Neural API mode (discovers Neural API endpoint) - TRUE PRIMAL pattern
     ///
@@ -170,7 +171,7 @@ impl SecurityRpcClient {
     }
 
     /// Get endpoint based on mode (for diagnostics/debugging)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "diagnostic accessor; used from unit tests and future logging")]
     pub(super) const fn endpoint(&self) -> &IpcEndpoint {
         match &self.mode {
             SecurityRpcMode::Direct {
@@ -185,7 +186,7 @@ impl SecurityRpcClient {
     }
 
     /// Check if in Neural API mode (for diagnostics/debugging)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "diagnostic accessor; used from unit tests and future logging")]
     pub(super) const fn is_neural_api(&self) -> bool {
         matches!(self.mode, SecurityRpcMode::NeuralApi { .. })
     }
@@ -195,9 +196,13 @@ impl SecurityRpcClient {
 mod tests {
     use super::*;
 
+    fn test_direct_socket_path() -> String {
+        tempfile::env::temp_dir().join("songbird-test-security.sock").to_string_lossy().into_owned()
+    }
+
     #[test]
     fn test_security_rpc_client_creation_direct() {
-        let client = SecurityRpcClient::new_direct("/tmp/beardog.sock");
+        let client = SecurityRpcClient::new_direct(test_direct_socket_path());
         assert!(matches!(client.mode, SecurityRpcMode::Direct { .. }));
     }
 
@@ -227,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_is_neural_api() {
-        let direct = SecurityRpcClient::new_direct("/tmp/beardog.sock");
+        let direct = SecurityRpcClient::new_direct(test_direct_socket_path());
         let neural = SecurityRpcClient::new_neural_api("/tmp/neural.sock");
 
         assert!(!direct.is_neural_api());

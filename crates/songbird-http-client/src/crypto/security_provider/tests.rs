@@ -4,17 +4,22 @@
 use super::{RoutingMode, SecurityCryptoProvider};
 use crate::crypto::CryptoCapability;
 
+fn test_security_socket_path() -> String {
+    tempfile::env::temp_dir().join("songbird-test-security.sock").to_string_lossy().into_owned()
+}
+
 #[test]
 fn test_provider_creation() {
-    let provider = SecurityCryptoProvider::new("/tmp/beardog.sock");
+    let path = test_security_socket_path();
+    let provider = SecurityCryptoProvider::new(path.clone());
     assert_eq!(provider.name(), "security provider");
-    assert_eq!(provider.socket_path(), "/tmp/beardog.sock");
+    assert_eq!(provider.socket_path(), path);
     assert_eq!(provider.mode, RoutingMode::Direct);
 }
 
 #[test]
 fn test_semantic_mapping() {
-    let _provider = SecurityCryptoProvider::new("/tmp/beardog.sock");
+    let _provider = SecurityCryptoProvider::new(test_security_socket_path());
 
     assert_eq!(
         SecurityCryptoProvider::semantic_to_actual("crypto.generate_keypair"),
@@ -28,7 +33,7 @@ fn test_semantic_mapping() {
 
 #[test]
 fn test_capability_mapping() {
-    let _provider = SecurityCryptoProvider::new("/tmp/beardog.sock");
+    let _provider = SecurityCryptoProvider::new(test_security_socket_path());
 
     assert_eq!(
         SecurityCryptoProvider::method_to_capability("crypto.generate_keypair"),
@@ -55,7 +60,8 @@ fn test_neural_api_mode() {
 
 #[test]
 fn test_direct_mode() {
-    let provider = SecurityCryptoProvider::new("/tmp/beardog.sock");
+    let path = test_security_socket_path();
+    let provider = SecurityCryptoProvider::new(path.clone());
     assert_eq!(provider.mode, RoutingMode::Direct);
-    assert_eq!(provider.socket_path(), "/tmp/beardog.sock");
+    assert_eq!(provider.socket_path(), path);
 }

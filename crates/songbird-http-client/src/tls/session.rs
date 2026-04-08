@@ -70,9 +70,13 @@ impl TlsSession {
 mod tests {
     use super::*;
 
+    fn test_security_socket_path() -> String {
+        tempfile::env::temp_dir().join("songbird-test-security.sock").to_string_lossy().into_owned()
+    }
+
     #[tokio::test]
     async fn test_session_creation() {
-        let rpc = Arc::new(SecurityRpcClient::new("/tmp/beardog.sock"));
+        let rpc = Arc::new(SecurityRpcClient::new(test_security_socket_path()));
         let session = TlsSession::new(rpc, "example.com".to_string());
         assert_eq!(session.server_name(), "example.com");
         assert!(session.keys().await.is_none());
@@ -80,7 +84,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_session_keys() {
-        let rpc = Arc::new(SecurityRpcClient::new("/tmp/beardog.sock"));
+        let rpc = Arc::new(SecurityRpcClient::new(test_security_socket_path()));
         let session = TlsSession::new(rpc, "example.com".to_string());
 
         let keys = SessionKeys {

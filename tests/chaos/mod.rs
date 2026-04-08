@@ -19,7 +19,7 @@
 pub mod network_chaos;
 pub mod resource_chaos;
 pub mod timing_chaos;
-// pub mod state_chaos; // ARCHIVED: Corrupted file - needs rewrite
+// state_chaos archived: corrupted module — needs rewrite before re-enabling.
 
 /// Common chaos testing utilities
 pub mod common {

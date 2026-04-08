@@ -11,7 +11,7 @@ impl BirdSongHandler {
     /// Discover the security provider socket at runtime (capability-based; no hardcoding).
     ///
     /// Delegates to [`songbird_http_client::discover_security_socket`] for the
-    /// canonical chain (`SECURITY_PROVIDER_SOCKET`, XDG capability symlink, `BEARDOG_SOCKET`, …).
+    /// canonical chain (`SECURITY_PROVIDER_SOCKET`, XDG capability symlink, legacy env var `BEARDOG_SOCKET` (prefer `SECURITY_PROVIDER_SOCKET`), …).
     ///
     /// Deep debt: Runtime discovery, agnostic to deployment. TCP `tcp:host:port` is supported
     /// when returned by discovery.

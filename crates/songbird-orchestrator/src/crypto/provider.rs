@@ -271,7 +271,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
 ///
 /// 1. Check `CRYPTO_PROVIDER_SOCKET` (orchestrator guidance, preferred)
 /// 2. Check `CRYPTO_PROVIDER` (alternative env var)
-/// 3. Check `BEARDOG_CRYPTO_SOCKET` (for compatibility during migration)
+/// 3. Legacy env var `BEARDOG_CRYPTO_SOCKET` (prefer `CRYPTO_PROVIDER_SOCKET`) for compatibility during migration
 /// 4. Search common socket paths
 /// 5. Query via mDNS/BirdSong for "crypto" capability (future)
 ///

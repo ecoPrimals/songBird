@@ -103,7 +103,8 @@ impl VarInt {
                 let val = self.0 | 0xC000_0000_0000_0000;
                 buf[..8].copy_from_slice(&val.to_be_bytes());
             }
-            _ => unreachable!(),
+            // `encoded_len()` only returns 1, 2, 4, or 8 (RFC 9000 §16 length classes).
+            _ => unreachable!("VarInt wire length is determined by a 2-bit prefix"),
         }
         Ok(len)
     }
@@ -144,7 +145,8 @@ impl VarInt {
                 tmp.copy_from_slice(&buf[..8]);
                 u64::from_be_bytes(tmp) & 0x3FFF_FFFF_FFFF_FFFF
             }
-            _ => unreachable!(),
+            // `len` is `1 << prefix` for `prefix = buf[0] >> 6` ∈ {0,1,2,3} → only 1, 2, 4, or 8.
+            _ => unreachable!("VarInt wire length is determined by a 2-bit prefix"),
         };
         Ok((Self(value), len))
     }

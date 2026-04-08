@@ -47,7 +47,7 @@ impl UniversalIPC {
     /// Register this primal
     ///
     /// # Arguments
-    /// * `name` - Primal name (e.g., "beardog")
+    /// * `name` - Primal or provider registration name (e.g. security provider id; legacy: `"beardog"`)
     /// * `capabilities` - List of capabilities this primal provides
     ///
     /// # Returns
@@ -86,7 +86,7 @@ impl UniversalIPC {
     /// Connect to a virtual endpoint
     ///
     /// # Arguments
-    /// * `virtual_path` - Virtual path (e.g., "/primal/beardog")
+    /// * `virtual_path` - Virtual path (e.g. `"/primal/security-provider"` for crypto.delegate; legacy `"/primal/beardog"`)
     ///
     /// # Returns
     /// Connected stream (platform-agnostic!)

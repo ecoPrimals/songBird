@@ -309,7 +309,11 @@ mod tests {
     use std::sync::Arc;
 
     fn create_test_server() -> TlsServer {
-        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
+        let path = tempfile::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        let crypto = Arc::new(SecurityCryptoProvider::new(path));
         TlsServer::new(crypto, vec![], vec![])
     }
 

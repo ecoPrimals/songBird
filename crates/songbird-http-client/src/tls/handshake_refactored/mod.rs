@@ -34,7 +34,8 @@
 //! use songbird_http_client::crypto::SecurityCryptoProvider;
 //! use std::sync::Arc;
 //!
-//! let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
+//! let sock = tempfile::env::temp_dir().join("songbird-test-security.sock");
+//! let crypto = Arc::new(SecurityCryptoProvider::new(sock.to_string_lossy()));
 //! let mut handshake = TlsHandshake::new(crypto);
 //! let session_keys = handshake.handshake(&mut stream, "api.github.com").await?;
 //! ```

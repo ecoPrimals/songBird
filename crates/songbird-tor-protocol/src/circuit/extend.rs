@@ -49,10 +49,13 @@ impl CircuitExtender {
             Error::Protocol(format!("Relay {} has no ntor_key", next_relay.nickname))
         })?;
 
-        // Reject IPv6 before any security-provider I/O (handshake is IPv4 link specifier only).
-        if !matches!(next_relay.address, IpAddr::V4(_)) {
-            return Err(Error::Protocol("IPv6 not yet supported for EXTEND2".to_string()));
-        }
+        // EXTEND2 link specifier 0 is IPv4 only for now; reject IPv6 before security-provider I/O.
+        let ipv4 = match next_relay.address {
+            IpAddr::V4(v4) => v4,
+            IpAddr::V6(_) => {
+                return Err(Error::Protocol("IPv6 not yet supported for EXTEND2".to_string()));
+            }
+        };
 
         // 1. Generate ephemeral X25519 keypair via security provider
         let client_ephemeral = self.security_provider.x25519_generate_ephemeral().await?;
@@ -66,9 +69,6 @@ impl CircuitExtender {
         // Link specifier type 0: IPv4 address (6 bytes: IP + port)
         payload.push(0); // Type: IPv4
         payload.push(6); // Length: 6 bytes
-        let IpAddr::V4(ipv4) = next_relay.address else {
-            unreachable!("IPv6 rejected above");
-        };
         payload.extend_from_slice(&ipv4.octets());
         payload.extend_from_slice(&next_relay.or_port.to_be_bytes());
 

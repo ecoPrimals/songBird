@@ -11,7 +11,7 @@ type Result<T> = SongbirdResult<T>;
 use tracing::debug;
 
 use crate::config::SongbirdConfig;
-// use songbird_config; // FIXED: Circular import removed
+// Do not `use songbird_config` here (circular import within this crate).
 
 /// Configuration validation results with detailed feedback
 #[derive(Debug, Clone, Serialize, Deserialize)]

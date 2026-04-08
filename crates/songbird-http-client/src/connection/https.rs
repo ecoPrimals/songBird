@@ -534,8 +534,11 @@ mod tests {
 
     #[test]
     fn https_connection_new_stores_config() {
-        let crypto: Arc<dyn CryptoCapability> =
-            Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
+        let path = tempfile::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(SecurityCryptoProvider::new(path));
         let cfg = TlsConfig {
             max_retries: 4,
             ..Default::default()

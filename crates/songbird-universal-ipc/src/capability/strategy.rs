@@ -51,7 +51,7 @@ impl EnvironmentStrategy {
         if let Ok(socket_path) = get_var(&env_var_socket) {
             info!("   ✅ Found {}: {}", env_var_socket, socket_path);
 
-            // Extract provider ID from path (e.g., /tmp/beardog.sock → beardog)
+            // Extract provider ID from path (e.g. .../songbird-test-security.sock → songbird-test-security)
             let provider_id = extract_provider_id(&socket_path);
 
             let mut provider = Provider::new(
@@ -237,8 +237,8 @@ fn discover_on_filesystem(search_paths: &[PathBuf], capability: &str) -> Vec<Pro
 /// Extract provider ID from socket path
 ///
 /// Examples:
-/// - `/tmp/beardog.sock` → `beardog`
-/// - `/tmp/beardog-nat0.sock` → `beardog-nat0`
+/// - `/tmp/songbird-test-security.sock` → `songbird-test-security`
+/// - `/tmp/songbird-test-nat0.sock` → `songbird-test-nat0`
 /// - `/run/user/1000/crypto.sock` → `crypto`
 fn extract_provider_id(socket_path: &str) -> Arc<str> {
     PathBuf::from(socket_path)
@@ -255,8 +255,14 @@ mod tests {
 
     #[test]
     fn test_extract_provider_id() {
-        assert_eq!(extract_provider_id("/tmp/beardog.sock").as_ref(), "beardog");
-        assert_eq!(extract_provider_id("/tmp/beardog-nat0.sock").as_ref(), "beardog-nat0");
+        assert_eq!(
+            extract_provider_id("/tmp/songbird-test-security.sock").as_ref(),
+            "songbird-test-security"
+        );
+        assert_eq!(
+            extract_provider_id("/tmp/songbird-test-nat0.sock").as_ref(),
+            "songbird-test-nat0"
+        );
         assert_eq!(extract_provider_id("/run/user/1000/crypto.sock").as_ref(), "crypto");
         assert_eq!(extract_provider_id("storage provider.sock").as_ref(), "storage provider");
     }

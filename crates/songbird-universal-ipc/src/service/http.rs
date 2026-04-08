@@ -52,7 +52,6 @@ impl IpcServiceHandler {
 
         let content_type = params.get("content_type").and_then(|v| v.as_str());
 
-        // FIX: Extract headers from params (Issue #1 - Jan 28, 2026)
         let headers: std::collections::HashMap<String, String> = params
             .get("headers")
             .and_then(|v| serde_json::from_value(v.clone()).ok())

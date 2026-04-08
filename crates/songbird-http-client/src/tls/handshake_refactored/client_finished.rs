@@ -237,8 +237,11 @@ mod tests {
     use std::sync::Arc;
 
     fn handshake() -> TlsHandshake {
-        let crypto: Arc<dyn CryptoCapability> =
-            Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
+        let path = tempfile::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(SecurityCryptoProvider::new(path));
         TlsHandshake::new(crypto)
     }
 

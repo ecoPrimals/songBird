@@ -39,13 +39,10 @@ impl HttpClientCapability for SongbirdHttpClient {
     ) -> IpcResult<HttpResponse> {
         debug!("Making HTTP request: {} {} with {} headers", method, url, headers.len());
 
-        // FIX: Parse body once, then call request() with headers (Issue #2 - Jan 28, 2026)
         let body_json = body
             .and_then(|b| std::str::from_utf8(b).ok())
             .and_then(|s| serde_json::from_str(s).ok());
 
-        // Use Pure Rust TLS 1.3 via Tower Atomic pattern
-        // FIX: Call request() directly (NOT convenience methods like post()) to preserve headers
         let response =
             self.inner.request(method, url, headers.clone(), body_json).await.map_err(|e| {
                 error!("HTTP request failed: {}", e);

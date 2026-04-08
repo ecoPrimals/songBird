@@ -138,7 +138,7 @@ pub enum EncryptionAlgorithm {
 // ============================================================================
 //
 // NOTE: If you need the sophisticated RateLimitStrategy enum with Adaptive support,
-// use songbird_primal_sdk::universal_registry::config::RateLimitConfig instead.
+// prefer `songbird_primal_sdk::universal_registry::config::RateLimitConfig`.
 // That version is specialized for registry rate limiting with advanced algorithms.
 //
 // Use CanonicalRateLimitConfig for: General network rate limiting

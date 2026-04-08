@@ -10,16 +10,25 @@ pub mod att_opcode {
     pub const READ_BY_GROUP_TYPE_REQ: u8 = 0x10;
     pub const READ_BY_GROUP_TYPE_RSP: u8 = 0x11;
     pub const READ_BY_TYPE_REQ: u8 = 0x08;
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "BLE ATT protocol constant — reserved for spec completeness (referenced from GATT parsers; lint may not fire)"
+    )]
     pub const READ_BY_TYPE_RSP: u8 = 0x09;
     pub const READ_REQ: u8 = 0x0A;
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "BLE ATT protocol constant — reserved for spec completeness (referenced from GATT parsers; lint may not fire)"
+    )]
     pub const READ_RSP: u8 = 0x0B;
     pub const WRITE_REQ: u8 = 0x12;
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "BLE ATT protocol constant — reserved for spec completeness (referenced from GATT parsers; lint may not fire)"
+    )]
     pub const WRITE_RSP: u8 = 0x13;
     pub const WRITE_CMD: u8 = 0x52;
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "BLE ATT protocol constant — reserved for spec completeness")]
     pub const HANDLE_VALUE_NTF: u8 = 0x1B;
 }
 
@@ -33,7 +42,7 @@ pub mod att_uuid {
     pub const CHARACTERISTIC: u16 = 0x2803;
 
     /// Client Characteristic Configuration Descriptor (0x2902)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "BLE ATT protocol constant — reserved for spec completeness")]
     pub const CLIENT_CHAR_CONFIG: u16 = 0x2902;
 }
 

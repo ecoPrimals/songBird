@@ -384,11 +384,15 @@ mod tests {
     use super::*;
     use crate::crypto::CryptoCapability;
 
+    fn test_security_socket_path() -> String {
+        tempfile::env::temp_dir().join("songbird-test-security.sock").to_string_lossy().into_owned()
+    }
+
     #[test]
     fn test_generate_random() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            test_security_socket_path(),
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(crypto);
 
         let random1 = handshake.generate_random();
@@ -402,9 +406,9 @@ mod tests {
 
     #[test]
     fn test_extract_key_share_too_short() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            test_security_socket_path(),
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(crypto);
 
         let data = vec![0x00]; // Too short
@@ -416,9 +420,9 @@ mod tests {
 
     #[test]
     fn test_parse_server_hello_invalid() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            test_security_socket_path(),
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(crypto);
 
         // Empty data
@@ -432,9 +436,9 @@ mod tests {
 
     #[test]
     fn test_parse_server_hello_truncated() {
-        let crypto =
-            std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
-                as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
+            test_security_socket_path(),
+        )) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(crypto);
 
         // ServerHello type but truncated

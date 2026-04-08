@@ -25,7 +25,7 @@ pub fn decode_long_header(buf: &[u8]) -> Result<(LongHeader, usize)> {
 
     let fixed_bit = first & 0x40 != 0;
     let type_bits = (first >> 4) & 0x03;
-    let packet_type = LongPacketType::from_bits(type_bits)?;
+    let packet_type = LongPacketType::from_bits(type_bits);
     let reserved_bits = (first >> 2) & 0x03;
     let pn_length = (first & 0x03) + 1;
 

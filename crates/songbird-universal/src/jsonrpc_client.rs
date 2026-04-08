@@ -90,7 +90,10 @@ struct JsonRpcRequest<'a> {
 #[derive(Debug, Clone, Deserialize)]
 struct JsonRpcResponse<'a> {
     #[serde(borrow)]
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "JSON-RPC 2.0 field deserialized for wire validity but not read in code"
+    )]
     jsonrpc: Cow<'a, str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<Value>,

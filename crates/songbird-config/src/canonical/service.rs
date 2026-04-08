@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-// use songbird_config; // FIXED: Circular import removed
+// Do not `use songbird_config` here (circular import within this crate).
 
 /// Service configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

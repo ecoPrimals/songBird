@@ -94,7 +94,7 @@ impl HttpHandler {
         content_type: Option<&str>,
         caller_headers: HashMap<String, String>,
     ) -> IpcResult<HttpResponseResult> {
-        let mut headers = caller_headers; // FIX: Use caller's headers instead of empty HashMap
+        let mut headers = caller_headers;
         if let Some(ct) = content_type {
             headers.insert("Content-Type".to_string(), ct.to_string());
         }
@@ -145,7 +145,6 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
 
                 let content_type = params.get("content_type").and_then(|v| v.as_str());
 
-                // FIX: Extract headers from params (Issue #1 - Jan 28, 2026)
                 let headers: HashMap<String, String> = params
                     .get("headers")
                     .and_then(|v| serde_json::from_value(v.clone()).ok())
@@ -160,5 +159,321 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
             }
             _ => Err(format!("Unknown method: {method}")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HttpHandler;
+    use crate::error::{IpcError, IpcResult};
+    use crate::tower_atomic::JsonRpcHandler;
+    use async_trait::async_trait;
+    use serde_json::json;
+    use std::collections::{HashMap, VecDeque};
+    use std::sync::{Arc, Mutex};
+
+    use super::super::traits::{HttpClientCapability, HttpClientFactory};
+    use super::super::types::HttpResponse;
+
+    /// Queues per-call results and records every request for assertions on the JSON-RPC → HTTP path.
+    struct QueuedMockClient {
+        outcomes: Mutex<VecDeque<IpcResult<HttpResponse>>>,
+        captures: Mutex<Vec<(String, String, HashMap<String, String>, Option<Vec<u8>>)>>,
+    }
+
+    impl QueuedMockClient {
+        fn new(outcomes: Vec<IpcResult<HttpResponse>>) -> Self {
+            Self {
+                outcomes: Mutex::new(outcomes.into()),
+                captures: Mutex::new(Vec::new()),
+            }
+        }
+
+        fn take_captures(&self) -> Vec<(String, String, HashMap<String, String>, Option<Vec<u8>>)> {
+            std::mem::take(&mut *self.captures.lock().expect("poisoned captures mutex"))
+        }
+    }
+
+    #[async_trait]
+    impl HttpClientCapability for QueuedMockClient {
+        async fn request(
+            &self,
+            method: &str,
+            url: &str,
+            headers: &HashMap<String, String>,
+            body: Option<&[u8]>,
+        ) -> IpcResult<HttpResponse> {
+            self.captures.lock().expect("poisoned captures mutex").push((
+                method.to_string(),
+                url.to_string(),
+                headers.clone(),
+                body.map(<[u8]>::to_vec),
+            ));
+            self.outcomes
+                .lock()
+                .expect("poisoned outcomes mutex")
+                .pop_front()
+                .unwrap_or_else(|| Err(IpcError::Internal("no queued mock response".into())))
+        }
+    }
+
+    struct InjectFactory {
+        client: Arc<dyn HttpClientCapability>,
+    }
+
+    #[async_trait]
+    impl HttpClientFactory for InjectFactory {
+        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
+            Ok(Arc::clone(&self.client))
+        }
+    }
+
+    struct FailingCreateFactory;
+
+    #[async_trait]
+    impl HttpClientFactory for FailingCreateFactory {
+        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
+            Err(IpcError::ConnectionFailed("mock factory".into()))
+        }
+    }
+
+    fn sample_ok_response() -> HttpResponse {
+        HttpResponse {
+            status_code: 200,
+            headers: HashMap::from([("X-Mock".into(), "yes".into())]),
+            body: json!({"ok": true}),
+        }
+    }
+
+    fn handler_with_client(client: Arc<dyn HttpClientCapability>) -> HttpHandler {
+        HttpHandler::new(Arc::new(InjectFactory {
+            client,
+        }))
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_http_request_get_put_delete_via_dispatch() {
+        for (verb, expect_body) in [
+            ("GET", None::<Vec<u8>>),
+            ("PUT", Some(b"put-payload".to_vec())),
+            ("DELETE", None::<Vec<u8>>),
+        ] {
+            let mock = Arc::new(QueuedMockClient::new(vec![Ok(sample_ok_response())]));
+            let handler = handler_with_client(mock.clone());
+
+            let mut params = json!({
+                "url": format!("https://example.test/{verb}"),
+                "method": verb,
+                "headers": { "X-Verb": verb },
+            });
+            if let Some(b) = &expect_body {
+                params["body"] = json!(String::from_utf8_lossy(b));
+            }
+
+            let out = handler.handle("http.request", params).await;
+            assert!(out.is_ok(), "{verb}: {out:?}");
+            let v = out.expect("ok");
+            assert_eq!(v["status_code"], 200);
+            assert_eq!(v["headers"]["X-Mock"], "yes");
+
+            let caps = mock.take_captures();
+            assert_eq!(caps.len(), 1);
+            assert_eq!(caps[0].0, verb);
+            assert_eq!(caps[0].1, format!("https://example.test/{verb}"));
+            assert_eq!(caps[0].2.get("X-Verb"), Some(&verb.to_string()));
+            assert_eq!(caps[0].3.as_ref(), expect_body.as_ref());
+        }
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_http_request_post_body_and_headers_from_params() {
+        let mock = Arc::new(QueuedMockClient::new(vec![Ok(sample_ok_response())]));
+        let handler = handler_with_client(mock.clone());
+
+        let params = json!({
+            "url": "https://example.test/post",
+            "method": "POST",
+            "headers": { "Authorization": "Bearer t", "X-Custom": "c" },
+            "body": "{\"a\":1}",
+        });
+
+        let out = handler.handle("http.request", params).await.expect("ok");
+        assert_eq!(out["status_code"], 200);
+
+        let caps = mock.take_captures();
+        assert_eq!(caps.len(), 1);
+        assert_eq!(caps[0].0, "POST");
+        assert_eq!(caps[0].1, "https://example.test/post");
+        assert_eq!(caps[0].2.get("Authorization"), Some(&"Bearer t".to_string()));
+        assert_eq!(caps[0].2.get("X-Custom"), Some(&"c".to_string()));
+        assert_eq!(caps[0].3.as_deref(), Some(&b"{\"a\":1}"[..]));
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_http_request_nonstandard_method_passes_through() {
+        let mock = Arc::new(QueuedMockClient::new(vec![Ok(sample_ok_response())]));
+        let handler = handler_with_client(mock.clone());
+
+        let params = json!({
+            "url": "https://example.test/patch",
+            "method": "PATCH",
+        });
+
+        let out = handler.handle("http.request", params).await.expect("ok");
+        assert_eq!(out["status_code"], 200);
+        let caps = mock.take_captures();
+        assert_eq!(caps[0].0, "PATCH");
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_http_request_invalid_params_shape() {
+        let mock = Arc::new(QueuedMockClient::new(vec![]));
+        let handler = handler_with_client(mock);
+
+        let err = handler
+            .handle("http.request", json!("not-an-object"))
+            .await
+            .expect_err("expected invalid params");
+        assert!(err.starts_with("Invalid params:"), "got {err:?}");
+
+        let err = handler
+            .handle("http.request", json!({"url": 42}))
+            .await
+            .expect_err("url must be string");
+        assert!(err.starts_with("Invalid params:"), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_http_get_success_and_missing_url() {
+        let mock = Arc::new(QueuedMockClient::new(vec![Ok(sample_ok_response())]));
+        let handler = handler_with_client(mock.clone());
+
+        let out =
+            handler.handle("http.get", json!({ "url": "https://get.test/" })).await.expect("ok");
+        assert_eq!(out["status_code"], 200);
+
+        let caps = mock.take_captures();
+        assert_eq!(caps[0].0, "GET");
+        assert_eq!(caps[0].1, "https://get.test/");
+        assert!(caps[0].2.is_empty());
+        assert!(caps[0].3.is_none());
+
+        let err = handler.handle("http.get", json!({})).await.expect_err("missing url");
+        assert_eq!(err, "Missing 'url' parameter");
+
+        let err =
+            handler.handle("http.get", json!({ "url": 99 })).await.expect_err("url not string");
+        assert_eq!(err, "Missing 'url' parameter");
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_http_post_success_missing_url_body_and_malformed_headers() {
+        let mock = Arc::new(QueuedMockClient::new(vec![
+            Ok(sample_ok_response()),
+            Ok(sample_ok_response()),
+        ]));
+        let handler = handler_with_client(mock.clone());
+
+        let out = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://post.test/",
+                    "body": "{}",
+                    "content_type": "application/json",
+                    "headers": { "X-Api": "k" },
+                }),
+            )
+            .await
+            .expect("ok");
+        assert_eq!(out["status_code"], 200);
+
+        let caps = mock.take_captures();
+        assert_eq!(caps[0].2.get("Content-Type"), Some(&"application/json".to_string()));
+        assert_eq!(caps[0].2.get("X-Api"), Some(&"k".to_string()));
+
+        assert_eq!(
+            handler.handle("http.post", json!({ "body": "{}" })).await.expect_err("url"),
+            "Missing 'url' parameter"
+        );
+        assert_eq!(
+            handler.handle("http.post", json!({ "url": "https://x" })).await.expect_err("body"),
+            "Missing 'body' parameter"
+        );
+
+        let out_bad_headers = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://post.test/h2",
+                    "body": "x",
+                    "headers": "not-a-map",
+                }),
+            )
+            .await
+            .expect("headers default on parse failure");
+        assert_eq!(out_bad_headers["status_code"], 200);
+        let caps = mock.take_captures();
+        let last = caps.last().expect("captures");
+        assert!(!last.2.contains_key("X-Api"), "prior headers should not leak");
+        assert_eq!(last.3.as_deref(), Some(b"x".as_slice()));
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_http_post_headers_object_with_invalid_entry_yields_default() {
+        let mock = Arc::new(QueuedMockClient::new(vec![Ok(sample_ok_response())]));
+        let handler = handler_with_client(mock.clone());
+
+        let _ = handler
+            .handle(
+                "http.post",
+                json!({
+                    "url": "https://post.test/",
+                    "body": "y",
+                    "headers": { "bad": 1 },
+                }),
+            )
+            .await
+            .expect("ok");
+
+        let caps = mock.take_captures();
+        assert!(caps[0].2.is_empty() || !caps[0].2.contains_key("bad"));
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_unknown_method_error_format() {
+        let mock = Arc::new(QueuedMockClient::new(vec![]));
+        let handler = handler_with_client(mock);
+
+        let err = handler.handle("http.options", json!({})).await.expect_err("unknown rpc method");
+        assert_eq!(err, "Unknown method: http.options");
+    }
+
+    #[tokio::test]
+    async fn jsonrpc_map_err_create_client_and_request_and_ipc_display() {
+        let handler = HttpHandler::new(Arc::new(FailingCreateFactory));
+        let err = handler
+            .handle("http.request", json!({ "url": "https://x", "method": "GET" }))
+            .await
+            .expect_err("factory fails");
+        assert!(err.contains("Connection failed") && err.contains("mock factory"), "{err:?}");
+
+        let failing_client =
+            Arc::new(QueuedMockClient::new(vec![Err(IpcError::Internal("req failed".into()))]));
+        let handler = handler_with_client(failing_client);
+        let err = handler
+            .handle("http.get", json!({ "url": "https://y" }))
+            .await
+            .expect_err("request fails");
+        assert!(err.contains("Internal error") && err.contains("req failed"), "{err:?}");
+
+        let err = handler
+            .handle("http.post", json!({ "url": "https://z", "body": "b" }))
+            .await
+            .expect_err("second call no queued outcome");
+        assert!(
+            err.contains("Internal error") && err.contains("no queued mock response"),
+            "{err:?}"
+        );
     }
 }

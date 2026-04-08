@@ -181,7 +181,7 @@ impl SongbirdOrchestrator {
                             );
 
                             // Check if same family for trust decisions (Jan 5, 2026)
-                            // Tags format: family capability tags, typically `crypto:family:FAMILY_ID:NODE_ID` (legacy: `beardog:family:*`)
+                            // Tags format: family capability tags, typically `crypto:family:FAMILY_ID:NODE_ID` (legacy wire on older nodes: `beardog:family:*`)
                             let same_family = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                                 .ok()
                                 .is_some_and(|my_family| {

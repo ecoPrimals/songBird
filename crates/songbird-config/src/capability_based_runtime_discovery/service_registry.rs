@@ -22,7 +22,7 @@ pub struct ServiceRegistryDiscovery {
     /// Registry endpoint
     registry_endpoint: String,
     /// Query timeout (reserved for async timeout implementation)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "reserved for registry HTTP client timeout wiring")]
     timeout: Duration,
     /// Cache TTL for future caching implementation
     #[expect(dead_code, reason = "wired when distributed discovery cache is added")]

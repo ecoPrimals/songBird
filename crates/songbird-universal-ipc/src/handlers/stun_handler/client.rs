@@ -6,11 +6,58 @@
 //! These methods delegate to [`songbird_stun::StunClient`] and format JSON results for IPC.
 
 use serde_json::{Value, json};
-use songbird_stun::StunClient;
+use songbird_stun::{PortPattern, StunClient};
+use std::net::SocketAddr;
 use tracing::{info, warn};
 
 use super::StunHandler;
 use super::config::{DEFAULT_PRIMARY_STUN_SERVER, stun_server_list};
+
+/// Build the JSON-RPC payload for a detected [`PortPattern`] (used by [`StunHandler::handle_probe_port_pattern`]).
+#[must_use]
+fn port_pattern_ipc_value(pattern: &PortPattern) -> Value {
+    match pattern {
+        PortPattern::Sequential {
+            step,
+            last_port,
+            predicted_next,
+            confidence,
+        } => json!({
+            "pattern": "sequential",
+            "step": step,
+            "last_port": last_port,
+            "predicted_next": predicted_next,
+            "confidence": confidence,
+            "supports_coordinated_punch": pattern.supports_coordinated_punch()
+        }),
+        PortPattern::Random {
+            observed,
+        } => json!({
+            "pattern": "random",
+            "observed_ports": observed,
+            "supports_coordinated_punch": false
+        }),
+        PortPattern::Unknown => json!({
+            "pattern": "unknown",
+            "supports_coordinated_punch": false
+        }),
+    }
+}
+
+/// Classify NAT behavior from two STUN binding results (same logic as [`StunHandler::handle_detect_nat_type`]).
+#[must_use]
+fn nat_type_from_dual_probes(addr1: SocketAddr, addr2: SocketAddr) -> (&'static str, &'static str) {
+    if addr1.ip() != addr2.ip() {
+        ("unknown", "Different public IPs detected — unusual topology")
+    } else if addr1.port() == addr2.port() {
+        ("cone", "Same port for different destinations — likely cone NAT (good for punching)")
+    } else {
+        (
+            "symmetric",
+            "Different ports for different destinations — symmetric NAT (needs relay-assisted punch)",
+        )
+    }
+}
 
 impl StunHandler {
     /// Handle `stun.get_public_address` method - Discover public IP/port via STUN
@@ -108,43 +155,25 @@ impl StunHandler {
             .await
             .map_err(|e| format!("Port pattern probing failed: {e}"))?;
 
-        let response = match &pattern {
-            songbird_stun::PortPattern::Sequential {
+        match &pattern {
+            PortPattern::Sequential {
                 step,
-                last_port,
                 predicted_next,
-                confidence,
+                ..
             } => {
                 info!("✅ Sequential pattern: step={}, predicted={}", step, predicted_next);
-                json!({
-                    "pattern": "sequential",
-                    "step": step,
-                    "last_port": last_port,
-                    "predicted_next": predicted_next,
-                    "confidence": confidence,
-                    "supports_coordinated_punch": pattern.supports_coordinated_punch()
-                })
             }
-            songbird_stun::PortPattern::Random {
+            PortPattern::Random {
                 observed,
             } => {
                 info!("⚠️ Random pattern: {} ports observed", observed.len());
-                json!({
-                    "pattern": "random",
-                    "observed_ports": observed,
-                    "supports_coordinated_punch": false
-                })
             }
-            songbird_stun::PortPattern::Unknown => {
+            PortPattern::Unknown => {
                 warn!("⚠️ Could not determine port pattern");
-                json!({
-                    "pattern": "unknown",
-                    "supports_coordinated_punch": false
-                })
             }
-        };
+        }
 
-        Ok(response)
+        Ok(port_pattern_ipc_value(&pattern))
     }
 
     /// Handle `stun.detect_nat_type` method - Detect NAT type via multiple probes
@@ -174,16 +203,7 @@ impl StunHandler {
             .await
             .map_err(|e| format!("STUN server 2 failed: {e}"))?;
 
-        let (nat_type, description) = if addr1.ip() != addr2.ip() {
-            ("unknown", "Different public IPs detected — unusual topology")
-        } else if addr1.port() == addr2.port() {
-            ("cone", "Same port for different destinations — likely cone NAT (good for punching)")
-        } else {
-            (
-                "symmetric",
-                "Different ports for different destinations — symmetric NAT (needs relay-assisted punch)",
-            )
-        };
+        let (nat_type, description) = nat_type_from_dual_probes(addr1, addr2);
 
         info!("✅ NAT type detected: {} — {}", nat_type, description);
 
@@ -200,5 +220,355 @@ impl StunHandler {
                 "Direct hole punch should work (punch.request)"
             }
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::{StunHandler, nat_type_from_dual_probes, port_pattern_ipc_value};
+    use serde_json::json;
+    use songbird_stun::{PortPattern, StunClient, StunError, StunServer};
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use std::time::Duration;
+    use tokio::sync::oneshot;
+    use tokio::task::JoinHandle;
+
+    async fn start_local_stun_server() -> (JoinHandle<()>, SocketAddr) {
+        let (ready_tx, ready_rx) = oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let server = StunServer::new("127.0.0.1:0".parse().expect("loopback parse"));
+            let _ = server.run_with_ready(ready_tx).await;
+        });
+        let addr = ready_rx.await.expect("STUN server should signal bound address");
+        (handle, addr)
+    }
+
+    #[test]
+    fn port_pattern_ipc_value_sequential_high_confidence() {
+        let p = PortPattern::Sequential {
+            step: 1,
+            last_port: 4000,
+            predicted_next: 4001,
+            confidence: 0.9,
+        };
+        let v = port_pattern_ipc_value(&p);
+        assert_eq!(v["pattern"], "sequential");
+        assert_eq!(v["step"], 1);
+        assert_eq!(v["last_port"], 4000);
+        assert_eq!(v["predicted_next"], 4001);
+        assert_eq!(v["confidence"], 0.9);
+        assert_eq!(v["supports_coordinated_punch"], true);
+    }
+
+    #[test]
+    fn port_pattern_ipc_value_sequential_low_confidence_no_coordinated_punch() {
+        let p = PortPattern::Sequential {
+            step: 2,
+            last_port: 5000,
+            predicted_next: 5002,
+            confidence: 0.4,
+        };
+        let v = port_pattern_ipc_value(&p);
+        assert_eq!(v["pattern"], "sequential");
+        assert_eq!(v["supports_coordinated_punch"], false);
+    }
+
+    #[test]
+    fn port_pattern_ipc_value_random() {
+        let p = PortPattern::Random {
+            observed: vec![4100, 9999, 12],
+        };
+        let v = port_pattern_ipc_value(&p);
+        assert_eq!(v["pattern"], "random");
+        assert_eq!(v["observed_ports"], json!([4100, 9999, 12]));
+        assert_eq!(v["supports_coordinated_punch"], false);
+    }
+
+    #[test]
+    fn port_pattern_ipc_value_unknown() {
+        let v = port_pattern_ipc_value(&PortPattern::Unknown);
+        assert_eq!(v["pattern"], "unknown");
+        assert_eq!(v["supports_coordinated_punch"], false);
+        assert!(v.as_object().unwrap().get("observed_ports").is_none());
+    }
+
+    #[test]
+    fn port_pattern_library_json_roundtrip_sequential_random_unknown() {
+        use serde_json::{from_value, to_value};
+
+        let seq = PortPattern::Sequential {
+            step: 1,
+            last_port: 100,
+            predicted_next: 101,
+            confidence: 0.8,
+        };
+        assert_eq!(seq, from_value(to_value(&seq).unwrap()).unwrap());
+
+        let rand = PortPattern::Random {
+            observed: vec![1, 2],
+        };
+        assert_eq!(rand, from_value(to_value(&rand).unwrap()).unwrap());
+
+        let unk = PortPattern::Unknown;
+        assert_eq!(unk, from_value(to_value(&unk).unwrap()).unwrap());
+    }
+
+    #[test]
+    fn nat_type_from_dual_probes_different_public_ips() {
+        let a = SocketAddr::from((Ipv4Addr::new(1, 1, 1, 1), 10_000));
+        let b = SocketAddr::from((Ipv4Addr::new(2, 2, 2, 2), 10_000));
+        assert_eq!(
+            nat_type_from_dual_probes(a, b),
+            ("unknown", "Different public IPs detected — unusual topology")
+        );
+    }
+
+    #[test]
+    fn nat_type_from_dual_probes_cone_same_ip_and_port() {
+        let ip = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 1));
+        let a = SocketAddr::new(ip, 50_000);
+        let b = SocketAddr::new(ip, 50_000);
+        assert_eq!(
+            nat_type_from_dual_probes(a, b),
+            ("cone", "Same port for different destinations — likely cone NAT (good for punching)")
+        );
+    }
+
+    #[test]
+    fn nat_type_from_dual_probes_symmetric_same_ip_different_ports() {
+        let ip = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 2));
+        let a = SocketAddr::new(ip, 50_000);
+        let b = SocketAddr::new(ip, 50_001);
+        assert_eq!(
+            nat_type_from_dual_probes(a, b),
+            (
+                "symmetric",
+                "Different ports for different destinations — symmetric NAT (needs relay-assisted punch)",
+            )
+        );
+    }
+
+    #[test]
+    fn map_err_stun_discovery_failed_prefix_matches_all_servers_failed_display() {
+        let inner = StunError::AllServersFailed("Last error: Network error: timed out".into());
+        assert_eq!(
+            format!("STUN discovery failed: {inner}"),
+            "STUN discovery failed: All STUN servers failed: Last error: Network error: timed out"
+        );
+    }
+
+    #[test]
+    fn map_err_stun_bind_failed_prefix_matches_timeout_display() {
+        let inner = StunError::Timeout(Duration::from_secs(2));
+        assert_eq!(
+            format!("STUN bind failed: {inner}"),
+            format!("STUN bind failed: STUN request timeout after {:?}", Duration::from_secs(2))
+        );
+    }
+
+    #[test]
+    fn map_err_port_pattern_probing_failed_prefix_matches_network_display() {
+        let inner = StunError::Network("Failed to resolve STUN server: nxdomain".into());
+        assert_eq!(
+            format!("Port pattern probing failed: {inner}"),
+            "Port pattern probing failed: Network error: Failed to resolve STUN server: nxdomain"
+        );
+    }
+
+    #[test]
+    fn map_err_stun_server_1_and_2_failed_prefixes_match_display() {
+        let e1 = StunError::InvalidResponse("bad magic".into());
+        assert_eq!(
+            format!("STUN server 1 failed: {e1}"),
+            "STUN server 1 failed: Invalid STUN response: bad magic"
+        );
+        let e2 = StunError::ServerError("500".into());
+        assert_eq!(
+            format!("STUN server 2 failed: {e2}"),
+            "STUN server 2 failed: STUN server error: 500"
+        );
+    }
+
+    #[test]
+    fn invalid_servers_parameter_format_matches_handler() {
+        let bad = json!("not-an-array");
+        let inner = serde_json::from_value::<Vec<String>>(bad.clone()).unwrap_err();
+        let expected = format!("Invalid 'servers' parameter: {inner}");
+        let got = serde_json::from_value::<Vec<String>>(bad)
+            .map_err(|e| format!("Invalid 'servers' parameter: {e}"))
+            .unwrap_err();
+        assert_eq!(got, expected);
+    }
+
+    #[tokio::test]
+    async fn get_public_address_success_against_local_stun_server() {
+        let (server_handle, stun_addr) = start_local_stun_server().await;
+        let handler = StunHandler::new();
+        let server_str = stun_addr.to_string();
+        let result = handler
+            .handle_get_public_address(json!({ "servers": [server_str.as_str()] }))
+            .await
+            .expect("get_public_address against local STUN");
+        assert_eq!(result["method"], "stun_racing");
+        assert_eq!(result["servers_tried"], 1);
+        assert_eq!(result["nat_type"], "unknown");
+        assert!(result["full_address"].as_str().is_some_and(|s| s.contains(':')));
+        server_handle.abort();
+    }
+
+    #[tokio::test]
+    async fn bind_success_against_local_stun_server() {
+        let (server_handle, stun_addr) = start_local_stun_server().await;
+        let handler = StunHandler::new();
+        let server_str = stun_addr.to_string();
+        let result =
+            handler.handle_bind(json!({ "stun_server": server_str.as_str() })).await.expect("bind");
+        assert_eq!(result["nat_type"], "unknown");
+        assert_eq!(result["stun_server"], server_str);
+        assert_eq!(result["local_address"], "0.0.0.0:0");
+        server_handle.abort();
+    }
+
+    #[tokio::test]
+    async fn probe_port_pattern_success_against_local_stun_server() {
+        let (server_handle, stun_addr) = start_local_stun_server().await;
+        let handler = StunHandler::new();
+        let server_str = stun_addr.to_string();
+        let result = handler
+            .handle_probe_port_pattern(json!({ "stun_server": server_str.as_str(), "probes": 4 }))
+            .await
+            .expect("probe");
+        let pat = result["pattern"].as_str().expect("pattern");
+        assert!(matches!(pat, "sequential" | "random" | "unknown"), "unexpected pattern: {pat}");
+        server_handle.abort();
+    }
+
+    #[tokio::test]
+    async fn detect_nat_type_success_against_local_stun_server() {
+        let (server_handle, stun_addr) = start_local_stun_server().await;
+        let handler = StunHandler::new();
+        let bind = stun_addr.to_string();
+        let result = handler
+            .handle_detect_nat_type(json!({ "servers": [bind.as_str(), bind.as_str()] }))
+            .await
+            .expect("detect_nat_type");
+        let nat = result["nat_type"].as_str().expect("nat_type");
+        assert!(matches!(nat, "cone" | "symmetric" | "unknown"), "unexpected nat_type: {nat}");
+        let rec = result["recommendation"].as_str().expect("recommendation");
+        if nat == "symmetric" {
+            assert!(rec.contains("coordinate"));
+        } else {
+            assert!(rec.contains("punch.request") || rec.contains("hole punch"));
+        }
+        server_handle.abort();
+    }
+
+    #[tokio::test]
+    async fn get_public_address_discovery_error_matches_stun_client_wrapper() {
+        let dead = "127.0.0.1:1";
+        let client_err = StunClient::new()
+            .discover_public_address_racing(&[dead])
+            .await
+            .expect_err("client should fail against discard port");
+        let handler = StunHandler::new();
+        let handler_err = handler
+            .handle_get_public_address(json!({ "servers": [dead] }))
+            .await
+            .expect_err("handler should fail");
+        assert_eq!(handler_err, format!("STUN discovery failed: {client_err}"));
+    }
+
+    #[tokio::test]
+    async fn bind_error_matches_stun_client_wrapper() {
+        let dead = "127.0.0.1:1";
+        let client_err = StunClient::new()
+            .discover_public_endpoint(dead)
+            .await
+            .expect_err("endpoint discovery should fail");
+        let handler = StunHandler::new();
+        let handler_err = handler
+            .handle_bind(json!({ "stun_server": dead }))
+            .await
+            .expect_err("bind handler should fail");
+        assert_eq!(handler_err, format!("STUN bind failed: {client_err}"));
+    }
+
+    #[tokio::test]
+    async fn detect_nat_type_server1_error_matches_stun_client_wrapper() {
+        let dead = "127.0.0.1:1";
+        let client_err = StunClient::new()
+            .discover_public_address(dead)
+            .await
+            .expect_err("discover should fail");
+        let handler = StunHandler::new();
+        let handler_err = handler
+            .handle_detect_nat_type(json!({ "servers": [dead, "127.0.0.1:2"] }))
+            .await
+            .expect_err("first server should fail");
+        assert_eq!(handler_err, format!("STUN server 1 failed: {client_err}"));
+    }
+
+    #[tokio::test]
+    async fn detect_nat_type_server2_error_matches_stun_client_wrapper() {
+        let (server_handle, stun_addr) = start_local_stun_server().await;
+        let dead = "127.0.0.1:1";
+        let server_str = stun_addr.to_string();
+        let client_err = StunClient::new()
+            .discover_public_address(dead)
+            .await
+            .expect_err("second discover should fail");
+        let handler = StunHandler::new();
+        let handler_err = handler
+            .handle_detect_nat_type(json!({ "servers": [server_str.as_str(), dead] }))
+            .await
+            .expect_err("second server should fail");
+        assert_eq!(handler_err, format!("STUN server 2 failed: {client_err}"));
+        server_handle.abort();
+    }
+
+    #[tokio::test]
+    async fn probe_port_pattern_error_matches_stun_client_wrapper() {
+        let bad_host = "this-host-should-not-resolve.invalid:3478";
+        let client_err = StunClient::new()
+            .probe_port_pattern(bad_host, 2)
+            .await
+            .expect_err("probe should fail on DNS");
+        let handler = StunHandler::new();
+        let handler_err = handler
+            .handle_probe_port_pattern(json!({
+                "stun_server": bad_host,
+                "probes": 2
+            }))
+            .await
+            .expect_err("handler should fail");
+        assert_eq!(handler_err, format!("Port pattern probing failed: {client_err}"));
+    }
+
+    #[tokio::test]
+    async fn get_public_address_invalid_servers_parameter_matches_handler_exactly() {
+        let handler = StunHandler::new();
+        let bad = json!("not-an-array");
+        let inner = serde_json::from_value::<Vec<String>>(bad.clone()).unwrap_err();
+        let expected = format!("Invalid 'servers' parameter: {inner}");
+        let err = handler
+            .handle_get_public_address(json!({ "servers": bad }))
+            .await
+            .expect_err("invalid servers");
+        assert_eq!(err, expected);
+    }
+
+    #[tokio::test]
+    async fn detect_nat_type_invalid_servers_parameter_matches_handler_exactly() {
+        let handler = StunHandler::new();
+        let bad = json!(false);
+        let inner = serde_json::from_value::<Vec<String>>(bad.clone()).unwrap_err();
+        let expected = format!("Invalid 'servers' parameter: {inner}");
+        let err = handler
+            .handle_detect_nat_type(json!({ "servers": bad }))
+            .await
+            .expect_err("invalid servers");
+        assert_eq!(err, expected);
     }
 }

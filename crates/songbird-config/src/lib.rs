@@ -210,13 +210,8 @@ pub type SongbirdConfig = songbird_types::config::CanonicalSongbirdConfig;
 #[allow(deprecated, reason = "backward-compat glob re-export of legacy config module")]
 pub use config::*;
 
-// ✅ REMOVED: Use canonical::environment::EnvironmentConfig instead (Nov 9, 2025)
-// #[expect(deprecated, reason = "calling deprecated API until migration completes")]
-// pub use config::environment::EnvironmentConfig;
-
-// Re-export environment configuration helper
-// ✅ REMOVED: Use canonical::environment::EnvironmentConfig instead (Nov 9, 2025)
-// pub use environment_config_clean::EnvironmentConfig as EnvironmentConfigClean;
+// Legacy `EnvironmentConfig` / `EnvironmentConfigClean` re-exports removed (Nov 9, 2025);
+// use `canonical::environment::EnvironmentConfig` instead.
 
 /// Performance configuration for fine-tuning system behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]

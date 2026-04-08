@@ -398,7 +398,10 @@ impl SecurityTlsCryptoClient {
     }
 
     /// Make a JSON-RPC call with a direct method name (legacy/testing)
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "used by crypto unit tests; not referenced from production call sites"
+    )]
     async fn call_jsonrpc(
         &self,
         method: &str,

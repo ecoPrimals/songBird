@@ -65,4 +65,5 @@ songbird-config = { path = "../songbird-config" }
 mockito = "1.2"
 tokio-test = "0.4"
 songbird-test-utils = { path = "../songbird-test-utils" }
+tracing-subscriber = { workspace = true }
 wiremock = "0.6"

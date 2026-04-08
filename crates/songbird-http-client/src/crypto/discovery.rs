@@ -122,7 +122,10 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 /// ```rust,ignore
 /// let crypto = discover_crypto_capability_at("/custom/path/crypto.sock").await?;
 /// ```
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "public discovery helper for explicit paths; only tests call it in this crate"
+)]
 pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn CryptoCapability>> {
     let provider = SecurityCryptoProvider::new(socket_path);
 
@@ -138,7 +141,10 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
 /// Create crypto capability without availability check (for testing)
 ///
 /// Use this in tests where you control the provider lifecycle.
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "test-oriented constructor; production uses discover_crypto_capability"
+)]
 pub fn create_crypto_capability(socket_path: &str) -> Arc<dyn CryptoCapability> {
     Arc::new(SecurityCryptoProvider::new(socket_path))
 }

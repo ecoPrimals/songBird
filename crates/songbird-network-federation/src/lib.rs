@@ -123,7 +123,6 @@ pub mod service_registry;
 /// Federation and network shared runtime state.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod state;
-// pub mod tls;  // ✅ DEPRECATED: Using songbird-tls instead (100% Pure Rust via security provider!)
 /// Zero-copy friendly registry for hot federation paths.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod zero_copy_registry;

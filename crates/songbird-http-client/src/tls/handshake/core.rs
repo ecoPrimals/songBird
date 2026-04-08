@@ -59,7 +59,11 @@ mod tests {
 
     #[test]
     fn test_handshake_creation() {
-        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+        let path = tempfile::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(path))
             as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(crypto);
 
@@ -70,7 +74,11 @@ mod tests {
 
     #[test]
     fn test_handshake_with_config() {
-        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new("/tmp/beardog.sock"))
+        let path = tempfile::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(path))
             as std::sync::Arc<dyn CryptoCapability>;
         let config = TlsConfig::default();
         let handshake = TlsHandshake::with_config(crypto, config, None);

@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 use tracing::debug;
-// use songbird_config; // FIXED: Circular import removed
+// Do not `use songbird_config` here (circular import within this crate).
 
 // ✅ Import types from canonical (Nov 9, 2025)
 use crate::canonical::primals::{ConnectionSettings, HealthCheckConfig, QosMetrics};
@@ -171,23 +171,8 @@ pub struct PrimalCapability {
     pub qos_metrics: QosMetrics,
 }
 
-// NOTE: These types have been moved to canonical::primals
-// Kept here for reference only - use the canonical versions above via re-exports
-
-// /// Quality of service metrics for capabilities
-// /// **MOVED TO**: `crate::canonical::primals::QosMetrics`
-// #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-// pub struct QosMetrics { ... }
-
-// /// Connection settings for primal communication
-// /// **MOVED TO**: `crate::canonical::primals::ConnectionSettings`
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct ConnectionSettings { ... }
-
-// /// Health check configuration
-// /// **MOVED TO**: `crate::canonical::primals::HealthCheckConfig`
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct HealthCheckConfig { ... }
+// NOTE: QosMetrics, ConnectionSettings, and HealthCheckConfig live in `canonical::primals`
+// (imported above). Older duplicate struct definitions were removed.
 
 /// Auto-discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

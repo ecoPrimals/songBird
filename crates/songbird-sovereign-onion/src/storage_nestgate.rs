@@ -123,7 +123,10 @@ impl NestGateOnionStorage {
     }
 }
 
-#[allow(clippy::unnecessary_wraps)]
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "Result matches rpc() error mapping; Ok-wrapping kept for uniform call sites"
+)]
 fn parse_get_value_string(result: &Value) -> std::result::Result<Option<String>, String> {
     if result.is_null() {
         return Ok(None);

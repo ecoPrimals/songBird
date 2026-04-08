@@ -27,7 +27,7 @@ pub struct TlsServer {
 
     /// Server private key (DER encoded)
     /// Used for certificate verification and signing (future implementation)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "stored for future cert signing; only read in unit tests today")]
     pub(super) private_key: Vec<u8>,
 
     /// Negotiated cipher suite
@@ -90,7 +90,11 @@ mod tests {
     use crate::crypto::SecurityCryptoProvider;
 
     fn create_test_crypto() -> Arc<dyn CryptoCapability> {
-        Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"))
+        let path = tempfile::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        Arc::new(SecurityCryptoProvider::new(path))
     }
 
     #[test]

@@ -60,7 +60,11 @@ mod protocol_detection_unit_tests {
     #[tokio::test]
     async fn test_unix_socket_without_prefix() {
         // Test that raw paths (without unix://) still work for backward compat
-        let result = SecurityAdapter::new("/tmp/beardog.sock".to_string()).await;
+        let path = std::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        let result = SecurityAdapter::new(path).await;
 
         // Should fail because it doesn't start with unix:// and isn't http(s)://
         // This would be interpreted as HTTP with invalid URL

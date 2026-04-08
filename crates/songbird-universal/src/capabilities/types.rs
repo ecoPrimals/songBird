@@ -161,7 +161,7 @@ pub(super) struct CapabilityResponse {
 /// Primal type classification
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrimalType {
-    /// Security services (beardog, auth)
+    /// Security services (security provider / crypto.delegate; auth; formerly beardog)
     Security,
     /// Compute services (containers, batch jobs, GPU workloads)
     Compute,

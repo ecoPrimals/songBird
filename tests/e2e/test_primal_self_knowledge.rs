@@ -87,8 +87,7 @@ async fn test_no_topology_assumptions() -> SongbirdResult<()> {
     // const COMPUTE_IP: &str = "192.168.1.10";
     
     // ✅ GOOD: Discovers at runtime
-    // let compute_endpoint = discover_compute().await?;
-    
+
     // Primal doesn't assume:
     // - IP addresses
     // - Port numbers
@@ -223,11 +222,9 @@ async fn test_complete_self_knowledge() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_discovery_is_query() -> SongbirdResult<()> {
     // ❌ BAD: Assume service exists
-    // let compute = "http://toadstool:8001";
-    
+
     // ✅ GOOD: Query for service
-    // let compute = query_for_capability("compute").await?;
-    
+
     // Discovery is active (query) not passive (assumption)
     let query = "compute";
     assert_eq!(query, "compute");
@@ -267,11 +264,9 @@ async fn test_no_compile_time_primal_dependencies() {
     // compile-time dependencies on other primal implementations
     
     // ❌ BAD: Would require other primal's code
-    // use toadstool::ComputeService;
-    
+
     // ✅ GOOD: Generic capability interface
-    // use songbird_types::CapabilityProvider;
-    
+
     // Test passes if it compiles!
 }
 

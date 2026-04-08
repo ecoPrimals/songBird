@@ -469,8 +469,11 @@ mod tests {
 
     #[test]
     fn test_tls_record_layer_accessors_and_initial_read_sequence() {
-        let crypto: Arc<dyn CryptoCapability> =
-            Arc::new(SecurityCryptoProvider::new("/tmp/beardog.sock"));
+        let path = tempfile::env::temp_dir()
+            .join("songbird-test-security.sock")
+            .to_string_lossy()
+            .into_owned();
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(SecurityCryptoProvider::new(path));
         let keys = SessionKeys {
             client_write_key: vec![0; 32],
             server_write_key: vec![0; 32],
