@@ -10,7 +10,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,863 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 12,886 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 7 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |

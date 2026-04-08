@@ -5,6 +5,7 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
+use super::types::{JsonRpcRequestWire, JsonRpcResponseWire};
 use super::*;
 use crate::endpoint::VirtualEndpoint;
 use crate::error::IpcError;
@@ -513,5 +514,151 @@ async fn e2e_server_skips_blank_lines_between_requests() {
     BufReader::new(&mut stream).read_line(&mut line).await.expect("read");
     let resp: JsonRpcResponse = serde_json::from_str(line.trim()).expect("resp");
     assert_eq!(resp.result, Some(json!(3)));
+    h.abort();
+}
+
+// ─── wire types (mirrors [`TowerAtomicClient::call`] parsing) ─────────────────
+
+#[test]
+fn json_rpc_response_wire_rejects_malformed_json() {
+    assert!(serde_json::from_str::<JsonRpcResponseWire<'_>>("not json").is_err());
+    assert!(serde_json::from_str::<JsonRpcResponseWire<'_>>("{").is_err());
+}
+
+#[test]
+fn json_rpc_response_wire_json_null_result_maps_to_none_for_option_value() {
+    let line = r#"{"jsonrpc":"2.0","result":null,"id":3}"#;
+    let w: JsonRpcResponseWire<'_> = serde_json::from_str(line).expect("parse");
+    assert!(w.error.is_none());
+    assert!(
+        w.result.is_none(),
+        "serde maps JSON null to None for Option<Value> (same as omitted result field)"
+    );
+}
+
+#[test]
+fn json_rpc_response_wire_non_null_scalar_result_round_trips() {
+    let line = r#"{"jsonrpc":"2.0","result":false,"id":"rid"}"#;
+    let w: JsonRpcResponseWire<'_> = serde_json::from_str(line).expect("parse");
+    assert_eq!(w.result, Some(json!(false)));
+    assert_eq!(w.id, json!("rid"));
+}
+
+#[test]
+fn json_rpc_response_wire_borrows_error_message() {
+    let line = r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"custom fail"},"id":1}"#;
+    let w: JsonRpcResponseWire<'_> = serde_json::from_str(line).expect("parse");
+    assert!(w.result.is_none());
+    let err = w.error.expect("error");
+    assert_eq!(err.message.as_ref(), "custom fail");
+}
+
+#[test]
+fn json_rpc_response_wire_omitted_result_is_none() {
+    let line = r#"{"jsonrpc":"2.0","id":7}"#;
+    let w: JsonRpcResponseWire<'_> = serde_json::from_str(line).expect("parse");
+    assert!(w.result.is_none());
+    assert!(w.error.is_none());
+}
+
+#[test]
+fn json_rpc_response_wire_requires_id_field() {
+    let line = r#"{"jsonrpc":"2.0","result":1}"#;
+    assert!(serde_json::from_str::<JsonRpcResponseWire<'_>>(line).is_err());
+}
+
+#[test]
+fn json_rpc_request_wire_borrows_method_and_params() {
+    let line = r#"{"jsonrpc":"2.0","method":"m.add","params":{"a":1},"id":2}"#;
+    let w: JsonRpcRequestWire<'_> = serde_json::from_str(line).expect("parse");
+    assert_eq!(w.method.as_ref(), "m.add");
+    assert_eq!(w.jsonrpc.as_ref(), "2.0");
+    assert_eq!(w.params, Some(json!({"a": 1})));
+}
+
+#[test]
+fn json_rpc_request_wire_unicode_method_name() {
+    let line = r#"{"jsonrpc":"2.0","method":"π.🔧","params":[],"id":0}"#;
+    let w: JsonRpcRequestWire<'_> = serde_json::from_str(line).expect("parse");
+    assert_eq!(w.method.as_ref(), "π.🔧");
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn connect_unix_path_missing_socket_is_connection_failed() {
+    let path = std::env::temp_dir().join(format!("songbird-ta-nosock-{}", uuid::Uuid::new_v4()));
+    let err = match TowerAtomicClient::connect_unix_path(&path).await {
+        Ok(_) => panic!("expected connection failure for missing socket"),
+        Err(e) => e,
+    };
+    match err {
+        IpcError::ConnectionFailed(m) => {
+            assert!(
+                m.contains("Failed to connect") || m.contains("connect"),
+                "unexpected message: {m}"
+            );
+        }
+        e => panic!("expected ConnectionFailed, got {e:?}"),
+    }
+}
+
+#[tokio::test]
+async fn e2e_concurrent_clients_on_one_server() {
+    ipc::init().expect("ipc init");
+    let name = format!("ta-conc-{}", uuid::Uuid::new_v4());
+    let endpoint = ipc::register(&name, vec!["math".to_string()]).await.expect("register");
+    let ep_clone = endpoint.clone();
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+    let server = TowerAtomicServer::new(MathService);
+    let h = tokio::spawn(async move {
+        let _ = server.serve_with_ready(ep_clone, ready_tx).await;
+    });
+    ready_rx.await.expect("ready");
+    let path = std::sync::Arc::new(format!("/primal/{name}"));
+    let futs: Vec<_> = (0..12_u64)
+        .map(|i| {
+            let p = path.clone();
+            async move {
+                let client = TowerAtomicClient::connect(p.as_str()).await.expect("connect");
+                client.call("add", json!({"a": i as i64, "b": 1})).await.expect("add")
+            }
+        })
+        .collect();
+    let results = futures::future::join_all(futs).await;
+    assert_eq!(results.len(), 12);
+    for (i, v) in results.iter().enumerate() {
+        assert_eq!(*v, json!(i as i64 + 1));
+    }
+    h.abort();
+}
+
+#[tokio::test]
+async fn e2e_oversized_single_line_json_still_parses() {
+    ipc::init().expect("init");
+    let name = format!("ta-bigline-{}", uuid::Uuid::new_v4());
+    let endpoint = ipc::register(&name, vec![]).await.expect("register");
+    let ep_clone = endpoint.clone();
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+    let server = TowerAtomicServer::new(MathService);
+    let h = tokio::spawn(async move {
+        let _ = server.serve_with_ready(ep_clone, ready_tx).await;
+    });
+    ready_rx.await.expect("ready");
+    let path = format!("/primal/{name}");
+    let mut stream = ipc::connect(&path).await.expect("connect");
+    let pad = "z".repeat(200_000);
+    let body = serde_json::to_string(&JsonRpcRequest::new(
+        "add",
+        Some(json!({"a": 4_i64, "b": 5_i64, "pad": pad})),
+        1,
+    ))
+    .expect("serialize");
+    assert!(body.len() > 150_000, "sanity: large request line");
+    stream.write_all(body.as_bytes()).await.expect("write");
+    stream.write_all(b"\n").await.expect("nl");
+    let mut line = String::new();
+    BufReader::new(&mut stream).read_line(&mut line).await.expect("read");
+    let resp: JsonRpcResponse = serde_json::from_str(line.trim()).expect("resp");
+    assert_eq!(resp.result, Some(json!(9)));
     h.abort();
 }

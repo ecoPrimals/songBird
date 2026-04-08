@@ -7,11 +7,15 @@
 //! and SecurityProvider trait default implementation.
 
 use super::*;
+use crate::adapters::transport::{AdapterTransportKind, DelayTransport, MockTransport};
+use serde_json::json;
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
-use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::io::Write;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tracing_subscriber::layer::SubscriberExt;
 
 static DISCOVERY_ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -321,4 +325,239 @@ fn test_security_metrics_health_status_warning_failed_attempts_only() {
     };
     assert!(!metrics.is_under_attack());
     assert_eq!(metrics.health_status(), SecurityHealth::Warning);
+}
+
+// --- collect_metrics / check_health / transport errors (MockTransport), discovery edge cases ---
+
+#[tokio::test]
+async fn collect_metrics_times_out_with_delay_transport() {
+    let delayed = DelayTransport {
+        inner: Arc::new(MockTransport::new(vec![])),
+        delay: Duration::from_secs(30),
+    };
+    let adapter = SecurityAdapter::with_transport(
+        "http://mock-security".to_string(),
+        Arc::new(delayed),
+        AdapterTransportKind::Http,
+        Duration::from_millis(20),
+    );
+    let err = adapter.collect_metrics().await.expect_err("should time out");
+    assert!(err.to_string().to_lowercase().contains("timeout"), "unexpected: {err}");
+}
+
+#[tokio::test]
+async fn collect_metrics_http_transport_error_passes_through() {
+    let boom = SongbirdError::network("upstream http failure");
+    let adapter = SecurityAdapter::with_transport(
+        "http://mock".to_string(),
+        Arc::new(MockTransport::new(vec![Err(boom.clone())])),
+        AdapterTransportKind::Http,
+        Duration::from_secs(5),
+    );
+    let err = adapter.collect_metrics().await.expect_err("transport error");
+    assert_eq!(err.to_string(), boom.to_string());
+}
+
+#[tokio::test]
+async fn collect_metrics_tarpc_transport_error_is_wrapped() {
+    let boom = SongbirdError::network("rpc down");
+    let adapter = SecurityAdapter::with_transport(
+        "tarpc://127.0.0.1:1".to_string(),
+        Arc::new(MockTransport::new(vec![Err(boom)])),
+        AdapterTransportKind::Tarpc,
+        Duration::from_secs(5),
+    );
+    let err = adapter.collect_metrics().await.expect_err("wrapped");
+    let s = err.to_string();
+    assert!(s.contains("tarpc"), "{}", s);
+}
+
+#[tokio::test]
+async fn collect_metrics_jsonrpc_transport_error_is_wrapped() {
+    let boom = SongbirdError::network("uds down");
+    let adapter = SecurityAdapter::with_transport(
+        "unix:///tmp/songbird-security-mock.sock".to_string(),
+        Arc::new(MockTransport::new(vec![Err(boom)])),
+        AdapterTransportKind::JsonRpc,
+        Duration::from_secs(5),
+    );
+    let err = adapter.collect_metrics().await.expect_err("wrapped");
+    let s = err.to_string();
+    assert!(s.contains("Failed to reach security provider"), "{}", s);
+}
+
+#[tokio::test]
+async fn collect_metrics_parse_error_maps_to_security() {
+    let adapter = SecurityAdapter::with_transport(
+        "http://mock".to_string(),
+        Arc::new(MockTransport::new(vec![Ok(json!("not-metrics"))])),
+        AdapterTransportKind::Http,
+        Duration::from_secs(5),
+    );
+    let err = adapter.collect_metrics().await.expect_err("bad json shape");
+    let s = err.to_string();
+    assert!(s.to_lowercase().contains("security") || s.contains("parse"), "{}", s);
+}
+
+#[tokio::test]
+async fn collect_metrics_sets_timestamp_when_unix_epoch() -> SongbirdResult<()> {
+    let body = json!({
+        "active_sessions": 1,
+        "failed_auth_attempts": 0,
+        "blocked_ips": 0,
+        "security_score": 1.0,
+        "timestamp": "1970-01-01T00:00:00Z"
+    });
+    let adapter = SecurityAdapter::with_transport(
+        "http://mock".to_string(),
+        Arc::new(MockTransport::new(vec![Ok(body)])),
+        AdapterTransportKind::Http,
+        Duration::from_secs(5),
+    );
+    let m = adapter.collect_metrics().await?;
+    assert_ne!(m.timestamp.timestamp(), 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn check_health_delegates_to_collect_metrics() -> SongbirdResult<()> {
+    let body = serde_json::to_value(SecurityMetrics {
+        active_sessions: 3,
+        failed_auth_attempts: 1,
+        blocked_ips: 0,
+        security_score: 0.9,
+        timestamp: chrono::Utc::now(),
+    })?;
+    let adapter = SecurityAdapter::with_transport(
+        "http://mock".to_string(),
+        Arc::new(MockTransport::new(vec![Ok(body)])),
+        AdapterTransportKind::Http,
+        Duration::from_secs(5),
+    );
+    assert_eq!(adapter.check_health().await?, SecurityHealth::Healthy);
+    Ok(())
+}
+
+#[tokio::test]
+async fn verify_auth_tarpc_error_includes_tarpc_hint() {
+    let boom = SongbirdError::network("no peer");
+    let adapter = SecurityAdapter::with_transport(
+        "tarpc://127.0.0.1:1".to_string(),
+        Arc::new(MockTransport::new(vec![Err(boom)])),
+        AdapterTransportKind::Tarpc,
+        Duration::from_secs(5),
+    );
+    let err = adapter.verify_auth("tok").await.expect_err("auth fails");
+    assert!(err.to_string().contains("tarpc"), "{}", err);
+}
+
+#[tokio::test]
+async fn from_discovery_fallback_security_endpoint_env_only() -> SongbirdResult<()> {
+    let _g = lock_discovery_env();
+    songbird_process_env::reset_overlay();
+    songbird_process_env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+    for key in ["SONGBIRD_SECURITY_ENDPOINT", "SECURITY_PROVIDER_ENDPOINT", "BEARDOG_ENDPOINT"] {
+        songbird_process_env::remove_var(key);
+    }
+    songbird_process_env::set_var("SECURITY_ENDPOINT", "http://from-security-endpoint-only:8800");
+
+    let adapter =
+        SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new()).await?;
+    assert_eq!(adapter.endpoint(), "http://from-security-endpoint-only:8800");
+
+    songbird_process_env::reset_overlay();
+    Ok(())
+}
+
+#[tokio::test]
+async fn from_discovery_fallback_default_bind_address_and_security_port() -> SongbirdResult<()> {
+    let _g = lock_discovery_env();
+    songbird_process_env::reset_overlay();
+    for key in [
+        "CAPABILITY_SECURITY_ENDPOINT",
+        "SONGBIRD_SECURITY_ENDPOINT",
+        "SECURITY_ENDPOINT",
+        "SECURITY_PROVIDER_ENDPOINT",
+        "BEARDOG_ENDPOINT",
+        "SONGBIRD_HOST",
+        "SONGBIRD_SECURITY_PORT",
+    ] {
+        songbird_process_env::remove_var(key);
+    }
+
+    let expected =
+        format!("http://{}:8081", songbird_config::canonical::constants::get_bind_address());
+    let adapter =
+        SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new()).await?;
+    assert_eq!(adapter.endpoint(), expected);
+
+    songbird_process_env::reset_overlay();
+    Ok(())
+}
+
+#[tokio::test]
+async fn from_discovery_fallback_propagates_new_error_from_bad_env_endpoint() {
+    let _g = lock_discovery_env();
+    songbird_process_env::reset_overlay();
+    songbird_process_env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+    songbird_process_env::set_var("SONGBIRD_SECURITY_ENDPOINT", "unix://");
+
+    let err = SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new())
+        .await
+        .expect_err("adapter new should fail");
+    assert!(
+        err.to_string().to_lowercase().contains("empty")
+            || err.to_string().contains("configuration"),
+        "unexpected: {err}"
+    );
+
+    songbird_process_env::reset_overlay();
+}
+
+#[tokio::test]
+async fn beardog_endpoint_logs_deprecation_warning() -> SongbirdResult<()> {
+    #[derive(Clone)]
+    struct BufWriter(Arc<Mutex<Vec<u8>>>);
+    impl Write for BufWriter {
+        fn write(&mut self, d: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner).extend_from_slice(d);
+            Ok(d.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let _g = lock_discovery_env();
+    songbird_process_env::reset_overlay();
+    songbird_process_env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+    for key in ["SONGBIRD_SECURITY_ENDPOINT", "SECURITY_ENDPOINT", "SECURITY_PROVIDER_ENDPOINT"] {
+        songbird_process_env::remove_var(key);
+    }
+    songbird_process_env::set_var("BEARDOG_ENDPOINT", "http://from-beardog-warn:7711");
+
+    let log_buf = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let w = Arc::clone(&log_buf);
+    let subscriber = tracing_subscriber::registry().with(
+        tracing_subscriber::fmt::layer()
+            .without_time()
+            .with_target(false)
+            .with_level(false)
+            .with_ansi(false)
+            .with_writer(move || BufWriter(Arc::clone(&w))),
+    );
+    let _trace_guard = tracing::subscriber::set_default(subscriber);
+
+    let adapter =
+        SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new()).await?;
+    assert_eq!(adapter.endpoint(), "http://from-beardog-warn:7711");
+    drop(_trace_guard);
+    let logs = String::from_utf8_lossy(
+        &log_buf.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone(),
+    )
+    .into_owned();
+    assert!(logs.contains("BEARDOG_ENDPOINT") && logs.contains("deprecated"), "logs were: {logs}");
+
+    songbird_process_env::reset_overlay();
+    Ok(())
 }
