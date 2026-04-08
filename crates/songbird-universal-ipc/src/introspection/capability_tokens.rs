@@ -120,20 +120,58 @@ const CALLABLE_METHODS: &[&str] = &[
     "tor.circuit.close",
 ];
 
-/// Wire Standard Level 2 envelope for `capabilities.list`.
+/// Wire Standard Level 3 envelope for `capabilities.list`.
 ///
-/// Returns `{"primal": "songbird", "version": "<semver>", "methods": [...]}` per
-/// the Capability Wire Standard v1.0.
+/// Returns `{primal, version, methods, provided_capabilities, consumed_capabilities}`
+/// per Capability Wire Standard v1.0 Level 3.
 #[must_use]
 pub fn capabilities_list() -> Value {
     let methods: Vec<Value> =
         CALLABLE_METHODS.iter().map(|s| Value::String((*s).to_string())).collect();
+
+    let provided: Vec<Value> = CAPABILITY_METHOD_MAP
+        .iter()
+        .map(|(token, group_methods)| {
+            let (domain, _) = token.split_once('.').unwrap_or((token, ""));
+            json!({
+                "type": domain,
+                "methods": group_methods,
+                "version": env!("CARGO_PKG_VERSION"),
+                "description": format!("{token} capability group")
+            })
+        })
+        .collect();
+
     json!({
         "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
-        "methods": methods
+        "methods": methods,
+        "provided_capabilities": provided,
+        "consumed_capabilities": CONSUMED_CAPABILITIES,
+        "protocol": "jsonrpc-2.0",
+        "transport": ["uds", "tcp"]
     })
 }
+
+/// Capabilities Songbird consumes from other primals at runtime.
+///
+/// These are discovered via capability-based discovery, never hardcoded endpoints.
+/// Wire Standard Level 3 requires declaring these so biomeOS can validate
+/// composition completeness.
+const CONSUMED_CAPABILITIES: &[&str] = &[
+    "crypto.sign",
+    "crypto.encrypt_chacha20_poly1305",
+    "crypto.decrypt_chacha20_poly1305",
+    "crypto.generate_keypair",
+    "crypto.ecdh_derive",
+    "crypto.sha256",
+    "crypto.hkdf_extract",
+    "crypto.hkdf_expand",
+    "security.tls",
+    "storage.put",
+    "storage.get",
+    "storage.consent.store",
+];
 
 /// Mapping from NEST capability tokens to their primary callable JSON-RPC methods.
 ///

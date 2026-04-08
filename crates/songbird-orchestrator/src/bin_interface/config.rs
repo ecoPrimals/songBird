@@ -8,6 +8,8 @@
 //! - Configuration validation
 //! - Configuration template generation
 
+use std::fmt::Write as _;
+
 use anyhow::Result;
 
 use super::ConfigCommands;
@@ -96,7 +98,7 @@ async fn show_config(show_secrets: bool, format: &str) -> Result<()> {
                     println!();
 
                     // ✅ Display structured configuration values
-                    display_config_formatted(&config, show_secrets);
+                    print!("{}", format_config_display(&config, show_secrets));
                 }
             }
         }
@@ -236,105 +238,114 @@ const fn mask_secrets_in_config(
     config
 }
 
-/// Display configuration in structured, human-readable format
-///
-/// ✅ Modern implementation: Displays actual config values in clean format
-fn display_config_formatted(
+/// Human-readable configuration text (same content as printed by `songbird config show`).
+#[expect(clippy::unwrap_used, reason = "write! to String is infallible")]
+fn format_config_display(
     config: &songbird_types::config::CanonicalSongbirdConfig,
     _show_secrets: bool,
-) {
-    println!("┌─ System Configuration");
-    println!("│  System ID: {}", config.system.system_id);
-    println!("│  Instance ID: {}", config.system.instance_id);
-    println!("│  Environment: {}", config.system.environment);
-    println!("│  App Name: {}", config.system.app_name);
-    println!("│  Version: {}", config.system.version);
-    println!("│  Data Directory: {}", config.system.data_dir);
-    println!("│  Config Directory: {}", config.system.config_dir);
-    println!("│  Cache Directory: {}", config.system.cache_dir);
-    println!("│  Log Directory: {}", config.system.log_dir);
-    println!("│  Temp Directory: {}", config.system.temp_dir);
-    println!("│  Log Level: {}", config.system.logging.level);
-    println!("│  Log Format: {}", config.system.logging.format);
-    println!("│");
-    println!("├─ Network Configuration");
-    println!("│  Bind Host: {}", config.network.bind_host);
-    println!("│  Base Port: {}", config.network.base_port);
-    println!("│  Primary Address: {}", config.network.bind.address);
-    println!("│  Primary Port: {}", config.network.bind.port);
-    println!("│  IPv6 Enabled: {}", config.network.bind.ipv6_enabled);
-    println!("│  Client Max Connections: {}", config.network.client.max_connections);
-    println!("│  Connect Timeout: {:?}", config.network.timeouts.connect);
-    println!("│  Request Timeout: {:?}", config.network.timeouts.request);
-    println!("│");
-    println!("├─ Security Configuration");
-    println!("│  Security Level: {:?}", config.security.security_level);
-    println!("│  Auth Method: {}", config.security.auth_method);
-    println!("│  Initial Trust Level: {:?}", config.security.initial_trust_level);
-    println!("│  TLS Cert Policy: {:?}", config.security.tls.cert_policy);
+) -> String {
+    let mut out = String::new();
+    writeln!(out, "┌─ System Configuration").unwrap();
+    writeln!(out, "│  System ID: {}", config.system.system_id).unwrap();
+    writeln!(out, "│  Instance ID: {}", config.system.instance_id).unwrap();
+    writeln!(out, "│  Environment: {}", config.system.environment).unwrap();
+    writeln!(out, "│  App Name: {}", config.system.app_name).unwrap();
+    writeln!(out, "│  Version: {}", config.system.version).unwrap();
+    writeln!(out, "│  Data Directory: {}", config.system.data_dir).unwrap();
+    writeln!(out, "│  Config Directory: {}", config.system.config_dir).unwrap();
+    writeln!(out, "│  Cache Directory: {}", config.system.cache_dir).unwrap();
+    writeln!(out, "│  Log Directory: {}", config.system.log_dir).unwrap();
+    writeln!(out, "│  Temp Directory: {}", config.system.temp_dir).unwrap();
+    writeln!(out, "│  Log Level: {}", config.system.logging.level).unwrap();
+    writeln!(out, "│  Log Format: {}", config.system.logging.format).unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Network Configuration").unwrap();
+    writeln!(out, "│  Bind Host: {}", config.network.bind_host).unwrap();
+    writeln!(out, "│  Base Port: {}", config.network.base_port).unwrap();
+    writeln!(out, "│  Primary Address: {}", config.network.bind.address).unwrap();
+    writeln!(out, "│  Primary Port: {}", config.network.bind.port).unwrap();
+    writeln!(out, "│  IPv6 Enabled: {}", config.network.bind.ipv6_enabled).unwrap();
+    writeln!(out, "│  Client Max Connections: {}", config.network.client.max_connections).unwrap();
+    writeln!(out, "│  Connect Timeout: {:?}", config.network.timeouts.connect).unwrap();
+    writeln!(out, "│  Request Timeout: {:?}", config.network.timeouts.request).unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Security Configuration").unwrap();
+    writeln!(out, "│  Security Level: {:?}", config.security.security_level).unwrap();
+    writeln!(out, "│  Auth Method: {}", config.security.auth_method).unwrap();
+    writeln!(out, "│  Initial Trust Level: {:?}", config.security.initial_trust_level).unwrap();
+    writeln!(out, "│  TLS Cert Policy: {:?}", config.security.tls.cert_policy).unwrap();
     if let Some(ref cert) = config.security.tls.cert_path {
-        println!("│  TLS Certificate: {cert}");
+        writeln!(out, "│  TLS Certificate: {cert}").unwrap();
     }
     if let Some(ref key) = config.security.tls.key_path {
-        println!("│  TLS Key: {key}");
+        writeln!(out, "│  TLS Key: {key}").unwrap();
     }
-    println!("│  Require Valid Certs: {}", config.security.tls.require_valid_certs);
-    println!("│");
-    println!("├─ Performance Configuration");
-    println!("│  Enabled: {}", config.performance.enabled);
-    println!("│  Thread Pool Size: {}", config.performance.thread_pool_size);
-    println!("│");
-    println!("├─ Discovery Configuration");
-    println!("│  Mode: {:?}", config.discovery.mode);
-    println!("│  Backend: {}", config.discovery.backend);
-    println!("│  Port: {}", config.discovery.port);
-    println!("│  Protocol Version: {}", config.discovery.protocol_version);
-    println!("│  Session Rotation: {}s", config.discovery.session_rotation_interval);
-    println!("│");
-    println!("├─ Observability Configuration");
-    println!("│  Enabled: {}", config.observability.enabled);
-    println!("│  Metrics Interval: {}s", config.observability.metrics_interval);
-    println!("│  Metrics Enabled: {}", config.observability.metrics.enabled);
-    println!("│  Tracing Enabled: {}", config.observability.tracing.enabled);
-    println!("│  Tracing Level: {}", config.observability.tracing.level);
-    println!("│  Health Checks Enabled: {}", config.observability.health_checks.enabled);
-    println!("│");
-    println!("├─ Gaming Configuration");
-    println!("│  Enabled: {}", config.gaming.enabled);
-    println!("│  Protocol Version: {}", config.gaming.protocol_version);
-    println!("│");
-    println!("├─ Primal Configuration (Runtime Discovery)");
-    println!("│  Enabled: {}", config.primals.enabled);
-    println!("│  Discovery Method: {}", config.primals.discovery_method);
-    println!("│");
-    println!("├─ Federation Configuration");
-    println!("│  Cluster Name: {:?}", config.federation.cluster_name);
-    println!("│  Trust Escalation Policy: {:?}", config.federation.trust_escalation_policy);
-    println!("│  Initial Trust Level: {}", config.federation.initial_trust_level);
-    println!("│  Acceptance Policy: {:?}", config.federation.acceptance_policy);
-    println!("│  Require Hardware for Admin: {}", config.federation.require_hardware_for_admin);
-    println!("│");
-    println!("└─ Environment Configuration");
-    println!("   Name: {}", config.environment.name);
-    println!("   Deployment Mode: {}", config.environment.deployment_mode);
-    println!();
+    writeln!(out, "│  Require Valid Certs: {}", config.security.tls.require_valid_certs).unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Performance Configuration").unwrap();
+    writeln!(out, "│  Enabled: {}", config.performance.enabled).unwrap();
+    writeln!(out, "│  Thread Pool Size: {}", config.performance.thread_pool_size).unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Discovery Configuration").unwrap();
+    writeln!(out, "│  Mode: {:?}", config.discovery.mode).unwrap();
+    writeln!(out, "│  Backend: {}", config.discovery.backend).unwrap();
+    writeln!(out, "│  Port: {}", config.discovery.port).unwrap();
+    writeln!(out, "│  Protocol Version: {}", config.discovery.protocol_version).unwrap();
+    writeln!(out, "│  Session Rotation: {}s", config.discovery.session_rotation_interval).unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Observability Configuration").unwrap();
+    writeln!(out, "│  Enabled: {}", config.observability.enabled).unwrap();
+    writeln!(out, "│  Metrics Interval: {}s", config.observability.metrics_interval).unwrap();
+    writeln!(out, "│  Metrics Enabled: {}", config.observability.metrics.enabled).unwrap();
+    writeln!(out, "│  Tracing Enabled: {}", config.observability.tracing.enabled).unwrap();
+    writeln!(out, "│  Tracing Level: {}", config.observability.tracing.level).unwrap();
+    writeln!(out, "│  Health Checks Enabled: {}", config.observability.health_checks.enabled)
+        .unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Gaming Configuration").unwrap();
+    writeln!(out, "│  Enabled: {}", config.gaming.enabled).unwrap();
+    writeln!(out, "│  Protocol Version: {}", config.gaming.protocol_version).unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Primal Configuration (Runtime Discovery)").unwrap();
+    writeln!(out, "│  Enabled: {}", config.primals.enabled).unwrap();
+    writeln!(out, "│  Discovery Method: {}", config.primals.discovery_method).unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "├─ Federation Configuration").unwrap();
+    writeln!(out, "│  Cluster Name: {:?}", config.federation.cluster_name).unwrap();
+    writeln!(out, "│  Trust Escalation Policy: {:?}", config.federation.trust_escalation_policy)
+        .unwrap();
+    writeln!(out, "│  Initial Trust Level: {}", config.federation.initial_trust_level).unwrap();
+    writeln!(out, "│  Acceptance Policy: {:?}", config.federation.acceptance_policy).unwrap();
+    writeln!(
+        out,
+        "│  Require Hardware for Admin: {}",
+        config.federation.require_hardware_for_admin
+    )
+    .unwrap();
+    writeln!(out, "│").unwrap();
+    writeln!(out, "└─ Environment Configuration").unwrap();
+    writeln!(out, "   Name: {}", config.environment.name).unwrap();
+    writeln!(out, "   Deployment Mode: {}", config.environment.deployment_mode).unwrap();
+    writeln!(out).unwrap();
 
-    // Show custom fields if any
     if !config.custom.is_empty() {
-        println!("Custom Fields:");
+        writeln!(out, "Custom Fields:").unwrap();
         for (key, value) in &config.custom {
-            println!("  • {key}: {value:?}");
+            writeln!(out, "  • {key}: {value:?}").unwrap();
         }
-        println!();
+        writeln!(out).unwrap();
     }
+
+    out
 }
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "unit tests")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use std::sync::Mutex;
 
+    use serde_json::json;
     use songbird_types::config::consolidated_canonical::DiscoveryMode;
     use songbird_types::config::{
         CanonicalDiscoveryConfig, CanonicalEnvironmentConfigNew, CanonicalSongbirdConfig,
@@ -474,5 +485,54 @@ mod tests {
     async fn init_config_empty_path_errors() {
         let err = super::init_config("", false).await;
         assert!(err.is_err(), "expected write to empty path to fail: {err:?}");
+    }
+
+    #[test]
+    fn format_config_display_includes_sections_and_bind_port() {
+        let config = CanonicalSongbirdConfig::default();
+        let text = super::format_config_display(&config, false);
+        assert!(text.contains("┌─ System Configuration"));
+        assert!(text.contains("├─ Network Configuration"));
+        assert!(text.contains("Primary Port:"));
+        assert!(text.contains("├─ Security Configuration"));
+    }
+
+    #[test]
+    fn format_config_display_includes_tls_lines_when_paths_set() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.security.tls.cert_path = Some("/path/with/secret-cert.pem".to_string());
+        config.security.tls.key_path = Some("/path/with/secret-key.pem".to_string());
+        let text = super::format_config_display(&config, false);
+        assert!(text.contains("TLS Certificate: /path/with/secret-cert.pem"));
+        assert!(text.contains("TLS Key: /path/with/secret-key.pem"));
+    }
+
+    #[test]
+    fn format_config_display_show_secrets_matches_until_tls_redaction() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.security.tls.cert_path = Some("/c.pem".to_string());
+        let masked_view = super::format_config_display(&config, false);
+        let show_all = super::format_config_display(&config, true);
+        assert_eq!(masked_view, show_all);
+    }
+
+    #[test]
+    fn format_config_display_lists_custom_fields() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.custom.insert("extra_key".to_string(), json!({"nested": true}));
+        let text = super::format_config_display(&config, false);
+        assert!(text.contains("Custom Fields:"));
+        assert!(text.contains("extra_key"));
+    }
+
+    #[test]
+    fn mask_secrets_identity_for_tls_material_paths() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.security.tls.cert_path = Some("/tls/ca-chain.pem".to_string());
+        config.security.tls.key_path = Some("/tls/private.key".to_string());
+        let masked = super::mask_secrets_in_config(config.clone());
+        assert_eq!(masked.security.tls.cert_path, config.security.tls.cert_path);
+        assert_eq!(masked.security.tls.key_path, config.security.tls.key_path);
+        assert_eq!(masked.network.base_port, config.network.base_port);
     }
 }

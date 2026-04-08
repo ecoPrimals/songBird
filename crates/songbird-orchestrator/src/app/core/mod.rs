@@ -162,7 +162,7 @@ impl SongbirdOrchestrator {
             config.discovery.mode.is_enabled(),
             format!("{:?}", config.discovery.mode),
             config.discovery.port,
-            Some("239.255.42.99:4242".to_string()), // Default multicast address
+            Some(songbird_types::defaults::network::ecosystem_discovery_multicast_addr()),
         ));
 
         Ok(Self {
@@ -310,13 +310,7 @@ impl SongbirdOrchestrator {
     ) -> Vec<std::net::SocketAddr> {
         use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-        // UDP broadcast/multicast port for LAN discovery (default 2300). `SONGBIRD_DISCOVERY_PORT`
-        // is also read elsewhere for HTTP discovery; align or override per deployment.
-        const DEFAULT_DISCOVERY_PORT: u16 = 2300;
-        let port = songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
-            .ok()
-            .and_then(|s| s.parse::<u16>().ok())
-            .unwrap_or(DEFAULT_DISCOVERY_PORT);
+        let port = songbird_types::defaults::network::broadcast_discovery_port();
 
         // Priority 1: Environment variable (runtime override)
         if let Ok(env_addrs) = songbird_process_env::var("SONGBIRD_BROADCAST_ADDRESSES")
@@ -368,9 +362,8 @@ impl SongbirdOrchestrator {
     /// Starts a Unix socket server that allows other primals (security provider, compute provider / compute.schedule, etc.; formerly ToadStool)
     /// to register their capabilities and communicate with Songbird.
     ///
-    /// Socket path format: `/tmp/songbird-{family_id}-{node_id}.sock`
-    /// If no `family_id` is configured, uses: `/tmp/songbird-{node_id}.sock`
-    /// If no `node_id` is configured, uses: `/tmp/songbird.sock` (legacy fallback)
+    /// Socket path resolved via [`crate::env_config::socket_path()`] (XDG-compliant):
+    /// `SONGBIRD_SOCKET` > `BIOMEOS_SOCKET_DIR` > `$XDG_RUNTIME_DIR/biomeos/` > `$TMPDIR`.
     ///
     /// v3.19.2: Unix Socket IPC Server (port-free!)
     /// v3.20.0: Service registry mode - primals register themselves

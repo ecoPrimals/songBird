@@ -95,9 +95,21 @@ pub enum JsonRpcMethod {
 }
 
 /// Failed to map a wire string to [`JsonRpcMethod`].
+///
+/// The inner string is the full human-readable message (including the
+/// `"unknown JSON-RPC method: "` prefix) so callers can move it into a
+/// JSON-RPC error without an extra allocation via [`JsonRpcMethodParseError::into_message`].
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
-#[error("unknown JSON-RPC method: {0}")]
+#[error("{0}")]
 pub struct JsonRpcMethodParseError(pub String);
+
+impl JsonRpcMethodParseError {
+    /// Consume the error and return the owned message string (no extra allocation).
+    #[must_use]
+    pub fn into_message(self) -> String {
+        self.0
+    }
+}
 
 impl JsonRpcMethod {
     /// Primary wire name for this method (used by [`std::fmt::Display`] and JSON serialization).
@@ -365,7 +377,9 @@ impl JsonRpcMethod {
             "storage.flush" => Self::Storage(StorageMethod::Flush),
             "encrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt),
             "decrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt),
-            _ => return Err(JsonRpcMethodParseError(s.to_string())),
+            _ => {
+                return Err(JsonRpcMethodParseError(format!("unknown JSON-RPC method: {s}")));
+            }
         })
     }
 

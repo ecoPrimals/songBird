@@ -256,9 +256,85 @@ mod tests_support {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::tests_support::MockRendezvousClient;
     use super::*;
+    use crate::error::IpcError;
     use serde_json::json;
+
+    struct FailingRendezvousClient;
+
+    #[async_trait::async_trait]
+    impl RendezvousClient for FailingRendezvousClient {
+        async fn register(
+            &self,
+            _server: &str,
+            _node_id: &str,
+            _family_id: &str,
+            _public_address: &str,
+        ) -> Result<RendezvousRegisterResult, String> {
+            Err("simulated register failure".to_string())
+        }
+
+        async fn lookup(
+            &self,
+            _server: &str,
+            _target: &str,
+        ) -> Result<Vec<RendezvousPeer>, String> {
+            Err("simulated lookup failure".to_string())
+        }
+    }
+
+    #[tokio::test]
+    async fn register_client_error_maps_to_internal() {
+        let handler = RendezvousHandler::new(Arc::new(FailingRendezvousClient));
+        let err = handler
+            .handle_register(json!({
+                "server": "https://rendezvous.example.com",
+                "node_id": "n",
+                "family_id": "f",
+                "public_address": "198.51.100.1:1"
+            }))
+            .await
+            .expect_err("register");
+        match err {
+            IpcError::Internal(msg) => {
+                assert!(msg.contains("Rendezvous registration failed"), "{msg}");
+                assert!(msg.contains("simulated register failure"), "{msg}");
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn lookup_client_error_maps_to_internal() {
+        let handler = RendezvousHandler::new(Arc::new(FailingRendezvousClient));
+        let err = handler
+            .handle_lookup(json!({
+                "server": "https://rendezvous.example.com",
+                "target": "t"
+            }))
+            .await
+            .expect_err("lookup");
+        match err {
+            IpcError::Internal(msg) => {
+                assert!(msg.contains("Rendezvous lookup failed"), "{msg}");
+                assert!(msg.contains("simulated lookup failure"), "{msg}");
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn lookup_missing_params_errors() {
+        let handler = RendezvousHandler::new(Arc::new(MockRendezvousClient::new()));
+        let err = handler
+            .handle_lookup(json!({ "server": "https://rendezvous.example.com" }))
+            .await
+            .expect_err("missing target");
+        assert!(matches!(err, IpcError::InvalidParams(_)));
+    }
 
     #[tokio::test]
     async fn test_register_success() {

@@ -7,9 +7,11 @@ use serde_json::Value;
 use songbird_types::primal_names;
 
 /// Minimal liveness probe result (`health.liveness`).
+///
+/// Returns `{status: "alive"}` per Capability Wire Standard v1.0 L1 checklist.
 #[must_use]
 pub fn health_liveness() -> Value {
-    serde_json::json!({ "status": "healthy" })
+    serde_json::json!({ "status": "alive" })
 }
 
 /// Readiness probe result (`health.readiness`).

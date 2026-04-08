@@ -17,7 +17,9 @@
 //! Discovery consumers query by capability, not by name.
 
 use songbird_types::{SongbirdError, SongbirdResult};
+use std::collections::BTreeSet;
 use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
 
 use super::hosts_evolved::SelfAwareConfig;
 
@@ -57,7 +59,17 @@ impl ServiceLocator {
     /// Returns empty vec if no services found (not an error).
     #[must_use]
     pub fn discover_by_capability(&self, capability: &str) -> Vec<SocketAddr> {
-        if let Ok(endpoints) = Self::discover_from_environment(capability)
+        self.discover_by_capability_with(capability, |k| songbird_process_env::var(k))
+    }
+
+    /// Same as [`discover_by_capability`](Self::discover_by_capability) with an injectable env
+    /// reader (concurrent-safe unit tests).
+    #[must_use]
+    pub fn discover_by_capability_with<F>(&self, capability: &str, env_reader: F) -> Vec<SocketAddr>
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError>,
+    {
+        if let Ok(endpoints) = Self::discover_from_environment_with(capability, &env_reader)
             && !endpoints.is_empty()
         {
             return endpoints;
@@ -68,7 +80,7 @@ impl ServiceLocator {
             return endpoints;
         }
 
-        if let Ok(endpoints) = Self::discover_from_registry(capability)
+        if let Ok(endpoints) = Self::discover_from_registry_with(capability, &env_reader)
             && !endpoints.is_empty()
         {
             return endpoints;
@@ -77,16 +89,19 @@ impl ServiceLocator {
         Vec::new()
     }
 
-    /// Discover from environment variables.
-    ///
-    /// Pattern: `SONGBIRD_CAPABILITY_<CAPABILITY>_ENDPOINTS`=host1:port1,host2:port2
-    fn discover_from_environment(capability: &str) -> SongbirdResult<Vec<SocketAddr>> {
+    fn discover_from_environment_with<F>(
+        capability: &str,
+        env_reader: &F,
+    ) -> SongbirdResult<Vec<SocketAddr>>
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError>,
+    {
         let env_var = format!(
             "SONGBIRD_CAPABILITY_{}_ENDPOINTS",
             capability.to_uppercase().replace('-', "_")
         );
 
-        let endpoints_str = songbird_process_env::var(&env_var)
+        let endpoints_str = env_reader(&env_var)
             .map_err(|_| SongbirdError::configuration(format!("{env_var} not set")))?;
 
         let endpoints =
@@ -95,18 +110,101 @@ impl ServiceLocator {
         Ok(endpoints)
     }
 
-    /// Discover via DNS-SD (RFC 6763).
+    /// Discovers services by scanning the biomeos socket directory for domain-named sockets.
+    /// True DNS-SD/mDNS integration is deferred to the network capability provider.
     ///
-    /// Pending hickory-resolver integration.
+    /// This path approximates "mDNS by well-known socket paths": it looks under
+    /// `BIOMEOS_SOCKET_DIR` (and `XDG_RUNTIME_DIR/biomeos` as a fallback) for `*.sock` files
+    /// whose stem matches the capability domain (`{domain}.sock` or `{domain}-*.sock`).
+    ///
+    /// [`SocketAddr`] values are taken from co-located TCP discovery sidecars (`{stem}-ipc-port`,
+    /// `tcp:127.0.0.1:<port>`) when present; a bare Unix socket without a TCP sidecar is logged
+    /// and skipped because this API is IP-based.
     fn discover_from_dns_sd(capability: &str) -> Vec<SocketAddr> {
-        let _service_name = format!("_{}._tcp.local", capability.to_lowercase());
-        tracing::debug!(capability, "DNS-SD discovery not yet implemented; returning empty");
-        Vec::new()
+        let dns_sd_service_type = format!("_{}._tcp.local", capability.to_lowercase());
+        tracing::trace!(
+            service_type = %dns_sd_service_type,
+            capability,
+            "DNS-SD browse not implemented; scanning biomeos socket directories instead",
+        );
+        let domain = capability.to_lowercase().replace('_', "-");
+        let mut addrs = BTreeSet::new();
+
+        for dir in Self::biomeos_socket_dir_candidates() {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                tracing::debug!(dir = %dir.display(), "skipping unreadable biomeos socket directory");
+                continue;
+            };
+
+            for entry in entries.filter_map(std::result::Result::ok) {
+                let path = entry.path();
+                let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                    continue;
+                };
+                if !std::path::Path::new(name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
+                {
+                    continue;
+                }
+                let stem = name.rsplit_once('.').map_or(name, |(s, _)| s);
+                if !Self::socket_stem_matches_capability_domain(stem, &domain) {
+                    continue;
+                }
+
+                if let Some(addr) = Self::tcp_addr_from_biomeos_sidecar(&dir, stem) {
+                    addrs.insert(addr);
+                } else {
+                    tracing::debug!(
+                        socket_path = %path.display(),
+                        capability,
+                        "matched capability socket without TCP sidecar; skipping SocketAddr entry",
+                    );
+                }
+            }
+        }
+
+        addrs.into_iter().collect()
     }
 
-    /// Discover from HTTP registry (Consul, Eureka, custom).
-    fn discover_from_registry(capability: &str) -> SongbirdResult<Vec<SocketAddr>> {
-        let registry_url = songbird_process_env::var("SONGBIRD_REGISTRY_URL")
+    /// Directories that may hold biomeOS capability-domain sockets (DNS-SD stand-in scan).
+    fn biomeos_socket_dir_candidates() -> Vec<PathBuf> {
+        let mut dirs = Vec::new();
+        if let Ok(d) = songbird_process_env::var("BIOMEOS_SOCKET_DIR") {
+            dirs.push(PathBuf::from(d));
+        }
+        if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+            dirs.push(Path::new(&xdg).join("biomeos"));
+        }
+        dirs
+    }
+
+    fn socket_stem_matches_capability_domain(stem: &str, domain: &str) -> bool {
+        let stem_norm = stem.to_lowercase().replace('_', "-");
+        stem_norm == domain || stem_norm.starts_with(&format!("{domain}-"))
+    }
+
+    /// Reads `tcp:host:port` (or `host:port`) from `{stem}-ipc-port` next to the `.sock` file.
+    fn tcp_addr_from_biomeos_sidecar(socket_dir: &Path, stem: &str) -> Option<SocketAddr> {
+        let port_file = socket_dir.join(format!("{stem}-ipc-port"));
+        let data = std::fs::read_to_string(&port_file).ok()?;
+        Self::parse_tcp_discovery_line(&data)
+    }
+
+    fn parse_tcp_discovery_line(data: &str) -> Option<SocketAddr> {
+        let line = data.lines().next()?.trim();
+        let rest = line.strip_prefix("tcp:").unwrap_or(line);
+        rest.trim().parse().ok()
+    }
+
+    fn discover_from_registry_with<F>(
+        capability: &str,
+        env_reader: &F,
+    ) -> SongbirdResult<Vec<SocketAddr>>
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError>,
+    {
+        let registry_url = env_reader("SONGBIRD_REGISTRY_URL")
             .map_err(|_| SongbirdError::configuration("SONGBIRD_REGISTRY_URL not set"))?;
         let query_url = format!("{registry_url}/v1/services?capability={capability}");
         let _ = query_url;

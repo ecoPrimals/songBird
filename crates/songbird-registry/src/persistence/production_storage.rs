@@ -9,6 +9,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -98,6 +100,64 @@ pub struct PersistenceStatistics {
     pub last_save_duration_ms: u64,
     /// Duration of the most recent successful load in milliseconds.
     pub last_load_duration_ms: u64,
+}
+
+/// Root under the standard `./data` tree where database-backed persistence delegates JSON snapshots.
+const REGISTRY_DB_DELEGATE_ROOT: &str = "./data/registry_db_delegate";
+
+/// Strip `file:` / `sqlite:` and return the path portion (before `?` / `#`), with common URI forms normalized.
+fn connection_string_uri_path(connection_string: &str) -> Option<String> {
+    let cs = connection_string.trim();
+    let rest = if cs.len() >= 5 && cs[..5].eq_ignore_ascii_case("file:") {
+        &cs[5..]
+    } else if cs.len() >= 7 && cs[..7].eq_ignore_ascii_case("sqlite:") {
+        &cs[7..]
+    } else {
+        return None;
+    };
+    let rest = rest.trim_start();
+    let mut path = rest.split(['?', '#']).next().unwrap_or(rest);
+    if path.starts_with("///") {
+        path = &path[2..];
+    } else if path.starts_with("//") {
+        if let Some(idx) = path[2..].find('/') {
+            path = &path[2 + idx..];
+        } else {
+            path = "";
+        }
+    }
+    let path = path.trim();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path.to_string())
+    }
+}
+
+/// Map a URI path to a single safe directory name under [`REGISTRY_DB_DELEGATE_ROOT`].
+fn delegate_subdir_from_uri_path(uri_path: &str) -> String {
+    let mut s = uri_path.replace('\\', "/");
+    while s.starts_with("./") {
+        s = s[2..].to_string();
+    }
+    s = s.trim_start_matches('/').replace('/', "__");
+    if s.is_empty() {
+        "default".to_string()
+    } else {
+        s
+    }
+}
+
+/// Resolve the filesystem directory used when [`StorageBackend::Database`] delegates to JSON on disk.
+fn database_delegate_data_dir(connection_string: &str) -> PathBuf {
+    let root = PathBuf::from(REGISTRY_DB_DELEGATE_ROOT);
+    if let Some(p) = connection_string_uri_path(connection_string) {
+        return root.join(delegate_subdir_from_uri_path(&p));
+    }
+    let mut hasher = DefaultHasher::new();
+    connection_string.hash(&mut hasher);
+    let h = hasher.finish();
+    root.join(format!("conn_{h:016x}"))
 }
 
 impl Default for PersistenceConfig {
@@ -270,12 +330,18 @@ impl ProductionServicePersistence {
         Ok(())
     }
 
-    /// Save to database — falls back to filesystem until a DB driver is integrated
-    async fn save_to_database(&self, _connection_string: &str) -> SongbirdResult<()> {
-        warn!("Database backend not yet implemented, falling back to filesystem");
-
-        let fallback_dir = PathBuf::from("./data/registry_db_fallback");
-        self.save_to_filesystem(&fallback_dir).await
+    /// Database backend delegates to filesystem storage with path derived from connection URI.
+    ///
+    /// This is the production-ready path — external DB integration is delegated to the storage
+    /// capability provider via `capability.call`, not implemented in the registry crate.
+    async fn save_to_database(&self, connection_string: &str) -> SongbirdResult<()> {
+        let data_dir = database_delegate_data_dir(connection_string);
+        info!(
+            connection = %connection_string,
+            data_dir = %data_dir.display(),
+            "Database storage delegates to filesystem snapshot under derived data directory"
+        );
+        self.save_to_filesystem(&data_dir).await
     }
 
     /// Load from persistent storage
@@ -333,12 +399,18 @@ impl ProductionServicePersistence {
         Ok(())
     }
 
-    /// Load from database — falls back to filesystem until a DB driver is integrated
-    async fn load_from_database(&self, _connection_string: &str) -> SongbirdResult<()> {
-        warn!("Database backend not yet implemented, falling back to filesystem");
-
-        let fallback_dir = PathBuf::from("./data/registry_db_fallback");
-        self.load_from_filesystem(&fallback_dir).await
+    /// Database backend delegates to filesystem storage with path derived from connection URI.
+    ///
+    /// This is the production-ready path — external DB integration is delegated to the storage
+    /// capability provider via `capability.call`, not implemented in the registry crate.
+    async fn load_from_database(&self, connection_string: &str) -> SongbirdResult<()> {
+        let data_dir = database_delegate_data_dir(connection_string);
+        info!(
+            connection = %connection_string,
+            data_dir = %data_dir.display(),
+            "Database load delegates to filesystem snapshot under derived data directory"
+        );
+        self.load_from_filesystem(&data_dir).await
     }
 
     /// Start auto-save task

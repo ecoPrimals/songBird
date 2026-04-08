@@ -19,7 +19,7 @@ impl JsonRpcHandler for IpcServiceHandler {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         let method = match JsonRpcMethod::parse_ipc(method) {
             Ok(m) => m,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => return Err(e.into_message()),
         };
         match method {
             // ── Introspection ────────────────────────────────────────
@@ -252,6 +252,7 @@ mod dispatch_tests {
     use songbird_test_utils::mocks::HealthStatus;
     use std::sync::Arc;
     use tokio::sync::RwLock;
+    use uuid::Uuid;
 
     fn ipc_handler() -> IpcServiceHandler {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
@@ -306,7 +307,7 @@ mod dispatch_tests {
     async fn alias_normalization_routes_to_dispatch_arms() {
         let h = ipc_handler();
         let v = h.handle("ping", json!({})).await.expect("ping -> liveness");
-        assert_eq!(v, json!({ "status": "healthy" }));
+        assert_eq!(v, json!({ "status": "alive" }));
 
         let reg = json!({
             "primal_id": "alias-route",
@@ -333,7 +334,7 @@ mod dispatch_tests {
             .handle("health.liveness", Value::Null)
             .await
             .expect("null params ignored for liveness");
-        assert_eq!(v, json!({ "status": "healthy" }));
+        assert_eq!(v, json!({ "status": "alive" }));
 
         let v2 = h.handle("primal.info", Value::Null).await.expect("primal.info");
         assert_eq!(v2["name"], "songbird");
@@ -363,6 +364,34 @@ mod dispatch_tests {
         let h = ipc_handler();
         let err = h.handle("http.get", json!({})).await.expect_err("missing url");
         assert!(err.contains("Missing 'url'"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn http_post_body_not_string_errors_after_route() {
+        let h = ipc_handler();
+        let err = h
+            .handle("http.post", json!({ "url": "https://example.com", "body": 12345 }))
+            .await
+            .expect_err("body not string");
+        assert!(err.contains("Missing 'body'"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn ipc_resolve_unknown_primal_formats_not_found() {
+        let h = ipc_handler();
+        let id = format!("no-such-primal-{}", Uuid::new_v4());
+        let err = h.handle("ipc.resolve", json!({ "primal_id": id })).await.expect_err("resolve");
+        assert!(err.contains("Primal not found"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn ipc_discover_invalid_params_rejected() {
+        let h = ipc_handler();
+        let err = h.handle("ipc.discover", json!({})).await.expect_err("discover");
+        assert!(
+            err.contains("Invalid params") || err.contains("missing field"),
+            "unexpected: {err}"
+        );
     }
 
     #[tokio::test]

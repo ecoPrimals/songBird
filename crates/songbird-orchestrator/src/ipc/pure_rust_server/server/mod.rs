@@ -362,7 +362,10 @@ mod tests {
         let path = UnixSocketServer::socket_path_with_env(env);
         let path_str = path.to_string_lossy();
         assert!(path_str.ends_with(".sock"), "Expected .sock extension, got: {path_str}");
-        assert!(path_str.contains("songbird"), "Expected songbird in path, got: {path_str}");
+        assert!(
+            path_str.contains("network") || path_str.contains("songbird"),
+            "Expected domain stem 'network' (or legacy 'songbird') in path, got: {path_str}"
+        );
     }
 
     #[test]
@@ -373,8 +376,8 @@ mod tests {
 
         assert!(path_str.ends_with(".sock"), "Path should end with .sock, got: {path_str}");
         assert!(
-            path_str.contains("songbird"),
-            "Path must contain primal name 'songbird', got: {path_str}"
+            path_str.contains("network") || path_str.contains("songbird"),
+            "Path must contain domain stem 'network' (or legacy 'songbird'), got: {path_str}"
         );
     }
 

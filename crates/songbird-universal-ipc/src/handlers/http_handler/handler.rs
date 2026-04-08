@@ -164,6 +164,8 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::HttpHandler;
     use crate::error::{IpcError, IpcResult};
     use crate::tower_atomic::JsonRpcHandler;

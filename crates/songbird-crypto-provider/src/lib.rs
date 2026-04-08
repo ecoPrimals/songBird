@@ -2,6 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 //! Shared crypto provider for all Songbird crates.
 //!
@@ -38,39 +39,54 @@ pub fn routing_mode_from_env(mode_value: Option<&str>) -> RoutingMode {
 /// JSON-RPC transport and wire-format errors from [`CryptoProvider::call`](CryptoProvider::call).
 #[derive(Debug, thiserror::Error)]
 pub enum RpcError {
+    /// Failed to serialize the outgoing JSON-RPC request body.
     #[error("failed to serialize JSON-RPC request")]
     RequestSerialize(#[source] serde_json::Error),
 
+    /// Could not connect to the Unix socket at `path`.
     #[error("failed to connect to {target} at {path}: {source}")]
     Connect {
+        /// Human-readable label for the target service (e.g. "neural-api", "security-provider").
         target: &'static str,
+        /// Filesystem path to the Unix socket.
         path: String,
+        /// Underlying I/O error.
         #[source]
         source: std::io::Error,
     },
 
+    /// Write to the socket failed after connection was established.
     #[error("failed to send request: {0}")]
     SendRequest(#[source] std::io::Error),
 
+    /// Half-close of the socket's write side failed.
     #[error("failed to shutdown write side of socket: {0}")]
     ShutdownWrite(#[source] std::io::Error),
 
+    /// Reading the response bytes from the socket failed.
     #[error("failed to read response: {0}")]
     ReadResponse(#[source] std::io::Error),
 
+    /// The response bytes were not valid JSON-RPC.
     #[error("failed to parse JSON-RPC response: {source} (raw: {raw_preview})")]
     ResponseParse {
+        /// First bytes of the raw response (for diagnostics).
         raw_preview: String,
+        /// Serde parse error.
         #[source]
         source: serde_json::Error,
     },
 
+    /// The remote returned a JSON-RPC error object.
     #[error("JSON-RPC error: {message} (code: {code})")]
     Remote {
+        /// JSON-RPC error code.
         code: i32,
+        /// JSON-RPC error message.
         message: String,
     },
 
+    /// The response's `result` field was JSON `null`.
     #[error("JSON-RPC response contained null result")]
     NullResult,
 }
@@ -78,10 +94,12 @@ pub enum RpcError {
 /// Crypto provider error.
 #[derive(Debug, thiserror::Error)]
 pub enum CryptoProviderError {
+    /// An RPC-layer error occurred (transport, serialization, or remote error).
     #[error(transparent)]
     Rpc(#[from] RpcError),
 }
 
+/// Convenience alias for crypto provider operations.
 pub type Result<T> = std::result::Result<T, CryptoProviderError>;
 
 /// Crypto provider that routes operations via Neural API or direct `security provider`.
@@ -93,6 +111,7 @@ pub struct CryptoProvider {
 }
 
 impl CryptoProvider {
+    /// Create a provider in [`RoutingMode::Direct`] targeting the given socket path.
     pub fn new(socket_path: impl Into<String>) -> Self {
         Self {
             socket_path: socket_path.into(),
@@ -101,6 +120,7 @@ impl CryptoProvider {
         }
     }
 
+    /// Create a provider with an explicit [`RoutingMode`] and socket path.
     #[must_use]
     pub fn with_mode(socket_path: impl Into<String>, mode: RoutingMode) -> Self {
         Self {
@@ -162,6 +182,7 @@ impl CryptoProvider {
         }
     }
 
+    /// Returns the Unix socket path this provider is configured to use.
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }

@@ -219,6 +219,8 @@ impl PeerConnector for UdpPeerConnector {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -240,6 +242,13 @@ mod tests {
         let result = connector.connect("not-valid", None, None).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Invalid target address"));
+    }
+
+    #[tokio::test]
+    async fn test_connect_empty_target_errors() {
+        let connector = UdpPeerConnector::new();
+        let result = connector.connect("", None, None).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

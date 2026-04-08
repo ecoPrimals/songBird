@@ -10,13 +10,13 @@ use super::messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
 /// Default HTTPS port for v2.1 fallback when the primary v3.0 endpoint omits `:port`.
 ///
 /// Set `SONGBIRD_DEFAULT_DISCOVERY_PORT` to override; otherwise
-/// [`songbird_types::constants::DEFAULT_HTTP_PORT`] (8080).
+/// [`songbird_types::defaults::ports::DEFAULT_HTTP_PORT`] (8080).
 #[must_use]
 pub fn default_v3_fallback_port() -> u16 {
     songbird_process_env::var("SONGBIRD_DEFAULT_DISCOVERY_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(songbird_types::constants::DEFAULT_HTTP_PORT)
+        .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT)
 }
 
 /// Plain discovery payload after JSON serialization (before optional `BirdSong`).

@@ -140,9 +140,11 @@ fn calculate_quality(peer: &DiscoveredPeer) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-    use std::time::SystemTime;
+    use std::time::{Duration, SystemTime};
 
     #[test]
     fn test_convert_discovered_peer_v3() {
@@ -220,6 +222,27 @@ mod tests {
     }
 
     #[test]
+    fn extract_family_id_tag_family_prefix_only_yields_empty_string() {
+        let peer = DiscoveredPeer {
+            session_id: "test".to_string(),
+            node_id: None,
+            node_name: None,
+            endpoints: None,
+            capabilities: vec![],
+            tags: Some(vec!["family:".to_string()]),
+            timestamp: None,
+            identity_attestations: None,
+            protocols: vec![],
+            port: 8080,
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
+            last_seen: SystemTime::now(),
+            version: "3.0".to_string(),
+        };
+
+        assert_eq!(extract_family_id(&peer), Some("".to_string()));
+    }
+
+    #[test]
     fn test_extract_family_id_no_tags() {
         let peer = DiscoveredPeer {
             session_id: "test".to_string(),
@@ -264,9 +287,34 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_quality_stale() {
-        use std::time::Duration;
+    fn calculate_quality_age_buckets() {
+        let mk = |secs_ago: u64| -> DiscoveredPeer {
+            DiscoveredPeer {
+                session_id: "test".to_string(),
+                node_id: None,
+                node_name: None,
+                endpoints: None,
+                capabilities: vec![],
+                tags: None,
+                timestamp: None,
+                identity_attestations: None,
+                protocols: vec![],
+                port: 8080,
+                address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
+                last_seen: SystemTime::now() - Duration::from_secs(secs_ago),
+                version: "3.0".to_string(),
+            }
+        };
 
+        assert!(calculate_quality(&mk(5)) > 0.98);
+        assert!((0.94..0.96).contains(&calculate_quality(&mk(15))));
+        assert!((0.89..0.91).contains(&calculate_quality(&mk(45))));
+        assert!((0.79..0.81).contains(&calculate_quality(&mk(120))));
+        assert!(calculate_quality(&mk(400)) < 0.55);
+    }
+
+    #[test]
+    fn test_calculate_quality_stale() {
         let peer = DiscoveredPeer {
             session_id: "test".to_string(),
             node_id: None,

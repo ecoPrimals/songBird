@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave130] - 2026-04-08 - Wire Standard L3, BTSP Handshake, Deep Debt Evolution
+
+### Added — Wire Standard L3
+- `capabilities.list` upgraded from L2 to L3: `provided_capabilities` grouping, `consumed_capabilities` declaration, `protocol`, `transport` fields
+- `health.liveness` response corrected from `{"status":"healthy"}` to `{"status":"alive"}` per spec
+
+### Added — BTSP Phase 1
+- `BtspClient::handshake()` — full `ClientHello → ServerHello → ChallengeResponse → HandshakeComplete` flow via security provider JSON-RPC (`btsp.session.create`, `btsp.session.verify`, `btsp.negotiate`)
+- `BtspSession` struct for handshake result (session_id, cipher, target_socket, ephemeral keys)
+- `BIOMEOS_INSECURE` guard: refuses startup when both `FAMILY_ID` and `BIOMEOS_INSECURE=1` are set
+
+### Changed — Socket Naming (PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1)
+- Domain-based socket naming: `network.sock` / `network-{family_id}.sock` replaces `songbird.sock`
+- `create_legacy_socket_symlink()` for backward compatibility
+- CLI `status` command uses new domain-based socket path with `BIOMEOS_SOCKET_DIR` / XDG resolution
+
+### Changed — Self-Knowledge Evolution (Capability-First Env Vars)
+- Security adapter: `SECURITY_ENDPOINT` > `SECURITY_PROVIDER_ENDPOINT` > `SONGBIRD_SECURITY_ENDPOINT` > `BEARDOG_ENDPOINT` (deprecated with `#[deprecated]` + runtime `warn!`)
+- Storage adapter: `STORAGE_ENDPOINT` > `STORAGE_PROVIDER_ENDPOINT` > `SONGBIRD_STORAGE_ENDPOINT` > `NESTGATE_ENDPOINT` (deprecated)
+- AI adapter: `AI_ENDPOINT` > `AI_PROVIDER_ENDPOINT` > `SQUIRREL_ENDPOINT` (deprecated)
+- 6 delegation stubs evolved from "not yet implemented" to capability-routing guidance errors
+
+### Changed — Production Stubs Evolved
+- Registry DB backend: URI-derived filesystem delegation (supports `file:`, `sqlite:` scheme parsing)
+- DNS-SD discovery: biomeos socket directory scanner with TCP sidecar discovery
+- Port constants: 4 duplicates in `constants.rs` deprecated, 5 downstream files migrated to `defaults::ports`
+
+### Stats
+- Tests: 13,009 passed, 0 failed, 252 ignored
+- Zero clippy warnings on all modified crates (`-D warnings`)
+
+---
+
 ## [v0.2.1-wave129] - 2026-04-08 - Dead Dep Removal, File Refactoring, Config/IPC Coverage
 
 ### Removed — Dead Dependencies

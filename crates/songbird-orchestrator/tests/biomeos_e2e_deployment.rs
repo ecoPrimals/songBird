@@ -160,7 +160,7 @@ async fn test_fallback_to_defaults() {
 
     // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock (no family suffix)
     // Path will be XDG-compliant or /tmp fallback
-    assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
+    assert!(derived_path.to_str().unwrap().ends_with("network.sock"));
     assert_eq!(family_id, "default");
 
     // Verify path is in /run/user (XDG) or /tmp (fallback)
@@ -272,12 +272,13 @@ async fn test_path_construction_from_family_id() {
     let derived_path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
 
-    // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock (no family suffix)
-    // Family ID is separate from socket path
-    assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
+    // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: domain-scoped socket with family suffix
+    assert!(
+        derived_path.to_str().unwrap().ends_with("network-test-family.sock"),
+        "Expected family-scoped domain socket, got: {derived_path:?}"
+    );
     assert_eq!(family_id, "test-family");
 
-    // Path should be XDG-compliant or /tmp fallback (not containing family ID)
     let path_str = derived_path.to_str().unwrap();
     assert!(path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"));
 

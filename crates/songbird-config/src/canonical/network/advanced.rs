@@ -68,8 +68,8 @@ impl ServiceEndpoint {
 
 impl Default for ServiceEndpoint {
     fn default() -> Self {
-        use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
-        Self::new(LOCALHOST, DEFAULT_HTTP_PORT, "http")
+        use songbird_types::constants::LOCALHOST;
+        Self::new(LOCALHOST, songbird_types::defaults::ports::DEFAULT_HTTP_PORT, "http")
     }
 }
 
@@ -204,7 +204,7 @@ pub struct ProxyConfig {
 impl Default for ProxyConfig {
     fn default() -> Self {
         use songbird_types::constants::{
-            DEFAULT_HTTP_PORT, DEFAULT_ORCHESTRATOR_PORT, LOCALHOST, PRODUCTION_BIND_ADDRESS,
+            DEFAULT_ORCHESTRATOR_PORT, LOCALHOST, PRODUCTION_BIND_ADDRESS,
         };
         Self {
             enabled: songbird_process_env::var("SONGBIRD_PROXY_ENABLED")
@@ -216,7 +216,7 @@ impl Default for ProxyConfig {
             bind_port: songbird_process_env::var("SONGBIRD_PROXY_BIND_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(DEFAULT_HTTP_PORT),
+                .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
             target_address: songbird_process_env::var("SONGBIRD_PROXY_TARGET_ADDRESS")
                 .unwrap_or_else(|_| LOCALHOST.to_string()),
             target_port: songbird_process_env::var("SONGBIRD_PROXY_TARGET_PORT")

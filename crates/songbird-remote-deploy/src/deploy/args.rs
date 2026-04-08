@@ -2,7 +2,8 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use clap::{Parser, Subcommand};
-use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
+use songbird_types::constants::LOCALHOST;
+use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
 
 pub(super) fn default_federation_endpoint() -> String {
     format!("http://{LOCALHOST}:{DEFAULT_HTTP_PORT}")

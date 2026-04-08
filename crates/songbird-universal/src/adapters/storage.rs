@@ -177,13 +177,28 @@ impl StorageAdapter {
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
 
-                // Fallback 1: Legacy environment variables
-                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_STORAGE_ENDPOINT")
-                    .or_else(|_| SafeEnv::get_required("STORAGE_PROVIDER_ENDPOINT"))
-                    .or_else(|_| SafeEnv::get_required("STORAGE_ENDPOINT"))
-                    .or_else(|_| SafeEnv::get_required("NESTGATE_ENDPOINT"))
-                {
-                    debug!("⚠️ Using legacy environment variable for storage endpoint");
+                // Fallback 1: Capability-based env vars first, then legacy fallbacks
+                if let Ok(endpoint) = SafeEnv::get_required("STORAGE_ENDPOINT") {
+                    debug!("✅ Using capability-based STORAGE_ENDPOINT for storage endpoint");
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("STORAGE_PROVIDER_ENDPOINT") {
+                    debug!(
+                        "✅ Using capability-based STORAGE_PROVIDER_ENDPOINT for storage endpoint"
+                    );
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_STORAGE_ENDPOINT") {
+                    debug!(
+                        "⚠️ Using legacy SONGBIRD_STORAGE_ENDPOINT for storage endpoint (prefer STORAGE_ENDPOINT)"
+                    );
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("NESTGATE_ENDPOINT") {
+                    warn!(
+                        "NESTGATE_ENDPOINT is deprecated for storage configuration; use STORAGE_ENDPOINT or STORAGE_PROVIDER_ENDPOINT instead (capability-first per PRIMAL_SELF_KNOWLEDGE_STANDARD)"
+                    );
+                    debug!("⚠️ Using deprecated legacy NESTGATE_ENDPOINT for storage endpoint");
                     return Self::new(endpoint).await;
                 }
 

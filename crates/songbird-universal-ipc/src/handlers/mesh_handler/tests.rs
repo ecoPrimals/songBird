@@ -183,6 +183,13 @@ async fn test_mesh_auto_discover_requires_init() {
 }
 
 #[tokio::test]
+async fn mesh_topology_requires_init() {
+    let handler = MeshHandler::new();
+    let err = handler.handle_topology(json!({})).await.expect_err("topology");
+    assert!(err.contains("not initialized"), "unexpected: {err}");
+}
+
+#[tokio::test]
 async fn test_mesh_health_check() {
     let handler = MeshHandler::new();
 

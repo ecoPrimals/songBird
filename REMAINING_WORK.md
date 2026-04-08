@@ -2,7 +2,7 @@
 
 **Date**: April 8, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 129 — dead dependency removal (`parking_lot`, `async-stream`, `tokio-stream` from orchestrator); `ai_tests.rs` (863L) refactored into 8-module tree (max 213L); `bin_interface/config.rs` tests (0→full coverage: defaults, validation, builder, env, init_config); IPC `protocol.rs` serde tests + `coordination_handlers.rs` tests; +23 tests (12,945 total). Wave 128: Songbird Socket Gap resolved. Wave 127: coverage expansion (+30 tests). Wave 126: security adapter + tower_atomic (+23). Wave 125: Wire Standard L2. Wave 124: lint hygiene. Wave 123: TLS 1.3 compat. Wave 122: doc/debris. Wave 121: legacy primal scrub. Wave 120: sled → NestGate. Wave 119: hardcoded elimination.
+**Last Deep Debt Audit**: Wave 130 — Wire Standard L3, BTSP handshake client, BIOMEOS_INSECURE guard, domain-based socket naming (network.sock), capability-first env var evolution across all 4 universal adapters, delegation stubs evolved to capability-routing, production DB storage evolved to URI-derived filesystem delegation, DNS-SD scanner impl, port constant consolidation/deprecation, deprecated port constant migration across 5 downstream files. +64 tests (13,009 total). Wave 129 — dead dependency removal (`parking_lot`, `async-stream`, `tokio-stream` from orchestrator); `ai_tests.rs` (863L) refactored into 8-module tree (max 213L); `bin_interface/config.rs` tests (0→full coverage: defaults, validation, builder, env, init_config); IPC `protocol.rs` serde tests + `coordination_handlers.rs` tests; +23 tests (12,945 total). Wave 128: Songbird Socket Gap resolved. Wave 127: coverage expansion (+30 tests). Wave 126: security adapter + tower_atomic (+23). Wave 125: Wire Standard L2. Wave 124: lint hygiene. Wave 123: TLS 1.3 compat. Wave 122: doc/debris. Wave 121: legacy primal scrub. Wave 120: sled → NestGate. Wave 119: hardcoded elimination.
 
 ---
 
@@ -10,14 +10,14 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,945 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 13,009 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`) |
 | **Format** | Clean (`cargo fmt --check` passes; Apr 8 audit: no drift) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | 0 (largest production 711L `task_lifecycle/manager.rs`; largest test 778L; `ai_tests` refactored Wave 129 into 8 modules; `tower_atomic/` refactored Wave 119 from 990→5 modules) |
+| **Files >800 lines** | 0 (largest production 797L `primal_discovery.rs`; largest test 778L; `ai_tests` refactored Wave 129 into 8 modules; `tower_atomic/` refactored Wave 119 from 990→5 modules) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |
@@ -42,6 +42,8 @@
 ---
 
 ## Active Blockers
+
+**BTSP Phase 1** is complete: the handshake client is implemented (Wave 130). Further BTSP work continues under protocol and integration milestones.
 
 ### SB-03: Sled → NestGate Storage Migration (Resolved — NestGate backend wired)
 
@@ -120,6 +122,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 - [x] `async-trait` partial migration (Wave 116): `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` migrated to native `async fn in trait`; `async-trait` dep removed from `songbird-bluetooth`; 100% of remaining 109 usages require `dyn Trait` dispatch (verified Wave 129)
 - [x] Dead `sled` dependency removed from `songbird-tor-protocol` (Wave 116)
 - [x] `ed25519-dalek` in `songbird-quic` feature-gated behind `local-certs` (Wave 116)
+- [x] Port constants consolidated: `songbird-types::constants` deprecated duplicates point to `defaults::ports` (Wave 130)
 
 ---
 

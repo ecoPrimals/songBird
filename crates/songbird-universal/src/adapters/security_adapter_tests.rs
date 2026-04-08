@@ -196,20 +196,22 @@ async fn test_from_discovery_fallback_legacy_beardog_env_endpoint() -> SongbirdR
     Ok(())
 }
 
-/// When multiple legacy env vars are set, `SONGBIRD_SECURITY_ENDPOINT` wins (first in the chain).
+/// When both are set, capability-based `SECURITY_PROVIDER_ENDPOINT` wins over
+/// `SONGBIRD_SECURITY_ENDPOINT` (resolver miss path is capability-first per PRIMAL_SELF_KNOWLEDGE_STANDARD).
 #[tokio::test]
-async fn test_from_discovery_fallback_prefers_songbird_security_over_legacy_provider()
+async fn test_from_discovery_fallback_prefers_security_provider_over_songbird_legacy()
 -> SongbirdResult<()> {
     let _g = lock_discovery_env();
     songbird_process_env::reset_overlay();
     songbird_process_env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
-    songbird_process_env::set_var("SONGBIRD_SECURITY_ENDPOINT", "http://songbird-wins:1111");
-    songbird_process_env::set_var("SECURITY_PROVIDER_ENDPOINT", "http://legacy-should-lose:2222");
+    songbird_process_env::remove_var("SECURITY_ENDPOINT");
+    songbird_process_env::set_var("SONGBIRD_SECURITY_ENDPOINT", "http://songbird-legacy:1111");
+    songbird_process_env::set_var("SECURITY_PROVIDER_ENDPOINT", "http://capability-wins:2222");
 
     let adapter = SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new())
         .await
-        .expect("adapter should build from SONGBIRD_SECURITY_ENDPOINT");
-    assert_eq!(adapter.endpoint(), "http://songbird-wins:1111");
+        .expect("adapter should build from SECURITY_PROVIDER_ENDPOINT");
+    assert_eq!(adapter.endpoint(), "http://capability-wins:2222");
 
     songbird_process_env::reset_overlay();
     Ok(())

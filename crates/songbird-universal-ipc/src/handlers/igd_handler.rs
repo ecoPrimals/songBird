@@ -361,6 +361,8 @@ impl Default for IgdHandler {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -407,5 +409,14 @@ mod tests {
         let handler = IgdHandler::new();
         let status = handler.handle_status(Value::Null).await;
         assert!(status["gateway_ip"].is_null());
+    }
+
+    #[tokio::test]
+    async fn unmap_port_defaults_external_port_when_missing() {
+        let handler = IgdHandler::new();
+        let result = handler.handle_unmap_port(json!({})).await;
+        assert_eq!(result["unmapped"], false);
+        let err = result["error"].as_str().expect("error string");
+        assert!(err.contains("No gateway discovered"), "{result}");
     }
 }

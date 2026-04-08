@@ -40,12 +40,12 @@ fn health_includes_uptime_and_services() {
 #[test]
 fn health_liveness_is_minimal() {
     let v = health_liveness();
-    assert_eq!(v, serde_json::json!({ "status": "healthy" }));
+    assert_eq!(v, serde_json::json!({ "status": "alive" }));
     assert!(v.get("uptime_seconds").is_none());
 }
 
 #[test]
-fn capabilities_list_wire_standard_envelope() {
+fn capabilities_list_wire_standard_l3_envelope() {
     let v = capabilities_list();
     assert_eq!(v["primal"].as_str().unwrap(), "songbird");
     assert!(v["version"].as_str().unwrap().contains('.'), "version must be semver");
@@ -58,6 +58,20 @@ fn capabilities_list_wire_standard_envelope() {
     assert!(methods.iter().any(|m| m == "stun.serve"));
     assert!(methods.iter().any(|m| m == "tor.status"));
     assert!(methods.iter().any(|m| m == "federation.peers"));
+
+    let provided = v["provided_capabilities"].as_array().expect("provided_capabilities");
+    assert!(!provided.is_empty(), "L3 requires provided_capabilities");
+    let first = &provided[0];
+    assert!(first.get("type").is_some(), "each group must have 'type'");
+    assert!(first.get("methods").is_some(), "each group must have 'methods'");
+
+    let consumed = v["consumed_capabilities"].as_array().expect("consumed_capabilities");
+    assert!(!consumed.is_empty(), "L3 requires consumed_capabilities");
+    assert!(consumed.iter().any(|c| c.as_str().is_some_and(|s| s.starts_with("crypto."))));
+
+    assert_eq!(v["protocol"].as_str().unwrap(), "jsonrpc-2.0");
+    let transport = v["transport"].as_array().expect("transport");
+    assert!(transport.iter().any(|t| t == "uds"));
 }
 
 #[test]

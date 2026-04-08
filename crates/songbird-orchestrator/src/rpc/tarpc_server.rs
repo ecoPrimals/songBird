@@ -199,7 +199,7 @@ impl SongbirdRpc for TarpcServerSimple {
 
         let tarpc_port = SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081);
         let http_port = SafeEnv::get_port("SONGBIRD_HTTP_PORT", 8080);
-        let ipc_path = std::env::temp_dir().join("songbird.sock").to_string_lossy().into_owned();
+        let ipc_path = crate::env_config::socket_path().to_string_lossy().into_owned();
 
         vec![
             ProtocolInfo {

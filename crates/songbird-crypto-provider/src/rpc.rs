@@ -156,6 +156,7 @@ impl CryptoProvider {
         response.result.ok_or_else(|| RpcError::NullResult.into())
     }
 
+    /// Map a JSON-RPC method name to its `(domain, operation)` capability pair.
     pub fn method_to_capability(method: &str) -> (&'static str, &'static str) {
         match method {
             "crypto.generate_keypair" => ("crypto", "generate_keypair"),

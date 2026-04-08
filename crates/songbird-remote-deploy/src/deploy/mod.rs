@@ -129,7 +129,8 @@ mod tests {
     use super::args::{Args, Commands, default_federation_endpoint, parse_env_var};
     use super::tower::parse_tower_address;
     use clap::Parser;
-    use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
+    use songbird_types::constants::LOCALHOST;
+    use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
 
     #[test]
     fn default_federation_endpoint_matches_types_constants() {

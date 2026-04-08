@@ -38,8 +38,9 @@ mod security_adapter_tests;
 /// **CAPABILITY-BASED SECURITY ADAPTER**
 ///
 /// Works with ANY security provider discovered through:
-/// - Environment variable: `SONGBIRD_SECURITY_ENDPOINT`
-/// - Capability discovery: `capability:security`
+/// - Capability discovery: `capability:security` / resolver
+/// - Environment (after resolver miss): `SECURITY_ENDPOINT`, then `SECURITY_PROVIDER_ENDPOINT`,
+///   then `SONGBIRD_SECURITY_ENDPOINT`; legacy `BEARDOG_ENDPOINT` is deprecated
 /// - Zero-knowledge bootstrap
 ///
 /// **PROTOCOL AGNOSTIC** (v3.10.4):
@@ -72,13 +73,33 @@ impl fmt::Debug for SecurityAdapter {
     }
 }
 
+/// Reads `BEARDOG_ENDPOINT` if set. Prefer `SECURITY_ENDPOINT` or `SECURITY_PROVIDER_ENDPOINT`
+/// (capability-first per PRIMAL_SELF_KNOWLEDGE_STANDARD).
+#[deprecated(
+    since = "0.2.1",
+    note = "`BEARDOG_ENDPOINT` is deprecated — use `SECURITY_ENDPOINT` or `SECURITY_PROVIDER_ENDPOINT`"
+)]
+fn deprecated_beardog_endpoint_env() -> Option<String> {
+    SafeEnv::get_required("BEARDOG_ENDPOINT").ok().inspect(|_| {
+        warn!(
+            deprecated_env = "BEARDOG_ENDPOINT",
+            replacement_primary = "SECURITY_ENDPOINT",
+            replacement_alt = "SECURITY_PROVIDER_ENDPOINT",
+            "`BEARDOG_ENDPOINT` is deprecated and will be removed in a future release; migrate to \
+             `SECURITY_ENDPOINT` (capability-first, PRIMAL_SELF_KNOWLEDGE_STANDARD) or \
+             `SECURITY_PROVIDER_ENDPOINT`"
+        );
+    })
+}
+
 impl SecurityAdapter {
     /// Create adapter from discovered security capability
     ///
     /// Uses capability-based discovery:
-    /// 1. Check `SONGBIRD_SECURITY_ENDPOINT` environment variable
-    /// 2. Fall back to capability discovery
-    /// 3. No hardcoded primal names anywhere
+    /// 1. Resolver / capability endpoints (primary)
+    /// 2. After resolver miss: `SECURITY_ENDPOINT`, then `SECURITY_PROVIDER_ENDPOINT`, then
+    ///    `SONGBIRD_SECURITY_ENDPOINT`; legacy `BEARDOG_ENDPOINT` is deprecated
+    /// 3. Final fallback: host + port from environment
     ///
     /// **Runtime Discovery**: No compile-time knowledge of which security provider exists
     ///
@@ -122,11 +143,7 @@ impl SecurityAdapter {
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
 
-                // Fallback 1: Environment variables (capability-first, then deprecated primal)
-                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_SECURITY_ENDPOINT") {
-                    debug!("Using SONGBIRD_SECURITY_ENDPOINT after resolver miss");
-                    return Self::new(endpoint).await;
-                }
+                // Fallback 1: Capability-based env (PRIMAL_SELF_KNOWLEDGE_STANDARD — primary)
                 if let Ok(endpoint) = SafeEnv::get_required("SECURITY_ENDPOINT") {
                     debug!("Using SECURITY_ENDPOINT after resolver miss");
                     return Self::new(endpoint).await;
@@ -135,10 +152,12 @@ impl SecurityAdapter {
                     debug!("Using SECURITY_PROVIDER_ENDPOINT after resolver miss");
                     return Self::new(endpoint).await;
                 }
-                if let Ok(endpoint) = SafeEnv::get_required("BEARDOG_ENDPOINT") {
-                    warn!(
-                        "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
-                    );
+                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_SECURITY_ENDPOINT") {
+                    debug!("Using SONGBIRD_SECURITY_ENDPOINT after resolver miss");
+                    return Self::new(endpoint).await;
+                }
+                #[allow(deprecated)]
+                if let Some(endpoint) = deprecated_beardog_endpoint_env() {
                     return Self::new(endpoint).await;
                 }
 

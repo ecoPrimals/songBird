@@ -138,17 +138,18 @@ async fn from_discovery_fallback_nestgate_endpoint() -> SongbirdResult<()> {
 }
 
 #[tokio::test]
-async fn from_discovery_fallback_prefers_songbird_over_other_legacy_envs() -> SongbirdResult<()> {
+async fn from_discovery_fallback_prefers_capability_over_songbird_legacy() -> SongbirdResult<()> {
     let _g = lock_discovery_env();
     songbird_process_env::reset_overlay();
     songbird_process_env::remove_var("CAPABILITY_STORAGE_ENDPOINT");
-    songbird_process_env::set_var("SONGBIRD_STORAGE_ENDPOINT", "http://songbird-wins:1111");
-    songbird_process_env::set_var("STORAGE_PROVIDER_ENDPOINT", "http://legacy-loses:2222");
+    songbird_process_env::remove_var("STORAGE_ENDPOINT");
+    songbird_process_env::set_var("SONGBIRD_STORAGE_ENDPOINT", "http://songbird-legacy:1111");
+    songbird_process_env::set_var("STORAGE_PROVIDER_ENDPOINT", "http://capability-wins:2222");
 
     let adapter = StorageAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new())
         .await
-        .expect("SONGBIRD_STORAGE_ENDPOINT wins");
-    assert_eq!(adapter.endpoint(), "http://songbird-wins:1111");
+        .expect("STORAGE_PROVIDER_ENDPOINT wins (capability-first)");
+    assert_eq!(adapter.endpoint(), "http://capability-wins:2222");
 
     songbird_process_env::reset_overlay();
     Ok(())

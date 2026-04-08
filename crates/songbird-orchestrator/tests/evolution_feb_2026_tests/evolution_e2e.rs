@@ -102,11 +102,11 @@ async fn test_e2e_xdg_path_structure() -> Result<()> {
     let biomeos_dir = test_dir.join("biomeos");
     std::fs::create_dir_all(&biomeos_dir)?;
 
-    // Expected structure: $XDG_RUNTIME_DIR/biomeos/{primal}.sock
-    let expected_path = biomeos_dir.join("songbird.sock");
+    // Expected structure: $XDG_RUNTIME_DIR/biomeos/{domain}.sock
+    let expected_path = biomeos_dir.join("network.sock");
 
     assert!(expected_path.to_str().unwrap().contains("biomeos"));
-    assert!(expected_path.to_str().unwrap().ends_with("songbird.sock"));
+    assert!(expected_path.to_str().unwrap().ends_with("network.sock"));
 
     // Clean up
     let _ = std::fs::remove_dir_all(&test_dir);

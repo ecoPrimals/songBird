@@ -16,7 +16,8 @@ use songbird_types::{SongbirdError, SongbirdResult};
 
 fn default_upa_endpoint_base() -> &'static str {
     static URL: LazyLock<String> = LazyLock::new(|| {
-        use songbird_types::constants::{DEFAULT_HTTP_PORT, LOCALHOST};
+        use songbird_types::constants::LOCALHOST;
+        use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
         songbird_process_env::var("SONGBIRD_UPA_ENDPOINT")
             .unwrap_or_else(|_| format!("http://{LOCALHOST}:{DEFAULT_HTTP_PORT}"))
     });

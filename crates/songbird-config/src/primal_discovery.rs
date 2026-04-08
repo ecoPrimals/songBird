@@ -133,6 +133,17 @@ impl DiscoveryOptionsBuilder {
 /// - Neither `COMPUTE_ENDPOINT` nor the legacy compute env alias is set
 /// - Capability-based discovery fails to find a compute provider
 pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<String> {
+    get_compute_endpoint_with(options, |k| songbird_process_env::var(k)).await
+}
+
+/// Same as [`get_compute_endpoint`] with an injectable env reader (concurrent-safe tests).
+pub async fn get_compute_endpoint_with<F>(
+    options: DiscoveryOptions,
+    env_reader: F,
+) -> SongbirdResult<String>
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     // 0. Try explicit option first (dependency injection)
     if let Some(endpoint) = options.compute_endpoint {
         debug!("Using explicit compute_endpoint from options: {}", endpoint);
@@ -140,13 +151,13 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     }
 
     // 1. Try COMPUTE_PROVIDER_ENDPOINT (capability domain) first
-    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_PROVIDER_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("COMPUTE_PROVIDER_ENDPOINT") {
         debug!("Using COMPUTE_PROVIDER_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
     // 2. Try COMPUTE_ENDPOINT from environment
-    if let Ok(endpoint) = songbird_process_env::var("COMPUTE_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("COMPUTE_ENDPOINT") {
         debug!("Using COMPUTE_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
@@ -158,7 +169,7 @@ pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<S
     }
 
     // 4. Legacy compute env branch (backwards compatibility)
-    if let Ok(endpoint) = songbird_process_env::var("TOADSTOOL_ENDPOINT") {
+    if let Ok(endpoint) = env_reader("TOADSTOOL_ENDPOINT") {
         warn!("deprecated: use COMPUTE_PROVIDER_ENDPOINT instead of TOADSTOOL_ENDPOINT");
         return Ok(endpoint);
     }
@@ -698,5 +709,89 @@ mod tests {
         };
         let ep = get_endpoint_by_capability_with("raw", env, Some(Duration::from_millis(1))).await;
         assert_eq!(ep.expect("opaque string preserved"), "not-a-valid-url:::broken");
+    }
+
+    #[tokio::test]
+    async fn test_get_compute_endpoint_with_prefers_provider_over_plain_compute_env() {
+        use std::collections::HashMap;
+
+        let vars: HashMap<String, String> = HashMap::from([
+            ("COMPUTE_PROVIDER_ENDPOINT".to_string(), "http://provider:8001".to_string()),
+            ("COMPUTE_ENDPOINT".to_string(), "http://plain:9001".to_string()),
+        ]);
+        let env = move |k: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let options = DiscoveryOptions::for_testing().build();
+        let ep = get_compute_endpoint_with(options, env).await.expect("compute endpoint");
+        assert_eq!(ep, "http://provider:8001");
+    }
+
+    #[tokio::test]
+    async fn test_get_compute_endpoint_with_prefers_compute_over_legacy_toadstool() {
+        use std::collections::HashMap;
+
+        let vars: HashMap<String, String> = HashMap::from([
+            ("COMPUTE_ENDPOINT".to_string(), "http://compute-wins:1".to_string()),
+            ("TOADSTOOL_ENDPOINT".to_string(), "http://legacy:2".to_string()),
+        ]);
+        let env = move |k: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let options =
+            DiscoveryOptions::for_testing().discovery_timeout(Duration::from_millis(1)).build();
+        let ep = get_compute_endpoint_with(options, env).await.expect("compute");
+        assert_eq!(ep, "http://compute-wins:1");
+    }
+
+    #[tokio::test]
+    async fn test_get_security_endpoint_with_prefers_provider_key() {
+        let ep = get_security_endpoint_with(|k| match k {
+            "SECURITY_PROVIDER_ENDPOINT" => Ok("https://sec-prov:8443".to_string()),
+            "SECURITY_ENDPOINT" => Ok("http://plain-sec:80".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .expect("security");
+        assert_eq!(ep, "https://sec-prov:8443");
+    }
+
+    #[tokio::test]
+    async fn test_get_ai_endpoint_with_prefers_provider_key() {
+        let ep = get_ai_endpoint_with(|k| match k {
+            "AI_PROVIDER_ENDPOINT" => Ok("http://ai-prov:8083".to_string()),
+            "AI_ENDPOINT" => Ok("http://ai-plain:9".to_string()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .await
+        .expect("ai");
+        assert_eq!(ep, "http://ai-prov:8083");
+    }
+
+    #[tokio::test]
+    async fn test_get_endpoint_by_capability_discovery_failure_returns_configuration_error() {
+        use std::collections::HashMap;
+
+        let vars: HashMap<String, String> = HashMap::new();
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let result =
+            get_endpoint_by_capability_with("unknowncapxyz", env, Some(Duration::from_millis(1)))
+                .await;
+        if result.is_ok() {
+            return;
+        }
+        match result.expect_err("expected configuration error when discovery finds nothing") {
+            SongbirdError::Configuration {
+                message,
+                field,
+                ..
+            } => {
+                assert!(message.contains("unknowncapxyz"));
+                assert_eq!(field.as_deref(), Some("unknowncapxyz_endpoint"));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 }

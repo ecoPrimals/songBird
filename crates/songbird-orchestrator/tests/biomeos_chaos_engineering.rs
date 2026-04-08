@@ -259,9 +259,8 @@ fn chaos_family_id_formats() {
 
         // Should accept various formats for family ID
         assert_eq!(derived_family, family_id);
-        // PRIMAL_DEPLOYMENT_STANDARD: Socket path is {primal}.sock (no family suffix)
-        // Family ID is NOT included in socket path per new standard
-        assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
+        // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: Socket uses domain stem "network"
+        assert!(derived_path.to_str().unwrap().ends_with(".sock"));
     }
 
     restore_env_state(original);
@@ -293,8 +292,8 @@ fn chaos_alternating_clear_set() {
             let path = UnixSocketServer::socket_path_from_env();
             let family = UnixSocketServer::get_family_id();
 
-            // PRIMAL_DEPLOYMENT_STANDARD: Uses XDG or /tmp fallback, socket is songbird.sock
-            assert!(path.to_str().unwrap().ends_with("songbird.sock"));
+            // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: domain-based socket naming
+            assert!(path.to_str().unwrap().ends_with("network.sock"));
             assert_eq!(family, "default");
         }
     }

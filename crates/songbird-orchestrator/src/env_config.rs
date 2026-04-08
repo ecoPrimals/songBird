@@ -34,14 +34,59 @@ use std::path::PathBuf;
 use songbird_types::defaults::{hosts::DEFAULT_BIND_ALL, ports::DEFAULT_HTTP_PORT};
 use songbird_types::primal_names;
 
+/// BTSP guard: refuse to start when both `FAMILY_ID` (non-default) and
+/// `BIOMEOS_INSECURE=1` are set.
+///
+/// Per `BTSP_PROTOCOL_STANDARD.md` v1.0 and `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1:
+/// you cannot claim a family AND skip authentication. This is a hard error.
+///
+/// # Errors
+///
+/// Returns an error message if the conflicting configuration is detected.
+pub fn validate_btsp_insecure_guard() -> Result<(), String> {
+    validate_btsp_insecure_guard_with(|k| songbird_process_env::var(k))
+}
+
+/// Injectable variant for concurrent-safe testing.
+pub fn validate_btsp_insecure_guard_with<F>(env_reader: F) -> Result<(), String>
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
+    let fid = env_reader("FAMILY_ID")
+        .or_else(|_| env_reader("SONGBIRD_FAMILY_ID"))
+        .or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
+        .unwrap_or_else(|_| "default".to_string());
+
+    let insecure = env_reader("BIOMEOS_INSECURE")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    if fid != "default" && !fid.is_empty() && insecure {
+        return Err(format!(
+            "FATAL: FAMILY_ID={fid:?} and BIOMEOS_INSECURE=1 are both set. \
+             Per BTSP_PROTOCOL_STANDARD.md v1.0: you cannot claim a family AND skip authentication. \
+             Either remove BIOMEOS_INSECURE or unset FAMILY_ID."
+        ));
+    }
+    Ok(())
+}
+
 /// Convenience alias — reads from overlay first, then OS.
 fn env(key: &str) -> Result<String, std::env::VarError> {
     songbird_process_env::var(key)
 }
 
 /// Prefer `XDG_RUNTIME_DIR`, then `TMPDIR`, then `/tmp` (same resolution as peer socket fallbacks).
-fn runtime_or_tmp_base() -> String {
+fn runtime_or_tmp_base_with<F>(env: &F) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     env("XDG_RUNTIME_DIR").or_else(|_| env("TMPDIR")).unwrap_or_else(|_| "/tmp".to_string())
+}
+
+/// Prefer `XDG_RUNTIME_DIR`, then `TMPDIR`, then `/tmp` (same resolution as peer socket fallbacks).
+fn runtime_or_tmp_base() -> String {
+    runtime_or_tmp_base_with(&|k| songbird_process_env::var(k))
 }
 
 /// Default Unix socket path for a peer when `*_SOCKET_PATH` / `PEER_SOCKET_PATH` are unset.
@@ -95,6 +140,15 @@ pub fn primal_name() -> String {
 /// 6. Default: `"default"` (seed-derived family ID should be set via env)
 #[must_use]
 pub fn family_id() -> String {
+    family_id_with(|k| songbird_process_env::var(k))
+}
+
+/// [`family_id`] with an injectable env reader (for unit tests and alternate backends).
+#[must_use]
+pub fn family_id_with<F>(env: F) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     env("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
         .or_else(|_| env("SONGBIRD_ORCHESTRATOR_FAMILY"))
         .or_else(|_| env("BIOMEOS_FAMILY_ID"))
@@ -164,29 +218,85 @@ pub fn socket_path() -> PathBuf {
     PathBuf::from(format!("{}/{}", runtime_or_tmp_base(), sock_name))
 }
 
-/// Get the socket filename based on multi-family configuration
+/// Capability domain stem for socket naming per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1.
+const DOMAIN_SOCKET_STEM: &str = "network";
+
+/// Get the socket filename based on family configuration.
 ///
-/// Returns:
-/// - `songbird.sock` in single-family mode (default)
-/// - `songbird-{family_id}.sock` in multi-family mode
+/// Returns domain-based names per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1:
+/// - `network.sock` in development mode (no `FAMILY_ID`)
+/// - `network-{family_id}.sock` in production mode (`FAMILY_ID` set, non-default)
 ///
-/// Multi-family mode is activated by:
-/// - `SONGBIRD_MULTI_FAMILY=true` or `SONGBIRD_FAMILY_SOCKET=true`
-///
-/// This enables the "shared machine" architecture where multiple
-/// ecosystem families coexist, each with their own Songbird instance.
+/// Use [`legacy_socket_name`] for backward-compatible `songbird*.sock` names
+/// (for symlink creation during Phase 1 migration).
 #[must_use]
 pub fn socket_name() -> String {
-    let multi_family = env("SONGBIRD_MULTI_FAMILY")
-        .or_else(|_| env("SONGBIRD_FAMILY_SOCKET"))
-        .map(|v| v == "true" || v == "1")
-        .unwrap_or(false);
+    socket_name_with(|k| songbird_process_env::var(k))
+}
 
-    if multi_family {
-        let fam_id = family_id();
-        format!("songbird-{fam_id}.sock")
+/// [`socket_name`] with an injectable env reader (for unit tests and alternate backends).
+#[must_use]
+pub fn socket_name_with<F>(env: F) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
+    let fid = family_id_with(&env);
+    if fid != "default" && !fid.is_empty() {
+        format!("{DOMAIN_SOCKET_STEM}-{fid}.sock")
+    } else {
+        format!("{DOMAIN_SOCKET_STEM}.sock")
+    }
+}
+
+/// Legacy primal-named socket filename for backward-compatible symlinks.
+///
+/// Returns `songbird.sock` or `songbird-{family_id}.sock` — the old naming
+/// convention. At startup, a symlink from this name to the domain-based
+/// [`socket_name`] should be created to avoid breaking existing consumers.
+#[must_use]
+pub fn legacy_socket_name() -> String {
+    legacy_socket_name_with(|k| songbird_process_env::var(k))
+}
+
+/// [`legacy_socket_name`] with an injectable env reader.
+#[must_use]
+pub fn legacy_socket_name_with<F>(env: F) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
+    let fid = family_id_with(&env);
+    if fid != "default" && !fid.is_empty() {
+        format!("songbird-{fid}.sock")
     } else {
         "songbird.sock".to_string()
+    }
+}
+
+/// Create a legacy backward-compatibility symlink from `songbird*.sock` to `network*.sock`.
+///
+/// Per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1 §3 (Legacy compatibility):
+/// > a primal MAY also bind or symlink the legacy primal-named socket
+///
+/// This is best-effort — symlink failure is logged but does not prevent startup.
+pub fn create_legacy_socket_symlink(domain_socket: &std::path::Path) {
+    let Some(parent) = domain_socket.parent() else {
+        return;
+    };
+    let legacy_name = legacy_socket_name();
+    let legacy_path = parent.join(&legacy_name);
+    let _ = std::fs::remove_file(&legacy_path);
+    if let Err(e) = std::os::unix::fs::symlink(domain_socket, &legacy_path) {
+        tracing::warn!(
+            legacy = %legacy_path.display(),
+            domain = %domain_socket.display(),
+            "Could not create legacy socket symlink: {e}"
+        );
+    } else {
+        tracing::info!(
+            legacy = %legacy_path.display(),
+            domain = %domain_socket.display(),
+            "Created legacy socket symlink for backward compatibility"
+        );
     }
 }
 
@@ -196,8 +306,17 @@ pub fn socket_name() -> String {
 /// 1. `SONGBIRD_DATA_DIR` (explicit override)
 /// 2. `{XDG_RUNTIME_DIR|TMPDIR|/tmp}/songbird-data` (default)
 pub fn data_dir() -> PathBuf {
+    data_dir_with(|k| songbird_process_env::var(k))
+}
+
+/// [`data_dir`] with an injectable env reader (for unit tests and alternate backends).
+#[must_use]
+pub fn data_dir_with<F>(env: F) -> PathBuf
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     env("SONGBIRD_DATA_DIR").map_or_else(
-        |_| PathBuf::from(format!("{}/songbird-data", runtime_or_tmp_base())),
+        |_| PathBuf::from(format!("{}/songbird-data", runtime_or_tmp_base_with(&env))),
         PathBuf::from,
     )
 }
@@ -208,8 +327,17 @@ pub fn data_dir() -> PathBuf {
 /// 1. `SONGBIRD_DEPLOY_DIR` (explicit override)
 /// 2. `{XDG_RUNTIME_DIR|TMPDIR|/tmp}/songbird-deployments` (default)
 pub fn deployment_dir() -> PathBuf {
+    deployment_dir_with(|k| songbird_process_env::var(k))
+}
+
+/// [`deployment_dir`] with an injectable env reader (for unit tests and alternate backends).
+#[must_use]
+pub fn deployment_dir_with<F>(env: F) -> PathBuf
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     env("SONGBIRD_DEPLOY_DIR").map_or_else(
-        |_| PathBuf::from(format!("{}/songbird-deployments", runtime_or_tmp_base())),
+        |_| PathBuf::from(format!("{}/songbird-deployments", runtime_or_tmp_base_with(&env))),
         PathBuf::from,
     )
 }
@@ -220,8 +348,17 @@ pub fn deployment_dir() -> PathBuf {
 /// 1. `SONGBIRD_CACHE_DIR` (explicit override)
 /// 2. `{XDG_RUNTIME_DIR|TMPDIR|/tmp}/songbird-cache` (default)
 pub fn cache_dir() -> PathBuf {
+    cache_dir_with(|k| songbird_process_env::var(k))
+}
+
+/// [`cache_dir`] with an injectable env reader (for unit tests and alternate backends).
+#[must_use]
+pub fn cache_dir_with<F>(env: F) -> PathBuf
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     env("SONGBIRD_CACHE_DIR").map_or_else(
-        |_| PathBuf::from(format!("{}/songbird-cache", runtime_or_tmp_base())),
+        |_| PathBuf::from(format!("{}/songbird-cache", runtime_or_tmp_base_with(&env))),
         PathBuf::from,
     )
 }
@@ -327,12 +464,23 @@ pub fn dual_broadcast() -> bool {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
+    use std::collections::HashMap;
+    use std::env::VarError;
     use std::sync::Mutex;
 
     use songbird_process_env;
     use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
 
     use super::*;
+
+    /// Injectable env map for [`super::*_with`] tests (no shared process env).
+    fn env_map(
+        pairs: Vec<(&'static str, &'static str)>,
+    ) -> impl Fn(&str) -> Result<String, VarError> {
+        let map: HashMap<String, String> =
+            pairs.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        move |key: &str| map.get(key).cloned().ok_or(VarError::NotPresent)
+    }
 
     static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
 
@@ -364,13 +512,10 @@ mod tests {
     }
 
     #[test]
-    fn test_socket_name_single_family() {
-        // Default: single-family mode returns "songbird.sock"
-        // (unless SONGBIRD_MULTI_FAMILY is set in the environment)
+    fn test_socket_name_domain_based() {
         let name = socket_name();
         assert!(name.ends_with(".sock"));
-        // Either "songbird.sock" or "songbird-{family_id}.sock"
-        assert!(name.starts_with("songbird"));
+        assert!(name.starts_with("network"), "Expected domain-based name, got: {name}");
     }
 
     #[test]
@@ -470,5 +615,150 @@ mod tests {
         songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "orch-family");
         assert_eq!(family_id(), "orch-family");
         songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    }
+
+    #[test]
+    fn socket_name_with_no_family_returns_domain_sock() {
+        assert_eq!(socket_name_with(env_map(vec![])), "network.sock");
+    }
+
+    #[test]
+    fn socket_name_with_family_id_returns_domain_scoped() {
+        let n = socket_name_with(env_map(vec![("FAMILY_ID", "fam-a")]));
+        assert_eq!(n, "network-fam-a.sock");
+    }
+
+    #[test]
+    fn socket_name_with_family_respects_priority_chain() {
+        let n = socket_name_with(env_map(vec![
+            ("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "orch-fam"),
+            ("FAMILY_ID", "ignored"),
+        ]));
+        assert_eq!(n, "network-orch-fam.sock");
+    }
+
+    #[test]
+    fn legacy_socket_name_with_no_family() {
+        assert_eq!(legacy_socket_name_with(env_map(vec![])), "songbird.sock");
+    }
+
+    #[test]
+    fn legacy_socket_name_with_family_id() {
+        let n = legacy_socket_name_with(env_map(vec![("FAMILY_ID", "edge")]));
+        assert_eq!(n, "songbird-edge.sock");
+    }
+
+    #[test]
+    fn btsp_insecure_guard_ok_when_no_conflict() {
+        assert!(validate_btsp_insecure_guard_with(env_map(vec![])).is_ok());
+        assert!(validate_btsp_insecure_guard_with(env_map(vec![("FAMILY_ID", "fam")])).is_ok());
+        assert!(
+            validate_btsp_insecure_guard_with(env_map(vec![("BIOMEOS_INSECURE", "1")])).is_ok()
+        );
+    }
+
+    #[test]
+    fn btsp_insecure_guard_rejects_family_plus_insecure() {
+        let result = validate_btsp_insecure_guard_with(env_map(vec![
+            ("FAMILY_ID", "production-fam"),
+            ("BIOMEOS_INSECURE", "1"),
+        ]));
+        assert!(result.is_err());
+        let msg = result.unwrap_err();
+        assert!(msg.contains("BTSP_PROTOCOL_STANDARD"), "{msg}");
+    }
+
+    #[test]
+    fn btsp_insecure_guard_allows_default_family_with_insecure() {
+        assert!(
+            validate_btsp_insecure_guard_with(env_map(vec![
+                ("FAMILY_ID", "default"),
+                ("BIOMEOS_INSECURE", "1"),
+            ]))
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn family_id_with_priority_chain() {
+        assert_eq!(family_id_with(env_map(vec![("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "p1")])), "p1");
+        assert_eq!(
+            family_id_with(env_map(vec![
+                ("SONGBIRD_ORCHESTRATOR_FAMILY", "p2"),
+                ("FAMILY_ID", "x"),
+            ])),
+            "p2"
+        );
+        assert_eq!(
+            family_id_with(env_map(vec![("BIOMEOS_FAMILY_ID", "p3"), ("FAMILY_ID", "x")])),
+            "p3"
+        );
+        assert_eq!(
+            family_id_with(env_map(vec![("SONGBIRD_FAMILY_ID", "p4"), ("FAMILY_ID", "x")])),
+            "p4"
+        );
+        assert_eq!(family_id_with(env_map(vec![("FAMILY_ID", "p5")])), "p5");
+        assert_eq!(family_id_with(env_map(vec![])), "default");
+    }
+
+    #[test]
+    fn data_dir_with_explicit_override() {
+        let p = data_dir_with(env_map(vec![("SONGBIRD_DATA_DIR", "/var/sb/data")]));
+        assert_eq!(p, PathBuf::from("/var/sb/data"));
+    }
+
+    #[test]
+    fn data_dir_with_defaults_under_xdg_runtime() {
+        let p = data_dir_with(env_map(vec![("XDG_RUNTIME_DIR", "/run/user/1000")]));
+        assert_eq!(p, PathBuf::from("/run/user/1000/songbird-data"));
+    }
+
+    #[test]
+    fn data_dir_with_defaults_under_tmpdir_when_xdg_unset() {
+        let p = data_dir_with(env_map(vec![("TMPDIR", "/var/tmp/sb")]));
+        assert_eq!(p, PathBuf::from("/var/tmp/sb/songbird-data"));
+    }
+
+    #[test]
+    fn data_dir_with_fallback_tmp_base() {
+        let p = data_dir_with(env_map(vec![]));
+        assert_eq!(p, PathBuf::from("/tmp/songbird-data"));
+    }
+
+    #[test]
+    fn deployment_dir_with_explicit_and_defaults() {
+        assert_eq!(
+            deployment_dir_with(env_map(vec![("SONGBIRD_DEPLOY_DIR", "/deploy")])),
+            PathBuf::from("/deploy")
+        );
+        assert_eq!(
+            deployment_dir_with(env_map(vec![("XDG_RUNTIME_DIR", "/xdg")])),
+            PathBuf::from("/xdg/songbird-deployments")
+        );
+        assert_eq!(
+            deployment_dir_with(env_map(vec![("TMPDIR", "/t")])),
+            PathBuf::from("/t/songbird-deployments")
+        );
+        assert_eq!(
+            deployment_dir_with(env_map(vec![])),
+            PathBuf::from("/tmp/songbird-deployments")
+        );
+    }
+
+    #[test]
+    fn cache_dir_with_explicit_and_defaults() {
+        assert_eq!(
+            cache_dir_with(env_map(vec![("SONGBIRD_CACHE_DIR", "/cache")])),
+            PathBuf::from("/cache")
+        );
+        assert_eq!(
+            cache_dir_with(env_map(vec![("XDG_RUNTIME_DIR", "/xdg")])),
+            PathBuf::from("/xdg/songbird-cache")
+        );
+        assert_eq!(
+            cache_dir_with(env_map(vec![("TMPDIR", "/t")])),
+            PathBuf::from("/t/songbird-cache")
+        );
+        assert_eq!(cache_dir_with(env_map(vec![])), PathBuf::from("/tmp/songbird-cache"));
     }
 }

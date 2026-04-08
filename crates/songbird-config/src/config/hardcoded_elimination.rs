@@ -380,7 +380,14 @@ impl Default for FederationConfig {
 }
 
 fn env_or_default(key: &str, default: &str) -> String {
-    songbird_process_env::var(key).unwrap_or_else(|_| default.to_string())
+    env_or_default_with(key, default, |k| songbird_process_env::var(k))
+}
+
+pub(crate) fn env_or_default_with<F>(key: &str, default: &str, env: F) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
+    env(key).unwrap_or_else(|_| default.to_string())
 }
 
 /// Resolve endpoint env: capability keys first, then one legacy key with a migration warning.
@@ -390,14 +397,33 @@ fn env_capability_first_then_legacy_warn(
     migrate_to: &str,
     default: &str,
 ) -> String {
+    env_capability_first_then_legacy_warn_with(
+        capability_keys,
+        legacy_key,
+        migrate_to,
+        default,
+        |k| songbird_process_env::var(k),
+    )
+}
+
+pub(crate) fn env_capability_first_then_legacy_warn_with<F>(
+    capability_keys: &[&str],
+    legacy_key: &str,
+    migrate_to: &str,
+    default: &str,
+    env: F,
+) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     for key in capability_keys {
-        if let Ok(v) = songbird_process_env::var(key)
+        if let Ok(v) = env(key)
             && !v.is_empty()
         {
             return v;
         }
     }
-    if let Ok(v) = songbird_process_env::var(legacy_key)
+    if let Ok(v) = env(legacy_key)
         && !v.is_empty()
     {
         tracing::warn!("deprecated: use {migrate_to} instead of {legacy_key}");
@@ -407,14 +433,25 @@ fn env_capability_first_then_legacy_warn(
 }
 
 fn resolve_storage_provider_endpoint(base_ip: &str, base_port: u16) -> String {
+    resolve_storage_provider_endpoint_with(base_ip, base_port, |k| songbird_process_env::var(k))
+}
+
+pub(crate) fn resolve_storage_provider_endpoint_with<F>(
+    base_ip: &str,
+    base_port: u16,
+    env: F,
+) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     for key in ["SONGBIRD_STORAGE_PROVIDER_ENDPOINT", "SONGBIRD_STORAGE_ENDPOINT"] {
-        if let Ok(v) = songbird_process_env::var(key)
+        if let Ok(v) = env(key)
             && !v.is_empty()
         {
             return v;
         }
     }
-    if let Ok(v) = songbird_process_env::var("SONGBIRD_NESTGATE_ENDPOINT")
+    if let Ok(v) = env("SONGBIRD_NESTGATE_ENDPOINT")
         && !v.is_empty()
     {
         tracing::warn!(
@@ -426,12 +463,19 @@ fn resolve_storage_provider_endpoint(base_ip: &str, base_port: u16) -> String {
 }
 
 fn default_tls_cert_path() -> String {
-    songbird_process_env::var("SONGBIRD_TLS_CERT")
+    default_tls_cert_path_with(|k| songbird_process_env::var(k))
+}
+
+pub(crate) fn default_tls_cert_path_with<F>(env: F) -> String
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
+    env("SONGBIRD_TLS_CERT")
         .ok()
         .filter(|s| !s.is_empty())
-        .or_else(|| songbird_process_env::var("SSL_CERT_FILE").ok().filter(|s| !s.is_empty()))
+        .or_else(|| env("SSL_CERT_FILE").ok().filter(|s| !s.is_empty()))
         .unwrap_or_else(|| {
-            songbird_process_env::var("HOME").map_or_else(
+            env("HOME").map_or_else(
                 |_| {
                     std::env::temp_dir()
                         .join("songbird")
@@ -636,40 +680,5 @@ pub mod replace {
     #[must_use]
     pub fn timeout_config() -> super::TimeoutConfig {
         get_config().timeouts.clone()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
-
-    use super::replace;
-
-    #[test]
-    fn format_endpoint_prefers_full_endpoint_env() {
-        songbird_process_env::set_var("ROUTING_ENDPOINT", "https://router.example:7443");
-        let ep = replace::format_endpoint("routing", None);
-        assert_eq!(ep.as_ref(), "https://router.example:7443");
-        songbird_process_env::remove_var("ROUTING_ENDPOINT");
-    }
-
-    #[test]
-    fn format_service_endpoint_joins_base_and_path() {
-        songbird_process_env::set_var("METRICS_ENDPOINT", "http://metrics.local:9090");
-        let s = replace::format_service_endpoint("metrics", "/api/v1/query", None);
-        assert_eq!(s, "http://metrics.local:9090/api/v1/query");
-        songbird_process_env::remove_var("METRICS_ENDPOINT");
-    }
-
-    #[test]
-    fn gaming_port_matches_config_default_start() {
-        let g = replace::gaming_port();
-        assert_eq!(g, super::get_config().network.gaming_port_range.start);
-    }
-
-    #[test]
-    fn bind_address_returns_valid_ip() {
-        let ip = replace::bind_address();
-        assert!(ip.is_loopback() || !ip.is_unspecified() || ip.is_unspecified());
     }
 }

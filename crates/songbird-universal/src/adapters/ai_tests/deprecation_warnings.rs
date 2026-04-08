@@ -26,7 +26,7 @@ async fn squirrel_endpoint_logs_deprecation_warning() -> SongbirdResult<()> {
     let _g = lock_discovery_env();
     songbird_process_env::reset_overlay();
     songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    for key in ["SONGBIRD_AI_ENDPOINT", "AI_PROVIDER_ENDPOINT"] {
+    for key in ["AI_ENDPOINT", "AI_PROVIDER_ENDPOINT"] {
         songbird_process_env::remove_var(key);
     }
     songbird_process_env::set_var("SQUIRREL_ENDPOINT", "http://from-squirrel-warn:7722");

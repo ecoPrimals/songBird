@@ -67,6 +67,8 @@ pub mod universal_primals;
 
 pub mod constants;
 pub mod hardcoded_elimination;
+#[cfg(test)]
+mod hardcoded_elimination_tests;
 pub mod paths;
 pub mod providers;
 mod security;

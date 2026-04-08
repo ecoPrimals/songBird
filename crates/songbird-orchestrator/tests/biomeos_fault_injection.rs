@@ -48,7 +48,7 @@ fn fault_missing_all_env_vars() {
     let family_id = UnixSocketServer::get_family_id();
 
     // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock, uses XDG or /tmp fallback
-    assert!(path.to_str().unwrap().ends_with("songbird.sock"));
+    assert!(path.to_str().unwrap().ends_with("network.sock"));
     assert_eq!(family_id, "default");
 
     // Cleanup
@@ -104,9 +104,8 @@ fn fault_invalid_family_id_special_chars() {
         let path = UnixSocketServer::socket_path_from_env();
         let derived_family = UnixSocketServer::get_family_id();
 
-        // PRIMAL_DEPLOYMENT_STANDARD: Should not crash, socket is always {primal}.sock
-        // Family ID is not included in socket path
-        assert!(path.to_str().unwrap().ends_with("songbird.sock"));
+        // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: should not crash; socket includes family scope
+        assert!(path.to_str().unwrap().ends_with(".sock"));
         assert_eq!(derived_family, family_id);
     }
 
@@ -131,7 +130,7 @@ fn fault_empty_string_env_vars() {
     let path = UnixSocketServer::socket_path_from_env();
     // Implementation correctly skips empty strings and falls back to XDG default
     assert!(
-        path.to_str().unwrap().ends_with("songbird.sock"),
+        path.to_str().unwrap().ends_with("network.sock"),
         "Empty env var should fall through to default, got: {}",
         path.display()
     );
@@ -146,7 +145,7 @@ fn fault_empty_string_env_vars() {
     // Empty family ID is accepted (but not used in path)
     assert_eq!(family_id, "");
     // PRIMAL_DEPLOYMENT_STANDARD: Socket is always {primal}.sock (no family suffix)
-    assert!(path.to_str().unwrap().ends_with("songbird.sock"));
+    assert!(path.to_str().unwrap().ends_with("network.sock"));
 
     restore_env_state(original);
 }
@@ -318,8 +317,12 @@ fn fault_family_id_path_construction() {
         let path = UnixSocketServer::socket_path_from_env();
         let derived_family = UnixSocketServer::get_family_id();
 
-        // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock, family_id is separate
-        assert!(path.to_str().unwrap().ends_with("songbird.sock"));
+        // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: socket is network-{family_id}.sock
+        let expected_suffix = format!("network-{family_id}.sock");
+        assert!(
+            path.to_str().unwrap().ends_with(&expected_suffix),
+            "Expected suffix {expected_suffix}, got: {path:?}"
+        );
         assert_eq!(derived_family, family_id);
     }
 

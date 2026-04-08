@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::unwrap_used, reason = "test assertions")]
+
 use super::BirdSongHandler;
 use super::types::validate_required_fields;
 use serde_json::{Value, json};

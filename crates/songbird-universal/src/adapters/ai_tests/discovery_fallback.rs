@@ -59,16 +59,16 @@ async fn test_ai_adapter_from_discovery_resolver_injected_unix() -> SongbirdResu
 }
 
 #[tokio::test]
-async fn test_ai_adapter_from_discovery_fallback_songbird_ai_endpoint() -> SongbirdResult<()> {
+async fn test_ai_adapter_from_discovery_fallback_ai_endpoint() -> SongbirdResult<()> {
     let _g = lock_discovery_env();
     songbird_process_env::reset_overlay();
     songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::set_var("SONGBIRD_AI_ENDPOINT", "http://from-songbird-ai:7788");
+    songbird_process_env::set_var("AI_ENDPOINT", "http://from-ai-endpoint:7788");
 
     let adapter = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new())
         .await
-        .expect("adapter from SONGBIRD_AI_ENDPOINT");
-    assert_eq!(adapter.endpoint(), "http://from-songbird-ai:7788");
+        .expect("adapter from AI_ENDPOINT");
+    assert_eq!(adapter.endpoint(), "http://from-ai-endpoint:7788");
 
     songbird_process_env::reset_overlay();
     Ok(())
@@ -124,17 +124,17 @@ async fn test_ai_adapter_from_discovery_fallback_host_and_port_env() -> Songbird
 }
 
 #[tokio::test]
-async fn test_ai_adapter_from_discovery_fallback_prefers_songbird_ai_env() -> SongbirdResult<()> {
+async fn test_ai_adapter_from_discovery_fallback_prefers_ai_endpoint_env() -> SongbirdResult<()> {
     let _g = lock_discovery_env();
     songbird_process_env::reset_overlay();
     songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
-    songbird_process_env::set_var("SONGBIRD_AI_ENDPOINT", "http://songbird-wins:1111");
-    songbird_process_env::set_var("AI_PROVIDER_ENDPOINT", "http://legacy-loses:2222");
+    songbird_process_env::set_var("AI_ENDPOINT", "http://ai-endpoint-wins:1111");
+    songbird_process_env::set_var("AI_PROVIDER_ENDPOINT", "http://ai-provider-loses:2222");
 
     let adapter = AIAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new())
         .await
         .expect("adapter");
-    assert_eq!(adapter.endpoint(), "http://songbird-wins:1111");
+    assert_eq!(adapter.endpoint(), "http://ai-endpoint-wins:1111");
 
     songbird_process_env::reset_overlay();
     Ok(())

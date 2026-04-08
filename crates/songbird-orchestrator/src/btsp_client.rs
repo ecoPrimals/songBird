@@ -366,12 +366,190 @@ impl BtspClient {
 
         Ok(response)
     }
+
+    /// Perform the BTSP handshake as a client connecting to a target primal socket.
+    ///
+    /// Implements the `ClientHello → ServerHello → ChallengeResponse → HandshakeComplete`
+    /// flow per `BTSP_PROTOCOL_STANDARD.md` v1.0. All cryptographic operations are
+    /// delegated to the security provider via JSON-RPC (`btsp.session.*` methods).
+    ///
+    /// # Arguments
+    /// * `target_socket` - Path to the target primal's Unix domain socket.
+    /// * `preferred_cipher` - Cipher suite preference (e.g., `"chacha20_poly1305"`).
+    ///
+    /// # Returns
+    /// A [`BtspSession`] representing the authenticated, optionally encrypted session.
+    ///
+    /// # Errors
+    /// Returns an error if the handshake fails at any stage (connection, crypto, verification).
+    pub async fn handshake(
+        &self,
+        target_socket: &std::path::Path,
+        preferred_cipher: &str,
+    ) -> Result<BtspSession> {
+        debug!("Starting BTSP handshake with {}", target_socket.display());
+
+        // Step 1: Ask security provider to create a session (generates our ephemeral X25519 keypair)
+        let create_resp = self
+            .send_request(json!({
+                "jsonrpc": "2.0",
+                "method": "btsp.session.create",
+                "params": {
+                    "family_seed_ref": "env:FAMILY_SEED",
+                    "role": "client"
+                },
+                "id": 10
+            }))
+            .await?;
+
+        let client_ephemeral_pub = create_resp["result"]["client_ephemeral_pub"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing client_ephemeral_pub from btsp.session.create"))?
+            .to_string();
+        let handshake_key_ref = create_resp["result"]["session_id"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing session_id from btsp.session.create"))?
+            .to_string();
+
+        // Step 2: Connect to target socket, send ClientHello
+        let mut target_stream =
+            connect_platform(&target_socket.to_path_buf()).await.map_err(|e| {
+                anyhow!("Failed to connect to target socket {}: {}", target_socket.display(), e)
+            })?;
+
+        let client_hello = json!({
+            "type": "ClientHello",
+            "version": 1,
+            "client_ephemeral_pub": client_ephemeral_pub
+        });
+        let hello_bytes = serde_json::to_vec(&client_hello)?;
+        target_stream.write_all(&hello_bytes).await?;
+        target_stream.write_all(b"\n").await?;
+
+        // Step 3: Read ServerHello (server_ephemeral_pub + challenge)
+        let mut buf = Vec::new();
+        let mut reader = BufReader::new(&mut target_stream);
+        reader.read_until(b'\n', &mut buf).await?;
+        let server_hello: serde_json::Value = serde_json::from_slice(&buf)?;
+
+        if server_hello.get("error").is_some() {
+            return Err(anyhow!(
+                "Server rejected handshake: {}",
+                server_hello["error"]["reason"].as_str().unwrap_or("unknown")
+            ));
+        }
+
+        let server_ephemeral_pub = server_hello["server_ephemeral_pub"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing server_ephemeral_pub in ServerHello"))?;
+        let challenge = server_hello["challenge"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing challenge in ServerHello"))?;
+
+        // Step 4: Ask security provider to verify/compute challenge response
+        let verify_resp = self
+            .send_request(json!({
+                "jsonrpc": "2.0",
+                "method": "btsp.session.verify",
+                "params": {
+                    "session_id": handshake_key_ref,
+                    "client_ephemeral_pub": client_ephemeral_pub,
+                    "server_ephemeral_pub": server_ephemeral_pub,
+                    "challenge": challenge,
+                    "role": "client"
+                },
+                "id": 11
+            }))
+            .await?;
+
+        let challenge_response = verify_resp["result"]["client_response"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing client_response from btsp.session.verify"))?;
+
+        // Step 5: Send ChallengeResponse to target
+        let cr_msg = json!({
+            "type": "ChallengeResponse",
+            "response": challenge_response,
+            "preferred_cipher": preferred_cipher
+        });
+        let cr_bytes = serde_json::to_vec(&cr_msg)?;
+        buf.clear();
+        target_stream.write_all(&cr_bytes).await?;
+        target_stream.write_all(b"\n").await?;
+
+        // Step 6: Read HandshakeComplete
+        buf.clear();
+        reader = BufReader::new(&mut target_stream);
+        reader.read_until(b'\n', &mut buf).await?;
+        let hs_complete: serde_json::Value = serde_json::from_slice(&buf)?;
+
+        if hs_complete.get("error").is_some() {
+            return Err(anyhow!(
+                "Handshake verification failed: {}",
+                hs_complete["error"]["reason"].as_str().unwrap_or("family_verification")
+            ));
+        }
+
+        let negotiated_cipher =
+            hs_complete["cipher"].as_str().unwrap_or("chacha20_poly1305").to_string();
+        let session_id = hs_complete["session_id"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing session_id in HandshakeComplete"))?
+            .to_string();
+
+        // Step 7: Negotiate cipher via security provider
+        let _negotiate_resp = self
+            .send_request(json!({
+                "jsonrpc": "2.0",
+                "method": "btsp.negotiate",
+                "params": {
+                    "session_id": session_id,
+                    "preferred_cipher": negotiated_cipher,
+                    "bond_type": "Covalent"
+                },
+                "id": 12
+            }))
+            .await?;
+
+        info!(
+            session_id = %session_id,
+            cipher = %negotiated_cipher,
+            target = %target_socket.display(),
+            "BTSP handshake complete"
+        );
+
+        Ok(BtspSession {
+            session_id,
+            cipher: negotiated_cipher,
+            target_socket: target_socket.to_path_buf(),
+            client_ephemeral_pub,
+            server_ephemeral_pub: server_ephemeral_pub.to_string(),
+        })
+    }
 }
 
 impl Default for BtspClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// An authenticated BTSP session after a successful handshake.
+///
+/// Holds the session key reference and negotiated cipher suite. Use this to send
+/// encrypted JSON-RPC frames through the BTSP tunnel.
+#[derive(Debug, Clone)]
+pub struct BtspSession {
+    /// Unique session identifier (maps to session key in security provider).
+    pub session_id: String,
+    /// Negotiated cipher suite (e.g., `chacha20_poly1305`, `hmac_plain`, `null`).
+    pub cipher: String,
+    /// Target socket path this session connects to.
+    pub target_socket: PathBuf,
+    /// Our ephemeral public key (base64).
+    pub client_ephemeral_pub: String,
+    /// Server's ephemeral public key (base64).
+    pub server_ephemeral_pub: String,
 }
 
 // Type definitions (aligned with the security provider's wire types)
@@ -433,7 +611,6 @@ mod tests {
 
     #[test]
     fn test_socket_path_discovery() {
-        // ✅ Concurrent-safe: Uses with_socket (no env vars)
         let unique_path = format!("/tmp/test_socket_{}.sock", std::process::id());
         let client = BtspClient::with_socket(PathBuf::from(&unique_path));
         assert_eq!(
@@ -459,5 +636,33 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn btsp_session_fields_are_accessible() {
+        let session = BtspSession {
+            session_id: "sess-42".to_string(),
+            cipher: "chacha20_poly1305".to_string(),
+            target_socket: PathBuf::from("/run/user/1000/biomeos/security.sock"),
+            client_ephemeral_pub: "Y2xpZW50X2tleQ==".to_string(),
+            server_ephemeral_pub: "c2VydmVyX2tleQ==".to_string(),
+        };
+        assert_eq!(session.session_id, "sess-42");
+        assert_eq!(session.cipher, "chacha20_poly1305");
+        assert!(session.target_socket.to_str().unwrap().contains("security"));
+    }
+
+    #[test]
+    fn btsp_session_clone_is_independent() {
+        let session = BtspSession {
+            session_id: "sess-1".to_string(),
+            cipher: "hmac_plain".to_string(),
+            target_socket: PathBuf::from("/tmp/test.sock"),
+            client_ephemeral_pub: "a2V5MQ==".to_string(),
+            server_ephemeral_pub: "a2V5Mg==".to_string(),
+        };
+        let cloned = session.clone();
+        assert_eq!(cloned.session_id, session.session_id);
+        assert_eq!(cloned.cipher, session.cipher);
     }
 }

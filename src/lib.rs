@@ -2,6 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 //! Shared CLI entry types and helpers for the `songbird` binary.
 //!
@@ -55,10 +56,12 @@ For detailed help on each mode, use:
   songbird <mode> --help
 "#)]
 pub struct Cli {
+    /// Subcommand selecting the operational mode.
     #[command(subcommand)]
     pub command: Commands,
 }
 
+/// Operational modes exposed as clap subcommands.
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Start Songbird orchestrator (main service)
@@ -66,6 +69,7 @@ pub enum Commands {
     /// This is the primary operational mode that runs the full orchestrator
     /// with discovery, federation, and network services.
     Server {
+        /// Server configuration flags (port, bind address, etc.).
         #[command(flatten)]
         args: songbird_orchestrator::ServerArgs,
     },
@@ -74,6 +78,7 @@ pub enum Commands {
     ///
     /// Validates configuration, checks connectivity, and verifies system health.
     Doctor {
+        /// Diagnostic options (verbosity, checks to run, etc.).
         #[command(flatten)]
         args: songbird_orchestrator::DoctorArgs,
     },
@@ -82,6 +87,7 @@ pub enum Commands {
     ///
     /// View, validate, and initialize Songbird configuration.
     Config {
+        /// Configuration subcommand (show, validate, init, etc.).
         #[command(subcommand)]
         config_cmd: songbird_orchestrator::ConfigCommands,
     },

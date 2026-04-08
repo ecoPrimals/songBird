@@ -82,13 +82,13 @@ fn test_biomeos_neural_api_socket_path_priority() {
     songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
 
     // Test 4: Family ID from SONGBIRD_ORCHESTRATOR_FAMILY_ID
-    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path, socket is {primal}.sock
+    // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: Family ID IS in socket path (production mode)
     songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("songbird.sock"),
-        "Socket path should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
+        path.to_str().unwrap().ends_with("network-nat0.sock"),
+        "Socket path should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(
         family, "nat0",
@@ -97,13 +97,13 @@ fn test_biomeos_neural_api_socket_path_priority() {
     songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
 
     // Test 5: Family ID from BIOMEOS_FAMILY_ID (generic orchestrator)
-    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path
+    // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: Family-scoped socket
     songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "nat0");
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("songbird.sock"),
-        "Socket path should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
+        path.to_str().unwrap().ends_with("network-nat0.sock"),
+        "Socket path should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(family, "nat0", "Family ID should be extracted from BIOMEOS_FAMILY_ID");
     songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
@@ -121,8 +121,8 @@ fn test_biomeos_neural_api_socket_path_priority() {
     songbird_process_env::remove_var("FAMILY_ID");
     let path = UnixSocketServer::socket_path_from_env();
     assert!(
-        path.to_str().unwrap().ends_with("songbird.sock"),
-        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
+        path.to_str().unwrap().ends_with("network.sock"),
+        "Socket should be domain.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
 
     // Test 7: Neural API standard deployment (full environment)
@@ -170,8 +170,8 @@ fn test_default_socket_directory_is_tmp() {
         "Default socket should be in XDG or /tmp, got: {path_str}"
     );
     assert!(
-        path_str.ends_with("songbird.sock"),
-        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD, got: {path_str}"
+        path_str.ends_with("network.sock"),
+        "Socket should be domain.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1, got: {path_str}"
     );
 }
 
@@ -208,38 +208,37 @@ fn test_family_id_priority_order() {
     songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
 
     // Test 2: SONGBIRD_FAMILY_ID priority for family ID extraction
-    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path
+    // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: Family ID IS in socket path (production mode)
     songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "custom");
     songbird_process_env::set_var("FAMILY_ID", "wrong");
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
-    // Socket path uses XDG or /tmp, not family ID
     assert!(
-        path.to_str().unwrap().ends_with("songbird.sock"),
-        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
+        path.to_str().unwrap().ends_with("network-custom.sock"),
+        "Socket should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
-    // Family ID is still correctly extracted (but not used in path)
     assert_eq!(family, "custom", "SONGBIRD_FAMILY_ID should be correctly extracted");
     songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
 
     // Test 3: BIOMEOS_FAMILY_ID (fallback when SONGBIRD_FAMILY_ID not set)
-    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path
+    // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: Family-scoped socket
     songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "generic");
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("songbird.sock"),
-        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
+        path.to_str().unwrap().ends_with("network-generic.sock"),
+        "Socket should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(family, "generic", "BIOMEOS_FAMILY_ID should be used as fallback");
     songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
 
-    // Test 4: Default (no env vars) - socket is {primal}.sock
+    // Test 4: Default (no env vars) - socket is domain.sock
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("songbird.sock"),
-        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
+        path.to_str().unwrap().ends_with("network.sock"),
+        "Socket should be domain.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(family, "default", "Should default when no env vars set");
 }

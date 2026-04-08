@@ -318,6 +318,8 @@ impl RendezvousClient for HttpRendezvousClient {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
 
     #[tokio::test]
@@ -378,5 +380,13 @@ mod tests {
     #[test]
     fn test_parse_url_invalid_scheme() {
         assert!(HttpRendezvousClient::parse_url("ftp://bad.scheme").is_err());
+    }
+
+    #[test]
+    fn test_parse_url_root_path_only() {
+        let (host, port, path) = HttpRendezvousClient::parse_url("http://relay.example/").unwrap();
+        assert_eq!(host, "relay.example");
+        assert_eq!(port, 80);
+        assert_eq!(path, "/");
     }
 }

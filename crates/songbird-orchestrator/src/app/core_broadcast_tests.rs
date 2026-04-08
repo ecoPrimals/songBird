@@ -18,9 +18,10 @@ fn lock_env() -> std::sync::MutexGuard<'static, ()> {
     broadcast_test_lock::guard()
 }
 
-/// Isolate from a developer shell that exports `SONGBIRD_DISCOVERY_PORT`.
+/// Isolate from a developer shell that exports discovery-related ports.
 fn clear_discovery_port_env() {
     songbird_process_env::remove_var("SONGBIRD_DISCOVERY_PORT");
+    songbird_process_env::remove_var("SONGBIRD_BROADCAST_DISCOVERY_PORT");
 }
 
 fn parse(s: &str) -> SocketAddr {
@@ -91,13 +92,13 @@ fn discover_broadcast_empty_config_uses_standard_fallback_list() {
 }
 
 #[test]
-fn discover_broadcast_subnet_fallbacks_use_discovery_port_env() {
+fn discover_broadcast_subnet_fallbacks_use_broadcast_discovery_port_env() {
     let _g = lock_env();
     clear_discovery_port_env();
     songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
-    songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "2400");
+    songbird_process_env::set_var("SONGBIRD_BROADCAST_DISCOVERY_PORT", "2400");
     let addrs = SongbirdOrchestrator::discover_broadcast_addresses(&[]);
-    songbird_process_env::remove_var("SONGBIRD_DISCOVERY_PORT");
+    songbird_process_env::remove_var("SONGBIRD_BROADCAST_DISCOVERY_PORT");
     assert!(addrs.iter().any(|a| *a == parse("192.168.1.255:2400")));
     assert!(addrs.iter().any(|a| *a == parse("192.168.0.255:2400")));
     assert!(addrs.iter().any(|a| *a == parse("10.0.0.255:2400")));

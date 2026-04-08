@@ -90,7 +90,7 @@ pub enum ModelType {
 /// **CAPABILITY-BASED AI ADAPTER**
 ///
 /// Works with ANY AI provider discovered through:
-/// - Environment variable: `SONGBIRD_AI_ENDPOINT`
+/// - Environment variable: `AI_ENDPOINT` (capability-first; see PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1)
 /// - Capability discovery: `capability:ai`
 /// - Zero-knowledge bootstrap
 ///
@@ -117,7 +117,7 @@ impl AIAdapter {
     /// Create adapter from discovered AI capability
     ///
     /// Uses capability-based discovery:
-    /// 1. Check `SONGBIRD_AI_ENDPOINT` environment variable
+    /// 1. Check `AI_ENDPOINT` environment variable (then `AI_PROVIDER_ENDPOINT`, then deprecated `SQUIRREL_ENDPOINT`)
     /// 2. Fall back to capability discovery
     /// 3. No hardcoded primal names anywhere
     ///
@@ -162,18 +162,18 @@ impl AIAdapter {
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
 
-                // Fallback 1: Legacy environment variables (capability-first, then deprecated primal)
-                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_AI_ENDPOINT") {
-                    debug!("⚠️ Using legacy environment variable for AI endpoint");
+                // Fallback 1: Environment variables (PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: AI_ENDPOINT first)
+                if let Ok(endpoint) = SafeEnv::get_required("AI_ENDPOINT") {
+                    debug!("Using AI_ENDPOINT for AI capability: {}", endpoint);
                     return Self::new(endpoint).await;
                 }
                 if let Ok(endpoint) = SafeEnv::get_required("AI_PROVIDER_ENDPOINT") {
-                    debug!("⚠️ Using legacy environment variable for AI endpoint");
+                    debug!("Using AI_PROVIDER_ENDPOINT for AI capability: {}", endpoint);
                     return Self::new(endpoint).await;
                 }
                 if let Ok(endpoint) = SafeEnv::get_required("SQUIRREL_ENDPOINT") {
                     warn!(
-                        "SQUIRREL_ENDPOINT is deprecated — migrate to SONGBIRD_AI_ENDPOINT or AI_PROVIDER_ENDPOINT"
+                        "SQUIRREL_ENDPOINT is deprecated — migrate to AI_ENDPOINT or AI_PROVIDER_ENDPOINT (capability-first per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1)"
                     );
                     return Self::new(endpoint).await;
                 }

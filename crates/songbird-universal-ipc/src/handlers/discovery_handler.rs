@@ -211,6 +211,7 @@ mod tests_support {
 mod tests {
     use super::tests_support::MockPeerRegistry;
     use super::*;
+    use crate::error::IpcError;
     use serde_json::json;
 
     #[tokio::test]
@@ -354,5 +355,46 @@ mod tests {
         let v = serde_json::to_value(&r).expect("json");
         assert_eq!(v["total_count"], 0);
         assert!(v["peers"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn handle_get_peer_malformed_params_errors() {
+        let handler = DiscoveryHandler::new();
+        let err =
+            handler.handle_get_peer(json!({ "peer_id": 12345 })).await.expect_err("type mismatch");
+        assert!(matches!(err, IpcError::InvalidParams(_)));
+    }
+
+    #[tokio::test]
+    async fn handle_get_peer_no_registry_returns_none_when_valid() {
+        let handler = DiscoveryHandler::new();
+        let r = handler.handle_get_peer(json!({ "peer_id": "any-id" })).await.expect("ok");
+        assert!(r.is_none());
+    }
+
+    #[tokio::test]
+    async fn handle_announce_null_family_defaults_unknown() {
+        let handler = DiscoveryHandler::new();
+        let v = handler
+            .handle_announce(json!({ "family_id": null, "capabilities": [] }))
+            .await
+            .expect("announce");
+        assert_eq!(v["family_id"], "unknown");
+        assert_eq!(v["announced"], true);
+    }
+
+    #[tokio::test]
+    async fn handle_announce_capabilities_skips_non_strings() {
+        let handler = DiscoveryHandler::new();
+        let v = handler
+            .handle_announce(json!({
+                "family_id": "fam",
+                "capabilities": ["a", 2, "b", null, "c"]
+            }))
+            .await
+            .expect("announce");
+        let caps = v["capabilities"].as_array().expect("caps array");
+        let strs: Vec<&str> = caps.iter().filter_map(|x| x.as_str()).collect();
+        assert_eq!(strs, vec!["a", "b", "c"]);
     }
 }

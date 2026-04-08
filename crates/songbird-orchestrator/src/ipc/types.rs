@@ -393,8 +393,7 @@ pub fn system_time_to_iso8601(time: SystemTime) -> String {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-    #![allow(clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -705,5 +704,75 @@ mod tests {
         let j2 = serde_json::to_string(&resp).unwrap();
         let back2: GetServiceHealthResponse = serde_json::from_str(&j2).unwrap();
         assert_eq!(back2.health.status, "healthy");
+    }
+
+    #[test]
+    fn create_genetic_tunnel_request_full_roundtrip() {
+        let r = CreateGeneticTunnelRequest {
+            peer_node_id: "n-beta".to_string(),
+            peer_endpoint: Some("udp://192.168.0.2:4433".to_string()),
+            genetic_proof: Some(GeneticProof {
+                family_id: "fam-x".to_string(),
+                parent_seed_hash: "seed".to_string(),
+                relationship: "parent".to_string(),
+            }),
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: CreateGeneticTunnelRequest = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.peer_node_id, r.peer_node_id);
+        assert_eq!(back.peer_endpoint, r.peer_endpoint);
+        assert_eq!(back.genetic_proof.as_ref().unwrap().family_id, "fam-x");
+    }
+
+    #[test]
+    fn discovered_node_serde_roundtrip_optional_and_sub_feds() {
+        let n = DiscoveredNode {
+            node_id: "nid".to_string(),
+            node_name: None,
+            genetic_families: vec!["g1".to_string()],
+            sub_federations: vec!["sf1".to_string()],
+            capabilities: vec!["cap".to_string()],
+            btsp_endpoint: Some("btsp://h".to_string()),
+            https_endpoint: "https://x".to_string(),
+            last_seen: "2026-02-01T00:00:00Z".to_string(),
+        };
+        let j = serde_json::to_string(&n).unwrap();
+        let back: DiscoveredNode = serde_json::from_str(&j).unwrap();
+        assert_eq!(back.node_id, n.node_id);
+        assert!(back.node_name.is_none());
+        assert_eq!(back.sub_federations, vec!["sf1"]);
+        assert_eq!(back.btsp_endpoint, n.btsp_endpoint);
+    }
+
+    #[test]
+    fn announce_capabilities_request_full_roundtrip() {
+        let r = AnnounceCapabilitiesRequest {
+            capabilities: vec!["a".to_string(), "b".to_string()],
+            sub_federations: vec!["sub".to_string()],
+            genetic_families: vec!["gf".to_string()],
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: AnnounceCapabilitiesRequest = serde_json::from_str(&j).unwrap();
+        assert_eq!(r.capabilities, back.capabilities);
+        assert_eq!(r.sub_federations, back.sub_federations);
+        assert_eq!(r.genetic_families, back.genetic_families);
+    }
+
+    #[test]
+    fn discovered_node_empty_sub_federations_omitted_in_json() {
+        let n = DiscoveredNode {
+            node_id: "n".to_string(),
+            node_name: Some("nm".to_string()),
+            genetic_families: vec![],
+            sub_federations: vec![],
+            capabilities: vec![],
+            btsp_endpoint: None,
+            https_endpoint: "https://h".to_string(),
+            last_seen: "t".to_string(),
+        };
+        let j = serde_json::to_string(&n).unwrap();
+        assert!(!j.contains("sub_federations"));
+        let back: DiscoveredNode = serde_json::from_str(&j).unwrap();
+        assert!(back.sub_federations.is_empty());
     }
 }

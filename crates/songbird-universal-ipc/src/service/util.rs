@@ -35,6 +35,8 @@ mod tests {
     // SPDX-License-Identifier: AGPL-3.0-or-later
     // Copyright (c) 2024-2026 ecoPrimals
 
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::super::IpcServiceHandler;
     use serde::Serialize;
     use serde::ser::Error;
@@ -52,6 +54,11 @@ mod tests {
     fn parse_tcp_port_bracketed_ipv6_happy() {
         assert_eq!(IpcServiceHandler::parse_tcp_port("[::1]:443"), Ok(443));
         assert_eq!(IpcServiceHandler::parse_tcp_port("[2001:db8::1]:22"), Ok(22));
+    }
+
+    #[test]
+    fn parse_tcp_port_takes_last_segment_after_colons() {
+        assert_eq!(IpcServiceHandler::parse_tcp_port("host:extra:9000"), Ok(9000));
     }
 
     #[test]
@@ -84,6 +91,7 @@ mod tests {
         assert_eq!(IpcServiceHandler::parse_local_tcp_endpoint("192.168.1.10:80"), None);
         assert_eq!(IpcServiceHandler::parse_local_tcp_endpoint("8.8.8.8:53"), None);
         assert_eq!(IpcServiceHandler::parse_local_tcp_endpoint("example.com:443"), None);
+        assert_eq!(IpcServiceHandler::parse_local_tcp_endpoint("[2001:db8::1]:443"), None);
     }
 
     #[test]

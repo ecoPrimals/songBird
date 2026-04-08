@@ -3,7 +3,8 @@
 **Version**: 2.0.0  
 **Date**: February 8, 2026  
 **Status**: ✅ **IPv6 + Onion ACTIVE** | 🔨 **Router Evolution Needed**  
-**Session**: IPv6 Dual-Stack Fix + Onion Activation + Full Protocol Design
+**Session**: IPv6 Dual-Stack Fix + Onion Activation + Full Protocol Design  
+**Note (Wave 130)**: Socket examples use `songbird.sock` (legacy). Production now uses domain-based `network.sock` per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1; `songbird.sock` is maintained as a backward-compatible symlink.
 
 ---
 

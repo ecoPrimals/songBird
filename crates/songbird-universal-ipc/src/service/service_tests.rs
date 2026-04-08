@@ -286,7 +286,7 @@ async fn health_liveness_returns_healthy_status_only() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry.clone());
     let v = handler.handle("health.liveness", json!({})).await.expect("liveness");
-    assert_eq!(v, json!({ "status": "healthy" }));
+    assert_eq!(v, json!({ "status": "alive" }));
 }
 
 #[tokio::test]

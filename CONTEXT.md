@@ -34,11 +34,11 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 12,945 passed (0 failed, 252 ignored env-dependent, full suite ~70s) |
+| Tests | 13,009 passed (0 failed, 252 ignored env-dependent, full suite ~70s) |
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >800 LOC | 0 (largest production 711L `task_lifecycle/manager.rs`; largest test 778L; `ai_tests` refactored into 8 modules) |
+| Files >800 LOC | 0 (largest production 797L `primal_discovery.rs`; largest test 778L; `ai_tests` refactored into 8 modules) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` deprecated behind `sled-storage` feature (NestGate `storage.*` capability is production path); `ring` only via optional `k8s` feature; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`) |
@@ -50,8 +50,8 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard `domain.verb` naming):
 
 - `health.liveness`, `health.readiness`, `health.check`
-- `capabilities.list` (Wire Standard L2 envelope: `{primal, version, methods}`), `capabilities.methods`
-- `identity.get` (Wire Standard L2: `{primal, version, domain, license}`), `identity`
+- `capabilities.list` (Wire Standard L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`), `capabilities.methods`
+- `identity.get` (Wire Standard L3: `{primal, version, domain, license}`), `identity`
 - `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`
 - `http.request`, `http.get`, `http.post`
 - `stun.*`, `igd.*`, `relay.*`, `mesh.*`, `punch.*`

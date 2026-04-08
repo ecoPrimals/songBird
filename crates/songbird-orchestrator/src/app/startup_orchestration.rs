@@ -115,6 +115,9 @@ impl<'a> StartupOrchestrator<'a> {
     ///
     /// Returns an error if the operation fails.
     pub async fn start(mut self) -> Result<()> {
+        crate::env_config::validate_btsp_insecure_guard()
+            .map_err(|msg| anyhow::anyhow!("{msg}"))?;
+
         info!("🚀 Starting Songbird Orchestrator");
         info!("   Mode: Production-ready with secure defaults");
         info!("   Auto-discovery: Secure anonymous capability exchange");

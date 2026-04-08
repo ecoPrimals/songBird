@@ -181,7 +181,7 @@ fn test_socket_path_biomeos_socket_dir() {
     let path = env_config::socket_path();
     songbird_process_env::remove_var("BIOMEOS_SOCKET_DIR");
     assert!(path.to_string_lossy().contains("test-biomeos-sockets"));
-    assert!(path.to_string_lossy().ends_with("songbird.sock"));
+    assert!(path.to_string_lossy().ends_with("network.sock"));
 }
 
 #[test]
@@ -196,7 +196,7 @@ fn test_socket_path_xdg_runtime_dir() {
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let path_str = path.to_string_lossy();
     // Either uses XDG path or falls back to /tmp (depends on dir creation)
-    assert!(path_str.ends_with("songbird.sock"));
+    assert!(path_str.ends_with("network.sock"));
 }
 
 #[test]
@@ -213,19 +213,8 @@ fn test_socket_path_default_ends_with_sock() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn test_socket_name_single_family_default() {
+fn test_socket_name_domain_default() {
     let _g = lock_env();
-    songbird_process_env::remove_var("SONGBIRD_MULTI_FAMILY");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_SOCKET");
-    assert_eq!(env_config::socket_name(), "songbird.sock");
-}
-
-#[test]
-fn test_socket_name_multi_family_via_multi_family_flag() {
-    let _g = lock_env();
-    songbird_process_env::set_var("SONGBIRD_MULTI_FAMILY", "true");
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_SOCKET");
-    // Clear family env vars to get default "default"
     for var in &[
         "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
         "SONGBIRD_ORCHESTRATOR_FAMILY",
@@ -235,52 +224,36 @@ fn test_socket_name_multi_family_via_multi_family_flag() {
     ] {
         songbird_process_env::remove_var(var);
     }
-    let name = env_config::socket_name();
-    songbird_process_env::remove_var("SONGBIRD_MULTI_FAMILY");
-    assert_eq!(name, "songbird-default.sock");
+    assert_eq!(env_config::socket_name(), "network.sock");
 }
 
 #[test]
-fn test_socket_name_multi_family_via_family_socket_flag() {
+fn test_socket_name_domain_with_family_id() {
     let _g = lock_env();
-    songbird_process_env::remove_var("SONGBIRD_MULTI_FAMILY");
-    songbird_process_env::set_var("SONGBIRD_FAMILY_SOCKET", "1");
-    for var in &[
-        "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
-        "SONGBIRD_ORCHESTRATOR_FAMILY",
-        "BIOMEOS_FAMILY_ID",
-        "SONGBIRD_FAMILY_ID",
-        "FAMILY_ID",
-    ] {
-        songbird_process_env::remove_var(var);
-    }
-    let name = env_config::socket_name();
-    songbird_process_env::remove_var("SONGBIRD_FAMILY_SOCKET");
-    assert_eq!(name, "songbird-default.sock");
-}
-
-#[test]
-fn test_socket_name_multi_family_with_custom_family() {
-    let _g = lock_env();
-    songbird_process_env::set_var("SONGBIRD_MULTI_FAMILY", "true");
     songbird_process_env::set_var("FAMILY_ID", "alpha-bravo");
     songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
     songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
     let name = env_config::socket_name();
-    songbird_process_env::remove_var("SONGBIRD_MULTI_FAMILY");
     songbird_process_env::remove_var("FAMILY_ID");
-    assert_eq!(name, "songbird-alpha-bravo.sock");
+    assert_eq!(name, "network-alpha-bravo.sock");
 }
 
 #[test]
-fn test_socket_name_multi_family_disabled() {
+fn test_socket_name_no_family_returns_domain() {
     let _g = lock_env();
-    songbird_process_env::set_var("SONGBIRD_MULTI_FAMILY", "false");
+    for var in &[
+        "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
+        "SONGBIRD_ORCHESTRATOR_FAMILY",
+        "BIOMEOS_FAMILY_ID",
+        "SONGBIRD_FAMILY_ID",
+        "FAMILY_ID",
+    ] {
+        songbird_process_env::remove_var(var);
+    }
     let name = env_config::socket_name();
-    songbird_process_env::remove_var("SONGBIRD_MULTI_FAMILY");
-    assert_eq!(name, "songbird.sock");
+    assert_eq!(name, "network.sock");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

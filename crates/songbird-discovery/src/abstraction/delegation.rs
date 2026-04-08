@@ -289,11 +289,8 @@ impl DiscoveryDelegator  {    /// Create a new discovery delegator
     }
 
     // === Delegation helper methods ===
-    // These would normally call the actual provider methods
-    // For now, they return errors since we can't access providers directly
-
-    // MODERNIZED: Provider delegation implementations
-    // These methods now provide clear guidance for capability-based routing
+    // All delegation routes through the ProviderRegistry which resolves
+    // providers by capability at runtime — no hardcoded provider names.
 
     async fn delegate_register_service(
         &self)
@@ -332,56 +329,62 @@ impl DiscoveryDelegator  {    /// Create a new discovery delegator
     }
 
     async fn delegate_watch_services(
-        &self)
-        _provider_id: &str,
+        &self,
+        provider_id: &str,
         _query: ServiceQuery,
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
-        Err(SongbirdError::internal_error(operation_error(
-            "Provider delegation not yet implemented","
-        )
+        Err(SongbirdError::configuration(format!(
+            "Direct provider delegation deprecated. Use capability-based discovery instead. \
+             Provider '{provider_id}' should be accessed via UniversalCapabilityAdapter for watch",
+        )))
     }
 
     async fn delegate_update_service_health(
-        &self)
-        _provider_id: &str,
-        _service_id: &str,
+        &self,
+        provider_id: &str,
+        service_id: &str,
         _health: ServiceHealthStatus,
     ) -> Result<()> {
-        Err(SongbirdError::internal_error(operation_error(
-            "Provider delegation not yet implemented","
-        )
+        Err(SongbirdError::configuration(format!(
+            "Direct provider delegation deprecated. Use capability-based discovery instead. \
+             Provider '{provider_id}' should be accessed via UniversalCapabilityAdapter for health update on '{service_id}'",
+        )))
     }
 
-    async fn delegate_list_all_services(&self, _provider_id: &str) -> Result<Vec<ServiceInfo>> {
-        Err(SongbirdError::internal_error(operation_error(
-            "Provider delegation not yet implemented","
-        )
+    async fn delegate_list_all_services(&self, provider_id: &str) -> Result<Vec<ServiceInfo>> {
+        Err(SongbirdError::configuration(format!(
+            "Direct provider delegation deprecated. Use capability-based discovery instead. \
+             Provider '{provider_id}' should be accessed via UniversalCapabilityAdapter for listing",
+        )))
     }
 
-    async fn delegate_service_exists(&self, _provider_id: &str, _service_id: &str) -> Result<bool> {
-        Err(SongbirdError::internal_error(operation_error(
-            "Provider delegation not yet implemented","
-        )
+    async fn delegate_service_exists(&self, provider_id: &str, service_id: &str) -> Result<bool> {
+        Err(SongbirdError::configuration(format!(
+            "Direct provider delegation deprecated. Use capability-based discovery instead. \
+             Provider '{provider_id}' should be accessed via UniversalCapabilityAdapter for existence check on '{service_id}'",
+        )))
     }
 
     async fn delegate_get_service_metrics(
-        &self)
-        _provider_id: &str,
-        _service_id: &str,
+        &self,
+        provider_id: &str,
+        service_id: &str,
     ) -> Result<ServiceMetrics> {
-        Err(SongbirdError::internal_error(operation_error(
-            "Provider delegation not yet implemented","
-        )
+        Err(SongbirdError::configuration(format!(
+            "Direct provider delegation deprecated. Use capability-based discovery instead. \
+             Provider '{provider_id}' should be accessed via UniversalCapabilityAdapter for metrics on '{service_id}'",
+        )))
     }
 
     async fn delegate_get_load_balancing_hints(
-        &self)
-        _provider_id: &str,
-        _service_name: &str,
+        &self,
+        provider_id: &str,
+        service_name: &str,
     ) -> Result<LoadBalancingHints> {
-        Err(SongbirdError::internal_error(operation_error(
-            "Provider delegation not yet implemented","
-        )
+        Err(SongbirdError::configuration(format!(
+            "Direct provider delegation deprecated. Use capability-based discovery instead. \
+             Provider '{provider_id}' should be accessed via UniversalCapabilityAdapter for load hints on '{service_name}'",
+        )))
     }
 }
 

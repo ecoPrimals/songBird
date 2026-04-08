@@ -169,17 +169,13 @@ impl EnhancedCapabilityRouter {
         task: &Task,
     ) -> SongbirdResult<RoutingDecision> {
         let capability_type = Self::determine_capability_type(task);
-        let capability_name = Self::capability_type_to_name(&capability_type);
+        let capability_name = capability_type.as_str();
 
-        debug!(
-            "Task requires capability: {} ({})",
-            capability_name,
-            format!("{:?}", capability_type)
-        );
+        debug!("Task requires capability: {} ({:?})", capability_name, capability_type);
 
         // PRIORITY 1: Query Universal Port Authority
         info!("🔍 [1/3] Querying Universal Port Authority for '{}'...", capability_name);
-        match self.query_service_registry(&capability_name).await {
+        match self.query_service_registry(capability_name).await {
             Ok(Some(decision)) => {
                 info!("✅ Found registered service via UPA");
                 return Ok(decision);
@@ -195,7 +191,7 @@ impl EnhancedCapabilityRouter {
         // PRIORITY 2: Legacy capability registry
         info!("🔍 [2/3] Querying legacy capability registry...");
         if let Some(registry) = &self.capability_registry {
-            match registry.find_providers_with_capability(&capability_name).await {
+            match registry.find_providers_with_capability(capability_name).await {
                 Ok(providers) if !providers.is_empty() => {
                     let provider = &providers[0];
                     let endpoint = format!(
@@ -207,7 +203,7 @@ impl EnhancedCapabilityRouter {
                     return Ok(RoutingDecision::RouteToExternalProvider {
                         provider_id: provider.registration.provider_id.clone(),
                         execution_endpoint: endpoint,
-                        capability_name,
+                        capability_name: capability_name.to_string(),
                     });
                 }
                 _ => debug!("No legacy providers found"),
@@ -317,16 +313,9 @@ impl EnhancedCapabilityRouter {
     async fn route_to_peer_songbird(&self) -> SongbirdResult<RoutingDecision> {
         let state = self.federation_state.nodes.read().await;
 
-        // Filter to active nodes only
-        let active_nodes: Vec<_> =
-            state.values().filter(|n| n.status == NodeStatus::Active).cloned().collect();
-
-        // Find a healthy peer
-        for node in active_nodes {
-            // Get preferred endpoint
+        for node in state.values().filter(|n| n.status == NodeStatus::Active) {
             if let Some(endpoint) = node.preferred_endpoint() {
                 info!("Routing to peer Songbird: {} at {}", node.node_name, endpoint.address);
-                // Clone to avoid borrow checker issues
                 let node_id = node.node_id.clone();
                 let endpoint_url = format!("https://{}", endpoint.address);
                 return Ok(RoutingDecision::RouteToSongbird {
@@ -361,20 +350,6 @@ impl EnhancedCapabilityRouter {
             "intent_parsing" | "ai_routing" => CapabilityType::Ai,
             "data_storage" | "replication" => CapabilityType::Storage,
             _ => CapabilityType::Compute, // Default
-        }
-    }
-
-    /// Convert capability type to string name
-    fn capability_type_to_name(capability_type: &CapabilityType) -> String {
-        match capability_type {
-            CapabilityType::Compute => "compute".to_string(),
-            CapabilityType::Security => "security".to_string(),
-            CapabilityType::Ai => "ai".to_string(),
-            CapabilityType::Storage => "storage".to_string(),
-            CapabilityType::Orchestration => "orchestration".to_string(),
-            CapabilityType::Observability => "observability".to_string(),
-            CapabilityType::Networking => "networking".to_string(),
-            CapabilityType::Custom(name) => name.clone(),
         }
     }
 
@@ -479,15 +454,9 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_type_to_name() {
-        assert_eq!(
-            EnhancedCapabilityRouter::capability_type_to_name(&CapabilityType::Compute),
-            "compute"
-        );
-        assert_eq!(
-            EnhancedCapabilityRouter::capability_type_to_name(&CapabilityType::Security),
-            "security"
-        );
+    fn test_capability_type_as_str_matches_router_expectations() {
+        assert_eq!(CapabilityType::Compute.as_str(), "compute");
+        assert_eq!(CapabilityType::Security.as_str(), "security");
     }
 
     #[test]

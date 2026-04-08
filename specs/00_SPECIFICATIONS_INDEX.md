@@ -1,6 +1,6 @@
 # Songbird Specifications Index
 
-**Last Updated:** April 5, 2026
+**Last Updated:** April 8, 2026
 **Version:** v0.2.1
 
 ---

@@ -25,18 +25,22 @@ use std::time::Duration;
 // ============================================================================
 
 /// Default HTTP port for Songbird services
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_HTTP_PORT: u16 = 8080;
 
 /// Default HTTPS port for Songbird services
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_HTTPS_PORT: u16 = 8443;
 
 /// Default port for Songbird services (alias for HTTP)
+#[allow(deprecated)]
 pub const DEFAULT_PORT: u16 = DEFAULT_HTTP_PORT;
 
 /// Default discovery service port
 pub const DEFAULT_DISCOVERY_PORT: u16 = 8081;
 
 /// Default federation service port
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_FEDERATION_PORT: u16 = 8082;
 
 /// Default health check port
@@ -46,6 +50,7 @@ pub const DEFAULT_HEALTH_PORT: u16 = 8002;
 pub const DEFAULT_DASHBOARD_PORT: u16 = 8003;
 
 /// Default metrics port
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_METRICS_PORT: u16 = 8004;
 
 /// Default orchestrator API port (self-referencing for internal metrics)
