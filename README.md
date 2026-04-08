@@ -39,7 +39,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | Dependencies | `sled` deprecated (`sled-storage` feature, non-default — NestGate `storage.*` capability is production path); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~427,000 lines across 30 crates (1,578 files) |
+| Total Rust | ~430,000 lines across 30 crates (1,587 files) |
 
 ## Architecture
 
@@ -170,6 +170,7 @@ cargo test --workspace --all-features          # Full suite (12,945 tests, ~70s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
 ./scripts/test-with-security-provider.sh        # With live security provider from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report
+./scripts/health-monitor.sh                    # Security provider health polling
 ```
 
 ## Documentation

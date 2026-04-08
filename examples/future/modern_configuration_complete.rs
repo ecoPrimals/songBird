@@ -25,8 +25,8 @@ fn stage1_hardcoded() {
     // Everything hardcoded - BAD!
     let _orchestrator_addr = "127.0.0.1:8080";
     let _discovery_addr = "127.0.0.1:8081";
-    let _beardog_addr = "127.0.0.1:3000"; // Hardcoded primal!
-    let _toadstool_addr = "127.0.0.1:5000"; // Hardcoded primal!
+    let _security_provider_addr = "127.0.0.1:3000"; // Hardcoded primal!
+    let _compute_provider_addr = "127.0.0.1:5000"; // Hardcoded primal!
 
     println!("Problems:");
     println!("  ❌ Hardcoded IP addresses");

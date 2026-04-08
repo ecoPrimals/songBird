@@ -18,8 +18,8 @@ use songbird_config::defaults::hosts_evolved::{Environment, SelfAwareConfig, Ser
 fn old_pattern_hardcoded() {
     // ❌ OLD PATTERN: Hardcoded addresses
     let _orchestrator_host = "127.0.0.1:8080";
-    let _beardog_host = "127.0.0.1:3000";
-    let _toadstool_host = "127.0.0.1:5000";
+    let _security_provider_host = "127.0.0.1:3000";
+    let _compute_provider_host = "127.0.0.1:5000";
 
     println!("❌ Old Pattern: Hardcoded addresses - not maintainable!");
 }

@@ -144,5 +144,5 @@ The results challenge fundamental assumptions about system architecture while pr
 - [Live Experiment Results](./LIVE_EXPERIMENT_RESULTS_VALIDATED.md)
 
 **📧 Contact:** songbird-research@example.com  
-**🔬 Methodology:** [Sovereign Science](../../methodology/SOVEREIGN_SCIENCE_METHODOLOGY.md)  
+**🔬 Methodology:** [Sovereign Science](../methodology/SOVEREIGN_SCIENCE_METHODOLOGY.md)  
 **🌐 Repository:** [To be published upon peer review] 

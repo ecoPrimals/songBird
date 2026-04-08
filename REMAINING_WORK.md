@@ -37,7 +37,7 @@
 | **`async-trait`** | 109 `#[async_trait]` across 54 files — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`); no further mechanical migration possible without architectural changes; `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
-| **Total Rust** | ~427,000 lines across 30 crates (1,578 files) |
+| **Total Rust** | ~430,000 lines across 30 crates (1,587 files) |
 
 ---
 
@@ -117,7 +117,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 - [ ] `ring` elimination: `rcgen` replaced with pure-Rust cert gen; `ring` remains only via optional `k8s` feature (`kube` → `rustls` → `ring`)
 - [ ] Remaining transitive duplicates (syn, hashbrown, getrandom, parking_lot, socket2) require upstream changes
-- [x] `async-trait` partial migration (Wave 116): `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` migrated to native `async fn in trait`; `async-trait` dep removed from `songbird-bluetooth`; ~90% of remaining usages require `dyn Trait` (must keep)
+- [x] `async-trait` partial migration (Wave 116): `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` migrated to native `async fn in trait`; `async-trait` dep removed from `songbird-bluetooth`; 100% of remaining 109 usages require `dyn Trait` dispatch (verified Wave 129)
 - [x] Dead `sled` dependency removed from `songbird-tor-protocol` (Wave 116)
 - [x] `ed25519-dalek` in `songbird-quic` feature-gated behind `local-certs` (Wave 116)
 
