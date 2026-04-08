@@ -66,8 +66,8 @@ regex = "1.10"
 tracing-subscriber = { workspace = true }
 # TLS provider: rustls-rustcrypto (pure Rust, zero C) by default.
 # The `ring-crypto` feature below enables `rustls/ring` for environments without
-# BearDog (standalone testing only). Production MUST use BearDog via Tower Atomic.
-# SB-02: songbird-quic is ring-free (BearDogQuicCrypto); only this CLI crate
+# Without security provider socket (standalone testing only). Production MUST use security provider via Tower Atomic.
+# SB-02: songbird-quic is ring-free (security provider QUIC crypto); only this CLI crate
 # retains the opt-in gate for offline bootstrap scenarios.
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 rustls-rustcrypto = "0.0.2-alpha"
@@ -76,8 +76,8 @@ anyhow = { workspace = true }
 [features]
 default = []
 # ⚠️  OPT-IN ONLY — pulls `ring` (C/ASM via `cc`, violates ecoBin).
-# Use for standalone testing without BearDog crypto delegation.
-# Production builds MUST NOT enable this; BearDog handles all crypto via IPC.
+# Use for standalone testing without security provider crypto delegation.
+# Production builds MUST NOT enable this; security provider handles all crypto via IPC.
 ring-crypto = ["rustls/ring"]
 
 [dev-dependencies]

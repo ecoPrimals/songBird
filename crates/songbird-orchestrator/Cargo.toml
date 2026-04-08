@@ -154,7 +154,7 @@ bytes = { workspace = true }
 # Access control and authentication
 
 # ⚠️ TRUE PRIMAL EXCEPTION (Feb 6, 2026): Minimal JWT Auth Crypto
-# Songbird delegates 100% crypto to BearDog EXCEPT for local JWT auth (HMAC-SHA256)
+# Songbird delegates 100% crypto to the security provider EXCEPT for local JWT auth (HMAC-SHA256)
 hmac = "0.12"
 
 

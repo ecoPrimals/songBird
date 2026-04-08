@@ -525,10 +525,6 @@ async fn test_connection_manager_btsp_integration() -> Result<()> {
     // This would test the full integration with ConnectionManager
     // but requires more setup. This is a placeholder for the pattern.
 
-    // use songbird_orchestrator::app::ConnectionManager;
-    // let conn_mgr = ConnectionManager::new();
-    // ... test BTSP via ConnectionManager ...
-
     cleanup_test_env();
     Ok(())
 }

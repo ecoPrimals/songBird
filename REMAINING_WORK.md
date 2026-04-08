@@ -17,15 +17,15 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`) |
 | **Format** | Clean (`cargo fmt --check` passes; Apr 7 audit: no drift) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | 0 (production max 519L `tower_atomic/tests/mod.rs`; `tower_atomic.rs` refactored Wave 119 from 990→4 files) |
+| **Files >800 lines** | 0 (production max 518L `tower_atomic/tests/mod.rs`; `tower_atomic/` refactored Wave 119 from 990→5 modules) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |
 | **Production `panic!()`** | 0 |
-| **Production `unreachable!()`** | 0 |
+| **Production `unreachable!()`** | 2 (provably unreachable QUIC VarInt 2-bit prefix arms, documented) |
 | **TODO/FIXME/HACK comments** | 0 in Rust source |
-| **Commented-out code** | 0 (eliminated Wave 112) |
-| **`#[allow(` vs `#[expect(`** | ~352 `#[expect(reason)]` in production code; `#[allow(reason)]` in `#[cfg(test)]` modules and where cfg/test interaction causes unfulfilled-expectation errors; **Apr 7**: production `dead_code` allows eliminated (prefer fixes over suppression) |
+| **Commented-out code** | 0 in production library code (Wave 124 scrub); doc-style examples in comments kept intentionally |
+| **`#[allow(` vs `#[expect(`** | `#[expect(reason)]` in production code; `#[allow(reason)]` in `#[cfg(test)]` modules and where cfg/test interaction causes unfulfilled-expectation errors; production `dead_code` allows eliminated (Apr 8 Wave 124) |
 | **Mocks in production** | 0 (all inside `#[cfg(test)]`) |
 | **Capability discovery** | `find_primals_with_capability` — identity-agnostic, env-driven |
 | **Hardcoded elimination** | All ports env-driven (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`); all socket paths XDG-compliant; all IP probes use netdev + RFC 5737 fallback; capability-first across 11+ crates; all legacy primal env vars deprecated with `tracing::warn!`; all deprecated function/type/module names removed |

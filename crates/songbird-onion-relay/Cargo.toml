@@ -14,18 +14,18 @@ categories = ["network-programming", "cryptography"]
 # =====================================
 # - Binary size: ~5MB → ~200KB (25x smaller)
 # - Startup time: 10-30s → instant (no Tor bootstrap)
-# - Crypto: Delegated to BearDog (TRUE PRIMAL pattern)
+# - Crypto: Delegated to security provider (TRUE PRIMAL pattern)
 # - Dependencies: Pure Rust, no external network requirements
 #
-# See: biomeOS/docs/handoffs/BEARDOG_ONION_CRYPTO_HANDOFF_FEB06_2026.md
 # See: biomeOS/docs/handoffs/SOVEREIGN_BEACON_MESH_HANDOFF_FEB06_2026.md
+#      (companion: security-provider onion crypto handoff, same date, same directory)
 
 [features]
 default = []
-# Sovereign Onion Service (Pure Rust, BearDog crypto delegation)
+# Sovereign Onion Service (Pure Rust, security provider crypto delegation)
 # Enable with `--features onion` for .onion address support
 # `standalone` enables `OnionStorage::load_or_generate_identity` for sync transport init
-# (production paths use `load_or_generate_identity_via_beardog` async API).
+# (production paths use `load_or_generate_identity_via_security_provider` async API).
 onion = ["songbird-sovereign-onion", "songbird-sovereign-onion/standalone"]
 
 [dependencies]
@@ -46,7 +46,7 @@ anyhow = { workspace = true }
 # UUID
 uuid = { workspace = true }
 
-# Sovereign Onion Service (optional - Pure Rust, delegates crypto to BearDog)
+# Sovereign Onion Service (optional - Pure Rust, delegates crypto to security provider)
 # Unlike Arti, this is lightweight (~200KB) and starts instantly
 songbird-sovereign-onion = { path = "../songbird-sovereign-onion", optional = true }
 

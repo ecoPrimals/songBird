@@ -3,7 +3,7 @@ name = "songbird-http-client"
 version.workspace = true
 edition.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-description = "Pure Rust HTTP/HTTPS client using BearDog crypto delegation (Tower Atomic)"
+description = "Pure Rust HTTP/HTTPS client using security provider crypto delegation (Tower Atomic)"
 license.workspace = true
 repository = "https://github.com/ecoPrimals/SongBird"
 homepage = "https://songbird-gaming.ecoprimals.dev"
@@ -43,7 +43,7 @@ hex = "0.4"
 getrandom = { workspace = true }  # OS-provided CSPRNG
 fastrand = { workspace = true }    # Fast fallback RNG
 
-# Crypto delegation (BearDog IPC)
+# Crypto delegation (security provider IPC)
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 [lints]

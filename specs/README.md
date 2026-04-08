@@ -37,10 +37,10 @@ songbird-remote-deploy  songbird-genesis          (root: songbird)
 - [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — Native JSON-RPC + tarpc protocol
 
 ### Archived (fossil record — legacy primal integration specs)
-- [Security provider integration (archived spec)](./archive/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
-- [Entropy hierarchy (archived spec)](./archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
-- [AI provider integration (archived spec)](./archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
-- [Storage discovery (archived spec)](./archive/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved
+- [Security provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
+- [Entropy hierarchy (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
+- [AI provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
+- [Storage discovery (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved
 
 ### Protocol
 - [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Sovereign multipath protocol
@@ -50,7 +50,7 @@ songbird-remote-deploy  songbird-genesis          (root: songbird)
 
 ## Archived Specifications
 
-Specs in [archive/](./archive/) reference the historical September 2025 crate layout
+Specs in the [consolidated fossil record](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/) reference the historical September 2025 crate layout
 (`songbird-core`, `songbird-network`, `songbird-errors`, `songbird-security`). They are
 retained as fossil record but should not be used for current integration.
 

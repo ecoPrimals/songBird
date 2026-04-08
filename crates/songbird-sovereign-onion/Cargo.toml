@@ -7,7 +7,7 @@ repository = "https://github.com/ecoPrimals/SongBird"
 readme = "README.md"
 description = "Pure Rust minimal onion service protocol for sovereign device-to-device communication"
 keywords = ["onion", "tor", "p2p", "pure-rust", "sovereignty"]
-categories = ["network-programming", "distributed-systems"]  # Removed "cryptography" - delegates to BearDog!
+categories = ["network-programming", "distributed-systems"]  # Removed "cryptography" - delegates to security provider
 
 [dependencies]
 # Async runtime (Pure Rust)
@@ -15,7 +15,7 @@ tokio = { workspace = true, features = ["full"] }
 
 # Cryptography (100% Pure Rust - RustCrypto)
 # ⚠️ TRUE PRIMAL FIX (Feb 6, 2026): Crypto dependencies now OPTIONAL
-# Production: Delegates to BearDog (ZERO crypto in Songbird!)
+# Production: Delegates to security provider (ZERO crypto in Songbird!)
 # Testing: Uses standalone feature for offline development
 ed25519-dalek = { version = "2.1", optional = true }        # Identity keys (testing only)
 x25519-dalek = { version = "2.0", optional = true }         # Key exchange (testing only)
@@ -56,7 +56,7 @@ tokio-test = "0.4"
 
 
 [features]
-# Production builds: ZERO crypto (delegates to BearDog)
+# Production builds: ZERO crypto (delegates to security provider)
 # Test builds: Use --features standalone for offline testing
 default = []  # Storage: NestGate capability discovery at runtime; sled deprecated
 sled-storage = ["dep:sled"]  # DEPRECATED — use NestGate storage.* capability instead

@@ -15,23 +15,23 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Pure Rust | 100% — native QUIC engine with security provider crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` opt-in feature gate remains on CLI only |
 | Crypto Delegation | Security provider via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
 | Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing; netdev-based IP detection; all ports env-configurable (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`); XDG-compliant socket paths |
-| Production panics | Zero (`panic!()`, `unreachable!()`, `todo!()` only in `#[cfg(test)]`) |
+| Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero (all in test modules — verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` only in `#[cfg(test)]` modules; production `dead_code` allows eliminated; commented-out code scrubbed (Apr 8 audit) |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
 | Tests | 12,860 passed, 0 failed, 252 ignored |
-| Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 7 2026; target 90%) |
+| Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 8 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings) |
-| Formatting | Clean (`cargo fmt --check`; Apr 7 audit: no drift) |
+| Formatting | Clean (`cargo fmt --check`; Apr 8 audit: no drift) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | 0 (largest file 519 lines; `tower_atomic.rs` refactored into 4 modules) |
-| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (Apr 7: `AGPL-3.0-only` drift eliminated) |
-| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body (Apr 7 audit) |
+| Files >800 lines | 0 (largest file 518 lines; `tower_atomic/` refactored into 5 modules) |
+| License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
+| SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
 | Nest Atomic | `health.liveness` + `health.readiness` + `health.check` + `capabilities.list` (14 capability tokens) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
@@ -166,7 +166,7 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ## Testing
 
 ```bash
-cargo test --workspace --all-features          # Full suite (12,811 tests, ~70s)
+cargo test --workspace --all-features          # Full suite (12,860 tests, ~70s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
 ./scripts/test-with-security-provider.sh        # With live security provider from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report

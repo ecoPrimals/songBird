@@ -35,15 +35,15 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 |--------|-------|
 | Crates | 30 workspace members |
 | Tests | 12,860 passed (0 failed, 252 ignored env-dependent, full suite ~70s) |
-| Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 6 2026; target 90%) |
+| Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >800 LOC | 0 (largest file 519 lines; `tower_atomic.rs` refactored 990→4 files) |
+| Files >800 LOC | 0 (largest file 518 lines; `tower_atomic/` refactored 990→5 modules) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` deprecated behind `sled-storage` feature (NestGate `storage.*` capability is production path); `ring` only via optional `k8s` feature; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`) |
-| Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery (Apr 6) |
-| Production panics/unwrap/todo | 0 |
+| Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
+| Production panics/unwrap/todo | 0 (`panic!`, `unwrap`, `todo!`); 2 provably-unreachable QUIC VarInt arms documented |
 
 ## IPC Surface
 

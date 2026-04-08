@@ -78,9 +78,9 @@
 
 ## Archived (fossil record)
 
-Specs in [archive/](./archive/) retain historical primal codenames and filenames. Fossil record only.
+Specs in the [consolidated fossil record](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/) retain historical primal codenames and filenames. Fossil record only.
 
-- [Security provider integration (archived spec)](./archive/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
-- [Entropy hierarchy (archived spec)](./archive/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
-- [AI provider integration (archived spec)](./archive/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
-- [Storage discovery (archived spec)](./archive/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved
+- [Security provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
+- [Entropy hierarchy (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
+- [AI provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
+- [Storage discovery (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved

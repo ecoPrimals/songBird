@@ -319,7 +319,7 @@ for provider in providers {
 
 **Specifications**:
 - `specs/PRIMAL_RESPONSIBILITY_SEPARATION_SPEC.md` - Primal roles
-- Archived integration spec: `specs/archive/SONGBIRD_BEARDOG_INTEGRATION.md` (historical path; dev knowledge)
+- Archived integration spec: [fossil record copy](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_BEARDOG_INTEGRATION.md) (historical; dev knowledge)
 - `specs/BIRDSONG_PROTOCOL.md` - BirdSong protocol
 
 **Implementation**:

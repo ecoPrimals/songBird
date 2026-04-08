@@ -6,7 +6,7 @@ license.workspace = true
 repository = "https://github.com/ecoPrimals/songbird"
 readme = "README.md"
 keywords = ["lineage", "relay", "genetic", "p2p", "connectivity"]
-categories = ["network-programming", "distributed-systems"]  # Removed "cryptography" - delegates to BearDog!
+categories = ["network-programming", "distributed-systems"]  # Removed "cryptography" - delegates to security provider
 description = "Genetic lineage-based relay system - evolution beyond NAT/STUN/TURN"
 authors = ["ecoPrimals Team"]
 

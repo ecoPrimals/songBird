@@ -13,7 +13,7 @@
 
 [Unit]
 Description=Songbird Network Orchestrator (ecoPrimals)
-Documentation=https://github.com/ecoPrimals/songbird
+Documentation=https://github.com/ecoPrimals/SongBird
 After=network-online.target
 Wants=network-online.target
 # Optional: Wait for Security Provider if available

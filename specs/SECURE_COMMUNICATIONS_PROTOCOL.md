@@ -562,7 +562,7 @@ allow_self_signed_dev = true # only if dev mode
 
 - **SONGBIRD_TLS_13_COMPLETE.md** - Current TLS 1.3 implementation
 - **TARPC_JSON_RPC_PROTOCOL_SPEC.md** - RPC protocol
-- **Archived security provider integration spec** (`specs/archive/SONGBIRD_BEARDOG_INTEGRATION.md`) — Security Provider integration
+- **Archived security provider integration spec** ([fossil record copy](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_BEARDOG_INTEGRATION.md)) — Security Provider integration
 - **SONGBIRD_ACCESS_CONTROL.md** - Access control framework
 
 ---

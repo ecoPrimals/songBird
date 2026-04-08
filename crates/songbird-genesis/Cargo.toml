@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 repository = "https://github.com/eastgate/songbird"
 readme = "README.md"
-keywords = ["genesis", "bootstrap", "security", "usb"]  # Removed "cryptography" - delegates to BearDog!
-categories = ["hardware-support", "authentication"]  # Removed "cryptography" - delegates to BearDog!
+keywords = ["genesis", "bootstrap", "security", "usb"]  # Removed "cryptography" - delegates to security provider
+categories = ["hardware-support", "authentication"]  # Removed "cryptography" - delegates to security provider
 description = "Physical genesis bootstrap for Songbird nodes with multi-primal witness coordination"
 authors = ["ecoPrimals Team"]
 

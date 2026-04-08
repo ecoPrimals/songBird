@@ -9,8 +9,8 @@
 
 ### Error Handling
 
-**Production code** uses `Result<T, E>` with `?`. No `unwrap()`, `expect()`, or
-`panic!()` outside `#[cfg(test)]`.
+**Production code** uses `Result<T, E>` with `?`. No `unwrap()` or `panic!()` outside
+`#[cfg(test)]`. `expect()` only on provably infallible parses, documented with `#[expect(clippy::expect_used, reason = "...")]`.
 
 ```rust
 pub fn load_config() -> SongbirdResult<Config> {
@@ -91,7 +91,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: **72.29%** (llvm-cov measured, Apr 7 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: **72.29%** (llvm-cov measured, Apr 8 2026). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html
@@ -150,7 +150,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 - [ ] No `unwrap()` in production paths
 - [ ] `#[expect(reason)]` for any lint suppressions
 - [ ] Doc comments on public APIs with `# Errors` sections
-- [ ] Files under 1000 lines
+- [ ] Files under 800 lines
 - [ ] Coverage maintained or improved
 
 ---

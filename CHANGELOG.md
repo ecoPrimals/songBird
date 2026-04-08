@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave124] - 2026-04-08 - Deep Debt Evolution: Lint Hygiene, Dead Code Scrub, Test Isolation, Coverage Expansion
+
+### Changed — Lint & Dead Code Hygiene
+- 15+ production `#[allow(` → `#[expect(reason)]` across 12 files
+- Commented-out code scrub (14 locations across 10 files)
+- `// FIX:` comments resolved (6 locations)
+- Production `unreachable!()` evolved (QUIC LongPacketType → lookup table, Tor create_extend2 → Err)
+
+### Changed — Documentation
+- Legacy doc comments evolved to capability-based naming (12 files)
+
+### Changed — Test Infrastructure
+- `test_sync_env.rs` gated `#[cfg(test)]`; `/tmp/beardog.sock` test paths → `songbird-test-security.sock`
+
+### Added — Coverage Expansion
+- +49 tests (compute adapter, STUN client, HTTP handler)
+
+### Stats
+- Tests: 12,860 passed, 0 failed
+- Coverage: 72.29%
+- Total Rust: ~428,000 lines across 1,578 files
+
+---
+
+## [v0.2.1-wave123] - 2026-04-07 - TLS 1.3 Middlebox Compatibility, RSA-PSS Extensions, JSON-RPC Method Normalization
+
+### Changed — TLS 1.3 Middlebox & Handshake
+- TLS 1.3 middlebox compatibility: 32-byte random session ID (RFC 8446 Appendix D.4)
+- RSA-PSS signature algorithm expansion in ClientHello extensions
+
+### Added — Capability Method Discovery
+- Capability method gap: `capabilities.methods` endpoint with 14-token normalization map
+- `normalize_json_rpc_method_name()` maps NEST tokens to callable JSON-RPC methods
+
+---
+
+## [v0.2.1-wave122] - 2026-04-07 - Root Documentation Refresh, Binary Cleanup, Capability Naming in Assets
+
+### Changed — Documentation & Repository Hygiene
+- Root doc cleanup and metrics refresh
+- `vis_test` binary debris deleted
+
+### Changed — Capability Naming in Non-Rust Assets
+- Legacy primal names scrubbed from non-Rust assets (scripts, deployment, examples)
+- Health monitor script evolved to capability-based naming
+
+### Changed — Handoffs
+- Handoff archive organization
+
+---
+
+## [v0.2.1-wave121] - 2026-04-07 - Legacy Primal Scrub, XDG Socket Discovery, Low-Coverage Tests, Large Test File Splits
+
+### Changed — Legacy Primal Name Elimination
+- Legacy primal name scrub across 11+ crates (beardog/toadstool/squirrel → capability-based)
+
+### Changed — Socket Discovery
+- XDG-first socket discovery in songbird-tls, songbird-nfc, capability strategy
+
+### Added — Coverage & Test Structure
+- +39 tests across 8 low-coverage modules
+- Large test files refactored (851L → 9 submodules, 813L → 3 submodules)
+
+---
+
+## [v0.2.1-wave120] - 2026-04-07 - SB-03: NestGate Storage Migration, sled Feature Deprecation
+
+### Changed — Storage Backend (SB-03)
+- sled → NestGate storage migration
+- NestGateStorage + NestGateOnionStorage backends via JSON-RPC `storage.*`
+- `sled-storage` feature deprecated (non-default)
+
+### Changed — Consent & Task Lifecycle
+- Consent management and task lifecycle now prioritize NestGate capability discovery
+
+---
+
+## [v0.2.1-wave119] - 2026-04-06 - Configurable Network Defaults, XDG Sockets, Zero-Copy Paths, tower_atomic Modularization
+
+### Changed — Network Defaults & Configuration
+- Hardcoded IP/port/path elimination (netdev + RFC 5737 fallback)
+- Environment-configurable ports (SONGBIRD_DISCOVERY_PORT, STUN, RELAY)
+
+### Changed — Paths & Sockets
+- XDG-compliant socket paths across all crates
+
+### Changed — Zero-Copy Hot Paths
+- Zero-copy Arc<str> in mesh/punch/rendezvous/capability handlers
+
+### Changed — Module Structure
+- tower_atomic.rs refactored 990→5 modules (max 518L)
+
+### Changed — Lint Hardening
+- `#[allow(` → `#[expect(reason)]` where appropriate
+
+---
+
 ## [v0.2.1-wave118] - 2026-04-05 - Deep Debt Evolution: Legacy Elimination, Test Hardening, Coverage Expansion
 
 ### Changed — Legacy Primal Name Elimination

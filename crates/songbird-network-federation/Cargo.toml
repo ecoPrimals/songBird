@@ -66,6 +66,6 @@ tokio-test = "0.4"
 default = ["gaming", "federation", "local-btsp"]  # Include local-btsp for backward compat
 gaming = []
 federation = []
-local-btsp = ["aes-gcm", "generic-array"]  # ⚠️ Local BTSP testing (uses crypto) - production uses BearDog!
+local-btsp = ["aes-gcm", "generic-array"]  # ⚠️ Local BTSP testing (uses crypto) - production uses security provider
 test-mocks = []
 # Removed legacy-compat feature flag - migration complete 

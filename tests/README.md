@@ -1,66 +1,35 @@
 # Songbird Test Suite
 
-## Test Architecture
+## Layout
 
-Tests live in two locations:
+- **Workspace crates** — `#[cfg(test)]` in `crates/*/src/` and integration tests in `crates/*/tests/` (most tests).
+- **Root `songbird` package** — integration tests as one Cargo target per file directly under `tests/`:
 
-1. **Crate-level tests** — `crates/*/src/` (inline `#[cfg(test)]` modules) and `crates/*/tests/` (integration tests)
-2. **Root integration tests** — `tests/` (workspace-level integration tests for the `songbird` binary)
+| File | Role |
+|------|------|
+| `local_infrastructure_ci.rs` | Local CI: JSON-RPC-over-TCP against real IPC handler paths; in-file e2e-/chaos-/fault-style cases (see module docs; scenario notes under `tests/e2e/SCENARIO_TEMPLATES.md`). |
+| `cli_parsing_tests.rs` | CLI parsing and validation only (no servers). |
+| `integration_task_lifecycle.rs` | Orchestrator task lifecycle against isolated temp DBs. |
 
-The vast majority of tests are in the crate-level locations. Run them with:
+**Module subtrees** (not separate Cargo targets): `tests/e2e/`, `tests/chaos/`, `tests/fault/`, `tests/integration/`. They are organized as `mod` trees for a would-be harness crate, but **no** current `tests/*.rs` root declares `mod e2e`, `mod chaos`, etc., so they are **not** compiled or run by `cargo test -p songbird` until such a root exists.
 
-```bash
-cargo test --workspace
-```
+**Shared helpers** — `tests/common/`, `tests/helpers/` — pulled in with `#[path = ...]` from sources under those subtrees (e.g. `tests/e2e/`).
 
-## Root-Level Tests
+## Counts (workspace, `--all-features`)
 
-| File | Purpose |
-|------|---------|
-| `tests/integration_task_lifecycle.rs` | Task lifecycle integration |
-| `tests/cli_parsing_tests.rs` | CLI argument parsing |
-
-## Test Categories (by crate)
-
-- **Unit**: `#[cfg(test)]` modules inside `src/` files
-- **Integration**: `crates/*/tests/*.rs` files (e2e, chaos, fault, upstream)
-- **Fuzz-style**: Malformed input parsing (TLS records, JSON-RPC, relay protocol, STUN messages)
-
-## Key Crate Test Suites
-
-| Crate | Test count | Notable coverage |
-|-------|-----------|------------------|
-| `songbird-orchestrator` | ~3,500 | JSON-RPC handlers, startup, health, federation, consent |
-| `songbird-universal-ipc` | ~1,200 | Service handler, introspection, tower atomic, mesh |
-| `songbird-tor-protocol` | ~800 | Directory, consensus, relay selection, circuit |
-| `songbird-http-client` | ~700 | TLS 1.3, redirect, connection pool, security provider RPC |
-| `songbird-config` | ~600 | Discovery, endpoints, constants, environment |
-| `songbird-discovery` | ~500 | Federation-aware, mDNS, SSDP, dark forest |
-
-## Running Tests
-
-```bash
-cargo test --workspace --all-features            # full suite (12,613 tests)
-cargo test --workspace --lib                     # unit tests only
-cargo test -p songbird-orchestrator              # single crate
-./scripts/test-with-security-provider.sh         # with live security provider from plasmidBin
-./scripts/coverage.sh                            # llvm-cov HTML report
-```
-
-## Test Principles
-
-- **Zero serial tests** — all tests run fully concurrent (`--test-threads=16`)
-- **Injectable env readers** — `_with` variants replace `std::env::set_var` for isolation
-- **No production mocks** — all mocks behind `#[cfg(test)]` or `feature = "test-mocks"`
-- **No sleep-based synchronization** — `tokio::time::pause()` + `advance()` for deterministic time; `tokio::task::yield_now()` for yields; `tokio::sync::Notify` and `oneshot` channels for coordination
-- **No hardcoded ports** — all network binds use port 0 (OS-assigned) with oneshot readiness signals
-- **`--all-features`** — many tests are feature-gated; always use `--all-features` for full coverage
-
-## Metrics
-
-| Metric | Value |
-|--------|-------|
-| Total tests | 12,613 |
+| | |
+|--|--|
+| Passed | 12,860 |
 | Failed | 0 |
-| Ignored | 252 (100% with reason strings — hardware, network, API gaps) |
-| Coverage | ~77% (llvm-cov, target 90%) |
+| Ignored | 252 |
+
+## Running
+
+```bash
+cargo test --workspace --all-features    # full workspace (feature-gated tests need this)
+cargo test --workspace --lib             # library unit tests only
+cargo test -p songbird                   # root crate + the three `tests/*.rs` targets above
+cargo test -p <crate>                  # single workspace member
+./scripts/test-with-security-provider.sh # optional: live security provider
+./scripts/coverage.sh                   # llvm-cov HTML report
+```

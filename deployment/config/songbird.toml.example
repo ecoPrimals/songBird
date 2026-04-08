@@ -44,11 +44,11 @@ tcp_address = "127.0.0.1:9876"
 # Enable IPC server
 ipc_enabled = true
 
-[beardog]
-# BearDog integration (auto-discover if not specified)
-# socket_path = "/run/user/1000/beardog/beardog.sock"
+[security-provider]
+# Security provider integration (crypto delegation; auto-discover if not specified)
+# socket_path = "/run/user/1000/songbird/security-provider.sock"
 
-# Enable BearDog crypto delegation
+# Enable security provider crypto delegation
 enabled = true
 
 [security]
@@ -59,7 +59,7 @@ tls_enabled = true
 # cert_path = "/var/lib/songbird/cert.pem"
 # key_path = "/var/lib/songbird/key.pem"
 
-# Enable BTSP (BearDog Tunnel Security Protocol)
+# Enable BTSP (security provider tunnel protocol)
 btsp_enabled = true
 
 [federation]

@@ -295,7 +295,6 @@ fn test_clean_cmd_pattern_documentation() {
 fn test_anti_pattern_documentation() {
     // ❌ ANTI-PATTERN (don't do this):
     // songbird_process_env::set_var("MY_VAR", "value");  // Mutates global state!
-    // let cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
 
     // ✅ CORRECT PATTERN (do this):
     let mut cmd = clean_cmd();
