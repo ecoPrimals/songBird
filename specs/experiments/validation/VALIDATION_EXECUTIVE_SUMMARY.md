@@ -141,7 +141,7 @@ The results challenge fundamental assumptions about system architecture while pr
 - [Full Research Paper](./CAPABILITY_BASED_ORCHESTRATION_VALIDATION_PAPER.md)
 - [Technical Data Report](./EXPERIMENTAL_DATA_TECHNICAL_REPORT.md)
 - [Latency Investigation Addendum](./LATENCY_ANOMALY_INVESTIGATION_ADDENDUM.md) ⭐ **NEW**
-- [Live Experiment Results](../LIVE_EXPERIMENT_RESULTS_VALIDATED.md)
+- [Live Experiment Results](./LIVE_EXPERIMENT_RESULTS_VALIDATED.md)
 
 **📧 Contact:** songbird-research@example.com  
 **🔬 Methodology:** [Sovereign Science](../../methodology/SOVEREIGN_SCIENCE_METHODOLOGY.md)  

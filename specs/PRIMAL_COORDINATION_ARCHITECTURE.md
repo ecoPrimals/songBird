@@ -858,9 +858,8 @@ coordinator.parallel()
 
 ## 📚 References
 
-- **Gaming System Evolution**: [crates/songbird-gaming/](../../crates/songbird-gaming/) - Example of specific → agnostic pattern
-- **Compute Bridge**: [crates/songbird-compute-bridge/](../../crates/songbird-compute-bridge/) - Existing bridge pattern
-- **Federation**: [crates/songbird-network-federation/](../../crates/songbird-network-federation/) - Coordination patterns
+- **Compute Bridge**: [crates/songbird-compute-bridge/](../crates/songbird-compute-bridge/) - Existing bridge pattern
+- **Federation**: [crates/songbird-network-federation/](../crates/songbird-network-federation/) - Coordination patterns
 - **Security provider genesis handoff** (historical document, Dec 2025) — genesis requirements; filename retained in older check-ins only
 
 ---

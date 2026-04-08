@@ -38,7 +38,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >800 LOC | 0 (largest file 518 lines; `tower_atomic/` refactored 990→5 modules) |
+| Files >800 LOC | 0 production (largest production 711L `task_lifecycle/manager.rs`; largest test-only 863L `ai_tests.rs`) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` deprecated behind `sled-storage` feature (NestGate `storage.*` capability is production path); `ring` only via optional `k8s` feature; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`) |

@@ -208,7 +208,7 @@ fn test_regression_original_bug() {
 
     let (_, actual_port) = bind_ephemeral();
 
-    // FIX: Discovery uses actual_port, not configured_port
+    // Discovery uses actual_port, not configured_port
     let discovery_port = actual_port;
 
     assert_eq!(discovery_port, actual_port, "Discovery MUST broadcast actual port");

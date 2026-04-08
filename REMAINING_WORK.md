@@ -11,13 +11,13 @@
 | Metric | Value |
 |--------|-------|
 | **Tests** | 12,916 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
-| **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 7 2026; target 90%) |
+| **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 7 audit: no drift) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 8 audit: no drift) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | 0 (production max 518L `tower_atomic/tests/mod.rs`; `tower_atomic/` refactored Wave 119 from 990→5 modules) |
+| **Files >800 lines** | 0 production (largest production 711L `task_lifecycle/manager.rs`; largest test-only 863L `ai_tests.rs`; `tower_atomic/` refactored Wave 119 from 990→5 modules) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |
@@ -34,7 +34,7 @@
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
 | **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** (`sled-storage` feature): deprecated, non-default — NestGate `storage.*` capability is the production path |
-| **`async-trait`** | 99 `#[async_trait]` across 50 files — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`); no further mechanical migration possible without architectural changes; `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
+| **`async-trait`** | 109 `#[async_trait]` across 54 files — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`); no further mechanical migration possible without architectural changes; `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
 | **Total Rust** | ~427,000 lines across 30 crates (1,578 files) |
@@ -70,9 +70,9 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ## Pending: Coverage Expansion (72.29% → 90% target)
 
-**Note (Apr 7, 2026)**: 72.29% measured via llvm-cov `--workspace --lib` (Apr 7 2026). Target 90% via ongoing pure-logic module expansion.
+**Note (Apr 8, 2026)**: 72.29% measured via llvm-cov `--workspace --lib` (Apr 8 2026). Target 90% via ongoing pure-logic module expansion.
 
-| Module | Measured (Apr 7) | Tests Added (Waves 124-127) | Priority |
+| Module | Measured (Apr 8) | Tests Added (Waves 124-127) | Priority |
 |--------|-------------------|----------------------------|----------|
 | songbird-universal/adapters/compute/adapter.rs | 11.83% | +12 tests (Wave 124: discovery, transport, legacy env, metrics) | DONE |
 | songbird-universal-ipc/handlers/stun_handler/client.rs | 14.22% | +15 tests (Wave 124: error paths, NAT detection, port pattern) | DONE |
