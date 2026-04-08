@@ -328,3 +328,151 @@ fn display_config_formatted(
         println!();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "unit tests")]
+
+    use std::sync::Mutex;
+
+    use songbird_types::config::consolidated_canonical::DiscoveryMode;
+    use songbird_types::config::{
+        CanonicalDiscoveryConfig, CanonicalEnvironmentConfigNew, CanonicalSongbirdConfig,
+        CanonicalSystemConfigNew,
+    };
+
+    static CONFIG_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn default_canonical_config_constructs_and_validates() {
+        let config = CanonicalSongbirdConfig::default();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn from_env_loads_valid_defaults() {
+        let config = CanonicalSongbirdConfig::from_env().expect("from_env");
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn builder_merges_explicit_sections_with_defaults() {
+        let built = CanonicalSongbirdConfig::builder()
+            .environment(CanonicalEnvironmentConfigNew {
+                name: "staging".to_string(),
+                deployment_mode: "cluster".to_string(),
+            })
+            .build()
+            .expect("builder");
+        assert_eq!(built.environment.name, "staging");
+        assert_eq!(built.environment.deployment_mode, "cluster");
+        let defaults = CanonicalSongbirdConfig::default();
+        assert_eq!(built.system.system_id, defaults.system.system_id);
+        assert!(built.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_empty_system_environment() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.system.environment.clear();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rejects_empty_system_id() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.system.system_id.clear();
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rejects_ephemeral_port_when_discovery_enabled() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.network.base_port = 0;
+        config.discovery.mode = DiscoveryMode::Anonymous;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_allows_ephemeral_port_when_discovery_disabled() {
+        let mut config = CanonicalSongbirdConfig::default();
+        config.network.base_port = 0;
+        config.discovery = CanonicalDiscoveryConfig {
+            mode: DiscoveryMode::Disabled,
+            ..CanonicalDiscoveryConfig::default()
+        };
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn builder_rejects_invalid_merged_config() {
+        let bad_system = CanonicalSystemConfigNew {
+            environment: String::new(),
+            ..CanonicalSystemConfigNew::default()
+        };
+        assert!(CanonicalSongbirdConfig::builder().system(bad_system).build().is_err());
+    }
+
+    #[test]
+    fn mask_secrets_is_identity_until_tls_fields_need_redaction() {
+        let config = CanonicalSongbirdConfig::default();
+        let masked = super::mask_secrets_in_config(config.clone());
+        assert_eq!(config.system.system_id, masked.system.system_id);
+        assert_eq!(config.network.base_port, masked.network.base_port);
+    }
+
+    #[tokio::test]
+    async fn init_config_writes_expected_template_keys() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("songbird-init.env");
+        let path_str = path.to_str().expect("utf8 path");
+        super::init_config(path_str, false).await.expect("init_config");
+        let contents = std::fs::read_to_string(&path).expect("read template");
+        let default_port = songbird_config::defaults::ports::orchestrator_port();
+        assert!(contents.contains(&format!("SONGBIRD_PORT={default_port}")));
+        assert!(contents.contains("SONGBIRD_FAMILY_ID="));
+        assert!(contents.contains("SONGBIRD_DISCOVERY_ENABLED=true"));
+    }
+
+    #[tokio::test]
+    async fn init_config_overwrites_when_forced() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("twice.env");
+        let path_str = path.to_str().expect("utf8 path");
+        super::init_config(path_str, false).await.expect("first write");
+        super::init_config(path_str, true).await.expect("force overwrite");
+        let contents = std::fs::read_to_string(&path).expect("read");
+        assert!(contents.contains("SONGBIRD_PORT="));
+    }
+
+    #[tokio::test]
+    async fn init_config_template_family_id_follows_env_priority() {
+        let _g = CONFIG_ENV_LOCK.lock().expect("lock");
+        for key in [
+            "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
+            "SONGBIRD_ORCHESTRATOR_FAMILY",
+            "BIOMEOS_FAMILY_ID",
+            "SONGBIRD_FAMILY_ID",
+            "FAMILY_ID",
+        ] {
+            songbird_process_env::remove_var(key);
+        }
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "env-test-family");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("family.env");
+        let path_str = path.to_str().expect("utf8 path");
+        super::init_config(path_str, false).await.expect("init_config");
+        let contents = std::fs::read_to_string(&path).expect("read template");
+        assert!(
+            contents.contains("SONGBIRD_FAMILY_ID=env-test-family"),
+            "template should embed resolved family_id from env chain: {contents}"
+        );
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    }
+
+    #[tokio::test]
+    async fn init_config_empty_path_errors() {
+        let err = super::init_config("", false).await;
+        assert!(err.is_err(), "expected write to empty path to fail: {err:?}");
+    }
+}

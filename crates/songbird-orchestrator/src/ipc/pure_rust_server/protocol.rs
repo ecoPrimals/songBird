@@ -102,3 +102,90 @@ impl JsonRpcError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "unit tests")]
+
+    use super::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
+
+    #[test]
+    fn json_rpc_request_roundtrip_with_params_and_string_id() {
+        let json = r#"{"jsonrpc":"2.0","method":"subtract","params":[42,23],"id":"1"}"#;
+        let req: JsonRpcRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.jsonrpc, "2.0");
+        assert_eq!(req.method, "subtract");
+        assert_eq!(req.params, Some(serde_json::json!([42, 23])));
+        assert_eq!(req.id, Some(serde_json::json!("1")));
+    }
+
+    #[test]
+    fn json_rpc_request_null_id_deserializes_to_none() {
+        // `serde_json` maps JSON `null` for `Option<Value>` to `None` (not `Some(Null)`).
+        let json = r#"{"jsonrpc":"2.0","method":"ping","id":null}"#;
+        let req: JsonRpcRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.method, "ping");
+        assert!(req.params.is_none());
+        assert!(req.id.is_none());
+    }
+
+    #[test]
+    fn json_rpc_request_omitted_id_and_params() {
+        let json = r#"{"jsonrpc":"2.0","method":"notify"}"#;
+        let req: JsonRpcRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.method, "notify");
+        assert!(req.params.is_none());
+        assert!(req.id.is_none());
+    }
+
+    #[test]
+    fn json_rpc_response_success_serializes_result_only() {
+        let res = JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            result: Some(serde_json::json!({"capabilities": ["a"]})),
+            error: None,
+            id: serde_json::json!(7),
+        };
+        let v = serde_json::to_value(&res).unwrap();
+        assert_eq!(v["jsonrpc"], "2.0");
+        assert_eq!(v["result"]["capabilities"], serde_json::json!(["a"]));
+        assert!(v.get("error").is_none());
+        assert_eq!(v["id"], serde_json::json!(7));
+    }
+
+    #[test]
+    fn json_rpc_response_error_serializes_error_only() {
+        let res = JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            result: None,
+            error: Some(JsonRpcError::invalid_request("missing jsonrpc")),
+            id: serde_json::Value::Null,
+        };
+        let v = serde_json::to_value(&res).unwrap();
+        assert!(v.get("result").is_none());
+        assert_eq!(v["error"]["code"], JsonRpcError::INVALID_REQUEST);
+        assert_eq!(v["error"]["message"], "missing jsonrpc");
+    }
+
+    #[test]
+    fn json_rpc_error_method_not_found() {
+        let e = JsonRpcError::method_not_found("foo.bar");
+        assert_eq!(e.code, JsonRpcError::METHOD_NOT_FOUND);
+        assert!(e.message.contains("foo.bar"));
+        assert!(e.data.is_none());
+    }
+
+    #[test]
+    fn json_rpc_error_invalid_request() {
+        let e = JsonRpcError::invalid_request("");
+        assert_eq!(e.code, JsonRpcError::INVALID_REQUEST);
+        assert!(e.message.is_empty());
+    }
+
+    #[test]
+    fn json_rpc_error_invalid_params() {
+        let e = JsonRpcError::invalid_params("expected object");
+        assert_eq!(e.code, JsonRpcError::INVALID_PARAMS);
+        assert_eq!(e.message, "expected object");
+    }
+}

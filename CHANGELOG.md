@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave129] - 2026-04-08 - Dead Dep Removal, File Refactoring, Config/IPC Coverage
+
+### Removed — Dead Dependencies
+- `parking_lot`, `async-stream`, `tokio-stream` removed from `songbird-orchestrator` (zero usage, verified)
+
+### Changed — File Refactoring
+- `ai_tests.rs` (863L) → 8-module tree (max 213L per file): `adapter_creation`, `transport_mock`, `discovery_fallback`, `deprecation_warnings`, `metrics_health`, `model_types_metrics_edges`, `metrics_extended`
+- Zero files >800 lines in entire codebase (production max 711L, test max 778L)
+
+### Added — Coverage Expansion
+- `bin_interface/config.rs`: defaults, validation, builder, env overrides, init_config, empty/invalid edge cases
+- `ipc/pure_rust_server/protocol.rs`: JsonRpcRequest/Response/Error serde roundtrips
+- `ipc/pure_rust_server/coordination_handlers.rs`: discover_capabilities return structure
+
+### Stats
+- Tests: 12,945 passed, 0 failed, 252 ignored
+
+---
+
 ## [v0.2.1-wave128] - 2026-04-08 - Songbird Socket Gap: Wire Standard L2 on songbird.sock
 
 ### Fixed — Socket Gap (Medium, primalSpring audit)

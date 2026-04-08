@@ -169,3 +169,43 @@ pub async fn handle_health() -> Result<serde_json::Value, JsonRpcError> {
         "version": env!("CARGO_PKG_VERSION")
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "unit tests")]
+
+    use std::sync::Mutex;
+
+    static COORD_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[tokio::test]
+    async fn handle_discover_capabilities_returns_expected_shape() {
+        let v = super::handle_discover_capabilities().await.expect("ok");
+        let caps: Vec<String> = serde_json::from_value(v["capabilities"].clone()).expect("caps");
+        assert!(caps.contains(&"http.get".to_string()));
+        assert!(caps.contains(&"http.post".to_string()));
+        assert!(caps.contains(&"http.request".to_string()));
+        assert_eq!(v["metadata"]["primal_name"], "songbird");
+        assert_eq!(v["metadata"]["version"].as_str().expect("version"), env!("CARGO_PKG_VERSION"));
+        let fid = v["metadata"]["family_id"].as_str().expect("family_id");
+        assert!(!fid.is_empty());
+    }
+
+    #[tokio::test]
+    async fn handle_discover_capabilities_family_id_respects_env_override() {
+        let _g = COORD_ENV_LOCK.lock().expect("lock");
+        for key in [
+            "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
+            "SONGBIRD_ORCHESTRATOR_FAMILY",
+            "BIOMEOS_FAMILY_ID",
+            "SONGBIRD_FAMILY_ID",
+            "FAMILY_ID",
+        ] {
+            songbird_process_env::remove_var(key);
+        }
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "coord-test-family");
+        let v = super::handle_discover_capabilities().await.expect("ok");
+        assert_eq!(v["metadata"]["family_id"], "coord-test-family");
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    }
+}

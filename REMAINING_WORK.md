@@ -2,7 +2,7 @@
 
 **Date**: April 8, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 128 — **Songbird Socket Gap (Medium) resolved**: Wire Standard L2 methods (`capabilities.list`, `capabilities.methods`, `identity`, `identity.get`) wired through orchestrator `songbird.sock` Unix socket handler (`pure_rust_server/server/handlers.rs`); +6 dispatch tests. biomeOS can now probe `songbird.sock` and receive correct L2 responses. Wave 127: coverage expansion (+30 tests). Wave 126: security adapter + tower_atomic tests (+23 tests). Wave 125: Wire Standard L2 (`capabilities.list` envelope, `identity.get`). Wave 124: lint hygiene, commented-out code scrub. Wave 123: TLS 1.3 middlebox compat. Wave 122: doc/debris cleanup. Wave 121: legacy primal scrub. Wave 120: sled → NestGate. Wave 119: hardcoded elimination, zero-copy.
+**Last Deep Debt Audit**: Wave 129 — dead dependency removal (`parking_lot`, `async-stream`, `tokio-stream` from orchestrator); `ai_tests.rs` (863L) refactored into 8-module tree (max 213L); `bin_interface/config.rs` tests (0→full coverage: defaults, validation, builder, env, init_config); IPC `protocol.rs` serde tests + `coordination_handlers.rs` tests; +23 tests (12,945 total). Wave 128: Songbird Socket Gap resolved. Wave 127: coverage expansion (+30 tests). Wave 126: security adapter + tower_atomic (+23). Wave 125: Wire Standard L2. Wave 124: lint hygiene. Wave 123: TLS 1.3 compat. Wave 122: doc/debris. Wave 121: legacy primal scrub. Wave 120: sled → NestGate. Wave 119: hardcoded elimination.
 
 ---
 
@@ -10,14 +10,14 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,922 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 12,945 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`) |
 | **Format** | Clean (`cargo fmt --check` passes; Apr 8 audit: no drift) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | 0 production (largest production 711L `task_lifecycle/manager.rs`; largest test-only 863L `ai_tests.rs`; `tower_atomic/` refactored Wave 119 from 990→5 modules) |
+| **Files >800 lines** | 0 (largest production 711L `task_lifecycle/manager.rs`; largest test 778L; `ai_tests` refactored Wave 129 into 8 modules; `tower_atomic/` refactored Wave 119 from 990→5 modules) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |

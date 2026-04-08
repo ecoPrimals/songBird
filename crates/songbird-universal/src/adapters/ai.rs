@@ -348,5 +348,5 @@ impl AIProvider for AIAdapter {
 }
 
 #[cfg(test)]
-#[path = "ai_tests.rs"]
+#[path = "ai_tests/mod.rs"]
 mod tests;
