@@ -523,4 +523,72 @@ mod tests {
         let back: ServiceInfo = serde_json::from_str(&json).expect("json deserialize");
         assert_eq!(back.metadata, svc.metadata);
     }
+
+    #[tokio::test]
+    async fn discover_with_empty_capability_string_succeeds() {
+        let (addr, server) = spawn_mock_tarpc_server(MockSongbirdRpcServer).await;
+        let client = TarpcClient::new(&format!("tarpc://{addr}")).expect("client");
+        let out = client.discover("").await.expect("discover");
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].id, "svc-");
+        assert_eq!(out[0].capability, "");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn unregister_with_empty_service_id_succeeds() {
+        let (addr, server) = spawn_mock_tarpc_server(MockSongbirdRpcServer).await;
+        let client = TarpcClient::new(&format!("tarpc://{addr}")).expect("client");
+        let r = client.unregister("").await.expect("unregister");
+        assert!(r.success);
+        assert_eq!(r.message, "unregistered:");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn sequential_operations_on_one_client_reuse_connection() {
+        let (addr, server) = spawn_mock_tarpc_server(MockSongbirdRpcServer).await;
+        let client = TarpcClient::new(&format!("tarpc://{addr}")).expect("client");
+        let d = client.discover("reuse").await.expect("discover");
+        assert_eq!(d[0].capability, "reuse");
+        let h = client.health().await.expect("health");
+        assert_eq!(h.status, "healthy");
+        let v = client.version().await.expect("version");
+        assert_eq!(v.version, "1.2.3");
+        let p = client.protocols().await.expect("protocols");
+        assert_eq!(p.len(), 1);
+        assert_eq!(p[0].name, "tarpc");
+        server.abort();
+    }
+
+    #[test]
+    fn protocol_info_serde_json_roundtrip_empty_info_map() {
+        let p = ProtocolInfo {
+            name: "grpc".into(),
+            port: 50051,
+            enabled: false,
+            info: HashMap::new(),
+        };
+        let json = serde_json::to_string(&p).expect("json serialize");
+        let back: ProtocolInfo = serde_json::from_str(&json).expect("json deserialize");
+        assert!(back.info.is_empty());
+        assert_eq!(back.name, "grpc");
+        assert_eq!(back.port, 50051);
+    }
+
+    #[test]
+    fn health_status_serde_json_roundtrip_zero_values() {
+        let h = HealthStatus {
+            status: String::new(),
+            version: String::new(),
+            uptime_seconds: 0,
+            services_count: 0,
+        };
+        let json = serde_json::to_string(&h).expect("json serialize");
+        let back: HealthStatus = serde_json::from_str(&json).expect("json deserialize");
+        assert_eq!(back.uptime_seconds, 0);
+        assert_eq!(back.services_count, 0);
+        assert!(back.status.is_empty());
+        assert!(back.version.is_empty());
+    }
 }

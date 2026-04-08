@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave127] - 2026-04-08 - Coverage Expansion: MockTransport Adapters, Storage Discovery, Test Sync
+
+### Added — Coverage Expansion
+- AI adapter: +6 MockTransport-based tests (metrics, health, timeout, HTTP error, `SQUIRREL_ENDPOINT` deprecation)
+- tarpc_client/ops: +5 edge-case tests (empty capability, sequential ops, serde round-trips)
+- Storage adapter: +10 tests (discovery env fallback chain, MockTransport, DelayTransport timeout)
+- tower_atomic: +6 tests (malformed JSON wire, concurrent clients, oversized requests) [Wave 126]
+- Security adapter: +9 tests (discovery fallback, BEARDOG deprecation, metrics/health) [Wave 126]
+
+### Changed — Test Infrastructure
+- `discovery_test_sync.rs` global lock for flaky parallel discovery tests across all adapters
+
+### Stats
+- Tests: 12,916 passed, 0 failed, 252 ignored
+- All 8 high-priority low-coverage modules now have comprehensive MockTransport tests
+
+---
+
 ## [v0.2.1-wave124] - 2026-04-08 - Deep Debt Evolution: Lint Hygiene, Dead Code Scrub, Test Isolation, Coverage Expansion
 
 ### Changed — Lint & Dead Code Hygiene

@@ -2,7 +2,7 @@
 
 **Date**: April 8, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 124 — lint hygiene (`#[allow(` → `#[expect(reason)]` across 15+ production sites); commented-out code scrub (14 locations); legacy doc comments evolved to capability-based naming; `// FIX:` comments resolved (6 locations); production `unreachable!()` evolved (QUIC `LongPacketType` to lookup table, Tor `create_extend2` to `Err`); `test_sync_env.rs` gated `#[cfg(test)]`; `/tmp/beardog.sock` test paths evolved to `songbird-test-security.sock`; coverage expansion (+49 tests: compute adapter, STUN client, HTTP handler dispatch); Wave 123: TLS 1.3 middlebox compat (32-byte session ID, RSA-PSS signature algorithms), capability method gap (`capabilities.methods` endpoint, 14-token normalization map); Wave 122: doc/debris cleanup; Wave 121: legacy primal scrub, XDG socket discovery; Wave 120: sled → NestGate migration; Wave 119: hardcoded elimination, zero-copy; coverage **72.29%** (Apr 8 2026).
+**Last Deep Debt Audit**: Wave 127 — coverage expansion: AI adapter MockTransport tests (metrics, health, timeout, HTTP error, `SQUIRREL_ENDPOINT` deprecation warning), tarpc_client/ops edge-case tests (empty capability, sequential ops, serde round-trips), storage adapter discovery/transport tests (env fallback chain, MockTransport, DelayTransport timeout, error paths), global discovery test synchronization (`discovery_test_sync.rs`); +30 tests (12,916 total). Wave 126: security adapter + tower_atomic tests (+23 tests). Wave 125: Wire Standard L2 (`capabilities.list` envelope, `identity.get`). Wave 124: lint hygiene, commented-out code scrub, `// FIX:` resolved, coverage +49 tests. Wave 123: TLS 1.3 middlebox compat, capability method gap. Wave 122: doc/debris cleanup. Wave 121: legacy primal scrub. Wave 120: sled → NestGate. Wave 119: hardcoded elimination, zero-copy.
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 12,886 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 12,916 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 7 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
@@ -72,25 +72,23 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 **Note (Apr 7, 2026)**: 72.29% measured via llvm-cov `--workspace --lib` (Apr 7 2026). Target 90% via ongoing pure-logic module expansion.
 
-| Module | Measured Coverage | Priority |
-|--------|-------------------|----------|
-| songbird-universal/adapters/compute/adapter.rs | 11.83% | HIGH |
-| songbird-universal/adapters/security.rs | 18.42% | HIGH |
-| songbird-universal/adapters/ai.rs | 20.28% | HIGH |
-| songbird-universal-ipc/handlers/stun_handler/client.rs | 14.22% | HIGH |
-| songbird-universal-ipc/handlers/http_handler/handler.rs | 20.00% | HIGH |
-| songbird-universal/tarpc_client/ops.rs | 23.93% | MEDIUM |
-| songbird-universal-ipc/tower_atomic/ (4 modules) | 26.35% | MEDIUM |
-| songbird-universal/adapters/storage.rs | 30.23% | MEDIUM |
-| songbird-orchestrator (aggregate) | ~56% | MEDIUM |
-| songbird-config (aggregate) | ~68% | LOW |
-| songbird-universal-ipc (aggregate) | ~67% | MEDIUM |
+| Module | Measured (Apr 7) | Tests Added (Waves 124-127) | Priority |
+|--------|-------------------|----------------------------|----------|
+| songbird-universal/adapters/compute/adapter.rs | 11.83% | +12 tests (Wave 124: discovery, transport, legacy env, metrics) | DONE |
+| songbird-universal-ipc/handlers/stun_handler/client.rs | 14.22% | +15 tests (Wave 124: error paths, NAT detection, port pattern) | DONE |
+| songbird-universal/adapters/security.rs | 18.42% | +9 tests (Wave 126: discovery, BEARDOG deprecation, metrics/health) | DONE |
+| songbird-universal-ipc/handlers/http_handler/handler.rs | 20.00% | +12 tests (Wave 124: dispatch, error formatting, factory failures) | DONE |
+| songbird-universal/adapters/ai.rs | 20.28% | +6 tests (Wave 127: MockTransport metrics/health, timeout, SQUIRREL deprecation) | DONE |
+| songbird-universal/tarpc_client/ops.rs | 23.93% | +5 tests (Wave 127: empty cap, sequential ops, serde round-trips) | DONE |
+| songbird-universal-ipc/tower_atomic/ (4 modules) | 26.35% | +6 tests (Wave 126: malformed JSON, concurrent clients, oversized) | DONE |
+| songbird-universal/adapters/storage.rs | 30.23% | +10 tests (Wave 127: discovery chain, MockTransport, DelayTransport) | DONE |
+| songbird-orchestrator (aggregate) | ~56% | — | MEDIUM |
+| songbird-universal-ipc (aggregate) | ~67% | — | MEDIUM |
+| songbird-config (aggregate) | ~68% | — | LOW |
 
-**Strategy**: Focus on pure logic modules for unit test ROI. Prioritize adapter initialization, error paths, capability routing, and protocol parsing. Target 5-10pp coverage gain per session.
+**Note**: All high-priority pure-logic modules now have comprehensive MockTransport-based tests. Remaining coverage gains come from orchestrator integration paths (requires live IPC), config edge cases, and IPC handler dispatch branches. Re-measure with `cargo llvm-cov --workspace --lib` to update percentages.
 
-**Wave 116 breakthrough**: `CapabilityTransport` trait extracted from all three adapters (Security, Compute, AI). `MockTransport` enables full unit testing of adapter methods without network dependencies. 22 new mock-transport tests added. Protocol-specific match blocks eliminated.
-
-**Remaining highest-ROI targets**: (1) Add in-process tarpc test server for `ops.rs` coverage, (2) tower_atomic pure logic paths, (3) STUN client error paths via `MockTransport` pattern.
+**Strategy**: MockTransport pattern established across all four adapters (Security, Compute, AI, Storage). Next ROI: orchestrator consent/task lifecycle paths, config validation edge cases.
 
 ---
 

@@ -77,6 +77,7 @@ impl CapabilityTransport for TarpcTransport {
         match path.trim_start_matches('/') {
             "metrics/security" => self.0.call_method("get_security_metrics", None).await,
             "metrics/compute" => self.0.call_method("get_compute_metrics", None).await,
+            "metrics/storage" => self.0.call_method("get_storage_metrics", None).await,
             "metrics/ai" => self.0.call_method("get_ai_metrics", None).await,
             "api/v1/identity" => self.0.call_method("identity", None).await,
             other => Err(SongbirdError::network(format!(
@@ -113,6 +114,7 @@ impl CapabilityTransport for JsonRpcTransport {
                 self.0.call_method("get_metrics", Some(json!({"type": "security"}))).await
             }
             "metrics/compute" => self.0.call_method("get_compute_metrics", None).await,
+            "metrics/storage" => self.0.call_method("get_storage_metrics", None).await,
             "metrics/ai" => self.0.call_method("get_ai_metrics", None).await,
             "api/v1/identity" => self.0.call_method("identity", None).await,
             other => Err(SongbirdError::network(format!(
@@ -175,6 +177,10 @@ impl HttpTransport {
                 "metrics/ai" => {
                     SongbirdError::service("ai", format!("HTTP {status}: AI metrics unavailable"))
                 }
+                "metrics/storage" => SongbirdError::service(
+                    "storage",
+                    format!("HTTP {status}: Storage metrics unavailable"),
+                ),
                 "api/v1/identity" => SongbirdError::security(format!(
                     "Identity request failed: {status} - {}",
                     response.body

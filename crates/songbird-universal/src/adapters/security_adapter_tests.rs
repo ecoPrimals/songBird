@@ -7,6 +7,7 @@
 //! and SecurityProvider trait default implementation.
 
 use super::*;
+use crate::adapters::discovery_test_sync::lock_discovery_env;
 use crate::adapters::transport::{AdapterTransportKind, DelayTransport, MockTransport};
 use serde_json::json;
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
@@ -16,12 +17,6 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing_subscriber::layer::SubscriberExt;
-
-static DISCOVERY_ENV_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_discovery_env() -> std::sync::MutexGuard<'static, ()> {
-    DISCOVERY_ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
 
 fn assert_adapter_debug_protocol(adapter: &SecurityAdapter, expected: &str) {
     let dbg = format!("{adapter:?}");

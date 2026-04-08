@@ -35,6 +35,8 @@ mod capability_adapter_coverage_tests;
 #[path = "capability_transport_tests.rs"]
 mod capability_transport_tests;
 pub mod compute;
+#[cfg(test)]
+mod discovery_test_sync;
 pub(crate) mod transport;
 
 pub mod security;

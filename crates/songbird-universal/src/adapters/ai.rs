@@ -162,12 +162,19 @@ impl AIAdapter {
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
 
-                // Fallback 1: Legacy environment variables
-                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_AI_ENDPOINT")
-                    .or_else(|_| SafeEnv::get_required("AI_PROVIDER_ENDPOINT"))
-                    .or_else(|_| SafeEnv::get_required("SQUIRREL_ENDPOINT"))
-                {
+                // Fallback 1: Legacy environment variables (capability-first, then deprecated primal)
+                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_AI_ENDPOINT") {
                     debug!("⚠️ Using legacy environment variable for AI endpoint");
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("AI_PROVIDER_ENDPOINT") {
+                    debug!("⚠️ Using legacy environment variable for AI endpoint");
+                    return Self::new(endpoint).await;
+                }
+                if let Ok(endpoint) = SafeEnv::get_required("SQUIRREL_ENDPOINT") {
+                    warn!(
+                        "SQUIRREL_ENDPOINT is deprecated — migrate to SONGBIRD_AI_ENDPOINT or AI_PROVIDER_ENDPOINT"
+                    );
                     return Self::new(endpoint).await;
                 }
 

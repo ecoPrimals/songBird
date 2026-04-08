@@ -307,7 +307,7 @@ mod tests {
     use tracing_subscriber::layer::SubscriberExt;
 
     fn discovery_env_guard() -> std::sync::MutexGuard<'static, ()> {
-        super::super::discovery_env_lock()
+        crate::adapters::discovery_test_sync::lock_discovery_env()
     }
 
     #[tokio::test]

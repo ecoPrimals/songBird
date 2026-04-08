@@ -11,5 +11,6 @@ pub(super) fn assert_protocol_debug(adapter: &StorageAdapter, expected: &str) {
 }
 
 mod adapter_http;
+mod discovery_transport;
 mod storage_metrics;
 mod storage_metrics_extended;
