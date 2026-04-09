@@ -120,7 +120,10 @@ pub use crypto::{
 };
 
 /// Lower-level security-provider RPC client and TLS secret handles for advanced use.
-pub use security_rpc_client::{SecurityRpcClient, SecurityRpcMode, TlsSecrets};
+pub use security_rpc_client::{
+    BtspCipher, BtspNegotiation, BtspSessionCreated, BtspSessionVerified, SecurityRpcClient,
+    SecurityRpcMode, TlsSecrets,
+};
 
 // Re-export HTTP configuration types for adaptive behavior
 /// Adaptive HTTP client configuration (headers, redirects, and version string constant).

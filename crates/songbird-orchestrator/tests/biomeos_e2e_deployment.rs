@@ -160,7 +160,7 @@ async fn test_fallback_to_defaults() {
 
     // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock (no family suffix)
     // Path will be XDG-compliant or /tmp fallback
-    assert!(derived_path.to_str().unwrap().ends_with("network.sock"));
+    assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
     assert_eq!(family_id, "default");
 
     // Verify path is in /run/user (XDG) or /tmp (fallback)

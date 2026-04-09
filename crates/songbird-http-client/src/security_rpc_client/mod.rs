@@ -39,6 +39,7 @@
 //! ```
 
 mod aead;
+pub mod btsp;
 mod core;
 mod hash;
 mod key_exchange;
@@ -47,6 +48,7 @@ mod tls_secrets;
 mod types;
 
 // Re-export public API
+pub use btsp::{BtspCipher, BtspNegotiation, BtspSessionCreated, BtspSessionVerified};
 pub use core::{SecurityRpcClient, SecurityRpcMode};
 pub use types::TlsSecrets;
 

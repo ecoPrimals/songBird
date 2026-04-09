@@ -48,7 +48,7 @@ fn fault_missing_all_env_vars() {
     let family_id = UnixSocketServer::get_family_id();
 
     // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock, uses XDG or /tmp fallback
-    assert!(path.to_str().unwrap().ends_with("network.sock"));
+    assert!(path.to_str().unwrap().ends_with("songbird.sock"));
     assert_eq!(family_id, "default");
 
     // Cleanup
@@ -130,7 +130,7 @@ fn fault_empty_string_env_vars() {
     let path = UnixSocketServer::socket_path_from_env();
     // Implementation correctly skips empty strings and falls back to XDG default
     assert!(
-        path.to_str().unwrap().ends_with("network.sock"),
+        path.to_str().unwrap().ends_with("songbird.sock"),
         "Empty env var should fall through to default, got: {}",
         path.display()
     );
@@ -145,7 +145,7 @@ fn fault_empty_string_env_vars() {
     // Empty family ID is accepted (but not used in path)
     assert_eq!(family_id, "");
     // PRIMAL_DEPLOYMENT_STANDARD: Socket is always {primal}.sock (no family suffix)
-    assert!(path.to_str().unwrap().ends_with("network.sock"));
+    assert!(path.to_str().unwrap().ends_with("songbird.sock"));
 
     restore_env_state(original);
 }

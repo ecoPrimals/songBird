@@ -21,7 +21,7 @@ mod storage_sled;
 pub mod types;
 
 pub use checkpoint::*;
-pub use manager::TaskLifecycleManager;
+pub use manager::{TaskEvent, TaskLifecycleManager};
 #[cfg(feature = "sled-storage")]
 pub use storage_sled::*;
 pub use types::*;

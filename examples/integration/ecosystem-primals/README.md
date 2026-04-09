@@ -1,39 +1,17 @@
-# 📚 Ecosystem Primal Integration Examples
+# Ecosystem Primal Integration
 
-**SOVEREIGNTY PRINCIPLE**: These files are **EXAMPLES ONLY** showing how
-specific primals in the ecoPrimals ecosystem happen to implement various
-capabilities.
+**SOVEREIGNTY PRINCIPLE**: Songbird does not "know" other primals exist.
+All inter-primal coordination uses capability-based discovery at runtime.
 
-## 🌿 Ecological Model
+## Production Code
 
-Like in ecology, **each organism exists independently**:
+The real implementation lives in `crates/songbird-universal/src/adapters/`:
 
-- **Songbird doesn't "know" these primals exist**
-- Production code uses capability-based adapters
-- These examples show "how Compute Provider implements compute capability"
-- But they're just ONE possible implementation
+- `ComputeAdapter` — generic compute capability (not provider-specific)
+- `SecurityAdapter` — generic security capability (not provider-specific)
+- `StorageAdapter` — generic storage capability (not provider-specific)
+- `AIAdapter` — generic AI capability (not provider-specific)
 
-## 📁 Files
-
-- `compute_provider.rs` - Example: How Compute Provider implements compute capability
-- `security_provider.rs` - Example: How Security Provider implements security capability
-- `storage_provider.rs` - Example: How Storage Provider implements storage capability
-- `ai_provider.rs` - Example: How AI Provider implements AI capability
-
-## ✅ Production Code
-
-Production code in `crates/songbird-universal/src/adapters/` uses:
-
-- `ComputeAdapter` - Generic compute capability (not Compute Provider-specific)
-- `SecurityAdapter` - Generic security capability (not Security Provider-specific)
-- `StorageAdapter` - Generic storage capability (not Storage Provider-specific)
-- `AIAdapter` - Generic AI capability (not AI Provider-specific)
-
-## 🎯 Key Principle
-
-**Songbird has local storage for sovereign standalone operation**, but can
-utilize whatever storage provider is available (happens to be Storage Provider in our
-ecosystem) for network effects.
-
-The code does **NOT** know about Storage Provider - only we do as observers of the
-ecosystem.
+Each adapter discovers its provider via `find_primals_with_capability()` at
+runtime using environment-driven socket paths and XDG resolution. No compile-time
+import of any other primal's code.

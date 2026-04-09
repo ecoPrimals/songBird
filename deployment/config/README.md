@@ -1,6 +1,6 @@
 # Songbird Configuration
 
-**genomeBin Week 2:** XDG-compliant configuration templates
+XDG-compliant configuration templates
 
 ## 📋 **Overview**
 
@@ -118,13 +118,13 @@ tcp_address = "127.0.0.1:9876"
 ipc_enabled = true
 ```
 
-### `[beardog]`
+### `[security-provider]`
 
-BearDog crypto integration:
+Security provider crypto delegation (capability-based discovery):
 
 ```toml
-[beardog]
-socket_path = "/run/user/1000/beardog/beardog.sock"
+[security-provider]
+socket_path = "/run/user/1000/biomeos/security.sock"
 enabled = true
 ```
 
@@ -135,7 +135,7 @@ Security settings:
 ```toml
 [security]
 tls_enabled = true
-btsp_enabled = true       # BearDog Tunnel Security Protocol
+btsp_enabled = true       # BTSP — handshake on UDS accept when FAMILY_ID set
 ```
 
 ### `[federation]`
@@ -192,7 +192,7 @@ max_cache_size_mb = 100
 | `general.mode` | `SONGBIRD_MODE` | `export SONGBIRD_MODE=daemon` |
 | `network.http_port` | `SONGBIRD_HTTP_PORT` | `export SONGBIRD_HTTP_PORT=8081` |
 | `ipc.socket_path` | `SONGBIRD_SOCKET` | `export SONGBIRD_SOCKET=/custom/path.sock` |
-| `beardog.socket_path` | `BEARDOG_SOCKET` | `export BEARDOG_SOCKET=/custom/beardog.sock` |
+| `security-provider.socket_path` | `SECURITY_PROVIDER_SOCKET` | `export SECURITY_PROVIDER_SOCKET=/run/user/1000/biomeos/security.sock` |
 
 ---
 
@@ -213,7 +213,7 @@ mdns_enabled = true
 [ipc]
 ipc_enabled = true
 
-[beardog]
+[security-provider]
 enabled = true
 
 [federation]
@@ -235,7 +235,7 @@ mdns_enabled = true
 [ipc]
 ipc_enabled = true
 
-[beardog]
+[security-provider]
 enabled = true
 
 [security]
@@ -359,7 +359,6 @@ taplo check ~/.config/songbird/songbird.toml
 
 ---
 
-**Status:** ✅ Production Ready  
+**Status:** Production Ready  
 **Format:** TOML  
-**Standard:** XDG Base Directory Specification  
-**genomeBin:** Week 2 - Configuration Templates
+**Standard:** XDG Base Directory Specification

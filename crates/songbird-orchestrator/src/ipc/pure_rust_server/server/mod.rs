@@ -45,6 +45,7 @@ use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 pub struct UnixSocketServer {
     socket_path: PathBuf,
     handlers: Arc<IpcHandlers>,
+    security_client: Arc<songbird_http_client::SecurityRpcClient>,
     is_ready: Arc<AtomicBool>,
     is_running: Arc<AtomicBool>,
     ready_notify: Arc<tokio::sync::Notify>,
@@ -62,12 +63,13 @@ impl UnixSocketServer {
             service_registry,
             discovery_listener,
             connection_manager,
-            security_client,
+            Arc::clone(&security_client),
         ));
 
         Self {
             socket_path,
             handlers,
+            security_client,
             is_ready: Arc::new(AtomicBool::new(false)),
             is_running: Arc::new(AtomicBool::new(false)),
             ready_notify: Arc::new(tokio::sync::Notify::new()),
@@ -208,6 +210,7 @@ impl UnixSocketServer {
 
         self.is_ready.store(false, Ordering::Release);
 
+        crate::env_config::remove_domain_socket_symlink_if_matches(&self.socket_path);
         if self.socket_path.exists() {
             std::fs::remove_file(&self.socket_path).context("Failed to remove socket file")?;
             info!("🧹 Removed socket: {}", self.socket_path.display());
@@ -220,6 +223,7 @@ impl UnixSocketServer {
 
 impl Drop for UnixSocketServer {
     fn drop(&mut self) {
+        crate::env_config::remove_domain_socket_symlink_if_matches(&self.socket_path);
         if self.socket_path.exists()
             && let Err(e) = std::fs::remove_file(&self.socket_path)
         {

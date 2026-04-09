@@ -87,7 +87,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("network-nat0.sock"),
+        path.to_str().unwrap().ends_with("songbird-nat0.sock"),
         "Socket path should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(
@@ -102,7 +102,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("network-nat0.sock"),
+        path.to_str().unwrap().ends_with("songbird-nat0.sock"),
         "Socket path should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(family, "nat0", "Family ID should be extracted from BIOMEOS_FAMILY_ID");
@@ -121,8 +121,8 @@ fn test_biomeos_neural_api_socket_path_priority() {
     songbird_process_env::remove_var("FAMILY_ID");
     let path = UnixSocketServer::socket_path_from_env();
     assert!(
-        path.to_str().unwrap().ends_with("network.sock"),
-        "Socket should be domain.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket should be primal-named bind path; domain is network.sock symlink"
     );
 
     // Test 7: Neural API standard deployment (full environment)
@@ -170,8 +170,8 @@ fn test_default_socket_directory_is_tmp() {
         "Default socket should be in XDG or /tmp, got: {path_str}"
     );
     assert!(
-        path_str.ends_with("network.sock"),
-        "Socket should be domain.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1, got: {path_str}"
+        path_str.ends_with("songbird.sock"),
+        "Socket should be primal-named bind path per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1, got: {path_str}"
     );
 }
 
@@ -214,7 +214,7 @@ fn test_family_id_priority_order() {
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("network-custom.sock"),
+        path.to_str().unwrap().ends_with("songbird-custom.sock"),
         "Socket should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(family, "custom", "SONGBIRD_FAMILY_ID should be correctly extracted");
@@ -226,7 +226,7 @@ fn test_family_id_priority_order() {
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("network-generic.sock"),
+        path.to_str().unwrap().ends_with("songbird-generic.sock"),
         "Socket should be domain-fid.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
     );
     assert_eq!(family, "generic", "BIOMEOS_FAMILY_ID should be used as fallback");
@@ -237,8 +237,8 @@ fn test_family_id_priority_order() {
     let path = UnixSocketServer::socket_path_from_env();
     let family = UnixSocketServer::get_family_id();
     assert!(
-        path.to_str().unwrap().ends_with("network.sock"),
-        "Socket should be domain.sock per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1"
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket should be primal-named bind path; domain is network.sock symlink"
     );
     assert_eq!(family, "default", "Should default when no env vars set");
 }

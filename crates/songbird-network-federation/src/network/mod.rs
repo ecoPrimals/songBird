@@ -166,14 +166,17 @@ pub struct InterfaceConfig {
 
 impl Default for InterfaceConfig {
     fn default() -> Self {
+        let bind_address = songbird_process_env::var("SONGBIRD_BIND_ADDRESS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or_else(|| {
+                songbird_config::canonical::constants::network::default_host()
+                    .parse()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
+            });
         Self {
-            bind_address: songbird_config::canonical::constants::network::default_host()
-                .parse()
-                .unwrap_or({
-                    // Fallback to localhost if constant parsing fails
-                    std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
-                }),
-            port: 8080,
+            bind_address,
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
             port_ranges: PortRanges::default(),
             max_connections: 1000,
             connection_timeout: Duration::from_secs(30),
@@ -196,10 +199,17 @@ pub struct PortRanges {
 
 impl Default for PortRanges {
     fn default() -> Self {
+        use songbird_types::defaults::ports;
         Self {
             gaming: (6112, 6200),
             dynamic: (49152, 65535),
-            reserved: vec![8080, 8001, 8002, 8004, 3000],
+            reserved: vec![
+                ports::DEFAULT_HTTP_PORT,
+                ports::DEFAULT_TARPC_PORT,
+                ports::DEFAULT_METRICS_PORT,
+                ports::DEFAULT_FEDERATION_PORT,
+                ports::DEFAULT_STUN_PORT,
+            ],
         }
     }
 }

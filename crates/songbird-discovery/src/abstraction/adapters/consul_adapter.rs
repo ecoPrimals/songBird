@@ -178,25 +178,26 @@ impl ConsulProviderAdapter {
         })
     }
 
-    /// Convert ServiceInfo to ServiceInstance for legacy backend
+    /// Convert `ServiceInfo` to `ServiceInstance`.
+    ///
+    /// Returns an error if the host address cannot be parsed — no silent
+    /// fallback to localhost (capability-based: require valid address from
+    /// the discovery source).
     fn to_service_instance(
         &self,
         service: &ServiceInfo,
-    ) -> crate::discovery::core::ServiceInstance {
+    ) -> Result<crate::discovery::core::ServiceInstance> {
         use std::net::{IpAddr, SocketAddr};
-        use songbird_config;
 
-        let ip: IpAddr = service.host.parse().unwrap_or_else(|_| {
-            songbird_config::canonical::constants::network::DEFAULT_HOST
-                .parse()
-                .unwrap_or_else(|_| {
-                    // Final fallback to localhost if constant parsing fails
-                    IpAddr::V4(Ipv4Addr::LOCALHOST)
-                })
-        });
+        let ip: IpAddr = service.host.parse().map_err(|_| {
+            SongbirdError::configuration_error(format!(
+                "Consul service '{}' has unparseable host '{}' — capability discovery requires a valid address",
+                service.service_id, service.host,
+            ))
+        })?;
         let address = SocketAddr::new(ip, service.port);
 
-        crate::discovery::core::ServiceInstance {
+        Ok(crate::discovery::core::ServiceInstance {
             id: service.service_id.clone(),
             name: service.name.clone(),
             address,
@@ -207,7 +208,7 @@ impl ConsulProviderAdapter {
                 .collect(),
             health_check_url: service.health_check_endpoint.clone(),
             tags: service.tags.clone(),
-        }
+        })
     }
 
     /// Parse Consul API response into ServiceInfo list
@@ -233,18 +234,31 @@ impl ConsulProviderAdapter {
         Ok(services)
     }
 
-    /// Parse individual Consul service into ServiceInfo
+    /// Parse individual Consul service into `ServiceInfo`.
+    ///
+    /// Returns `None` (skips the entry) when required fields (`ID`, `Address`,
+    /// `Port`) are absent — no silent fallback to localhost or default ports.
     fn parse_consul_service(&self, service: &serde_json::Value) -> Option<ServiceInfo> {
-        use songbird_config::canonical::constants;
-        
         let id = service["ID"].as_str()?.to_string();
         let name = service["Service"].as_str().unwrap_or(&id).to_string();
-        let address = service["Address"]
-            .as_str()
-            .unwrap_or(constants::network::DEFAULT_HOST);
-        let port = service["Port"]
-            .as_u64()
-            .unwrap_or(8080) as u16; // Standard HTTP port as fallback
+        let address = match service["Address"].as_str().filter(|a| !a.is_empty()) {
+            Some(a) => a,
+            None => {
+                tracing::warn!(
+                    "Consul service '{name}' has no Address — skipping (capability-based: require valid address)"
+                );
+                return None;
+            }
+        };
+        let port = match service["Port"].as_u64() {
+            Some(p) => p as u16,
+            None => {
+                tracing::warn!(
+                    "Consul service '{name}' has no Port — skipping (capability-based: require valid port)"
+                );
+                return None;
+            }
+        };
         
         // Determine protocol from consul URL or service metadata
         let protocol = if self.consul_url.starts_with("https://") {
@@ -303,17 +317,14 @@ impl DiscoveryProvider for ConsulProviderAdapter {
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        let _instance = self.to_service_instance(&service);
-        // Note: The legacy backend has different method signatures
-        // This is a temporary implementation until we fix the trait interface
+        let _instance = self.to_service_instance(&service)?;
         tracing::info!(
             "📝 Registering service {} via Consul adapter",
             service.service_id
         );
 
-        // For now, return an error indicating the legacy backend needs updating
         Err(SongbirdError::operation_error(
-            "Legacy Consul backend needs trait interface updates to work with adapter",
+            "Consul registration requires native API integration (trait interface update pending)",
         ))
     }
 

@@ -5,14 +5,14 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 8, 2026
+**Last Updated**: April 9, 2026
 
 ## What It Does
 
 Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 
 - **HTTP/HTTPS**: Pure Rust TLS 1.3 client for sovereign HTTPS (Tower Atomic with security provider)
-- **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication
+- **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication; BTSP Phase 2 handshake on UDS accept when `FAMILY_ID` set; domain symlink `network.sock` → `songbird.sock` for capability discovery
 - **Discovery**: Capability-based runtime discovery — mDNS, SSDP, UDP broadcast, DNS-SD, BirdSong encrypted beacons
 - **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh
 - **Federation**: Multi-node mesh networking with capability-based routing
@@ -38,7 +38,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
-| Files >800 LOC | 0 (largest production 797L `primal_discovery.rs`; largest test 778L; `ai_tests` refactored into 8 modules) |
+| Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored into domain modules Wave 133; largest test 731L) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` deprecated behind `sled-storage` feature (NestGate `storage.*` capability is production path); `ring` only via optional `k8s` feature; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`) |

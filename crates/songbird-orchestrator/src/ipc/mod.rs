@@ -44,6 +44,7 @@
 //! 5. **Observable**: Structured logging at every step
 //! 6. **Secure**: Unix socket permissions
 
+pub mod btsp;
 pub mod handlers;
 pub mod pure_rust_server; // v4.9.0: Refactored into domain modules
 pub mod registry;

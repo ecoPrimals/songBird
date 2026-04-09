@@ -145,12 +145,11 @@ getrandom = "0.3"
 rand = "0.8"
 
 # Concurrency
-parking_lot = "0.12"
 bitflags = "2.9"
 
 # CLI
 clap = { version = "4.0", features = ["derive", "env"] }
-colored = "2.0"
+colored = "3.1"
 
 # Networking
 hickory-resolver = "0.24"

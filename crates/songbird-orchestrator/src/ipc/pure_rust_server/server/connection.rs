@@ -3,12 +3,12 @@
 
 //! Unix/TCP accept loops, per-connection framing, and TCP discovery file I/O.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use bytes::Bytes;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
@@ -16,6 +16,7 @@ use tracing::{debug, error, info, warn};
 
 use super::super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use super::UnixSocketServer;
+use crate::ipc::btsp;
 
 impl UnixSocketServer {
     /// Try to start Unix socket server (existing optimal path)
@@ -40,12 +41,21 @@ impl UnixSocketServer {
         let listener = UnixListener::bind(&*self.socket_path)
             .context(format!("Failed to bind Unix socket: {}", self.socket_path.display()))?;
 
+        crate::env_config::create_domain_socket_symlink(&self.socket_path);
+
+        let btsp_active = btsp::btsp_required();
+
         self.is_running.store(true, std::sync::atomic::Ordering::Release);
         self.is_ready.store(true, std::sync::atomic::Ordering::Release);
         self.ready_notify.notify_waiters();
 
         info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
+        if btsp_active {
+            info!("   Security: BTSP handshake ENFORCED (FAMILY_ID set)");
+        } else {
+            info!("   Security: Development mode (no BTSP handshake)");
+        }
         info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 coordination)");
         info!("   Status: READY ✅ (atomic flag set)");
 
@@ -54,19 +64,23 @@ impl UnixSocketServer {
                 Ok(Ok((stream, _addr))) => {
                     let server = Arc::clone(&self);
                     tokio::spawn(async move {
-                        if let Err(e) = server.handle_connection(stream).await {
-                            error!("❌ Connection handler error: {}", e);
+                        if btsp_active {
+                            if let Err(e) = server.handle_btsp_connection(stream).await {
+                                error!("Connection handler error (BTSP): {}", e);
+                            }
+                        } else if let Err(e) = server.handle_connection(stream).await {
+                            error!("Connection handler error: {}", e);
                         }
                     });
                 }
                 Ok(Err(e)) => {
-                    error!("❌ Failed to accept connection: {}", e);
+                    error!("Failed to accept connection: {}", e);
                 }
                 Err(_) => {}
             }
         }
 
-        info!("🛑 Unix socket server stopped gracefully");
+        info!("Unix socket server stopped gracefully");
         Ok(())
     }
 
@@ -234,10 +248,102 @@ impl UnixSocketServer {
         Ok(())
     }
 
+    /// Handle a BTSP-authenticated connection (production mode).
+    ///
+    /// Performs the 4-step BTSP handshake before processing JSON-RPC.
+    /// After handshake, uses length-prefixed framing per `BTSP_PROTOCOL_STANDARD.md`.
+    #[cfg(unix)]
+    pub(crate) async fn handle_btsp_connection(&self, mut stream: UnixStream) -> Result<()> {
+        debug!("New IPC connection (BTSP mode)");
+
+        let session = btsp::perform_server_handshake(&mut stream, &self.security_client)
+            .await
+            .context("BTSP handshake failed")?;
+
+        info!("BTSP session {} authenticated (cipher: {})", session.session_id, session.cipher);
+
+        self.handle_btsp_frame(&mut stream, &session).await
+    }
+
+    /// Read and process a single length-prefixed JSON-RPC frame after BTSP handshake.
+    #[cfg(unix)]
+    async fn handle_btsp_frame(
+        &self,
+        stream: &mut UnixStream,
+        session: &btsp::BtspSession,
+    ) -> Result<()> {
+        let mut len_buf = [0u8; 4];
+        match tokio::time::timeout(Duration::from_secs(30), stream.read_exact(&mut len_buf)).await {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                debug!("BTSP client disconnected (session {})", session.session_id);
+                return Ok(());
+            }
+            Ok(Err(e)) => {
+                return Err(e).context("BTSP frame length read error");
+            }
+            Err(_) => {
+                debug!("BTSP read timeout (session {})", session.session_id);
+                return Ok(());
+            }
+        }
+
+        let frame_len = u32::from_be_bytes(len_buf) as usize;
+        if frame_len > 16 * 1024 * 1024 {
+            bail!("BTSP frame exceeds 16 MiB limit ({frame_len})");
+        }
+
+        let mut payload = vec![0u8; frame_len];
+        stream.read_exact(&mut payload).await.context("BTSP payload read error")?;
+
+        let request = match serde_json::from_slice::<JsonRpcRequest>(&payload) {
+            Ok(req) => req,
+            Err(e) => {
+                let resp = JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: None,
+                    error: Some(JsonRpcError::parse_error(format!(
+                        "Failed to parse JSON-RPC request: {e}"
+                    ))),
+                    id: serde_json::Value::Null,
+                };
+                Self::write_btsp_response(stream, &resp).await?;
+                return Ok(());
+            }
+        };
+
+        let is_notification = request.id.is_none();
+        debug!(
+            "BTSP JSON-RPC: {} (notification={}, session={})",
+            request.method, is_notification, session.session_id
+        );
+        let response = self.handle_jsonrpc_request(request).await;
+
+        if !is_notification {
+            Self::write_btsp_response(stream, &response).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Write a length-prefixed JSON-RPC response to a BTSP stream.
+    #[cfg(unix)]
+    async fn write_btsp_response(
+        stream: &mut UnixStream,
+        response: &JsonRpcResponse,
+    ) -> Result<()> {
+        let resp_bytes = serde_json::to_vec(response)?;
+        let resp_len = u32::try_from(resp_bytes.len()).context("response exceeds u32::MAX")?;
+        stream.write_all(&resp_len.to_be_bytes()).await?;
+        stream.write_all(&resp_bytes).await?;
+        stream.flush().await?;
+        Ok(())
+    }
+
     /// Handle a single client connection with JSON-RPC 2.0
     #[cfg(unix)]
     pub(crate) async fn handle_connection(&self, stream: UnixStream) -> Result<()> {
-        debug!("📥 New IPC connection");
+        debug!("New IPC connection (development mode)");
 
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);

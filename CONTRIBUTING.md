@@ -38,6 +38,8 @@ fn compute_offset(&self) -> usize { /* ... */ }
 
 **Never** use bare `#[allow(lint)]` or `#[expect(lint)]` without a reason string.
 
+**Note**: Some crate-root `#![allow(...)]` blocks remain where switching to `#![expect(...)]` causes unfulfilled-expectation errors (e.g., lints that fire only under certain `cfg` combinations). Do not convert these to `expect` — CI will break.
+
 ### Unsafe Code
 
 `#![forbid(unsafe_code)]` across all 30 crates with zero exceptions.

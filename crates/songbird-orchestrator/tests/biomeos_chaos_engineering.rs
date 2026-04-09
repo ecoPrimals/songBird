@@ -293,7 +293,7 @@ fn chaos_alternating_clear_set() {
             let family = UnixSocketServer::get_family_id();
 
             // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: domain-based socket naming
-            assert!(path.to_str().unwrap().ends_with("network.sock"));
+            assert!(path.to_str().unwrap().ends_with("songbird.sock"));
             assert_eq!(family, "default");
         }
     }

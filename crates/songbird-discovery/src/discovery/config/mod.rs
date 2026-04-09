@@ -96,10 +96,18 @@ pub struct NetworkTimingConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            multicast_address: "224.0.0.251".to_string(),
-            federation_port: 8765,
-            service_port: 8080,                  // Default discovery port
-            bind_address: "0.0.0.0".to_string(), // ✅ Updated: EnvironmentConfig no longer has bind_address
+            multicast_address: songbird_process_env::var("SONGBIRD_MULTICAST_ADDRESS")
+                .unwrap_or_else(|_| "224.0.0.251".to_string()),
+            federation_port: songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(songbird_types::defaults::ports::DEFAULT_FEDERATION_PORT),
+            service_port: songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
+            bind_address: songbird_process_env::var("SONGBIRD_BIND_ADDRESS")
+                .unwrap_or_else(|_| "0.0.0.0".to_string()),
             announcement_interval_secs: 60,
             response_timeout_secs: 2,
             ping_timeout_secs: 5,
@@ -212,7 +220,7 @@ mod tests {
     fn network_config_default_values() {
         let n = NetworkConfig::default();
         assert_eq!(n.multicast_address, "224.0.0.251");
-        assert_eq!(n.federation_port, 8765);
+        assert_eq!(n.federation_port, songbird_types::defaults::ports::DEFAULT_FEDERATION_PORT);
         assert_eq!(n.max_packet_size, 65536);
     }
 

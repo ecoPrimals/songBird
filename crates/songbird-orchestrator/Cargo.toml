@@ -126,6 +126,7 @@ sled = { version = "0.34", optional = true }
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"], optional = true }
 sha2 = "0.10"
 base64 = "0.22"
+getrandom = { workspace = true }
 
 colored = { workspace = true }
 fastrand = { workspace = true }

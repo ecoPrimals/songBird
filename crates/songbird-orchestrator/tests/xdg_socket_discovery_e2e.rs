@@ -358,7 +358,7 @@ async fn test_e2e_capability_registration_discovers_xdg_neural_api() {
     std::fs::create_dir_all(&biomeos_dir).unwrap();
 
     let neural_socket_path = biomeos_dir.join("neural-api.sock");
-    let songbird_socket_path = biomeos_dir.join("network.sock");
+    let songbird_socket_path = biomeos_dir.join("songbird.sock");
 
     // Start mock Neural API server with readiness signal
     let listener = create_mock_socket(&neural_socket_path).await;

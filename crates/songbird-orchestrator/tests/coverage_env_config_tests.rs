@@ -181,7 +181,7 @@ fn test_socket_path_biomeos_socket_dir() {
     let path = env_config::socket_path();
     songbird_process_env::remove_var("BIOMEOS_SOCKET_DIR");
     assert!(path.to_string_lossy().contains("test-biomeos-sockets"));
-    assert!(path.to_string_lossy().ends_with("network.sock"));
+    assert!(path.to_string_lossy().ends_with("songbird.sock"));
 }
 
 #[test]
@@ -196,7 +196,7 @@ fn test_socket_path_xdg_runtime_dir() {
     songbird_process_env::remove_var("XDG_RUNTIME_DIR");
     let path_str = path.to_string_lossy();
     // Either uses XDG path or falls back to /tmp (depends on dir creation)
-    assert!(path_str.ends_with("network.sock"));
+    assert!(path_str.ends_with("songbird.sock"));
 }
 
 #[test]

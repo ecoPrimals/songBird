@@ -195,20 +195,100 @@ where
     })
 }
 
-/// Get storage provider endpoint (replaces legacy hardcoded storage URL naming)
+/// Capability endpoint resolution table entry — drives the env-chain → discovery
+/// → error flow for storage, security, and AI (and any future capability domains).
+struct CapabilityEndpointSpec {
+    provider_env: &'static str,
+    primary_env: &'static str,
+    legacy_env: Option<&'static str>,
+    capability: &'static str,
+    field: &'static str,
+}
+
+/// Shared resolution logic for capability endpoints.
 ///
-/// Discovery order:
-/// 1. `STORAGE_PROVIDER_ENDPOINT` environment variable
-/// 2. `STORAGE_ENDPOINT` environment variable
-/// 3. Legacy storage env alias (compatibility; same key as runtime `var` lookup below)
-/// 4. Capability-based discovery (`runtime_discovery`)
-/// 5. Error - no hardcoded fallback
+/// Walks: `provider_env` → `primary_env` → `legacy_env` (with deprecation
+/// warning) → runtime discovery → configuration error.
+async fn resolve_capability_endpoint_with<F>(
+    spec: &CapabilityEndpointSpec,
+    env_reader: F,
+) -> SongbirdResult<String>
+where
+    F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+{
+    if let Ok(ep) = env_reader(spec.provider_env) {
+        debug!("Using {} from environment: {}", spec.provider_env, ep);
+        return Ok(ep);
+    }
+
+    if let Ok(ep) = env_reader(spec.primary_env) {
+        debug!("Using {} from environment: {}", spec.primary_env, ep);
+        return Ok(ep);
+    }
+
+    if let Some(legacy) = spec.legacy_env
+        && let Ok(ep) = env_reader(legacy)
+    {
+        warn!("deprecated: use {} instead of {}", spec.provider_env, legacy);
+        return Ok(ep);
+    }
+
+    let engine = crate::runtime_discovery::RuntimeDiscoveryEngine::default();
+    match engine.discover_by_capability(spec.capability).await {
+        Ok(service) => {
+            debug!(
+                "Discovered {} via RuntimeDiscoveryEngine: {}",
+                spec.capability, service.endpoint
+            );
+            return Ok(service.endpoint);
+        }
+        Err(e) => {
+            debug!("Runtime discovery failed for {}: {}", spec.capability, e);
+        }
+    }
+
+    Err(SongbirdError::Configuration {
+        message: format!("No {} provider configured.", spec.capability),
+        field: Some(spec.field.to_string()),
+        suggestion: Some(format!(
+            "Set {} environment variable (e.g., export {}=http://your-provider:PORT) or enable capability discovery.",
+            spec.primary_env, spec.primary_env,
+        )),
+    })
+}
+
+const STORAGE_SPEC: CapabilityEndpointSpec = CapabilityEndpointSpec {
+    provider_env: "STORAGE_PROVIDER_ENDPOINT",
+    primary_env: "STORAGE_ENDPOINT",
+    legacy_env: Some("NESTGATE_ENDPOINT"),
+    capability: "storage",
+    field: "storage_endpoint",
+};
+
+const SECURITY_SPEC: CapabilityEndpointSpec = CapabilityEndpointSpec {
+    provider_env: "SECURITY_PROVIDER_ENDPOINT",
+    primary_env: "SECURITY_ENDPOINT",
+    legacy_env: Some("BEARDOG_ENDPOINT"),
+    capability: "security",
+    field: "security_endpoint",
+};
+
+const AI_SPEC: CapabilityEndpointSpec = CapabilityEndpointSpec {
+    provider_env: "AI_PROVIDER_ENDPOINT",
+    primary_env: "AI_ENDPOINT",
+    legacy_env: Some("SQUIRREL_ENDPOINT"),
+    capability: "ai",
+    field: "ai_endpoint",
+};
+
+/// Get storage provider endpoint.
+///
+/// Discovery order: `STORAGE_PROVIDER_ENDPOINT` → `STORAGE_ENDPOINT` →
+/// `NESTGATE_ENDPOINT` (deprecated) → runtime discovery → error.
 ///
 /// # Errors
 ///
-/// Returns an error if:
-/// - No storage endpoint environment variable is set
-/// - Capability-based discovery fails to find a storage provider
+/// Returns an error when no storage endpoint is configured and discovery fails.
 pub async fn get_storage_endpoint() -> SongbirdResult<String> {
     get_storage_endpoint_with(|k| songbird_process_env::var(k)).await
 }
@@ -218,57 +298,17 @@ pub async fn get_storage_endpoint_with<F>(env_reader: F) -> SongbirdResult<Strin
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
 {
-    // 1. Try STORAGE_PROVIDER_ENDPOINT (aligns with capability-based config) first
-    if let Ok(endpoint) = env_reader("STORAGE_PROVIDER_ENDPOINT") {
-        debug!("Using STORAGE_PROVIDER_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 2. Try STORAGE_ENDPOINT
-    if let Ok(endpoint) = env_reader("STORAGE_ENDPOINT") {
-        debug!("Using STORAGE_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 3. Legacy storage env branch (backwards compatibility)
-    if let Ok(endpoint) = env_reader("NESTGATE_ENDPOINT") {
-        warn!("deprecated: use STORAGE_PROVIDER_ENDPOINT instead of NESTGATE_ENDPOINT");
-        return Ok(endpoint);
-    }
-
-    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
-    match crate::runtime_discovery::discover_storage().await {
-        Ok(service) => {
-            debug!("Discovered storage via RuntimeDiscoveryEngine: {}", service.endpoint);
-            return Ok(service.endpoint);
-        }
-        Err(e) => {
-            debug!("Runtime discovery failed: {}", e);
-            // Fall through to error
-        }
-    }
-
-    Err(SongbirdError::Configuration {
-        message: "No storage provider configured.".to_string(),
-        field: Some("storage_endpoint".to_string()),
-        suggestion: Some("Set STORAGE_ENDPOINT environment variable (e.g., export STORAGE_ENDPOINT=http://your-provider:8003) or enable capability discovery.".to_string()),
-    })
+    resolve_capability_endpoint_with(&STORAGE_SPEC, env_reader).await
 }
 
-/// Get security provider endpoint (replaces legacy hardcoded security URL defaults)
+/// Get security provider endpoint.
 ///
-/// Discovery order:
-/// 1. `SECURITY_PROVIDER_ENDPOINT` environment variable
-/// 2. `SECURITY_ENDPOINT` environment variable
-/// 3. Legacy security env alias (backwards compatibility; same key as runtime `var` lookup below)
-/// 4. Capability-based discovery (future)
-/// 5. Error - no hardcoded fallback
+/// Discovery order: `SECURITY_PROVIDER_ENDPOINT` → `SECURITY_ENDPOINT` →
+/// `BEARDOG_ENDPOINT` (deprecated) → runtime discovery → error.
 ///
 /// # Errors
 ///
-/// Returns an error if:
-/// - Neither `SECURITY_ENDPOINT` nor the legacy security env alias is set
-/// - Capability-based discovery fails to find a security provider
+/// Returns an error when no security endpoint is configured and discovery fails.
 pub async fn get_security_endpoint() -> SongbirdResult<String> {
     get_security_endpoint_with(|k| songbird_process_env::var(k)).await
 }
@@ -278,57 +318,17 @@ pub async fn get_security_endpoint_with<F>(env_reader: F) -> SongbirdResult<Stri
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
 {
-    // 1. Try SECURITY_PROVIDER_ENDPOINT (capability domain) first
-    if let Ok(endpoint) = env_reader("SECURITY_PROVIDER_ENDPOINT") {
-        debug!("Using SECURITY_PROVIDER_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 2. Try SECURITY_ENDPOINT
-    if let Ok(endpoint) = env_reader("SECURITY_ENDPOINT") {
-        debug!("Using SECURITY_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 3. Legacy security env branch (backwards compatibility)
-    if let Ok(endpoint) = env_reader("BEARDOG_ENDPOINT") {
-        warn!("deprecated: use SECURITY_PROVIDER_ENDPOINT instead of BEARDOG_ENDPOINT");
-        return Ok(endpoint);
-    }
-
-    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
-    match crate::runtime_discovery::discover_security().await {
-        Ok(service) => {
-            debug!("Discovered security via RuntimeDiscoveryEngine: {}", service.endpoint);
-            return Ok(service.endpoint);
-        }
-        Err(e) => {
-            debug!("Runtime discovery failed: {}", e);
-            // Fall through to error
-        }
-    }
-
-    Err(SongbirdError::Configuration {
-        message: "No security provider configured.".to_string(),
-        field: Some("security_endpoint".to_string()),
-        suggestion: Some("Set SECURITY_ENDPOINT environment variable (e.g., export SECURITY_ENDPOINT=http://your-provider:8004) or enable capability discovery.".to_string()),
-    })
+    resolve_capability_endpoint_with(&SECURITY_SPEC, env_reader).await
 }
 
-/// Get AI provider endpoint (replaces legacy hardcoded AI / neural URL defaults)
+/// Get AI provider endpoint.
 ///
-/// Discovery order:
-/// 1. `AI_PROVIDER_ENDPOINT` environment variable
-/// 2. `AI_ENDPOINT` environment variable
-/// 3. Legacy AI env alias (backwards compatibility; same key as runtime `var` lookup below)
-/// 4. Capability-based discovery (future)
-/// 5. Error - no hardcoded fallback
+/// Discovery order: `AI_PROVIDER_ENDPOINT` → `AI_ENDPOINT` →
+/// `SQUIRREL_ENDPOINT` (deprecated) → runtime discovery → error.
 ///
 /// # Errors
 ///
-/// Returns an error if:
-/// - Neither `AI_ENDPOINT` nor the legacy AI env alias is set
-/// - Capability-based discovery fails to find an AI provider
+/// Returns an error when no AI endpoint is configured and discovery fails.
 pub async fn get_ai_endpoint() -> SongbirdResult<String> {
     get_ai_endpoint_with(|k| songbird_process_env::var(k)).await
 }
@@ -338,41 +338,7 @@ pub async fn get_ai_endpoint_with<F>(env_reader: F) -> SongbirdResult<String>
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
 {
-    // 1. Try AI_PROVIDER_ENDPOINT (capability domain) first
-    if let Ok(endpoint) = env_reader("AI_PROVIDER_ENDPOINT") {
-        debug!("Using AI_PROVIDER_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 2. Try AI_ENDPOINT
-    if let Ok(endpoint) = env_reader("AI_ENDPOINT") {
-        debug!("Using AI_ENDPOINT from environment: {}", endpoint);
-        return Ok(endpoint);
-    }
-
-    // 3. Legacy AI env branch (backwards compatibility)
-    if let Ok(endpoint) = env_reader("SQUIRREL_ENDPOINT") {
-        warn!("deprecated: use AI_PROVIDER_ENDPOINT instead of SQUIRREL_ENDPOINT");
-        return Ok(endpoint);
-    }
-
-    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
-    match crate::runtime_discovery::discover_ai().await {
-        Ok(service) => {
-            debug!("Discovered AI via RuntimeDiscoveryEngine: {}", service.endpoint);
-            return Ok(service.endpoint);
-        }
-        Err(e) => {
-            debug!("Runtime discovery failed: {}", e);
-            // Fall through to error
-        }
-    }
-
-    Err(SongbirdError::Configuration {
-        message: "No AI provider configured.".to_string(),
-        field: Some("ai_endpoint".to_string()),
-        suggestion: Some("Set AI_ENDPOINT environment variable (e.g., export AI_ENDPOINT=http://your-provider:8002) or enable capability discovery.".to_string()),
-    })
+    resolve_capability_endpoint_with(&AI_SPEC, env_reader).await
 }
 
 /// Get an endpoint for a capability

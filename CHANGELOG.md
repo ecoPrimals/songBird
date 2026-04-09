@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave133] - 2026-04-09 - Deep Debt Sweep: Refactoring, Lint Migration, Dep Cleanup
+
+### Changed — Smart Refactoring (4 largest production files)
+- `ipc/types.rs` (778L) → 7 domain modules (max 387L): `p2p_discovery`, `genetic_tunnel`, `capabilities`, `service_registry`, `time`, `tests`
+- `env_config.rs` (764L) → 9 modules (max 290L): `btsp`, `identity`, `socket`, `paths`, `security_ipc`, `http`, `dark_forest`, `tests`
+- `rpc/tarpc_server.rs` (702L) → 3 modules (max 345L): `dispatch`, `accept` (macro-deduplicated accept loops)
+- `task_lifecycle/manager.rs` (711L) → 6 modules (max 281L): `events`, `storage`, `ops`, `cleanup`, `tests` (storage init consolidated)
+
+### Changed — Lint Migration
+- `#[allow(` → `#[expect(` for specific production lints in orchestrator, network-federation, universal-ipc, config `lib.rs` files
+- Broad crate-root `#[allow]` blocks kept where `#[expect]` causes unfulfilled-expectation errors
+
+### Changed — Dependency Cleanup
+- `parking_lot` removed from workspace (unused since Wave 129)
+- `colored` bumped 2.0 → 3.1 (deduplicates with mockito transitive dep)
+
+### Added — T3 Domain Symlink
+- `create_domain_socket_symlink()`: `network.sock` → `songbird.sock` created on bind for capability discovery
+- `remove_domain_socket_symlink_if_matches()`: cleaned up on shutdown
+
+### Verified — PII Scan
+- 88 hits across codebase: all domain terms (email enum, password config, crypto keys) — documented false positives
+
+### Stats
+- Tests: 7,265+ lib, 0 failed
+- All 30 crates: fmt clean, clippy zero warnings, doc zero warnings, cargo-deny passing
+
+---
+
+## [v0.2.1-wave132] - 2026-04-09 - BTSP Phase 2: Server Handshake on UDS Accept
+
+### Added — BTSP Phase 2 Server Handshake
+- `perform_server_handshake()` wired into UDS accept path (orchestrator `connection.rs`)
+- New `btsp.rs` in orchestrator IPC: wire types (`ClientHello`, `ServerHello`, `ChallengeResponse`, `HandshakeComplete`), length-prefixed framing (4-byte BE), 4-step handshake delegating to security provider
+- New `btsp.rs` in `songbird-http-client`: `btsp_session_create`/`btsp_session_verify`/`btsp_negotiate` RPC methods + wire types
+- `connection.rs` accept loop `FAMILY_ID`-gated: BTSP when set, raw JSON-RPC in dev
+- `getrandom` added for challenge generation
+
+### Resolved — primalSpring Audit Items
+- SB-02 (`ring` ghost in lockfile): confirmed lockfile-only via optional `k8s` feature, 0 in default builds, `deny.toml` bans it
+- SB-03 (`sled` default-on): confirmed already fixed (feature-gated, non-default)
+- Wire Standard L3: confirmed clean
+
+### Stats
+- Tests: 6,339+ lib, 0 failed
+
+---
+
+## [v0.2.1-wave131] - 2026-04-09 - Hardcoded Elimination: Consul, Dark Forest, Federation
+
+### Changed — Error Propagation Evolution
+- `consul_adapter.rs`: `to_service_instance` evolved from silent localhost fallback to `Result`-based error propagation
+- `parse_consul_service` now requires valid `Address`/`Port` fields (no more silent `DEFAULT_HOST` fallback)
+
+### Changed — Capability-First Configuration
+- `InterfaceConfig::default()` bind address now env-configurable via `SONGBIRD_BIND_ADDRESS` with `UNSPECIFIED` instead of `LOCALHOST`
+- Dark Forest beacon `0.0.0.0` endpoint fallback removed (empty list + warning when endpoints unknown)
+- Federation `NetworkConfig` ports evolved to `songbird_types::defaults::ports` constants with env overrides
+- `PortRanges::reserved` hardcoded ports replaced with canonical constants
+
+### Changed — Deduplication
+- `primal_discovery.rs` 4-way endpoint duplication (storage/security/AI/compute) deduplicated into `resolve_capability_endpoint_with` helper with `CapabilityEndpointSpec` table (797→760L)
+
+### Stats
+- Tests: all passing, 0 failures
+
+---
+
 ## [v0.2.1-wave130] - 2026-04-08 - Wire Standard L3, BTSP Handshake, Deep Debt Evolution
 
 ### Added — Wire Standard L3

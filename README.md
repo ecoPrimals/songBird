@@ -18,7 +18,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero in production (`.unwrap()` appears only in test modules across the codebase; verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
-| Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` only in `#[cfg(test)]` modules; production `dead_code` allows eliminated; commented-out code scrubbed (Apr 8 audit) |
+| Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` in `#[cfg(test)]` modules and crate-root blocks where `#[expect]` causes unfulfilled-expectation errors; production `dead_code` allows eliminated; commented-out code scrubbed |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
 | Tests | 13,009 passed, 0 failed, 252 ignored |
 | Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 8 2026; target 90%) |
@@ -29,12 +29,12 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`; Apr 8 audit: no drift) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | 0 (largest production 797L `primal_discovery.rs`; largest test 778L; `ai_tests` refactored into 8 modules) |
+| Files >800 lines | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored into domain modules Wave 133; largest test 731L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
 | Wire Standard L3 | `capabilities.list` returns L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`; `identity.get` returns `{primal, version, domain, license}`; `capabilities.methods` token→method map |
-| BTSP Phase 1 | ClientHello/ChallengeResponse handshake client; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`) |
+| BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` on UDS accept when `FAMILY_ID` set; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |

@@ -75,12 +75,12 @@
 // receive the same allows as the library (inner attributes here do not apply to them).
 #![forbid(unsafe_code)]
 // Lock guards are held across critical sections; narrowing scope is a larger refactor.
-#![allow(
+#![expect(
     clippy::significant_drop_tightening,
     reason = "lock guards scoped for coherent state updates; per-site tightening tracked separately"
 )]
 // Casts between integer sizes and floats are used for metrics and ratios.
-#![allow(
+#![expect(
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation,

@@ -145,7 +145,7 @@ pub async fn dark_forest_beacon_id_fallback(
 pub async fn build_dark_forest_beacon_bytes(
     node_id: Option<String>,
     endpoints: Option<&Vec<TransportEndpointMessage>>,
-    port: u16,
+    _port: u16,
     capabilities: &[String],
     birdsong: &crate::birdsong::BirdSongProcessor,
 ) -> Result<Vec<u8>, anyhow::Error> {
@@ -163,7 +163,10 @@ pub async fn build_dark_forest_beacon_bytes(
     };
 
     let endpoints_list: Vec<String> = endpoints.map_or_else(
-        || vec![format!("tcp:0.0.0.0:{port}")],
+        || {
+            warn!("Dark Forest beacon built without explicit endpoints — peers will use UDP source address");
+            Vec::new()
+        },
         |eps| eps.iter().map(|e| format!("{}:{}", e.interface_type, e.address)).collect(),
     );
 

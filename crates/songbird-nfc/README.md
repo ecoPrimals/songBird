@@ -182,31 +182,31 @@ let device = NfcDevice::new(timeout)?; // Automatically uses LinuxNfcBackend
 
 **Status**: Stub implementation (TODO: libnfc integration)
 
-## BearDog Integration
+## Security Provider Integration
 
-All cryptographic operations are delegated to BearDog via IPC:
+All cryptographic operations are delegated to the security provider via capability-based IPC:
 
-| Operation | BearDog Method | Status |
-|-----------|---------------|--------|
-| Generate ephemeral keypair | `beardog.generate_x25519_keypair()` | TODO |
-| Compute shared secret | `beardog.x25519_diffie_hellman(secret, peer_pub)` | TODO |
-| Generate nonce | `beardog.generate_nonce()` | TODO |
-| Encrypt genesis | `beardog.chacha20poly1305_encrypt(data, key, nonce)` | TODO |
-| Decrypt genesis | `beardog.chacha20poly1305_decrypt(encrypted, key, nonce)` | TODO |
-| Sign message | `beardog.ed25519_sign(ephemeral_key, data)` | TODO |
-| Verify signature | `beardog.ed25519_verify(public_key, data, signature)` | TODO |
-| Destroy keys | `beardog.destroy_ephemeral_keys()` | TODO |
+| Operation | JSON-RPC Method | Status |
+|-----------|----------------|--------|
+| Generate ephemeral keypair | `crypto.generate_x25519_keypair` | Pending |
+| Compute shared secret | `crypto.x25519_diffie_hellman` | Pending |
+| Generate nonce | `crypto.generate_nonce` | Pending |
+| Encrypt genesis | `crypto.chacha20poly1305_encrypt` | Pending |
+| Decrypt genesis | `crypto.chacha20poly1305_decrypt` | Pending |
+| Sign message | `crypto.ed25519_sign` | Pending |
+| Verify signature | `crypto.ed25519_verify` | Pending |
+| Destroy keys | `crypto.destroy_ephemeral_keys` | Pending |
 
 ## Configuration
 
-### BearDog Socket Discovery
+### Security Provider Socket Discovery
 
-`NfcConfig` discovers the BearDog socket at runtime (no hardcoding):
+`NfcConfig` discovers the security provider socket at runtime (no hardcoding):
 
-1. `BEARDOG_SOCKET` environment variable
-2. `SONGBIRD_SECURITY_PROVIDER` environment variable
-3. `$XDG_RUNTIME_DIR/biomeos/beardog.sock`
-4. `/tmp/biomeos/beardog.sock` (fallback)
+1. `SECURITY_PROVIDER_SOCKET` environment variable
+2. `BEARDOG_SOCKET` environment variable (deprecated fallback)
+3. `$XDG_RUNTIME_DIR/biomeos/security.sock`
+4. `/tmp/biomeos/security.sock` (fallback)
 
 ### Full Configuration
 
