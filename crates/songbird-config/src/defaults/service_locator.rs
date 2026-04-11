@@ -174,7 +174,9 @@ impl ServiceLocator {
             dirs.push(PathBuf::from(d));
         }
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-            dirs.push(Path::new(&xdg).join("biomeos"));
+            dirs.push(
+                Path::new(&xdg).join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR),
+            );
         }
         dirs
     }

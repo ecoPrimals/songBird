@@ -96,7 +96,10 @@ struct SecurityProviderDecryptResponse {
 
 /// Connection type for `security provider` (Unix socket or TCP)
 #[derive(Debug, Clone)]
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(
+    dead_code,
+    reason = "constructed by connect() and pattern-matched in route(); callers wired incrementally"
+)]
 enum SecurityConnection {
     /// Unix socket path
     Unix(PathBuf),
@@ -119,11 +122,17 @@ enum SecurityConnection {
 /// - TCP socket: `tcp:host:port` (e.g., `tcp:127.0.0.1:9900`)
 pub struct SecurityBirdSongProvider {
     /// Connection type (Unix socket or TCP)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "stored for reconnection logic; read when connection routing is wired"
+    )]
     connection: SecurityConnection,
 
     /// Legacy socket path field name (for backward compatibility)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "kept for backward-compat introspection; superseded by `connection`"
+    )]
     socket_path: PathBuf,
 
     /// JSON-RPC client for provider communication (Pure Rust!)

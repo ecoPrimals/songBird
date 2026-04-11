@@ -16,6 +16,11 @@ pub const DEFAULT_METRICS_PORT: u16 = 8081;
 pub const DEFAULT_TARPC_PORT: u16 = 8001;
 /// Default federation port (env: `SONGBIRD_FEDERATION_PORT`)
 pub const DEFAULT_FEDERATION_PORT: u16 = 8000;
+/// Default Songbird service port (env: `SONGBIRD_PORT`)
+///
+/// The canonical well-known port for Songbird IPC, onion endpoints, and IGD
+/// port mappings when not overridden by environment or capability discovery.
+pub const DEFAULT_SONGBIRD_PORT: u16 = 3492;
 /// Default STUN port (env: `SONGBIRD_STUN_PORT`)
 pub const DEFAULT_STUN_PORT: u16 = 3478;
 /// Default compute bridge port

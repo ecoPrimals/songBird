@@ -107,8 +107,11 @@ impl IgdHandler {
 
     /// Handle `igd.map_port` - Request port forwarding
     pub async fn handle_map_port(&self, params: Value) -> Value {
+        let default_port = songbird_types::defaults::ports::DEFAULT_SONGBIRD_PORT;
+        let default_port_u64 = u64::from(default_port);
         let external_port =
-            u16::try_from(params["external_port"].as_u64().unwrap_or(3492)).unwrap_or(3492);
+            u16::try_from(params["external_port"].as_u64().unwrap_or(default_port_u64))
+                .unwrap_or(default_port);
         let internal_port = u16::try_from(
             params["internal_port"].as_u64().unwrap_or_else(|| u64::from(external_port)),
         )
@@ -195,8 +198,11 @@ impl IgdHandler {
 
     /// Handle `igd.unmap_port` - Remove port forwarding
     pub async fn handle_unmap_port(&self, params: Value) -> Value {
+        let default_port = songbird_types::defaults::ports::DEFAULT_SONGBIRD_PORT;
+        let default_port_u64 = u64::from(default_port);
         let external_port =
-            u16::try_from(params["external_port"].as_u64().unwrap_or(3492)).unwrap_or(3492);
+            u16::try_from(params["external_port"].as_u64().unwrap_or(default_port_u64))
+                .unwrap_or(default_port);
         let protocol = params["protocol"].as_str().unwrap_or("TCP");
 
         info!("IGD: Unmapping port {} {}", protocol, external_port);
@@ -281,7 +287,10 @@ impl IgdHandler {
 
     /// Handle `igd.auto_configure` - All-in-one setup + verify
     pub async fn handle_auto_configure(&self, params: Value) -> Value {
-        let port = u16::try_from(params["port"].as_u64().unwrap_or(3492)).unwrap_or(3492);
+        let default_port = songbird_types::defaults::ports::DEFAULT_SONGBIRD_PORT;
+        let default_port_u64 = u64::from(default_port);
+        let port = u16::try_from(params["port"].as_u64().unwrap_or(default_port_u64))
+            .unwrap_or(default_port);
         let protocol = params["protocol"].as_str().unwrap_or("TCP");
 
         info!("IGD: Auto-configuring port {} {}", protocol, port);

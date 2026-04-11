@@ -93,7 +93,7 @@ where
         }
     }
 
-    let biomeos_path = std::env::temp_dir().join("biomeos").join("neural-api.sock");
+    let biomeos_path = std::env::temp_dir().join(BIOMEOS_RUNTIME_SUBDIR).join("neural-api.sock");
     if path_exists(&biomeos_path) {
         return biomeos_path.to_string_lossy().to_string();
     }
@@ -173,7 +173,7 @@ where
         return socket;
     }
 
-    let fallback = std::env::temp_dir().join("biomeos").join("security.sock");
+    let fallback = std::env::temp_dir().join(BIOMEOS_RUNTIME_SUBDIR).join("security.sock");
     if path_exists(&fallback) {
         return fallback.to_string_lossy().to_string();
     }

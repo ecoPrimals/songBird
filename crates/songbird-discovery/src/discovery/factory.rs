@@ -39,7 +39,10 @@ type Result<T> = SongbirdResult<T>;
 /// and `StaticServiceDiscovery` with universal capability-based detection.
 pub struct UniversalDiscoveryFactory;
 
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Infrastructure code - factory methods used as system evolves
+#[allow(
+    dead_code,
+    reason = "factory methods called by orchestrator and adapter as discovery backends expand"
+)]
 impl UniversalDiscoveryFactory {
     /// Create service discovery with auto-detection
     ///

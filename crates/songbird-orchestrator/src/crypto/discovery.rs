@@ -96,7 +96,9 @@ pub async fn is_crypto_available() -> bool {
         }
     }
 
-    let tmp_neural = std::env::temp_dir().join("biomeos").join("neural-api.sock");
+    let tmp_neural = std::env::temp_dir()
+        .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+        .join("neural-api.sock");
     if tmp_neural.exists() {
         return true;
     }

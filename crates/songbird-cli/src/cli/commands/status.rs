@@ -114,8 +114,10 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
     let biomeos_dir = std::env::var("BIOMEOS_SOCKET_DIR")
         .map(std::path::PathBuf::from)
         .or_else(|_| {
-            std::env::var("XDG_RUNTIME_DIR")
-                .map(|xdg| std::path::PathBuf::from(xdg).join("biomeos"))
+            std::env::var("XDG_RUNTIME_DIR").map(|xdg| {
+                std::path::PathBuf::from(xdg)
+                    .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+            })
         })
         .unwrap_or_else(|_| std::env::temp_dir());
     let ipc_path = biomeos_dir.join("network.sock");

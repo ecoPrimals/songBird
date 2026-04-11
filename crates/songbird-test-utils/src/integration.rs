@@ -16,12 +16,12 @@ use tokio::sync::RwLock;
 #[derive(Debug)]
 pub struct IntegrationTestContext {
     /// Test environment
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "shared env context for service lifecycle and teardown")]
     environment: Arc<TestEnvironment>,
     /// Running services
     services: Arc<RwLock<HashMap<String, MockService>>>,
     /// Test configuration
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "read by service spawn and health-check timeout logic")]
     config: IntegrationTestConfig,
 }
 
@@ -110,7 +110,7 @@ impl IntegrationTestContext {
     }
 
     /// Create a mock service for testing
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "called by integration tests that spawn mock service fixtures")]
     fn create_mock_service(name: &str, port: u16) -> MockService {
         MockService {
             name: name.to_string(),

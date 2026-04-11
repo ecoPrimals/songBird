@@ -41,7 +41,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored Wave 133; largest test 731L) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — NestGate `storage.*` is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` only via optional `k8s` feature; Bluetooth native deps only with `bluetooth` feature |
-| Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`) |
+| Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`); Wave 136: all `"biomeos"` path literals replaced with `BIOMEOS_RUNTIME_SUBDIR` constant; `DEFAULT_SONGBIRD_PORT` (3492) replaces all magic-number port fallbacks |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
 | Production panics/unwrap/todo | 0 (`panic!`, `unwrap`, `todo!`); 2 provably-unreachable QUIC VarInt arms documented |
 

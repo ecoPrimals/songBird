@@ -175,13 +175,14 @@ impl SecurityTlsCryptoClient {
         }
 
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-            let sec = std::path::PathBuf::from(&xdg).join("biomeos/security.sock");
+            let biome_dir = songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
+            let sec = std::path::PathBuf::from(&xdg).join(biome_dir).join("security.sock");
             if sec.exists() {
                 tracing::info!("Using XDG biomeOS security socket: {}", sec.display());
                 return Ok(sec.to_string_lossy().into_owned());
             }
             for name in ["neural-api.sock", "ai.sock"] {
-                let p = std::path::PathBuf::from(&xdg).join("biomeos").join(name);
+                let p = std::path::PathBuf::from(&xdg).join(biome_dir).join(name);
                 if p.exists() {
                     tracing::info!("Using XDG biomeOS neural socket: {}", p.display());
                     return Ok(p.to_string_lossy().into_owned());

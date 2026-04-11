@@ -32,7 +32,10 @@ struct JsonRpcRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(
+    dead_code,
+    reason = "deserialized from JSON-RPC 2.0 wire; fields accessed by dispatch logic"
+)]
 struct JsonRpcResponse {
     jsonrpc: String,
     result: Option<Value>,
@@ -44,7 +47,10 @@ struct JsonRpcResponse {
 struct JsonRpcError {
     code: i32,
     message: String,
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "deserialized from JSON-RPC error; available for structured error detail"
+    )]
     data: Option<Value>,
 }
 

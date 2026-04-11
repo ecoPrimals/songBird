@@ -29,7 +29,12 @@ impl IpcServiceHandler {
         let onion_status = self.onion_handler.handle_status(serde_json::json!({})).await?;
         let onion_endpoint = if onion_status.get("running") == Some(&serde_json::json!(true)) {
             let addr = onion_status.get("onion_address").and_then(|v| v.as_str());
-            let port = onion_status.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492);
+            const DEFAULT_PORT_U64: u64 =
+                songbird_types::defaults::ports::DEFAULT_SONGBIRD_PORT as u64;
+            let port = onion_status
+                .get("port")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(DEFAULT_PORT_U64);
             addr.map(|a| format!("{a}:{port}"))
         } else {
             None

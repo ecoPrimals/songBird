@@ -110,10 +110,12 @@ impl OnionHandler {
 
         let security = self.get_security_crypto_client().await;
 
-        // Parse port from params
-        let port =
-            u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492))
-                .unwrap_or(3492);
+        let default_port = songbird_types::defaults::ports::DEFAULT_SONGBIRD_PORT;
+        let default_port_u64 = u64::from(default_port);
+        let port = u16::try_from(
+            params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(default_port_u64),
+        )
+        .unwrap_or(default_port);
 
         info!(port = port, "Starting sovereign onion service via security provider");
 
@@ -263,9 +265,12 @@ impl OnionHandler {
         let address =
             params.get("address").and_then(|v| v.as_str()).ok_or("Missing 'address' parameter")?;
 
-        let port =
-            u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492))
-                .unwrap_or(3492);
+        let default_port = songbird_types::defaults::ports::DEFAULT_SONGBIRD_PORT;
+        let default_port_u64 = u64::from(default_port);
+        let port = u16::try_from(
+            params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(default_port_u64),
+        )
+        .unwrap_or(default_port);
 
         info!(address = address, port = port, "Connecting to onion address via security provider");
 

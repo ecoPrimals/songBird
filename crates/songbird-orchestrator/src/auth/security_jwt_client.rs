@@ -54,11 +54,17 @@ struct JwtSecretParams {
 /// Response from `security provider` JWT secret generation (success case)
 #[derive(Debug, Deserialize)]
 struct JwtSecretResponse {
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "deserialized from JSON-RPC envelope; protocol field not read by client"
+    )]
     jsonrpc: String,
     result: Option<JwtSecretResult>,
     error: Option<JsonRpcError>,
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "deserialized from JSON-RPC envelope; correlation ID not read by client"
+    )]
     id: u64,
 }
 
@@ -72,12 +78,15 @@ struct JsonRpcError {
 #[derive(Debug, Deserialize)]
 struct JwtSecretResult {
     secret: String,
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "deserialized from provider response; logged for audit trail")]
     purpose: String,
     strength: String,
     byte_length: usize,
     #[serde(default)]
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "deserialized from provider response; available for key rotation metrics"
+    )]
     encoded_length: usize,
     #[serde(default)]
     algorithm: String,

@@ -19,7 +19,10 @@ pub(super) struct JsonRpcRequest {
 
 /// JSON-RPC 2.0 response
 #[derive(Debug, Deserialize)]
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(
+    dead_code,
+    reason = "deserialized from JSON-RPC 2.0 wire; fields accessed by dispatch logic"
+)]
 pub(super) struct JsonRpcResponse {
     pub jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -36,7 +39,10 @@ pub(super) struct JsonRpcError {
     pub code: i32,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "deserialized from JSON-RPC error; available for structured error detail"
+    )]
     pub data: Option<Value>,
 }
 

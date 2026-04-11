@@ -29,7 +29,10 @@ pub struct SovereigntyRouter {
     sovereignty_preferences: SovereigntyPreferences,
 
     /// Path assessment cache (reserved for future caching implementation)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "cache populated by assess_path(); read path reserved for sovereignty scoring"
+    )]
     path_assessments: HashMap<String, PathSovereigntyAssessment>,
 }
 

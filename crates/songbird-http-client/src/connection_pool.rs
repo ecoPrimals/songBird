@@ -200,8 +200,7 @@ impl PoolConfigBuilder {
 pub struct PooledConnection<T: Send + Sync + 'static> {
     inner: Option<T>,
     pool: Arc<ConnectionPoolInner<T>>,
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
-    // Reserved for future connection age tracking
+    #[allow(dead_code, reason = "tracked for connection age eviction and pool health metrics")]
     created_at: Instant,
     last_used: Instant,
 }

@@ -104,7 +104,8 @@ impl NfcConfig {
 
         // 2. XDG runtime directory (capability names first, then provider hints)
         if let Ok(xdg_runtime) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-            let biomeos = PathBuf::from(&xdg_runtime).join("biomeos");
+            let biomeos = PathBuf::from(&xdg_runtime)
+                .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
 
             // Capability-named sockets only — no primal identities
             for socket_name in &["security.sock", "crypto.sock"] {

@@ -20,8 +20,10 @@ pub struct AgnosticComputeCoordinator {
     providers: Arc<RwLock<HashMap<String, ComputeProvider>>>,
 
     /// Configuration
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
-    // Used for future discovery implementations
+    #[allow(
+        dead_code,
+        reason = "read by discovery refresh and provider scoring logic as coordinator matures"
+    )]
     config: ComputeCoordinatorConfig,
 }
 

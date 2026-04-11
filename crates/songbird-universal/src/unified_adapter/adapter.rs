@@ -21,7 +21,10 @@ pub struct UnifiedUniversalAdapter {
     /// Registry of discovered capabilities
     capability_registry: Arc<RwLock<CapabilityRegistry>>,
     /// Active service connections (reserved for connection pooling implementation)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "connection pool populated by connect(); pooled reuse reserved for next adapter phase"
+    )]
     service_connections: Arc<RwLock<HashMap<String, super::types::ServiceConnection>>>,
     /// Adapter configuration
     config: UnifiedAdapterConfig,

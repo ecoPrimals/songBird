@@ -92,7 +92,7 @@ pub struct DynamicPluginRegistry {
     plugins: Arc<RwLock<HashMap<String, Box<dyn ComposablePlugin>>>>,
     capabilities: Arc<RwLock<HashMap<String, PluginCapability>>>,
     requirements: Arc<RwLock<HashMap<String, Vec<PluginRequirement>>>>,
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "populated by register(); topological sort used by validate_composition()")]
     requirement_graph: Arc<RwLock<HashMap<String, Vec<String>>>>,
     system_health: Arc<RwLock<SystemHealth>>,
 }
@@ -237,7 +237,7 @@ impl DynamicPluginRegistry {
     }
 
     /// Integrate two plugins
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "called by composition engine when plugin integration is requested")]
     async fn integrate_plugins(&self, plugin_a: &str, plugin_b: &str) -> SongbirdResult<String> {
         let integration_id = format!("{}_{plugin_b}", plugin_a);
 
@@ -248,7 +248,7 @@ impl DynamicPluginRegistry {
     }
 
     /// Check system health for given plugins
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "health aggregation for composition dashboard; wired when lifecycle.composition ships")]
     async fn check_system_health(&self, plugin_ids: &[String]) -> SongbirdResult<SystemHealth> {
         let plugins = self.plugins.read().await;
         let mut plugin_health = HashMap::new();

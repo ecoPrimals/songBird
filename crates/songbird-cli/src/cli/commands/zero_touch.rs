@@ -17,7 +17,8 @@ use tracing::{error, info};
 use uuid;
 /// Zero-touch deployment command
 #[derive(Debug)]
-pub struct ZeroTouchCommand  {#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Used in future implementation phases
+pub struct ZeroTouchCommand {
+    #[allow(dead_code, reason = "state held for multi-phase zero-touch deployment execution")]
     deployment: ZeroTouchDeployment,
 }
 impl Default for ZeroTouchCommand {

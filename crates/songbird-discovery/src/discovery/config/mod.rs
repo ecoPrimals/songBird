@@ -97,7 +97,7 @@ impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
             multicast_address: songbird_process_env::var("SONGBIRD_MULTICAST_ADDRESS")
-                .unwrap_or_else(|_| "224.0.0.251".to_string()),
+                .unwrap_or_else(|_| songbird_types::constants::MDNS_MULTICAST_GROUP.to_string()),
             federation_port: songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())

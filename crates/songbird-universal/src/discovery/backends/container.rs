@@ -263,7 +263,10 @@ fn convert_docker_container_to_primal(
 
     // Get port from labels or default
     let labels = container.labels.unwrap_or_default();
-    let port = labels.get("songbird.port").and_then(|p| p.parse().ok()).unwrap_or(8080);
+    let port = labels
+        .get("songbird.port")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
 
     // Get capabilities from labels
     let capability_strings: Vec<String> = labels.get("songbird.capabilities").map_or_else(

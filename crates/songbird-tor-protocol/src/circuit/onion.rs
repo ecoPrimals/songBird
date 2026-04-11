@@ -148,7 +148,10 @@ impl OnionCrypto {
     /// each circuit hop, used for integrity verification.
     ///
     /// Requires `security provider` SHA3-256 integration.
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "called by relay cell integrity check once circuit hop verification is wired"
+    )]
     async fn update_digest(&self, current_digest: &[u8; 32], data: &[u8]) -> Result<[u8; 32]> {
         let input = [&current_digest[..], data].concat();
         self.security_provider.sha3_256(&input).await

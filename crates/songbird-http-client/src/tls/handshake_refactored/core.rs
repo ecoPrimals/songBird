@@ -22,7 +22,10 @@ pub struct TlsHandshake {
     /// Configuration (strategy-based, not hardcoded)
     pub(super) config: TlsConfig,
     /// Optional server profiler for adaptive learning (future feature)
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(
+        dead_code,
+        reason = "reserved for adaptive TLS strategy learning from server behavior"
+    )]
     pub(super) profiler: Option<Arc<ServerProfiler>>,
 }
 

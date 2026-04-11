@@ -3,6 +3,8 @@
 
 use std::path::PathBuf;
 
+use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
+
 use super::identity::family_id_with;
 use super::{env, runtime_or_tmp_base};
 
@@ -46,10 +48,16 @@ pub fn socket_path() -> PathBuf {
         |_| {
             env("UID").map_or_else(
                 |_| PathBuf::from(format!("{}/{}", runtime_or_tmp_base(), sock_name)),
-                |uid_str| PathBuf::from(format!("/run/user/{uid_str}/biomeos/{sock_name}")),
+                |uid_str| {
+                    PathBuf::from(format!(
+                        "/run/user/{uid_str}/{BIOMEOS_RUNTIME_SUBDIR}/{sock_name}"
+                    ))
+                },
             )
         },
-        |xdg_runtime_dir| PathBuf::from(xdg_runtime_dir).join("biomeos").join(&sock_name),
+        |xdg_runtime_dir| {
+            PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(&sock_name)
+        },
     );
 
     // Ensure directory exists (Pure Rust!)

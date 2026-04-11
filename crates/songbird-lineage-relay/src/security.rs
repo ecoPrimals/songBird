@@ -312,7 +312,8 @@ impl SecurityRelayAuthority {
 
         // 2. XDG runtime directory (capability-named sockets first)
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-            let biomeos = PathBuf::from(&xdg).join("biomeos");
+            let biomeos =
+                PathBuf::from(&xdg).join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
 
             // Capability-named sockets only
             for socket_name in &["security.sock", "crypto.sock"] {
