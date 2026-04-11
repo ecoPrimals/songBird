@@ -64,21 +64,15 @@ thiserror = { workspace = true }
 futures-util = { workspace = true }
 regex = "1.10"
 tracing-subscriber = { workspace = true }
-# TLS provider: rustls-rustcrypto (pure Rust, zero C) by default.
-# The `ring-crypto` feature below enables `rustls/ring` for environments without
-# Without security provider socket (standalone testing only). Production MUST use security provider via Tower Atomic.
-# SB-02: songbird-quic is ring-free (security provider QUIC crypto); only this CLI crate
-# retains the opt-in gate for offline bootstrap scenarios.
+# TLS provider: rustls-rustcrypto (pure Rust, zero C — ecoBin compliant).
+# SB-02 RESOLVED: ring-crypto opt-in feature removed (Wave 135). rustls_rustcrypto is
+# sufficient for both production (Tower Atomic delegation) and standalone bootstrap.
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 rustls-rustcrypto = "0.0.2-alpha"
 anyhow = { workspace = true }
 
 [features]
 default = []
-# ⚠️  OPT-IN ONLY — pulls `ring` (C/ASM via `cc`, violates ecoBin).
-# Use for standalone testing without security provider crypto delegation.
-# Production builds MUST NOT enable this; security provider handles all crypto via IPC.
-ring-crypto = ["rustls/ring"]
 
 [dev-dependencies]
 tempfile = "3.8"

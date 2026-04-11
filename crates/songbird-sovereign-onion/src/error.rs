@@ -59,11 +59,6 @@ pub enum OnionError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
-    /// Sled database error
-    #[cfg(feature = "sled-storage")]
-    #[error("Database error: {0}")]
-    Database(#[from] sled::Error),
-
     /// Serialization error
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),

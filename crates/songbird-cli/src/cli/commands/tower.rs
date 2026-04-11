@@ -187,19 +187,10 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
     let config = songbird_types::config::CanonicalSongbirdConfig::from_env()
         .map_err(|e| format!("Failed to load configuration: {e}"))?;
 
-    // SB-02: rustls crypto provider bootstrap.
-    // Default path: rustls-rustcrypto (pure Rust, zero C — ecoBin compliant).
-    // `ring-crypto` feature: opt-in ONLY for standalone testing without security provider.
+    // TLS crypto provider: rustls-rustcrypto (pure Rust, zero C — ecoBin compliant).
     // Production TLS is delegated to security provider via Tower Atomic; this provider is
     // the initial bootstrap before security provider discovery completes.
-    #[cfg(feature = "ring-crypto")]
-    {
-        rustls::crypto::ring::default_provider().install_default().ok();
-    }
-    #[cfg(not(feature = "ring-crypto"))]
-    {
-        rustls_rustcrypto::provider().install_default().ok();
-    }
+    rustls_rustcrypto::provider().install_default().ok();
 
     // Start the orchestrator directly (no cargo run needed!)
     songbird_orchestrator::app::start_orchestrator(config)

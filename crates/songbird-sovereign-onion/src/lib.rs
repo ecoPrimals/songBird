@@ -22,7 +22,7 @@
 //! - **Ed25519 Identity** - Cryptographic device IDs
 //! - **X25519 Key Exchange** - Forward secrecy
 //! - **ChaCha20-Poly1305** - Fast AEAD encryption
-//! - **Sled Persistence** - Identity and peer storage
+//! - **NestGate / in-memory storage** - Identity and peer storage
 //! - **Minimal Protocol** - ~10% of Tor complexity
 //!
 //! ## Example
@@ -61,8 +61,6 @@ pub mod protocol;
 pub mod service;
 pub mod storage;
 pub mod storage_nestgate;
-#[cfg(feature = "sled-storage")]
-mod storage_sled;
 
 // Re-exports — delegated cryptography via capability-discovered security provider
 pub use address::{
@@ -75,8 +73,6 @@ pub use keys::OnionIdentity;
 pub use security_crypto::{Ed25519Keypair, SecurityCryptoClient, X25519Keypair};
 pub use storage::{InMemoryOnionStorage, OnionStorageBackend, PeerInfo};
 pub use storage_nestgate::NestGateOnionStorage;
-#[cfg(feature = "sled-storage")]
-pub use storage_sled::OnionStorage;
 
 // ✅ Phase 3 Complete: OnionService & OnionConnector with security provider
 pub use connector::OnionConnection;
@@ -88,10 +84,8 @@ pub use service::OnionService;
 pub use address::{derive_onion_address, parse_onion_address, validate_onion_address};
 #[cfg(feature = "standalone")]
 pub use crypto::{decrypt_data, encrypt_data};
-#[cfg(all(feature = "standalone", not(feature = "sled-storage")))]
+#[cfg(feature = "standalone")]
 pub use storage::InMemoryOnionStorage as OnionStorageStandalone;
-#[cfg(all(feature = "standalone", feature = "sled-storage"))]
-pub use storage_sled::OnionStorage as OnionStorageStandalone;
 
 #[cfg(test)]
 mod public_api_smoke_tests {

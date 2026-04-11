@@ -24,9 +24,6 @@ sha3 = { version = "0.10", optional = true }                # .onion derivation 
 sha2 = { version = "0.10", optional = true }                # HKDF (testing only)
 hmac = { version = "0.12", optional = true }                # HKDF (testing only)
 
-# Database (Pure Rust, optional for minimal builds)
-sled = { version = "0.34", optional = true }
-
 # Encoding (Pure Rust)
 base32 = "0.5"               # For .onion address encoding
 base64 = "0.22"              # For JSON-RPC data encoding
@@ -43,11 +40,7 @@ uuid = { workspace = true }
 # Internal dependencies
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-config = { path = "../songbird-config" }
-songbird-process-env = { workspace = true }
 songbird-types = { path = "../songbird-types" }
-
-# System paths
-dirs = { workspace = true }
 
 [lints]
 workspace = true
@@ -58,8 +51,7 @@ tokio-test = "0.4"
 [features]
 # Production builds: ZERO crypto (delegates to security provider)
 # Test builds: Use --features standalone for offline testing
-default = []  # Storage: NestGate capability discovery at runtime; sled deprecated
-sled-storage = ["dep:sled"]  # DEPRECATED — use NestGate storage.* capability instead
+default = []  # Storage: NestGate capability discovery at runtime; in-memory fallback
 standalone = [
     "ed25519-dalek",
     "x25519-dalek",

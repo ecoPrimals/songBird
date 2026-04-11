@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! In-memory [`crate::consent_management::ConsentStorageBackend`] and [`crate::task_lifecycle::TaskStorageBackend`]
-//! when the `sled-storage` feature is disabled.
+//! when NestGate is not used.
 
 use crate::consent_management::{ConsentRecord, ConsentStatus, ConsentStorageBackend};
 use crate::task_lifecycle::{Checkpoint, TaskFilter, TaskId, TaskLifecycle, TaskStorageBackend};
@@ -33,7 +33,7 @@ fn matches_task_filter(task: &TaskLifecycle, filter: &TaskFilter) -> bool {
     true
 }
 
-/// Shared in-memory store for consent and task data (non-durable; used without `sled-storage`).
+/// Shared in-memory store for consent and task data (non-durable fallback).
 #[derive(Debug)]
 pub struct InMemoryStorage {
     consents: Arc<RwLock<HashMap<String, ConsentRecord>>>,

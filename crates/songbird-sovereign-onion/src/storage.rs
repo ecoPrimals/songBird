@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Onion identity and peer persistence (sled when `sled-storage`, otherwise in-memory).
+//! Onion identity and peer persistence (NestGate production path; in-memory fallback).
 
 use crate::error::Result;
 use crate::keys::OnionIdentity;
@@ -14,7 +14,6 @@ use std::sync::{Arc, RwLock};
 /// Production path: [`NestGateOnionStorage`](crate::storage_nestgate::NestGateOnionStorage) delegates
 /// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
 /// Fallback: [`InMemoryOnionStorage`] when no provider is available.
-/// Legacy: `OnionStorage` (sled, behind deprecated `sled-storage` feature).
 pub trait OnionStorageBackend: Send + Sync {
     /// Load an existing identity from persistent storage.
     fn load_identity(&self) -> Result<Option<OnionIdentity>>;
@@ -52,7 +51,7 @@ pub struct PeerInfo {
     pub actual_addr: Option<String>,
 }
 
-/// In-memory onion storage (used when `sled-storage` is disabled).
+/// In-memory onion storage (fallback when NestGate is unavailable).
 #[derive(Debug, Clone)]
 pub struct InMemoryOnionStorage {
     identity: Arc<RwLock<Option<Vec<u8>>>>,
@@ -289,13 +288,6 @@ mod tests {
         assert_eq!(loaded.onion_address(), id.onion_address(), "onion address");
     }
 
-    #[cfg(feature = "sled-storage")]
-    #[test]
-    fn test_sled_peer_operations() {
-        let storage = crate::storage_sled::OnionStorage::memory().unwrap();
-        test_backend(&storage);
-    }
-
     #[test]
     fn test_inmemory_multiple_peers() {
         let storage = InMemoryOnionStorage::new();
@@ -352,41 +344,5 @@ mod tests {
     fn flush_on_in_memory_is_ok() {
         let storage = InMemoryOnionStorage::new();
         storage.flush().unwrap();
-    }
-
-    #[cfg(feature = "sled-storage")]
-    #[test]
-    fn test_sled_multiple_peers() {
-        let storage = crate::storage_sled::OnionStorage::memory().unwrap();
-
-        for i in 0..5 {
-            let peer = PeerInfo {
-                onion_address: format!("peer{i}.onion"),
-                last_seen: 1_234_567_890 + i,
-                actual_addr: None,
-            };
-            storage.store_peer(&peer).unwrap();
-        }
-
-        let peers = storage.list_peers().unwrap();
-        assert_eq!(peers.len(), 5);
-    }
-}
-
-#[cfg(all(test, feature = "standalone", feature = "sled-storage"))]
-mod standalone_sled_tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
-
-    use crate::storage_sled::OnionStorage;
-
-    #[test]
-    fn test_storage_identity_persistence() {
-        let storage = OnionStorage::memory().unwrap();
-
-        let identity1 = storage.load_or_generate_identity().unwrap();
-        let identity2 = storage.load_or_generate_identity().unwrap();
-
-        assert_eq!(identity1.onion_address(), identity2.onion_address());
-        assert_eq!(identity1.created_at(), identity2.created_at());
     }
 }

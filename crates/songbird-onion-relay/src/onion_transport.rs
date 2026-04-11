@@ -23,7 +23,7 @@
 //!     │ ├─ TCP listener (Phase 3) │
 //!     │ ├─ Connector (Phase 4)    │
 //!     │ ├─ security provider crypto          │
-//!     │ └─ Sled persistence        │
+//!     │ └─ in-memory / NestGate storage │
 //!     └────────────────────────────┘
 //! ```
 //!
@@ -32,10 +32,10 @@
 //! - ✅ Zero `unimplemented!()` — all stubs evolved to real implementations
 //! - ✅ Delegates to `songbird-sovereign-onion` (no duplicated logic)
 //! - ✅ security provider crypto delegation (TRUE PRIMAL)
-//! - ✅ Persistent identity via Sled storage
+//! - ✅ Identity via in-memory storage (NestGate in full stack)
 
 use anyhow::{Context, Result};
-use songbird_sovereign_onion::OnionStorage;
+use songbird_sovereign_onion::InMemoryOnionStorage;
 use std::path::Path;
 use tracing::info;
 
@@ -64,26 +64,25 @@ pub struct OnionTransport {
     verifying_key_bytes: Vec<u8>,
 
     /// Storage for identity and peer information
-    storage: OnionStorage,
+    storage: InMemoryOnionStorage,
 }
 
 impl OnionTransport {
-    /// Create a new onion transport with persistent storage
+    /// Create a new onion transport with in-memory storage
     ///
     /// Loads an existing identity from storage, or generates a new one.
     ///
     /// # Arguments
     ///
-    /// * `storage_path` - Path to Sled database for persistent storage
+    /// * `storage_path` - Reserved for future durable storage; currently unused (in-memory only).
     ///
     /// # Errors
     ///
     /// Returns error if storage initialization or identity generation fails.
-    pub fn new<P: AsRef<Path>>(storage_path: P) -> Result<Self> {
+    pub fn new<P: AsRef<Path>>(_storage_path: P) -> Result<Self> {
         info!("Initializing Sovereign Onion Transport...");
 
-        let storage = OnionStorage::open(storage_path.as_ref())
-            .context("Failed to initialize onion storage")?;
+        let storage = InMemoryOnionStorage::new();
 
         let identity = storage
             .load_or_generate_identity()
@@ -123,7 +122,7 @@ impl OnionTransport {
     /// Allows callers to access peer storage and identity management
     /// directly when needed for relay coordination.
     #[must_use]
-    pub const fn storage(&self) -> &OnionStorage {
+    pub const fn storage(&self) -> &InMemoryOnionStorage {
         &self.storage
     }
 }
@@ -156,24 +155,21 @@ mod tests {
     }
 
     #[test]
-    fn test_persistent_identity() {
+    fn test_inmemory_identity_per_transport_instance() {
         let temp_dir = TempDir::new().unwrap();
         let storage_path = temp_dir.path();
 
-        let transport1 = OnionTransport::new(storage_path);
-        if let Ok(transport1) = transport1 {
-            let address1 = transport1.onion_address().to_string();
-            let key1 = transport1.verifying_key_bytes().to_vec();
-            drop(transport1);
+        let transport1 = OnionTransport::new(storage_path).unwrap();
+        let address1 = transport1.onion_address().to_string();
+        let key1 = transport1.verifying_key_bytes().to_vec();
+        drop(transport1);
 
-            // Second transport should load same identity
-            let transport2 = OnionTransport::new(storage_path).unwrap();
-            let address2 = transport2.onion_address();
-            let key2 = transport2.verifying_key_bytes();
-
-            assert_eq!(address1, address2);
-            assert_eq!(key1, key2);
-        }
+        // In-memory storage: a new transport does not reload identity from disk
+        let transport2 = OnionTransport::new(storage_path).unwrap();
+        let address2 = transport2.onion_address();
+        let key2 = transport2.verifying_key_bytes();
+        assert_ne!(address1, address2);
+        assert_ne!(key1, key2);
     }
 
     #[test]

@@ -10,7 +10,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 13,031 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 13,030 passed, 0 failed, 252 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
@@ -33,7 +33,7 @@
 | **License** | `AGPL-3.0-or-later` (workspace + per-crate; **Apr 7**: inconsistent `AGPL-3.0-only` strings eliminated) via workspace inheritance + ORC + CC-BY-SA 4.0 |
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI via `ci.yml` (Wave 134) |
-| **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** (`sled-storage` feature): deprecated, non-default — NestGate `storage.*` capability is the production path; `parking_lot` removed (Wave 133) |
+| **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** removed Wave 135 (SB-03 resolved — NestGate `storage.*` capability is production path, InMemory fallback); `parking_lot` removed (Wave 133) |
 | **`async-trait`** | 109 `#[async_trait]` across 54 files — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`); no further mechanical migration possible without architectural changes; `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
@@ -48,15 +48,15 @@
 
 **Remaining BTSP work**: Phase 3 cipher negotiation + encrypted framing (ChaCha20-Poly1305 / HMAC-plain actual encryption), multi-frame sessions, and E2E integration test with live BearDog.
 
-### SB-03: Sled → NestGate Storage Migration (Resolved — NestGate backend wired)
+### SB-03: Sled → NestGate Storage Migration (RESOLVED — Wave 135)
 
-**Status**: `NestGateStorage` and `NestGateOnionStorage` implemented. Runtime capability discovery delegates to `storage.*` JSON-RPC provider (NestGate) when available; in-memory fallback otherwise. `sled-storage` feature deprecated in both crates (optional, non-default, legacy only).
+**Status**: `sled` dependency and all `sled-storage` features **fully removed** (Wave 135). 1,482 lines of deprecated sled storage code deleted across `songbird-orchestrator` (2 files: `storage_sled.rs` for consent + task), `songbird-sovereign-onion` (1 file: `storage_sled.rs`), and `songbird-onion-relay` (adapted to `InMemoryOnionStorage`).
 
-**Architecture:**
+**Architecture (final):**
 - `NestGateStorage` → `ConsentStorageBackend` + `TaskStorageBackend` via `storage.*` JSON-RPC
 - `NestGateOnionStorage` → `OnionStorageBackend` via `storage.*` JSON-RPC
 - `InMemoryStorage` / `InMemoryOnionStorage` → fallback when no storage provider available
-- `ConsentStorage` / `TaskStorage` / `OnionStorage` → sled, deprecated, behind `sled-storage` feature
+- No sled code remains anywhere in the workspace
 
 **Remaining**: NestGate must expose live `storage.*` IPC endpoints for end-to-end validation.
 
@@ -120,7 +120,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ## Pending: Dependency Evolution
 
-- [ ] `ring` elimination: `rcgen` replaced with pure-Rust cert gen; `ring` remains only via optional `k8s` feature (`kube` → `rustls` → `ring`)
+- [x] `ring-crypto` feature removed (Wave 135, SB-02 resolved): `rustls_rustcrypto` is the sole TLS provider; `ring` remains only as unactivated optional dep of `rustls` in lockfile + optional `k8s` feature (`kube` → `rustls` → `ring`)
 - [ ] Remaining transitive duplicates (syn, hashbrown, getrandom, parking_lot, socket2) require upstream changes
 - [x] `async-trait` partial migration (Wave 116): `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` migrated to native `async fn in trait`; `async-trait` dep removed from `songbird-bluetooth`; 100% of remaining 109 usages require `dyn Trait` dispatch (verified Wave 129)
 - [x] Dead `sled` dependency removed from `songbird-tor-protocol` (Wave 116)

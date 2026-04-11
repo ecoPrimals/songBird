@@ -217,7 +217,7 @@ pub mod server;
 /// Inter-primal service registration and port authority.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service_registry;
-/// In-memory consent/task storage when `sled-storage` is disabled.
+/// In-memory consent/task storage when NestGate is unavailable.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 mod storage_memory;
 /// NestGate JSON-RPC `storage.*` delegation (SB-03).
@@ -239,7 +239,7 @@ pub mod universal_adapter;
 // Re-export main orchestrator
 /// Primary orchestrator application type: loads config, wires subsystems, runs the server loop.
 pub use app::SongbirdOrchestrator;
-/// Non-durable storage backend used when the `sled-storage` feature is off.
+/// Non-durable storage backend when no NestGate `storage.*` provider is reachable.
 pub use storage_memory::InMemoryStorage;
 /// NestGate-backed durable storage over JSON-RPC `storage.*`.
 pub use storage_nestgate::NestGateStorage;

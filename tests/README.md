@@ -19,7 +19,7 @@
 
 | | |
 |--|--|
-| Passed | 13,031 |
+| Passed | 13,030 |
 | Failed | 0 |
 | Ignored | 252 |
 

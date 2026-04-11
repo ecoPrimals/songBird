@@ -24,7 +24,7 @@ categories = ["network-programming", "cryptography"]
 default = []
 # Sovereign Onion Service (Pure Rust, security provider crypto delegation)
 # Enable with `--features onion` for .onion address support
-# `standalone` enables `OnionStorage::load_or_generate_identity` for sync transport init
+# `standalone` enables `InMemoryOnionStorage::load_or_generate_identity` for sync transport init
 # (production paths use `load_or_generate_identity_via_security_provider` async API).
 onion = ["songbird-sovereign-onion", "songbird-sovereign-onion/standalone"]
 

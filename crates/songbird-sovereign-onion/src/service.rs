@@ -5,13 +5,10 @@
 //!
 //! ✅ **TRUE PRIMAL**: Production uses `security provider` delegation for all crypto.
 
-#[cfg(feature = "sled-storage")]
-use crate::OnionStorage;
 use crate::error::{OnionError, Result};
 use crate::keys::{EphemeralKeypair, OnionIdentity};
 use crate::protocol::{DataMessage, KeyExchangeMessage, MessageType};
 use crate::security_crypto::SecurityCryptoClient;
-#[cfg(not(feature = "sled-storage"))]
 use crate::storage::InMemoryOnionStorage;
 use crate::storage::OnionStorageBackend;
 use std::path::PathBuf;
@@ -29,16 +26,6 @@ fn nestgate_socket_from_endpoint(endpoint: &str) -> Option<PathBuf> {
         return Some(PathBuf::from(t));
     }
     None
-}
-
-#[cfg(any(test, feature = "sled-storage"))]
-fn onion_data_dir() -> String {
-    songbird_process_env::var("SONGBIRD_ONION_DATA_DIR").unwrap_or_else(|_| {
-        dirs::data_local_dir().map_or_else(
-            || "./data/sovereign-onion".to_string(),
-            |d| d.join("songbird").join("sovereign-onion").to_string_lossy().into_owned(),
-        )
-    })
 }
 
 /// Onion service (creates reachable .onion address)
@@ -77,57 +64,24 @@ impl OnionService {
                                 Arc::new(crate::storage_nestgate::NestGateOnionStorage::new(path))
                             }
                             Err(e) => {
-                                #[cfg(feature = "sled-storage")]
-                                {
-                                    debug!(
-                                        error = %e,
-                                        path = %path.display(),
-                                        "NestGate onion storage unreachable; opening sled"
-                                    );
-                                    Arc::new(OnionStorage::open(onion_data_dir())?)
-                                }
-                                #[cfg(not(feature = "sled-storage"))]
-                                {
-                                    warn!(
-                                        error = %e,
-                                        path = %path.display(),
-                                        "NestGate onion storage unreachable; using in-memory onion storage"
-                                    );
-                                    Arc::new(InMemoryOnionStorage::new())
-                                }
+                                warn!(
+                                    error = %e,
+                                    path = %path.display(),
+                                    "NestGate onion storage unreachable; using in-memory onion storage"
+                                );
+                                Arc::new(InMemoryOnionStorage::new())
                             }
                         }
                     } else {
-                        #[cfg(feature = "sled-storage")]
-                        {
-                            Arc::new(OnionStorage::open(onion_data_dir())?)
-                        }
-                        #[cfg(not(feature = "sled-storage"))]
-                        {
-                            Arc::new(InMemoryOnionStorage::new())
-                        }
-                    }
-                } else {
-                    #[cfg(feature = "sled-storage")]
-                    {
-                        Arc::new(OnionStorage::open(onion_data_dir())?)
-                    }
-                    #[cfg(not(feature = "sled-storage"))]
-                    {
                         Arc::new(InMemoryOnionStorage::new())
                     }
+                } else {
+                    Arc::new(InMemoryOnionStorage::new())
                 }
             }
             #[cfg(not(unix))]
             {
-                #[cfg(feature = "sled-storage")]
-                {
-                    Arc::new(OnionStorage::open(onion_data_dir())?)
-                }
-                #[cfg(not(feature = "sled-storage"))]
-                {
-                    Arc::new(InMemoryOnionStorage::new())
-                }
+                Arc::new(InMemoryOnionStorage::new())
             }
         };
 
@@ -165,13 +119,6 @@ impl OnionService {
     /// Returns an error if storage open or identity load/generate fails.
     #[cfg(feature = "standalone")]
     pub fn new_standalone(port: u16) -> Result<Self> {
-        #[cfg(feature = "sled-storage")]
-        let (storage, identity): (Arc<dyn OnionStorageBackend>, OnionIdentity) = {
-            let inner = OnionStorage::open(onion_data_dir())?;
-            let identity = inner.load_or_generate_identity()?;
-            (Arc::new(inner), identity)
-        };
-        #[cfg(not(feature = "sled-storage"))]
         let (storage, identity): (Arc<dyn OnionStorageBackend>, OnionIdentity) = {
             let inner = InMemoryOnionStorage::new();
             let identity = inner.load_or_generate_identity()?;
@@ -387,16 +334,6 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use std::time::Duration;
-
-    #[test]
-    fn onion_data_dir_returns_non_empty_path() {
-        let dir = super::onion_data_dir();
-        assert!(!dir.is_empty());
-        assert!(
-            dir.contains("sovereign-onion") || dir.ends_with("sovereign-onion"),
-            "expected default or env-based path segment: {dir:?}"
-        );
-    }
 
     #[tokio::test(start_paused = true)]
     async fn virtual_time_advances_for_sleep() {

@@ -16,14 +16,10 @@ use uuid::Uuid;
 
 mod checkpoint;
 mod manager;
-#[cfg(feature = "sled-storage")]
-mod storage_sled;
 pub mod types;
 
 pub use checkpoint::*;
 pub use manager::{TaskEvent, TaskLifecycleManager};
-#[cfg(feature = "sled-storage")]
-pub use storage_sled::*;
 pub use types::*;
 
 /// Async task persistence backend.
@@ -31,7 +27,6 @@ pub use types::*;
 /// Production path: [`NestGateStorage`](crate::storage_nestgate::NestGateStorage) delegates
 /// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
 /// Fallback: [`InMemoryStorage`](crate::storage_memory::InMemoryStorage) when no provider is available.
-/// Legacy: `TaskStorage` (sled, behind deprecated `sled-storage` feature).
 #[async_trait::async_trait]
 pub trait TaskStorageBackend: Send + Sync {
     /// Persist or update a task.

@@ -27,17 +27,12 @@ mod enforcement_tests;
 mod preferences;
 mod request;
 mod rules;
-#[cfg(feature = "sled-storage")]
-mod storage_sled;
-#[cfg(feature = "sled-storage")]
-pub use storage_sled::ConsentStorage;
 
 /// Async consent persistence backend.
 ///
 /// Production path: [`NestGateStorage`](crate::storage_nestgate::NestGateStorage) delegates
 /// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
 /// Fallback: [`InMemoryStorage`](crate::storage_memory::InMemoryStorage) when no provider is available.
-/// Legacy: `ConsentStorage` (sled, behind deprecated `sled-storage` feature).
 #[async_trait::async_trait]
 pub trait ConsentStorageBackend: Send + Sync {
     /// Persist a consent record.
@@ -114,14 +109,9 @@ impl ConsentManager {
         }
     }
 
-    /// Create a new consent manager with sled-backed persistent storage
-    ///
-    /// SB-03: tries NestGate (`storage.*` JSON-RPC on a capability-discovered Unix socket) first,
-    /// then sled when the `sled-storage` feature is enabled, otherwise in-memory.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the sled database cannot be opened.
+    /// Create a consent manager with resolved storage: NestGate (`storage.*` JSON-RPC on a
+    /// capability-discovered Unix socket) when reachable, otherwise
+    /// [`InMemoryStorage`](crate::storage_memory::InMemoryStorage).
     pub async fn with_storage(database_url: &str) -> anyhow::Result<Self> {
         #[cfg(unix)]
         {
@@ -143,34 +133,18 @@ impl ConsentManager {
                         )));
                     }
                     Err(e) => {
-                        if cfg!(feature = "sled-storage") {
-                            tracing::debug!(
-                                error = %e,
-                                path = %path.display(),
-                                "NestGate storage unreachable; trying sled"
-                            );
-                        } else {
-                            tracing::warn!(
-                                error = %e,
-                                path = %path.display(),
-                                "NestGate storage unreachable; using in-memory consent storage"
-                            );
-                        }
+                        tracing::warn!(
+                            error = %e,
+                            path = %path.display(),
+                            "NestGate storage unreachable; using in-memory consent storage"
+                        );
                     }
                 }
             }
         }
 
-        #[cfg(feature = "sled-storage")]
-        {
-            let storage = ConsentStorage::new(database_url).await?;
-            Ok(Self::with_backend(Arc::new(storage)))
-        }
-        #[cfg(not(feature = "sled-storage"))]
-        {
-            let _ = database_url;
-            Ok(Self::with_backend(Arc::new(crate::storage_memory::InMemoryStorage::new())))
-        }
+        let _ = database_url;
+        Ok(Self::with_backend(Arc::new(crate::storage_memory::InMemoryStorage::new())))
     }
 
     /// Create a consent manager using an explicit NestGate Unix socket (JSON-RPC `storage.*`).
@@ -185,7 +159,7 @@ impl ConsentManager {
 
     /// Create a consent manager with an arbitrary [`ConsentStorageBackend`].
     ///
-    /// SB-03: allows swapping sled for storage provider IPC when NG-01 lands.
+    /// SB-03: allows injecting any [`ConsentStorageBackend`] implementation.
     #[must_use]
     pub fn with_backend(backend: Arc<dyn ConsentStorageBackend>) -> Self {
         Self {
