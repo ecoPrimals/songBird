@@ -127,60 +127,6 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
         print_success(&format!("Summary saved to: {}", path.display());"
         Ok(()),
     }
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Used for enhanced error reporting in future phases
-    async fn display_error_with_troubleshooting(&self, error: &SongbirdError) {
-        println!("{}", "🔧 TROUBLESHOOTING SUGGESTIONS".bright_yellow().bold();"
-
-        match error  {SongbirdError::Network  {message,
-                interface: _,
-                suggestion: _,
-            } => {
-                print_error(&format!("Network error: {}", message);
-                print_info("Troubleshooting:");"
-                print_info("  • Check network connectivity");"
-                print_info("  • Verify firewall settings");"
-                print_info("  • Try running: songbird firewall configure");"
-            }
-            SongbirdError::Service(service_error, => {
-                print_info("🔧 Service issue detected");"
-                print_info(&format!("  Service: {}", service_error.service);
-                print_info(&format!("  Error: {}", service_error.message);
-                print_info("  Troubleshooting:");"
-                print_info("    • Check service configuration");"
-                print_info("    • Verify service permissions");"
-            }
-            SongbirdError::Configuration  {field: "unknown".to_string()),
-            message: "Unknown error","
-            current_value: None,
-            expected_format: None,
-            suggestion: _,
-        } => {
-                print_info("🔧 Configuration issue detected");"
-                print_info(&format!("  Error: {}", message);
-                if let Some(field_name) = field {
-                    print_info(&format!("  Field: {}", field_name,
-                }
-                print_info("  Troubleshooting:");"
-                print_info("    • Check configuration file syntax");"
-                print_info("    • Verify file permissions");"
-            }
-            _ => {
-                print_error(&format!("Error: {}", error);
-                print_info("General troubleshooting:");"
-                print_info("  • Check system requirements");"
-                print_info("  • Verify permissions");"
-                print_info("  • Check logs: songbird logs");"
-            }
-        }
-        println!()
-    }
-}
-/// Print the zero-touch deployment banner
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
-fn print_banner() {
-    println!("{}", "🪄 ✨ SONGBIRD ZERO-TOUCH DEPLOYMENT ✨ 🪄".bright_magenta().bold();"
-    println!("{}", "   Completely automatic setup and deployment".bright_white()"
-    println!()
 }
 
 /// Execute zero-touch deployment

@@ -56,8 +56,10 @@ mod util;
 pub(super) type EnvReader = dyn Fn(&str) -> Result<String, VarError> + Send + Sync;
 
 pub use crate::service_types::{
+    CapabilityResolveParams, CapabilityResolveResult, CompositionPrimalInfo, CompositionState,
     DiscoverParams, DiscoverResult, FederationPeersResponse, FederationStatusResponse, ListResult,
     ProviderInfo, RegisterParams, RegisterResult, ResolveParams, ResolveResult, ServiceInfo,
+    ValidateConsumedResult,
 };
 
 /// Songbird IPC Service Handler

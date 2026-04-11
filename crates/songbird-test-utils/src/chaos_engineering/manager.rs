@@ -27,10 +27,10 @@ pub struct ChaosEngineeringManager {
     /// Active experiments
     experiments: Arc<RwLock<HashMap<String, ChaosExperiment>>>,
     /// Fault injection state
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     faults: Arc<RwLock<HashMap<String, FaultInjection>>>,
     /// Metrics collection
-    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     metrics: Arc<RwLock<Vec<MetricSnapshot>>>,
 }
 

@@ -257,7 +257,7 @@ impl PortAllocator {
     }
 
     /// Check if a port is allocated
-    #[expect(dead_code, reason = "helper for allocation checks when registration flow is extended")]
+    #[allow(dead_code, reason = "helper for allocation checks when registration flow is extended")]
     fn is_allocated(&self, port: u16) -> bool {
         self.allocated.contains_key(&port)
     }

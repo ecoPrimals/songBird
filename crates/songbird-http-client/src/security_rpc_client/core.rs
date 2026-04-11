@@ -171,7 +171,7 @@ impl SecurityRpcClient {
     }
 
     /// Get endpoint based on mode (for diagnostics/debugging)
-    #[expect(dead_code, reason = "diagnostic accessor; used from unit tests and future logging")]
+    #[allow(dead_code, reason = "diagnostic accessor; used from unit tests and future logging")]
     pub(super) const fn endpoint(&self) -> &IpcEndpoint {
         match &self.mode {
             SecurityRpcMode::Direct {
@@ -186,7 +186,7 @@ impl SecurityRpcClient {
     }
 
     /// Check if in Neural API mode (for diagnostics/debugging)
-    #[expect(dead_code, reason = "diagnostic accessor; used from unit tests and future logging")]
+    #[allow(dead_code, reason = "diagnostic accessor; used from unit tests and future logging")]
     pub(super) const fn is_neural_api(&self) -> bool {
         matches!(self.mode, SecurityRpcMode::NeuralApi { .. })
     }

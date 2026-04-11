@@ -187,7 +187,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read By Type Response for characteristics
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[expect(
+    #[allow(
         dead_code,
         reason = "ATT response parser for Phase 3 L2CAP; covered by unit tests only"
     )]
@@ -338,7 +338,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Read Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[expect(
+    #[allow(
         dead_code,
         reason = "ATT response parser for Phase 3 L2CAP; covered by unit tests only"
     )]
@@ -440,7 +440,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Parse ATT Write Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
-    #[expect(
+    #[allow(
         dead_code,
         reason = "ATT response parser for Phase 3 L2CAP; covered by unit tests only"
     )]

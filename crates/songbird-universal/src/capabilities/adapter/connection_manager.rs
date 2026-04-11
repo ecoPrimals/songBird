@@ -193,10 +193,7 @@ impl ConnectionManager {
     }
 
     /// Get connection by primal name
-    ///
-    /// Future use: Will be used for connection pooling and reuse optimization.
-    /// Currently connections are managed ephemerally, but this enables persistent connections.
-    #[allow(dead_code, reason = "reserved for future connection pooling and reuse optimization")]
+    #[cfg(test)]
     pub async fn get_connection(&self, primal_name: &str) -> Option<PrimalConnection> {
         let connections = self.connections.read().await;
         connections.get(primal_name).cloned()

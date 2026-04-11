@@ -8,7 +8,7 @@
 use crate::imports::*;
 
 /// Create a test service with specified sovereignty level
-pub(crate) fn create_test_service_with_sovereignty(
+pub fn create_test_service_with_sovereignty(
     name: &str,
     endpoint: &str,
     sovereignty_level: SovereigntyLevel,
@@ -35,7 +35,7 @@ pub(crate) fn create_test_service_with_sovereignty(
 }
 
 /// Create a test request
-pub(crate) fn create_test_request() -> UniversalRequest {
+pub fn create_test_request() -> UniversalRequest {
     UniversalRequest {
         request_id: "test-req-001".to_string(),
         source: "test-client".to_string(),

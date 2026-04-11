@@ -13,10 +13,7 @@ use songbird_universal::tarpc_types::{
 use tracing::{debug, info};
 
 /// Discover services by capability (shared by both server types).
-pub async fn discover(
-    registry: &FederatedServiceRegistry,
-    capability: String,
-) -> Vec<ServiceInfo> {
+pub async fn discover(registry: &FederatedServiceRegistry, capability: String) -> Vec<ServiceInfo> {
     debug!("tarpc: discover(capability={})", capability);
 
     let services = registry.find_by_capability(&capability).await;

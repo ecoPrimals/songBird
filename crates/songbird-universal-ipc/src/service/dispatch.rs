@@ -6,9 +6,9 @@ use crate::tower_atomic::JsonRpcHandler;
 use serde_json::Value;
 use songbird_types::json_rpc_method::{
     BirdsongMethod, CapabilitiesMethod, DiscoveryMethod, FederationMethod, HealthMethod,
-    HttpMethod, IdentityMethod, IgdMethod, IpcMethod, JsonRpcMethod, MeshMethod, OnionMethod,
-    PeerMethod, PrimalMethod, PunchMethod, RelayMethod, RendezvousMethod, RpcMethod, StunMethod,
-    TorMethod,
+    HttpMethod, IdentityMethod, IgdMethod, IpcMethod, JsonRpcMethod, LifecycleMethod, MeshMethod,
+    OnionMethod, PeerMethod, PrimalMethod, PunchMethod, RelayMethod, RendezvousMethod, RpcMethod,
+    StunMethod, TorMethod,
 };
 
 impl JsonRpcHandler for IpcServiceHandler {
@@ -59,6 +59,19 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Ipc(IpcMethod::Resolve) => self.handle_resolve(params).await,
             JsonRpcMethod::Ipc(IpcMethod::Discover) => self.handle_discover(params).await,
             JsonRpcMethod::Ipc(IpcMethod::List) => self.handle_list(params).await,
+
+            // ── Capability resolution (single-step DNS-like routing) ─
+            JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve) => {
+                self.handle_capability_resolve(params).await
+            }
+
+            // ── Lifecycle / composition introspection ────────────────
+            JsonRpcMethod::Lifecycle(LifecycleMethod::Composition) => {
+                self.handle_lifecycle_composition(params).await
+            }
+            JsonRpcMethod::Lifecycle(LifecycleMethod::ValidateConsumed) => {
+                self.handle_validate_consumed(params).await
+            }
 
             // ── HTTP/HTTPS ───────────────────────────────────────────
             JsonRpcMethod::Http(HttpMethod::Request) => self.handle_http_request(params).await,

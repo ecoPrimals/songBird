@@ -2,10 +2,12 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::{
+    CapabilityResolveParams, CapabilityResolveResult, CompositionPrimalInfo, CompositionState,
     DiscoverParams, DiscoverResult, IpcServiceHandler, ListResult, ProviderInfo, RegisterParams,
-    RegisterResult, ResolveParams, ResolveResult, ServiceInfo,
+    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, ValidateConsumedResult,
 };
 use crate::endpoint::NativeEndpoint;
+use crate::introspection::CONSUMED_CAPABILITIES;
 use serde_json::Value;
 use tracing::debug;
 
@@ -114,11 +116,9 @@ impl IpcServiceHandler {
     pub(super) async fn handle_list(&self, _params: Value) -> Result<Value, String> {
         debug!("Listing all services");
 
-        // List all from registry (returns service names)
         let registry = self.registry.read().await;
         let service_names = registry.list_services().await;
 
-        // Get full service entries for each name
         let mut service_infos = Vec::new();
         for name in service_names {
             if let Some(entry) = registry.get_service(&name).await {
@@ -132,6 +132,95 @@ impl IpcServiceHandler {
 
         let result = ListResult {
             services: service_infos,
+        };
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `capability.resolve` — single-step routing by capability.
+    ///
+    /// Returns the best provider endpoint for the requested capability (most
+    /// recently seen wins). This is the IPC equivalent of DNS resolution:
+    /// springs call `capability.resolve("crypto.sign")` and get back a single
+    /// socket/endpoint instead of iterating a list.
+    pub(super) async fn handle_capability_resolve(&self, params: Value) -> Result<Value, String> {
+        let params: CapabilityResolveParams =
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
+
+        debug!("Resolving best provider for capability: {}", params.capability);
+
+        let registry = self.registry.read().await;
+        let (name, entry) = registry
+            .resolve_by_capability(&params.capability)
+            .await
+            .ok_or_else(|| format!("No provider found for capability: {}", params.capability))?;
+
+        let result = CapabilityResolveResult {
+            primal_id: name,
+            virtual_endpoint: entry.virtual_endpoint.path,
+            native_endpoint: entry.native_endpoint.display(),
+            capabilities: entry.capabilities,
+        };
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `lifecycle.composition` — returns current composition state for dashboards.
+    pub(super) async fn handle_lifecycle_composition(
+        &self,
+        _params: Value,
+    ) -> Result<Value, String> {
+        debug!("Returning composition state");
+
+        let registry = self.registry.read().await;
+        let service_names = registry.list_services().await;
+
+        let mut primals = Vec::new();
+        let mut total_capabilities = 0usize;
+
+        for name in service_names {
+            if let Some(entry) = registry.get_service(&name).await {
+                total_capabilities += entry.capabilities.len();
+                primals.push(CompositionPrimalInfo {
+                    primal_id: name,
+                    capabilities: entry.capabilities,
+                    virtual_endpoint: entry.virtual_endpoint.path,
+                    status: "up",
+                });
+            }
+        }
+
+        let result = CompositionState {
+            primals,
+            total_capabilities,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        };
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `lifecycle.validate_consumed` — checks that all consumed capabilities
+    /// are satisfiable by currently registered providers in the composition.
+    pub(super) async fn handle_validate_consumed(&self, _params: Value) -> Result<Value, String> {
+        debug!("Validating consumed capabilities");
+
+        let registry = self.registry.read().await;
+        let mut satisfied = Vec::new();
+        let mut unsatisfied = Vec::new();
+
+        for &cap in CONSUMED_CAPABILITIES {
+            let providers = registry.find_by_capability(cap).await;
+            if providers.is_empty() {
+                unsatisfied.push(cap.to_string());
+            } else {
+                satisfied.push(cap.to_string());
+            }
+        }
+
+        let result = ValidateConsumedResult {
+            valid: unsatisfied.is_empty(),
+            satisfied,
+            unsatisfied,
         };
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))

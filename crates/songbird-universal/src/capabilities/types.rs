@@ -153,7 +153,7 @@ impl Default for ResourceMetrics {
 /// Used internally for deserializing HTTP responses from primal services.
 /// Public within module for testing, not exposed in public API.
 #[derive(Debug, Deserialize)]
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 pub(super) struct CapabilityResponse {
     pub capabilities: Vec<Capability>,
 }

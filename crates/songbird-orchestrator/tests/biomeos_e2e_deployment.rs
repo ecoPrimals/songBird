@@ -274,7 +274,10 @@ async fn test_path_construction_from_family_id() {
 
     // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: domain-scoped socket with family suffix
     assert!(
-        derived_path.to_str().unwrap().ends_with("network-test-family.sock"),
+        derived_path
+            .to_str()
+            .unwrap()
+            .ends_with("songbird-test-family.sock"),
         "Expected family-scoped domain socket, got: {derived_path:?}"
     );
     assert_eq!(family_id, "test-family");

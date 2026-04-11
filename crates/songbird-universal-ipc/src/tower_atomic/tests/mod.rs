@@ -587,9 +587,8 @@ fn json_rpc_request_wire_unicode_method_name() {
 #[tokio::test]
 async fn connect_unix_path_missing_socket_is_connection_failed() {
     let path = std::env::temp_dir().join(format!("songbird-ta-nosock-{}", uuid::Uuid::new_v4()));
-    let err = match TowerAtomicClient::connect_unix_path(&path).await {
-        Ok(_) => panic!("expected connection failure for missing socket"),
-        Err(e) => e,
+    let Err(err) = TowerAtomicClient::connect_unix_path(&path).await else {
+        panic!("expected connection failure for missing socket");
     };
     match err {
         IpcError::ConnectionFailed(m) => {

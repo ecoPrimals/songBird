@@ -8,7 +8,7 @@ use std::sync::{Mutex, OnceLock};
 static DISCOVERY_ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 /// Serialize tests that set process environment variables for capability discovery.
-pub(crate) fn lock_discovery_env() -> std::sync::MutexGuard<'static, ()> {
+pub fn lock_discovery_env() -> std::sync::MutexGuard<'static, ()> {
     DISCOVERY_ENV_LOCK
         .get_or_init(|| Mutex::new(()))
         .lock()

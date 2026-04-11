@@ -75,7 +75,7 @@ impl Default for TrustTimeouts {
 /// - Without an endpoint, callers should treat verification as unavailable (use capability discovery)
 pub struct SecurityTrustClient {
     /// Optional security provider endpoint (discovered at runtime)
-    #[expect(dead_code, reason = "stored from env for future direct security-provider calls")]
+    #[allow(dead_code, reason = "stored from env for future direct security-provider calls")]
     endpoint: Option<String>,
 }
 

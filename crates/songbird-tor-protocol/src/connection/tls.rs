@@ -36,7 +36,7 @@ pub struct TlsConnector;
 /// Tor's link protocol v4+ can operate over plain TCP with in-protocol
 /// encryption via the ntor handshake. The TLS layer is only required
 /// for backward compatibility with older relays.
-#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 pub enum RelayStream {
     /// Raw TCP stream (Tor handles encryption at protocol layer)
     Tcp(TcpStream),

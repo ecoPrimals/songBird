@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(dead_code, reason = "CLI module keeps optional commands and helpers for future wiring")]
+#![allow(
+    dead_code,
+    reason = "CLI module is progressively wired — subcommand handlers and helpers become live as each command matures"
+)]
 
 //! # Songbird CLI Module
 //!

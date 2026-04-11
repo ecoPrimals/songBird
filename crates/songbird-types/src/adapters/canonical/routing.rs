@@ -275,7 +275,7 @@ impl CanonicalLoadBalancer {
 pub struct CanonicalCircuitBreaker {
     states: Arc<RwLock<HashMap<String, CanonicalCircuitState>>>,
     /// Retained for threshold / timeout tuning when failure counting is wired.
-    #[expect(dead_code, reason = "stored for future per-service breaker tuning")]
+    #[allow(dead_code, reason = "stored for future per-service breaker tuning")]
     config: CanonicalCircuitBreakerConfig,
 }
 

@@ -28,7 +28,7 @@ use crate::trust::TrustEscalationManager;
 ///
 /// Coordinates all Songbird subsystems including federation, discovery,
 /// observability, and service registry.
-#[expect(dead_code, reason = "reserved for future use: phased subsystem wiring")]
+#[allow(dead_code, reason = "reserved for future use: phased subsystem wiring")]
 pub struct SongbirdOrchestrator {
     pub(super) _config: CanonicalSongbirdConfig,
     pub(super) _service_registry: Arc<FederatedServiceRegistry>,

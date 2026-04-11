@@ -35,6 +35,12 @@ jobs:
       env:
         RUSTDOCFLAGS: "-D warnings"
 
+    - name: Install cargo-deny
+      uses: taiki-e/install-action@cargo-deny
+
+    - name: Dependency audit (bans, licenses, advisories, sources)
+      run: cargo deny check
+
   test:
     name: Test (${{ matrix.rust }})
     runs-on: ubuntu-latest

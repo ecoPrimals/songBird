@@ -35,7 +35,7 @@ enum VulnerabilityType  {Port,
     Ip,
     Path,
     Url,
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    #[allow(dead_code, reason = "variant handled in Display/severity/detail — detector not yet wired")]
     Credential,
 }
 

@@ -42,9 +42,7 @@ fn open_memory(database_url: &str) -> Arc<dyn TaskStorageBackend> {
 }
 
 /// Resolve and connect the appropriate [`TaskStorageBackend`] for this process.
-pub async fn connect_task_storage(
-    database_url: &str,
-) -> Result<Arc<dyn TaskStorageBackend>> {
+pub async fn connect_task_storage(database_url: &str) -> Result<Arc<dyn TaskStorageBackend>> {
     #[cfg(unix)]
     {
         if let Ok(ep) = songbird_config::primal_discovery::get_storage_endpoint().await

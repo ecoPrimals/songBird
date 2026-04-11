@@ -122,7 +122,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 /// ```rust,ignore
 /// let crypto = discover_crypto_capability_at("/custom/path/crypto.sock").await?;
 /// ```
-#[expect(
+#[allow(
     dead_code,
     reason = "public discovery helper for explicit paths; only tests call it in this crate"
 )]
@@ -141,7 +141,7 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
 /// Create crypto capability without availability check (for testing)
 ///
 /// Use this in tests where you control the provider lifecycle.
-#[expect(
+#[allow(
     dead_code,
     reason = "test-oriented constructor; production uses discover_crypto_capability"
 )]

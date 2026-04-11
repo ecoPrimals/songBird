@@ -46,7 +46,7 @@ pub struct SovereignSecurityValidator {
     security_provider: Arc<RwLock<Option<SecurityProviderIntegration>>>,
 
     /// Configuration
-    #[expect(dead_code, reason = "stored for future validator configuration hooks")]
+    #[allow(dead_code, reason = "stored for future validator configuration hooks")]
     config: SecurityConfig,
 }
 
@@ -226,7 +226,7 @@ struct SecurityProviderIntegration {
     /// HTTP client for provider requests
     client: IpcHttpClient,
     /// Request timeout for security operations (reserved for timeout enforcement)
-    #[expect(dead_code, reason = "reserved for security-provider request timeout enforcement")]
+    #[allow(dead_code, reason = "reserved for security-provider request timeout enforcement")]
     timeout: std::time::Duration,
 }
 
@@ -387,7 +387,7 @@ impl SecurityProviderIntegration {
     /// Check if `security provider` is currently reachable
     ///
     /// Non-blocking health check to determine if `security provider` integration is active
-    #[expect(dead_code, reason = "reserved for security provider availability probing")]
+    #[allow(dead_code, reason = "reserved for security provider availability probing")]
     async fn is_available(&self) -> bool {
         let url = format!("{}/health", self.endpoint);
 
@@ -396,7 +396,7 @@ impl SecurityProviderIntegration {
 
     /// Get `security provider` endpoint URL
     #[must_use]
-    #[expect(dead_code, reason = "accessor reserved for diagnostics and future callers")]
+    #[allow(dead_code, reason = "accessor reserved for diagnostics and future callers")]
     fn endpoint(&self) -> &str {
         &self.endpoint
     }

@@ -3,7 +3,8 @@
 **Version**: v0.2.1  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
-**Edition**: Rust 2024
+**Edition**: Rust 2024  
+**Last Updated**: April 11, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -18,26 +19,26 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero in production (`.unwrap()` appears only in test modules across the codebase; verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
-| Lint suppressions | `#[expect(reason)]` where lint fires in production; `#[allow(reason)]` in `#[cfg(test)]` modules and crate-root blocks where `#[expect]` causes unfulfilled-expectation errors; production `dead_code` allows eliminated; commented-out code scrubbed |
+| Lint suppressions | `#[allow(reason)]` throughout — Wave 134 completed `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates (45+ attributes, 30 files) to eliminate `unfulfilled-lint-expectations` under cfg/test interactions; `#[expect(reason)]` retained where lint provably fires in production; commented-out code scrubbed |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 13,009 passed, 0 failed, 252 ignored |
+| Tests | 13,031 passed, 0 failed, 252 ignored |
 | Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 8 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
-| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 14 domain sub-enums) — zero string matching in dispatch; `birdsong.schema` introspection |
+| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 16 domain sub-enums including `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`) |
 | Build | Clean (zero errors, zero warnings) |
-| Formatting | Clean (`cargo fmt --check`; Apr 8 audit: no drift) |
+| Formatting | Clean (`cargo fmt --check`; Apr 11 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >800 lines | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored into domain modules Wave 133; largest test 731L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
-| JSON-RPC Gateway | 53+ semantic methods across 14 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, etc.) |
+| JSON-RPC Gateway | 53+ semantic methods across 16 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
 | Wire Standard L3 | `capabilities.list` returns L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`; `identity.get` returns `{primal, version, domain, license}`; `capabilities.methods` token→method map |
 | BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` on UDS accept when `FAMILY_ID` set; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
-| cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok) |
+| cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI (`cargo deny check` step in `ci.yml`) |
 | Dependencies | `sled` deprecated (`sled-storage` feature, non-default — NestGate `storage.*` capability is production path); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
 | Total Rust | ~430,000 lines across 30 crates (1,587 files) |
@@ -78,6 +79,7 @@ Security Provider (capability discovery: security.sock / SECURITY_PROVIDER_SOCKE
 7. **Event-Driven** - Zero polling anti-patterns (`tokio::sync::Notify`)
 8. **Concurrent Testing** - Injectable `_with` env readers for fully concurrent tests
 9. **JSON-RPC + tarpc First** - Primary IPC protocols
+10. **Canonical Naming** - `normalize_json_rpc_method_name()` absorbs all ecosystem aliases to canonical `domain.verb`
 
 ## Quick Start
 
@@ -167,7 +169,7 @@ See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH
 ## Testing
 
 ```bash
-cargo test --workspace --all-features          # Full suite (13,009 tests, ~70s)
+cargo test --workspace --all-features          # Full suite (13,031 tests, ~70s)
 cargo test -p songbird-tor-protocol --lib      # Single crate
 ./scripts/test-with-security-provider.sh        # With live security provider from plasmidBin
 ./scripts/coverage.sh                          # llvm-cov HTML report

@@ -172,6 +172,19 @@ impl ServiceRegistry {
             .collect()
     }
 
+    /// Resolve a capability to the single best provider (most-recently-seen first).
+    ///
+    /// This is the IPC equivalent of DNS resolution: given a capability string,
+    /// return the one endpoint a caller should connect to.
+    pub async fn resolve_by_capability(&self, capability: &str) -> Option<(String, ServiceEntry)> {
+        let services = self.services.read().await;
+        services
+            .iter()
+            .filter(|(_, entry)| entry.capabilities.contains(&capability.to_string()))
+            .max_by_key(|(_, entry)| entry.last_seen)
+            .map(|(name, entry)| (name.clone(), entry.clone()))
+    }
+
     /// List all registered services
     ///
     /// # Returns

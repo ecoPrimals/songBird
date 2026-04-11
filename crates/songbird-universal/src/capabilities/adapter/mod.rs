@@ -579,5 +579,5 @@ mod tests {
     }
 }
 
-#[expect(dead_code, reason = "QoS metrics calculation hook reserved; callers not wired yet")]
+#[allow(dead_code, reason = "QoS metrics calculation hook reserved; callers not wired yet")]
 const fn calculate_metrics() {}

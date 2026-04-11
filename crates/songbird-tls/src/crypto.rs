@@ -398,7 +398,7 @@ impl SecurityTlsCryptoClient {
     }
 
     /// Make a JSON-RPC call with a direct method name (legacy/testing)
-    #[expect(
+    #[allow(
         dead_code,
         reason = "used by crypto unit tests; not referenced from production call sites"
     )]
@@ -624,7 +624,7 @@ impl SecurityTlsCryptoClient {
 ///
 /// Note: Fields are used during deserialization but not directly accessed in code.
 /// The response is parsed and converted to domain types immediately.
-#[expect(dead_code, reason = "deserialized from external data")]
+#[allow(dead_code, reason = "deserialized from external data")]
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,

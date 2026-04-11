@@ -45,27 +45,16 @@ impl PortDiscoveryResult  {fn get_all_required_ports(&self) -> Vec<u16>  {let mu
 }
 
 #[derive(Debug)]
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
-struct InternetConnectionWizard  {config: InternetConnectionConfig,
+struct InternetConnectionWizard {
+    config: InternetConnectionConfig,
 }
 
-impl InternetConnectionWizard  {fn new(config: InternetConnectionConfig) -> Self {
-        Self {
-            config,
-        }
+impl InternetConnectionWizard {
+    fn new(config: InternetConnectionConfig) -> Self {
+        Self { config }
     }
 
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
-    async fn setup(&self) -> SongbirdResult<()> {
-        // Internet connection setup is delegated to external network APIs
-        // Production implementations should integrate with:
-        // - songbird-network crate for network configuration
-        // - External tunnel/VPN setup services
-        // - Cloud provider networking configuration
-        Ok(()),
-    }
-
-    async fn discover_songbird_ports(&self) -> SongbirdResult<PortDiscoveryResult>  {// Port discovery is delegated to external service discovery APIs
+    async fn discover_songbird_ports(&self) -> SongbirdResult<PortDiscoveryResult> {// Port discovery is delegated to external service discovery APIs
         // Production implementations should integrate with:
         // - songbird-discovery crate for service discovery
         // - System port scanning and detection
@@ -248,26 +237,6 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::errors
             Ok(()),
         }
     }
-}
-/// Save internet configuration to file
-#[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
-async fn save_internet_config(
-    config: &InternetConnectionConfig,
-    path: &PathBuf,
-) -> crate::errors::SongbirdResult<()> {
-    let config_str = toml::to_string_pretty(config,.map_err(|e| CliError::Config {
-        message: format!("Failed to serialize configuration: {}", e,"
-        field: "config_serialization".to_string(),
-        suggestion: Some("Check configuration structure".to_string(),"
-    })?;
-    tokio::fs::write(path, config_str).await.map_err(|e| CliError::Config {
-        message: format!("Failed to write configuration file: {}", e,"
-        field: "config_file".to_string(),
-        suggestion: Some("Check file path and permissions".to_string(),"
-    })?;
-
-    println!("{}", format!("📄 Configuration saved to: {}", path.display().green();"
-    Ok(()),
 }
 /// Load internet connection configuration
 async fn load_internet_config(path: &PathBuf) -> SongbirdResult<InternetConnectionConfig> {

@@ -210,7 +210,7 @@ impl AccessToken {
 
 /// Token validator
 pub struct TokenValidator {
-    #[expect(dead_code, reason = "stored for future JWT cryptographic verification in validate()")]
+    #[allow(dead_code, reason = "stored for future JWT cryptographic verification in validate()")]
     secret: Vec<u8>,
 }
 

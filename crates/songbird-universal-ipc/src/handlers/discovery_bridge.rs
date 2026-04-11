@@ -239,7 +239,7 @@ mod tests {
             version: "3.0".to_string(),
         };
 
-        assert_eq!(extract_family_id(&peer), Some("".to_string()));
+        assert_eq!(extract_family_id(&peer), Some(String::new()));
     }
 
     #[test]

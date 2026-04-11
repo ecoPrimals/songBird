@@ -205,7 +205,6 @@ pub enum ObservabilityEvent {
 /// Coordinates in-memory health, cluster rollups, and event subscribers for the observability stack.
 #[derive(Debug)]
 pub struct ObservabilityManager {
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     metrics_store: Arc<RwLock<HashMap<String, SystemMetrics>>>,
     /// Latest [`ServiceHealth`] per service id.
     health_store: Arc<RwLock<HashMap<String, ServiceHealth>>>,
@@ -261,13 +260,29 @@ impl ObservabilityManager {
         Ok(())
     }
 
-    /// Get current system metrics
+    /// Store metrics for a named source (e.g. "system", a primal id, etc.)
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
+    pub async fn update_metrics(&self, source: String, metrics: SystemMetrics) -> Result<()> {
+        self.metrics_store.write().await.insert(source, metrics);
+        Ok(())
+    }
+
+    /// Get current system metrics.
+    ///
+    /// Returns the most recently stored "system" metrics, or a zero-valued snapshot
+    /// if none have been recorded yet.
     ///
     /// # Errors
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_metrics(&self) -> Result<SystemMetrics> {
-        let metrics = SystemMetrics {
+        if let Some(m) = self.metrics_store.read().await.get("system") {
+            return Ok(m.clone());
+        }
+        Ok(SystemMetrics {
             cpu_usage: 0.0,
             memory_usage: 0.0,
             disk_usage: 0.0,
@@ -278,8 +293,16 @@ impl ObservabilityManager {
                 packets_out: 0,
             },
             timestamp: Utc::now(),
-        };
-        Ok(metrics)
+        })
+    }
+
+    /// Retrieve metrics for all tracked sources
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
+    pub async fn get_all_metrics(&self) -> Result<HashMap<String, SystemMetrics>> {
+        Ok(self.metrics_store.read().await.clone())
     }
 
     /// Get service health status

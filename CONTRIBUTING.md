@@ -25,8 +25,8 @@ pub fn load_config() -> SongbirdResult<Config> {
 
 Per wateringHole standards, all lint suppressions require a `reason` string:
 
-- `#[expect(lint, reason = "...")]` — when the lint **fires** and you're suppressing it
-- `#[allow(lint, reason = "...")]` — when the lint **does not fire** but may in the future
+- `#[expect(lint, reason = "...")]` — when the lint **fires** in all build configurations and you're suppressing it
+- `#[allow(lint, reason = "...")]` — when the lint may not fire in all configurations (e.g., `dead_code` on items used only from `#[cfg(test)]`), or in `#[cfg(test)]` modules
 
 ```rust
 #[expect(clippy::too_many_lines, reason = "protocol state machine is inherently sequential")]
@@ -38,7 +38,7 @@ fn compute_offset(&self) -> usize { /* ... */ }
 
 **Never** use bare `#[allow(lint)]` or `#[expect(lint)]` without a reason string.
 
-**Note**: Some crate-root `#![allow(...)]` blocks remain where switching to `#![expect(...)]` causes unfulfilled-expectation errors (e.g., lints that fire only under certain `cfg` combinations). Do not convert these to `expect` — CI will break.
+**Note**: Wave 134 completed the full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates. `dead_code` lints are inherently cfg-dependent (items used from `#[cfg(test)]` appear dead in non-test builds), so `#[allow]` is the correct suppression. Do not convert these to `#[expect]` — CI will break with `unfulfilled-lint-expectations`.
 
 ### Unsafe Code
 
@@ -93,7 +93,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: **72.29%** (llvm-cov measured, Apr 8 2026). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: **72.29%** (llvm-cov measured, Apr 8 2026; 13,031 tests). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html

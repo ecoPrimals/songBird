@@ -606,6 +606,7 @@ pub struct TunnelStatus {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -649,7 +650,13 @@ mod tests {
         };
         assert_eq!(session.session_id, "sess-42");
         assert_eq!(session.cipher, "chacha20_poly1305");
-        assert!(session.target_socket.to_str().unwrap().contains("security"));
+        assert!(
+            session
+                .target_socket
+                .to_str()
+                .expect("target_socket should be valid UTF-8")
+                .contains("security")
+        );
     }
 
     #[test]

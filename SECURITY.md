@@ -1,6 +1,6 @@
 # Songbird Security
 
-**Last Updated**: April 9, 2026
+**Last Updated**: April 11, 2026
 **Status**: Active Development (v0.2.1)
 
 ---
@@ -49,6 +49,7 @@
 ```bash
 cargo audit
 cargo deny check advisories
+cargo deny check                  # Full check: bans, licenses, advisories, sources (enforced in CI since Wave 134)
 ```
 
 ### Known C Dependencies

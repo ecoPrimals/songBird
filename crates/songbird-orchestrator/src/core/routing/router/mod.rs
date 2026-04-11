@@ -28,7 +28,7 @@ pub struct CapabilityRouter {
     federation_state: Arc<FederationState>,
 
     /// Service registry for capability discovery
-    #[expect(dead_code, reason = "retained for capability discovery wiring")]
+    #[allow(dead_code, reason = "retained for capability discovery wiring")]
     service_registry: Arc<FederatedServiceRegistry>,
 
     /// Capability endpoint resolver

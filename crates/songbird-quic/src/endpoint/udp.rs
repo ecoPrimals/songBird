@@ -18,7 +18,7 @@ pub const MAX_DATAGRAM_SIZE: usize = 1200;
 #[derive(Debug)]
 pub struct Datagram {
     /// Raw datagram bytes.
-    #[expect(
+    #[allow(
         dead_code,
         reason = "populated by recv_from; may be unused inside this crate until QUIC stack consumes payload"
     )]
@@ -60,7 +60,7 @@ impl UdpEndpoint {
     }
 
     /// Send a datagram to the specified address.
-    #[expect(
+    #[allow(
         dead_code,
         reason = "public API and unit tests; QUIC path not wired to this helper in all builds"
     )]
@@ -90,7 +90,7 @@ impl UdpEndpoint {
 
     /// Get a reference to the underlying socket (for advanced usage).
     #[must_use]
-    #[expect(dead_code, reason = "public API for advanced socket configuration")]
+    #[allow(dead_code, reason = "public API for advanced socket configuration")]
     pub const fn socket(&self) -> &UdpSocket {
         &self.socket
     }

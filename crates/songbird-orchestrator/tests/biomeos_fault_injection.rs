@@ -317,8 +317,8 @@ fn fault_family_id_path_construction() {
         let path = UnixSocketServer::socket_path_from_env();
         let derived_family = UnixSocketServer::get_family_id();
 
-        // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: socket is network-{family_id}.sock
-        let expected_suffix = format!("network-{family_id}.sock");
+        // PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1: socket is songbird-{family_id}.sock
+        let expected_suffix = format!("songbird-{family_id}.sock");
         assert!(
             path.to_str().unwrap().ends_with(&expected_suffix),
             "Expected suffix {expected_suffix}, got: {path:?}"

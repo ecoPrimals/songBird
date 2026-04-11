@@ -245,7 +245,7 @@ fn base64_to_fingerprint(
 ///
 /// Useful for diagnosing consensus parsing issues during development
 /// or when debugging relay entry format variations.
-#[allow(dead_code, reason = "debug helper for development and relay parse diagnostics")]
+#[cfg(test)]
 pub fn debug_parse_relay_entry(input: &str) -> std::result::Result<(RelayInfo, &str), String> {
     // Try each step and report where it fails
     let input = input.trim_start();

@@ -410,7 +410,7 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
 }
 
 /// Validate 2FA via security provider hardware key service
-#[expect(dead_code, reason = "reserved for security-provider 2FA path wiring")]
+#[allow(dead_code, reason = "reserved for security-provider 2FA path wiring")]
 async fn validate_security_provider_2fa(
     user_id: &str,
     token: &str,

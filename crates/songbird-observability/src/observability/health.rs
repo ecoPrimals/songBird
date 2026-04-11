@@ -18,7 +18,6 @@ type Result<T> = SongbirdResult<T>;
 #[derive(Debug)]
 pub struct HealthMonitor {
     services: Arc<RwLock<HashMap<String, ServiceHealth>>>,
-    #[allow(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     nodes: Arc<RwLock<HashMap<String, NodeHealth>>>,
 }
 
@@ -109,6 +108,57 @@ impl HealthMonitor {
             healthy_services: healthy_count,
             unhealthy_services: services.len() - healthy_count,
         }
+    }
+
+    /// Register a node for health monitoring
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
+    pub async fn register_node(&self, node_id: String) -> Result<()> {
+        let health = NodeHealth {
+            node_id: node_id.clone(),
+            status: HealthStatus::Unknown,
+            last_heartbeat: Utc::now(),
+            cpu_usage: 0.0,
+            memory_usage: 0.0,
+            disk_usage: 0.0,
+        };
+        self.nodes.write().await.insert(node_id, health);
+        Ok(())
+    }
+
+    /// Update node health from a heartbeat
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
+    pub async fn update_node_health(
+        &self,
+        node_id: &str,
+        status: HealthStatus,
+        cpu_usage: f64,
+        memory_usage: f64,
+        disk_usage: f64,
+    ) -> Result<()> {
+        if let Some(node) = self.nodes.write().await.get_mut(node_id) {
+            node.status = status;
+            node.last_heartbeat = Utc::now();
+            node.cpu_usage = cpu_usage;
+            node.memory_usage = memory_usage;
+            node.disk_usage = disk_usage;
+        }
+        Ok(())
+    }
+
+    /// Get all node health statuses
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
+    pub async fn get_all_node_health(&self) -> Result<Vec<NodeHealth>> {
+        let nodes = self.nodes.read().await;
+        Ok(nodes.values().cloned().collect())
     }
 }
 

@@ -434,7 +434,7 @@ mod tests {
         let acceptor = TlsAcceptor::new(TlsServerConfig {
             crypto_client: cfg.crypto_client.clone(),
             certificate: cfg.certificate.clone(),
-            key_id: cfg.key_id.clone(),
+            key_id: cfg.key_id,
         });
         let _ = acceptor;
     }

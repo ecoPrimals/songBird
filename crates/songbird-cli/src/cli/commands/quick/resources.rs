@@ -23,19 +23,6 @@ pub async fn detect_system_resources_api() -> SongbirdResult<SystemResources> {
     detect_resources_with_params(request).await
 }
 
-/// Detect system resources with selective detection for performance (used for light resource checks,
-#[allow(dead_code, reason = "fast resource detection reserved for CLI quick-check subcommand")]
-pub async fn detect_system_resources_fast() -> SongbirdResult<SystemResources> {
-    // Fast detection - skip expensive tests
-    let request = ResourceDetectionRequest {
-        detect_gpu: false,
-        detect_storage: false,
-        network_test: false,
-    };
-
-    detect_resources_with_params(request).await
-}
-
 /// Resource detection request parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceDetectionRequest {

@@ -90,7 +90,7 @@ struct JsonRpcRequest<'a> {
 #[derive(Debug, Clone, Deserialize)]
 struct JsonRpcResponse<'a> {
     #[serde(borrow)]
-    #[expect(
+    #[allow(
         dead_code,
         reason = "JSON-RPC 2.0 field deserialized for wire validity but not read in code"
     )]

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![expect(
+#![allow(
     clippy::clone_on_ref_ptr,
     reason = "Arc::clone() is idiomatic for shared ownership in IPC service contexts"
 )]
-#![expect(
+#![allow(
     clippy::expect_used,
     reason = "IPC initialization invariants use expect() for startup-critical paths"
 )]

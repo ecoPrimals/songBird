@@ -27,7 +27,7 @@ pub struct SchedulingDecision {
 struct QueueEntry {
     task: TaskLifecycle,
     virtual_finish_time: f64,
-    #[expect(dead_code, reason = "reserved for fairness / aging metrics in scheduler")]
+    #[allow(dead_code, reason = "reserved for fairness / aging metrics in scheduler")]
     arrival_time: f64,
     priority_boost: i32, // Priority level for tie-breaking
 }

@@ -51,6 +51,16 @@ const CALLABLE_METHODS: &[&str] = &[
     "ipc.resolve",
     "ipc.discover",
     "ipc.list",
+    // ── Capability resolution ──
+    "capability.resolve",
+    // ── Lifecycle / composition ──
+    "lifecycle.composition",
+    "lifecycle.validate_consumed",
+    // ── Inference (canonical namespace) ──
+    "inference.infer",
+    "inference.status",
+    "inference.list",
+    "inference.load",
     // ── HTTP/HTTPS ──
     "http.request",
     "http.get",
@@ -158,7 +168,7 @@ pub fn capabilities_list() -> Value {
 /// These are discovered via capability-based discovery, never hardcoded endpoints.
 /// Wire Standard Level 3 requires declaring these so biomeOS can validate
 /// composition completeness.
-const CONSUMED_CAPABILITIES: &[&str] = &[
+pub const CONSUMED_CAPABILITIES: &[&str] = &[
     "crypto.sign",
     "crypto.encrypt_chacha20_poly1305",
     "crypto.decrypt_chacha20_poly1305",
@@ -198,7 +208,16 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
     ),
     (
         "ipc.jsonrpc",
-        &["rpc.methods", "rpc.discover", "ipc.register", "ipc.resolve", "ipc.discover"],
+        &[
+            "rpc.methods",
+            "rpc.discover",
+            "ipc.register",
+            "ipc.resolve",
+            "ipc.discover",
+            "capability.resolve",
+            "lifecycle.composition",
+            "lifecycle.validate_consumed",
+        ],
     ),
     ("ipc.tarpc", &["rpc.methods"]),
     ("crypto.delegate", &["health.readiness"]),

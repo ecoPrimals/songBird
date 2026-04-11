@@ -82,6 +82,46 @@ pub struct ServiceInfo {
     pub capabilities: Vec<String>,
 }
 
+/// `capability.resolve` request — single-step routing by capability.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CapabilityResolveParams {
+    pub capability: String,
+}
+
+/// `capability.resolve` response — the best provider endpoint for a capability.
+#[derive(Debug, Clone, Serialize)]
+pub struct CapabilityResolveResult {
+    pub primal_id: String,
+    pub virtual_endpoint: String,
+    pub native_endpoint: String,
+    pub capabilities: Vec<String>,
+}
+
+/// `lifecycle.composition` response — current composition state for dashboards.
+#[derive(Debug, Clone, Serialize)]
+pub struct CompositionState {
+    pub primals: Vec<CompositionPrimalInfo>,
+    pub total_capabilities: usize,
+    pub timestamp: String,
+}
+
+/// Per-primal composition entry for `lifecycle.composition`.
+#[derive(Debug, Clone, Serialize)]
+pub struct CompositionPrimalInfo {
+    pub primal_id: String,
+    pub capabilities: Vec<String>,
+    pub virtual_endpoint: String,
+    pub status: &'static str,
+}
+
+/// `lifecycle.validate_consumed` response — composition completeness check.
+#[derive(Debug, Clone, Serialize)]
+pub struct ValidateConsumedResult {
+    pub valid: bool,
+    pub satisfied: Vec<String>,
+    pub unsatisfied: Vec<String>,
+}
+
 /// JSON-RPC result for `songbird.federation.peers` / `federation.peers`
 #[derive(Debug, Clone, Serialize)]
 pub struct FederationPeersResponse {

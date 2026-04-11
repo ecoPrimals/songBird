@@ -21,7 +21,7 @@ use super::scaling::AutoScaler;
 /// This config is read-only after creation and shared across components.
 #[derive(Debug)]
 pub struct ConsolidatedOrchestrator {
-    #[expect(dead_code, reason = "shared Arc config for future component reads")]
+    #[allow(dead_code, reason = "shared Arc config for future component reads")]
     config: Arc<ConsolidatedOrchestratorConfig>,
     load_balancer: LoadBalancer,
     performance_monitor: PerformanceMonitor,

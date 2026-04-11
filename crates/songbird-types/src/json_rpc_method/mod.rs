@@ -34,9 +34,21 @@ pub use domain_methods::*;
 pub fn normalize_json_rpc_method_name(method: &str) -> &str {
     match method {
         "capability.list" => "capabilities.list",
+
+        // healthSpring §3: canonical name is `ipc.discover` — absorbs all aliases
+        "capability.discover"
+        | "discovery.find_by_capability"
+        | "net.discovery.find_by_capability" => "ipc.discover",
+
         "ping" => "health.liveness",
         "register_service" => "ipc.register",
         "health_check" | "status" | "check" | "health" => "health.check",
+
+        // Canonical inference namespace (inference.* is canonical; model.*/ai.* are aliases)
+        "model.infer" | "ai.infer" | "ai.inference" => "inference.infer",
+        "model.status" | "ai.status" => "inference.status",
+        "model.list" | "ai.list" => "inference.list",
+        "model.load" | "ai.load" => "inference.load",
 
         // NEST capability tokens → primary callable method
         "network.discovery" => "discovery.peers",
@@ -91,6 +103,8 @@ pub enum JsonRpcMethod {
     Songbird(SongbirdMethod),
     Network(NetworkMethod),
     Storage(StorageMethod),
+    Lifecycle(LifecycleMethod),
+    Inference(InferenceMethod),
     EncryptionDiscovery(EncryptionDiscoveryMethod),
 }
 
@@ -136,6 +150,7 @@ impl JsonRpcMethod {
             Self::Health(HealthMethod::Check) => "health.check",
             Self::Capabilities(CapabilitiesMethod::List) => "capabilities.list",
             Self::Capabilities(CapabilitiesMethod::Methods) => "capabilities.methods",
+            Self::Capabilities(CapabilitiesMethod::Resolve) => "capability.resolve",
             Self::Ipc(IpcMethod::Register) => "ipc.register",
             Self::Ipc(IpcMethod::Resolve) => "ipc.resolve",
             Self::Ipc(IpcMethod::Discover) => "ipc.discover",
@@ -234,6 +249,12 @@ impl JsonRpcMethod {
             Self::Storage(StorageMethod::Delete) => "storage.delete",
             Self::Storage(StorageMethod::List) => "storage.list",
             Self::Storage(StorageMethod::Flush) => "storage.flush",
+            Self::Lifecycle(LifecycleMethod::Composition) => "lifecycle.composition",
+            Self::Lifecycle(LifecycleMethod::ValidateConsumed) => "lifecycle.validate_consumed",
+            Self::Inference(InferenceMethod::Infer) => "inference.infer",
+            Self::Inference(InferenceMethod::Status) => "inference.status",
+            Self::Inference(InferenceMethod::List) => "inference.list",
+            Self::Inference(InferenceMethod::Load) => "inference.load",
             Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt) => "encrypt_discovery",
             Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt) => "decrypt_discovery",
         }
@@ -269,6 +290,7 @@ impl JsonRpcMethod {
             "health.check" => Self::Health(HealthMethod::Check),
             "capabilities.list" => Self::Capabilities(CapabilitiesMethod::List),
             "capabilities.methods" => Self::Capabilities(CapabilitiesMethod::Methods),
+            "capability.resolve" => Self::Capabilities(CapabilitiesMethod::Resolve),
             "ipc.register" => Self::Ipc(IpcMethod::Register),
             "ipc.resolve" => Self::Ipc(IpcMethod::Resolve),
             "ipc.discover" => Self::Ipc(IpcMethod::Discover),
@@ -375,6 +397,12 @@ impl JsonRpcMethod {
             "storage.delete" => Self::Storage(StorageMethod::Delete),
             "storage.list" => Self::Storage(StorageMethod::List),
             "storage.flush" => Self::Storage(StorageMethod::Flush),
+            "lifecycle.composition" => Self::Lifecycle(LifecycleMethod::Composition),
+            "lifecycle.validate_consumed" => Self::Lifecycle(LifecycleMethod::ValidateConsumed),
+            "inference.infer" => Self::Inference(InferenceMethod::Infer),
+            "inference.status" => Self::Inference(InferenceMethod::Status),
+            "inference.list" => Self::Inference(InferenceMethod::List),
+            "inference.load" => Self::Inference(InferenceMethod::Load),
             "encrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt),
             "decrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt),
             _ => {
@@ -516,6 +544,73 @@ mod json_rpc_method_tests {
             let back: JsonRpcMethod = serde_json::from_str(&json).unwrap();
             assert_eq!(back, m);
         }
+    }
+
+    #[test]
+    fn capability_resolve_roundtrip() {
+        let m = JsonRpcMethod::from_wire_str("capability.resolve").unwrap();
+        assert_eq!(m, JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve));
+        assert_eq!(m.as_wire_str(), "capability.resolve");
+        let json = serde_json::to_string(&m).unwrap();
+        let back: JsonRpcMethod = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, m);
+    }
+
+    #[test]
+    fn lifecycle_composition_roundtrip() {
+        let m = JsonRpcMethod::from_wire_str("lifecycle.composition").unwrap();
+        assert_eq!(m, JsonRpcMethod::Lifecycle(LifecycleMethod::Composition));
+        assert_eq!(m.as_wire_str(), "lifecycle.composition");
+    }
+
+    #[test]
+    fn lifecycle_validate_consumed_roundtrip() {
+        let m = JsonRpcMethod::from_wire_str("lifecycle.validate_consumed").unwrap();
+        assert_eq!(m, JsonRpcMethod::Lifecycle(LifecycleMethod::ValidateConsumed));
+        assert_eq!(m.as_wire_str(), "lifecycle.validate_consumed");
+    }
+
+    #[test]
+    fn inference_namespace_canonical_and_aliases() {
+        let m = JsonRpcMethod::from_wire_str("inference.infer").unwrap();
+        assert_eq!(m, JsonRpcMethod::Inference(InferenceMethod::Infer));
+
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("model.infer").unwrap(),
+            JsonRpcMethod::Inference(InferenceMethod::Infer)
+        );
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("ai.infer").unwrap(),
+            JsonRpcMethod::Inference(InferenceMethod::Infer)
+        );
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("ai.inference").unwrap(),
+            JsonRpcMethod::Inference(InferenceMethod::Infer)
+        );
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("model.status").unwrap(),
+            JsonRpcMethod::Inference(InferenceMethod::Status)
+        );
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("ai.list").unwrap(),
+            JsonRpcMethod::Inference(InferenceMethod::List)
+        );
+    }
+
+    #[test]
+    fn discovery_find_by_capability_normalizes_to_ipc_discover() {
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("discovery.find_by_capability").unwrap(),
+            JsonRpcMethod::Ipc(IpcMethod::Discover)
+        );
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("net.discovery.find_by_capability").unwrap(),
+            JsonRpcMethod::Ipc(IpcMethod::Discover)
+        );
+        assert_eq!(
+            JsonRpcMethod::parse_ipc("capability.discover").unwrap(),
+            JsonRpcMethod::Ipc(IpcMethod::Discover)
+        );
     }
 
     #[test]

@@ -17,8 +17,7 @@ use super::types::{DiscoveredService, DiscoveryMethod};
 ///
 /// Discovers services by capability at runtime with zero hardcoded knowledge.
 pub struct RuntimeDiscoveryEngine {
-    /// Required capabilities for this primal
-    #[allow(dead_code, reason = "future: multi-capability queries")]
+    /// Expected capabilities this engine should be able to resolve
     capabilities: Vec<String>,
 
     /// Discovery timeout (will be used in timeout wrapper around discovery methods)
@@ -228,6 +227,12 @@ impl RuntimeDiscoveryEngine {
     pub(crate) async fn update_cache(&self, capability: &str, service: &DiscoveredService) {
         let mut cache = self.cache.write().await;
         cache.insert(capability.to_string(), service.clone());
+    }
+
+    /// Returns the list of capabilities this engine expects to resolve
+    #[must_use]
+    pub fn required_capabilities(&self) -> &[String] {
+        &self.capabilities
     }
 }
 

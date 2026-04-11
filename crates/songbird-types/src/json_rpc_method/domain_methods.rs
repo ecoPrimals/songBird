@@ -53,6 +53,20 @@ pub enum CapabilitiesMethod {
     List,
     /// `capabilities.methods` — map of capability token → callable JSON-RPC methods
     Methods,
+    /// `capability.resolve` — single-step routing: returns the best provider endpoint
+    /// for a given capability (the IPC equivalent of DNS resolution).
+    Resolve,
+}
+
+/// `lifecycle.*` — composition and runtime state introspection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LifecycleMethod {
+    /// `lifecycle.composition` — returns current composition state (which primals
+    /// are up, which capabilities are live, health status) for real-time monitoring.
+    Composition,
+    /// `lifecycle.validate_consumed` — checks that all `consumed_capabilities`
+    /// declared by a primal are satisfiable by currently registered providers.
+    ValidateConsumed,
 }
 
 /// `identity.*` — Wire Standard Level 2 self-identification.
@@ -283,6 +297,19 @@ pub enum StorageMethod {
     Delete,
     List,
     Flush,
+}
+
+/// `inference.*` — canonical inference namespace (absorbs `model.*` and `ai.*` aliases).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InferenceMethod {
+    /// `inference.infer`
+    Infer,
+    /// `inference.status`
+    Status,
+    /// `inference.list`
+    List,
+    /// `inference.load`
+    Load,
 }
 
 /// Unix discovery encryption helpers (legacy names).

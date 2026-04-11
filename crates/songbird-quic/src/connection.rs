@@ -27,7 +27,7 @@ pub struct QuicConnection {
 pub struct ConnectionInner {
     pub(crate) transport: TransportConnection,
     pub(crate) streams: StreamManager,
-    #[expect(dead_code, reason = "used by transport layer for flow control enforcement")]
+    #[allow(dead_code, reason = "used by transport layer for flow control enforcement")]
     pub(crate) flow_control: ConnectionFlowControl,
 }
 

@@ -177,10 +177,12 @@ mod tests {
     use super::super::traits::{HttpClientCapability, HttpClientFactory};
     use super::super::types::HttpResponse;
 
+    type CapturedRequest = (String, String, HashMap<String, String>, Option<Vec<u8>>);
+
     /// Queues per-call results and records every request for assertions on the JSON-RPC → HTTP path.
     struct QueuedMockClient {
         outcomes: Mutex<VecDeque<IpcResult<HttpResponse>>>,
-        captures: Mutex<Vec<(String, String, HashMap<String, String>, Option<Vec<u8>>)>>,
+        captures: Mutex<Vec<CapturedRequest>>,
     }
 
     impl QueuedMockClient {
@@ -191,7 +193,7 @@ mod tests {
             }
         }
 
-        fn take_captures(&self) -> Vec<(String, String, HashMap<String, String>, Option<Vec<u8>>)> {
+        fn take_captures(&self) -> Vec<CapturedRequest> {
             std::mem::take(&mut *self.captures.lock().expect("poisoned captures mutex"))
         }
     }
