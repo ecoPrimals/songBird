@@ -11,7 +11,9 @@
 //! `unix_transport` (Unix JSON-RPC probe), `parse` (response shaping).
 
 mod capability;
-mod parse;
+pub(crate) mod parse;
+#[cfg(unix)]
+pub(crate) mod socket_auto_discovery;
 pub(crate) mod tcp_biomeos;
 #[cfg(unix)]
 mod unix_transport;

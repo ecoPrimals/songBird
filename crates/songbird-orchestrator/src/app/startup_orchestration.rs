@@ -45,6 +45,7 @@ pub const STARTUP_PIPELINE_STAGE_ORDER: &[&str] = &[
     "stage_1_provision_security",
     "stage_2_start_servers",
     "stage_2b_igd_auto_configure",
+    "stage_2c_socket_auto_discovery",
     "stage_3_register_self",
     "stage_4_start_discovery",
     "stage_5_start_federation",
@@ -134,6 +135,9 @@ impl<'a> StartupOrchestrator<'a> {
         // Attempts to forward the Songbird port on the router via UPnP/NAT-PMP
         self.stage_2b_igd_auto_configure().await;
 
+        // Stage 2c: Socket auto-discovery (LD-08) — scan biomeos dirs and seed registry
+        self.stage_2c_socket_auto_discovery().await;
+
         // Stage 3: Register self in federation (needs actual port)
         self.stage_3_register_self(actual_https_port).await?;
 
@@ -193,7 +197,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// **Why Second**: Discovery needs actual HTTP port to advertise
     ///
     /// **Returns**: Actual HTTPS port (may differ from configured if fallback occurs)
-    async fn stage_2_start_servers(&self) -> Result<u16> {
+    async fn stage_2_start_servers(&mut self) -> Result<u16> {
         // ✅ DEPLOYMENT FIX (Dec 20, 2025): Start HTTP server FIRST to get actual port
         // This ensures discovery broadcasts the correct port even if fallback occurs
         // ✅ DISCOVERY FIX (Jan 28, 2026): Call actual HTTP server module (not stub)
@@ -221,14 +225,16 @@ impl<'a> StartupOrchestrator<'a> {
 
         // 🌍 NEW (Jan 19, 2026): Start Universal IPC Broker for service-based inter-primal IPC
         // ✅ EVOLUTION (Jan 29, 2026): Wire up discovery listener for runtime peer discovery
+        // ✅ LD-08 (Apr 12, 2026): Capture broker registry for socket auto-discovery seeding
         info!("🌍 Starting Universal IPC Broker...");
         match crate::ipc::universal_broker::start_broker_with_discovery(
             self.orchestrator.discovery_listener.clone(),
         )
         .await
         {
-            Ok(()) => {
+            Ok(registry) => {
                 info!("✅ Universal IPC Broker started");
+                self.orchestrator.broker_registry = Some(registry);
                 if self.orchestrator.discovery_listener.is_some() {
                     info!("   🌉 Discovery bridge: ENABLED (real-time peer discovery)");
                 }
@@ -320,6 +326,48 @@ impl<'a> StartupOrchestrator<'a> {
                 warn!("  Songbird will continue with other connectivity tiers");
             }
         }
+    }
+
+    /// Stage 2c: Socket auto-discovery (LD-08)
+    ///
+    /// Scans biomeos socket directories for `*.sock` files, probes each with
+    /// `identity.get` + `capabilities.list` (Wire Standard L3), and registers
+    /// discovered primals into the broker's service registry. This ensures
+    /// `ipc.resolve` and `capability.resolve` have data to resolve against
+    /// without requiring every primal to call `ipc.register` at startup.
+    ///
+    /// **Why after Stage 2**: Broker socket must be bound first, and we need
+    /// the registry handle from the broker.
+    ///
+    /// **Non-blocking**: Failure does not prevent startup.
+    #[cfg(unix)]
+    async fn stage_2c_socket_auto_discovery(&self) {
+        let Some(ref registry) = self.orchestrator.broker_registry else {
+            info!("Socket auto-discovery: skipped (no broker registry available)");
+            return;
+        };
+
+        info!("🔍 Starting socket auto-discovery (LD-08)...");
+        let reg = registry.read().await;
+        let count =
+            crate::primal_discovery::socket_auto_discovery::discover_and_register_biomeos_primals(
+                &reg,
+            )
+            .await;
+        drop(reg);
+
+        if count > 0 {
+            info!("✅ Socket auto-discovery: {} primal(s) seeded into ipc.resolve registry", count);
+        } else {
+            info!(
+                "Socket auto-discovery: no peer sockets found (primals will register via ipc.register at runtime)"
+            );
+        }
+    }
+
+    #[cfg(not(unix))]
+    async fn stage_2c_socket_auto_discovery(&self) {
+        info!("Socket auto-discovery: skipped (Unix sockets not available on this platform)");
     }
 
     /// Stage 3: Register self in federation
@@ -565,14 +613,15 @@ mod tests {
     use songbird_types::config::CanonicalSongbirdConfig;
 
     #[test]
-    fn startup_pipeline_stage_order_is_sequential_and_includes_two_b() {
-        assert_eq!(STARTUP_PIPELINE_STAGE_ORDER.len(), 8);
+    fn startup_pipeline_stage_order_is_sequential_and_includes_sub_stages() {
+        assert_eq!(STARTUP_PIPELINE_STAGE_ORDER.len(), 9);
         assert_eq!(
             STARTUP_PIPELINE_STAGE_ORDER,
             &[
                 "stage_1_provision_security",
                 "stage_2_start_servers",
                 "stage_2b_igd_auto_configure",
+                "stage_2c_socket_auto_discovery",
                 "stage_3_register_self",
                 "stage_4_start_discovery",
                 "stage_5_start_federation",
@@ -588,11 +637,15 @@ mod tests {
             .iter()
             .position(|s| *s == "stage_2b_igd_auto_configure")
             .unwrap();
+        let pos_2c = STARTUP_PIPELINE_STAGE_ORDER
+            .iter()
+            .position(|s| *s == "stage_2c_socket_auto_discovery")
+            .unwrap();
         let pos_3 = STARTUP_PIPELINE_STAGE_ORDER
             .iter()
             .position(|s| *s == "stage_3_register_self")
             .unwrap();
-        assert!(pos_2 < pos_2b && pos_2b < pos_3);
+        assert!(pos_2 < pos_2b && pos_2b < pos_2c && pos_2c < pos_3);
     }
 
     #[test]

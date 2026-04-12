@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave138] - 2026-04-12 - LD-08: Socket Auto-Discovery Seeds ipc.resolve Registry at Startup
+
+### Added — Socket Auto-Discovery (LD-08)
+- New `socket_auto_discovery` module in `songbird-orchestrator::primal_discovery`
+- Stage 2c (`stage_2c_socket_auto_discovery`) in startup pipeline: scans `$XDG_RUNTIME_DIR/biomeos/*.sock`, probes each with `identity.get` + `capabilities.list` (Wire Standard L3), auto-registers discovered primals into the broker's `ServiceRegistry`
+- `IpcServiceHandler::registry()` accessor for startup seeding
+- `SharedServiceRegistry` type alias for the broker's shared registry handle
+- `UniversalIpcBroker::registry()` accessor
+- `start_broker_with_discovery` now returns `SharedServiceRegistry` instead of `()`
+- `SongbirdOrchestrator::broker_registry` field holds the shared handle
+- 7 new unit tests: socket name extraction, own-socket detection, empty-dir behavior, nonexistent socket probe
+
+### Changed
+- Startup pipeline: 8 → 9 stages (added `stage_2c_socket_auto_discovery` between IGD and federation)
+- `stage_2_start_servers` captures broker registry on success
+- `list_biomeos_sock_paths` visibility raised to `pub(super)` for reuse by auto-discovery
+
+### Why
+- `ipc.resolve` / `capability.resolve` returned empty results because the registry starts empty and no primals call `ipc.register` at startup
+- Option (b) from primalSpring audit: Songbird scans the socket directory — more resilient than requiring every primal to self-register
+- Aligns with `CAPABILITY_BASED_DISCOVERY_STANDARD.md` filesystem-visible socket discovery tier
+
+### Metrics
+- 7,298 lib tests passed, 0 failed, 22 ignored
+- Zero `cargo check` warnings, zero clippy warnings, cargo-deny clean
+
+---
+
 ## [v0.2.1-wave137c] - 2026-04-12 - Deep Debt Sweep: Stale Features, Hardcoding, Port Constants, Lint Hygiene
 
 ### Removed — Stale Feature Flags

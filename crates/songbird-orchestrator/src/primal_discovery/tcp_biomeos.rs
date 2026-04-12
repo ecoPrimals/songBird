@@ -57,7 +57,7 @@ fn is_unix_socket_filetype(_ft: &std::fs::FileType) -> bool {
     false
 }
 
-fn list_biomeos_sock_paths<F>(env_reader: &F) -> Vec<PathBuf>
+pub(super) fn list_biomeos_sock_paths<F>(env_reader: &F) -> Vec<PathBuf>
 where
     F: Fn(&str) -> Option<String>,
 {

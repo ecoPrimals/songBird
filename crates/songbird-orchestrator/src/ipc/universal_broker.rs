@@ -63,6 +63,7 @@ use tracing::{error, info, warn};
 pub struct UniversalIpcBroker {
     endpoint: VirtualEndpoint,
     server: TowerAtomicServer<IpcServiceHandler>,
+    registry: Arc<tokio::sync::RwLock<songbird_universal_ipc::registry::ServiceRegistry>>,
 }
 
 impl UniversalIpcBroker {
@@ -130,7 +131,7 @@ impl UniversalIpcBroker {
             }
         };
 
-        // Create service registry
+        // Create service registry (shared — returned via `registry()` for startup seeding)
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
 
         // Create service handler with discovery bridge if listener provided
@@ -141,12 +142,12 @@ impl UniversalIpcBroker {
             let bridge: Arc<dyn PeerRegistry> = Arc::new(DiscoveryListenerBridge::new(listener));
 
             // Create handler with discovery registry
-            IpcServiceHandler::with_discovery_registry(registry, bridge)
+            IpcServiceHandler::with_discovery_registry(Arc::clone(&registry), bridge)
         } else {
             info!("⚠️  No discovery listener provided, discovery.peers will return empty");
 
             // Create handler without discovery (testing mode)
-            IpcServiceHandler::new(registry)
+            IpcServiceHandler::new(Arc::clone(&registry))
         };
 
         // Create Tower Atomic server
@@ -160,7 +161,19 @@ impl UniversalIpcBroker {
         Ok(Self {
             endpoint,
             server,
+            registry,
         })
+    }
+
+    /// Access the service registry backing this broker's `ipc.resolve` / `capability.resolve`.
+    ///
+    /// Used by startup auto-discovery (LD-08) to seed the registry with primals
+    /// found in the biomeos socket directory.
+    #[must_use]
+    pub fn registry(
+        &self,
+    ) -> &Arc<tokio::sync::RwLock<songbird_universal_ipc::registry::ServiceRegistry>> {
+        &self.registry
     }
 
     /// Start the Universal IPC Broker (runs indefinitely).
@@ -194,6 +207,10 @@ impl UniversalIpcBroker {
     }
 }
 
+/// Shared handle to the broker's service registry (returned by [`start_broker_with_discovery`]).
+pub type SharedServiceRegistry =
+    Arc<tokio::sync::RwLock<songbird_universal_ipc::registry::ServiceRegistry>>;
+
 /// Start the Universal IPC Broker as a background task
 ///
 /// This is the main entry point for integrating the Universal IPC Broker
@@ -212,7 +229,7 @@ impl UniversalIpcBroker {
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
 ///     // Start the Universal IPC Broker with discovery
-///     universal_broker::start_broker_with_discovery(None).await?;
+///     let _registry = universal_broker::start_broker_with_discovery(None).await?;
 ///     
 ///     // Broker now runs in background, handling JSON-RPC requests
 ///     Ok(())
@@ -221,11 +238,14 @@ impl UniversalIpcBroker {
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-pub async fn start_broker() -> Result<()> {
+pub async fn start_broker() -> Result<SharedServiceRegistry> {
     start_broker_with_discovery(None).await
 }
 
-/// Start the Universal IPC Broker with discovery listener
+/// Start the Universal IPC Broker with discovery listener.
+///
+/// Returns a shared handle to the broker's [`ServiceRegistry`] so the startup
+/// sequence can seed it with auto-discovered primals (LD-08).
 ///
 /// Enables real-time peer discovery when a listener is provided.
 /// This is the recommended way to start the broker in production.
@@ -234,7 +254,7 @@ pub async fn start_broker() -> Result<()> {
 /// Returns an error if the operation fails.
 pub async fn start_broker_with_discovery(
     discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
-) -> Result<()> {
+) -> Result<SharedServiceRegistry> {
     info!("🌍 Starting Universal IPC Broker (service-based architecture)");
 
     if discovery_listener.is_some() {
@@ -250,6 +270,7 @@ pub async fn start_broker_with_discovery(
 
     info!("✅ Universal IPC Broker created successfully");
 
+    let registry = Arc::clone(broker.registry());
     let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
 
     tokio::spawn(async move {
@@ -265,7 +286,7 @@ pub async fn start_broker_with_discovery(
     info!("   Methods: ipc.*, http.*, stun.*, discovery.*, rendezvous.*, peer.*");
     info!("   NOTE: Service layer handles platform abstraction internally");
 
-    Ok(())
+    Ok(registry)
 }
 
 #[cfg(test)]

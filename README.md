@@ -15,13 +15,13 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
 | Pure Rust | 100% — native QUIC engine with security provider crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` feature removed Wave 135 (SB-02 resolved) |
 | Crypto Delegation | Security provider via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
-| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing via `BIOMEOS_RUNTIME_SUBDIR` constant; netdev-based IP detection; all ports env-configurable (`SONGBIRD_PORT`, `SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`); `DEFAULT_SONGBIRD_PORT` (3492) canonical constant replaces all magic-number fallbacks; XDG-compliant socket paths; mDNS via `MDNS_MULTICAST_GROUP` constant |
+| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing via `BIOMEOS_RUNTIME_SUBDIR` constant; **LD-08 socket auto-discovery** seeds `ipc.resolve` registry at startup by scanning `$XDG_RUNTIME_DIR/biomeos/*.sock` and probing with `identity.get` + `capabilities.list` (Wire Standard L3); netdev-based IP detection; all ports env-configurable; XDG-compliant socket paths; mDNS via `MDNS_MULTICAST_GROUP` constant |
 | Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero in production (`.unwrap()` appears only in test modules across the codebase; verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` throughout — Wave 137c: all bare `#[allow()]` in tests and TLS given reason strings; Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons per-item; `#[expect(reason)]` retained where lint provably fires in production; zero reasonless suppressions remain |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 7,291 lib passed, 0 failed, 22 ignored |
+| Tests | 7,298 lib passed, 0 failed, 22 ignored |
 | Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 8 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |

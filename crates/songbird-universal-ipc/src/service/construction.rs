@@ -162,4 +162,10 @@ impl IpcServiceHandler {
         h.family_id_env = Some(Arc::new(env));
         h
     }
+
+    /// Access the underlying service registry (for startup auto-discovery seeding).
+    #[must_use]
+    pub fn registry(&self) -> &Arc<RwLock<ServiceRegistry>> {
+        &self.registry
+    }
 }

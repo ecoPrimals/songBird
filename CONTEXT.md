@@ -34,14 +34,14 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 7,291 lib passed (0 failed, 22 ignored env-dependent) |
+| Tests | 7,298 lib passed (0 failed, 22 ignored env-dependent) |
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
 | Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored Wave 133; largest test 731L) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |
-| Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`); Wave 136: all `"biomeos"` path literals replaced with `BIOMEOS_RUNTIME_SUBDIR` constant; `DEFAULT_SONGBIRD_PORT` (3492) replaces all magic-number port fallbacks |
+| Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`); Wave 136: all `"biomeos"` path literals replaced with `BIOMEOS_RUNTIME_SUBDIR` constant; `DEFAULT_SONGBIRD_PORT` (3492) replaces all magic-number port fallbacks; Wave 138: socket auto-discovery (LD-08) seeds `ipc.resolve` registry at startup — no primal needs to call `ipc.register` |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
 | Production panics/unwrap/todo | 0 (`panic!`, `unwrap`, `todo!`); 2 provably-unreachable QUIC VarInt arms documented |
 
