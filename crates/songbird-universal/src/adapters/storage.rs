@@ -203,7 +203,8 @@ impl StorageAdapter {
                 }
 
                 // Fallback 2: Construct from host + port
-                let endpoint = SafeEnv::get_or_default("SONGBIRD_HOST", "http://localhost");
+                let fallback_host = format!("http://{}", songbird_types::constants::LOCALHOST);
+                let endpoint = SafeEnv::get_or_default("SONGBIRD_HOST", &fallback_host);
                 let port = SafeEnv::get_port(
                     "SONGBIRD_STORAGE_PORT",
                     songbird_config::defaults::ports::service_port("STORAGE", 8082),

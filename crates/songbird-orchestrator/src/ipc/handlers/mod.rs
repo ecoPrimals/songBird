@@ -242,6 +242,17 @@ impl IpcHandlers {
         service_registry::register_service_json(self, params).await
     }
 
+    /// `capability.resolve` — single-step routing by capability (pure JSON adapter)
+    /// # Errors
+    ///
+    /// Returns an error if no provider is registered for the capability.
+    pub async fn capability_resolve_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        service_registry::capability_resolve_json(self, params).await
+    }
+
     /// Service Registry: `discover_by_capability` (pure JSON adapter)
     /// # Errors
     ///

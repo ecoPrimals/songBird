@@ -5265,6 +5265,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
+ "serde_yaml",
  "sha2",
  "socket2 0.6.3",
  "songbird-config",

@@ -125,13 +125,18 @@ impl Default for SecurityConfig {
                 &["SONGBIRD_SECURITY_PROVIDER_ENDPOINT", "SONGBIRD_SECURITY_ENDPOINT"],
                 "SONGBIRD_BEARDOG_ENDPOINT",
                 "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
-                &format!("https://{}:8443", crate::canonical::constants::get_bind_address()),
+                &format!(
+                    "https://{}:{}",
+                    crate::canonical::constants::get_bind_address(),
+                    songbird_types::defaults::ports::DEFAULT_HTTPS_PORT
+                ),
             ),
             oauth_redirect_uri: env_or_default(
                 "SONGBIRD_OAUTH_REDIRECT",
                 &format!(
-                    "http://{}:8080/auth/callback",
-                    &crate::canonical::constants::get_bind_address()
+                    "http://{}:{}/auth/callback",
+                    &crate::canonical::constants::get_bind_address(),
+                    songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
                 ),
             ),
             tls_cert_path: default_tls_cert_path(),

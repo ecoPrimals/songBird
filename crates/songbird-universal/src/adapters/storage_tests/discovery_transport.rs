@@ -171,8 +171,8 @@ async fn from_discovery_fallback_default_songbird_host_and_storage_port() -> Son
     assert_eq!(
         adapter.endpoint(),
         format!(
-            "{}:{}",
-            "http://localhost",
+            "http://{}:{}",
+            songbird_types::constants::LOCALHOST,
             songbird_config::defaults::ports::service_port("STORAGE", 8082)
         )
     );

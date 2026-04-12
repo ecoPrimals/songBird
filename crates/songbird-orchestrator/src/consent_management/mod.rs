@@ -30,8 +30,8 @@ mod rules;
 
 /// Async consent persistence backend.
 ///
-/// Production path: [`NestGateStorage`](crate::storage_nestgate::NestGateStorage) delegates
-/// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
+/// Production path: [`IpcStorageBackend`](crate::storage_ipc::IpcStorageBackend) delegates
+/// to the `storage.*` capability provider via JSON-RPC at runtime.
 /// Fallback: [`InMemoryStorage`](crate::storage_memory::InMemoryStorage) when no provider is available.
 #[async_trait::async_trait]
 pub trait ConsentStorageBackend: Send + Sync {
@@ -109,14 +109,14 @@ impl ConsentManager {
         }
     }
 
-    /// Create a consent manager with resolved storage: NestGate (`storage.*` JSON-RPC on a
+    /// Create a consent manager with resolved storage: IPC backend (`storage.*` JSON-RPC on a
     /// capability-discovered Unix socket) when reachable, otherwise
     /// [`InMemoryStorage`](crate::storage_memory::InMemoryStorage).
     pub async fn with_storage(database_url: &str) -> anyhow::Result<Self> {
         #[cfg(unix)]
         {
             if let Ok(ep) = songbird_config::primal_discovery::get_storage_endpoint().await
-                && let Some(path) = crate::storage_nestgate::storage_socket_path_from_endpoint(&ep)
+                && let Some(path) = crate::storage_ipc::storage_socket_path_from_endpoint(&ep)
             {
                 match songbird_universal_ipc::tower_atomic::TowerAtomicClient::connect_unix_path(
                     &path,
@@ -126,17 +126,17 @@ impl ConsentManager {
                     Ok(_) => {
                         info!(
                             path = %path.display(),
-                            "Consent storage: NestGate JSON-RPC (storage.* capability)"
+                            "Consent storage: IPC JSON-RPC (storage.* capability)"
                         );
                         return Ok(Self::with_backend(Arc::new(
-                            crate::storage_nestgate::NestGateStorage::new(path),
+                            crate::storage_ipc::IpcStorageBackend::new(path),
                         )));
                     }
                     Err(e) => {
                         tracing::warn!(
                             error = %e,
                             path = %path.display(),
-                            "NestGate storage unreachable; using in-memory consent storage"
+                            "storage provider unreachable; using in-memory consent storage"
                         );
                     }
                 }
@@ -147,14 +147,14 @@ impl ConsentManager {
         Ok(Self::with_backend(Arc::new(crate::storage_memory::InMemoryStorage::new())))
     }
 
-    /// Create a consent manager using an explicit NestGate Unix socket (JSON-RPC `storage.*`).
+    /// Create a consent manager using an explicit storage provider Unix socket (JSON-RPC `storage.*`).
     #[must_use]
-    pub fn with_nestgate(socket_path: PathBuf) -> Self {
+    pub fn with_storage_socket(socket_path: PathBuf) -> Self {
         info!(
             path = %socket_path.display(),
-            "Consent storage: explicit NestGate socket path"
+            "Consent storage: explicit storage provider socket"
         );
-        Self::with_backend(Arc::new(crate::storage_nestgate::NestGateStorage::new(socket_path)))
+        Self::with_backend(Arc::new(crate::storage_ipc::IpcStorageBackend::new(socket_path)))
     }
 
     /// Create a consent manager with an arbitrary [`ConsentStorageBackend`].

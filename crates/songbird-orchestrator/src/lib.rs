@@ -217,12 +217,18 @@ pub mod server;
 /// Inter-primal service registration and port authority.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod service_registry;
-/// In-memory consent/task storage when NestGate is unavailable.
+/// IPC storage backend: JSON-RPC `storage.*` delegation (SB-03).
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
+pub mod storage_ipc;
+/// In-memory consent/task storage when the storage capability provider is unavailable.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 mod storage_memory;
-/// NestGate JSON-RPC `storage.*` delegation (SB-03).
-#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
-pub mod storage_nestgate;
+
+#[deprecated(note = "renamed to `storage_ipc` — capability-based naming")]
+#[doc(hidden)]
+pub mod storage_nestgate {
+    pub use crate::storage_ipc::*;
+}
 /// Task lifecycle and scheduling hooks for orchestrated work.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod task_lifecycle;
@@ -239,10 +245,10 @@ pub mod universal_adapter;
 // Re-export main orchestrator
 /// Primary orchestrator application type: loads config, wires subsystems, runs the server loop.
 pub use app::SongbirdOrchestrator;
-/// Non-durable storage backend when no NestGate `storage.*` provider is reachable.
+/// IPC-backed durable storage over JSON-RPC `storage.*` capability.
+pub use storage_ipc::IpcStorageBackend;
+/// Non-durable storage backend when no `storage.*` capability provider is reachable.
 pub use storage_memory::InMemoryStorage;
-/// NestGate-backed durable storage over JSON-RPC `storage.*`.
-pub use storage_nestgate::NestGateStorage;
 
 // Re-export security capability client (provider-agnostic!)
 /// HTTP client for security-capability RPC against `security provider` (trust evaluation and related calls).

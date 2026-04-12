@@ -17,7 +17,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, error, info, warn};
 
-fn nestgate_socket_from_endpoint(endpoint: &str) -> Option<PathBuf> {
+fn storage_socket_from_endpoint(endpoint: &str) -> Option<PathBuf> {
     let t = endpoint.trim();
     if let Some(p) = t.strip_prefix("unix://") {
         return Some(PathBuf::from(p));
@@ -54,20 +54,20 @@ impl OnionService {
             #[cfg(unix)]
             {
                 if let Ok(ep) = songbird_config::primal_discovery::get_storage_endpoint().await {
-                    if let Some(path) = nestgate_socket_from_endpoint(&ep) {
+                    if let Some(path) = storage_socket_from_endpoint(&ep) {
                         match tokio::net::UnixStream::connect(&path).await {
                             Ok(_) => {
                                 info!(
                                     path = %path.display(),
-                                    "Onion service: NestGate storage (storage.* JSON-RPC)"
+                                    "Onion service: IPC storage (storage.* JSON-RPC)"
                                 );
-                                Arc::new(crate::storage_nestgate::NestGateOnionStorage::new(path))
+                                Arc::new(crate::storage_ipc::IpcOnionStorage::new(path))
                             }
                             Err(e) => {
                                 warn!(
                                     error = %e,
                                     path = %path.display(),
-                                    "NestGate onion storage unreachable; using in-memory onion storage"
+                                    "storage provider unreachable; using in-memory onion storage"
                                 );
                                 Arc::new(InMemoryOnionStorage::new())
                             }
@@ -163,7 +163,8 @@ impl OnionService {
     ///
     /// Returns error if bind fails.
     pub async fn run(&self) -> Result<()> {
-        let bind_addr = format!("0.0.0.0:{}", self.port);
+        let bind_addr =
+            format!("{}:{}", songbird_types::constants::PRODUCTION_BIND_ADDRESS, self.port);
         info!("Starting onion service on {}", bind_addr);
 
         let listener = TcpListener::bind(&bind_addr).await.map_err(|e| {

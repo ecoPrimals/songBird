@@ -277,10 +277,19 @@ pub struct NetworkConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            bind_address: SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0"),
+            bind_address: SafeEnv::get_or_default(
+                "SONGBIRD_BIND_ADDRESS",
+                songbird_types::constants::PRODUCTION_BIND_ADDRESS,
+            ),
             port_range: PortRange {
-                start: SafeEnv::get_port("SONGBIRD_PORT_START", 8000),
-                end: SafeEnv::get_port("SONGBIRD_PORT_END", 9000),
+                start: SafeEnv::get_port(
+                    "SONGBIRD_PORT_START",
+                    songbird_types::defaults::ports::DEFAULT_PORT_RANGE_START,
+                ),
+                end: SafeEnv::get_port(
+                    "SONGBIRD_PORT_END",
+                    songbird_types::defaults::ports::DEFAULT_PORT_RANGE_END,
+                ),
             },
             connection_timeout_ms: SafeEnv::get_usize("SONGBIRD_CONNECTION_TIMEOUT_MS", 30000)
                 as u64,

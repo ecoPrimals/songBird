@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave137] - 2026-04-12 - Capability-Based Naming, IPC Storage, capability.resolve Wiring
+
+### Changed — NestGate → IPC Storage (Capability-Based Naming)
+- `NestGateStorage` → `IpcStorageBackend` in `songbird-orchestrator`
+- `NestGateOnionStorage` → `IpcOnionStorage` in `songbird-sovereign-onion`
+- Module paths `storage_nestgate/` → `storage_ipc/` in both crates
+- All doc comments, log messages, and context strings updated from "NestGate" to capability-based language
+- `#[deprecated]` type aliases and module re-exports added for backward compatibility
+
+### Added — `capability.resolve` + `discovery.peers` Wiring
+- `capability.resolve` dispatch in pure Rust Unix socket handler — single-step DNS-like routing by capability domain
+- `CapabilityResolveRequest`/`CapabilityResolveResponse` types in `ipc/types/service_registry.rs`
+- `capability_resolve_json` handler in `IpcHandlers` with proper error propagation
+- `discovery.peers` dispatch — returns all registered services (wildcard capability query)
+- Roundtrip serde tests for new request/response types
+
+### Fixed — Hardcoded Addresses
+- `songbird-execution-agent`: `"0.0.0.0"` → `PRODUCTION_BIND_ADDRESS`, port `9020` → `DEFAULT_EXECUTION_AGENT_PORT`
+- `songbird-orchestrator` CLI: 15 `println!` → `tracing::info!`, multicast/port literals → constants
+- `songbird-config` advanced network: `"127.0.0.1"` → `LOCALHOST`, `8080` → `DEFAULT_HTTP_PORT`
+- `songbird-universal` storage adapter: removed unnecessary borrow in format macro (clippy fix)
+- `songbird-universal` container backend: `"127.0.0.1"` → `LOCALHOST`
+
+### Fixed — Dependency Hygiene
+- `serde_yaml = "0.9"` explicitly declared in `songbird-discovery/Cargo.toml` (was transitive leakage)
+- `deny.toml`: removed invalid `RUSTSEC-2024-0320` advisory; added evolution note documenting `serde_yaml` archived status and `serde_yml` migration path
+- `songbird-genesis` `Cargo.toml`: `repository = "..."` → `repository.workspace = true`
+
+### Fixed — Service Registry Tests
+- `heartbeat_updates_status_to_degraded` → split into `heartbeat_operational_sets_active` + `heartbeat_non_operational_preserves_active_status` (matches actual `ServiceRegistry` behavior)
+- `stats_reflects_degraded_and_inactive` → `stats_shows_zero_degraded_for_active_services`
+- Fixed `serde_json::Value` type mismatches in `registration_with_metadata` and `current_load` tests
+- Added 15 new `PortAllocator` and `ServiceRegistry` tests
+
+### Fixed — Spec Docs
+- `INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md`: removed stray tool fragment text
+- `TARPC_JSON_RPC_PROTOCOL_SPEC.md`: renamed title, added companion note clarifying relationship to `SONGBIRD_NATIVE_RPC_SPECIFICATION.md`
+
+### Stats
+- Tests: 7,284 lib, 0 failed, 22 ignored
+- All 30 crates: fmt clean, clippy zero warnings, doc zero warnings, cargo-deny passing
+
+---
+
 ## [v0.2.1-wave133] - 2026-04-09 - Deep Debt Sweep: Refactoring, Lint Migration, Dep Cleanup
 
 ### Changed — Smart Refactoring (4 largest production files)

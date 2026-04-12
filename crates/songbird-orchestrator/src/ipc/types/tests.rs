@@ -385,3 +385,27 @@ fn discovered_node_empty_sub_federations_omitted_in_json() {
     let back: DiscoveredNode = serde_json::from_str(&j).unwrap();
     assert!(back.sub_federations.is_empty());
 }
+
+#[test]
+fn capability_resolve_request_roundtrip() {
+    let req = CapabilityResolveRequest {
+        capability: "crypto".to_string(),
+    };
+    let j = serde_json::to_string(&req).unwrap();
+    let back: CapabilityResolveRequest = serde_json::from_str(&j).unwrap();
+    assert_eq!(back.capability, "crypto");
+}
+
+#[test]
+fn capability_resolve_response_roundtrip() {
+    let resp = CapabilityResolveResponse {
+        service_id: "svc-sec-001".to_string(),
+        endpoint: "/run/user/1000/biomeos/security.sock".to_string(),
+        protocol: "json-rpc".to_string(),
+        capabilities: vec!["crypto".to_string(), "identity".to_string()],
+    };
+    let j = serde_json::to_string(&resp).unwrap();
+    let back: CapabilityResolveResponse = serde_json::from_str(&j).unwrap();
+    assert_eq!(back.service_id, "svc-sec-001");
+    assert_eq!(back.capabilities.len(), 2);
+}

@@ -129,16 +129,21 @@ pub struct ServiceDiscoveryEndpoints {
 
 impl Default for ServiceDiscoveryEndpoints {
     fn default() -> Self {
+        use songbird_types::constants::LOCALHOST;
         Self {
             consul: vec![
-                ServiceEndpoint::new("127.0.0.1", 8500, "http"),
+                ServiceEndpoint::new(LOCALHOST, 8500, "http"),
                 ServiceEndpoint::new("localhost", 8500, "http"),
             ],
             etcd: vec![
-                ServiceEndpoint::new("127.0.0.1", 2379, "http"),
-                ServiceEndpoint::new("127.0.0.1", 2380, "http"),
+                ServiceEndpoint::new(LOCALHOST, 2379, "http"),
+                ServiceEndpoint::new(LOCALHOST, 2380, "http"),
             ],
-            kubernetes: vec![ServiceEndpoint::new("127.0.0.1", 8080, "https")],
+            kubernetes: vec![ServiceEndpoint::new(
+                LOCALHOST,
+                songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+                "https",
+            )],
             docker: vec![
                 ServiceEndpoint::new("localhost", 2375, "http"),
                 ServiceEndpoint::new("localhost", 2376, "https"),

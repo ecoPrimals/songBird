@@ -16,9 +16,10 @@ pub use capabilities::{AnnounceCapabilitiesRequest, AnnounceCapabilitiesResponse
 pub use genetic_tunnel::{CreateGeneticTunnelRequest, CreateGeneticTunnelResponse, GeneticProof};
 pub use p2p_discovery::{DiscoverByFamilyRequest, DiscoverByFamilyResponse, DiscoveredNode};
 pub use service_registry::{
-    DiscoverByCapabilityRequest, DiscoverByCapabilityResponse, GetServiceHealthRequest,
-    GetServiceHealthResponse, HealthCheckRequest, HealthCheckResponse, HealthStatus,
-    PrimalEndpoint, RegisterServiceRequest, RegisterServiceResponse,
+    CapabilityResolveRequest, CapabilityResolveResponse, DiscoverByCapabilityRequest,
+    DiscoverByCapabilityResponse, GetServiceHealthRequest, GetServiceHealthResponse,
+    HealthCheckRequest, HealthCheckResponse, HealthStatus, PrimalEndpoint, RegisterServiceRequest,
+    RegisterServiceResponse,
 };
 pub use time::system_time_to_iso8601;
 

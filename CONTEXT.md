@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 11, 2026
+**Last Updated**: April 12, 2026
 
 ## What It Does
 
@@ -34,13 +34,13 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 13,030 passed (0 failed, 252 ignored env-dependent, full suite ~70s) |
-| Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; 13,031 tests; target 90%) |
+| Tests | 7,284 lib passed (0 failed, 22 ignored env-dependent) |
+| Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`) |
 | Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored Wave 133; largest test 731L) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
-| C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — NestGate `storage.*` is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` only via optional `k8s` feature; Bluetooth native deps only with `bluetooth` feature |
+| C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` only via optional `k8s` feature; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates; `SecurityProvider*` APIs with deprecated `BearDog*` aliases; `--security-socket` CLI flag; `security_provider_port()` replaces `beardog_port()`); Wave 136: all `"biomeos"` path literals replaced with `BIOMEOS_RUNTIME_SUBDIR` constant; `DEFAULT_SONGBIRD_PORT` (3492) replaces all magic-number port fallbacks |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
 | Production panics/unwrap/todo | 0 (`panic!`, `unwrap`, `todo!`); 2 provably-unreachable QUIC VarInt arms documented |
@@ -52,7 +52,7 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 - `health.liveness`, `health.readiness`, `health.check`
 - `capabilities.list` (Wire Standard L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`), `capabilities.methods`
 - `identity.get` (Wire Standard L3: `{primal, version, domain, license}`), `identity`
-- `capability.resolve` (single-step capability→endpoint), `lifecycle.composition`, `lifecycle.validate_consumed`
+- `capability.resolve` (single-step capability→endpoint, wired Wave 137), `discovery.peers` (wired Wave 137), `lifecycle.composition`, `lifecycle.validate_consumed`
 - `inference.infer`, `inference.status`, `inference.list`, `inference.load` (canonical namespace; absorbs `model.*`/`ai.*`)
 - `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`
 - `http.request`, `http.get`, `http.post`

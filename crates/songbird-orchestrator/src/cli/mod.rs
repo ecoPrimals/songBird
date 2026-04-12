@@ -67,7 +67,7 @@ pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()
         Commands::Quick {
             quick_command,
         } => {
-            println!("🚀 Quick command: {quick_command:?}");
+            tracing::info!(?quick_command, "quick command dispatched");
             Ok(())
         }
         Commands::Discovery {
@@ -76,25 +76,25 @@ pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()
         Commands::Federation {
             federation_command,
         } => {
-            println!("🤝 Federation command: {federation_command:?}");
+            tracing::info!(?federation_command, "federation command dispatched");
             Ok(())
         }
         Commands::Iot {
             iot_command,
         } => {
-            println!("🔌 IoT command: {iot_command:?}");
+            tracing::info!(?iot_command, "IoT command dispatched");
             Ok(())
         }
         Commands::Compose {
             compose_command,
         } => {
-            println!("🧩 Compose command: {compose_command:?}");
+            tracing::info!(?compose_command, "compose command dispatched");
             Ok(())
         }
         Commands::Node {
             node_command,
         } => {
-            println!("🖥️ Node command: {node_command:?}");
+            tracing::info!(?node_command, "node command dispatched");
             Ok(())
         }
         Commands::Service {
@@ -106,75 +106,74 @@ pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()
         Commands::Logs {
             logs_command,
         } => {
-            println!("📋 Logs command: {logs_command:?}");
+            tracing::info!(?logs_command, "logs command dispatched");
             Ok(())
         }
         Commands::Scale {
             scale_command,
         } => {
-            println!("🐦 Scale command: {scale_command:?}");
+            tracing::info!(?scale_command, "scale command dispatched");
             Ok(())
         }
         Commands::Security {
             security_command,
         } => {
-            println!("🔐 Security command: {security_command:?}");
+            tracing::info!(?security_command, "security command dispatched");
             Ok(())
         }
         Commands::Firewall {
             firewall_command,
         } => {
-            println!("🛡️ Firewall command: {firewall_command:?}");
+            tracing::info!(?firewall_command, "firewall command dispatched");
             Ok(())
         }
         Commands::Internet {
             internet_command,
         } => {
-            println!("🌐 Internet command: {internet_command:?}");
+            tracing::info!(?internet_command, "internet command dispatched");
             Ok(())
         }
         Commands::Join {
             join_command,
         } => {
-            println!("🤝 Join command: {join_command:?}");
+            tracing::info!(?join_command, "join command dispatched");
             Ok(())
         }
         Commands::Share {
             share_command,
         } => {
-            println!("📤 Share command: {share_command:?}");
+            tracing::info!(?share_command, "share command dispatched");
             Ok(())
         }
         Commands::Universal {
             universal_command,
         } => {
-            println!("🌟 Universal command: {universal_command:?}");
+            tracing::info!(?universal_command, "universal command dispatched");
             Ok(())
         }
         Commands::ZeroTouch {
             zero_touch_command,
         } => {
-            println!("🪄 Zero-touch command: {zero_touch_command:?}");
+            tracing::info!(?zero_touch_command, "zero-touch command dispatched");
             Ok(())
         }
         Commands::Orchestrator {
             orchestrator_command,
         } => {
-            println!("🎼 Orchestrator command: {orchestrator_command:?}");
+            tracing::info!(?orchestrator_command, "orchestrator command dispatched");
             Ok(())
         }
         Commands::Version {
             detailed,
         } => {
-            println!("📋 Version information (detailed: {detailed})");
+            tracing::info!(detailed, "version information requested");
             Ok(())
         }
         Commands::Dashboard {
             port,
             bind_address,
         } => {
-            println!("🌐 Starting web dashboard on {bind_address}:{port}");
-            // Dashboard implementation would go here
+            tracing::info!(%bind_address, port, "starting web dashboard");
             Ok(())
         }
     }
@@ -192,9 +191,9 @@ pub fn get_discovery_config() -> &'static SongbirdDiscoveryConfig {
         trust_verification_enabled: false,
         max_federation_nodes: 100,
         network: songbird_discovery::discovery::config::NetworkConfig {
-            multicast_address: "239.255.255.250".to_string(),
-            federation_port: 8001,
-            service_port: 8002,
+            multicast_address: songbird_types::constants::MDNS_MULTICAST_GROUP.to_string(),
+            federation_port: songbird_types::defaults::ports::DEFAULT_TARPC_PORT,
+            service_port: songbird_types::defaults::ports::DEFAULT_METRICS_PORT,
             bind_address: songbird_config::canonical::constants::get_bind_address(),
             announcement_interval_secs: 30,
             response_timeout_secs: 5,

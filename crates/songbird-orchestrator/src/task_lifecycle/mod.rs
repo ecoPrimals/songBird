@@ -24,8 +24,8 @@ pub use types::*;
 
 /// Async task persistence backend.
 ///
-/// Production path: [`NestGateStorage`](crate::storage_nestgate::NestGateStorage) delegates
-/// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
+/// Production path: [`IpcStorageBackend`](crate::storage_ipc::IpcStorageBackend) delegates
+/// to the `storage.*` capability provider via JSON-RPC at runtime.
 /// Fallback: [`InMemoryStorage`](crate::storage_memory::InMemoryStorage) when no provider is available.
 #[async_trait::async_trait]
 pub trait TaskStorageBackend: Send + Sync {

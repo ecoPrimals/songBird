@@ -85,10 +85,10 @@ pub struct ResourceLimits {
 impl Default for AgentConfig {
     fn default() -> Self {
         Self {
-            port: 9020,
-            bind_address: "0.0.0.0".to_string(),
+            port: songbird_types::defaults::ports::DEFAULT_EXECUTION_AGENT_PORT,
+            bind_address: songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string(),
             max_concurrent_jobs: 100,
-            log_retention_seconds: 86400, // 24 hours
+            log_retention_seconds: 86400,
             enable_auth: true,
             auth_token: None,
             resource_limits: ResourceLimits::default(),

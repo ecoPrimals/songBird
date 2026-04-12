@@ -1,10 +1,13 @@
-# 🔧 Songbird Native RPC Specification
-## tarpc + JSON-RPC Protocol Implementation
+# tarpc + JSON-RPC Protocol Implementation Spec
 
 **Version**: 1.0  
 **Date**: November 11, 2025  
-**Status**: 📋 IMPLEMENTATION SPECIFICATION  
-**Priority**: P1 - High Priority Enhancement
+**Status**: IMPLEMENTATION SPECIFICATION  
+**Priority**: P1 - High Priority Enhancement  
+**Companion**: See also `SONGBIRD_NATIVE_RPC_SPECIFICATION.md` for the broader
+transport architecture (bidirectional streams, fallback chains, security tunnels).
+This document focuses on the concrete dual-server implementation (tarpc binary +
+JSON-RPC 2.0 via jsonrpsee), env vars, Cargo deps, and phased rollout.
 
 ---
 

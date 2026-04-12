@@ -116,6 +116,29 @@ pub struct PrimalEndpoint {
     pub health_status: String,
 }
 
+/// Request for `capability.resolve` — single-step DNS-like routing by capability.
+///
+/// Returns the best provider endpoint for the requested capability, matching
+/// the universal-ipc `capability.resolve` wire format.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapabilityResolveRequest {
+    /// Capability domain to resolve (e.g. "crypto", "storage", "compute")
+    pub capability: String,
+}
+
+/// Response for `capability.resolve` — the single best provider for the capability.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapabilityResolveResponse {
+    /// Service ID of the resolved provider
+    pub service_id: String,
+    /// Endpoint (Unix socket path or URL)
+    pub endpoint: String,
+    /// Protocol (json-rpc, tarpc, etc.)
+    pub protocol: String,
+    /// All capabilities advertised by this provider
+    pub capabilities: Vec<String>,
+}
+
 /// Request to get health status of a specific service
 ///
 /// ## Example

@@ -23,7 +23,7 @@
 //!     │ ├─ TCP listener (Phase 3) │
 //!     │ ├─ Connector (Phase 4)    │
 //!     │ ├─ security provider crypto          │
-//!     │ └─ in-memory / NestGate storage │
+//!     │ └─ in-memory / IPC storage      │
 //!     └────────────────────────────┘
 //! ```
 //!
@@ -32,7 +32,7 @@
 //! - ✅ Zero `unimplemented!()` — all stubs evolved to real implementations
 //! - ✅ Delegates to `songbird-sovereign-onion` (no duplicated logic)
 //! - ✅ security provider crypto delegation (TRUE PRIMAL)
-//! - ✅ Identity via in-memory storage (NestGate in full stack)
+//! - ✅ Identity via in-memory storage (IPC storage capability in full stack)
 
 use anyhow::{Context, Result};
 use songbird_sovereign_onion::InMemoryOnionStorage;

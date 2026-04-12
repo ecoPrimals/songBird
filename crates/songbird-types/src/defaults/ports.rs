@@ -29,6 +29,8 @@ pub const DEFAULT_COMPUTE_PORT: u16 = 9000;
 pub const DEFAULT_PORT_RANGE_START: u16 = 8000;
 /// Default port range end
 pub const DEFAULT_PORT_RANGE_END: u16 = 9000;
+/// Default execution agent port (env: `SONGBIRD_AGENT_PORT`)
+pub const DEFAULT_EXECUTION_AGENT_PORT: u16 = 9020;
 /// Default test runner port
 pub const DEFAULT_TEST_RUNNER_PORT: u16 = 8080;
 /// Heartbeat interval in milliseconds

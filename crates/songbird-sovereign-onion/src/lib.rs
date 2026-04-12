@@ -22,7 +22,7 @@
 //! - **Ed25519 Identity** - Cryptographic device IDs
 //! - **X25519 Key Exchange** - Forward secrecy
 //! - **ChaCha20-Poly1305** - Fast AEAD encryption
-//! - **NestGate / in-memory storage** - Identity and peer storage
+//! - **IPC storage / in-memory fallback** - Identity and peer storage
 //! - **Minimal Protocol** - ~10% of Tor complexity
 //!
 //! ## Example
@@ -60,7 +60,13 @@ pub mod keys;
 pub mod protocol;
 pub mod service;
 pub mod storage;
-pub mod storage_nestgate;
+pub mod storage_ipc;
+
+#[deprecated(note = "renamed to `storage_ipc` — capability-based naming")]
+#[doc(hidden)]
+pub mod storage_nestgate {
+    pub use crate::storage_ipc::*;
+}
 
 // Re-exports — delegated cryptography via capability-discovered security provider
 pub use address::{
@@ -72,7 +78,7 @@ pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
 pub use security_crypto::{Ed25519Keypair, SecurityCryptoClient, X25519Keypair};
 pub use storage::{InMemoryOnionStorage, OnionStorageBackend, PeerInfo};
-pub use storage_nestgate::NestGateOnionStorage;
+pub use storage_ipc::IpcOnionStorage;
 
 // ✅ Phase 3 Complete: OnionService & OnionConnector with security provider
 pub use connector::OnionConnection;

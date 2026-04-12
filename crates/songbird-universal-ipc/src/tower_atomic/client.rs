@@ -27,7 +27,7 @@ pub struct TowerAtomicClient {
 impl TowerAtomicClient {
     /// Connect to a JSON-RPC peer listening on a filesystem Unix domain socket (no Universal IPC registry).
     ///
-    /// This is used by the storage provider (capability: storage.*; formerly `NestGate`) and other providers that expose a raw socket path from capability discovery.
+    /// This is used by the storage provider (capability: `storage.*`) and other providers that expose a raw socket path from capability discovery.
     ///
     /// # Errors
     ///

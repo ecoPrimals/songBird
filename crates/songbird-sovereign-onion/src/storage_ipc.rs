@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Onion persistence via NestGate JSON-RPC `storage.*` (SB-03).
+//! Onion persistence via IPC JSON-RPC `storage.*` capability (SB-03).
 //!
 //! Uses the same newline-delimited JSON-RPC 2.0 framing as `songbird-universal-ipc`'s Tower Atomic client,
 //! implemented with a direct [`tokio::net::UnixStream`] so this crate stays independent of that crate
@@ -22,12 +22,15 @@ fn peer_key(addr: &str) -> String {
     format!("songbird-onion/peer/{addr}")
 }
 
-/// NestGate-backed onion storage (sync trait over async JSON-RPC).
-pub struct NestGateOnionStorage {
+/// IPC-backed onion storage (sync trait over async JSON-RPC `storage.*` capability).
+///
+/// Connects to whichever primal provides the `storage.*` capability domain via a
+/// Unix socket discovered at runtime. No primal identity assumed.
+pub struct IpcOnionStorage {
     socket_path: PathBuf,
 }
 
-impl NestGateOnionStorage {
+impl IpcOnionStorage {
     /// Create a backend targeting the given Unix socket.
     #[must_use]
     pub fn new(socket_path: PathBuf) -> Self {
@@ -60,7 +63,7 @@ impl NestGateOnionStorage {
         let path = self.socket_path.clone();
         let method = method.to_string();
         Self::run_ipc(async move {
-            debug!(method = %method, path = %path.display(), "NestGate onion JSON-RPC");
+            debug!(method = %method, path = %path.display(), "onion storage capability RPC");
             let mut stream = UnixStream::connect(&path)
                 .await
                 .map_err(|e| OnionError::ConnectionError(format!("{}: {e}", path.display())))?;
@@ -96,13 +99,13 @@ impl NestGateOnionStorage {
     }
 
     fn storage_put_str(&self, key: &str, value: &str) -> Result<()> {
-        debug!(key, "NestGate onion storage.put");
+        debug!(key, "onion storage.put");
         self.rpc("storage.put", json!({ "key": key, "value": value }))?;
         Ok(())
     }
 
     fn storage_get_str(&self, key: &str) -> Result<Option<String>> {
-        debug!(key, "NestGate onion storage.get");
+        debug!(key, "onion storage.get");
         let v = self.rpc("storage.get", json!({ "key": key }))?;
         parse_get_value_string(&v).map_err(OnionError::Other)
     }
@@ -173,7 +176,7 @@ fn parse_list_keys(result: &Value) -> std::result::Result<Vec<String>, String> {
     Err("storage.list: unexpected result shape".to_string())
 }
 
-impl OnionStorageBackend for NestGateOnionStorage {
+impl OnionStorageBackend for IpcOnionStorage {
     fn load_identity(&self) -> Result<Option<OnionIdentity>> {
         let Some(s) = self.storage_get_str(IDENTITY_KEY)? else {
             return Ok(None);

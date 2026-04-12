@@ -27,6 +27,7 @@ songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = "0.9"
 
 tracing = { workspace = true }
 async-trait = { workspace = true }

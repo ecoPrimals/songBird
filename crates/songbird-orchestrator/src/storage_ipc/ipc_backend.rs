@@ -14,12 +14,15 @@ use std::path::{Path, PathBuf};
 use tracing::debug;
 
 /// JSON-RPC storage backend: one new [`TowerAtomicClient`] per operation (SB-03).
-pub struct NestGateStorage {
+///
+/// Connects to whichever primal provides the `storage.*` capability domain
+/// via a Unix socket discovered at runtime. No primal identity assumed.
+pub struct IpcStorageBackend {
     socket_path: PathBuf,
 }
 
-impl NestGateStorage {
-    /// Create a backend that talks to NestGate at the given socket path.
+impl IpcStorageBackend {
+    /// Create a backend that talks to a `storage.*` capability provider at the given socket path.
     #[must_use]
     pub fn new(socket_path: PathBuf) -> Self {
         Self {
@@ -34,11 +37,12 @@ impl NestGateStorage {
     }
 
     async fn rpc(&self, method: &str, params: Value) -> Result<Value> {
-        debug!(method, path = %self.socket_path.display(), "NestGate storage RPC");
-        let client = TowerAtomicClient::connect_unix_path(&self.socket_path)
-            .await
-            .with_context(|| format!("NestGate connect failed ({})", self.socket_path.display()))?;
-        client.call(method, params).await.with_context(|| format!("NestGate RPC {method} failed"))
+        debug!(method, path = %self.socket_path.display(), "storage capability RPC");
+        let client =
+            TowerAtomicClient::connect_unix_path(&self.socket_path).await.with_context(|| {
+                format!("storage provider connect failed ({})", self.socket_path.display())
+            })?;
+        client.call(method, params).await.with_context(|| format!("storage RPC {method} failed"))
     }
 
     async fn storage_put_str(&self, key: &str, value: &str) -> Result<()> {
@@ -100,7 +104,7 @@ fn checkpoint_task_idx(task_id: TaskId, cp_id: &str) -> String {
 }
 
 #[async_trait]
-impl crate::consent_management::ConsentStorageBackend for NestGateStorage {
+impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
     async fn save(&self, record: &ConsentRecord) -> Result<()> {
         let json = serde_json::to_string(record).context("serialize consent record")?;
         let id = record.id.as_ref();
@@ -185,7 +189,7 @@ impl crate::consent_management::ConsentStorageBackend for NestGateStorage {
 }
 
 #[async_trait]
-impl TaskStorageBackend for NestGateStorage {
+impl TaskStorageBackend for IpcStorageBackend {
     async fn save_task(&self, task: &TaskLifecycle) -> Result<()> {
         let json = serde_json::to_string(task).context("serialize task")?;
         let id = task.id;

@@ -65,6 +65,11 @@ ignore = [
     "RUSTSEC-2024-0436",
 ]
 
+# EVOLUTION NOTE: serde_yaml 0.9 is archived by its maintainer (David Tolnay).
+# Pure Rust via unsafe-libyaml — no C FFI, ecoBin compliant.
+# Migration path: serde_yml (when it reaches 1.0) or consolidate all config to TOML.
+# Used by: songbird-config, songbird-discovery (YAML config file parsing).
+
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"

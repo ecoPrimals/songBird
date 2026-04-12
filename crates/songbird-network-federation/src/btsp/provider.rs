@@ -192,7 +192,7 @@ impl BtspProviderFactory {
         // Strategy 3: Probe security provider port and adjacent ports
         let base_port = songbird_config::defaults::ports::security_provider_port();
         for port in [base_port, base_port + 1, base_port + 2] {
-            let endpoint = format!("https://localhost:{port}");
+            let endpoint = format!("https://{}:{port}", songbird_types::constants::LOCALHOST);
             if self.probe_security_provider_endpoint(&endpoint).await.is_ok() {
                 debug!("✅ Found security provider via probe: {}", endpoint);
                 return self.connect_to_security_provider(&endpoint).await;

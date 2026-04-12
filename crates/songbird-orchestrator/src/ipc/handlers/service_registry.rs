@@ -14,9 +14,10 @@ use tracing::{debug, info};
 use crate::ipc::handlers::IpcHandlers;
 use crate::ipc::pure_rust_server::JsonRpcError;
 use crate::ipc::types::{
-    DiscoverByCapabilityRequest, DiscoverByCapabilityResponse, GetServiceHealthRequest,
-    GetServiceHealthResponse, HealthCheckResponse, HealthStatus, RegisterServiceRequest,
-    RegisterServiceResponse, system_time_to_iso8601,
+    CapabilityResolveRequest, CapabilityResolveResponse, DiscoverByCapabilityRequest,
+    DiscoverByCapabilityResponse, GetServiceHealthRequest, GetServiceHealthResponse,
+    HealthCheckResponse, HealthStatus, RegisterServiceRequest, RegisterServiceResponse,
+    system_time_to_iso8601,
 };
 
 // ============================================================================
@@ -309,6 +310,62 @@ pub async fn discover_by_capability_json(
 
     let resp = DiscoverByCapabilityResponse {
         primals,
+    };
+
+    serde_json::to_value(resp).map_err(|e| {
+        crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
+            "Failed to serialize response: {e}"
+        ))
+    })
+}
+
+/// `capability.resolve` — single-step DNS-like routing by capability (pure JSON adapter).
+///
+/// Returns the best provider endpoint for the requested capability. Uses the
+/// same underlying `discover_by_capability` registry query but returns only the
+/// first (most recently registered) match, matching the universal-ipc
+/// `capability.resolve` wire contract.
+///
+/// # Errors
+///
+/// Returns a method-not-found-style error if no provider is registered for the
+/// requested capability.
+pub async fn capability_resolve_json(
+    handlers: &IpcHandlers,
+    params: Option<serde_json::Value>,
+) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+    let request: CapabilityResolveRequest = match params {
+        Some(p) => serde_json::from_value(p).map_err(|e| {
+            crate::ipc::pure_rust_server::JsonRpcError::invalid_params(format!(
+                "Invalid params: {e}"
+            ))
+        })?,
+        None => {
+            return Err(crate::ipc::pure_rust_server::JsonRpcError::invalid_params(
+                "params required",
+            ));
+        }
+    };
+
+    let primals =
+        handlers.service_registry.discover_by_capability(&request.capability, None).await.map_err(
+            |e| {
+                crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
+                    "Failed to resolve capability: {e}"
+                ))
+            },
+        )?;
+
+    let provider = primals.into_iter().next().ok_or_else(|| {
+        let msg = format!("No provider found for capability: {}", request.capability);
+        crate::ipc::pure_rust_server::JsonRpcError::custom(-32601, &msg, None)
+    })?;
+
+    let resp = CapabilityResolveResponse {
+        service_id: provider.service_id,
+        endpoint: provider.endpoint,
+        protocol: provider.protocol,
+        capabilities: provider.capabilities,
     };
 
     serde_json::to_value(resp).map_err(|e| {

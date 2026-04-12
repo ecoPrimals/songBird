@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Onion identity and peer persistence (NestGate production path; in-memory fallback).
+//! Onion identity and peer persistence (IPC storage provider production path; in-memory fallback).
 
 use crate::error::Result;
 use crate::keys::OnionIdentity;
@@ -11,8 +11,8 @@ use std::sync::{Arc, RwLock};
 
 /// Sync persistence backend for onion service data.
 ///
-/// Production path: [`NestGateOnionStorage`](crate::storage_nestgate::NestGateOnionStorage) delegates
-/// to the `storage.*` capability provider (NestGate) via JSON-RPC at runtime.
+/// Production path: [`IpcOnionStorage`](crate::storage_ipc::IpcOnionStorage) delegates
+/// to the `storage.*` capability provider via JSON-RPC at runtime.
 /// Fallback: [`InMemoryOnionStorage`] when no provider is available.
 pub trait OnionStorageBackend: Send + Sync {
     /// Load an existing identity from persistent storage.
@@ -51,7 +51,7 @@ pub struct PeerInfo {
     pub actual_addr: Option<String>,
 }
 
-/// In-memory onion storage (fallback when NestGate is unavailable).
+/// In-memory onion storage (fallback when no storage provider is available).
 #[derive(Debug, Clone)]
 pub struct InMemoryOnionStorage {
     identity: Arc<RwLock<Option<Vec<u8>>>>,

@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! In-memory [`crate::consent_management::ConsentStorageBackend`] and [`crate::task_lifecycle::TaskStorageBackend`]
-//! when NestGate is not used.
+//! when no `storage.*` capability provider is available.
 
 use crate::consent_management::{ConsentRecord, ConsentStatus, ConsentStorageBackend};
 use crate::task_lifecycle::{Checkpoint, TaskFilter, TaskId, TaskLifecycle, TaskStorageBackend};

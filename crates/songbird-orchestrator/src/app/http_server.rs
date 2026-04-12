@@ -239,7 +239,10 @@ async fn start_https_server(
 
     // Get Subject Alternative Names (SANs) for certificate
     // Include localhost, local IPs, and any user-specified SANs
-    let mut sans_list = vec!["localhost".to_string(), "127.0.0.1".to_string()];
+    let mut sans_list = vec![
+        songbird_types::constants::LOCALHOST.to_string(),
+        songbird_types::constants::DEVELOPMENT_BIND_ADDRESS.to_string(),
+    ];
 
     // Try to get local IP address for automatic inclusion
     if let Ok(local_ip) = get_local_ip().await {

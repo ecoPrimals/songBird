@@ -360,7 +360,11 @@ impl ServiceRegistry {
         };
 
         // Create endpoints
-        let assigned_endpoint = ServiceEndpoint::new(&request.preferred_protocol, "0.0.0.0", port);
+        let assigned_endpoint = ServiceEndpoint::new(
+            &request.preferred_protocol,
+            songbird_types::constants::PRODUCTION_BIND_ADDRESS,
+            port,
+        );
 
         // Optional: Allocate fallback port for different protocol
         let fallback_endpoint = if request.protocols.len() > 1 {
@@ -375,7 +379,13 @@ impl ServiceRegistry {
                 allocator.allocate(&service_id).ok()
             };
 
-            fallback_port.map(|p| ServiceEndpoint::new(fallback_protocol, "0.0.0.0", p))
+            fallback_port.map(|p| {
+                ServiceEndpoint::new(
+                    fallback_protocol,
+                    songbird_types::constants::PRODUCTION_BIND_ADDRESS,
+                    p,
+                )
+            })
         } else {
             None
         };
