@@ -34,9 +34,9 @@ pub fn get_bind_address() -> String {
         || SafeEnv::get("CONTAINER").is_ok()
         || SafeEnv::get("SONGBIRD_ENV").as_deref() == Ok("production")
     {
-        "0.0.0.0".to_string() // Container/production environment
+        songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string()
     } else {
-        "127.0.0.1".to_string() // Development/local environment
+        songbird_types::constants::DEVELOPMENT_BIND_ADDRESS.to_string()
     }
 }
 

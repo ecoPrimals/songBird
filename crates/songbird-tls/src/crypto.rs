@@ -275,7 +275,7 @@ impl SecurityTlsCryptoClient {
                 })
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);
+                .unwrap_or(songbird_types::defaults::ports::DEFAULT_CRYPTO_TRANSPORT_PORT);
 
             Ok(format!("{}:{port}", songbird_types::constants::LOCALHOST))
         }
@@ -294,7 +294,7 @@ impl SecurityTlsCryptoClient {
                 })
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(songbird_types::constants::DEFAULT_CRYPTO_TRANSPORT_PORT);
+                .unwrap_or(songbird_types::defaults::ports::DEFAULT_CRYPTO_TRANSPORT_PORT);
             Ok(format!("{}:{port}", songbird_types::constants::LOCALHOST))
         }
     }

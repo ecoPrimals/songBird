@@ -58,6 +58,8 @@ ai = []
 discovery = []
 orchestration = []
 dns-srv = []
+kubernetes = []
+consul = []
 
 [dev-dependencies]
 songbird-test-utils = { path = "../songbird-test-utils" }

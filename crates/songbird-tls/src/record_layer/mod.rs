@@ -25,9 +25,9 @@ pub use crypto_provider::*;
 pub use layer::*;
 // `framing` / `record_crypto` attach inherent impls to [`RecordLayer`]; the glob has no public
 // items but keeps the `mod` + `pub use *` layout consistent with other submodules.
-#[allow(unused_imports)]
+#[allow(unused_imports, reason = "re-exports for downstream module use")]
 pub use framing::*;
-#[allow(unused_imports)]
+#[allow(unused_imports, reason = "re-exports for downstream module use")]
 pub use record_crypto::*;
 
 #[cfg(test)]

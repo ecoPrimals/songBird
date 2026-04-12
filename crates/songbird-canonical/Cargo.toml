@@ -43,7 +43,6 @@ songbird-config = { path = "../songbird-config" }
 [features]
 default = ["std"]
 std = []
-compile_time_validation = [] 
 
 [dev-dependencies]
 songbird-test-utils = { path = "../songbird-test-utils" }

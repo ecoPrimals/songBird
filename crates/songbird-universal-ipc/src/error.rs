@@ -46,7 +46,7 @@ pub enum IpcError {
     RegistryError(String),
 
     /// Storage capability provider integration error (optional; enable with `storage_provider` or legacy `nestgate` feature).
-    #[cfg(any(feature = "storage_provider", feature = "nestgate"))]
+    #[cfg(feature = "storage_provider")]
     #[error("Storage provider error: {0}")]
     StorageProviderError(String),
 
@@ -70,7 +70,7 @@ pub enum IpcError {
 /// Result type for universal IPC operations
 pub type IpcResult<T> = Result<T, IpcError>;
 
-#[cfg(any(feature = "storage_provider", feature = "nestgate"))]
+#[cfg(feature = "storage_provider")]
 impl IpcError {
     /// Deprecated constructor matching the former `NestGateError` variant.
     #[deprecated(note = "use IpcError::StorageProviderError(String)")]

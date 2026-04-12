@@ -88,5 +88,3 @@ songbird-test-utils = { path = "../songbird-test-utils" }
 default = []
 # Storage capability provider integration (capability domain: storage)
 storage_provider = []
-# Deprecated alias for `storage_provider` (empty feature flags; same cfg surface)
-nestgate = []

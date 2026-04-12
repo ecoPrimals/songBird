@@ -20,7 +20,6 @@ default = ["serde", "chrono"]
 serde = ["dep:serde", "dep:serde_json"]
 chrono = ["dep:chrono"]
 tests-incomplete = []
-unsafe-reference = []  # Feature flag for deprecated unsafe SafeZeroCopyBuffer (test-only)
 
 [dependencies]
 # Foundation layer has minimal external dependencies

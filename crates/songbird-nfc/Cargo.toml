@@ -48,8 +48,3 @@ tracing-subscriber = { workspace = true }
 
 [features]
 default = []
-
-# Platform-specific NFC backends
-platform-android = []
-platform-ios = []
-platform-linux = []

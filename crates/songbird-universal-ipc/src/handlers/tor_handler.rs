@@ -128,6 +128,7 @@ impl TorHandler {
                     }
                     let legacy = format!("{xdg}/biomeos/beardog.sock");
                     if std::path::Path::new(&legacy).exists() {
+                        tracing::warn!("beardog.sock is deprecated — migrate to security.sock or SECURITY_PROVIDER_SOCKET");
                         return Some(legacy);
                     }
                 }

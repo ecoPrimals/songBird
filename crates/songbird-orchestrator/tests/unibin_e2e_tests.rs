@@ -27,7 +27,7 @@ use tempfile::{TempDir, tempdir};
 // TEST HELPERS
 // ====================
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 fn create_test_config(dir: &TempDir, content: &str) -> PathBuf {
     let config_path = dir.path().join("test-config.toml");
     fs::write(&config_path, content).expect("Failed to write test config");

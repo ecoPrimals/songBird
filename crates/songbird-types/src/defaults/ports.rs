@@ -35,5 +35,13 @@ pub const DEFAULT_EXECUTION_AGENT_PORT: u16 = 9020;
 pub const DEFAULT_TEST_RUNNER_PORT: u16 = 8080;
 /// Heartbeat interval in milliseconds
 pub const DEFAULT_HEARTBEAT_INTERVAL_MS: u64 = 5000;
+/// Default orchestrator API port (env: `SONGBIRD_ORCHESTRATOR_PORT`)
+pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8000;
+/// Default health check port (env: `SONGBIRD_HEALTH_PORT`)
+pub const DEFAULT_HEALTH_PORT: u16 = 8002;
+/// Default crypto provider TCP transport port (security provider fallback)
+pub const DEFAULT_CRYPTO_TRANSPORT_PORT: u16 = 9876;
+/// Default federation bind port (env: `SONGBIRD_FEDERATION_BIND_PORT`)
+pub const DEFAULT_FEDERATION_BIND_PORT: u16 = 7000;
 /// Default request timeout in milliseconds
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;

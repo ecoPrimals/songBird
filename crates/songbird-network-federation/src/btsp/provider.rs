@@ -247,7 +247,10 @@ impl BtspProviderFactory {
                                     "🔍 Discovered security provider '{}' with BTSP support",
                                     primal_name
                                 );
-                                return Ok(Some(format!("https://localhost:{port}")));
+                                return Ok(Some(format!(
+                                    "https://{}:{port}",
+                                    songbird_types::constants::LOCALHOST
+                                )));
                             }
                         }
                     }

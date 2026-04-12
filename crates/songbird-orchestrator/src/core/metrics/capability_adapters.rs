@@ -15,7 +15,8 @@ use tracing::{info, warn};
 
 fn default_orchestrator_url() -> &'static str {
     static URL: LazyLock<String> = LazyLock::new(|| {
-        use songbird_types::constants::{DEFAULT_ORCHESTRATOR_PORT, LOCALHOST};
+        use songbird_types::constants::LOCALHOST;
+        use songbird_types::defaults::ports::DEFAULT_ORCHESTRATOR_PORT;
         songbird_process_env::var("SONGBIRD_ORCHESTRATOR_URL")
             .unwrap_or_else(|_| format!("http://{LOCALHOST}:{DEFAULT_ORCHESTRATOR_PORT}"))
     });

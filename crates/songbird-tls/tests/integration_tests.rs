@@ -69,7 +69,7 @@ impl MockSecurityProviderTlsClient {
         Ok(vec![4u8; 32])
     }
 
-    #[allow(clippy::type_complexity)]
+    #[allow(clippy::type_complexity, reason = "complex return type required by trait bounds")]
     fn chacha20_poly1305_encrypt(
         &self,
         plaintext: &[u8],

@@ -135,7 +135,8 @@ impl UnixSocketServer {
         info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
         info!("   Protocol: JSON-RPC 2.0 (same as Unix socket)");
 
-        let listener = TcpListener::bind("127.0.0.1:0")
+        let bind_addr = format!("{}:0", songbird_types::constants::DEVELOPMENT_BIND_ADDRESS);
+        let listener = TcpListener::bind(&bind_addr)
             .await
             .context("Failed to bind TCP localhost for IPC fallback")?;
 
@@ -240,7 +241,7 @@ impl UnixSocketServer {
             PathBuf::from("/tmp/songbird-ipc-port")
         };
 
-        let content = format!("tcp:127.0.0.1:{port}");
+        let content = format!("tcp:{}:{port}", songbird_types::constants::DEVELOPMENT_BIND_ADDRESS);
         std::fs::write(&port_file, content)
             .context(format!("Failed to write TCP discovery file: {}", port_file.display()))?;
 

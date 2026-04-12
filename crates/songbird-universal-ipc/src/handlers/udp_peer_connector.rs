@@ -157,14 +157,11 @@ impl PeerConnector for UdpPeerConnector {
             .map_err(|e| format!("Invalid target address '{target_address}': {e}"))?;
 
         // Bind our socket
-        let bind_addr: SocketAddr = match our_binding {
-            Some(addr) => {
-                addr.parse().map_err(|e| format!("Invalid binding address '{addr}': {e}"))?
-            }
-            None => {
-                #[expect(clippy::expect_used, reason = "compile-time constant address")]
-                "0.0.0.0:0".parse().expect("valid static address") // Ephemeral port
-            }
+        let bind_addr: SocketAddr = if let Some(addr) = our_binding {
+            addr.parse().map_err(|e| format!("Invalid binding address '{addr}': {e}"))?
+        } else {
+            let addr = format!("{}:0", songbird_types::constants::PRODUCTION_BIND_ADDRESS);
+            addr.parse().map_err(|e| format!("Ephemeral bind failed: {e}"))?
         };
 
         let socket = UdpSocket::bind(bind_addr)

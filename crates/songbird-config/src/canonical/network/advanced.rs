@@ -133,7 +133,7 @@ impl Default for ServiceDiscoveryEndpoints {
         Self {
             consul: vec![
                 ServiceEndpoint::new(LOCALHOST, 8500, "http"),
-                ServiceEndpoint::new("localhost", 8500, "http"),
+                ServiceEndpoint::new(LOCALHOST, 8500, "http"),
             ],
             etcd: vec![
                 ServiceEndpoint::new(LOCALHOST, 2379, "http"),
@@ -145,8 +145,8 @@ impl Default for ServiceDiscoveryEndpoints {
                 "https",
             )],
             docker: vec![
-                ServiceEndpoint::new("localhost", 2375, "http"),
-                ServiceEndpoint::new("localhost", 2376, "https"),
+                ServiceEndpoint::new(LOCALHOST, 2375, "http"),
+                ServiceEndpoint::new(LOCALHOST, 2376, "https"),
             ],
         }
     }
@@ -208,9 +208,8 @@ pub struct ProxyConfig {
 
 impl Default for ProxyConfig {
     fn default() -> Self {
-        use songbird_types::constants::{
-            DEFAULT_ORCHESTRATOR_PORT, LOCALHOST, PRODUCTION_BIND_ADDRESS,
-        };
+        use songbird_types::constants::{LOCALHOST, PRODUCTION_BIND_ADDRESS};
+        use songbird_types::defaults::ports::DEFAULT_ORCHESTRATOR_PORT;
         Self {
             enabled: songbird_process_env::var("SONGBIRD_PROXY_ENABLED")
                 .ok()

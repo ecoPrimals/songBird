@@ -125,7 +125,7 @@ pub async fn bind_ephemeral() -> Result<(TcpListener, u16)> {
 }
 
 /// Bind to an ephemeral TCP port with specific address
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 pub async fn bind_ephemeral_addr(addr: &str) -> Result<(TcpListener, SocketAddr)> {
     let listener =
         TcpListener::bind(format!("{addr}:0")).await.context("Failed to bind ephemeral port")?;
@@ -193,7 +193,7 @@ impl Drop for TempUnixSocket {
 /// ready.notified().await; // Wait for ready
 /// // Now safe to connect!
 /// ```
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 pub fn spawn_server_with_notify<F, Fut>(server_fn: F) -> (JoinHandle<Result<()>>, Arc<Notify>)
 where
     F: FnOnce(Arc<Notify>) -> Fut + Send + 'static,
@@ -238,7 +238,7 @@ where
 }
 
 /// Wait for async condition with timeout
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 pub async fn wait_for_async<F, Fut>(condition: F, timeout: Duration) -> Result<()>
 where
     F: Fn() -> Fut,
@@ -271,7 +271,7 @@ where
 ///     Duration::from_secs(5)
 /// ).await?;
 /// ```
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 pub async fn wait_for_some<F, T>(mut check: F, timeout: Duration) -> Result<T>
 where
     F: FnMut() -> Option<T>,
@@ -311,7 +311,7 @@ where
 ///     }
 /// }
 /// ```
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 pub fn event_channel<T>(buffer: usize) -> (mpsc::Sender<T>, mpsc::Receiver<T>) {
     mpsc::channel(buffer)
 }
@@ -351,7 +351,7 @@ pub fn response_channel<T>() -> (oneshot::Sender<T>, oneshot::Receiver<T>) {
 ///     }
 /// }
 /// ```
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 pub async fn select_first<F1, F2, T1, T2>(future1: F1, future2: F2) -> Result<Either<T1, T2>>
 where
     F1: std::future::Future<Output = Result<T1>>,
@@ -364,7 +364,7 @@ where
 }
 
 /// Either type for `select_first`
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helper not used by every test case")]
 pub enum Either<L, R> {
     Left(L),
     Right(R),

@@ -77,7 +77,7 @@ pub struct NodeConfig {
 
 impl Default for NodeConfig {
     fn default() -> Self {
-        use songbird_types::constants::DEFAULT_FEDERATION_BIND_PORT;
+        use songbird_types::defaults::ports::DEFAULT_FEDERATION_BIND_PORT;
 
         let default_port = songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
             .ok()

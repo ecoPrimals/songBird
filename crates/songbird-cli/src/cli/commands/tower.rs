@@ -17,7 +17,8 @@ use crate::errors::SongbirdResult;
 /// Bind address for `tower info` / `tower config` when no CLI `--bind` is parsed (matches
 /// `SONGBIRD_BIND_ADDRESS` with `0.0.0.0` default, same as [`TowerStartArgs::bind`]).
 fn tower_bind_from_env_or_default() -> String {
-    songbird_process_env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string())
+    songbird_process_env::var("SONGBIRD_BIND_ADDRESS")
+        .unwrap_or_else(|_| songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string())
 }
 
 /// Tower management commands

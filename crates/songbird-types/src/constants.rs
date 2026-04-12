@@ -37,32 +37,41 @@ pub const DEFAULT_HTTPS_PORT: u16 = 8443;
 pub const DEFAULT_PORT: u16 = DEFAULT_HTTP_PORT;
 
 /// Default discovery service port
+#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_METRICS_PORT instead")]
 pub const DEFAULT_DISCOVERY_PORT: u16 = 8081;
 
 /// Default federation service port
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
+#[deprecated(
+    note = "use songbird_types::defaults::ports::DEFAULT_FEDERATION_PORT instead — canonical value is 8000"
+)]
 pub const DEFAULT_FEDERATION_PORT: u16 = 8082;
 
 /// Default health check port
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_HEALTH_PORT: u16 = 8002;
 
 /// Default dashboard port
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_DASHBOARD_PORT: u16 = 8003;
 
 /// Default metrics port
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
+#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_METRICS_PORT instead")]
 pub const DEFAULT_METRICS_PORT: u16 = 8004;
 
-/// Default orchestrator API port (self-referencing for internal metrics)
+/// Default orchestrator API port
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8000;
 
-/// Default crypto provider transport port (security provider TCP transport fallback)
+/// Default crypto provider transport port
+#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_CRYPTO_TRANSPORT_PORT instead")]
 pub const DEFAULT_CRYPTO_TRANSPORT_PORT: u16 = 9876;
 
-/// Default security vault port (capability-based security provider, dev only)
+/// Default security vault port
+#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
 pub const DEFAULT_SECURITY_VAULT_PORT: u16 = 8200;
 
 /// Default federation bind port
+#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_FEDERATION_BIND_PORT instead")]
 pub const DEFAULT_FEDERATION_BIND_PORT: u16 = 7000;
 
 /// Localhost IPv4 address

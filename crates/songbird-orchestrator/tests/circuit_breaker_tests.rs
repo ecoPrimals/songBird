@@ -203,7 +203,7 @@ fn test_circuit_breaker_in_box() {
 
 #[test]
 fn test_circuit_breaker_nested_structures() {
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "field used for test setup/teardown")]
     struct Service {
         name: String,
         inner: InnerService,
