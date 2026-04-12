@@ -9,7 +9,7 @@
 
 | Metric | Status |
 |--------|--------|
-| **Pure Rust** | ✅ Application code — `quinn`/`rustls`/`ring` fully eliminated from QUIC; `ring-crypto` feature removed (Wave 135, SB-02 resolved); `sled` removed (Wave 135, SB-03 resolved) |
+| **Pure Rust** | ✅ Application code — `quinn`/`ring` eliminated from QUIC path (native pure-Rust QUIC engine with security provider crypto delegation); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`); `sled` removed (Wave 135, SB-03 resolved); all default-build deps are pure Rust |
 | **Unsafe Code** | ✅ `forbid(unsafe_code)` across all 30 crates; zero `unsafe` blocks (`songbird-process-env` evolved to in-memory overlay) |
 | **Cast Safety** | ✅ `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | **Panic Paths** | ✅ `unwrap_used`/`expect_used` warn workspace-wide |

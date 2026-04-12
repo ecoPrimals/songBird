@@ -1,8 +1,14 @@
 # 🧅 Sovereign Onion - TRUE PRIMAL Architecture
 
 **Date**: February 6, 2026  
-**Status**: Architecture Defined  
+**Status**: Architecture Defined (fossil record — see notes below)  
 **Pattern**: Same as TLS 1.3
+
+> **Wave 138b note (Apr 12, 2026):** This document reflects the original design intent.
+> Implementation has since evolved: `sled` was fully removed (Wave 135, SB-03);
+> `beardog.sock` paths are now `security.sock` via capability-based discovery;
+> crypto deps delegate to the security provider via JSON-RPC IPC.
+> See `REMAINING_WORK.md` and `CHANGELOG.md` for current state.
 
 ---
 

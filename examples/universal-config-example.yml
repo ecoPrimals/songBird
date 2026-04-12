@@ -56,7 +56,7 @@ services:
       team: "security"
       sla: "99.9%"
   
-  # Storage service (replaces NestGate)
+  # Storage service (via IPC storage.* capability)
   - name: "storage-service"
     type:
       name: "storage"
