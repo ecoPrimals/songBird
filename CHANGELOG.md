@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave137c] - 2026-04-12 - Deep Debt Sweep: Stale Features, Hardcoding, Port Constants, Lint Hygiene
+
+### Removed — Stale Feature Flags
+- `unsafe-reference` from `songbird-types`
+- `compile_time_validation` from `songbird-canonical`
+- `nfc` from `songbird-genesis`
+- `platform-android`, `platform-ios`, `platform-linux` from `songbird-nfc`
+- `nestgate` feature alias from `songbird-universal-ipc` (cfg guards updated to `storage_provider` only)
+
+### Added
+- `kubernetes` and `consul` feature flags declared in `songbird-discovery` (previously unreachable cfg gates)
+- `DEFAULT_ORCHESTRATOR_PORT`, `DEFAULT_HEALTH_PORT`, `DEFAULT_CRYPTO_TRANSPORT_PORT`, `DEFAULT_FEDERATION_BIND_PORT` added to canonical `defaults::ports`
+- `tracing::warn!` on legacy `beardog.sock` fallback in tor handler
+
+### Changed — Hardcoded Literals Evolution
+- All remaining `"0.0.0.0"` → `PRODUCTION_BIND_ADDRESS` (CLI tower, config, UDP peer connector)
+- All remaining `"127.0.0.1"` → `DEVELOPMENT_BIND_ADDRESS` (config bind_and_ports, IPC connection)
+- All remaining `"localhost"` → `LOCALHOST` (config advanced, BTSP provider)
+- 9 legacy port constants in `songbird-types::constants` deprecated with migration notes
+- Active call sites migrated to `defaults::ports` (TLS crypto, federation, orchestrator metrics, AI workload)
+
+### Changed — Lint Hygiene
+- All bare `#[allow(dead_code)]` in test files given `reason = "..."` strings
+- `#[allow(clippy::type_complexity)]` in TLS integration tests given reason string
+- `#[allow(unused_imports)]` in TLS record layer given reason strings
+- Clippy `single_match` in UDP peer connector refactored to `if let`
+
+### Metrics
+- 7,291 lib tests passed, 0 failed, 22 ignored
+- Zero `cargo check` warnings, zero clippy warnings, cargo-deny clean
+
+---
+
+## [v0.2.1-wave137b] - 2026-04-12 - LD-02 ipc.resolve Capability Param, SB-02 Ring Documentation
+
+### Changed — ipc.resolve Dual-Mode (LD-02)
+- `ResolveParams` evolved to accept either `primal_id` (identity lookup) or `capability` (capability-based routing)
+- `capability` takes precedence when both are provided
+- Springs can now resolve by capability name without knowing primal names
+- `handle_resolve` routes based on param presence with proper error for missing params
+- RPC introspection updated: `ipc.resolve` params now `["primal_id?", "capability?"]`
+
+### Added — Tests
+- `ipc.resolve` by capability: success, unknown capability, missing params, precedence tests
+- `CapabilityResolveRequest`/`CapabilityResolveResponse` serde roundtrip tests
+
+### Fixed
+- SB-02 ring lockfile ghost documented in `deny.toml` — Cargo.lock artifact only, NOT compiled in default build, banned
+- Invalid `RUSTSEC-2024-0320` advisory removed from `deny.toml`
+- Test type mismatches for `primal_id` assertions after `Option<String>` evolution
+
+---
+
 ## [v0.2.1-wave137] - 2026-04-12 - Capability-Based Naming, IPC Storage, capability.resolve Wiring
 
 ### Changed — NestGate → IPC Storage (Capability-Based Naming)

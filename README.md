@@ -19,9 +19,9 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero in production (`.unwrap()` appears only in test modules across the codebase; verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
-| Lint suppressions | `#[allow(reason)]` throughout — Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons per-item; `#[expect(reason)]` retained where lint provably fires in production; zero generic dead-code reasons remain |
+| Lint suppressions | `#[allow(reason)]` throughout — Wave 137c: all bare `#[allow()]` in tests and TLS given reason strings; Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons per-item; `#[expect(reason)]` retained where lint provably fires in production; zero reasonless suppressions remain |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 7,284 lib passed, 0 failed, 22 ignored |
+| Tests | 7,291 lib passed, 0 failed, 22 ignored |
 | Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 8 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
@@ -39,7 +39,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI (`cargo deny check` step in `ci.yml`) |
-| Dependencies | `sled` removed Wave 135 (SB-03 resolved — IPC `storage.*` capability is production path, InMemory fallback); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; `serde_yaml` archived status documented in `deny.toml` |
+| Dependencies | `sled` removed Wave 135 (SB-03 resolved — IPC `storage.*` capability is production path, InMemory fallback); `ring` in Cargo.lock is uncompiled optional dep of rustls (SB-02 documented, banned in `deny.toml`); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; `serde_yaml` archived status documented in `deny.toml`; 5 stale feature flags removed Wave 137c |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
 | Total Rust | ~430,000 lines across 30 crates (1,587 files) |
 

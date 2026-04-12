@@ -285,11 +285,11 @@ pub enum NetworkMethod {
     Listen,
 }
 
-/// `storage.*` — storage capability domain (delegated persistence; SB-03 migration surface).
+/// `storage.*` — storage capability domain (delegated persistence).
 ///
-/// When a storage capability provider exposes real `storage.*` IPC (NG-01), Songbird will call these
-/// methods instead of embedding sled directly. Until then the enum is routed but
-/// the sled backend remains the active implementation.
+/// Songbird delegates all persistence via `storage.*` JSON-RPC IPC to the storage
+/// capability provider. `IpcStorageBackend` is the production path; `InMemoryStorage`
+/// is the fallback when no provider is available (SB-03 resolved, sled eliminated Wave 135).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StorageMethod {
     Get,

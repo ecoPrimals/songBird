@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 //! Integration tests for task lifecycle management
 //!
-//! **Evolution**: Each test uses an isolated temp directory for its sled database,
+//! Each test uses an isolated temp directory for its storage backend,
 //! enabling fully concurrent execution without file lock contention.
 //! No `sleep()`, no serial — just isolated state.
 #![allow(clippy::unwrap_used)] // Tests may use unwrap for cleaner code
@@ -14,7 +14,7 @@ use songbird_orchestrator::task_lifecycle::{TaskLifecycleManager, TowerId, UserI
 use tempfile::TempDir;
 
 /// Create an isolated manager with its own temp database directory.
-/// This is the concurrent-safe pattern: each test gets its own sled instance.
+/// Concurrent-safe: each test gets its own storage instance.
 async fn isolated_manager() -> (TaskLifecycleManager, TempDir) {
     let dir = TempDir::new().expect("Failed to create temp dir");
     let db_path = dir.path().join("tasks.db");

@@ -126,7 +126,7 @@ async fn stage3_runtime_discovery() {
     let storage_services = locator.discover_by_capability("storage").await;
     println!("  'storage' capability:");
     println!("    Found {} providers", storage_services.len());
-    println!("    Could be: NestGate, S3, local filesystem, etc.");
+    println!("    Could be: IPC storage provider, S3, local filesystem, etc.");
     println!("    ✓ No hardcoding!");
     println!();
 

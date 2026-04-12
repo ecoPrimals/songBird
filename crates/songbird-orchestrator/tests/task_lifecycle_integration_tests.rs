@@ -47,7 +47,7 @@ use std::sync::Arc;
 
 async fn create_test_manager() -> Result<(TaskLifecycleManager, tempfile::TempDir)> {
     let temp_dir = tempfile::tempdir()?;
-    let db_path = temp_dir.path().join("test_sled_db");
+    let db_path = temp_dir.path().join("test_tasks_db");
     let manager = TaskLifecycleManager::new(db_path.to_str().unwrap()).await?;
     // Return TempDir to keep it alive for the test's duration
     Ok((manager, temp_dir))
