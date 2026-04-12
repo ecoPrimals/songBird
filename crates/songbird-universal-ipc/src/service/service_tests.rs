@@ -211,7 +211,7 @@ fn ipc_register_params_deserialize_roundtrip() {
 #[test]
 fn ipc_resolve_and_discover_params_deserialize() {
     let r: ResolveParams = serde_json::from_value(json!({"primal_id": "a"})).expect("resolve");
-    assert_eq!(r.primal_id, "a");
+    assert_eq!(r.primal_id.as_deref(), Some("a"));
 
     let d: DiscoverParams = serde_json::from_value(json!({"capability": "stun"})).expect("disc");
     assert_eq!(d.capability, "stun");
@@ -382,4 +382,75 @@ async fn federation_peers_and_status_reflect_federation_state() {
     let st = handler.handle("songbird.federation.status", json!({})).await.expect("status");
     assert_eq!(st["enabled"], json!(true));
     assert_eq!(st["active_connections"], json!(1));
+}
+
+#[tokio::test]
+async fn ipc_resolve_by_capability_returns_provider() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "security-provider",
+                "capabilities": ["crypto.sign", "crypto.verify"],
+                "endpoint": "/tmp/security.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let result = handler
+        .handle("ipc.resolve", json!({ "capability": "crypto.sign" }))
+        .await
+        .expect("resolve by capability");
+    assert!(result["native_endpoint"].as_str().unwrap().contains("security"));
+    assert!(result["capabilities"].as_array().unwrap().iter().any(|c| c == "crypto.sign"));
+}
+
+#[tokio::test]
+async fn ipc_resolve_by_capability_unknown_errors() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+    let err = handler
+        .handle("ipc.resolve", json!({ "capability": "no.such.cap" }))
+        .await
+        .expect_err("no provider");
+    assert!(err.contains("No provider found"), "unexpected: {err}");
+}
+
+#[tokio::test]
+async fn ipc_resolve_missing_both_params_errors() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+    let err = handler.handle("ipc.resolve", json!({})).await.expect_err("missing params");
+    assert!(err.contains("primal_id") && err.contains("capability"), "unexpected: {err}");
+}
+
+#[tokio::test]
+async fn ipc_resolve_capability_preferred_over_primal_id() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "storage-primal",
+                "capabilities": ["storage.put", "storage.get"],
+                "endpoint": "/tmp/storage.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let result = handler
+        .handle(
+            "ipc.resolve",
+            json!({ "primal_id": "storage-primal", "capability": "storage.put" }),
+        )
+        .await
+        .expect("both params — capability takes precedence");
+    assert!(result["native_endpoint"].as_str().unwrap().contains("storage"));
 }

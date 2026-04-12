@@ -26,10 +26,17 @@ pub struct RegisterParams {
     pub endpoint: String,
 }
 
-/// IPC service request parameters for resolution
+/// IPC service request parameters for resolution.
+///
+/// Accepts either `primal_id` (identity lookup) or `capability` (capability-based
+/// routing). When `capability` is provided, returns the best provider for that
+/// capability domain — springs can resolve by capability without knowing primal names.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ResolveParams {
-    pub primal_id: String,
+    #[serde(default)]
+    pub primal_id: Option<String>,
+    #[serde(default)]
+    pub capability: Option<String>,
 }
 
 /// IPC service request parameters for discovery
@@ -158,10 +165,35 @@ mod tests {
     }
 
     #[test]
-    fn resolve_params_deserializes() {
+    fn resolve_params_deserializes_primal_id() {
         let json = r#"{"primal_id":"ai-provider"}"#;
         let params: ResolveParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.primal_id, "ai-provider");
+        assert_eq!(params.primal_id.as_deref(), Some("ai-provider"));
+        assert!(params.capability.is_none());
+    }
+
+    #[test]
+    fn resolve_params_deserializes_capability() {
+        let json = r#"{"capability":"crypto.sign"}"#;
+        let params: ResolveParams = serde_json::from_str(json).unwrap();
+        assert!(params.primal_id.is_none());
+        assert_eq!(params.capability.as_deref(), Some("crypto.sign"));
+    }
+
+    #[test]
+    fn resolve_params_deserializes_both() {
+        let json = r#"{"primal_id":"security","capability":"crypto.sign"}"#;
+        let params: ResolveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.primal_id.as_deref(), Some("security"));
+        assert_eq!(params.capability.as_deref(), Some("crypto.sign"));
+    }
+
+    #[test]
+    fn resolve_params_deserializes_empty() {
+        let json = r#"{}"#;
+        let params: ResolveParams = serde_json::from_str(json).unwrap();
+        assert!(params.primal_id.is_none());
+        assert!(params.capability.is_none());
     }
 
     #[test]

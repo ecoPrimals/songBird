@@ -53,27 +53,43 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
-    /// Handle `ipc.resolve` method
+    /// Handle `ipc.resolve` method — resolves by `primal_id` or `capability`.
+    ///
+    /// When `capability` is provided, returns the best provider for that capability
+    /// domain (most-recently-seen first). When `primal_id` is provided, performs a
+    /// direct identity lookup. Springs can resolve by capability without knowing
+    /// primal names (LD-02).
     pub(super) async fn handle_resolve(&self, params: Value) -> Result<Value, String> {
         let params: ResolveParams =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
-        debug!("Resolving primal: {}", params.primal_id);
+        let registry = self.registry.read().await;
 
-        // Get service entry from registry
-        let entry = self
-            .registry
-            .read()
-            .await
-            .get_service(&params.primal_id)
-            .await
-            .ok_or_else(|| format!("Primal not found: {}", params.primal_id))?;
+        let (resolved_name, entry) = if let Some(ref capability) = params.capability {
+            debug!("Resolving by capability: {capability}");
+            registry
+                .resolve_by_capability(capability)
+                .await
+                .ok_or_else(|| format!("No provider found for capability: {capability}"))?
+        } else if let Some(ref primal_id) = params.primal_id {
+            debug!("Resolving by primal_id: {primal_id}");
+            let entry = registry
+                .get_service(primal_id)
+                .await
+                .ok_or_else(|| format!("Primal not found: {primal_id}"))?;
+            (primal_id.clone(), entry)
+        } else {
+            return Err("ipc.resolve requires either `primal_id` or `capability` parameter".into());
+        };
 
         let result = ResolveResult {
             virtual_endpoint: entry.virtual_endpoint.path,
             native_endpoint: entry.native_endpoint.display(),
             capabilities: entry.capabilities,
         };
+
+        drop(registry);
+        debug!("Resolved to: {resolved_name}");
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }

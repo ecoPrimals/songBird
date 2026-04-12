@@ -23,7 +23,7 @@ pub fn rpc_methods() -> Value {
             {"name": "primal.capabilities", "description": "Get detailed capability descriptions", "params": []},
             {"name": "rpc.methods", "description": "List all available JSON-RPC methods", "params": []},
             {"name": "ipc.register", "description": "Register a primal in the IPC registry", "params": ["primal_id", "capabilities", "endpoint"]},
-            {"name": "ipc.resolve", "description": "Resolve a primal by ID", "params": ["primal_id"]},
+            {"name": "ipc.resolve", "description": "Resolve by primal ID or capability", "params": ["primal_id?", "capability?"]},
             {"name": "ipc.discover", "description": "Discover primals by capability", "params": ["capability"]},
             {"name": "ipc.list", "description": "List all registered primals", "params": []},
             {"name": "http.request", "description": "Full HTTP/HTTPS request", "params": ["method", "url", "headers?", "body?"]},
