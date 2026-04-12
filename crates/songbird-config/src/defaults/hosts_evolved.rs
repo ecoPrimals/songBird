@@ -294,8 +294,12 @@ pub fn service_host(service_name: &str) -> String {
 fn default_host() -> String {
     let env = Environment::detect();
     match env {
-        Environment::Production | Environment::Staging => "0.0.0.0".to_string(),
-        Environment::Development | Environment::Test => "127.0.0.1".to_string(),
+        Environment::Production | Environment::Staging => {
+            songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string()
+        }
+        Environment::Development | Environment::Test => {
+            songbird_types::constants::DEVELOPMENT_BIND_ADDRESS.to_string()
+        }
     }
 }
 

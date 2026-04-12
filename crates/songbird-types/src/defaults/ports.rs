@@ -43,5 +43,7 @@ pub const DEFAULT_HEALTH_PORT: u16 = 8002;
 pub const DEFAULT_CRYPTO_TRANSPORT_PORT: u16 = 9876;
 /// Default federation bind port (env: `SONGBIRD_FEDERATION_BIND_PORT`)
 pub const DEFAULT_FEDERATION_BIND_PORT: u16 = 7000;
+/// Default dashboard port (env: `SONGBIRD_DASHBOARD_PORT`)
+pub const DEFAULT_DASHBOARD_PORT: u16 = 8003;
 /// Default request timeout in milliseconds
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;

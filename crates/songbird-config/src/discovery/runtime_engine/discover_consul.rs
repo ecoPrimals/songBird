@@ -53,7 +53,7 @@ pub(super) async fn discover_from_consul(
             .get("ServiceAddress")
             .and_then(|v| v.as_str())
             .or_else(|| entry.get("Address").and_then(|v| v.as_str()))
-            .unwrap_or("127.0.0.1");
+            .unwrap_or(songbird_types::constants::LOCALHOST);
         let port = entry.get("ServicePort").and_then(serde_json::Value::as_u64).unwrap_or(0);
 
         if port == 0 {

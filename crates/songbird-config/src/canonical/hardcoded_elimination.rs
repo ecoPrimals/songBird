@@ -134,17 +134,18 @@ pub struct HostConfig {
 
 impl Default for HostConfig {
     fn default() -> Self {
+        let host = songbird_types::constants::LOCALHOST_HOSTNAME.to_string();
         Self {
-            orchestrator: "localhost".to_string(),
-            discovery: "localhost".to_string(),
-            registry: "localhost".to_string(),
-            security: "localhost".to_string(),
-            storage: "localhost".to_string(),
-            compute: "localhost".to_string(),
-            ai: "localhost".to_string(),
-            gaming: "localhost".to_string(),
-            dashboard: "localhost".to_string(),
-            metrics: "localhost".to_string(),
+            orchestrator: host.clone(),
+            discovery: host.clone(),
+            registry: host.clone(),
+            security: host.clone(),
+            storage: host.clone(),
+            compute: host.clone(),
+            ai: host.clone(),
+            gaming: host.clone(),
+            dashboard: host.clone(),
+            metrics: host,
         }
     }
 }
@@ -180,17 +181,18 @@ impl HostConfig {
     pub fn from_env_reader(
         env: &impl Fn(&str) -> Result<String, std::env::VarError>,
     ) -> SongbirdResult<Self> {
+        let default = songbird_types::constants::LOCALHOST_HOSTNAME;
         Ok(Self {
-            orchestrator: Self::parse_host_env(env, "SONGBIRD_ORCHESTRATOR_HOST", "localhost"),
-            discovery: Self::parse_host_env(env, "SONGBIRD_DISCOVERY_HOST", "localhost"),
-            registry: Self::parse_host_env(env, "SONGBIRD_REGISTRY_HOST", "localhost"),
-            security: Self::parse_host_env(env, "SONGBIRD_SECURITY_HOST", "localhost"),
-            storage: Self::parse_host_env(env, "SONGBIRD_STORAGE_HOST", "localhost"),
-            compute: Self::parse_host_env(env, "SONGBIRD_COMPUTE_HOST", "localhost"),
-            ai: Self::parse_host_env(env, "SONGBIRD_AI_HOST", "localhost"),
-            gaming: Self::parse_host_env(env, "SONGBIRD_GAMING_HOST", "localhost"),
-            dashboard: Self::parse_host_env(env, "SONGBIRD_DASHBOARD_HOST", "localhost"),
-            metrics: Self::parse_host_env(env, "SONGBIRD_METRICS_HOST", "localhost"),
+            orchestrator: Self::parse_host_env(env, "SONGBIRD_ORCHESTRATOR_HOST", default),
+            discovery: Self::parse_host_env(env, "SONGBIRD_DISCOVERY_HOST", default),
+            registry: Self::parse_host_env(env, "SONGBIRD_REGISTRY_HOST", default),
+            security: Self::parse_host_env(env, "SONGBIRD_SECURITY_HOST", default),
+            storage: Self::parse_host_env(env, "SONGBIRD_STORAGE_HOST", default),
+            compute: Self::parse_host_env(env, "SONGBIRD_COMPUTE_HOST", default),
+            ai: Self::parse_host_env(env, "SONGBIRD_AI_HOST", default),
+            gaming: Self::parse_host_env(env, "SONGBIRD_GAMING_HOST", default),
+            dashboard: Self::parse_host_env(env, "SONGBIRD_DASHBOARD_HOST", default),
+            metrics: Self::parse_host_env(env, "SONGBIRD_METRICS_HOST", default),
         })
     }
 
@@ -529,5 +531,52 @@ mod tests {
     fn test_port_config_to_capability_registry() {
         let reg = PortConfig::default().to_capability_registry().expect("registry");
         assert!(reg.get_port(&CapabilityId::new("orchestrator")).is_ok());
+    }
+
+    #[test]
+    fn host_config_default_uses_localhost_hostname_constant() {
+        let cfg = HostConfig::default();
+        let expected = songbird_types::constants::LOCALHOST_HOSTNAME;
+        assert_eq!(cfg.orchestrator, expected);
+        assert_eq!(cfg.discovery, expected);
+        assert_eq!(cfg.registry, expected);
+        assert_eq!(cfg.security, expected);
+        assert_eq!(cfg.storage, expected);
+        assert_eq!(cfg.compute, expected);
+        assert_eq!(cfg.ai, expected);
+        assert_eq!(cfg.gaming, expected);
+        assert_eq!(cfg.dashboard, expected);
+        assert_eq!(cfg.metrics, expected);
+    }
+
+    #[test]
+    fn host_config_from_env_overrides_single_host() {
+        let env = |key: &str| -> Result<String, std::env::VarError> {
+            if key == "SONGBIRD_ORCHESTRATOR_HOST" {
+                Ok("custom.host".to_string())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        };
+        let cfg = HostConfig::from_env_reader(&env).unwrap();
+        assert_eq!(cfg.orchestrator, "custom.host");
+        assert_eq!(cfg.discovery, songbird_types::constants::LOCALHOST_HOSTNAME);
+    }
+
+    #[test]
+    fn host_config_from_env_all_defaults() {
+        let env =
+            |_: &str| -> Result<String, std::env::VarError> { Err(std::env::VarError::NotPresent) };
+        let cfg = HostConfig::from_env_reader(&env).unwrap();
+        assert_eq!(cfg.orchestrator, songbird_types::constants::LOCALHOST_HOSTNAME);
+        assert_eq!(cfg.metrics, songbird_types::constants::LOCALHOST_HOSTNAME);
+    }
+
+    #[test]
+    fn host_config_with_defaults_equals_default() {
+        assert_eq!(
+            format!("{:?}", HostConfig::with_defaults()),
+            format!("{:?}", HostConfig::default())
+        );
     }
 }

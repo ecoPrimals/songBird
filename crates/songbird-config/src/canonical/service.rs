@@ -55,8 +55,8 @@ impl Default for ServiceConfig {
     fn default() -> Self {
         Self {
             name: "default-service".to_string(),
-            address: "localhost".to_string(),
-            port: 8080,
+            address: songbird_types::constants::LOCALHOST_HOSTNAME.to_string(),
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
             metadata: HashMap::new(),
             health_check: Some(HealthCheckConfig::default()),
         }
@@ -68,8 +68,8 @@ impl Default for ServiceInfo {
         Self {
             service_id: "default-service".to_string(),
             name: "default-service".to_string(),
-            host: "localhost".to_string(),
-            port: 8080,
+            host: songbird_types::constants::LOCALHOST_HOSTNAME.to_string(),
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
             metadata: HashMap::new(),
         }
     }

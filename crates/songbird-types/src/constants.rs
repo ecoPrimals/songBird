@@ -77,6 +77,9 @@ pub const DEFAULT_FEDERATION_BIND_PORT: u16 = 7000;
 /// Localhost IPv4 address
 pub const LOCALHOST: &str = "127.0.0.1";
 
+/// Localhost hostname — used in service configs and host discovery defaults
+pub const LOCALHOST_HOSTNAME: &str = "localhost";
+
 /// Builds a `http://localhost:{port}` development fallback URL.
 ///
 /// Only available in debug builds — production code must resolve endpoints

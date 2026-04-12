@@ -44,8 +44,8 @@ impl Default for DashboardConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            host: "0.0.0.0".to_string(),
-            port: 3000,
+            host: songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string(),
+            port: songbird_types::defaults::ports::DEFAULT_DASHBOARD_PORT,
             realtime_updates: true,
             update_interval_secs: 5,
         }

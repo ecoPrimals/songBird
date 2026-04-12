@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave138b] - 2026-04-12 - Deep Hardcoded Literal Evolution to Canonical Constants
+
+### Added
+- `LOCALHOST_HOSTNAME` constant (`"localhost"`) in `songbird-types::constants` — distinguishes hostname from IP `LOCALHOST` (`"127.0.0.1"`)
+- `DEFAULT_DASHBOARD_PORT` (8003) in `songbird-types::defaults::ports` — migrated from deprecated `constants.rs`
+- 17 new tests in `songbird-config::canonical::constants::ports_env` covering bind address env logic, port ranges, dashboard ports, discovery ports, environment offsets, user port offset determinism
+- 4 new tests in `songbird-config::canonical::hardcoded_elimination` covering `HostConfig` default constant usage, env override, all-defaults, `with_defaults` parity
+
+### Changed — Hardcoded Literals → Constants
+- `ApiConfig::default()` — port/host now use `DEFAULT_HTTP_PORT`/`DEVELOPMENT_BIND_ADDRESS`
+- `DashboardConfig::default()` — port/host now use `DEFAULT_DASHBOARD_PORT`/`PRODUCTION_BIND_ADDRESS`
+- `ServiceConfig::default()` / `ServiceInfo::default()` — address/host now use `LOCALHOST_HOSTNAME`/`DEFAULT_HTTP_PORT`
+- `HostConfig::default()` / `from_env_reader()` — all 10 host fields use `LOCALHOST_HOSTNAME` constant
+- `FederationNetworkConfig::default()` — bind_address uses `PRODUCTION_BIND_ADDRESS`
+- `get_bind_address_with()` — production/development branches use constants
+- `default_host()` / `bind_address()` in `defaults/hosts.rs` — use constants
+- `hosts_evolved.rs` environment-switched host — uses constants
+- `port_discovery::is_port_available()` — uses `PRODUCTION_BIND_ADDRESS`
+- `detect_tls_requirement()` — comparison uses `PRODUCTION_BIND_ADDRESS`
+- `ports_evolved.rs` `TcpListener::bind` calls — use `PRODUCTION_BIND_ADDRESS`
+- `network/core.rs` `from_env_reader()` — env defaults use `PRODUCTION_BIND_ADDRESS`
+- `discoverable_endpoint.rs` probe patterns — use `LOCALHOST_HOSTNAME`/`LOCALHOST`
+- `discover_consul.rs` fallback address — uses `LOCALHOST`
+- `doctor.rs` port check — uses `DEVELOPMENT_BIND_ADDRESS`
+- Observability test updated to assert constants instead of magic numbers
+- Unresolved `ServiceRegistry` doc link fixed in `universal_broker.rs`
+
+### Why
+- Completes the hardcoded elimination wave: all remaining IP/port/hostname literals in production Default impls and config constructors now trace back to named constants
+- Single source of truth for bind addresses and ports — changing a constant propagates consistently
+- New test suite validates env-driven config logic that was previously untested
+
+### Metrics
+- 7,319 lib tests passed, 0 failed, 22 ignored (+21 from Wave 138)
+- Zero `cargo check` warnings, zero clippy warnings, zero doc warnings, cargo-deny clean
+
+---
+
 ## [v0.2.1-wave138] - 2026-04-12 - LD-08: Socket Auto-Discovery Seeds ipc.resolve Registry at Startup
 
 ### Added — Socket Auto-Discovery (LD-08)

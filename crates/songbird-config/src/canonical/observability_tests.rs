@@ -47,8 +47,8 @@ fn test_dashboard_config_default() {
     let config = DashboardConfig::default();
 
     assert!(config.enabled);
-    assert_eq!(config.host, "0.0.0.0");
-    assert_eq!(config.port, 3000);
+    assert_eq!(config.host, songbird_types::constants::PRODUCTION_BIND_ADDRESS);
+    assert_eq!(config.port, songbird_types::defaults::ports::DEFAULT_DASHBOARD_PORT);
     assert!(config.realtime_updates);
     assert_eq!(config.update_interval_secs, 5);
 }

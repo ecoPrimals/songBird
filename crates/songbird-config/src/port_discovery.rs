@@ -60,7 +60,7 @@ pub fn discover_available_port_in_range(start: u16, end: u16) -> u16 {
 /// `true` if port is available, `false` otherwise
 #[must_use]
 pub fn is_port_available(port: u16) -> bool {
-    is_port_available_on("0.0.0.0", port)
+    is_port_available_on(songbird_types::constants::PRODUCTION_BIND_ADDRESS, port)
 }
 
 /// Check if a specific port is available on a given interface

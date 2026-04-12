@@ -236,10 +236,7 @@ mod tests {
     #[test]
     fn name_from_socket_handles_dotfile() {
         // `.sock` has stem `.sock` (no extension) — still produces a name from the split
-        assert_eq!(
-            name_from_socket_path(Path::new("/tmp/.sock")),
-            Some(".sock".into())
-        );
+        assert_eq!(name_from_socket_path(Path::new("/tmp/.sock")), Some(".sock".into()));
     }
 
     #[test]

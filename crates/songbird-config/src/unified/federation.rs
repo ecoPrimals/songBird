@@ -176,7 +176,7 @@ impl Default for FederationNetworkConfig {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(7001),
             bind_address: songbird_process_env::var("SONGBIRD_FEDERATION_BIND")
-                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+                .unwrap_or_else(|_| songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string()),
         }
     }
 }

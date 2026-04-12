@@ -192,13 +192,17 @@ impl CanonicalNetworkConfig {
     pub fn from_env_reader(
         env: impl Fn(&str) -> Result<String, std::env::VarError>,
     ) -> SongbirdResult<Self> {
-        let bind_address = env_or_default(&env, "SONGBIRD_BIND_ADDRESS", "0.0.0.0")
-            .parse()
-            .map_err(|e| SongbirdError::Configuration {
-                message: format!("Invalid bind address: {e}"),
-                field: Some("bind_address".to_string()),
-                suggestion: Some("Provide a valid IP address".to_string()),
-            })?;
+        let bind_address = env_or_default(
+            &env,
+            "SONGBIRD_BIND_ADDRESS",
+            songbird_types::constants::PRODUCTION_BIND_ADDRESS,
+        )
+        .parse()
+        .map_err(|e| SongbirdError::Configuration {
+            message: format!("Invalid bind address: {e}"),
+            field: Some("bind_address".to_string()),
+            suggestion: Some("Provide a valid IP address".to_string()),
+        })?;
 
         let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", 8001);
 
@@ -207,7 +211,7 @@ impl CanonicalNetworkConfig {
             production_bind_address: env_or_default(
                 &env,
                 "SONGBIRD_PRODUCTION_BIND_ADDRESS",
-                "0.0.0.0",
+                songbird_types::constants::PRODUCTION_BIND_ADDRESS,
             )
             .parse()
             .unwrap_or_else(|e| {

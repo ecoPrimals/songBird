@@ -46,9 +46,9 @@ pub fn get_bind_address_with(env: &impl Fn(&str) -> Result<String, std::env::Var
         || env("CONTAINER").is_ok()
         || env("SONGBIRD_ENV").ok().as_deref() == Some("production")
     {
-        "0.0.0.0".to_string()
+        songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string()
     } else {
-        "127.0.0.1".to_string()
+        songbird_types::constants::DEVELOPMENT_BIND_ADDRESS.to_string()
     }
 }
 
@@ -233,4 +233,128 @@ pub fn default_discovery_port_with(
     env: &impl Fn(&str) -> Result<String, std::env::VarError>,
 ) -> u16 {
     env_port_with(env, "SONGBIRD_DISCOVERY_PORT", 5678)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::env::VarError;
+
+    fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, VarError> {
+        move |key: &str| vars.get(key).map(|v| (*v).to_string()).ok_or(VarError::NotPresent)
+    }
+
+    fn empty_env() -> impl Fn(&str) -> Result<String, VarError> {
+        mock_env(HashMap::new())
+    }
+
+    #[test]
+    fn bind_address_defaults_to_development() {
+        let addr = get_bind_address_with(&empty_env());
+        assert_eq!(addr, songbird_types::constants::DEVELOPMENT_BIND_ADDRESS);
+    }
+
+    #[test]
+    fn bind_address_uses_explicit_env() {
+        let env = mock_env(HashMap::from([("SONGBIRD_BIND_ADDRESS", "10.0.0.1")]));
+        assert_eq!(get_bind_address_with(&env), "10.0.0.1");
+    }
+
+    #[test]
+    fn bind_address_ignores_invalid_ip() {
+        let env = mock_env(HashMap::from([("SONGBIRD_BIND_ADDRESS", "not-an-ip")]));
+        assert_eq!(
+            get_bind_address_with(&env),
+            songbird_types::constants::DEVELOPMENT_BIND_ADDRESS
+        );
+    }
+
+    #[test]
+    fn bind_address_production_in_kubernetes() {
+        let env = mock_env(HashMap::from([("KUBERNETES_SERVICE_HOST", "10.0.0.1")]));
+        assert_eq!(get_bind_address_with(&env), songbird_types::constants::PRODUCTION_BIND_ADDRESS);
+    }
+
+    #[test]
+    fn bind_address_production_in_container() {
+        let env = mock_env(HashMap::from([("CONTAINER", "true")]));
+        assert_eq!(get_bind_address_with(&env), songbird_types::constants::PRODUCTION_BIND_ADDRESS);
+    }
+
+    #[test]
+    fn bind_address_production_env() {
+        let env = mock_env(HashMap::from([("SONGBIRD_ENV", "production")]));
+        assert_eq!(get_bind_address_with(&env), songbird_types::constants::PRODUCTION_BIND_ADDRESS);
+    }
+
+    #[test]
+    fn port_range_start_defaults_above_8000() {
+        let start = get_port_range_start_with(&empty_env());
+        assert!(start >= 8000, "default port range start should be >= 8000");
+    }
+
+    #[test]
+    fn port_range_end_exceeds_start() {
+        let env = empty_env();
+        let start = get_port_range_start_with(&env);
+        let end = get_port_range_end_with(&env);
+        assert!(end > start, "port range end ({end}) must exceed start ({start})");
+    }
+
+    #[test]
+    fn port_range_respects_env_override() {
+        let env = mock_env(HashMap::from([("SONGBIRD_PORT_START", "9000")]));
+        assert_eq!(get_port_range_start_with(&env), 9000);
+    }
+
+    #[test]
+    fn dashboard_port_development_default() {
+        let port = get_dashboard_port_with(&empty_env());
+        assert_eq!(port, 8083);
+    }
+
+    #[test]
+    fn dashboard_port_production() {
+        let env = mock_env(HashMap::from([("SONGBIRD_ENV", "production")]));
+        assert_eq!(get_dashboard_port_with(&env), 3000);
+    }
+
+    #[test]
+    fn dashboard_port_env_override() {
+        let env = mock_env(HashMap::from([("SONGBIRD_DASHBOARD_PORT", "4000")]));
+        assert_eq!(get_dashboard_port_with(&env), 4000);
+    }
+
+    #[test]
+    fn discovery_port_default() {
+        assert_eq!(default_discovery_port_with(&empty_env()), 5678);
+    }
+
+    #[test]
+    fn discovery_port_env_override() {
+        let env = mock_env(HashMap::from([("SONGBIRD_DISCOVERY_PORT", "7777")]));
+        assert_eq!(default_discovery_port_with(&env), 7777);
+    }
+
+    #[test]
+    fn environment_offset_production_is_zero() {
+        let env = mock_env(HashMap::from([("SONGBIRD_ENV", "production")]));
+        assert_eq!(get_environment_offset_with(&env), 0);
+    }
+
+    #[test]
+    fn environment_offset_staging() {
+        let env = mock_env(HashMap::from([("SONGBIRD_ENV", "staging")]));
+        assert_eq!(get_environment_offset_with(&env), 100);
+    }
+
+    #[test]
+    fn user_port_offset_deterministic() {
+        let env = mock_env(HashMap::from([("USER", "testuser")]));
+        let a = calculate_user_port_offset_with(&env);
+        let b = calculate_user_port_offset_with(&env);
+        assert_eq!(a, b, "user port offset must be deterministic");
+        assert!(a < 500, "user offset must be < 500");
+    }
 }

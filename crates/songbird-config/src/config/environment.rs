@@ -388,7 +388,9 @@ pub fn should_require_tls() -> bool {
 fn detect_tls_requirement() -> bool {
     // Require TLS if binding to external interfaces
     let bind_address = get_bind_address();
-    if bind_address == "0.0.0.0" || !bind_address.starts_with("127.") {
+    if bind_address == songbird_types::constants::PRODUCTION_BIND_ADDRESS
+        || !bind_address.starts_with("127.")
+    {
         return true;
     }
 

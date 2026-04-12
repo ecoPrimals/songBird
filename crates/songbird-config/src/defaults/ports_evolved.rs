@@ -88,14 +88,13 @@ impl PortAllocator {
     /// Returns error if no ports are available in the capability range
     pub fn allocate_for_capability(&self, capability: &str) -> Result<TcpListener, std::io::Error> {
         match self.strategy {
-            PortStrategy::OsAssigned => {
-                // OS assigns port (bind to 0)
-                TcpListener::bind("0.0.0.0:0")
-            }
+            PortStrategy::OsAssigned => TcpListener::bind(format!(
+                "{}:0",
+                songbird_types::constants::PRODUCTION_BIND_ADDRESS
+            )),
 
             PortStrategy::Fixed(port) => {
-                // Try fixed port
-                TcpListener::bind(("0.0.0.0", port))
+                TcpListener::bind((songbird_types::constants::PRODUCTION_BIND_ADDRESS, port))
             }
 
             PortStrategy::CapabilityRange {

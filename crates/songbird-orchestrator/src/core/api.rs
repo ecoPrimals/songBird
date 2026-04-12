@@ -21,8 +21,8 @@ pub struct ApiConfig {
 impl Default for ApiConfig {
     fn default() -> Self {
         Self {
-            port: 8080,
-            host: "127.0.0.1".to_string(),
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+            host: songbird_types::constants::DEVELOPMENT_BIND_ADDRESS.to_string(),
             enable_cors: true,
         }
     }

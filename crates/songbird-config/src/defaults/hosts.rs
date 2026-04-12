@@ -24,7 +24,8 @@
 /// ```
 #[must_use]
 pub fn default_host() -> String {
-    songbird_process_env::var("SONGBIRD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string())
+    songbird_process_env::var("SONGBIRD_HOST")
+        .unwrap_or_else(|_| songbird_types::constants::DEVELOPMENT_BIND_ADDRESS.to_string())
 }
 
 /// Get bind address for services from environment or default
@@ -37,7 +38,8 @@ pub fn default_host() -> String {
 /// - Use "127.0.0.1" to bind to localhost only (development)
 #[must_use]
 pub fn bind_address() -> String {
-    songbird_process_env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string())
+    songbird_process_env::var("SONGBIRD_BIND_ADDRESS")
+        .unwrap_or_else(|_| songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string())
 }
 
 /// Get discovery service host from environment or default

@@ -244,7 +244,7 @@ pub async fn start_broker() -> Result<SharedServiceRegistry> {
 
 /// Start the Universal IPC Broker with discovery listener.
 ///
-/// Returns a shared handle to the broker's [`ServiceRegistry`] so the startup
+/// Returns a shared handle to the broker's `ServiceRegistry` so the startup
 /// sequence can seed it with auto-discovered primals (LD-08).
 ///
 /// Enables real-time peer discovery when a listener is provided.

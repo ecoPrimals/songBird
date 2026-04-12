@@ -133,14 +133,17 @@ impl DiscoverableEndpoint {
                     parser: EndpointParser::Hostname,
                 },
                 DiscoveryMethod::NetworkProbe {
-                    host_patterns: vec!["localhost".to_string(), "127.0.0.1".to_string()],
+                    host_patterns: vec![
+                        songbird_types::constants::LOCALHOST_HOSTNAME.to_string(),
+                        songbird_types::constants::LOCALHOST.to_string(),
+                    ],
                     port_range: (8000, 9000),
                     health_path: "/health".to_string(),
                 },
             ],
             dev_fallback: Some(EndpointSpec {
-                host: "localhost".to_string(),
-                port: 8080,
+                host: songbird_types::constants::LOCALHOST_HOSTNAME.to_string(),
+                port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
                 protocol: Some("http".to_string()),
                 path: None,
             }),
