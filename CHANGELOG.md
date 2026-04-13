@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave139] - 2026-04-13 - Self-Healing Socket Auto-Discovery
+
+### Added
+- `SOCKET_RESCAN_INTERVAL_SECS` constant (30s) in `startup_orchestration` — configures periodic re-scan cadence
+- Periodic socket re-scan background task spawned in Stage 6 — every 30s, Songbird re-scans `$XDG_RUNTIME_DIR/biomeos/*.sock` and auto-registers any newly-appeared primals into the `ipc.resolve` registry
+- 1 new test (`socket_rescan_interval_is_thirty_seconds`) validating the interval constant
+- `#[cfg(not(unix))]` no-op stub for non-Unix platforms
+
+### Changed
+- `socket_auto_discovery.rs` module doc updated to describe both startup (Stage 2c) and periodic (Stage 6) invocation
+- `start_periodic_socket_rescan()` method added to `StartupOrchestrator` — uses `Arc<RwLock<ServiceRegistry>>` from broker, spawns `tokio::spawn` loop with `tokio::time::sleep`
+
+### Why
+- Resolves primalSpring polish gap: auto-discovery previously ran only at startup (Stage 2c) before peers exist, requiring launcher Phase 5 seeding to populate the registry. The periodic re-scan makes `ipc.resolve` self-healing — primals that start after Songbird are discovered within 30s without launcher assistance.
+- Validated against wetSpring PG-03 (`capability.resolve` blocked by Songbird) — confirmed RESOLVED (Wave 134/137b/138/139 collectively)
+
+### Metrics
+- 7,320 lib tests passed, 0 failed, 22 ignored (+1 from Wave 138b)
+- Zero `cargo check` warnings, zero clippy warnings, zero doc warnings, cargo-deny clean
+
+---
+
 ## [v0.2.1-wave138b] - 2026-04-12 - Deep Hardcoded Literal Evolution to Canonical Constants
 
 ### Added

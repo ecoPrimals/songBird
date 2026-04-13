@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Socket auto-discovery: scan biomeos socket directories at startup and
-//! register discovered primals into the IPC service registry (LD-08).
+//! Socket auto-discovery: scan biomeos socket directories and register
+//! discovered primals into the IPC service registry (LD-08).
 //!
 //! Without this, `ipc.resolve` / `capability.resolve` return empty results because
 //! the registry starts empty and no primals call `ipc.register`. This module
 //! implements option (b) from the primalSpring audit: Songbird probes the socket
 //! directory and auto-registers what it finds, which is more resilient than
 //! requiring every primal to self-register.
+//!
+//! Called both at startup (Stage 2c) and periodically (every 30s from Stage 6)
+//! so that primals starting after Songbird are picked up without launcher
+//! assistance — making the registry self-healing.
 
 use songbird_universal_ipc::endpoint::NativeEndpoint;
 use songbird_universal_ipc::registry::ServiceRegistry;

@@ -31,7 +31,7 @@ use anyhow::Result;
 use songbird_discovery::anonymous::TransportEndpointMessage;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use super::core::SongbirdOrchestrator;
 use super::network::detect_primary_ip;
@@ -70,6 +70,12 @@ pub(super) const STAGE_4_DISCOVERY_CAPABILITIES: &[&str] = &[
 
 /// Interval for trust escalation cleanup spawned in Stage 5.
 pub(super) const TRUST_CLEANUP_INTERVAL_SECS: u64 = 300;
+
+/// Interval for periodic socket auto-discovery re-scan (Stage 6).
+///
+/// Primals may start after Songbird — a periodic re-scan ensures the
+/// `ipc.resolve` registry is self-healing without launcher assistance.
+pub(super) const SOCKET_RESCAN_INTERVAL_SECS: u64 = 30;
 
 /// Build the TCP bind address used for the HTTP server in Stage 2.
 ///
@@ -583,7 +589,44 @@ impl<'a> StartupOrchestrator<'a> {
         // Start service registry cleanup task (Universal Port Authority - Dec 20, 2025)
         self.orchestrator.start_service_registry_cleanup();
 
+        // Start periodic socket re-scan (self-healing auto-discovery)
+        self.start_periodic_socket_rescan();
+
         Ok(())
+    }
+
+    /// Spawn a background task that periodically re-scans biomeos socket dirs
+    /// and registers any newly-appeared primals. This makes the `ipc.resolve`
+    /// registry self-healing: primals that start after Songbird are picked up
+    /// within `SOCKET_RESCAN_INTERVAL_SECS` without launcher assistance.
+    #[cfg(unix)]
+    fn start_periodic_socket_rescan(&self) {
+        let Some(ref registry) = self.orchestrator.broker_registry else {
+            debug!("Periodic socket re-scan: skipped (no broker registry)");
+            return;
+        };
+
+        let registry = std::sync::Arc::clone(registry);
+        let interval = std::time::Duration::from_secs(SOCKET_RESCAN_INTERVAL_SECS);
+
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(interval).await;
+                let reg = registry.read().await;
+                let count =
+                    crate::primal_discovery::socket_auto_discovery::discover_and_register_biomeos_primals(&reg).await;
+                if count > 0 {
+                    info!("🔄 Periodic re-scan: registered {count} new primal(s)");
+                }
+            }
+        });
+
+        info!("🔄 Periodic socket re-scan: enabled (every {}s)", SOCKET_RESCAN_INTERVAL_SECS);
+    }
+
+    #[cfg(not(unix))]
+    fn start_periodic_socket_rescan(&self) {
+        debug!("Periodic socket re-scan: Unix sockets not supported on this platform");
     }
 
     /// Stage 7: Verify external connectivity (post-startup diagnostics)
@@ -675,6 +718,11 @@ mod tests {
     #[test]
     fn trust_cleanup_interval_is_five_minutes() {
         assert_eq!(TRUST_CLEANUP_INTERVAL_SECS, 300);
+    }
+
+    #[test]
+    fn socket_rescan_interval_is_thirty_seconds() {
+        assert_eq!(SOCKET_RESCAN_INTERVAL_SECS, 30);
     }
 
     #[test]
