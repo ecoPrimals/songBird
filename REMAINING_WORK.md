@@ -1,6 +1,6 @@
 # Songbird Remaining Work
 
-**Date**: April 12, 2026  
+**Date**: April 13, 2026  
 **Version**: v0.2.1  
 **Last Deep Debt Audit**: Wave 139b (Apr 13, 2026)  
 **Current Wave**: 139b — deep hardcoded literal sweep across `songbird-types`, `songbird-config`, `songbird-orchestrator` production defaults (all `Default` impls, env readers, bind address logic) → canonical constants; bare `#[allow(deprecated)]` given reason string; audit confirmed: 0 production `println!` (all doc/test), 0 `TODO`/`FIXME`, 0 bare `#[allow(` in production (all have reasons)  
@@ -16,8 +16,8 @@
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 12 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 12 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 13 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 13 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files refactored Wave 133: `ipc/types.rs` → 7 modules, `env_config.rs` → 9 modules, `tarpc_server.rs` → 3 modules, `manager.rs` → 6 modules) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |

@@ -125,7 +125,8 @@ archive/
 *.iso
 *.img
 *.bin
-*.exe (unless specifically needed)
+# Executables (unless specifically needed for deployment)
+*.exe
 
 # Node modules (if any frontend components)
 node_modules/
@@ -180,7 +181,7 @@ proxy/secrets/
 federation/private/
 federation/*.key
 
-# Sled database files
+# Database files (sled removed Wave 135; kept for local dev cleanup)
 *.sled/
 db/
 **/data/sovereign-onion/
