@@ -82,9 +82,9 @@ impl UnifiedSongbirdConfig {
     ) -> String {
         env.get("SONGBIRD_BIND_ADDRESS").cloned().unwrap_or_else(|| {
             if self.is_production() {
-                "0.0.0.0".to_string()
+                crate::constants::PRODUCTION_BIND_ADDRESS.to_string()
             } else {
-                "127.0.0.1".to_string()
+                crate::constants::DEVELOPMENT_BIND_ADDRESS.to_string()
             }
         })
     }
@@ -94,9 +94,9 @@ impl UnifiedSongbirdConfig {
     pub fn get_bind_address(&self) -> String {
         SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", {
             if self.is_production() {
-                "0.0.0.0"
+                crate::constants::PRODUCTION_BIND_ADDRESS
             } else {
-                "127.0.0.1"
+                crate::constants::DEVELOPMENT_BIND_ADDRESS
             }
         })
     }

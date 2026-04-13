@@ -2,9 +2,9 @@
 
 **Date**: April 12, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 139 (Apr 13, 2026)  
-**Current Wave**: 139 — self-healing socket auto-discovery: periodic re-scan every 30s (Stage 6 background task) so primals starting after Songbird are auto-registered without launcher assistance; resolves primalSpring polish gap  
-**Previous Waves** (full detail in `CHANGELOG.md`): 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 139b (Apr 13, 2026)  
+**Current Wave**: 139b — deep hardcoded literal sweep across `songbird-types`, `songbird-config`, `songbird-orchestrator` production defaults (all `Default` impls, env readers, bind address logic) → canonical constants; bare `#[allow(deprecated)]` given reason string; audit confirmed: 0 production `println!` (all doc/test), 0 `TODO`/`FIXME`, 0 bare `#[allow(` in production (all have reasons)  
+**Previous Waves** (full detail in `CHANGELOG.md`): 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,320 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,320+ lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |

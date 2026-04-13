@@ -151,7 +151,7 @@ impl SongbirdConfig {
                     start: 19000,
                     end: 19999,
                 },
-                bind_address: "127.0.0.1".to_string(),
+                bind_address: songbird_types::constants::DEVELOPMENT_BIND_ADDRESS.to_string(),
                 max_connections: 100,
                 enable_ipv6: false,
                 ..Default::default()

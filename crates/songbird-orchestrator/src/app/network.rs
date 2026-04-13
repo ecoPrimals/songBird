@@ -57,12 +57,10 @@ pub fn parse_bind_address(addr: &str, port: u16) -> Result<SocketAddr> {
             // IPv6 localhost
             Ok(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port))
         }
-        "0.0.0.0" => {
-            // IPv4 wildcard (legacy mode)
+        addr if addr == songbird_types::constants::PRODUCTION_BIND_ADDRESS => {
             Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port))
         }
-        "127.0.0.1" => {
-            // IPv4 localhost
+        addr if addr == songbird_types::constants::DEVELOPMENT_BIND_ADDRESS => {
             Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port))
         }
         _ => {

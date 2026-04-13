@@ -33,7 +33,10 @@ pub const DEFAULT_HTTP_PORT: u16 = 8080;
 pub const DEFAULT_HTTPS_PORT: u16 = 8443;
 
 /// Default port for Songbird services (alias for HTTP)
-#[allow(deprecated)]
+#[allow(
+    deprecated,
+    reason = "aliases deprecated DEFAULT_HTTP_PORT; retained for backward compatibility"
+)]
 pub const DEFAULT_PORT: u16 = DEFAULT_HTTP_PORT;
 
 /// Default discovery service port

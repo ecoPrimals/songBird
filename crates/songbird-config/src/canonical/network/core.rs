@@ -266,10 +266,11 @@ impl CanonicalNetworkConfig {
     pub fn default_from_env_reader(
         env: impl Fn(&str) -> Result<String, std::env::VarError>,
     ) -> Self {
-        let bind_address = "0.0.0.0".parse().unwrap_or_else(|_| {
-            warn!("Failed to parse bind address, using development default");
-            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
-        });
+        let bind_address =
+            songbird_types::constants::PRODUCTION_BIND_ADDRESS.parse().unwrap_or_else(|_| {
+                warn!("Failed to parse bind address, using development default");
+                std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
+            });
 
         let orchestrator_port =
             env_port(&env, "SONGBIRD_ORCHESTRATOR_PORT", env_port(&env, "DEFAULT_HTTP_PORT", 8080));
@@ -282,7 +283,7 @@ impl CanonicalNetworkConfig {
 
         Self {
             bind_address,
-            production_bind_address: "0.0.0.0"
+            production_bind_address: songbird_types::constants::PRODUCTION_BIND_ADDRESS
                 .parse()
                 .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
             orchestrator_port,

@@ -155,7 +155,9 @@ impl PortAllocator {
         range: Range<u16>,
     ) -> Result<TcpListener, std::io::Error> {
         for port in range {
-            if let Ok(listener) = TcpListener::bind(("0.0.0.0", port)) {
+            if let Ok(listener) =
+                TcpListener::bind((songbird_types::constants::PRODUCTION_BIND_ADDRESS, port))
+            {
                 return Ok(listener);
             }
         }
@@ -176,7 +178,7 @@ impl PortAllocator {
         if let Ok(port_str) = songbird_process_env::var(env_var)
             && let Ok(port) = port_str.parse::<u16>()
         {
-            return TcpListener::bind(("0.0.0.0", port));
+            return TcpListener::bind((songbird_types::constants::PRODUCTION_BIND_ADDRESS, port));
         }
 
         // Fall back to capability-based allocation

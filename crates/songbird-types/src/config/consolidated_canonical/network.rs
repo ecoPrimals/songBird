@@ -50,7 +50,7 @@ pub struct CanonicalNetworkConfig {
 impl Default for CanonicalNetworkConfig {
     fn default() -> Self {
         Self {
-            bind_host: "127.0.0.1".to_string(),
+            bind_host: crate::constants::DEVELOPMENT_BIND_ADDRESS.to_string(),
             base_port: 8080,
             bind: CanonicalBindConfig::default(),
             client: CanonicalClientConfig::default(),
@@ -276,7 +276,7 @@ pub struct CanonicalRateLimitConfig {
 impl Default for CanonicalBindConfig {
     fn default() -> Self {
         Self {
-            address: "0.0.0.0".to_string(),
+            address: crate::constants::PRODUCTION_BIND_ADDRESS.to_string(),
             port: 8080,
             additional_endpoints: vec![],
             ipv6_enabled: false,

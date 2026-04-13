@@ -409,12 +409,15 @@ impl NetworkBindingConfig {
 impl Default for NetworkBindingConfig {
     fn default() -> Self {
         Self {
-            bind_address: SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0")
-                .parse()
-                .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
+            bind_address: SafeEnv::get_or_default(
+                "SONGBIRD_BIND_ADDRESS",
+                crate::constants::PRODUCTION_BIND_ADDRESS,
+            )
+            .parse()
+            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
             production_bind_address: SafeEnv::get_or_default(
                 "SONGBIRD_PRODUCTION_BIND_ADDRESS",
-                "127.0.0.1",
+                crate::constants::DEVELOPMENT_BIND_ADDRESS,
             )
             .parse()
             .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),

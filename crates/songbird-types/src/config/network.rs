@@ -295,10 +295,10 @@ pub struct NetworkCoreConfig {
 impl Default for NetworkCoreConfig {
     fn default() -> Self {
         Self {
-            bind_address: "127.0.0.1"
+            bind_address: crate::constants::DEVELOPMENT_BIND_ADDRESS
                 .parse()
                 .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
-            production_bind_address: "0.0.0.0"
+            production_bind_address: crate::constants::PRODUCTION_BIND_ADDRESS
                 .parse()
                 .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
             enable_ipv6: false,

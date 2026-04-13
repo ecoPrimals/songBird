@@ -140,7 +140,8 @@ pub struct SecurityProviderConfig {
 
 impl Default for SecurityProviderConfig {
     fn default() -> Self {
-        let security_host = SafeEnv::get_or_default("SECURITY_PROVIDER_HOST", "localhost");
+        let security_host =
+            SafeEnv::get_or_default("SECURITY_PROVIDER_HOST", crate::constants::LOCALHOST_HOSTNAME);
         // EVOLVED (Feb 5, 2026): Respect SONGBIRD_TLS_ENABLED for default protocol
         // When TLS is disabled, use HTTP instead of HTTPS
         let tls_enabled = SafeEnv::get_bool("SONGBIRD_TLS_ENABLED", true);
