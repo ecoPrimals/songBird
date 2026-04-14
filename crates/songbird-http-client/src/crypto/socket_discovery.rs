@@ -116,6 +116,12 @@ where
         && !socket.is_empty()
     {
         info!("✅ IPC endpoint via ${}: {}", env_var, socket);
+        if let Some(addr_str) = socket.strip_prefix("tcp://") {
+            if let Ok(addr) = addr_str.parse::<std::net::SocketAddr>() {
+                info!("   Resolved as TCP endpoint: {}", addr);
+                return IpcEndpoint::TcpLocal(addr);
+            }
+        }
         return IpcEndpoint::UnixSocket(socket);
     }
 
