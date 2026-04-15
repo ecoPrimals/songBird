@@ -16,6 +16,9 @@ pub enum StunAttribute {
     /// XOR-MAPPED-ADDRESS (preferred)
     XorMappedAddress(SocketAddr),
 
+    /// USERNAME (RFC 5389 short-term or long-term credentials)
+    Username(String),
+
     /// OTHER-ADDRESS (for NAT type detection)
     OtherAddress(SocketAddr),
 
@@ -36,6 +39,13 @@ impl StunAttribute {
                     addr,
                     Some(MAGIC_COOKIE),
                 );
+            }
+            Self::Username(name) => {
+                let name_bytes = name.as_bytes();
+                buf.put_u16(AttributeType::Username.to_u16());
+                buf.put_u16(u16::try_from(name_bytes.len()).unwrap_or(u16::MAX));
+                buf.put_slice(name_bytes);
+                Self::add_padding(buf);
             }
             Self::OtherAddress(addr) => {
                 Self::encode_address(buf, AttributeType::OtherAddress, addr, None);
@@ -127,6 +137,14 @@ impl StunAttribute {
                 let addr = Self::decode_address(attr_data, None)?;
                 Ok(Self::MappedAddress(addr))
             }
+            AttributeType::Username => {
+                let name = std::str::from_utf8(attr_data)
+                    .map_err(|e| {
+                        StunError::InvalidResponse(format!("Invalid USERNAME UTF-8: {e}"))
+                    })?
+                    .to_string();
+                Ok(Self::Username(name))
+            }
             AttributeType::XorMappedAddress => {
                 let addr = Self::decode_address(attr_data, Some(MAGIC_COOKIE))?;
                 Ok(Self::XorMappedAddress(addr))
@@ -135,7 +153,7 @@ impl StunAttribute {
                 let addr = Self::decode_address(attr_data, None)?;
                 Ok(Self::OtherAddress(addr))
             }
-            AttributeType::Unknown(_) => {
+            AttributeType::Realm | AttributeType::Nonce | AttributeType::Unknown(_) => {
                 Ok(Self::Unknown(attr_type, Bytes::copy_from_slice(attr_data)))
             }
         }

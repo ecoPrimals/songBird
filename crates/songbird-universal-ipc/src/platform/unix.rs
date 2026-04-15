@@ -408,9 +408,7 @@ mod tests {
 
     #[test]
     fn test_pure_rust_no_unsafe() {
-        // Verify UnixIPC implementation uses zero unsafe code
-        // This is enforced by #![deny(unsafe_code)] in lib.rs
-        // get_socket_path() uses only env vars (Pure Rust!)
-        // Reached without panic — crate-level unsafe denial is the real guarantee
+        // Verify UnixIPC implementation uses zero unsafe code.
+        // Enforced by #![forbid(unsafe_code)] in lib.rs (crate-level guarantee).
     }
 }

@@ -45,8 +45,11 @@ pub async fn negotiate_chunked_upload(
     )]
     let total_chunks = ((request.binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
 
-    // Create temp directory
-    let temp_dir = format!("/tmp/songbird-chunks/{negotiation_id}");
+    let temp_dir = std::env::temp_dir()
+        .join("songbird-chunks")
+        .join(&negotiation_id)
+        .to_string_lossy()
+        .into_owned();
     fs::create_dir_all(&temp_dir).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create temp dir: {e}"))
     })?;
@@ -199,7 +202,11 @@ pub async fn finalize_chunked_upload(
 
     // Create deployment directory
     let deployment_id = format!("deploy-{}", fastrand::u64(..));
-    let deploy_dir = format!("/tmp/songbird-deployments/{deployment_id}");
+    let deploy_dir = std::env::temp_dir()
+        .join("songbird-deployments")
+        .join(&deployment_id)
+        .to_string_lossy()
+        .into_owned();
     fs::create_dir_all(&deploy_dir).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create deploy dir: {e}"))
     })?;

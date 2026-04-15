@@ -116,11 +116,11 @@ where
         && !socket.is_empty()
     {
         info!("✅ IPC endpoint via ${}: {}", env_var, socket);
-        if let Some(addr_str) = socket.strip_prefix("tcp://") {
-            if let Ok(addr) = addr_str.parse::<std::net::SocketAddr>() {
-                info!("   Resolved as TCP endpoint: {}", addr);
-                return IpcEndpoint::TcpLocal(addr);
-            }
+        if let Some(addr_str) = socket.strip_prefix("tcp://")
+            && let Ok(addr) = addr_str.parse::<std::net::SocketAddr>()
+        {
+            info!("   Resolved as TCP endpoint: {}", addr);
+            return IpcEndpoint::TcpLocal(addr);
         }
         return IpcEndpoint::UnixSocket(socket);
     }
@@ -400,8 +400,12 @@ pub fn discover_security_socket() -> String {
         return temp_biomeos_security.to_string_lossy().into_owned();
     }
 
-    let legacy = std::env::temp_dir().join("beardog.sock");
-    warn!("⚠️  Using legacy fallback: {}", legacy.display());
+    let legacy =
+        std::env::temp_dir().join(songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME);
+    warn!(
+        "legacy fallback: {} — migrate to SECURITY_PROVIDER_SOCKET or capability discovery",
+        legacy.display()
+    );
     legacy.to_string_lossy().into_owned()
 }
 

@@ -6,8 +6,14 @@
 //! Exposes peer discovery functionality via JSON-RPC for Dark Forest rendezvous protocol.
 //!
 //! ## Methods
-//! - `discovery.peers` - List discovered peers from UDP beacons
-//! - `discovery.get_peer` - Get specific peer by ID
+//! - `discovery.peers` — List discovered peers (supports `family_only`, `capability_filter`)
+//! - `discovery.announce` — Announce presence or content availability to the mesh
+//! - `discovery.get_peer` — Get specific peer by ID
+//!
+//! ## Content Distribution
+//! `discovery.announce` supports topic-based announcements for the seeder/leecher pattern
+//! defined in `content_distribution_federation.toml`. Topics use the format
+//! `content:<namespace>` (e.g., `content:ludospring:assets`).
 //!
 //! ## Security Note
 //! Peer information includes network addresses. Only expose to trusted consumers.
@@ -49,20 +55,50 @@ impl DiscoveryHandler {
 
     /// Handle `discovery.peers` JSON-RPC method
     ///
-    /// Lists all discovered peers from UDP beacons.
-    pub async fn handle_list_peers(&self, _params: Value) -> IpcResult<DiscoveryPeersResult> {
-        debug!("Discovery: list_peers");
+    /// Lists discovered peers, optionally filtered by family affinity or
+    /// required capabilities. Used by content distribution federation to
+    /// locate same-family seeders with specific capability profiles.
+    pub async fn handle_list_peers(&self, params: Value) -> IpcResult<DiscoveryPeersResult> {
+        let family_only = params.get("family_only").and_then(Value::as_bool).unwrap_or(false);
 
-        // Get peers from registry
-        let peers = if let Some(ref registry) = self.peer_registry {
+        // Accept capability_filter as either a single string or an array of strings
+        // (the federation graph passes a bare string, e.g. `"storage"`)
+        let capability_filter: Vec<String> = match params.get("capability_filter") {
+            Some(Value::Array(arr)) => {
+                arr.iter().filter_map(Value::as_str).map(String::from).collect()
+            }
+            Some(Value::String(s)) => vec![s.clone()],
+            _ => Vec::new(),
+        };
+
+        debug!(
+            "Discovery: list_peers (family_only={family_only}, cap_filter={:?})",
+            capability_filter,
+        );
+
+        let mut peers = if let Some(ref registry) = self.peer_registry {
             registry.get_all_peers().await?
         } else {
-            // No registry connected - return empty list (for testing)
             Vec::new()
         };
 
+        if family_only {
+            // TODO(SB-04): resolve own family_id from primal identity at runtime
+            // For now, no-op — all peers pass. Once primal self-knowledge is
+            // wired, filter to `peer.family_id == self.family_id`.
+            debug!("Discovery: family_only requested (filtering deferred until identity wired)");
+        }
+
+        if !capability_filter.is_empty() {
+            peers.retain(|peer| {
+                capability_filter
+                    .iter()
+                    .all(|required| peer.capabilities.iter().any(|c| c == required))
+            });
+        }
+
         let total_count = peers.len();
-        info!("✅ Discovery: Found {} peers", total_count);
+        info!("Discovery: found {total_count} peers");
 
         Ok(DiscoveryPeersResult {
             peers,
@@ -72,7 +108,12 @@ impl DiscoveryHandler {
 
     /// Handle `discovery.announce` JSON-RPC method
     ///
-    /// Announces this node's presence to the discovery network.
+    /// Announces this node's presence or content availability to the mesh.
+    ///
+    /// Supports two announcement modes:
+    /// - **Presence**: basic peer announcement with `family_id` + `capabilities`
+    /// - **Topic**: content distribution announcement with `topic` (e.g.,
+    ///   `content:ludospring:assets`) per `content_distribution_federation.toml`
     pub async fn handle_announce(&self, params: Value) -> IpcResult<Value> {
         let family_id = params.get("family_id").and_then(Value::as_str).unwrap_or("unknown");
         let capabilities: Vec<String> = params
@@ -80,12 +121,44 @@ impl DiscoveryHandler {
             .and_then(Value::as_array)
             .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
             .unwrap_or_default();
-        info!("✅ Discovery: announce (family={}, capabilities={})", family_id, capabilities.len());
-        Ok(serde_json::json!({
-            "announced": true,
-            "family_id": family_id,
-            "capabilities": capabilities
-        }))
+        let topic = params.get("topic").and_then(Value::as_str);
+        let manifest_hash = params.get("manifest_hash").and_then(Value::as_str);
+        let seeder_count = params.get("seeder_count").and_then(Value::as_u64);
+        let bond_types: Vec<String> = params
+            .get("bond_types_accepted")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
+            .unwrap_or_default();
+
+        if let Some(topic) = topic {
+            info!(
+                "Discovery: content announce (topic={}, manifest={}, seeders={})",
+                topic,
+                manifest_hash.unwrap_or("none"),
+                seeder_count.unwrap_or(0)
+            );
+            Ok(serde_json::json!({
+                "announced": true,
+                "mode": "topic",
+                "topic": topic,
+                "manifest_hash": manifest_hash,
+                "seeder_count": seeder_count,
+                "bond_types_accepted": bond_types,
+                "family_id": family_id,
+            }))
+        } else {
+            info!(
+                "Discovery: presence announce (family={}, capabilities={})",
+                family_id,
+                capabilities.len()
+            );
+            Ok(serde_json::json!({
+                "announced": true,
+                "mode": "presence",
+                "family_id": family_id,
+                "capabilities": capabilities,
+            }))
+        }
     }
 
     /// Handle `discovery.get_peer` JSON-RPC method
@@ -381,6 +454,7 @@ mod tests {
             .expect("announce");
         assert_eq!(v["family_id"], "unknown");
         assert_eq!(v["announced"], true);
+        assert_eq!(v["mode"], "presence");
     }
 
     #[tokio::test]
@@ -396,5 +470,209 @@ mod tests {
         let caps = v["capabilities"].as_array().expect("caps array");
         let strs: Vec<&str> = caps.iter().filter_map(|x| x.as_str()).collect();
         assert_eq!(strs, vec!["a", "b", "c"]);
+    }
+
+    #[tokio::test]
+    async fn handle_announce_topic_mode_content_distribution() {
+        let handler = DiscoveryHandler::new();
+        let v = handler
+            .handle_announce(json!({
+                "family_id": "nat0",
+                "topic": "content:ludospring:assets",
+                "manifest_hash": "blake3:abc123",
+                "seeder_count": 3,
+                "bond_types_accepted": ["data_bond", "compute_bond"]
+            }))
+            .await
+            .expect("topic announce");
+        assert_eq!(v["announced"], true);
+        assert_eq!(v["mode"], "topic");
+        assert_eq!(v["topic"], "content:ludospring:assets");
+        assert_eq!(v["manifest_hash"], "blake3:abc123");
+        assert_eq!(v["seeder_count"], 3);
+        let bonds = v["bond_types_accepted"].as_array().unwrap();
+        assert_eq!(bonds.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn handle_announce_topic_minimal_fields() {
+        let handler = DiscoveryHandler::new();
+        let v = handler
+            .handle_announce(json!({ "topic": "content:docs" }))
+            .await
+            .expect("minimal topic announce");
+        assert_eq!(v["mode"], "topic");
+        assert_eq!(v["topic"], "content:docs");
+        assert!(v["manifest_hash"].is_null());
+        assert!(v["seeder_count"].is_null());
+        assert_eq!(v["bond_types_accepted"].as_array().unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn list_peers_capability_filter_narrows_results() {
+        let mock_peers = vec![
+            DiscoveredPeerInfo {
+                node_id: "seeder-1".to_string(),
+                family_id: "nat0".to_string(),
+                address: "10.0.0.1:2300".to_string(),
+                tcp_port: Some(8080),
+                capabilities: vec!["content_seeder".to_string(), "crypto".to_string()],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: Some(0.9),
+                node_name: None,
+                protocols: vec!["birdsong".to_string()],
+            },
+            DiscoveredPeerInfo {
+                node_id: "plain-node".to_string(),
+                family_id: "nat0".to_string(),
+                address: "10.0.0.2:2300".to_string(),
+                tcp_port: Some(8080),
+                capabilities: vec!["crypto".to_string()],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: Some(0.8),
+                node_name: None,
+                protocols: vec!["birdsong".to_string()],
+            },
+        ];
+
+        let registry = Arc::new(MockPeerRegistry {
+            peers: mock_peers,
+        });
+        let handler = DiscoveryHandler::with_registry(registry);
+
+        let result = handler
+            .handle_list_peers(json!({
+                "capability_filter": ["content_seeder"]
+            }))
+            .await
+            .unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.peers[0].node_id, "seeder-1");
+    }
+
+    #[tokio::test]
+    async fn list_peers_no_filter_returns_all() {
+        let mock_peers = vec![
+            DiscoveredPeerInfo {
+                node_id: "a".to_string(),
+                family_id: "fam".to_string(),
+                address: "10.0.0.1:2300".to_string(),
+                tcp_port: None,
+                capabilities: vec![],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: None,
+                node_name: None,
+                protocols: vec![],
+            },
+            DiscoveredPeerInfo {
+                node_id: "b".to_string(),
+                family_id: "fam".to_string(),
+                address: "10.0.0.2:2300".to_string(),
+                tcp_port: None,
+                capabilities: vec![],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: None,
+                node_name: None,
+                protocols: vec![],
+            },
+        ];
+
+        let registry = Arc::new(MockPeerRegistry {
+            peers: mock_peers,
+        });
+        let handler = DiscoveryHandler::with_registry(registry);
+        let result = handler.handle_list_peers(json!({})).await.unwrap();
+        assert_eq!(result.total_count, 2);
+    }
+
+    #[tokio::test]
+    async fn list_peers_capability_filter_string_form() {
+        let mock_peers = vec![
+            DiscoveredPeerInfo {
+                node_id: "storage-node".to_string(),
+                family_id: "nat0".to_string(),
+                address: "10.0.0.1:2300".to_string(),
+                tcp_port: Some(8080),
+                capabilities: vec!["storage".to_string()],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: Some(0.9),
+                node_name: None,
+                protocols: vec![],
+            },
+            DiscoveredPeerInfo {
+                node_id: "compute-node".to_string(),
+                family_id: "nat0".to_string(),
+                address: "10.0.0.2:2300".to_string(),
+                tcp_port: None,
+                capabilities: vec!["compute".to_string()],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: None,
+                node_name: None,
+                protocols: vec![],
+            },
+        ];
+
+        let registry = Arc::new(MockPeerRegistry {
+            peers: mock_peers,
+        });
+        let handler = DiscoveryHandler::with_registry(registry);
+
+        // Federation graph passes capability_filter as a bare string
+        let result = handler
+            .handle_list_peers(json!({
+                "capability_filter": "storage"
+            }))
+            .await
+            .unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.peers[0].node_id, "storage-node");
+    }
+
+    #[tokio::test]
+    async fn list_peers_multiple_capability_filters_require_all() {
+        let mock_peers = vec![
+            DiscoveredPeerInfo {
+                node_id: "full".to_string(),
+                family_id: "fam".to_string(),
+                address: "10.0.0.1:2300".to_string(),
+                tcp_port: None,
+                capabilities: vec![
+                    "content_seeder".to_string(),
+                    "crypto".to_string(),
+                    "tls".to_string(),
+                ],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: None,
+                node_name: None,
+                protocols: vec![],
+            },
+            DiscoveredPeerInfo {
+                node_id: "partial".to_string(),
+                family_id: "fam".to_string(),
+                address: "10.0.0.2:2300".to_string(),
+                tcp_port: None,
+                capabilities: vec!["content_seeder".to_string()],
+                last_seen: "2026-04-15T00:00:00Z".to_string(),
+                quality: None,
+                node_name: None,
+                protocols: vec![],
+            },
+        ];
+
+        let registry = Arc::new(MockPeerRegistry {
+            peers: mock_peers,
+        });
+        let handler = DiscoveryHandler::with_registry(registry);
+        let result = handler
+            .handle_list_peers(json!({
+                "capability_filter": ["content_seeder", "tls"]
+            }))
+            .await
+            .unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.peers[0].node_id, "full");
     }
 }

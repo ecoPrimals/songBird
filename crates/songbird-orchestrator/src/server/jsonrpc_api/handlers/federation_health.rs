@@ -142,7 +142,11 @@ pub async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonR
                 false
             } else {
                 let family_id = crate::env_config::family_id();
-                let xdg_path = format!("{xdg}/biomeos/crypto-provider-{family_id}.sock");
+                let xdg_path = std::path::PathBuf::from(&xdg)
+                    .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+                    .join(format!("crypto-provider-{family_id}.sock"))
+                    .to_string_lossy()
+                    .into_owned();
                 std::path::Path::new(&xdg_path).exists()
             }
         }

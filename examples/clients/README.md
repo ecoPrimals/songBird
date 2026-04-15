@@ -2,7 +2,7 @@
 ## Universal Gateway Clients for JSON-RPC API
 
 **Version**: 0.2.1  
-**Last Updated**: November 11, 2025  
+**Last Updated**: April 15, 2026  
 **Status**: ✅ Production Ready
 
 ---
@@ -14,13 +14,11 @@ This directory contains **official client libraries** for connecting to Songbird
 **Current Languages**:
 - ✅ **Python** - Full-featured JSON-RPC client (614 lines)
 - ✅ **JavaScript/Node.js** - JSON-RPC client for browsers and Node.js (657 lines)
-- ✅ **Rust** - High-performance tarpc client (**100x faster!** ⚡) (485 lines) **NEW!**
 
-**Protocol Options**:
-- **JSON-RPC** (Python, JavaScript): ~2ms latency, universal access
-- **tarpc** (Rust): ~50μs latency, **100x faster than JSON-RPC!** ⚡
+**Protocol**: JSON-RPC 2.0 over HTTP (~2ms latency, universal access)
 
-**All Other Languages**: Use the [JSON-RPC Quick Start Guide](../../docs/JSONRPC_QUICKSTART.md) for examples in Java, Go, Ruby, PHP, C++, and more!
+> **Rust clients**: For Rust-to-Rust IPC, use the `songbird-universal-ipc` crate directly
+> (tarpc binary protocol, ~50μs latency). See `examples/ipc_client_*.rs` at the repo root.
 
 ---
 
@@ -78,45 +76,6 @@ node songbird-client.js
   });
 </script>
 ```
-
----
-
-### **Rust** ⚡ **NEW! (100x Faster!)**
-
-```bash
-# No installation needed! Just copy the file
-cp examples/clients/rust/songbird_tarpc_client.rs your-project/src/
-
-# Add dependencies to your Cargo.toml:
-# tarpc = { version = "0.34", features = ["full"] }
-# tokio = { version = "1", features = ["full"] }
-# serde = { version = "1.0", features = ["derive"] }
-# anyhow = "1.0"
-# thiserror = "1.0"
-
-# Use it in your project
-use songbird_tarpc_client::SongbirdTarpcClient;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let client = SongbirdTarpcClient::connect("localhost:8091").await?;
-    let health = client.health_check().await?;
-    println!("Server healthy: {}", health);
-    Ok(())
-}
-```
-
-**Or run the example**:
-```bash
-cd examples/clients/rust
-cargo run --features examples
-```
-
-**Performance**: 
-- ~50μs latency (**100x faster than JSON-RPC!**)
-- 10 GB/s throughput
-- Binary protocol (tarpc + bincode)
-- Type-safe Rust communication
 
 ---
 

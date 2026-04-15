@@ -4,7 +4,7 @@
 //! STUN binding request/response transaction helpers (RFC 5389).
 
 use crate::error::{StunError, StunResult};
-use crate::message::StunMessage;
+use crate::message::{StunAttribute, StunMessage};
 use bytes::Bytes;
 use std::net::SocketAddr;
 
@@ -15,10 +15,25 @@ pub struct BindingTransaction {
 }
 
 impl BindingTransaction {
+    /// Create an unauthenticated binding transaction.
     #[must_use]
     pub fn new() -> Self {
         Self {
             request: StunMessage::new_binding_request(),
+        }
+    }
+
+    /// Create an authenticated binding transaction with beacon-tier credentials.
+    ///
+    /// Adds the USERNAME attribute to the binding request. Per
+    /// `DARK_FOREST_BEACON_GENETICS_STANDARD.md`, these MUST be beacon-tier
+    /// credentials — never nuclear/lineage material.
+    #[must_use]
+    pub fn with_credentials(credentials: &crate::types::StunCredentials) -> Self {
+        let mut request = StunMessage::new_binding_request();
+        request.attributes.push(StunAttribute::Username(credentials.username.clone()));
+        Self {
+            request,
         }
     }
 

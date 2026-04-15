@@ -21,30 +21,59 @@ use tracing::{debug, info, warn};
 /// STUN client for NAT traversal
 ///
 /// Pure Rust implementation of RFC 5389 STUN protocol.
+///
+/// ## Credential Tier
+///
+/// When credentials are provided, they MUST be beacon-tier (mitochondrial)
+/// per `DARK_FOREST_BEACON_GENETICS_STANDARD.md`. STUN servers can observe
+/// the USERNAME attribute; using nuclear/lineage credentials here would
+/// expose authorization material in NAT traversal traffic.
 #[derive(Debug)]
 pub struct StunClient {
     /// Request timeout
     timeout: Duration,
+
+    /// Optional beacon-tier credentials for authenticated STUN requests.
+    /// When set, binding requests include the USERNAME attribute.
+    credentials: Option<crate::types::StunCredentials>,
 }
 
 impl StunClient {
-    /// Create a new STUN client
+    /// Create a new STUN client (unauthenticated)
     #[must_use]
     pub fn new() -> Self {
-        // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig
-        // Replaces hardcoded Duration::from_secs(5) with configurable timeout
         let timeout_config = songbird_config::timeouts::TimeoutConfig::from_env();
 
         Self {
             timeout: timeout_config.connect,
+            credentials: None,
         }
     }
 
-    /// Create STUN client with custom timeout
+    /// Create STUN client with custom timeout (unauthenticated)
     #[must_use]
     pub const fn with_timeout(timeout: Duration) -> Self {
         Self {
             timeout,
+            credentials: None,
+        }
+    }
+
+    /// Attach beacon-tier credentials for authenticated STUN requests.
+    ///
+    /// Per `DARK_FOREST_BEACON_GENETICS_STANDARD.md`, these MUST be
+    /// mitochondrial/beacon-tier credentials — never nuclear/lineage.
+    #[must_use]
+    pub fn with_credentials(mut self, credentials: crate::types::StunCredentials) -> Self {
+        self.credentials = Some(credentials);
+        self
+    }
+
+    /// Create a binding transaction, optionally authenticated.
+    fn new_transaction(&self) -> BindingTransaction {
+        match self.credentials {
+            Some(ref creds) => BindingTransaction::with_credentials(creds),
+            None => BindingTransaction::new(),
         }
     }
 
@@ -81,7 +110,7 @@ impl StunClient {
 
         debug!("  Local socket bound: {}", local_socket.local_addr()?);
 
-        let txn = BindingTransaction::new();
+        let txn = self.new_transaction();
         let request_bytes = txn.encode_request();
 
         debug!("  Sending STUN binding request ({} bytes)", request_bytes.len());
@@ -328,7 +357,7 @@ impl StunClient {
                 StunError::Network(format!("Failed to bind UDP socket for probe {i}: {e}"))
             })?;
 
-            let txn = BindingTransaction::new();
+            let txn = self.new_transaction();
             let request_bytes = txn.encode_request();
 
             socket

@@ -125,7 +125,6 @@ getrandom = { workspace = true }
 
 colored = { workspace = true }
 fastrand = { workspace = true }
-rand = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
 socket2 = { workspace = true }
 toml = { workspace = true }
@@ -165,4 +164,5 @@ assert_cmd = "2.0"  # UniBin CLI testing
 predicates = "3.0"  # UniBin assertion helpers
 tempfile = "3.8"    # UniBin config testing (also used in tests)
 futures-util = { workspace = true }
+rand = { workspace = true }
 

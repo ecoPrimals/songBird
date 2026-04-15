@@ -6,6 +6,7 @@
 //! All defaults are defined here to eliminate magic numbers and hardcoded values
 //! across the codebase. Prefer runtime discovery over these defaults.
 
+pub mod beacon;
 pub mod hosts;
 pub mod network;
 pub mod paths;

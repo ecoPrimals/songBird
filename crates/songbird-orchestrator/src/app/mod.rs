@@ -36,6 +36,10 @@ mod tests_discovery_bridge; // Discovery→Federation bridge unit & E2E tests (v
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod core_tests;
 
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod startup_orchestration_tests;
+
 // Re-exports for backwards compatibility
 pub use core::SongbirdOrchestrator;
 pub use health::{HealthCheckReport, OrchestratorStatus};

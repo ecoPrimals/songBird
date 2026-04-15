@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave140] - 2026-04-15 - primalSpring Phase 43 Audit Response + Deep Debt Evolution
+
+### Added — primalSpring Phase 43 Audit Items (6/6 resolved)
+- **UDS first-byte peek**: Auto-detect BTSP vs plain JSON-RPC on Unix Domain Sockets via `BufReader::fill_buf()` + custom `PeekedStream` adapter in `connection.rs`; per-connection protocol detection without native `peek()` on `tokio::net::UnixStream`
+- **Mito-beacon metadata**: Beacon-tier RPC methods (`beacon.encrypt`, `beacon.decrypt`, `beacon.get_id`) in `songbird-types/src/defaults/beacon.rs`; `SecurityBirdSongProvider` overrides with graceful fallback to legacy `birdsong.*` RPCs
+- **STUN/NAT mito-beacon credentials**: `StunCredentials` type, `StunClient::with_credentials()`, `BindingTransaction::with_credentials()` with documented beacon-tier constraint
+- **Content distribution federation**: `discovery.announce` supports topic-based announcements (`topic`, `manifest_hash`, `seeder_count`, `bond_types_accepted`); `discovery.peers` supports `capability_filter` (string + array) + `family_only` filtering per `content_distribution_federation.toml`
+- **Ring lockfile documentation**: `deny.toml` comment updated documenting `ring` as uncompiled `Cargo.lock` artifact from `rustls-webpki 0.102`
+- **async-trait analysis**: All 150 instances verified as dyn-dispatch required; tracked as SB-06 on workspace `async-trait` dep; blocked on `async_fn_in_dyn_trait` (rust-lang/rust#133119)
+
+### Added — Deep Debt Cleanup
+- `LEGACY_SECURITY_SOCKET_FILENAME` constant centralizing `"beardog.sock"` string; replaced raw literals in `socket_discovery.rs`, `tor_handler.rs`, `security.rs`
+- `cors_origins()` function resolving `SONGBIRD_CORS_ORIGINS` env var (comma-separated list, falls back to `DEFAULT_CORS_ORIGIN`)
+- `data_dir()` function with `SONGBIRD_DATA_DIR` > `XDG_DATA_HOME` > `HOME` > FHS fallback chain
+- 15 new unit tests (discovery handler topic/capability filtering, paths, CORS, STUN)
+
+### Changed — Dependency Hygiene
+- `rand` moved from production to dev-dependency in `songbird-orchestrator`; JWT CSPRNG replaced with `getrandom::fill()`
+- Hardcoded `/tmp/songbird-*` paths replaced with `std::env::temp_dir()` and centralized `ipc_port_file_path()` in `chunked_upload.rs`, `connection.rs`
+
+### Fixed
+- Stale `deny(unsafe_code)` comment → `forbid(unsafe_code)` in `unix.rs` test
+- Pre-existing `needless_raw_string_hashes` clippy lint in `service_types.rs`
+
+### Metrics
+- 7,334 lib tests passed, 0 failed, 22 ignored
+- Zero `cargo check` warnings, zero clippy warnings (full workspace `--all-targets -D warnings`)
+- All 30 crates: `#![forbid(unsafe_code)]`, zero production mocks, zero production `.unwrap()`
+
+---
+
 ## [v0.2.1-wave139b] - 2026-04-13 - Deep Hardcoded Literal Sweep + Audit Verification
 
 ### Changed — Hardcoded Literals → Constants (songbird-types)
@@ -3128,18 +3159,10 @@ No results found ✅
 - **Breaking Changes**: 0
 - **Grade Improvement**: +2 points (94→96)
 
-### Remaining Work
+### Remaining Work (historical — see `REMAINING_WORK.md` for current status)
 
-#### **Test Coverage Expansion** (P1 - This Month)
-- Current: 63.01%
-- Target: 90%
-- Focus: Error paths, edge cases, chaos/fault injection
-- Estimate: 2-4 weeks
-
-#### **TODO Triage** (P1 - Next Session)
-- Count: ~360 critical TODOs
-- Action: Create GitHub issues, prioritize, assign
-- Estimate: 4-8 hours
+Coverage was 63.01% at this wave; now 72.29% (Apr 8 2026 measurement, target 90%).
+TODO count reduced from ~360 to 1 (SB-04 tracking comment) as of Wave 140.
 
 ---
 

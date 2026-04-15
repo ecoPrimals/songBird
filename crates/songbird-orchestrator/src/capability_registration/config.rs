@@ -5,6 +5,7 @@
 
 use anyhow::{Context, Result};
 use songbird_process_env as env;
+use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
 use songbird_types::primal_names;
 
 /// Configuration for capability registration (supports dependency injection)
@@ -26,9 +27,17 @@ impl CapabilityRegistrationConfig {
     pub fn from_env() -> Result<Self> {
         let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
             if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-                format!("{runtime_dir}/biomeos/neural-api.sock")
+                std::path::PathBuf::from(runtime_dir)
+                    .join(BIOMEOS_RUNTIME_SUBDIR)
+                    .join("neural-api.sock")
+                    .to_string_lossy()
+                    .into_owned()
             } else {
-                "/tmp/biomeos/neural-api.sock".to_string()
+                std::env::temp_dir()
+                    .join(BIOMEOS_RUNTIME_SUBDIR)
+                    .join("neural-api.sock")
+                    .to_string_lossy()
+                    .into_owned()
             }
         });
 

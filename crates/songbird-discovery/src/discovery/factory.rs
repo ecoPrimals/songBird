@@ -20,7 +20,6 @@
     reason = "discovery factory: async factory traits and adapter stubs"
 )]
 
-// Removed: use crate::discovery::backends::StaticServiceDiscovery; (now using UniversalServiceDiscoveryAdapter everywhere for zero-cost)
 use crate::traits::discovery::{
     DiscoveryBackend, DiscoveryConfig, ServiceDiscovery, ServiceHealthStatus,
 };

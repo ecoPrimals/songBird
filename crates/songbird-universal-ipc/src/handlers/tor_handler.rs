@@ -122,14 +122,20 @@ impl TorHandler {
             .or_else(|| {
                 // XDG standard paths: primary capability socket, legacy beardog.sock fallback
                 if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-                    let primary = format!("{xdg}/biomeos/security.sock");
-                    if std::path::Path::new(&primary).exists() {
-                        return Some(primary);
+                    let biomeos_dir = std::path::PathBuf::from(&xdg)
+                        .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
+                    let primary = biomeos_dir.join("security.sock");
+                    if primary.exists() {
+                        return Some(primary.to_string_lossy().into_owned());
                     }
-                    let legacy = format!("{xdg}/biomeos/beardog.sock");
-                    if std::path::Path::new(&legacy).exists() {
-                        tracing::warn!("beardog.sock is deprecated — migrate to security.sock or SECURITY_PROVIDER_SOCKET");
-                        return Some(legacy);
+                    let legacy = biomeos_dir
+                        .join(songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME);
+                    if legacy.exists() {
+                        tracing::warn!(
+                            "{} is deprecated — migrate to security.sock or SECURITY_PROVIDER_SOCKET",
+                            songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME,
+                        );
+                        return Some(legacy.to_string_lossy().into_owned());
                     }
                 }
                 None

@@ -117,6 +117,11 @@ tokio = { version = "1.48", features = [
     "rt-multi-thread", "net", "io-util", "macros",
     "sync", "time", "fs", "signal", "process",
 ] }
+# SB-06: ~150 uses across all crates. Every async trait in Songbird is either
+# dyn-dispatched directly (Arc<dyn T>, Box<dyn T>) or is a supertrait of one.
+# Native AFIT (Rust 1.75+) doesn't support dyn dispatch. Migration is blocked
+# on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119). Reassess
+# when that feature graduates to stable.
 async-trait = "0.1"
 futures-util = "0.3.31"
 slab = "0.4.11"

@@ -344,91 +344,208 @@ impl SecurityBirdSongProvider {
         }
     }
 
-    /// Encrypt data using the security provider's family encryption (Pure Rust JSON-RPC!)
+    /// Generic RPC call dispatcher: tries the given method over TCP or Unix.
+    async fn rpc_call<P: Serialize + Sync, R: DeserializeOwned>(
+        &self,
+        method: &str,
+        params: &P,
+    ) -> Result<R, String> {
+        if self.tcp_endpoint.is_some() {
+            self.tcp_call(method, params).await
+        } else if let Some(ref client) = self.client {
+            client.call(method, params).await.map_err(|e| format!("{method} JSON-RPC failed: {e}"))
+        } else {
+            Err("No security provider connection available".to_string())
+        }
+    }
+
+    // ─── Legacy (nuclear/lineage tier) encrypt/decrypt ───────────────────
+
+    /// Encrypt using `birdsong.encrypt` (lineage/nuclear tier).
     ///
-    /// Uses `birdsong.encrypt` JSON-RPC method for inter-primal communication.
-    /// Supports both Unix socket and TCP connections.
+    /// This is the legacy path that uses the family's lineage seed. For Dark
+    /// Forest beacons, prefer [`encrypt_beacon_tier`] which uses beacon-tier
+    /// credentials per `DARK_FOREST_BEACON_GENETICS_STANDARD.md`.
     async fn encrypt_internal(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
+        use songbird_types::defaults::beacon::LEGACY_BIRDSONG_ENCRYPT_METHOD;
+
         let request = SecurityProviderEncryptRequest {
             plaintext: plaintext.to_vec(),
             family_id: self.family_id.clone(),
         };
 
-        debug!("🔒 Security-provider encryption via JSON-RPC (Pure Rust!)");
-        debug!("   Plaintext size: {} bytes", plaintext.len());
-        debug!("   Family ID: {:?}", self.family_id);
+        debug!("Lineage-tier encryption via {LEGACY_BIRDSONG_ENCRYPT_METHOD}");
+        trace!("   Plaintext size: {} bytes", plaintext.len());
 
-        // Call birdsong.encrypt JSON-RPC method (TCP or Unix)
-        let encrypt_response: SecurityProviderEncryptResponse = if self.tcp_endpoint.is_some() {
-            self.tcp_call("birdsong.encrypt", &request).await?
-        } else if let Some(ref client) = self.client {
-            client
-                .call("birdsong.encrypt", &request)
-                .await
-                .map_err(|e| format!("Security provider JSON-RPC encrypt failed: {e}"))?
-        } else {
-            return Err("No security provider connection available".to_string());
-        };
+        let resp: SecurityProviderEncryptResponse =
+            self.rpc_call(LEGACY_BIRDSONG_ENCRYPT_METHOD, &request).await?;
 
         debug!(
-            "🔒 Security provider encrypted {} -> {} bytes (family: {})",
+            "Encrypted {} -> {} bytes (family: {})",
             plaintext.len(),
-            encrypt_response.ciphertext.len(),
-            encrypt_response.family_id
+            resp.ciphertext.len(),
+            resp.family_id
         );
-
-        Ok(encrypt_response.ciphertext)
+        Ok(resp.ciphertext)
     }
 
-    /// Decrypt data using the security provider's family decryption (Pure Rust JSON-RPC!)
-    ///
-    /// Uses `birdsong.decrypt` JSON-RPC method for inter-primal communication.
-    /// Supports both Unix socket and TCP connections.
+    /// Decrypt using `birdsong.decrypt` (lineage/nuclear tier).
     async fn decrypt_internal(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>, String> {
+        use songbird_types::defaults::beacon::LEGACY_BIRDSONG_DECRYPT_METHOD;
+
         let request = SecurityProviderDecryptRequest {
             ciphertext: ciphertext.to_vec(),
             family_id: self.family_id.clone(),
         };
 
-        debug!("🔓 Security-provider decryption via JSON-RPC (Pure Rust!)");
-        debug!("   Ciphertext size: {} bytes", ciphertext.len());
+        debug!("Lineage-tier decryption via {LEGACY_BIRDSONG_DECRYPT_METHOD}");
 
-        // Call birdsong.decrypt JSON-RPC method (TCP or Unix)
-        let decrypt_response: SecurityProviderDecryptResponse = if self.tcp_endpoint.is_some() {
-            match self.tcp_call("birdsong.decrypt", &request).await {
+        let resp: SecurityProviderDecryptResponse =
+            match self.rpc_call(LEGACY_BIRDSONG_DECRYPT_METHOD, &request).await {
                 Ok(r) => r,
                 Err(e) => {
-                    debug!(
-                        "🔇 Security provider decrypt RPC error (likely different family): {}",
-                        e
-                    );
-                    return Err(format!("Security provider JSON-RPC decrypt failed: {e}"));
+                    debug!("Decrypt RPC error (likely different family): {e}");
+                    return Err(format!("{LEGACY_BIRDSONG_DECRYPT_METHOD} failed: {e}"));
                 }
-            }
-        } else if let Some(ref client) = self.client {
-            client.call("birdsong.decrypt", &request).await.map_err(|e| {
-                // Different family might return an RPC error - treat as noise
-                debug!("🔇 Security provider decrypt RPC error (likely different family): {}", e);
-                format!("Security provider JSON-RPC decrypt failed: {e}")
-            })?
-        } else {
-            return Err("No security provider connection available".to_string());
-        };
+            };
 
-        if !decrypt_response.success {
-            // Different family - return None (noise)
-            debug!("🔇 Security provider noise: different family ({})", decrypt_response.family_id);
+        if !resp.success {
+            debug!("Noise: different family ({})", resp.family_id);
             return Ok(None);
         }
 
         debug!(
-            "🔓 Security provider decrypted {} -> {} bytes (family: {})",
+            "Decrypted {} -> {} bytes (family: {})",
             ciphertext.len(),
-            decrypt_response.plaintext.len(),
-            decrypt_response.family_id
+            resp.plaintext.len(),
+            resp.family_id
         );
+        Ok(Some(resp.plaintext))
+    }
 
-        Ok(Some(decrypt_response.plaintext))
+    // ─── Beacon (mitochondrial) tier encrypt/decrypt ─────────────────────
+    //
+    // Per DARK_FOREST_BEACON_GENETICS_STANDARD.md, Dark Forest beacons MUST
+    // use beacon-tier credentials (mitochondrial) and never nuclear/lineage
+    // material. These methods call `beacon.encrypt` / `beacon.decrypt` RPCs
+    // which operate on the beacon seed, not the lineage seed.
+    //
+    // Falls back to legacy `birdsong.*` methods when the security provider
+    // doesn't yet support `beacon.*` RPCs (graceful degradation).
+
+    /// Encrypt using `beacon.encrypt` (mitochondrial/beacon tier).
+    ///
+    /// Falls back to `birdsong.encrypt` if the security provider returns
+    /// `Method not found` for the beacon-tier method.
+    async fn encrypt_beacon_tier(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
+        use songbird_types::defaults::beacon::BEACON_ENCRYPT_METHOD;
+
+        let request = SecurityProviderEncryptRequest {
+            plaintext: plaintext.to_vec(),
+            family_id: self.family_id.clone(),
+        };
+
+        debug!("Beacon-tier encryption via {BEACON_ENCRYPT_METHOD}");
+
+        match self
+            .rpc_call::<_, SecurityProviderEncryptResponse>(BEACON_ENCRYPT_METHOD, &request)
+            .await
+        {
+            Ok(resp) => {
+                debug!(
+                    "Beacon-tier encrypted {} -> {} bytes",
+                    plaintext.len(),
+                    resp.ciphertext.len()
+                );
+                Ok(resp.ciphertext)
+            }
+            Err(e) if e.contains("Method not found") || e.contains("-32601") => {
+                debug!("{BEACON_ENCRYPT_METHOD} not supported — falling back to lineage-tier");
+                self.encrypt_internal(plaintext).await
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Decrypt using `beacon.decrypt` (mitochondrial/beacon tier).
+    ///
+    /// Falls back to `birdsong.decrypt` if the security provider returns
+    /// `Method not found` for the beacon-tier method.
+    async fn decrypt_beacon_tier(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>, String> {
+        use songbird_types::defaults::beacon::BEACON_DECRYPT_METHOD;
+
+        let request = SecurityProviderDecryptRequest {
+            ciphertext: ciphertext.to_vec(),
+            family_id: self.family_id.clone(),
+        };
+
+        debug!("Beacon-tier decryption via {BEACON_DECRYPT_METHOD}");
+
+        match self
+            .rpc_call::<_, SecurityProviderDecryptResponse>(BEACON_DECRYPT_METHOD, &request)
+            .await
+        {
+            Ok(resp) => {
+                if !resp.success {
+                    debug!("Beacon-tier noise: different beacon family");
+                    return Ok(None);
+                }
+                Ok(Some(resp.plaintext))
+            }
+            Err(e) if e.contains("Method not found") || e.contains("-32601") => {
+                debug!("{BEACON_DECRYPT_METHOD} not supported — falling back to lineage-tier");
+                self.decrypt_internal(ciphertext).await
+            }
+            Err(e) => {
+                debug!("Beacon-tier decrypt error: {e}");
+                Err(e)
+            }
+        }
+    }
+
+    /// Query `beacon.get_id` for our public beacon identifier.
+    async fn query_beacon_id(&self) -> Result<Option<Vec<u8>>, String> {
+        use songbird_types::defaults::beacon::BEACON_GET_ID_METHOD;
+
+        #[derive(Deserialize)]
+        struct BeaconIdResponse {
+            #[serde(default)]
+            #[serde(with = "optional_base64_serde")]
+            beacon_id: Option<Vec<u8>>,
+        }
+
+        debug!("Querying {BEACON_GET_ID_METHOD}");
+
+        match self
+            .rpc_call::<_, BeaconIdResponse>(BEACON_GET_ID_METHOD, &serde_json::Value::Null)
+            .await
+        {
+            Ok(resp) => Ok(resp.beacon_id),
+            Err(e) if e.contains("Method not found") || e.contains("-32601") => {
+                debug!("{BEACON_GET_ID_METHOD} not supported — beacon genetics not available");
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
+}
+
+/// Optional base64 deserialization helper for beacon ID responses.
+mod optional_base64_serde {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    use serde::{Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt: Option<String> = Option::deserialize(deserializer)?;
+        match opt {
+            Some(s) if !s.is_empty() => {
+                STANDARD.decode(s).map(Some).map_err(serde::de::Error::custom)
+            }
+            _ => Ok(None),
+        }
     }
 }
 
@@ -446,11 +563,12 @@ impl BirdSongEncryption for SecurityBirdSongProvider {
         self.available
     }
 
+    // ─── Legacy (lineage/nuclear) ────────────────────────────────────────
+
     async fn encrypt_discovery(&self, plaintext: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
         if !self.available {
             return Err(anyhow::anyhow!("Security provider not available"));
         }
-
         self.encrypt_internal(plaintext).await.map_err(|e| anyhow::anyhow!(e))
     }
 
@@ -458,8 +576,38 @@ impl BirdSongEncryption for SecurityBirdSongProvider {
         if !self.available {
             return Err(anyhow::anyhow!("Security provider not available"));
         }
-
         self.decrypt_internal(ciphertext).await.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    // ─── Beacon-tier (mitochondrial) — DARK_FOREST_BEACON_GENETICS ──────
+
+    async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        let encrypted = self.encrypt_beacon_tier(payload).await.map_err(|e| anyhow::anyhow!(e))?;
+        let mut nonce = [0u8; 12];
+        getrandom::fill(&mut nonce)
+            .map_err(|e| anyhow::anyhow!("Failed to generate random nonce: {e}"))?;
+        Ok((encrypted, nonce))
+    }
+
+    async fn try_decrypt_beacon(
+        &self,
+        encrypted: &[u8],
+        _nonce: &[u8; 12],
+    ) -> Result<Option<Vec<u8>>> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        self.decrypt_beacon_tier(encrypted).await.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    async fn get_beacon_id(&self) -> Result<Option<Vec<u8>>> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        self.query_beacon_id().await.map_err(|e| anyhow::anyhow!(e))
     }
 }
 

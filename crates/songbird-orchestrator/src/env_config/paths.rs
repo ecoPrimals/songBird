@@ -3,13 +3,15 @@
 
 use std::path::PathBuf;
 
+use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
+
 use super::runtime_or_tmp_base_with;
 
 /// Default Unix socket path for a peer when `*_SOCKET_PATH` / `PEER_SOCKET_PATH` are unset.
 #[must_use]
 pub fn peer_fallback_socket_path(peer_id: &str) -> PathBuf {
     let base = super::runtime_or_tmp_base();
-    PathBuf::from(format!("{base}/biomeos/{peer_id}.sock"))
+    PathBuf::from(base).join(BIOMEOS_RUNTIME_SUBDIR).join(format!("{peer_id}.sock"))
 }
 
 /// Get data directory (self-knowledge)

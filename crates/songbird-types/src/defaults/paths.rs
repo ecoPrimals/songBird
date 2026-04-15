@@ -12,6 +12,12 @@ use std::path::PathBuf;
 /// Subdirectory under `XDG_RUNTIME_DIR` or `/run/user/<uid>/` for biomeOS sockets
 pub const BIOMEOS_RUNTIME_SUBDIR: &str = "biomeos";
 
+/// Legacy security provider socket filename (deprecated; retained for migration).
+///
+/// Code scanning for this name should use this constant rather than the
+/// raw string `"beardog.sock"` so we can track and eventually remove it.
+pub const LEGACY_SECURITY_SOCKET_FILENAME: &str = "beardog.sock";
+
 /// Crypto/security provider socket basenames (XDG scan order: crypto first)
 ///
 /// Capability-only names — no primal identities. Primals advertise by capability.
@@ -46,7 +52,7 @@ pub fn security_socket_tmp_fallback_path() -> PathBuf {
 /// Legacy on-disk filename `{temp}/beardog.sock` (older security deployments; filename retained on disk).
 #[must_use]
 pub fn security_socket_legacy_tmp_path() -> PathBuf {
-    std::env::temp_dir().join("beardog.sock")
+    std::env::temp_dir().join(LEGACY_SECURITY_SOCKET_FILENAME)
 }
 
 /// Default security provider socket paths (tried in order during discovery; capability-named first).
@@ -102,8 +108,25 @@ pub fn beardog_socket_legacy_path() -> PathBuf {
     security_socket_tmp_fallback_path()
 }
 
-/// Default data directory
+/// Default data directory (FHS fallback when env is unset).
 pub const DEFAULT_DATA_DIR: &str = "/var/lib/songbird";
+
+/// Resolve data directory from environment, then XDG, then FHS fallback.
+///
+/// Priority: `SONGBIRD_DATA_DIR` > `$XDG_DATA_HOME/songbird` > `$HOME/.local/share/songbird` > `/var/lib/songbird`
+#[must_use]
+pub fn data_dir() -> PathBuf {
+    if let Ok(dir) = songbird_process_env::var("SONGBIRD_DATA_DIR") {
+        return PathBuf::from(dir);
+    }
+    if let Ok(xdg) = songbird_process_env::var("XDG_DATA_HOME") {
+        return PathBuf::from(xdg).join("songbird");
+    }
+    if let Ok(home) = songbird_process_env::var("HOME") {
+        return PathBuf::from(home).join(".local/share/songbird");
+    }
+    PathBuf::from(DEFAULT_DATA_DIR)
+}
 
 /// IPC port file path under the OS temp directory (`songbird-ipc-port`).
 #[must_use]
@@ -187,4 +210,59 @@ pub fn family_scoped_security_provider_socket_path(family_id: &str) -> PathBuf {
 #[must_use]
 pub fn tmp_flat_security_sock_path() -> PathBuf {
     std::env::temp_dir().join("security.sock")
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_security_socket_filename_is_beardog() {
+        assert_eq!(LEGACY_SECURITY_SOCKET_FILENAME, "beardog.sock");
+    }
+
+    #[test]
+    fn security_socket_legacy_tmp_path_uses_constant() {
+        let path = security_socket_legacy_tmp_path();
+        assert!(path.to_string_lossy().ends_with(LEGACY_SECURITY_SOCKET_FILENAME));
+    }
+
+    #[test]
+    fn data_dir_explicit_env_wins() {
+        songbird_process_env::set_var("SONGBIRD_DATA_DIR", "/custom/data");
+        let dir = data_dir();
+        songbird_process_env::remove_var("SONGBIRD_DATA_DIR");
+        assert_eq!(dir, PathBuf::from("/custom/data"));
+    }
+
+    #[test]
+    fn data_dir_xdg_fallback() {
+        songbird_process_env::remove_var("SONGBIRD_DATA_DIR");
+        songbird_process_env::set_var("XDG_DATA_HOME", "/xdg/share");
+        let dir = data_dir();
+        songbird_process_env::remove_var("XDG_DATA_HOME");
+        assert_eq!(dir, PathBuf::from("/xdg/share/songbird"));
+    }
+
+    #[test]
+    fn ipc_port_file_path_under_temp_dir() {
+        let path = ipc_port_file_path();
+        assert!(path.to_string_lossy().contains("songbird-ipc-port"));
+    }
+
+    #[test]
+    fn security_socket_candidates_capability_first() {
+        let candidates = security_socket_candidates();
+        let first = candidates[0].to_string_lossy();
+        assert!(
+            first.contains("security.sock"),
+            "first candidate should be capability-named, got: {first}"
+        );
+        let last = candidates[candidates.len() - 1].to_string_lossy();
+        assert!(
+            last.contains(LEGACY_SECURITY_SOCKET_FILENAME),
+            "last candidate should be legacy, got: {last}"
+        );
+    }
 }

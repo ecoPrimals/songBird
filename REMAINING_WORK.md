@@ -1,10 +1,10 @@
 # Songbird Remaining Work
 
-**Date**: April 13, 2026  
+**Date**: April 15, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 139b (Apr 13, 2026)  
-**Current Wave**: 139b — deep hardcoded literal sweep across `songbird-types`, `songbird-config`, `songbird-orchestrator` production defaults (all `Default` impls, env readers, bind address logic) → canonical constants; bare `#[allow(deprecated)]` given reason string; audit confirmed: 0 production `println!` (all doc/test), 0 `TODO`/`FIXME`, 0 bare `#[allow(` in production (all have reasons)  
-**Previous Waves** (full detail in `CHANGELOG.md`): 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 140 (Apr 15, 2026)  
+**Current Wave**: 140 — primalSpring Phase 43 audit response: UDS first-byte peek (BTSP/JSON-RPC auto-detect), mito-beacon credential tier model, STUN/NAT beacon-tier auth, content distribution federation (topic announce + capability filter), ring lockfile doc, async-trait analysis (SB-06), deep debt cleanup (legacy socket constant centralization, CORS env override, XDG data_dir, dep hygiene: rand→getrandom in orchestrator)  
+**Previous Waves** (full detail in `CHANGELOG.md`): 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -12,12 +12,12 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,320+ lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,334 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 13 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 13 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 15 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 15 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files refactored Wave 133: `ipc/types.rs` → 7 modules, `env_config.rs` → 9 modules, `tarpc_server.rs` → 3 modules, `manager.rs` → 6 modules) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
@@ -25,7 +25,7 @@
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |
 | **Production `panic!()`** | 0 |
 | **Production `unreachable!()`** | 2 (provably unreachable QUIC VarInt 2-bit prefix arms, documented) |
-| **TODO/FIXME/HACK comments** | 0 in Rust source |
+| **TODO/FIXME/HACK comments** | 1 `SB-04` tracking comment in discovery handler (content federation seeder tracking); 0 FIXME/HACK |
 | **Commented-out code** | 0 in production library code (Wave 124 scrub); doc-style examples in comments kept intentionally |
 | **`#[allow(` vs `#[expect(`** | Wave 134 completed full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates (45+ attributes in 30 files); Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons; Wave 137c: all bare `#[allow()]` in test files and TLS crate given reason strings; `#[expect(reason)]` retained where non-dead-code lints provably fire; zero reasonless suppressions remain |
 | **Mocks in production** | 0 (all inside `#[cfg(test)]`) |
@@ -36,11 +36,11 @@
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI via `ci.yml` (Wave 134) |
 | **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** removed Wave 135 (SB-03 resolved — IPC `storage.*` capability is production path, InMemory fallback); `parking_lot` removed (Wave 133) |
-| **`async-trait`** | 109 `#[async_trait]` across 54 files — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`); no further mechanical migration possible without architectural changes; `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
+| **`async-trait`** | ~150 `#[async_trait]` across workspace — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`) or are supertraits of dyn-dispatched traits; SB-06 tracked in `Cargo.toml`; blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119); `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
 | **Total Rust** | ~430,000 lines across 30 crates (1,587 files) |
-| **primalSpring gaps** | All 6 gaps resolved Wave 134; Wave 137: `capability.resolve` + `discovery.peers` wired into Unix socket handler, capability-based naming completed; Wave 137b: LD-02 resolved (`ipc.resolve` accepts `capability` param, springs resolve without primal names); Wave 137c: stale features removed, port constants fully canonical, all hardcoded literals evolved; Wave 138: LD-08 resolved (socket auto-discovery seeds registry at startup) |
+| **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented, async-trait analyzed (SB-06 deferred); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139) |
 
 ---
 
@@ -125,7 +125,8 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 - [x] `ring-crypto` feature removed (Wave 135, SB-02 resolved): `rustls_rustcrypto` is the sole TLS provider; `ring` remains only as unactivated optional dep of `rustls` in Cargo.lock + optional `k8s` feature — NOT compiled in default build, banned in `deny.toml`, documented in Wave 137b
 - [ ] Remaining transitive duplicates (syn, hashbrown, getrandom, parking_lot, socket2) require upstream changes
-- [x] `async-trait` partial migration (Wave 116): `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` migrated to native `async fn in trait`; `async-trait` dep removed from `songbird-bluetooth`; 100% of remaining 109 usages require `dyn Trait` dispatch (verified Wave 129)
+- [x] `async-trait` partial migration (Wave 116): `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` migrated to native `async fn in trait`; `async-trait` dep removed from `songbird-bluetooth`; ~150 remaining usages all require `dyn Trait` dispatch or are supertraits of dyn-dispatched traits (verified Wave 140, SB-06); blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119)
+- [x] `rand` removed from `songbird-orchestrator` production deps (Wave 140): JWT CSPRNG replaced with `getrandom::fill()`; `rand` retained as dev-dependency for tests
 - [x] Dead `sled` dependency removed from `songbird-tor-protocol` (Wave 116)
 - [x] `ed25519-dalek` in `songbird-quic` feature-gated behind `local-certs` (Wave 116)
 - [x] Port constants consolidated: all legacy constants in `songbird-types::constants` deprecated with migration notes; active call sites migrated to canonical `defaults::ports` (Wave 130 initial, Wave 137c completed — all 9 remaining constants deprecated, `DEFAULT_ORCHESTRATOR_PORT`, `DEFAULT_HEALTH_PORT`, `DEFAULT_CRYPTO_TRANSPORT_PORT`, `DEFAULT_FEDERATION_BIND_PORT` added to canonical module)

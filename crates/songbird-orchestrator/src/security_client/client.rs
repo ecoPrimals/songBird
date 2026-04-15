@@ -92,7 +92,11 @@ impl SecurityCapabilityClient {
         // Uses capability-based discovery for crypto provider (XDG-compliant)
         let crypto_socket = crate::env_config::security_crypto_ipc_socket_from_env(|| {
             if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-                format!("{runtime_dir}/biomeos/security.sock")
+                std::path::PathBuf::from(runtime_dir)
+                    .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+                    .join("security.sock")
+                    .to_string_lossy()
+                    .into_owned()
             } else {
                 songbird_types::defaults::paths::security_socket_default_path()
                     .to_string_lossy()

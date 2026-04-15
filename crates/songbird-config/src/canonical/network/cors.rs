@@ -27,10 +27,13 @@ impl Default for CorsConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            origins: SafeEnv::get_or_default("SONGBIRD_CORS_ORIGINS", "http://localhost:3000")
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect(),
+            origins: SafeEnv::get_or_default(
+                "SONGBIRD_CORS_ORIGINS",
+                songbird_types::defaults::network::DEFAULT_CORS_ORIGIN,
+            )
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect(),
             allowed_methods: vec!["GET".to_string(), "POST".to_string()],
             allowed_headers: vec!["Content-Type".to_string()],
         }

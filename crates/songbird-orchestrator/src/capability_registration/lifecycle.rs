@@ -5,6 +5,7 @@
 
 use anyhow::Result;
 use songbird_process_env as env;
+use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
 use songbird_types::primal_names;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::{info, warn};
@@ -97,18 +98,30 @@ pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -
     Ok(())
 }
 
+fn neural_api_socket_from_env() -> String {
+    env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
+        if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+            std::path::PathBuf::from(runtime_dir)
+                .join(BIOMEOS_RUNTIME_SUBDIR)
+                .join("neural-api.sock")
+                .to_string_lossy()
+                .into_owned()
+        } else {
+            std::env::temp_dir()
+                .join(BIOMEOS_RUNTIME_SUBDIR)
+                .join("neural-api.sock")
+                .to_string_lossy()
+                .into_owned()
+        }
+    })
+}
+
 /// Unregister capabilities on shutdown (optional but recommended)
 /// # Errors
 ///
 /// Returns an error if the operation fails.
 pub async fn unregister_capabilities() -> Result<()> {
-    let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
-        if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-            format!("{runtime_dir}/biomeos/neural-api.sock")
-        } else {
-            "/tmp/biomeos/neural-api.sock".to_string()
-        }
-    });
+    let neural_socket = neural_api_socket_from_env();
     let primal_id = env::var("PRIMAL_ID")
         .or_else(|_| env::var("SONGBIRD_PRIMAL_ID"))
         .unwrap_or_else(|_| primal_names::SELF_NAME.to_string());
@@ -148,13 +161,7 @@ pub async fn unregister_capabilities_with(neural_socket: &str, primal_id: &str) 
 
 /// Check if Neural API is available
 pub async fn check_neural_api_available() -> bool {
-    let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
-        if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-            format!("{runtime_dir}/biomeos/neural-api.sock")
-        } else {
-            "/tmp/biomeos/neural-api.sock".to_string()
-        }
-    });
+    let neural_socket = neural_api_socket_from_env();
     check_neural_api_available_at(&neural_socket).await
 }
 

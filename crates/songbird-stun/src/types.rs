@@ -2,9 +2,41 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! STUN types
+//!
+//! ## Credential Tier Model
+//!
+//! Per `DARK_FOREST_BEACON_GENETICS_STANDARD.md`, STUN/NAT traversal uses
+//! **beacon-tier (mitochondrial) credentials only**. Nuclear/lineage credentials
+//! must never be exposed in NAT traversal traffic.
+//!
+//! When a STUN server requires authentication (TURN-style long-term
+//! credentials), the username and key material MUST be derived from the
+//! beacon seed, not from the lineage seed or family secret.
 
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+
+/// STUN credentials for authenticated binding requests.
+///
+/// Per `DARK_FOREST_BEACON_GENETICS_STANDARD.md`, these MUST be beacon-tier
+/// (mitochondrial) credentials. Nuclear/lineage material must never appear in
+/// STUN traffic because STUN servers can observe the username and timing.
+///
+/// # Credential Derivation
+///
+/// Credentials should be derived from the beacon seed via BearDog's
+/// `beacon.stun_credentials` RPC (when available). The username is typically
+/// a beacon-derived identifier, and the key is HMAC material from the beacon
+/// seed — never the lineage seed.
+#[derive(Debug, Clone)]
+pub struct StunCredentials {
+    /// USERNAME attribute value (beacon-derived, not lineage).
+    pub username: String,
+
+    /// Shared secret for MESSAGE-INTEGRITY computation.
+    /// Derived from beacon seed, never from nuclear/lineage material.
+    pub key: Vec<u8>,
+}
 
 /// Public endpoint discovered via STUN
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

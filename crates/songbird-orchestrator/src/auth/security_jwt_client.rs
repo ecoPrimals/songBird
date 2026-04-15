@@ -202,14 +202,11 @@ pub async fn fetch_jwt_secret_from_security_provider(
 ///
 /// Returns an error if the operation fails.
 pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
-    use rand::RngCore;
-
-    warn!("⚠️ Generating fallback JWT secret (security provider unavailable)");
+    warn!("Generating fallback JWT secret (security provider unavailable)");
     warn!("   This is cryptographically secure but not coordinated with NUCLEUS");
 
-    let mut rng = rand::thread_rng();
     let mut secret_bytes = vec![0u8; bytes];
-    rng.fill_bytes(&mut secret_bytes);
+    getrandom::fill(&mut secret_bytes).map_err(|e| anyhow::anyhow!("CSPRNG unavailable: {e}"))?;
 
     use base64::Engine;
     let secret = base64::engine::general_purpose::STANDARD.encode(&secret_bytes);

@@ -48,8 +48,17 @@ pub enum AttributeType {
     /// MAPPED-ADDRESS (0x0001)
     MappedAddress,
 
+    /// USERNAME (0x0006) — RFC 5389 short-term credentials
+    Username,
+
     /// XOR-MAPPED-ADDRESS (0x0020) - preferred
     XorMappedAddress,
+
+    /// REALM (0x0014) — RFC 5389 long-term credentials
+    Realm,
+
+    /// NONCE (0x0015) — RFC 5389 long-term credentials
+    Nonce,
 
     /// OTHER-ADDRESS (0x802C) - for NAT type detection
     OtherAddress,
@@ -64,7 +73,10 @@ impl AttributeType {
     pub const fn to_u16(self) -> u16 {
         match self {
             Self::MappedAddress => 0x0001,
+            Self::Username => 0x0006,
             Self::XorMappedAddress => 0x0020,
+            Self::Realm => 0x0014,
+            Self::Nonce => 0x0015,
             Self::OtherAddress => 0x802C,
             Self::Unknown(value) => value,
         }
@@ -75,6 +87,9 @@ impl AttributeType {
     pub const fn from_u16(value: u16) -> Self {
         match value {
             0x0001 => Self::MappedAddress,
+            0x0006 => Self::Username,
+            0x0014 => Self::Realm,
+            0x0015 => Self::Nonce,
             0x0020 => Self::XorMappedAddress,
             0x802C => Self::OtherAddress,
             _ => Self::Unknown(value),

@@ -21,9 +21,11 @@ deny = [
     { name = "serde_json", version = "<1.0.85" },
     # ecoBin: `ring` pulls C/ASM via `cc` — not pure Rust. Banned from all builds.
     # SB-02 STATUS: ring appears in Cargo.lock as an optional dep of `rustls` and
-    # `rustls-webpki`, but is NOT compiled (`cargo tree -i ring` = no match). This is
-    # a Cargo lockfile artifact — optional deps of resolved crates are recorded even
-    # when their feature gate is not activated. Confirmed: zero ring code is linked.
+    # `rustls-webpki 0.102` (via rustls-rustcrypto 0.0.2-alpha), but is NOT compiled
+    # (`cargo tree -i ring` = no match). Lockfile artifact: optional deps of resolved
+    # crates are recorded even when their feature gate is not activated.
+    # UPSTREAM FIX: rustls-rustcrypto master has dropped the webpki 0.102 dep entirely;
+    # the lockfile ghost will disappear once they publish a new release.
     # This ban ensures ring can never be accidentally re-activated via feature flags.
     { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust." },
 ]

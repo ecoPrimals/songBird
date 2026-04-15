@@ -98,6 +98,14 @@ pub struct DynamicPluginRegistry {
 }
 
 impl DynamicPluginRegistry {
+    const DEFAULT_ESTIMATED_LATENCY_MS: f64 = 50.0;
+    const DEFAULT_ESTIMATED_THROUGHPUT_RPS: f64 = 1000.0;
+    const DEFAULT_ESTIMATED_MEMORY_MB: f64 = 256.0;
+    const DEFAULT_ESTIMATED_CPU_PERCENT: f64 = 25.0;
+
+    const WELL_KNOWN_ENCRYPTION_ALGORITHM: &str = "chacha20-poly1305";
+    const WELL_KNOWN_DISCOVERY_PROTOCOL: &str = "birdsong";
+
     /// Create a new dynamic plugin registry
     #[must_use]
     pub fn new() -> Self {
@@ -193,14 +201,20 @@ impl DynamicPluginRegistry {
     async fn create_composition_plan(
         &self,
         plugin_combination: Vec<String>,
-        _constraints: &CompositionConstraints,
+        constraints: &CompositionConstraints,
     ) -> SongbirdResult<CompositionPlan> {
-        // Calculate estimated performance
+        let plugin_count = plugin_combination.len();
+
+        let base_latency = constraints
+            .max_latency_ms
+            .map_or(Self::DEFAULT_ESTIMATED_LATENCY_MS, |max| max * 0.5);
+
         let estimated_performance = PerformanceEstimate {
-            latency_ms: 50.0,
-            throughput_rps: 1000.0,
-            memory_usage_mb: 256.0,
-            cpu_utilization_percent: 25.0,
+            latency_ms: base_latency * plugin_count as f64,
+            throughput_rps: Self::DEFAULT_ESTIMATED_THROUGHPUT_RPS / plugin_count as f64,
+            memory_usage_mb: Self::DEFAULT_ESTIMATED_MEMORY_MB * plugin_count as f64,
+            cpu_utilization_percent: (Self::DEFAULT_ESTIMATED_CPU_PERCENT * plugin_count as f64)
+                .min(100.0),
         };
 
         Ok(CompositionPlan {
@@ -285,89 +299,120 @@ impl Default for DynamicPluginRegistry {
     }
 }
 
-// NOTE: PluginRegistry trait impl commented out until trait is defined
-// FUTURE WORK: Define PluginRegistry trait in songbird-discovery or songbird-registry
-// This requires cross-crate trait coordination and is deferred to plugin ecosystem v2.0
-/* 
-// Native async trait implementation (no boxing overhead)
-impl PluginRegistry for DynamicPluginRegistry {
-    async fn register_plugin(
+impl DynamicPluginRegistry {
+    /// Register a plugin with given capabilities and requirements
+    pub async fn register_plugin(
         &self,
         plugin_id: String,
         capabilities: Vec<PluginCapability>,
-        _requirements: Vec<PluginRequirement>,
-    ) -> anyhow::Result<String> {
-        // Store capabilities directly
+        requirements: Vec<PluginRequirement>,
+    ) -> SongbirdResult<String> {
         let mut caps = self.capabilities.write().await;
         let current_len = caps.len();
         for (i, capability) in capabilities.iter().enumerate() {
             caps.insert(format!("{}_{}", plugin_id, current_len + i), capability.clone());
         }
+        drop(caps);
 
-        // Event broadcasting removed - would need to be implemented differently
+        let mut reqs = self.requirements.write().await;
+        reqs.insert(plugin_id.clone(), requirements);
+        drop(reqs);
+
+        let mut graph = self.requirement_graph.write().await;
+        graph.entry(plugin_id.clone()).or_default();
+        drop(graph);
+
         tracing::info!("Registered plugin {} with capabilities", plugin_id);
-
         Ok(plugin_id)
     }
 
-    async fn discover_plugins(&self, requirements: Vec<PluginRequirement>) -> anyhow::Result<Vec<String>> {
-        // Convert requirements to capabilities for discovery
+    /// Discover plugins matching the given requirements
+    pub async fn discover_plugins(
+        &self,
+        requirements: Vec<PluginRequirement>,
+    ) -> SongbirdResult<Vec<String>> {
         let capabilities: Vec<PluginCapability> =
             requirements.iter().map(|req| self.requirement_to_capability(req)).collect();
-
-        self.find_plugins_by_capabilities(&capabilities)
-            .await
-            .map_err(|e: SongbirdError| anyhow::Error::from(e))
+        self.find_plugins_by_capabilities(&capabilities).await
     }
 
-    async fn auto_compose(
+    /// Auto-compose an optimal system from target capabilities
+    pub async fn auto_compose(
         &self,
         target_capabilities: Vec<PluginCapability>,
-    ) -> anyhow::Result<CompositionPlan> {
+    ) -> SongbirdResult<CompositionPlan> {
         let constraints = CompositionConstraints::default();
         let plans = self
-            .discover_optimal_composition("auto-compose ", target_capabilities, constraints)
-            .await
-            .map_err(|e: SongbirdError| anyhow::Error::from(e))?;
+            .discover_optimal_composition("auto-compose", target_capabilities, constraints)
+            .await?;
 
         plans.into_iter().next().ok_or_else(|| {
-            anyhow::Error::from(SongbirdError::service(
-                "plugin-registry ",
-                "No viable composition found ".to_string(),
-            ))
+            SongbirdError::service(
+                "plugin-registry",
+                "No viable composition found".to_string(),
+            )
         })
     }
 
-    async fn execute_composition(&self, plan: CompositionPlan) -> anyhow::Result<ComposedSystem> {
+    /// Execute a composition plan, producing a live composed system
+    pub async fn execute_composition(
+        &self,
+        plan: CompositionPlan,
+    ) -> SongbirdResult<ComposedSystem> {
         let system_id = Uuid::new_v4().to_string();
+
+        let mut plugin_health = HashMap::new();
+        let plugins_read = self.plugins.read().await;
+        for plugin_id in &plan.plugins {
+            let healthy = if let Some(plugin) = plugins_read.get(plugin_id) {
+                plugin.health_check().await
+            } else {
+                false
+            };
+            plugin_health.insert(plugin_id.clone(), healthy);
+        }
+        let all_healthy = !plan.plugins.is_empty() && plugin_health.values().all(|&h| h);
+        drop(plugins_read);
+
+        let system_capabilities = self.collect_capabilities_for(&plan.plugins).await;
 
         let system = ComposedSystem {
             system_id: system_id.clone(),
-            active_plugins: plan.plugins.clone(),
-            system_capabilities: vec![], // Would be calculated from plugins
+            active_plugins: plan.plugins,
+            system_capabilities,
             system_health: SystemHealth {
-                overall_healthy: true,
-                plugin_health: HashMap::new(),
+                overall_healthy: all_healthy,
+                plugin_health,
                 integration_health: HashMap::new(),
             },
         };
 
-        // Event broadcasting removed - would need to be implemented differently
         tracing::info!("Executed composition for system {}", system_id);
-
         Ok(system)
     }
+
+    async fn collect_capabilities_for(&self, plugin_ids: &[String]) -> Vec<PluginCapability> {
+        let caps = self.capabilities.read().await;
+        let mut result = Vec::new();
+        for plugin_id in plugin_ids {
+            for (key, cap) in caps.iter() {
+                if key.starts_with(plugin_id) {
+                    result.push(cap.clone());
+                }
+            }
+        }
+        result
+    }
 }
-*/
 
 impl DynamicPluginRegistry {
     fn requirement_to_capability(&self, requirement: &PluginRequirement) -> PluginCapability {
         match requirement {
             PluginRequirement::RequiresEncryption { .. } => PluginCapability::Encryption {
-                algorithms: vec![String::from("aes")],
+                algorithms: vec![String::from(Self::WELL_KNOWN_ENCRYPTION_ALGORITHM)],
             },
             PluginRequirement::RequiresServiceDiscovery => PluginCapability::ServiceDiscovery {
-                protocols: vec![String::from("mdns")],
+                protocols: vec![String::from(Self::WELL_KNOWN_DISCOVERY_PROTOCOL)],
             },
             PluginRequirement::RequiresCompute { min_cpu_cores, min_memory_gb } => PluginCapability::Compute {
                 cpu_cores: *min_cpu_cores,

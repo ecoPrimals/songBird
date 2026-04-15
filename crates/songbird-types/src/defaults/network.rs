@@ -14,6 +14,22 @@ use crate::constants::{
     DISCOVERY_MULTICAST_GROUP, DISCOVERY_MULTICAST_PORT, MDNS_MULTICAST_GROUP, MDNS_PORT,
 };
 
+/// Default CORS origin for development when `SONGBIRD_CORS_ORIGINS` is unset.
+///
+/// Production deployments should always set `SONGBIRD_CORS_ORIGINS` explicitly.
+pub const DEFAULT_CORS_ORIGIN: &str = "http://localhost:3000";
+
+/// Resolve CORS origins from environment, falling back to [`DEFAULT_CORS_ORIGIN`].
+///
+/// `SONGBIRD_CORS_ORIGINS` accepts a comma-separated list of origins.
+#[must_use]
+pub fn cors_origins() -> Vec<String> {
+    songbird_process_env::var("SONGBIRD_CORS_ORIGINS").map_or_else(
+        |_| vec![DEFAULT_CORS_ORIGIN.to_string()],
+        |v| v.split(',').map(|s| s.trim().to_string()).collect(),
+    )
+}
+
 /// Ecosystem discovery multicast group (IPv4), overridable via `SONGBIRD_DISCOVERY_MULTICAST_GROUP`.
 #[must_use]
 pub fn discovery_multicast_group() -> String {
@@ -78,4 +94,25 @@ pub fn stun_server_1() -> String {
 pub fn stun_server_2() -> String {
     songbird_process_env::var("SONGBIRD_STUN_SERVER_2")
         .unwrap_or_else(|_| DEFAULT_STUN_SERVER_2.to_string())
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cors_origins_default_is_localhost_3000() {
+        songbird_process_env::remove_var("SONGBIRD_CORS_ORIGINS");
+        let origins = cors_origins();
+        assert_eq!(origins, vec![DEFAULT_CORS_ORIGIN]);
+    }
+
+    #[tokio::test]
+    async fn cors_origins_parses_comma_list() {
+        songbird_process_env::set_var("SONGBIRD_CORS_ORIGINS", "https://a.io, https://b.io");
+        let origins = cors_origins();
+        songbird_process_env::remove_var("SONGBIRD_CORS_ORIGINS");
+        assert_eq!(origins, vec!["https://a.io", "https://b.io"]);
+    }
 }

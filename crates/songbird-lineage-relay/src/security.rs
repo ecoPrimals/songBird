@@ -326,13 +326,16 @@ impl SecurityRelayAuthority {
 
         // 3. Legacy fallback (capability name preferred)
         use songbird_types::defaults::paths::{
-            biomeos_socket_dir_tmp, security_socket_default_path, tmp_flat_security_sock_path,
+            LEGACY_SECURITY_SOCKET_FILENAME, biomeos_socket_dir_tmp, security_socket_default_path,
+            tmp_flat_security_sock_path,
         };
 
         let b = biomeos_socket_dir_tmp();
-        // Legacy on-disk filename (some installs); not a public API name.
-        let fallback_paths =
-            [security_socket_default_path(), b.join("beardog.sock"), tmp_flat_security_sock_path()];
+        let fallback_paths = [
+            security_socket_default_path(),
+            b.join(LEGACY_SECURITY_SOCKET_FILENAME),
+            tmp_flat_security_sock_path(),
+        ];
 
         for path in &fallback_paths {
             if path.exists() {

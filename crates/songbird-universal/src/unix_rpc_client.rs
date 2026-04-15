@@ -267,7 +267,6 @@ impl UnixRpcClient {
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
-    // Removed unused import: use std::sync::Arc;
     use tokio::io::{AsyncBufReadExt, BufReader};
     use tokio::net::UnixListener;
 

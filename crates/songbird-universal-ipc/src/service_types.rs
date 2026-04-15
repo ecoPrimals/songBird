@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn resolve_params_deserializes_empty() {
-        let json = r#"{}"#;
+        let json = r"{}";
         let params: ResolveParams = serde_json::from_str(json).unwrap();
         assert!(params.primal_id.is_none());
         assert!(params.capability.is_none());
