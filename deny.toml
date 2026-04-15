@@ -20,13 +20,23 @@ deny = [
     { name = "tokio", version = "<1.20" },
     { name = "serde_json", version = "<1.0.85" },
     # ecoBin: `ring` pulls C/ASM via `cc` — not pure Rust. Banned from all builds.
-    # SB-02 STATUS: ring appears in Cargo.lock as an optional dep of `rustls` and
-    # `rustls-webpki 0.102` (via rustls-rustcrypto 0.0.2-alpha), but is NOT compiled
-    # (`cargo tree -i ring` = no match). Lockfile artifact: optional deps of resolved
-    # crates are recorded even when their feature gate is not activated.
-    # UPSTREAM FIX: rustls-rustcrypto master has dropped the webpki 0.102 dep entirely;
-    # the lockfile ghost will disappear once they publish a new release.
-    # This ban ensures ring can never be accidentally re-activated via feature flags.
+    #
+    # LOCKFILE CHAIN (why ring appears in Cargo.lock):
+    #   Chain A: songbird-cli → rustls-rustcrypto 0.0.2-alpha → rustls-webpki 0.102 → ring
+    #   Chain B: songbird-universal[k8s] → kube 0.95 → kube-client → hyper-rustls[ring] → rustls[ring] → ring
+    #
+    # DEFAULT BUILD: ring is NOT compiled (`cargo tree -i ring` = no match).
+    #   Chain A: rustls-webpki 0.102 is resolved but its ring dep is optional/unactivated.
+    #   Chain B: kube is behind the `k8s` feature flag (not default, not enabled).
+    #
+    # --all-features BUILD: ring IS compiled (via Chain B — kube-client hardcodes
+    #   hyper-rustls with the `ring` feature in kube 0.95).
+    #
+    # UPSTREAM FIXES NEEDED:
+    #   - rustls-rustcrypto master has dropped webpki 0.102 → eliminates Chain A on release
+    #   - kube-client needs hyper-rustls/aws-lc-rs option → eliminates Chain B
+    #
+    # This ban ensures ring can never be accidentally activated in default builds.
     { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust." },
 ]
 skip = [

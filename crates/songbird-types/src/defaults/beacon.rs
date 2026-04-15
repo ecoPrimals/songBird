@@ -29,7 +29,8 @@ pub const BEACON_GET_ID_METHOD: &str = "beacon.get_id";
 ///
 /// This uses the lineage seed and should NOT be used for Dark Forest beacons.
 /// Retained for backward compatibility when the security provider doesn't yet
-/// support `beacon.*` methods.
+/// expose `beacon.*` methods. Songbird's `SecurityBirdSongProvider` attempts
+/// `beacon.*` first and falls back to `birdsong.*` transparently.
 pub const LEGACY_BIRDSONG_ENCRYPT_METHOD: &str = "birdsong.encrypt";
 
 /// Legacy JSON-RPC method for family-scoped decryption (lineage/nuclear tier).

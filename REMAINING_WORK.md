@@ -12,7 +12,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,334 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,336 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
@@ -25,7 +25,7 @@
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |
 | **Production `panic!()`** | 0 |
 | **Production `unreachable!()`** | 2 (provably unreachable QUIC VarInt 2-bit prefix arms, documented) |
-| **TODO/FIXME/HACK comments** | 1 `SB-04` tracking comment in discovery handler (content federation seeder tracking); 0 FIXME/HACK |
+| **TODO/FIXME/HACK comments** | 0 in Rust source; 0 FIXME/HACK |
 | **Commented-out code** | 0 in production library code (Wave 124 scrub); doc-style examples in comments kept intentionally |
 | **`#[allow(` vs `#[expect(`** | Wave 134 completed full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates (45+ attributes in 30 files); Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons; Wave 137c: all bare `#[allow()]` in test files and TLS crate given reason strings; `#[expect(reason)]` retained where non-dead-code lints provably fire; zero reasonless suppressions remain |
 | **Mocks in production** | 0 (all inside `#[cfg(test)]`) |
@@ -36,7 +36,7 @@
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI via `ci.yml` (Wave 134) |
 | **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** removed Wave 135 (SB-03 resolved — IPC `storage.*` capability is production path, InMemory fallback); `parking_lot` removed (Wave 133) |
-| **`async-trait`** | ~150 `#[async_trait]` across workspace — 100% require `dyn Trait` dispatch (`Arc<dyn>`, `Box<dyn>`, `&dyn`) or are supertraits of dyn-dispatched traits; SB-06 tracked in `Cargo.toml`; blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119); `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` already migrated to native `async fn in trait` |
+| **`async-trait`** | 145 effective `#[async_trait]` across workspace (5 in doc examples); 100% require `dyn Trait` dispatch or are supertraits of dyn-dispatched traits (+1 axum `FromRequestParts`); SB-06 tracked in `Cargo.toml`; blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119) |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
 | **Total Rust** | ~430,000 lines across 30 crates (1,587 files) |

@@ -59,10 +59,24 @@ impl DiscoveryHandler {
     /// required capabilities. Used by content distribution federation to
     /// locate same-family seeders with specific capability profiles.
     pub async fn handle_list_peers(&self, params: Value) -> IpcResult<DiscoveryPeersResult> {
+        self.handle_list_peers_with(params, || {
+            songbird_process_env::var("FAMILY_ID")
+                .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
+        })
+        .await
+    }
+
+    /// Testable variant with injectable `family_id` resolver.
+    async fn handle_list_peers_with<F>(
+        &self,
+        params: Value,
+        resolve_family: F,
+    ) -> IpcResult<DiscoveryPeersResult>
+    where
+        F: FnOnce() -> Result<String, std::env::VarError>,
+    {
         let family_only = params.get("family_only").and_then(Value::as_bool).unwrap_or(false);
 
-        // Accept capability_filter as either a single string or an array of strings
-        // (the federation graph passes a bare string, e.g. `"storage"`)
         let capability_filter: Vec<String> = match params.get("capability_filter") {
             Some(Value::Array(arr)) => {
                 arr.iter().filter_map(Value::as_str).map(String::from).collect()
@@ -83,10 +97,13 @@ impl DiscoveryHandler {
         };
 
         if family_only {
-            // TODO(SB-04): resolve own family_id from primal identity at runtime
-            // For now, no-op — all peers pass. Once primal self-knowledge is
-            // wired, filter to `peer.family_id == self.family_id`.
-            debug!("Discovery: family_only requested (filtering deferred until identity wired)");
+            let own_family = resolve_family().unwrap_or_default();
+            if own_family.is_empty() {
+                debug!("Discovery: family_only requested but no FAMILY_ID set — returning all peers");
+            } else {
+                debug!("Discovery: family_only filter active (family={own_family})");
+                peers.retain(|peer| peer.family_id == own_family);
+            }
         }
 
         if !capability_filter.is_empty() {
@@ -674,5 +691,56 @@ mod tests {
 
         assert_eq!(result.total_count, 1);
         assert_eq!(result.peers[0].node_id, "full");
+    }
+
+    fn peer(id: &str, family: &str, caps: &[&str]) -> DiscoveredPeerInfo {
+        DiscoveredPeerInfo {
+            node_id: id.to_string(),
+            family_id: family.to_string(),
+            address: "10.0.0.1:3492".to_string(),
+            tcp_port: None,
+            capabilities: caps.iter().map(|s| (*s).to_string()).collect(),
+            last_seen: "2026-04-16T00:00:00Z".to_string(),
+            quality: None,
+            node_name: None,
+            protocols: vec![],
+        }
+    }
+
+    #[tokio::test]
+    async fn list_peers_family_only_filters_by_env() {
+        let mock_peers = vec![
+            peer("same-fam", "nat0", &["storage"]),
+            peer("other-fam", "other", &["storage"]),
+        ];
+        let registry = Arc::new(MockPeerRegistry { peers: mock_peers });
+        let handler = DiscoveryHandler::with_registry(registry);
+
+        let result = handler
+            .handle_list_peers_with(json!({ "family_only": true }), || Ok("nat0".to_string()))
+            .await
+            .unwrap();
+
+        assert_eq!(result.total_count, 1);
+        assert_eq!(result.peers[0].node_id, "same-fam");
+    }
+
+    #[tokio::test]
+    async fn list_peers_family_only_no_env_returns_all() {
+        let mock_peers = vec![
+            peer("a", "fam1", &[]),
+            peer("b", "fam2", &[]),
+        ];
+        let registry = Arc::new(MockPeerRegistry { peers: mock_peers });
+        let handler = DiscoveryHandler::with_registry(registry);
+
+        let result = handler
+            .handle_list_peers_with(json!({ "family_only": true }), || {
+                Err(std::env::VarError::NotPresent)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(result.total_count, 2, "no FAMILY_ID means no filtering");
     }
 }
