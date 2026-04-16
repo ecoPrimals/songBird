@@ -39,20 +39,12 @@
 //! Tests the self-knowledge discovery architecture with env-safe patterns.
 
 use songbird_discovery::primal_self_knowledge::{
-    DiscoveryMechanism, DnsSrvDiscovery, EnvironmentDiscovery, PrimalError, PrimalIdentity,
-    PrimalInfo, PrimalSelfKnowledge,
+    DnsSrvDiscovery, EnvironmentDiscovery, PrimalError, PrimalIdentity, PrimalInfo,
+    PrimalSelfKnowledge,
 };
 use std::collections::HashMap;
 use std::env::VarError;
 use std::time::SystemTime;
-
-fn map_env_owned(
-    pairs: Vec<(&str, &str)>,
-) -> impl Fn(&str) -> std::result::Result<String, VarError> + Send + Sync + 'static {
-    let map: HashMap<String, String> =
-        pairs.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
-    move |k: &str| map.get(k).cloned().ok_or(VarError::NotPresent)
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // PrimalError tests
@@ -160,9 +152,9 @@ async fn test_discover_self() {
 
 #[tokio::test]
 async fn test_discover_self_with_primal_name() {
-    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![(
-        "PRIMAL_NAME",
-        "test-songbird",
+    let result = PrimalSelfKnowledge::discover_self_with(HashMap::from([(
+        "PRIMAL_NAME".into(),
+        "test-songbird".into(),
     )]));
     assert!(result.is_ok());
     let identity = result.unwrap().identity();
@@ -171,9 +163,9 @@ async fn test_discover_self_with_primal_name() {
 
 #[tokio::test]
 async fn test_discover_self_with_service_name() {
-    let result = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![(
-        "SERVICE_NAME",
-        "my-service",
+    let result = PrimalSelfKnowledge::discover_self_with(HashMap::from([(
+        "SERVICE_NAME".into(),
+        "my-service".into(),
     )]));
     assert!(result.is_ok());
     let identity = result.unwrap().identity();
@@ -182,16 +174,16 @@ async fn test_discover_self_with_service_name() {
 
 #[tokio::test]
 async fn test_discovered_empty_initially() {
-    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![])).unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(HashMap::new()).unwrap();
     let discovered = self_knowledge.discovered().await;
     assert!(discovered.is_empty());
 }
 
 #[tokio::test]
 async fn test_discover_primal_via_environment() {
-    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![
-        ("COMPUTE_HOST", "10.0.0.5"),
-        ("COMPUTE_PORT", "7070"),
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(HashMap::from([
+        ("COMPUTE_HOST".into(), "10.0.0.5".into()),
+        ("COMPUTE_PORT".into(), "7070".into()),
     ]))
     .unwrap();
     let result = self_knowledge.discover_primal("compute").await;
@@ -205,9 +197,9 @@ async fn test_discover_primal_via_environment() {
 
 #[tokio::test]
 async fn test_discover_primal_caching() {
-    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![
-        ("STORAGE_HOST", "10.0.0.10"),
-        ("STORAGE_PORT", "5050"),
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(HashMap::from([
+        ("STORAGE_HOST".into(), "10.0.0.10".into()),
+        ("STORAGE_PORT".into(), "5050".into()),
     ]))
     .unwrap();
 
@@ -225,7 +217,7 @@ async fn test_discover_primal_caching() {
 
 #[tokio::test]
 async fn test_discover_primal_not_found() {
-    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![])).unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with_strict(HashMap::new()).unwrap();
     let result = self_knowledge.discover_primal("nonexistent").await;
     assert!(result.is_err());
 
@@ -241,9 +233,9 @@ async fn test_discover_primal_not_found() {
 
 #[tokio::test]
 async fn test_discover_primal_with_primal_prefix() {
-    let self_knowledge = PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![
-        ("PRIMAL_AI_HOST", "ai-server.local"),
-        ("PRIMAL_AI_PORT", "6060"),
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(HashMap::from([
+        ("PRIMAL_AI_HOST".into(), "ai-server.local".into()),
+        ("PRIMAL_AI_PORT".into(), "6060".into()),
     ]))
     .unwrap();
     let result = self_knowledge.discover_primal("ai").await;
@@ -256,9 +248,11 @@ async fn test_discover_primal_with_primal_prefix() {
 
 #[tokio::test]
 async fn test_introspect_capabilities_with_env() {
-    let self_knowledge =
-        PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("ENABLE_SECURITY", "1")]))
-            .unwrap();
+    let self_knowledge = PrimalSelfKnowledge::discover_self_with(HashMap::from([(
+        "ENABLE_SECURITY".into(),
+        "1".into(),
+    )]))
+    .unwrap();
     let identity = self_knowledge.identity();
     assert!(identity.capabilities.contains(&"security".to_string()));
 }
@@ -266,7 +260,8 @@ async fn test_introspect_capabilities_with_env() {
 #[tokio::test]
 async fn test_introspect_capabilities_with_ai_env() {
     let self_knowledge =
-        PrimalSelfKnowledge::discover_self_with(map_env_owned(vec![("ENABLE_AI", "1")])).unwrap();
+        PrimalSelfKnowledge::discover_self_with(HashMap::from([("ENABLE_AI".into(), "1".into())]))
+            .unwrap();
     let identity = self_knowledge.identity();
     assert!(identity.capabilities.contains(&"ai".to_string()));
 }

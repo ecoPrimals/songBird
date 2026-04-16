@@ -53,12 +53,10 @@ async fn test_discover_crypto_provider_with_env() {
 }
 
 #[tokio::test]
-async fn test_crypto_provider_trait_object() {
-    // Verify we can create a trait object
+async fn test_crypto_provider_concrete_type() {
     let provider = UnixSocketCryptoProvider::new("/tmp/test.sock".to_string());
-    let _trait_obj: &dyn CryptoProvider = &provider;
+    let _concrete: &CryptoProvider = &provider;
 
-    // Trait object should be Send + Sync
     fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<UnixSocketCryptoProvider>();
 }
@@ -68,7 +66,7 @@ async fn test_provider_arc_usage() {
     use std::sync::Arc;
 
     let provider = UnixSocketCryptoProvider::new("/tmp/test.sock".to_string());
-    let arc_provider: Arc<dyn CryptoProvider> = Arc::new(provider);
+    let arc_provider: Arc<CryptoProvider> = Arc::new(provider);
 
     // Verify Arc works (multiple ownership)
     let arc_clone = Arc::clone(&arc_provider);
@@ -145,8 +143,7 @@ async fn test_discover_priority_order() {
 
 #[tokio::test]
 async fn test_provider_type_safety() {
-    // Verify type safety - these should compile
-    fn take_provider(_provider: &dyn CryptoProvider) {}
+    fn take_provider(_provider: &CryptoProvider) {}
     fn take_unix_provider(_provider: &UnixSocketCryptoProvider) {}
 
     let provider = UnixSocketCryptoProvider::new("/tmp/test.sock".to_string());

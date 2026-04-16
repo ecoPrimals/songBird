@@ -52,7 +52,7 @@ mod security_adapter_tests;
 pub struct SecurityAdapter {
     /// Endpoint URL for the security capability provider
     endpoint: String,
-    transport: Arc<dyn CapabilityTransport>,
+    transport: Arc<CapabilityTransport>,
     transport_kind: AdapterTransportKind,
     /// Request timeout
     timeout: Duration,
@@ -238,7 +238,7 @@ impl SecurityAdapter {
     #[cfg(test)]
     pub(crate) fn with_transport(
         endpoint: String,
-        transport: Arc<dyn CapabilityTransport>,
+        transport: Arc<CapabilityTransport>,
         transport_kind: AdapterTransportKind,
         timeout: Duration,
     ) -> Self {

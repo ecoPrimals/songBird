@@ -19,7 +19,8 @@
 //! This module was refactored from a 1,089-line monolithic file into 5 focused modules:
 //!
 //! - `types` - `BirdSongPacket` struct and packet format (~60 lines)
-//! - `trait` - `BirdSongEncryption` provider trait (~250 lines)
+//! - `encryption` - `BirdSongEncryption` enum (~200 lines)
+//! - `mocks` - concrete test doubles for enum dispatch
 //! - `config` - `BirdSongConfig` and builder methods (~180 lines)
 //! - `processor` - `BirdSongProcessor` implementation + tests (~600 lines)
 //! - `mod` - Module documentation and re-exports (~80 lines)
@@ -43,14 +44,20 @@
 
 // Submodules
 mod config;
+mod encryption;
+mod mocks;
 mod processor;
-mod r#trait;
 mod types;
 
 // Re-export public API
 pub use config::BirdSongConfig;
+pub use encryption::BirdSongEncryption;
+pub use mocks::{
+    ChaoticBirdSongMock, CrossFamilyBirdSongMock, DarkForestTestProvider, FailingBirdSongMock,
+    LegacyBirdSongStub, OrchestratorPrefixMock, ProcessorXorMock, ProtocolPassthroughMock,
+    UnavailableBirdSongMock,
+};
 pub use processor::BirdSongProcessor;
-pub use r#trait::BirdSongEncryption;
 pub use types::BirdSongPacket;
 
 // Re-export for backward compatibility

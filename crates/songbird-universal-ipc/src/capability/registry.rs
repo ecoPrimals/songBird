@@ -4,7 +4,7 @@
 //! Unified capability registry
 
 use crate::capability::provider::{HealthStatus, Provider};
-use crate::capability::strategy::{DiscoveryStrategy, EnvironmentStrategy, FilesystemStrategy};
+use crate::capability::strategy::{DiscoveryStrategy, FilesystemStrategy};
 use crate::error::{IpcError, IpcResult};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -28,7 +28,7 @@ pub struct CapabilityRegistry {
     cache: Arc<RwLock<HashMap<String, Vec<CachedProvider>>>>,
 
     /// Discovery strategies (in priority order)
-    strategies: Vec<Box<dyn DiscoveryStrategy>>,
+    strategies: Vec<DiscoveryStrategy>,
 
     /// Cache TTL
     cache_ttl: Duration,
@@ -46,14 +46,14 @@ impl CapabilityRegistry {
     #[must_use]
     pub fn new() -> Self {
         Self::with_strategies(vec![
-            Box::new(EnvironmentStrategy),
-            Box::new(FilesystemStrategy::new()),
+            DiscoveryStrategy::Environment,
+            DiscoveryStrategy::Filesystem(FilesystemStrategy::new()),
         ])
     }
 
     /// Create with custom strategies
     #[must_use]
-    pub fn with_strategies(strategies: Vec<Box<dyn DiscoveryStrategy>>) -> Self {
+    pub fn with_strategies(strategies: Vec<DiscoveryStrategy>) -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
             strategies,
@@ -230,32 +230,14 @@ mod tests {
 
     use super::*;
     use crate::capability::provider::HealthStatus;
-    use crate::capability::strategy::{DiscoveryStrategy, EnvironmentStrategy, FilesystemStrategy};
-    use async_trait::async_trait;
+    use crate::capability::strategy::{DiscoveryStrategy, FilesystemStrategy};
     use std::collections::HashMap;
-
-    /// Injects env without mutating the process environment.
-    struct HashMapEnvStrategy(HashMap<String, String>);
-
-    #[async_trait]
-    impl DiscoveryStrategy for HashMapEnvStrategy {
-        fn name(&self) -> &'static str {
-            "environment(injected)"
-        }
-
-        async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
-            let map = &self.0;
-            EnvironmentStrategy::discover_with(capability, |k| {
-                map.get(k).cloned().ok_or(std::env::VarError::NotPresent)
-            })
-            .await
-        }
-    }
+    use std::sync::Arc;
 
     fn registry_with_injected_env(map: HashMap<String, String>) -> CapabilityRegistry {
         CapabilityRegistry::with_strategies(vec![
-            Box::new(HashMapEnvStrategy(map)),
-            Box::new(FilesystemStrategy::with_paths(vec![])),
+            DiscoveryStrategy::InjectedEnvironment(Arc::new(map)),
+            DiscoveryStrategy::Filesystem(FilesystemStrategy::with_paths(vec![])),
         ])
     }
 

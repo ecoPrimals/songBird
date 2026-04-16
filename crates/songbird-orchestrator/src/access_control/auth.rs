@@ -5,7 +5,7 @@
 
 use super::AccessToken;
 use axum::{
-    Json, async_trait,
+    Json,
     extract::FromRequestParts,
     http::{StatusCode, header::AUTHORIZATION, request::Parts},
     response::{IntoResponse, Response},
@@ -17,7 +17,6 @@ pub struct AuthenticatedUser {
     pub token: AccessToken,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,

@@ -22,7 +22,7 @@ use super::{RelayServerStats, RelaySessionState};
 pub(super) async fn handle_packet(
     socket: &Arc<UdpSocket>,
     sessions: &Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
-    authority: &Arc<dyn RelayAuthority>,
+    authority: &Arc<RelayAuthority>,
     stats: &Arc<RwLock<RelayServerStats>>,
     relay_addr: SocketAddr,
     data: &[u8],
@@ -53,7 +53,7 @@ pub(super) async fn handle_packet(
 async fn handle_allocate(
     socket: &Arc<UdpSocket>,
     sessions: &Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
-    authority: &Arc<dyn RelayAuthority>,
+    authority: &Arc<RelayAuthority>,
     stats: &Arc<RwLock<RelayServerStats>>,
     relay_addr: SocketAddr,
     request: AllocationRequest,

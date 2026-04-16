@@ -3,7 +3,6 @@
 
 //! Protocol routing, load balancing, and circuit breaking for the canonical adapter.
 
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -21,36 +20,12 @@ use super::types::{
 };
 
 // ============================================================================
-// PROTOCOL HANDLER TRAIT
-// ============================================================================
-
-/// Protocol handler trait for different communication protocols.
-#[async_trait]
-pub trait CanonicalProtocolHandler: Send + Sync {
-    /// Protocol name.
-    fn protocol_name(&self) -> &str;
-
-    /// Handle request using this protocol.
-    async fn handle_request(
-        &self,
-        service: &CanonicalServiceInfo,
-        request: &CanonicalAdapterRequest,
-    ) -> SongbirdResult<CanonicalAdapterResponse>;
-
-    /// Check if service supports this protocol.
-    fn supports_service(&self, service: &CanonicalServiceInfo) -> bool;
-
-    /// Get protocol-specific metadata.
-    fn get_metadata(&self) -> HashMap<String, String>;
-}
-
-// ============================================================================
-// PROTOCOL ROUTER
+// PROTOCOL HANDLER (enum dispatch)
 // ============================================================================
 
 /// TCP reachability probe for `http` / `https` logical protocols (TLS not negotiated; liveness only).
-#[derive(Debug)]
-struct TcpReachabilityHandler {
+#[derive(Debug, Clone)]
+pub struct TcpReachabilityHandler {
     protocol: &'static str,
 }
 
@@ -65,13 +40,6 @@ impl TcpReachabilityHandler {
         Self {
             protocol: "https",
         }
-    }
-}
-
-#[async_trait]
-impl CanonicalProtocolHandler for TcpReachabilityHandler {
-    fn protocol_name(&self) -> &str {
-        self.protocol
     }
 
     async fn handle_request(
@@ -107,19 +75,101 @@ impl CanonicalProtocolHandler for TcpReachabilityHandler {
             performance_info: super::types::CanonicalServicePerformance::default(),
         })
     }
+}
 
-    fn supports_service(&self, service: &CanonicalServiceInfo) -> bool {
-        service.endpoints.iter().any(|e| e.protocol.eq_ignore_ascii_case(self.protocol))
-    }
+/// Test-only HTTP stub for protocol router unit tests.
+#[cfg(test)]
+#[derive(Debug)]
+pub struct MockHttpHandler;
 
-    fn get_metadata(&self) -> HashMap<String, String> {
-        HashMap::from([("probe".to_string(), "tcp_connect".to_string())])
+#[cfg(test)]
+impl MockHttpHandler {
+    #[allow(
+        clippy::unused_async,
+        reason = "matches protocol handler async API; stub is synchronous"
+    )]
+    async fn handle_request(
+        &self,
+        service: &CanonicalServiceInfo,
+        request: &CanonicalAdapterRequest,
+    ) -> SongbirdResult<CanonicalAdapterResponse> {
+        Ok(CanonicalAdapterResponse {
+            request_id: request.id.clone(),
+            service_id: service.id.clone(),
+            payload: serde_json::json!({"ok": true}),
+            metadata: HashMap::new(),
+            processing_time: Duration::from_millis(1),
+            performance_info: super::types::CanonicalServicePerformance::default(),
+        })
     }
 }
 
+/// Protocol handler for different communication protocols (enum dispatch; not `dyn`).
+#[derive(Debug)]
+pub enum CanonicalProtocolHandler {
+    /// TCP connect probe for logical HTTP(S) endpoints.
+    TcpReachability(TcpReachabilityHandler),
+    /// Stub handler for crate tests.
+    #[cfg(test)]
+    MockHttp(MockHttpHandler),
+}
+
+impl CanonicalProtocolHandler {
+    /// Protocol name key used for router registration.
+    #[must_use]
+    pub fn protocol_name(&self) -> &'static str {
+        match self {
+            Self::TcpReachability(h) => h.protocol,
+            #[cfg(test)]
+            Self::MockHttp(_) => "http",
+        }
+    }
+
+    /// Handle request using this protocol.
+    pub async fn handle_request(
+        &self,
+        service: &CanonicalServiceInfo,
+        request: &CanonicalAdapterRequest,
+    ) -> SongbirdResult<CanonicalAdapterResponse> {
+        match self {
+            Self::TcpReachability(h) => h.handle_request(service, request).await,
+            #[cfg(test)]
+            Self::MockHttp(m) => m.handle_request(service, request).await,
+        }
+    }
+
+    /// Check if service supports this protocol.
+    #[must_use]
+    pub fn supports_service(&self, service: &CanonicalServiceInfo) -> bool {
+        match self {
+            Self::TcpReachability(h) => {
+                service.endpoints.iter().any(|e| e.protocol.eq_ignore_ascii_case(h.protocol))
+            }
+            #[cfg(test)]
+            Self::MockHttp(_) => true,
+        }
+    }
+
+    /// Protocol-specific metadata.
+    #[must_use]
+    pub fn get_metadata(&self) -> HashMap<String, String> {
+        match self {
+            Self::TcpReachability(_) => {
+                HashMap::from([("probe".to_string(), "tcp_connect".to_string())])
+            }
+            #[cfg(test)]
+            Self::MockHttp(_) => HashMap::new(),
+        }
+    }
+}
+
+// ============================================================================
+// PROTOCOL ROUTER
+// ============================================================================
+
 /// Protocol router for handling different communication protocols.
 pub struct CanonicalProtocolRouter {
-    handlers: Arc<RwLock<HashMap<String, Arc<dyn CanonicalProtocolHandler>>>>,
+    handlers: Arc<RwLock<HashMap<String, Arc<CanonicalProtocolHandler>>>>,
     default_protocol: String,
 }
 
@@ -145,11 +195,11 @@ impl CanonicalProtocolRouter {
         let mut map = HashMap::new();
         map.insert(
             "http".to_string(),
-            Arc::new(TcpReachabilityHandler::http()) as Arc<dyn CanonicalProtocolHandler>,
+            Arc::new(CanonicalProtocolHandler::TcpReachability(TcpReachabilityHandler::http())),
         );
         map.insert(
             "https".to_string(),
-            Arc::new(TcpReachabilityHandler::https()) as Arc<dyn CanonicalProtocolHandler>,
+            Arc::new(CanonicalProtocolHandler::TcpReachability(TcpReachabilityHandler::https())),
         );
         Self {
             handlers: Arc::new(RwLock::new(map)),
@@ -158,7 +208,7 @@ impl CanonicalProtocolRouter {
     }
 
     /// Register or replace a protocol handler (e.g. production HTTP client over TCP probe).
-    pub async fn register_handler(&self, handler: Arc<dyn CanonicalProtocolHandler>) {
+    pub async fn register_handler(&self, handler: Arc<CanonicalProtocolHandler>) {
         let mut handlers = self.handlers.write().await;
         handlers.insert(handler.protocol_name().to_string(), handler);
     }

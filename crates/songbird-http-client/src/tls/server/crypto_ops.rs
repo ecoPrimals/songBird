@@ -5,6 +5,7 @@
 //!
 //! Handles encryption and decryption of TLS records using handshake/application keys.
 
+use crate::crypto::CryptoCapability;
 use crate::error::{Error, Result};
 use crate::tls::content_type;
 use crate::tls::handshake_v2::keys::CipherSuite;

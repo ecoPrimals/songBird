@@ -25,7 +25,7 @@
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
-use super::capability::CryptoCapability;
+use super::CryptoCapability;
 use super::security_provider::SecurityCryptoProvider;
 use crate::error::{Error, Result};
 use songbird_types::defaults::paths::security_socket_candidates;
@@ -48,7 +48,7 @@ use songbird_types::defaults::paths::security_socket_candidates;
 /// let crypto = discover_crypto_capability().await?;
 /// let (pub_key, priv_key) = crypto.generate_x25519_keypair().await?;
 /// ```
-pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
+pub async fn discover_crypto_capability() -> Result<Arc<SecurityCryptoProvider>> {
     info!("🔍 Discovering crypto capability provider...");
 
     // 1. Try CRYPTO_CAPABILITY_SOCKET env var
@@ -126,7 +126,9 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
     dead_code,
     reason = "public discovery helper for explicit paths; only tests call it in this crate"
 )]
-pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn CryptoCapability>> {
+pub async fn discover_crypto_capability_at(
+    socket_path: &str,
+) -> Result<Arc<SecurityCryptoProvider>> {
     let provider = SecurityCryptoProvider::new(socket_path);
 
     if provider.is_available().await {
@@ -145,7 +147,7 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
     dead_code,
     reason = "test-oriented constructor; production uses discover_crypto_capability"
 )]
-pub fn create_crypto_capability(socket_path: &str) -> Arc<dyn CryptoCapability> {
+pub fn create_crypto_capability(socket_path: &str) -> Arc<SecurityCryptoProvider> {
     Arc::new(SecurityCryptoProvider::new(socket_path))
 }
 
@@ -154,6 +156,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::crypto::capability::CryptoCapability;
     use crate::error::Error;
 
     #[test]

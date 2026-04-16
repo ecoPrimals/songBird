@@ -46,8 +46,9 @@
 //! let shared = crypto.derive_x25519_shared_secret(&private, &peer_public).await?;
 //! ```
 
+#![expect(async_fn_in_trait, reason = "CryptoCapability is the async crypto surface for TLS")]
+
 use crate::error::Result;
-use async_trait::async_trait;
 
 /// TLS 1.3 Handshake Secrets (RFC 8446 Section 7.1)
 #[derive(Debug, Clone)]
@@ -103,7 +104,6 @@ pub struct TlsApplicationSecrets {
 /// - All byte arrays use `Vec<u8>` for simplicity across IPC
 /// - Errors should be descriptive for debugging
 /// - Implementations should be stateless where possible
-#[async_trait]
 pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// Provider name for debugging/logging
     fn name(&self) -> &str;
@@ -298,17 +298,11 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     }
 }
 
-/// Alias for backward compatibility
-pub type CryptoProvider = dyn CryptoCapability;
-
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-
-    // Test that trait is object-safe
-    fn _assert_object_safe(_: &dyn CryptoCapability) {}
 
     #[test]
     fn tls_handshake_secrets_struct_fields_roundtrip_clone() {

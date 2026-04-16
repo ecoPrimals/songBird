@@ -50,7 +50,7 @@ use anyhow::{Context, Result};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_types::primal_names;
 use songbird_universal_ipc::endpoint::VirtualEndpoint;
-use songbird_universal_ipc::handlers::{DiscoveryListenerBridge, PeerRegistry};
+use songbird_universal_ipc::handlers::DiscoveryListenerBridge;
 use songbird_universal_ipc::ipc;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::TowerAtomicServer;
@@ -138,8 +138,8 @@ impl UniversalIpcBroker {
         let handler = if let Some(listener) = discovery_listener {
             info!("🌉 Wiring up discovery listener bridge for runtime peer discovery");
 
-            // Create bridge from listener to PeerRegistry trait
-            let bridge: Arc<dyn PeerRegistry> = Arc::new(DiscoveryListenerBridge::new(listener));
+            let bridge: Arc<DiscoveryListenerBridge> =
+                Arc::new(DiscoveryListenerBridge::new(listener));
 
             // Create handler with discovery registry
             IpcServiceHandler::with_discovery_registry(Arc::clone(&registry), bridge)

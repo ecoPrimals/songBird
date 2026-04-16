@@ -9,87 +9,29 @@
 //! - `peer.connect` - Initiate direct connection to peer (hole punching)
 //!
 //! ## Architecture
-//! Uses trait-based dependency injection (`PeerConnector` trait) to enable:
-//! - Testing with mock implementations
-//! - Production with real UDP hole punching
-//! - Integration with STUN bindings
-//!
-//! ## Evolution Principles
-//! - Zero hardcoding: Configurable timeouts and retry logic
-//! - Mocks isolated: Only in #[cfg(test)]
-//! - Capability-based: Trait-based DI
-//! - Modern Rust: async/await, Arc, proper error handling
+//! Uses enum dispatch ([`PeerConnector`](crate::handlers::udp_peer_connector::PeerConnector)) for production UDP and test doubles.
 
 use crate::error::{IpcError, IpcResult};
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::{info, warn};
 
-// ============================================================================
-// Request/Response Types
-// ============================================================================
+pub use super::peer_types::{PeerChannel, PeerConnectParams, PeerConnectResult};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PeerConnectParams {
-    /// Target peer address (IP:port)
-    pub target_address: String,
-    /// Our STUN binding (for symmetric NAT, optional)
-    pub our_binding: Option<String>,
-    /// Rendezvous token (if using rendezvous, optional)
-    pub rendezvous_token: Option<String>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct PeerConnectResult {
-    /// Connection ID
-    pub connection_id: String,
-    /// Connection state
-    pub state: String, // "connecting", "connected", "failed"
-    /// Established channel info (if connected)
-    pub channel: Option<PeerChannel>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct PeerChannel {
-    /// Local endpoint
-    pub local_address: String,
-    /// Remote endpoint
-    pub remote_address: String,
-    /// Protocol (udp/tcp)
-    pub protocol: String,
-    /// Latency (ms, if measured)
-    pub latency_ms: Option<u64>,
-}
-
-// ============================================================================
-// Peer Connector Trait (Capability-Based)
-// ============================================================================
-
-/// Trait for peer connection operations (dependency injection)
-#[async_trait]
-pub trait PeerConnector: Send + Sync + 'static {
-    /// Initiate connection to peer (UDP hole punching)
-    async fn connect(
-        &self,
-        target_address: &str,
-        our_binding: Option<&str>,
-        rendezvous_token: Option<&str>,
-    ) -> Result<PeerConnectResult, String>;
-}
+use super::udp_peer_connector::PeerConnector;
 
 // ============================================================================
 // Peer Handler
 // ============================================================================
 
 pub struct PeerHandler {
-    connector: Arc<dyn PeerConnector>,
+    connector: Arc<PeerConnector>,
 }
 
 impl PeerHandler {
     /// Create new handler with given connector
-    pub fn new(connector: Arc<dyn PeerConnector>) -> Self {
+    #[must_use]
+    pub fn new(connector: Arc<PeerConnector>) -> Self {
         Self {
             connector,
         }
@@ -133,75 +75,6 @@ impl PeerHandler {
 }
 
 // ============================================================================
-// Mock Implementation (Testing Only - Deep Debt Compliant)
-// ============================================================================
-
-#[cfg(test)]
-mod tests_support {
-    use super::{PeerChannel, PeerConnectResult, PeerConnector};
-    use async_trait::async_trait;
-
-    pub struct MockPeerConnector {
-        should_succeed: std::sync::RwLock<bool>,
-    }
-
-    impl Default for MockPeerConnector {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl MockPeerConnector {
-        #[must_use]
-        pub fn new() -> Self {
-            Self {
-                should_succeed: std::sync::RwLock::new(true),
-            }
-        }
-
-        pub fn set_should_succeed(&self, succeed: bool) {
-            *self.should_succeed.write().unwrap() = succeed;
-        }
-    }
-
-    #[async_trait]
-    impl PeerConnector for MockPeerConnector {
-        async fn connect(
-            &self,
-            target_address: &str,
-            our_binding: Option<&str>,
-            _rendezvous_token: Option<&str>,
-        ) -> Result<PeerConnectResult, String> {
-            let should_succeed = *self.should_succeed.read().unwrap();
-
-            let connection_id = uuid::Uuid::new_v4().to_string();
-
-            if should_succeed {
-                let local_address = our_binding
-                    .map_or_else(|| "0.0.0.0:0".to_string(), std::string::ToString::to_string);
-
-                Ok(PeerConnectResult {
-                    connection_id,
-                    state: "connected".to_string(),
-                    channel: Some(PeerChannel {
-                        local_address,
-                        remote_address: target_address.to_string(),
-                        protocol: "udp".to_string(),
-                        latency_ms: Some(25),
-                    }),
-                })
-            } else {
-                Ok(PeerConnectResult {
-                    connection_id,
-                    state: "failed".to_string(),
-                    channel: None,
-                })
-            }
-        }
-    }
-}
-
-// ============================================================================
 // Tests
 // ============================================================================
 
@@ -209,13 +82,13 @@ mod tests_support {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
-    use super::tests_support::MockPeerConnector;
     use super::*;
+    use crate::handlers::udp_peer_connector::MockPeerConnector;
     use serde_json::json;
 
     #[tokio::test]
     async fn test_connect_success() {
-        let connector = Arc::new(MockPeerConnector::new());
+        let connector = Arc::new(PeerConnector::Mock(MockPeerConnector::new()));
         let handler = PeerHandler::new(connector);
 
         let params = json!({
@@ -236,7 +109,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_with_binding() {
-        let connector = Arc::new(MockPeerConnector::new());
+        let connector = Arc::new(PeerConnector::Mock(MockPeerConnector::new()));
         let handler = PeerHandler::new(connector);
 
         let params = json!({
@@ -253,7 +126,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_with_rendezvous_token() {
-        let connector = Arc::new(MockPeerConnector::new());
+        let connector = Arc::new(PeerConnector::Mock(MockPeerConnector::new()));
         let handler = PeerHandler::new(connector);
 
         let params = json!({
@@ -269,8 +142,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_failure() {
-        let connector = Arc::new(MockPeerConnector::new());
-        connector.set_should_succeed(false);
+        let inner = MockPeerConnector::new();
+        inner.set_should_succeed(false);
+        let connector = Arc::new(PeerConnector::Mock(inner));
 
         let handler = PeerHandler::new(connector);
 
@@ -286,7 +160,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_missing_params() {
-        let connector = Arc::new(MockPeerConnector::new());
+        let connector = Arc::new(PeerConnector::Mock(MockPeerConnector::new()));
         let handler = PeerHandler::new(connector);
 
         let params = json!({
@@ -299,7 +173,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_all_params() {
-        let connector = Arc::new(MockPeerConnector::new());
+        let connector = Arc::new(PeerConnector::Mock(MockPeerConnector::new()));
         let handler = PeerHandler::new(connector);
 
         let params = json!({
@@ -332,23 +206,9 @@ mod tests {
         assert_eq!(back.rendezvous_token, p.rendezvous_token);
     }
 
-    struct ErrorPeerConnector;
-
-    #[async_trait]
-    impl PeerConnector for ErrorPeerConnector {
-        async fn connect(
-            &self,
-            _target_address: &str,
-            _our_binding: Option<&str>,
-            _rendezvous_token: Option<&str>,
-        ) -> Result<PeerConnectResult, String> {
-            Err("simulated transport failure".to_string())
-        }
-    }
-
     #[tokio::test]
     async fn connect_propagates_connector_error() {
-        let handler = PeerHandler::new(Arc::new(ErrorPeerConnector));
+        let handler = PeerHandler::new(Arc::new(PeerConnector::ErrorSim));
         let err = handler
             .handle_connect(json!({ "target_address": "127.0.0.1:1" }))
             .await
@@ -361,7 +221,7 @@ mod tests {
 
     #[tokio::test]
     async fn connect_invalid_params_type_errors() {
-        let handler = PeerHandler::new(Arc::new(MockPeerConnector::new()));
+        let handler = PeerHandler::new(Arc::new(PeerConnector::Mock(MockPeerConnector::new())));
         let err = handler
             .handle_connect(json!({ "target_address": 12345 }))
             .await
@@ -395,7 +255,7 @@ mod tests {
 
     #[tokio::test]
     async fn connect_accepts_optional_null_fields() {
-        let handler = PeerHandler::new(Arc::new(MockPeerConnector::new()));
+        let handler = PeerHandler::new(Arc::new(PeerConnector::Mock(MockPeerConnector::new())));
         let params = json!({
             "target_address": "198.51.100.1:4000",
             "our_binding": null,
@@ -407,32 +267,14 @@ mod tests {
 
     #[tokio::test]
     async fn connect_unknown_state_still_returns_ok() {
-        struct WeirdConnector;
-
-        #[async_trait]
-        impl PeerConnector for WeirdConnector {
-            async fn connect(
-                &self,
-                _target: &str,
-                _b: Option<&str>,
-                _t: Option<&str>,
-            ) -> Result<PeerConnectResult, String> {
-                Ok(PeerConnectResult {
-                    connection_id: "x".into(),
-                    state: "negotiating".into(),
-                    channel: None,
-                })
-            }
-        }
-
-        let handler = PeerHandler::new(Arc::new(WeirdConnector));
+        let handler = PeerHandler::new(Arc::new(PeerConnector::Weird));
         let r = handler.handle_connect(json!({ "target_address": "1.1.1.1:1" })).await.expect("ok");
         assert_eq!(r.state, "negotiating");
     }
 
     #[tokio::test]
     async fn target_address_accepts_ipv6_bracket_form() {
-        let handler = PeerHandler::new(Arc::new(MockPeerConnector::new()));
+        let handler = PeerHandler::new(Arc::new(PeerConnector::Mock(MockPeerConnector::new())));
         let r = handler
             .handle_connect(json!({ "target_address": "[2001:db8::1]:5000" }))
             .await

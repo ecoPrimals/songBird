@@ -52,92 +52,34 @@ mod fault_injection_tests {
     use serde_json::json;
     use songbird_discovery::IdentityAttestation;
     use songbird_discovery::anonymous::{AnonymousDiscoveryMessage, TransportEndpointMessage};
-    use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
+    use songbird_discovery::birdsong::{
+        BirdSongConfig, BirdSongEncryption, BirdSongProcessor, CrossFamilyBirdSongMock,
+        FailingBirdSongMock, UnavailableBirdSongMock,
+    };
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
 
-    /// Mock provider that fails after N operations
-    struct FailingBirdSongProvider {
-        family_id: Option<String>,
-        call_count: AtomicUsize,
-        fail_after: usize,
+    fn failing_enc(family_id: Option<String>, fail_after: usize) -> Arc<BirdSongEncryption> {
+        Arc::new(BirdSongEncryption::Failing(Arc::new(FailingBirdSongMock::new(
+            family_id, fail_after,
+        ))))
     }
 
-    impl FailingBirdSongProvider {
-        fn new(family_id: Option<String>, fail_after: usize) -> Self {
-            Self {
-                family_id,
-                call_count: AtomicUsize::new(0),
-                fail_after,
-            }
-        }
+    fn unavailable_enc(family_id: Option<String>) -> Arc<BirdSongEncryption> {
+        Arc::new(BirdSongEncryption::Unavailable(Arc::new(UnavailableBirdSongMock {
+            family_id,
+        })))
     }
 
-    #[async_trait::async_trait]
-    impl BirdSongEncryption for FailingBirdSongProvider {
-        async fn encrypt_discovery(&self, _plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-            let count = self.call_count.fetch_add(1, Ordering::SeqCst);
-            if count >= self.fail_after {
-                Err(anyhow::anyhow!("Simulated encryption failure after {count} calls"))
-            } else {
-                Ok(b"ENCRYPTED".to_vec())
-            }
-        }
-
-        async fn decrypt_discovery(&self, _ciphertext: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-            let count = self.call_count.fetch_add(1, Ordering::SeqCst);
-            if count >= self.fail_after {
-                Err(anyhow::anyhow!("Simulated decryption failure after {count} calls"))
-            } else {
-                Ok(Some(b"DECRYPTED".to_vec()))
-            }
-        }
-
-        fn is_available(&self) -> bool {
-            self.call_count.load(Ordering::SeqCst) < self.fail_after
-        }
-
-        fn family_id(&self) -> Option<String> {
-            self.family_id.clone()
-        }
-
-        fn provider_name(&self) -> String {
-            "FailingProvider".to_string()
-        }
-    }
-
-    /// Mock provider that is always unavailable
-    struct UnavailableBirdSongProvider {
-        family_id: Option<String>,
-    }
-
-    #[async_trait::async_trait]
-    impl BirdSongEncryption for UnavailableBirdSongProvider {
-        async fn encrypt_discovery(&self, _plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-            Err(anyhow::anyhow!("Provider unavailable"))
-        }
-
-        async fn decrypt_discovery(&self, _ciphertext: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-            Err(anyhow::anyhow!("Provider unavailable"))
-        }
-
-        fn is_available(&self) -> bool {
-            false
-        }
-
-        fn family_id(&self) -> Option<String> {
-            self.family_id.clone()
-        }
-
-        fn provider_name(&self) -> String {
-            "UnavailableProvider".to_string()
-        }
+    fn cross_family_enc(family_id: Option<String>) -> Arc<BirdSongEncryption> {
+        Arc::new(BirdSongEncryption::CrossFamily(Arc::new(CrossFamilyBirdSongMock {
+            family_id,
+        })))
     }
 
     #[tokio::test]
     async fn test_encryption_failure_with_fallback() {
         // Provider that fails after 3 calls
-        let provider = Arc::new(FailingBirdSongProvider::new(Some("test-family".to_string()), 3));
+        let provider = failing_enc(Some("test-family".to_string()), 3);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -163,10 +105,7 @@ mod fault_injection_tests {
 
     #[tokio::test]
     async fn test_encryption_failure_without_fallback() {
-        let provider = Arc::new(FailingBirdSongProvider::new(
-            Some("test-family".to_string()),
-            0, // Fail immediately
-        ));
+        let provider = failing_enc(Some("test-family".to_string()), 0);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -184,9 +123,7 @@ mod fault_injection_tests {
 
     #[tokio::test]
     async fn test_unavailable_provider_with_fallback() {
-        let provider = Arc::new(UnavailableBirdSongProvider {
-            family_id: Some("test-family".to_string()),
-        });
+        let provider = unavailable_enc(Some("test-family".to_string()));
 
         let config = BirdSongConfig {
             enabled: true,
@@ -269,10 +206,7 @@ mod fault_injection_tests {
 
     #[tokio::test]
     async fn test_mixed_mode_with_failing_provider() {
-        let provider = Arc::new(FailingBirdSongProvider::new(
-            Some("test-family".to_string()),
-            5, // Fail after 5
-        ));
+        let provider = failing_enc(Some("test-family".to_string()), 5);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -297,9 +231,7 @@ mod fault_injection_tests {
     #[tokio::test]
     async fn test_decryption_with_wrong_family() {
         // Processor for family "iidn"
-        let provider_a = Arc::new(MockBirdSongProvider {
-            family_id: Some("iidn".to_string()),
-        });
+        let provider_a = cross_family_enc(Some("iidn".to_string()));
         let config_a = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
@@ -309,9 +241,7 @@ mod fault_injection_tests {
         let processor_a = Arc::new(BirdSongProcessor::new(Some(provider_a.clone()), config_a));
 
         // Processor for family "other"
-        let provider_b = Arc::new(MockBirdSongProvider {
-            family_id: Some("other".to_string()),
-        });
+        let provider_b = cross_family_enc(Some("other".to_string()));
         let config_b = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
@@ -337,7 +267,7 @@ mod fault_injection_tests {
 
     #[tokio::test]
     async fn test_rapid_provider_availability_changes() {
-        let provider = Arc::new(FailingBirdSongProvider::new(Some("test-family".to_string()), 5));
+        let provider = failing_enc(Some("test-family".to_string()), 5);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -384,43 +314,5 @@ mod fault_injection_tests {
             vec!["orchestration".to_string()],
         )
         .with_identity_attestations(attestations)
-    }
-
-    /// Simple mock provider for cross-family tests
-    struct MockBirdSongProvider {
-        family_id: Option<String>,
-    }
-
-    #[async_trait::async_trait]
-    impl BirdSongEncryption for MockBirdSongProvider {
-        async fn encrypt_discovery(&self, plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-            // Simple mock: prepend family ID
-            let mut encrypted = self.family_id.clone().unwrap_or_default().into_bytes();
-            encrypted.push(b':');
-            encrypted.extend_from_slice(plaintext);
-            Ok(encrypted)
-        }
-
-        async fn decrypt_discovery(&self, ciphertext: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-            // Check if family ID matches
-            let family_bytes = self.family_id.clone().unwrap_or_default().into_bytes();
-            if ciphertext.starts_with(&family_bytes) && ciphertext.len() > family_bytes.len() + 1 {
-                Ok(Some(ciphertext[family_bytes.len() + 1..].to_vec()))
-            } else {
-                Ok(None) // Different family or invalid
-            }
-        }
-
-        fn is_available(&self) -> bool {
-            true
-        }
-
-        fn family_id(&self) -> Option<String> {
-            self.family_id.clone()
-        }
-
-        fn provider_name(&self) -> String {
-            "MockProvider".to_string()
-        }
     }
 }

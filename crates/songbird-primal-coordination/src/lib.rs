@@ -76,7 +76,10 @@ pub mod error;
 pub mod types;
 
 // Re-exports
-pub use bridge::{PrimalBridge, PrimalConnection};
+pub use bridge::{
+    DiscoveredPrimal, DiscoveryBasedBridge, PrimalBridge, PrimalConnection, PrimalDiscovery,
+    StaticPrimalDiscovery,
+};
 pub use coordinator::PrimalCoordinator;
 pub use error::{PrimalCoordinationError, Result};
 pub use types::*;

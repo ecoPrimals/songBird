@@ -19,47 +19,21 @@ mod tests {
         AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, AnonymousDiscoveryMessage,
         TransportEndpointMessage,
     };
-    use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
+    use songbird_discovery::birdsong::{
+        BirdSongConfig, BirdSongEncryption, BirdSongProcessor, OrchestratorPrefixMock,
+    };
     use std::sync::Arc;
 
-    /// Mock `BirdSong` provider for testing
-    struct MockBirdSongProvider {
-        family_id: Option<String>,
-    }
-
-    #[async_trait::async_trait]
-    impl BirdSongEncryption for MockBirdSongProvider {
-        async fn encrypt_discovery(&self, plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-            // Simple mock: just add a prefix
-            let mut encrypted = b"ENCRYPTED:".to_vec();
-            encrypted.extend_from_slice(plaintext);
-            Ok(encrypted)
-        }
-
-        async fn decrypt_discovery(&self, ciphertext: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-            // Simple mock: remove prefix
-            if ciphertext.starts_with(b"ENCRYPTED:") {
-                Ok(Some(ciphertext[10..].to_vec()))
-            } else {
-                Ok(None) // Not encrypted
-            }
-        }
-
-        fn is_available(&self) -> bool {
-            true
-        }
-
-        fn family_id(&self) -> Option<String> {
-            self.family_id.clone()
-        }
+    fn test_birdsong_enc(family_id: Option<String>) -> Arc<BirdSongEncryption> {
+        Arc::new(BirdSongEncryption::OrchestratorPrefix(Arc::new(OrchestratorPrefixMock {
+            family_id,
+        })))
     }
 
     #[tokio::test]
     async fn test_birdsong_processor_creation() {
         // Create mock provider
-        let provider = Arc::new(MockBirdSongProvider {
-            family_id: Some("test-family".to_string()),
-        });
+        let provider = test_birdsong_enc(Some("test-family".to_string()));
 
         let mut config = BirdSongConfig::default();
         config.enabled = true;
@@ -78,9 +52,7 @@ mod tests {
     #[tokio::test]
     async fn test_broadcaster_with_birdsong() {
         // Create BirdSong processor
-        let provider = Arc::new(MockBirdSongProvider {
-            family_id: Some("test-family".to_string()),
-        });
+        let provider = test_birdsong_enc(Some("test-family".to_string()));
         let mut config = BirdSongConfig::default();
         config.enabled = true;
         config.fallback_to_plaintext = true;
@@ -117,9 +89,7 @@ mod tests {
     #[tokio::test]
     async fn test_listener_with_birdsong() {
         // Create BirdSong processor
-        let provider = Arc::new(MockBirdSongProvider {
-            family_id: Some("test-family".to_string()),
-        });
+        let provider = test_birdsong_enc(Some("test-family".to_string()));
         let mut config = BirdSongConfig::default();
         config.enabled = true;
         config.fallback_to_plaintext = true;
@@ -138,9 +108,7 @@ mod tests {
     #[tokio::test]
     async fn test_e2e_encrypted_discovery_flow() {
         // Create BirdSong processor with same family
-        let provider = Arc::new(MockBirdSongProvider {
-            family_id: Some("iidn".to_string()),
-        });
+        let provider = test_birdsong_enc(Some("iidn".to_string()));
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
@@ -194,9 +162,7 @@ mod tests {
     #[tokio::test]
     async fn test_cross_family_privacy() {
         // Tower 1: family "iidn"
-        let provider1 = Arc::new(MockBirdSongProvider {
-            family_id: Some("iidn".to_string()),
-        });
+        let provider1 = test_birdsong_enc(Some("iidn".to_string()));
         let config1 = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
@@ -206,9 +172,7 @@ mod tests {
         let processor1 = Arc::new(BirdSongProcessor::new(Some(provider1), config1));
 
         // Tower 2: family "xyz" (different!)
-        let provider2 = Arc::new(MockBirdSongProvider {
-            family_id: Some("xyz".to_string()),
-        });
+        let provider2 = test_birdsong_enc(Some("xyz".to_string()));
         let config2 = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
@@ -247,9 +211,7 @@ mod tests {
     #[tokio::test]
     async fn test_mixed_mode_encrypted_and_plaintext() {
         // Create processor with mixed mode enabled
-        let provider = Arc::new(MockBirdSongProvider {
-            family_id: Some("mixed-family".to_string()),
-        });
+        let provider = test_birdsong_enc(Some("mixed-family".to_string()));
         let mut config = BirdSongConfig::default();
         config.enabled = true;
         config.fallback_to_plaintext = true;
@@ -327,9 +289,7 @@ mod tests {
         // This is the CRITICAL test for v3.3 fix
         // Verifies that identity attestations survive encryption/decryption
 
-        let provider = Arc::new(MockBirdSongProvider {
-            family_id: Some("test-family".to_string()),
-        });
+        let provider = test_birdsong_enc(Some("test-family".to_string()));
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,

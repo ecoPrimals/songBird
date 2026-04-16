@@ -38,12 +38,13 @@
 
 //! Integration tests for lineage relay system
 
-use songbird_lineage_relay::birdsong::{BirdSongBroadcaster, BirdSongCrypto, LineageHint};
+use songbird_lineage_relay::birdsong::BirdSongBroadcaster;
 use songbird_lineage_relay::coordinator::{LineageRelayConfig, LineageRelayCoordinator};
 use songbird_lineage_relay::relay::RelayAuthority;
 use songbird_lineage_relay::security::{
-    MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority,
+    BirdSongCrypto, MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority,
 };
+use songbird_lineage_relay::types::LineageHint;
 use songbird_lineage_relay::types::NodeId;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -57,7 +58,10 @@ async fn test_lineage_based_relay_system() {
     lineage_provider.add_lineage("parent", "grandparent").await;
 
     // Create crypto for child node
-    let crypto = Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "child".to_string()));
+    let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
+        lineage_provider.clone(),
+        "child".to_string(),
+    )));
 
     // Create BirdSong broadcaster
     let broadcaster = Arc::new(
@@ -72,7 +76,7 @@ async fn test_lineage_based_relay_system() {
     );
 
     // Create relay authority
-    let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+    let relay_authority = Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
 
     // Create coordinator
     let config = LineageRelayConfig {

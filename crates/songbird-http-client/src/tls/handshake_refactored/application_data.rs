@@ -13,6 +13,7 @@
 //! - Sequence number tracking
 
 use super::core::TlsHandshake;
+use crate::crypto::CryptoCapability;
 use crate::error::Result;
 use crate::tls::session::SessionKeys;
 use tracing::{debug, trace};

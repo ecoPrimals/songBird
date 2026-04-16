@@ -8,7 +8,8 @@
 use super::super::*;
 use super::assert_protocol_debug;
 use crate::adapters::transport::{
-    AdapterTransportKind, DelayTransport, MockTransport, build_default_transport,
+    AdapterTransportKind, CapabilityTransport, DelayTransport, MockTransport,
+    build_default_transport,
 };
 use serde_json::json;
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
@@ -220,7 +221,10 @@ async fn collect_metrics_and_check_health_with_mock_transport() -> SongbirdResul
     let payload = sample_metrics_json();
     let adapter = StorageAdapter::with_transport(
         "http://mock-storage".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(payload.clone()), Ok(payload)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![
+            Ok(payload.clone()),
+            Ok(payload),
+        ]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -232,10 +236,10 @@ async fn collect_metrics_and_check_health_with_mock_transport() -> SongbirdResul
 
 #[tokio::test]
 async fn collect_metrics_delay_transport_times_out() {
-    let delayed = DelayTransport {
-        inner: Arc::new(MockTransport::new(vec![])),
+    let delayed = CapabilityTransport::Delay(DelayTransport {
+        inner: Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![]))),
         delay: Duration::from_secs(30),
-    };
+    });
     let adapter = StorageAdapter::with_transport(
         "http://mock-storage".to_string(),
         Arc::new(delayed),
@@ -251,7 +255,7 @@ async fn collect_metrics_mock_transport_error_passes_through() {
     let boom = SongbirdError::network("upstream transport failure");
     let adapter = StorageAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Err(boom.clone())])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom.clone())]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -263,7 +267,7 @@ async fn collect_metrics_mock_transport_error_passes_through() {
 async fn collect_metrics_parse_error_maps_to_storage_service() {
     let adapter = StorageAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(json!("not-metrics"))])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("not-metrics"))]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -276,7 +280,7 @@ async fn collect_metrics_non_http_transport_error_is_wrapped() {
     let boom = SongbirdError::network("rpc down");
     let adapter = StorageAdapter::with_transport(
         "tarpc://127.0.0.1:1".to_string(),
-        Arc::new(MockTransport::new(vec![Err(boom)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom)]))),
         AdapterTransportKind::Tarpc,
         Duration::from_secs(5),
     );

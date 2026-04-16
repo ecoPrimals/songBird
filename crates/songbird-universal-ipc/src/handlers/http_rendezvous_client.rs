@@ -12,8 +12,7 @@
 //! - Modern async: Full async/await
 //! - Event-driven: No polling, no sleeps
 
-use super::rendezvous_handler::{RendezvousClient, RendezvousPeer, RendezvousRegisterResult};
-use async_trait::async_trait;
+use super::rendezvous_types::{RendezvousPeer, RendezvousRegisterResult};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing::{debug, info, warn};
@@ -205,11 +204,8 @@ impl HttpRendezvousClient {
 
         Ok((host, port, path.to_string()))
     }
-}
 
-#[async_trait]
-impl RendezvousClient for HttpRendezvousClient {
-    async fn register(
+    pub async fn register(
         &self,
         server: &str,
         node_id: &str,
@@ -277,7 +273,7 @@ impl RendezvousClient for HttpRendezvousClient {
         ))
     }
 
-    async fn lookup(&self, server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
+    pub async fn lookup(&self, server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
         info!("🌐 HTTP Rendezvous: Looking up {} on {}", target, server);
 
         let url = format!("{}/rendezvous/lookup?target={}", server.trim_end_matches('/'), target);

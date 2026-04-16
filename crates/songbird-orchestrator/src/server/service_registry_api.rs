@@ -53,11 +53,11 @@ pub fn service_registry_routes(registry: ServiceRegistry) -> Router {
 
     Router::new()
         .route("/register", post(register_service))
-        .route("/:id/heartbeat", post(heartbeat_service))
-        .route("/:id", delete(deregister_service))
-        .route("/:id", get(get_service))
+        .route("/{id}/heartbeat", post(heartbeat_service))
+        .route("/{id}", delete(deregister_service))
+        .route("/{id}", get(get_service))
         .route("/", get(list_services))
-        .route("/query/:capability", get(query_by_capability))
+        .route("/query/{capability}", get(query_by_capability))
         .with_state(state)
 }
 

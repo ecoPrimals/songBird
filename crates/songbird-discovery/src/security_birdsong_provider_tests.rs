@@ -4,7 +4,6 @@
 #![allow(clippy::unwrap_used, reason = "test assertions")]
 
 use super::*;
-use crate::birdsong::BirdSongEncryption;
 use base64::{Engine, engine::general_purpose::STANDARD as B64};
 use serde_json::{Value, json};
 use std::sync::Arc;

@@ -10,7 +10,6 @@
 
 use crate::error::IpcResult;
 use crate::handlers::discovery_handler::{DiscoveredPeerInfo, PeerRegistry};
-use async_trait::async_trait;
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -36,7 +35,6 @@ impl DiscoveryListenerBridge {
     }
 }
 
-#[async_trait]
 impl PeerRegistry for DiscoveryListenerBridge {
     async fn get_all_peers(&self) -> IpcResult<Vec<DiscoveredPeerInfo>> {
         debug!("Discovery bridge: Getting all peers");

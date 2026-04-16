@@ -46,51 +46,21 @@
 //! 3. Relay server forwards packets to target
 //! 4. Session refresh and deallocation
 
-use async_trait::async_trait;
 use songbird_lineage_relay::{
-    RelaySession,
-    error::Result as RelayResult,
+    MaskingLevel, RelaySession,
     relay::RelayAuthority,
     relay_protocol::{AllocationRequest, RelayProtocol},
     relay_server::RelayServer,
-    types::{MaskingLevel, NodeId, RelayAuthorization},
 };
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::sync::oneshot;
 
-/// Mock relay authority for testing
-struct TestRelayAuthority;
-
-#[async_trait]
-impl RelayAuthority for TestRelayAuthority {
-    async fn authorize_relay(
-        &self,
-        relay_node: &NodeId,
-        requester: &NodeId,
-    ) -> RelayResult<RelayAuthorization> {
-        Ok(RelayAuthorization::authorized(
-            relay_node.clone(),
-            requester.clone(),
-            MaskingLevel::None,
-            300,
-        ))
-    }
-
-    async fn determine_masking(
-        &self,
-        _relay_node: &NodeId,
-        _requester: &NodeId,
-    ) -> RelayResult<MaskingLevel> {
-        Ok(MaskingLevel::None)
-    }
-}
-
 #[tokio::test]
 async fn test_relay_allocation_flow() {
     // Start relay server
-    let authority = Arc::new(TestRelayAuthority);
+    let authority = Arc::new(RelayAuthority::StubAllow);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
@@ -141,7 +111,7 @@ async fn test_relay_allocation_flow() {
 #[tokio::test]
 async fn test_relay_packet_forwarding() {
     // Start relay server
-    let authority = Arc::new(TestRelayAuthority);
+    let authority = Arc::new(RelayAuthority::StubAllow);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
@@ -216,7 +186,7 @@ async fn test_relay_packet_forwarding() {
 #[tokio::test]
 async fn test_relay_session_refresh() {
     // Start relay server
-    let authority = Arc::new(TestRelayAuthority);
+    let authority = Arc::new(RelayAuthority::StubAllow);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
@@ -269,7 +239,7 @@ async fn test_relay_session_refresh() {
 #[tokio::test]
 async fn test_relay_session_deallocation() {
     // Start relay server
-    let authority = Arc::new(TestRelayAuthority);
+    let authority = Arc::new(RelayAuthority::StubAllow);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
@@ -355,7 +325,7 @@ async fn test_relay_session_deallocation() {
 #[tokio::test]
 async fn test_relay_client_session_full_lifecycle() {
     // Start relay server
-    let authority = Arc::new(TestRelayAuthority);
+    let authority = Arc::new(RelayAuthority::StubAllow);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
@@ -404,26 +374,8 @@ async fn test_relay_client_session_full_lifecycle() {
 
 #[tokio::test]
 async fn test_unauthorized_relay_request() {
-    /// Authority that denies all requests
-    struct DenyAuthority;
-
-    #[async_trait]
-    impl RelayAuthority for DenyAuthority {
-        async fn authorize_relay(
-            &self,
-            relay_node: &NodeId,
-            requester: &NodeId,
-        ) -> RelayResult<RelayAuthorization> {
-            Ok(RelayAuthorization::unauthorized(relay_node.clone(), requester.clone()))
-        }
-
-        async fn determine_masking(&self, _: &NodeId, _: &NodeId) -> RelayResult<MaskingLevel> {
-            Ok(MaskingLevel::Full)
-        }
-    }
-
     // Start relay server with deny authority
-    let authority = Arc::new(DenyAuthority);
+    let authority = Arc::new(RelayAuthority::StubDeny);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();

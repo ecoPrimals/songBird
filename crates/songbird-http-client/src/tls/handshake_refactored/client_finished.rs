@@ -8,6 +8,7 @@
 //! the handshake.
 
 use super::core::TlsHandshake;
+use crate::crypto::CryptoCapability;
 use crate::crypto::TlsHandshakeSecrets as TlsSecrets;
 use crate::error::{Error, Result};
 use tokio::io::AsyncWriteExt;
@@ -233,7 +234,7 @@ impl TlsHandshake {
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::TlsHandshake;
-    use crate::crypto::{CryptoCapability, SecurityCryptoProvider};
+    use crate::crypto::SecurityCryptoProvider;
     use std::sync::Arc;
 
     fn handshake() -> TlsHandshake {
@@ -241,7 +242,7 @@ mod tests {
             .join("songbird-test-security.sock")
             .to_string_lossy()
             .into_owned();
-        let crypto: Arc<dyn CryptoCapability> = Arc::new(SecurityCryptoProvider::new(path));
+        let crypto: Arc<SecurityCryptoProvider> = Arc::new(SecurityCryptoProvider::new(path));
         TlsHandshake::new(crypto)
     }
 

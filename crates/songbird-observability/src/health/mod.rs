@@ -6,14 +6,10 @@
 //!
 //! Comprehensive health monitoring system
 
-#![expect(
-    async_fn_in_trait,
-    reason = "native async HealthMonitor; HealthCheckAsync remains async_trait for dyn objects"
-)]
+#![expect(async_fn_in_trait, reason = "native async HealthMonitor trait")]
 
 use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
-use std::sync::Arc;
 
 /// Health monitor trait for implementing custom health monitoring
 pub trait HealthMonitor: Send + Sync {
@@ -121,9 +117,9 @@ pub struct HealthThresholds {
     pub failure_count_threshold: u32,
 }
 
-/// Owns a list of [`HealthCheckAsync`] probes and runs them via [`check_all`](Self::check_all).
+/// Owns a list of [`HealthProbe`] entries and runs them via [`check_all`](Self::check_all).
 pub struct HealthChecker {
-    checks: Vec<Arc<dyn HealthCheckAsync + Send + Sync>>,
+    checks: Vec<HealthProbe>,
 }
 
 impl Default for HealthChecker {
@@ -141,17 +137,18 @@ impl HealthChecker {
         }
     }
 
-    /// Registers an async probe; order is preserved when running [`check_all`](Self::check_all).
-    pub fn add_check(&mut self, check: Arc<dyn HealthCheckAsync + Send + Sync>) {
+    /// Registers a probe; order is preserved when running [`check_all`](Self::check_all).
+    pub fn add_check(&mut self, check: HealthProbe) {
         self.checks.push(check);
     }
 
     /// Runs every registered probe sequentially and collects [`HealthCheckResult`] rows.
-    pub async fn check_all(&self) -> Vec<HealthCheckResult> {
+    #[must_use]
+    pub fn check_all(&self) -> Vec<HealthCheckResult> {
         let mut results = Vec::new();
 
         for check in &self.checks {
-            match check.check().await {
+            match check.run() {
                 Ok(result) => results.push(result),
                 Err(err) => results.push(HealthCheckResult {
                     name: "Unknown".to_string(),
@@ -166,9 +163,32 @@ impl HealthChecker {
     }
 }
 
-/// Health check trait for async checks
-#[async_trait::async_trait]
-pub trait HealthCheckAsync: Send + Sync {
-    /// Perform the health check
-    async fn check(&self) -> Result<HealthCheckResult>;
+/// Statically dispatched async health probe (extend with new variants as needed).
+#[derive(Clone)]
+pub enum HealthProbe {
+    /// Always succeeds; useful as a placeholder until concrete probes are wired.
+    NoOp {
+        /// Display name for the probe row.
+        name: String,
+    },
+}
+
+impl HealthProbe {
+    /// Run this probe and return a [`HealthCheckResult`] row.
+    ///
+    /// # Errors
+    ///
+    /// The [`HealthProbe::NoOp`] variant does not currently return an error.
+    pub fn run(&self) -> Result<HealthCheckResult> {
+        match self {
+            Self::NoOp {
+                name,
+            } => Ok(HealthCheckResult {
+                name: name.clone(),
+                status: HealthStatus::Healthy,
+                message: "noop".to_string(),
+                response_time_ms: 0,
+            }),
+        }
+    }
 }

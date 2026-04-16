@@ -5,7 +5,7 @@
 //!
 //! Contains the `TlsServer` struct definition and basic initialization.
 
-use crate::crypto::CryptoCapability;
+use crate::crypto::SecurityCryptoProvider;
 use crate::tls::handshake_v2::keys::{CipherSuite, TrafficKeys};
 use crate::tls::handshake_v2::transcript::Transcript;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ use tracing::info;
 /// **Critical**: Uses SAME transcript logic as client for self-testing!
 pub struct TlsServer {
     /// Shared crypto provider (`security provider` or any `CryptoCapability` impl)
-    pub(super) crypto: Arc<dyn CryptoCapability>,
+    pub(super) crypto: Arc<SecurityCryptoProvider>,
 
     /// Transcript tracking (SAME as client!)
     pub(super) transcript: Transcript,
@@ -54,7 +54,7 @@ pub struct TlsServer {
 impl TlsServer {
     /// Create new TLS server with certificate and private key
     pub fn new(
-        crypto: Arc<dyn CryptoCapability>,
+        crypto: Arc<SecurityCryptoProvider>,
         cert_chain: Vec<u8>,
         private_key: Vec<u8>,
     ) -> Self {
@@ -89,7 +89,7 @@ mod tests {
     use super::*;
     use crate::crypto::SecurityCryptoProvider;
 
-    fn create_test_crypto() -> Arc<dyn CryptoCapability> {
+    fn create_test_crypto() -> Arc<SecurityCryptoProvider> {
         let path = tempfile::env::temp_dir()
             .join("songbird-test-security.sock")
             .to_string_lossy()

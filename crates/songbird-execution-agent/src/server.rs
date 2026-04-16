@@ -78,8 +78,8 @@ impl ExecutionServer {
             .route("/health", get(health_check))
             .route("/api/v1/execution/command", post(execute_command))
             .route("/api/v1/execution/jobs", get(list_jobs))
-            .route("/api/v1/execution/jobs/:job_id", get(get_job))
-            .route("/api/v1/execution/jobs/:job_id/stop", post(stop_job))
+            .route("/api/v1/execution/jobs/{job_id}", get(get_job))
+            .route("/api/v1/execution/jobs/{job_id}/stop", post(stop_job))
             .route("/api/v1/execution/stats", get(get_stats))
             .with_state(state)
             .layer(TraceLayer::new_for_http());

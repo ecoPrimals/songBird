@@ -31,9 +31,7 @@
 //!
 //! Tests error handling, edge cases, and resilience to failures.
 
-use songbird_orchestrator::crypto::{
-    CryptoProvider, UnixSocketCryptoProvider, discover_crypto_provider,
-};
+use songbird_orchestrator::crypto::{UnixSocketCryptoProvider, discover_crypto_provider};
 use songbird_orchestrator::primal_discovery::{Capability, discover_with};
 
 #[tokio::test]

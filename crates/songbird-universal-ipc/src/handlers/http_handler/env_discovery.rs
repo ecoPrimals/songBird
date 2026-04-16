@@ -2,10 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use crate::error::IpcResult;
-use async_trait::async_trait;
 use tracing::{debug, info, warn};
-
-use super::traits::CryptoCapabilityDiscovery;
 
 /// Discovers crypto capability via environment variables
 ///
@@ -14,14 +11,8 @@ use super::traits::CryptoCapabilityDiscovery;
 /// 2. `SECURITY_PROVIDER_SOCKET` / `SECURITY_SOCKET` (capability-standard)
 /// 3. `BEARDOG_SOCKET` (legacy; logs deprecation)
 /// 4. Default: /primal/security
+#[derive(Clone, Copy, Debug)]
 pub struct EnvCryptoDiscovery;
-
-#[async_trait]
-impl CryptoCapabilityDiscovery for EnvCryptoDiscovery {
-    async fn discover(&self, capability: &str) -> IpcResult<String> {
-        Self::discover_with(capability, |key| songbird_process_env::var(key).ok())
-    }
-}
 
 impl EnvCryptoDiscovery {
     /// Discover crypto capability with injectable environment reader (concurrent-safe)
@@ -59,5 +50,9 @@ impl EnvCryptoDiscovery {
         let default = "/primal/security".to_string();
         info!("Using default crypto provider: {}", default);
         Ok(default)
+    }
+
+    pub async fn discover(&self, capability: &str) -> IpcResult<String> {
+        Self::discover_with(capability, |key| songbird_process_env::var(key).ok())
     }
 }

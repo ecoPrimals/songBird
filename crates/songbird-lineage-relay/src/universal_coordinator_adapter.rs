@@ -141,14 +141,20 @@ mod tests {
     use super::*;
     use crate::birdsong::BirdSongBroadcaster;
     use crate::coordinator::LineageRelayConfig;
-    use crate::security::{MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority};
+    use crate::relay::RelayAuthority;
+    use crate::security::{
+        BirdSongCrypto, MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority,
+    };
 
     #[tokio::test]
     async fn test_universal_coordinator_adapter() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto =
-            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
-        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
+            lineage_provider.clone(),
+            "node-1".to_string(),
+        )));
+        let relay_authority =
+            Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
 
         let broadcaster = Arc::new(
             BirdSongBroadcaster::new(

@@ -40,8 +40,7 @@
 
 use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
-use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
-use async_trait::async_trait;
+use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
 use songbird_types::primal_names::BIOMEOS_DIR;
 use tracing::{debug, info};
 
@@ -51,11 +50,11 @@ use tokio::net::windows::named_pipe::{ClientOptions, ServerOptions};
 /// Windows named pipe IPC implementation
 ///
 /// **Platform**: Windows (`x86_64`, ARM64, any architecture)
-pub struct WindowsIPC;
+pub struct WindowsPlatformIPC;
 
-#[async_trait]
-impl PlatformIPC for WindowsIPC {
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+impl WindowsPlatformIPC {
+    /// Create a native endpoint for the given primal name.
+    pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         // Named pipe naming: \\.\pipe\biomeos_{primal_name}
         // The \\.\pipe\ prefix is the Windows named pipe namespace
 
@@ -75,7 +74,8 @@ impl PlatformIPC for WindowsIPC {
         Ok(NativeEndpoint::NamedPipe(pipe_name))
     }
 
-    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
+    /// Create a listener on the native endpoint.
+    pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             NativeEndpoint::NamedPipe(_name) => {
                 #[cfg(windows)]
@@ -96,7 +96,7 @@ impl PlatformIPC for WindowsIPC {
 
                     info!("Named pipe server created: {} (Windows-optimized)", _name);
 
-                    Ok(Box::new(NamedPipeListenerWrapper {
+                    Ok(PlatformListenerImpl::Windows(WindowsListener {
                         server,
                         pipe_name: _name.clone(),
                     }))
@@ -111,7 +111,8 @@ impl PlatformIPC for WindowsIPC {
         }
     }
 
-    async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn AsyncStream>> {
+    /// Connect to a native endpoint.
+    pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
             NativeEndpoint::NamedPipe(_name) => {
                 #[cfg(windows)]
@@ -139,7 +140,7 @@ impl PlatformIPC for WindowsIPC {
 
                     info!("Connected to named pipe: {}", _name);
 
-                    Ok(Box::new(client))
+                    Ok(AsyncStreamImpl::WindowsPipeClient(client))
                 }
 
                 #[cfg(not(windows))]
@@ -151,7 +152,8 @@ impl PlatformIPC for WindowsIPC {
         }
     }
 
-    async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
+    /// Cleanup endpoint.
+    pub async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
         match endpoint {
             NativeEndpoint::NamedPipe(name) => {
                 // Named pipes are automatically cleaned up by Windows kernel
@@ -165,16 +167,16 @@ impl PlatformIPC for WindowsIPC {
 }
 
 #[cfg(windows)]
-/// Wrapper for named pipe server to implement `PlatformListener`
-struct NamedPipeListenerWrapper {
+/// Named pipe server state for [`PlatformListenerImpl::Windows`].
+pub struct WindowsListener {
     server: tokio::net::windows::named_pipe::NamedPipeServer,
     pipe_name: String,
 }
 
 #[cfg(windows)]
-#[async_trait]
-impl PlatformListener for NamedPipeListenerWrapper {
-    async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
+impl WindowsListener {
+    /// Accept incoming connection.
+    pub async fn accept(&mut self) -> IpcResult<AsyncStreamImpl> {
         // Wait for client connection
         self.server.connect().await.map_err(|e| {
             IpcError::ConnectionFailed(format!(
@@ -198,9 +200,13 @@ impl PlatformListener for NamedPipeListenerWrapper {
         // The old server becomes the connected stream
         let connected_server = std::mem::replace(&mut self.server, next_server);
 
-        Ok(Box::new(connected_server))
+        Ok(AsyncStreamImpl::WindowsPipeServer(connected_server))
     }
 }
+
+#[cfg(not(windows))]
+/// Stub type when not on Windows (listen/connect return errors before use).
+pub struct WindowsListener;
 
 #[cfg(test)]
 mod tests {
@@ -208,7 +214,10 @@ mod tests {
     #[tokio::test]
     #[cfg(windows)]
     async fn test_windows_create_endpoint() {
-        let ipc = WindowsIPC;
+        use super::WindowsPlatformIPC;
+        use crate::endpoint::NativeEndpoint;
+
+        let ipc = WindowsPlatformIPC;
         let endpoint = ipc.create_endpoint("test-primal").await.unwrap();
 
         match endpoint {
@@ -223,9 +232,11 @@ mod tests {
     #[tokio::test]
     #[cfg(windows)]
     async fn test_windows_listen_and_connect() {
+        use super::WindowsPlatformIPC;
+        use crate::endpoint::NativeEndpoint;
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-        let ipc = WindowsIPC;
+        let ipc = WindowsPlatformIPC;
 
         // Use unique name for this test to avoid conflicts
         let test_name = format!("test-listen-{}", std::process::id());
@@ -237,7 +248,7 @@ mod tests {
         // Connect in background task (listener already bound — no sleep needed)
         let endpoint_clone = endpoint.clone();
         let connect_handle = tokio::spawn(async move {
-            let ipc = WindowsIPC;
+            let ipc = WindowsPlatformIPC;
             ipc.connect(&endpoint_clone).await
         });
 
@@ -262,7 +273,9 @@ mod tests {
     #[tokio::test]
     #[cfg(windows)]
     async fn test_windows_cleanup_automatic() {
-        let ipc = WindowsIPC;
+        use super::WindowsPlatformIPC;
+
+        let ipc = WindowsPlatformIPC;
         let endpoint = ipc.create_endpoint("cleanup-test").await.unwrap();
 
         // Create and close listener

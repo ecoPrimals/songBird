@@ -75,7 +75,7 @@ impl MockSecurityProvider {
     /// Verify a lineage proof
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<bool> {
         tracing::warn!("🐻 MOCK: Fake lineage verification (always true)");
-        Ok(proof.chain.verify_integrity().await?)
+        proof.chain.verify_integrity().await
     }
 
     /// Get all descendants of a root

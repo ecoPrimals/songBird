@@ -8,21 +8,20 @@
 
 use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
-use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
-use async_trait::async_trait;
+use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
 use std::sync::atomic::{AtomicU16, Ordering};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, info, warn};
 
 /// Fallback TCP localhost IPC implementation
-pub struct FallbackIPC;
+pub struct FallbackPlatformIPC;
 
 /// Port counter for automatic port assignment
 static PORT_COUNTER: AtomicU16 = AtomicU16::new(50000);
 
-#[async_trait]
-impl PlatformIPC for FallbackIPC {
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+impl FallbackPlatformIPC {
+    /// Create a native endpoint for the given primal name.
+    pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         // Assign a unique port for this primal
         let port = PORT_COUNTER.fetch_add(1, Ordering::SeqCst);
 
@@ -33,7 +32,8 @@ impl PlatformIPC for FallbackIPC {
         Ok(NativeEndpoint::TcpLocal(port))
     }
 
-    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
+    /// Create a listener on the native endpoint.
+    pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             NativeEndpoint::TcpLocal(port) => {
                 debug!("Creating TCP listener on: 127.0.0.1:{}", port);
@@ -47,7 +47,7 @@ impl PlatformIPC for FallbackIPC {
 
                 info!("TCP localhost listener created: 127.0.0.1:{}", port);
 
-                Ok(Box::new(TcpListenerWrapper {
+                Ok(PlatformListenerImpl::Fallback(FallbackListener {
                     inner: listener,
                 }))
             }
@@ -55,7 +55,8 @@ impl PlatformIPC for FallbackIPC {
         }
     }
 
-    async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn AsyncStream>> {
+    /// Connect to a native endpoint.
+    pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
             NativeEndpoint::TcpLocal(port) => {
                 debug!("Connecting to TCP localhost: 127.0.0.1:{}", port);
@@ -69,33 +70,34 @@ impl PlatformIPC for FallbackIPC {
 
                 info!("Connected to TCP localhost: 127.0.0.1:{}", port);
 
-                Ok(Box::new(stream))
+                Ok(AsyncStreamImpl::Tcp(stream))
             }
             _ => Err(IpcError::PlatformError("FallbackIPC requires TcpLocal endpoint".to_string())),
         }
     }
 
-    async fn cleanup(&self, _endpoint: &NativeEndpoint) -> IpcResult<()> {
+    /// Cleanup endpoint.
+    pub async fn cleanup(&self, _endpoint: &NativeEndpoint) -> IpcResult<()> {
         // TCP sockets don't need cleanup
         Ok(())
     }
 }
 
-/// Wrapper for `TcpListener` to implement `PlatformListener`
-struct TcpListenerWrapper {
+/// Wrapper for `TcpListener` for [`PlatformListenerImpl::Fallback`].
+pub struct FallbackListener {
     inner: TcpListener,
 }
 
-#[async_trait]
-impl PlatformListener for TcpListenerWrapper {
-    async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
+impl FallbackListener {
+    /// Accept incoming connection.
+    pub async fn accept(&mut self) -> IpcResult<AsyncStreamImpl> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
             IpcError::ConnectionFailed(format!("Failed to accept TCP connection: {e}"))
         })?;
 
         debug!("Accepted TCP connection from: {}", addr);
 
-        Ok(Box::new(stream))
+        Ok(AsyncStreamImpl::Tcp(stream))
     }
 }
 
@@ -106,7 +108,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fallback_create_endpoint() {
-        let ipc = FallbackIPC;
+        let ipc = FallbackPlatformIPC;
         let endpoint = ipc.create_endpoint("test-primal").await.unwrap();
 
         match endpoint {
@@ -119,7 +121,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fallback_listen_and_connect() {
-        let ipc = FallbackIPC;
+        let ipc = FallbackPlatformIPC;
         let endpoint = ipc.create_endpoint("test-listen").await.unwrap();
 
         // Create listener
@@ -129,7 +131,7 @@ mod tests {
         let endpoint_clone = endpoint.clone();
         let connect_handle = tokio::spawn(async move {
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-            let ipc = FallbackIPC;
+            let ipc = FallbackPlatformIPC;
             ipc.connect(&endpoint_clone).await
         });
 

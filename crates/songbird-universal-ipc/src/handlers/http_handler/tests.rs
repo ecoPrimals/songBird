@@ -3,49 +3,10 @@
 
 use super::*;
 use crate::error::IpcResult;
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-struct MockHttpClient {
-    responses: Vec<HttpResponse>,
-    call_count: AtomicUsize,
-}
-
-impl MockHttpClient {
-    fn new(responses: Vec<HttpResponse>) -> Self {
-        Self {
-            responses,
-            call_count: AtomicUsize::new(0),
-        }
-    }
-}
-
-#[async_trait]
-impl HttpClientCapability for MockHttpClient {
-    async fn request(
-        &self,
-        _method: &str,
-        _url: &str,
-        _headers: &HashMap<String, String>,
-        _body: Option<&[u8]>,
-    ) -> IpcResult<HttpResponse> {
-        let count = self.call_count.fetch_add(1, Ordering::SeqCst);
-        Ok(self.responses[count % self.responses.len()].clone())
-    }
-}
-
-struct MockClientFactory {
-    client: Arc<dyn HttpClientCapability>,
-}
-
-#[async_trait]
-impl HttpClientFactory for MockClientFactory {
-    async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
-        Ok(Arc::clone(&self.client))
-    }
-}
+use super::test_support::RotatingMockClient;
 
 #[tokio::test]
 async fn test_handle_get_request() {
@@ -55,9 +16,9 @@ async fn test_handle_get_request() {
         body: serde_json::json!("Hello, World!"),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -77,9 +38,9 @@ async fn test_handle_post_request() {
         body: serde_json::json!("Created"),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -151,9 +112,9 @@ async fn test_handle_post_preserves_custom_headers() {
         body: serde_json::json!({"success": true}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client.clone(),
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -184,9 +145,9 @@ async fn test_http_client_wrapper_preserves_headers() {
         body: serde_json::json!({"result": "success"}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
 
-    let wrapper = mock_client.clone();
+    let wrapper = Arc::new(HttpClient::Rotating(Arc::clone(&mock_client)));
 
     let mut headers = HashMap::new();
     headers.insert("Authorization".to_string(), "Bearer token123".to_string());
@@ -208,9 +169,9 @@ async fn test_headers_with_empty_value() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -231,9 +192,9 @@ async fn test_headers_with_special_characters() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -254,9 +215,9 @@ async fn test_many_headers() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -278,9 +239,9 @@ async fn test_headers_override_content_type() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -303,9 +264,9 @@ async fn test_chaos_concurrent_header_requests() {
     };
 
     let responses = (0..100).map(|_| mock_response.clone()).collect();
-    let mock_client = Arc::new(MockHttpClient::new(responses));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(responses));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = Arc::new(HttpHandler::new(factory));
 
@@ -347,9 +308,9 @@ async fn test_chaos_rapid_fire_same_headers() {
     };
 
     let responses = (0..50).map(|_| mock_response.clone()).collect();
-    let mock_client = Arc::new(MockHttpClient::new(responses));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(responses));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = Arc::new(HttpHandler::new(factory));
 
@@ -382,9 +343,9 @@ async fn test_fault_empty_headers_map() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -403,9 +364,9 @@ async fn test_fault_very_long_header_value() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -426,9 +387,9 @@ async fn test_fault_header_with_newlines() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 
@@ -448,9 +409,9 @@ async fn test_fault_null_bytes_in_header() {
         body: serde_json::json!({}),
     };
 
-    let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-    let factory = Arc::new(MockClientFactory {
-        client: mock_client,
+    let mock_client = Arc::new(RotatingMockClient::new(vec![mock_response]));
+    let factory = Arc::new(HttpClientFactory::InjectTest {
+        client: Arc::new(HttpClient::Rotating(Arc::clone(&mock_client))),
     });
     let handler = HttpHandler::new(factory);
 

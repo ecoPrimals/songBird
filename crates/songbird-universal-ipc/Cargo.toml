@@ -12,8 +12,6 @@ categories = ["os", "network-programming"]
 [dependencies]
 # Core async runtime
 tokio = { workspace = true, features = ["net", "sync", "time", "io-util"] }
-async-trait = { workspace = true }
-
 # Error handling
 anyhow = { workspace = true }
 thiserror = { workspace = true }

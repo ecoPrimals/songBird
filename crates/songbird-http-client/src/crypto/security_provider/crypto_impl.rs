@@ -3,7 +3,6 @@
 
 //! `CryptoCapability` trait implementation and JSON response field extraction.
 
-use async_trait::async_trait;
 use base64::prelude::*;
 use serde_json::{Value, json};
 use tracing::{debug, info, warn};
@@ -12,7 +11,6 @@ use super::SecurityCryptoProvider;
 use crate::crypto::capability::{CryptoCapability, TlsApplicationSecrets, TlsHandshakeSecrets};
 use crate::error::{Error, Result};
 
-#[async_trait]
 impl CryptoCapability for SecurityCryptoProvider {
     fn name(&self) -> &'static str {
         "security provider"

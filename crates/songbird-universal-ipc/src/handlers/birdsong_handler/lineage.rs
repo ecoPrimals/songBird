@@ -4,7 +4,6 @@
 use super::BirdSongHandler;
 use super::types::{GetLineageRequest, VerifyLineageRequest, validate_required_fields};
 use serde_json::{Value, json};
-use songbird_discovery::birdsong::BirdSongEncryption;
 use songbird_universal::UnixRpcClient;
 use tracing::{debug, info};
 

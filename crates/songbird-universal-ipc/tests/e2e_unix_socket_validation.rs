@@ -38,6 +38,7 @@ use serde_json::{Value, json};
 use songbird_universal_ipc::registry::ServiceRegistry;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -196,13 +197,9 @@ async fn test_e2e_identity_via_unix_socket() {
 
     // Start server and wait for readiness signal
     let (server_handle, ready_rx) = start_test_server_with_handler(&socket_path, |registry| {
-        IpcServiceHandler::with_family_id_env(registry, |k| {
-            if k == "FAMILY_ID" {
-                Ok("test_e2e_family".to_string())
-            } else {
-                Err(std::env::VarError::NotPresent)
-            }
-        })
+        let mut m = HashMap::new();
+        m.insert("FAMILY_ID".into(), "test_e2e_family".into());
+        IpcServiceHandler::with_family_id_overrides(registry, m)
     });
     ready_rx.await.expect("Server failed to signal readiness");
 
@@ -293,12 +290,11 @@ async fn test_e2e_family_id_priority_family_id_first() {
     // > SONGBIRD_FAMILY_ID > FAMILY_ID > NODE_FAMILY_ID
     // Set lower-priority vars — SONGBIRD_FAMILY_ID should win over FAMILY_ID
     let (server_handle, ready_rx) = start_test_server_with_handler(&socket_path, |registry| {
-        IpcServiceHandler::with_family_id_env(registry, |k| match k {
-            "FAMILY_ID" => Ok("lowest".to_string()),
-            "SONGBIRD_FAMILY_ID" => Ok("winner".to_string()),
-            "NODE_FAMILY_ID" => Ok("third".to_string()),
-            _ => Err(std::env::VarError::NotPresent),
-        })
+        let mut m = HashMap::new();
+        m.insert("FAMILY_ID".into(), "lowest".into());
+        m.insert("SONGBIRD_FAMILY_ID".into(), "winner".into());
+        m.insert("NODE_FAMILY_ID".into(), "third".into());
+        IpcServiceHandler::with_family_id_overrides(registry, m)
     });
     ready_rx.await.expect("Server failed to signal readiness");
 
@@ -324,7 +320,7 @@ async fn test_e2e_family_id_default() {
     let socket_path = unique_socket_path("fam-default");
 
     let (server_handle, ready_rx) = start_test_server_with_handler(&socket_path, |registry| {
-        IpcServiceHandler::with_family_id_env(registry, |_| Err(std::env::VarError::NotPresent))
+        IpcServiceHandler::with_family_id_overrides(registry, HashMap::new())
     });
     ready_rx.await.expect("Server failed to signal readiness");
 

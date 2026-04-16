@@ -7,7 +7,6 @@
 
 use crate::error::Result;
 use crate::types::{CapabilityType, PrimalCapabilities, PrimalRequest, PrimalResponse};
-use async_trait::async_trait;
 use songbird_http_client::IpcHttpClient;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -128,65 +127,64 @@ impl PrimalConnection {
     }
 }
 
-/// Primal Bridge trait - defines how to connect to and interact with a primal
-///
-/// **KEY PRINCIPLE**: This trait is capability-based, not primal-name-based.
-/// Implementations discover and connect to primals by capability, not by hardcoded names.
-#[async_trait]
-pub trait PrimalBridge: Send + Sync {
-    /// Connect to a primal that provides the requested capability
+/// Fixed endpoint + capability snapshot for harnesses and tests.
+#[derive(Debug, Clone)]
+pub struct StaticPrimalDiscovery {
+    /// Base URL for the primal.
+    pub endpoint: String,
+    /// Advertised capabilities for the connection.
+    pub capabilities: PrimalCapabilities,
+}
+
+/// Capability discovery backends (enum dispatch; no trait objects).
+#[derive(Debug, Clone)]
+pub enum PrimalDiscovery {
+    /// Return a fixed [`DiscoveredPrimal`] (ignores the requested capability).
+    Static(StaticPrimalDiscovery),
+}
+
+impl PrimalDiscovery {
+    /// Discover a primal by capability.
     ///
     /// # Errors
     ///
-    /// Returns an error if no primal with the capability can be found or connection fails
-    async fn connect(&self, capability: CapabilityType) -> Result<PrimalConnection>;
-
-    /// Discover capabilities offered by primals in the environment
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if discovery fails
-    async fn discover_capabilities(
-        &self,
-        connection: &PrimalConnection,
-    ) -> Result<PrimalCapabilities>;
-
-    /// Get the capabilities this bridge can connect to
-    ///
-    /// Used for routing and capability matching
-    fn supported_capabilities(&self) -> Vec<CapabilityType>;
+    /// Returns an error if discovery fails.
+    pub fn discover_by_capability(&self, _capability: &CapabilityType) -> Result<DiscoveredPrimal> {
+        match self {
+            Self::Static(s) => Ok(DiscoveredPrimal {
+                endpoint: s.endpoint.clone(),
+                capabilities: s.capabilities.clone(),
+            }),
+        }
+    }
 }
 
 /// Discovery-based primal bridge
 ///
 /// Uses `songbird-discovery` to find primals by capability at runtime.
 /// **ZERO HARDCODING** - discovers everything from environment/network.
+#[derive(Debug)]
 pub struct DiscoveryBasedBridge {
-    /// Discovery engine (from songbird-discovery)
-    discovery: Arc<dyn PrimalDiscovery>,
+    discovery: Arc<PrimalDiscovery>,
 }
 
 impl DiscoveryBasedBridge {
     /// Create a new discovery-based bridge
     #[must_use]
-    pub fn new(discovery: Arc<dyn PrimalDiscovery>) -> Self {
+    pub fn new(discovery: Arc<PrimalDiscovery>) -> Self {
         Self {
             discovery,
         }
     }
-}
 
-#[async_trait]
-impl PrimalBridge for DiscoveryBasedBridge {
-    async fn connect(&self, capability: CapabilityType) -> Result<PrimalConnection> {
+    /// Connect to a primal that provides the requested capability
+    pub fn connect(&self, capability: &CapabilityType) -> Result<PrimalConnection> {
         tracing::info!("Discovering primal for capability: {}", capability);
 
-        // Use discovery engine to find a primal
-        let discovered = self.discovery.discover_by_capability(&capability).await?;
+        let discovered = self.discovery.discover_by_capability(capability)?;
 
         tracing::info!("Found primal at {} for capability {}", discovered.endpoint, capability);
 
-        // Create connection
         Ok(PrimalConnection::new(
             uuid::Uuid::new_v4().to_string(),
             discovered.endpoint,
@@ -194,11 +192,11 @@ impl PrimalBridge for DiscoveryBasedBridge {
         ))
     }
 
-    async fn discover_capabilities(
+    /// Discover capabilities offered by the connected primal
+    pub async fn discover_capabilities(
         &self,
         connection: &PrimalConnection,
     ) -> Result<PrimalCapabilities> {
-        // Query the primal for its capabilities
         let response = connection.send_request(PrimalRequest::DiscoverCapabilities).await?;
 
         match response {
@@ -210,8 +208,9 @@ impl PrimalBridge for DiscoveryBasedBridge {
         }
     }
 
-    fn supported_capabilities(&self) -> Vec<CapabilityType> {
-        // Discovery-based bridge supports all capabilities
+    /// Capabilities this bridge can route to
+    #[must_use]
+    pub fn supported_capabilities(&self) -> Vec<CapabilityType> {
         vec![
             CapabilityType::Security,
             CapabilityType::Compute,
@@ -224,16 +223,132 @@ impl PrimalBridge for DiscoveryBasedBridge {
     }
 }
 
-/// Trait for primal discovery (implemented by songbird-discovery)
-#[async_trait]
-pub trait PrimalDiscovery: Send + Sync {
-    /// Discover a primal by capability
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if no primal with the capability is found
-    async fn discover_by_capability(&self, capability: &CapabilityType)
-    -> Result<DiscoveredPrimal>;
+/// Bridge implementation selector (enum dispatch; no trait objects).
+#[derive(Debug)]
+pub enum PrimalBridge {
+    /// Runtime discovery via [`PrimalDiscovery`].
+    DiscoveryBased(DiscoveryBasedBridge),
+    /// In-crate coordinator unit tests (`coordinator::tests`).
+    #[cfg(test)]
+    CoordinatorTest(CoordinatorTestBridge),
+}
+
+impl PrimalBridge {
+    /// Connect to a primal that provides the requested capability
+    pub fn connect(&self, capability: &CapabilityType) -> Result<PrimalConnection> {
+        match self {
+            Self::DiscoveryBased(b) => b.connect(capability),
+            #[cfg(test)]
+            Self::CoordinatorTest(t) => t.connect(capability),
+        }
+    }
+
+    /// Discover capabilities for an existing connection
+    pub async fn discover_capabilities(
+        &self,
+        connection: &PrimalConnection,
+    ) -> Result<PrimalCapabilities> {
+        match self {
+            Self::DiscoveryBased(b) => b.discover_capabilities(connection).await,
+            #[cfg(test)]
+            Self::CoordinatorTest(t) => t.discover_capabilities(connection).await,
+        }
+    }
+
+    /// Capabilities this bridge can connect to
+    #[must_use]
+    pub fn supported_capabilities(&self) -> Vec<CapabilityType> {
+        match self {
+            Self::DiscoveryBased(b) => b.supported_capabilities(),
+            #[cfg(test)]
+            Self::CoordinatorTest(t) => t.supported_capabilities(),
+        }
+    }
+}
+
+#[cfg(test)]
+/// Test doubles for [`PrimalBridge::CoordinatorTest`].
+#[derive(Debug)]
+pub enum CoordinatorTestBridge {
+    /// Default mock: successful connect with dynamic URL per capability.
+    Mock,
+    /// Always fails connect.
+    Failing,
+    /// Increments a counter on each connect; uses stable connection id.
+    Counting(std::sync::Arc<std::sync::atomic::AtomicUsize>),
+}
+
+#[cfg(test)]
+impl CoordinatorTestBridge {
+    fn connect(&self, capability: &CapabilityType) -> Result<PrimalConnection> {
+        match self {
+            Self::Failing => {
+                Err(crate::error::PrimalCoordinationError::ConnectionFailed("mock".into()))
+            }
+            Self::Counting(c) => {
+                c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let caps = PrimalCapabilities {
+                    services: vec![capability.as_str().to_string()],
+                    resources: std::collections::HashMap::new(),
+                    metadata: std::collections::HashMap::new(),
+                    quality: crate::types::ServiceQuality::default(),
+                };
+                Ok(PrimalConnection::new(
+                    "counting-id".into(),
+                    format!("http://127.0.0.1:9/{}", capability.as_str()),
+                    caps,
+                ))
+            }
+            Self::Mock => {
+                let caps = PrimalCapabilities {
+                    services: vec![capability.as_str().to_string()],
+                    resources: std::collections::HashMap::new(),
+                    metadata: std::collections::HashMap::new(),
+                    quality: crate::types::ServiceQuality::default(),
+                };
+                Ok(PrimalConnection::new(
+                    uuid::Uuid::new_v4().to_string(),
+                    format!("http://localhost:8080/{}", capability.as_str()),
+                    caps,
+                ))
+            }
+        }
+    }
+
+    #[allow(
+        clippy::unused_async,
+        reason = "matches PrimalBridge async surface; mock is synchronous"
+    )]
+    async fn discover_capabilities(
+        &self,
+        _connection: &PrimalConnection,
+    ) -> Result<PrimalCapabilities> {
+        match self {
+            Self::Failing => {
+                Err(crate::error::PrimalCoordinationError::Internal("not used".into()))
+            }
+            Self::Counting(_) => Ok(PrimalCapabilities {
+                services: vec![],
+                resources: std::collections::HashMap::new(),
+                metadata: std::collections::HashMap::new(),
+                quality: crate::types::ServiceQuality::default(),
+            }),
+            Self::Mock => Ok(PrimalCapabilities {
+                services: vec!["security".to_string()],
+                resources: std::collections::HashMap::new(),
+                metadata: std::collections::HashMap::new(),
+                quality: crate::types::ServiceQuality::default(),
+            }),
+        }
+    }
+
+    fn supported_capabilities(&self) -> Vec<CapabilityType> {
+        match self {
+            Self::Mock => vec![CapabilityType::Security, CapabilityType::Compute],
+            Self::Failing => vec![],
+            Self::Counting(_) => vec![CapabilityType::Security],
+        }
+    }
 }
 
 /// Result of a capability-based discovery lookup.
@@ -311,24 +426,6 @@ mod tests {
         );
     }
 
-    struct StaticDiscovery {
-        endpoint: String,
-        caps: PrimalCapabilities,
-    }
-
-    #[async_trait::async_trait]
-    impl PrimalDiscovery for StaticDiscovery {
-        async fn discover_by_capability(
-            &self,
-            _capability: &CapabilityType,
-        ) -> crate::error::Result<DiscoveredPrimal> {
-            Ok(DiscoveredPrimal {
-                endpoint: self.endpoint.clone(),
-                capabilities: self.caps.clone(),
-            })
-        }
-    }
-
     #[tokio::test(start_paused = true)]
     async fn discovery_based_bridge_connect_and_supported_capabilities() {
         let caps = PrimalCapabilities {
@@ -337,19 +434,18 @@ mod tests {
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),
         };
-        let bridge = DiscoveryBasedBridge::new(Arc::new(StaticDiscovery {
-            endpoint: "http://127.0.0.1:1".into(),
-            caps: caps.clone(),
-        }));
+        let bridge =
+            DiscoveryBasedBridge::new(Arc::new(PrimalDiscovery::Static(StaticPrimalDiscovery {
+                endpoint: "http://127.0.0.1:1".into(),
+                capabilities: caps.clone(),
+            })));
         let sup = bridge.supported_capabilities();
         assert!(
             sup.contains(&CapabilityType::Security) && sup.contains(&CapabilityType::Compute),
             "discovery bridge advertises core capability set"
         );
-        let conn = bridge
-            .connect(CapabilityType::Security)
-            .await
-            .expect("connect should use discovery result");
+        let conn =
+            bridge.connect(&CapabilityType::Security).expect("connect should use discovery result");
         assert_eq!(conn.endpoint.as_ref(), "http://127.0.0.1:1");
         let live = conn.get_capabilities().await;
         assert_eq!(live.services, caps.services);
@@ -363,11 +459,12 @@ mod tests {
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),
         };
-        let bridge = DiscoveryBasedBridge::new(Arc::new(StaticDiscovery {
-            endpoint: "http://127.0.0.1:9".into(),
-            caps,
-        }));
-        let conn = bridge.connect(CapabilityType::Security).await.expect("connect");
+        let bridge =
+            DiscoveryBasedBridge::new(Arc::new(PrimalDiscovery::Static(StaticPrimalDiscovery {
+                endpoint: "http://127.0.0.1:9".into(),
+                capabilities: caps,
+            })));
+        let conn = bridge.connect(&CapabilityType::Security).expect("connect");
         let err = bridge
             .discover_capabilities(&conn)
             .await

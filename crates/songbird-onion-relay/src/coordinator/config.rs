@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn hole_punch_config_clone_preserves_fields() {
-        let config = HolePunchConfig {
+        let original = HolePunchConfig {
             max_attempts: 5,
             attempt_timeout: Duration::from_millis(100),
             packet_interval: Duration::from_millis(25),
@@ -174,7 +174,8 @@ mod tests {
             stun_servers: vec!["test:1234".to_string()],
             ack_timeout: Duration::from_secs(2),
         };
-        let cloned = config.clone();
+        let cloned = original.clone();
+        assert_eq!(original.max_attempts, cloned.max_attempts);
         assert_eq!(cloned.max_attempts, 5);
         assert_eq!(cloned.stun_servers, vec!["test:1234"]);
         assert_eq!(cloned.ack_timeout, Duration::from_secs(2));

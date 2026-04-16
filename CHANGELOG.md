@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave145] - 2026-04-16 - Complete async-trait Elimination
+
+### Removed — `async-trait` fully eliminated
+- **141→0 annotations**: every `#[async_trait]` removed from all 30+ crates
+- **Dependency removed**: `async-trait` no longer in workspace `Cargo.toml` or any crate
+- **SB-06 resolved**: the tracking item is closed
+
+### Changed — Wave 145 Conversions
+- **Platform IPC**: `PlatformIPC`/`PlatformListener` → cfg-gated `PlatformIpcImpl`/`PlatformListenerImpl` enums; `AsyncStreamImpl` replaces `Box<dyn AsyncStream>`
+- **HTTP handlers**: `HttpClientCapability`/`HttpClientFactory` → `HttpClient`/`HttpClientFactory` enums; `CryptoCapabilityDiscovery` → `CryptoDiscovery` enum
+- **PeerConnector** → `PeerConnector` enum (Udp + test variants)
+- **RendezvousClient** → `RendezvousClient` enum (Http + test variants)
+- **DiscoveryStrategy** → `DiscoveryStrategy` enum (Environment/Filesystem + test variants)
+- **Lineage-relay**: `RelayAuthority` → enum (Security/Mock/StubAllow/StubDeny); `BirdSongCrypto` → enum (Security/Mock/StubPassthrough); `async-trait` dropped from crate
+- **Discovery**: `BirdSongEncryption` → enum with 9 variants; `DiscoveryMechanism` → enum; `async-trait` dropped from crate
+- **CryptoCapability** (http-client) → native AFIT; `QuicCryptoProvider` → inherent impl
+- **NfcBackend** → `NfcBackendImpl` enum; **HealthCheck** → native AFIT
+- **Primal coordination**: `PrimalBridge`/`PrimalDiscovery` → enums; `async-trait` dropped
+- **Canonical Provider tree** (songbird-types): all 10 traits → native AFIT
+- **CapabilityTransport** (songbird-universal): → enum dispatch
+- **`EnvReader` dyn Fn** → `HashMap<String, String>` overrides
+- **Axum routes**: migrated 30+ routes from legacy `:param` to `{param}` syntax
+
+### Metrics
+- Tests: 7,359 passed, 0 failed
+- `async-trait` annotations: 0 (was 141)
+- Clippy: zero warnings
+- `async-trait` in Cargo.toml: 0 crates (was 17)
+
+---
+
 ## [v0.2.1-wave144] - 2026-04-16 - dyn→Static Dispatch Evolution
 
 ### Changed — Architecture

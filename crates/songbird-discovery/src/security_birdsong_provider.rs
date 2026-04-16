@@ -3,12 +3,12 @@
 
 //! Security-provider `BirdSong` encryption
 //!
-//! Implements the `BirdSongEncryption` trait using the security provider's family-based encryption.
+//! Implements family-based encryption via the security provider JSON-RPC API (consumed as
+//! [`crate::birdsong::BirdSongEncryption::Security`]).
 //! This provider connects to the crypto provider's encryption API to encrypt/decrypt discovery
 //! packets based on genetic family lineage.
 
 use anyhow::Result;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::json;
 use songbird_universal::UnixRpcClient;
@@ -16,8 +16,6 @@ use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tracing::{debug, info, trace, warn};
-
-use crate::birdsong::BirdSongEncryption;
 
 /// `security provider` encryption request (for JSON-RPC birdsong.encrypt method)
 #[derive(Debug, Clone, Serialize)]
@@ -528,6 +526,83 @@ impl SecurityBirdSongProvider {
             Err(e) => Err(e),
         }
     }
+
+    /// Human-readable provider label (logging).
+    #[must_use]
+    pub fn provider_name(&self) -> String {
+        "Security provider".to_string()
+    }
+
+    /// Cached lineage family id, if known.
+    #[must_use]
+    pub fn family_id(&self) -> Option<String> {
+        self.family_id.clone()
+    }
+
+    /// Whether the security adapter considers the remote provider usable.
+    #[must_use]
+    pub fn is_available(&self) -> bool {
+        self.available
+    }
+
+    /// Encrypt discovery packet for same-family peers (lineage tier).
+    pub async fn encrypt_discovery(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        self.encrypt_internal(plaintext).await.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    /// Decrypt discovery packet from same-family peer.
+    pub async fn decrypt_discovery(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        self.decrypt_internal(ciphertext).await.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    /// Encrypt payload for Dark Forest beacon (beacon tier, with random nonce).
+    pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        let encrypted = self.encrypt_beacon_tier(payload).await.map_err(|e| anyhow::anyhow!(e))?;
+        let mut nonce = [0u8; 12];
+        getrandom::fill(&mut nonce)
+            .map_err(|e| anyhow::anyhow!("Failed to generate random nonce: {e}"))?;
+        Ok((encrypted, nonce))
+    }
+
+    /// Try decrypting a Dark Forest beacon using beacon-tier credentials.
+    pub async fn try_decrypt_beacon(
+        &self,
+        encrypted: &[u8],
+        _nonce: &[u8; 12],
+    ) -> Result<Option<Vec<u8>>> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        self.decrypt_beacon_tier(encrypted).await.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    /// Query public beacon id from the security provider, if supported.
+    pub async fn get_beacon_id(&self) -> Result<Option<Vec<u8>>> {
+        if !self.available {
+            return Err(anyhow::anyhow!("Security provider not available"));
+        }
+        self.query_beacon_id().await.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    /// Known beacon ids from meetings (not tracked by this adapter).
+    pub async fn list_known_beacons(&self) -> Result<Vec<Vec<u8>>> {
+        let _ = self;
+        Ok(Vec::new())
+    }
+
+    /// Whether Dark Forest beacon support appears active (beacon id present).
+    pub async fn supports_dark_forest(&self) -> bool {
+        self.get_beacon_id().await.ok().flatten().is_some()
+    }
 }
 
 /// Optional base64 deserialization helper for beacon ID responses.
@@ -546,68 +621,6 @@ mod optional_base64_serde {
             }
             _ => Ok(None),
         }
-    }
-}
-
-#[async_trait]
-impl BirdSongEncryption for SecurityBirdSongProvider {
-    fn provider_name(&self) -> String {
-        "Security provider".to_string()
-    }
-
-    fn family_id(&self) -> Option<String> {
-        self.family_id.clone()
-    }
-
-    fn is_available(&self) -> bool {
-        self.available
-    }
-
-    // ─── Legacy (lineage/nuclear) ────────────────────────────────────────
-
-    async fn encrypt_discovery(&self, plaintext: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
-        if !self.available {
-            return Err(anyhow::anyhow!("Security provider not available"));
-        }
-        self.encrypt_internal(plaintext).await.map_err(|e| anyhow::anyhow!(e))
-    }
-
-    async fn decrypt_discovery(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>, anyhow::Error> {
-        if !self.available {
-            return Err(anyhow::anyhow!("Security provider not available"));
-        }
-        self.decrypt_internal(ciphertext).await.map_err(|e| anyhow::anyhow!(e))
-    }
-
-    // ─── Beacon-tier (mitochondrial) — DARK_FOREST_BEACON_GENETICS ──────
-
-    async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
-        if !self.available {
-            return Err(anyhow::anyhow!("Security provider not available"));
-        }
-        let encrypted = self.encrypt_beacon_tier(payload).await.map_err(|e| anyhow::anyhow!(e))?;
-        let mut nonce = [0u8; 12];
-        getrandom::fill(&mut nonce)
-            .map_err(|e| anyhow::anyhow!("Failed to generate random nonce: {e}"))?;
-        Ok((encrypted, nonce))
-    }
-
-    async fn try_decrypt_beacon(
-        &self,
-        encrypted: &[u8],
-        _nonce: &[u8; 12],
-    ) -> Result<Option<Vec<u8>>> {
-        if !self.available {
-            return Err(anyhow::anyhow!("Security provider not available"));
-        }
-        self.decrypt_beacon_tier(encrypted).await.map_err(|e| anyhow::anyhow!(e))
-    }
-
-    async fn get_beacon_id(&self) -> Result<Option<Vec<u8>>> {
-        if !self.available {
-            return Err(anyhow::anyhow!("Security provider not available"));
-        }
-        self.query_beacon_id().await.map_err(|e| anyhow::anyhow!(e))
     }
 }
 

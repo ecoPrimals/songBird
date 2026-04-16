@@ -98,7 +98,7 @@ pub enum ModelType {
 pub struct AIAdapter {
     /// Endpoint URL for the AI capability provider
     endpoint: String,
-    transport: Arc<dyn CapabilityTransport>,
+    transport: Arc<CapabilityTransport>,
     transport_kind: AdapterTransportKind,
     /// Request timeout
     timeout: Duration,
@@ -238,7 +238,7 @@ impl AIAdapter {
     #[cfg(test)]
     pub(crate) fn with_transport(
         endpoint: String,
-        transport: Arc<dyn CapabilityTransport>,
+        transport: Arc<CapabilityTransport>,
         transport_kind: AdapterTransportKind,
         timeout: Duration,
     ) -> Self {

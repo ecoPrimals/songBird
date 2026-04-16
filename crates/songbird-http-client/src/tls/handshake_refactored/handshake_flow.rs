@@ -32,6 +32,7 @@
 
 use super::core::TlsHandshake;
 use super::tls_wire_u16;
+use crate::crypto::CryptoCapability;
 use crate::crypto::{TlsApplicationSecrets, TlsHandshakeSecrets as TlsSecrets};
 use crate::error::{Error, Result};
 use crate::tls::session::SessionKeys;
@@ -452,8 +453,8 @@ mod tests {
     use std::sync::Arc;
 
     fn test_handshake() -> TlsHandshake {
-        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-handshake-flow-test.sock"))
-            as Arc<dyn crate::crypto::CryptoCapability>;
+        let crypto =
+            Arc::new(SecurityCryptoProvider::new("/tmp/songbird-handshake-flow-test.sock"));
         TlsHandshake::new(crypto)
     }
 
@@ -503,8 +504,7 @@ mod tests {
 
     #[test]
     fn handshake_with_config_preserves_cipher_list_in_client_hello() {
-        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-tls-config-test.sock"))
-            as Arc<dyn crate::crypto::CryptoCapability>;
+        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-tls-config-test.sock"));
         let h = TlsHandshake::with_config(crypto, TlsConfig::default(), None);
         let msg =
             h.build_client_hello(&[0xee; 32], &[0xdd; 32], "h.example").expect("client hello");

@@ -23,12 +23,90 @@ use crate::protocol::NfcMessage;
 use std::time::Duration;
 use tracing::{debug, info};
 
+/// Platform-specific backend (enum — no `dyn` dispatch).
+#[cfg(test)]
+pub(crate) enum NfcBackend {
+    /// Scripted I/O for unit tests.
+    Scripted(test_support::ScriptedBackend),
+}
+
+/// Empty until a native backend is compiled in for this target.
+#[cfg(not(test))]
+#[derive(Debug)]
+pub(crate) enum NfcBackend {}
+
+#[cfg_attr(
+    not(test),
+    allow(
+        clippy::needless_pass_by_ref_mut,
+        clippy::uninhabited_references,
+        clippy::unused_async,
+        reason = "non-test builds use an empty backend enum; methods are stubs until wired"
+    )
+)]
+impl NfcBackend {
+    async fn connect(&mut self, timeout: Duration) -> Result<()> {
+        #[cfg(test)]
+        {
+            match self {
+                Self::Scripted(b) => b.connect(timeout).await,
+            }
+        }
+        #[cfg(not(test))]
+        {
+            let _ = timeout;
+            match *self {}
+        }
+    }
+
+    async fn disconnect(&mut self) -> Result<()> {
+        #[cfg(test)]
+        {
+            match self {
+                Self::Scripted(b) => b.disconnect().await,
+            }
+        }
+        #[cfg(not(test))]
+        {
+            match *self {}
+        }
+    }
+
+    async fn send(&mut self, data: &[u8]) -> Result<()> {
+        #[cfg(test)]
+        {
+            match self {
+                Self::Scripted(b) => b.send(data).await,
+            }
+        }
+        #[cfg(not(test))]
+        {
+            let _ = data;
+            match *self {}
+        }
+    }
+
+    async fn receive(&mut self, expected_len: usize) -> Result<Vec<u8>> {
+        #[cfg(test)]
+        {
+            match self {
+                Self::Scripted(b) => b.receive(expected_len).await,
+            }
+        }
+        #[cfg(not(test))]
+        {
+            let _ = expected_len;
+            match *self {}
+        }
+    }
+}
+
 /// NFC device abstraction
 ///
 /// Platform-agnostic interface for NFC operations.
 pub struct NfcDevice {
     /// Platform-specific backend
-    backend: Box<dyn NfcBackend>,
+    backend: NfcBackend,
 
     /// Connection timeout
     timeout: Duration,
@@ -127,7 +205,7 @@ impl NfcDevice {
     }
 
     /// Create platform-specific backend
-    fn create_platform_backend() -> Result<Box<dyn NfcBackend>> {
+    fn create_platform_backend() -> Result<NfcBackend> {
         #[cfg(target_os = "android")]
         {
             // Capability path: JNI → `NfcAdapter` / tag tech; see module rustdoc.
@@ -164,26 +242,10 @@ impl NfcDevice {
     }
 }
 
-/// Platform-specific NFC backend trait
-#[async_trait::async_trait]
-pub trait NfcBackend: Send + Sync {
-    /// Connect to peer
-    async fn connect(&mut self, timeout: Duration) -> Result<()>;
-
-    /// Disconnect from peer
-    async fn disconnect(&mut self) -> Result<()>;
-
-    /// Send data
-    async fn send(&mut self, data: &[u8]) -> Result<()>;
-
-    /// Receive data
-    async fn receive(&mut self, expected_len: usize) -> Result<Vec<u8>>;
-}
-
 #[cfg(test)]
 impl NfcDevice {
     /// Construct with a custom backend for unit tests (same crate only).
-    pub(crate) fn from_backend_for_test(backend: Box<dyn NfcBackend>, timeout: Duration) -> Self {
+    pub(crate) fn from_backend_for_test(backend: NfcBackend, timeout: Duration) -> Self {
         Self {
             backend,
             timeout,
@@ -200,7 +262,8 @@ impl NfcDevice {
 pub(crate) mod test_support {
     //! In-crate test doubles for [`NfcBackend`].
 
-    use super::{NfcBackend, NfcDevice};
+    use super::NfcBackend;
+    use super::NfcDevice;
     use crate::error::{NfcError, Result};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
@@ -211,6 +274,11 @@ pub(crate) mod test_support {
         sent_frames: Arc<Mutex<Vec<Vec<u8>>>>,
     }
 
+    #[allow(
+        clippy::needless_pass_by_ref_mut,
+        clippy::unused_async,
+        reason = "async shape matches future native backends; bodies are sync for the test double"
+    )]
     impl ScriptedBackend {
         pub(crate) fn new(recv_buf: Vec<u8>) -> Self {
             Self {
@@ -225,26 +293,23 @@ pub(crate) mod test_support {
         }
 
         pub(crate) fn into_device(self, timeout: Duration) -> NfcDevice {
-            NfcDevice::from_backend_for_test(Box::new(self), timeout)
+            NfcDevice::from_backend_for_test(NfcBackend::Scripted(self), timeout)
         }
-    }
 
-    #[async_trait::async_trait]
-    impl NfcBackend for ScriptedBackend {
-        async fn connect(&mut self, _timeout: Duration) -> Result<()> {
+        pub(super) async fn connect(&mut self, _timeout: Duration) -> Result<()> {
             Ok(())
         }
 
-        async fn disconnect(&mut self) -> Result<()> {
+        pub(super) async fn disconnect(&mut self) -> Result<()> {
             Ok(())
         }
 
-        async fn send(&mut self, data: &[u8]) -> Result<()> {
+        pub(super) async fn send(&mut self, data: &[u8]) -> Result<()> {
             self.sent_frames.lock().expect("scripted backend lock").push(data.to_vec());
             Ok(())
         }
 
-        async fn receive(&mut self, expected_len: usize) -> Result<Vec<u8>> {
+        pub(super) async fn receive(&mut self, expected_len: usize) -> Result<Vec<u8>> {
             let mut buf = self.recv_buf.lock().expect("scripted backend lock");
             if buf.len() < expected_len {
                 return Err(NfcError::ConnectionLost);

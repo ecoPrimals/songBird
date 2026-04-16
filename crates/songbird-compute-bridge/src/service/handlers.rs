@@ -19,7 +19,7 @@ pub fn bridge_router(state: BridgeState) -> Router {
         .route("/capabilities", get(capabilities_handler))
         .route("/resources", get(resources_handler))
         .route("/api/v1/workloads", post(submit_workload_handler))
-        .route("/api/v1/workloads/:id", get(get_workload_handler))
+        .route("/api/v1/workloads/{id}", get(get_workload_handler))
         .with_state(state)
 }
 

@@ -17,7 +17,6 @@ tokio-util = { version = "0.7", features = ["codec"] }
 
 # Crypto - security provider delegation only via IPC (no ring, no rustls)
 base64 = "0.22"
-async-trait = { workspace = true }
 
 # Serialization
 serde = { workspace = true }

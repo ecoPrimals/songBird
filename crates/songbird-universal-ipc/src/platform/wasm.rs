@@ -27,20 +27,19 @@
 
 use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
-use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
-use async_trait::async_trait;
+use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
 use std::sync::atomic::{AtomicU16, Ordering};
 use tracing::{debug, info};
 
 /// WASM in-process IPC implementation
-pub struct WasmIPC;
+pub struct WasmPlatformIPC;
 
 /// Logical endpoint ID counter (increments for each primal)
 static ENDPOINT_ID_COUNTER: AtomicU16 = AtomicU16::new(1);
 
-#[async_trait]
-impl PlatformIPC for WasmIPC {
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+impl WasmPlatformIPC {
+    /// Create a native endpoint for the given primal name.
+    pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         let endpoint_id = ENDPOINT_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
         debug!("Creating WASM in-process endpoint for '{primal_name}': ID {endpoint_id}");
@@ -52,7 +51,8 @@ impl PlatformIPC for WasmIPC {
         Ok(NativeEndpoint::InProcess(endpoint_id))
     }
 
-    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
+    /// Create a listener on the native endpoint.
+    pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             NativeEndpoint::InProcess(id) => Err(IpcError::RegistryError(format!(
                 "WASM primal listen not available (endpoint ID {id}): implement a global in-process registry or a Worker postMessage acceptor before listen()"
@@ -61,7 +61,8 @@ impl PlatformIPC for WasmIPC {
         }
     }
 
-    async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn AsyncStream>> {
+    /// Connect to a native endpoint.
+    pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
             NativeEndpoint::InProcess(id) => Err(IpcError::RegistryError(format!(
                 "WASM primal connect not available (endpoint ID {id}): register senders/receivers in a shared registry or use postMessage/SharedArrayBuffer worker bridge"
@@ -70,7 +71,8 @@ impl PlatformIPC for WasmIPC {
         }
     }
 
-    async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
+    /// Cleanup endpoint.
+    pub async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
         match endpoint {
             NativeEndpoint::InProcess(id) => {
                 debug!("WASM in-process cleanup (no-op until registry exists): ID {id}");
@@ -87,7 +89,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_wasm_create_endpoint() {
-        let ipc = WasmIPC;
+        let ipc = WasmPlatformIPC;
         let endpoint = ipc.create_endpoint("test-primal").await.unwrap();
 
         match endpoint {
@@ -100,7 +102,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_wasm_unique_ids() {
-        let ipc = WasmIPC;
+        let ipc = WasmPlatformIPC;
 
         let endpoint1 = ipc.create_endpoint("primal1").await.unwrap();
         let endpoint2 = ipc.create_endpoint("primal2").await.unwrap();
@@ -123,7 +125,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_wasm_listen_returns_registry_error() {
-        let ipc = WasmIPC;
+        let ipc = WasmPlatformIPC;
         let ep = ipc.create_endpoint("x").await.unwrap();
         let result = ipc.listen(&ep).await;
         assert!(result.is_err(), "listen should fail on WASM");

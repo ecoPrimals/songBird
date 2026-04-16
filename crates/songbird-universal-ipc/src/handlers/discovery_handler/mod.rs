@@ -24,12 +24,14 @@
 //! Peer information includes network addresses. Only expose to trusted consumers.
 
 mod content;
+mod slot;
 pub mod types;
 
 #[cfg(test)]
 mod tests;
 
 pub use content::ContentAnnouncement;
+pub use slot::PeerRegistrySlot;
 pub use types::{DiscoveredPeerInfo, DiscoveryGetPeerParams, DiscoveryPeersResult, PeerRegistry};
 
 use crate::error::{IpcError, IpcResult};
@@ -46,7 +48,7 @@ use tracing::{debug, info, warn};
 /// content announcement store for the seeder/leecher pattern defined by
 /// `content_distribution_federation.toml`.
 pub struct DiscoveryHandler {
-    peer_registry: Option<Arc<dyn PeerRegistry>>,
+    peer_registry: Option<PeerRegistrySlot>,
     content_announcements: Arc<RwLock<ContentAnnouncementStore>>,
 }
 
@@ -59,9 +61,22 @@ impl DiscoveryHandler {
         }
     }
 
-    pub fn with_registry(registry: Arc<dyn PeerRegistry>) -> Self {
+    /// Attach the orchestrator discovery bridge (production).
+    #[must_use]
+    pub fn with_bridge(
+        bridge: Arc<crate::handlers::discovery_bridge::DiscoveryListenerBridge>,
+    ) -> Self {
         Self {
-            peer_registry: Some(registry),
+            peer_registry: Some(PeerRegistrySlot::Bridge(bridge)),
+            content_announcements: Arc::new(RwLock::new(ContentAnnouncementStore::new())),
+        }
+    }
+
+    /// Inject a custom registry slot (e.g. [`PeerRegistrySlot::Mock`] in unit tests).
+    #[must_use]
+    pub fn with_peer_registry(slot: PeerRegistrySlot) -> Self {
+        Self {
+            peer_registry: Some(slot),
             content_announcements: Arc::new(RwLock::new(ContentAnnouncementStore::new())),
         }
     }

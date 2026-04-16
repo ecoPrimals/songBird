@@ -10,90 +10,61 @@
 //! - `rendezvous.lookup` - Find peers via rendezvous server
 //!
 //! ## Architecture
-//! Uses trait-based dependency injection (`RendezvousClient` trait) to enable:
-//! - Testing with mock implementations
-//! - Production with real HTTP client
-//! - Runtime configuration
-//!
-//! ## Evolution Principles
-//! - Zero hardcoding: Configurable servers
-//! - Mocks isolated: Only in #[cfg(test)]
-//! - Capability-based: Trait-based DI
-//! - Modern Rust: async/await, Arc, proper error handling
+//! Uses enum dispatch ([`RendezvousClient`]) for the HTTP implementation and test doubles.
 
 use crate::error::{IpcError, IpcResult};
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::info;
 
-// ============================================================================
-// Request/Response Types
-// ============================================================================
+pub use super::rendezvous_types::{
+    RendezvousLookupParams, RendezvousLookupResult, RendezvousPeer, RendezvousRegisterParams,
+    RendezvousRegisterResult,
+};
 
-#[derive(Debug, Deserialize)]
-pub struct RendezvousRegisterParams {
-    /// Rendezvous server URL
-    pub server: Arc<str>,
-    /// Our node ID
-    pub node_id: Arc<str>,
-    /// Our family ID (for family-scoped discovery)
-    pub family_id: Arc<str>,
-    /// Public address (from STUN)
-    pub public_address: Arc<str>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct RendezvousRegisterResult {
-    /// Registration ID
-    pub registration_id: String,
-    /// Expiry time (ISO 8601)
-    pub expires_at: String,
-    /// Rendezvous token for peers
-    pub rendezvous_token: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RendezvousLookupParams {
-    /// Rendezvous server URL
-    pub server: Arc<str>,
-    /// Target node ID or family ID
-    pub target: Arc<str>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct RendezvousLookupResult {
-    /// Found peers
-    pub peers: Vec<RendezvousPeer>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct RendezvousPeer {
-    pub node_id: Arc<str>,
-    pub family_id: Arc<str>,
-    pub public_address: Arc<str>,
-    pub rendezvous_token: Arc<str>,
-}
+use super::http_rendezvous_client::HttpRendezvousClient;
 
 // ============================================================================
-// Rendezvous Client Trait (Capability-Based)
+// Rendezvous Client (enum dispatch)
 // ============================================================================
 
-/// Trait for rendezvous client operations (dependency injection)
-#[async_trait]
-pub trait RendezvousClient: Send + Sync + 'static {
+/// Rendezvous transport implementation used by [`RendezvousHandler`].
+pub enum RendezvousClient {
+    Http(HttpRendezvousClient),
+    #[cfg(test)]
+    Mock(Arc<MockRendezvousClient>),
+    #[cfg(test)]
+    Failing,
+}
+
+impl RendezvousClient {
     /// Register with a rendezvous server
-    async fn register(
+    pub async fn register(
         &self,
         server: &str,
         node_id: &str,
         family_id: &str,
         public_address: &str,
-    ) -> Result<RendezvousRegisterResult, String>;
+    ) -> Result<RendezvousRegisterResult, String> {
+        match self {
+            Self::Http(c) => c.register(server, node_id, family_id, public_address).await,
+            #[cfg(test)]
+            Self::Mock(m) => m.register(server, node_id, family_id, public_address).await,
+            #[cfg(test)]
+            Self::Failing => Err("simulated register failure".to_string()),
+        }
+    }
 
     /// Lookup peers via rendezvous server
-    async fn lookup(&self, server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String>;
+    pub async fn lookup(&self, server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
+        match self {
+            Self::Http(c) => c.lookup(server, target).await,
+            #[cfg(test)]
+            Self::Mock(m) => m.lookup(server, target).await,
+            #[cfg(test)]
+            Self::Failing => Err("simulated lookup failure".to_string()),
+        }
+    }
 }
 
 // ============================================================================
@@ -101,12 +72,13 @@ pub trait RendezvousClient: Send + Sync + 'static {
 // ============================================================================
 
 pub struct RendezvousHandler {
-    client: Arc<dyn RendezvousClient>,
+    client: Arc<RendezvousClient>,
 }
 
 impl RendezvousHandler {
     /// Create new handler with given client
-    pub fn new(client: Arc<dyn RendezvousClient>) -> Self {
+    #[must_use]
+    pub fn new(client: Arc<RendezvousClient>) -> Self {
         Self {
             client,
         }
@@ -170,83 +142,76 @@ impl RendezvousHandler {
 // ============================================================================
 
 #[cfg(test)]
-mod tests_support {
-    use super::{RendezvousClient, RendezvousPeer, RendezvousRegisterResult};
-    use async_trait::async_trait;
-    use std::sync::Arc;
+pub struct MockRendezvousClient {
+    #[allow(clippy::type_complexity)]
+    registered: std::sync::RwLock<Vec<(Arc<str>, Arc<str>, Arc<str>, Arc<str>)>>,
+}
 
-    pub struct MockRendezvousClient {
-        #[allow(clippy::type_complexity)]
-        registered: std::sync::RwLock<Vec<(Arc<str>, Arc<str>, Arc<str>, Arc<str>)>>,
+#[cfg(test)]
+impl Default for MockRendezvousClient {
+    fn default() -> Self {
+        Self::new()
     }
+}
 
-    impl Default for MockRendezvousClient {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl MockRendezvousClient {
-        #[must_use]
-        pub fn new() -> Self {
-            Self {
-                registered: std::sync::RwLock::new(Vec::new()),
-            }
-        }
-
-        pub fn add_peer(&self, node_id: &str, family_id: &str, public_address: &str, token: &str) {
-            let mut registered = self.registered.write().unwrap();
-            registered.push((
-                Arc::from(node_id),
-                Arc::from(family_id),
-                Arc::from(public_address),
-                Arc::from(token),
-            ));
+#[cfg(test)]
+impl MockRendezvousClient {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            registered: std::sync::RwLock::new(Vec::new()),
         }
     }
 
-    #[async_trait]
-    impl RendezvousClient for MockRendezvousClient {
-        async fn register(
-            &self,
-            _server: &str,
-            node_id: &str,
-            family_id: &str,
-            public_address: &str,
-        ) -> Result<RendezvousRegisterResult, String> {
-            let registration_id = uuid::Uuid::new_v4().to_string();
-            let rendezvous_token = format!("token-{}", &registration_id[..8]);
+    pub fn add_peer(&self, node_id: &str, family_id: &str, public_address: &str, token: &str) {
+        let mut registered = self.registered.write().unwrap();
+        registered.push((
+            Arc::from(node_id),
+            Arc::from(family_id),
+            Arc::from(public_address),
+            Arc::from(token),
+        ));
+    }
 
-            self.add_peer(node_id, family_id, public_address, &rendezvous_token);
+    pub async fn register(
+        &self,
+        _server: &str,
+        node_id: &str,
+        family_id: &str,
+        public_address: &str,
+    ) -> Result<RendezvousRegisterResult, String> {
+        let registration_id = uuid::Uuid::new_v4().to_string();
+        let rendezvous_token = format!("token-{}", &registration_id[..8]);
 
-            let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
+        self.add_peer(node_id, family_id, public_address, &rendezvous_token);
 
-            Ok(RendezvousRegisterResult {
-                registration_id,
-                expires_at: expires_at.to_rfc3339(),
-                rendezvous_token,
-            })
-        }
+        let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
 
-        async fn lookup(&self, _server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
-            let peers: Vec<RendezvousPeer> = {
-                let registered = self.registered.read().unwrap();
-                registered
-                    .iter()
-                    .filter(|(node_id, family_id, _, _)| {
-                        node_id.as_ref() == target || family_id.as_ref() == target
-                    })
-                    .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
-                        node_id: Arc::clone(node_id),
-                        family_id: Arc::clone(family_id),
-                        public_address: Arc::clone(public_address),
-                        rendezvous_token: Arc::clone(token),
-                    })
-                    .collect()
-            };
+        Ok(RendezvousRegisterResult {
+            registration_id,
+            expires_at: expires_at.to_rfc3339(),
+            rendezvous_token,
+        })
+    }
 
-            Ok(peers)
-        }
+    pub async fn lookup(&self, _server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
+        let peers: Vec<RendezvousPeer> = {
+            let registered = self.registered.read().unwrap();
+            registered
+                .iter()
+                .filter(|(node_id, family_id, _, _)| {
+                    node_id.as_ref() == target || family_id.as_ref() == target
+                })
+                .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
+                    node_id: Arc::clone(node_id),
+                    family_id: Arc::clone(family_id),
+                    public_address: Arc::clone(public_address),
+                    rendezvous_token: Arc::clone(token),
+                })
+                .collect()
+        };
+
+        Ok(peers)
     }
 }
 
@@ -258,37 +223,17 @@ mod tests_support {
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
-    use super::tests_support::MockRendezvousClient;
     use super::*;
     use crate::error::IpcError;
     use serde_json::json;
 
-    struct FailingRendezvousClient;
-
-    #[async_trait::async_trait]
-    impl RendezvousClient for FailingRendezvousClient {
-        async fn register(
-            &self,
-            _server: &str,
-            _node_id: &str,
-            _family_id: &str,
-            _public_address: &str,
-        ) -> Result<RendezvousRegisterResult, String> {
-            Err("simulated register failure".to_string())
-        }
-
-        async fn lookup(
-            &self,
-            _server: &str,
-            _target: &str,
-        ) -> Result<Vec<RendezvousPeer>, String> {
-            Err("simulated lookup failure".to_string())
-        }
+    fn wrap_mock(c: Arc<MockRendezvousClient>) -> Arc<RendezvousClient> {
+        Arc::new(RendezvousClient::Mock(c))
     }
 
     #[tokio::test]
     async fn register_client_error_maps_to_internal() {
-        let handler = RendezvousHandler::new(Arc::new(FailingRendezvousClient));
+        let handler = RendezvousHandler::new(Arc::new(RendezvousClient::Failing));
         let err = handler
             .handle_register(json!({
                 "server": "https://rendezvous.example.com",
@@ -309,7 +254,7 @@ mod tests {
 
     #[tokio::test]
     async fn lookup_client_error_maps_to_internal() {
-        let handler = RendezvousHandler::new(Arc::new(FailingRendezvousClient));
+        let handler = RendezvousHandler::new(Arc::new(RendezvousClient::Failing));
         let err = handler
             .handle_lookup(json!({
                 "server": "https://rendezvous.example.com",
@@ -328,7 +273,7 @@ mod tests {
 
     #[tokio::test]
     async fn lookup_missing_params_errors() {
-        let handler = RendezvousHandler::new(Arc::new(MockRendezvousClient::new()));
+        let handler = RendezvousHandler::new(wrap_mock(Arc::new(MockRendezvousClient::new())));
         let err = handler
             .handle_lookup(json!({ "server": "https://rendezvous.example.com" }))
             .await
@@ -338,8 +283,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_success() {
-        let client = Arc::new(MockRendezvousClient::new());
-        let handler = RendezvousHandler::new(client);
+        let handler = RendezvousHandler::new(wrap_mock(Arc::new(MockRendezvousClient::new())));
 
         let params = json!({
             "server": "https://rendezvous.example.com",
@@ -358,8 +302,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_missing_params() {
-        let client = Arc::new(MockRendezvousClient::new());
-        let handler = RendezvousHandler::new(client);
+        let handler = RendezvousHandler::new(wrap_mock(Arc::new(MockRendezvousClient::new())));
 
         let params = json!({
             "server": "https://rendezvous.example.com"
@@ -372,12 +315,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_lookup_success() {
-        let client = Arc::new(MockRendezvousClient::new());
+        let inner = Arc::new(MockRendezvousClient::new());
 
         // Pre-populate with a peer
-        client.add_peer("node-gamma", "nat0", "203.0.113.100:5000", "token-abc123");
+        inner.add_peer("node-gamma", "nat0", "203.0.113.100:5000", "token-abc123");
 
-        let handler = RendezvousHandler::new(client);
+        let handler = RendezvousHandler::new(wrap_mock(inner));
 
         let params = json!({
             "server": "https://rendezvous.example.com",
@@ -394,14 +337,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_lookup_by_family_id() {
-        let client = Arc::new(MockRendezvousClient::new());
+        let inner = Arc::new(MockRendezvousClient::new());
 
         // Add multiple peers in same family
-        client.add_peer("node-alpha", "nat0", "203.0.113.10:5000", "token-1");
-        client.add_peer("node-beta", "nat0", "203.0.113.20:5000", "token-2");
-        client.add_peer("node-gamma", "nat1", "203.0.113.30:5000", "token-3");
+        inner.add_peer("node-alpha", "nat0", "203.0.113.10:5000", "token-1");
+        inner.add_peer("node-beta", "nat0", "203.0.113.20:5000", "token-2");
+        inner.add_peer("node-gamma", "nat1", "203.0.113.30:5000", "token-3");
 
-        let handler = RendezvousHandler::new(client);
+        let handler = RendezvousHandler::new(wrap_mock(inner));
 
         let params = json!({
             "server": "https://rendezvous.example.com",
@@ -417,8 +360,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_lookup_not_found() {
-        let client = Arc::new(MockRendezvousClient::new());
-        let handler = RendezvousHandler::new(client);
+        let handler = RendezvousHandler::new(wrap_mock(Arc::new(MockRendezvousClient::new())));
 
         let params = json!({
             "server": "https://rendezvous.example.com",
@@ -432,8 +374,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_then_lookup() {
-        let client = Arc::new(MockRendezvousClient::new());
-        let handler = RendezvousHandler::new(client);
+        let handler = RendezvousHandler::new(wrap_mock(Arc::new(MockRendezvousClient::new())));
 
         // Register a peer
         let register_params = json!({

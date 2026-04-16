@@ -4,33 +4,15 @@
 #![allow(clippy::unwrap_used, reason = "test assertions")]
 
 use super::DiscoveryHandler;
+use super::PeerRegistrySlot;
 use super::content::{ContentAnnouncement, ContentAnnouncementStore};
 use super::types::{
-    DiscoveredPeerInfo, DiscoveryGetPeerParams, DiscoveryPeersResult, PeerRegistry,
+    DiscoveredPeerInfo, DiscoveryGetPeerParams, DiscoveryPeersResult, MockPeerRegistry,
 };
 use crate::error::{IpcError, IpcResult};
 use serde_json::json;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-// ============================================================================
-// Mock peer registry
-// ============================================================================
-
-pub struct MockPeerRegistry {
-    pub peers: Vec<DiscoveredPeerInfo>,
-}
-
-#[async_trait::async_trait]
-impl PeerRegistry for MockPeerRegistry {
-    async fn get_all_peers(&self) -> IpcResult<Vec<DiscoveredPeerInfo>> {
-        Ok(self.peers.clone())
-    }
-
-    async fn get_peer(&self, peer_id: &str) -> IpcResult<Option<DiscoveredPeerInfo>> {
-        Ok(self.peers.iter().find(|p| p.node_id == peer_id).cloned())
-    }
-}
 
 // ============================================================================
 // Handler tests
@@ -90,7 +72,7 @@ async fn test_handle_list_peers_with_mock_registry() {
     let registry = Arc::new(MockPeerRegistry {
         peers: mock_peers.clone(),
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
     let result = handler.handle_list_peers(json!({})).await;
 
     assert!(result.is_ok());
@@ -117,7 +99,7 @@ async fn test_handle_get_peer_by_id() {
     let registry = Arc::new(MockPeerRegistry {
         peers: mock_peers,
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
 
     let params = json!({"peer_id": "node-gamma"});
     let peer = handler.handle_get_peer(params).await.unwrap().unwrap();
@@ -271,7 +253,7 @@ async fn list_peers_capability_filter_narrows_results() {
             peer("plain-node", "nat0", &["crypto"]),
         ],
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
 
     let result = handler
         .handle_list_peers(json!({ "capability_filter": ["content_seeder"] }))
@@ -286,7 +268,7 @@ async fn list_peers_no_filter_returns_all() {
     let registry = Arc::new(MockPeerRegistry {
         peers: vec![peer("a", "fam", &[]), peer("b", "fam", &[])],
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
     let result = handler.handle_list_peers(json!({})).await.unwrap();
     assert_eq!(result.total_count, 2);
 }
@@ -299,7 +281,7 @@ async fn list_peers_capability_filter_string_form() {
             peer("compute-node", "nat0", &["compute"]),
         ],
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
     let result =
         handler.handle_list_peers(json!({ "capability_filter": "storage" })).await.unwrap();
     assert_eq!(result.total_count, 1);
@@ -314,7 +296,7 @@ async fn list_peers_multiple_capability_filters_require_all() {
             peer("partial", "fam", &["content_seeder"]),
         ],
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
     let result = handler
         .handle_list_peers(json!({ "capability_filter": ["content_seeder", "tls"] }))
         .await
@@ -331,7 +313,7 @@ async fn list_peers_family_only_filters_by_env() {
             peer("other-fam", "other", &["storage"]),
         ],
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
     let result = handler
         .handle_list_peers_with(json!({ "family_only": true }), || Ok("nat0".to_string()))
         .await
@@ -345,7 +327,7 @@ async fn list_peers_family_only_no_env_returns_all() {
     let registry = Arc::new(MockPeerRegistry {
         peers: vec![peer("a", "fam1", &[]), peer("b", "fam2", &[])],
     });
-    let handler = DiscoveryHandler::with_registry(registry);
+    let handler = DiscoveryHandler::with_peer_registry(PeerRegistrySlot::Mock(registry));
     let result = handler
         .handle_list_peers_with(json!({ "family_only": true }), || {
             Err(std::env::VarError::NotPresent)
@@ -507,7 +489,9 @@ fn content_announcement_store_gc_removes_expired() {
         node_id: "n".into(),
         seeder_count: 1,
         bond_types_accepted: vec![],
-        announced_at: Instant::now() - Duration::from_secs(1),
+        announced_at: Instant::now()
+            .checked_sub(Duration::from_secs(1))
+            .expect("system clock should allow subtracting 1s"),
     });
     assert_eq!(store.len(), 1);
     store.gc();
@@ -524,7 +508,9 @@ fn content_announcement_store_query_excludes_expired() {
         node_id: "n".into(),
         seeder_count: 1,
         bond_types_accepted: vec![],
-        announced_at: Instant::now() - Duration::from_secs(1),
+        announced_at: Instant::now()
+            .checked_sub(Duration::from_secs(1))
+            .expect("system clock should allow subtracting 1s"),
     });
     assert!(store.query("content:old").is_empty(), "expired entries filtered out");
 }

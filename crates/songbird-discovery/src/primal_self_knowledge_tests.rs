@@ -4,6 +4,7 @@
 #![allow(clippy::unwrap_used, reason = "test assertions")]
 
 use super::*;
+use std::collections::HashMap;
 use std::env::VarError;
 
 #[test]
@@ -138,12 +139,11 @@ fn introspect_capabilities_dedup_duplicate_security_hint() {
 
 #[tokio::test]
 async fn discover_primal_caches_first_success() {
-    let pk = PrimalSelfKnowledge::discover_self_with(|k| match k {
-        "PRIMAL_NAME" => Ok("self".into()),
-        "AI_HOST" => Ok("127.0.0.1".into()),
-        "AI_PORT" => Ok("7777".into()),
-        _ => Err(VarError::NotPresent),
-    })
+    let pk = PrimalSelfKnowledge::discover_self_with(HashMap::from([
+        ("PRIMAL_NAME".into(), "self".into()),
+        ("AI_HOST".into(), "127.0.0.1".into()),
+        ("AI_PORT".into(), "7777".into()),
+    ]))
     .expect("self");
 
     let a = pk.discover_primal("ai").await.expect("first");
@@ -197,7 +197,7 @@ async fn environment_discover_with_invalid_port_maps_to_introspection_failed() {
 
 #[tokio::test]
 async fn discover_primal_fails_when_no_mechanism_succeeds() {
-    let pk = PrimalSelfKnowledge::discover_self_with(|_| Err(VarError::NotPresent)).expect("self");
+    let pk = PrimalSelfKnowledge::discover_self_with_strict(HashMap::new()).expect("self");
     let err = pk.discover_primal("nonexistent-cap-xyz").await.expect_err("none");
     assert!(matches!(err, PrimalError::DiscoveryFailed { .. }));
 }
@@ -293,10 +293,10 @@ async fn discovery_mechanism_names() {
 
 #[test]
 fn identity_returns_cloned_identity_snapshot() {
-    let pk = PrimalSelfKnowledge::discover_self_with(|k| match k {
-        "PRIMAL_NAME" => Ok("tower-a".into()),
-        _ => Err(VarError::NotPresent),
-    })
+    let pk = PrimalSelfKnowledge::discover_self_with(HashMap::from([(
+        "PRIMAL_NAME".into(),
+        "tower-a".into(),
+    )]))
     .expect("self");
     let id = pk.identity();
     assert_eq!(id.name, "tower-a");
@@ -305,12 +305,11 @@ fn identity_returns_cloned_identity_snapshot() {
 
 #[tokio::test]
 async fn discover_primal_capability_uppercases_env_prefix() {
-    let pk = PrimalSelfKnowledge::discover_self_with(|k| match k {
-        "PRIMAL_NAME" => Ok("me".into()),
-        "MYWEIRD_HOST" => Ok("10.0.0.2".into()),
-        "MYWEIRD_PORT" => Ok("4321".into()),
-        _ => Err(VarError::NotPresent),
-    })
+    let pk = PrimalSelfKnowledge::discover_self_with(HashMap::from([
+        ("PRIMAL_NAME".into(), "me".into()),
+        ("MYWEIRD_HOST".into(), "10.0.0.2".into()),
+        ("MYWEIRD_PORT".into(), "4321".into()),
+    ]))
     .expect("self");
     let info = pk.discover_primal("myweird").await.expect("discovered");
     assert_eq!(info.name, "myweird");
@@ -321,12 +320,11 @@ async fn discover_primal_capability_uppercases_env_prefix() {
 
 #[tokio::test]
 async fn primal_info_populated_fields_match_discovery_contract() {
-    let pk = PrimalSelfKnowledge::discover_self_with(|k| match k {
-        "PRIMAL_NAME" => Ok("self".into()),
-        "NET_HOST" => Ok("net.example".into()),
-        "NET_PORT" => Ok("9000".into()),
-        _ => Err(VarError::NotPresent),
-    })
+    let pk = PrimalSelfKnowledge::discover_self_with(HashMap::from([
+        ("PRIMAL_NAME".into(), "self".into()),
+        ("NET_HOST".into(), "net.example".into()),
+        ("NET_PORT".into(), "9000".into()),
+    ]))
     .expect("self");
     let info = pk.discover_primal("net").await.expect("net");
     assert_eq!(info.capabilities, vec!["net".to_string()]);
@@ -335,12 +333,11 @@ async fn primal_info_populated_fields_match_discovery_contract() {
 
 #[tokio::test]
 async fn discovered_clones_cache_contents() {
-    let pk = PrimalSelfKnowledge::discover_self_with(|k| match k {
-        "PRIMAL_NAME" => Ok("x".into()),
-        "Z_HOST" => Ok("z.local".into()),
-        "Z_PORT" => Ok("1".into()),
-        _ => Err(VarError::NotPresent),
-    })
+    let pk = PrimalSelfKnowledge::discover_self_with(HashMap::from([
+        ("PRIMAL_NAME".into(), "x".into()),
+        ("Z_HOST".into(), "z.local".into()),
+        ("Z_PORT".into(), "1".into()),
+    ]))
     .expect("self");
     assert!(pk.discovered().await.is_empty());
     pk.discover_primal("z").await.expect("z");

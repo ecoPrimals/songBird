@@ -3,7 +3,8 @@
 
 use super::{HandlerBundle, IpcServiceHandler};
 use crate::handlers::birdsong_handler::BirdSongHandler;
-use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
+use crate::handlers::discovery_bridge::DiscoveryListenerBridge;
+use crate::handlers::discovery_handler::DiscoveryHandler;
 use crate::handlers::http_handler::HttpHandler;
 use crate::handlers::http_rendezvous_client::HttpRendezvousClient;
 use crate::handlers::igd_handler::IgdHandler;
@@ -11,15 +12,16 @@ use crate::handlers::mesh_handler::MeshHandler;
 use crate::handlers::onion_handler::OnionHandler;
 use crate::handlers::peer_handler::PeerHandler;
 use crate::handlers::punch_handler::PunchHandler;
-use crate::handlers::rendezvous_handler::RendezvousHandler;
+use crate::handlers::rendezvous_handler::{RendezvousClient, RendezvousHandler};
 use crate::handlers::stun_handler::StunHandler;
 use crate::handlers::tor_handler::TorHandler;
-use crate::handlers::udp_peer_connector::UdpPeerConnector;
+use crate::handlers::udp_peer_connector::{PeerConnector, UdpPeerConnector};
 use crate::registry::ServiceRegistry;
+use songbird_lineage_relay::relay::RelayAuthority;
 use songbird_lineage_relay::relay_handler::RelayHandler;
 use songbird_lineage_relay::security::SecurityRelayAuthority;
 use songbird_network_federation::state::FederationState;
-use std::env::VarError;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -30,11 +32,15 @@ impl IpcServiceHandler {
     /// All handlers use real implementations (zero mocks in production).
     fn build_handlers() -> HandlerBundle {
         let stun_handler = Arc::new(StunHandler::new());
-        let rendezvous_handler =
-            Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
-        let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
+        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(
+            RendezvousClient::Http(HttpRendezvousClient::new()),
+        )));
+        let peer_handler =
+            Arc::new(PeerHandler::new(Arc::new(PeerConnector::Udp(UdpPeerConnector::new()))));
         let birdsong_handler = Arc::new(BirdSongHandler::new());
-        let relay_handler = Arc::new(RelayHandler::new(Arc::new(SecurityRelayAuthority::new())));
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(RelayAuthority::from(
+            SecurityRelayAuthority::new(),
+        ))));
         let mesh_handler = Arc::new(MeshHandler::new());
         let onion_handler = Arc::new(OnionHandler::new());
 
@@ -86,7 +92,7 @@ impl IpcServiceHandler {
 
         Self {
             registry,
-            family_id_env: None,
+            family_id_overrides: None,
             http_handler,
             stun_handler,
             discovery_handler,
@@ -133,12 +139,12 @@ impl IpcServiceHandler {
     /// Create with a peer registry for orchestrator-level discovery.
     pub fn with_discovery_registry(
         registry: Arc<RwLock<ServiceRegistry>>,
-        peer_registry: Arc<dyn PeerRegistry>,
+        peer_registry: Arc<DiscoveryListenerBridge>,
     ) -> Self {
         Self::assemble(
             registry,
             Arc::new(HttpHandler::with_default_discovery()),
-            Arc::new(DiscoveryHandler::with_registry(peer_registry)),
+            Arc::new(DiscoveryHandler::with_bridge(peer_registry)),
             None,
         )
     }
@@ -151,15 +157,15 @@ impl IpcServiceHandler {
         Self::assemble(registry, http_handler, Arc::new(DiscoveryHandler::new()), None)
     }
 
-    /// Same as [`new`](Self::new) but resolves `family_id` for `identity` via `env` instead of
+    /// Same as [`new`](Self::new) but resolves `family_id` for `identity` using this map instead of
     /// [`songbird_process_env::var`] (for tests and injected configuration).
     #[must_use]
-    pub fn with_family_id_env<F>(registry: Arc<RwLock<ServiceRegistry>>, env: F) -> Self
-    where
-        F: Fn(&str) -> Result<String, VarError> + Send + Sync + 'static,
-    {
+    pub fn with_family_id_overrides(
+        registry: Arc<RwLock<ServiceRegistry>>,
+        overrides: HashMap<String, String>,
+    ) -> Self {
         let mut h = Self::new(registry);
-        h.family_id_env = Some(Arc::new(env));
+        h.family_id_overrides = Some(Arc::new(overrides));
         h
     }
 

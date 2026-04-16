@@ -26,11 +26,9 @@
 //! ```rust
 //! use songbird_orchestrator::resilience::circuit_breaker::CircuitBreaker;
 //! use songbird_orchestrator::resilience::health::{HealthCheck, HealthStatus};
-//! use async_trait::async_trait;
 //! use std::time::Duration;
 //!
 //! # struct MyService;
-//! #[async_trait]
 //! impl HealthCheck for MyService {
 //!     async fn health(&self) -> HealthStatus {
 //!         HealthStatus::healthy("my-service")

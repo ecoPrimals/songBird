@@ -49,112 +49,21 @@
 //! 5. **Replay protection**: Old beacons rejected
 //! 6. **Session rotation**: Tracking prevention
 
-use anyhow::Result;
-use async_trait::async_trait;
-use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
+use songbird_discovery::birdsong::{
+    BirdSongConfig, BirdSongEncryption, BirdSongProcessor, DarkForestTestProvider,
+    LegacyBirdSongStub,
+};
 use songbird_discovery::dark_forest_beacon::{BeaconPayload, DarkForestBeacon};
 use std::sync::Arc;
 
-/// Mock encryption provider for testing Dark Forest beacons
-///
-/// Simulates `security provider`'s `beacon.*` RPC methods with in-memory beacon seeds.
-struct MockDarkForestProvider {
-    beacon_id: Vec<u8>,
-    beacon_seed: [u8; 32],
-    known_beacons: Vec<Vec<u8>>,
-    available: bool,
+fn dark_forest_enc(seed: [u8; 32]) -> Arc<BirdSongEncryption> {
+    Arc::new(BirdSongEncryption::DarkForestTest(Arc::new(DarkForestTestProvider::new(seed))))
 }
 
-impl MockDarkForestProvider {
-    fn new(seed: [u8; 32]) -> Self {
-        let beacon_id = Self::derive_beacon_id(&seed);
-        Self {
-            beacon_id,
-            beacon_seed: seed,
-            known_beacons: Vec::new(),
-            available: true,
-        }
-    }
-
-    fn with_known_beacons(mut self, beacons: Vec<Vec<u8>>) -> Self {
-        self.known_beacons = beacons;
-        self
-    }
-
-    fn derive_beacon_id(seed: &[u8; 32]) -> Vec<u8> {
-        use blake3::Hasher;
-        let mut hasher = Hasher::new();
-        hasher.update(seed);
-        hasher.update(b"beacon-id-v1");
-        let hash = hasher.finalize();
-        hash.as_bytes()[..16].to_vec()
-    }
-
-    fn encrypt_with_seed(&self, plaintext: &[u8]) -> (Vec<u8>, [u8; 12]) {
-        // Simple XOR encryption for testing (real: ChaCha20-Poly1305)
-        let encrypted: Vec<u8> =
-            plaintext.iter().enumerate().map(|(i, &b)| b ^ self.beacon_seed[i % 32]).collect();
-
-        let nonce = [0u8; 12]; // Simplified for testing
-        (encrypted, nonce)
-    }
-
-    fn try_decrypt_with_seed(&self, ciphertext: &[u8], _nonce: &[u8; 12]) -> Option<Vec<u8>> {
-        // Simple XOR decryption (inverse of encrypt)
-        let decrypted: Vec<u8> =
-            ciphertext.iter().enumerate().map(|(i, &b)| b ^ self.beacon_seed[i % 32]).collect();
-
-        Some(decrypted)
-    }
-}
-
-#[async_trait]
-impl BirdSongEncryption for MockDarkForestProvider {
-    async fn encrypt_discovery(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
-        Ok(plaintext.to_vec()) // Legacy method - passthrough
-    }
-
-    async fn decrypt_discovery(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>> {
-        Ok(Some(ciphertext.to_vec())) // Legacy method - passthrough
-    }
-
-    fn is_available(&self) -> bool {
-        self.available
-    }
-
-    fn family_id(&self) -> Option<String> {
-        Some("test-family".to_string())
-    }
-
-    fn provider_name(&self) -> String {
-        "MockDarkForestProvider".to_string()
-    }
-
-    // Dark Forest methods
-
-    async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
-        Ok(self.encrypt_with_seed(payload))
-    }
-
-    async fn try_decrypt_beacon(
-        &self,
-        encrypted: &[u8],
-        nonce: &[u8; 12],
-    ) -> Result<Option<Vec<u8>>> {
-        Ok(self.try_decrypt_with_seed(encrypted, nonce))
-    }
-
-    async fn get_beacon_id(&self) -> Result<Option<Vec<u8>>> {
-        Ok(Some(self.beacon_id.clone()))
-    }
-
-    async fn list_known_beacons(&self) -> Result<Vec<Vec<u8>>> {
-        Ok(self.known_beacons.clone())
-    }
-
-    async fn supports_dark_forest(&self) -> bool {
-        true
-    }
+fn dark_forest_enc_with_known(seed: [u8; 32], known: Vec<Vec<u8>>) -> Arc<BirdSongEncryption> {
+    Arc::new(BirdSongEncryption::DarkForestTest(Arc::new(
+        DarkForestTestProvider::new(seed).with_known_beacons(known),
+    )))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -168,12 +77,12 @@ async fn test_dark_forest_same_beacon_family_discovers() {
     let beacon_seed = [42u8; 32];
 
     // Node A
-    let provider_a = Arc::new(MockDarkForestProvider::new(beacon_seed));
+    let provider_a = dark_forest_enc(beacon_seed);
     let config_a = BirdSongConfig::dark_forest();
     let processor_a = BirdSongProcessor::new(Some(provider_a.clone()), config_a);
 
     // Node B (same beacon seed)
-    let provider_b = Arc::new(MockDarkForestProvider::new(beacon_seed));
+    let provider_b = dark_forest_enc(beacon_seed);
     let config_b = BirdSongConfig::dark_forest();
     let processor_b = BirdSongProcessor::new(Some(provider_b), config_b);
 
@@ -210,12 +119,12 @@ async fn test_dark_forest_different_beacon_families_invisible() {
     let beacon_seed_b = [99u8; 32]; // Different seed
 
     // Node A
-    let provider_a = Arc::new(MockDarkForestProvider::new(beacon_seed_a));
+    let provider_a = dark_forest_enc(beacon_seed_a);
     let config_a = BirdSongConfig::dark_forest();
     let processor_a = BirdSongProcessor::new(Some(provider_a), config_a);
 
     // Node B (different beacon seed)
-    let provider_b = Arc::new(MockDarkForestProvider::new(beacon_seed_b));
+    let provider_b = dark_forest_enc(beacon_seed_b);
     let config_b = BirdSongConfig::dark_forest();
     let processor_b = BirdSongProcessor::new(Some(provider_b), config_b);
 
@@ -259,16 +168,15 @@ async fn test_dark_forest_multi_beacon_decryption() {
     let stranger_seed = [3u8; 32];
 
     // Derive beacon IDs
-    let friend_id = MockDarkForestProvider::derive_beacon_id(&friend_seed);
+    let friend_id = DarkForestTestProvider::derive_beacon_id(&friend_seed);
 
     // Our node (knows about friend from meeting)
-    let our_provider =
-        Arc::new(MockDarkForestProvider::new(our_seed).with_known_beacons(vec![friend_id.clone()]));
+    let our_provider = dark_forest_enc_with_known(our_seed, vec![friend_id.clone()]);
     let config = BirdSongConfig::dark_forest();
     let our_processor = BirdSongProcessor::new(Some(our_provider), config);
 
     // Friend creates beacon
-    let friend_provider = Arc::new(MockDarkForestProvider::new(friend_seed));
+    let friend_provider = dark_forest_enc(friend_seed);
     let friend_processor =
         BirdSongProcessor::new(Some(friend_provider), BirdSongConfig::dark_forest());
 
@@ -294,7 +202,7 @@ async fn test_dark_forest_multi_beacon_decryption() {
     assert_eq!(decrypted.node_id, "friend-node");
 
     // Stranger creates beacon (we haven't met)
-    let stranger_provider = Arc::new(MockDarkForestProvider::new(stranger_seed));
+    let stranger_provider = dark_forest_enc(stranger_seed);
     let stranger_processor =
         BirdSongProcessor::new(Some(stranger_provider), BirdSongConfig::dark_forest());
 
@@ -324,7 +232,7 @@ async fn test_dark_forest_replay_protection() {
     // Old beacons should be rejected (replay attack prevention)
 
     let beacon_seed = [77u8; 32];
-    let provider = Arc::new(MockDarkForestProvider::new(beacon_seed));
+    let provider = dark_forest_enc(beacon_seed);
     let config = BirdSongConfig::dark_forest();
     let processor = BirdSongProcessor::new(Some(provider.clone()), config);
 
@@ -423,30 +331,8 @@ async fn test_dark_forest_beacon_serialization() {
 
 #[tokio::test]
 async fn test_beacon_provider_default_implementations() {
-    // Test that default trait implementations work for legacy providers
-
-    struct LegacyProvider;
-
-    #[async_trait]
-    impl BirdSongEncryption for LegacyProvider {
-        async fn encrypt_discovery(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
-            Ok(plaintext.to_vec())
-        }
-
-        async fn decrypt_discovery(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>> {
-            Ok(Some(ciphertext.to_vec()))
-        }
-
-        fn is_available(&self) -> bool {
-            true
-        }
-
-        fn family_id(&self) -> Option<String> {
-            Some("legacy".to_string())
-        }
-    }
-
-    let provider = LegacyProvider;
+    // Legacy stub matches former default `BirdSongEncryption` trait behavior.
+    let provider = BirdSongEncryption::Legacy(LegacyBirdSongStub);
 
     // Default implementations should work
     let beacon_id = provider.get_beacon_id().await.unwrap();
@@ -491,7 +377,7 @@ async fn test_dark_forest_only_mode_rejects_legacy() {
 async fn test_dark_forest_usage_example() {
     // Setup beacon provider with known seed
     let beacon_seed = [123u8; 32];
-    let provider = Arc::new(MockDarkForestProvider::new(beacon_seed));
+    let provider = dark_forest_enc(beacon_seed);
 
     // Create processor with Dark Forest config
     let config = BirdSongConfig::dark_forest();

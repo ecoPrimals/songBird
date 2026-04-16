@@ -5,7 +5,6 @@ use super::BirdSongHandler;
 use super::types::{DecryptBeaconRequest, validate_required_fields};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};
-use songbird_discovery::birdsong::BirdSongEncryption;
 use tracing::{debug, error, info};
 
 impl BirdSongHandler {

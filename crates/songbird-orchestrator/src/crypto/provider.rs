@@ -3,7 +3,7 @@
 
 //! Capability-Based Crypto Provider Abstraction
 //!
-//! This module defines the `CryptoProvider` trait for capability-based crypto operations.
+//! Capability-based crypto operations via [`UnixSocketCryptoProvider`].
 //!
 //! # TRUE PRIMAL Principles
 //!
@@ -17,7 +17,7 @@
 //! ```text
 //! Songbird (only knows itself)
 //!     ↓
-//! CryptoProvider trait (capability abstraction)
+//! Unix-socket JSON-RPC delegation (capability abstraction)
 //!     ↓
 //! discover_crypto_provider() (runtime discovery)
 //!     ↓
@@ -27,130 +27,11 @@
 //! ```
 
 use anyhow::Result;
-use async_trait::async_trait;
 use std::sync::Arc;
-
-/// Crypto Provider Capability
-///
-/// This trait defines the cryptographic operations that a primal can provide.
-/// Songbird discovers ANY primal implementing this capability at runtime.
-///
-/// # Implementations
-///
-/// - `UnixSocketCryptoProvider`: Communicates via Unix socket JSON-RPC
-/// - Future: `HttpCryptoProvider`, `GrpcCryptoProvider`, etc.
-#[async_trait]
-pub trait CryptoProvider: Send + Sync + std::fmt::Debug {
-    /// Compute BLAKE3 hash of data
-    ///
-    /// # Arguments
-    /// * `data` - Data to hash
-    ///
-    /// # Returns
-    /// * `Ok(hash)` - BLAKE3 hash (32 bytes)
-    async fn blake3_hash(&self, data: &[u8]) -> Result<Vec<u8>>;
-
-    /// Compute HMAC-SHA256
-    ///
-    /// # Arguments
-    /// * `key` - Secret key
-    /// * `data` - Data to authenticate
-    ///
-    /// # Returns
-    /// * `Ok(mac)` - HMAC-SHA256 MAC (32 bytes)
-    async fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<Vec<u8>>;
-
-    /// Sign message with Ed25519
-    ///
-    /// # Arguments
-    /// * `message` - Message to sign
-    /// * `key_id` - Key identifier
-    /// * `purpose` - Purpose for audit logging
-    ///
-    /// # Returns
-    /// * `Ok(signature)` - Ed25519 signature (64 bytes)
-    async fn sign_ed25519(&self, message: &[u8], key_id: &str, purpose: &str) -> Result<Vec<u8>>;
-
-    /// Verify Ed25519 signature
-    ///
-    /// # Arguments
-    /// * `message` - Message that was signed
-    /// * `signature` - Signature to verify
-    /// * `public_key` - Public key (32 bytes)
-    ///
-    /// # Returns
-    /// * `Ok(true)` - Signature is valid
-    /// * `Ok(false)` - Signature is invalid
-    async fn verify_ed25519(
-        &self,
-        message: &[u8],
-        signature: &[u8],
-        public_key: &[u8],
-    ) -> Result<bool>;
-
-    /// Generate ephemeral X25519 key pair
-    ///
-    /// # Arguments
-    /// * `purpose` - Purpose for audit logging
-    ///
-    /// # Returns
-    /// * `Ok((public_key, secret_key))` - Both keys as bytes (32 bytes each)
-    async fn x25519_generate_ephemeral(&self, purpose: &str) -> Result<(Vec<u8>, Vec<u8>)>;
-
-    /// Derive X25519 shared secret (Diffie-Hellman)
-    ///
-    /// # Arguments
-    /// * `our_secret_key` - Our secret key (32 bytes)
-    /// * `their_public_key` - Their public key (32 bytes)
-    ///
-    /// # Returns
-    /// * `Ok(shared_secret)` - Shared secret (32 bytes)
-    async fn x25519_derive_secret(
-        &self,
-        our_secret_key: &[u8],
-        their_public_key: &[u8],
-    ) -> Result<Vec<u8>>;
-
-    /// Encrypt with ChaCha20-Poly1305 AEAD
-    ///
-    /// # Arguments
-    /// * `plaintext` - Plaintext to encrypt
-    /// * `key` - Encryption key (32 bytes)
-    /// * `aad` - Additional authenticated data (optional)
-    ///
-    /// # Returns
-    /// * `Ok((ciphertext, nonce, tag))` - Ciphertext, nonce (12 bytes), auth tag (16 bytes)
-    async fn chacha20_poly1305_encrypt(
-        &self,
-        plaintext: &[u8],
-        key: &[u8],
-        aad: Option<&[u8]>,
-    ) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)>;
-
-    /// Decrypt with ChaCha20-Poly1305 AEAD
-    ///
-    /// # Arguments
-    /// * `ciphertext` - Ciphertext to decrypt
-    /// * `key` - Decryption key (32 bytes)
-    /// * `nonce` - Nonce (12 bytes)
-    /// * `tag` - Authentication tag (16 bytes)
-    /// * `aad` - Additional authenticated data (must match encryption)
-    ///
-    /// # Returns
-    /// * `Ok(plaintext)` - Decrypted plaintext
-    async fn chacha20_poly1305_decrypt(
-        &self,
-        ciphertext: &[u8],
-        key: &[u8],
-        nonce: &[u8],
-        tag: &[u8],
-        aad: Option<&[u8]>,
-    ) -> Result<Vec<u8>>;
-}
 
 /// Unix Socket Crypto Provider
 ///
-/// Implements `CryptoProvider` by delegating to a primal via Unix socket JSON-RPC.
+/// Delegates to a primal via Unix socket JSON-RPC.
 /// Does NOT know which primal it's talking to - just that it offers crypto capability.
 #[derive(Debug)]
 pub struct UnixSocketCryptoProvider {
@@ -174,24 +55,27 @@ impl UnixSocketCryptoProvider {
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }
-}
 
-#[async_trait]
-impl CryptoProvider for UnixSocketCryptoProvider {
-    async fn blake3_hash(&self, data: &[u8]) -> Result<Vec<u8>> {
+    /// Compute BLAKE3 hash of data
+    pub async fn blake3_hash(&self, data: &[u8]) -> Result<Vec<u8>> {
         super::security_crypto_client::blake3_hash(&self.socket_path, data).await
     }
 
-    async fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+    pub async fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
         super::security_crypto_client::hmac_sha256(&self.socket_path, key, data).await
     }
 
-    async fn sign_ed25519(&self, message: &[u8], key_id: &str, purpose: &str) -> Result<Vec<u8>> {
+    pub async fn sign_ed25519(
+        &self,
+        message: &[u8],
+        key_id: &str,
+        purpose: &str,
+    ) -> Result<Vec<u8>> {
         super::security_crypto_client::sign_ed25519(&self.socket_path, message, key_id, purpose)
             .await
     }
 
-    async fn verify_ed25519(
+    pub async fn verify_ed25519(
         &self,
         message: &[u8],
         signature: &[u8],
@@ -206,11 +90,11 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         .await
     }
 
-    async fn x25519_generate_ephemeral(&self, purpose: &str) -> Result<(Vec<u8>, Vec<u8>)> {
+    pub async fn x25519_generate_ephemeral(&self, purpose: &str) -> Result<(Vec<u8>, Vec<u8>)> {
         super::security_crypto_client::x25519_generate_ephemeral(&self.socket_path, purpose).await
     }
 
-    async fn x25519_derive_secret(
+    pub async fn x25519_derive_secret(
         &self,
         our_secret_key: &[u8],
         their_public_key: &[u8],
@@ -223,7 +107,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         .await
     }
 
-    async fn chacha20_poly1305_encrypt(
+    pub async fn chacha20_poly1305_encrypt(
         &self,
         plaintext: &[u8],
         key: &[u8],
@@ -238,7 +122,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         .await
     }
 
-    async fn chacha20_poly1305_decrypt(
+    pub async fn chacha20_poly1305_decrypt(
         &self,
         ciphertext: &[u8],
         key: &[u8],
@@ -257,6 +141,9 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         .await
     }
 }
+
+/// Backward-compatible alias for [`UnixSocketCryptoProvider`] (single implementation).
+pub type CryptoProvider = UnixSocketCryptoProvider;
 
 /// Discover crypto provider via capability-based discovery
 ///
@@ -282,7 +169,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-pub async fn discover_crypto_provider() -> Result<Arc<dyn CryptoProvider>> {
+pub async fn discover_crypto_provider() -> Result<Arc<UnixSocketCryptoProvider>> {
     // Use primal-agnostic discovery (TRUE PRIMAL)
     let socket_path = crate::primal_discovery::discover_crypto_provider().await?;
 
@@ -298,8 +185,7 @@ mod tests {
     #[derive(Debug)]
     struct MockCryptoProvider;
 
-    #[async_trait]
-    impl CryptoProvider for MockCryptoProvider {
+    impl MockCryptoProvider {
         async fn blake3_hash(&self, _data: &[u8]) -> Result<Vec<u8>> {
             // Mock: return deterministic hash
             Ok(vec![0u8; 32])

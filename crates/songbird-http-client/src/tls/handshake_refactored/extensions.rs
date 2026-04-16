@@ -266,14 +266,13 @@ impl TlsHandshake {
 #[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
-    use crate::crypto::CryptoCapability;
     use crate::tls::config::{ExtensionStrategy, TlsConfig};
 
     #[test]
     fn test_build_sni_extension() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let handshake = TlsHandshake::new(crypto);
 
         let sni = handshake.build_sni_extension("api.github.com").expect("sni");
@@ -296,7 +295,7 @@ mod tests {
     fn test_build_key_share_extension() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let handshake = TlsHandshake::new(crypto);
 
         let public_key = vec![0x42; 32]; // Mock 32-byte public key
@@ -320,7 +319,7 @@ mod tests {
     fn test_build_extensions_minimal() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Minimal,
             ..Default::default()
@@ -341,7 +340,7 @@ mod tests {
     fn test_build_extensions_standard() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
@@ -359,7 +358,7 @@ mod tests {
     fn test_build_extensions_modern() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Modern,
             ..Default::default()
@@ -377,7 +376,7 @@ mod tests {
     fn test_build_extensions_maxcompat() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::MaxCompatibility,
             ..Default::default()
@@ -395,7 +394,7 @@ mod tests {
     fn test_alpn_extension_encoding() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Standard,
             ..Default::default()
@@ -416,7 +415,7 @@ mod tests {
     fn test_extension_strategy_differences() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let public_key = vec![0x42; 32];
 
         // Build with each strategy
@@ -462,7 +461,7 @@ mod tests {
     fn test_build_extensions_adaptive_maps_to_standard() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Adaptive,
             ..Default::default()
@@ -485,7 +484,7 @@ mod tests {
     fn test_build_extensions_custom_maps_to_standard() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             "/tmp/security-provider.sock",
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let config = TlsConfig {
             extension_strategy: ExtensionStrategy::Custom(vec![0x000a, 0x002b]),
             ..Default::default()

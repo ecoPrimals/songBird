@@ -8,17 +8,14 @@
 //!
 //! ## Deep Debt Compliance
 //!
-//! - ✅ Modern async Rust (trait-based, async/await)
+//! - ✅ Modern async Rust (enum dispatch, async/await)
 //! - ✅ Zero unsafe code
 //! - ✅ Runtime discovery (no hardcoded paths)
 //! - ✅ Mocks isolated to `#[cfg(any(test, feature = "test-utils"))]`
 //! - ✅ Pure Rust (Unix sockets, not HTTP)
 
-use crate::birdsong::{BirdSongCrypto, LineageHint};
 use crate::error::Result;
-use crate::relay::RelayAuthority;
-use crate::types::{MaskingLevel, NodeId, RelayAuthorization};
-use async_trait::async_trait;
+use crate::types::{LineageHint, MaskingLevel, NodeId, RelayAuthorization};
 use std::path::PathBuf;
 use std::time::SystemTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -43,8 +40,9 @@ use tokio::sync::RwLock;
 ///
 /// - Runtime discovery (socket path via env or discovery)
 /// - Zero unsafe code (pure Rust async)
-/// - Trait-based (implements `BirdSongCrypto`)
+/// - Enum dispatch into this client (`BirdSongCrypto::Security`)
 /// - Graceful error handling
+#[derive(Clone, Debug)]
 pub struct SecurityBirdSongProvider {
     socket_path: PathBuf,
     family_id: Option<String>,
@@ -160,9 +158,9 @@ impl SecurityBirdSongProvider {
     }
 }
 
-#[async_trait]
-impl BirdSongCrypto for SecurityBirdSongProvider {
-    async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>> {
+impl SecurityBirdSongProvider {
+    /// Encrypt message for lineage via the security provider.
+    pub async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>> {
         debug!("🔒 Encrypting for lineage via security provider (hint: {:?})", hint);
 
         // Encode message as base64 for JSON-RPC
@@ -200,7 +198,12 @@ impl BirdSongCrypto for SecurityBirdSongProvider {
         Ok(ciphertext)
     }
 
-    async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>> {
+    /// Decrypt `BirdSong` ciphertext via the security provider.
+    pub async fn decrypt_birdsong(
+        &self,
+        encrypted: &[u8],
+        sender: &NodeId,
+    ) -> Result<Option<Vec<u8>>> {
         debug!("🔓 Decrypting BirdSong from {:?}", sender);
 
         // Encode ciphertext as base64 for JSON-RPC
@@ -261,6 +264,7 @@ impl BirdSongCrypto for SecurityBirdSongProvider {
 /// - ✅ Runtime discovery (socket path via env or discovery)
 /// - ✅ Zero unsafe code
 /// - ✅ Async/await
+#[derive(Clone, Debug)]
 pub struct SecurityRelayAuthority {
     socket_path: PathBuf,
 }
@@ -418,9 +422,9 @@ impl Default for SecurityRelayAuthority {
     }
 }
 
-#[async_trait]
-impl RelayAuthority for SecurityRelayAuthority {
-    async fn authorize_relay(
+impl SecurityRelayAuthority {
+    /// Authorize relay service for requester (security-provider policy).
+    pub async fn authorize_relay(
         &self,
         relay_node: &NodeId,
         requester: &NodeId,
@@ -475,7 +479,8 @@ impl RelayAuthority for SecurityRelayAuthority {
         }
     }
 
-    async fn determine_masking(
+    /// Resolve masking tier for the given relay relationship (security-provider policy).
+    pub async fn determine_masking(
         &self,
         relay_node: &NodeId,
         requester: &NodeId,
@@ -508,6 +513,7 @@ impl RelayAuthority for SecurityRelayAuthority {
 
 #[cfg(any(test, feature = "test-utils"))]
 /// In-memory lineage graph for tests and the `test-utils` feature (replaces a live security provider in CI).
+#[derive(Debug)]
 pub struct MockLineageProvider {
     /// Lineage graph: `node_id` → `parent_id`
     lineages: Arc<RwLock<HashMap<String, String>>>,
@@ -566,6 +572,7 @@ impl Default for MockLineageProvider {
 
 /// Mock `BirdSong` crypto (for testing and integration tests)
 #[cfg(any(test, feature = "test-utils"))]
+#[derive(Clone, Debug)]
 pub struct MockBirdSongCrypto {
     lineage_provider: Arc<MockLineageProvider>,
     my_id: String,
@@ -584,17 +591,20 @@ impl MockBirdSongCrypto {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-#[async_trait]
-impl BirdSongCrypto for MockBirdSongCrypto {
-    async fn encrypt_for_lineage(&self, message: &[u8], _hint: LineageHint) -> Result<Vec<u8>> {
-        // Mock: prepend "LINEAGE:" to indicate lineage-encrypted
+impl MockBirdSongCrypto {
+    /// Encrypt message for lineage (mock: `LINEAGE:` prefix).
+    pub async fn encrypt_for_lineage(&self, message: &[u8], _hint: LineageHint) -> Result<Vec<u8>> {
         let mut encrypted = b"LINEAGE:".to_vec();
         encrypted.extend_from_slice(message);
         Ok(encrypted)
     }
 
-    async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>> {
-        // Check if we're in sender's lineage
+    /// Decrypt if the mock lineage graph allows reception from `sender`.
+    pub async fn decrypt_birdsong(
+        &self,
+        encrypted: &[u8],
+        sender: &NodeId,
+    ) -> Result<Option<Vec<u8>>> {
         let can_decrypt = self.lineage_provider.is_ancestor(&self.my_id, &sender.0).await
             || self.lineage_provider.is_descendant(&self.my_id, &sender.0).await;
 
@@ -608,6 +618,7 @@ impl BirdSongCrypto for MockBirdSongCrypto {
 
 /// Mock relay authority (for testing and integration tests)
 #[cfg(any(test, feature = "test-utils"))]
+#[derive(Clone, Debug)]
 pub struct MockRelayAuthority {
     lineage_provider: Arc<MockLineageProvider>,
 }
@@ -624,14 +635,13 @@ impl MockRelayAuthority {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-#[async_trait]
-impl RelayAuthority for MockRelayAuthority {
-    async fn authorize_relay(
+impl MockRelayAuthority {
+    /// Authorize relay when `relay_node` is an ancestor of `requester` in the mock graph.
+    pub async fn authorize_relay(
         &self,
         relay_node: &NodeId,
         requester: &NodeId,
     ) -> Result<RelayAuthorization> {
-        // Check if relay_node is ancestor of requester
         let authorized = self.lineage_provider.is_ancestor(&requester.0, &relay_node.0).await;
 
         Ok(RelayAuthorization {
@@ -649,12 +659,12 @@ impl RelayAuthority for MockRelayAuthority {
         })
     }
 
-    async fn determine_masking(
+    /// Masking tier for the mock lineage relationship.
+    pub async fn determine_masking(
         &self,
         relay_node: &NodeId,
         requester: &NodeId,
     ) -> Result<MaskingLevel> {
-        // Simple masking: masked for descendants
         let is_ancestor = self.lineage_provider.is_ancestor(&requester.0, &relay_node.0).await;
 
         Ok(if is_ancestor {
@@ -662,5 +672,70 @@ impl RelayAuthority for MockRelayAuthority {
         } else {
             MaskingLevel::FullVisibility
         })
+    }
+}
+
+/// Lineage `BirdSong` encryption dispatch (production + test harnesses).
+#[derive(Clone, Debug)]
+pub enum BirdSongCrypto {
+    /// Production client via the security provider (Unix socket JSON-RPC).
+    Security(SecurityBirdSongProvider),
+    /// Mock keyed by lineage graph (`test-utils` / unit tests).
+    #[cfg(any(test, feature = "test-utils"))]
+    Mock(MockBirdSongCrypto),
+    /// Pass-through: no crypto transform (unit / integration harnesses).
+    StubPassthrough,
+    /// Prepends `ENCRYPTED:` for unit tests (paired stub strips prefix on decrypt).
+    StubMockEncrypted,
+}
+
+impl BirdSongCrypto {
+    /// Encrypt message for lineage.
+    pub async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>> {
+        match self {
+            Self::Security(p) => p.encrypt_for_lineage(message, hint).await,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::Mock(m) => m.encrypt_for_lineage(message, hint).await,
+            Self::StubPassthrough => Ok(message.to_vec()),
+            Self::StubMockEncrypted => {
+                let mut encrypted = b"ENCRYPTED:".to_vec();
+                encrypted.extend_from_slice(message);
+                Ok(encrypted)
+            }
+        }
+    }
+
+    /// Decrypt `BirdSong` payload (returns `None` if not in lineage / noise).
+    pub async fn decrypt_birdsong(
+        &self,
+        encrypted: &[u8],
+        sender: &NodeId,
+    ) -> Result<Option<Vec<u8>>> {
+        match self {
+            Self::Security(p) => p.decrypt_birdsong(encrypted, sender).await,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::Mock(m) => m.decrypt_birdsong(encrypted, sender).await,
+            Self::StubPassthrough => Ok(Some(encrypted.to_vec())),
+            Self::StubMockEncrypted => {
+                if encrypted.starts_with(b"ENCRYPTED:") {
+                    Ok(Some(encrypted[10..].to_vec()))
+                } else {
+                    Ok(None)
+                }
+            }
+        }
+    }
+}
+
+impl From<SecurityBirdSongProvider> for BirdSongCrypto {
+    fn from(value: SecurityBirdSongProvider) -> Self {
+        Self::Security(value)
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl From<MockBirdSongCrypto> for BirdSongCrypto {
+    fn from(value: MockBirdSongCrypto) -> Self {
+        Self::Mock(value)
     }
 }

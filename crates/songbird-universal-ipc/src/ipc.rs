@@ -8,7 +8,7 @@
 
 use crate::endpoint::VirtualEndpoint;
 use crate::error::IpcResult;
-use crate::platform::{AsyncStream, PlatformIPC, PlatformListener, get_platform_ipc};
+use crate::platform::{AsyncStreamImpl, PlatformIpcImpl, PlatformListenerImpl, get_platform_ipc};
 use crate::registry::ServiceRegistry;
 use std::sync::OnceLock;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -25,7 +25,7 @@ pub struct UniversalIPC {
     /// Service registry (in-memory)
     registry: ServiceRegistry,
     /// Platform-specific implementation
-    platform: Box<dyn PlatformIPC>,
+    platform: PlatformIpcImpl,
 }
 
 impl UniversalIPC {
@@ -136,7 +136,7 @@ impl UniversalIPC {
 ///
 /// Accepts incoming connections from other primals.
 pub struct Listener {
-    inner: Box<dyn PlatformListener>,
+    inner: PlatformListenerImpl,
 }
 
 impl Listener {
@@ -156,13 +156,13 @@ impl Listener {
 ///
 /// Provides `AsyncRead` + `AsyncWrite` for communication.
 pub struct Stream {
-    inner: Box<dyn AsyncStream>,
+    inner: AsyncStreamImpl,
 }
 
 impl Stream {
-    /// Wrap a boxed async stream (for example a raw [`tokio::net::UnixStream`]) for Tower Atomic JSON-RPC.
+    /// Wrap a concrete [`AsyncStreamImpl`] (for example [`AsyncStreamImpl::Unix`] with a [`tokio::net::UnixStream`]) for Tower Atomic JSON-RPC.
     #[must_use]
-    pub fn from_boxed_async(inner: Box<dyn crate::platform::AsyncStream>) -> Self {
+    pub fn from_async_stream_impl(inner: AsyncStreamImpl) -> Self {
         Self {
             inner,
         }

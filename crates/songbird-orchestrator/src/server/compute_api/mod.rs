@@ -30,7 +30,7 @@ use axum::{
 pub fn compute_routes() -> Router<ComputeApiState> {
     Router::new()
         .route("/task", post(submit_compute_task))
-        .route("/task/:job_id", get(get_task_status))
+        .route("/task/{job_id}", get(get_task_status))
 }
 
 #[cfg(test)]

@@ -2,7 +2,9 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::super::*;
-use crate::adapters::transport::{AdapterTransportKind, DelayTransport, MockTransport};
+use crate::adapters::transport::{
+    AdapterTransportKind, CapabilityTransport, DelayTransport, MockTransport,
+};
 use serde_json::json;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
@@ -22,7 +24,7 @@ async fn collect_metrics_mock_transport_valid_json_verifies_fields() -> Songbird
     });
     let adapter = AIAdapter::with_transport(
         "http://mock-ai".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(body)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -37,10 +39,10 @@ async fn collect_metrics_mock_transport_valid_json_verifies_fields() -> Songbird
 
 #[tokio::test]
 async fn collect_metrics_times_out_with_delay_transport() {
-    let delayed = DelayTransport {
-        inner: Arc::new(MockTransport::new(vec![])),
+    let delayed = CapabilityTransport::Delay(DelayTransport {
+        inner: Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![]))),
         delay: Duration::from_secs(30),
-    };
+    });
     let adapter = AIAdapter::with_transport(
         "http://mock-ai".to_string(),
         Arc::new(delayed),
@@ -56,7 +58,7 @@ async fn collect_metrics_http_transport_error_passes_through() {
     let boom = SongbirdError::network("upstream http failure");
     let adapter = AIAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Err(boom.clone())])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom.clone())]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -76,7 +78,7 @@ async fn check_health_delegates_to_collect_metrics() -> SongbirdResult<()> {
     })?;
     let adapter = AIAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(body)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -96,7 +98,7 @@ async fn ai_provider_collect_ai_metrics_uses_mock_transport() -> SongbirdResult<
     });
     let adapter = AIAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(body)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -118,7 +120,7 @@ async fn ai_provider_check_ai_health_uses_mock_transport() -> SongbirdResult<()>
     })?;
     let adapter = AIAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(body)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );

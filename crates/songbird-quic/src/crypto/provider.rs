@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! QUIC crypto provider trait — bridges QUIC packet protection to `security provider`.
+//! QUIC crypto provider — bridges QUIC packet protection to `security provider`.
 //!
-//! All cryptographic operations needed by the QUIC transport are expressed
-//! as async trait methods. The `SecurityQuicCrypto` implementation delegates
-//! to `security provider` via JSON-RPC IPC, following the same Tower Atomic pattern as
-//! `songbird-tls` and `songbird-http-client`.
+//! All cryptographic operations needed by the QUIC transport are implemented on
+//! [`SecurityQuicCrypto`], delegating to `security provider` via JSON-RPC IPC, following
+//! the same Tower Atomic pattern as `songbird-tls` and `songbird-http-client`.
 
 use crate::error::{QuicError, Result};
-use async_trait::async_trait;
 
 /// Cipher suite identifiers used by QUIC (RFC 9001 Section 5.3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,68 +65,6 @@ impl QuicCipherSuite {
     }
 }
 
-/// Cryptographic operations required by the QUIC transport layer.
-///
-/// Mirrors the subset of `CryptoCapability` (from `songbird-http-client`) that
-/// QUIC needs, plus QUIC-specific header protection operations.
-/// The default implementation delegates to `security provider` via `songbird-crypto-provider`.
-#[async_trait]
-pub trait QuicCryptoProvider: Send + Sync + std::fmt::Debug {
-    /// HKDF-Extract: derive a pseudorandom key from input keying material.
-    async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>>;
-
-    /// HKDF-Expand: expand a pseudorandom key to the desired length.
-    async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>>;
-
-    /// SHA-256 hash.
-    async fn sha256(&self, data: &[u8]) -> Result<Vec<u8>>;
-
-    /// SHA-384 hash.
-    async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>>;
-
-    /// AEAD encrypt (dispatched by cipher suite).
-    async fn aead_encrypt(
-        &self,
-        suite: QuicCipherSuite,
-        key: &[u8],
-        nonce: &[u8],
-        plaintext: &[u8],
-        aad: &[u8],
-    ) -> Result<Vec<u8>>;
-
-    /// AEAD decrypt (dispatched by cipher suite).
-    async fn aead_decrypt(
-        &self,
-        suite: QuicCipherSuite,
-        key: &[u8],
-        nonce: &[u8],
-        ciphertext: &[u8],
-        aad: &[u8],
-    ) -> Result<Vec<u8>>;
-
-    /// Header protection: generate a 5-byte mask from the HP key and a 16-byte sample.
-    ///
-    /// For AES cipher suites: `AES-ECB`(`hp_key`, `sample`), take first 5 bytes.
-    /// For `ChaCha20`: `ChaCha20`(`hp_key`, counter=`sample`[0..4] LE, nonce=`sample`[4..16]),
-    /// take first 5 bytes.
-    async fn header_protection_mask(
-        &self,
-        suite: QuicCipherSuite,
-        hp_key: &[u8],
-        sample: &[u8],
-    ) -> Result<[u8; 5]>;
-
-    /// X25519 key pair generation (for TLS handshake).
-    async fn generate_x25519_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)>;
-
-    /// X25519 shared secret derivation.
-    async fn derive_x25519_shared_secret(
-        &self,
-        our_secret: &[u8],
-        their_public: &[u8],
-    ) -> Result<Vec<u8>>;
-}
-
 /// `security provider`-backed QUIC crypto provider.
 ///
 /// Delegates all crypto operations to `security provider` via `songbird-crypto-provider`
@@ -155,11 +91,13 @@ impl SecurityQuicCrypto {
             provider,
         }
     }
-}
 
-#[async_trait]
-impl QuicCryptoProvider for SecurityQuicCrypto {
-    async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>> {
+    /// HKDF-Extract (`salt`, `ikm`) via security provider.
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({
             "salt": base64_encode(salt),
             "ikm": base64_encode(ikm),
@@ -172,7 +110,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         decode_base64_field(&result, "prk")
     }
 
-    async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>> {
+    /// HKDF-Expand to `length` bytes (`prk`, `info`).
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>> {
         let params = serde_json::json!({
             "prk": base64_encode(prk),
             "info": base64_encode(info),
@@ -186,7 +129,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         decode_base64_field(&result, "okm")
     }
 
-    async fn sha256(&self, data: &[u8]) -> Result<Vec<u8>> {
+    /// SHA-256 digest.
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn sha256(&self, data: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({ "data": base64_encode(data) });
         let result = self
             .provider
@@ -196,7 +144,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         decode_base64_field(&result, "hash")
     }
 
-    async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>> {
+    /// SHA-384 digest.
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({ "data": base64_encode(data) });
         let result = self
             .provider
@@ -206,7 +159,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         decode_base64_field(&result, "hash")
     }
 
-    async fn aead_encrypt(
+    /// AEAD encrypt for QUIC (`suite`, `aad`).
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn aead_encrypt(
         &self,
         suite: QuicCipherSuite,
         key: &[u8],
@@ -233,7 +191,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         decode_base64_field(&result, "ciphertext")
     }
 
-    async fn aead_decrypt(
+    /// AEAD decrypt for QUIC (`suite`, `aad`).
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn aead_decrypt(
         &self,
         suite: QuicCipherSuite,
         key: &[u8],
@@ -260,7 +223,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         decode_base64_field(&result, "plaintext")
     }
 
-    async fn header_protection_mask(
+    /// RFC 9001 header protection mask (5 bytes) from `sample`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn header_protection_mask(
         &self,
         suite: QuicCipherSuite,
         hp_key: &[u8],
@@ -300,7 +268,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         Ok(mask)
     }
 
-    async fn generate_x25519_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)> {
+    /// Generate an X25519 keypair (public, secret).
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn generate_x25519_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)> {
         let result = self
             .provider
             .call("crypto.generate_keypair", serde_json::json!({}))
@@ -311,7 +284,12 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         Ok((public, secret))
     }
 
-    async fn derive_x25519_shared_secret(
+    /// ECDH shared secret from our secret key and peer public key.
+    ///
+    /// # Errors
+    ///
+    /// Returns `QuicError::Crypto` if the RPC call fails.
+    pub async fn derive_x25519_shared_secret(
         &self,
         our_secret: &[u8],
         their_public: &[u8],
@@ -328,6 +306,9 @@ impl QuicCryptoProvider for SecurityQuicCrypto {
         decode_base64_field(&result, "shared_secret")
     }
 }
+
+/// Backward-compatible name for [`SecurityQuicCrypto`] (single implementation; no trait objects).
+pub type QuicCryptoProvider = SecurityQuicCrypto;
 
 use base64::Engine;
 
@@ -387,12 +368,6 @@ mod tests {
         assert_eq!(QuicCipherSuite::Aes128Gcm as u16, 0x1301, "AES-128-GCM-SHA256");
         assert_eq!(QuicCipherSuite::Aes256Gcm as u16, 0x1302, "AES-256-GCM-SHA384");
         assert_eq!(QuicCipherSuite::ChaCha20Poly1305 as u16, 0x1303, "CHACHA20-POLY1305-SHA256");
-    }
-
-    #[test]
-    fn quic_crypto_provider_trait_is_object_safe() {
-        fn _assert_object_safe(_: &dyn QuicCryptoProvider) {}
-        let _ = _assert_object_safe as fn(&dyn QuicCryptoProvider);
     }
 
     #[test]

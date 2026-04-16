@@ -5,6 +5,7 @@
 //!
 //! Implements the complete TLS 1.3 server handshake state machine.
 
+use crate::crypto::CryptoCapability;
 use crate::crypto::{TlsApplicationSecrets, TlsHandshakeSecrets};
 use crate::error::{Error, Result};
 use crate::tls::handshake_v2::keys::TrafficKeys;
@@ -310,8 +311,7 @@ mod tests {
 
     #[test]
     fn tls_server_constructed_with_cert_material() {
-        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-tls-accept-test.sock"))
-            as Arc<dyn crate::crypto::CryptoCapability>;
+        let crypto = Arc::new(SecurityCryptoProvider::new("/tmp/songbird-tls-accept-test.sock"));
         let cert = vec![0x30, 0x81, 0xff];
         let key = vec![0x04, 0x20];
         let server = TlsServer::new(crypto, cert.clone(), key.clone());

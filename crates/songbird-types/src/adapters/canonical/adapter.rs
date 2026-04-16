@@ -128,7 +128,7 @@ impl CanonicalUniversalAdapter {
     }
 
     /// Register a protocol handler on the embedded router (tests or custom transports).
-    pub async fn register_protocol_handler(&self, handler: Arc<dyn CanonicalProtocolHandler>) {
+    pub async fn register_protocol_handler(&self, handler: Arc<CanonicalProtocolHandler>) {
         self.protocol_router.register_handler(handler).await;
     }
 

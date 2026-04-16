@@ -30,11 +30,12 @@ mod discovery;
 mod security_provider;
 pub mod socket_discovery; // Public for isomorphic IPC
 
-pub use capability::{
-    CryptoCapability, CryptoProvider, TlsApplicationSecrets, TlsHandshakeSecrets,
-};
+pub use capability::{CryptoCapability, TlsApplicationSecrets, TlsHandshakeSecrets};
 
 pub use security_provider::SecurityCryptoProvider;
+
+/// Concrete TLS crypto capability (single production implementation: [`SecurityCryptoProvider`]).
+pub type CryptoProvider = SecurityCryptoProvider;
 
 pub use discovery::discover_crypto_capability;
 /// Deprecated; see [`socket_discovery::discover_security_socket`].

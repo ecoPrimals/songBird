@@ -78,7 +78,7 @@ impl LineageRelayCoordinator {
     pub async fn new(
         config: LineageRelayConfig,
         broadcaster: Arc<BirdSongBroadcaster>,
-        relay_authority: Arc<dyn RelayAuthority>,
+        relay_authority: Arc<RelayAuthority>,
     ) -> Result<Self> {
         let relay_discovery = Arc::new(RelayDiscovery::new(
             broadcaster.clone(),
@@ -265,7 +265,7 @@ impl LineageRelayCoordinator {
                 // Wait for relay request messages (event-driven, no polling)
                 match broadcaster
                     .wait_for_message_by_type(
-                        crate::birdsong::BirdSongType::RelayRequest,
+                        crate::types::BirdSongType::RelayRequest,
                         Duration::from_secs(300), // 5 min cycle — wakes instantly on message
                     )
                     .await
@@ -315,15 +315,21 @@ mod tests {
     use super::*;
     use crate::birdsong::BirdSongBroadcaster;
     use crate::error::LineageRelayError;
-    use crate::security::{MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority};
+    use crate::relay::RelayAuthority;
+    use crate::security::{
+        BirdSongCrypto, MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority,
+    };
     use songbird_types::config::stun_relay::StunRelayConfig;
 
     #[tokio::test]
     async fn test_coordinator_creation() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto =
-            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
-        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
+            lineage_provider.clone(),
+            "node-1".to_string(),
+        )));
+        let relay_authority =
+            Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
 
         let broadcaster = Arc::new(
             BirdSongBroadcaster::new(
@@ -350,9 +356,12 @@ mod tests {
     #[tokio::test]
     async fn test_direct_connection_attempt() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto =
-            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
-        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
+            lineage_provider.clone(),
+            "node-1".to_string(),
+        )));
+        let relay_authority =
+            Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
 
         let broadcaster = Arc::new(
             BirdSongBroadcaster::new(
@@ -385,9 +394,12 @@ mod tests {
     #[tokio::test]
     async fn start_relay_service_errors_without_relay_address() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto =
-            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
-        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
+            lineage_provider.clone(),
+            "node-1".to_string(),
+        )));
+        let relay_authority =
+            Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
         let broadcaster = Arc::new(
             BirdSongBroadcaster::new(
                 crypto,
@@ -415,9 +427,12 @@ mod tests {
     #[tokio::test]
     async fn get_tier_quality_none_without_stun_config() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto =
-            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
-        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
+            lineage_provider.clone(),
+            "node-1".to_string(),
+        )));
+        let relay_authority =
+            Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
         let broadcaster = Arc::new(
             BirdSongBroadcaster::new(
                 crypto,
@@ -441,9 +456,12 @@ mod tests {
     #[tokio::test]
     async fn get_tier_quality_some_when_stun_configured() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto =
-            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
-        let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
+        let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
+            lineage_provider.clone(),
+            "node-1".to_string(),
+        )));
+        let relay_authority =
+            Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
         let broadcaster = Arc::new(
             BirdSongBroadcaster::new(
                 crypto,

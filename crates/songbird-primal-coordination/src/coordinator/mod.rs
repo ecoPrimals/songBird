@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 /// Everything is capability-based discovery.
 pub struct PrimalCoordinator {
     /// Capability-based bridge for discovering primals
-    bridge: Arc<dyn PrimalBridge>,
+    bridge: Arc<PrimalBridge>,
 
     /// Active connections to primals (by capability) — `Arc<str>` keys share capability strings cheaply.
     active_connections: Arc<RwLock<HashMap<Arc<str>, PrimalConnection>>>,
@@ -33,13 +33,13 @@ pub struct PrimalCoordinator {
 impl PrimalCoordinator {
     /// Create a new primal coordinator with default config
     #[must_use]
-    pub fn new(bridge: Arc<dyn PrimalBridge>) -> Self {
+    pub fn new(bridge: Arc<PrimalBridge>) -> Self {
         Self::with_config(bridge, CoordinatorConfig::default())
     }
 
     /// Create a new primal coordinator with custom config
     #[must_use]
-    pub fn with_config(bridge: Arc<dyn PrimalBridge>, config: CoordinatorConfig) -> Self {
+    pub fn with_config(bridge: Arc<PrimalBridge>, config: CoordinatorConfig) -> Self {
         tracing::info!("🌳 Initializing Primal Coordinator (zero hardcoded knowledge)");
         Self {
             bridge,
@@ -53,120 +53,16 @@ impl PrimalCoordinator {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::bridge::CoordinatorTestBridge;
     use crate::bridge::*;
-    use crate::error::{PrimalCoordinationError, Result};
+    use crate::error::PrimalCoordinationError;
     use crate::types::{CapabilityType, NodeId, Workload};
-    use crate::{PrimalCapabilities, ServiceQuality};
+    use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
-
-    struct MockBridge;
-
-    #[async_trait::async_trait]
-    impl PrimalBridge for MockBridge {
-        async fn connect(&self, capability: CapabilityType) -> Result<PrimalConnection> {
-            let caps = PrimalCapabilities {
-                services: vec![capability.as_str().to_string()],
-                resources: std::collections::HashMap::new(),
-                metadata: std::collections::HashMap::new(),
-                quality: ServiceQuality::default(),
-            };
-            Ok(PrimalConnection::new(
-                uuid::Uuid::new_v4().to_string(),
-                format!("http://localhost:8080/{}", capability.as_str()),
-                caps,
-            ))
-        }
-
-        async fn discover_capabilities(
-            &self,
-            _connection: &PrimalConnection,
-        ) -> Result<PrimalCapabilities> {
-            Ok(PrimalCapabilities {
-                services: vec!["security".to_string()],
-                resources: std::collections::HashMap::new(),
-                metadata: std::collections::HashMap::new(),
-                quality: ServiceQuality::default(),
-            })
-        }
-
-        fn supported_capabilities(&self) -> Vec<CapabilityType> {
-            vec![CapabilityType::Security, CapabilityType::Compute]
-        }
-    }
-
-    struct FailingBridge;
-
-    #[async_trait::async_trait]
-    impl PrimalBridge for FailingBridge {
-        async fn connect(&self, _capability: CapabilityType) -> Result<PrimalConnection> {
-            Err(PrimalCoordinationError::ConnectionFailed("mock".into()))
-        }
-
-        async fn discover_capabilities(
-            &self,
-            _connection: &PrimalConnection,
-        ) -> Result<PrimalCapabilities> {
-            Err(PrimalCoordinationError::Internal("not used".into()))
-        }
-
-        fn supported_capabilities(&self) -> Vec<CapabilityType> {
-            vec![]
-        }
-    }
-
-    struct CountingBridge {
-        connects: AtomicUsize,
-    }
-
-    impl CountingBridge {
-        fn new() -> Self {
-            Self {
-                connects: AtomicUsize::new(0),
-            }
-        }
-
-        fn connect_count(&self) -> usize {
-            self.connects.load(Ordering::SeqCst)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl PrimalBridge for CountingBridge {
-        async fn connect(&self, capability: CapabilityType) -> Result<PrimalConnection> {
-            self.connects.fetch_add(1, Ordering::SeqCst);
-            let caps = PrimalCapabilities {
-                services: vec![capability.as_str().to_string()],
-                resources: std::collections::HashMap::new(),
-                metadata: std::collections::HashMap::new(),
-                quality: ServiceQuality::default(),
-            };
-            Ok(PrimalConnection::new(
-                "counting-id".into(),
-                format!("http://127.0.0.1:9/{}", capability.as_str()),
-                caps,
-            ))
-        }
-
-        async fn discover_capabilities(
-            &self,
-            _connection: &PrimalConnection,
-        ) -> Result<PrimalCapabilities> {
-            Ok(PrimalCapabilities {
-                services: vec![],
-                resources: std::collections::HashMap::new(),
-                metadata: std::collections::HashMap::new(),
-                quality: ServiceQuality::default(),
-            })
-        }
-
-        fn supported_capabilities(&self) -> Vec<CapabilityType> {
-            vec![CapabilityType::Security]
-        }
-    }
 
     #[tokio::test(start_paused = true)]
     async fn test_coordinator_creation() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::new(bridge);
         assert_eq!(
             coordinator.config.max_connections_per_capability, 10,
@@ -177,7 +73,9 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn request_capability_propagates_bridge_errors() {
-        let coordinator = PrimalCoordinator::new(Arc::new(FailingBridge));
+        let coordinator = PrimalCoordinator::new(Arc::new(PrimalBridge::CoordinatorTest(
+            CoordinatorTestBridge::Failing,
+        )));
         let err = coordinator
             .request_capability(CapabilityType::Security)
             .await
@@ -187,7 +85,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn test_request_capability() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::new(bridge);
 
         let conn = coordinator
@@ -202,7 +100,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn test_capability_caching_when_pooling_enabled() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::new(bridge);
 
         let conn1 =
@@ -218,9 +116,10 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn request_capability_without_pooling_calls_connect_each_time() {
-        let inner: Arc<CountingBridge> = Arc::new(CountingBridge::new());
-        #[allow(clippy::clone_on_ref_ptr, reason = "coerce concrete Arc to trait object")]
-        let bridge: Arc<dyn PrimalBridge> = inner.clone();
+        let counter = Arc::new(AtomicUsize::new(0));
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Counting(
+            Arc::clone(&counter),
+        )));
         let config = CoordinatorConfig {
             max_connections_per_capability: 10,
             connection_timeout_secs: 30,
@@ -231,7 +130,7 @@ mod tests {
         coordinator.request_capability(CapabilityType::Security).await.expect("first");
         coordinator.request_capability(CapabilityType::Security).await.expect("second");
         assert_eq!(
-            inner.connect_count(),
+            counter.load(Ordering::SeqCst),
             2,
             "without pooling each request_capability should call bridge.connect"
         );
@@ -239,7 +138,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn deploy_compute_errors_when_no_primal_supports_workload() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::new(bridge);
         let workload = Workload {
             id: "w1".into(),
@@ -259,7 +158,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn coordinate_genesis_fails_when_key_generation_unreachable() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let config = CoordinatorConfig {
             enable_pooling: false,
             ..CoordinatorConfig::default()
@@ -277,7 +176,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn health_check_all_reports_error_when_status_request_fails() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::new(bridge);
         coordinator.request_capability(CapabilityType::Security).await.expect("seed cache");
 
@@ -294,7 +193,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn health_check_all_empty_when_nothing_cached() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::with_config(
             bridge,
             CoordinatorConfig {
@@ -309,7 +208,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn test_service_mesh_coordination() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::new(bridge);
 
         let mesh = coordinator
@@ -347,7 +246,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn deploy_compute_passes_capability_gate_then_fails_on_ipc() {
-        let bridge = Arc::new(MockBridge);
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
         let coordinator = PrimalCoordinator::new(bridge);
         let workload = Workload {
             id: "w-compute".into(),

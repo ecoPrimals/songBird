@@ -23,7 +23,7 @@ use tracing::{debug, warn};
 pub struct ComputeAdapter {
     /// Endpoint URL for the compute service (discovered dynamically)
     endpoint: String,
-    transport: Arc<dyn CapabilityTransport>,
+    transport: Arc<CapabilityTransport>,
     transport_kind: AdapterTransportKind,
     /// Request timeout (`pub(super)` so `compute` integration tests can assert defaults.)
     pub(super) timeout: Duration,
@@ -181,7 +181,7 @@ impl ComputeAdapter {
     #[cfg(test)]
     pub(crate) fn with_transport(
         endpoint: String,
-        transport: Arc<dyn CapabilityTransport>,
+        transport: Arc<CapabilityTransport>,
         transport_kind: AdapterTransportKind,
         timeout: Duration,
     ) -> Self {
@@ -297,7 +297,9 @@ mod tests {
 
     use super::super::metrics::{ComputeMetrics, HealthStatus};
     use super::{ComputeAdapter, ComputeMetricsProvider};
-    use crate::adapters::transport::{AdapterTransportKind, DelayTransport, MockTransport};
+    use crate::adapters::transport::{
+        AdapterTransportKind, CapabilityTransport, DelayTransport, MockTransport,
+    };
     use serde_json::json;
     use songbird_config::capability_endpoints::CapabilityEndpointResolver;
     use songbird_types::{SongbirdError, SongbirdResult};
@@ -353,10 +355,10 @@ mod tests {
 
     #[tokio::test]
     async fn collect_metrics_times_out() {
-        let delayed = DelayTransport {
-            inner: Arc::new(MockTransport::new(vec![])),
+        let delayed = CapabilityTransport::Delay(DelayTransport {
+            inner: Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![]))),
             delay: Duration::from_secs(30),
-        };
+        });
         let adapter = ComputeAdapter::with_transport(
             "http://mock-compute".to_string(),
             Arc::new(delayed),
@@ -372,7 +374,7 @@ mod tests {
         let boom = SongbirdError::network("upstream http failure");
         let adapter = ComputeAdapter::with_transport(
             "http://mock".to_string(),
-            Arc::new(MockTransport::new(vec![Err(boom.clone())])),
+            Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom.clone())]))),
             AdapterTransportKind::Http,
             Duration::from_secs(5),
         );
@@ -385,7 +387,7 @@ mod tests {
         let boom = SongbirdError::network("rpc down");
         let adapter = ComputeAdapter::with_transport(
             "tarpc://127.0.0.1:1".to_string(),
-            Arc::new(MockTransport::new(vec![Err(boom)])),
+            Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom)]))),
             AdapterTransportKind::Tarpc,
             Duration::from_secs(5),
         );
@@ -398,7 +400,7 @@ mod tests {
     async fn collect_metrics_http_parse_error_maps_to_service() {
         let adapter = ComputeAdapter::with_transport(
             "http://mock".to_string(),
-            Arc::new(MockTransport::new(vec![Ok(json!("not-metrics"))])),
+            Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("not-metrics"))]))),
             AdapterTransportKind::Http,
             Duration::from_secs(5),
         );
@@ -411,7 +413,7 @@ mod tests {
     async fn collect_metrics_tarpc_parse_error_maps_to_serialization() {
         let adapter = ComputeAdapter::with_transport(
             "tarpc://127.0.0.1:1".to_string(),
-            Arc::new(MockTransport::new(vec![Ok(json!("nope"))])),
+            Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("nope"))]))),
             AdapterTransportKind::Tarpc,
             Duration::from_secs(5),
         );
@@ -433,7 +435,7 @@ mod tests {
         });
         let adapter = ComputeAdapter::with_transport(
             "http://mock".to_string(),
-            Arc::new(MockTransport::new(vec![Ok(body)])),
+            Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
             AdapterTransportKind::Http,
             Duration::from_secs(5),
         );
@@ -455,7 +457,7 @@ mod tests {
         })?;
         let adapter = ComputeAdapter::with_transport(
             "http://mock".to_string(),
-            Arc::new(MockTransport::new(vec![Ok(body)])),
+            Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
             AdapterTransportKind::Http,
             Duration::from_secs(5),
         );
@@ -476,7 +478,7 @@ mod tests {
         })?;
         let adapter = ComputeAdapter::with_transport(
             "http://mock".to_string(),
-            Arc::new(MockTransport::new(vec![Ok(body)])),
+            Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
             AdapterTransportKind::Http,
             Duration::from_secs(5),
         );

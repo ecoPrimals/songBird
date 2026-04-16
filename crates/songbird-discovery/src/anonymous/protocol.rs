@@ -201,37 +201,10 @@ pub fn log_serialize_error(e: &serde_json::Error) {
 mod tests {
     use super::*;
     use crate::anonymous::messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
-    use crate::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
-    use anyhow::Result;
-    use async_trait::async_trait;
+    use crate::birdsong::{
+        BirdSongConfig, BirdSongEncryption, BirdSongProcessor, ProtocolPassthroughMock,
+    };
     use std::sync::Arc;
-
-    struct MockEnc {
-        family_id: String,
-    }
-
-    #[async_trait]
-    impl BirdSongEncryption for MockEnc {
-        async fn encrypt_discovery(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
-            Ok(plaintext.to_vec())
-        }
-
-        async fn decrypt_discovery(&self, _ciphertext: &[u8]) -> Result<Option<Vec<u8>>> {
-            Ok(None)
-        }
-
-        fn is_available(&self) -> bool {
-            true
-        }
-
-        fn family_id(&self) -> Option<String> {
-            Some(self.family_id.clone())
-        }
-
-        fn provider_name(&self) -> String {
-            "mock-protocol-test".to_string()
-        }
-    }
 
     #[tokio::test]
     async fn default_v3_fallback_port_env_override_and_default() {
@@ -316,9 +289,10 @@ mod tests {
 
     #[tokio::test]
     async fn build_dark_forest_beacon_bytes_produces_output() {
-        let enc = Arc::new(MockEnc {
-            family_id: "fam".into(),
-        });
+        let enc =
+            Arc::new(BirdSongEncryption::ProtocolPassthrough(Arc::new(ProtocolPassthroughMock {
+                family_id: "fam".into(),
+            })));
         let cfg = BirdSongConfig::default();
         let birdsong = BirdSongProcessor::new(Some(enc), cfg);
         let bytes = build_dark_forest_beacon_bytes(

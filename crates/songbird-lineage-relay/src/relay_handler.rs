@@ -50,12 +50,13 @@ pub struct RelayHandler {
     task: Arc<RwLock<Option<JoinHandle<()>>>>,
 
     /// Lineage authority (`security provider` integration)
-    authority: Arc<dyn RelayAuthority>,
+    authority: Arc<RelayAuthority>,
 }
 
 impl RelayHandler {
     /// Create new relay handler
-    pub fn new(authority: Arc<dyn RelayAuthority>) -> Self {
+    #[must_use]
+    pub fn new(authority: Arc<RelayAuthority>) -> Self {
         Self {
             server: Arc::new(RwLock::new(None)),
             task: Arc::new(RwLock::new(None)),
@@ -312,49 +313,10 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-    use crate::types::MaskingLevel;
-    use async_trait::async_trait;
-
-    /// Mock relay authority for testing
-    struct MockRelayAuthority {
-        should_authorize: bool,
-    }
-
-    impl MockRelayAuthority {
-        fn new(should_authorize: bool) -> Self {
-            Self {
-                should_authorize,
-            }
-        }
-    }
-
-    #[async_trait]
-    impl RelayAuthority for MockRelayAuthority {
-        async fn authorize_relay(
-            &self,
-            relay_node: &NodeId,
-            requester: &NodeId,
-        ) -> crate::error::Result<crate::types::RelayAuthorization> {
-            Ok(crate::types::RelayAuthorization::authorized(
-                relay_node.clone(),
-                requester.clone(),
-                MaskingLevel::None,
-                300,
-            ))
-        }
-
-        async fn determine_masking(
-            &self,
-            _relay_node: &NodeId,
-            _requester: &NodeId,
-        ) -> crate::error::Result<MaskingLevel> {
-            Ok(MaskingLevel::None)
-        }
-    }
-
+    use crate::relay::RelayAuthority;
     #[tokio::test]
     async fn test_relay_handler_serve() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
         let params = json!({
@@ -372,7 +334,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_handler_serve_already_running() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
         let params = json!({"bind_addr": "127.0.0.1:0"});
@@ -391,7 +353,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_handler_status_not_running() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
         let result = handler.handle_status(json!({})).await.unwrap();
@@ -401,7 +363,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_handler_status_running() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
         // Start server
@@ -421,7 +383,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_handler_stop() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
         // Start server
@@ -440,7 +402,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_handler_stop_not_running() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
         let result = handler.handle_stop(json!({})).await;
@@ -451,7 +413,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_handler_allocate() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
         // Start server
@@ -477,7 +439,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_allocate_errors_without_relay_node() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
         handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
         let err = handler
@@ -493,7 +455,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_allocate_errors_without_requester() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
         handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
         let err = handler
@@ -509,7 +471,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_allocate_errors_on_invalid_target_addr() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
         handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
         let err = handler
@@ -526,7 +488,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_allocate_errors_when_server_not_running() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
         let err = handler
             .handle_allocate(json!({
@@ -541,7 +503,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_allocate_decodes_base64_lineage_proof() {
-        let authority = Arc::new(MockRelayAuthority::new(true));
+        let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
         handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
         use base64::{Engine as _, engine::general_purpose};

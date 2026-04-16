@@ -5,11 +5,10 @@
 //!
 //! Evolution beyond TURN: Ancestors relay for descendants
 
-use crate::birdsong::{BirdSongBroadcaster, BirdSongType, LineageHint};
+use crate::birdsong::BirdSongBroadcaster;
 use crate::error::{LineageRelayError, Result};
 use crate::relay_protocol::RelayProtocol;
-use crate::types::{MaskingLevel, NodeId, RelayAuthorization};
-use async_trait::async_trait;
+use crate::types::{BirdSongType, LineageHint, MaskingLevel, NodeId, RelayAuthorization};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -20,22 +19,70 @@ use tokio::sync::RwLock;
 
 use tracing::{debug, info, warn};
 
-/// Relay authority provider (implemented by `security provider`)
-#[async_trait]
-pub trait RelayAuthority: Send + Sync {
-    /// Authorize relay service for requester
-    async fn authorize_relay(
-        &self,
-        relay_node: &NodeId,
-        requester: &NodeId,
-    ) -> Result<RelayAuthorization>;
+/// Relay authorization dispatch (security provider + mocks + test harnesses).
+#[derive(Clone, Debug)]
+pub enum RelayAuthority {
+    /// Production: security-provider JSON-RPC.
+    Security(crate::security::SecurityRelayAuthority),
+    /// Mock lineage graph (`test-utils` / unit tests).
+    #[cfg(any(test, feature = "test-utils"))]
+    Mock(crate::security::MockRelayAuthority),
+    /// Harness: always authorizes with `MaskingLevel::None` for masking stubs.
+    StubAllow,
+    /// Harness: always denies authorization.
+    StubDeny,
+}
 
-    /// Get masking level based on lineage relationship
-    async fn determine_masking(
+impl RelayAuthority {
+    /// Authorize relay service for requester.
+    pub async fn authorize_relay(
         &self,
         relay_node: &NodeId,
         requester: &NodeId,
-    ) -> Result<MaskingLevel>;
+    ) -> Result<RelayAuthorization> {
+        match self {
+            Self::Security(a) => a.authorize_relay(relay_node, requester).await,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::Mock(m) => m.authorize_relay(relay_node, requester).await,
+            Self::StubAllow => Ok(RelayAuthorization::authorized(
+                relay_node.clone(),
+                requester.clone(),
+                MaskingLevel::None,
+                300,
+            )),
+            Self::StubDeny => {
+                Ok(RelayAuthorization::unauthorized(relay_node.clone(), requester.clone()))
+            }
+        }
+    }
+
+    /// Resolve masking tier for this relay relationship.
+    pub async fn determine_masking(
+        &self,
+        relay_node: &NodeId,
+        requester: &NodeId,
+    ) -> Result<MaskingLevel> {
+        match self {
+            Self::Security(a) => a.determine_masking(relay_node, requester).await,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::Mock(m) => m.determine_masking(relay_node, requester).await,
+            Self::StubAllow => Ok(MaskingLevel::None),
+            Self::StubDeny => Ok(MaskingLevel::Full),
+        }
+    }
+}
+
+impl From<crate::security::SecurityRelayAuthority> for RelayAuthority {
+    fn from(value: crate::security::SecurityRelayAuthority) -> Self {
+        Self::Security(value)
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl From<crate::security::MockRelayAuthority> for RelayAuthority {
+    fn from(value: crate::security::MockRelayAuthority) -> Self {
+        Self::Mock(value)
+    }
 }
 
 /// Broadcast or unicast ask for an ancestor to relay toward [`target`](Self::target).
@@ -79,7 +126,7 @@ pub struct RelaySession {
     pub requester: NodeId,
     /// Remote party id being reached through the relay.
     pub target: NodeId,
-    /// Privacy tier negotiated with [`RelayAuthority::determine_masking`].
+    /// Privacy tier negotiated with [`RelayAuthority::determine_masking`](RelayAuthority::determine_masking).
     pub masking_level: MaskingLevel,
     /// When the session became active.
     pub established_at: SystemTime,
@@ -218,7 +265,7 @@ impl RelaySession {
 /// Relay discovery system
 pub struct RelayDiscovery {
     broadcaster: Arc<BirdSongBroadcaster>,
-    relay_authority: Arc<dyn RelayAuthority>,
+    relay_authority: Arc<RelayAuthority>,
     my_id: NodeId,
     active_sessions: Arc<RwLock<Vec<Arc<RelaySession>>>>,
 }
@@ -228,7 +275,7 @@ impl RelayDiscovery {
     #[must_use]
     pub fn new(
         broadcaster: Arc<BirdSongBroadcaster>,
-        relay_authority: Arc<dyn RelayAuthority>,
+        relay_authority: Arc<RelayAuthority>,
         my_id: NodeId,
     ) -> Self {
         Self {
@@ -399,38 +446,10 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
-    use crate::birdsong::LineageHint;
+    use crate::birdsong::BirdSongBroadcaster;
     use crate::error::LineageRelayError;
+    use crate::security::BirdSongCrypto;
     use serde_json::{from_value, to_value};
-
-    struct MockRelayAuthority;
-
-    #[async_trait]
-    impl RelayAuthority for MockRelayAuthority {
-        async fn authorize_relay(
-            &self,
-            relay_node: &NodeId,
-            requester: &NodeId,
-        ) -> Result<RelayAuthorization> {
-            Ok(RelayAuthorization {
-                relay_node: relay_node.clone(),
-                requester: requester.clone(),
-                authorized: true,
-                masking_level: MaskingLevel::Masked,
-                ttl_seconds: 300,
-                issued_at: SystemTime::now(),
-                audit_token: "mock_token".to_string(),
-            })
-        }
-
-        async fn determine_masking(
-            &self,
-            _relay_node: &NodeId,
-            _requester: &NodeId,
-        ) -> Result<MaskingLevel> {
-            Ok(MaskingLevel::Masked)
-        }
-    }
 
     #[tokio::test]
     async fn test_relay_session_creation() {
@@ -475,14 +494,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_relay_authorization() {
-        let authority = MockRelayAuthority;
+        let authority = RelayAuthority::StubAllow;
         let auth = authority
             .authorize_relay(&NodeId::from("relay"), &NodeId::from("requester"))
             .await
             .unwrap();
 
         assert!(auth.authorized);
-        assert_eq!(auth.masking_level, MaskingLevel::Masked);
+        assert_eq!(auth.masking_level, MaskingLevel::None);
     }
 
     #[test]
@@ -550,57 +569,13 @@ mod tests {
         });
     }
 
-    /// Always denies relay authorization (exercises [`RelayDiscovery::offer_relay`] deny path).
-    struct DenyRelayAuthority;
-
-    #[async_trait]
-    impl RelayAuthority for DenyRelayAuthority {
-        async fn authorize_relay(
-            &self,
-            relay_node: &NodeId,
-            requester: &NodeId,
-        ) -> Result<RelayAuthorization> {
-            Ok(RelayAuthorization::unauthorized(relay_node.clone(), requester.clone()))
-        }
-
-        async fn determine_masking(
-            &self,
-            _relay_node: &NodeId,
-            _requester: &NodeId,
-        ) -> Result<MaskingLevel> {
-            Ok(MaskingLevel::FullVisibility)
-        }
-    }
-
     #[tokio::test]
     async fn offer_relay_denied_when_authority_rejects() {
-        use crate::birdsong::{BirdSongBroadcaster, BirdSongCrypto};
         use std::sync::Arc;
-
-        struct PassthroughCrypto;
-
-        #[async_trait]
-        impl BirdSongCrypto for PassthroughCrypto {
-            async fn encrypt_for_lineage(
-                &self,
-                message: &[u8],
-                _hint: LineageHint,
-            ) -> Result<Vec<u8>> {
-                Ok(message.to_vec())
-            }
-
-            async fn decrypt_birdsong(
-                &self,
-                encrypted: &[u8],
-                _sender: &NodeId,
-            ) -> Result<Option<Vec<u8>>> {
-                Ok(Some(encrypted.to_vec()))
-            }
-        }
 
         let broadcaster = Arc::new(
             BirdSongBroadcaster::new(
-                Arc::new(PassthroughCrypto),
+                Arc::new(BirdSongCrypto::StubPassthrough),
                 NodeId::from("ancestor"),
                 "127.0.0.1:0".parse().unwrap(),
                 "127.0.0.1:2".parse().unwrap(),
@@ -610,7 +585,7 @@ mod tests {
         );
         let discovery = RelayDiscovery::new(
             broadcaster,
-            Arc::new(DenyRelayAuthority),
+            Arc::new(RelayAuthority::StubDeny),
             NodeId::from("ancestor"),
         );
         let req = RelayRequest {

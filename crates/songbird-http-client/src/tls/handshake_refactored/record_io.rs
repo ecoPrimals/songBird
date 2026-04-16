@@ -7,6 +7,7 @@
 //! Implements RFC 8446 record layer protocol with comprehensive logging.
 
 use super::core::TlsHandshake;
+use crate::crypto::CryptoCapability;
 use crate::crypto::TlsHandshakeSecrets as TlsSecrets;
 use crate::error::{Error, Result};
 use tokio::io::AsyncReadExt;
@@ -382,8 +383,6 @@ impl TlsHandshake {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::CryptoCapability;
-
     fn test_security_socket_path() -> String {
         tempfile::env::temp_dir().join("songbird-test-security.sock").to_string_lossy().into_owned()
     }
@@ -392,7 +391,7 @@ mod tests {
     fn test_generate_random() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             test_security_socket_path(),
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let handshake = TlsHandshake::new(crypto);
 
         let random1 = handshake.generate_random();
@@ -408,7 +407,7 @@ mod tests {
     fn test_extract_key_share_too_short() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             test_security_socket_path(),
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let handshake = TlsHandshake::new(crypto);
 
         let data = vec![0x00]; // Too short
@@ -422,7 +421,7 @@ mod tests {
     fn test_parse_server_hello_invalid() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             test_security_socket_path(),
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let handshake = TlsHandshake::new(crypto);
 
         // Empty data
@@ -438,7 +437,7 @@ mod tests {
     fn test_parse_server_hello_truncated() {
         let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(
             test_security_socket_path(),
-        )) as std::sync::Arc<dyn CryptoCapability>;
+        ));
         let handshake = TlsHandshake::new(crypto);
 
         // ServerHello type but truncated

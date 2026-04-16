@@ -8,9 +8,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, info, instrument};
 
-use super::env_discovery::EnvCryptoDiscovery;
-use super::factory::DefaultHttpClientFactory;
-use super::traits::HttpClientFactory;
+use super::http_dispatch::HttpClientFactory;
 use super::types::{HttpRequestParams, HttpResponseResult};
 
 /// HTTP/HTTPS IPC Handler
@@ -20,12 +18,13 @@ use super::types::{HttpRequestParams, HttpResponseResult};
 /// - `http.get` - GET request shorthand
 /// - `http.post` - POST request shorthand
 pub struct HttpHandler {
-    factory: Arc<dyn HttpClientFactory>,
+    factory: Arc<HttpClientFactory>,
 }
 
 impl HttpHandler {
     /// Create new handler with given factory (dependency injection)
-    pub fn new(factory: Arc<dyn HttpClientFactory>) -> Self {
+    #[must_use]
+    pub fn new(factory: Arc<HttpClientFactory>) -> Self {
         Self {
             factory,
         }
@@ -34,9 +33,7 @@ impl HttpHandler {
     /// Create handler with default environment-based discovery
     #[must_use]
     pub fn with_default_discovery() -> Self {
-        let discovery = Arc::new(EnvCryptoDiscovery);
-        let factory = Arc::new(DefaultHttpClientFactory::new(discovery));
-        Self::new(factory)
+        Self::new(Arc::new(HttpClientFactory::with_default_crypto_discovery()))
     }
 
     /// Handle http.request method
@@ -169,77 +166,13 @@ mod tests {
     use super::HttpHandler;
     use crate::error::{IpcError, IpcResult};
     use crate::tower_atomic::JsonRpcHandler;
-    use async_trait::async_trait;
     use serde_json::json;
-    use std::collections::{HashMap, VecDeque};
-    use std::sync::{Arc, Mutex};
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
-    use super::super::traits::{HttpClientCapability, HttpClientFactory};
+    use super::super::http_dispatch::{HttpClient, HttpClientFactory};
+    use super::super::test_support::QueuedMockClient;
     use super::super::types::HttpResponse;
-
-    type CapturedRequest = (String, String, HashMap<String, String>, Option<Vec<u8>>);
-
-    /// Queues per-call results and records every request for assertions on the JSON-RPC → HTTP path.
-    struct QueuedMockClient {
-        outcomes: Mutex<VecDeque<IpcResult<HttpResponse>>>,
-        captures: Mutex<Vec<CapturedRequest>>,
-    }
-
-    impl QueuedMockClient {
-        fn new(outcomes: Vec<IpcResult<HttpResponse>>) -> Self {
-            Self {
-                outcomes: Mutex::new(outcomes.into()),
-                captures: Mutex::new(Vec::new()),
-            }
-        }
-
-        fn take_captures(&self) -> Vec<CapturedRequest> {
-            std::mem::take(&mut *self.captures.lock().expect("poisoned captures mutex"))
-        }
-    }
-
-    #[async_trait]
-    impl HttpClientCapability for QueuedMockClient {
-        async fn request(
-            &self,
-            method: &str,
-            url: &str,
-            headers: &HashMap<String, String>,
-            body: Option<&[u8]>,
-        ) -> IpcResult<HttpResponse> {
-            self.captures.lock().expect("poisoned captures mutex").push((
-                method.to_string(),
-                url.to_string(),
-                headers.clone(),
-                body.map(<[u8]>::to_vec),
-            ));
-            self.outcomes
-                .lock()
-                .expect("poisoned outcomes mutex")
-                .pop_front()
-                .unwrap_or_else(|| Err(IpcError::Internal("no queued mock response".into())))
-        }
-    }
-
-    struct InjectFactory {
-        client: Arc<dyn HttpClientCapability>,
-    }
-
-    #[async_trait]
-    impl HttpClientFactory for InjectFactory {
-        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
-            Ok(Arc::clone(&self.client))
-        }
-    }
-
-    struct FailingCreateFactory;
-
-    #[async_trait]
-    impl HttpClientFactory for FailingCreateFactory {
-        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
-            Err(IpcError::ConnectionFailed("mock factory".into()))
-        }
-    }
 
     fn sample_ok_response() -> HttpResponse {
         HttpResponse {
@@ -249,8 +182,9 @@ mod tests {
         }
     }
 
-    fn handler_with_client(client: Arc<dyn HttpClientCapability>) -> HttpHandler {
-        HttpHandler::new(Arc::new(InjectFactory {
+    fn handler_with_client(mock: Arc<QueuedMockClient>) -> HttpHandler {
+        let client = Arc::new(HttpClient::Queued(mock));
+        HttpHandler::new(Arc::new(HttpClientFactory::InjectTest {
             client,
         }))
     }
@@ -263,7 +197,7 @@ mod tests {
             ("DELETE", None::<Vec<u8>>),
         ] {
             let mock = Arc::new(QueuedMockClient::new(vec![Ok(sample_ok_response())]));
-            let handler = handler_with_client(mock.clone());
+            let handler = handler_with_client(Arc::clone(&mock));
 
             let mut params = json!({
                 "url": format!("https://example.test/{verb}"),
@@ -455,7 +389,7 @@ mod tests {
 
     #[tokio::test]
     async fn jsonrpc_map_err_create_client_and_request_and_ipc_display() {
-        let handler = HttpHandler::new(Arc::new(FailingCreateFactory));
+        let handler = HttpHandler::new(Arc::new(HttpClientFactory::FailingCreate));
         let err = handler
             .handle("http.request", json!({ "url": "https://x", "method": "GET" }))
             .await

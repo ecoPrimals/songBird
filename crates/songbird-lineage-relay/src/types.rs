@@ -62,6 +62,57 @@ pub enum LineageRelationship {
     Unrelated,
 }
 
+/// Hint for which lineage members should receive message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LineageHint {
+    /// Only my direct parent
+    DirectParent,
+    /// All ancestors (parent, grandparent, etc.)
+    DirectAncestors,
+    /// My direct children
+    DirectChildren,
+    /// All descendants (children, grandchildren, etc.)
+    AllDescendants,
+    /// Specific ancestor by ID
+    SpecificAncestor(NodeId),
+}
+
+/// `BirdSong` message type
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum BirdSongType {
+    /// Presence announcement
+    Presence,
+    /// Capability announcement
+    CapabilityAnnouncement,
+    /// Transport endpoint announcement
+    TransportAnnouncement,
+    /// Relay request (need help connecting)
+    RelayRequest,
+    /// Relay offer (can help you connect)
+    RelayOffer,
+    /// Federation event
+    FederationEvent,
+    /// Custom application message
+    Custom(String),
+}
+
+/// `BirdSong` message structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BirdSongMessage {
+    /// Protocol version
+    pub version: u8,
+    /// Message type
+    pub message_type: BirdSongType,
+    /// Sender (encrypted for family)
+    pub sender: NodeId,
+    /// Lineage hint (who should receive)
+    pub lineage_hint: LineageHint,
+    /// Payload (encrypted by `security provider`)
+    pub payload: Vec<u8>,
+    /// Timestamp
+    pub timestamp: u64,
+}
+
 /// Relay masking level (privacy control)
 ///
 /// Determines privacy applied to relayed packets based on lineage relationship.

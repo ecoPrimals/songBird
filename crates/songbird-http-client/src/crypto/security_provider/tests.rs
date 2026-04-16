@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::{RoutingMode, SecurityCryptoProvider};
-use crate::crypto::CryptoCapability;
+use crate::crypto::capability::CryptoCapability;
 
 fn test_security_socket_path() -> String {
     tempfile::env::temp_dir().join("songbird-test-security.sock").to_string_lossy().into_owned()

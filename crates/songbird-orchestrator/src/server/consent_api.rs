@@ -81,9 +81,9 @@ pub struct ConsentQueryParams {
 pub fn consent_routes() -> Router<ConsentApiState> {
     Router::new()
         .route("/consent/request", post(request_consent))
-        .route("/consent/:id", get(get_consent))
-        .route("/consent/:id", put(update_consent))
-        .route("/consent/user/:user_id", get(list_user_consents))
+        .route("/consent/{id}", get(get_consent))
+        .route("/consent/{id}", put(update_consent))
+        .route("/consent/user/{user_id}", get(list_user_consents))
 }
 
 /// Request consent for an operation

@@ -34,9 +34,6 @@ chrono = { workspace = true }
 # Random number generation
 rand = { workspace = true }
 
-# Async trait
-async-trait = { workspace = true }
-
 # Songbird internal
 songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }

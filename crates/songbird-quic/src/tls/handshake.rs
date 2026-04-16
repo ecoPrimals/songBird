@@ -11,7 +11,7 @@
 //! installed into the `CryptoSession` at each encryption level.
 
 use crate::crypto::initial_keys::{self, DirectionalKeys};
-use crate::crypto::provider::{QuicCipherSuite, QuicCryptoProvider};
+use crate::crypto::provider::{QuicCipherSuite, SecurityQuicCrypto};
 use crate::error::Result;
 use crate::tls::session::{CryptoSession, EncryptionLevel, LevelKeys};
 use crate::tls::transport_params::TransportParams;
@@ -125,7 +125,7 @@ impl QuicTlsHandshake {
     /// Returns an error if initial key derivation fails or the `ClientHello` cannot be built.
     pub async fn initialize(
         &mut self,
-        crypto: &dyn QuicCryptoProvider,
+        crypto: &SecurityQuicCrypto,
         dcid: &[u8],
         session: &mut CryptoSession,
     ) -> Result<()> {
@@ -164,7 +164,7 @@ impl QuicTlsHandshake {
     /// Returns an error if key derivation or building a handshake message fails.
     pub async fn process(
         &mut self,
-        crypto: &dyn QuicCryptoProvider,
+        crypto: &SecurityQuicCrypto,
         session: &mut CryptoSession,
     ) -> Result<Vec<EncryptionLevel>> {
         let mut updated_levels = Vec::new();
@@ -475,7 +475,7 @@ impl QuicTlsHandshake {
     }
 
     /// Derive Handshake-level keys via `security provider`.
-    async fn derive_handshake_keys(&self, crypto: &dyn QuicCryptoProvider) -> Result<LevelKeys> {
+    async fn derive_handshake_keys(&self, crypto: &SecurityQuicCrypto) -> Result<LevelKeys> {
         let transcript_hash = crypto.sha256(&self.transcript).await?;
         let secret = crypto.hkdf_extract(&[0u8; 32], &[0u8; 32]).await?;
 
@@ -504,7 +504,7 @@ impl QuicTlsHandshake {
     }
 
     /// Derive Application-level (1-RTT) keys via `security provider`.
-    async fn derive_application_keys(&self, crypto: &dyn QuicCryptoProvider) -> Result<LevelKeys> {
+    async fn derive_application_keys(&self, crypto: &SecurityQuicCrypto) -> Result<LevelKeys> {
         let transcript_hash = crypto.sha256(&self.transcript).await?;
         let master_secret = crypto.hkdf_extract(&[0u8; 32], &[0u8; 32]).await?;
 
@@ -545,7 +545,7 @@ impl QuicTlsHandshake {
 
 /// Derive QUIC directional keys (key, iv, hp) from a traffic secret.
 async fn derive_keys_from_secret(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     secret: &[u8],
     suite: QuicCipherSuite,
 ) -> Result<DirectionalKeys> {

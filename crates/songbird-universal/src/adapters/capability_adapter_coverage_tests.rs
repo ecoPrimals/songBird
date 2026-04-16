@@ -23,7 +23,9 @@ use crate::adapters::compute::ComputeMetricsProvider;
 use crate::adapters::compute::HealthStatus;
 use crate::adapters::security::AuthResult;
 use crate::adapters::security::SecurityProvider;
-use crate::adapters::transport::{AdapterTransportKind, DelayTransport, MockTransport};
+use crate::adapters::transport::{
+    AdapterTransportKind, CapabilityTransport, DelayTransport, MockTransport,
+};
 use crate::trust_types::TrustEvaluationRequest;
 
 // --- helpers ----------------------------------------------------------------
@@ -160,7 +162,9 @@ async fn ai_from_discovery_resolver_invalid_endpoint_fails() {
 
 #[tokio::test]
 async fn security_collect_metrics_transport_error_http() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("down"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("down"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -173,7 +177,9 @@ async fn security_collect_metrics_transport_error_http() {
 
 #[tokio::test]
 async fn security_collect_metrics_transport_error_tarpc_branch() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("tarpc down"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("tarpc down"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "tarpc://mock".into(),
         mock,
@@ -187,7 +193,9 @@ async fn security_collect_metrics_transport_error_tarpc_branch() {
 
 #[tokio::test]
 async fn security_verify_auth_transport_error() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("auth rpc fail"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("auth rpc fail"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -200,7 +208,9 @@ async fn security_verify_auth_transport_error() {
 
 #[tokio::test]
 async fn security_verify_auth_tarpc_error_message() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("x"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("x"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "tarpc://127.0.0.1:1".into(),
         mock,
@@ -213,7 +223,8 @@ async fn security_verify_auth_tarpc_error_message() {
 
 #[tokio::test]
 async fn security_evaluate_trust_parse_error() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!("not-an-object"))]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("not-an-object"))])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -227,7 +238,9 @@ async fn security_evaluate_trust_parse_error() {
 
 #[tokio::test]
 async fn security_get_identity_parse_error() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!({"capabilities": []}))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(
+        json!({"capabilities": []}),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -240,7 +253,9 @@ async fn security_get_identity_parse_error() {
 
 #[tokio::test]
 async fn security_check_health_success() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(security_metrics_json_zero_ts())]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(
+        security_metrics_json_zero_ts(),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -254,7 +269,8 @@ async fn security_check_health_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_call_generic_jsonrpc_pass_through_ok() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!({"raw": true}))]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!({"raw": true}))])));
     let adapter = SecurityAdapter::with_transport(
         "unix:///tmp/x.sock".into(),
         mock,
@@ -268,7 +284,9 @@ async fn security_call_generic_jsonrpc_pass_through_ok() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_call_generic_http_transport_error_wrapped_network() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::service("x", "y"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::service("x", "y"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -282,7 +300,9 @@ async fn security_call_generic_http_transport_error_wrapped_network() {
 
 #[tokio::test]
 async fn security_provider_trait_default_health() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(security_metrics_json_zero_ts())]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(
+        security_metrics_json_zero_ts(),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -296,10 +316,10 @@ async fn security_provider_trait_default_health() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_provider_collect_and_verify() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![
         Ok(security_metrics_json_zero_ts()),
         Ok(json!("Authorized")),
-    ]));
+    ])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -315,7 +335,9 @@ async fn security_provider_collect_and_verify() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_metrics_timestamp_zero_filled() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(security_metrics_json_zero_ts())]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(
+        security_metrics_json_zero_ts(),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -329,7 +351,9 @@ async fn security_metrics_timestamp_zero_filled() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_evaluate_trust_jsonrpc_error_branch() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("jr"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("jr"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "unix:///tmp/s.sock".into(),
         mock,
@@ -343,7 +367,9 @@ async fn security_evaluate_trust_jsonrpc_error_branch() {
 
 #[tokio::test]
 async fn security_get_identity_jsonrpc_error_branch() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("jr"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("jr"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "unix:///tmp/s.sock".into(),
         mock,
@@ -358,7 +384,9 @@ async fn security_get_identity_jsonrpc_error_branch() {
 
 #[tokio::test]
 async fn compute_collect_metrics_transport_error_jsonrpc() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("ipc"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("ipc"),
+    )])));
     let adapter = ComputeAdapter::with_transport(
         "unix:///tmp/c.sock".into(),
         mock,
@@ -372,7 +400,7 @@ async fn compute_collect_metrics_transport_error_jsonrpc() {
 
 #[tokio::test]
 async fn compute_collect_metrics_parse_error_non_http() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!("bad"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("bad"))])));
     let adapter = ComputeAdapter::with_transport(
         "unix:///tmp/c.sock".into(),
         mock,
@@ -385,7 +413,7 @@ async fn compute_collect_metrics_parse_error_non_http() {
 
 #[tokio::test]
 async fn compute_check_health_degraded() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!({
+    let body = json!({
         "cpu_usage_percent": 85.0,
         "memory_usage_bytes": 850,
         "memory_available_bytes": 150,
@@ -393,7 +421,8 @@ async fn compute_check_health_degraded() -> SongbirdResult<()> {
         "queued_jobs": 11,
         "performance_score": 0.5,
         "timestamp": "2020-01-01T00:00:00Z"
-    }))]));
+    });
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)])));
     let adapter = ComputeAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -408,7 +437,10 @@ async fn compute_check_health_degraded() -> SongbirdResult<()> {
 #[tokio::test]
 async fn compute_metrics_provider_trait() -> SongbirdResult<()> {
     let payload = compute_metrics_json_zero_ts();
-    let mock = Arc::new(MockTransport::new(vec![Ok(payload.clone()), Ok(payload)]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![
+        Ok(payload.clone()),
+        Ok(payload),
+    ])));
     let adapter = ComputeAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -424,7 +456,9 @@ async fn compute_metrics_provider_trait() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn compute_collect_metrics_transport_error_http() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("http down"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("http down"),
+    )])));
     let adapter = ComputeAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -437,7 +471,9 @@ async fn compute_collect_metrics_transport_error_http() {
 
 #[tokio::test]
 async fn compute_metrics_timestamp_zero_filled() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(compute_metrics_json_zero_ts())]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(
+        compute_metrics_json_zero_ts(),
+    )])));
     let adapter = ComputeAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -451,7 +487,9 @@ async fn compute_metrics_timestamp_zero_filled() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn compute_with_timeout_and_endpoint() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(compute_metrics_json_zero_ts())]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(
+        compute_metrics_json_zero_ts(),
+    )])));
     let adapter = ComputeAdapter::with_transport(
         "http://x".into(),
         mock,
@@ -468,7 +506,9 @@ async fn compute_with_timeout_and_endpoint() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn ai_collect_metrics_transport_error_jsonrpc() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("ipc"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("ipc"),
+    )])));
     let adapter = AIAdapter::with_transport(
         "unix:///tmp/a.sock".into(),
         mock,
@@ -482,7 +522,7 @@ async fn ai_collect_metrics_transport_error_jsonrpc() {
 
 #[tokio::test]
 async fn ai_collect_metrics_parse_error_non_http() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!(null))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!(null))])));
     let adapter = AIAdapter::with_transport(
         "unix:///tmp/a.sock".into(),
         mock,
@@ -495,14 +535,15 @@ async fn ai_collect_metrics_parse_error_non_http() {
 
 #[tokio::test]
 async fn ai_check_health_overloaded() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!({
+    let body = json!({
         "active_models": 1,
         "total_requests": 1,
         "avg_latency_ms": 3000.0,
         "accuracy_score": 0.1,
         "gpu_utilization_percent": 99.5,
         "timestamp": "2020-01-01T00:00:00Z"
-    }))]));
+    });
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)])));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -517,7 +558,10 @@ async fn ai_check_health_overloaded() -> SongbirdResult<()> {
 #[tokio::test]
 async fn ai_provider_trait() -> SongbirdResult<()> {
     let payload = ai_metrics_json_zero_ts();
-    let mock = Arc::new(MockTransport::new(vec![Ok(payload.clone()), Ok(payload)]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![
+        Ok(payload.clone()),
+        Ok(payload),
+    ])));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -533,7 +577,9 @@ async fn ai_provider_trait() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn ai_collect_metrics_transport_error_http() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("http"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("http"),
+    )])));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -546,7 +592,10 @@ async fn ai_collect_metrics_transport_error_http() {
 
 #[tokio::test]
 async fn ai_metrics_timestamp_zero_filled() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(ai_metrics_json_zero_ts())]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![
+            Ok(ai_metrics_json_zero_ts()),
+        ])));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -560,7 +609,10 @@ async fn ai_metrics_timestamp_zero_filled() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn ai_with_timeout_endpoint_debug() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(ai_metrics_json_zero_ts())]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![
+            Ok(ai_metrics_json_zero_ts()),
+        ])));
     let adapter = AIAdapter::with_transport(
         "http://ai".into(),
         mock,
@@ -577,11 +629,14 @@ async fn ai_with_timeout_endpoint_debug() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn ai_collect_metrics_timeout_instrumented() {
-    let inner = Arc::new(MockTransport::new(vec![Ok(ai_metrics_json_zero_ts())]));
-    let slow = Arc::new(DelayTransport {
+    let inner =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![
+            Ok(ai_metrics_json_zero_ts()),
+        ])));
+    let slow = Arc::new(CapabilityTransport::Delay(DelayTransport {
         inner,
         delay: Duration::from_secs(60),
-    });
+    }));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         slow,
@@ -594,7 +649,7 @@ async fn ai_collect_metrics_timeout_instrumented() {
 
 #[tokio::test]
 async fn security_verify_auth_expired_variant() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!("Expired"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("Expired"))])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -607,7 +662,9 @@ async fn security_verify_auth_expired_variant() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_evaluate_trust_tarpc_error_branch() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("t"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("t"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "tarpc://127.0.0.1:1".into(),
         mock,
@@ -621,7 +678,9 @@ async fn security_evaluate_trust_tarpc_error_branch() {
 
 #[tokio::test]
 async fn security_get_identity_tarpc_error_branch() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("t"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("t"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "tarpc://127.0.0.1:1".into(),
         mock,
@@ -634,13 +693,14 @@ async fn security_get_identity_tarpc_error_branch() {
 
 #[tokio::test]
 async fn security_evaluate_trust_success_with_null_optionals() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!({
+    let body = json!({
         "decision": "reject",
         "trust_level": "none",
         "reason": "nope",
         "suggested_action": null,
         "metadata": null
-    }))]));
+    });
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,

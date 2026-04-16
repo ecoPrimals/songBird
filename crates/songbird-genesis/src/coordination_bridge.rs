@@ -113,50 +113,22 @@ mod tests {
     #[cfg(feature = "coordination")]
     #[tokio::test]
     async fn test_genesis_coordination_bridge_creation() {
-        use songbird_primal_coordination::bridge::*;
+        use songbird_primal_coordination::types::*;
+        use songbird_primal_coordination::{
+            DiscoveryBasedBridge, PrimalBridge, PrimalCoordinator, PrimalDiscovery,
+            StaticPrimalDiscovery,
+        };
 
-        struct MockBridge;
-
-        #[async_trait::async_trait]
-        impl PrimalBridge for MockBridge {
-            async fn connect(
-                &self,
-                _capability: CapabilityType,
-            ) -> songbird_primal_coordination::Result<PrimalConnection> {
-                use songbird_primal_coordination::types::*;
-                Ok(PrimalConnection::new(
-                    "mock-conn".to_string(),
-                    "http://mock:8080".to_string(),
-                    PrimalCapabilities {
-                        services: vec!["security".to_string()],
-                        resources: std::collections::HashMap::new(),
-                        metadata: std::collections::HashMap::new(),
-                        quality: ServiceQuality::default(),
-                    },
-                ))
-            }
-
-            async fn discover_capabilities(
-                &self,
-                _connection: &PrimalConnection,
-            ) -> songbird_primal_coordination::Result<
-                songbird_primal_coordination::PrimalCapabilities,
-            > {
-                use songbird_primal_coordination::types::*;
-                Ok(PrimalCapabilities {
-                    services: vec!["security".to_string()],
-                    resources: std::collections::HashMap::new(),
-                    metadata: std::collections::HashMap::new(),
-                    quality: ServiceQuality::default(),
-                })
-            }
-
-            fn supported_capabilities(&self) -> Vec<CapabilityType> {
-                vec![CapabilityType::Security]
-            }
-        }
-
-        let bridge = Arc::new(MockBridge);
+        let discovery = Arc::new(PrimalDiscovery::Static(StaticPrimalDiscovery {
+            endpoint: "http://mock:8080".into(),
+            capabilities: PrimalCapabilities {
+                services: vec!["security".to_string()],
+                resources: std::collections::HashMap::new(),
+                metadata: std::collections::HashMap::new(),
+                quality: ServiceQuality::default(),
+            },
+        }));
+        let bridge = Arc::new(PrimalBridge::DiscoveryBased(DiscoveryBasedBridge::new(discovery)));
         let coordinator = Arc::new(PrimalCoordinator::new(bridge));
         let genesis_bridge = GenesisCoordinationBridge::new(coordinator);
 

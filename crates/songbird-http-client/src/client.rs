@@ -12,7 +12,7 @@
 //! - Configurable timeouts
 
 use crate::connection::{HttpConnection, HttpsConnection};
-use crate::crypto::{CryptoCapability, SecurityCryptoProvider};
+use crate::crypto::SecurityCryptoProvider;
 use crate::error::{Error, Result};
 use crate::http_config::{HttpClientConfig, RedirectMode};
 use crate::redirect::RedirectHandler;
@@ -37,7 +37,7 @@ use tracing::{info, warn};
 /// - [`minimal()`](HttpClientConfig::minimal) - No default headers
 #[derive(Clone)]
 pub struct SongbirdHttpClient {
-    crypto: Arc<dyn CryptoCapability>,
+    crypto: Arc<SecurityCryptoProvider>,
     tls_config: TlsConfig,
     http_config: HttpClientConfig,
     /// Profiler for adaptive server learning (future feature)
@@ -51,7 +51,7 @@ pub struct SongbirdHttpClient {
 impl std::fmt::Debug for SongbirdHttpClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SongbirdHttpClient")
-            .field("crypto", &"<dyn CryptoCapability>")
+            .field("crypto", &"<SecurityCryptoProvider>")
             .field("tls_config", &self.tls_config)
             .field(
                 "http_config",
@@ -181,7 +181,7 @@ impl SongbirdHttpClient {
     ///
     /// Use this when you want to provide your own `CryptoCapability` implementation.
     pub fn with_crypto(
-        crypto: Arc<dyn CryptoCapability>,
+        crypto: Arc<SecurityCryptoProvider>,
         tls_config: TlsConfig,
         http_config: HttpClientConfig,
         profiler: Option<Arc<ServerProfiler>>,

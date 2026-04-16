@@ -18,23 +18,26 @@
 //!
 //! 1. **Capability-Based Discovery** - No hardcoded `security provider` endpoints
 //! 2. **Factory Pattern** - Dependency injection for testability
-//! 3. **Trait-Based Abstraction** - Not concrete types
+//! 3. **Enum dispatch** - Concrete and test doubles without dynamic dispatch
 //! 4. **Proper Error Handling** - No unwrap/expect
 //! 5. **Modern Async** - tokio, async/await throughout
 
 mod client;
 mod env_discovery;
-mod factory;
 mod handler;
-mod traits;
+mod http_dispatch;
+#[cfg(test)]
+mod test_support;
 mod types;
 
 pub use client::SongbirdHttpClient;
 pub use env_discovery::EnvCryptoDiscovery;
-pub use factory::DefaultHttpClientFactory;
 pub use handler::HttpHandler;
-pub use traits::{CryptoCapabilityDiscovery, HttpClientCapability, HttpClientFactory};
+pub use http_dispatch::{CryptoDiscovery, DefaultHttpClientFactory, HttpClient, HttpClientFactory};
 pub use types::{HttpRequestParams, HttpResponse, HttpResponseResult};
+
+#[cfg(test)]
+pub use test_support::RotatingMockClient;
 
 #[cfg(test)]
 mod tests;

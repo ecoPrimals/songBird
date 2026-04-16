@@ -48,8 +48,7 @@
 
 use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
-use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
-use async_trait::async_trait;
+use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
 #[cfg(target_os = "macos")]
 use songbird_types::primal_names::BIOMEOS_DIR;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -59,12 +58,11 @@ use tracing::{debug, info, warn};
 ///
 /// **macOS**: Uses Unix sockets (fully functional)
 /// **iOS**: XPC documented for future, TCP fallback for now
-#[expect(non_camel_case_types, reason = "iOSIPC matches platform naming and public type identity")]
-pub struct iOSIPC;
+pub struct IosPlatformIPC;
 
-#[async_trait]
-impl PlatformIPC for iOSIPC {
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+impl IosPlatformIPC {
+    /// Create a native endpoint for the given primal name.
+    pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         #[cfg(target_os = "macos")]
         {
             use std::path::PathBuf;
@@ -130,7 +128,8 @@ impl PlatformIPC for iOSIPC {
         }
     }
 
-    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
+    /// Create a listener on the native endpoint.
+    pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             #[cfg(target_os = "macos")]
             NativeEndpoint::UnixSocket(path) => {
@@ -147,7 +146,7 @@ impl PlatformIPC for iOSIPC {
 
                 info!("macOS Unix listener created: {}", path.display());
 
-                Ok(Box::new(MacOSListenerWrapper {
+                Ok(PlatformListenerImpl::Ios(IosListener {
                     inner: listener,
                 }))
             }
@@ -165,7 +164,8 @@ impl PlatformIPC for iOSIPC {
         }
     }
 
-    async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn AsyncStream>> {
+    /// Connect to a native endpoint.
+    pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
             #[cfg(target_os = "macos")]
             NativeEndpoint::UnixSocket(path) => {
@@ -182,7 +182,7 @@ impl PlatformIPC for iOSIPC {
 
                 info!("Connected to macOS Unix socket: {}", path.display());
 
-                Ok(Box::new(stream))
+                Ok(AsyncStreamImpl::Unix(stream))
             }
 
             #[cfg(target_os = "ios")]
@@ -198,7 +198,8 @@ impl PlatformIPC for iOSIPC {
         }
     }
 
-    async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
+    /// Cleanup endpoint.
+    pub async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
         match endpoint {
             #[cfg(target_os = "macos")]
             NativeEndpoint::UnixSocket(path) => {
@@ -231,22 +232,22 @@ impl PlatformIPC for iOSIPC {
 }
 
 #[cfg(target_os = "macos")]
-/// Wrapper for `UnixListener` (macOS) to implement `PlatformListener`
-struct MacOSListenerWrapper {
+/// Wrapper for `UnixListener` (macOS) for [`PlatformListenerImpl::Ios`].
+pub struct IosListener {
     inner: tokio::net::UnixListener,
 }
 
 #[cfg(target_os = "macos")]
-#[async_trait]
-impl PlatformListener for MacOSListenerWrapper {
-    async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
+impl IosListener {
+    /// Accept incoming connection.
+    pub async fn accept(&mut self) -> IpcResult<AsyncStreamImpl> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
             IpcError::ConnectionFailed(format!("Failed to accept macOS connection: {}", e))
         })?;
 
         debug!("Accepted macOS Unix connection from: {:?}", addr);
 
-        Ok(Box::new(stream))
+        Ok(AsyncStreamImpl::Unix(stream))
     }
 }
 
@@ -256,7 +257,10 @@ mod tests {
     #[tokio::test]
     #[cfg(target_os = "macos")]
     async fn test_macos_create_endpoint() {
-        let ipc = iOSIPC;
+        use super::IosPlatformIPC;
+        use crate::endpoint::NativeEndpoint;
+
+        let ipc = IosPlatformIPC;
         let endpoint = ipc.create_endpoint("test-primal").await.unwrap();
 
         match endpoint {
@@ -272,9 +276,11 @@ mod tests {
     #[tokio::test]
     #[cfg(target_os = "macos")]
     async fn test_macos_listen_and_connect() {
+        use super::IosPlatformIPC;
+        use crate::endpoint::NativeEndpoint;
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-        let ipc = iOSIPC;
+        let ipc = IosPlatformIPC;
 
         // Use unique name for this test
         let test_name = format!("test-listen-{}", std::process::id());
@@ -286,7 +292,7 @@ mod tests {
         // Connect in background task (listener already bound — no sleep needed)
         let endpoint_clone = endpoint.clone();
         let connect_handle = tokio::spawn(async move {
-            let ipc = iOSIPC;
+            let ipc = IosPlatformIPC;
             ipc.connect(&endpoint_clone).await
         });
 

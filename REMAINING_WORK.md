@@ -2,8 +2,8 @@
 
 **Date**: April 16, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 144 (Apr 16, 2026)  
-**Current Wave**: 144 — dyn→static dispatch evolution: PeerConnection (enum), BtspProvider (enum), federation SecurityProvider+supertraits (enum), ConsentStorage/TaskStorage (enum); `async-trait` dropped from 6 crates; discovery_handler.rs >800L smart-refactored into 4-file module (291L handler, 82L content, 44L types, 530L tests); hardcoded /tmp/service.log and localhost:8080 evolved to runtime-resolved  
+**Last Deep Debt Audit**: Wave 145 (Apr 16, 2026)  
+**Current Wave**: 145 — complete `async-trait` elimination (141→0 annotations, dependency fully removed); all `dyn Trait` async dispatch converted to enum/concrete/AFIT across every crate; axum route params migrated from legacy `:param` to `{param}` syntax (30+ routes fixed)  
 **Previous Waves** (full detail in `CHANGELOG.md`): 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -12,7 +12,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,360 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,359 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
@@ -36,11 +36,11 @@
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI via `ci.yml` (Wave 134) |
 | **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** removed Wave 135 (SB-03 resolved — IPC `storage.*` capability is production path, InMemory fallback); `parking_lot` removed (Wave 133) |
-| **`async-trait`** | **113** `#[async_trait]` annotations (down from 141 pre-Wave 144); Wave 144 eliminated 28 via enum/concrete dispatch (PeerConnection, BtspProvider, SecurityProvider+3 supertraits, ConsentStorage, TaskStorage); dropped `async-trait` dep from 6 crates (canonical, config, execution-agent, network-federation, registry, stun); remaining 113 in: platform IPC (6 OS backends), canonical Provider tree, lineage-relay, discovery, HTTP handlers, crypto capability; SB-06 tracked |
+| **`async-trait`** | **0** annotations, dependency fully removed from workspace (Wave 145). 141→0: every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. No crate depends on `async-trait`. SB-06 resolved. |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
 | **Total Rust** | ~430,000 lines across 30 crates (1,587 files) |
-| **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented, async-trait analyzed (SB-06 deferred); Wave 143: content distribution federation wired (`ContentAnnouncementStore`, `discovery.content_peers`, seeder/leecher coordination), `ring` deny.toml updated, `async-trait` re-audited (141 annotations, all required); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139) |
+| **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented; Wave 143: content distribution federation wired (`ContentAnnouncementStore`, `discovery.content_peers`, seeder/leecher coordination), `ring` deny.toml updated; Wave 145: `async-trait` fully eliminated (SB-06 resolved); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139) |
 
 ---
 
@@ -55,11 +55,11 @@
 **Status**: `sled` dependency and all `sled-storage` features **fully removed** (Wave 135). 1,482 lines of deprecated sled storage code deleted across `songbird-orchestrator` (2 files: `storage_sled.rs` for consent + task), `songbird-sovereign-onion` (1 file: `storage_sled.rs`), and `songbird-onion-relay` (adapted to `InMemoryOnionStorage`). Wave 137: capability-based naming — `NestGateStorage` → `IpcStorageBackend`, `NestGateOnionStorage` → `IpcOnionStorage`, module paths `storage_nestgate/` → `storage_ipc/`.
 
 **Architecture (final):**
-- `IpcStorageBackend` → `ConsentStorageBackend` + `TaskStorageBackend` via `storage.*` JSON-RPC
+- `ConsentStorage` enum (Memory/Ipc variants) via `storage.*` JSON-RPC (Wave 144: dyn→enum)
+- `TaskStorage` enum (Memory/Ipc variants) via `storage.*` JSON-RPC (Wave 144: dyn→enum)
 - `IpcOnionStorage` → `OnionStorageBackend` via `storage.*` JSON-RPC
 - `InMemoryStorage` / `InMemoryOnionStorage` → fallback when no storage provider available
 - No sled code remains anywhere in the workspace
-- `#[deprecated]` aliases (`NestGateStorage`, `NestGateOnionStorage`, `storage_nestgate` module) retained for backward compatibility
 
 **Operational validation** (not SB-03): Storage capability provider must expose live `storage.*` IPC endpoints for end-to-end validation with a running storage primal.
 
@@ -125,7 +125,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 - [x] `ring-crypto` feature removed (Wave 135, SB-02 resolved): `rustls_rustcrypto` is the sole TLS provider; `ring` remains only as unactivated optional dep of `rustls` in Cargo.lock + optional `k8s` feature — NOT compiled in default build, banned in `deny.toml`, documented in Wave 137b
 - [ ] Remaining transitive duplicates (syn, hashbrown, getrandom, parking_lot, socket2) require upstream changes
-- [x] `async-trait` partial migration (Wave 116): `Transport`, `MetricsCapabilityAdapter`, `HealthMonitor` migrated to native `async fn in trait`; `async-trait` dep removed from `songbird-bluetooth`; ~150 remaining usages all require `dyn Trait` dispatch or are supertraits of dyn-dispatched traits (verified Wave 140, SB-06); blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119)
+- [x] `async-trait` **fully eliminated** (Wave 145): 141→0 annotations, dependency removed from all crates and workspace `Cargo.toml`. Every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. SB-06 resolved.
 - [x] `rand` removed from `songbird-orchestrator` production deps (Wave 140): JWT CSPRNG replaced with `getrandom::fill()`; `rand` retained as dev-dependency for tests
 - [x] Dead `sled` dependency removed from `songbird-tor-protocol` (Wave 116)
 - [x] `ed25519-dalek` in `songbird-quic` feature-gated behind `local-certs` (Wave 116)

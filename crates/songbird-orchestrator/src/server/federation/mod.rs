@@ -55,13 +55,13 @@ pub fn federation_routes(
         .route("/join", post(node_endpoints::federation_join))
         .route("/status", get(node_endpoints::federation_status))
         .route("/nodes", get(node_endpoints::federation_nodes))
-        .route("/nodes/:node_id", get(node_endpoints::get_node_details))
+        .route("/nodes/{node_id}", get(node_endpoints::get_node_details))
         .route("/heartbeat", post(node_endpoints::federation_heartbeat))
         // Service management
         .route("/services", get(service_endpoints::list_services))
         .route("/services", post(service_endpoints::register_service))
-        .route("/services/:service_id", get(service_endpoints::get_service))
-        .route("/services/type/:service_type", get(service_endpoints::find_services_by_type))
+        .route("/services/{service_id}", get(service_endpoints::get_service))
+        .route("/services/type/{service_type}", get(service_endpoints::find_services_by_type))
         .route("/services/stats", get(service_endpoints::service_stats))
         .with_state(app_state)
 }
@@ -84,19 +84,19 @@ pub fn federation_routes_with_capabilities(
         .route("/join", post(node_endpoints::federation_join))
         .route("/status", get(node_endpoints::federation_status))
         .route("/nodes", get(node_endpoints::federation_nodes))
-        .route("/nodes/:node_id", get(node_endpoints::get_node_details))
+        .route("/nodes/{node_id}", get(node_endpoints::get_node_details))
         .route("/heartbeat", post(node_endpoints::federation_heartbeat))
         // Service management
         .route("/services", get(service_endpoints::list_services))
         .route("/services", post(service_endpoints::register_service))
-        .route("/services/:service_id", get(service_endpoints::get_service))
-        .route("/services/type/:service_type", get(service_endpoints::find_services_by_type))
+        .route("/services/{service_id}", get(service_endpoints::get_service))
+        .route("/services/type/{service_type}", get(service_endpoints::find_services_by_type))
         .route("/services/stats", get(service_endpoints::service_stats))
         // Capability registration (NEW)
         .route("/register", post(capability_endpoints::register_capability_provider))
         .route("/capability/heartbeat", post(capability_endpoints::capability_provider_heartbeat))
         .route(
-            "/register/:provider_id",
+            "/register/{provider_id}",
             delete(capability_endpoints::unregister_capability_provider),
         )
         .route("/providers", get(capability_endpoints::list_capability_providers))
@@ -122,19 +122,19 @@ pub fn federation_routes_with_trust(
         .route("/join", post(node_endpoints::federation_join))
         .route("/status", get(node_endpoints::federation_status))
         .route("/nodes", get(node_endpoints::federation_nodes_graduated))
-        .route("/nodes/:node_id", get(node_endpoints::get_node_details))
+        .route("/nodes/{node_id}", get(node_endpoints::get_node_details))
         .route("/heartbeat", post(node_endpoints::federation_heartbeat))
         // Service management
         .route("/services", get(service_endpoints::list_services))
         .route("/services", post(service_endpoints::register_service))
-        .route("/services/:service_id", get(service_endpoints::get_service))
-        .route("/services/type/:service_type", get(service_endpoints::find_services_by_type))
+        .route("/services/{service_id}", get(service_endpoints::get_service))
+        .route("/services/type/{service_type}", get(service_endpoints::find_services_by_type))
         .route("/services/stats", get(service_endpoints::service_stats))
         // Capability registration (if available)
         .route("/register", post(capability_endpoints::register_capability_provider))
         .route("/capability/heartbeat", post(capability_endpoints::capability_provider_heartbeat))
         .route(
-            "/register/:provider_id",
+            "/register/{provider_id}",
             delete(capability_endpoints::unregister_capability_provider),
         )
         .route("/providers", get(capability_endpoints::list_capability_providers))

@@ -3,14 +3,14 @@
 
 //! Core TLS 1.3 handshake struct and constructors
 
-use crate::crypto::CryptoCapability;
+use crate::crypto::SecurityCryptoProvider;
 use crate::tls::{config::TlsConfig, profiler::ServerProfiler};
 use std::sync::Arc;
 use tracing::info;
 
 /// TLS 1.3 handshake
 pub struct TlsHandshake {
-    pub(super) crypto: Arc<dyn CryptoCapability>,
+    pub(super) crypto: Arc<SecurityCryptoProvider>,
     /// Transcript accumulator for RFC 8446 key derivation
     /// Accumulates all handshake messages for transcript hash computation
     pub(super) transcript: Vec<u8>,
@@ -27,13 +27,13 @@ pub struct TlsHandshake {
 
 impl TlsHandshake {
     /// Create a new TLS handshake with default config
-    pub fn new(crypto: Arc<dyn CryptoCapability>) -> Self {
+    pub fn new(crypto: Arc<SecurityCryptoProvider>) -> Self {
         Self::with_config(crypto, TlsConfig::default(), None)
     }
 
     /// Create a new TLS handshake with custom config and optional profiler
     pub fn with_config(
-        crypto: Arc<dyn CryptoCapability>,
+        crypto: Arc<SecurityCryptoProvider>,
         config: TlsConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
@@ -55,7 +55,6 @@ impl TlsHandshake {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::CryptoCapability;
 
     #[test]
     fn test_handshake_creation() {
@@ -63,8 +62,7 @@ mod tests {
             .join("songbird-test-security.sock")
             .to_string_lossy()
             .into_owned();
-        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(path))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(path));
         let handshake = TlsHandshake::new(crypto);
 
         // Verify initial state
@@ -78,8 +76,7 @@ mod tests {
             .join("songbird-test-security.sock")
             .to_string_lossy()
             .into_owned();
-        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(path))
-            as std::sync::Arc<dyn CryptoCapability>;
+        let crypto = std::sync::Arc::new(crate::crypto::SecurityCryptoProvider::new(path));
         let config = TlsConfig::default();
         let handshake = TlsHandshake::with_config(crypto, config, None);
 

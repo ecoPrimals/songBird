@@ -13,7 +13,9 @@ use serde_json::json;
 use crate::adapters::AIAdapter;
 use crate::adapters::compute::ComputeAdapter;
 use crate::adapters::security::SecurityAdapter;
-use crate::adapters::transport::{AdapterTransportKind, DelayTransport, MockTransport};
+use crate::adapters::transport::{
+    AdapterTransportKind, CapabilityTransport, DelayTransport, MockTransport,
+};
 use crate::trust_types::{TrustEvaluationRequest, TrustEvaluationResponse};
 use songbird_types::{SongbirdError, SongbirdResult, TrustLevel};
 
@@ -29,7 +31,8 @@ fn security_metrics_json() -> serde_json::Value {
 
 #[tokio::test]
 async fn security_collect_metrics_success() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(security_metrics_json())]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(security_metrics_json())])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -44,7 +47,8 @@ async fn security_collect_metrics_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_collect_metrics_parse_error() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!("not-an-object"))]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("not-an-object"))])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -57,11 +61,12 @@ async fn security_collect_metrics_parse_error() {
 
 #[tokio::test]
 async fn security_collect_metrics_timeout() {
-    let inner = Arc::new(MockTransport::new(vec![Ok(security_metrics_json())]));
-    let slow = Arc::new(DelayTransport {
+    let inner =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(security_metrics_json())])));
+    let slow = Arc::new(CapabilityTransport::Delay(DelayTransport {
         inner,
         delay: Duration::from_secs(60),
-    });
+    }));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         slow,
@@ -74,7 +79,8 @@ async fn security_collect_metrics_timeout() {
 
 #[tokio::test]
 async fn security_verify_auth_success() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!("Authorized"))]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("Authorized"))])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -88,7 +94,8 @@ async fn security_verify_auth_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_verify_auth_unauthorized() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!("Unauthorized"))]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("Unauthorized"))])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -102,7 +109,7 @@ async fn security_verify_auth_unauthorized() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_verify_auth_parse_error() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!(42))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!(42))])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -115,11 +122,12 @@ async fn security_verify_auth_parse_error() {
 
 #[tokio::test]
 async fn security_verify_auth_timeout() {
-    let inner = Arc::new(MockTransport::new(vec![Ok(json!("Authorized"))]));
-    let slow = Arc::new(DelayTransport {
+    let inner =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("Authorized"))])));
+    let slow = Arc::new(CapabilityTransport::Delay(DelayTransport {
         inner,
         delay: Duration::from_secs(60),
-    });
+    }));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         slow,
@@ -132,7 +140,8 @@ async fn security_verify_auth_timeout() {
 
 #[tokio::test]
 async fn security_call_generic_success() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!({"ok": true}))]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!({"ok": true}))])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -146,7 +155,9 @@ async fn security_call_generic_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_call_generic_transport_error() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("boom"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("boom"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -159,11 +170,11 @@ async fn security_call_generic_transport_error() {
 
 #[tokio::test]
 async fn security_call_generic_timeout() {
-    let inner = Arc::new(MockTransport::new(vec![Ok(json!({}))]));
-    let slow = Arc::new(DelayTransport {
+    let inner = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!({}))])));
+    let slow = Arc::new(CapabilityTransport::Delay(DelayTransport {
         inner,
         delay: Duration::from_secs(60),
-    });
+    }));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         slow,
@@ -183,8 +194,9 @@ async fn security_evaluate_trust_success() -> SongbirdResult<()> {
         suggested_action: None,
         metadata: None,
     };
-    let mock =
-        Arc::new(MockTransport::new(vec![Ok(serde_json::to_value(&resp).expect("serialize"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(
+        serde_json::to_value(&resp).expect("serialize"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -199,7 +211,9 @@ async fn security_evaluate_trust_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_evaluate_trust_error() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("nope"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("nope"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -213,10 +227,11 @@ async fn security_evaluate_trust_error() {
 
 #[tokio::test]
 async fn security_get_identity_success() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!({
+    let body = json!({
         "encryption_tag": "t:family:f:n",
         "capabilities": ["identity"]
-    }))]));
+    });
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -230,7 +245,9 @@ async fn security_get_identity_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn security_get_identity_error() {
-    let mock = Arc::new(MockTransport::new(vec![Err(SongbirdError::network("down"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(
+        SongbirdError::network("down"),
+    )])));
     let adapter = SecurityAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -255,7 +272,8 @@ fn compute_metrics_json() -> serde_json::Value {
 
 #[tokio::test]
 async fn compute_collect_metrics_success() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(compute_metrics_json())]));
+    let mock =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(compute_metrics_json())])));
     let adapter = ComputeAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -269,7 +287,7 @@ async fn compute_collect_metrics_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn compute_collect_metrics_parse_error() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!("nope"))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("nope"))])));
     let adapter = ComputeAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -282,11 +300,12 @@ async fn compute_collect_metrics_parse_error() {
 
 #[tokio::test]
 async fn compute_collect_metrics_timeout() {
-    let inner = Arc::new(MockTransport::new(vec![Ok(compute_metrics_json())]));
-    let slow = Arc::new(DelayTransport {
+    let inner =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(compute_metrics_json())])));
+    let slow = Arc::new(CapabilityTransport::Delay(DelayTransport {
         inner,
         delay: Duration::from_secs(60),
-    });
+    }));
     let adapter = ComputeAdapter::with_transport(
         "http://mock".into(),
         slow,
@@ -310,7 +329,7 @@ fn ai_metrics_json() -> serde_json::Value {
 
 #[tokio::test]
 async fn ai_collect_metrics_success() -> SongbirdResult<()> {
-    let mock = Arc::new(MockTransport::new(vec![Ok(ai_metrics_json())]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(ai_metrics_json())])));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -324,7 +343,7 @@ async fn ai_collect_metrics_success() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn ai_collect_metrics_parse_error() {
-    let mock = Arc::new(MockTransport::new(vec![Ok(json!([]))]));
+    let mock = Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!([]))])));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         mock,
@@ -337,11 +356,12 @@ async fn ai_collect_metrics_parse_error() {
 
 #[tokio::test]
 async fn ai_collect_metrics_timeout() {
-    let inner = Arc::new(MockTransport::new(vec![Ok(ai_metrics_json())]));
-    let slow = Arc::new(DelayTransport {
+    let inner =
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(ai_metrics_json())])));
+    let slow = Arc::new(CapabilityTransport::Delay(DelayTransport {
         inner,
         delay: Duration::from_secs(60),
-    });
+    }));
     let adapter = AIAdapter::with_transport(
         "http://mock".into(),
         slow,

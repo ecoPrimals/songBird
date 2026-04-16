@@ -56,6 +56,7 @@ use songbird_universal_ipc::endpoint::NativeEndpoint;
 use songbird_universal_ipc::registry::ServiceRegistry;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -138,13 +139,9 @@ async fn test_unit_rpc_discover_method() {
 #[tokio::test]
 async fn test_unit_family_id_from_environment() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::with_family_id_env(registry, |k| {
-        if k == "FAMILY_ID" {
-            Ok("test_family_1".to_string())
-        } else {
-            Err(std::env::VarError::NotPresent)
-        }
-    });
+    let mut env = HashMap::new();
+    env.insert("FAMILY_ID".into(), "test_family_1".into());
+    let handler = IpcServiceHandler::with_family_id_overrides(registry, env);
 
     let result = handler.handle("identity", json!({})).await;
     assert!(result.is_ok());
@@ -544,26 +541,18 @@ async fn test_regression_rpc_methods() {
 async fn test_env_family_id_priority() {
     // Test 1: Only FAMILY_ID set
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::with_family_id_env(registry, |k| {
-        if k == "FAMILY_ID" {
-            Ok("test_priority_1".to_string())
-        } else {
-            Err(std::env::VarError::NotPresent)
-        }
-    });
+    let mut env1 = HashMap::new();
+    env1.insert("FAMILY_ID".into(), "test_priority_1".into());
+    let handler = IpcServiceHandler::with_family_id_overrides(registry, env1);
 
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "test_priority_1");
 
     // Test 2: Only SONGBIRD_FAMILY_ID set
     let registry2 = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler2 = IpcServiceHandler::with_family_id_env(registry2, |k| {
-        if k == "SONGBIRD_FAMILY_ID" {
-            Ok("test_priority_2".to_string())
-        } else {
-            Err(std::env::VarError::NotPresent)
-        }
-    });
+    let mut env2 = HashMap::new();
+    env2.insert("SONGBIRD_FAMILY_ID".into(), "test_priority_2".into());
+    let handler2 = IpcServiceHandler::with_family_id_overrides(registry2, env2);
 
     let result2 = handler2.handle("identity", json!({})).await.unwrap();
     assert_eq!(result2["family_id"], "test_priority_2");
@@ -572,8 +561,7 @@ async fn test_env_family_id_priority() {
 #[tokio::test]
 async fn test_env_family_id_default() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler =
-        IpcServiceHandler::with_family_id_env(registry, |_| Err(std::env::VarError::NotPresent));
+    let handler = IpcServiceHandler::with_family_id_overrides(registry, HashMap::new());
 
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "default", "Should default to 'default'");

@@ -7,6 +7,7 @@
 //! from `record.rs` for cohesion and deduplication.
 
 use crate::crypto::CryptoCapability;
+use crate::crypto::SecurityCryptoProvider;
 use crate::error::{Error, Result};
 use std::sync::Arc;
 use tracing::{debug, error};
@@ -31,7 +32,7 @@ pub fn build_nonce(iv: &[u8], sequence_number: u64) -> Vec<u8> {
 
 /// Encrypt `plaintext` using the negotiated cipher suite.
 pub async fn cipher_encrypt(
-    crypto: &Arc<dyn CryptoCapability>,
+    crypto: &Arc<SecurityCryptoProvider>,
     cipher_suite: u16,
     key: &[u8],
     nonce: &[u8],
@@ -60,7 +61,7 @@ pub async fn cipher_encrypt(
 
 /// Decrypt `ciphertext` using the negotiated cipher suite.
 pub async fn cipher_decrypt(
-    crypto: &Arc<dyn CryptoCapability>,
+    crypto: &Arc<SecurityCryptoProvider>,
     cipher_suite: u16,
     key: &[u8],
     nonce: &[u8],

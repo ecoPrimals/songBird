@@ -8,6 +8,7 @@
 //! reads and decrypts those messages to keep the stream in sync for HTTP.
 
 use super::core::TlsHandshake;
+use crate::crypto::CryptoCapability;
 use crate::crypto::TlsApplicationSecrets;
 use crate::error::{Error, Result};
 use crate::tls::alert::TlsAlert;

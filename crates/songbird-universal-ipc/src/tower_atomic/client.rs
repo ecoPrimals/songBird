@@ -44,7 +44,9 @@ impl TowerAtomicClient {
         })?;
 
         Ok(Self {
-            stream: Arc::new(Mutex::new(crate::ipc::Stream::from_boxed_async(Box::new(stream)))),
+            stream: Arc::new(Mutex::new(crate::ipc::Stream::from_async_stream_impl(
+                crate::platform::AsyncStreamImpl::Unix(stream),
+            ))),
             next_id: Arc::new(AtomicU64::new(1)),
         })
     }

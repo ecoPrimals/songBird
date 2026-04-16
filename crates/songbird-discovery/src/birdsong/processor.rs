@@ -6,7 +6,7 @@
 //! Main processor logic for encryption/decryption of discovery packets.
 
 use super::config::BirdSongConfig;
-use super::r#trait::BirdSongEncryption;
+use super::encryption::BirdSongEncryption;
 use super::types::BirdSongPacket;
 use crate::dark_forest_beacon::{BeaconPayload, DarkForestBeacon};
 use anyhow::{Context, Result};
@@ -18,7 +18,7 @@ use tracing::{debug, info, warn};
 /// Wraps encryption/decryption of discovery packets with graceful fallback.
 pub struct BirdSongProcessor {
     /// Optional encryption provider
-    encryption: Option<Arc<dyn BirdSongEncryption>>,
+    encryption: Option<Arc<BirdSongEncryption>>,
 
     /// Configuration
     config: BirdSongConfig,
@@ -43,7 +43,7 @@ impl BirdSongProcessor {
     /// let processor = BirdSongProcessor::new(None, config);
     /// # }
     /// ```
-    pub fn new(encryption: Option<Arc<dyn BirdSongEncryption>>, config: BirdSongConfig) -> Self {
+    pub fn new(encryption: Option<Arc<BirdSongEncryption>>, config: BirdSongConfig) -> Self {
         // Log configuration
         if let Some(ref enc) = encryption {
             if enc.is_available() {
@@ -303,7 +303,7 @@ impl BirdSongProcessor {
     ///
     /// Returns None if no encryption provider configured.
     #[must_use]
-    pub fn encryption_provider(&self) -> Option<&Arc<dyn BirdSongEncryption>> {
+    pub fn encryption_provider(&self) -> Option<&Arc<BirdSongEncryption>> {
         self.encryption.as_ref()
     }
 
@@ -355,8 +355,7 @@ impl BirdSongProcessor {
         }
 
         // Try our own beacon seed first (most common case)
-        if let Some(payload) = self.try_decrypt_with_own_beacon(encryption.as_ref(), beacon).await?
-        {
+        if let Some(payload) = self.try_decrypt_with_own_beacon(encryption, beacon).await? {
             let our_id = encryption.get_beacon_id().await?.unwrap_or_default();
 
             debug!(
@@ -375,7 +374,7 @@ impl BirdSongProcessor {
 
             for (idx, beacon_id) in known_beacons.iter().enumerate() {
                 if let Some(payload) =
-                    self.try_decrypt_with_beacon_id(encryption.as_ref(), beacon, beacon_id).await?
+                    self.try_decrypt_with_beacon_id(encryption, beacon, beacon_id).await?
                 {
                     debug!(
                         "✅ Decrypted with known beacon {} (node: {})",
@@ -399,7 +398,7 @@ impl BirdSongProcessor {
     /// Try to decrypt with our own beacon seed
     async fn try_decrypt_with_own_beacon(
         &self,
-        encryption: &dyn BirdSongEncryption,
+        encryption: &BirdSongEncryption,
         beacon: &DarkForestBeacon,
     ) -> Result<Option<BeaconPayload>> {
         encryption.try_decrypt_beacon(&beacon.encrypted_payload, &beacon.nonce).await?.map_or_else(
@@ -417,7 +416,7 @@ impl BirdSongProcessor {
     /// Try to decrypt with specific beacon ID
     async fn try_decrypt_with_beacon_id(
         &self,
-        encryption: &dyn BirdSongEncryption,
+        encryption: &BirdSongEncryption,
         beacon: &DarkForestBeacon,
         _beacon_id: &[u8],
     ) -> Result<Option<BeaconPayload>> {
@@ -470,49 +469,18 @@ impl BirdSongProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
+    use crate::birdsong::ProcessorXorMock;
 
-    struct MockEncryption {
-        family_id: String,
-        available: bool,
-    }
-
-    #[async_trait]
-    impl BirdSongEncryption for MockEncryption {
-        async fn encrypt_discovery(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
-            // Simple XOR for testing
-            Ok(plaintext.iter().map(|b| b ^ 0x42).collect())
-        }
-
-        async fn decrypt_discovery(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>> {
-            // XOR again to decrypt
-            // Simulate different family by checking first byte
-            if ciphertext.first() == Some(&0xFF) {
-                Ok(None) // Different family marker
-            } else {
-                Ok(Some(ciphertext.iter().map(|b| b ^ 0x42).collect()))
-            }
-        }
-
-        fn is_available(&self) -> bool {
-            self.available
-        }
-
-        fn family_id(&self) -> Option<String> {
-            Some(self.family_id.clone())
-        }
-
-        fn provider_name(&self) -> String {
-            "MockEncryption".to_string()
-        }
+    fn xor_mock(family_id: &str, available: bool) -> Arc<BirdSongEncryption> {
+        Arc::new(BirdSongEncryption::ProcessorXor(Arc::new(ProcessorXorMock {
+            family_id: family_id.to_string(),
+            available,
+        })))
     }
 
     #[tokio::test]
     async fn test_birdsong_encryption() {
-        let enc = Arc::new(MockEncryption {
-            family_id: "test-family".to_string(),
-            available: true,
-        });
+        let enc = xor_mock("test-family", true);
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
@@ -531,10 +499,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_different_family_noise() {
-        let enc = Arc::new(MockEncryption {
-            family_id: "test-family".to_string(),
-            available: true,
-        });
+        let enc = xor_mock("test-family", true);
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
@@ -570,10 +535,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_encryption_disabled() {
-        let enc = Arc::new(MockEncryption {
-            family_id: "test".to_string(),
-            available: true,
-        });
+        let enc = xor_mock("test", true);
         let config = BirdSongConfig {
             enabled: false,
             fallback_to_plaintext: true,
@@ -591,10 +553,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_provider_unavailable_with_fallback() {
-        let enc = Arc::new(MockEncryption {
-            family_id: "test".to_string(),
-            available: false, // Unavailable
-        });
+        let enc = xor_mock("test", false);
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
@@ -610,10 +569,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mixed_mode() {
-        let enc = Arc::new(MockEncryption {
-            family_id: "test".to_string(),
-            available: true,
-        });
+        let enc = xor_mock("test", true);
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
@@ -636,10 +592,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_status_reporting() {
-        let enc = Arc::new(MockEncryption {
-            family_id: "test".to_string(),
-            available: true,
-        });
+        let enc = xor_mock("test", true);
         let config = BirdSongConfig {
             enabled: true,
             ..Default::default()

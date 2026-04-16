@@ -145,7 +145,7 @@ pub struct RelayServer {
     sessions: Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
 
     /// Lineage authority for authorization
-    authority: Arc<dyn RelayAuthority>,
+    authority: Arc<RelayAuthority>,
 
     /// UDP socket for packet forwarding
     socket: Arc<UdpSocket>,
@@ -159,7 +159,7 @@ impl std::fmt::Debug for RelayServer {
         f.debug_struct("RelayServer")
             .field("bind_addr", &self.bind_addr)
             .field("sessions", &self.sessions)
-            .field("authority", &"<dyn RelayAuthority>")
+            .field("authority", &"<RelayAuthority>")
             .field("socket", &self.socket)
             .field("stats", &self.stats)
             .finish()
@@ -191,7 +191,7 @@ impl RelayServer {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn new(bind_addr: SocketAddr, authority: Arc<dyn RelayAuthority>) -> Result<Self> {
+    pub async fn new(bind_addr: SocketAddr, authority: Arc<RelayAuthority>) -> Result<Self> {
         let socket = UdpSocket::bind(bind_addr).await.map_err(|e| {
             LineageRelayError::NetworkError(format!("Failed to bind relay server: {e}"))
         })?;

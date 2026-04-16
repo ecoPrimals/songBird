@@ -263,8 +263,12 @@ async fn initialize_birdsong_processor(
             dual_broadcast: crate::env_config::dual_broadcast(),
         };
 
-        let processor =
-            songbird_discovery::BirdSongProcessor::new(Some(Arc::new(security_provider)), config);
+        let processor = songbird_discovery::BirdSongProcessor::new(
+            Some(Arc::new(songbird_discovery::BirdSongEncryption::Security(Arc::new(
+                security_provider,
+            )))),
+            config,
+        );
         info!("🎵 BirdSong processor initialized: {}", processor.status());
         Some(Arc::new(processor))
     } else {

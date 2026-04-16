@@ -8,7 +8,9 @@
 
 use super::*;
 use crate::adapters::discovery_test_sync::lock_discovery_env;
-use crate::adapters::transport::{AdapterTransportKind, DelayTransport, MockTransport};
+use crate::adapters::transport::{
+    AdapterTransportKind, CapabilityTransport, DelayTransport, MockTransport,
+};
 use serde_json::json;
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_types::{SongbirdError, SongbirdResult};
@@ -328,10 +330,10 @@ fn test_security_metrics_health_status_warning_failed_attempts_only() {
 
 #[tokio::test]
 async fn collect_metrics_times_out_with_delay_transport() {
-    let delayed = DelayTransport {
-        inner: Arc::new(MockTransport::new(vec![])),
+    let delayed = CapabilityTransport::Delay(DelayTransport {
+        inner: Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![]))),
         delay: Duration::from_secs(30),
-    };
+    });
     let adapter = SecurityAdapter::with_transport(
         "http://mock-security".to_string(),
         Arc::new(delayed),
@@ -347,7 +349,7 @@ async fn collect_metrics_http_transport_error_passes_through() {
     let boom = SongbirdError::network("upstream http failure");
     let adapter = SecurityAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Err(boom.clone())])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom.clone())]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -360,7 +362,7 @@ async fn collect_metrics_tarpc_transport_error_is_wrapped() {
     let boom = SongbirdError::network("rpc down");
     let adapter = SecurityAdapter::with_transport(
         "tarpc://127.0.0.1:1".to_string(),
-        Arc::new(MockTransport::new(vec![Err(boom)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom)]))),
         AdapterTransportKind::Tarpc,
         Duration::from_secs(5),
     );
@@ -374,7 +376,7 @@ async fn collect_metrics_jsonrpc_transport_error_is_wrapped() {
     let boom = SongbirdError::network("uds down");
     let adapter = SecurityAdapter::with_transport(
         "unix:///tmp/songbird-security-mock.sock".to_string(),
-        Arc::new(MockTransport::new(vec![Err(boom)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom)]))),
         AdapterTransportKind::JsonRpc,
         Duration::from_secs(5),
     );
@@ -387,7 +389,7 @@ async fn collect_metrics_jsonrpc_transport_error_is_wrapped() {
 async fn collect_metrics_parse_error_maps_to_security() {
     let adapter = SecurityAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(json!("not-metrics"))])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(json!("not-metrics"))]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -407,7 +409,7 @@ async fn collect_metrics_sets_timestamp_when_unix_epoch() -> SongbirdResult<()> 
     });
     let adapter = SecurityAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(body)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -427,7 +429,7 @@ async fn check_health_delegates_to_collect_metrics() -> SongbirdResult<()> {
     })?;
     let adapter = SecurityAdapter::with_transport(
         "http://mock".to_string(),
-        Arc::new(MockTransport::new(vec![Ok(body)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Ok(body)]))),
         AdapterTransportKind::Http,
         Duration::from_secs(5),
     );
@@ -440,7 +442,7 @@ async fn verify_auth_tarpc_error_includes_tarpc_hint() {
     let boom = SongbirdError::network("no peer");
     let adapter = SecurityAdapter::with_transport(
         "tarpc://127.0.0.1:1".to_string(),
-        Arc::new(MockTransport::new(vec![Err(boom)])),
+        Arc::new(CapabilityTransport::Mock(MockTransport::new(vec![Err(boom)]))),
         AdapterTransportKind::Tarpc,
         Duration::from_secs(5),
     );

@@ -3,7 +3,7 @@
 
 //! TLS 1.3 record layer
 
-use crate::crypto::CryptoCapability;
+use crate::crypto::SecurityCryptoProvider;
 use crate::error::{Error, Result};
 use crate::tls::alert::TlsAlert;
 use crate::tls::content_type;
@@ -16,7 +16,7 @@ use tracing::{debug, error, info, trace, warn};
 
 /// TLS record layer
 pub struct TlsRecordLayer {
-    crypto: Arc<dyn CryptoCapability>,
+    crypto: Arc<SecurityCryptoProvider>,
     keys: SessionKeys,
     write_sequence_number: u64,
     read_sequence_number: u64,
@@ -25,7 +25,7 @@ pub struct TlsRecordLayer {
 
 impl TlsRecordLayer {
     /// Create a new TLS record layer
-    pub fn new(crypto: Arc<dyn CryptoCapability>, keys: SessionKeys) -> Self {
+    pub fn new(crypto: Arc<SecurityCryptoProvider>, keys: SessionKeys) -> Self {
         let initial_read_seq = keys.initial_read_sequence;
         info!(
             "📊 TlsRecordLayer initialized with read_sequence_number = {} (from handshake)",
@@ -473,7 +473,7 @@ mod tests {
             .join("songbird-test-security.sock")
             .to_string_lossy()
             .into_owned();
-        let crypto: Arc<dyn CryptoCapability> = Arc::new(SecurityCryptoProvider::new(path));
+        let crypto: Arc<SecurityCryptoProvider> = Arc::new(SecurityCryptoProvider::new(path));
         let keys = SessionKeys {
             client_write_key: vec![0; 32],
             server_write_key: vec![0; 32],

@@ -33,17 +33,17 @@
 
 use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
-use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
-use async_trait::async_trait;
+use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
 use songbird_types::primal_names::BIOMEOS_DIR;
 use std::path::PathBuf;
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::UnixListener as TokioUnixListener;
+use tokio::net::UnixStream;
 use tracing::{debug, info, warn};
 
 /// Unix domain socket IPC implementation
 ///
 /// **Platform-agnostic, XDG-compliant, zero hardcoding**
-pub struct UnixIPC;
+pub struct UnixPlatformIPC;
 
 /// Primals known to serve the security/crypto capability domain.
 const SECURITY_CAPABILITY_PRIMALS: &[&str] = &["security-provider"];
@@ -103,9 +103,9 @@ where
     std::env::temp_dir().join(format!("{primal_name}.sock"))
 }
 
-#[async_trait]
-impl PlatformIPC for UnixIPC {
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+impl UnixPlatformIPC {
+    /// Create a native endpoint for the given primal name.
+    pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         // Get XDG-compliant socket path (no hardcoding!)
         let path = get_socket_path(primal_name);
 
@@ -139,12 +139,13 @@ impl PlatformIPC for UnixIPC {
         Ok(NativeEndpoint::UnixSocket(path))
     }
 
-    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
+    /// Create a listener on the native endpoint.
+    pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             NativeEndpoint::UnixSocket(path) => {
                 debug!("Creating Unix listener on: {}", path.display());
 
-                let listener = UnixListener::bind(path).map_err(|e| {
+                let listener = TokioUnixListener::bind(path).map_err(|e| {
                     IpcError::ListenerFailed(format!(
                         "Failed to bind Unix socket at {}: {}",
                         path.display(),
@@ -154,7 +155,7 @@ impl PlatformIPC for UnixIPC {
 
                 info!("Unix listener created: {}", path.display());
 
-                Ok(Box::new(UnixListenerWrapper {
+                Ok(PlatformListenerImpl::Unix(UnixListener {
                     inner: listener,
                 }))
             }
@@ -162,7 +163,8 @@ impl PlatformIPC for UnixIPC {
         }
     }
 
-    async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn AsyncStream>> {
+    /// Connect to a native endpoint.
+    pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
             NativeEndpoint::UnixSocket(path) => {
                 debug!("Connecting to Unix socket: {}", path.display());
@@ -177,13 +179,14 @@ impl PlatformIPC for UnixIPC {
 
                 info!("Connected to Unix socket: {}", path.display());
 
-                Ok(Box::new(stream))
+                Ok(AsyncStreamImpl::Unix(stream))
             }
             _ => Err(IpcError::PlatformError("UnixIPC requires UnixSocket endpoint".to_string())),
         }
     }
 
-    async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
+    /// Cleanup endpoint (remove socket file, etc.)
+    pub async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
         match endpoint {
             NativeEndpoint::UnixSocket(path) => {
                 if path.exists() {
@@ -206,21 +209,21 @@ impl PlatformIPC for UnixIPC {
     }
 }
 
-/// Wrapper for `UnixListener` to implement `PlatformListener`
-struct UnixListenerWrapper {
-    inner: UnixListener,
+/// Wrapper for `tokio::net::UnixListener` for [`PlatformListenerImpl::Unix`].
+pub struct UnixListener {
+    inner: TokioUnixListener,
 }
 
-#[async_trait]
-impl PlatformListener for UnixListenerWrapper {
-    async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
+impl UnixListener {
+    /// Accept incoming connection.
+    pub async fn accept(&mut self) -> IpcResult<AsyncStreamImpl> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
             IpcError::ConnectionFailed(format!("Failed to accept Unix connection: {e}"))
         })?;
 
         debug!("Accepted Unix connection from: {:?}", addr);
 
-        Ok(Box::new(stream))
+        Ok(AsyncStreamImpl::Unix(stream))
     }
 }
 
@@ -318,7 +321,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_unix_create_endpoint() {
-        let ipc = UnixIPC;
+        let ipc = UnixPlatformIPC;
         let endpoint = ipc.create_endpoint("test-primal").await.unwrap();
 
         match endpoint {
@@ -338,7 +341,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_unix_listen_and_connect() {
-        let ipc = UnixIPC;
+        let ipc = UnixPlatformIPC;
 
         // Use unique name to avoid test conflicts
         let test_name = format!("test-listen-{}", std::process::id());
@@ -350,7 +353,7 @@ mod tests {
         // Connect in background task (listener already bound — no sleep needed)
         let endpoint_clone = endpoint.clone();
         let connect_handle = tokio::spawn(async move {
-            let ipc = UnixIPC;
+            let ipc = UnixPlatformIPC;
             ipc.connect(&endpoint_clone).await
         });
 
@@ -380,7 +383,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_unix_cleanup() {
-        let ipc = UnixIPC;
+        let ipc = UnixPlatformIPC;
 
         // Use unique name
         let test_name = format!("test-cleanup-{}", std::process::id());

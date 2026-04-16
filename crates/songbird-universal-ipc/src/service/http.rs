@@ -75,77 +75,15 @@ mod tests {
     #![allow(clippy::expect_used, reason = "test assertions")]
 
     use super::super::IpcServiceHandler;
-    use crate::error::{IpcError, IpcResult};
     use crate::handlers::http_handler::{
-        HttpClientCapability, HttpClientFactory, HttpHandler, HttpResponse,
+        HttpClient, HttpClientFactory, HttpHandler, HttpResponse, RotatingMockClient,
     };
     use crate::registry::ServiceRegistry;
     use crate::tower_atomic::JsonRpcHandler;
-    use async_trait::async_trait;
     use serde_json::json;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::RwLock;
-
-    struct MockHttpClient {
-        responses: Vec<HttpResponse>,
-    }
-
-    impl MockHttpClient {
-        fn new(responses: Vec<HttpResponse>) -> Self {
-            Self {
-                responses,
-            }
-        }
-    }
-
-    #[async_trait]
-    impl HttpClientCapability for MockHttpClient {
-        async fn request(
-            &self,
-            _method: &str,
-            _url: &str,
-            _headers: &HashMap<String, String>,
-            _body: Option<&[u8]>,
-        ) -> IpcResult<HttpResponse> {
-            Ok(self.responses.first().cloned().expect("mock response"))
-        }
-    }
-
-    struct MockClientFactory {
-        client: Arc<dyn HttpClientCapability>,
-    }
-
-    #[async_trait]
-    impl HttpClientFactory for MockClientFactory {
-        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
-            Ok(Arc::clone(&self.client))
-        }
-    }
-
-    struct FailingClientFactory;
-
-    #[async_trait]
-    impl HttpClientFactory for FailingClientFactory {
-        async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
-            Err(IpcError::Internal("injected factory failure".into()))
-        }
-    }
-
-    struct AlwaysFailingClient;
-
-    #[async_trait]
-    impl HttpClientCapability for AlwaysFailingClient {
-        async fn request(
-            &self,
-            _method: &str,
-            _url: &str,
-            _headers: &HashMap<String, String>,
-            _body: Option<&[u8]>,
-        ) -> IpcResult<HttpResponse> {
-            Err(IpcError::ConnectionFailed("injected request failure".into()))
-        }
-    }
 
     fn handler_with_ok_response() -> IpcServiceHandler {
         let mock_response = HttpResponse {
@@ -153,9 +91,9 @@ mod tests {
             headers: HashMap::from([("X-Test".to_string(), "ok".to_string())]),
             body: json!({"hello": "world"}),
         };
-        let client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory {
-            client,
+        let inner = Arc::new(RotatingMockClient::new(vec![mock_response]));
+        let factory = Arc::new(HttpClientFactory::InjectTest {
+            client: Arc::new(HttpClient::Rotating(Arc::clone(&inner))),
         });
         let http_handler = Arc::new(HttpHandler::new(factory));
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
@@ -163,15 +101,14 @@ mod tests {
     }
 
     fn handler_with_failing_factory() -> IpcServiceHandler {
-        let http_handler = Arc::new(HttpHandler::new(Arc::new(FailingClientFactory)));
+        let http_handler = Arc::new(HttpHandler::new(Arc::new(HttpClientFactory::FailingCreate)));
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
         IpcServiceHandler::with_http_handler(registry, http_handler)
     }
 
     fn handler_with_failing_client() -> IpcServiceHandler {
-        let client = Arc::new(AlwaysFailingClient);
-        let factory = Arc::new(MockClientFactory {
-            client,
+        let factory = Arc::new(HttpClientFactory::InjectTest {
+            client: Arc::new(HttpClient::AlwaysFailRequest),
         });
         let http_handler = Arc::new(HttpHandler::new(factory));
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));

@@ -10,9 +10,6 @@
 //! Songbird has local storage for sovereign standalone operation, but can utilize
 //! any discovered storage provider for network effects.
 
-// Allow async_fn_in_trait warning - our traits guarantee Send + Sync
-#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
-
 use crate::adapters::transport::{
     AdapterTransportKind, CapabilityTransport, build_default_transport, transport_kind_for_endpoint,
 };
@@ -108,7 +105,7 @@ pub enum StorageHealth {
 pub struct StorageAdapter {
     /// Endpoint URL for the storage capability provider
     endpoint: String,
-    transport: Arc<dyn CapabilityTransport>,
+    transport: Arc<CapabilityTransport>,
     transport_kind: AdapterTransportKind,
     /// Request timeout
     timeout: Duration,
@@ -257,7 +254,7 @@ impl StorageAdapter {
     #[cfg(test)]
     pub(crate) fn with_transport(
         endpoint: String,
-        transport: Arc<dyn CapabilityTransport>,
+        transport: Arc<CapabilityTransport>,
         transport_kind: AdapterTransportKind,
         timeout: Duration,
     ) -> Self {
@@ -350,6 +347,7 @@ impl StorageAdapter {
 }
 
 /// Trait for storage capability providers
+#[expect(async_fn_in_trait, reason = "native async trait for StorageAdapter impl")]
 pub trait StorageProvider: Send + Sync {
     /// Collect current storage metrics
     async fn collect_storage_metrics(&self) -> SongbirdResult<StorageMetrics>;

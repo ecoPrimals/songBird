@@ -16,9 +16,6 @@ use tokio::sync::RwLock;
 /// Result type for primal operations
 pub type Result<T> = std::result::Result<T, PrimalError>;
 
-/// Injected process environment lookup, shared across discovery tasks.
-type EnvVarFn = Arc<dyn Fn(&str) -> std::result::Result<String, VarError> + Send + Sync>;
-
 /// Errors in primal self-knowledge system
 #[derive(Debug, thiserror::Error)]
 pub enum PrimalError {
@@ -49,7 +46,7 @@ pub struct PrimalSelfKnowledge {
     discovered_primals: Arc<RwLock<HashMap<String, PrimalInfo>>>,
 
     /// Discovery mechanisms to try
-    discovery_mechanisms: Vec<Box<dyn DiscoveryMechanism>>,
+    discovery_mechanisms: Vec<DiscoveryMechanism>,
 }
 
 impl PrimalSelfKnowledge {
@@ -57,16 +54,8 @@ impl PrimalSelfKnowledge {
     ///
     /// No assumptions, pure self-discovery.
     pub fn discover_self() -> Result<Self> {
-        Self::discover_self_with(|k| songbird_process_env::var(k))
-    }
-
-    /// Same as [`discover_self`](Self::discover_self) with an injectable env reader (tests).
-    pub fn discover_self_with(
-        env: impl Fn(&str) -> std::result::Result<String, VarError> + Send + Sync + 'static,
-    ) -> Result<Self> {
-        let env = Arc::new(env);
-        let my_name = Self::introspect_name_with(|k| env(k));
-        let my_capabilities = Self::introspect_capabilities_with(|k| env(k));
+        let my_name = Self::introspect_name_with(|k| songbird_process_env::var(k));
+        let my_capabilities = Self::introspect_capabilities_with(|k| songbird_process_env::var(k));
 
         tracing::info!(
             "Primal self-discovered: name='{}', capabilities={:?}",
@@ -74,16 +63,65 @@ impl PrimalSelfKnowledge {
             my_capabilities
         );
 
-        let env_mech = Arc::clone(&env);
         Ok(Self {
             my_name,
             my_capabilities,
             discovered_primals: Arc::new(RwLock::new(HashMap::new())),
             discovery_mechanisms: vec![
-                Box::new(EnvInjectedDiscovery {
-                    get_var: env_mech,
-                }),
-                Box::new(DnsSrvDiscovery::new()),
+                DiscoveryMechanism::ProcessEnvironment,
+                DiscoveryMechanism::DnsSrv(DnsSrvDiscovery::new()),
+            ],
+        })
+    }
+
+    /// Same as [`discover_self`](Self::discover_self) with a merged env map for tests and tooling.
+    ///
+    /// Keys are environment variable names; values override `songbird_process_env::var` when present.
+    pub fn discover_self_with(env: HashMap<String, String>) -> Result<Self> {
+        let my_name = Self::introspect_name_with(|k| lookup_env_map_or_process(&env, k));
+        let my_capabilities =
+            Self::introspect_capabilities_with(|k| lookup_env_map_or_process(&env, k));
+
+        tracing::info!(
+            "Primal self-discovered: name='{}', capabilities={:?}",
+            my_name,
+            my_capabilities
+        );
+
+        let env = Arc::new(env);
+        Ok(Self {
+            my_name,
+            my_capabilities,
+            discovered_primals: Arc::new(RwLock::new(HashMap::new())),
+            discovery_mechanisms: vec![
+                DiscoveryMechanism::MappedEnvironment(Arc::clone(&env)),
+                DiscoveryMechanism::DnsSrv(DnsSrvDiscovery::new()),
+            ],
+        })
+    }
+
+    /// Like [`discover_self_with`](Self::discover_self_with), but environment-based discovery uses
+    /// only the provided map (no `songbird_process_env` fallback). Intended for tests that need
+    /// deterministic "missing env" behavior.
+    pub fn discover_self_with_strict(env: HashMap<String, String>) -> Result<Self> {
+        let my_name = Self::introspect_name_with(|k| lookup_env_map_or_process(&env, k));
+        let my_capabilities =
+            Self::introspect_capabilities_with(|k| lookup_env_map_or_process(&env, k));
+
+        tracing::info!(
+            "Primal self-discovered: name='{}', capabilities={:?}",
+            my_name,
+            my_capabilities
+        );
+
+        let env = Arc::new(env);
+        Ok(Self {
+            my_name,
+            my_capabilities,
+            discovered_primals: Arc::new(RwLock::new(HashMap::new())),
+            discovery_mechanisms: vec![
+                DiscoveryMechanism::MappedEnvironmentStrict(Arc::clone(&env)),
+                DiscoveryMechanism::DnsSrv(DnsSrvDiscovery::new()),
             ],
         })
     }
@@ -94,7 +132,9 @@ impl PrimalSelfKnowledge {
         Self::introspect_name_with(|k| songbird_process_env::var(k))
     }
 
-    fn introspect_name_with(env: impl Fn(&str) -> std::result::Result<String, VarError>) -> String {
+    fn introspect_name_with(
+        mut env: impl FnMut(&str) -> std::result::Result<String, VarError>,
+    ) -> String {
         // Try explicit name first
         if let Ok(name) = env("PRIMAL_NAME") {
             return name;
@@ -121,7 +161,7 @@ impl PrimalSelfKnowledge {
     }
 
     fn introspect_capabilities_with(
-        env: impl Fn(&str) -> std::result::Result<String, VarError>,
+        mut env: impl FnMut(&str) -> std::result::Result<String, VarError>,
     ) -> Vec<String> {
         let mut caps = vec![
             #[cfg(feature = "security")]
@@ -246,6 +286,16 @@ impl PrimalSelfKnowledge {
     }
 }
 
+fn lookup_env_map_or_process(
+    map: &HashMap<String, String>,
+    key: &str,
+) -> std::result::Result<String, VarError> {
+    if let Some(v) = map.get(key) {
+        return Ok(v.clone());
+    }
+    songbird_process_env::var(key)
+}
+
 /// Primal identity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalIdentity {
@@ -264,35 +314,65 @@ pub struct PrimalInfo {
     pub discovery_method: String,
 }
 
-/// Discovery mechanism trait
-#[async_trait::async_trait]
-pub trait DiscoveryMechanism: Send + Sync {
+/// Concrete discovery mechanism (enum dispatch; no trait objects).
+#[derive(Clone)]
+pub enum DiscoveryMechanism {
+    /// Environment variables via [`songbird_process_env`] (production [`PrimalSelfKnowledge::discover_self`]).
+    ProcessEnvironment,
+    /// Merged map + process env fallback (see [`PrimalSelfKnowledge::discover_self_with`]).
+    MappedEnvironment(Arc<HashMap<String, String>>),
+    /// Map only — no process fallback (see [`PrimalSelfKnowledge::discover_self_with_strict`]).
+    MappedEnvironmentStrict(Arc<HashMap<String, String>>),
+    /// DNS SRV style lookup (optional / feature-gated behavior inside).
+    DnsSrv(DnsSrvDiscovery),
+}
+
+impl DiscoveryMechanism {
     /// Name of this discovery mechanism
-    fn name(&self) -> &str;
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::ProcessEnvironment
+            | Self::MappedEnvironment(_)
+            | Self::MappedEnvironmentStrict(_) => "environment",
+            Self::DnsSrv(_) => "dns-srv",
+        }
+    }
 
     /// Discover primal by capability
-    async fn discover(&self, capability: &str) -> Result<PrimalInfo>;
+    pub async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
+        match self {
+            Self::ProcessEnvironment => {
+                EnvironmentDiscovery::discover_with(capability, |k| songbird_process_env::var(k))
+                    .await
+            }
+            Self::MappedEnvironment(map) => {
+                let map = Arc::clone(map);
+                EnvironmentDiscovery::discover_with(capability, move |k| {
+                    if let Some(v) = map.get(k) {
+                        Ok(v.clone())
+                    } else {
+                        songbird_process_env::var(k)
+                    }
+                })
+                .await
+            }
+            Self::MappedEnvironmentStrict(map) => {
+                let map = Arc::clone(map);
+                EnvironmentDiscovery::discover_with(capability, move |k| {
+                    map.get(k).cloned().ok_or(VarError::NotPresent)
+                })
+                .await
+            }
+            Self::DnsSrv(d) => d.discover(capability).await,
+        }
+    }
 }
 
 /// Environment variable based discovery
 pub struct EnvironmentDiscovery;
 
 /// Uses injected env lookup for [`PrimalSelfKnowledge::discover_self_with`].
-struct EnvInjectedDiscovery {
-    get_var: EnvVarFn,
-}
-
-#[async_trait::async_trait]
-impl DiscoveryMechanism for EnvInjectedDiscovery {
-    fn name(&self) -> &'static str {
-        "environment"
-    }
-
-    async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
-        EnvironmentDiscovery::discover_with(capability, |k| (self.get_var)(k)).await
-    }
-}
-
 impl Default for EnvironmentDiscovery {
     fn default() -> Self {
         Self::new()
@@ -303,6 +383,12 @@ impl EnvironmentDiscovery {
     #[must_use]
     pub const fn new() -> Self {
         Self
+    }
+
+    /// Mechanism label (same as [`DiscoveryMechanism`] for the process-backed path).
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        "environment"
     }
 
     /// Discover `host` / `port` from env using an injectable reader (tests).
@@ -329,20 +415,15 @@ impl EnvironmentDiscovery {
             discovery_method: "environment".to_string(),
         })
     }
-}
 
-#[async_trait::async_trait]
-impl DiscoveryMechanism for EnvironmentDiscovery {
-    fn name(&self) -> &'static str {
-        "environment"
-    }
-
-    async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
+    /// Discover using process environment only.
+    pub async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
         Self::discover_with(capability, |k| songbird_process_env::var(k)).await
     }
 }
 
 /// DNS SRV record discovery
+#[derive(Clone, Copy)]
 pub struct DnsSrvDiscovery;
 
 impl Default for DnsSrvDiscovery {
@@ -356,15 +437,14 @@ impl DnsSrvDiscovery {
     pub const fn new() -> Self {
         Self
     }
-}
 
-#[async_trait::async_trait]
-impl DiscoveryMechanism for DnsSrvDiscovery {
-    fn name(&self) -> &'static str {
+    #[must_use]
+    pub fn name(&self) -> &'static str {
         "dns-srv"
     }
 
-    async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
+    /// Look up `_capability._tcp.local` (simplified).
+    pub async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
         // Look up _capability._tcp.local (DNS-SD/SRV record)
         let service_name = format!("_{capability}._tcp.local");
 

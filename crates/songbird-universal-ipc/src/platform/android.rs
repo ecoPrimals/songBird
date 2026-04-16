@@ -44,21 +44,21 @@
 
 use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
-use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
-use async_trait::async_trait;
+use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
 use songbird_types::primal_names::BIOMEOS_DIR;
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::UnixListener as TokioUnixListener;
+use tokio::net::UnixStream;
 use tracing::{debug, info};
 
 /// Android abstract socket IPC implementation
 ///
 /// **Platform**: Android (ARM64, `x86_64`, any architecture)
 /// **Also works on**: Linux (abstract sockets are a Linux kernel feature)
-pub struct AndroidIPC;
+pub struct AndroidPlatformIPC;
 
-#[async_trait]
-impl PlatformIPC for AndroidIPC {
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+impl AndroidPlatformIPC {
+    /// Create a native endpoint for the given primal name.
+    pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         // Abstract socket naming: @biomeos_{primal_name}
         // The @ prefix is a convention for abstract sockets
         // Rust's UnixListener automatically converts @ to null byte
@@ -71,20 +71,21 @@ impl PlatformIPC for AndroidIPC {
         Ok(NativeEndpoint::AbstractSocket(abstract_name))
     }
 
-    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
+    /// Create a listener on the native endpoint.
+    pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             NativeEndpoint::AbstractSocket(name) => {
                 debug!("Creating abstract socket listener on: {}", name);
 
                 // Abstract sockets: path with @ prefix
                 // UnixListener automatically handles null byte conversion
-                let listener = UnixListener::bind(name).map_err(|e| {
+                let listener = TokioUnixListener::bind(name).map_err(|e| {
                     IpcError::ListenerFailed(format!("Failed to bind abstract socket {name}: {e}"))
                 })?;
 
                 info!("Abstract socket listener created: {} (Android-optimized)", name);
 
-                Ok(Box::new(AbstractListenerWrapper {
+                Ok(PlatformListenerImpl::Android(AndroidListener {
                     inner: listener,
                 }))
             }
@@ -94,7 +95,8 @@ impl PlatformIPC for AndroidIPC {
         }
     }
 
-    async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn AsyncStream>> {
+    /// Connect to a native endpoint.
+    pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
             NativeEndpoint::AbstractSocket(name) => {
                 debug!("Connecting to abstract socket: {}", name);
@@ -107,7 +109,7 @@ impl PlatformIPC for AndroidIPC {
 
                 info!("Connected to abstract socket: {}", name);
 
-                Ok(Box::new(stream))
+                Ok(AsyncStreamImpl::Unix(stream))
             }
             _ => Err(IpcError::PlatformError(
                 "AndroidIPC requires AbstractSocket endpoint".to_string(),
@@ -115,7 +117,8 @@ impl PlatformIPC for AndroidIPC {
         }
     }
 
-    async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
+    /// Cleanup endpoint.
+    pub async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
         match endpoint {
             NativeEndpoint::AbstractSocket(name) => {
                 // Abstract sockets are automatically cleaned up by the kernel
@@ -130,14 +133,14 @@ impl PlatformIPC for AndroidIPC {
     }
 }
 
-/// Wrapper for `UnixListener` (abstract socket) to implement `PlatformListener`
-struct AbstractListenerWrapper {
-    inner: UnixListener,
+/// Wrapper for abstract-socket `UnixListener` for [`PlatformListenerImpl::Android`].
+pub struct AndroidListener {
+    inner: TokioUnixListener,
 }
 
-#[async_trait]
-impl PlatformListener for AbstractListenerWrapper {
-    async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
+impl AndroidListener {
+    /// Accept incoming connection.
+    pub async fn accept(&mut self) -> IpcResult<AsyncStreamImpl> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
             IpcError::ConnectionFailed(format!("Failed to accept abstract socket connection: {e}"))
         })?;
@@ -145,7 +148,7 @@ impl PlatformListener for AbstractListenerWrapper {
         // Log connection details (abstract sockets don't have filesystem paths)
         debug!("Accepted abstract socket connection from: {:?}", addr);
 
-        Ok(Box::new(stream))
+        Ok(AsyncStreamImpl::Unix(stream))
     }
 }
 
@@ -157,7 +160,7 @@ mod tests {
     #[tokio::test]
     #[cfg(target_os = "linux")] // Abstract sockets require Linux kernel
     async fn test_android_create_endpoint() {
-        let ipc = AndroidIPC;
+        let ipc = AndroidPlatformIPC;
         let endpoint = ipc.create_endpoint("test-primal").await.unwrap();
 
         match endpoint {
@@ -172,7 +175,7 @@ mod tests {
     #[tokio::test]
     #[cfg(target_os = "linux")] // Abstract sockets require Linux kernel
     async fn test_android_listen_and_connect() {
-        let ipc = AndroidIPC;
+        let ipc = AndroidPlatformIPC;
 
         // Use unique name for this test to avoid conflicts
         let test_name = format!("test-listen-{}", std::process::id());
@@ -184,7 +187,7 @@ mod tests {
         // Connect in background task (listener already bound — no sleep needed)
         let endpoint_clone = endpoint.clone();
         let connect_handle = tokio::spawn(async move {
-            let ipc = AndroidIPC;
+            let ipc = AndroidPlatformIPC;
             ipc.connect(&endpoint_clone).await
         });
 
@@ -209,7 +212,7 @@ mod tests {
     #[tokio::test]
     #[cfg(target_os = "linux")]
     async fn test_android_cleanup_no_filesystem() {
-        let ipc = AndroidIPC;
+        let ipc = AndroidPlatformIPC;
 
         // Use unique name to avoid conflicts with parallel tests
         let test_name = format!("cleanup-{}", std::process::id());

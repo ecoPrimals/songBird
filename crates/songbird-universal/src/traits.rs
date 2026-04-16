@@ -32,8 +32,10 @@ pub trait UniversalAdapter: Provider {
     ) -> SongbirdResult<crate::types::UniversalResponse>;
 
     /// Register service provider
-    async fn register_provider(&mut self, provider: Box<dyn ServiceProvider>)
-    -> SongbirdResult<()>;
+    async fn register_provider<P: ServiceProvider + Send + 'static>(
+        &mut self,
+        provider: Box<P>,
+    ) -> SongbirdResult<()>;
 }
 
 #[cfg(test)]

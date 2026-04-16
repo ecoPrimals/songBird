@@ -41,7 +41,7 @@ use crate::handlers::tor_handler::TorHandler;
 use crate::registry::ServiceRegistry;
 use songbird_lineage_relay::relay_handler::RelayHandler;
 use songbird_network_federation::state::FederationState;
-use std::env::VarError;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -51,9 +51,6 @@ mod http;
 mod ipc_registry;
 mod meta;
 mod util;
-
-/// Injectable environment reader (for concurrent-safe tests without global mutation).
-pub(super) type EnvReader = dyn Fn(&str) -> Result<String, VarError> + Send + Sync;
 
 pub use crate::service_types::{
     CapabilityResolveParams, CapabilityResolveResult, CompositionPrimalInfo, CompositionState,
@@ -72,7 +69,7 @@ pub use crate::service_types::{
 pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
     /// When set, used instead of [`songbird_process_env::var`] for identity `family_id` resolution (tests).
-    family_id_env: Option<Arc<EnvReader>>,
+    family_id_overrides: Option<Arc<HashMap<String, String>>>,
     http_handler: Arc<HttpHandler>,
     stun_handler: Arc<StunHandler>,
     discovery_handler: Arc<DiscoveryHandler>,

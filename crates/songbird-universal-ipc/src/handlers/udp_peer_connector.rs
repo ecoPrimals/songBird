@@ -3,7 +3,7 @@
 
 //! UDP Peer Connector
 //!
-//! Production implementation of `PeerConnector` using UDP hole punching.
+//! Production UDP hole punching and [`PeerConnector`] enum dispatch.
 //!
 //! ## Deep Debt Compliance
 //! - Zero hardcoding: Runtime configuration via params
@@ -12,8 +12,7 @@
 //! - Modern async: Full async/await, event-driven
 //! - No polling: Uses `tokio::select`! for concurrent send/recv
 
-use super::peer_handler::{PeerConnectResult, PeerConnector};
-use async_trait::async_trait;
+use super::peer_types::PeerConnectResult;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -139,11 +138,8 @@ impl UdpPeerConnector {
 
         Ok(received)
     }
-}
 
-#[async_trait]
-impl PeerConnector for UdpPeerConnector {
-    async fn connect(
+    pub async fn connect(
         &self,
         target_address: &str,
         our_binding: Option<&str>,
@@ -211,6 +207,99 @@ impl PeerConnector for UdpPeerConnector {
             state: state.to_string(),
             channel: None,
         })
+    }
+}
+
+/// Peer connection backend (enum dispatch).
+pub enum PeerConnector {
+    Udp(UdpPeerConnector),
+    #[cfg(test)]
+    Mock(MockPeerConnector),
+    #[cfg(test)]
+    ErrorSim,
+    #[cfg(test)]
+    Weird,
+}
+
+impl PeerConnector {
+    pub async fn connect(
+        &self,
+        target_address: &str,
+        our_binding: Option<&str>,
+        rendezvous_token: Option<&str>,
+    ) -> Result<PeerConnectResult, String> {
+        match self {
+            Self::Udp(c) => c.connect(target_address, our_binding, rendezvous_token).await,
+            #[cfg(test)]
+            Self::Mock(m) => m.connect(target_address, our_binding, rendezvous_token).await,
+            #[cfg(test)]
+            Self::ErrorSim => Err("simulated transport failure".to_string()),
+            #[cfg(test)]
+            Self::Weird => Ok(PeerConnectResult {
+                connection_id: "x".into(),
+                state: "negotiating".into(),
+                channel: None,
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+pub struct MockPeerConnector {
+    should_succeed: std::sync::RwLock<bool>,
+}
+
+#[cfg(test)]
+impl Default for MockPeerConnector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+impl MockPeerConnector {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            should_succeed: std::sync::RwLock::new(true),
+        }
+    }
+
+    pub fn set_should_succeed(&self, succeed: bool) {
+        *self.should_succeed.write().unwrap() = succeed;
+    }
+
+    pub async fn connect(
+        &self,
+        target_address: &str,
+        our_binding: Option<&str>,
+        _rendezvous_token: Option<&str>,
+    ) -> Result<PeerConnectResult, String> {
+        let should_succeed = *self.should_succeed.read().unwrap();
+
+        let connection_id = uuid::Uuid::new_v4().to_string();
+
+        if should_succeed {
+            let local_address = our_binding
+                .map_or_else(|| "0.0.0.0:0".to_string(), std::string::ToString::to_string);
+
+            Ok(PeerConnectResult {
+                connection_id,
+                state: "connected".to_string(),
+                channel: Some(super::peer_types::PeerChannel {
+                    local_address,
+                    remote_address: target_address.to_string(),
+                    protocol: "udp".to_string(),
+                    latency_ms: Some(25),
+                }),
+            })
+        } else {
+            Ok(PeerConnectResult {
+                connection_id,
+                state: "failed".to_string(),
+                channel: None,
+            })
+        }
     }
 }
 

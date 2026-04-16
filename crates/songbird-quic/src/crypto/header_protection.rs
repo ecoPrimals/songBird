@@ -8,7 +8,7 @@
 //! from a sample of the encrypted payload using `AES-ECB` or `ChaCha20` depending
 //! on the cipher suite.
 
-use super::provider::{QuicCipherSuite, QuicCryptoProvider};
+use super::provider::{QuicCipherSuite, SecurityQuicCrypto};
 use crate::error::{QuicError, Result};
 use crate::packet::header::is_long_header;
 
@@ -23,7 +23,7 @@ use crate::packet::header::is_long_header;
 ///
 /// Returns [`QuicError::Crypto`] if the packet buffer is too short for the header-protection sample.
 pub async fn apply_header_protection(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     suite: QuicCipherSuite,
     hp_key: &[u8],
     packet: &mut [u8],
@@ -54,7 +54,7 @@ pub async fn apply_header_protection(
 ///
 /// Returns [`QuicError::Crypto`] if the packet buffer is too short for the header-protection sample.
 pub async fn remove_header_protection(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     suite: QuicCipherSuite,
     hp_key: &[u8],
     packet: &mut [u8],

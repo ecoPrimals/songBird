@@ -7,7 +7,7 @@
 //! Destination Connection ID. This is deterministic (not secret) and exists
 //! to bootstrap the TLS handshake.
 
-use super::provider::{QuicCipherSuite, QuicCryptoProvider};
+use super::provider::{QuicCipherSuite, SecurityQuicCrypto};
 use crate::error::Result;
 
 /// QUIC v1 Initial salt (RFC 9001 Section 5.2).
@@ -52,10 +52,7 @@ pub struct InitialKeys {
 /// client_initial_secret = HKDF-Expand-Label(initial_secret, "client in", "", 32)
 /// server_initial_secret = HKDF-Expand-Label(initial_secret, "server in", "", 32)
 /// ```
-pub async fn derive_initial_keys(
-    crypto: &dyn QuicCryptoProvider,
-    dcid: &[u8],
-) -> Result<InitialKeys> {
+pub async fn derive_initial_keys(crypto: &SecurityQuicCrypto, dcid: &[u8]) -> Result<InitialKeys> {
     let initial_secret = crypto.hkdf_extract(QUIC_V1_INITIAL_SALT, dcid).await?;
 
     let client_initial_secret = hkdf_expand_label(
@@ -98,7 +95,7 @@ pub async fn derive_initial_keys(
 /// quic hp  = HKDF-Expand-Label(secret, "quic hp",  "", hp_key_len)
 /// ```
 pub async fn derive_directional_keys(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     secret: &[u8],
 ) -> Result<DirectionalKeys> {
     let key =
@@ -135,7 +132,7 @@ pub async fn derive_directional_keys(
 /// } HkdfLabel;
 /// ```
 pub async fn hkdf_expand_label(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     secret: &[u8],
     label: &[u8],
     context: &[u8],

@@ -35,7 +35,7 @@
 //!
 //! Universal IPC Layer (this crate):
 //!   - Translates virtual paths to native endpoints
-//!   - Platform abstraction via PlatformIPC trait
+//!   - Platform abstraction via `PlatformIpcImpl` enum dispatch
 //!
 //! Platform Layer:
 //!   - Unix: e.g. `/tmp/primal-security.sock` (legacy deployments: `primal-beardog.sock`)
@@ -219,6 +219,6 @@ pub use endpoint::{NativeEndpoint, VirtualEndpoint};
 /// Universal IPC error type and result alias.
 pub use error::{IpcError, IpcResult};
 /// Async stream abstraction and platform IPC trait for listeners and connectors.
-pub use platform::{AsyncStream, PlatformIPC};
+pub use platform::{AsyncStream, AsyncStreamImpl, PlatformIpcImpl};
 /// In-memory service registry and metadata for registered primals.
 pub use registry::{ServiceMetadata, ServiceRegistry};

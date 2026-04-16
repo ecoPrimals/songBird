@@ -18,7 +18,6 @@
 //!
 //! **After (Standardized)**:
 //! ```ignore
-//! #[async_trait]
 //! impl HealthCheck for Database {
 //!     async fn health(&self) -> HealthStatus {
 //!         // Standardized response
@@ -30,11 +29,8 @@
 //!
 //! ```rust
 //! use songbird_orchestrator::resilience::health::{HealthCheck, HealthStatus, Status};
-//! use async_trait::async_trait;
-//!
 //! struct MyService;
 //!
-//! #[async_trait]
 //! impl HealthCheck for MyService {
 //!     async fn health(&self) -> HealthStatus {
 //!         HealthStatus::healthy("my-service")
@@ -44,7 +40,8 @@
 //! }
 //! ```
 
-use async_trait::async_trait;
+#![expect(async_fn_in_trait, reason = "HealthCheck is the orchestrator-wide async health surface")]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -53,7 +50,6 @@ use std::time::SystemTime;
 ///
 /// Implement this trait to provide standardized health information
 /// about your component or service.
-#[async_trait]
 pub trait HealthCheck: Send + Sync {
     /// Perform health check and return status
     ///
@@ -404,21 +400,18 @@ mod tests {
     struct MockDegradedService;
     struct MockUnhealthyService;
 
-    #[async_trait]
     impl HealthCheck for MockHealthyService {
         async fn health(&self) -> HealthStatus {
             HealthStatus::healthy("mock-healthy")
         }
     }
 
-    #[async_trait]
     impl HealthCheck for MockDegradedService {
         async fn health(&self) -> HealthStatus {
             HealthStatus::degraded("mock-degraded", "High latency")
         }
     }
 
-    #[async_trait]
     impl HealthCheck for MockUnhealthyService {
         async fn health(&self) -> HealthStatus {
             HealthStatus::unhealthy("mock-unhealthy", "Connection failed")
@@ -484,11 +477,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_check_all() {
-        let services: Vec<&dyn HealthCheck> =
-            vec![&MockHealthyService, &MockDegradedService, &MockUnhealthyService];
-
         let checker = HealthChecker::new(std::time::Duration::from_secs(1));
-        let health = checker.check_all(&services).await;
+        let a = checker.check(&MockHealthyService).await;
+        let b = checker.check(&MockDegradedService).await;
+        let c = checker.check(&MockUnhealthyService).await;
+        let health = AggregatedHealth::new().add_component(a).add_component(b).add_component(c);
 
         assert_eq!(health.status, Status::Unhealthy);
         assert_eq!(health.components.len(), 3);

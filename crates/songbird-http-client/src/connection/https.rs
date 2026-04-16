@@ -5,7 +5,7 @@
 //!
 //! Handles HTTPS requests over TLS 1.3 connections with progressive fallback.
 
-use crate::crypto::CryptoCapability;
+use crate::crypto::SecurityCryptoProvider;
 use crate::error::{Error, Result};
 use crate::tls::config::{ExtensionStrategy, FallbackStrategy, TlsConfig};
 use crate::tls::handshake::TlsHandshake;
@@ -26,7 +26,7 @@ use tracing::{debug, error, info, warn};
 /// - Application data encryption/decryption
 /// - HTTP response parsing from TLS records
 pub struct HttpsConnection {
-    crypto: Arc<dyn CryptoCapability>,
+    crypto: Arc<SecurityCryptoProvider>,
     tls_config: TlsConfig,
     profiler: Option<Arc<ServerProfiler>>,
 }
@@ -40,7 +40,7 @@ impl HttpsConnection {
     /// * `tls_config` - TLS configuration (versions, fallback strategy, etc.)
     /// * `profiler` - Optional server profiler for performance tracking
     pub fn new(
-        crypto: Arc<dyn CryptoCapability>,
+        crypto: Arc<SecurityCryptoProvider>,
         tls_config: TlsConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
@@ -528,7 +528,7 @@ impl HttpsConnection {
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::HttpsConnection;
-    use crate::crypto::{CryptoCapability, SecurityCryptoProvider};
+    use crate::crypto::SecurityCryptoProvider;
     use crate::tls::config::{ExtensionStrategy, FallbackStrategy, TlsConfig};
     use std::sync::Arc;
 
@@ -538,7 +538,7 @@ mod tests {
             .join("songbird-test-security.sock")
             .to_string_lossy()
             .into_owned();
-        let crypto: Arc<dyn CryptoCapability> = Arc::new(SecurityCryptoProvider::new(path));
+        let crypto: Arc<SecurityCryptoProvider> = Arc::new(SecurityCryptoProvider::new(path));
         let cfg = TlsConfig {
             max_retries: 4,
             ..Default::default()

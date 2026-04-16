@@ -7,7 +7,7 @@
 //! New keys are derived from the current traffic secret using HKDF-Expand-Label.
 
 use crate::crypto::initial_keys::{DirectionalKeys, hkdf_expand_label};
-use crate::crypto::provider::{QuicCipherSuite, QuicCryptoProvider};
+use crate::crypto::provider::{QuicCipherSuite, SecurityQuicCrypto};
 use crate::error::Result;
 
 /// Derive the next generation of traffic secret from the current one.
@@ -22,7 +22,7 @@ use crate::error::Result;
 ///     HKDF-Expand-Label(application_traffic_secret_N, "quic ku", "", Hash.length)
 /// ```
 pub async fn derive_next_secret(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     current_secret: &[u8],
     suite: QuicCipherSuite,
 ) -> Result<Vec<u8>> {
@@ -35,7 +35,7 @@ pub async fn derive_next_secret(
 ///
 /// Returns [`QuicError`](crate::error::QuicError) when HKDF expansion fails.
 pub async fn derive_keys_from_secret(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     secret: &[u8],
     suite: QuicCipherSuite,
 ) -> Result<DirectionalKeys> {
@@ -91,7 +91,7 @@ impl KeyUpdateState {
     /// # Errors
     ///
     /// Returns [`QuicError`](crate::error::QuicError) when key derivation fails.
-    pub async fn update(&mut self, crypto: &dyn QuicCryptoProvider) -> Result<()> {
+    pub async fn update(&mut self, crypto: &SecurityQuicCrypto) -> Result<()> {
         let next_secret = derive_next_secret(crypto, &self.current_secret, self.suite).await?;
         let next_keys = derive_keys_from_secret(crypto, &next_secret, self.suite).await?;
         self.current_secret = next_secret;

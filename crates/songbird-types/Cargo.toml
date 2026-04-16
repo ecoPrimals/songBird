@@ -27,7 +27,6 @@ bytes = { workspace = true }
 songbird-process-env = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true, optional = true }
-async-trait = { workspace = true }
 serde_json = { workspace = true, optional = true }
 # Added for consolidated types from federation and primal communication
 chrono = { workspace = true, optional = true }

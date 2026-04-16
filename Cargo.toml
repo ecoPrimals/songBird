@@ -117,15 +117,6 @@ tokio = { version = "1.48", features = [
     "rt-multi-thread", "net", "io-util", "macros",
     "sync", "time", "fs", "signal", "process",
 ] }
-# SB-06: 113 annotations across crates (down from 141, Wave 144 dyn elimination).
-# Wave 144 converted PeerConnection, BtspProvider, SecurityProvider (federation),
-# ConsentStorageBackend, TaskStorageBackend to enum/concrete dispatch.
-# Removed async-trait from 6 crates (canonical, config, execution-agent,
-# network-federation, registry, stun).
-# Remaining 113 are: platform IPC (6 OS backends), canonical Provider tree,
-# lineage-relay, discovery providers, HTTP handlers, crypto capability.
-# Continue converting dyn→enum/generic as architecture allows.
-async-trait = "0.1"
 futures-util = "0.3.31"
 slab = "0.4.11"
 
@@ -174,9 +165,9 @@ urlencoding = "2.1"
 hyper = { version = "1.0", features = ["full"] }
 http-body-util = "0.1"
 bytes = "1.0"
-axum = "0.7"
+axum = "0.8"
 tower = "0.5"
-tower-http = { version = "0.5", features = ["trace", "cors", "fs", "limit"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "fs", "limit"] }
 
 # System
 wasi = "0.14"

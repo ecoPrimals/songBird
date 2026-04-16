@@ -13,7 +13,6 @@ authors = ["ecoPrimals Team"]
 [dependencies]
 # Async runtime
 tokio = { workspace = true, features = ["full"] }
-async-trait = { workspace = true }
 
 # Serialization
 serde = { workspace = true }

@@ -2,12 +2,10 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use crate::error::IpcResult;
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error, instrument};
 
-use super::traits::HttpClientCapability;
 use super::types::HttpResponse;
 
 /// Production HTTP client using songbird-http-client
@@ -25,12 +23,9 @@ impl SongbirdHttpClient {
             inner: Arc::new(inner),
         }
     }
-}
 
-#[async_trait]
-impl HttpClientCapability for SongbirdHttpClient {
     #[instrument(skip(self, body), fields(method = %method, url = %url))]
-    async fn request(
+    pub async fn request(
         &self,
         method: &str,
         url: &str,

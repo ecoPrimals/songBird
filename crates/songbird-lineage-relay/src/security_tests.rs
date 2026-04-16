@@ -12,13 +12,11 @@ use base64::{Engine, engine::general_purpose};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixListener;
 
-use crate::birdsong::{BirdSongCrypto, LineageHint};
-use crate::relay::RelayAuthority;
 use crate::security::{
     MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority, SecurityBirdSongProvider,
     SecurityRelayAuthority,
 };
-use crate::types::{MaskingLevel, NodeId};
+use crate::types::{LineageHint, MaskingLevel, NodeId};
 
 fn unique_socket_path() -> PathBuf {
     std::env::temp_dir().join(format!(

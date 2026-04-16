@@ -36,6 +36,7 @@ pub use types::{
 mod tests {
     #![allow(clippy::expect_used, reason = "test assertions")]
 
+    use super::routing::{CanonicalProtocolHandler, MockHttpHandler};
     use super::*;
     use crate::traits::canonical::{
         Endpoint, HealthStatus, ProviderType, ServiceInfo as CanonicalServiceInfo, ServiceType,
@@ -175,43 +176,12 @@ mod tests {
         assert_eq!(picked.service.id, "fast");
     }
 
-    #[derive(Debug)]
-    struct MockHttpHandler;
-
-    #[async_trait::async_trait]
-    impl CanonicalProtocolHandler for MockHttpHandler {
-        fn protocol_name(&self) -> &'static str {
-            "http"
-        }
-
-        async fn handle_request(
-            &self,
-            service: &CanonicalServiceInfo,
-            request: &CanonicalAdapterRequest,
-        ) -> crate::errors::SongbirdResult<CanonicalAdapterResponse> {
-            Ok(CanonicalAdapterResponse {
-                request_id: request.id.clone(),
-                service_id: service.id.clone(),
-                payload: json!({"ok": true}),
-                metadata: HashMap::new(),
-                processing_time: Duration::from_millis(1),
-                performance_info: CanonicalServicePerformance::default(),
-            })
-        }
-
-        fn supports_service(&self, _service: &CanonicalServiceInfo) -> bool {
-            true
-        }
-
-        fn get_metadata(&self) -> HashMap<String, String> {
-            HashMap::new()
-        }
-    }
-
     #[tokio::test]
     async fn protocol_router_routes_registered_http_handler() {
         let router = CanonicalProtocolRouter::new();
-        router.register_handler(Arc::new(MockHttpHandler)).await;
+        router
+            .register_handler(Arc::new(CanonicalProtocolHandler::MockHttp(MockHttpHandler)))
+            .await;
         let svc = sample_service("svc", "compute");
         let req = create_adapter_request("compute", json!({}), CanonicalRequestPriority::Normal);
         let res = router.route_request(&svc, &req).await.expect("route");

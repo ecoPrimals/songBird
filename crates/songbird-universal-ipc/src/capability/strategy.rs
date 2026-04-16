@@ -5,27 +5,49 @@
 
 use crate::capability::provider::Provider;
 use crate::error::IpcResult;
-use async_trait::async_trait;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{debug, info};
 
-/// Discovery strategy trait
-///
-/// Each strategy implements a different method for discovering capability providers.
-#[async_trait]
-pub trait DiscoveryStrategy: Send + Sync {
+/// Discovery strategy (enum dispatch — environment, filesystem, or injected env map for tests).
+#[derive(Clone)]
+pub enum DiscoveryStrategy {
+    Environment,
+    Filesystem(FilesystemStrategy),
+    #[cfg(test)]
+    InjectedEnvironment(Arc<std::collections::HashMap<String, String>>),
+}
+
+impl DiscoveryStrategy {
     /// Name of this strategy (for logging)
-    fn name(&self) -> &str;
+    #[must_use]
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Environment => "environment",
+            Self::Filesystem(_) => "filesystem",
+            #[cfg(test)]
+            Self::InjectedEnvironment(_) => "environment(injected)",
+        }
+    }
 
     /// Discover providers offering the given capability
-    ///
-    /// # Arguments
-    /// * `capability` - Capability to search for (e.g., "crypto", "storage")
-    ///
-    /// # Returns
-    /// List of discovered providers (may be empty)
-    async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>>;
+    pub async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
+        match self {
+            Self::Environment => {
+                EnvironmentStrategy::discover_with(capability, |k| songbird_process_env::var(k))
+                    .await
+            }
+            Self::Filesystem(fs) => fs.discover(capability).await,
+            #[cfg(test)]
+            Self::InjectedEnvironment(map) => {
+                let map = Arc::clone(map);
+                EnvironmentStrategy::discover_with(capability, move |k| {
+                    map.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+                })
+                .await
+            }
+        }
+    }
 }
 
 /// Environment variable discovery strategy
@@ -111,17 +133,6 @@ impl EnvironmentStrategy {
     }
 }
 
-#[async_trait]
-impl DiscoveryStrategy for EnvironmentStrategy {
-    fn name(&self) -> &'static str {
-        "environment"
-    }
-
-    async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
-        Self::discover_with(capability, |k| songbird_process_env::var(k)).await
-    }
-}
-
 /// Filesystem discovery strategy
 ///
 /// Discovers providers by scanning common socket directories:
@@ -129,6 +140,7 @@ impl DiscoveryStrategy for EnvironmentStrategy {
 /// - `$XDG_RUNTIME_DIR` - User session runtime (when set)
 /// - `/run/user/{uid}/` - User runtime directory (when `UID` is set)
 /// - `/var/run/` - System runtime directory
+#[derive(Clone)]
 pub struct FilesystemStrategy {
     /// Directories to scan
     search_paths: Arc<Vec<PathBuf>>,
@@ -164,21 +176,8 @@ impl FilesystemStrategy {
             search_paths: Arc::new(search_paths),
         }
     }
-}
 
-impl Default for FilesystemStrategy {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[async_trait]
-impl DiscoveryStrategy for FilesystemStrategy {
-    fn name(&self) -> &'static str {
-        "filesystem"
-    }
-
-    async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
+    pub async fn discover(&self, capability: &str) -> IpcResult<Vec<Provider>> {
         debug!("🔍 [{}] Discovering {} providers...", self.name(), capability);
 
         let search_paths = Arc::clone(&self.search_paths);
@@ -195,6 +194,16 @@ impl DiscoveryStrategy for FilesystemStrategy {
         }
 
         Ok(providers)
+    }
+
+    fn name(&self) -> &'static str {
+        "filesystem"
+    }
+}
+
+impl Default for FilesystemStrategy {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -359,13 +368,13 @@ mod tests {
 
     #[tokio::test]
     async fn discovery_strategy_environment_name() {
-        let s = EnvironmentStrategy;
+        let s = DiscoveryStrategy::Environment;
         assert_eq!(s.name(), "environment");
     }
 
     #[tokio::test]
     async fn discovery_strategy_filesystem_name() {
-        let s = FilesystemStrategy::with_paths(vec![]);
+        let s = DiscoveryStrategy::Filesystem(FilesystemStrategy::with_paths(vec![]));
         assert_eq!(s.name(), "filesystem");
     }
 

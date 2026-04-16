@@ -52,68 +52,18 @@ mod chaos_engineering_tests {
     use serde_json::json;
     use songbird_discovery::IdentityAttestation;
     use songbird_discovery::anonymous::{AnonymousDiscoveryMessage, TransportEndpointMessage};
-    use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
+    use songbird_discovery::birdsong::{
+        BirdSongConfig, BirdSongEncryption, BirdSongProcessor, ChaoticBirdSongMock,
+    };
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::time::{Duration, Instant, sleep};
 
-    /// Chaotic provider that randomly fails operations
-    struct ChaoticBirdSongProvider {
-        family_id: Option<String>,
-        failure_rate: f64, // 0.0 = never fail, 1.0 = always fail
-        call_count: AtomicUsize,
-        is_available: AtomicBool,
-    }
-
-    impl ChaoticBirdSongProvider {
-        fn new(family_id: Option<String>, failure_rate: f64) -> Self {
-            Self {
-                family_id,
-                failure_rate,
-                call_count: AtomicUsize::new(0),
-                is_available: AtomicBool::new(true),
-            }
-        }
-
-        fn should_fail(&self) -> bool {
-            let count = self.call_count.fetch_add(1, Ordering::SeqCst);
-            // Use deterministic chaos based on count for reproducibility
-            (count % 100) < (self.failure_rate * 100.0) as usize
-        }
-
-        fn toggle_availability(&self) {
-            let current = self.is_available.load(Ordering::SeqCst);
-            self.is_available.store(!current, Ordering::SeqCst);
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl BirdSongEncryption for ChaoticBirdSongProvider {
-        async fn encrypt_discovery(&self, plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-            if self.should_fail() {
-                return Err(anyhow::anyhow!("Chaotic failure: encryption"));
-            }
-            Ok(plaintext.iter().map(|&b| b.wrapping_add(1)).collect())
-        }
-
-        async fn decrypt_discovery(&self, ciphertext: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-            if self.should_fail() {
-                return Err(anyhow::anyhow!("Chaotic failure: decryption"));
-            }
-            Ok(Some(ciphertext.iter().map(|&b| b.wrapping_sub(1)).collect()))
-        }
-
-        fn is_available(&self) -> bool {
-            self.is_available.load(Ordering::SeqCst)
-        }
-
-        fn family_id(&self) -> Option<String> {
-            self.family_id.clone()
-        }
-
-        fn provider_name(&self) -> String {
-            "ChaoticProvider".to_string()
-        }
+    fn chaotic_enc(family_id: Option<String>, failure_rate: f64) -> Arc<BirdSongEncryption> {
+        Arc::new(BirdSongEncryption::Chaotic(Arc::new(ChaoticBirdSongMock::new(
+            family_id,
+            failure_rate,
+        ))))
     }
 
     /// Network simulator that adds latency and packet loss
@@ -154,8 +104,7 @@ mod chaos_engineering_tests {
     #[tokio::test]
     async fn test_random_provider_failures() {
         // Provider that fails 30% of the time
-        let provider =
-            Arc::new(ChaoticBirdSongProvider::new(Some("chaos-family".to_string()), 0.3));
+        let provider = chaotic_enc(Some("chaos-family".to_string()), 0.3);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -188,10 +137,10 @@ mod chaos_engineering_tests {
 
     #[tokio::test]
     async fn test_provider_availability_toggling() {
-        let provider = Arc::new(ChaoticBirdSongProvider::new(
+        let provider = chaotic_enc(
             Some("toggle-family".to_string()),
             0.0, // No random failures
-        ));
+        );
 
         let config = BirdSongConfig {
             enabled: true,
@@ -209,14 +158,14 @@ mod chaos_engineering_tests {
         assert!(result1.is_ok(), "Should work when available");
 
         // Toggle availability off
-        provider.toggle_availability();
+        provider.chaotic_toggle_availability();
         assert!(!provider.is_available());
         let msg2 = create_test_message("msg2");
         let result2 = processor.encrypt_packet(&msg2.to_bytes().unwrap()).await;
         assert!(result2.is_ok(), "Should fall back when unavailable");
 
         // Toggle availability back on
-        provider.toggle_availability();
+        provider.chaotic_toggle_availability();
         assert!(provider.is_available());
         let msg3 = create_test_message("msg3");
         let result3 = processor.encrypt_packet(&msg3.to_bytes().unwrap()).await;
@@ -258,10 +207,10 @@ mod chaos_engineering_tests {
 
     #[tokio::test]
     async fn test_high_contention_scenario() {
-        let provider = Arc::new(ChaoticBirdSongProvider::new(
+        let provider = chaotic_enc(
             Some("contention-family".to_string()),
             0.1, // 10% failure rate
-        ));
+        );
 
         let config = BirdSongConfig {
             enabled: true,
@@ -343,10 +292,10 @@ mod chaos_engineering_tests {
 
     #[tokio::test]
     async fn test_cascading_failure_recovery() {
-        let provider = Arc::new(ChaoticBirdSongProvider::new(
+        let provider = chaotic_enc(
             Some("cascade-family".to_string()),
             0.5, // 50% failure rate (severe)
-        ));
+        );
 
         let config = BirdSongConfig {
             enabled: true,
@@ -367,7 +316,7 @@ mod chaos_engineering_tests {
         }
 
         // Phase 2: "Fix" the system (reduce failure rate by resetting counter)
-        provider.call_count.store(0, Ordering::SeqCst);
+        provider.chaotic_reset_failure_counter();
 
         let mut phase2_success = 0;
         for i in 0..50 {
@@ -386,10 +335,10 @@ mod chaos_engineering_tests {
 
     #[tokio::test]
     async fn test_burst_traffic_handling() {
-        let provider = Arc::new(ChaoticBirdSongProvider::new(
+        let provider = chaotic_enc(
             Some("burst-family".to_string()),
             0.05, // Low failure rate
-        ));
+        );
 
         let config = BirdSongConfig {
             enabled: true,
@@ -426,9 +375,9 @@ mod chaos_engineering_tests {
         let family_a = "partition-a";
         let family_b = "partition-b";
 
-        let provider_a = Arc::new(ChaoticBirdSongProvider::new(Some(family_a.to_string()), 0.0));
+        let provider_a = chaotic_enc(Some(family_a.to_string()), 0.0);
 
-        let provider_b = Arc::new(ChaoticBirdSongProvider::new(Some(family_b.to_string()), 0.0));
+        let provider_b = chaotic_enc(Some(family_b.to_string()), 0.0);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -459,7 +408,7 @@ mod chaos_engineering_tests {
     #[tokio::test]
     async fn test_memory_pressure_simulation() {
         // Create and discard many messages to simulate memory pressure
-        let provider = Arc::new(ChaoticBirdSongProvider::new(Some("memory-test".to_string()), 0.0));
+        let provider = chaotic_enc(Some("memory-test".to_string()), 0.0);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -484,8 +433,7 @@ mod chaos_engineering_tests {
 
     #[tokio::test]
     async fn test_rapid_state_changes() {
-        let provider =
-            Arc::new(ChaoticBirdSongProvider::new(Some("rapid-changes".to_string()), 0.2));
+        let provider = chaotic_enc(Some("rapid-changes".to_string()), 0.2);
 
         let config = BirdSongConfig {
             enabled: true,
@@ -498,10 +446,11 @@ mod chaos_engineering_tests {
 
         // Rapidly toggle availability while sending messages
         let processor_clone = Arc::clone(&processor);
+        let prov_for_toggle = provider.clone();
         let toggler = tokio::spawn(async move {
             for _ in 0..20 {
                 sleep(Duration::from_millis(10)).await;
-                provider.toggle_availability();
+                prov_for_toggle.chaotic_toggle_availability();
             }
         });
 

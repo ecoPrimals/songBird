@@ -18,16 +18,15 @@
 //! - **`OrchestrationProvider`**: Service orchestration (unified)
 //! - **`ObservabilityProvider`**: Metrics & monitoring (consolidated)
 //!
-//! ## Dyn-Compatibility Note (November 2025)
-//! These traits use `#[async_trait]` to maintain dyn-compatibility. They are extensively
-//! used with trait objects (`Box<dyn Provider>`, `Arc<dyn Provider>`) throughout the codebase
-//! for plugin systems, registries, and dynamic dispatch. While native async traits offer
-//! better performance, they cannot be used with trait objects in current Rust.
-//!
-//! **Trade-off**: We prioritize dyn-compatibility over the 15-40% perf gains from native async,
-//! as the provider system's architecture fundamentally requires dynamic dispatch.
+//! ## Native async traits (AFIT)
+//! Provider traits use native `async fn` (Rust 1.75+). They are **not** compatible with
+//! `dyn Trait` for async methods; call sites use generics, concrete types, or enum dispatch.
 
-use async_trait::async_trait;
+#![expect(
+    async_fn_in_trait,
+    reason = "canonical provider traits intentionally use native async fn"
+)]
+
 use futures_util::Stream;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -48,8 +47,7 @@ pub use canonical_types::*;
 /// This trait provides the common interface that all providers must implement.
 /// It replaces multiple scattered provider definitions across crates.
 ///
-/// **Dyn-Compatible**: Uses `#[async_trait]` to support trait objects (`Box<dyn Provider>`).
-#[async_trait]
+/// Base provider interface for all Songbird providers.
 pub trait Provider: Send + Sync + 'static {
     /// Unique provider identifier
     fn id(&self) -> &str;
@@ -87,7 +85,6 @@ pub trait Provider: Send + Sync + 'static {
 ///
 /// Consolidates service-related functionality from multiple trait definitions.
 /// Replaces `ServiceProvider` from `unified_providers` and discovery traits.
-#[async_trait]
 pub trait ServiceProvider: Provider {
     /// Get service type identifier
     fn service_type(&self) -> ServiceType;
@@ -116,7 +113,6 @@ pub trait ServiceProvider: Provider {
 ///
 /// Consolidates primal functionality from songbird-universal-primals.
 /// This is the single source of truth for primal provider interfaces.
-#[async_trait]
 pub trait PrimalProvider: Provider {
     /// Get primal type (security, storage, compute, ai, network, custom)
     fn primal_type(&self) -> PrimalType;
@@ -163,7 +159,6 @@ pub trait PrimalProvider: Provider {
 ///
 /// Consolidates all discovery functionality from multiple definitions.
 /// Replaces `CanonicalServiceDiscovery`, `ServiceDiscovery`, and `DiscoveryProvider`.
-#[async_trait]
 pub trait DiscoveryProvider: Provider {
     /// Discover services matching criteria
     async fn discover_services(
@@ -210,7 +205,6 @@ pub trait DiscoveryProvider: Provider {
 /// **CANONICAL**: Capability provider trait - for capability-based systems
 ///
 /// Unified interface for capability-based operations.
-#[async_trait]
 pub trait CapabilityProvider: Provider {
     /// Get available capabilities
     async fn get_capabilities(&self) -> SongbirdResult<Vec<Capability>>;
@@ -234,7 +228,6 @@ pub trait CapabilityProvider: Provider {
 // ============================================================================
 
 /// **CANONICAL**: Security provider trait - for security operations
-#[async_trait]
 pub trait SecurityProvider: Provider {
     /// Authenticate user with credentials
     async fn authenticate(&self, credentials: Credentials) -> SongbirdResult<AuthToken>;
@@ -265,7 +258,6 @@ pub trait SecurityProvider: Provider {
 // ============================================================================
 
 /// **CANONICAL**: Orchestration provider trait - for service orchestration
-#[async_trait]
 pub trait OrchestrationProvider: Provider {
     /// Deploy service
     async fn deploy(&self, deployment: DeploymentSpec) -> SongbirdResult<DeploymentResult>;
@@ -294,7 +286,6 @@ pub trait OrchestrationProvider: Provider {
 // ============================================================================
 
 /// **CANONICAL**: Observability provider trait - for metrics & monitoring
-#[async_trait]
 pub trait ObservabilityProvider: Provider {
     /// Record metric value
     async fn record_metric(

@@ -181,7 +181,7 @@ impl OnionServiceDescriptor {
     /// Returns [`Error::CryptoUnavailable`] if the descriptor has no security provider-produced signature.
     pub fn encode(&self) -> Result<Vec<u8>> {
         if self.signature.is_empty() {
-            // BLOCKED: requires security provider crypto delegation (tracked in REMAINING_WORK.md — SB-03 / onion HSDir)
+            // BLOCKED: requires security provider crypto delegation (tracked in REMAINING_WORK.md — Tor Onion / HSDir)
             return Err(Error::CryptoUnavailable(
                 "security provider crypto delegation required: descriptor signature missing (refuse to encode with placeholder)"
                     .into(),

@@ -8,7 +8,7 @@
 //! packet number (left-padded to IV length).
 
 use super::initial_keys::DirectionalKeys;
-use super::provider::{QuicCipherSuite, QuicCryptoProvider};
+use super::provider::{QuicCipherSuite, SecurityQuicCrypto};
 use crate::error::Result;
 
 /// Construct the AEAD nonce from the IV and packet number.
@@ -38,7 +38,7 @@ pub fn build_nonce(iv: &[u8], packet_number: u64) -> Vec<u8> {
 ///
 /// Returns [`QuicError`](crate::error::QuicError) when `AEAD` encryption fails.
 pub async fn protect_payload(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     suite: QuicCipherSuite,
     keys: &DirectionalKeys,
     packet_number: u64,
@@ -57,7 +57,7 @@ pub async fn protect_payload(
 ///
 /// Returns [`QuicError`](crate::error::QuicError) when `AEAD` decryption fails.
 pub async fn unprotect_payload(
-    crypto: &dyn QuicCryptoProvider,
+    crypto: &SecurityQuicCrypto,
     suite: QuicCipherSuite,
     keys: &DirectionalKeys,
     packet_number: u64,

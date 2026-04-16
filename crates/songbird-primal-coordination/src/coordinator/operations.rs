@@ -36,7 +36,7 @@ impl PrimalCoordinator {
         }
 
         // Discover and connect to a primal with this capability
-        let connection = self.bridge.connect(capability.clone()).await?;
+        let connection = self.bridge.connect(&capability)?;
 
         // Cache the connection
         if self.config.enable_pooling {

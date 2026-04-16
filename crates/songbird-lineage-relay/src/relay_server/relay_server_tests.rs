@@ -6,51 +6,14 @@
 use super::packet_handler;
 use super::*;
 
-use async_trait::async_trait;
+use crate::relay::RelayAuthority;
 use std::sync::Arc;
 use std::time::SystemTime;
 use uuid::Uuid;
 
-/// Mock relay authority for testing
-struct MockRelayAuthority {
-    should_authorize: bool,
-}
-
-impl MockRelayAuthority {
-    fn new(should_authorize: bool) -> Self {
-        Self {
-            should_authorize,
-        }
-    }
-}
-
-#[async_trait]
-impl RelayAuthority for MockRelayAuthority {
-    async fn authorize_relay(
-        &self,
-        relay_node: &crate::types::NodeId,
-        requester: &crate::types::NodeId,
-    ) -> Result<crate::types::RelayAuthorization> {
-        Ok(crate::types::RelayAuthorization::authorized(
-            relay_node.clone(),
-            requester.clone(),
-            MaskingLevel::None,
-            300,
-        ))
-    }
-
-    async fn determine_masking(
-        &self,
-        _relay_node: &crate::types::NodeId,
-        _requester: &crate::types::NodeId,
-    ) -> Result<MaskingLevel> {
-        Ok(MaskingLevel::None)
-    }
-}
-
 #[tokio::test]
 async fn test_relay_server_creation() {
-    let authority = Arc::new(MockRelayAuthority::new(true));
+    let authority = Arc::new(RelayAuthority::StubAllow);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     assert!(server.bind_addr().port() > 0);
@@ -58,7 +21,7 @@ async fn test_relay_server_creation() {
 
 #[tokio::test]
 async fn test_relay_server_stats() {
-    let authority = Arc::new(MockRelayAuthority::new(true));
+    let authority = Arc::new(RelayAuthority::StubAllow);
     let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let stats = server.stats().await;

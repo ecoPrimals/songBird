@@ -245,7 +245,7 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
     };
 
     if let Ok(json) = serde_json::to_string(&welcome)
-        && let Err(e) = sender.send(Message::Text(json)).await
+        && let Err(e) = sender.send(Message::Text(json.into())).await
     {
         error!("Failed to send welcome message: {}", e);
         return;
@@ -256,11 +256,11 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
         match msg {
             Ok(Message::Text(text)) => {
                 // Parse and handle JSON message
-                match serde_json::from_str::<WsMessage>(&text) {
+                match serde_json::from_str::<WsMessage>(text.as_str()) {
                     Ok(ws_msg) => {
                         if let Some(response) = handle_ws_message(ws_msg, &state).await
                             && let Ok(json) = serde_json::to_string(&response)
-                            && let Err(e) = sender.send(Message::Text(json)).await
+                            && let Err(e) = sender.send(Message::Text(json.into())).await
                         {
                             error!("Failed to send response: {}", e);
                             break;
@@ -273,7 +273,7 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
                             code: Some("INVALID_JSON".to_string()),
                         };
                         if let Ok(json) = serde_json::to_string(&error_msg) {
-                            let _ = sender.send(Message::Text(json)).await;
+                            let _ = sender.send(Message::Text(json.into())).await;
                         }
                     }
                 }
@@ -285,7 +285,7 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
                     code: Some("UNSUPPORTED_FORMAT".to_string()),
                 };
                 if let Ok(json) = serde_json::to_string(&error_msg) {
-                    let _ = sender.send(Message::Text(json)).await;
+                    let _ = sender.send(Message::Text(json.into())).await;
                 }
             }
             Ok(Message::Ping(data)) => {
@@ -455,7 +455,7 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
                 code: Some("NO_EVENT_STREAM".to_string()),
             };
             if let Ok(json) = serde_json::to_string(&error_msg) {
-                let _ = sender.send(Message::Text(json)).await;
+                let _ = sender.send(Message::Text(json.into())).await;
             }
             return;
         }
@@ -466,7 +466,7 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
             code: Some("NO_ORCHESTRATOR".to_string()),
         };
         if let Ok(json) = serde_json::to_string(&error_msg) {
-            let _ = sender.send(Message::Text(json)).await;
+            let _ = sender.send(Message::Text(json.into())).await;
         }
         return;
     };
@@ -480,7 +480,7 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
         message: "Connected to task event stream".to_string(),
     };
     if let Ok(json) = serde_json::to_string(&welcome)
-        && let Err(e) = sender.send(Message::Text(json)).await
+        && let Err(e) = sender.send(Message::Text(json.into())).await
     {
         error!("Failed to send welcome message: {}", e);
         return;
@@ -502,7 +502,7 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
                         };
 
                         if let Ok(json) = serde_json::to_string(&ws_msg)
-                            && let Err(e) = sender.send(Message::Text(json)).await {
+                            && let Err(e) = sender.send(Message::Text(json.into())).await {
                                 error!("Failed to send task event: {}", e);
                                 break;
                             }

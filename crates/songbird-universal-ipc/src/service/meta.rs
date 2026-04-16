@@ -71,9 +71,13 @@ impl IpcServiceHandler {
 
     /// Handle `identity` method — canonical family-id lookup
     pub(super) async fn handle_identity(&self) -> Result<Value, String> {
-        let family_id = self.family_id_env.as_ref().map_or_else(
+        let family_id = self.family_id_overrides.as_ref().map_or_else(
             || crate::introspection::canonical_family_id(|k| songbird_process_env::var(k)),
-            |f| crate::introspection::canonical_family_id(|k| (f)(k)),
+            |map| {
+                crate::introspection::canonical_family_id(|k| {
+                    map.get(k).cloned().ok_or(std::env::VarError::NotPresent)
+                })
+            },
         );
         Ok(crate::introspection::identity(&family_id))
     }
@@ -132,7 +136,7 @@ mod tests {
     use crate::tower_atomic::JsonRpcHandler;
     use serde_json::{Value, json};
     use songbird_network_federation::state::{FederationState, NodeRegistration, NodeStatus};
-    use std::env::VarError;
+    use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
@@ -180,13 +184,9 @@ mod tests {
     #[tokio::test]
     async fn identity_uses_injected_env_for_family_id() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::with_family_id_env(Arc::clone(&registry), |key| {
-            if key == "FAMILY_ID" {
-                Ok("injected-family-42".to_string())
-            } else {
-                Err(VarError::NotPresent)
-            }
-        });
+        let mut env = HashMap::new();
+        env.insert("FAMILY_ID".into(), "injected-family-42".into());
+        let handler = IpcServiceHandler::with_family_id_overrides(Arc::clone(&registry), env);
 
         let v = handler.handle("identity", json!({})).await.expect("identity");
         assert_eq!(v["family_id"], "injected-family-42");
@@ -198,9 +198,8 @@ mod tests {
     #[tokio::test]
     async fn identity_defaults_when_injected_env_missing_all_keys() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::with_family_id_env(Arc::clone(&registry), |_| {
-            Err(VarError::NotPresent)
-        });
+        let handler =
+            IpcServiceHandler::with_family_id_overrides(Arc::clone(&registry), HashMap::new());
 
         let v = handler.handle("identity", json!({})).await.expect("identity");
         assert_eq!(v["family_id"], "default");

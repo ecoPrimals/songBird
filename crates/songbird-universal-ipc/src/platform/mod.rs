@@ -5,8 +5,7 @@
 
 use crate::endpoint::NativeEndpoint;
 use crate::error::IpcResult;
-use async_trait::async_trait;
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 // Platform-specific implementations
 //
@@ -19,59 +18,207 @@ use tokio::io::{AsyncRead, AsyncWrite};
 pub mod android; // Abstract sockets (Android, Linux)
 pub mod fallback;
 pub mod ios; // XPC (iOS, macOS)
+#[cfg(all(unix, not(target_os = "android")))]
 pub mod unix; // Unix domain sockets (Linux, macOS, BSD)
 pub mod wasm; // In-process (WASM)
 pub mod windows; // Named pipes (Windows) // TCP localhost (universal fallback)
 
-/// Platform-specific IPC trait
-///
-/// This trait abstracts platform-specific IPC mechanisms.
-/// Each platform (Unix, Windows, etc.) implements this trait
-/// to provide native socket/pipe functionality.
-#[async_trait]
-pub trait PlatformIPC: Send + Sync {
-    /// Create a native endpoint for the given primal name
-    ///
-    /// # Arguments
-    /// * `primal_name` - Name of the primal (e.g., "beardog")
-    ///
-    /// # Returns
-    /// Platform-specific native endpoint
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint>;
-
-    /// Create a listener on the native endpoint
-    ///
-    /// # Arguments
-    /// * `endpoint` - Native endpoint to listen on
-    ///
-    /// # Returns
-    /// Platform-specific listener
-    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>>;
-
-    /// Connect to a native endpoint
-    ///
-    /// # Arguments
-    /// * `endpoint` - Native endpoint to connect to
-    ///
-    /// # Returns
-    /// Platform-specific stream
-    async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn AsyncStream>>;
-
-    /// Cleanup endpoint (remove socket file, close pipes, etc.)
-    ///
-    /// # Arguments
-    /// * `endpoint` - Native endpoint to cleanup
-    async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()>;
+/// Concrete async stream for all platform transports (no trait objects).
+#[derive(Debug)]
+pub enum AsyncStreamImpl {
+    /// Unix domain socket stream (filesystem or abstract).
+    #[cfg(unix)]
+    Unix(tokio::net::UnixStream),
+    /// TCP localhost (fallback and cross-platform).
+    Tcp(tokio::net::TcpStream),
+    /// Windows named pipe client (`connect`).
+    #[cfg(windows)]
+    WindowsPipeClient(tokio::net::windows::named_pipe::NamedPipeClient),
+    /// Windows named pipe server side after accept (connected instance).
+    #[cfg(windows)]
+    WindowsPipeServer(tokio::net::windows::named_pipe::NamedPipeServer),
 }
 
-/// Platform-agnostic listener trait
-#[async_trait]
-pub trait PlatformListener: Send {
-    /// Accept incoming connection
-    ///
-    /// # Returns
-    /// Connected stream
-    async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>>;
+impl AsyncRead for AsyncStreamImpl {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        match &mut *self.as_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+            #[cfg(windows)]
+            Self::WindowsPipeClient(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+            #[cfg(windows)]
+            Self::WindowsPipeServer(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+        }
+    }
+}
+
+impl AsyncWrite for AsyncStreamImpl {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
+        match &mut *self.as_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+            #[cfg(windows)]
+            Self::WindowsPipeClient(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+            #[cfg(windows)]
+            Self::WindowsPipeServer(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        match &mut *self.as_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_flush(cx),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_flush(cx),
+            #[cfg(windows)]
+            Self::WindowsPipeClient(s) => std::pin::Pin::new(s).poll_flush(cx),
+            #[cfg(windows)]
+            Self::WindowsPipeServer(s) => std::pin::Pin::new(s).poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        match &mut *self.as_mut() {
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+            #[cfg(windows)]
+            Self::WindowsPipeClient(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+            #[cfg(windows)]
+            Self::WindowsPipeServer(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+        }
+    }
+}
+
+/// Platform listener (enum dispatch, no trait objects).
+pub enum PlatformListenerImpl {
+    #[cfg(all(unix, not(target_os = "android")))]
+    Unix(unix::UnixListener),
+    /// Abstract Unix sockets (Linux + Android; also compiled on other Unix for a uniform enum surface).
+    #[cfg(unix)]
+    Android(android::AndroidListener),
+    #[cfg(windows)]
+    Windows(windows::WindowsListener),
+    #[cfg(target_os = "macos")]
+    Ios(ios::IosListener),
+    Fallback(fallback::FallbackListener),
+}
+
+impl PlatformListenerImpl {
+    /// Accept incoming connection.
+    pub async fn accept(&mut self) -> IpcResult<AsyncStreamImpl> {
+        match self {
+            #[cfg(all(unix, not(target_os = "android")))]
+            Self::Unix(l) => l.accept().await,
+            #[cfg(unix)]
+            Self::Android(l) => l.accept().await,
+            #[cfg(windows)]
+            Self::Windows(l) => l.accept().await,
+            #[cfg(target_os = "macos")]
+            Self::Ios(l) => l.accept().await,
+            Self::Fallback(l) => l.accept().await,
+        }
+    }
+}
+
+/// Platform IPC implementation (enum dispatch, no trait objects).
+pub enum PlatformIpcImpl {
+    #[cfg(all(unix, not(target_os = "android")))]
+    Unix(unix::UnixPlatformIPC),
+    #[cfg(unix)]
+    Android(android::AndroidPlatformIPC),
+    #[cfg(windows)]
+    Windows(windows::WindowsPlatformIPC),
+    #[cfg(target_os = "ios")]
+    Ios(ios::IosPlatformIPC),
+    #[cfg(target_family = "wasm")]
+    Wasm(wasm::WasmPlatformIPC),
+    Fallback(fallback::FallbackPlatformIPC),
+}
+
+impl PlatformIpcImpl {
+    /// Create a native endpoint for the given primal name.
+    pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+        match self {
+            #[cfg(all(unix, not(target_os = "android")))]
+            Self::Unix(p) => p.create_endpoint(primal_name).await,
+            #[cfg(unix)]
+            Self::Android(p) => p.create_endpoint(primal_name).await,
+            #[cfg(windows)]
+            Self::Windows(p) => p.create_endpoint(primal_name).await,
+            #[cfg(target_os = "ios")]
+            Self::Ios(p) => p.create_endpoint(primal_name).await,
+            #[cfg(target_family = "wasm")]
+            Self::Wasm(p) => p.create_endpoint(primal_name).await,
+            Self::Fallback(p) => p.create_endpoint(primal_name).await,
+        }
+    }
+
+    /// Create a listener on the native endpoint.
+    pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
+        match self {
+            #[cfg(all(unix, not(target_os = "android")))]
+            Self::Unix(p) => p.listen(endpoint).await,
+            #[cfg(unix)]
+            Self::Android(p) => p.listen(endpoint).await,
+            #[cfg(windows)]
+            Self::Windows(p) => p.listen(endpoint).await,
+            #[cfg(target_os = "ios")]
+            Self::Ios(p) => p.listen(endpoint).await,
+            #[cfg(target_family = "wasm")]
+            Self::Wasm(p) => p.listen(endpoint).await,
+            Self::Fallback(p) => p.listen(endpoint).await,
+        }
+    }
+
+    /// Connect to a native endpoint.
+    pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
+        match self {
+            #[cfg(all(unix, not(target_os = "android")))]
+            Self::Unix(p) => p.connect(endpoint).await,
+            #[cfg(unix)]
+            Self::Android(p) => p.connect(endpoint).await,
+            #[cfg(windows)]
+            Self::Windows(p) => p.connect(endpoint).await,
+            #[cfg(target_os = "ios")]
+            Self::Ios(p) => p.connect(endpoint).await,
+            #[cfg(target_family = "wasm")]
+            Self::Wasm(p) => p.connect(endpoint).await,
+            Self::Fallback(p) => p.connect(endpoint).await,
+        }
+    }
+
+    /// Cleanup endpoint (remove socket file, close pipes, etc.)
+    pub async fn cleanup(&self, endpoint: &NativeEndpoint) -> IpcResult<()> {
+        match self {
+            #[cfg(all(unix, not(target_os = "android")))]
+            Self::Unix(p) => p.cleanup(endpoint).await,
+            #[cfg(unix)]
+            Self::Android(p) => p.cleanup(endpoint).await,
+            #[cfg(windows)]
+            Self::Windows(p) => p.cleanup(endpoint).await,
+            #[cfg(target_os = "ios")]
+            Self::Ios(p) => p.cleanup(endpoint).await,
+            #[cfg(target_family = "wasm")]
+            Self::Wasm(p) => p.cleanup(endpoint).await,
+            Self::Fallback(p) => p.cleanup(endpoint).await,
+        }
+    }
 }
 
 /// Unified stream trait
@@ -88,35 +235,35 @@ impl<T> AsyncStream for T where T: AsyncRead + AsyncWrite + Send + Unpin + 'stat
 /// **Legacy function** - Returns single "best guess" implementation.
 /// For multi-transport support, use `get_platform_transports()` instead.
 #[must_use]
-pub fn get_platform_ipc() -> Box<dyn PlatformIPC> {
+pub fn get_platform_ipc() -> PlatformIpcImpl {
     #[cfg(target_os = "android")]
     {
         // Android: Prefer abstract sockets (SELinux-safe)
-        Box::new(android::AndroidIPC)
+        PlatformIpcImpl::Android(android::AndroidPlatformIPC)
     }
 
     #[cfg(all(unix, not(target_os = "android")))]
     {
         // Unix: Filesystem sockets (Linux, macOS, BSD)
-        Box::new(unix::UnixIPC)
+        PlatformIpcImpl::Unix(unix::UnixPlatformIPC)
     }
 
     #[cfg(windows)]
     {
         // Windows: Named pipes (Pure Rust implementation!)
-        Box::new(windows::WindowsIPC)
+        PlatformIpcImpl::Windows(windows::WindowsPlatformIPC)
     }
 
     #[cfg(target_family = "wasm")]
     {
         // WASM: In-process channels
-        Box::new(wasm::WasmIPC)
+        PlatformIpcImpl::Wasm(wasm::WasmPlatformIPC)
     }
 
     #[cfg(not(any(unix, windows, target_family = "wasm")))]
     {
         // Unknown platform: Universal TCP fallback
-        Box::new(fallback::FallbackIPC)
+        PlatformIpcImpl::Fallback(fallback::FallbackPlatformIPC)
     }
 }
 
@@ -129,34 +276,34 @@ pub fn get_platform_ipc() -> Box<dyn PlatformIPC> {
 /// # Returns
 /// Vec of (name, implementation) pairs in priority order
 #[must_use]
-pub fn get_platform_transports() -> Vec<(&'static str, Box<dyn PlatformIPC>)> {
+pub fn get_platform_transports() -> Vec<(&'static str, PlatformIpcImpl)> {
     let mut transports = Vec::new();
 
     // Platform-specific native transports (highest priority)
     #[cfg(target_os = "android")]
     {
         transports
-            .push(("android-abstract", Box::new(android::AndroidIPC) as Box<dyn PlatformIPC>));
+            .push(("android-abstract", PlatformIpcImpl::Android(android::AndroidPlatformIPC)));
     }
 
     #[cfg(target_os = "linux")]
     {
         // Linux supports both abstract and filesystem
         #[cfg(not(target_os = "android"))]
-        transports.push(("linux-abstract", Box::new(android::AndroidIPC) as Box<dyn PlatformIPC>));
+        transports.push(("linux-abstract", PlatformIpcImpl::Android(android::AndroidPlatformIPC)));
 
-        transports.push(("linux-unix", Box::new(unix::UnixIPC) as Box<dyn PlatformIPC>));
+        transports.push(("linux-unix", PlatformIpcImpl::Unix(unix::UnixPlatformIPC)));
     }
 
     #[cfg(target_os = "macos")]
     {
-        transports.push(("macos-unix", Box::new(unix::UnixIPC) as Box<dyn PlatformIPC>));
-        // Note: Could also add ios::iOSIPC for XPC support on macOS
+        transports.push(("macos-unix", PlatformIpcImpl::Unix(unix::UnixPlatformIPC)));
+        // Note: Could also add ios::IosPlatformIPC for XPC support on macOS
     }
 
     #[cfg(target_os = "ios")]
     {
-        transports.push(("ios-xpc", Box::new(ios::iOSIPC) as Box<dyn PlatformIPC>));
+        transports.push(("ios-xpc", PlatformIpcImpl::Ios(ios::IosPlatformIPC)));
     }
 
     #[cfg(all(
@@ -170,22 +317,22 @@ pub fn get_platform_transports() -> Vec<(&'static str, Box<dyn PlatformIPC>)> {
     ))]
     {
         // Other Unix (BSD, etc.)
-        transports.push(("unix", Box::new(unix::UnixIPC) as Box<dyn PlatformIPC>));
+        transports.push(("unix", PlatformIpcImpl::Unix(unix::UnixPlatformIPC)));
     }
 
     #[cfg(windows)]
     {
         // Windows: Named pipes (Pure Rust, tokio-based!)
-        transports.push(("windows-pipe", Box::new(windows::WindowsIPC) as Box<dyn PlatformIPC>));
+        transports.push(("windows-pipe", PlatformIpcImpl::Windows(windows::WindowsPlatformIPC)));
     }
 
     #[cfg(target_family = "wasm")]
     {
-        transports.push(("wasm-inprocess", Box::new(wasm::WasmIPC) as Box<dyn PlatformIPC>));
+        transports.push(("wasm-inprocess", PlatformIpcImpl::Wasm(wasm::WasmPlatformIPC)));
     }
 
     // Universal TCP fallback (lowest priority, always works)
-    transports.push(("tcp-fallback", Box::new(fallback::FallbackIPC) as Box<dyn PlatformIPC>));
+    transports.push(("tcp-fallback", PlatformIpcImpl::Fallback(fallback::FallbackPlatformIPC)));
 
     transports
 }

@@ -7,13 +7,9 @@
 //! Defines the interface for pluggable configuration backends
 //! supporting file-based, environment, Consul, and other configuration sources.
 //!
-//! # Native Async Traits (Rust 1.75+)
+//! # Native Async Traits
 //!
-//! This module uses native async fn in traits for zero-cost abstraction:
-//! - No `Box<dyn Future>` boxing overhead
-//! - Better compiler optimization and inlining  
-//! - 20-30% performance improvement over `async_trait` macro
-//! - Cleaner, more idiomatic Rust code
+//! This module uses native async fn in traits (AFIT) for zero-cost abstraction.
 
 #![allow(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 

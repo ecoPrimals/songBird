@@ -12,80 +12,18 @@
 //! - Privacy through selective intelligibility
 
 use crate::error::Result;
-use crate::types::NodeId;
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use crate::security::BirdSongCrypto;
+use crate::types::{BirdSongMessage, BirdSongType, LineageHint, NodeId};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-/// Hint for which lineage members should receive message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LineageHint {
-    /// Only my direct parent
-    DirectParent,
-    /// All ancestors (parent, grandparent, etc.)
-    DirectAncestors,
-    /// My direct children
-    DirectChildren,
-    /// All descendants (children, grandchildren, etc.)
-    AllDescendants,
-    /// Specific ancestor by ID
-    SpecificAncestor(NodeId),
-}
-
-/// `BirdSong` message type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum BirdSongType {
-    /// Presence announcement
-    Presence,
-    /// Capability announcement
-    CapabilityAnnouncement,
-    /// Transport endpoint announcement
-    TransportAnnouncement,
-    /// Relay request (need help connecting)
-    RelayRequest,
-    /// Relay offer (can help you connect)
-    RelayOffer,
-    /// Federation event
-    FederationEvent,
-    /// Custom application message
-    Custom(String),
-}
-
-/// `BirdSong` message structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BirdSongMessage {
-    /// Protocol version
-    pub version: u8,
-    /// Message type
-    pub message_type: BirdSongType,
-    /// Sender (encrypted for family)
-    pub sender: NodeId,
-    /// Lineage hint (who should receive)
-    pub lineage_hint: LineageHint,
-    /// Payload (encrypted by `security provider`)
-    pub payload: Vec<u8>,
-    /// Timestamp
-    pub timestamp: u64,
-}
-
-/// `BirdSong` crypto provider (implemented by `security provider`)
-#[async_trait]
-pub trait BirdSongCrypto: Send + Sync {
-    /// Encrypt message for lineage
-    async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>>;
-
-    /// Decrypt `BirdSong` message (returns None if not in lineage)
-    async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>>;
-}
-
 /// `BirdSong` broadcaster
 pub struct BirdSongBroadcaster {
     socket: Arc<UdpSocket>,
-    crypto: Arc<dyn BirdSongCrypto>,
+    crypto: Arc<BirdSongCrypto>,
     my_id: NodeId,
     broadcast_addr: SocketAddr,
     received_messages: Arc<RwLock<Vec<BirdSongMessage>>>,
@@ -100,7 +38,7 @@ impl BirdSongBroadcaster {
     ///
     /// Returns error if UDP socket cannot be bound
     pub async fn new(
-        crypto: Arc<dyn BirdSongCrypto>,
+        crypto: Arc<BirdSongCrypto>,
         my_id: NodeId,
         bind_addr: SocketAddr,
         broadcast_addr: SocketAddr,
@@ -261,32 +199,9 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::security::BirdSongCrypto;
+    use crate::types::{BirdSongMessage, BirdSongType, LineageHint, NodeId};
     use serde_json::{from_value, to_value};
-
-    struct MockCrypto;
-
-    #[async_trait]
-    impl BirdSongCrypto for MockCrypto {
-        async fn encrypt_for_lineage(&self, message: &[u8], _hint: LineageHint) -> Result<Vec<u8>> {
-            // Mock: just prepend "ENCRYPTED:" for testing
-            let mut encrypted = b"ENCRYPTED:".to_vec();
-            encrypted.extend_from_slice(message);
-            Ok(encrypted)
-        }
-
-        async fn decrypt_birdsong(
-            &self,
-            encrypted: &[u8],
-            _sender: &NodeId,
-        ) -> Result<Option<Vec<u8>>> {
-            // Mock: remove "ENCRYPTED:" prefix
-            if encrypted.starts_with(b"ENCRYPTED:") {
-                Ok(Some(encrypted[10..].to_vec()))
-            } else {
-                Ok(None)
-            }
-        }
-    }
 
     #[tokio::test]
     async fn test_birdsong_message_creation() {
@@ -305,7 +220,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_encryption() {
-        let crypto = MockCrypto;
+        let crypto = BirdSongCrypto::StubMockEncrypted;
         let message = b"test message";
 
         let encrypted =
@@ -373,7 +288,7 @@ mod tests {
     #[tokio::test]
     async fn wait_for_message_by_type_times_out_when_no_listener_and_no_traffic() {
         use std::sync::Arc;
-        let crypto = Arc::new(MockCrypto);
+        let crypto = Arc::new(BirdSongCrypto::StubMockEncrypted);
         let broadcaster = BirdSongBroadcaster::new(
             crypto,
             NodeId::from("me"),
@@ -395,7 +310,7 @@ mod tests {
     #[tokio::test]
     async fn get_messages_drains_buffer() {
         use std::sync::Arc;
-        let crypto = Arc::new(MockCrypto);
+        let crypto = Arc::new(BirdSongCrypto::StubMockEncrypted);
         let broadcaster = BirdSongBroadcaster::new(
             crypto,
             NodeId::from("self"),
@@ -422,7 +337,7 @@ mod tests {
     #[tokio::test]
     async fn get_messages_by_type_keeps_non_matching() {
         use std::sync::Arc;
-        let crypto = Arc::new(MockCrypto);
+        let crypto = Arc::new(BirdSongCrypto::StubMockEncrypted);
         let broadcaster = BirdSongBroadcaster::new(
             crypto,
             NodeId::from("self"),
@@ -460,7 +375,7 @@ mod tests {
     #[tokio::test]
     async fn get_messages_by_type_empty_when_no_match() {
         use std::sync::Arc;
-        let crypto = Arc::new(MockCrypto);
+        let crypto = Arc::new(BirdSongCrypto::StubMockEncrypted);
         let broadcaster = BirdSongBroadcaster::new(
             crypto,
             NodeId::from("self"),
