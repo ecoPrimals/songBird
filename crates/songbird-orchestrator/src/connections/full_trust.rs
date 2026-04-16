@@ -17,9 +17,7 @@
 //!
 //! - None
 
-use super::PeerConnection;
 use anyhow::{Context, Result};
-use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;
 use songbird_universal::UnixRpcClient;
@@ -64,25 +62,24 @@ impl FullTrustConnection {
     }
 }
 
-#[async_trait]
-impl PeerConnection for FullTrustConnection {
-    fn trust_level(&self) -> TrustLevel {
+impl FullTrustConnection {
+    pub fn trust_level(&self) -> TrustLevel {
         TrustLevel::Highest
     }
 
-    fn allowed_capabilities(&self) -> &[String] {
+    pub fn allowed_capabilities(&self) -> &[String] {
         &self.allowed_capabilities
     }
 
-    fn denied_capabilities(&self) -> &[String] {
+    pub fn denied_capabilities(&self) -> &[String] {
         &[] // Nothing denied at highest trust
     }
 
-    fn is_operation_allowed(&self, _operation: &str) -> bool {
+    pub fn is_operation_allowed(&self, _operation: &str) -> bool {
         true // Everything allowed
     }
 
-    async fn call(&self, operation: &str, request: Value) -> Result<Value> {
+    pub async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         debug!(
             "🔓 Calling full-trust operation '{}' on peer '{}' via RPC (Level 3)",
             operation, self.peer_id
@@ -98,16 +95,16 @@ impl PeerConnection for FullTrustConnection {
         Ok(result)
     }
 
-    fn peer_id(&self) -> &str {
+    pub fn peer_id(&self) -> &str {
         &self.peer_id
     }
 
-    fn endpoint(&self) -> &str {
+    pub fn endpoint(&self) -> &str {
         // Return socket path as string for compatibility
         self.socket_path.to_str().unwrap_or(&self.peer_id)
     }
 
-    async fn close(&self) -> Result<()> {
+    pub async fn close(&self) -> Result<()> {
         debug!("Closing full-trust connection to peer '{}'", self.peer_id);
         Ok(())
     }

@@ -28,33 +28,75 @@ mod preferences;
 mod request;
 mod rules;
 
-/// Async consent persistence backend.
+/// Consent persistence: in-memory fallback or IPC JSON-RPC `storage.*` provider.
 ///
 /// Production path: [`IpcStorageBackend`](crate::storage_ipc::IpcStorageBackend) delegates
 /// to the `storage.*` capability provider via JSON-RPC at runtime.
 /// Fallback: [`InMemoryStorage`](crate::storage_memory::InMemoryStorage) when no provider is available.
-#[async_trait::async_trait]
-pub trait ConsentStorageBackend: Send + Sync {
+#[derive(Debug)]
+pub enum ConsentStorage {
+    /// Non-durable in-process store.
+    Memory(crate::storage_memory::InMemoryStorage),
+    /// Durable keys via capability-discovered Unix socket.
+    Ipc(crate::storage_ipc::IpcStorageBackend),
+}
+
+impl ConsentStorage {
     /// Persist a consent record.
-    async fn save(&self, record: &ConsentRecord) -> anyhow::Result<()>;
+    pub async fn save(&self, record: &ConsentRecord) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.consent_save(record).await,
+            Self::Ipc(s) => s.consent_save(record).await,
+        }
+    }
 
     /// Retrieve a consent record by ID.
-    async fn get(&self, id: &str) -> anyhow::Result<Option<ConsentRecord>>;
+    pub async fn get(&self, id: &str) -> anyhow::Result<Option<ConsentRecord>> {
+        match self {
+            Self::Memory(s) => s.consent_get(id).await,
+            Self::Ipc(s) => s.consent_get(id).await,
+        }
+    }
 
     /// List records for a specific user.
-    async fn list_by_user(&self, user_id: &UserId) -> anyhow::Result<Vec<ConsentRecord>>;
+    pub async fn list_by_user(&self, user_id: &UserId) -> anyhow::Result<Vec<ConsentRecord>> {
+        match self {
+            Self::Memory(s) => s.consent_list_by_user(user_id).await,
+            Self::Ipc(s) => s.consent_list_by_user(user_id).await,
+        }
+    }
 
     /// List records for a specific task.
-    async fn list_by_task(&self, task_id: &TaskId) -> anyhow::Result<Vec<ConsentRecord>>;
+    pub async fn list_by_task(&self, task_id: &TaskId) -> anyhow::Result<Vec<ConsentRecord>> {
+        match self {
+            Self::Memory(s) => s.consent_list_by_task(task_id).await,
+            Self::Ipc(s) => s.consent_list_by_task(task_id).await,
+        }
+    }
 
     /// List all records with pending status.
-    async fn list_pending(&self) -> anyhow::Result<Vec<ConsentRecord>>;
+    pub async fn list_pending(&self) -> anyhow::Result<Vec<ConsentRecord>> {
+        match self {
+            Self::Memory(s) => s.consent_list_pending().await,
+            Self::Ipc(s) => s.consent_list_pending().await,
+        }
+    }
 
     /// Delete a consent record.
-    async fn delete(&self, id: &str) -> anyhow::Result<()>;
+    pub async fn delete(&self, id: &str) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.consent_delete(id).await,
+            Self::Ipc(s) => s.consent_delete(id).await,
+        }
+    }
 
     /// Flush pending writes to durable storage.
-    async fn flush(&self) -> anyhow::Result<()>;
+    pub async fn flush(&self) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.consent_flush().await,
+            Self::Ipc(s) => s.consent_flush().await,
+        }
+    }
 }
 
 pub use enforcement::*;
@@ -90,8 +132,8 @@ pub struct ConsentManager {
     records: Arc<RwLock<HashMap<Arc<str>, ConsentRecord>>>,
     preferences: Arc<RwLock<HashMap<UserId, UserPreferences>>>,
 
-    /// Optional persistent storage backend (SB-03: trait-abstracted for storage provider migration)
-    storage: Option<Arc<dyn ConsentStorageBackend>>,
+    /// Optional persistent storage backend (SB-03: IPC or in-memory).
+    storage: Option<Arc<ConsentStorage>>,
 
     /// Notify waiters when a consent decision is made (event-driven)
     decision_notify: Arc<tokio::sync::Notify>,
@@ -128,9 +170,9 @@ impl ConsentManager {
                             path = %path.display(),
                             "Consent storage: IPC JSON-RPC (storage.* capability)"
                         );
-                        return Ok(Self::with_backend(Arc::new(
+                        return Ok(Self::with_backend(Arc::new(ConsentStorage::Ipc(
                             crate::storage_ipc::IpcStorageBackend::new(path),
-                        )));
+                        ))));
                     }
                     Err(e) => {
                         tracing::warn!(
@@ -144,7 +186,9 @@ impl ConsentManager {
         }
 
         let _ = database_url;
-        Ok(Self::with_backend(Arc::new(crate::storage_memory::InMemoryStorage::new())))
+        Ok(Self::with_backend(Arc::new(ConsentStorage::Memory(
+            crate::storage_memory::InMemoryStorage::new(),
+        ))))
     }
 
     /// Create a consent manager using an explicit storage provider Unix socket (JSON-RPC `storage.*`).
@@ -154,14 +198,14 @@ impl ConsentManager {
             path = %socket_path.display(),
             "Consent storage: explicit storage provider socket"
         );
-        Self::with_backend(Arc::new(crate::storage_ipc::IpcStorageBackend::new(socket_path)))
+        Self::with_backend(Arc::new(ConsentStorage::Ipc(
+            crate::storage_ipc::IpcStorageBackend::new(socket_path),
+        )))
     }
 
-    /// Create a consent manager with an arbitrary [`ConsentStorageBackend`].
-    ///
-    /// SB-03: allows injecting any [`ConsentStorageBackend`] implementation.
+    /// Create a consent manager with an explicit [`ConsentStorage`] backend.
     #[must_use]
-    pub fn with_backend(backend: Arc<dyn ConsentStorageBackend>) -> Self {
+    pub fn with_backend(backend: Arc<ConsentStorage>) -> Self {
         Self {
             records: Arc::new(RwLock::new(HashMap::new())),
             preferences: Arc::new(RwLock::new(HashMap::new())),

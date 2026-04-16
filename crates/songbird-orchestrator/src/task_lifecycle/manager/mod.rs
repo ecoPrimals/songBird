@@ -23,7 +23,7 @@ mod tests;
 
 pub use events::TaskEvent;
 
-use crate::task_lifecycle::{CheckpointConfig, TaskStorageBackend};
+use crate::task_lifecycle::{CheckpointConfig, TaskStorage};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -78,7 +78,7 @@ use tracing::info;
 /// # }
 /// ```
 pub struct TaskLifecycleManager {
-    pub(crate) storage: Arc<dyn TaskStorageBackend>,
+    pub(crate) storage: Arc<TaskStorage>,
     pub(crate) checkpoint_config: CheckpointConfig,
     pub(crate) event_tx: broadcast::Sender<TaskEvent>,
     pub(crate) cleanup_interval: std::time::Duration,

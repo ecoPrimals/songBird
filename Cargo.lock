@@ -5121,7 +5121,6 @@ dependencies = [
 name = "songbird-canonical"
 version = "0.2.1"
 dependencies = [
- "async-trait",
  "chrono",
  "serde",
  "serde_json",
@@ -5206,7 +5205,6 @@ name = "songbird-config"
 version = "0.2.1"
 dependencies = [
  "anyhow",
- "async-trait",
  "chrono",
  "config",
  "dirs",
@@ -5287,7 +5285,6 @@ name = "songbird-execution-agent"
 version = "0.2.1"
 dependencies = [
  "anyhow",
- "async-trait",
  "axum",
  "chrono",
  "nix 0.29.0",
@@ -5406,7 +5403,6 @@ version = "0.2.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
- "async-trait",
  "base64 0.22.1",
  "chrono",
  "fastrand",
@@ -5602,7 +5598,6 @@ name = "songbird-registry"
 version = "0.2.1"
 dependencies = [
  "anyhow",
- "async-trait",
  "chrono",
  "dashmap 5.5.3",
  "futures-util",
@@ -5665,7 +5660,6 @@ dependencies = [
 name = "songbird-stun"
 version = "0.2.1"
 dependencies = [
- "async-trait",
  "bytes",
  "futures",
  "rand 0.8.5",

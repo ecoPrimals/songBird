@@ -11,36 +11,41 @@ use songbird_http_client::IpcHttpClient;
 /// Lineage provider interface
 ///
 /// `security provider` implements this to provide lineage services.
-#[async_trait::async_trait]
 pub trait LineageProvider: Send + Sync {
     /// Generate lineage for a new node
     ///
     /// Creates a parent-child relationship with cryptographic proof.
-    async fn generate_lineage(
+    fn generate_lineage(
         &self,
         node_id: &str,
         parent_id: &str,
-    ) -> anyhow::Result<LineageChain>;
+    ) -> impl std::future::Future<Output = anyhow::Result<LineageChain>> + Send;
 
     /// Verify a lineage proof
     ///
     /// Cryptographically verifies that a node is part of a lineage.
-    async fn verify_lineage(&self, proof: &LineageProof) -> anyhow::Result<bool>;
+    fn verify_lineage(
+        &self,
+        proof: &LineageProof,
+    ) -> impl std::future::Future<Output = anyhow::Result<bool>> + Send;
 
     /// Get all descendants of a root
     ///
     /// Returns all nodes that descend from the given root.
-    async fn get_descendants(&self, root_id: &str) -> anyhow::Result<Vec<String>>;
+    fn get_descendants(
+        &self,
+        root_id: &str,
+    ) -> impl std::future::Future<Output = anyhow::Result<Vec<String>>> + Send;
 
     /// Get lineage depth between two nodes
     ///
     /// Returns the number of generations between ancestor and descendant.
     /// Returns None if no lineage relationship exists.
-    async fn get_lineage_depth(
+    fn get_lineage_depth(
         &self,
         ancestor_id: &str,
         descendant_id: &str,
-    ) -> anyhow::Result<Option<usize>>;
+    ) -> impl std::future::Future<Output = anyhow::Result<Option<usize>>> + Send;
 }
 
 /// A lineage chain proving ancestry

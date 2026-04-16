@@ -12,41 +12,40 @@ use serde::{Deserialize, Serialize};
 /// `BirdSong` encryption provider
 ///
 /// `security provider` implements this to encrypt/decrypt birdSong messages.
-#[async_trait::async_trait]
 pub trait BirdSongCrypto: Send + Sync {
     /// Encrypt payload for a specific lineage
     ///
     /// Creates an encrypted birdSong that only the specified lineage can decrypt.
-    async fn encrypt_for_lineage(
+    fn encrypt_for_lineage(
         &self,
         payload: &[u8],
         lineage_hint: LineageHint,
-    ) -> anyhow::Result<EncryptedBirdSong>;
+    ) -> impl std::future::Future<Output = anyhow::Result<EncryptedBirdSong>> + Send;
 
     /// Decrypt birdSong (if we're in the lineage)
     ///
     /// Returns the decrypted payload if we have the key, None otherwise.
-    async fn decrypt_birdsong(
+    fn decrypt_birdsong(
         &self,
         encrypted: &EncryptedBirdSong,
-    ) -> anyhow::Result<Option<Vec<u8>>>;
+    ) -> impl std::future::Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send;
 
     /// Request decryption key for a lineage
     ///
     /// `security provider` verifies the lineage proof, then provides the key if authorized.
-    async fn request_key(
+    fn request_key(
         &self,
         lineage_hint: &LineageHint,
         proof: LineageProof,
-    ) -> anyhow::Result<BroadcastKey>;
+    ) -> impl std::future::Future<Output = anyhow::Result<BroadcastKey>> + Send;
 
     /// Batch key request (for efficiency)
     ///
     /// Request multiple keys at once to amortize overhead.
-    async fn request_keys_batch(
+    fn request_keys_batch(
         &self,
         requests: Vec<(LineageHint, LineageProof)>,
-    ) -> anyhow::Result<Vec<BroadcastKey>>;
+    ) -> impl std::future::Future<Output = anyhow::Result<Vec<BroadcastKey>>> + Send;
 }
 
 /// Encrypted birdSong message

@@ -13,14 +13,13 @@
 //! - Type-safe JSON-RPC via `UnixRpcClient`
 //! - Timeout and retry logic
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
-use super::provider::{BtspProvider, PeerInfo};
+use super::provider::PeerInfo;
 use super::tunnel::{SecurityContext, TunnelHandle, TunnelStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
 
@@ -82,11 +81,9 @@ impl HttpBtspProvider {
         info!("✅ RPC connection to {} verified", self.provider_name);
         Ok(())
     }
-}
 
-#[async_trait]
-impl BtspProvider for HttpBtspProvider {
-    async fn establish_tunnel(&self, peer: &PeerInfo) -> SongbirdResult<TunnelHandle> {
+    /// Establish a secure tunnel with peer
+    pub async fn establish_tunnel(&self, peer: &PeerInfo) -> SongbirdResult<TunnelHandle> {
         debug!("🔐 Establishing tunnel to {} via RPC", peer.id);
 
         #[derive(Serialize)]
@@ -126,7 +123,8 @@ impl BtspProvider for HttpBtspProvider {
         })
     }
 
-    async fn encrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
+    /// Encrypt data for transmission through tunnel
+    pub async fn encrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
         debug!("🔐 Encrypting {} bytes via RPC", data.len());
 
         #[derive(Serialize)]
@@ -162,7 +160,8 @@ impl BtspProvider for HttpBtspProvider {
         Ok(encrypt_response.encrypted_data)
     }
 
-    async fn decrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
+    /// Decrypt data received through tunnel
+    pub async fn decrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
         debug!("🔓 Decrypting {} bytes via RPC", data.len());
 
         #[derive(Serialize)]
@@ -194,7 +193,8 @@ impl BtspProvider for HttpBtspProvider {
         Ok(decrypt_response.data)
     }
 
-    async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus> {
+    /// Get tunnel status
+    pub async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus> {
         debug!("🔍 Checking tunnel status: {} via RPC", handle.id);
 
         let request = serde_json::json!({
@@ -212,7 +212,8 @@ impl BtspProvider for HttpBtspProvider {
         Ok(status)
     }
 
-    async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()> {
+    /// Close tunnel
+    pub async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()> {
         debug!("🔒 Closing tunnel: {} via RPC", handle.id);
 
         let request = serde_json::json!({
@@ -230,16 +231,22 @@ impl BtspProvider for HttpBtspProvider {
         Ok(())
     }
 
-    fn provider_name(&self) -> &str {
+    /// Get provider name (for logging/debugging)
+    #[must_use]
+    pub fn provider_name(&self) -> &str {
         &self.provider_name
     }
 
-    fn supports_genetic_auth(&self) -> bool {
+    /// Check if provider supports genetic auth
+    #[must_use]
+    pub fn supports_genetic_auth(&self) -> bool {
         // Remote provider capabilities - assume true if connected
         true
     }
 
-    fn supports_key_lineage(&self) -> bool {
+    /// Check if provider supports key lineage
+    #[must_use]
+    pub fn supports_key_lineage(&self) -> bool {
         // Remote provider capabilities - assume true if connected
         true
     }

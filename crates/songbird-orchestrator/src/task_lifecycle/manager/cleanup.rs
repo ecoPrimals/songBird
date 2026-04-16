@@ -3,13 +3,13 @@
 
 //! Periodic checkpoint cleanup.
 
-use super::super::TaskStorageBackend;
+use super::super::TaskStorage;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
 pub fn spawn_checkpoint_cleanup_task(
-    storage: Arc<dyn TaskStorageBackend>,
+    storage: Arc<TaskStorage>,
     interval: Duration,
     max_age_seconds: u64,
 ) {

@@ -5,12 +5,15 @@
 //!
 //! Defines the interface that all BTSP implementations must provide.
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use songbird_http_client::IpcHttpClient;
+use std::future::Future;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
+use super::http_provider::HttpBtspProvider;
+#[cfg(feature = "local-btsp")]
+use super::local::LocalBtspProvider;
 use super::tunnel::{SecurityContext, TunnelHandle, TunnelStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
 
@@ -90,26 +93,45 @@ pub struct PeerInfo {
 /// BTSP Provider trait
 ///
 /// This trait defines the interface for all BTSP implementations.
+/// The concrete entry point is [`BtspProviderImpl`] (enum dispatch); this trait remains the
+/// documented contract for that type.
+///
 /// Implementations can be:
 /// - Local (for testing)
 /// - `security provider` (real genetic crypto)
 /// - Mock (for unit tests)
-#[async_trait]
 pub trait BtspProvider: Send + Sync {
     /// Establish a secure tunnel with peer
-    async fn establish_tunnel(&self, peer: &PeerInfo) -> SongbirdResult<TunnelHandle>;
+    fn establish_tunnel(
+        &self,
+        peer: &PeerInfo,
+    ) -> impl Future<Output = SongbirdResult<TunnelHandle>> + Send;
 
     /// Encrypt data for transmission through tunnel
-    async fn encrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>>;
+    fn encrypt(
+        &self,
+        data: &[u8],
+        context: &SecurityContext,
+    ) -> impl Future<Output = SongbirdResult<Vec<u8>>> + Send;
 
     /// Decrypt data received through tunnel
-    async fn decrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>>;
+    fn decrypt(
+        &self,
+        data: &[u8],
+        context: &SecurityContext,
+    ) -> impl Future<Output = SongbirdResult<Vec<u8>>> + Send;
 
     /// Get tunnel status
-    async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus>;
+    fn tunnel_status(
+        &self,
+        handle: &TunnelHandle,
+    ) -> impl Future<Output = SongbirdResult<TunnelStatus>> + Send;
 
     /// Close tunnel
-    async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()>;
+    fn close_tunnel(
+        &self,
+        handle: &TunnelHandle,
+    ) -> impl Future<Output = SongbirdResult<()>> + Send;
 
     /// Get provider name (for logging/debugging)
     fn provider_name(&self) -> &str;
@@ -119,6 +141,81 @@ pub trait BtspProvider: Send + Sync {
 
     /// Check if provider supports key lineage
     fn supports_key_lineage(&self) -> bool;
+}
+
+/// Concrete BTSP provider (static enum dispatch; replaces `Arc<dyn BtspProvider>`).
+pub enum BtspProviderImpl {
+    /// Local AES-GCM test provider ([`LocalBtspProvider`]).
+    #[cfg(feature = "local-btsp")]
+    Local(LocalBtspProvider),
+    /// Remote provider over Unix RPC ([`HttpBtspProvider`]).
+    Http(HttpBtspProvider),
+}
+
+impl BtspProvider for BtspProviderImpl {
+    async fn establish_tunnel(&self, peer: &PeerInfo) -> SongbirdResult<TunnelHandle> {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.establish_tunnel(peer).await,
+            Self::Http(p) => p.establish_tunnel(peer).await,
+        }
+    }
+
+    async fn encrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.encrypt(data, context).await,
+            Self::Http(p) => p.encrypt(data, context).await,
+        }
+    }
+
+    async fn decrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.decrypt(data, context).await,
+            Self::Http(p) => p.decrypt(data, context).await,
+        }
+    }
+
+    async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus> {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.tunnel_status(handle).await,
+            Self::Http(p) => p.tunnel_status(handle).await,
+        }
+    }
+
+    async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()> {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.close_tunnel(handle).await,
+            Self::Http(p) => p.close_tunnel(handle).await,
+        }
+    }
+
+    fn provider_name(&self) -> &str {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.provider_name(),
+            Self::Http(p) => p.provider_name(),
+        }
+    }
+
+    fn supports_genetic_auth(&self) -> bool {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.supports_genetic_auth(),
+            Self::Http(p) => p.supports_genetic_auth(),
+        }
+    }
+
+    fn supports_key_lineage(&self) -> bool {
+        match self {
+            #[cfg(feature = "local-btsp")]
+            Self::Local(p) => p.supports_key_lineage(),
+            Self::Http(p) => p.supports_key_lineage(),
+        }
+    }
 }
 
 /// Factory for creating BTSP providers based on runtime discovery
@@ -140,7 +237,7 @@ impl BtspProviderFactory {
     /// This method discovers `security provider` via capability system at runtime.
     /// If `security provider` is not available and `local_fallback` is enabled, returns
     /// local implementation.
-    pub async fn create_provider(&self) -> SongbirdResult<Arc<dyn BtspProvider>> {
+    pub async fn create_provider(&self) -> SongbirdResult<Arc<BtspProviderImpl>> {
         if !self.config.enabled {
             return Err(SongbirdError::configuration("BTSP is not enabled"));
         }
@@ -157,7 +254,16 @@ impl BtspProviderFactory {
                         "⚠️ Security provider not available ({}), falling back to local BTSP implementation",
                         e
                     );
-                    Ok(Arc::new(crate::btsp::local::LocalBtspProvider::new()))
+                    #[cfg(feature = "local-btsp")]
+                    {
+                        Ok(Arc::new(BtspProviderImpl::Local(
+                            crate::btsp::local::LocalBtspProvider::new(),
+                        )))
+                    }
+                    #[cfg(not(feature = "local-btsp"))]
+                    {
+                        Err(e)
+                    }
                 } else {
                     Err(e)
                 }
@@ -172,7 +278,7 @@ impl BtspProviderFactory {
     /// - Works with ANY primal providing "security" + "btsp" capability
     /// - Graceful degradation if no provider available
     /// - Follows "Each Primal Knows Only Itself" principle
-    async fn discover_security_provider(&self) -> SongbirdResult<Arc<dyn BtspProvider>> {
+    async fn discover_security_provider(&self) -> SongbirdResult<Arc<BtspProviderImpl>> {
         use tracing::{debug, warn};
 
         debug!("🔍 Attempting to discover security provider via capability system");
@@ -288,8 +394,7 @@ impl BtspProviderFactory {
     async fn connect_to_security_provider(
         &self,
         endpoint: &str,
-    ) -> SongbirdResult<Arc<dyn BtspProvider>> {
-        use crate::btsp::http_provider::HttpBtspProvider;
+    ) -> SongbirdResult<Arc<BtspProviderImpl>> {
         use tracing::info;
 
         info!("🔗 Connecting to security provider at {}", endpoint);
@@ -305,7 +410,7 @@ impl BtspProviderFactory {
 
         info!("✅ Connected to security provider at {}", endpoint);
 
-        Ok(Arc::new(provider))
+        Ok(Arc::new(BtspProviderImpl::Http(provider)))
     }
 }
 

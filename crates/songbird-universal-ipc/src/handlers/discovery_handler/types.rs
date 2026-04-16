@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2024-2026 ecoPrimals
+
+//! Discovery handler types — peer registry trait and JSON-RPC DTOs.
+
+use crate::error::IpcResult;
+use serde::{Deserialize, Serialize};
+
+/// Trait for peer registry (implemented by orchestrator).
+#[async_trait::async_trait]
+pub trait PeerRegistry: Send + Sync {
+    /// Get all discovered peers.
+    async fn get_all_peers(&self) -> IpcResult<Vec<DiscoveredPeerInfo>>;
+
+    /// Get a specific peer by ID.
+    async fn get_peer(&self, peer_id: &str) -> IpcResult<Option<DiscoveredPeerInfo>>;
+}
+
+/// Parameters for `discovery.get_peer`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DiscoveryGetPeerParams {
+    pub peer_id: String,
+}
+
+/// Result for `discovery.peers`.
+#[derive(Debug, Clone, Serialize)]
+pub struct DiscoveryPeersResult {
+    pub peers: Vec<DiscoveredPeerInfo>,
+    pub total_count: usize,
+}
+
+/// Discovered peer information (JSON-RPC compatible).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveredPeerInfo {
+    pub node_id: String,
+    pub family_id: String,
+    pub address: String,
+    pub tcp_port: Option<u16>,
+    pub capabilities: Vec<String>,
+    pub last_seen: String,
+    pub quality: Option<f64>,
+    pub node_name: Option<String>,
+    pub protocols: Vec<String>,
+}

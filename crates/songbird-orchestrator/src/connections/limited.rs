@@ -24,9 +24,8 @@
 //! - `federation/*` - No full federation
 //! - `keys/*` - No key access
 
-use super::{PeerConnection, check_operation_allowed};
+use super::check_operation_allowed;
 use anyhow::{Context, Result, anyhow};
-use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;
 use songbird_universal::UnixRpcClient;
@@ -105,25 +104,24 @@ impl LimitedConnection {
     }
 }
 
-#[async_trait]
-impl PeerConnection for LimitedConnection {
-    fn trust_level(&self) -> TrustLevel {
+impl LimitedConnection {
+    pub fn trust_level(&self) -> TrustLevel {
         TrustLevel::Limited
     }
 
-    fn allowed_capabilities(&self) -> &[String] {
+    pub fn allowed_capabilities(&self) -> &[String] {
         &self.allowed_capabilities
     }
 
-    fn denied_capabilities(&self) -> &[String] {
+    pub fn denied_capabilities(&self) -> &[String] {
         &self.denied_capabilities
     }
 
-    fn is_operation_allowed(&self, operation: &str) -> bool {
+    pub fn is_operation_allowed(&self, operation: &str) -> bool {
         check_operation_allowed(operation, &self.allowed_capabilities, &self.denied_capabilities)
     }
 
-    async fn call(&self, operation: &str, request: Value) -> Result<Value> {
+    pub async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         // Enforce capability restrictions
         if !self.is_operation_allowed(operation) {
             warn!(
@@ -154,16 +152,16 @@ impl PeerConnection for LimitedConnection {
         Ok(result)
     }
 
-    fn peer_id(&self) -> &str {
+    pub fn peer_id(&self) -> &str {
         &self.peer_id
     }
 
-    fn endpoint(&self) -> &str {
+    pub fn endpoint(&self) -> &str {
         // Return socket path as string for compatibility
         self.socket_path.to_str().unwrap_or(&self.peer_id)
     }
 
-    async fn close(&self) -> Result<()> {
+    pub async fn close(&self) -> Result<()> {
         debug!("Closing limited connection to peer '{}'", self.peer_id);
         // HTTP client cleanup happens automatically
         Ok(())

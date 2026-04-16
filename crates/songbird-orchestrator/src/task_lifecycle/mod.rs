@@ -22,49 +22,111 @@ pub use checkpoint::*;
 pub use manager::{TaskEvent, TaskLifecycleManager};
 pub use types::*;
 
-/// Async task persistence backend.
+/// Task persistence: in-memory fallback or IPC JSON-RPC `storage.*` provider.
 ///
 /// Production path: [`IpcStorageBackend`](crate::storage_ipc::IpcStorageBackend) delegates
 /// to the `storage.*` capability provider via JSON-RPC at runtime.
 /// Fallback: [`InMemoryStorage`](crate::storage_memory::InMemoryStorage) when no provider is available.
-#[async_trait::async_trait]
-pub trait TaskStorageBackend: Send + Sync {
+#[derive(Debug)]
+pub enum TaskStorage {
+    /// Non-durable in-process store.
+    Memory(crate::storage_memory::InMemoryStorage),
+    /// Durable keys via capability-discovered Unix socket.
+    Ipc(crate::storage_ipc::IpcStorageBackend),
+}
+
+impl TaskStorage {
     /// Persist or update a task.
-    async fn save_task(&self, task: &TaskLifecycle) -> anyhow::Result<()>;
+    pub async fn save_task(&self, task: &TaskLifecycle) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.save_task(task).await,
+            Self::Ipc(s) => s.save_task(task).await,
+        }
+    }
 
     /// Retrieve a task by ID.
-    async fn get_task(&self, id: TaskId) -> anyhow::Result<Option<TaskLifecycle>>;
+    pub async fn get_task(&self, id: TaskId) -> anyhow::Result<Option<TaskLifecycle>> {
+        match self {
+            Self::Memory(s) => s.get_task(id).await,
+            Self::Ipc(s) => s.get_task(id).await,
+        }
+    }
 
     /// List tasks matching a filter.
-    async fn list_tasks(&self, filter: &TaskFilter) -> anyhow::Result<Vec<TaskLifecycle>>;
+    pub async fn list_tasks(&self, filter: &TaskFilter) -> anyhow::Result<Vec<TaskLifecycle>> {
+        match self {
+            Self::Memory(s) => s.list_tasks(filter).await,
+            Self::Ipc(s) => s.list_tasks(filter).await,
+        }
+    }
 
     /// Delete a task by ID.
-    async fn delete_task(&self, id: TaskId) -> anyhow::Result<()>;
+    pub async fn delete_task(&self, id: TaskId) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.delete_task(id).await,
+            Self::Ipc(s) => s.delete_task(id).await,
+        }
+    }
 
     /// Persist a checkpoint.
-    async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> anyhow::Result<()>;
+    pub async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.save_checkpoint(checkpoint).await,
+            Self::Ipc(s) => s.save_checkpoint(checkpoint).await,
+        }
+    }
 
     /// Retrieve a checkpoint by ID.
-    async fn get_checkpoint(&self, id: &str) -> anyhow::Result<Option<Checkpoint>>;
+    pub async fn get_checkpoint(&self, id: &str) -> anyhow::Result<Option<Checkpoint>> {
+        match self {
+            Self::Memory(s) => s.get_checkpoint(id).await,
+            Self::Ipc(s) => s.get_checkpoint(id).await,
+        }
+    }
 
     /// List checkpoints for a task (most recent first).
-    async fn list_checkpoints(&self, task_id: TaskId) -> anyhow::Result<Vec<Checkpoint>>;
+    pub async fn list_checkpoints(&self, task_id: TaskId) -> anyhow::Result<Vec<Checkpoint>> {
+        match self {
+            Self::Memory(s) => s.list_checkpoints(task_id).await,
+            Self::Ipc(s) => s.list_checkpoints(task_id).await,
+        }
+    }
 
     /// Delete a checkpoint by ID.
-    async fn delete_checkpoint(&self, id: &str) -> anyhow::Result<()>;
+    pub async fn delete_checkpoint(&self, id: &str) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.delete_checkpoint(id).await,
+            Self::Ipc(s) => s.delete_checkpoint(id).await,
+        }
+    }
 
     /// Flush pending writes to durable storage.
-    async fn flush(&self) -> anyhow::Result<()>;
+    pub async fn flush(&self) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.flush_tasks().await,
+            Self::Ipc(s) => s.flush_tasks().await,
+        }
+    }
 
     /// Remove checkpoints older than `max_age_seconds` (relative to `Utc::now()`).
-    async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> anyhow::Result<u64>;
+    pub async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> anyhow::Result<u64> {
+        match self {
+            Self::Memory(s) => s.cleanup_old_checkpoints(max_age_seconds).await,
+            Self::Ipc(s) => s.cleanup_old_checkpoints(max_age_seconds).await,
+        }
+    }
 
     /// Keep only the `keep_count` most recent checkpoints for a task (by creation time).
-    async fn delete_old_checkpoints(
+    pub async fn delete_old_checkpoints(
         &self,
         task_id: TaskId,
         keep_count: usize,
-    ) -> anyhow::Result<()>;
+    ) -> anyhow::Result<()> {
+        match self {
+            Self::Memory(s) => s.delete_old_checkpoints(task_id, keep_count).await,
+            Self::Ipc(s) => s.delete_old_checkpoints(task_id, keep_count).await,
+        }
+    }
 }
 
 /// Task identifier (UUID v7 for time-ordered IDs)

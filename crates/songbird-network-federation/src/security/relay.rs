@@ -11,17 +11,16 @@ use serde::{Deserialize, Serialize};
 /// Lineage-gated relay provider
 ///
 /// `security provider` implements this to offer relay services to descendants.
-#[async_trait::async_trait]
 pub trait LineageRelay: Send + Sync {
     /// Offer relay service to descendant
     ///
     /// Verifies lineage proof, then creates a relay session.
-    async fn offer_relay(
+    fn offer_relay(
         &self,
         requester: &str,
         target: &str,
         lineage_proof: LineageProof,
-    ) -> anyhow::Result<RelaySession>;
+    ) -> impl std::future::Future<Output = anyhow::Result<RelaySession>> + Send;
 
     /// Get visibility level based on lineage depth
     ///
@@ -31,12 +30,19 @@ pub trait LineageRelay: Send + Sync {
     /// Relay packet (with masking enforced)
     ///
     /// Routes a packet between two nodes, enforcing metadata masking.
-    async fn relay_packet(&self, session: &RelaySession, packet: &[u8]) -> anyhow::Result<()>;
+    fn relay_packet(
+        &self,
+        session: &RelaySession,
+        packet: &[u8],
+    ) -> impl std::future::Future<Output = anyhow::Result<()>> + Send;
 
     /// Revoke relay for a session
     ///
     /// Ancestor can revoke relay privileges at any time.
-    async fn revoke_relay(&self, session_id: &str) -> anyhow::Result<()>;
+    fn revoke_relay(
+        &self,
+        session_id: &str,
+    ) -> impl std::future::Future<Output = anyhow::Result<()>> + Send;
 }
 
 /// A relay session between two nodes

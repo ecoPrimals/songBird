@@ -8,12 +8,12 @@
 //! `SecurityProviderFactory::discover` walks UPA /
 //! environment / well-known sockets (see wateringHole v1.2 capability layout). When nothing
 //! responds, callers may use `SecurityProviderFactory::create_noop` to obtain a
-//! [`NoOpSecurityProvider`] instead of holding `Option<dyn SecurityProvider>` everywhere.
+//! [`SecurityProviderImpl::NoOp`] ([`NoOpSecurityProvider`]) instead of omitting a provider everywhere.
 //!
 //! This type is **not** a mock: crypto and lineage RPCs return [`Result::Err`] with
-//! [`NoOpSecurityError`], not fake ciphertext. [`LineageRelay::get_visibility_level`] is a
+//! [`NoOpSecurityError`], not fake ciphertext. [`NoOpSecurityProvider::get_visibility_level`] is a
 //! pure local mapping ([`AccessLevel::from_lineage_depth`]) and does not contact a remote.
-//! [`SecurityProvider::is_available`] is `false`; [`SecurityProvider::shutdown`] is a no-op
+//! [`NoOpSecurityProvider::is_available`] is `false`; [`NoOpSecurityProvider::shutdown`] is a no-op
 //! success.
 //!
 //! ## Runtime selection (not Cargo feature-gated)
@@ -24,8 +24,8 @@
 //! without a separate feature flag.
 
 use super::{
-    AccessLevel, BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageChain, LineageHint,
-    LineageProof, LineageProvider, LineageRelay, RelaySession, SecurityProvider,
+    AccessLevel, BroadcastKey, EncryptedBirdSong, LineageChain, LineageHint, LineageProof,
+    RelaySession,
 };
 use thiserror::Error;
 
@@ -63,7 +63,7 @@ pub enum NoOpSecurityError {
 /// No-op provider when the security provider is not configured or discoverable.
 ///
 /// Prefer `SecurityProviderFactory::discover` first; use [`NoOpSecurityProvider::new`] only when
-/// you explicitly need a [`SecurityProvider`] trait object that reports unavailable for crypto.
+/// you explicitly need a [`crate::security::SecurityProviderImpl`] that reports unavailable for crypto.
 pub struct NoOpSecurityProvider;
 
 impl NoOpSecurityProvider {
@@ -84,9 +84,9 @@ impl Default for NoOpSecurityProvider {
     }
 }
 
-#[async_trait::async_trait]
-impl LineageProvider for NoOpSecurityProvider {
-    async fn generate_lineage(
+impl NoOpSecurityProvider {
+    /// Generate lineage for a new node
+    pub async fn generate_lineage(
         &self,
         _node_id: &str,
         _parent_id: &str,
@@ -97,21 +97,24 @@ impl LineageProvider for NoOpSecurityProvider {
         .into())
     }
 
-    async fn verify_lineage(&self, _proof: &LineageProof) -> anyhow::Result<bool> {
+    /// Verify a lineage proof
+    pub async fn verify_lineage(&self, _proof: &LineageProof) -> anyhow::Result<bool> {
         Err(NoOpSecurityError::LineageUnavailable {
             operation: "verify_lineage",
         }
         .into())
     }
 
-    async fn get_descendants(&self, _root_id: &str) -> anyhow::Result<Vec<String>> {
+    /// Get all descendants of a root
+    pub async fn get_descendants(&self, _root_id: &str) -> anyhow::Result<Vec<String>> {
         Err(NoOpSecurityError::LineageUnavailable {
             operation: "get_descendants",
         }
         .into())
     }
 
-    async fn get_lineage_depth(
+    /// Get lineage depth between two nodes
+    pub async fn get_lineage_depth(
         &self,
         _ancestor_id: &str,
         _descendant_id: &str,
@@ -121,11 +124,9 @@ impl LineageProvider for NoOpSecurityProvider {
         }
         .into())
     }
-}
 
-#[async_trait::async_trait]
-impl BirdSongCrypto for NoOpSecurityProvider {
-    async fn encrypt_for_lineage(
+    /// Encrypt payload for a specific lineage
+    pub async fn encrypt_for_lineage(
         &self,
         _payload: &[u8],
         _lineage_hint: LineageHint,
@@ -136,7 +137,8 @@ impl BirdSongCrypto for NoOpSecurityProvider {
         .into())
     }
 
-    async fn decrypt_birdsong(
+    /// Decrypt birdSong (if we're in the lineage)
+    pub async fn decrypt_birdsong(
         &self,
         _encrypted: &EncryptedBirdSong,
     ) -> anyhow::Result<Option<Vec<u8>>> {
@@ -146,7 +148,8 @@ impl BirdSongCrypto for NoOpSecurityProvider {
         .into())
     }
 
-    async fn request_key(
+    /// Request decryption key for a lineage
+    pub async fn request_key(
         &self,
         _lineage_hint: &LineageHint,
         _proof: LineageProof,
@@ -157,7 +160,8 @@ impl BirdSongCrypto for NoOpSecurityProvider {
         .into())
     }
 
-    async fn request_keys_batch(
+    /// Batch key request (for efficiency)
+    pub async fn request_keys_batch(
         &self,
         _requests: Vec<(LineageHint, LineageProof)>,
     ) -> anyhow::Result<Vec<BroadcastKey>> {
@@ -166,11 +170,9 @@ impl BirdSongCrypto for NoOpSecurityProvider {
         }
         .into())
     }
-}
 
-#[async_trait::async_trait]
-impl LineageRelay for NoOpSecurityProvider {
-    async fn offer_relay(
+    /// Offer relay service to descendant
+    pub async fn offer_relay(
         &self,
         _requester: &str,
         _target: &str,
@@ -182,36 +184,45 @@ impl LineageRelay for NoOpSecurityProvider {
         .into())
     }
 
-    fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
+    /// Get visibility level based on lineage depth
+    #[must_use]
+    pub fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
         AccessLevel::from_lineage_depth(lineage_depth)
     }
 
-    async fn relay_packet(&self, _session: &RelaySession, _packet: &[u8]) -> anyhow::Result<()> {
+    /// Relay packet (with masking enforced)
+    pub async fn relay_packet(
+        &self,
+        _session: &RelaySession,
+        _packet: &[u8],
+    ) -> anyhow::Result<()> {
         Err(NoOpSecurityError::RelayUnavailable {
             operation: "relay_packet",
         }
         .into())
     }
 
-    async fn revoke_relay(&self, _session_id: &str) -> anyhow::Result<()> {
+    /// Revoke relay for a session
+    pub async fn revoke_relay(&self, _session_id: &str) -> anyhow::Result<()> {
         Err(NoOpSecurityError::RelayUnavailable {
             operation: "revoke_relay",
         }
         .into())
     }
-}
 
-#[async_trait::async_trait]
-impl SecurityProvider for NoOpSecurityProvider {
-    async fn is_available(&self) -> bool {
+    /// Check if the provider is available and operational
+    pub async fn is_available(&self) -> bool {
         false
     }
 
-    fn version(&self) -> &'static str {
+    /// Provider version for compatibility checking
+    #[must_use]
+    pub fn version(&self) -> &'static str {
         "0.0.0-noop"
     }
 
-    async fn shutdown(&self) -> anyhow::Result<()> {
+    /// Graceful shutdown
+    pub async fn shutdown(&self) -> anyhow::Result<()> {
         Ok(())
     }
 }
@@ -222,8 +233,7 @@ mod tests {
 
     use super::NoOpSecurityProvider;
     use crate::security::{
-        AccessLevel, BirdSongCrypto, EncryptedBirdSong, LineageChain, LineageHint, LineageProof,
-        LineageProvider, LineageRelay, RelaySession, SecurityProvider,
+        AccessLevel, EncryptedBirdSong, LineageChain, LineageHint, LineageProof, RelaySession,
     };
 
     #[test]
@@ -236,7 +246,7 @@ mod tests {
     #[tokio::test]
     async fn lineage_methods_return_unavailable() {
         let p = NoOpSecurityProvider::new();
-        assert!(LineageProvider::generate_lineage(&p, "n", "p").await.is_err());
+        assert!(p.generate_lineage("n", "p").await.is_err());
         let proof = LineageProof {
             chain: LineageChain {
                 root_id: "r".to_string(),
@@ -246,17 +256,15 @@ mod tests {
             },
             claimer_signature: vec![],
         };
-        assert!(LineageProvider::verify_lineage(&p, &proof).await.is_err());
-        assert!(LineageProvider::get_descendants(&p, "r").await.is_err());
-        assert!(LineageProvider::get_lineage_depth(&p, "a", "b").await.is_err());
+        assert!(p.verify_lineage(&proof).await.is_err());
+        assert!(p.get_descendants("r").await.is_err());
+        assert!(p.get_lineage_depth("a", "b").await.is_err());
     }
 
     #[tokio::test]
     async fn birdsong_crypto_methods_return_unavailable() {
         let p = NoOpSecurityProvider::new();
-        assert!(
-            BirdSongCrypto::encrypt_for_lineage(&p, b"hi", LineageHint::Universal).await.is_err()
-        );
+        assert!(p.encrypt_for_lineage(b"hi", LineageHint::Universal).await.is_err());
         let enc = EncryptedBirdSong {
             version: 1,
             ciphertext: vec![],
@@ -265,7 +273,7 @@ mod tests {
             signature: vec![],
             genesis_witness: None,
         };
-        assert!(BirdSongCrypto::decrypt_birdsong(&p, &enc).await.is_err());
+        assert!(p.decrypt_birdsong(&enc).await.is_err());
         let proof = LineageProof {
             chain: LineageChain {
                 root_id: "r".into(),
@@ -275,8 +283,8 @@ mod tests {
             },
             claimer_signature: vec![],
         };
-        assert!(BirdSongCrypto::request_key(&p, &LineageHint::Universal, proof).await.is_err());
-        assert!(BirdSongCrypto::request_keys_batch(&p, vec![]).await.is_err());
+        assert!(p.request_key(&LineageHint::Universal, proof).await.is_err());
+        assert!(p.request_keys_batch(vec![]).await.is_err());
     }
 
     #[tokio::test]
@@ -291,10 +299,9 @@ mod tests {
             },
             claimer_signature: vec![],
         };
-        assert!(LineageRelay::offer_relay(&p, "a", "b", proof).await.is_err());
+        assert!(p.offer_relay("a", "b", proof).await.is_err());
         assert!(
-            LineageRelay::relay_packet(
-                &p,
+            p.relay_packet(
                 &RelaySession {
                     session_id: "s".into(),
                     requester_id: "a".into(),
@@ -309,21 +316,21 @@ mod tests {
             .await
             .is_err()
         );
-        assert!(LineageRelay::revoke_relay(&p, "s").await.is_err());
+        assert!(p.revoke_relay("s").await.is_err());
     }
 
     #[test]
     fn get_visibility_level_maps_depth() {
         let p = NoOpSecurityProvider::new();
-        assert_eq!(LineageRelay::get_visibility_level(&p, 0), AccessLevel::FullLineage);
-        assert_eq!(LineageRelay::get_visibility_level(&p, 5), AccessLevel::Masked);
+        assert_eq!(p.get_visibility_level(0), AccessLevel::FullLineage);
+        assert_eq!(p.get_visibility_level(5), AccessLevel::Masked);
     }
 
     #[tokio::test]
     async fn security_provider_metadata() {
         let p = NoOpSecurityProvider::new();
-        assert!(!SecurityProvider::is_available(&p).await);
-        assert_eq!(SecurityProvider::version(&p), "0.0.0-noop");
-        SecurityProvider::shutdown(&p).await.unwrap();
+        assert!(!p.is_available().await);
+        assert_eq!(p.version(), "0.0.0-noop");
+        p.shutdown().await.unwrap();
     }
 }

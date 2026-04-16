@@ -15,8 +15,8 @@
 //! - ✅ Graceful error handling
 
 use super::{
-    AccessLevel, BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageChain, LineageHint,
-    LineageProof, LineageProvider, LineageRelay, RelaySession, SecurityProvider,
+    AccessLevel, BroadcastKey, EncryptedBirdSong, LineageChain, LineageHint, LineageProof,
+    RelaySession,
 };
 use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
@@ -140,11 +140,9 @@ impl ProductionSecurityProvider {
             .cloned()
             .ok_or_else(|| anyhow!("No result in security provider response"))
     }
-}
 
-#[async_trait::async_trait]
-impl LineageProvider for ProductionSecurityProvider {
-    async fn generate_lineage(&self, node_id: &str, parent_id: &str) -> Result<LineageChain> {
+    /// Generate lineage for a new node
+    pub async fn generate_lineage(&self, node_id: &str, parent_id: &str) -> Result<LineageChain> {
         let params = serde_json::json!({
             "node_id": node_id,
             "parent_id": parent_id
@@ -154,7 +152,8 @@ impl LineageProvider for ProductionSecurityProvider {
         serde_json::from_value(result).context("Failed to parse lineage chain")
     }
 
-    async fn verify_lineage(&self, proof: &LineageProof) -> Result<bool> {
+    /// Verify a lineage proof
+    pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<bool> {
         let params = serde_json::json!({
             "proof": proof
         });
@@ -166,7 +165,8 @@ impl LineageProvider for ProductionSecurityProvider {
             .ok_or_else(|| anyhow!("Invalid verify_lineage response"))
     }
 
-    async fn get_descendants(&self, root_id: &str) -> Result<Vec<String>> {
+    /// Get all descendants of a root
+    pub async fn get_descendants(&self, root_id: &str) -> Result<Vec<String>> {
         let params = serde_json::json!({
             "root_id": root_id
         });
@@ -175,7 +175,8 @@ impl LineageProvider for ProductionSecurityProvider {
         serde_json::from_value(result).context("Failed to parse descendants")
     }
 
-    async fn get_lineage_depth(
+    /// Get lineage depth between two nodes
+    pub async fn get_lineage_depth(
         &self,
         ancestor_id: &str,
         descendant_id: &str,
@@ -192,11 +193,9 @@ impl LineageProvider for ProductionSecurityProvider {
         )]
         Ok(result.get("depth").and_then(serde_json::Value::as_u64).map(|d| d as usize))
     }
-}
 
-#[async_trait::async_trait]
-impl BirdSongCrypto for ProductionSecurityProvider {
-    async fn encrypt_for_lineage(
+    /// Encrypt payload for a specific lineage
+    pub async fn encrypt_for_lineage(
         &self,
         payload: &[u8],
         lineage_hint: LineageHint,
@@ -226,7 +225,8 @@ impl BirdSongCrypto for ProductionSecurityProvider {
         serde_json::from_value(result).context("Failed to parse encrypted birdsong")
     }
 
-    async fn decrypt_birdsong(&self, encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
+    /// Decrypt birdSong (if we're in the lineage)
+    pub async fn decrypt_birdsong(&self, encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
         // Get family_id from self, env vars, or default (canonical chain)
         let family_id = self
             .family_id
@@ -262,7 +262,8 @@ impl BirdSongCrypto for ProductionSecurityProvider {
         Ok(Some(plaintext))
     }
 
-    async fn request_key(
+    /// Request decryption key for a lineage
+    pub async fn request_key(
         &self,
         lineage_hint: &LineageHint,
         proof: LineageProof,
@@ -276,7 +277,8 @@ impl BirdSongCrypto for ProductionSecurityProvider {
         serde_json::from_value(result).context("Failed to parse broadcast key")
     }
 
-    async fn request_keys_batch(
+    /// Batch key request (for efficiency)
+    pub async fn request_keys_batch(
         &self,
         requests: Vec<(LineageHint, LineageProof)>,
     ) -> Result<Vec<BroadcastKey>> {
@@ -287,11 +289,9 @@ impl BirdSongCrypto for ProductionSecurityProvider {
         let result = self.call_security_rpc("birdsong.request_keys_batch", params).await?;
         serde_json::from_value(result).context("Failed to parse broadcast keys")
     }
-}
 
-#[async_trait::async_trait]
-impl LineageRelay for ProductionSecurityProvider {
-    async fn offer_relay(
+    /// Offer relay service to descendant
+    pub async fn offer_relay(
         &self,
         requester: &str,
         target: &str,
@@ -307,11 +307,14 @@ impl LineageRelay for ProductionSecurityProvider {
         serde_json::from_value(result).context("Failed to parse relay session")
     }
 
-    fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
+    /// Get visibility level based on lineage depth
+    #[must_use]
+    pub fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
         AccessLevel::from_lineage_depth(lineage_depth)
     }
 
-    async fn relay_packet(&self, session: &RelaySession, packet: &[u8]) -> Result<()> {
+    /// Relay packet (with masking enforced)
+    pub async fn relay_packet(&self, session: &RelaySession, packet: &[u8]) -> Result<()> {
         use base64::{Engine as _, engine::general_purpose};
 
         let params = serde_json::json!({
@@ -323,7 +326,8 @@ impl LineageRelay for ProductionSecurityProvider {
         Ok(())
     }
 
-    async fn revoke_relay(&self, session_id: &str) -> Result<()> {
+    /// Revoke relay for a session
+    pub async fn revoke_relay(&self, session_id: &str) -> Result<()> {
         let params = serde_json::json!({
             "session_id": session_id
         });
@@ -331,11 +335,9 @@ impl LineageRelay for ProductionSecurityProvider {
         self.call_security_rpc("relay.revoke", params).await?;
         Ok(())
     }
-}
 
-#[async_trait::async_trait]
-impl SecurityProvider for ProductionSecurityProvider {
-    async fn is_available(&self) -> bool {
+    /// Check if the provider is available and operational
+    pub async fn is_available(&self) -> bool {
         // Try health check
         match self.call_security_rpc("health", serde_json::json!({})).await {
             Ok(result) => {
@@ -348,11 +350,14 @@ impl SecurityProvider for ProductionSecurityProvider {
         }
     }
 
-    fn version(&self) -> &'static str {
+    /// Provider version for compatibility checking
+    #[must_use]
+    pub fn version(&self) -> &'static str {
         "production-unix-socket"
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    /// Graceful shutdown
+    pub async fn shutdown(&self) -> Result<()> {
         info!("Shutting down security provider provider connection");
         Ok(())
     }

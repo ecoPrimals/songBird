@@ -2,8 +2,8 @@
 
 **Date**: April 16, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 143 (Apr 16, 2026)  
-**Current Wave**: 143 — primalSpring remaining work: content distribution federation wired (in-memory `ContentAnnouncementStore` with TTL, `discovery.content_peers` method, topic-based seeder/leecher coordination, BLAKE3 manifest addressing, `family_only` filtering, 10 new tests), `ring` deny.toml documentation updated with April 2026 upstream status, `async-trait` SB-06 re-audited (141 annotations, all dyn-dispatched, blocked on `async_fn_in_dyn_trait`)  
+**Last Deep Debt Audit**: Wave 144 (Apr 16, 2026)  
+**Current Wave**: 144 — dyn→static dispatch evolution: PeerConnection (enum), BtspProvider (enum), federation SecurityProvider+supertraits (enum), ConsentStorage/TaskStorage (enum); `async-trait` dropped from 6 crates; discovery_handler.rs >800L smart-refactored into 4-file module (291L handler, 82L content, 44L types, 530L tests); hardcoded /tmp/service.log and localhost:8080 evolved to runtime-resolved  
 **Previous Waves** (full detail in `CHANGELOG.md`): 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -19,7 +19,7 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 16 verified) |
 | **Format** | Clean (`cargo fmt --check` passes; Apr 16 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files refactored Wave 133: `ipc/types.rs` → 7 modules, `env_config.rs` → 9 modules, `tarpc_server.rs` → 3 modules, `manager.rs` → 6 modules) |
+| **Files >800 lines** | 0 (largest production 291L `discovery_handler/mod.rs`; former 1030L monolith smart-refactored Wave 144 into 4-file module; 4 former >700L files refactored Wave 133) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |
@@ -36,7 +36,7 @@
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI via `ci.yml` (Wave 134) |
 | **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** removed Wave 135 (SB-03 resolved — IPC `storage.*` capability is production path, InMemory fallback); `parking_lot` removed (Wave 133) |
-| **`async-trait`** | 141 `#[async_trait]` annotations across workspace (~16 in test/mock code); 100% require `dyn Trait` dispatch or are supertraits of dyn-dispatched traits (+1 axum `FromRequestParts`); SB-06 tracked in `Cargo.toml`; blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119) |
+| **`async-trait`** | **113** `#[async_trait]` annotations (down from 141 pre-Wave 144); Wave 144 eliminated 28 via enum/concrete dispatch (PeerConnection, BtspProvider, SecurityProvider+3 supertraits, ConsentStorage, TaskStorage); dropped `async-trait` dep from 6 crates (canonical, config, execution-agent, network-federation, registry, stun); remaining 113 in: platform IPC (6 OS backends), canonical Provider tree, lineage-relay, discovery, HTTP handlers, crypto capability; SB-06 tracked |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
 | **Total Rust** | ~430,000 lines across 30 crates (1,587 files) |

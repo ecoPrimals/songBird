@@ -129,7 +129,7 @@ pub mod zero_copy_registry;
 
 // Re-export core types for convenience
 /// `security provider` Secure Tunnel Protocol configuration and provider traits.
-pub use btsp::{BtspConfig, BtspProvider, LocalBtspProvider};
+pub use btsp::{BtspConfig, BtspProvider, BtspProviderImpl, LocalBtspProvider};
 /// Federation coordinator, node metadata, and configuration for multi-node setups.
 pub use federation::{FederationConfig, FederationCoordinator, NodeInfo};
 /// Bridge between network stack and federation-aware coordination.

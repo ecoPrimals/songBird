@@ -25,7 +25,6 @@
 
 #![cfg(feature = "local-btsp")]
 
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -37,7 +36,7 @@ use aes_gcm::{
 };
 use rand::RngCore;
 
-use super::provider::{BtspProvider, PeerInfo};
+use super::provider::PeerInfo;
 use super::tunnel::{SecurityContext, Tunnel, TunnelHandle, TunnelStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
 
@@ -62,17 +61,9 @@ impl LocalBtspProvider {
             key_manager: Arc::new(LocalKeyManager::new()),
         }
     }
-}
 
-impl Default for LocalBtspProvider {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[async_trait]
-impl BtspProvider for LocalBtspProvider {
-    async fn establish_tunnel(&self, peer: &PeerInfo) -> SongbirdResult<TunnelHandle> {
+    /// Establish a secure tunnel with peer
+    pub async fn establish_tunnel(&self, peer: &PeerInfo) -> SongbirdResult<TunnelHandle> {
         debug!("🔗 Establishing local BTSP tunnel with peer: {}", peer.id);
 
         // Generate shared key for this tunnel
@@ -90,7 +81,8 @@ impl BtspProvider for LocalBtspProvider {
         Ok(handle)
     }
 
-    async fn encrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
+    /// Encrypt data for transmission through tunnel
+    pub async fn encrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
         // Get tunnel
         let tunnels = self.tunnels.read().await;
         let mut tunnel = tunnels
@@ -111,7 +103,8 @@ impl BtspProvider for LocalBtspProvider {
         Ok(encrypted)
     }
 
-    async fn decrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
+    /// Decrypt data received through tunnel
+    pub async fn decrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
         // Get tunnel
         let tunnels = self.tunnels.read().await;
         let mut tunnel = tunnels
@@ -132,7 +125,8 @@ impl BtspProvider for LocalBtspProvider {
         Ok(decrypted)
     }
 
-    async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus> {
+    /// Get tunnel status
+    pub async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus> {
         let status = self
             .tunnels
             .read()
@@ -145,7 +139,8 @@ impl BtspProvider for LocalBtspProvider {
         Ok(status)
     }
 
-    async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()> {
+    /// Close tunnel
+    pub async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()> {
         debug!("🔒 Closing local BTSP tunnel: {}", handle.id);
 
         if let Some(tunnel) = self.tunnels.write().await.get_mut(&handle.id) {
@@ -156,16 +151,28 @@ impl BtspProvider for LocalBtspProvider {
         Ok(())
     }
 
-    fn provider_name(&self) -> &'static str {
+    /// Get provider name (for logging/debugging)
+    #[must_use]
+    pub fn provider_name(&self) -> &'static str {
         "Local"
     }
 
-    fn supports_genetic_auth(&self) -> bool {
+    /// Check if provider supports genetic auth
+    #[must_use]
+    pub fn supports_genetic_auth(&self) -> bool {
         false // Local implementation doesn't support genetic auth
     }
 
-    fn supports_key_lineage(&self) -> bool {
+    /// Check if provider supports key lineage
+    #[must_use]
+    pub fn supports_key_lineage(&self) -> bool {
         false // Local implementation doesn't track key lineage
+    }
+}
+
+impl Default for LocalBtspProvider {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

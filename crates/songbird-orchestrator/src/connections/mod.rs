@@ -11,7 +11,6 @@
 //! Each connection type enforces capability restrictions appropriate to its trust level.
 
 use anyhow::Result;
-use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;
 
@@ -19,7 +18,6 @@ pub mod federated;
 pub mod full_trust;
 pub mod limited;
 
-// v3.18.0: BTSP connection types (port-free, encrypted P2P)
 pub mod federated_btsp;
 pub mod full_trust_btsp;
 pub mod limited_btsp;
@@ -28,37 +26,27 @@ pub use federated::FederatedConnection;
 pub use full_trust::FullTrustConnection;
 pub use limited::LimitedConnection;
 
-// v3.18.0: Export BTSP connections
 pub use federated_btsp::FederatedBtspConnection;
 pub use full_trust_btsp::FullTrustBtspConnection;
 pub use limited_btsp::LimitedBtspConnection;
 
-/// Trait for all peer connections with trust-based capability enforcement
-#[async_trait]
+/// Contract for peer connections with trust-based capability enforcement.
+///
+/// Static dispatch only — no `dyn PeerConnection`. All dispatch goes through
+/// the `Connection` enum which forwards to concrete types via match arms.
 pub trait PeerConnection: Send + Sync {
-    /// Get the trust level of this connection
     fn trust_level(&self) -> TrustLevel;
-
-    /// Get allowed capabilities for this connection
     fn allowed_capabilities(&self) -> &[String];
-
-    /// Get denied capabilities for this connection
     fn denied_capabilities(&self) -> &[String];
-
-    /// Check if an operation is allowed at this trust level
     fn is_operation_allowed(&self, operation: &str) -> bool;
-
-    /// Call a peer operation (with capability enforcement)
-    async fn call(&self, operation: &str, request: Value) -> Result<Value>;
-
-    /// Get peer ID
+    fn call(
+        &self,
+        operation: &str,
+        request: Value,
+    ) -> impl std::future::Future<Output = Result<Value>> + Send;
     fn peer_id(&self) -> &str;
-
-    /// Get endpoint
     fn endpoint(&self) -> &str;
-
-    /// Close the connection
-    async fn close(&self) -> Result<()>;
+    fn close(&self) -> impl std::future::Future<Output = Result<()>> + Send;
 }
 
 /// Enum wrapping all connection types
@@ -76,41 +64,77 @@ pub enum Connection {
     FullTrustBtsp(FullTrustBtspConnection),
 }
 
-impl Connection {
-    /// Get the underlying peer connection trait object
-    #[must_use]
-    pub fn as_peer_connection(&self) -> &dyn PeerConnection {
-        match self {
-            // HTTPS connections
-            Self::Limited(conn) => conn,
-            Self::Federated(conn) => conn,
-            Self::FullTrust(conn) => conn,
+/// Dispatch macro — forwards a method call to the inner connection type.
+macro_rules! dispatch {
+    ($self:ident, $method:ident $(, $arg:expr)*) => {
+        match $self {
+            Self::Limited(c) => c.$method($($arg),*),
+            Self::Federated(c) => c.$method($($arg),*),
+            Self::FullTrust(c) => c.$method($($arg),*),
+            Self::LimitedBtsp(c) => c.$method($($arg),*),
+            Self::FederatedBtsp(c) => c.$method($($arg),*),
+            Self::FullTrustBtsp(c) => c.$method($($arg),*),
+        }
+    };
+}
 
-            // BTSP connections (v3.18.0)
-            Self::LimitedBtsp(conn) => conn,
-            Self::FederatedBtsp(conn) => conn,
-            Self::FullTrustBtsp(conn) => conn,
+impl Connection {
+    #[must_use]
+    pub fn trust_level(&self) -> TrustLevel {
+        dispatch!(self, trust_level)
+    }
+
+    #[must_use]
+    pub fn allowed_capabilities(&self) -> &[String] {
+        dispatch!(self, allowed_capabilities)
+    }
+
+    #[must_use]
+    pub fn denied_capabilities(&self) -> &[String] {
+        dispatch!(self, denied_capabilities)
+    }
+
+    #[must_use]
+    pub fn is_operation_allowed(&self, operation: &str) -> bool {
+        dispatch!(self, is_operation_allowed, operation)
+    }
+
+    #[must_use]
+    pub fn peer_id(&self) -> &str {
+        dispatch!(self, peer_id)
+    }
+
+    #[must_use]
+    pub fn endpoint(&self) -> &str {
+        dispatch!(self, endpoint)
+    }
+
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the operation is denied.
+    pub async fn call(&self, operation: &str, request: Value) -> Result<Value> {
+        match self {
+            Self::Limited(c) => c.call(operation, request).await,
+            Self::Federated(c) => c.call(operation, request).await,
+            Self::FullTrust(c) => c.call(operation, request).await,
+            Self::LimitedBtsp(c) => c.call(operation, request).await,
+            Self::FederatedBtsp(c) => c.call(operation, request).await,
+            Self::FullTrustBtsp(c) => c.call(operation, request).await,
         }
     }
 
-    /// Get trust level
-    #[must_use]
-    pub fn trust_level(&self) -> TrustLevel {
-        self.as_peer_connection().trust_level()
-    }
-
-    /// Check if operation is allowed
-    #[must_use]
-    pub fn is_operation_allowed(&self, operation: &str) -> bool {
-        self.as_peer_connection().is_operation_allowed(operation)
-    }
-
-    /// Call peer operation
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
-    pub async fn call(&self, operation: &str, request: Value) -> Result<Value> {
-        self.as_peer_connection().call(operation, request).await
+    /// Returns an error if the close operation fails.
+    pub async fn close(&self) -> Result<()> {
+        match self {
+            Self::Limited(c) => c.close().await,
+            Self::Federated(c) => c.close().await,
+            Self::FullTrust(c) => c.close().await,
+            Self::LimitedBtsp(c) => c.close().await,
+            Self::FederatedBtsp(c) => c.close().await,
+            Self::FullTrustBtsp(c) => c.close().await,
+        }
     }
 }
 

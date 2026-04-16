@@ -15,7 +15,7 @@ use tracing::{debug, info, warn};
 
 use crate::discovery_mode::DiscoveryMode;
 use crate::rendezvous::RendezvousClient;
-use crate::security::{SecurityProvider, SecurityProviderFactory};
+use crate::security::{SecurityProviderFactory, SecurityProviderImpl};
 use crate::state::{FederationState, FederationStatus, NodeRegistration};
 
 /// Federation coordinator
@@ -24,7 +24,7 @@ pub struct FederationCoordinator {
     state: Arc<FederationState>,
     client: IpcHttpClient,
     rendezvous_client: Arc<RwLock<Option<Arc<RendezvousClient>>>>,
-    security_provider: Arc<RwLock<Option<Box<dyn SecurityProvider>>>>,
+    security_provider: Arc<RwLock<Option<SecurityProviderImpl>>>,
 }
 
 // Manual Debug implementation since SecurityProvider doesn't impl Debug

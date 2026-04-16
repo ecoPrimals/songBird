@@ -27,10 +27,8 @@
 //! - **RAII**: Automatic tunnel cleanup on drop
 //! - **Capability-Based**: Runtime security enforcement
 
-use super::PeerConnection;
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use anyhow::{Context, Result};
-use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::{SongbirdError, TrustLevel};
 use std::sync::Arc;
@@ -146,30 +144,29 @@ impl FullTrustBtspConnection {
     }
 }
 
-#[async_trait]
-impl PeerConnection for FullTrustBtspConnection {
-    fn trust_level(&self) -> TrustLevel {
+impl FullTrustBtspConnection {
+    pub fn trust_level(&self) -> TrustLevel {
         TrustLevel::Highest
     }
 
-    fn allowed_capabilities(&self) -> &[String] {
+    pub fn allowed_capabilities(&self) -> &[String] {
         // Full trust = all operations allowed
         static ALL_CAPS: &[String] = &[];
         ALL_CAPS
     }
 
-    fn denied_capabilities(&self) -> &[String] {
+    pub fn denied_capabilities(&self) -> &[String] {
         // Full trust = no restrictions
         static NO_DENIED: &[String] = &[];
         NO_DENIED
     }
 
-    fn is_operation_allowed(&self, _operation: &str) -> bool {
+    pub fn is_operation_allowed(&self, _operation: &str) -> bool {
         // Full trust = all operations allowed
         true
     }
 
-    async fn call(&self, operation: &str, request: Value) -> Result<Value> {
+    pub async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         // No capability checks at Level 3 (full trust)
         debug!(
             "🔓 Calling full trust operation '{}' on peer '{}' via BTSP tunnel (unrestricted)",
@@ -180,15 +177,15 @@ impl PeerConnection for FullTrustBtspConnection {
         self.send_rpc(operation, request).await
     }
 
-    fn peer_id(&self) -> &str {
+    pub fn peer_id(&self) -> &str {
         &self.peer_id
     }
 
-    fn endpoint(&self) -> &'static str {
+    pub fn endpoint(&self) -> &'static str {
         "btsp://<encrypted-tunnel>"
     }
 
-    async fn close(&self) -> Result<()> {
+    pub async fn close(&self) -> Result<()> {
         let tunnel_id = self.tunnel_id.read().await.clone();
         info!(
             "🔌 Closing BTSP Full Trust connection to peer '{}' (tunnel: {})",

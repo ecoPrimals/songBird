@@ -35,7 +35,6 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-async-trait = { workspace = true }
 futures-util = { workspace = true }
 rand = { workspace = true }
 dirs = { workspace = true }

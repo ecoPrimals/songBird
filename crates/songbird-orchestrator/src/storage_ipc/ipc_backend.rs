@@ -3,11 +3,8 @@
 
 use super::wire::{parse_get_value_string, parse_list_keys};
 use crate::consent_management::{ConsentRecord, ConsentStatus};
-use crate::task_lifecycle::{
-    Checkpoint, TaskFilter, TaskId, TaskLifecycle, TaskStorageBackend, UserId,
-};
+use crate::task_lifecycle::{Checkpoint, TaskFilter, TaskId, TaskLifecycle, UserId};
 use anyhow::{Context, Result};
-use async_trait::async_trait;
 use serde_json::{Value, json};
 use songbird_universal_ipc::tower_atomic::TowerAtomicClient;
 use std::path::{Path, PathBuf};
@@ -17,6 +14,7 @@ use tracing::debug;
 ///
 /// Connects to whichever primal provides the `storage.*` capability domain
 /// via a Unix socket discovered at runtime. No primal identity assumed.
+#[derive(Debug)]
 pub struct IpcStorageBackend {
     socket_path: PathBuf,
 }
@@ -103,9 +101,9 @@ fn checkpoint_task_idx(task_id: TaskId, cp_id: &str) -> String {
     format!("songbird/checkpoint/task_checkpoints/{task_id}/{cp_id}")
 }
 
-#[async_trait]
-impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
-    async fn save(&self, record: &ConsentRecord) -> Result<()> {
+impl IpcStorageBackend {
+    /// Persist a consent record.
+    pub async fn consent_save(&self, record: &ConsentRecord) -> Result<()> {
         let json = serde_json::to_string(record).context("serialize consent record")?;
         let id = record.id.as_ref();
         self.storage_put_str(&consent_main_key(id), &json).await?;
@@ -118,7 +116,8 @@ impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
         Ok(())
     }
 
-    async fn get(&self, id: &str) -> Result<Option<ConsentRecord>> {
+    /// Retrieve a consent record by ID.
+    pub async fn consent_get(&self, id: &str) -> Result<Option<ConsentRecord>> {
         let Some(s) = self.storage_get_str(&consent_main_key(id)).await? else {
             return Ok(None);
         };
@@ -126,7 +125,8 @@ impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
         Ok(Some(r))
     }
 
-    async fn list_by_user(&self, user_id: &UserId) -> Result<Vec<ConsentRecord>> {
+    /// List consent records for a user.
+    pub async fn consent_list_by_user(&self, user_id: &UserId) -> Result<Vec<ConsentRecord>> {
         let prefix = format!("songbird/consent/user/{}/", user_id.as_str());
         let keys = self.storage_list_keys(&prefix).await?;
         let mut out = Vec::new();
@@ -134,14 +134,15 @@ impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
             let Some(id) = k.strip_prefix(&prefix) else {
                 continue;
             };
-            if let Some(r) = self.get(id).await? {
+            if let Some(r) = self.consent_get(id).await? {
                 out.push(r);
             }
         }
         Ok(out)
     }
 
-    async fn list_by_task(&self, task_id: &TaskId) -> Result<Vec<ConsentRecord>> {
+    /// List consent records for a task.
+    pub async fn consent_list_by_task(&self, task_id: &TaskId) -> Result<Vec<ConsentRecord>> {
         let prefix = format!("songbird/consent/task/{}/", task_id);
         let keys = self.storage_list_keys(&prefix).await?;
         let mut out = Vec::new();
@@ -149,21 +150,22 @@ impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
             let Some(id) = k.strip_prefix(&prefix) else {
                 continue;
             };
-            if let Some(r) = self.get(id).await? {
+            if let Some(r) = self.consent_get(id).await? {
                 out.push(r);
             }
         }
         Ok(out)
     }
 
-    async fn list_pending(&self) -> Result<Vec<ConsentRecord>> {
+    /// List consent records with pending status.
+    pub async fn consent_list_pending(&self) -> Result<Vec<ConsentRecord>> {
         let keys = self.storage_list_keys("songbird/consent/main/").await?;
         let mut out = Vec::new();
         for k in keys {
             let Some(id) = k.strip_prefix("songbird/consent/main/") else {
                 continue;
             };
-            if let Some(r) = self.get(id).await?
+            if let Some(r) = self.consent_get(id).await?
                 && matches!(r.status, ConsentStatus::Pending)
             {
                 out.push(r);
@@ -172,7 +174,8 @@ impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
         Ok(out)
     }
 
-    async fn delete(&self, id: &str) -> Result<()> {
+    /// Delete a consent record.
+    pub async fn consent_delete(&self, id: &str) -> Result<()> {
         let Some(s) = self.storage_get_str(&consent_main_key(id)).await? else {
             return Ok(());
         };
@@ -183,14 +186,13 @@ impl crate::consent_management::ConsentStorageBackend for IpcStorageBackend {
         Ok(())
     }
 
-    async fn flush(&self) -> Result<()> {
+    /// Flush consent-related writes to the storage provider.
+    pub async fn consent_flush(&self) -> Result<()> {
         self.storage_flush().await
     }
-}
 
-#[async_trait]
-impl TaskStorageBackend for IpcStorageBackend {
-    async fn save_task(&self, task: &TaskLifecycle) -> Result<()> {
+    /// Persist or update a task.
+    pub async fn save_task(&self, task: &TaskLifecycle) -> Result<()> {
         let json = serde_json::to_string(task).context("serialize task")?;
         let id = task.id;
         self.storage_put_str(&task_main_key(id), &json).await?;
@@ -207,7 +209,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(())
     }
 
-    async fn get_task(&self, id: TaskId) -> Result<Option<TaskLifecycle>> {
+    /// Retrieve a task by ID.
+    pub async fn get_task(&self, id: TaskId) -> Result<Option<TaskLifecycle>> {
         let Some(s) = self.storage_get_str(&task_main_key(id)).await? else {
             return Ok(None);
         };
@@ -215,7 +218,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(Some(t))
     }
 
-    async fn list_tasks(&self, filter: &TaskFilter) -> Result<Vec<TaskLifecycle>> {
+    /// List tasks matching a filter.
+    pub async fn list_tasks(&self, filter: &TaskFilter) -> Result<Vec<TaskLifecycle>> {
         let mut tasks = Vec::new();
         if let Some(owner) = &filter.owner {
             let prefix = format!("songbird/task/owner_tasks/{}/", owner.as_str());
@@ -266,7 +270,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(tasks)
     }
 
-    async fn delete_task(&self, id: TaskId) -> Result<()> {
+    /// Delete a task by ID.
+    pub async fn delete_task(&self, id: TaskId) -> Result<()> {
         let Some(s) = self.storage_get_str(&task_main_key(id)).await? else {
             return Ok(());
         };
@@ -285,7 +290,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(())
     }
 
-    async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> Result<()> {
+    /// Persist a checkpoint.
+    pub async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> Result<()> {
         let json = serde_json::to_string(checkpoint).context("serialize checkpoint")?;
         let id = checkpoint.id.as_ref();
         self.storage_put_str(&checkpoint_main_key(id), &json).await?;
@@ -294,7 +300,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(())
     }
 
-    async fn get_checkpoint(&self, id: &str) -> Result<Option<Checkpoint>> {
+    /// Retrieve a checkpoint by ID.
+    pub async fn get_checkpoint(&self, id: &str) -> Result<Option<Checkpoint>> {
         let Some(s) = self.storage_get_str(&checkpoint_main_key(id)).await? else {
             return Ok(None);
         };
@@ -302,7 +309,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(Some(c))
     }
 
-    async fn list_checkpoints(&self, task_id: TaskId) -> Result<Vec<Checkpoint>> {
+    /// List checkpoints for a task (most recent first).
+    pub async fn list_checkpoints(&self, task_id: TaskId) -> Result<Vec<Checkpoint>> {
         let prefix = format!("songbird/checkpoint/task_checkpoints/{task_id}/");
         let keys = self.storage_list_keys(&prefix).await?;
         let mut checkpoints = Vec::new();
@@ -318,7 +326,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(checkpoints)
     }
 
-    async fn delete_checkpoint(&self, id: &str) -> Result<()> {
+    /// Delete a checkpoint by ID.
+    pub async fn delete_checkpoint(&self, id: &str) -> Result<()> {
         let Some(s) = self.storage_get_str(&checkpoint_main_key(id)).await? else {
             return Ok(());
         };
@@ -328,11 +337,13 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(())
     }
 
-    async fn flush(&self) -> Result<()> {
+    /// Flush task/checkpoint writes to the storage provider.
+    pub async fn flush_tasks(&self) -> Result<()> {
         self.storage_flush().await
     }
 
-    async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> Result<u64> {
+    /// Remove checkpoints older than `max_age_seconds`.
+    pub async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> Result<u64> {
         use chrono::Utc;
         let keys = self.storage_list_keys("songbird/checkpoint/").await?;
         let cutoff = Utc::now().timestamp() - max_age_seconds as i64;
@@ -356,7 +367,8 @@ impl TaskStorageBackend for IpcStorageBackend {
         Ok(deleted)
     }
 
-    async fn delete_old_checkpoints(&self, task_id: TaskId, keep_count: usize) -> Result<()> {
+    /// Keep only the `keep_count` most recent checkpoints for a task.
+    pub async fn delete_old_checkpoints(&self, task_id: TaskId, keep_count: usize) -> Result<()> {
         let mut cps = self.list_checkpoints(task_id).await?;
         cps.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         if cps.len() <= keep_count {

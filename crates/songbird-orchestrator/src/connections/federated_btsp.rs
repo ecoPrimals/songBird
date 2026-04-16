@@ -30,10 +30,9 @@
 //! - **RAII**: Automatic tunnel cleanup on drop
 //! - **Capability-Based**: Runtime security enforcement
 
-use super::{PeerConnection, check_operation_allowed};
+use super::check_operation_allowed;
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use anyhow::{Context, Result, anyhow};
-use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::{SongbirdError, TrustLevel};
 use std::sync::Arc;
@@ -175,25 +174,24 @@ impl FederatedBtspConnection {
     }
 }
 
-#[async_trait]
-impl PeerConnection for FederatedBtspConnection {
-    fn trust_level(&self) -> TrustLevel {
+impl FederatedBtspConnection {
+    pub fn trust_level(&self) -> TrustLevel {
         TrustLevel::Elevated
     }
 
-    fn allowed_capabilities(&self) -> &[String] {
+    pub fn allowed_capabilities(&self) -> &[String] {
         &self.allowed_capabilities
     }
 
-    fn denied_capabilities(&self) -> &[String] {
+    pub fn denied_capabilities(&self) -> &[String] {
         &self.denied_capabilities
     }
 
-    fn is_operation_allowed(&self, operation: &str) -> bool {
+    pub fn is_operation_allowed(&self, operation: &str) -> bool {
         check_operation_allowed(operation, &self.allowed_capabilities, &self.denied_capabilities)
     }
 
-    async fn call(&self, operation: &str, request: Value) -> Result<Value> {
+    pub async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         // Enforce capability restrictions
         if !self.is_operation_allowed(operation) {
             warn!(
@@ -218,15 +216,15 @@ impl PeerConnection for FederatedBtspConnection {
         self.send_rpc(operation, request).await
     }
 
-    fn peer_id(&self) -> &str {
+    pub fn peer_id(&self) -> &str {
         &self.peer_id
     }
 
-    fn endpoint(&self) -> &'static str {
+    pub fn endpoint(&self) -> &'static str {
         "btsp://<encrypted-tunnel>"
     }
 
-    async fn close(&self) -> Result<()> {
+    pub async fn close(&self) -> Result<()> {
         let tunnel_id = self.tunnel_id.read().await.clone();
         info!(
             "🔌 Closing BTSP Federated connection to peer '{}' (tunnel: {})",

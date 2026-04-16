@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave144] - 2026-04-16 - dyn→Static Dispatch Evolution
+
+### Changed — Architecture
+- **PeerConnection**: Eliminated `dyn PeerConnection` — 6 connection types now dispatch through `Connection` enum match arms; removed `#[async_trait]` from trait + 6 impls (7 annotations removed)
+- **BtspProvider**: Replaced `Arc<dyn BtspProvider>` with `BtspProviderImpl` enum (Local/Http variants); factory returns concrete type
+- **Federation SecurityProvider**: Replaced `Box<dyn SecurityProvider>` + 3 supertraits (`LineageProvider`, `BirdSongCrypto`, `LineageRelay`) with `SecurityProviderImpl` enum; all 4 trait hierarchies converted to native AFIT
+- **ConsentStorageBackend**: Replaced `Arc<dyn ConsentStorageBackend>` with `ConsentStorage` enum (Memory/Ipc)
+- **TaskStorageBackend**: Replaced `Arc<dyn TaskStorageBackend>` with `TaskStorage` enum (Memory/Ipc)
+- **`async-trait` reduced**: 141→113 annotations (-20%); dependency removed from 6 crates (canonical, config, execution-agent, network-federation, registry, stun)
+
+### Changed — Deep Debt
+- **discovery_handler.rs**: Smart-refactored from 1030L monolith into 4-file module (291L handler, 82L content distribution, 44L types, 530L tests)
+- **Hardcoded `/tmp/service.log`** in ssh.rs → resolved to `{remote_path}.log`
+- **Hardcoded `localhost:8080`** in process_manager.rs → constants-based `LOCALHOST`:`DEFAULT_HTTP_PORT`
+
+### Metrics
+- Tests: 7,360 passed, 0 failed
+- Clippy: zero warnings (full workspace, `-D warnings`)
+- Files >800L: 0
+
+---
+
 ## [v0.2.1-wave143] - 2026-04-16 - primalSpring Remaining Work: Content Distribution Federation
 
 ### Added

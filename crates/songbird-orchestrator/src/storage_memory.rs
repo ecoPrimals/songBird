@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! In-memory [`crate::consent_management::ConsentStorageBackend`] and [`crate::task_lifecycle::TaskStorageBackend`]
-//! when no `storage.*` capability provider is available.
+//! In-memory consent and task persistence when no `storage.*` capability provider is available.
 
-use crate::consent_management::{ConsentRecord, ConsentStatus, ConsentStorageBackend};
-use crate::task_lifecycle::{Checkpoint, TaskFilter, TaskId, TaskLifecycle, TaskStorageBackend};
+use crate::consent_management::{ConsentRecord, ConsentStatus};
+use crate::task_lifecycle::{Checkpoint, TaskFilter, TaskId, TaskLifecycle};
 use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -59,20 +58,22 @@ impl Default for InMemoryStorage {
     }
 }
 
-#[async_trait::async_trait]
-impl ConsentStorageBackend for InMemoryStorage {
-    async fn save(&self, record: &ConsentRecord) -> anyhow::Result<()> {
+impl InMemoryStorage {
+    /// Persist a consent record.
+    pub async fn consent_save(&self, record: &ConsentRecord) -> anyhow::Result<()> {
         let mut m = self.consents.write().await;
         m.insert(record.id.to_string(), record.clone());
         Ok(())
     }
 
-    async fn get(&self, id: &str) -> anyhow::Result<Option<ConsentRecord>> {
+    /// Retrieve a consent record by ID.
+    pub async fn consent_get(&self, id: &str) -> anyhow::Result<Option<ConsentRecord>> {
         let m = self.consents.read().await;
         Ok(m.get(id).cloned())
     }
 
-    async fn list_by_user(
+    /// List consent records for a user.
+    pub async fn consent_list_by_user(
         &self,
         user_id: &crate::task_lifecycle::UserId,
     ) -> anyhow::Result<Vec<ConsentRecord>> {
@@ -80,41 +81,48 @@ impl ConsentStorageBackend for InMemoryStorage {
         Ok(m.values().filter(|r| &r.user_id == user_id).cloned().collect())
     }
 
-    async fn list_by_task(&self, task_id: &TaskId) -> anyhow::Result<Vec<ConsentRecord>> {
+    /// List consent records for a task.
+    pub async fn consent_list_by_task(
+        &self,
+        task_id: &TaskId,
+    ) -> anyhow::Result<Vec<ConsentRecord>> {
         let m = self.consents.read().await;
         Ok(m.values().filter(|r| &r.task_id == task_id).cloned().collect())
     }
 
-    async fn list_pending(&self) -> anyhow::Result<Vec<ConsentRecord>> {
+    /// List consent records with pending status.
+    pub async fn consent_list_pending(&self) -> anyhow::Result<Vec<ConsentRecord>> {
         let m = self.consents.read().await;
         Ok(m.values().filter(|r| matches!(r.status, ConsentStatus::Pending)).cloned().collect())
     }
 
-    async fn delete(&self, id: &str) -> anyhow::Result<()> {
+    /// Delete a consent record.
+    pub async fn consent_delete(&self, id: &str) -> anyhow::Result<()> {
         let mut m = self.consents.write().await;
         m.remove(id);
         Ok(())
     }
 
-    async fn flush(&self) -> anyhow::Result<()> {
+    /// Best-effort flush for consent data (no-op in memory).
+    pub async fn consent_flush(&self) -> anyhow::Result<()> {
         Ok(())
     }
-}
 
-#[async_trait::async_trait]
-impl TaskStorageBackend for InMemoryStorage {
-    async fn save_task(&self, task: &TaskLifecycle) -> anyhow::Result<()> {
+    /// Persist or update a task.
+    pub async fn save_task(&self, task: &TaskLifecycle) -> anyhow::Result<()> {
         let mut m = self.tasks.write().await;
         m.insert(task.id, task.clone());
         Ok(())
     }
 
-    async fn get_task(&self, id: TaskId) -> anyhow::Result<Option<TaskLifecycle>> {
+    /// Retrieve a task by ID.
+    pub async fn get_task(&self, id: TaskId) -> anyhow::Result<Option<TaskLifecycle>> {
         let m = self.tasks.read().await;
         Ok(m.get(&id).cloned())
     }
 
-    async fn list_tasks(&self, filter: &TaskFilter) -> anyhow::Result<Vec<TaskLifecycle>> {
+    /// List tasks matching a filter.
+    pub async fn list_tasks(&self, filter: &TaskFilter) -> anyhow::Result<Vec<TaskLifecycle>> {
         let m = self.tasks.read().await;
         let mut out: Vec<TaskLifecycle> =
             m.values().filter(|t| matches_task_filter(t, filter)).cloned().collect();
@@ -124,7 +132,8 @@ impl TaskStorageBackend for InMemoryStorage {
         Ok(out)
     }
 
-    async fn delete_task(&self, id: TaskId) -> anyhow::Result<()> {
+    /// Delete a task by ID.
+    pub async fn delete_task(&self, id: TaskId) -> anyhow::Result<()> {
         let mut tasks = self.tasks.write().await;
         tasks.remove(&id);
 
@@ -133,35 +142,41 @@ impl TaskStorageBackend for InMemoryStorage {
         Ok(())
     }
 
-    async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> anyhow::Result<()> {
+    /// Persist a checkpoint.
+    pub async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> anyhow::Result<()> {
         let mut m = self.checkpoints.write().await;
         m.insert(checkpoint.id.to_string(), checkpoint.clone());
         Ok(())
     }
 
-    async fn get_checkpoint(&self, id: &str) -> anyhow::Result<Option<Checkpoint>> {
+    /// Retrieve a checkpoint by ID.
+    pub async fn get_checkpoint(&self, id: &str) -> anyhow::Result<Option<Checkpoint>> {
         let m = self.checkpoints.read().await;
         Ok(m.get(id).cloned())
     }
 
-    async fn list_checkpoints(&self, task_id: TaskId) -> anyhow::Result<Vec<Checkpoint>> {
+    /// List checkpoints for a task (most recent first).
+    pub async fn list_checkpoints(&self, task_id: TaskId) -> anyhow::Result<Vec<Checkpoint>> {
         let m = self.checkpoints.read().await;
         let mut v: Vec<Checkpoint> = m.values().filter(|c| c.task_id == task_id).cloned().collect();
         v.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         Ok(v)
     }
 
-    async fn delete_checkpoint(&self, id: &str) -> anyhow::Result<()> {
+    /// Delete a checkpoint by ID.
+    pub async fn delete_checkpoint(&self, id: &str) -> anyhow::Result<()> {
         let mut m = self.checkpoints.write().await;
         m.remove(id);
         Ok(())
     }
 
-    async fn flush(&self) -> anyhow::Result<()> {
+    /// Best-effort flush for task/checkpoint data (no-op in memory).
+    pub async fn flush_tasks(&self) -> anyhow::Result<()> {
         Ok(())
     }
 
-    async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> anyhow::Result<u64> {
+    /// Remove checkpoints older than `max_age_seconds`.
+    pub async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> anyhow::Result<u64> {
         let cutoff = Utc::now().timestamp() - max_age_seconds as i64;
         let mut m = self.checkpoints.write().await;
         let before = m.len();
@@ -170,7 +185,8 @@ impl TaskStorageBackend for InMemoryStorage {
         Ok(deleted as u64)
     }
 
-    async fn delete_old_checkpoints(
+    /// Keep only the `keep_count` most recent checkpoints for a task.
+    pub async fn delete_old_checkpoints(
         &self,
         task_id: TaskId,
         keep_count: usize,

@@ -81,7 +81,8 @@ pub(super) fn start_remote_service(
         s
     };
 
-    let command = format!("nohup {env_string} {remote_path} > /tmp/service.log 2>&1 &");
+    let log_path = format!("{remote_path}.log");
+    let command = format!("nohup {env_string} {remote_path} > {log_path} 2>&1 &");
 
     ssh_exec(remote_host, &command, ssh_user, ssh_key)?;
 

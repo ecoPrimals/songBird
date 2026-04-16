@@ -30,7 +30,7 @@ pub mod provider;
 pub mod tunnel;
 
 pub use local::LocalBtspProvider;
-pub use provider::{BtspConfig, BtspProvider};
+pub use provider::{BtspConfig, BtspProvider, BtspProviderImpl};
 pub use tunnel::{SecurityContext, Tunnel, TunnelHandle, TunnelStatus};
 
 #[cfg(test)]
@@ -38,7 +38,7 @@ mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::local::LocalBtspProvider;
-    use super::provider::{BtspConfig, BtspProvider, DiscoveryMethod, PeerInfo};
+    use super::provider::{BtspConfig, DiscoveryMethod, PeerInfo};
     use super::tunnel::{SecurityContext, Tunnel, TunnelHandle, TunnelState};
 
     #[test]

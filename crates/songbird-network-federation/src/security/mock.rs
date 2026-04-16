@@ -17,8 +17,8 @@
 //! For production code, use the actual `security provider` provider.
 
 use super::{
-    AccessLevel, BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageChain, LineageHint,
-    LineageLink, LineageProof, LineageProvider, LineageRelay, RelaySession, SecurityProvider,
+    AccessLevel, BroadcastKey, EncryptedBirdSong, LineageChain, LineageHint, LineageLink,
+    LineageProof, RelaySession,
 };
 use anyhow::{Result, anyhow};
 use std::collections::HashMap;
@@ -54,17 +54,9 @@ impl MockSecurityProvider {
     pub async fn add_test_lineage(&self, root: String, descendants: Vec<String>) {
         self.lineages.write().await.insert(root, descendants);
     }
-}
 
-impl Default for MockSecurityProvider {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[async_trait::async_trait]
-impl LineageProvider for MockSecurityProvider {
-    async fn generate_lineage(&self, node_id: &str, parent_id: &str) -> Result<LineageChain> {
+    /// Generate lineage for a new node
+    pub async fn generate_lineage(&self, node_id: &str, parent_id: &str) -> Result<LineageChain> {
         tracing::warn!("🐻 MOCK: Generating fake lineage");
 
         Ok(LineageChain {
@@ -80,17 +72,20 @@ impl LineageProvider for MockSecurityProvider {
         })
     }
 
-    async fn verify_lineage(&self, proof: &LineageProof) -> Result<bool> {
+    /// Verify a lineage proof
+    pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<bool> {
         tracing::warn!("🐻 MOCK: Fake lineage verification (always true)");
         Ok(proof.chain.verify_integrity().await?)
     }
 
-    async fn get_descendants(&self, root_id: &str) -> Result<Vec<String>> {
+    /// Get all descendants of a root
+    pub async fn get_descendants(&self, root_id: &str) -> Result<Vec<String>> {
         let lineages = self.lineages.read().await;
         Ok(lineages.get(root_id).cloned().unwrap_or_default())
     }
 
-    async fn get_lineage_depth(
+    /// Get lineage depth between two nodes
+    pub async fn get_lineage_depth(
         &self,
         ancestor_id: &str,
         descendant_id: &str,
@@ -105,11 +100,9 @@ impl LineageProvider for MockSecurityProvider {
 
         Ok(None)
     }
-}
 
-#[async_trait::async_trait]
-impl BirdSongCrypto for MockSecurityProvider {
-    async fn encrypt_for_lineage(
+    /// Encrypt payload for a specific lineage
+    pub async fn encrypt_for_lineage(
         &self,
         payload: &[u8],
         lineage_hint: LineageHint,
@@ -130,7 +123,8 @@ impl BirdSongCrypto for MockSecurityProvider {
         })
     }
 
-    async fn decrypt_birdsong(&self, encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
+    /// Decrypt birdSong (if we're in the lineage)
+    pub async fn decrypt_birdsong(&self, encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
         tracing::warn!("🐻 MOCK: Fake decryption");
 
         // "Decrypt" by removing marker
@@ -142,7 +136,8 @@ impl BirdSongCrypto for MockSecurityProvider {
         }
     }
 
-    async fn request_key(
+    /// Request decryption key for a lineage
+    pub async fn request_key(
         &self,
         lineage_hint: &LineageHint,
         _proof: LineageProof,
@@ -161,7 +156,8 @@ impl BirdSongCrypto for MockSecurityProvider {
         Ok(key)
     }
 
-    async fn request_keys_batch(
+    /// Batch key request (for efficiency)
+    pub async fn request_keys_batch(
         &self,
         requests: Vec<(LineageHint, LineageProof)>,
     ) -> Result<Vec<BroadcastKey>> {
@@ -171,11 +167,9 @@ impl BirdSongCrypto for MockSecurityProvider {
         }
         Ok(keys)
     }
-}
 
-#[async_trait::async_trait]
-impl LineageRelay for MockSecurityProvider {
-    async fn offer_relay(
+    /// Offer relay service to descendant
+    pub async fn offer_relay(
         &self,
         requester: &str,
         target: &str,
@@ -197,11 +191,13 @@ impl LineageRelay for MockSecurityProvider {
         Ok(session)
     }
 
-    fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
+    /// Get visibility level based on lineage depth
+    pub fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
         AccessLevel::from_lineage_depth(lineage_depth)
     }
 
-    async fn relay_packet(&self, session: &RelaySession, _packet: &[u8]) -> Result<()> {
+    /// Relay packet (with masking enforced)
+    pub async fn relay_packet(&self, session: &RelaySession, _packet: &[u8]) -> Result<()> {
         if !session.is_active() {
             return Err(anyhow!("Session expired"));
         }
@@ -210,26 +206,33 @@ impl LineageRelay for MockSecurityProvider {
         Ok(())
     }
 
-    async fn revoke_relay(&self, session_id: &str) -> Result<()> {
+    /// Revoke relay for a session
+    pub async fn revoke_relay(&self, session_id: &str) -> Result<()> {
         self.sessions.write().await.remove(session_id);
         tracing::warn!("🐻 MOCK: Revoked relay session");
         Ok(())
     }
-}
 
-#[async_trait::async_trait]
-impl SecurityProvider for MockSecurityProvider {
-    async fn is_available(&self) -> bool {
+    /// Check if the provider is available and operational
+    pub async fn is_available(&self) -> bool {
         tracing::warn!("🐻 MOCK: Always available (but not real!)");
         true
     }
 
-    fn version(&self) -> &'static str {
+    /// Provider version for compatibility checking
+    pub fn version(&self) -> &'static str {
         "0.0.0-mock"
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    /// Graceful shutdown
+    pub async fn shutdown(&self) -> Result<()> {
         tracing::warn!("🐻 MOCK: Shutting down (no-op)");
         Ok(())
+    }
+}
+
+impl Default for MockSecurityProvider {
+    fn default() -> Self {
+        Self::new()
     }
 }

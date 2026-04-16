@@ -293,9 +293,7 @@ pub use bin_interface::{
 
 // Re-export connection types (progressive trust)
 /// Progressive trust connection types used by federation and peer flows.
-pub use connections::{
-    Connection, FederatedConnection, FullTrustConnection, LimitedConnection, PeerConnection,
-};
+pub use connections::{Connection, FederatedConnection, FullTrustConnection, LimitedConnection};
 
 // Re-export capability registration (Neural API integration)
 /// Register Neural API capabilities with the local runtime when available.

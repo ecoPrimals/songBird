@@ -390,7 +390,11 @@ impl ProcessManager {
         error!("");
         error!("  2. Check if it's healthy:");
         error!("     ps aux | grep {}", existing_pid);
-        error!("     curl -k https://localhost:8080/health");
+        error!(
+            "     curl -k https://{}:{}/health",
+            songbird_types::constants::LOCALHOST,
+            songbird_types::defaults::ports::DEFAULT_HTTP_PORT
+        );
         error!("");
         error!("  3. Force kill if unresponsive:");
         error!("     kill -9 {}", existing_pid);
