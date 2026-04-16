@@ -3,17 +3,22 @@
 
 //! Discovery JSON-RPC Handler
 //!
-//! Exposes peer discovery functionality via JSON-RPC for Dark Forest rendezvous protocol.
+//! Exposes peer discovery and content distribution functionality via JSON-RPC
+//! for Dark Forest rendezvous protocol and the seeder/leecher pattern.
 //!
 //! ## Methods
 //! - `discovery.peers` — List discovered peers (supports `family_only`, `capability_filter`)
 //! - `discovery.announce` — Announce presence or content availability to the mesh
+//! - `discovery.content_peers` — Find seeders for a specific content topic
 //! - `discovery.get_peer` — Get specific peer by ID
 //!
 //! ## Content Distribution
-//! `discovery.announce` supports topic-based announcements for the seeder/leecher pattern
-//! defined in `content_distribution_federation.toml`. Topics use the format
-//! `content:<namespace>` (e.g., `content:ludospring:assets`).
+//! `discovery.announce` with a `topic` param stores content announcements in an
+//! in-memory registry with TTL-based expiration. Leechers query available content
+//! via `discovery.content_peers` to find seeders for specific topics. Topics use
+//! the `content:<namespace>` convention (e.g., `content:ludospring:assets`) per
+//! `content_distribution_federation.toml`. Manifest hashes use BLAKE3 addressing
+//! from `NestGate`'s `ContentManifest`.
 //!
 //! ## Security Note
 //! Peer information includes network addresses. Only expose to trusted consumers.
@@ -21,20 +26,27 @@
 use crate::error::{IpcError, IpcResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{debug, info};
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
+use tracing::{debug, info, warn};
 
-// We'll integrate with songbird-discovery's AnonymousDiscoveryListener
-// For now, we'll define the interface that will be connected to the orchestrator
+/// Default TTL for content announcements (10 minutes).
+const CONTENT_ANNOUNCEMENT_TTL: Duration = Duration::from_secs(600);
 
 // ============================================================================
 // Discovery Handler
 // ============================================================================
 
-/// Discovery handler for peer discovery operations
+/// Discovery handler for peer discovery and content distribution operations.
+///
+/// Maintains both a peer registry (injected from orchestrator) and an in-memory
+/// content announcement store for the seeder/leecher pattern defined by
+/// `content_distribution_federation.toml`.
 pub struct DiscoveryHandler {
-    /// Peer registry (will be injected from orchestrator)
     peer_registry: Option<Arc<dyn PeerRegistry>>,
+    content_announcements: Arc<RwLock<ContentAnnouncementStore>>,
 }
 
 impl DiscoveryHandler {
@@ -43,6 +55,7 @@ impl DiscoveryHandler {
     pub fn new() -> Self {
         Self {
             peer_registry: None,
+            content_announcements: Arc::new(RwLock::new(ContentAnnouncementStore::new())),
         }
     }
 
@@ -50,6 +63,7 @@ impl DiscoveryHandler {
     pub fn with_registry(registry: Arc<dyn PeerRegistry>) -> Self {
         Self {
             peer_registry: Some(registry),
+            content_announcements: Arc::new(RwLock::new(ContentAnnouncementStore::new())),
         }
     }
 
@@ -132,7 +146,10 @@ impl DiscoveryHandler {
     /// Supports two announcement modes:
     /// - **Presence**: basic peer announcement with `family_id` + `capabilities`
     /// - **Topic**: content distribution announcement with `topic` (e.g.,
-    ///   `content:ludospring:assets`) per `content_distribution_federation.toml`
+    ///   `content:ludospring:assets`) per `content_distribution_federation.toml`.
+    ///   Topic announcements are stored in the content announcement registry
+    ///   so peers can discover available content via `discovery.peers` with a
+    ///   `topic` filter.
     pub async fn handle_announce(&self, params: Value) -> IpcResult<Value> {
         let family_id = params.get("family_id").and_then(Value::as_str).unwrap_or("unknown");
         let capabilities: Vec<String> = params
@@ -148,22 +165,40 @@ impl DiscoveryHandler {
             .and_then(Value::as_array)
             .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
             .unwrap_or_default();
+        let node_id = params.get("node_id").and_then(Value::as_str).unwrap_or("unknown");
 
         if let Some(topic) = topic {
+            let announcement = ContentAnnouncement {
+                topic: topic.to_string(),
+                manifest_hash: manifest_hash.map(String::from),
+                family_id: family_id.to_string(),
+                node_id: node_id.to_string(),
+                seeder_count: seeder_count.unwrap_or(1),
+                bond_types_accepted: bond_types.clone(),
+                announced_at: Instant::now(),
+            };
+
+            let mut store = self.content_announcements.write().await;
+            store.gc();
+            store.insert(announcement);
+
             info!(
-                "Discovery: content announce (topic={}, manifest={}, seeders={})",
+                "Discovery: content announce stored (topic={}, manifest={}, seeders={}, node={})",
                 topic,
                 manifest_hash.unwrap_or("none"),
-                seeder_count.unwrap_or(0)
+                seeder_count.unwrap_or(1),
+                node_id,
             );
+
             Ok(serde_json::json!({
                 "announced": true,
                 "mode": "topic",
                 "topic": topic,
                 "manifest_hash": manifest_hash,
-                "seeder_count": seeder_count,
+                "seeder_count": seeder_count.unwrap_or(1),
                 "bond_types_accepted": bond_types,
                 "family_id": family_id,
+                "node_id": node_id,
             }))
         } else {
             info!(
@@ -178,6 +213,79 @@ impl DiscoveryHandler {
                 "capabilities": capabilities,
             }))
         }
+    }
+
+    /// Handle `discovery.content_peers` JSON-RPC method
+    ///
+    /// Returns peers that have announced content for a specific topic.
+    /// Used by leechers to find seeders for content distribution.
+    ///
+    /// Params:
+    /// - `topic` (required): content topic to query (e.g., `content:ludospring:assets`)
+    /// - `family_only` (optional): restrict to same-family seeders
+    /// - `manifest_hash` (optional): filter to a specific manifest version
+    pub async fn handle_content_peers(&self, params: Value) -> IpcResult<Value> {
+        self.handle_content_peers_with(params, || {
+            songbird_process_env::var("FAMILY_ID")
+                .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
+        })
+        .await
+    }
+
+    /// Testable variant with injectable `family_id` resolver.
+    async fn handle_content_peers_with<F>(
+        &self,
+        params: Value,
+        resolve_family: F,
+    ) -> IpcResult<Value>
+    where
+        F: FnOnce() -> Result<String, std::env::VarError>,
+    {
+        let topic = params
+            .get("topic")
+            .and_then(Value::as_str)
+            .ok_or_else(|| IpcError::InvalidParams("missing required 'topic' param".into()))?;
+        let family_only = params.get("family_only").and_then(Value::as_bool).unwrap_or(false);
+        let manifest_filter = params.get("manifest_hash").and_then(Value::as_str);
+
+        let store = self.content_announcements.read().await;
+        let mut announcements: Vec<&ContentAnnouncement> = store.query(topic);
+
+        if let Some(hash) = manifest_filter {
+            announcements.retain(|a| a.manifest_hash.as_deref() == Some(hash));
+        }
+
+        if family_only {
+            let own_family = resolve_family().unwrap_or_default();
+            if own_family.is_empty() {
+                warn!("Discovery: family_only requested but no FAMILY_ID set");
+            } else {
+                announcements.retain(|a| a.family_id == own_family);
+            }
+        }
+
+        let results: Vec<Value> = announcements
+            .iter()
+            .map(|a| {
+                serde_json::json!({
+                    "node_id": a.node_id,
+                    "family_id": a.family_id,
+                    "topic": a.topic,
+                    "manifest_hash": a.manifest_hash,
+                    "seeder_count": a.seeder_count,
+                    "bond_types_accepted": a.bond_types_accepted,
+                })
+            })
+            .collect();
+
+        let total = results.len();
+        info!("Discovery: content_peers query (topic={topic}) found {total} seeders");
+
+        Ok(serde_json::json!({
+            "seeders": results,
+            "total_count": total,
+            "topic": topic,
+        }))
     }
 
     /// Handle `discovery.get_peer` JSON-RPC method
@@ -268,6 +376,84 @@ pub struct DiscoveredPeerInfo {
 
     /// Protocols supported
     pub protocols: Vec<String>,
+}
+
+// ============================================================================
+// Content Distribution Types
+// ============================================================================
+
+/// A content availability announcement from a seeder node.
+///
+/// Stored in the in-memory `ContentAnnouncementStore` when a peer calls
+/// `discovery.announce` with a `topic` param. Queried via `discovery.content_peers`.
+#[derive(Debug, Clone)]
+pub struct ContentAnnouncement {
+    /// Content topic (e.g., `content:ludospring:assets`)
+    pub topic: String,
+    /// BLAKE3 manifest hash (from `NestGate` `ContentManifest`)
+    pub manifest_hash: Option<String>,
+    /// Announcing peer's family ID
+    pub family_id: String,
+    /// Announcing peer's node ID
+    pub node_id: String,
+    /// Number of seeders the announcer knows about
+    pub seeder_count: u64,
+    /// Bond types accepted for this content
+    pub bond_types_accepted: Vec<String>,
+    /// When this announcement was received
+    announced_at: Instant,
+}
+
+/// In-memory store for content announcements with TTL-based expiration.
+///
+/// Keyed by `(topic, node_id)` so a node can update its announcement for
+/// a given topic by re-announcing.
+#[derive(Debug)]
+struct ContentAnnouncementStore {
+    entries: HashMap<(String, String), ContentAnnouncement>,
+    ttl: Duration,
+}
+
+impl ContentAnnouncementStore {
+    fn new() -> Self {
+        Self {
+            entries: HashMap::new(),
+            ttl: CONTENT_ANNOUNCEMENT_TTL,
+        }
+    }
+
+    #[cfg(test)]
+    fn with_ttl(ttl: Duration) -> Self {
+        Self {
+            entries: HashMap::new(),
+            ttl,
+        }
+    }
+
+    fn insert(&mut self, announcement: ContentAnnouncement) {
+        let key = (announcement.topic.clone(), announcement.node_id.clone());
+        self.entries.insert(key, announcement);
+    }
+
+    fn query(&self, topic: &str) -> Vec<&ContentAnnouncement> {
+        let now = Instant::now();
+        self.entries
+            .values()
+            .filter(|a| a.topic == topic && now.duration_since(a.announced_at) < self.ttl)
+            .collect()
+    }
+
+    /// Remove expired entries.
+    fn gc(&mut self) {
+        let now = Instant::now();
+        let ttl = self.ttl;
+        self.entries.retain(|_, a| now.duration_since(a.announced_at) < ttl);
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
 }
 
 // ============================================================================
@@ -497,6 +683,7 @@ mod tests {
         let v = handler
             .handle_announce(json!({
                 "family_id": "nat0",
+                "node_id": "seeder-alpha",
                 "topic": "content:ludospring:assets",
                 "manifest_hash": "blake3:abc123",
                 "seeder_count": 3,
@@ -509,6 +696,7 @@ mod tests {
         assert_eq!(v["topic"], "content:ludospring:assets");
         assert_eq!(v["manifest_hash"], "blake3:abc123");
         assert_eq!(v["seeder_count"], 3);
+        assert_eq!(v["node_id"], "seeder-alpha");
         let bonds = v["bond_types_accepted"].as_array().unwrap();
         assert_eq!(bonds.len(), 2);
     }
@@ -523,7 +711,7 @@ mod tests {
         assert_eq!(v["mode"], "topic");
         assert_eq!(v["topic"], "content:docs");
         assert!(v["manifest_hash"].is_null());
-        assert!(v["seeder_count"].is_null());
+        assert_eq!(v["seeder_count"], 1, "defaults to 1 when omitted");
         assert_eq!(v["bond_types_accepted"].as_array().unwrap().len(), 0);
     }
 
@@ -743,5 +931,243 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.total_count, 2, "no FAMILY_ID means no filtering");
+    }
+
+    // ========================================================================
+    // Content distribution tests
+    // ========================================================================
+
+    #[tokio::test]
+    async fn announce_topic_stores_in_content_registry() {
+        let handler = DiscoveryHandler::new();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:ludospring:assets",
+                "node_id": "seeder-1",
+                "family_id": "nat0",
+                "manifest_hash": "blake3:deadbeef",
+                "seeder_count": 2,
+            }))
+            .await
+            .expect("announce");
+
+        let store = handler.content_announcements.read().await;
+        assert_eq!(store.len(), 1);
+        let results = store.query("content:ludospring:assets");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].node_id, "seeder-1");
+        assert_eq!(results[0].manifest_hash.as_deref(), Some("blake3:deadbeef"));
+    }
+
+    #[tokio::test]
+    async fn announce_topic_updates_existing_entry() {
+        let handler = DiscoveryHandler::new();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:docs",
+                "node_id": "node-a",
+                "manifest_hash": "blake3:v1",
+            }))
+            .await
+            .unwrap();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:docs",
+                "node_id": "node-a",
+                "manifest_hash": "blake3:v2",
+            }))
+            .await
+            .unwrap();
+
+        let store = handler.content_announcements.read().await;
+        assert_eq!(store.len(), 1, "same (topic, node_id) key should update");
+        assert_eq!(store.query("content:docs")[0].manifest_hash.as_deref(), Some("blake3:v2"));
+    }
+
+    #[tokio::test]
+    async fn announce_presence_does_not_store_content() {
+        let handler = DiscoveryHandler::new();
+
+        handler
+            .handle_announce(json!({
+                "family_id": "nat0",
+                "capabilities": ["crypto"],
+            }))
+            .await
+            .unwrap();
+
+        let store = handler.content_announcements.read().await;
+        assert_eq!(store.len(), 0, "presence mode should not create content entries");
+    }
+
+    #[tokio::test]
+    async fn content_peers_returns_matching_seeders() {
+        let handler = DiscoveryHandler::new();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:assets",
+                "node_id": "seeder-1",
+                "family_id": "nat0",
+                "manifest_hash": "blake3:aaa",
+            }))
+            .await
+            .unwrap();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:assets",
+                "node_id": "seeder-2",
+                "family_id": "nat0",
+                "manifest_hash": "blake3:aaa",
+            }))
+            .await
+            .unwrap();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:other",
+                "node_id": "seeder-3",
+                "family_id": "nat0",
+            }))
+            .await
+            .unwrap();
+
+        let result =
+            handler.handle_content_peers(json!({ "topic": "content:assets" })).await.unwrap();
+
+        assert_eq!(result["total_count"], 2);
+        assert_eq!(result["topic"], "content:assets");
+        let seeders = result["seeders"].as_array().unwrap();
+        assert_eq!(seeders.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn content_peers_manifest_hash_filter() {
+        let handler = DiscoveryHandler::new();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:data",
+                "node_id": "s1",
+                "manifest_hash": "blake3:v1",
+            }))
+            .await
+            .unwrap();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:data",
+                "node_id": "s2",
+                "manifest_hash": "blake3:v2",
+            }))
+            .await
+            .unwrap();
+
+        let result = handler
+            .handle_content_peers(json!({
+                "topic": "content:data",
+                "manifest_hash": "blake3:v2",
+            }))
+            .await
+            .unwrap();
+
+        assert_eq!(result["total_count"], 1);
+        assert_eq!(result["seeders"][0]["node_id"], "s2");
+    }
+
+    #[tokio::test]
+    async fn content_peers_family_only_filter() {
+        let handler = DiscoveryHandler::new();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:shared",
+                "node_id": "same-fam-seeder",
+                "family_id": "nat0",
+            }))
+            .await
+            .unwrap();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:shared",
+                "node_id": "other-fam-seeder",
+                "family_id": "other-family",
+            }))
+            .await
+            .unwrap();
+
+        let result = handler
+            .handle_content_peers_with(
+                json!({ "topic": "content:shared", "family_only": true }),
+                || Ok("nat0".to_string()),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result["total_count"], 1);
+        assert_eq!(result["seeders"][0]["node_id"], "same-fam-seeder");
+    }
+
+    #[tokio::test]
+    async fn content_peers_requires_topic() {
+        let handler = DiscoveryHandler::new();
+        let err = handler.handle_content_peers(json!({})).await.expect_err("missing topic");
+        assert!(matches!(err, IpcError::InvalidParams(_)));
+    }
+
+    #[tokio::test]
+    async fn content_peers_empty_topic_returns_none() {
+        let handler = DiscoveryHandler::new();
+
+        handler
+            .handle_announce(json!({
+                "topic": "content:stuff",
+                "node_id": "s1",
+            }))
+            .await
+            .unwrap();
+
+        let result =
+            handler.handle_content_peers(json!({ "topic": "content:nonexistent" })).await.unwrap();
+
+        assert_eq!(result["total_count"], 0);
+        assert!(result["seeders"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn content_announcement_store_gc_removes_expired() {
+        let mut store = ContentAnnouncementStore::with_ttl(Duration::from_millis(0));
+        store.insert(ContentAnnouncement {
+            topic: "t".into(),
+            manifest_hash: None,
+            family_id: "f".into(),
+            node_id: "n".into(),
+            seeder_count: 1,
+            bond_types_accepted: vec![],
+            announced_at: Instant::now() - Duration::from_secs(1),
+        });
+        assert_eq!(store.len(), 1);
+        store.gc();
+        assert_eq!(store.len(), 0);
+    }
+
+    #[test]
+    fn content_announcement_store_query_excludes_expired() {
+        let mut store = ContentAnnouncementStore::with_ttl(Duration::from_millis(0));
+        store.insert(ContentAnnouncement {
+            topic: "content:old".into(),
+            manifest_hash: None,
+            family_id: "f".into(),
+            node_id: "n".into(),
+            seeder_count: 1,
+            bond_types_accepted: vec![],
+            announced_at: Instant::now() - Duration::from_secs(1),
+        });
+        assert!(store.query("content:old").is_empty(), "expired entries filtered out");
     }
 }

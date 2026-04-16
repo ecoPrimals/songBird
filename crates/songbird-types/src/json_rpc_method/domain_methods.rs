@@ -132,6 +132,7 @@ pub enum RelayMethod {
 pub enum DiscoveryMethod {
     Peers,
     Announce,
+    ContentPeers,
     ListPeers,
     PeerCount,
     RejectedPeers,

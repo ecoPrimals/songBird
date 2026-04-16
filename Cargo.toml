@@ -117,10 +117,11 @@ tokio = { version = "1.48", features = [
     "rt-multi-thread", "net", "io-util", "macros",
     "sync", "time", "fs", "signal", "process",
 ] }
-# SB-06: 145 effective uses across crates (5 more in doc-comment examples).
+# SB-06: 141 annotations across crates (down from ~160, three audits).
 # Every async trait in Songbird is either dyn-dispatched directly
 # (Arc<dyn T>, Box<dyn T>) or is a supertrait of one (e.g. Provider tree).
 # One use is axum's `FromRequestParts` (external trait, also requires it).
+# ~16 are in test/mock code implementing dyn-dispatched traits.
 # Native AFIT (Rust 1.75+) doesn't support dyn dispatch. Migration blocked
 # on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119). Reassess
 # when that feature graduates to stable.

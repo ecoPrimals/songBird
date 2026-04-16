@@ -2,8 +2,8 @@
 
 **Date**: April 16, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 142 (Apr 16, 2026)  
-**Current Wave**: 142 — deep debt cleanup + idiomatic Rust evolution: centralized legacy socket filename constants (`LEGACY_AI_SOCKET_FILENAME`, `LEGACY_COMPUTE_SOCKET_FILENAME`), eliminated all hardcoded `/tmp/` in production, `std::env::temp_dir()` everywhere, idiomatic Rust improvements (redundant clones, `collect`+`join` → `fold`/`write!`, `if let Some` → `map_or_else`), 14 new onion-relay coordinator tests, `peer_count()` API, pure Rust deps confirmed, zero unsafe, zero TODOs, zero production mocks  
+**Last Deep Debt Audit**: Wave 143 (Apr 16, 2026)  
+**Current Wave**: 143 — primalSpring remaining work: content distribution federation wired (in-memory `ContentAnnouncementStore` with TTL, `discovery.content_peers` method, topic-based seeder/leecher coordination, BLAKE3 manifest addressing, `family_only` filtering, 10 new tests), `ring` deny.toml documentation updated with April 2026 upstream status, `async-trait` SB-06 re-audited (141 annotations, all dyn-dispatched, blocked on `async_fn_in_dyn_trait`)  
 **Previous Waves** (full detail in `CHANGELOG.md`): 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -12,7 +12,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,350 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,360 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
@@ -36,11 +36,11 @@
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI via `ci.yml` (Wave 134) |
 | **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` only via optional `k8s` feature; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** removed Wave 135 (SB-03 resolved — IPC `storage.*` capability is production path, InMemory fallback); `parking_lot` removed (Wave 133) |
-| **`async-trait`** | 145 effective `#[async_trait]` across workspace (5 in doc examples); 100% require `dyn Trait` dispatch or are supertraits of dyn-dispatched traits (+1 axum `FromRequestParts`); SB-06 tracked in `Cargo.toml`; blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119) |
+| **`async-trait`** | 141 `#[async_trait]` annotations across workspace (~16 in test/mock code); 100% require `dyn Trait` dispatch or are supertraits of dyn-dispatched traits (+1 axum `FromRequestParts`); SB-06 tracked in `Cargo.toml`; blocked on `async_fn_in_dyn_trait` stabilization (rust-lang/rust#133119) |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
 | **Total Rust** | ~430,000 lines across 30 crates (1,587 files) |
-| **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented, async-trait analyzed (SB-06 deferred); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139) |
+| **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented, async-trait analyzed (SB-06 deferred); Wave 143: content distribution federation wired (`ContentAnnouncementStore`, `discovery.content_peers`, seeder/leecher coordination), `ring` deny.toml updated, `async-trait` re-audited (141 annotations, all required); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139) |
 
 ---
 

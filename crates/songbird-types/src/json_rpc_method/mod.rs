@@ -179,6 +179,7 @@ impl JsonRpcMethod {
             Self::Relay(RelayMethod::Allocate) => "relay.allocate",
             Self::Discovery(DiscoveryMethod::Peers) => "discovery.peers",
             Self::Discovery(DiscoveryMethod::Announce) => "discovery.announce",
+            Self::Discovery(DiscoveryMethod::ContentPeers) => "discovery.content_peers",
             Self::Discovery(DiscoveryMethod::ListPeers) => "discovery.list_peers",
             Self::Discovery(DiscoveryMethod::PeerCount) => "discovery.peer_count",
             Self::Discovery(DiscoveryMethod::RejectedPeers) => "discovery.rejected_peers",
@@ -323,6 +324,7 @@ impl JsonRpcMethod {
             "discovery.announce" | "announce_presence" => {
                 Self::Discovery(DiscoveryMethod::Announce)
             }
+            "discovery.content_peers" => Self::Discovery(DiscoveryMethod::ContentPeers),
             "discovery.list_peers" => Self::Discovery(DiscoveryMethod::ListPeers),
             "discovery.peer_count" => Self::Discovery(DiscoveryMethod::PeerCount),
             "discovery.rejected_peers" => Self::Discovery(DiscoveryMethod::RejectedPeers),

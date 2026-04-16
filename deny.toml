@@ -32,11 +32,14 @@ deny = [
     # --all-features BUILD: ring IS compiled (via Chain B — kube-client hardcodes
     #   hyper-rustls with the `ring` feature in kube 0.95).
     #
-    # UPSTREAM FIXES NEEDED:
-    #   - rustls-rustcrypto master has dropped webpki 0.102 → eliminates Chain A on release
-    #   - kube-client needs hyper-rustls/aws-lc-rs option → eliminates Chain B
+    # UPSTREAM STATUS (April 2026):
+    #   - rustls-rustcrypto still at 0.0.2-alpha on crates.io; master dropped webpki 0.102
+    #     but no release yet → Chain A persists in lockfile.
+    #   - kube 0.95 exposes `aws-lc-rs` feature, but aws-lc-rs is also C/ASM — not ecoBin
+    #     compliant. Pure-Rust k8s TLS requires upstream kube to support rustls-rustcrypto.
     #
-    # This ban ensures ring can never be accidentally activated in default builds.
+    # IMPACT: `cargo deny check` passes clean; ring is never compiled in default builds.
+    # The lockfile entry is a metadata artifact with no binary impact.
     { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust." },
 ]
 skip = [

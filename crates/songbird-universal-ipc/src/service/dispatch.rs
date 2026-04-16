@@ -136,6 +136,10 @@ impl JsonRpcHandler for IpcServiceHandler {
                 self.discovery_handler.handle_announce(params).await,
                 "Discovery announce failed",
             ),
+            JsonRpcMethod::Discovery(DiscoveryMethod::ContentPeers) => Self::wrap_result(
+                self.discovery_handler.handle_content_peers(params).await,
+                "Discovery content_peers failed",
+            ),
             JsonRpcMethod::Rendezvous(RendezvousMethod::Register) => Self::wrap_result(
                 self.rendezvous_handler.handle_register(params).await,
                 "Rendezvous register failed",

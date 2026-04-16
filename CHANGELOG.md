@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave143] - 2026-04-16 - primalSpring Remaining Work: Content Distribution Federation
+
+### Added
+- `discovery.content_peers` JSON-RPC method — query seeders for specific content topics
+- `ContentAnnouncement` type and `ContentAnnouncementStore` with TTL-based expiration (10min default) — in-memory registry for seeder/leecher coordination
+- `ContentPeers` variant in `DiscoveryMethod` enum with full dispatch wiring
+- `discovery.announce` topic mode now stores announcements in the content registry (keyed by `(topic, node_id)`, de-duplicated on re-announce)
+- `discovery.content_peers` supports `topic`, `family_only`, and `manifest_hash` filters for BLAKE3-addressed content from NestGate `ContentManifest`
+- 10 new content distribution tests: announce storage, update-on-re-announce, presence-no-store, content_peers query/filter/family_only/manifest_hash/required-topic/empty-result, TTL gc, TTL query expiration
+
+### Changed
+- `deny.toml` ring ban documentation: updated with April 2026 upstream status — `rustls-rustcrypto` still at 0.0.2-alpha, kube 0.95 `aws-lc-rs` feature noted as also C/ASM
+- `async-trait` SB-06 tracking: re-audited to 141 annotations (down from 145), all confirmed dyn-dispatched via exhaustive trait-by-trait analysis
+- `discovery.announce` topic response now includes `node_id` and defaults `seeder_count` to 1 when omitted
+
+### Metrics
+- Tests: 7,360 lib passed, 0 failed
+- Clippy: 30/30 crates clean (pedantic + nursery)
+- Formatting: clean
+- cargo-deny: advisories ok, bans ok, licenses ok, sources ok
+
+---
+
 ## [v0.2.1-wave142] - 2026-04-16 - Deep Debt Cleanup + Idiomatic Rust Evolution
 
 ### Added
