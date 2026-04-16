@@ -2,9 +2,9 @@
 
 **Date**: April 16, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 146 (Apr 16, 2026)  
-**Current Wave**: 146 — stadial parity gate: `dyn` audit (376 usages classified, 19 finite-implementor eliminated); `ring` lockfile ghost analyzed and documented (NOT compiled, Cargo resolver artifact); `deny.toml` updated with stadial evidence  
-**Previous Waves** (full detail in `CHANGELOG.md`): 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 147 (Apr 16, 2026)  
+**Current Wave**: 147 — mock isolation (`birdsong::mocks` cfg-gated behind `test-mocks` feature), hardcoded IP/path elimination (LOCALHOST/EPHEMERAL_BIND_ADDR/SYSTEM_RUNTIME_DIR/BIOMEOS_SYSTEM_RUNTIME_DIR constants), lint hygiene (all bare `#[allow()]` given reason strings)  
+**Previous Waves** (full detail in `CHANGELOG.md`): 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -27,8 +27,8 @@
 | **Production `unreachable!()`** | 2 (provably unreachable QUIC VarInt 2-bit prefix arms, documented) |
 | **TODO/FIXME/HACK comments** | 0 in Rust source; 0 FIXME/HACK |
 | **Commented-out code** | 0 in production library code (Wave 124 scrub); doc-style examples in comments kept intentionally |
-| **`#[allow(` vs `#[expect(`** | Wave 134 completed full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates (45+ attributes in 30 files); Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons; Wave 137c: all bare `#[allow()]` in test files and TLS crate given reason strings; `#[expect(reason)]` retained where non-dead-code lints provably fire; zero reasonless suppressions remain |
-| **Mocks in production** | 0 (all inside `#[cfg(test)]`) |
+| **`#[allow(` vs `#[expect(`** | Wave 134 completed full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates (45+ attributes in 30 files); Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons; Wave 137c: all bare `#[allow()]` in test files and TLS crate given reason strings; Wave 147: all remaining bare `#[allow(clippy::type_complexity)]`, `#[allow(clippy::too_many_lines)]`, `#[allow(unused_mut)]`, `#[allow(deprecated)]` given reason strings (6 e2e test files + 4 production); `#[expect(reason)]` retained where non-dead-code lints provably fire; zero reasonless suppressions remain |
+| **Mocks in production** | 0 (all inside `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]`; `birdsong::mocks` gated Wave 147) |
 | **Capability discovery** | `find_primals_with_capability` — identity-agnostic, env-driven |
 | **Hardcoded elimination** | All ports env-driven (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`, `SONGBIRD_BIND_ADDRESS`, `SONGBIRD_MULTICAST_ADDRESS`); canonical `DEFAULT_SONGBIRD_PORT` (3492) constant replaces all magic-number port fallbacks (Wave 136); `BIOMEOS_RUNTIME_SUBDIR` constant replaces all `"biomeos"` path literals in production (Wave 136); all socket paths XDG-compliant; all IP probes use netdev + RFC 5737 fallback; capability-first across 11+ crates; all legacy primal env vars deprecated with `tracing::warn!`; all deprecated function/type/module names removed; Wave 137c: zero remaining hardcoded `"0.0.0.0"` / `"127.0.0.1"` / `"localhost"` in production code — all evolved to `PRODUCTION_BIND_ADDRESS` / `DEVELOPMENT_BIND_ADDRESS` / `LOCALHOST` constants; all legacy port constants deprecated to canonical `defaults::ports` |
 | **JSON-RPC dispatch** | Typed `JsonRpcMethod` enum (53+ methods, 16 domain sub-enums including `Lifecycle` and `Inference`); `normalize_json_rpc_method_name()` absorbs `model.*`/`ai.*` → `inference.*`, `discovery.find_by_capability`/`net.discovery.find_by_capability` → `ipc.discover` |

@@ -436,7 +436,7 @@ mod dispatch_tests {
 
     /// Exercises each `match` arm of the JSON-RPC `handle` implementation with safe or error-only parameters.
     #[tokio::test]
-    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines, reason = "exhaustive test covering every JSON-RPC arm")]
     async fn dispatch_hits_each_json_rpc_arm() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
         let h = IpcServiceHandler::new(Arc::clone(&registry));

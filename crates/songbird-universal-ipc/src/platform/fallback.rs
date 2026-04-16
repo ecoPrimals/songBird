@@ -9,6 +9,7 @@
 use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
+use songbird_types::constants::LOCALHOST;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, info, warn};
@@ -36,16 +37,16 @@ impl FallbackPlatformIPC {
     pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             NativeEndpoint::TcpLocal(port) => {
-                debug!("Creating TCP listener on: 127.0.0.1:{}", port);
+                debug!("Creating TCP listener on: {LOCALHOST}:{port}");
 
                 let listener =
-                    TcpListener::bind(format!("127.0.0.1:{port}")).await.map_err(|e| {
+                    TcpListener::bind(format!("{LOCALHOST}:{port}")).await.map_err(|e| {
                         IpcError::ListenerFailed(format!(
                             "Failed to bind TCP localhost at port {port}: {e}"
                         ))
                     })?;
 
-                info!("TCP localhost listener created: 127.0.0.1:{}", port);
+                info!("TCP localhost listener created: {LOCALHOST}:{port}");
 
                 Ok(PlatformListenerImpl::Fallback(FallbackListener {
                     inner: listener,
@@ -59,16 +60,16 @@ impl FallbackPlatformIPC {
     pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
             NativeEndpoint::TcpLocal(port) => {
-                debug!("Connecting to TCP localhost: 127.0.0.1:{}", port);
+                debug!("Connecting to TCP localhost: {LOCALHOST}:{port}");
 
                 let stream =
-                    TcpStream::connect(format!("127.0.0.1:{port}")).await.map_err(|e| {
+                    TcpStream::connect(format!("{LOCALHOST}:{port}")).await.map_err(|e| {
                         IpcError::ConnectionFailed(format!(
                             "Failed to connect to TCP localhost at port {port}: {e}"
                         ))
                     })?;
 
-                info!("Connected to TCP localhost: 127.0.0.1:{}", port);
+                info!("Connected to TCP localhost: {LOCALHOST}:{port}");
 
                 Ok(AsyncStreamImpl::Tcp(stream))
             }

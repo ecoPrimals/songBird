@@ -39,7 +39,7 @@ pub type CryptoProvider = SecurityCryptoProvider;
 
 pub use discovery::discover_crypto_capability;
 /// Deprecated; see [`socket_discovery::discover_security_socket`].
-#[allow(deprecated)]
+#[allow(deprecated, reason = "re-export retained for backward compatibility")]
 pub use socket_discovery::discover_security_provider_socket;
 pub use socket_discovery::{
     IpcEndpoint, discover_ipc_endpoint, discover_neural_api_socket, discover_security_socket,

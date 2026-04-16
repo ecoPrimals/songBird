@@ -49,6 +49,7 @@ rand = { workspace = true }
 
 [features]
 default = []
+test-mocks = []
 
 security = []
 storage = []

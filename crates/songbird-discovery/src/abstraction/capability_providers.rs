@@ -144,7 +144,10 @@ impl Default for CapabilityProviderFactory {
 ///
 /// Maps capabilities to vendor implementations based on environment or discovery
 pub fn create_default_capability_factory() -> CapabilityProviderFactory {
-    #[allow(unused_mut)] // `mut` only when `kubernetes` / `consul` features register factories
+    #[allow(
+        unused_mut,
+        reason = "mut needed only when kubernetes/consul features register factories"
+    )]
     let mut factory = CapabilityProviderFactory::new();
 
     #[cfg(feature = "kubernetes")]

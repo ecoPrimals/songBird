@@ -7,6 +7,7 @@
 //! Actual paths should be discovered via environment or runtime config.
 //! Legacy fallbacks under the OS temp directory use [`std::env::temp_dir()`] instead of a hardcoded `/tmp`.
 
+use crate::constants::BIOMEOS_SYSTEM_RUNTIME_DIR;
 use std::path::PathBuf;
 
 /// Subdirectory under `XDG_RUNTIME_DIR` or `/run/user/<uid>/` for biomeOS sockets
@@ -71,7 +72,7 @@ pub fn security_socket_candidates() -> [PathBuf; 5] {
     [
         security_socket_default_path(),
         security_socket_tmp_fallback_path(),
-        PathBuf::from("/var/run/biomeos/security.sock"),
+        PathBuf::from(BIOMEOS_SYSTEM_RUNTIME_DIR).join("security.sock"),
         b.join("crypto.sock"),
         security_socket_legacy_tmp_path(),
     ]

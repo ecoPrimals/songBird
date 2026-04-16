@@ -156,6 +156,7 @@ tokio-serde = { version = "0.8.0", features = ["bincode"] }
 netdev = "0.40.0"
 
 [dev-dependencies]
+songbird-discovery = { path = "../songbird-discovery", features = ["test-mocks"] }
 songbird-process-env = { path = "../songbird-process-env" }
 songbird-test-utils = { path = "../songbird-test-utils" }
 tokio-tungstenite = "0.24"

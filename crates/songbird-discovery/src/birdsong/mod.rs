@@ -45,13 +45,15 @@
 // Submodules
 mod config;
 mod encryption;
-mod mocks;
+#[cfg(any(test, feature = "test-mocks"))]
+pub mod mocks;
 mod processor;
 mod types;
 
 // Re-export public API
 pub use config::BirdSongConfig;
 pub use encryption::BirdSongEncryption;
+#[cfg(any(test, feature = "test-mocks"))]
 pub use mocks::{
     ChaoticBirdSongMock, CrossFamilyBirdSongMock, DarkForestTestProvider, FailingBirdSongMock,
     LegacyBirdSongStub, OrchestratorPrefixMock, ProcessorXorMock, ProtocolPassthroughMock,

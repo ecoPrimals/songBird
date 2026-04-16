@@ -96,8 +96,17 @@ pub fn dev_localhost_url(port: u16) -> String {
 /// Production bind address (all interfaces)
 pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
 
+/// Ephemeral bind address — all interfaces, OS-assigned port.
+pub const EPHEMERAL_BIND_ADDR: &str = "0.0.0.0:0";
+
 /// Development bind address (localhost only)
 pub const DEVELOPMENT_BIND_ADDRESS: &str = "127.0.0.1";
+
+/// FHS system runtime directory for well-known service paths.
+pub const SYSTEM_RUNTIME_DIR: &str = "/var/run";
+
+/// biomeOS system runtime socket directory (FHS-standard).
+pub const BIOMEOS_SYSTEM_RUNTIME_DIR: &str = "/var/run/biomeos";
 
 // ============================================================================
 // TIMEOUT CONSTANTS

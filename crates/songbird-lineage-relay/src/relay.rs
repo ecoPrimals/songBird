@@ -10,6 +10,7 @@ use crate::error::{LineageRelayError, Result};
 use crate::relay_protocol::RelayProtocol;
 use crate::types::{BirdSongType, LineageHint, MaskingLevel, NodeId, RelayAuthorization};
 use serde::{Deserialize, Serialize};
+use songbird_types::constants::EPHEMERAL_BIND_ADDR;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -150,7 +151,7 @@ impl RelaySession {
         masking_level: MaskingLevel,
     ) -> Result<Self> {
         // Bind to ephemeral port (OS-assigned)
-        let socket = UdpSocket::bind("0.0.0.0:0").await.map_err(|e| {
+        let socket = UdpSocket::bind(EPHEMERAL_BIND_ADDR).await.map_err(|e| {
             LineageRelayError::NetworkError(format!(
                 "Failed to bind UDP socket for relay session: {e}"
             ))

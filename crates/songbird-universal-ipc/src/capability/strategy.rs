@@ -5,6 +5,7 @@
 
 use crate::capability::provider::Provider;
 use crate::error::IpcResult;
+use songbird_types::constants::SYSTEM_RUNTIME_DIR;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -161,8 +162,7 @@ impl FilesystemStrategy {
             search_paths.push(PathBuf::from(format!("/run/user/{uid}")));
         }
 
-        // Add system runtime directory
-        search_paths.push(PathBuf::from("/var/run"));
+        search_paths.push(PathBuf::from(SYSTEM_RUNTIME_DIR));
 
         Self {
             search_paths: Arc::new(search_paths),

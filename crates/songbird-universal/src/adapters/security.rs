@@ -156,7 +156,10 @@ impl SecurityAdapter {
                     debug!("Using SONGBIRD_SECURITY_ENDPOINT after resolver miss");
                     return Self::new(endpoint).await;
                 }
-                #[allow(deprecated)]
+                #[allow(
+                    deprecated,
+                    reason = "legacy migration path; removed once BEARDOG_* env vars are retired"
+                )]
                 if let Some(endpoint) = deprecated_beardog_endpoint_env() {
                     return Self::new(endpoint).await;
                 }

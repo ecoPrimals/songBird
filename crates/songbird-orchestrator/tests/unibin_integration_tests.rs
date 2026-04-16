@@ -8,7 +8,7 @@
 
 // `cargo_bin!` only applies to binaries in *this* package; the `songbird` executable is built
 // by the workspace root crate. The deprecated `cargo_bin` function resolves the path at runtime.
-#![allow(deprecated)]
+#![allow(deprecated, reason = "exercises legacy API paths for backward-compatibility coverage")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use assert_cmd::Command;

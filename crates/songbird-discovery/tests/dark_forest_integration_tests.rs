@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![cfg(feature = "test-mocks")]
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,

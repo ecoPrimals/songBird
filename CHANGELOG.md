@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave147] - 2026-04-16 - Mock Isolation + Hardcoded Elimination + Lint Hygiene
+
+### Changed — Mock Isolation
+- **birdsong::mocks** (songbird-discovery): module and all 9 mock types now gated behind `#[cfg(any(test, feature = "test-mocks"))]`; `BirdSongEncryption` enum variants for mocks cfg-gated; zero mock types in production builds
+- **test-mocks feature**: added to songbird-discovery `Cargo.toml`; songbird-orchestrator enables it as dev-dependency for `tests_birdsong_integration.rs`
+- Integration tests (`dark_forest`, `fault_injection`, `chaos_engineering`) gated with `#![cfg(feature = "test-mocks")]`
+
+### Changed — Hardcoded IP/Path Elimination
+- **fallback.rs** (songbird-universal-ipc): raw `"127.0.0.1"` → `LOCALHOST` constant (3 occurrences)
+- **relay.rs** (songbird-lineage-relay): raw `"0.0.0.0:0"` → `EPHEMERAL_BIND_ADDR` constant
+- **strategy.rs** (songbird-universal-ipc): raw `"/var/run"` → `SYSTEM_RUNTIME_DIR` constant
+- **paths.rs** (songbird-types): raw `"/var/run/biomeos/security.sock"` → `BIOMEOS_SYSTEM_RUNTIME_DIR` constant join
+- New constants in `songbird-types::constants`: `EPHEMERAL_BIND_ADDR`, `SYSTEM_RUNTIME_DIR`, `BIOMEOS_SYSTEM_RUNTIME_DIR`
+
+### Changed — Lint Hygiene
+- All remaining bare `#[allow(...)]` attributes given `reason` strings:
+  - `clippy::type_complexity` (rendezvous_handler.rs)
+  - `clippy::too_many_lines` (dispatch.rs)
+  - `unused_mut` (capability_providers.rs)
+  - `deprecated` (security.rs, crypto/mod.rs)
+  - `#![allow(deprecated)]` in 6 e2e test files
+
+### Metrics
+- All 30 crates compile clean
+- Clippy: zero warnings
+- Cargo deny: clean
+- Cargo fmt: clean
+
+---
+
 ## [v0.2.1-wave146] - 2026-04-16 - Stadial Parity Gate: dyn Audit + ring Analysis
 
 ### Changed — dyn Dispatch Elimination (finite-implementor)
