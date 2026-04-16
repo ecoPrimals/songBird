@@ -46,7 +46,13 @@ pub fn parse_ssdp_response(text: &str) -> Option<SsdpMessage> {
     if !status.starts_with("HTTP/1.") || !status.contains("200") {
         return None;
     }
-    let rest: String = lines.collect::<Vec<_>>().join("\n");
+    let rest: String = lines.fold(String::new(), |mut acc, line| {
+        if !acc.is_empty() {
+            acc.push('\n');
+        }
+        acc.push_str(line);
+        acc
+    });
     let h = header_map(&rest);
     Some(SsdpMessage {
         location: h.get("LOCATION")?.clone(),

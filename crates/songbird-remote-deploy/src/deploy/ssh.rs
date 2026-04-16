@@ -69,8 +69,17 @@ pub(super) fn start_remote_service(
     ssh_user: &str,
     ssh_key: Option<&str>,
 ) -> Result<()> {
-    let env_string =
-        env_vars.iter().map(|(k, v)| format!("{k}=\"{v}\"")).collect::<Vec<_>>().join(" ");
+    let env_string = {
+        use std::fmt::Write;
+        let mut s = String::new();
+        for (i, (k, v)) in env_vars.iter().enumerate() {
+            if i > 0 {
+                s.push(' ');
+            }
+            let _ = write!(s, "{k}=\"{v}\"");
+        }
+        s
+    };
 
     let command = format!("nohup {env_string} {remote_path} > /tmp/service.log 2>&1 &");
 

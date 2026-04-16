@@ -130,11 +130,7 @@ impl DynamicPluginRegistry {
     /// Get plugin capabilities
     pub async fn get_plugin_capabilities(&self, plugin_id: &str) -> SongbirdResult<Vec<PluginCapability>> {
         let plugins = self.plugins.read().await;
-        if let Some(plugin) = plugins.get(plugin_id) {
-            Ok(plugin.capabilities())
-        } else {
-            Ok(vec![])
-        }
+        Ok(plugins.get(plugin_id).map_or_else(Vec::new, |p| p.capabilities()))
     }
 
     /// Discover optimal composition for given requirements

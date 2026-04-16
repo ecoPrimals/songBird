@@ -128,3 +128,63 @@ impl HolePunchConfig {
         stun_server_list()
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_stun_servers_fallback_returns_three_servers() {
+        let servers = default_stun_servers_fallback();
+        assert_eq!(servers.len(), 3);
+        assert!(servers.iter().all(|s| s.contains(":3478")));
+    }
+
+    #[test]
+    fn hole_punch_config_default_values() {
+        songbird_process_env::remove_var("SONGBIRD_STUN_SERVERS");
+        songbird_process_env::remove_var("BIOMEOS_STUN_SERVERS");
+        songbird_process_env::remove_var("BIOMEOS_STUN_SERVER");
+
+        let config = HolePunchConfig::default();
+        assert_eq!(config.max_attempts, 20);
+        assert_eq!(config.attempt_timeout, Duration::from_millis(500));
+        assert_eq!(config.packet_interval, Duration::from_millis(50));
+        assert_eq!(config.total_timeout, Duration::from_secs(10));
+        assert_eq!(config.ack_timeout, Duration::from_secs(5));
+        assert!(!config.stun_servers.is_empty());
+    }
+
+    #[test]
+    fn with_stun_servers_overrides_defaults() {
+        let config =
+            HolePunchConfig::default().with_stun_servers(vec!["my-stun.local:3478".to_string()]);
+        assert_eq!(config.stun_servers.len(), 1);
+        assert_eq!(config.stun_servers[0], "my-stun.local:3478");
+    }
+
+    #[test]
+    fn hole_punch_config_clone_preserves_fields() {
+        let config = HolePunchConfig {
+            max_attempts: 5,
+            attempt_timeout: Duration::from_millis(100),
+            packet_interval: Duration::from_millis(25),
+            total_timeout: Duration::from_secs(3),
+            stun_servers: vec!["test:1234".to_string()],
+            ack_timeout: Duration::from_secs(2),
+        };
+        let cloned = config.clone();
+        assert_eq!(cloned.max_attempts, 5);
+        assert_eq!(cloned.stun_servers, vec!["test:1234"]);
+        assert_eq!(cloned.ack_timeout, Duration::from_secs(2));
+    }
+
+    #[test]
+    fn hole_punch_config_debug_output() {
+        let config = HolePunchConfig::default();
+        let dbg = format!("{config:?}");
+        assert!(dbg.contains("max_attempts"));
+        assert!(dbg.contains("stun_servers"));
+    }
+}

@@ -31,6 +31,12 @@ pub const CRYPTO_PROVIDER_SOCKET_FILENAMES_UID: &[&str] = &["security.sock", "cr
 /// Capability-only names — no primal identities.
 pub const NEURAL_API_CAPABILITY_SOCKET_FILENAMES: &[&str] = &["ai.sock", "neural-api.sock"];
 
+/// Legacy AI/coordination provider socket filename (Squirrel).
+pub const LEGACY_AI_SOCKET_FILENAME: &str = "squirrel.sock";
+
+/// Legacy compute provider socket filename (toadStool).
+pub const LEGACY_COMPUTE_SOCKET_FILENAME: &str = "toadstool.sock";
+
 /// `/run/user/{uid}/biomeos/{socket_filename}` for UID-based socket discovery
 #[must_use]
 pub fn run_user_biomeos_socket(uid: &str, socket_filename: &str) -> PathBuf {
@@ -146,7 +152,7 @@ pub fn ipc_discovery_primal_port_path(primal_name: &str) -> PathBuf {
 #[must_use]
 pub fn coordination_socket_candidates() -> [PathBuf; 3] {
     let b = biomeos_socket_dir_tmp();
-    [b.join("ai.sock"), b.join("neural-api.sock"), b.join("squirrel.sock")]
+    [b.join("ai.sock"), b.join("neural-api.sock"), b.join(LEGACY_AI_SOCKET_FILENAME)]
 }
 
 /// Deprecated alias for [`coordination_socket_candidates`].
@@ -184,7 +190,7 @@ pub fn compute_socket_candidates() -> [PathBuf; 4] {
         b.join("compute.sock"),
         b.join("bridge.sock"),
         std::env::temp_dir().join("compute.sock"),
-        b.join("toadstool.sock"),
+        b.join(LEGACY_COMPUTE_SOCKET_FILENAME),
     ]
 }
 

@@ -99,7 +99,9 @@ impl DiscoveryHandler {
         if family_only {
             let own_family = resolve_family().unwrap_or_default();
             if own_family.is_empty() {
-                debug!("Discovery: family_only requested but no FAMILY_ID set — returning all peers");
+                debug!(
+                    "Discovery: family_only requested but no FAMILY_ID set — returning all peers"
+                );
             } else {
                 debug!("Discovery: family_only filter active (family={own_family})");
                 peers.retain(|peer| peer.family_id == own_family);
@@ -709,11 +711,11 @@ mod tests {
 
     #[tokio::test]
     async fn list_peers_family_only_filters_by_env() {
-        let mock_peers = vec![
-            peer("same-fam", "nat0", &["storage"]),
-            peer("other-fam", "other", &["storage"]),
-        ];
-        let registry = Arc::new(MockPeerRegistry { peers: mock_peers });
+        let mock_peers =
+            vec![peer("same-fam", "nat0", &["storage"]), peer("other-fam", "other", &["storage"])];
+        let registry = Arc::new(MockPeerRegistry {
+            peers: mock_peers,
+        });
         let handler = DiscoveryHandler::with_registry(registry);
 
         let result = handler
@@ -727,11 +729,10 @@ mod tests {
 
     #[tokio::test]
     async fn list_peers_family_only_no_env_returns_all() {
-        let mock_peers = vec![
-            peer("a", "fam1", &[]),
-            peer("b", "fam2", &[]),
-        ];
-        let registry = Arc::new(MockPeerRegistry { peers: mock_peers });
+        let mock_peers = vec![peer("a", "fam1", &[]), peer("b", "fam2", &[])];
+        let registry = Arc::new(MockPeerRegistry {
+            peers: mock_peers,
+        });
         let handler = DiscoveryHandler::with_registry(registry);
 
         let result = handler

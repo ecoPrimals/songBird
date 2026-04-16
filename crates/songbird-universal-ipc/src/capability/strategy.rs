@@ -138,7 +138,7 @@ impl FilesystemStrategy {
     /// Create new filesystem strategy with default search paths
     #[must_use]
     pub fn new() -> Self {
-        let mut search_paths = vec![PathBuf::from("/tmp")];
+        let mut search_paths = vec![std::env::temp_dir()];
 
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
             search_paths.push(PathBuf::from(xdg));

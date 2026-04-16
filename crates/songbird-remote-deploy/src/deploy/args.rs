@@ -9,6 +9,10 @@ pub(super) fn default_federation_endpoint() -> String {
     format!("http://{LOCALHOST}:{DEFAULT_HTTP_PORT}")
 }
 
+fn default_deploy_path() -> String {
+    std::env::temp_dir().join("deployed-service").to_string_lossy().into_owned()
+}
+
 /// CLI arguments for `songbird-deploy` (SSH, HTTP, list, and status subcommands).
 #[derive(Parser, Debug)]
 #[command(name = "songbird-deploy")]
@@ -45,7 +49,7 @@ pub(super) enum Commands {
         binary: String,
 
         /// Remote destination path
-        #[arg(long, default_value = "/tmp/deployed-service")]
+        #[arg(long, default_value_t = default_deploy_path())]
         remote_path: String,
 
         /// Environment variables (can be specified multiple times)

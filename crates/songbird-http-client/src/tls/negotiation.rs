@@ -311,20 +311,18 @@ impl AlgorithmNegotiator {
 
     /// Record successful handshake (for adaptive learning)
     pub fn record_success(&mut self, hostname: &str, algorithm: SignatureAlgorithm) {
-        let profile = self
-            .server_profiles
-            .entry(hostname.to_string())
-            .or_insert_with(|| ServerProfile::new(hostname.to_string()));
+        let key = hostname.to_string();
+        let profile =
+            self.server_profiles.entry(key.clone()).or_insert_with(|| ServerProfile::new(key));
 
         profile.record_success(algorithm);
     }
 
     /// Record failed handshake (for adaptive learning)
     pub fn record_failure(&mut self, hostname: &str, attempted_algorithms: &[SignatureAlgorithm]) {
-        let profile = self
-            .server_profiles
-            .entry(hostname.to_string())
-            .or_insert_with(|| ServerProfile::new(hostname.to_string()));
+        let key = hostname.to_string();
+        let profile =
+            self.server_profiles.entry(key.clone()).or_insert_with(|| ServerProfile::new(key));
 
         profile.record_failure(attempted_algorithms);
     }

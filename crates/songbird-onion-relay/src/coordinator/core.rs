@@ -56,6 +56,11 @@ impl HolePunchCoordinator {
         self.peers.write().await.insert(peer_info.node_id.clone(), peer_info);
     }
 
+    /// Returns the number of currently registered peers.
+    pub async fn peer_count(&self) -> usize {
+        self.peers.read().await.len()
+    }
+
     /// Dispatches rendezvous messages (register, query, punch, relay, etc.).
     pub async fn handle_message(&self, msg: SignalingMessage) -> Option<SignalingMessage> {
         match msg {
@@ -115,5 +120,171 @@ impl HolePunchCoordinator {
             }
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use crate::signaling::{NatType, PeerInfo};
+    use std::net::SocketAddr;
+
+    fn test_peer(id: &str, addr: &str) -> PeerInfo {
+        PeerInfo {
+            node_id: id.to_string(),
+            public_addr: addr.parse::<SocketAddr>().unwrap(),
+            local_addr: None,
+            nat_type: NatType::Unknown,
+            timestamp: SystemTime::now(),
+            capabilities: vec!["relay".to_string()],
+        }
+    }
+
+    #[tokio::test]
+    async fn new_creates_coordinator_with_empty_peers() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("node-a".into(), HolePunchConfig::default());
+        assert_eq!(coord.my_node_id, "node-a");
+        assert_eq!(coord.peer_count().await, 0);
+        assert!(coord.my_info.read().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn register_peer_adds_to_registry() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self".into(), HolePunchConfig::default());
+        let peer = test_peer("peer-1", "192.0.2.1:4000");
+        coord.register_peer(peer).await;
+        assert_eq!(coord.peer_count().await, 1);
+        let map = coord.peers.read().await;
+        assert!(map.contains_key("peer-1"));
+    }
+
+    #[tokio::test]
+    async fn register_peer_replaces_existing() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self".into(), HolePunchConfig::default());
+        coord.register_peer(test_peer("peer-1", "192.0.2.1:4000")).await;
+        coord.register_peer(test_peer("peer-1", "192.0.2.1:5000")).await;
+        assert_eq!(coord.peer_count().await, 1);
+        let map = coord.peers.read().await;
+        assert_eq!(map["peer-1"].public_addr.port(), 5000);
+    }
+
+    #[tokio::test]
+    async fn handle_register_message_stores_peer() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self".into(), HolePunchConfig::default());
+        let msg = SignalingMessage::Register {
+            peer_info: test_peer("peer-a", "10.0.0.1:3000"),
+            encrypted_beacon: None,
+        };
+        let reply = coord.handle_message(msg).await;
+        assert!(reply.is_none(), "Register returns no reply");
+        assert_eq!(coord.peer_count().await, 1);
+    }
+
+    #[tokio::test]
+    async fn handle_query_returns_known_peer() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self".into(), HolePunchConfig::default());
+        coord.register_peer(test_peer("peer-x", "10.0.0.2:5000")).await;
+
+        let reply = coord
+            .handle_message(SignalingMessage::Query {
+                target_node_id: "peer-x".into(),
+            })
+            .await;
+        match reply {
+            Some(SignalingMessage::PeerInfoResponse {
+                peer_info,
+            }) => {
+                let info = peer_info.unwrap();
+                assert_eq!(info.node_id, "peer-x");
+            }
+            other => panic!("expected PeerInfoResponse, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_query_returns_none_for_unknown_peer() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self".into(), HolePunchConfig::default());
+        let reply = coord
+            .handle_message(SignalingMessage::Query {
+                target_node_id: "ghost".into(),
+            })
+            .await;
+        match reply {
+            Some(SignalingMessage::PeerInfoResponse {
+                peer_info,
+            }) => {
+                assert!(peer_info.is_none());
+            }
+            other => panic!("expected PeerInfoResponse with None, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_heartbeat_updates_timestamp() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self".into(), HolePunchConfig::default());
+        let old_peer = test_peer("peer-h", "10.0.0.3:6000");
+        coord.register_peer(old_peer).await;
+
+        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+
+        let reply = coord
+            .handle_message(SignalingMessage::Heartbeat {
+                node_id: "peer-h".into(),
+            })
+            .await;
+        assert!(reply.is_none(), "Heartbeat returns no reply");
+    }
+
+    #[tokio::test]
+    async fn handle_punch_request_for_self_returns_ack_when_info_set() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self-node".into(), HolePunchConfig::default());
+
+        let my_info = test_peer("self-node", "203.0.113.1:7000");
+        *coord.my_info.write().await = Some(my_info);
+
+        let test_nonce = [7u8; 16];
+        let reply = coord
+            .handle_message(SignalingMessage::PunchRequest {
+                from: test_peer("initiator", "198.51.100.1:8000"),
+                to_node_id: "self-node".into(),
+                nonce: test_nonce,
+            })
+            .await;
+        match reply {
+            Some(SignalingMessage::PunchAck {
+                from,
+                nonce,
+                start_at_ms,
+            }) => {
+                assert_eq!(from.node_id, "self-node");
+                assert_eq!(nonce, test_nonce);
+                assert!(start_at_ms > 0);
+            }
+            other => panic!("expected PunchAck, got {other:?}"),
+        }
+        assert_eq!(coord.peer_count().await, 1, "initiator should be registered");
+    }
+
+    #[tokio::test]
+    async fn handle_punch_request_for_other_returns_none() {
+        let (coord, _in_tx, _out_rx) =
+            HolePunchCoordinator::new("self".into(), HolePunchConfig::default());
+        let reply = coord
+            .handle_message(SignalingMessage::PunchRequest {
+                from: test_peer("initiator", "198.51.100.1:8000"),
+                to_node_id: "someone-else".into(),
+                nonce: [1u8; 16],
+            })
+            .await;
+        assert!(reply.is_none());
     }
 }

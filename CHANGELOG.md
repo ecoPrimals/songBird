@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave142] - 2026-04-16 - Deep Debt Cleanup + Idiomatic Rust Evolution
+
+### Added
+- `LEGACY_AI_SOCKET_FILENAME` and `LEGACY_COMPUTE_SOCKET_FILENAME` constants in `songbird-types/src/defaults/paths.rs` — centralizes legacy `squirrel.sock` and `toadstool.sock` literals
+- `default_deploy_path()` function in `songbird-remote-deploy` — replaces hardcoded `/tmp/deployed-service` with `std::env::temp_dir()`
+- `peer_count()` public method on `HolePunchCoordinator`
+- 14 new tests: `songbird-onion-relay` coordinator config (4 tests: default values, builder, clone, debug) and core (10 tests: construction, register_peer, handle_message for register/query/heartbeat/punch_request)
+
+### Changed
+- All hardcoded `/tmp/` paths in production code replaced with `std::env::temp_dir()`: `capability/strategy.rs` filesystem scan root, `deploy/args.rs` remote path default
+- Legacy socket filenames (`squirrel.sock`, `toadstool.sock`) now reference centralized constants instead of raw string literals
+- **Idiomatic Rust improvements**:
+  - `songbird-registry`: `if let Some/else` → `map_or_else` in `get_plugin_capabilities`
+  - `songbird-http-client`: eliminated duplicate `hostname.to_string()` allocations in TLS negotiation `record_success`/`record_failure`
+  - `songbird-discovery`: `collect::<Vec<_>>().join()` → `fold` with direct `String` building in SSDP parser
+  - `songbird-remote-deploy`: `collect::<Vec<_>>().join()` → `fmt::Write` loop in SSH env_vars formatting
+
+### Verified
+- 7,350 lib tests pass (0 failed, 22 ignored)
+- `cargo clippy --workspace --lib -- -D warnings` — zero warnings
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok
+- Zero unsafe code across all 30 crates (`#![forbid(unsafe_code)]`)
+- Zero TODO/FIXME/HACK in Rust source
+- Zero production mocks (all `#[cfg(test)]` gated)
+- No files >800 lines
+- Pure Rust deps in default build (no `-sys` crates, no `cc`, no `build.rs`)
+
+---
+
 ## [v0.2.1-wave140] - 2026-04-15 - primalSpring Phase 43 Audit Response + Deep Debt Evolution
 
 ### Added — primalSpring Phase 43 Audit Items (6/6 resolved)

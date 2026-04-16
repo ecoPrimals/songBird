@@ -1,9 +1,9 @@
 # Songbird Remaining Work
 
-**Date**: April 15, 2026  
+**Date**: April 16, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 140 (Apr 15, 2026)  
-**Current Wave**: 140 — primalSpring Phase 43 audit response: UDS first-byte peek (BTSP/JSON-RPC auto-detect), mito-beacon credential tier model, STUN/NAT beacon-tier auth, content distribution federation (topic announce + capability filter), ring lockfile doc, async-trait analysis (SB-06), deep debt cleanup (legacy socket constant centralization, CORS env override, XDG data_dir, dep hygiene: rand→getrandom in orchestrator)  
+**Last Deep Debt Audit**: Wave 142 (Apr 16, 2026)  
+**Current Wave**: 142 — deep debt cleanup + idiomatic Rust evolution: centralized legacy socket filename constants (`LEGACY_AI_SOCKET_FILENAME`, `LEGACY_COMPUTE_SOCKET_FILENAME`), eliminated all hardcoded `/tmp/` in production, `std::env::temp_dir()` everywhere, idiomatic Rust improvements (redundant clones, `collect`+`join` → `fold`/`write!`, `if let Some` → `map_or_else`), 14 new onion-relay coordinator tests, `peer_count()` API, pure Rust deps confirmed, zero unsafe, zero TODOs, zero production mocks  
 **Previous Waves** (full detail in `CHANGELOG.md`): 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -12,12 +12,12 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,336 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,350 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 15 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 15 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 16 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 16 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files refactored Wave 133: `ipc/types.rs` → 7 modules, `env_config.rs` → 9 modules, `tarpc_server.rs` → 3 modules, `manager.rs` → 6 modules) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
