@@ -26,11 +26,10 @@ Each provider configuration defines:
 
 - `openai.json` - OpenAI GPT-4 API
 - `huggingface.json` - HuggingFace Inference API
-- `anthropic.json` - Anthropic Claude API (example)
 
-### Local Primal Providers
+### Local Capability Providers
 
-- `toadstool-local.json` - Local GPU compute provider
+- `compute-provider-local.json` - Local GPU compute provider (capability-based naming)
 
 ## Usage
 
