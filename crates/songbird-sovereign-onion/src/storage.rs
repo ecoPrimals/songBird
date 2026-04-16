@@ -5,6 +5,7 @@
 
 use crate::error::Result;
 use crate::keys::OnionIdentity;
+use crate::storage_ipc::IpcOnionStorage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -187,6 +188,73 @@ impl OnionStorageBackend for InMemoryOnionStorage {
     }
 }
 
+/// Concrete onion storage backend (enum dispatch over [`InMemoryOnionStorage`] and [`IpcOnionStorage`]).
+#[derive(Debug)]
+pub enum OnionStorage {
+    /// In-memory fallback when no `storage.*` provider is available.
+    InMemory(InMemoryOnionStorage),
+    /// IPC JSON-RPC `storage.*` capability (production).
+    Ipc(IpcOnionStorage),
+}
+
+impl OnionStorageBackend for OnionStorage {
+    fn load_identity(&self) -> Result<Option<OnionIdentity>> {
+        match self {
+            Self::InMemory(s) => s.load_identity(),
+            Self::Ipc(s) => s.load_identity(),
+        }
+    }
+
+    fn store_identity(&self, identity: &OnionIdentity) -> Result<()> {
+        match self {
+            Self::InMemory(s) => s.store_identity(identity),
+            Self::Ipc(s) => s.store_identity(identity),
+        }
+    }
+
+    fn store_peer(&self, peer: &PeerInfo) -> Result<()> {
+        match self {
+            Self::InMemory(s) => s.store_peer(peer),
+            Self::Ipc(s) => s.store_peer(peer),
+        }
+    }
+
+    fn get_peer(&self, onion_address: &str) -> Result<Option<PeerInfo>> {
+        match self {
+            Self::InMemory(s) => s.get_peer(onion_address),
+            Self::Ipc(s) => s.get_peer(onion_address),
+        }
+    }
+
+    fn list_peers(&self) -> Result<Vec<PeerInfo>> {
+        match self {
+            Self::InMemory(s) => s.list_peers(),
+            Self::Ipc(s) => s.list_peers(),
+        }
+    }
+
+    fn update_peer_last_seen(&self, onion_address: &str, timestamp: u64) -> Result<()> {
+        match self {
+            Self::InMemory(s) => s.update_peer_last_seen(onion_address, timestamp),
+            Self::Ipc(s) => s.update_peer_last_seen(onion_address, timestamp),
+        }
+    }
+
+    fn remove_peer(&self, onion_address: &str) -> Result<()> {
+        match self {
+            Self::InMemory(s) => s.remove_peer(onion_address),
+            Self::Ipc(s) => s.remove_peer(onion_address),
+        }
+    }
+
+    fn flush(&self) -> Result<()> {
+        match self {
+            Self::InMemory(s) => s.flush(),
+            Self::Ipc(s) => s.flush(),
+        }
+    }
+}
+
 #[cfg(all(test, feature = "standalone"))]
 mod standalone_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
@@ -211,7 +279,7 @@ mod tests {
 
     use super::*;
 
-    fn test_backend(storage: &dyn OnionStorageBackend) {
+    fn test_backend(storage: &OnionStorage) {
         let peer = PeerInfo {
             onion_address: "test.onion".to_string(),
             last_seen: 1_234_567_890,
@@ -239,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_inmemory_peer_operations() {
-        test_backend(&InMemoryOnionStorage::new());
+        test_backend(&OnionStorage::InMemory(InMemoryOnionStorage::new()));
     }
 
     #[test]

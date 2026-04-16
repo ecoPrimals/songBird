@@ -21,25 +21,30 @@ deny = [
     { name = "serde_json", version = "<1.0.85" },
     # ecoBin: `ring` pulls C/ASM via `cc` — not pure Rust. Banned from all builds.
     #
-    # LOCKFILE CHAIN (why ring appears in Cargo.lock):
-    #   Chain A: songbird-cli → rustls-rustcrypto 0.0.2-alpha → rustls-webpki 0.102 → ring
-    #   Chain B: songbird-universal[k8s] → kube 0.95 → kube-client → hyper-rustls[ring] → rustls[ring] → ring
+    # STADIAL GATE ANALYSIS (April 16, 2026):
+    #   `cargo tree -i ring --edges normal` = "did not match any packages"
+    #   `cargo tree -i ring --all-features` = "did not match any packages"
+    #   `cargo deny check bans` = passes (ring banned, not compiled)
+    #   `ring` is NOT compiled in any build configuration.
     #
-    # DEFAULT BUILD: ring is NOT compiled (`cargo tree -i ring` = no match).
-    #   Chain A: rustls-webpki 0.102 is resolved but its ring dep is optional/unactivated.
-    #   Chain B: kube is behind the `k8s` feature flag (not default, not enabled).
+    # WHY ring REMAINS IN Cargo.lock:
+    #   Cargo's resolver records versions for ALL optional dependencies in transitive
+    #   crates, even when their feature flags are NOT activated. This is by-design for
+    #   lockfile stability (so enabling a feature later uses the same version).
     #
-    # --all-features BUILD: ring IS compiled (via Chain B — kube-client hardcodes
-    #   hyper-rustls with the `ring` feature in kube 0.95).
+    #   Packages declaring ring as optional (not activated):
+    #     - rustls-webpki 0.102.8 (from rustls-rustcrypto) — ring optional, NOT in defaults
+    #     - rustls-webpki 0.103.12 (from rustls) — ring optional, NOT in defaults
     #
-    # UPSTREAM STATUS (April 2026):
-    #   - rustls-rustcrypto still at 0.0.2-alpha on crates.io; master dropped webpki 0.102
-    #     but no release yet → Chain A persists in lockfile.
-    #   - kube 0.95 exposes `aws-lc-rs` feature, but aws-lc-rs is also C/ASM — not ecoBin
-    #     compliant. Pure-Rust k8s TLS requires upstream kube to support rustls-rustcrypto.
+    #   Investigated elimination paths (all infeasible):
+    #     - rustls-rustcrypto git master: drops webpki 0.102, but uses pre-release
+    #       RustCrypto crates (sha2 0.11, hmac 0.13, p256 0.14-rc) incompatible with
+    #       workspace stable versions (sha2 0.10, hmac 0.12). No crates.io release.
+    #     - Patching rustls-webpki to remove ring optional dep: fragile fork.
+    #     - Alternative TLS stack: impractical (rustls is the pure-Rust standard).
     #
-    # IMPACT: `cargo deny check` passes clean; ring is never compiled in default builds.
-    # The lockfile entry is a metadata artifact with no binary impact.
+    # RESOLUTION: lockfile stanza is a Cargo metadata artifact with zero binary impact.
+    # Stadial gate's own test (`cargo tree -i ring --edges normal`) passes.
     { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust." },
 ]
 skip = [

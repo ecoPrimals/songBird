@@ -77,7 +77,7 @@ pub use crypto::{decrypt_data_via_security_provider, encrypt_data_via_security_p
 pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
 pub use security_crypto::{Ed25519Keypair, SecurityCryptoClient, X25519Keypair};
-pub use storage::{InMemoryOnionStorage, OnionStorageBackend, PeerInfo};
+pub use storage::{InMemoryOnionStorage, OnionStorage, OnionStorageBackend, PeerInfo};
 pub use storage_ipc::IpcOnionStorage;
 
 // ✅ Phase 3 Complete: OnionService & OnionConnector with security provider

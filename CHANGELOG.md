@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave146] - 2026-04-16 - Stadial Parity Gate: dyn Audit + ring Analysis
+
+### Changed — dyn Dispatch Elimination (finite-implementor)
+- **AsyncStream** (songbird-http-client): `Box<dyn AsyncStream>` → `AsyncStreamImpl` enum (Tcp/Unix variants)
+- **OnionStorageBackend** (songbird-sovereign-onion): `Arc<dyn OnionStorageBackend>` → `OnionStorage` enum (InMemory/Ipc variants)
+- **DiscoveryProvider + ProviderFactory** (songbird-discovery): `Box<dyn DiscoveryProvider/ProviderFactory>` → `DiscoveryProviderImpl`/`ProviderFactoryImpl` enums (Consul/Kubernetes/Static variants)
+
+### Documented — ring Cargo.lock Analysis
+- **ring NOT compiled**: `cargo tree -i ring --edges normal` = empty; `cargo deny check bans` = passes
+- **Cargo.lock stanza is resolver artifact**: `rustls-webpki` declares `ring` as optional dep; Cargo locks versions for all optional deps by design
+- **Upstream blocked**: `rustls-rustcrypto` git master drops webpki 0.102 but uses incompatible pre-release crypto crates; no crates.io release
+- Full stadial analysis documented in `deny.toml`
+
+### dyn Audit Summary
+- ~376 total `dyn` usages audited
+- 19 finite-implementor `dyn` eliminated (4 traits × their occurrences)
+- Remaining ~350 are stadial-compliant: `dyn Error` (~195), `dyn Future/Stream` (~18), `dyn Fn` (~3), `dyn Any` (~10), test code (~165), doc comments (~95), open plugin APIs (2), external crate (1)
+
+### Metrics
+- Tests: 7,377 passed, 0 failed
+- Clippy: zero warnings
+- Cargo deny: clean
+
+---
+
 ## [v0.2.1-wave145] - 2026-04-16 - Complete async-trait Elimination
 
 ### Removed — `async-trait` fully eliminated

@@ -11,17 +11,66 @@ use crate::crypto::socket_discovery::IpcEndpoint;
 use crate::error::{Error, Result};
 use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 use tokio::time::{Duration, timeout};
 use tracing::{debug, error, trace};
 
-/// Unified async stream trait for Unix sockets and TCP
-trait AsyncStream: AsyncRead + AsyncWrite + Send + Unpin {}
+/// Concrete async stream for security RPC (TCP or Unix socket; enum dispatch, no trait objects).
+enum AsyncStreamImpl {
+    Tcp(tokio::net::TcpStream),
+    #[cfg(unix)]
+    Unix(tokio::net::UnixStream),
+}
 
-#[cfg(unix)]
-impl AsyncStream for tokio::net::UnixStream {}
+impl AsyncRead for AsyncStreamImpl {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        match &mut *self.as_mut() {
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_read(cx, buf),
+        }
+    }
+}
 
-impl AsyncStream for tokio::net::TcpStream {}
+impl AsyncWrite for AsyncStreamImpl {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        match &mut *self.as_mut() {
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        match &mut *self.as_mut() {
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_flush(cx),
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        match &mut *self.as_mut() {
+            Self::Tcp(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+            #[cfg(unix)]
+            Self::Unix(s) => std::pin::Pin::new(s).poll_shutdown(cx),
+        }
+    }
+}
 
 impl SecurityRpcClient {
     /// Map semantic capability names to actual provider method names
@@ -67,14 +116,14 @@ impl SecurityRpcClient {
     /// Connect to IPC endpoint (Unix socket or TCP)
     ///
     /// Isomorphic connection helper that works with both Unix sockets and TCP.
-    async fn connect_endpoint(endpoint: &IpcEndpoint) -> std::io::Result<Box<dyn AsyncStream>> {
+    async fn connect_endpoint(endpoint: &IpcEndpoint) -> std::io::Result<AsyncStreamImpl> {
         match endpoint {
             IpcEndpoint::UnixSocket(path) => {
                 #[cfg(unix)]
                 {
                     use tokio::net::UnixStream;
                     let stream = UnixStream::connect(path).await?;
-                    Ok(Box::new(stream) as Box<dyn AsyncStream>)
+                    Ok(AsyncStreamImpl::Unix(stream))
                 }
                 #[cfg(not(unix))]
                 {
@@ -87,7 +136,7 @@ impl SecurityRpcClient {
             IpcEndpoint::TcpLocal(addr) => {
                 use tokio::net::TcpStream;
                 let stream = TcpStream::connect(addr).await?;
-                Ok(Box::new(stream) as Box<dyn AsyncStream>)
+                Ok(AsyncStreamImpl::Tcp(stream))
             }
         }
     }

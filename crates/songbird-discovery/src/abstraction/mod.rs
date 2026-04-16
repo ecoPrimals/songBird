@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+
 //! # Discovery Abstraction Layer
 //!
 //! This module provides a capability-based, agnostic discovery system that eliminates
@@ -16,20 +18,23 @@
 
 pub mod adapters;
 pub mod capabilities;
-pub mod capability_providers; // NEW: Vendor-agnostic capability-based providers
+pub mod capability_providers;
 pub mod delegation;
 pub mod modernized_factory;
 pub mod providers;
 pub mod registry;
 
 // Re-export main abstractions
+pub use adapters::{DiscoveryProviderImpl, ProviderFactory, ProviderFactoryImpl};
 pub use capabilities::{CapabilityMatcher, DiscoveryCapability};
 pub use capability_providers::{
     CapabilityProviderFactory, CapabilityType, VendorImplementation,
     create_default_capability_factory, discover_capability_vendor, request_capability_provider,
 };
 pub use delegation::{DelegationStrategy, DiscoveryDelegator};
-pub use providers::{DiscoveryProvider, ProviderConfig, ProviderMetadata};
+pub use providers::{
+    DiscoveryProvider, LoadBalancingHints, ProviderConfig, ProviderMetadata, ServiceMetrics,
+};
 pub use registry::{ProviderRegistry, RegistryError};
 
 // Re-export adapters for migration

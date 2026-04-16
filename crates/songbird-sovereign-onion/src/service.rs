@@ -9,8 +9,7 @@ use crate::error::{OnionError, Result};
 use crate::keys::{EphemeralKeypair, OnionIdentity};
 use crate::protocol::{DataMessage, KeyExchangeMessage, MessageType};
 use crate::security_crypto::SecurityCryptoClient;
-use crate::storage::InMemoryOnionStorage;
-use crate::storage::OnionStorageBackend;
+use crate::storage::{InMemoryOnionStorage, OnionStorage, OnionStorageBackend};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -33,7 +32,7 @@ fn storage_socket_from_endpoint(endpoint: &str) -> Option<PathBuf> {
 /// **Status**: Phase 3 - Complete implementation with `security provider` delegation
 pub struct OnionService {
     identity: OnionIdentity,
-    storage: Arc<dyn OnionStorageBackend>,
+    storage: Arc<OnionStorage>,
     port: u16,
     security: Arc<SecurityCryptoClient>,
 }
@@ -50,7 +49,7 @@ impl OnionService {
         port: u16,
         security: SecurityCryptoClient,
     ) -> Result<Self> {
-        let storage: Arc<dyn OnionStorageBackend> = {
+        let storage: Arc<OnionStorage> = {
             #[cfg(unix)]
             {
                 if let Ok(ep) = songbird_config::primal_discovery::get_storage_endpoint().await {
@@ -61,7 +60,9 @@ impl OnionService {
                                     path = %path.display(),
                                     "Onion service: IPC storage (storage.* JSON-RPC)"
                                 );
-                                Arc::new(crate::storage_ipc::IpcOnionStorage::new(path))
+                                Arc::new(OnionStorage::Ipc(
+                                    crate::storage_ipc::IpcOnionStorage::new(path),
+                                ))
                             }
                             Err(e) => {
                                 warn!(
@@ -69,19 +70,19 @@ impl OnionService {
                                     path = %path.display(),
                                     "storage provider unreachable; using in-memory onion storage"
                                 );
-                                Arc::new(InMemoryOnionStorage::new())
+                                Arc::new(OnionStorage::InMemory(InMemoryOnionStorage::new()))
                             }
                         }
                     } else {
-                        Arc::new(InMemoryOnionStorage::new())
+                        Arc::new(OnionStorage::InMemory(InMemoryOnionStorage::new()))
                     }
                 } else {
-                    Arc::new(InMemoryOnionStorage::new())
+                    Arc::new(OnionStorage::InMemory(InMemoryOnionStorage::new()))
                 }
             }
             #[cfg(not(unix))]
             {
-                Arc::new(InMemoryOnionStorage::new())
+                Arc::new(OnionStorage::InMemory(InMemoryOnionStorage::new()))
             }
         };
 
@@ -119,10 +120,10 @@ impl OnionService {
     /// Returns an error if storage open or identity load/generate fails.
     #[cfg(feature = "standalone")]
     pub fn new_standalone(port: u16) -> Result<Self> {
-        let (storage, identity): (Arc<dyn OnionStorageBackend>, OnionIdentity) = {
+        let (storage, identity): (Arc<OnionStorage>, OnionIdentity) = {
             let inner = InMemoryOnionStorage::new();
             let identity = inner.load_or_generate_identity()?;
-            (Arc::new(inner), identity)
+            (Arc::new(OnionStorage::InMemory(inner)), identity)
         };
 
         info!(

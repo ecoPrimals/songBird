@@ -241,6 +241,10 @@ pub mod protocol;
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod traits;
 
+/// Capability-based discovery provider registry, adapters, and enum dispatch.
+#[allow(missing_docs, reason = "internal module; public items documented incrementally")]
+pub mod abstraction;
+
 /// Secure anonymous UDP multicast discovery (messages, peers, broadcast, listener).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod anonymous;

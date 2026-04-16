@@ -26,6 +26,7 @@ fn peer_key(addr: &str) -> String {
 ///
 /// Connects to whichever primal provides the `storage.*` capability domain via a
 /// Unix socket discovered at runtime. No primal identity assumed.
+#[derive(Debug)]
 pub struct IpcOnionStorage {
     socket_path: PathBuf,
 }

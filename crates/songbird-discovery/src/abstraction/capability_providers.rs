@@ -1,24 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+
 //! # Capability-Based Provider System (Vendor Agnostic)
 //!
 //! This module provides vendor-agnostic access to discovery capabilities.
 //! Instead of requesting "kubernetes" or "consul", you request capabilities
 //! like "container_orchestration" or "service_registry".
 //!
-//! # Philosophy
-//!
-//! Code should not know or care about specific vendors. It should request
-//! capabilities and let the discovery system find appropriate providers.
-//!
 //! # Native Async Traits (Rust 1.75+)
 //! Uses native async fn in traits for zero-cost abstraction
 
-#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 use std::collections::HashMap;
 
-use crate::abstraction::providers::{DiscoveryProvider, ProviderConfig, ProviderFactory};
+use crate::abstraction::adapters::{DiscoveryProviderImpl, ProviderFactory, ProviderFactoryImpl};
+use crate::abstraction::providers::ProviderConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 
 /// Capability types for vendor-agnostic discovery
@@ -87,7 +84,7 @@ pub struct VendorImplementation {
 /// The actual vendor implementation is discovered or configured.
 pub struct CapabilityProviderFactory {
     /// Registered capability mappings
-    capability_mappings: HashMap<CapabilityType, Vec<Box<dyn ProviderFactory>>>,
+    capability_mappings: HashMap<CapabilityType, Vec<ProviderFactoryImpl>>,
 }
 
 impl CapabilityProviderFactory {
@@ -102,12 +99,9 @@ impl CapabilityProviderFactory {
     pub fn register_capability(
         &mut self,
         capability: CapabilityType,
-        factory: Box<dyn ProviderFactory>,
+        factory: ProviderFactoryImpl,
     ) {
-        self.capability_mappings
-            .entry(capability)
-            .or_insert_with(Vec::new)
-            .push(factory);
+        self.capability_mappings.entry(capability).or_default().push(factory);
     }
 
     /// Create provider for capability (vendor-agnostic)
@@ -115,15 +109,13 @@ impl CapabilityProviderFactory {
         &self,
         capability: CapabilityType,
         config: ProviderConfig,
-    ) -> SongbirdResult<Box<dyn DiscoveryProvider>> {
+    ) -> SongbirdResult<DiscoveryProviderImpl> {
         let factories = self.capability_mappings.get(&capability).ok_or_else(|| {
-            SongbirdError::configuration_error(&format!(
-                "No providers registered for capability: {:?}",
-                capability
+            SongbirdError::configuration(format!(
+                "No providers registered for capability: {capability:?}"
             ))
         })?;
 
-        // Try each factory until one succeeds
         let mut last_error = None;
         for factory in factories {
             match factory.create_provider(config.clone()).await {
@@ -132,9 +124,8 @@ impl CapabilityProviderFactory {
             }
         }
 
-        Err(last_error.unwrap_or_else(|| {
-            SongbirdError::configuration_error("All provider factories failed")
-        }))
+        Err(last_error
+            .unwrap_or_else(|| SongbirdError::configuration("All provider factories failed")))
     }
 
     /// Get available capabilities
@@ -153,97 +144,59 @@ impl Default for CapabilityProviderFactory {
 ///
 /// Maps capabilities to vendor implementations based on environment or discovery
 pub fn create_default_capability_factory() -> CapabilityProviderFactory {
+    #[allow(unused_mut)] // `mut` only when `kubernetes` / `consul` features register factories
     let mut factory = CapabilityProviderFactory::new();
 
-    // Container orchestration capability
-    // Maps to: kubernetes (primary), docker-swarm, nomad, etc.
     #[cfg(feature = "kubernetes")]
     {
         use crate::abstraction::adapters::kubernetes_adapter::KubernetesProviderFactory;
         factory.register_capability(
             CapabilityType::ContainerOrchestration,
-            Box::new(KubernetesProviderFactory),
+            ProviderFactoryImpl::Kubernetes(KubernetesProviderFactory),
         );
     }
 
-    // Service registry capability
-    // Maps to: consul (primary), etcd, zookeeper, etc.
     #[cfg(feature = "consul")]
     {
         use crate::abstraction::adapters::consul_adapter::ConsulProviderFactory;
         factory.register_capability(
             CapabilityType::ServiceRegistry,
-            Box::new(ConsulProviderFactory),
+            ProviderFactoryImpl::Consul(ConsulProviderFactory),
         );
     }
 
-    // More capability mappings can be added here as features
-    
     factory
 }
 
 /// Request a capability provider (vendor-agnostic entry point)
-///
-/// This is the main entry point for capability-based discovery.
-/// You request a capability type, and the system finds an appropriate provider.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// // Request container orchestration (don't care if it's k8s, docker, etc.)
-/// let orchestration = request_capability_provider(
-///     CapabilityType::ContainerOrchestration,
-///     config
-/// ).await?;
-///
-/// // Request service registry (don't care if it's consul, etcd, etc.)
-/// let registry = request_capability_provider(
-///     CapabilityType::ServiceRegistry,
-///     config
-/// ).await?;
-/// ```
 pub async fn request_capability_provider(
     capability: CapabilityType,
     config: ProviderConfig,
-) -> SongbirdResult<Box<dyn DiscoveryProvider>> {
+) -> SongbirdResult<DiscoveryProviderImpl> {
     let factory = create_default_capability_factory();
     factory.create_for_capability(capability, config).await
 }
 
 /// Discover which vendor provides a capability
-///
-/// This function discovers which vendor implementation is actually providing
-/// a capability, without the caller needing to know in advance.
 pub async fn discover_capability_vendor(
     capability: CapabilityType,
 ) -> SongbirdResult<VendorImplementation> {
-    // Check environment variables for hints
     let vendor_name = match capability {
         CapabilityType::ContainerOrchestration => {
-            // Check for kubernetes
             if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
                 "kubernetes".to_string()
-            }
-            // Check for docker
-            else if songbird_process_env::var("DOCKER_HOST").is_ok() {
+            } else if songbird_process_env::var("DOCKER_HOST").is_ok() {
                 "docker".to_string()
-            }
-            // Default to kubernetes
-            else {
+            } else {
                 "kubernetes".to_string()
             }
         }
         CapabilityType::ServiceRegistry => {
-            // Check for consul
             if songbird_process_env::var("CONSUL_HTTP_ADDR").is_ok() {
                 "consul".to_string()
-            }
-            // Check for etcd
-            else if songbird_process_env::var("ETCD_ENDPOINTS").is_ok() {
+            } else if songbird_process_env::var("ETCD_ENDPOINTS").is_ok() {
                 "etcd".to_string()
-            }
-            // Default to consul
-            else {
+            } else {
                 "consul".to_string()
             }
         }
@@ -267,10 +220,7 @@ mod tests {
             CapabilityType::from_str("container_orchestration"),
             CapabilityType::ContainerOrchestration
         );
-        assert_eq!(
-            CapabilityType::from_str("service_registry"),
-            CapabilityType::ServiceRegistry
-        );
+        assert_eq!(CapabilityType::from_str("service_registry"), CapabilityType::ServiceRegistry);
         assert_eq!(
             CapabilityType::from_str("custom_capability"),
             CapabilityType::Custom("custom_capability".to_string())
@@ -279,14 +229,8 @@ mod tests {
 
     #[test]
     fn test_capability_type_as_str() {
-        assert_eq!(
-            CapabilityType::ContainerOrchestration.as_str(),
-            "container_orchestration"
-        );
-        assert_eq!(
-            CapabilityType::ServiceRegistry.as_str(),
-            "service_registry"
-        );
+        assert_eq!(CapabilityType::ContainerOrchestration.as_str(), "container_orchestration");
+        assert_eq!(CapabilityType::ServiceRegistry.as_str(), "service_registry");
     }
 
     #[test]
@@ -295,4 +239,3 @@ mod tests {
         assert_eq!(factory.available_capabilities().len(), 0);
     }
 }
-

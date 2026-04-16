@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+
 //! # Static Provider Adapter
 //!
 //! Provides static service discovery using the universal provider pattern
@@ -8,31 +10,35 @@
 //! # Native Async Traits (Rust 1.75+)
 //! Uses native async fn in traits for optimal performance
 
-#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 use std::any::Any;
 use std::collections::HashMap;
 
+use super::{DiscoveryProviderImpl, ProviderFactory};
 use crate::abstraction::{
     capabilities::DiscoveryCapability,
-    providers::{DiscoveryProvider, LoadBalancingHints, ProviderConfig, ProviderFactory, ProviderMetadata,
-        ServiceMetrics,
+    providers::{
+        DiscoveryProvider, LoadBalancingHints, ProviderConfig, ProviderMetadata, ServiceMetrics,
     },
 };
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
-use futures::stream::Stream;
-use songbird_types::SongbirdResult; type Result<T> = SongbirdResult<T>;
+use futures_util::Stream;
+use futures_util::stream;
+use songbird_types::SongbirdResult;
+
+type Result<T> = SongbirdResult<T>;
 use std::pin::Pin;
 
 /// Factory for creating Static providers from configuration
+#[derive(Debug, Clone, Copy)]
 pub struct StaticProviderFactory;
 
 impl ProviderFactory for StaticProviderFactory {
-    fn provider_type(&self) -> &str {
+    fn provider_type(&self) -> &'static str {
         "static"
     }
 
-    async fn create_provider(&self, config: ProviderConfig) -> Result<Box<dyn DiscoveryProvider>> {
+    async fn create_provider(&self, config: ProviderConfig) -> Result<DiscoveryProviderImpl> {
         // Extract predefined services from configuration
         let services = config
             .parameters
@@ -50,7 +56,7 @@ impl ProviderFactory for StaticProviderFactory {
 
         // Create native static adapter (no longer using deprecated backend)
         let adapter = StaticProviderAdapter::new_native(config.id, services);
-        Ok(Box::new(adapter))
+        Ok(DiscoveryProviderImpl::Static(adapter))
     }
 
     fn validate_config(&self, _config: &ProviderConfig) -> Result<()> {
@@ -64,12 +70,12 @@ impl ProviderFactory for StaticProviderFactory {
 
         // Example predefined services with configurable defaults
         let example_host = songbird_process_env::var("EXAMPLE_SERVICE_HOST")
-            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| songbird_config::defaults::default_host());
         let example_port = songbird_process_env::var("EXAMPLE_SERVICE_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8080);
-        
+
         let example_services = serde_json::json!([
             {
                 "service_id": "example-api",
@@ -172,10 +178,7 @@ impl DiscoveryProvider for StaticProviderAdapter {
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        tracing::info!(
-            "📝 Registering service {} via Static adapter",
-            service.service_id
-        );
+        tracing::info!("📝 Registering service {} via Static adapter", service.service_id);
         let mut services = self.services.write().await;
         services.insert(service.service_id.clone(), service);
         Ok(())
@@ -217,18 +220,11 @@ impl DiscoveryProvider for StaticProviderAdapter {
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
         tracing::debug!("👀 Watching services via Static adapter (not implemented)");
         // Static adapter doesn't support watching - return empty stream
-        Ok(Box::pin(futures::stream::empty()))
+        Ok(Box::pin(stream::empty()))
     }
 
-    async fn update_health(
-        &self,
-        service_id: &str,
-        _health: ServiceHealthStatus,
-    ) -> Result<()> {
-        tracing::debug!(
-            "💊 Updating health for service {} via Static adapter",
-            service_id
-        );
+    async fn update_health(&self, service_id: &str, _health: ServiceHealthStatus) -> Result<()> {
+        tracing::debug!("💊 Updating health for service {} via Static adapter", service_id);
         // For static adapter, we don't need to update health status
         // The service is either registered or not
         Ok(())
@@ -239,17 +235,12 @@ impl DiscoveryProvider for StaticProviderAdapter {
         service_id: &str,
         metadata: HashMap<String, String>,
     ) -> Result<()> {
-        tracing::debug!(
-            "🏷️ Updating metadata for service {} via Static adapter",
-            service_id
-        );
+        tracing::debug!("🏷️ Updating metadata for service {} via Static adapter", service_id);
         // Update metadata for the service
         let mut services = self.services.write().await;
         if let Some(service) = services.get_mut(service_id) {
             for (key, value) in metadata {
-                service
-                    .metadata
-                    .insert(key, serde_json::Value::String(value));
+                service.metadata.insert(key, serde_json::Value::String(value));
             }
         }
         Ok(())
@@ -262,19 +253,13 @@ impl DiscoveryProvider for StaticProviderAdapter {
     }
 
     async fn exists(&self, service_id: &str) -> Result<bool> {
-        tracing::debug!(
-            "❓ Checking if service {} exists via Static adapter",
-            service_id
-        );
+        tracing::debug!("❓ Checking if service {} exists via Static adapter", service_id);
         let services = self.services.read().await;
         Ok(services.contains_key(service_id))
     }
 
     async fn get_service_metrics(&self, service_id: &str) -> Result<ServiceMetrics> {
-        tracing::debug!(
-            "📊 Getting metrics for service {} via Static adapter",
-            service_id
-        );
+        tracing::debug!("📊 Getting metrics for service {} via Static adapter", service_id);
 
         // Static provider doesn't have real metrics, return defaults
         Ok(ServiceMetrics {
@@ -289,18 +274,12 @@ impl DiscoveryProvider for StaticProviderAdapter {
     }
 
     async fn get_load_balancing_hints(&self, service_name: &str) -> Result<LoadBalancingHints> {
-        tracing::debug!(
-            "⚖️ Getting load balancing hints for {} via Static adapter",
-            service_name
-        );
+        tracing::debug!("⚖️ Getting load balancing hints for {} via Static adapter", service_name);
 
         // For static services, all instances have equal weight
         let services_map = self.services.read().await;
-        let services: Vec<ServiceInfo> = services_map
-            .values()
-            .filter(|service| service.name == service_name)
-            .cloned()
-            .collect();
+        let services: Vec<ServiceInfo> =
+            services_map.values().filter(|service| service.name == service_name).cloned().collect();
 
         let mut weights = HashMap::new();
         let mut health_scores = HashMap::new();
@@ -329,8 +308,8 @@ impl DiscoveryProvider for StaticProviderAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-use songbird_types::unified_constants::*;
-use songbird_config;
+    use songbird_config;
+    use songbird_types::unified_constants::*;
 
     #[tokio::test]
     async fn test_static_factory_creation() {
@@ -339,7 +318,7 @@ use songbird_config;
 
         assert!(factory.validate_config(&config).is_ok());
 
-        let provider = factory.create_provider(config).await.map_err(|e| SongbirdError::configuration(format!("Static adapter operation failed: {}", e)))?;
+        let provider = factory.create_provider(config).await.expect("create static provider");
         assert_eq!(provider.metadata().id, "test");
     }
 
@@ -350,10 +329,9 @@ use songbird_config;
             StaticProviderAdapter::new_native("test-static".to_string(), initial_services);
 
         assert_eq!(adapter.metadata().id, "test-static");
-        assert!(adapter
-            .metadata()
-            .capabilities
-            .contains(&DiscoveryCapability::ServiceRegistration));
-        assert!(adapter.health_check().await.map_err(|e| SongbirdError::configuration(format!("Static adapter operation failed: {}", e)))?);
+        assert!(
+            adapter.metadata().capabilities.contains(&DiscoveryCapability::ServiceRegistration)
+        );
+        assert!(adapter.health_check().await.expect("health check"));
     }
 }

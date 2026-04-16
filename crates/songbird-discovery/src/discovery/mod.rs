@@ -102,21 +102,4 @@ pub mod migration_examples {
     -> Result<crate::discovery::factory::UniversalServiceDiscoveryAdapter> {
         crate::discovery::factory::UniversalDiscoveryFactory::create_auto_detect().await
     }
-
-    /*
-    /// Example: Using federation-aware discovery with canonical traits
-    ///
-    /// ```rust
-    /// use songbird_discovery::{FederationAwareDiscovery, FederationConfig};
-    /// use songbird_types::traits::canonical::DiscoveryProvider;
-    ///
-    /// let config = FederationConfig::default();
-    /// let discovery = FederationAwareDiscovery::new(config).await?;
-    /// ```
-    pub async fn migrate_federation_discovery() -> crate::Result<Box<dyn songbird_types::traits::canonical::DiscoveryProvider>> {
-        use crate::federation_aware_discovery::{FederationAwareDiscovery, FederationConfig};
-        let config = FederationConfig::default();
-        FederationAwareDiscovery::new(config).await.map(|d| Box::new(d) as Box<dyn songbird_types::traits::canonical::DiscoveryProvider>)
-    }
-    */
 }
