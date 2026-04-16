@@ -19,9 +19,9 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero in production (`.unwrap()` appears only in test modules across the codebase; verified via line-by-line audit) |
 | Production `FIXME`/`HACK` | Zero |
-| Lint suppressions | `#[allow(reason)]` throughout — Wave 137c: all bare `#[allow()]` in tests and TLS given reason strings; Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons per-item; `#[expect(reason)]` retained where lint provably fires in production; zero reasonless suppressions remain |
+| Lint suppressions | `#[allow(reason)]` throughout — Wave 147: all remaining bare `#[allow()]` given reason strings (10 production + test files); Wave 137c: test files and TLS; Wave 136: generic reasons replaced with specific context; `#[expect(reason)]` retained where lint provably fires; zero reasonless suppressions remain |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 7,350 lib passed, 0 failed, 22 ignored |
+| Tests | 7,377 lib passed, 0 failed, 22 ignored |
 | Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 8 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |

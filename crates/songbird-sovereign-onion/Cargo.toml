@@ -51,7 +51,7 @@ tokio-test = "0.4"
 [features]
 # Production builds: ZERO crypto (delegates to security provider)
 # Test builds: Use --features standalone for offline testing
-default = []  # Storage: NestGate capability discovery at runtime; in-memory fallback
+default = []  # Storage: IPC capability discovery at runtime; in-memory fallback
 standalone = [
     "ed25519-dalek",
     "x25519-dalek",

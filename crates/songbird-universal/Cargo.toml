@@ -15,7 +15,6 @@ workspace = true
 
 [features]
 default = []
-federation-tests-disabled = []  # Feature flag for disabled federation tests
 
 # Discovery backend features (optional)
 mdns = ["dep:mdns"]

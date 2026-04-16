@@ -2,14 +2,14 @@
 
 ## Overview
 
-`songbird-nfc` implements a zero-metadata-leakage NFC protocol for genesis ceremonies and secure mobile device pairing. All cryptographic operations are delegated to BearDog.
+`songbird-nfc` implements a zero-metadata-leakage NFC protocol for genesis ceremonies and secure mobile device pairing. All cryptographic operations are delegated to the security provider capability via JSON-RPC IPC.
 
 ## Dark Forest Guarantees
 
 ✅ **Zero metadata leakage** - No identifiable information in cleartext  
 ✅ **Ephemeral keys** - Single-use X25519 keys for each exchange  
 ✅ **Timing protection** - Constant-time operations with random delays  
-✅ **BearDog delegation** - All crypto via BearDog IPC  
+✅ **Security provider delegation** - All crypto via capability IPC  
 ✅ **Zero unsafe code** - `#![forbid(unsafe_code)]`  
 ✅ **Memory-safe** - Pure Rust implementation  
 
@@ -27,7 +27,7 @@ Initiator (Parent)                    Responder (Child)
 6. Receive public key              <-- 6. Send public key
 7. Compute shared secret (DH)
 8. Encrypt genesis credentials
-   (ChaCha20-Poly1305 via BearDog)
+   (ChaCha20-Poly1305 via security provider)
 9. Sign with ephemeral Ed25519
 10. Send encrypted genesis         -->
                                    <-- 11. Verify signature
@@ -234,12 +234,12 @@ let config = NfcConfig {
 
 - **NFC eavesdropping**: Encrypted with X25519 + ChaCha20-Poly1305
 - **NFC jamming**: Not preventable (physical attack)
-- **Platform compromise**: BearDog provides hardware-backed keys (if available)
+- **Platform compromise**: Security provider offers hardware-backed keys (if available)
 
 ## Deep Debt Compliance
 
 ✅ **Zero unsafe code** - `#![forbid(unsafe_code)]`  
-✅ **Runtime discovery** - BearDog socket discovered, not hardcoded  
+✅ **Runtime discovery** - Security provider socket discovered by capability, not hardcoded  
 ✅ **Pure Rust** - No C dependencies (except platform NFC drivers)  
 ✅ **Modern idioms** - Async/await, Result, thiserror  
 ✅ **No mocks** - Real implementations (platform stubs TODO)  
@@ -247,12 +247,12 @@ let config = NfcConfig {
 
 ## Future Enhancements
 
-1. **BearDog IPC Integration**: Replace stub methods with real BearDog calls
+1. **Security Provider IPC Integration**: Replace stub methods with real security provider calls
 2. **Platform Backends**: Complete Android/iOS/Linux NFC implementations
 3. **Multi-device Genesis**: Support N-way genesis ceremonies
 4. **QR Code Fallback**: Visual channel when NFC unavailable
 5. **Bluetooth LE**: Alternative for devices without NFC
-6. **Hardware-backed Keys**: Use TEE/Secure Element via BearDog
+6. **Hardware-backed Keys**: Use TEE/Secure Element via security provider
 
 ## Testing
 
@@ -273,4 +273,4 @@ cargo test -p songbird-nfc test_message_roundtrip
 - [RFC 7748](https://www.rfc-editor.org/rfc/rfc7748.html) - X25519 key exchange
 - [RFC 7539](https://www.rfc-editor.org/rfc/rfc7539.html) - ChaCha20-Poly1305 AEAD
 - [RFC 8032](https://www.rfc-editor.org/rfc/rfc8032.html) - Ed25519 signatures
-- [PROTOCOL_EVOLUTION_REFINED_FEB_08_2026.md](../../../PROTOCOL_EVOLUTION_REFINED_FEB_08_2026.md)
+- Protocol Evolution Refined (Feb 8, 2026) — see `ecoPrimals/infra/wateringHole/fossilRecord/` for archived spec

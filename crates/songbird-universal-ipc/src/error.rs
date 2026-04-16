@@ -70,16 +70,6 @@ pub enum IpcError {
 /// Result type for universal IPC operations
 pub type IpcResult<T> = Result<T, IpcError>;
 
-#[cfg(feature = "storage_provider")]
-impl IpcError {
-    /// Deprecated constructor matching the former `NestGateError` variant.
-    #[deprecated(note = "use IpcError::StorageProviderError(String)")]
-    #[must_use]
-    pub fn nest_gate_error(msg: impl Into<String>) -> Self {
-        Self::StorageProviderError(msg.into())
-    }
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {

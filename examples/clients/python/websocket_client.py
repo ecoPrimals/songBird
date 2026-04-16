@@ -6,7 +6,7 @@ Official Python client for Songbird WebSocket API.
 Provides real-time bidirectional communication with event subscriptions.
 
 Version: 0.2.1
-Last Updated: November 11, 2025 - Phase 4
+Last Updated: April 16, 2026
 
 Features:
 - Real-time bidirectional communication

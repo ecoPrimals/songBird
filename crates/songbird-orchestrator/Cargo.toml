@@ -85,7 +85,7 @@ unnecessary_literal_unwrap = "allow"
 
 # `task-checkpoint-gzip` gates flate2 so minimal builds can omit gzip.
 # `sha2` + `hmac` back local JWT + checkpoint fallbacks when crypto provider is unavailable.
-# Storage: NestGate storage.* JSON-RPC when available; in-memory fallback otherwise.
+# Storage: IPC storage.* JSON-RPC via capability discovery; in-memory fallback otherwise.
 [features]
 default = ["task-checkpoint-gzip"]
 task-checkpoint-gzip = ["dep:flate2"]

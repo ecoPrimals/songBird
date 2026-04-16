@@ -20,7 +20,7 @@ pub(super) const CONTENT_ANNOUNCEMENT_TTL: Duration = Duration::from_secs(600);
 #[derive(Debug, Clone)]
 pub struct ContentAnnouncement {
     pub topic: String,
-    /// BLAKE3 manifest hash (from `NestGate` `ContentManifest`).
+    /// BLAKE3 manifest hash (from storage provider `ContentManifest`).
     pub manifest_hash: Option<String>,
     pub family_id: String,
     pub node_id: String,

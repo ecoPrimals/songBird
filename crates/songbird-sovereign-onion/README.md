@@ -12,7 +12,7 @@ Provides cryptographically-derived `.onion` addresses for reachability across NA
 - ✅ **Ed25519 Identity** - Cryptographic device IDs
 - ✅ **X25519 Key Exchange** - Forward secrecy
 - ✅ **ChaCha20-Poly1305** - Fast AEAD encryption
-- ✅ **Sled Persistence** - Identity and peer storage
+- ✅ **IPC Storage** - Identity and peer storage via JSON-RPC `storage.*` capability
 - ✅ **Minimal Protocol** - ~10% of Tor complexity
 
 ## NOT Tor
@@ -68,4 +68,4 @@ AGPL-3.0
 **Phase 2**: 🚧 Protocol Implementation (In Progress)  
 **Phase 3**: ⚠️ Service Mode (Pending)  
 **Phase 4**: ⚠️ Connector Mode (Pending)  
-**Phase 5**: ⚠️ Sled Integration (Pending)
+**Phase 5**: ✅ IPC Storage (sled removed Wave 135, replaced with JSON-RPC `storage.*` capability)

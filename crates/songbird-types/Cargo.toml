@@ -19,7 +19,6 @@ workspace = true
 default = ["serde", "chrono"]
 serde = ["dep:serde", "dep:serde_json"]
 chrono = ["dep:chrono"]
-tests-incomplete = []
 
 [dependencies]
 # Foundation layer has minimal external dependencies

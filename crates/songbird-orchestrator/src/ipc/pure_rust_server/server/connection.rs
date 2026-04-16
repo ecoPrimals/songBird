@@ -11,7 +11,7 @@
 //! - Any other byte → BTSP length-prefixed binary framing (remote/secure
 //!   connections, BearDog-authenticated)
 //!
-//! This matches BearDog's TCP auto-detect pattern and NestGate's UDS pattern
+//! This matches the security provider's TCP auto-detect pattern and the storage provider's UDS pattern
 //! per `UPSTREAM_CROSSTALK_AND_DOWNSTREAM_ABSORPTION.md`.
 
 use anyhow::{Context, Result, bail};

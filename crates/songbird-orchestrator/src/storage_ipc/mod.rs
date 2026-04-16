@@ -8,8 +8,4 @@ mod wire;
 
 pub use ipc_backend::IpcStorageBackend;
 
-#[deprecated(
-    note = "renamed to `IpcStorageBackend` — capability-based naming per wateringHole standard"
-)]
-pub type NestGateStorage = IpcStorageBackend;
 pub(crate) use wire::storage_socket_path_from_endpoint;

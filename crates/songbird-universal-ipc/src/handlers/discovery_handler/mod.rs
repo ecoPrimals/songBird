@@ -18,7 +18,7 @@
 //! via `discovery.content_peers` to find seeders for specific topics. Topics use
 //! the `content:<namespace>` convention (e.g., `content:ludospring:assets`) per
 //! `content_distribution_federation.toml`. Manifest hashes use BLAKE3 addressing
-//! from `NestGate`'s `ContentManifest`.
+//! from the storage provider's `ContentManifest`.
 //!
 //! ## Security Note
 //! Peer information includes network addresses. Only expose to trusted consumers.

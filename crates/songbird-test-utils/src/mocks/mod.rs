@@ -90,7 +90,3 @@ pub use capability_mocks::{
 // Use MockCapabilityServer::new(CapabilityType::*) instead
 pub use ai_provider::MockAiProvider;
 pub use common::{HealthStatus, MockPrimalServer, MockResponse};
-
-/// Deprecated alias for [`storage_provider::MockStorageProvider`].
-#[deprecated(note = "use `MockStorageProvider`")]
-pub type MockNestGate = storage_provider::MockStorageProvider;

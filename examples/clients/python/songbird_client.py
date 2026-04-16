@@ -11,7 +11,7 @@ Usage:
     print(health)
 
 Version: 0.2.1
-Last Updated: March 27, 2026
+Last Updated: April 16, 2026
 """
 
 import requests
