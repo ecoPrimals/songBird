@@ -26,7 +26,7 @@ pub enum RelayAuthority {
     /// Production: security-provider JSON-RPC.
     Security(crate::security::SecurityRelayAuthority),
     /// Mock lineage graph (`test-utils` / unit tests).
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(any(test, feature = "test-mocks"))]
     Mock(crate::security::MockRelayAuthority),
     /// Harness: always authorizes with `MaskingLevel::None` for masking stubs.
     StubAllow,
@@ -43,7 +43,7 @@ impl RelayAuthority {
     ) -> Result<RelayAuthorization> {
         match self {
             Self::Security(a) => a.authorize_relay(relay_node, requester).await,
-            #[cfg(any(test, feature = "test-utils"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.authorize_relay(relay_node, requester).await,
             Self::StubAllow => Ok(RelayAuthorization::authorized(
                 relay_node.clone(),
@@ -65,7 +65,7 @@ impl RelayAuthority {
     ) -> Result<MaskingLevel> {
         match self {
             Self::Security(a) => a.determine_masking(relay_node, requester).await,
-            #[cfg(any(test, feature = "test-utils"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.determine_masking(relay_node, requester).await,
             Self::StubAllow => Ok(MaskingLevel::None),
             Self::StubDeny => Ok(MaskingLevel::Full),
@@ -79,7 +79,7 @@ impl From<crate::security::SecurityRelayAuthority> for RelayAuthority {
     }
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl From<crate::security::MockRelayAuthority> for RelayAuthority {
     fn from(value: crate::security::MockRelayAuthority) -> Self {
         Self::Mock(value)

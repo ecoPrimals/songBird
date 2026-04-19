@@ -144,7 +144,8 @@ impl ProcessManager {
         }
 
         // Priority 2: Try system-wide location first
-        let system_path = PathBuf::from("/var/run/songbird").join(&filename);
+        let system_path =
+            PathBuf::from(songbird_types::constants::SONGBIRD_SYSTEM_RUNTIME_DIR).join(&filename);
         if let Some(parent) = system_path.parent()
             && (parent.exists() || fs::create_dir_all(parent).is_ok())
         {

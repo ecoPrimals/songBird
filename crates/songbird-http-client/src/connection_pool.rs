@@ -230,7 +230,10 @@ impl<T: Send + Sync + 'static> PooledConnection<T> {
     }
 }
 
-// Implement Deref to allow transparent usage as the inner type
+#[allow(
+    clippy::expect_used,
+    reason = "inner is Some until Drop takes it; deref after drop is already UB"
+)]
 impl<T: Send + Sync + 'static> std::ops::Deref for PooledConnection<T> {
     type Target = T;
 
@@ -239,7 +242,10 @@ impl<T: Send + Sync + 'static> std::ops::Deref for PooledConnection<T> {
     }
 }
 
-// Implement DerefMut to allow mutable transparent usage
+#[allow(
+    clippy::expect_used,
+    reason = "inner is Some until Drop takes it; deref after drop is already UB"
+)]
 impl<T: Send + Sync + 'static> std::ops::DerefMut for PooledConnection<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.as_mut().expect("PooledConnection inner is None")

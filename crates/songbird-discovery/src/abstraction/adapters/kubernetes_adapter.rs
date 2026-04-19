@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Kubernetes Provider Adapter
 //!
 //! Provides Kubernetes service discovery using the universal provider pattern
@@ -96,7 +94,7 @@ impl KubernetesProviderAdapter {
     pub async fn new_native(id: String, namespace: String) -> Result<Self> {
         let metadata = ProviderMetadata {
             id: id.clone(),
-            name: format!("Kubernetes Provider ({})", id),
+            name: format!("Kubernetes Provider ({id})"),
             version: "1.0.0".to_string(),
             capabilities: vec![
                 DiscoveryCapability::ServiceRegistration,

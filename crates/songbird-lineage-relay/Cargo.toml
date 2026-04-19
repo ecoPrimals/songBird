@@ -33,11 +33,11 @@ workspace = true
 [features]
 default = []
 ## Expose mock types for integration tests (`MockLineageProvider`, etc.)
-test-utils = []
+test-mocks = []
 
 [dev-dependencies]
 tokio-test = "0.4"
-songbird-lineage-relay = { path = ".", features = ["test-utils"] }
+songbird-lineage-relay = { path = ".", features = ["test-mocks"] }
 
 [lib]
 path = "src/lib.rs"

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-#![allow(async_fn_in_trait)]
+#![allow(async_fn_in_trait, reason = "adapter enum dispatch uses AFIT; callers are internal")]
 
 //! # Legacy Backend Adapters
 //!
@@ -53,7 +52,7 @@ pub trait ProviderFactory: Send + Sync {
 
 /// Concrete discovery backend (enum dispatch).
 pub enum DiscoveryProviderImpl {
-    /// HashiCorp Consul.
+    /// `HashiCorp` Consul.
     Consul(ConsulProviderAdapter),
     /// Kubernetes API.
     Kubernetes(KubernetesProviderAdapter),

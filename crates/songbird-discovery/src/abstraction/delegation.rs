@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Discovery Delegation
 //!
 //! Routes discovery requests to capable providers without hard-coding
@@ -19,7 +17,7 @@ use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
 use songbird_types::{SongbirdError, SongbirdResult};
 
 /// Delegation strategy for choosing providers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DelegationStrategy {
     /// Use the first available provider
     FirstAvailable,
@@ -44,6 +42,7 @@ pub struct DiscoveryDelegator {
 
 impl DiscoveryDelegator {
     /// Create a new discovery delegator
+    #[must_use]
     pub fn new(registry: ProviderRegistry) -> Self {
         Self {
             registry,
@@ -53,6 +52,7 @@ impl DiscoveryDelegator {
     }
 
     /// Set the default delegation strategy
+    #[must_use]
     pub fn with_strategy(mut self, strategy: DelegationStrategy) -> Self {
         self.default_strategy = strategy;
         self
@@ -90,13 +90,12 @@ impl DiscoveryDelegator {
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceDiscovery),
         );
 
-        match &self.default_strategy {
-            DelegationStrategy::Broadcast => self.broadcast_discover_services(query).await,
-            _ => {
-                let provider_id =
-                    self.select_provider(&capability_query, &self.default_strategy).await?;
-                self.delegate_discover_services(&provider_id, query).await
-            }
+        if self.default_strategy == DelegationStrategy::Broadcast {
+            self.broadcast_discover_services(query).await
+        } else {
+            let provider_id =
+                self.select_provider(&capability_query, &self.default_strategy).await?;
+            self.delegate_discover_services(&provider_id, query).await
         }
     }
 
@@ -133,12 +132,11 @@ impl DiscoveryDelegator {
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceListing),
         );
 
-        match &self.default_strategy {
-            DelegationStrategy::Broadcast => self.broadcast_list_all_services().await,
-            _ => {
-                let provider_id = self.select_provider(&query, &self.default_strategy).await?;
-                self.delegate_list_all_services(&provider_id).await
-            }
+        if self.default_strategy == DelegationStrategy::Broadcast {
+            self.broadcast_list_all_services().await
+        } else {
+            let provider_id = self.select_provider(&query, &self.default_strategy).await?;
+            self.delegate_list_all_services(&provider_id).await
         }
     }
 

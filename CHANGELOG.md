@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave149] - 2026-04-20 - Comprehensive Deep Debt Pass
+
+### Changed — Blanket Lint Suppression Removal (11 files)
+- **songbird-discovery/src/abstraction/**: removed `#![allow(clippy::all, clippy::pedantic, clippy::nursery)]` from 11 files; all clippy issues resolved (25 `#[must_use]`, 10 `return_self_not_must_use`, 5 doc-backtick, 4 format-variable, 2 file-extension, 1 unnecessary-Result, 1 from_str-confusion, 1 redundant-clone, 1 redundant-closure, 1 derive-Eq, 1 match→if-let, 1 map-unwrap)
+- `async_fn_in_trait` allows retained with reason strings (providers.rs, adapters/mod.rs)
+
+### Changed — Hardcoded Path Elimination
+- **process_manager.rs**: `/var/run/songbird` → `SONGBIRD_SYSTEM_RUNTIME_DIR` constant
+- **client_impl.rs**: `/run/user/{uid}/...` → `USER_RUNTIME_PREFIX` constant; `/tmp/...` → `std::env::temp_dir()`
+- **ios.rs**: `/var/tmp/...` → `MACOS_SHARED_TMP_DIR` constant
+- New constants in `songbird-types::constants`: `SONGBIRD_SYSTEM_RUNTIME_DIR`, `USER_RUNTIME_PREFIX`, `MACOS_SHARED_TMP_DIR`
+
+### Changed — Duplicate Constant Consolidation
+- **bind_and_ports.rs**: `LOCALHOST_IPV4`, `DEFAULT_LOCALHOST` now re-export from `songbird_types::constants::LOCALHOST`
+- **network.rs**: `DEFAULT_HOST_V4` re-exports from `songbird_types::constants::LOCALHOST`
+
+### Changed — Mock Feature Naming Standardized
+- **songbird-lineage-relay**: `test-utils` → `test-mocks` (feature + all 22 `cfg` references in security.rs, relay.rs)
+- **songbird-genesis**: `testing` → `test-mocks` (feature + all 7 `cfg` references in physical_channels/mod.rs)
+
+### Changed — Stale Code Removal
+- **songbird-cli/version.rs**: removed undeclared feature references (`built-in-observability`, `prometheus-export`, `jaeger-tracing`, `production-security`, `circuit-breakers`) and stale `#![expect(unexpected_cfgs)]`
+
+### Changed — Production `expect()` Safety
+- **connection_pool.rs**: `PooledConnection` Deref/DerefMut annotated with `#[allow(clippy::expect_used, reason = "...")]`
+- **post_handshake.rs**: TLS record length narrowing annotated with reason strings
+
+---
+
 ## [v0.2.1-wave148] - 2026-04-20 - PG-21: Persistent NDJSON Sessions on UDS
 
 ### Fixed — PG-21 Protocol Error (primalSpring downstream audit)

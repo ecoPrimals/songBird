@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Static Provider Adapter
 //!
 //! Provides static service discovery using the universal provider pattern
@@ -118,10 +116,11 @@ pub struct StaticProviderAdapter {
 
 impl StaticProviderAdapter {
     /// Create new native static adapter
+    #[must_use]
     pub fn new_native(id: String, initial_services: Vec<ServiceInfo>) -> Self {
         let metadata = ProviderMetadata {
             id: id.clone(),
-            name: format!("Static Provider ({})", id),
+            name: format!("Static Provider ({id})"),
             version: "1.0.0".to_string(),
             capabilities: vec![
                 DiscoveryCapability::ServiceRegistration,

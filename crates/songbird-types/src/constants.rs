@@ -108,6 +108,15 @@ pub const SYSTEM_RUNTIME_DIR: &str = "/var/run";
 /// biomeOS system runtime socket directory (FHS-standard).
 pub const BIOMEOS_SYSTEM_RUNTIME_DIR: &str = "/var/run/biomeos";
 
+/// Songbird PID/state directory under FHS system runtime.
+pub const SONGBIRD_SYSTEM_RUNTIME_DIR: &str = "/var/run/songbird";
+
+/// User runtime directory prefix (FHS: /run/user/{uid}).
+pub const USER_RUNTIME_PREFIX: &str = "/run/user";
+
+/// macOS/iOS shared temporary directory for IPC sockets.
+pub const MACOS_SHARED_TMP_DIR: &str = "/var/tmp";
+
 // ============================================================================
 // TIMEOUT CONSTANTS
 // ============================================================================

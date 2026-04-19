@@ -19,9 +19,9 @@ pub mod bluetooth;
 pub mod bluetooth_pure;
 
 // Mock implementation — tests only, or `--features testing` for integration tests.
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(test, feature = "test-mocks"))]
 pub mod mock;
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(test, feature = "test-mocks"))]
 pub use mock::MockPhysicalChannel;
 
 /// Physical channel trait for genesis ceremonies
@@ -59,7 +59,7 @@ pub enum PhysicalChannel {
     BluetoothPure(bluetooth_pure::PureRustBluetoothChannel),
 
     /// Mock channel for testing (not present in default production builds).
-    #[cfg(any(test, feature = "testing"))]
+    #[cfg(any(test, feature = "test-mocks"))]
     Mock(MockPhysicalChannel),
 }
 
@@ -77,7 +77,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.verify_proximity().await,
 
-            #[cfg(any(test, feature = "testing"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(ch) => ch.verify_proximity().await,
         }
     }
@@ -95,7 +95,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.secure_exchange().await,
 
-            #[cfg(any(test, feature = "testing"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(ch) => ch.secure_exchange().await,
         }
     }
@@ -113,7 +113,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.trust_level(),
 
-            #[cfg(any(test, feature = "testing"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(ch) => ch.trust_level(),
         }
     }
@@ -131,7 +131,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.channel_type(),
 
-            #[cfg(any(test, feature = "testing"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(ch) => ch.channel_type(),
         }
     }

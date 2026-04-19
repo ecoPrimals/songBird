@@ -123,7 +123,9 @@ impl TlsHandshake {
             0x17,
             0x03,
             0x03,
+            #[allow(clippy::expect_used, reason = "TLS record max is 16 KiB; always fits u8")]
             u8::try_from(encrypted_data.len() >> 8).expect("length byte fits in u8"),
+            #[allow(clippy::expect_used, reason = "low byte of usize; always fits u8")]
             u8::try_from(encrypted_data.len() & 0xFF).expect("length byte fits in u8"),
         ];
 

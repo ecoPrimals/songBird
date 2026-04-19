@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-#![allow(async_fn_in_trait)]
+#![allow(async_fn_in_trait, reason = "discovery trait uses AFIT; callers are internal")]
 
 //! Provider abstraction layer for discovery services (local types and [`DiscoveryProvider`] trait).
 //!

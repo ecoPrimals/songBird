@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Modernized Discovery Factory
 //!
 //! Replaces the hardcoded `ServiceDiscoveryFactory` with an agnostic, configuration-driven approach
@@ -41,6 +39,7 @@ impl ModernizedDiscoveryFactory {
     }
 
     /// Create with custom registry (for testing or advanced use cases)
+    #[must_use]
     pub fn with_registry(registry: ProviderRegistry) -> Self {
         Self {
             registry,
@@ -69,7 +68,7 @@ impl ModernizedDiscoveryFactory {
         Ok(delegator)
     }
 
-    /// Create from environment variables (modernized version of old create_from_env)
+    /// Create from environment variables (modernized version of old `create_from_env`)
     pub async fn create_from_environment(&self) -> SongbirdResult<DiscoveryDelegator> {
         let mut configs = Vec::new();
 
@@ -102,16 +101,18 @@ impl ModernizedDiscoveryFactory {
             SongbirdError::configuration(format!("Failed to read config file {config_path}: {e}"))
         })?;
 
-        let configs: Vec<ProviderConfig> =
-            if config_path.ends_with(".yaml") || config_path.ends_with(".yml") {
-                serde_yaml::from_str(&config_content).map_err(|e| {
-                    SongbirdError::configuration(format!("Failed to parse YAML config: {e}"))
-                })?
-            } else {
-                serde_json::from_str(&config_content).map_err(|e| {
-                    SongbirdError::configuration(format!("Failed to parse JSON config: {e}"))
-                })?
-            };
+        let configs: Vec<ProviderConfig> = if std::path::Path::new(config_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"))
+        {
+            serde_yaml::from_str(&config_content).map_err(|e| {
+                SongbirdError::configuration(format!("Failed to parse YAML config: {e}"))
+            })?
+        } else {
+            serde_json::from_str(&config_content).map_err(|e| {
+                SongbirdError::configuration(format!("Failed to parse JSON config: {e}"))
+            })?
+        };
 
         self.create_from_config(configs).await
     }
@@ -217,6 +218,7 @@ impl ModernizedDiscoveryFactory {
     }
 
     /// Get the underlying registry (for advanced use cases)
+    #[must_use]
     pub fn registry(&self) -> &ProviderRegistry {
         &self.registry
     }
@@ -238,6 +240,7 @@ pub struct DiscoveryConfigBuilder {
 
 impl DiscoveryConfigBuilder {
     /// New empty builder.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             configs: Vec::new(),
@@ -245,6 +248,7 @@ impl DiscoveryConfigBuilder {
     }
 
     /// Add a static provider
+    #[must_use]
     pub fn add_static(mut self, id: String, services: Vec<serde_json::Value>) -> Self {
         let mut parameters = HashMap::new();
         parameters.insert("type".to_string(), serde_json::Value::String("static".to_string()));
@@ -263,6 +267,7 @@ impl DiscoveryConfigBuilder {
     }
 
     /// Add a Consul provider
+    #[must_use]
     pub fn add_consul(mut self, id: String, url: String) -> Self {
         let mut parameters = HashMap::new();
         parameters.insert("type".to_string(), serde_json::Value::String("consul".to_string()));
@@ -281,6 +286,7 @@ impl DiscoveryConfigBuilder {
     }
 
     /// Add a Kubernetes provider
+    #[must_use]
     pub fn add_kubernetes(mut self, id: String, namespace: String) -> Self {
         let mut parameters = HashMap::new();
         parameters.insert("type".to_string(), serde_json::Value::String("kubernetes".to_string()));
@@ -299,6 +305,7 @@ impl DiscoveryConfigBuilder {
     }
 
     /// Build the configuration list
+    #[must_use]
     pub fn build(self) -> Vec<ProviderConfig> {
         self.configs
     }

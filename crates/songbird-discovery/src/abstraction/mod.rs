@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Discovery Abstraction Layer
 //!
 //! This module provides a capability-based, agnostic discovery system that eliminates

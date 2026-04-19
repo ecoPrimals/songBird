@@ -8,10 +8,10 @@ use std::time::Duration;
 /// Default host constant
 pub const DEFAULT_HOST: &str = "localhost";
 
-/// Default host IPv4 constant
-pub const DEFAULT_HOST_V4: &str = "127.0.0.1";
+/// Default host IPv4 constant — re-export from canonical source.
+pub const DEFAULT_HOST_V4: &str = songbird_types::constants::LOCALHOST;
 
-/// Default bind address constant
+/// Default bind address constant.
 pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:8080";
 
 /// Default orchestrator port

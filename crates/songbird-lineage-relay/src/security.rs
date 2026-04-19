@@ -11,7 +11,7 @@
 //! - ✅ Modern async Rust (enum dispatch, async/await)
 //! - ✅ Zero unsafe code
 //! - ✅ Runtime discovery (no hardcoded paths)
-//! - ✅ Mocks isolated to `#[cfg(any(test, feature = "test-utils"))]`
+//! - ✅ Mocks isolated to `#[cfg(any(test, feature = "test-mocks"))]`
 //! - ✅ Pure Rust (Unix sockets, not HTTP)
 
 use crate::error::Result;
@@ -23,11 +23,11 @@ use tokio::net::UnixStream;
 use tracing::{debug, info};
 
 // Imports only used by mock implementations
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 use std::collections::HashMap;
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 use std::sync::Arc;
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 use tokio::sync::RwLock;
 
 /// Production `BirdSong` crypto client via the security provider (Unix socket JSON-RPC)
@@ -505,13 +505,13 @@ impl SecurityRelayAuthority {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TEST MOCKS - Gated behind cfg(test) or feature = "test-utils"
+// TEST MOCKS - Gated behind cfg(test) or feature = "test-mocks"
 //
 // Unit tests get these via #[cfg(test)]; integration tests
 // enable the `test-utils` feature in dev-dependencies.
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 /// In-memory lineage graph for tests and the `test-utils` feature (replaces a live security provider in CI).
 #[derive(Debug)]
 pub struct MockLineageProvider {
@@ -521,7 +521,7 @@ pub struct MockLineageProvider {
     descendants: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockLineageProvider {
     /// Create new mock lineage provider
     #[must_use]
@@ -563,7 +563,7 @@ impl MockLineageProvider {
     }
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl Default for MockLineageProvider {
     fn default() -> Self {
         Self::new()
@@ -571,14 +571,14 @@ impl Default for MockLineageProvider {
 }
 
 /// Mock `BirdSong` crypto (for testing and integration tests)
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 #[derive(Clone, Debug)]
 pub struct MockBirdSongCrypto {
     lineage_provider: Arc<MockLineageProvider>,
     my_id: String,
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockBirdSongCrypto {
     /// Create new mock crypto
     #[must_use]
@@ -590,7 +590,7 @@ impl MockBirdSongCrypto {
     }
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockBirdSongCrypto {
     /// Encrypt message for lineage (mock: `LINEAGE:` prefix).
     pub async fn encrypt_for_lineage(&self, message: &[u8], _hint: LineageHint) -> Result<Vec<u8>> {
@@ -617,13 +617,13 @@ impl MockBirdSongCrypto {
 }
 
 /// Mock relay authority (for testing and integration tests)
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 #[derive(Clone, Debug)]
 pub struct MockRelayAuthority {
     lineage_provider: Arc<MockLineageProvider>,
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockRelayAuthority {
     /// Create new mock relay authority
     #[must_use]
@@ -634,7 +634,7 @@ impl MockRelayAuthority {
     }
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockRelayAuthority {
     /// Authorize relay when `relay_node` is an ancestor of `requester` in the mock graph.
     pub async fn authorize_relay(
@@ -681,7 +681,7 @@ pub enum BirdSongCrypto {
     /// Production client via the security provider (Unix socket JSON-RPC).
     Security(SecurityBirdSongProvider),
     /// Mock keyed by lineage graph (`test-utils` / unit tests).
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(any(test, feature = "test-mocks"))]
     Mock(MockBirdSongCrypto),
     /// Pass-through: no crypto transform (unit / integration harnesses).
     StubPassthrough,
@@ -694,7 +694,7 @@ impl BirdSongCrypto {
     pub async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>> {
         match self {
             Self::Security(p) => p.encrypt_for_lineage(message, hint).await,
-            #[cfg(any(test, feature = "test-utils"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.encrypt_for_lineage(message, hint).await,
             Self::StubPassthrough => Ok(message.to_vec()),
             Self::StubMockEncrypted => {
@@ -713,7 +713,7 @@ impl BirdSongCrypto {
     ) -> Result<Option<Vec<u8>>> {
         match self {
             Self::Security(p) => p.decrypt_birdsong(encrypted, sender).await,
-            #[cfg(any(test, feature = "test-utils"))]
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.decrypt_birdsong(encrypted, sender).await,
             Self::StubPassthrough => Ok(Some(encrypted.to_vec())),
             Self::StubMockEncrypted => {
@@ -733,7 +733,7 @@ impl From<SecurityBirdSongProvider> for BirdSongCrypto {
     }
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-mocks"))]
 impl From<MockBirdSongCrypto> for BirdSongCrypto {
     fn from(value: MockBirdSongCrypto) -> Self {
         Self::Mock(value)

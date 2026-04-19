@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Consul Provider Adapter
 //!
 //! Provides Consul service discovery using the universal provider pattern
@@ -93,7 +91,7 @@ impl ProviderFactory for ConsulProviderFactory {
         let consul_protocol =
             songbird_process_env::var("CONSUL_PROTOCOL").unwrap_or_else(|_| "http".to_string());
 
-        let consul_url = format!("{}://{}:{}", consul_protocol, consul_host, consul_port);
+        let consul_url = format!("{consul_protocol}://{consul_host}:{consul_port}");
 
         let mut parameters = HashMap::new();
         parameters.insert("url".to_string(), serde_json::Value::String(consul_url.clone()));
@@ -139,7 +137,7 @@ impl ConsulProviderAdapter {
 
         let metadata = ProviderMetadata {
             id: id.clone(),
-            name: format!("Consul Provider ({})", id),
+            name: format!("Consul Provider ({id})"),
             version,
             capabilities: vec![
                 DiscoveryCapability::ServiceRegistration,
@@ -208,19 +206,18 @@ impl ConsulProviderAdapter {
         })
     }
 
-    /// Parse Consul API response into ServiceInfo list
-    fn parse_consul_response(&self, response: &serde_json::Value) -> Result<Vec<ServiceInfo>> {
+    /// Parse Consul API response into `ServiceInfo` list
+    #[must_use]
+    fn parse_consul_response(&self, response: &serde_json::Value) -> Vec<ServiceInfo> {
         let mut services = Vec::new();
 
         if let Some(service_list) = response.as_array() {
-            // Health service response format
             for service_entry in service_list {
                 if let Some(service_info) = self.parse_consul_service(service_entry) {
                     services.push(service_info);
                 }
             }
         } else if let Some(service_map) = response.as_object() {
-            // Agent services response format
             for (_, service_data) in service_map {
                 if let Some(service_info) = self.parse_consul_service(service_data) {
                     services.push(service_info);
@@ -228,7 +225,7 @@ impl ConsulProviderAdapter {
             }
         }
 
-        Ok(services)
+        services
     }
 
     /// Parse individual Consul service into `ServiceInfo`.
@@ -238,23 +235,21 @@ impl ConsulProviderAdapter {
     fn parse_consul_service(&self, service: &serde_json::Value) -> Option<ServiceInfo> {
         let id = service["ID"].as_str()?.to_string();
         let name = service["Service"].as_str().unwrap_or(&id).to_string();
-        let address = match service["Address"].as_str().filter(|a| !a.is_empty()) {
-            Some(a) => a,
-            None => {
-                tracing::warn!(
-                    "Consul service '{name}' has no Address — skipping (capability-based: require valid address)"
-                );
-                return None;
-            }
+        let address = if let Some(a) = service["Address"].as_str().filter(|a| !a.is_empty()) {
+            a
+        } else {
+            tracing::warn!(
+                "Consul service '{name}' has no Address — skipping (capability-based: require valid address)"
+            );
+            return None;
         };
-        let port = match service["Port"].as_u64() {
-            Some(p) => p as u16,
-            None => {
-                tracing::warn!(
-                    "Consul service '{name}' has no Port — skipping (capability-based: require valid port)"
-                );
-                return None;
-            }
+        let port = if let Some(p) = service["Port"].as_u64() {
+            p as u16
+        } else {
+            tracing::warn!(
+                "Consul service '{name}' has no Port — skipping (capability-based: require valid port)"
+            );
+            return None;
         };
 
         // Determine protocol from consul URL or service metadata
@@ -267,12 +262,11 @@ impl ConsulProviderAdapter {
         // Get version from service metadata or use unknown
         let version = service["Version"]
             .as_str()
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| "unknown".to_string());
+            .map_or_else(|| "unknown".to_string(), std::string::ToString::to_string);
 
         Some(ServiceInfo {
             service_id: id.clone(),
-            name: name.clone(),
+            name,
             version,
             service_type: "consul".to_string(),
             description: Some("Service discovered from Consul".to_string()),
@@ -371,7 +365,7 @@ impl DiscoveryProvider for ConsulProviderAdapter {
             .map_err(|e| SongbirdError::network(format!("Failed to parse Consul response: {e}")))?;
 
         // Parse consul response into ServiceInfo
-        let services = self.parse_consul_response(&consul_response)?;
+        let services = self.parse_consul_response(&consul_response);
         Ok(services)
     }
 

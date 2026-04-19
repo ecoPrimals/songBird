@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Capability-Based Provider System (Vendor Agnostic)
 //!
 //! This module provides vendor-agnostic access to discovery capabilities.
 //! Instead of requesting "kubernetes" or "consul", you request capabilities
-//! like "container_orchestration" or "service_registry".
+//! like "`container_orchestration`" or "`service_registry`".
 //!
 //! # Native Async Traits (Rust 1.75+)
 //! Uses native async fn in traits for zero-cost abstraction
@@ -38,8 +36,9 @@ pub enum CapabilityType {
 }
 
 impl CapabilityType {
-    /// Get capability type from string
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a capability type from its string name.
+    #[must_use]
+    pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "container_orchestration" | "containers" | "orchestration" => {
                 Self::ContainerOrchestration
@@ -54,6 +53,7 @@ impl CapabilityType {
     }
 
     /// Get string representation
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             Self::ContainerOrchestration => "container_orchestration",
@@ -89,6 +89,7 @@ pub struct CapabilityProviderFactory {
 
 impl CapabilityProviderFactory {
     /// Create new capability provider factory
+    #[must_use]
     pub fn new() -> Self {
         Self {
             capability_mappings: HashMap::new(),
@@ -129,6 +130,7 @@ impl CapabilityProviderFactory {
     }
 
     /// Get available capabilities
+    #[must_use]
     pub fn available_capabilities(&self) -> Vec<CapabilityType> {
         self.capability_mappings.keys().cloned().collect()
     }
@@ -143,6 +145,7 @@ impl Default for CapabilityProviderFactory {
 /// Helper: Create default capability factory with standard mappings
 ///
 /// Maps capabilities to vendor implementations based on environment or discovery
+#[must_use]
 pub fn create_default_capability_factory() -> CapabilityProviderFactory {
     #[allow(
         unused_mut,
@@ -220,12 +223,12 @@ mod tests {
     #[test]
     fn test_capability_type_from_str() {
         assert_eq!(
-            CapabilityType::from_str("container_orchestration"),
+            CapabilityType::parse("container_orchestration"),
             CapabilityType::ContainerOrchestration
         );
-        assert_eq!(CapabilityType::from_str("service_registry"), CapabilityType::ServiceRegistry);
+        assert_eq!(CapabilityType::parse("service_registry"), CapabilityType::ServiceRegistry);
         assert_eq!(
-            CapabilityType::from_str("custom_capability"),
+            CapabilityType::parse("custom_capability"),
             CapabilityType::Custom("custom_capability".to_string())
         );
     }

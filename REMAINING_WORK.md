@@ -2,9 +2,9 @@
 
 **Date**: April 20, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 148 (Apr 20, 2026)  
-**Current Wave**: 148 — PG-21 resolution: persistent NDJSON sessions on orchestrator UDS socket (was single-shot, caused `is_protocol_error()` → SKIP in downstream springs); BTSP frame loop also made persistent; parse errors no longer kill the session  
-**Previous Waves** (full detail in `CHANGELOG.md`): 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 149 (Apr 20, 2026)  
+**Current Wave**: 149 — comprehensive deep debt pass: blanket lint suppression removal (11 files in discovery/abstraction), hardcoded path elimination (`/var/run/songbird`, `/run/user/{uid}`, `/var/tmp`), duplicate constant consolidation (bind_and_ports.rs → songbird-types re-exports), mock feature naming standardized (`test-mocks` ecosystem-wide), stale CLI feature refs removed, production `expect()` annotated with reasons  
+**Previous Waves** (full detail in `CHANGELOG.md`): 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 

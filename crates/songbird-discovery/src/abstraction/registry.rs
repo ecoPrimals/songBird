@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Provider Registry
 //!
 //! Runtime registration and management of discovery providers
@@ -44,6 +42,7 @@ pub struct ProviderRegistry {
 
 impl ProviderRegistry {
     /// Create a new provider registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             providers: Arc::new(RwLock::new(HashMap::new())),

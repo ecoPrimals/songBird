@@ -70,6 +70,6 @@ bluetooth = ["legacy-bluetooth"]  # Alias for `legacy-bluetooth`
 pure-bluetooth = ["songbird-bluetooth"]  # Pure Rust BLE - universal!
 coordination = ["songbird-primal-coordination"]  # Agnostic primal coordination
 capability-discovery = ["songbird-config", "songbird-types"]  # Runtime capability discovery
-# Exposes `MockPhysicalChannel` / `PhysicalChannel::Mock` for integration tests (`cargo test` enables `cfg(test)` automatically).
-testing = []
+# Exposes `MockPhysicalChannel` / `PhysicalChannel::Mock` for integration tests.
+test-mocks = []
 

@@ -5,8 +5,6 @@
 //!
 //! Shows current version and build information
 
-#![expect(unexpected_cfgs, reason = "documented lint suppression (wateringHole)")]
-
 // Module imports
 // Version Command
 //
@@ -41,26 +39,7 @@ pub async fn show_detailed_version() -> SongbirdResult<()> {
     println!("Repository: {}", env!("CARGO_PKG_REPOSITORY"));
     println!("Description:");
     println!("  {}", env!("CARGO_PKG_DESCRIPTION"));
-    println!("Features enabled:");
-
-    #[cfg(feature = "built-in-observability")]
-    println!("  ✅ Built-in observability");
-    #[cfg(feature = "prometheus-export")]
-    println!("  ✅ Prometheus metrics export");
-    #[cfg(feature = "jaeger-tracing")]
-    println!("  ✅ Jaeger distributed tracing");
-    #[cfg(feature = "production-security")]
-    println!("  ✅ Production security features");
-    #[cfg(feature = "circuit-breakers")]
-    println!("  ✅ Circuit breakers");
-    #[cfg(not(any(
-        feature = "built-in-observability",
-        feature = "prometheus-export",
-        feature = "jaeger-tracing",
-        feature = "production-security",
-        feature = "circuit-breakers"
-    )))]
-    println!("  ℹ️  Using default feature set");
+    println!("Feature set: default (pure Rust)");
     println!("System information:");
     println!("  OS: {}", std::env::consts::OS);
     println!("  Architecture: {}", std::env::consts::ARCH);

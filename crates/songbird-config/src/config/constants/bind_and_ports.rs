@@ -8,14 +8,14 @@ use songbird_types::error_helpers::SafeEnv;
 /// Default configuration file path
 pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
 
-/// IPv4 localhost address constant
-pub const LOCALHOST_IPV4: &str = "127.0.0.1";
+/// IPv4 localhost address constant — re-export from canonical source.
+pub const LOCALHOST_IPV4: &str = songbird_types::constants::LOCALHOST;
 
-/// Default bind address constant (for backwards compatibility with tests)
+/// Default bind address constant (for backwards compatibility with tests).
 pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:8080";
 
-/// Default localhost constant (for backwards compatibility with tests)
-pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
+/// Default localhost constant — re-export from canonical source.
+pub const DEFAULT_LOCALHOST: &str = songbird_types::constants::LOCALHOST;
 
 /// Get bind address from environment or calculate from system capabilities
 #[must_use]

@@ -69,7 +69,9 @@ impl IosPlatformIPC {
 
             // macOS: Use Unix sockets (XDG-compliant path)
             // /var/tmp is recommended for macOS (persists across reboots)
-            let socket_path = PathBuf::from(format!("/var/tmp/{BIOMEOS_DIR}/{}.sock", primal_name));
+            let socket_path = PathBuf::from(songbird_types::constants::MACOS_SHARED_TMP_DIR)
+                .join(BIOMEOS_DIR)
+                .join(format!("{primal_name}.sock"));
 
             debug!(
                 "Creating macOS Unix socket endpoint for '{}': {}",

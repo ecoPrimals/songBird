@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
-
 //! # Discovery Capabilities
 //!
 //! Defines what discovery providers can do, not what they are.
@@ -56,6 +54,7 @@ pub struct CapabilityMatcher {
 
 impl CapabilityMatcher {
     /// Create a new capability matcher
+    #[must_use]
     pub fn new() -> Self {
         Self {
             required: Vec::new(),
@@ -66,30 +65,35 @@ impl CapabilityMatcher {
     }
 
     /// Add required capability
+    #[must_use]
     pub fn require(mut self, capability: DiscoveryCapability) -> Self {
         self.required.push(capability);
         self
     }
 
     /// Add preferred capability
+    #[must_use]
     pub fn prefer(mut self, capability: DiscoveryCapability) -> Self {
         self.preferred.push(capability);
         self
     }
 
     /// Add excluded capability
+    #[must_use]
     pub fn exclude(mut self, capability: DiscoveryCapability) -> Self {
         self.excluded.push(capability);
         self
     }
 
     /// Add custom filter
+    #[must_use]
     pub fn filter(mut self, key: String, value: String) -> Self {
         self.filters.insert(key, value);
         self
     }
 
     /// Check if a set of capabilities matches this matcher
+    #[must_use]
     pub fn matches(&self, capabilities: &[DiscoveryCapability]) -> bool {
         if !self.required.iter().all(|req| capabilities.contains(req)) {
             return false;
@@ -101,6 +105,7 @@ impl CapabilityMatcher {
     }
 
     /// Calculate match score (higher is better)
+    #[must_use]
     pub fn score(&self, capabilities: &[DiscoveryCapability]) -> u32 {
         if !self.matches(capabilities) {
             return 0;
@@ -137,6 +142,7 @@ pub struct CapabilityQuery {
 
 impl CapabilityQuery {
     /// Create a new capability query
+    #[must_use]
     pub fn new(matcher: CapabilityMatcher) -> Self {
         Self {
             matcher,
@@ -146,12 +152,14 @@ impl CapabilityQuery {
     }
 
     /// Set priority
+    #[must_use]
     pub fn with_priority(mut self, priority: u8) -> Self {
         self.priority = priority;
         self
     }
 
     /// Add context
+    #[must_use]
     pub fn with_context(mut self, key: String, value: String) -> Self {
         self.context.insert(key, value);
         self

@@ -182,14 +182,17 @@ impl IpcHttpClient {
 
         // Priority 3: User runtime dir fallback
         if let Some(uid) = env_reader("UID") {
-            let path = PathBuf::from(format!("/run/user/{uid}/songbird-{family_id}.sock"));
+            let path = PathBuf::from(format!(
+                "{}/{uid}/songbird-{family_id}.sock",
+                songbird_types::constants::USER_RUNTIME_PREFIX
+            ));
             if path.exists() {
                 return path;
             }
         }
 
         // Priority 4: /tmp fallback (development/testing)
-        PathBuf::from(format!("/tmp/songbird-{family_id}.sock"))
+        std::env::temp_dir().join(format!("songbird-{family_id}.sock"))
     }
 
     /// Platform-agnostic connection helper
