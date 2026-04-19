@@ -1,10 +1,10 @@
 # Songbird Remaining Work
 
-**Date**: April 16, 2026  
+**Date**: April 20, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 147 (Apr 16, 2026)  
-**Current Wave**: 147 — mock isolation (`birdsong::mocks` cfg-gated behind `test-mocks` feature), hardcoded IP/path elimination (LOCALHOST/EPHEMERAL_BIND_ADDR/SYSTEM_RUNTIME_DIR/BIOMEOS_SYSTEM_RUNTIME_DIR constants), lint hygiene (all bare `#[allow()]` given reason strings)  
-**Previous Waves** (full detail in `CHANGELOG.md`): 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 148 (Apr 20, 2026)  
+**Current Wave**: 148 — PG-21 resolution: persistent NDJSON sessions on orchestrator UDS socket (was single-shot, caused `is_protocol_error()` → SKIP in downstream springs); BTSP frame loop also made persistent; parse errors no longer kill the session  
+**Previous Waves** (full detail in `CHANGELOG.md`): 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 

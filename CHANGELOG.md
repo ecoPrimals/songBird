@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave148] - 2026-04-20 - PG-21: Persistent NDJSON Sessions on UDS
+
+### Fixed — PG-21 Protocol Error (primalSpring downstream audit)
+- **connection.rs** (songbird-orchestrator): `handle_ndjson_session` was single-shot — broke out of the read loop after one request/response cycle, closing the connection. Springs sending multiple requests on a single UDS connection (e.g. `health.liveness` → `capabilities.list`) hit a closed pipe, classified as `is_protocol_error()` → SKIP. Fixed: removed the unconditional `break` after response; session now loops until the client disconnects (matching `bin_interface/server.rs` and every other primal's persistent NDJSON pattern).
+- **connection.rs**: BTSP frame handler (`handle_btsp_frame` → `handle_btsp_frames`) also made persistent — reads length-prefixed frames in a loop until disconnect or idle timeout, instead of exiting after one frame.
+- **connection.rs**: Parse errors in both NDJSON and BTSP paths now send an error response and `continue` instead of terminating the session.
+
+### Clarification — Songbird UDS Protocol
+- Songbird does **not** speak HTTP on UDS. All UDS paths use raw newline-delimited JSON-RPC (NDJSON) or BTSP length-prefixed framing. HTTP/Axum is TCP-only. The "HTTP framing" reported in PG-21 was the symptom of the single-shot bug: after one exchange the server closed the connection, and the spring's second request failed with what appeared to be a protocol mismatch.
+
+---
+
 ## [v0.2.1-wave147] - 2026-04-16 - Mock Isolation + Hardcoded Elimination + Lint Hygiene
 
 ### Changed — Mock Isolation

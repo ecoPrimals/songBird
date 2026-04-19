@@ -319,8 +319,8 @@ impl UnixSocketServer {
 
     // ─── BTSP handlers (generic over AsyncRead + AsyncWrite) ─────────────────
 
-    /// Run the full BTSP lifecycle (handshake + framed JSON-RPC) on any
-    /// bidirectional async stream. Works with both raw `UnixStream` and the
+    /// Run the full BTSP lifecycle (handshake → persistent framed JSON-RPC) on
+    /// any bidirectional async stream. Works with both raw `UnixStream` and the
     /// `PeekedStream` adapter used after first-byte auto-detection.
     async fn handle_btsp_on_stream<S>(&self, stream: &mut S) -> Result<()>
     where
@@ -334,62 +334,68 @@ impl UnixSocketServer {
 
         info!("BTSP session {} authenticated (cipher: {})", session.session_id, session.cipher);
 
-        self.handle_btsp_frame(stream, &session).await
+        self.handle_btsp_frames(stream, &session).await
     }
 
-    async fn handle_btsp_frame<S>(&self, stream: &mut S, session: &btsp::BtspSession) -> Result<()>
+    /// Persistent BTSP frame loop: reads length-prefixed JSON-RPC frames until
+    /// the client disconnects or a read timeout expires.
+    async fn handle_btsp_frames<S>(&self, stream: &mut S, session: &btsp::BtspSession) -> Result<()>
     where
         S: AsyncReadExt + AsyncWriteExt + Unpin,
     {
         let mut len_buf = [0u8; 4];
-        match tokio::time::timeout(Duration::from_secs(30), stream.read_exact(&mut len_buf)).await {
-            Ok(Ok(_)) => {}
-            Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                debug!("BTSP client disconnected (session {})", session.session_id);
-                return Ok(());
+        loop {
+            match tokio::time::timeout(Duration::from_secs(30), stream.read_exact(&mut len_buf))
+                .await
+            {
+                Ok(Ok(_)) => {}
+                Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    debug!("BTSP client disconnected (session {})", session.session_id);
+                    break;
+                }
+                Ok(Err(e)) => {
+                    return Err(e).context("BTSP frame length read error");
+                }
+                Err(_) => {
+                    debug!("BTSP idle timeout (session {})", session.session_id);
+                    break;
+                }
             }
-            Ok(Err(e)) => {
-                return Err(e).context("BTSP frame length read error");
+
+            let frame_len = u32::from_be_bytes(len_buf) as usize;
+            if frame_len > 16 * 1024 * 1024 {
+                bail!("BTSP frame exceeds 16 MiB limit ({frame_len})");
             }
-            Err(_) => {
-                debug!("BTSP read timeout (session {})", session.session_id);
-                return Ok(());
+
+            let mut payload = vec![0u8; frame_len];
+            stream.read_exact(&mut payload).await.context("BTSP payload read error")?;
+
+            let request = match serde_json::from_slice::<JsonRpcRequest>(&payload) {
+                Ok(req) => req,
+                Err(e) => {
+                    let resp = JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        result: None,
+                        error: Some(JsonRpcError::parse_error(format!(
+                            "Failed to parse JSON-RPC request: {e}"
+                        ))),
+                        id: serde_json::Value::Null,
+                    };
+                    Self::write_btsp_response(stream, &resp).await?;
+                    continue;
+                }
+            };
+
+            let is_notification = request.id.is_none();
+            debug!(
+                "BTSP JSON-RPC: {} (notification={}, session={})",
+                request.method, is_notification, session.session_id
+            );
+            let response = self.handle_jsonrpc_request(request).await;
+
+            if !is_notification {
+                Self::write_btsp_response(stream, &response).await?;
             }
-        }
-
-        let frame_len = u32::from_be_bytes(len_buf) as usize;
-        if frame_len > 16 * 1024 * 1024 {
-            bail!("BTSP frame exceeds 16 MiB limit ({frame_len})");
-        }
-
-        let mut payload = vec![0u8; frame_len];
-        stream.read_exact(&mut payload).await.context("BTSP payload read error")?;
-
-        let request = match serde_json::from_slice::<JsonRpcRequest>(&payload) {
-            Ok(req) => req,
-            Err(e) => {
-                let resp = JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    result: None,
-                    error: Some(JsonRpcError::parse_error(format!(
-                        "Failed to parse JSON-RPC request: {e}"
-                    ))),
-                    id: serde_json::Value::Null,
-                };
-                Self::write_btsp_response(stream, &resp).await?;
-                return Ok(());
-            }
-        };
-
-        let is_notification = request.id.is_none();
-        debug!(
-            "BTSP JSON-RPC: {} (notification={}, session={})",
-            request.method, is_notification, session.session_id
-        );
-        let response = self.handle_jsonrpc_request(request).await;
-
-        if !is_notification {
-            Self::write_btsp_response(stream, &response).await?;
         }
 
         Ok(())
@@ -409,8 +415,8 @@ impl UnixSocketServer {
 
     // ─── NDJSON handler (shared by UDS plain + TCP + peek-bypass) ────────────
 
-    /// Newline-delimited JSON-RPC session: read one request, dispatch, respond.
-    /// Generic over any buffered reader + writer pair.
+    /// Persistent newline-delimited JSON-RPC session: reads requests in a loop
+    /// until the client disconnects. Generic over any buffered reader + writer pair.
     async fn handle_ndjson_session<R, W>(&self, mut reader: R, mut writer: W) -> Result<()>
     where
         R: AsyncBufRead + Unpin,
@@ -444,7 +450,7 @@ impl UnixSocketServer {
                             payload.push(b'\n');
                             writer.write_all(&Bytes::from(payload)).await?;
                             writer.flush().await?;
-                            break;
+                            continue;
                         }
                     };
 
@@ -461,8 +467,6 @@ impl UnixSocketServer {
                         writer.write_all(&Bytes::from(payload)).await?;
                         writer.flush().await?;
                     }
-
-                    break;
                 }
                 Err(e) => {
                     error!("Failed to read from socket: {}", e);
