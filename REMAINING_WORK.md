@@ -2,9 +2,9 @@
 
 **Date**: April 20, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 149 (Apr 20, 2026)  
-**Current Wave**: 149 — comprehensive deep debt pass: blanket lint suppression removal (11 files in discovery/abstraction), hardcoded path elimination (`/var/run/songbird`, `/run/user/{uid}`, `/var/tmp`), duplicate constant consolidation (bind_and_ports.rs → songbird-types re-exports), mock feature naming standardized (`test-mocks` ecosystem-wide), stale CLI feature refs removed, production `expect()` annotated with reasons  
-**Previous Waves** (full detail in `CHANGELOG.md`): 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 150 (Apr 20, 2026)  
+**Current Wave**: 150 — doc cleanup and debris removal: stale `health-monitor.sh` removed (wrong API shape), false-positive metrics corrected in REMAINING_WORK.md (largest file, transitive duplicates), root docs updated (README, CONTEXT, CONTRIBUTING)  
+**Previous Waves** (full detail in `CHANGELOG.md`): 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -16,10 +16,10 @@
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 16 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 16 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 20 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 20 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | 0 (largest production 291L `discovery_handler/mod.rs`; former 1030L monolith smart-refactored Wave 144 into 4-file module; 4 former >700L files refactored Wave 133) |
+| **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; former 1030L monolith smart-refactored Wave 144; 4 former >700L files refactored Wave 133) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining in `#[cfg(test)]` or doc examples; `expect()` on const parses documented with `#[expect(reason)]`) |
@@ -124,7 +124,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 ## Pending: Dependency Evolution
 
 - [x] `ring-crypto` feature removed (Wave 135, SB-02 resolved): `rustls_rustcrypto` is the sole TLS provider. `ring` is NOT compiled in any build config (`cargo tree -i ring` = empty). Cargo.lock stanza persists because `rustls-webpki` (0.102 + 0.103) declares `ring` as an optional dep — Cargo's resolver locks optional dep versions by design. Investigated git `rustls-rustcrypto` (drops webpki 0.102) but pre-release RustCrypto crates are incompatible with stable workspace. Blocked on upstream `rustls-rustcrypto` crates.io release. See `deny.toml` for full stadial gate analysis.
-- [ ] Remaining transitive duplicates (syn, hashbrown, getrandom, parking_lot, socket2) require upstream changes
+- [ ] Remaining transitive duplicates (hashbrown ×3, getrandom ×3, socket2 ×2, rand ×2, indexmap ×2, generic-array ×2, cpufeatures ×2) require upstream version unification
 - [x] `async-trait` **fully eliminated** (Wave 145): 141→0 annotations, dependency removed from all crates and workspace `Cargo.toml`. Every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. SB-06 resolved.
 - [x] `rand` removed from `songbird-orchestrator` production deps (Wave 140): JWT CSPRNG replaced with `getrandom::fill()`; `rand` retained as dev-dependency for tests
 - [x] Dead `sled` dependency removed from `songbird-tor-protocol` (Wave 116)

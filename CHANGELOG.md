@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave150] - 2026-04-20 - Doc Cleanup & Debris Removal
+
+### Removed
+- **scripts/health-monitor.sh**: stale — used wrong API path (`/api/v1/services?capability=` vs actual `/api/v1/services/query/{capability}`) and wrong JSON shape (bare array vs `{services, stats}` object)
+
+### Fixed — False Positives in Docs
+- **REMAINING_WORK.md**: corrected largest-file metric (was `291L discovery_handler/mod.rs`, actual `763L primal_discovery.rs`); updated transitive duplicate list to current reality (hashbrown ×3, getrandom ×3, socket2 ×2, rand ×2, indexmap ×2, generic-array ×2, cpufeatures ×2; removed stale syn, parking_lot entries)
+- **README.md**: updated `Last Updated` to April 20; lint suppressions row reflects Wave 149 blanket removal; clippy/fmt verification dates → Apr 20; removed health-monitor.sh from testing section
+
+### Updated
+- **CONTEXT.md**: clippy verification date → Apr 20
+- **CONTRIBUTING.md**: workspace test count updated
+
+---
+
 ## [v0.2.1-wave149] - 2026-04-20 - Comprehensive Deep Debt Pass
 
 ### Changed — Blanket Lint Suppression Removal (11 files)
