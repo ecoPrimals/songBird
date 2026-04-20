@@ -454,3 +454,78 @@ async fn ipc_resolve_capability_preferred_over_primal_id() {
         .expect("both params — capability takes precedence");
     assert!(result["native_endpoint"].as_str().unwrap().contains("storage"));
 }
+
+#[tokio::test]
+async fn ipc_resolve_capability_falls_back_to_primal_name() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto.sign", "security"],
+                "endpoint": "/tmp/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    // "beardog" is not a capability token, but IS a primal name — fallback kicks in
+    let result = handler
+        .handle("ipc.resolve", json!({ "capability": "beardog" }))
+        .await
+        .expect("capability 'beardog' not found, but fallback to primal name succeeds");
+    assert_eq!(result["native_endpoint"].as_str().unwrap(), "unix:///tmp/beardog.sock");
+}
+
+#[tokio::test]
+async fn ipc_resolve_name_alias_for_primal_id() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto.sign"],
+                "endpoint": "/tmp/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    // `name` is a serde alias for `primal_id`
+    let result = handler
+        .handle("ipc.resolve", json!({ "name": "beardog" }))
+        .await
+        .expect("name alias should work like primal_id");
+    assert_eq!(result["native_endpoint"].as_str().unwrap(), "unix:///tmp/beardog.sock");
+}
+
+#[tokio::test]
+async fn ipc_resolve_by_name_method_alias() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto.sign"],
+                "endpoint": "/tmp/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    // `ipc.resolve_by_name` is a normalization alias for `ipc.resolve`
+    let result = handler
+        .handle("ipc.resolve_by_name", json!({ "name": "beardog" }))
+        .await
+        .expect("ipc.resolve_by_name should route to ipc.resolve handler");
+    assert_eq!(result["native_endpoint"].as_str().unwrap(), "unix:///tmp/beardog.sock");
+}

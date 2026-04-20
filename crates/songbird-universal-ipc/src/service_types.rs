@@ -28,12 +28,19 @@ pub struct RegisterParams {
 
 /// IPC service request parameters for resolution.
 ///
-/// Accepts either `primal_id` (identity lookup) or `capability` (capability-based
-/// routing). When `capability` is provided, returns the best provider for that
-/// capability domain — springs can resolve by capability without knowing primal names.
+/// Accepts either `capability` (capability-based routing — **preferred**) or
+/// `primal_id`/`name` (identity lookup). Capability-first is the standard:
+/// callers should resolve by what a primal *does*, not what it *is*.
+///
+/// When `capability` is provided it takes precedence. If capability lookup
+/// fails, the same string is tried as a primal name (graceful fallback for
+/// callers who conflate the two).
+///
+/// `name` is an alias for `primal_id` — use whichever is more natural.
+/// `ipc.resolve_by_name` is a convenience alias that routes here.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ResolveParams {
-    #[serde(default)]
+    #[serde(default, alias = "name")]
     pub primal_id: Option<String>,
     #[serde(default)]
     pub capability: Option<String>,

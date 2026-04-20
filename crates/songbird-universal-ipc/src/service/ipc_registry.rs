@@ -53,12 +53,19 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
-    /// Handle `ipc.resolve` method — resolves by `primal_id` or `capability`.
+    /// Handle `ipc.resolve` method — resolves by `capability` or `primal_id`/`name`.
     ///
-    /// When `capability` is provided, returns the best provider for that capability
-    /// domain (most-recently-seen first). When `primal_id` is provided, performs a
-    /// direct identity lookup. Springs can resolve by capability without knowing
-    /// primal names (LD-02).
+    /// **Capability-first** is the standard pattern: callers should resolve by what
+    /// a primal *does* (e.g. `"security"`), not what it *is* (e.g. `"beardog"`).
+    ///
+    /// Precedence: `capability` > `primal_id`/`name`.
+    ///
+    /// Graceful fallback: if `capability` lookup fails, the same string is tried
+    /// as a primal name. This accommodates callers who conflate capability tokens
+    /// with primal names (e.g. `resolve({"capability": "beardog"})` will succeed
+    /// if `BearDog` registered with `primal_id` = `"beardog"`).
+    ///
+    /// `ipc.resolve_by_name` is a normalization alias that routes here.
     pub(super) async fn handle_resolve(&self, params: Value) -> Result<Value, String> {
         let params: ResolveParams =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
@@ -67,10 +74,16 @@ impl IpcServiceHandler {
 
         let (resolved_name, entry) = if let Some(ref capability) = params.capability {
             debug!("Resolving by capability: {capability}");
-            registry
-                .resolve_by_capability(capability)
-                .await
-                .ok_or_else(|| format!("No provider found for capability: {capability}"))?
+            if let Some(found) = registry.resolve_by_capability(capability).await {
+                found
+            } else if let Some(entry) = registry.get_service(capability).await {
+                debug!(
+                    "Capability '{capability}' not found, but matched as primal name (capability-first fallback)"
+                );
+                (capability.clone(), entry)
+            } else {
+                return Err(format!("No provider found for capability: {capability}"));
+            }
         } else if let Some(ref primal_id) = params.primal_id {
             debug!("Resolving by primal_id: {primal_id}");
             let entry = registry
@@ -79,7 +92,9 @@ impl IpcServiceHandler {
                 .ok_or_else(|| format!("Primal not found: {primal_id}"))?;
             (primal_id.clone(), entry)
         } else {
-            return Err("ipc.resolve requires either `primal_id` or `capability` parameter".into());
+            return Err(
+                "ipc.resolve requires either `primal_id`/`name` or `capability` parameter".into()
+            );
         };
 
         let result = ResolveResult {

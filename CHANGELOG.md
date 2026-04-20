@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave151] - 2026-04-20 - Phase 45 Audit: Capability-First Routing (PG-37)
+
+### Added — `ipc.resolve` capability-first fallback
+- **ipc_registry.rs**: If `capability` lookup fails, tries the same string as a primal name (graceful fallback for callers who conflate capability tokens with primal names, e.g. `resolve({"capability": "beardog"})` now finds BearDog)
+- **service_types.rs**: `name` serde alias for `primal_id` on `ResolveParams` — callers can use `{"name": "beardog"}` instead of `{"primal_id": "beardog"}`
+
+### Added — `ipc.resolve_by_name` method alias
+- **json_rpc_method/mod.rs**: `ipc.resolve_by_name` normalization alias → `ipc.resolve`
+- **introspection/rpc.rs**: documented in method listing and `rpc.discover`
+
+### Added — 3 new tests (7,380 total)
+- `ipc_resolve_capability_falls_back_to_primal_name`
+- `ipc_resolve_name_alias_for_primal_id`
+- `ipc_resolve_by_name_method_alias`
+
+---
+
 ## [v0.2.1-wave150] - 2026-04-20 - Doc Cleanup & Debris Removal
 
 ### Removed

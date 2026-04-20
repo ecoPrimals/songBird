@@ -34,7 +34,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 7,377 lib passed (0 failed, 22 ignored env-dependent) |
+| Tests | 7,380 lib passed (0 failed, 22 ignored env-dependent) |
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 20 verified) |
@@ -52,7 +52,7 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 - `health.liveness`, `health.readiness`, `health.check`
 - `capabilities.list` (Wire Standard L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`), `capabilities.methods`
 - `identity.get` (Wire Standard L3: `{primal, version, domain, license}`), `identity`
-- `capability.resolve` (single-step capability→endpoint, wired Wave 137), `discovery.peers` (wired Wave 137), `ipc.resolve` (dual-mode: `primal_id` or `capability` param, evolved Wave 137b LD-02), `lifecycle.composition`, `lifecycle.validate_consumed`
+- `capability.resolve` (single-step capability→endpoint, wired Wave 137), `discovery.peers` (wired Wave 137), `ipc.resolve` (capability-first with primal-name fallback; `capability`/`primal_id`/`name` params; `ipc.resolve_by_name` alias; evolved Wave 137b LD-02, Wave 151 PG-37), `lifecycle.composition`, `lifecycle.validate_consumed`
 - `inference.infer`, `inference.status`, `inference.list`, `inference.load` (canonical namespace; absorbs `model.*`/`ai.*`)
 - `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`
 - `http.request`, `http.get`, `http.post`

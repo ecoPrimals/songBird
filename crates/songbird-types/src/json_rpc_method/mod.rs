@@ -42,6 +42,7 @@ pub fn normalize_json_rpc_method_name(method: &str) -> &str {
 
         "ping" => "health.liveness",
         "register_service" => "ipc.register",
+        "ipc.resolve_by_name" => "ipc.resolve",
         "health_check" | "status" | "check" | "health" => "health.check",
 
         // Canonical inference namespace (inference.* is canonical; model.*/ai.* are aliases)

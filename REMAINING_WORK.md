@@ -2,9 +2,9 @@
 
 **Date**: April 20, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 150 (Apr 20, 2026)  
-**Current Wave**: 150 — doc cleanup and debris removal: stale `health-monitor.sh` removed (wrong API shape), false-positive metrics corrected in REMAINING_WORK.md (largest file, transitive duplicates), root docs updated (README, CONTEXT, CONTRIBUTING)  
-**Previous Waves** (full detail in `CHANGELOG.md`): 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 151 (Apr 20, 2026)  
+**Current Wave**: 151 — Phase 45 primalSpring audit response: `ipc.resolve` capability-first fallback (if capability lookup fails, tries primal name), `ipc.resolve_by_name` convenience alias, `name` serde alias for `primal_id`, introspection documented, 3 new tests (7,380 total)  
+**Previous Waves** (full detail in `CHANGELOG.md`): 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,377 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,380 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
