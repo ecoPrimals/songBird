@@ -125,6 +125,8 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 - [x] `ring-crypto` feature removed (Wave 135, SB-02 resolved): `rustls_rustcrypto` is the sole TLS provider. `ring` is NOT compiled in any build config (`cargo tree -i ring` = empty). Cargo.lock stanza persists because `rustls-webpki` (0.102 + 0.103) declares `ring` as an optional dep — Cargo's resolver locks optional dep versions by design. Investigated git `rustls-rustcrypto` (drops webpki 0.102) but pre-release RustCrypto crates are incompatible with stable workspace. Blocked on upstream `rustls-rustcrypto` crates.io release. See `deny.toml` for full stadial gate analysis.
 - [ ] Remaining transitive duplicates (hashbrown ×3, getrandom ×3, socket2 ×2, rand ×2, indexmap ×2, generic-array ×2, cpufeatures ×2) require upstream version unification
+- [ ] `serde_yaml` → TOML-only: 5 call sites in `songbird-config` (providers.rs, discover_impl.rs) + `songbird-discovery` (modernized_factory.rs); archived upstream crate; yaml feature already stripped from `config` workspace dep (Wave 152)
+- [ ] `bincode` 1.x (RUSTSEC-2025-0141): transitive via tarpc/tokio-serde; migrate tarpc codec or swap to postcard
 - [x] `async-trait` **fully eliminated** (Wave 145): 141→0 annotations, dependency removed from all crates and workspace `Cargo.toml`. Every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. SB-06 resolved.
 - [x] `rand` removed from `songbird-orchestrator` production deps (Wave 140): JWT CSPRNG replaced with `getrandom::fill()`; `rand` retained as dev-dependency for tests
 - [x] Dead `sled` dependency removed from `songbird-tor-protocol` (Wave 116)

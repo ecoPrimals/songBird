@@ -48,7 +48,7 @@ enable_fallback = true
 # PRIMAL_2_TYPE=ai
 #
 # PRIMAL_3_NAME=distributed-storage
-# PRIMAL_3_ENDPOINT=http://storage.cluster:${SONGBIRD_BEARDOG_PORT}  # Or use CAPABILITY_STORAGE_ENDPOINT
+# PRIMAL_3_ENDPOINT=http://storage.cluster:${SONGBIRD_HTTP_PORT}  # Or use CAPABILITY_STORAGE_ENDPOINT
 # PRIMAL_3_CAPABILITIES=storage,data,persistence  
 # PRIMAL_3_TYPE=storage
 #
