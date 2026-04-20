@@ -45,7 +45,7 @@ pub enum IpcError {
     #[error("Registry error: {0}")]
     RegistryError(String),
 
-    /// Storage capability provider integration error (optional; enable with `storage_provider` or legacy `nestgate` feature).
+    /// Storage capability provider integration error (optional; enable with `storage_provider` feature).
     #[cfg(feature = "storage_provider")]
     #[error("Storage provider error: {0}")]
     StorageProviderError(String),

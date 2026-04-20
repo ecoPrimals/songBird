@@ -112,7 +112,10 @@ pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
 /// Crypto capability traits, TLS secret bags, and runtime discovery helpers for security-provider sockets.
-#[expect(deprecated)]
+#[expect(
+    deprecated,
+    reason = "re-exports include legacy discovery helpers kept for API stability"
+)]
 pub use crypto::{
     CryptoCapability, IpcEndpoint, SecurityCryptoProvider, TlsApplicationSecrets,
     TlsHandshakeSecrets, discover_crypto_capability, discover_ipc_endpoint,

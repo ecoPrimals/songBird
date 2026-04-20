@@ -159,7 +159,10 @@ impl FilesystemStrategy {
 
         // Add user runtime directory if available
         if let Ok(uid) = songbird_process_env::var("UID") {
-            search_paths.push(PathBuf::from(format!("/run/user/{uid}")));
+            search_paths.push(PathBuf::from(format!(
+                "{}/{uid}",
+                songbird_types::constants::USER_RUNTIME_PREFIX
+            )));
         }
 
         search_paths.push(PathBuf::from(SYSTEM_RUNTIME_DIR));

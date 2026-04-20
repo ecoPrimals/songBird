@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave152] - 2026-04-20 - Deep Debt: Deps, Hardcoding, Test Hygiene
+
+### Removed — Dead workspace dependencies
+- **Root Cargo.toml**: removed `slab` (unused by any crate) and `wasi` (unused by any crate)
+- **Root Cargo.toml**: removed `yaml` from `config` crate feature set (TOML+JSON only)
+
+### Changed — Mock feature naming
+- **songbird-bluetooth**: renamed `test-utils` → `test-mocks` (consistent with ecosystem standard)
+
+### Fixed — Env-dependent test
+- **songbird-tls/cert/generator.rs**: `bear_dog_mode_errors_when_security_provider_unavailable` renamed to `security_provider_mode_behaviour_depends_on_environment` — now handles both Ok (live provider) and Err (no provider) correctly instead of unconditionally expecting failure
+
+### Changed — Hardcoded path elimination
+- **capability/strategy.rs**: `/run/user/{uid}` → `USER_RUNTIME_PREFIX` constant
+- **platform/unix.rs**: `/run/user/{uid_str}/...` → `USER_RUNTIME_PREFIX` constant with `PathBuf::join`
+
+### Changed — Lint hygiene
+- **songbird-http-client/lib.rs**: bare `#[expect(deprecated)]` given reason string
+
+---
+
 ## [v0.2.1-wave151] - 2026-04-20 - Phase 45 Audit: Capability-First Routing (PG-37)
 
 ### Added — `ipc.resolve` capability-first fallback

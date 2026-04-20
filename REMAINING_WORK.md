@@ -2,9 +2,9 @@
 
 **Date**: April 20, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 151 (Apr 20, 2026)  
-**Current Wave**: 151 — Phase 45 primalSpring audit response: `ipc.resolve` capability-first fallback (if capability lookup fails, tries primal name), `ipc.resolve_by_name` convenience alias, `name` serde alias for `primal_id`, introspection documented, 3 new tests (7,380 total)  
-**Previous Waves** (full detail in `CHANGELOG.md`): 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 152 (Apr 20, 2026)  
+**Current Wave**: 152 — deep debt pass: dead workspace deps removed (slab, wasi), yaml feature stripped from config, songbird-bluetooth test-utils → test-mocks, env-dependent TLS cert test fixed, hardcoded `/run/user/` paths evolved to USER_RUNTIME_PREFIX, bare `#[expect]` given reason, 7,380 tests  
+**Previous Waves** (full detail in `CHANGELOG.md`): 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 

@@ -118,7 +118,6 @@ tokio = { version = "1.48", features = [
     "sync", "time", "fs", "signal", "process",
 ] }
 futures-util = "0.3.31"
-slab = "0.4.11"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -135,7 +134,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Configuration
-config = { version = "0.14", default-features = false, features = ["toml", "json", "yaml"] }
+config = { version = "0.14", default-features = false, features = ["toml", "json"] }
 toml = "0.8"
 
 # Random
@@ -170,7 +169,6 @@ tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "cors", "fs", "limit"] }
 
 # System
-wasi = "0.14"
 dirs = "5.0"
 
 # Testing

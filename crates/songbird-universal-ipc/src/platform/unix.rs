@@ -92,7 +92,10 @@ where
 
     // Priority 4: Fallback XDG path using UID env var (Pure Rust!)
     if let Ok(uid_str) = env_reader("UID") {
-        return PathBuf::from(format!("/run/user/{uid_str}/{BIOMEOS_DIR}/{primal_name}.sock"));
+        return PathBuf::from(songbird_types::constants::USER_RUNTIME_PREFIX)
+            .join(&uid_str)
+            .join(BIOMEOS_DIR)
+            .join(format!("{primal_name}.sock"));
     }
 
     // Priority 5: Legacy temp-dir fallback (if all else fails)
