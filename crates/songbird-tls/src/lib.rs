@@ -77,10 +77,6 @@ pub mod socket_discovery; // NEW: XDG-compliant socket discovery
 
 /// Re-export of [`crate::crypto::SecurityTlsCryptoClient`].
 pub use crypto::SecurityTlsCryptoClient;
-/// Deprecated alias for [`SecurityTlsCryptoClient`].
-#[deprecated(note = "use SecurityTlsCryptoClient (capability-based naming)")]
-pub type LegacySecurityTlsCryptoClient = SecurityTlsCryptoClient;
-
 // Error types
 pub mod error;
 pub use error::{Result, TlsError};

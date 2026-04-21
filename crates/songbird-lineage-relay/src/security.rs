@@ -684,8 +684,10 @@ pub enum BirdSongCrypto {
     #[cfg(any(test, feature = "test-mocks"))]
     Mock(MockBirdSongCrypto),
     /// Pass-through: no crypto transform (unit / integration harnesses).
+    #[cfg(any(test, feature = "test-mocks"))]
     StubPassthrough,
     /// Prepends `ENCRYPTED:` for unit tests (paired stub strips prefix on decrypt).
+    #[cfg(any(test, feature = "test-mocks"))]
     StubMockEncrypted,
 }
 
@@ -696,7 +698,9 @@ impl BirdSongCrypto {
             Self::Security(p) => p.encrypt_for_lineage(message, hint).await,
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.encrypt_for_lineage(message, hint).await,
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubPassthrough => Ok(message.to_vec()),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubMockEncrypted => {
                 let mut encrypted = b"ENCRYPTED:".to_vec();
                 encrypted.extend_from_slice(message);
@@ -715,7 +719,9 @@ impl BirdSongCrypto {
             Self::Security(p) => p.decrypt_birdsong(encrypted, sender).await,
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.decrypt_birdsong(encrypted, sender).await,
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubPassthrough => Ok(Some(encrypted.to_vec())),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubMockEncrypted => {
                 if encrypted.starts_with(b"ENCRYPTED:") {
                     Ok(Some(encrypted[10..].to_vec()))

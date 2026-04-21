@@ -31,7 +31,6 @@ serde_json = { workspace = true, optional = true }
 chrono = { workspace = true, optional = true }
 uuid = { workspace = true }
 bitflags = { workspace = true }
-regex = "1.0"
 tokio = { workspace = true, features = ["full"] }
 toml = { workspace = true }
 tracing = { workspace = true }

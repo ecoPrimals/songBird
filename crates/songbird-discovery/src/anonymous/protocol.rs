@@ -211,7 +211,10 @@ mod tests {
         {
             let _e =
                 songbird_test_utils::ScopedEnv::remove("SONGBIRD_DEFAULT_DISCOVERY_PORT").await;
-            assert_eq!(default_v3_fallback_port(), songbird_types::constants::DEFAULT_HTTP_PORT);
+            assert_eq!(
+                default_v3_fallback_port(),
+                songbird_types::defaults::ports::DEFAULT_HTTP_PORT
+            );
         }
         let _e =
             songbird_test_utils::ScopedEnv::set("SONGBIRD_DEFAULT_DISCOVERY_PORT", "9443").await;

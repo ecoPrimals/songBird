@@ -29,8 +29,10 @@ pub enum RelayAuthority {
     #[cfg(any(test, feature = "test-mocks"))]
     Mock(crate::security::MockRelayAuthority),
     /// Harness: always authorizes with `MaskingLevel::None` for masking stubs.
+    #[cfg(any(test, feature = "test-mocks"))]
     StubAllow,
     /// Harness: always denies authorization.
+    #[cfg(any(test, feature = "test-mocks"))]
     StubDeny,
 }
 
@@ -45,12 +47,14 @@ impl RelayAuthority {
             Self::Security(a) => a.authorize_relay(relay_node, requester).await,
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.authorize_relay(relay_node, requester).await,
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubAllow => Ok(RelayAuthorization::authorized(
                 relay_node.clone(),
                 requester.clone(),
                 MaskingLevel::None,
                 300,
             )),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubDeny => {
                 Ok(RelayAuthorization::unauthorized(relay_node.clone(), requester.clone()))
             }
@@ -67,7 +71,9 @@ impl RelayAuthority {
             Self::Security(a) => a.determine_masking(relay_node, requester).await,
             #[cfg(any(test, feature = "test-mocks"))]
             Self::Mock(m) => m.determine_masking(relay_node, requester).await,
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubAllow => Ok(MaskingLevel::None),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::StubDeny => Ok(MaskingLevel::Full),
         }
     }

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave154] - 2026-04-15 - Deep Debt: Mock Isolation, Dead Deps, Lint Hygiene
+
+### Changed — Production stub isolation
+- **songbird-lineage-relay/relay.rs**: `RelayAuthority::StubAllow` and `StubDeny` gated behind `#[cfg(any(test, feature = "test-mocks"))]` — no longer compiled into production binaries
+- **songbird-lineage-relay/security.rs**: `BirdSongCrypto::StubPassthrough` and `StubMockEncrypted` gated behind `#[cfg(any(test, feature = "test-mocks"))]`
+
+### Removed — Dead dependencies and debris
+- **songbird-types/Cargo.toml**: removed unused `regex = "1.0"` (zero usage in crate)
+- **songbird-cli/Cargo.toml**: removed unused `regex = "1.10"` (sole consumer `security_audit.rs` was orphaned)
+- **songbird-cli**: deleted orphaned `security_audit.rs` — never wired into module tree, contained ~50 syntax errors, was AI-generated debris from early CLI scaffolding
+- **songbird-tls/lib.rs**: removed `LegacySecurityTlsCryptoClient` deprecated alias (defined but never referenced externally)
+
+### Fixed — Deprecated constant usage
+- **songbird-discovery/anonymous/protocol.rs**: test assertion migrated from deprecated `constants::DEFAULT_HTTP_PORT` to canonical `defaults::ports::DEFAULT_HTTP_PORT`
+
+### Changed — Lint hygiene
+- **songbird-universal-ipc/lib.rs**: blanket `#![cfg_attr(test, allow(...))]` block given `reason = "..."` string (42 lints)
+- **songbird-lineage-relay/lib.rs**: blanket `#![cfg_attr(test, allow(...))]` block given `reason = "..."` string (42 lints)
+
+---
+
 ## [v0.2.1-wave153] - 2026-04-21 - BTSP NDJSON Wire-Format Alignment (Phase 45b)
 
 ### Added — BTSP JSON-line (NDJSON) handshake support

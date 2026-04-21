@@ -1,10 +1,10 @@
 # Songbird Remaining Work
 
-**Date**: April 20, 2026  
+**Date**: April 15, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 153 (Apr 21, 2026)  
-**Current Wave**: 153 — BTSP NDJSON wire-format alignment (Phase 45b): `perform_server_handshake_ndjson()` for JSON-line BTSP clients (primalSpring), first-line auto-detect distinguishes `"protocol":"btsp"` from JSON-RPC, 7,388 tests  
-**Previous Waves** (full detail in `CHANGELOG.md`): 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 154 (Apr 15, 2026)  
+**Current Wave**: 154 — Deep debt: mock isolation, dead dep removal, lint hygiene, debris cleanup. Feature-gated 4 production stub variants behind `test-mocks`, removed 2 dead `regex` deps, deleted broken orphaned `security_audit.rs`, removed unused deprecated alias, fixed deprecated constant usage, added lint reasons to blanket test allows. 7,385 tests  
+**Previous Waves** (full detail in `CHANGELOG.md`): 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -12,12 +12,12 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,388 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,385 lib passed, 2 pre-existing env-dependent failures (birdsong beacon crypto), 22 ignored |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 20 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 20 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 15 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 15 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; former 1030L monolith smart-refactored Wave 144; 4 former >700L files refactored Wave 133) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
@@ -27,8 +27,8 @@
 | **Production `unreachable!()`** | 2 (provably unreachable QUIC VarInt 2-bit prefix arms, documented) |
 | **TODO/FIXME/HACK comments** | 0 in Rust source; 0 FIXME/HACK |
 | **Commented-out code** | 0 in production library code (Wave 124 scrub); doc-style examples in comments kept intentionally |
-| **`#[allow(` vs `#[expect(`** | Wave 134 completed full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates (45+ attributes in 30 files); Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons; Wave 137c: all bare `#[allow()]` in test files and TLS crate given reason strings; Wave 147: all remaining bare `#[allow(clippy::type_complexity)]`, `#[allow(clippy::too_many_lines)]`, `#[allow(unused_mut)]`, `#[allow(deprecated)]` given reason strings (6 e2e test files + 4 production); `#[expect(reason)]` retained where non-dead-code lints provably fire; zero reasonless suppressions remain |
-| **Mocks in production** | 0 (all inside `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]`; `birdsong::mocks` gated Wave 147) |
+| **`#[allow(` vs `#[expect(`** | Wave 134 completed full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates (45+ attributes in 30 files); Wave 136: all generic `"reserved or API surface"` reason strings replaced with specific contextual reasons; Wave 137c: all bare `#[allow()]` in test files and TLS crate given reason strings; Wave 147: all remaining bare `#[allow(clippy::type_complexity)]`, `#[allow(clippy::too_many_lines)]`, `#[allow(unused_mut)]`, `#[allow(deprecated)]` given reason strings (6 e2e test files + 4 production); Wave 154: blanket `#![cfg_attr(test, allow(...))]` in universal-ipc and lineage-relay given reason strings; `#[expect(reason)]` retained where non-dead-code lints provably fire; zero reasonless suppressions remain |
+| **Mocks in production** | 0 (all inside `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]`; `birdsong::mocks` gated Wave 147; `StubAllow`/`StubDeny`/`StubPassthrough`/`StubMockEncrypted` gated Wave 154) |
 | **Capability discovery** | `find_primals_with_capability` — identity-agnostic, env-driven |
 | **Hardcoded elimination** | All ports env-driven (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`, `SONGBIRD_BIND_ADDRESS`, `SONGBIRD_MULTICAST_ADDRESS`); canonical `DEFAULT_SONGBIRD_PORT` (3492) constant replaces all magic-number port fallbacks (Wave 136); `BIOMEOS_RUNTIME_SUBDIR` constant replaces all `"biomeos"` path literals in production (Wave 136); all socket paths XDG-compliant; all IP probes use netdev + RFC 5737 fallback; capability-first across 11+ crates; all legacy primal env vars deprecated with `tracing::warn!`; all deprecated function/type/module names removed; Wave 137c: zero remaining hardcoded `"0.0.0.0"` / `"127.0.0.1"` / `"localhost"` in production code — all evolved to `PRODUCTION_BIND_ADDRESS` / `DEVELOPMENT_BIND_ADDRESS` / `LOCALHOST` constants; all legacy port constants deprecated to canonical `defaults::ports` |
 | **JSON-RPC dispatch** | Typed `JsonRpcMethod` enum (53+ methods, 16 domain sub-enums including `Lifecycle` and `Inference`); `normalize_json_rpc_method_name()` absorbs `model.*`/`ai.*` → `inference.*`, `discovery.find_by_capability`/`net.discovery.find_by_capability` → `ipc.discover` |

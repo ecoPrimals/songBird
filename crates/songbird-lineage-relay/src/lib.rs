@@ -147,6 +147,7 @@
         clippy::case_sensitive_file_extension_comparisons,
         clippy::needless_update,
         clippy::await_holding_invalid_type,
+        reason = "test harnesses: intentional leniency for assertion ergonomics and legacy test patterns"
     )
 )]
 
