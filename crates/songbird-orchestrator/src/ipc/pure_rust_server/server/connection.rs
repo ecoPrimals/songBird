@@ -4,15 +4,17 @@
 //! Unix/TCP accept loops, per-connection framing, and TCP discovery file I/O.
 //!
 //! When BTSP is active (production mode with `FAMILY_ID` set), every accepted
-//! UDS connection is routed through first-byte peek auto-detection:
+//! UDS connection is routed through first-line auto-detection:
 //!
-//! - `0x7B` (`'{'`) → plain newline-delimited JSON-RPC (biomeOS composition,
-//!   springs, local tooling)
-//! - Any other byte → BTSP length-prefixed binary framing (remote/secure
-//!   connections, BearDog-authenticated)
+//! - First byte `0x7B` (`{`) → read full first line, then:
+//!   - Contains `"protocol":"btsp"` → BTSP JSON-line (NDJSON) handshake,
+//!     then persistent NDJSON JSON-RPC session (primalSpring, springs)
+//!   - Otherwise → plain NDJSON JSON-RPC (biomeOS composition, local tooling)
+//! - Any other first byte → BTSP length-prefixed binary framing
 //!
-//! This matches the security provider's TCP auto-detect pattern and the storage provider's UDS pattern
-//! per `UPSTREAM_CROSSTALK_AND_DOWNSTREAM_ABSORPTION.md`.
+//! This matches the security provider's TCP auto-detect pattern and the
+//! storage provider's UDS pattern per
+//! `UPSTREAM_CROSSTALK_AND_DOWNSTREAM_ABSORPTION.md`.
 
 use anyhow::{Context, Result, bail};
 use bytes::Bytes;
@@ -115,8 +117,10 @@ impl UnixSocketServer {
         info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
         if btsp_active {
-            info!("   Security: BTSP with first-byte peek auto-detect (FAMILY_ID set)");
-            info!("   Peek: 0x7B ('{{') → plain JSON-RPC | otherwise → BTSP handshake");
+            info!("   Security: BTSP with first-line auto-detect (FAMILY_ID set)");
+            info!(
+                "   Peek: '{{' + protocol:btsp → NDJSON BTSP | '{{' → plain JSON-RPC | other → binary BTSP"
+            );
         } else {
             info!("   Security: Development mode (no BTSP handshake)");
         }
@@ -271,22 +275,24 @@ impl UnixSocketServer {
 
     // ─── Per-connection protocol detection ───────────────────────────────────
 
-    /// Per-connection protocol auto-detection via first-byte peek.
+    /// Per-connection protocol auto-detection via first-byte peek + first-line
+    /// discrimination.
     ///
-    /// Peeks the first byte of each UDS connection using `BufReader::fill_buf`
-    /// (no data consumed). Routes based on the discriminant:
+    /// Peeks the first byte using `BufReader::fill_buf` (no data consumed):
     ///
-    /// - `0x7B` (`{`) → plain NDJSON-RPC (biomeOS `capability.call`, springs)
-    /// - Anything else → BTSP binary handshake
+    /// - `0x7B` (`{`) → reads the full first line, then:
+    ///   - Contains `"protocol":"btsp"` → BTSP JSON-line (NDJSON) handshake
+    ///     followed by persistent NDJSON JSON-RPC (primalSpring wire format)
+    ///   - Otherwise → plain NDJSON-RPC (biomeOS, local tooling)
+    /// - Any other byte → BTSP length-prefixed binary handshake
     ///
-    /// For the BTSP path, the peeked byte is preserved in the `BufReader`'s
-    /// internal buffer and passed through via [`PeekedStream`] so the handshake
-    /// sees the complete frame.
+    /// For the binary BTSP path, the peeked byte is preserved in the
+    /// `BufReader` and passed through via [`PeekedStream`].
     #[cfg(unix)]
     async fn handle_connection_with_peek(&self, stream: UnixStream) -> Result<()> {
         const PEEK_TIMEOUT: Duration = Duration::from_secs(5);
 
-        let (read_half, write_half) = stream.into_split();
+        let (read_half, mut write_half) = stream.into_split();
         let mut reader = BufReader::new(read_half);
 
         let first_byte = match tokio::time::timeout(PEEK_TIMEOUT, reader.fill_buf()).await {
@@ -305,8 +311,34 @@ impl UnixSocketServer {
         };
 
         if first_byte == b'{' {
-            debug!("UDS peek: JSON-RPC detected (0x7B) — bypassing BTSP for local composition");
-            self.handle_ndjson_session(reader, write_half).await
+            let mut first_line = String::new();
+            reader.read_line(&mut first_line).await.context("UDS: failed to read first line")?;
+
+            if first_line.trim().is_empty() {
+                debug!("UDS: empty first line after peek");
+                return Ok(());
+            }
+
+            if btsp::is_btsp_client_hello(&first_line) {
+                debug!("UDS peek: BTSP JSON-line ClientHello detected — NDJSON handshake");
+                let session = btsp::perform_server_handshake_ndjson(
+                    &first_line,
+                    &mut reader,
+                    &mut write_half,
+                    &self.security_client,
+                )
+                .await
+                .context("BTSP NDJSON handshake failed")?;
+
+                info!(
+                    "BTSP NDJSON session {} authenticated (cipher: {})",
+                    session.session_id, session.cipher
+                );
+                self.handle_ndjson_session(reader, write_half).await
+            } else {
+                debug!("UDS peek: JSON-RPC detected — plain NDJSON session");
+                self.handle_ndjson_first_line_then_session(first_line, reader, write_half).await
+            }
         } else {
             debug!("UDS peek: binary protocol detected (0x{first_byte:02X}) — BTSP handshake");
             let mut stream = PeekedStream {
@@ -414,6 +446,55 @@ impl UnixSocketServer {
     }
 
     // ─── NDJSON handler (shared by UDS plain + TCP + peek-bypass) ────────────
+
+    /// Handle a pre-consumed first line as JSON-RPC, then continue with a
+    /// persistent NDJSON session. Used when the first-line discrimination read
+    /// the line to check for BTSP but found normal JSON-RPC instead.
+    async fn handle_ndjson_first_line_then_session<R, W>(
+        &self,
+        first_line: String,
+        reader: R,
+        mut writer: W,
+    ) -> Result<()>
+    where
+        R: AsyncBufRead + Unpin,
+        W: AsyncWrite + Unpin,
+    {
+        if !first_line.trim().is_empty() {
+            match serde_json::from_str::<JsonRpcRequest>(&first_line) {
+                Ok(request) => {
+                    let is_notification = request.id.is_none();
+                    debug!(
+                        "JSON-RPC request: {} (notification={})",
+                        request.method, is_notification
+                    );
+                    let response = self.handle_jsonrpc_request(request).await;
+                    if !is_notification {
+                        let mut payload = serde_json::to_vec(&response)?;
+                        payload.push(b'\n');
+                        writer.write_all(&Bytes::from(payload)).await?;
+                        writer.flush().await?;
+                    }
+                }
+                Err(e) => {
+                    let resp = JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        result: None,
+                        error: Some(JsonRpcError::parse_error(format!(
+                            "Failed to parse JSON-RPC request: {e}"
+                        ))),
+                        id: serde_json::Value::Null,
+                    };
+                    let mut payload = serde_json::to_vec(&resp)?;
+                    payload.push(b'\n');
+                    writer.write_all(&Bytes::from(payload)).await?;
+                    writer.flush().await?;
+                }
+            }
+        }
+
+        self.handle_ndjson_session(reader, writer).await
+    }
 
     /// Persistent newline-delimited JSON-RPC session: reads requests in a loop
     /// until the client disconnects. Generic over any buffered reader + writer pair.

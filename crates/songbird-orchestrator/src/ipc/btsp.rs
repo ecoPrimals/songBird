@@ -26,7 +26,7 @@ use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tracing::{debug, error, info, warn};
 
 use songbird_http_client::SecurityRpcClient;
@@ -39,6 +39,8 @@ const CHALLENGE_LEN: usize = 32;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ClientHello {
+    #[serde(default)]
+    protocol: Option<String>,
     version: u8,
     client_ephemeral_pub: String, // base64
 }
@@ -240,6 +242,180 @@ where
     })
 }
 
+// ─── NDJSON-framed BTSP handshake ─────────────────────────────────────────────
+//
+// primalSpring and other JSON-line clients send the BTSP handshake as
+// newline-delimited JSON (not 4-byte length-prefix). The ClientHello
+// includes `"protocol":"btsp"` which distinguishes it from JSON-RPC.
+
+/// Quick check whether a JSON line looks like a BTSP `ClientHello`.
+///
+/// Checks for `"protocol"` key with a `btsp` value — this distinguishes
+/// BTSP handshake traffic from JSON-RPC (which has `"jsonrpc"` / `"method"`).
+/// Used by the peek handler in `connection.rs` to route JSON-line BTSP
+/// clients to [`perform_server_handshake_ndjson`].
+#[must_use]
+pub fn is_btsp_client_hello(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.contains("\"protocol\"") && trimmed.contains("btsp")
+}
+
+async fn write_ndjson<W: AsyncWrite + Unpin>(writer: &mut W, value: &impl Serialize) -> Result<()> {
+    let mut bytes = serde_json::to_vec(value)?;
+    bytes.push(b'\n');
+    writer.write_all(&bytes).await.context("BTSP NDJSON: write failed")?;
+    writer.flush().await.context("BTSP NDJSON: flush failed")?;
+    Ok(())
+}
+
+async fn read_ndjson_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<String> {
+    let mut line = String::new();
+    let n = reader.read_line(&mut line).await.context("BTSP NDJSON: read failed")?;
+    if n == 0 {
+        bail!("BTSP NDJSON: peer disconnected");
+    }
+    Ok(line)
+}
+
+/// Perform the server-side BTSP handshake using NDJSON (newline-delimited) framing.
+///
+/// Accepts the already-read first line (the `ClientHello`) and uses
+/// newline-delimited JSON for the remaining handshake steps. This matches the
+/// wire format used by primalSpring, ludoSpring, and other JSON-line BTSP clients
+/// whose `ClientHello` includes `"protocol":"btsp"`.
+///
+/// After a successful handshake the connection continues with NDJSON JSON-RPC
+/// (the same `handle_ndjson_session` used for cleartext clients).
+///
+/// # Errors
+///
+/// Returns an error if the handshake fails (malformed messages, BearDog
+/// unreachable, wrong family seed, cipher rejection).
+pub async fn perform_server_handshake_ndjson<R, W>(
+    first_line: &str,
+    reader: &mut R,
+    writer: &mut W,
+    security_client: &Arc<SecurityRpcClient>,
+) -> Result<BtspSession>
+where
+    R: AsyncBufRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    // Step 1: Parse pre-read ClientHello (already consumed from the stream)
+    debug!("BTSP NDJSON handshake: parsing ClientHello");
+    let client_hello: ClientHello =
+        serde_json::from_str(first_line.trim()).context("BTSP NDJSON: malformed ClientHello")?;
+
+    if client_hello.version != BTSP_VERSION {
+        let err = HandshakeError {
+            error: "handshake_failed".into(),
+            reason: format!(
+                "unsupported BTSP version {} (expected {BTSP_VERSION})",
+                client_hello.version
+            ),
+        };
+        let _ = write_ndjson(writer, &err).await;
+        bail!("BTSP NDJSON: client sent unsupported version {}", client_hello.version);
+    }
+
+    let client_pub = BASE64_STANDARD
+        .decode(&client_hello.client_ephemeral_pub)
+        .context("BTSP NDJSON: invalid base64 in client_ephemeral_pub")?;
+
+    let mut challenge = vec![0u8; CHALLENGE_LEN];
+    getrandom::fill(&mut challenge)
+        .map_err(|e| anyhow::anyhow!("BTSP NDJSON: getrandom failed: {e}"))?;
+
+    // Step 2: Call BearDog to create session, send ServerHello as NDJSON
+    let session = security_client
+        .btsp_session_create(&client_pub, &challenge)
+        .await
+        .context("BTSP NDJSON: BearDog btsp.session.create failed")?;
+
+    info!("BTSP NDJSON handshake: session {} created, sending ServerHello", session.session_id);
+
+    let server_hello = ServerHello {
+        version: BTSP_VERSION,
+        server_ephemeral_pub: BASE64_STANDARD.encode(&session.server_ephemeral_pub),
+        challenge: BASE64_STANDARD.encode(&challenge),
+    };
+    write_ndjson(writer, &server_hello).await?;
+
+    // Step 3: Read ChallengeResponse as NDJSON line
+    debug!("BTSP NDJSON handshake: awaiting ChallengeResponse");
+    let resp_line = read_ndjson_line(reader).await?;
+    let challenge_resp: ChallengeResponse = serde_json::from_str(resp_line.trim())
+        .context("BTSP NDJSON: malformed ChallengeResponse")?;
+
+    let client_response = BASE64_STANDARD
+        .decode(&challenge_resp.response)
+        .context("BTSP NDJSON: invalid base64 in challenge response")?;
+
+    // Step 4: Verify via BearDog
+    let verification = security_client
+        .btsp_session_verify(
+            &session.session_id,
+            &client_response,
+            &client_pub,
+            &session.server_ephemeral_pub,
+            &challenge,
+        )
+        .await
+        .context("BTSP NDJSON: BearDog btsp.session.verify failed")?;
+
+    if !verification.verified {
+        error!(
+            "BTSP NDJSON handshake: FAILED for session {} (wrong family seed)",
+            session.session_id
+        );
+        let err = HandshakeError {
+            error: "handshake_failed".into(),
+            reason: "family_verification".into(),
+        };
+        let _ = write_ndjson(writer, &err).await;
+        bail!("BTSP NDJSON: client failed family verification");
+    }
+
+    let session_key =
+        verification.session_key.context("BTSP NDJSON: verified but no session_key returned")?;
+
+    let preferred = &challenge_resp.preferred_cipher;
+    let negotiation = security_client
+        .btsp_negotiate(&session.session_id, parse_cipher(preferred), "Covalent")
+        .await
+        .context("BTSP NDJSON: BearDog btsp.negotiate failed")?;
+
+    if !negotiation.allowed {
+        warn!(
+            "BTSP NDJSON: cipher '{}' not allowed by BondingPolicy, session {}",
+            preferred, session.session_id
+        );
+        let err = HandshakeError {
+            error: "handshake_failed".into(),
+            reason: format!("cipher '{preferred}' not allowed"),
+        };
+        let _ = write_ndjson(writer, &err).await;
+        bail!("BTSP NDJSON: cipher negotiation rejected");
+    }
+
+    let complete = HandshakeComplete {
+        cipher: negotiation.cipher.clone(),
+        session_id: session.session_id.clone(),
+    };
+    write_ndjson(writer, &complete).await?;
+
+    info!(
+        "BTSP NDJSON handshake: COMPLETE for session {} (cipher: {})",
+        session.session_id, negotiation.cipher
+    );
+
+    Ok(BtspSession {
+        session_id: session.session_id,
+        cipher: negotiation.cipher,
+        session_key,
+    })
+}
+
 fn parse_cipher(s: &str) -> songbird_http_client::BtspCipher {
     match s {
         "chacha20_poly1305" | "chacha20" => songbird_http_client::BtspCipher::ChaCha20Poly1305,
@@ -343,6 +519,7 @@ mod tests {
     #[test]
     fn wire_types_serde_roundtrip() {
         let hello = ClientHello {
+            protocol: None,
             version: 1,
             client_ephemeral_pub: "AAAA".to_string(),
         };
@@ -384,6 +561,63 @@ mod tests {
         let mut cursor = std::io::Cursor::new(buf);
         let got = read_frame(&mut cursor).await.unwrap();
         assert_eq!(got, payload);
+    }
+
+    #[test]
+    fn is_btsp_client_hello_accepts_primalspring_format() {
+        let line = r#"{"protocol":"btsp","version":1,"client_ephemeral_pub":"AAAA"}"#;
+        assert!(is_btsp_client_hello(line));
+    }
+
+    #[test]
+    fn is_btsp_client_hello_accepts_with_whitespace() {
+        let line = "  {\"protocol\":\"btsp\",\"version\":1,\"client_ephemeral_pub\":\"AAAA\"}\n";
+        assert!(is_btsp_client_hello(line));
+    }
+
+    #[test]
+    fn is_btsp_client_hello_rejects_jsonrpc() {
+        let line = r#"{"jsonrpc":"2.0","method":"health.check","id":1}"#;
+        assert!(!is_btsp_client_hello(line));
+    }
+
+    #[test]
+    fn is_btsp_client_hello_rejects_empty() {
+        assert!(!is_btsp_client_hello(""));
+        assert!(!is_btsp_client_hello("  \n"));
+    }
+
+    #[test]
+    fn client_hello_deserializes_with_protocol() {
+        let json = r#"{"protocol":"btsp","version":1,"client_ephemeral_pub":"AAAA"}"#;
+        let hello: ClientHello = serde_json::from_str(json).unwrap();
+        assert_eq!(hello.protocol.as_deref(), Some("btsp"));
+        assert_eq!(hello.version, 1);
+    }
+
+    #[test]
+    fn client_hello_deserializes_without_protocol() {
+        let json = r#"{"version":1,"client_ephemeral_pub":"AAAA"}"#;
+        let hello: ClientHello = serde_json::from_str(json).unwrap();
+        assert!(hello.protocol.is_none());
+        assert_eq!(hello.version, 1);
+    }
+
+    #[tokio::test]
+    async fn ndjson_write_read_roundtrip() {
+        let value = ServerHello {
+            version: 1,
+            server_ephemeral_pub: "BBBB".to_string(),
+            challenge: "CCCC".to_string(),
+        };
+        let mut buf = Vec::new();
+        write_ndjson(&mut buf, &value).await.unwrap();
+        assert!(buf.ends_with(b"\n"));
+
+        let mut cursor = std::io::Cursor::new(buf);
+        let line = read_ndjson_line(&mut cursor).await.unwrap();
+        let back: ServerHello = serde_json::from_str(line.trim()).unwrap();
+        assert_eq!(back.challenge, "CCCC");
     }
 
     #[tokio::test]

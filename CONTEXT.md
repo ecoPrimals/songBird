@@ -5,14 +5,14 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 20, 2026
+**Last Updated**: April 21, 2026
 
 ## What It Does
 
 Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 
 - **HTTP/HTTPS**: Pure Rust TLS 1.3 client for sovereign HTTPS (Tower Atomic with security provider)
-- **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication; BTSP Phase 2 handshake on UDS accept when `FAMILY_ID` set; domain symlink `network.sock` → `songbird.sock` for capability discovery
+- **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication; BTSP Phase 2 handshake on UDS accept when `FAMILY_ID` set (length-prefix + NDJSON wire formats; first-line auto-detect for JSON-line BTSP clients); domain symlink `network.sock` → `songbird.sock` for capability discovery
 - **Discovery**: Capability-based runtime discovery — mDNS, SSDP, UDP broadcast, DNS-SD, BirdSong encrypted beacons
 - **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh
 - **Federation**: Multi-node mesh networking with capability-based routing
@@ -34,10 +34,10 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 7,380 lib passed (0 failed, 22 ignored env-dependent) |
+| Tests | 7,388 lib passed (0 failed, 22 ignored env-dependent) |
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 20 verified) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 21 verified) |
 | Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored Wave 133; largest test 731L) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |

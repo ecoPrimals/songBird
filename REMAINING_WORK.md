@@ -2,9 +2,9 @@
 
 **Date**: April 20, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 152 (Apr 20, 2026)  
-**Current Wave**: 152 — deep debt pass: dead workspace deps removed (slab, wasi), yaml feature stripped from config, songbird-bluetooth test-utils → test-mocks, env-dependent TLS cert test fixed, hardcoded `/run/user/` paths evolved to USER_RUNTIME_PREFIX, bare `#[expect]` given reason, 7,380 tests  
-**Previous Waves** (full detail in `CHANGELOG.md`): 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Last Deep Debt Audit**: Wave 153 (Apr 21, 2026)  
+**Current Wave**: 153 — BTSP NDJSON wire-format alignment (Phase 45b): `perform_server_handshake_ndjson()` for JSON-line BTSP clients (primalSpring), first-line auto-detect distinguishes `"protocol":"btsp"` from JSON-RPC, 7,388 tests  
+**Previous Waves** (full detail in `CHANGELOG.md`): 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,380 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
+| **Tests** | 7,388 lib passed, 0 failed, 22 ignored (env-dependent e2e/chaos/hardware/crypto-provider) |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave153] - 2026-04-21 - BTSP NDJSON Wire-Format Alignment (Phase 45b)
+
+### Added — BTSP JSON-line (NDJSON) handshake support
+- **ipc/btsp.rs**: `perform_server_handshake_ndjson()` — 4-step BTSP handshake using newline-delimited JSON framing (matching primalSpring, ludoSpring, and other JSON-line BTSP clients). Same BearDog crypto delegation as the existing length-prefixed path.
+- **ipc/btsp.rs**: `is_btsp_client_hello()` — fast discriminator that checks for `"protocol":"btsp"` to distinguish BTSP ClientHello from JSON-RPC
+- **ipc/btsp.rs**: `ClientHello` struct now accepts optional `protocol` field (`#[serde(default)]`) for wire compat with JSON-line clients
+
+### Changed — First-line auto-detection in UDS accept path
+- **connection.rs**: `handle_connection_with_peek` now reads the full first line when first byte is `{`, then discriminates between BTSP ClientHello (`"protocol":"btsp"`) and JSON-RPC. Previously, any `{` was unconditionally routed to NDJSON JSON-RPC, causing primalSpring's BTSP ClientHello to fail with parse error.
+- **connection.rs**: Added `handle_ndjson_first_line_then_session` helper for the case where first line was consumed for discrimination but turned out to be normal JSON-RPC
+
+### Added — 8 new tests (7,388 total)
+- `is_btsp_client_hello_accepts_primalspring_format`
+- `is_btsp_client_hello_accepts_with_whitespace`
+- `is_btsp_client_hello_rejects_jsonrpc`
+- `is_btsp_client_hello_rejects_empty`
+- `client_hello_deserializes_with_protocol`
+- `client_hello_deserializes_without_protocol`
+- `ndjson_write_read_roundtrip`
+- Existing `wire_types_serde_roundtrip` updated for new `protocol` field
+
+---
+
 ## [v0.2.1-wave152] - 2026-04-20 - Deep Debt: Deps, Hardcoding, Test Hygiene
 
 ### Removed — Dead workspace dependencies
