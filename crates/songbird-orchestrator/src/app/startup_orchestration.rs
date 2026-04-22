@@ -640,9 +640,15 @@ impl<'a> StartupOrchestrator<'a> {
     ///
     /// **Why Last**: All systems running, now verify they're reachable
     async fn stage_7_verify_connectivity(&self) -> Result<()> {
-        // ✅ POST-STARTUP: Verify external connectivity (Dec 20, 2025)
-        // This helps catch network/firewall issues early
-        self.orchestrator.verify_external_connectivity().await?;
+        // Connectivity verification is best-effort — never fatal to startup.
+        // Missing crypto provider, network issues, etc. should warn and continue.
+        match self.orchestrator.verify_external_connectivity().await {
+            Ok(()) => {}
+            Err(e) => {
+                warn!("⚠️  External connectivity verification failed (non-fatal): {e:#}");
+                warn!("   Songbird will continue in cleartext/degraded mode");
+            }
+        }
 
         Ok(())
     }

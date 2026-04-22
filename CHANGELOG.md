@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave156] - 2026-04-22 - BTSP Crypto Discovery + Startup Resilience (primalSpring Phase 45)
+
+### Fixed — Startup crash when no crypto provider available
+- **songbird-orchestrator/network/connectivity_test.rs**: `test_https_connectivity` now gracefully returns `ConnectivityTestResult{https_reachable: false}` when `discover_crypto_provider()` fails, instead of propagating the error up through Stage 7 and crashing the process
+- **songbird-orchestrator/app/startup_orchestration.rs**: `stage_7_verify_connectivity` now catches all errors from `verify_external_connectivity` and logs them as warnings — connectivity verification is truly non-fatal as documented
+- Songbird can now start and serve cleartext JSON-RPC without BearDog or any security provider
+
+### Fixed — BTSP NDJSON handshake timeout
+- **songbird-orchestrator/ipc/btsp.rs**: `read_ndjson_line` now wraps reads in `tokio::time::timeout(15s)` — prevents indefinite blocking when a BTSP peer stalls mid-handshake
+- **songbird-http-client/security_rpc_client/rpc.rs**: Neural API per-chunk read timeout raised from 100ms to 5s — allows BearDog BTSP crypto operations (ECDH, HKDF, session creation) to complete without spurious timeouts on loaded systems
+
+### Fixed — Pre-existing test failures (2 → 0)
+- **songbird-universal-ipc/handlers/birdsong_handler/tests.rs**: `test_generate_beacon_params` and `test_decrypt_beacon_params` assertions now accept IPC-path error messages (e.g. `"Failed to connect to IPC: ...security.sock"`) in addition to `"security provider"` / `"socket"` patterns
+
+---
+
 ## [v0.2.1-wave155] - 2026-04-15 - dyn Dispatch Evolution: Modern Idiomatic Rust
 
 ### Changed — `dyn` → concrete / generic dispatch (6 sites)

@@ -1,9 +1,9 @@
 # Songbird Remaining Work
 
-**Date**: April 15, 2026  
+**Date**: April 22, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 155 (Apr 15, 2026)  
-**Current Wave**: 155 — dyn dispatch evolution: eliminated 6 production `dyn` sites across 6 crates. `dyn Iterator` → `impl Iterator`, `Box<dyn Error>` → concrete `MetricsError`, `Pin<Box<dyn Future>>` → inline `async` match (production) / boxed recursion (test-only), `Box<dyn ComposablePlugin>` → `RegisteredPlugin` struct, `&dyn Composable` → `impl Composable`, boxed future callback → generic `F, Fut`. Remaining `dyn`: architectural `dyn Stream` (async watch streams), `Box<dyn SerialPort>` (external crate API), `Arc<dyn Fn>` (test env injection). 7,385 tests  
+**Last Deep Debt Audit**: Wave 156 (Apr 22, 2026)  
+**Current Wave**: 156 — BTSP crypto discovery + startup resilience (primalSpring Phase 45 audit): Stage 7 connectivity verification no longer crashes when no crypto provider is available (graceful fallback to cleartext mode with warnings); NDJSON handshake reads now have 15s timeout preventing indefinite blocking; Neural API per-chunk read timeout raised from 100ms to 5s (accommodates BTSP crypto operations: ECDH, HKDF); fixed 2 pre-existing birdsong beacon test failures (assertion now accepts IPC-path error messages). 7,387 tests, 0 failures  
 **Previous Waves** (full detail in `CHANGELOG.md`): 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -12,12 +12,12 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,385 lib passed, 2 pre-existing env-dependent failures (birdsong beacon crypto), 22 ignored |
+| **Tests** | 7,387 lib passed, 0 failures, 22 ignored |
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 15 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 15 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 22 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 22 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; former 1030L monolith smart-refactored Wave 144; 4 former >700L files refactored Wave 133) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
@@ -46,7 +46,9 @@
 
 ## Active Blockers
 
-**BTSP Phase 2** is complete: `perform_server_handshake` wired into UDS accept path (Wave 132). When `FAMILY_ID` is set (non-default), incoming connections MUST complete the 4-step BTSP handshake before JSON-RPC processing. Post-handshake framing uses length-prefixed (4-byte BE) frames per `BTSP_PROTOCOL_STANDARD.md` v1.0. Crypto delegated to BearDog via `SecurityRpcClient::btsp_session_create/verify/negotiate`. Development mode (no `FAMILY_ID`) unchanged: newline-delimited JSON-RPC.
+**BTSP Phase 2** is complete: `perform_server_handshake` + `perform_server_handshake_ndjson` wired into UDS accept path (Waves 132/153). When `FAMILY_ID` is set (non-default), incoming connections MUST complete the 4-step BTSP handshake before JSON-RPC processing. Post-handshake framing uses length-prefixed (4-byte BE) frames per `BTSP_PROTOCOL_STANDARD.md` v1.0. Crypto delegated to BearDog via `SecurityRpcClient::btsp_session_create/verify/negotiate`. Development mode (no `FAMILY_ID`) unchanged: newline-delimited JSON-RPC.
+
+**Wave 156**: Startup no longer crashes when crypto provider is unavailable — graceful fallback to cleartext mode. NDJSON handshake reads have 15s timeout (prevents indefinite blocking). Neural API read timeout raised from 100ms to 5s (accommodates BearDog BTSP crypto latency).
 
 **Remaining BTSP work**: Phase 3 cipher negotiation + encrypted framing (ChaCha20-Poly1305 / HMAC-plain actual encryption), multi-frame sessions, and E2E integration test with live BearDog.
 

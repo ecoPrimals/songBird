@@ -19,7 +19,7 @@
 //! - Auto-configure where possible
 //! - Clear diagnostics for manual intervention
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -126,10 +126,19 @@ impl ConnectivityTester {
 
         let start = std::time::Instant::now();
 
-        // Use SongbirdHttpClient for Pure Rust HTTPS testing
-        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
-            .await
-            .map_err(|e| anyhow!("Failed to discover crypto provider: {e}"))?;
+        let crypto_socket = match crate::primal_discovery::discover_crypto_provider().await {
+            Ok(socket) => socket,
+            Err(e) => {
+                warn!("⚠️  No crypto provider available — skipping HTTPS connectivity test: {e}");
+                return Ok(ConnectivityTestResult {
+                    target,
+                    tcp_reachable: true,
+                    https_reachable: false,
+                    rtt_ms: None,
+                    error: Some(format!("No crypto provider for HTTPS: {e}")),
+                });
+            }
+        };
 
         let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
         let url = format!("https://{target}/health");

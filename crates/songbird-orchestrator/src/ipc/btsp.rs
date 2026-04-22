@@ -268,9 +268,21 @@ async fn write_ndjson<W: AsyncWrite + Unpin>(writer: &mut W, value: &impl Serial
     Ok(())
 }
 
+/// Per-line read timeout for NDJSON handshake messages.
+/// 15 seconds accounts for BearDog relay latency (crypto operations) with margin.
+const NDJSON_HANDSHAKE_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+
 async fn read_ndjson_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<String> {
     let mut line = String::new();
-    let n = reader.read_line(&mut line).await.context("BTSP NDJSON: read failed")?;
+    let n = tokio::time::timeout(NDJSON_HANDSHAKE_READ_TIMEOUT, reader.read_line(&mut line))
+        .await
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "BTSP NDJSON: handshake read timed out after {}s",
+                NDJSON_HANDSHAKE_READ_TIMEOUT.as_secs()
+            )
+        })?
+        .context("BTSP NDJSON: read failed")?;
     if n == 0 {
         bail!("BTSP NDJSON: peer disconnected");
     }

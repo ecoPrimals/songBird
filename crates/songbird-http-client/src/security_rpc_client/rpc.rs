@@ -260,10 +260,12 @@ impl SecurityRpcClient {
         // Shutdown write to signal we're done
         stream.shutdown().await?;
 
-        // Read response with JSON-aware reading (Neural API keeps socket open)
+        // Read response with JSON-aware reading (Neural API keeps socket open).
+        // 5s per-chunk timeout allows for BTSP crypto operations (ECDH, HKDF)
+        // while still failing promptly on truly unreachable providers.
         let mut buffer = Vec::new();
         let mut temp_buf = [0u8; 4096];
-        let read_timeout = Duration::from_millis(100);
+        let read_timeout = Duration::from_secs(5);
 
         loop {
             match timeout(read_timeout, stream.read(&mut temp_buf)).await {
@@ -288,9 +290,10 @@ impl SecurityRpcClient {
                     {
                         break;
                     }
-                    return Err(Error::SecurityProviderRpc(
-                        "Timeout reading from Neural API".to_string(),
-                    ));
+                    return Err(Error::SecurityProviderRpc(format!(
+                        "Timeout reading from Neural API ({}s with no data)",
+                        read_timeout.as_secs()
+                    )));
                 }
             }
         }
