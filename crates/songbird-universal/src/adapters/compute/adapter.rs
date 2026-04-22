@@ -113,7 +113,10 @@ impl ComputeAdapter {
                 }
 
                 // Fallback 2: Construct from host + port
-                let host = SafeEnv::get_or_default("SONGBIRD_HOST", "http://localhost");
+                let host = SafeEnv::get_or_default(
+                    "SONGBIRD_HOST",
+                    format!("http://{}", songbird_types::constants::LOCALHOST_HOSTNAME),
+                );
                 let port = SafeEnv::get_port(
                     "SONGBIRD_COMPUTE_PORT",
                     songbird_config::defaults::ports::service_port("COMPUTE", 8080),

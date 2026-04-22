@@ -18,7 +18,7 @@ pub mod bluetooth;
 #[cfg(feature = "pure-bluetooth")]
 pub mod bluetooth_pure;
 
-// Mock implementation — tests only, or `--features testing` for integration tests.
+// Mock implementation — tests only, or `--features test-mocks` for integration tests.
 #[cfg(any(test, feature = "test-mocks"))]
 pub mod mock;
 #[cfg(any(test, feature = "test-mocks"))]

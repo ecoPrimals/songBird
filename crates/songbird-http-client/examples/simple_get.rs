@@ -22,8 +22,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Create client
     let security_provider_socket = std::env::var("SECURITY_PROVIDER_SOCKET")
+        .or_else(|_| std::env::var("CRYPTO_PROVIDER_SOCKET"))
         .or_else(|_| std::env::var("BEARDOG_SOCKET"))
-        .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+        .unwrap_or_else(|_| {
+            songbird_types::defaults::paths::family_scoped_crypto_socket_path("default")
+                .to_string_lossy()
+                .into_owned()
+        });
 
     let client = SongbirdHttpClient::new(security_provider_socket);
 

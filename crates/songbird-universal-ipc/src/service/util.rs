@@ -16,7 +16,7 @@ impl IpcServiceHandler {
     pub(super) fn parse_local_tcp_endpoint(endpoint: &str) -> Option<u16> {
         let (host, port_str) = endpoint.rsplit_once(':')?;
         let port: u16 = port_str.parse().ok()?;
-        let is_local = matches!(host, "127.0.0.1" | "0.0.0.0" | "localhost" | "::1" | "[::1]");
+        let is_local = songbird_types::constants::is_loopback_host(host);
         is_local.then_some(port)
     }
 

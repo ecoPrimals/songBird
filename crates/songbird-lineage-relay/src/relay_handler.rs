@@ -96,11 +96,10 @@ impl RelayHandler {
         }
 
         // Parse parameters
-        const DEFAULT_RELAY_PORT: u16 = 3479;
         let default_port = songbird_process_env::var("SONGBIRD_RELAY_PORT")
             .ok()
             .and_then(|s| s.parse::<u16>().ok())
-            .unwrap_or(DEFAULT_RELAY_PORT);
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_RELAY_PORT);
 
         let bind_addr: SocketAddr = match params.get("bind_addr").and_then(|v| v.as_str()) {
             Some(s) => s.parse().map_err(|e| format!("Invalid bind address '{s}': {e}"))?,

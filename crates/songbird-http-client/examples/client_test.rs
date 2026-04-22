@@ -43,7 +43,10 @@ async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let mut url = "https://localhost:8443".to_string();
     let mut skip_verify = false;
-    let mut security_provider_socket = "/tmp/beardog-test.sock".to_string();
+    let mut security_provider_socket =
+        songbird_types::defaults::paths::family_scoped_crypto_socket_path("default")
+            .to_string_lossy()
+            .into_owned();
 
     let mut i = 1;
     while i < args.len() {
@@ -83,7 +86,7 @@ async fn main() -> anyhow::Result<()> {
                     "  --skip-verify              Skip certificate verification (for self-signed certs)"
                 );
                 println!(
-                    "  --security-provider-socket <PATH>    Security provider socket path (default: /tmp/beardog-test.sock)"
+                    "  --security-provider-socket <PATH>    Security provider socket path (default: XDG-based crypto socket)"
                 );
                 println!("  --help, -h                 Show this help message");
                 std::process::exit(0);

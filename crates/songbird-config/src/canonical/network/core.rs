@@ -192,6 +192,8 @@ impl CanonicalNetworkConfig {
     pub fn from_env_reader(
         env: impl Fn(&str) -> Result<String, std::env::VarError>,
     ) -> SongbirdResult<Self> {
+        use songbird_types::defaults::ports;
+
         let bind_address = env_or_default(
             &env,
             "SONGBIRD_BIND_ADDRESS",
@@ -204,7 +206,7 @@ impl CanonicalNetworkConfig {
             suggestion: Some("Provide a valid IP address".to_string()),
         })?;
 
-        let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", 8001);
+        let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", ports::DEFAULT_TARPC_PORT);
 
         let config = Self {
             bind_address,
@@ -221,14 +223,22 @@ impl CanonicalNetworkConfig {
             orchestrator_port: env_port(
                 &env,
                 "SONGBIRD_ORCHESTRATOR_PORT",
-                env_port(&env, "DEFAULT_HTTP_PORT", 8080),
+                env_port(&env, "DEFAULT_HTTP_PORT", ports::DEFAULT_HTTP_PORT),
             ),
             discovery_port,
-            health_port: env_port(&env, "SONGBIRD_HEALTH_PORT", 8002),
-            dashboard_port: env_port(&env, "SONGBIRD_DASHBOARD_PORT", 3000),
-            websocket_port: env_port(&env, "SONGBIRD_WEBSOCKET_PORT", 8080),
-            metrics_port: env_port(&env, "SONGBIRD_METRICS_PORT", 8004),
-            federation_port: env_port(&env, "SONGBIRD_FEDERATION_PORT", 8005),
+            health_port: env_port(&env, "SONGBIRD_HEALTH_PORT", ports::DEFAULT_HEALTH_PORT),
+            dashboard_port: env_port(
+                &env,
+                "SONGBIRD_DASHBOARD_PORT",
+                ports::DEFAULT_DASHBOARD_PORT,
+            ),
+            websocket_port: env_port(&env, "SONGBIRD_WEBSOCKET_PORT", ports::DEFAULT_HTTP_PORT),
+            metrics_port: env_port(&env, "SONGBIRD_METRICS_PORT", ports::DEFAULT_METRICS_PORT),
+            federation_port: env_port(
+                &env,
+                "SONGBIRD_FEDERATION_PORT",
+                ports::DEFAULT_FEDERATION_PORT,
+            ),
             gaming: GamingNetworkConfig::default(),
             gaming_port_range: PortRange::default(),
             connection_timeout: Duration::from_secs(30),

@@ -83,6 +83,18 @@ pub const LOCALHOST: &str = "127.0.0.1";
 /// Localhost hostname — used in service configs and host discovery defaults
 pub const LOCALHOST_HOSTNAME: &str = "localhost";
 
+/// IPv6 loopback address
+pub const LOCALHOST_IPV6: &str = "::1";
+
+/// IPv6 loopback (bracketed form for socket addresses)
+pub const LOCALHOST_IPV6_BRACKETED: &str = "[::1]";
+
+/// Returns `true` when `host` is a recognized loopback / localhost string.
+#[must_use]
+pub fn is_loopback_host(host: &str) -> bool {
+    matches!(host, "127.0.0.1" | "0.0.0.0" | "localhost" | "::1" | "[::1]")
+}
+
 /// Builds a `http://localhost:{port}` development fallback URL.
 ///
 /// Only available in debug builds — production code must resolve endpoints

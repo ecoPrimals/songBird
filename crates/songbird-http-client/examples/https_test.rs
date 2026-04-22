@@ -7,8 +7,6 @@
     clippy::expect_used,
     reason = "test assertions"
 )]
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright (c) 2024-2026 ecoPrimals
 
 //! HTTPS request example (requires a `security provider` running)
 
@@ -20,10 +18,14 @@ async fn main() -> anyhow::Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
-    // Create client
     let security_provider_socket = std::env::var("SECURITY_PROVIDER_SOCKET")
+        .or_else(|_| std::env::var("CRYPTO_PROVIDER_SOCKET"))
         .or_else(|_| std::env::var("BEARDOG_SOCKET"))
-        .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+        .unwrap_or_else(|_| {
+            songbird_types::defaults::paths::family_scoped_crypto_socket_path("default")
+                .to_string_lossy()
+                .into_owned()
+        });
 
     println!("Using security provider socket at: {security_provider_socket}");
 

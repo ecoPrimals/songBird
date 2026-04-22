@@ -476,7 +476,7 @@ impl AnonymousDiscoveryListener {
             timestamp: Some(payload.created_at),
             identity_attestations: None, // Exchange after trust establishment
             protocols: vec!["https".to_string()],
-            port: 8080, // Default
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT, // Default
             address: addr,
             last_seen: SystemTime::now(),
             version: "dark_forest_v2".to_string(),

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave157] - 2026-04-22 - Deep Debt: Hardcoded Literals, Dead Deps, Example Hygiene
+
+### Changed — Hardcoded literals → constants
+- **songbird-types/constants.rs**: Added `LOCALHOST_IPV6`, `LOCALHOST_IPV6_BRACKETED`, `is_loopback_host()` utility function
+- **songbird-types/defaults/ports.rs**: Added `DEFAULT_RELAY_PORT` (3479), `HTTPS_STANDARD_PORT` (443), `DYNAMIC_PORT_RANGE_MIN` (1024), `DYNAMIC_PORT_RANGE_SIZE` (60000)
+- **songbird-universal/adapters/compute/adapter.rs**: `"http://localhost"` → `format!("http://{}", LOCALHOST_HOSTNAME)`
+- **songbird-universal-ipc/service/util.rs**: inline localhost string matching → `is_loopback_host()` call
+- **songbird-types/config/network.rs**: `"127.0.0.1"` / `"::1"` → `LOCALHOST` / `LOCALHOST_IPV6` constants
+- **songbird-discovery/anonymous/messages.rs**: bare `8080` → `DEFAULT_HTTP_PORT`
+- **songbird-discovery/anonymous/listener.rs**: bare `8080` → `DEFAULT_HTTP_PORT`
+- **songbird-lineage-relay/relay_handler.rs**: inline `DEFAULT_RELAY_PORT = 3479` → central `defaults::ports::DEFAULT_RELAY_PORT`
+- **songbird-onion-relay/coordinator/config.rs**: inline `3478` → local `STUN_DEFAULT_PORT` constant (crate has no songbird-types dep)
+- **songbird-http-client/connection/https.rs**: bare `443` → `HTTPS_STANDARD_PORT`
+- **songbird-config/canonical/network/core.rs**: 6 bare port numbers (8001, 8002, 3000, 8004, 8005, 8080) → `defaults::ports::*` constants
+- **songbird-universal-ipc/platform/ios.rs**: magic `60000` / `1024` → `DYNAMIC_PORT_RANGE_SIZE` / `DYNAMIC_PORT_RANGE_MIN`
+
+### Removed — Unused workspace dependencies
+- **Root Cargo.toml**: removed `urlencoding = "2.1"` (zero crate consumers)
+- **Root Cargo.toml**: removed `if-addrs = "0.13"` (zero direct consumers; only transitive via mdns-sd)
+
+### Fixed — Comment drift
+- **songbird-genesis/physical_channels/mod.rs**: `--features testing` → `--features test-mocks`
+
+### Changed — Example hygiene (6 files)
+- **songbird-http-client examples**: `Box<dyn Error>` → `anyhow::Result`; `/tmp/beardog-*.sock` → XDG-based `family_scoped_crypto_socket_path()`; added `CRYPTO_PROVIDER_SOCKET` env var in discovery chain
+- **songbird-universal-ipc examples**: `Box<dyn Error>` → `anyhow::Result`; `/tmp/example-crypto.sock` → `std::env::temp_dir()` based path
+- **songbird-http-client/examples/https_test.rs**: removed duplicate SPDX header
+
+---
+
 ## [v0.2.1-wave156] - 2026-04-22 - BTSP Crypto Discovery + Startup Resilience (primalSpring Phase 45)
 
 ### Fixed — Startup crash when no crypto provider available

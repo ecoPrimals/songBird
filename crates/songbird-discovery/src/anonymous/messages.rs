@@ -178,7 +178,7 @@ impl AnonymousDiscoveryMessage {
         let port = primary_endpoint
             .and_then(|e| e.address.split(':').nth(1))
             .and_then(|p| p.parse().ok())
-            .unwrap_or(8080);
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
 
         let protocols =
             primary_endpoint.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());

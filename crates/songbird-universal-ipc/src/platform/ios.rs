@@ -112,7 +112,9 @@ impl IosPlatformIPC {
                 use std::hash::{Hash, Hasher};
                 let mut h = DefaultHasher::new();
                 primal_name.hash(&mut h);
-                (h.finish() % 60000 + 1024) as u16
+                (h.finish() % songbird_types::defaults::ports::DYNAMIC_PORT_RANGE_SIZE
+                    + u64::from(songbird_types::defaults::ports::DYNAMIC_PORT_RANGE_MIN))
+                    as u16
             };
 
             debug!(

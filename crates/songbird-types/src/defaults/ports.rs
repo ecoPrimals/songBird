@@ -45,5 +45,13 @@ pub const DEFAULT_CRYPTO_TRANSPORT_PORT: u16 = 9876;
 pub const DEFAULT_FEDERATION_BIND_PORT: u16 = 7000;
 /// Default dashboard port (env: `SONGBIRD_DASHBOARD_PORT`)
 pub const DEFAULT_DASHBOARD_PORT: u16 = 8003;
+/// Default relay port (env: `SONGBIRD_RELAY_PORT`)
+pub const DEFAULT_RELAY_PORT: u16 = 3479;
+/// Minimum port for dynamic hash-based allocation (avoids well-known ports)
+pub const DYNAMIC_PORT_RANGE_MIN: u16 = 1024;
+/// Size of the dynamic port allocation window
+pub const DYNAMIC_PORT_RANGE_SIZE: u64 = 60_000;
+/// Standard HTTPS port (RFC 2818)
+pub const HTTPS_STANDARD_PORT: u16 = 443;
 /// Default request timeout in milliseconds
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;

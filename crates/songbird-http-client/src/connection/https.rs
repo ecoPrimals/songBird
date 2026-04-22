@@ -440,11 +440,15 @@ impl HttpsConnection {
                     info!("   Remote: {} (expected: {})", peer, addr);
 
                     // Verify we connected to the right port
+                    let https_port = songbird_types::defaults::ports::HTTPS_STANDARD_PORT;
                     if let Ok(peer_addr) = stream.peer_addr()
-                        && peer_addr.port() != 443
-                        && addr.contains(":443")
+                        && peer_addr.port() != https_port
+                        && addr.contains(&format!(":{https_port}"))
                     {
-                        warn!("⚠️  Connected to port {} but expected 443!", peer_addr.port());
+                        warn!(
+                            "⚠️  Connected to port {} but expected {https_port}!",
+                            peer_addr.port()
+                        );
                     }
 
                     stream

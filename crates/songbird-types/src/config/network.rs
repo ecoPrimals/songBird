@@ -169,7 +169,10 @@ impl Default for NetworkSecurityConfig {
     fn default() -> Self {
         Self {
             tls_enabled: true,
-            allowed_ips: vec!["127.0.0.1".to_string(), "::1".to_string()],
+            allowed_ips: vec![
+                crate::constants::LOCALHOST.to_string(),
+                crate::constants::LOCALHOST_IPV6.to_string(),
+            ],
             rate_limiting: CanonicalRateLimitConfig::default(),
         }
     }

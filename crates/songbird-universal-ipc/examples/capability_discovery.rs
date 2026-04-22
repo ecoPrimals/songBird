@@ -11,7 +11,7 @@
 use songbird_universal_ipc::{capability, ipc};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     // Initialize logging
     tracing_subscriber::fmt::init();
 
@@ -22,7 +22,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ipc::init()?;
 
     // Set up example: simulate a crypto provider
-    songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/example-crypto.sock");
+    let example_socket = std::env::temp_dir().join("example-crypto.sock");
+    songbird_process_env::set_var(
+        "CRYPTO_PROVIDER_SOCKET",
+        example_socket.to_string_lossy().as_ref(),
+    );
 
     println!("📝 Step 1: Discover crypto provider by capability");
     println!("   (No hardcoded primal names - pure capability-based!)");
