@@ -6,7 +6,7 @@ Pure Rust TLS 1.3 implementation for Songbird HTTP client.
 
 - RFC 8446 compliant TLS 1.3
 - Zero C dependencies (Pure Rust)
-- BearDog crypto delegation via Tower Atomic pattern
+- Security provider crypto delegation via Tower Atomic pattern
 - Stream-based parsing for efficient memory usage
 
 ## Status

@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 22, 2026
+**Last Updated**: April 15, 2026
 
 ## What It Does
 
@@ -37,7 +37,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Tests | 7,387 lib passed (0 failures, 22 ignored) |
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 22 verified) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 15 verified) |
 | Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored Wave 133; largest test 731L) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |

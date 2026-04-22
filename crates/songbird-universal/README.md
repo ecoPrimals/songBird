@@ -45,7 +45,7 @@ let response = adapter.handle_request(request).await?;
 
 ## Supported Primals
 
-- Security Providers (BearDog, custom implementations)
+- Security Providers (ecosystem default, custom implementations)
 - Storage Providers (any S3-compatible, local filesystem)
 - Compute Providers (container runtimes, serverless)
 - AI Providers (inference engines, model serving)

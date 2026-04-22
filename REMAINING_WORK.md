@@ -16,8 +16,8 @@
 | **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 22 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 22 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 15 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 15 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; former 1030L monolith smart-refactored Wave 144; 4 former >700L files refactored Wave 133) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |

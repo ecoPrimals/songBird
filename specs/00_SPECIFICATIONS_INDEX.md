@@ -69,7 +69,6 @@
 
 ## Evolution
 
-- [ZERO_COST_ARCHITECTURE_EVOLUTION_PLAN.md](./ZERO_COST_ARCHITECTURE_EVOLUTION_PLAN.md) — Zero-cost evolution
 - [UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md](./UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md) — Universal adapter
 - [UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md](./UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md) — SDK integration
 - [PRIMAL_REGISTRATION_PROTOCOL.md](./PRIMAL_REGISTRATION_PROTOCOL.md) — Primal registration
@@ -84,3 +83,4 @@ Specs in the [consolidated fossil record](../../../infra/wateringHole/fossilReco
 - [Entropy hierarchy (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
 - [AI provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
 - [Storage discovery (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved
+- [Zero-cost architecture evolution plan (archived)](../../../infra/wateringHole/fossilRecord/songBird/ZERO_COST_ARCHITECTURE_EVOLUTION_PLAN.md) — async-trait migration complete (historical)
