@@ -7,7 +7,7 @@
 
 | File | Role |
 |------|------|
-| `local_infrastructure_ci.rs` | Local CI: JSON-RPC-over-TCP against real IPC handler paths; in-file e2e-/chaos-/fault-style cases (see module docs; scenario notes under `tests/e2e/SCENARIO_TEMPLATES.md`). |
+| `local_infrastructure_ci.rs` | Local CI: JSON-RPC-over-TCP against real IPC handler paths; in-file e2e-/chaos-/fault-style cases (see module docs). |
 | `cli_parsing_tests.rs` | CLI parsing and validation only (no servers). |
 | `integration_task_lifecycle.rs` | Orchestrator task lifecycle against isolated temp DBs. |
 

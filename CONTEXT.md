@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 21, 2026
+**Last Updated**: April 15, 2026
 
 ## What It Does
 
@@ -34,16 +34,16 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 7,388 lib passed (0 failed, 22 ignored env-dependent) |
+| Tests | 7,385 lib passed (2 pre-existing env-dependent failures, 22 ignored) |
 | Coverage | Line coverage **72.29%** (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 21 verified) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 15 verified) |
 | Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored Wave 133; largest test 731L) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates); legacy socket filenames centralized as constants (`LEGACY_SECURITY_SOCKET_FILENAME`, `LEGACY_AI_SOCKET_FILENAME`, `LEGACY_COMPUTE_SOCKET_FILENAME`); all `/tmp/` paths evolved to `std::env::temp_dir()`; `cors_origins()` env-overridable, `data_dir()` XDG-compliant; legacy env vars (`BEARDOG_*`) deprecated with `tracing::warn!` |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
-| Production panics/unwrap/todo | 0 (`panic!`, `unwrap`, `todo!`); 2 provably-unreachable QUIC VarInt arms documented |
+| Production panics/unwrap/todo | 0 unguarded (`panic!`, `todo!`); `.unwrap()` only under `#[expect(reason)]` for infallible ops; 2 provably-unreachable QUIC VarInt arms documented |
 
 ## IPC Surface
 
