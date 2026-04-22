@@ -62,9 +62,6 @@ rand.workspace = true
 tokio-test = "0.4"
 
 [features]
-default = ["gaming", "federation", "local-btsp"]  # Include local-btsp for backward compat
-gaming = []
-federation = []
-local-btsp = ["aes-gcm", "generic-array"]  # ⚠️ Local BTSP testing (uses crypto) - production uses security provider
+default = ["local-btsp"]
+local-btsp = ["aes-gcm", "generic-array"]
 test-mocks = []
-# Removed legacy-compat feature flag - migration complete 

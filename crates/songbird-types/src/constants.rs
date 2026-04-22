@@ -24,58 +24,8 @@ use std::time::Duration;
 // NETWORK CONSTANTS
 // ============================================================================
 
-/// Default HTTP port for Songbird services
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
-pub const DEFAULT_HTTP_PORT: u16 = 8080;
-
-/// Default HTTPS port for Songbird services
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
-pub const DEFAULT_HTTPS_PORT: u16 = 8443;
-
-/// Default port for Songbird services (alias for HTTP)
-#[allow(
-    deprecated,
-    reason = "aliases deprecated DEFAULT_HTTP_PORT; retained for backward compatibility"
-)]
-pub const DEFAULT_PORT: u16 = DEFAULT_HTTP_PORT;
-
-/// Default discovery service port
-#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_METRICS_PORT instead")]
-pub const DEFAULT_DISCOVERY_PORT: u16 = 8081;
-
-/// Default federation service port
-#[deprecated(
-    note = "use songbird_types::defaults::ports::DEFAULT_FEDERATION_PORT instead — canonical value is 8000"
-)]
-pub const DEFAULT_FEDERATION_PORT: u16 = 8082;
-
-/// Default health check port
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
-pub const DEFAULT_HEALTH_PORT: u16 = 8002;
-
-/// Default dashboard port
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
-pub const DEFAULT_DASHBOARD_PORT: u16 = 8003;
-
-/// Default metrics port
-#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_METRICS_PORT instead")]
-pub const DEFAULT_METRICS_PORT: u16 = 8004;
-
-/// Default orchestrator API port
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
-pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8000;
-
-/// Default crypto provider transport port
-#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_CRYPTO_TRANSPORT_PORT instead")]
-pub const DEFAULT_CRYPTO_TRANSPORT_PORT: u16 = 9876;
-
-/// Default security vault port
-#[deprecated(note = "use songbird_types::defaults::ports::* instead")]
-pub const DEFAULT_SECURITY_VAULT_PORT: u16 = 8200;
-
-/// Default federation bind port
-#[deprecated(note = "use songbird_types::defaults::ports::DEFAULT_FEDERATION_BIND_PORT instead")]
-pub const DEFAULT_FEDERATION_BIND_PORT: u16 = 7000;
+/// Default port for Songbird services (HTTP API fallback).
+pub const DEFAULT_PORT: u16 = crate::defaults::ports::DEFAULT_HTTP_PORT;
 
 /// Localhost IPv4 address
 pub const LOCALHOST: &str = "127.0.0.1";

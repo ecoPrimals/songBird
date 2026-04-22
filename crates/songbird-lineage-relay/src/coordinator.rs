@@ -19,8 +19,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
-/// Default UDP port for `BirdSong` bind/broadcast when `SONGBIRD_BIRDSONG_PORT` is unset or invalid.
-const DEFAULT_BIRDSONG_PORT: u16 = 42424;
+use songbird_types::defaults::ports::DEFAULT_BIRDSONG_PORT;
 
 /// Configuration for lineage relay coordinator
 #[derive(Debug, Clone)]

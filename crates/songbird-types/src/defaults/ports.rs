@@ -36,7 +36,7 @@ pub const DEFAULT_TEST_RUNNER_PORT: u16 = 8080;
 /// Heartbeat interval in milliseconds
 pub const DEFAULT_HEARTBEAT_INTERVAL_MS: u64 = 5000;
 /// Default orchestrator API port (env: `SONGBIRD_ORCHESTRATOR_PORT`)
-pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8000;
+pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8080;
 /// Default health check port (env: `SONGBIRD_HEALTH_PORT`)
 pub const DEFAULT_HEALTH_PORT: u16 = 8002;
 /// Default crypto provider TCP transport port (security provider fallback)
@@ -53,5 +53,9 @@ pub const DYNAMIC_PORT_RANGE_MIN: u16 = 1024;
 pub const DYNAMIC_PORT_RANGE_SIZE: u64 = 60_000;
 /// Standard HTTPS port (RFC 2818)
 pub const HTTPS_STANDARD_PORT: u16 = 443;
+/// Default BirdSong relay protocol port (env: `SONGBIRD_BIRDSONG_PORT`)
+pub const DEFAULT_BIRDSONG_PORT: u16 = 42_424;
+/// Default QUIC transport port (env: `SONGBIRD_QUIC_PORT`)
+pub const DEFAULT_QUIC_PORT: u16 = 4433;
 /// Default request timeout in milliseconds
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;

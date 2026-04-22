@@ -35,11 +35,10 @@ impl StunHandler {
             }
         }
 
-        const DEFAULT_STUN_PORT: u16 = 3478;
         let default_port = songbird_process_env::var("SONGBIRD_STUN_PORT")
             .ok()
             .and_then(|s| s.parse::<u16>().ok())
-            .unwrap_or(DEFAULT_STUN_PORT);
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_STUN_PORT);
         let default_bind = format!("0.0.0.0:{default_port}");
         let bind_addr_str =
             params.get("bind_addr").and_then(|v| v.as_str()).unwrap_or(default_bind.as_str());

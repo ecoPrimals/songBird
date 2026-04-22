@@ -99,8 +99,7 @@ pub use stream::QuicStream;
 /// QUIC protocol version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Default QUIC port (IANA recommended)
-pub const DEFAULT_QUIC_PORT: u16 = 4433;
+pub use songbird_types::defaults::ports::DEFAULT_QUIC_PORT;
 
 /// Maximum transmission unit
 pub const MAX_MTU: usize = 1200;

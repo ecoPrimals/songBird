@@ -5452,6 +5452,7 @@ dependencies = [
  "songbird-process-env",
  "songbird-sovereign-onion",
  "songbird-stun",
+ "songbird-types",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",

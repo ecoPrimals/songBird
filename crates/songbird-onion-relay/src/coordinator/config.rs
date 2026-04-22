@@ -34,14 +34,12 @@ fn stun_server_list() -> Vec<String> {
     SERVERS.clone()
 }
 
-/// IANA-standard STUN port (RFC 5389)
-const STUN_DEFAULT_PORT: u16 = 3478;
-
 pub fn default_stun_servers_fallback() -> Vec<String> {
+    let port = songbird_types::defaults::ports::DEFAULT_STUN_PORT;
     vec![
-        format!("stun.nextcloud.com:{STUN_DEFAULT_PORT}"),
-        format!("stun.cloudflare.com:{STUN_DEFAULT_PORT}"),
-        format!("stun.sip.us:{STUN_DEFAULT_PORT}"),
+        format!("stun.nextcloud.com:{port}"),
+        format!("stun.cloudflare.com:{port}"),
+        format!("stun.sip.us:{port}"),
     ]
 }
 

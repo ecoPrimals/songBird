@@ -297,7 +297,7 @@ fn test_proxy_config_default() {
     assert_eq!(config.bind_address, "0.0.0.0");
     assert_eq!(config.bind_port, 8080);
     assert_eq!(config.target_address, "127.0.0.1");
-    assert_eq!(config.target_port, 8000);
+    assert_eq!(config.target_port, songbird_types::defaults::ports::DEFAULT_ORCHESTRATOR_PORT);
     assert_eq!(config.connection_timeout_ms, 5000);
 }
 

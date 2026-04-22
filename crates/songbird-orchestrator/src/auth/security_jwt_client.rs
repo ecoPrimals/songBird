@@ -31,11 +31,6 @@ use tracing::{info, warn};
 /// JWT `purpose` parameter for storage capability provider authentication (`crypto.generate.jwt_secret`).
 pub const STORAGE_PROVIDER_AUTHENTICATION_PURPOSE: &str = "storage_provider_authentication";
 
-/// Legacy JWT `purpose` id used by some deployments (prefer [`STORAGE_PROVIDER_AUTHENTICATION_PURPOSE`]).
-#[deprecated(note = "use STORAGE_PROVIDER_AUTHENTICATION_PURPOSE (capability-based naming)")]
-#[allow(dead_code, reason = "public wire-compat constant for legacy integrations")]
-pub const NESTGATE_AUTHENTICATION_PURPOSE: &str = "nestgate_authentication";
-
 /// Request for JWT secret generation
 #[derive(Debug, Serialize)]
 struct JwtSecretRequest {

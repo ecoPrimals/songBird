@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave159] - 2026-04-15 - Deprecated Constants Removal, Port Centralization, Feature Cleanup
+
+### Removed
+- **12 deprecated port constants** from `songbird-types::constants` — all had zero external consumers (migrated to `defaults::ports` in prior waves): `DEFAULT_HTTP_PORT`, `DEFAULT_HTTPS_PORT`, `DEFAULT_DISCOVERY_PORT`, `DEFAULT_FEDERATION_PORT`, `DEFAULT_HEALTH_PORT`, `DEFAULT_DASHBOARD_PORT`, `DEFAULT_METRICS_PORT`, `DEFAULT_ORCHESTRATOR_PORT`, `DEFAULT_CRYPTO_TRANSPORT_PORT`, `DEFAULT_SECURITY_VAULT_PORT`, `DEFAULT_FEDERATION_BIND_PORT`
+- **`NESTGATE_AUTHENTICATION_PURPOSE`** from `songbird-orchestrator::auth::security_jwt_client` — zero callers (capability-based `STORAGE_PROVIDER_AUTHENTICATION_PURPOSE` is the active constant)
+- **`gaming` and `federation` stale feature flags** from `songbird-network-federation` — empty features with no `cfg()` gates in source
+- **`test-mocks` stale feature** from `songbird-bluetooth` — declared but never referenced via `cfg(feature = "test-mocks")`
+- Stale sovereignty-violation comment block in `songbird-config::config::constants::network`
+
+### Changed
+- **`DEFAULT_ORCHESTRATOR_PORT`** in `defaults::ports`: 8000 → 8080 (aligned with actual orchestrator HTTP API bind port; was inconsistent with `DEFAULT_HTTP_PORT`)
+- **`songbird-config::config::constants::network`**: local `DEFAULT_HOST`, `DEFAULT_HOST_V4`, `DEFAULT_ORCHESTRATOR_PORT`, `DEFAULT_DEV_PORT`, `DEFAULT_DASHBOARD_PORT`, `PRODUCTION_BIND_ADDRESS` replaced with re-exports from `songbird-types` canonical source
+- **`DEFAULT_PORT`** in `songbird-types::constants`: now aliases `defaults::ports::DEFAULT_HTTP_PORT` (was computed from removed `DEFAULT_HTTP_PORT`)
+
+### Added
+- **`DEFAULT_BIRDSONG_PORT`** (42424) to `defaults::ports` — centralized from `songbird-lineage-relay`
+- **`DEFAULT_QUIC_PORT`** (4433) to `defaults::ports` — centralized from `songbird-quic`
+- `songbird-types` dependency to `songbird-onion-relay` for centralized port access
+
+### Fixed
+- Duplicate `DEFAULT_STUN_PORT` in `songbird-universal-ipc::stun_handler::server` → centralized import from `songbird_types::defaults::ports`
+- Duplicate `STUN_DEFAULT_PORT` in `songbird-onion-relay::coordinator::config` → centralized import from `songbird_types::defaults::ports`
+- Duplicate `DEFAULT_BIRDSONG_PORT` in `songbird-lineage-relay::coordinator` → centralized import
+- `DEFAULT_QUIC_PORT` in `songbird-quic` → re-export from `songbird_types::defaults::ports`
+- Test `test_proxy_config_default` updated to use centralized `DEFAULT_ORCHESTRATOR_PORT` instead of magic number
+
+---
+
 ## [v0.2.1-wave158] - 2026-04-22 - BTSP Step 3→4 Verification Relay (primalSpring Phase 45 Audit)
 
 ### Fixed — BTSP wire-protocol alignment with BearDog

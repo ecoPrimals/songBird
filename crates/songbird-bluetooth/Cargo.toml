@@ -65,8 +65,6 @@ uart = ["serialport"]
 # Optional features
 serde = ["dep:serde", "uuid/serde"]
 
-# Development features
-test-mocks = []
 serialport = ["dep:serialport"]
 
 [lib]

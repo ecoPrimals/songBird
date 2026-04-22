@@ -52,6 +52,7 @@ songbird-sovereign-onion = { path = "../songbird-sovereign-onion", optional = tr
 
 # Internal crates
 songbird-process-env.workspace = true
+songbird-types = { path = "../songbird-types" }
 songbird-stun = { path = "../songbird-stun" }
 songbird-lineage-relay = { path = "../songbird-lineage-relay" }
 
