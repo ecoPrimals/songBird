@@ -2,7 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Local CI integration tests: E2E-style flows, chaos, and fault injection **without**
-//! external security providers or real network I/O (see `tests/e2e/SCENARIO_TEMPLATES.md`).
+//! external security providers or real network I/O (see `tests/README.md`).
 //!
 //! - Binds ephemeral TCP with `127.0.0.1:0` only.
 //! - Uses production [`songbird_universal_ipc::service::IpcServiceHandler`] and

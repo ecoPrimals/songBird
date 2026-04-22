@@ -93,7 +93,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: **72.29%** (llvm-cov measured, Apr 8 2026; 7,387 lib tests / 13,170+ workspace `--all-features`). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: **72.29%** (llvm-cov measured, Apr 8 2026; 7,387 lib tests). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html
@@ -150,7 +150,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
 - [ ] Zero errors, zero warnings
 - [ ] No `unwrap()` in production paths
-- [ ] `#[expect(reason)]` for any lint suppressions
+- [ ] `#[expect(lint, reason = "...")]` or `#[allow(lint, reason = "...")]` for any lint suppressions
 - [ ] Doc comments on public APIs with `# Errors` sections
 - [ ] Files under 800 lines
 - [ ] Coverage maintained or improved

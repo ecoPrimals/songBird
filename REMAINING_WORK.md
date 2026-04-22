@@ -2,7 +2,7 @@
 
 **Date**: April 22, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 156 (Apr 22, 2026)  
+**Last Deep Debt Audit**: Wave 157 (Apr 22, 2026)  
 **Current Wave**: 157 — Deep debt: hardcoded literals to constants, dead workspace deps, example hygiene. Evolved 10+ hardcoded IP/port/path literals to `songbird_types::constants` and `defaults::ports` (compute adapter localhost, util.rs loopback detection, `NetworkSecurityConfig` default IPs, discovery 8080 defaults, relay port, STUN port, HTTPS 443, iOS dynamic port range, canonical network config 6 bare ports). Added `is_loopback_host()` utility, `LOCALHOST_IPV6`, `DEFAULT_RELAY_PORT`, `HTTPS_STANDARD_PORT`, `DYNAMIC_PORT_RANGE_*` constants. Removed unused `urlencoding` and `if-addrs` workspace deps. Fixed genesis `--features testing` → `test-mocks` comment. Cleaned 6 examples: `Box<dyn Error>` → `anyhow::Result`, hardcoded `/tmp/beardog-*.sock` → XDG-based capability discovery paths. 7,387 tests, 0 failures  
 **Previous Waves** (full detail in `CHANGELOG.md`): 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
@@ -31,7 +31,7 @@
 | **Mocks in production** | 0 (all inside `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]`; `birdsong::mocks` gated Wave 147; `StubAllow`/`StubDeny`/`StubPassthrough`/`StubMockEncrypted` gated Wave 154) |
 | **Capability discovery** | `find_primals_with_capability` — identity-agnostic, env-driven |
 | **Hardcoded elimination** | All ports env-driven (`SONGBIRD_DISCOVERY_PORT`, `SONGBIRD_STUN_PORT`, `SONGBIRD_RELAY_PORT`, `SONGBIRD_BIND_ADDRESS`, `SONGBIRD_MULTICAST_ADDRESS`); canonical `DEFAULT_SONGBIRD_PORT` (3492) constant replaces all magic-number port fallbacks (Wave 136); `BIOMEOS_RUNTIME_SUBDIR` constant replaces all `"biomeos"` path literals in production (Wave 136); all socket paths XDG-compliant; all IP probes use netdev + RFC 5737 fallback; capability-first across 11+ crates; all legacy primal env vars deprecated with `tracing::warn!`; all deprecated function/type/module names removed; Wave 137c: zero remaining hardcoded `"0.0.0.0"` / `"127.0.0.1"` / `"localhost"` in production code — all evolved to `PRODUCTION_BIND_ADDRESS` / `DEVELOPMENT_BIND_ADDRESS` / `LOCALHOST` constants; all legacy port constants deprecated to canonical `defaults::ports` |
-| **JSON-RPC dispatch** | Typed `JsonRpcMethod` enum (53+ methods, 16 domain sub-enums including `Lifecycle` and `Inference`); `normalize_json_rpc_method_name()` absorbs `model.*`/`ai.*` → `inference.*`, `discovery.find_by_capability`/`net.discovery.find_by_capability` → `ipc.discover` |
+| **JSON-RPC dispatch** | Typed `JsonRpcMethod` enum (53+ methods, 33 domain sub-enums including `Lifecycle` and `Inference`); `normalize_json_rpc_method_name()` absorbs `model.*`/`ai.*` → `inference.*`, `discovery.find_by_capability`/`net.discovery.find_by_capability` → `ipc.discover` |
 | **License** | `AGPL-3.0-or-later` (workspace + per-crate; **Apr 7**: inconsistent `AGPL-3.0-only` strings eliminated) via workspace inheritance + ORC + CC-BY-SA 4.0 |
 | **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI via `ci.yml` (Wave 134) |
@@ -39,31 +39,16 @@
 | **`async-trait`** | **0** annotations, dependency fully removed from workspace (Wave 145). 141→0: every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. No crate depends on `async-trait`. SB-06 resolved. Wave 155: eliminated 6 more production `dyn` sites (iterator, error, future, plugin, composable, callback). Remaining `dyn`: architectural `dyn Stream` (async watch), `Box<dyn SerialPort>` (external crate), `Arc<dyn Fn>` (test injection) |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
-| **Total Rust** | ~430,000 lines across 30 crates (1,587 files) |
+| **Total Rust** | ~421,000 lines across 30 crates (1,609 files) |
 | **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented; Wave 143: content distribution federation wired (`ContentAnnouncementStore`, `discovery.content_peers`, seeder/leecher coordination), `ring` deny.toml updated; Wave 145: `async-trait` fully eliminated (SB-06 resolved); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139) |
 
 ---
 
-## Active Blockers
+## Remaining Work
 
-**BTSP Phase 2** is complete: `perform_server_handshake` + `perform_server_handshake_ndjson` wired into UDS accept path (Waves 132/153). When `FAMILY_ID` is set (non-default), incoming connections MUST complete the 4-step BTSP handshake before JSON-RPC processing. Post-handshake framing uses length-prefixed (4-byte BE) frames per `BTSP_PROTOCOL_STANDARD.md` v1.0. Crypto delegated to BearDog via `SecurityRpcClient::btsp_session_create/verify/negotiate`. Development mode (no `FAMILY_ID`) unchanged: newline-delimited JSON-RPC.
+### BTSP Phase 3 (pending — Phase 2 complete)
 
-**Wave 156**: Startup no longer crashes when crypto provider is unavailable — graceful fallback to cleartext mode. NDJSON handshake reads have 15s timeout (prevents indefinite blocking). Neural API read timeout raised from 100ms to 5s (accommodates BearDog BTSP crypto latency).
-
-**Remaining BTSP work**: Phase 3 cipher negotiation + encrypted framing (ChaCha20-Poly1305 / HMAC-plain actual encryption), multi-frame sessions, and E2E integration test with live BearDog.
-
-### SB-03: Sled → IPC Storage Migration (RESOLVED — Wave 135, naming evolved Wave 137)
-
-**Status**: `sled` dependency and all `sled-storage` features **fully removed** (Wave 135). 1,482 lines of deprecated sled storage code deleted across `songbird-orchestrator` (2 files: `storage_sled.rs` for consent + task), `songbird-sovereign-onion` (1 file: `storage_sled.rs`), and `songbird-onion-relay` (adapted to `InMemoryOnionStorage`). Wave 137: capability-based naming — `NestGateStorage` → `IpcStorageBackend`, `NestGateOnionStorage` → `IpcOnionStorage`, module paths `storage_nestgate/` → `storage_ipc/`.
-
-**Architecture (final):**
-- `ConsentStorage` enum (Memory/Ipc variants) via `storage.*` JSON-RPC (Wave 144: dyn→enum)
-- `TaskStorage` enum (Memory/Ipc variants) via `storage.*` JSON-RPC (Wave 144: dyn→enum)
-- `IpcOnionStorage` → `OnionStorageBackend` via `storage.*` JSON-RPC
-- `InMemoryStorage` / `InMemoryOnionStorage` → fallback when no storage provider available
-- No sled code remains anywhere in the workspace
-
-**Operational validation** (not SB-03): Storage capability provider must expose live `storage.*` IPC endpoints for end-to-end validation with a running storage primal.
+Phase 2 is shipped (Waves 132/153/156): `perform_server_handshake` + `perform_server_handshake_ndjson` wired into UDS accept, startup resilience (graceful crypto fallback), NDJSON handshake timeouts, Neural API timeout fix. **Remaining**: Phase 3 cipher negotiation + encrypted framing (ChaCha20-Poly1305 / HMAC-plain actual encryption), multi-frame sessions, and E2E integration test with live BearDog.
 
 ### Tor Onion Service — Security Provider Crypto (BLOCKED)
 

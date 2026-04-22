@@ -24,8 +24,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Tests | 7,387 lib passed, 0 failures, 22 ignored |
 | Line Coverage | **72.29%** (`llvm-cov --workspace --lib`, Apr 8 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
-| JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all 5 handlers |
-| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 16 domain sub-enums including `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases |
+| JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
+| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 33 domain sub-enums including `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases |
 | Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`; Apr 22 verified) |
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`; Apr 22 verified) |
@@ -33,15 +33,15 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Files >800 lines | 0 (largest production 763L `primal_discovery.rs`; 4 former >700L files smart-refactored into domain modules Wave 133; largest test 731L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
-| JSON-RPC Gateway | 53+ semantic methods across 16 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
+| JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
 | Wire Standard L3 | `capabilities.list` returns L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`; `identity.get` returns `{primal, version, domain, license}`; `capabilities.methods` token→method map |
 | BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` (length-prefix) + `perform_server_handshake_ndjson` (JSON-line) on UDS accept when `FAMILY_ID` set; first-line auto-detect: `"protocol":"btsp"` → NDJSON BTSP, plain `{` → JSON-RPC, other → binary BTSP; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI (`cargo deny check` step in `ci.yml`) |
-| Dependencies | Pure Rust in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`, SB-02 documented); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; zero `-sys` crates, zero `cc`, zero `build.rs`; `cargo deny check` fully passing |
+| Dependencies | Pure Rust in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`, SB-02 documented); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; zero first-party `-sys` crates, zero `cc`, zero `build.rs`; `cargo deny check` fully passing |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
-| Total Rust | ~430,000 lines across 30 crates (1,587 files) |
+| Total Rust | ~421,000 lines across 30 crates (1,609 files) |
 
 ## Architecture
 

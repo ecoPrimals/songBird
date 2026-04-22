@@ -11,25 +11,23 @@
 | `cli_parsing_tests.rs` | CLI parsing and validation only (no servers). |
 | `integration_task_lifecycle.rs` | Orchestrator task lifecycle against isolated temp DBs. |
 
-**Module subtrees** (not separate Cargo targets): `tests/e2e/`, `tests/chaos/`, `tests/fault/`, `tests/integration/`. They are organized as `mod` trees for a would-be harness crate, but **no** current `tests/*.rs` root declares `mod e2e`, `mod chaos`, etc., so they are **not** compiled or run by `cargo test -p songbird` until such a root exists.
+**Note**: Former `tests/e2e/`, `tests/chaos/`, `tests/fault/`, `tests/integration/`, `tests/common/`, `tests/helpers/` subtrees were removed in Wave 157 (Apr 22, 2026) — they were never compiled (no `tests/*.rs` root declared `mod e2e` etc.), referenced removed dependencies (`reqwest`), and contained ~12,400 lines of dead code.
 
-**Shared helpers** — `tests/common/`, `tests/helpers/` — pulled in with `#[path = ...]` from sources under those subtrees (e.g. `tests/e2e/`).
-
-## Counts (workspace, `--all-features`)
+## Counts (workspace lib tests)
 
 | | |
 |--|--|
-| Passed | 13,030 |
+| Passed | 7,387 |
 | Failed | 0 |
-| Ignored | 252 |
+| Ignored | 22 |
 
 ## Running
 
 ```bash
-cargo test --workspace --all-features    # full workspace (feature-gated tests need this)
-cargo test --workspace --lib             # library unit tests only
-cargo test -p songbird                   # root crate + the three `tests/*.rs` targets above
-cargo test -p <crate>                  # single workspace member
+cargo test --workspace --lib             # library unit tests only (primary)
+cargo test --workspace --all-features    # full workspace (feature-gated tests)
+cargo test -p songbird                   # root crate + the three tests/*.rs targets above
+cargo test -p <crate>                    # single workspace member
 ./scripts/test-with-security-provider.sh # optional: live security provider
-./scripts/coverage.sh                   # llvm-cov HTML report
+./scripts/coverage.sh                    # llvm-cov HTML report
 ```
