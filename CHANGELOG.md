@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave158] - 2026-04-22 - BTSP Step 3→4 Verification Relay (primalSpring Phase 45 Audit)
+
+### Fixed — BTSP wire-protocol alignment with BearDog
+- **songbird-http-client/security_rpc_client/btsp.rs**: `btsp_session_create` now sends `family_seed` (base64, resolved from env) instead of `family_seed_ref: "env:FAMILY_SEED"` which BearDog doesn't understand
+- **songbird-http-client/security_rpc_client/btsp.rs**: `btsp_session_create` response parsing now reads `session_token` + `challenge` (matching BearDog's `SessionCreateResponse`) instead of `session_id` + `handshake_key` (which BearDog never sent)
+- **songbird-http-client/security_rpc_client/btsp.rs**: `btsp_session_verify` now sends `session_token`, `response`, `client_ephemeral_pub`, `preferred_cipher` (matching BearDog's `SessionVerifyParams`) instead of wrong field names (`session_id`, `client_response`, plus extra `server_ephemeral_pub`/`challenge`)
+- **songbird-http-client/security_rpc_client/btsp.rs**: `btsp_session_verify` response parsing now reads `session_id` + `cipher` (matching BearDog's `SessionVerifyResponse`) instead of `session_key` (which BearDog never sent)
+- **songbird-http-client/security_rpc_client/btsp.rs**: `btsp_negotiate` now calls `btsp.session.negotiate` (registered alias) instead of `btsp.negotiate` (unknown method), with `session_token`+`cipher` params and `accepted` response field
+- **songbird-orchestrator/ipc/btsp.rs**: `ServerHello` now includes `session_id` field (primalSpring requires it for handshake state)
+- **songbird-orchestrator/ipc/btsp.rs**: Both `perform_server_handshake` and `perform_server_handshake_ndjson` now use BearDog's challenge (from `btsp.session.create` response) instead of generating a local random challenge that BearDog doesn't know about
+- **songbird-orchestrator/ipc/btsp.rs**: Added `resolve_family_seed_b64()` to read `FAMILY_SEED` from env and encode as base64 for BearDog
+
+### Changed — Simplified post-verify flow
+- **songbird-orchestrator/ipc/btsp.rs**: Removed separate `btsp_negotiate` call from handshake — BearDog's `btsp.session.verify` already includes cipher negotiation in its response
+- **songbird-orchestrator/ipc/btsp.rs**: `BtspSession` no longer stores `session_key` (unused; keys obtained via `btsp.server.export_keys` when needed)
+- **songbird-orchestrator/ipc/btsp.rs**: `parse_cipher` moved to `#[cfg(test)]` (no longer used in production after negotiate removal)
+
+---
+
 ## [v0.2.1-wave157] - 2026-04-22 - Deep Debt: Hardcoded Literals, Dead Deps, Example Hygiene
 
 ### Changed — Hardcoded literals → constants

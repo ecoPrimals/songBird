@@ -9,8 +9,8 @@
 //! ## Protocol Flow (server perspective)
 //!
 //! ```text
-//! 1. Read   ClientHello        { version, client_ephemeral_pub }
-//! 2. Send   ServerHello        { version, server_ephemeral_pub, challenge }
+//! 1. Read   ClientHello        { protocol, version, client_ephemeral_pub }
+//! 2. Send   ServerHello        { version, server_ephemeral_pub, challenge, session_id }
 //! 3. Read   ChallengeResponse  { response, preferred_cipher }
 //! 4. Send   HandshakeComplete  { cipher, session_id }
 //!    — or —
@@ -27,7 +27,7 @@ use base64::prelude::BASE64_STANDARD;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 use songbird_http_client::SecurityRpcClient;
 
@@ -35,7 +35,6 @@ use songbird_http_client::SecurityRpcClient;
 
 const BTSP_VERSION: u8 = 1;
 const MAX_HANDSHAKE_FRAME: u32 = 8192;
-const CHALLENGE_LEN: usize = 32;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ClientHello {
@@ -50,6 +49,7 @@ struct ServerHello {
     version: u8,
     server_ephemeral_pub: String, // base64
     challenge: String,            // base64
+    session_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -75,7 +75,6 @@ struct HandshakeError {
 pub struct BtspSession {
     pub session_id: String,
     pub cipher: String,
-    pub session_key: Vec<u8>,
 }
 
 // ─── Length-prefixed framing ─────────────────────────────────────────────────
@@ -105,12 +104,30 @@ async fn write_frame<W: AsyncWriteExt + Unpin>(writer: &mut W, payload: &[u8]) -
     Ok(())
 }
 
+// ─── Family seed resolution ──────────────────────────────────────────────────
+
+/// Resolve the family seed from the environment and return it as a base64
+/// string suitable for BearDog's `btsp.session.create` `family_seed` param.
+///
+/// Returns `None` if `FAMILY_SEED` is unset or empty.
+fn resolve_family_seed_b64() -> Option<String> {
+    let raw = songbird_process_env::var("FAMILY_SEED").ok()?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if BASE64_STANDARD.decode(trimmed).is_ok() {
+        return Some(trimmed.to_string());
+    }
+    Some(BASE64_STANDARD.encode(trimmed.as_bytes()))
+}
+
 // ─── Handshake ───────────────────────────────────────────────────────────────
 
 /// Perform the server-side BTSP handshake on an accepted connection.
 ///
 /// Delegates all crypto to BearDog via `security_client`. On success returns
-/// a [`BtspSession`] with the negotiated cipher and session key. On failure,
+/// a [`BtspSession`] with the negotiated cipher and session id. On failure,
 /// sends a `HandshakeError` to the client and returns `Err`.
 ///
 /// # Errors
@@ -119,7 +136,7 @@ async fn write_frame<W: AsyncWriteExt + Unpin>(writer: &mut W, payload: &[u8]) -
 /// - The client sends malformed handshake messages
 /// - BearDog is unreachable or rejects the session
 /// - The client fails the challenge-response (wrong family seed)
-/// - Cipher negotiation is disallowed by `BondingPolicy`
+/// - Cipher negotiation is disallowed
 pub async fn perform_server_handshake<S>(
     stream: &mut S,
     security_client: &Arc<SecurityRpcClient>,
@@ -149,22 +166,22 @@ where
         .decode(&client_hello.client_ephemeral_pub)
         .context("BTSP: invalid base64 in client_ephemeral_pub")?;
 
-    // Generate challenge (32 random bytes via getrandom)
-    let mut challenge = vec![0u8; CHALLENGE_LEN];
-    getrandom::fill(&mut challenge).map_err(|e| anyhow::anyhow!("BTSP: getrandom failed: {e}"))?;
+    let family_seed_b64 = resolve_family_seed_b64()
+        .context("BTSP: FAMILY_SEED not available — cannot create BTSP session")?;
 
-    // Step 2: Call BearDog to create session
+    // Step 2: Call BearDog to create session (BearDog generates challenge + ephemeral keys)
     let session = security_client
-        .btsp_session_create(&client_pub, &challenge)
+        .btsp_session_create(&family_seed_b64)
         .await
         .context("BTSP: BearDog btsp.session.create failed")?;
 
-    info!("BTSP handshake: session {} created, sending ServerHello", session.session_id);
+    info!("BTSP handshake: session_token {} created, sending ServerHello", session.session_token);
 
     let server_hello = ServerHello {
         version: BTSP_VERSION,
         server_ephemeral_pub: BASE64_STANDARD.encode(&session.server_ephemeral_pub),
-        challenge: BASE64_STANDARD.encode(&challenge),
+        challenge: BASE64_STANDARD.encode(&session.challenge),
+        session_id: session.session_token.clone(),
     };
     write_frame(stream, &serde_json::to_vec(&server_hello)?).await?;
 
@@ -178,20 +195,22 @@ where
         .decode(&challenge_resp.response)
         .context("BTSP: invalid base64 in challenge response")?;
 
-    // Step 4: Verify via BearDog
+    // Step 4: Verify via BearDog (includes cipher negotiation)
     let verification = security_client
         .btsp_session_verify(
-            &session.session_id,
-            &client_response,
+            &session.session_token,
             &client_pub,
-            &session.server_ephemeral_pub,
-            &challenge,
+            &client_response,
+            &challenge_resp.preferred_cipher,
         )
         .await
         .context("BTSP: BearDog btsp.session.verify failed")?;
 
     if !verification.verified {
-        error!("BTSP handshake: FAILED for session {} (wrong family seed)", session.session_id);
+        error!(
+            "BTSP handshake: FAILED for session_token {} (wrong family seed)",
+            session.session_token
+        );
         let err = HandshakeError {
             error: "handshake_failed".into(),
             reason: "family_verification".into(),
@@ -200,45 +219,21 @@ where
         bail!("BTSP: client failed family verification");
     }
 
-    let session_key =
-        verification.session_key.context("BTSP: verified but no session_key returned")?;
+    let session_id =
+        verification.session_id.context("BTSP: verified but no session_id returned")?;
+    let cipher = verification.cipher.unwrap_or_else(|| "null".to_string());
 
-    // Negotiate cipher
-    let preferred = &challenge_resp.preferred_cipher;
-    let negotiation = security_client
-        .btsp_negotiate(&session.session_id, parse_cipher(preferred), "Covalent")
-        .await
-        .context("BTSP: BearDog btsp.negotiate failed")?;
-
-    if !negotiation.allowed {
-        warn!(
-            "BTSP: cipher '{}' not allowed by BondingPolicy, session {}",
-            preferred, session.session_id
-        );
-        let err = HandshakeError {
-            error: "handshake_failed".into(),
-            reason: format!("cipher '{preferred}' not allowed"),
-        };
-        let _ = write_frame(stream, &serde_json::to_vec(&err)?).await;
-        bail!("BTSP: cipher negotiation rejected");
-    }
-
-    // Send HandshakeComplete
     let complete = HandshakeComplete {
-        cipher: negotiation.cipher.clone(),
-        session_id: session.session_id.clone(),
+        cipher: cipher.clone(),
+        session_id: session_id.clone(),
     };
     write_frame(stream, &serde_json::to_vec(&complete)?).await?;
 
-    info!(
-        "BTSP handshake: COMPLETE for session {} (cipher: {})",
-        session.session_id, negotiation.cipher
-    );
+    info!("BTSP handshake: COMPLETE for session {session_id} (cipher: {cipher})");
 
     Ok(BtspSession {
-        session_id: session.session_id,
-        cipher: negotiation.cipher,
-        session_key,
+        session_id,
+        cipher,
     })
 }
 
@@ -334,22 +329,25 @@ where
         .decode(&client_hello.client_ephemeral_pub)
         .context("BTSP NDJSON: invalid base64 in client_ephemeral_pub")?;
 
-    let mut challenge = vec![0u8; CHALLENGE_LEN];
-    getrandom::fill(&mut challenge)
-        .map_err(|e| anyhow::anyhow!("BTSP NDJSON: getrandom failed: {e}"))?;
+    let family_seed_b64 = resolve_family_seed_b64()
+        .context("BTSP NDJSON: FAMILY_SEED not available — cannot create BTSP session")?;
 
-    // Step 2: Call BearDog to create session, send ServerHello as NDJSON
+    // Step 2: Call BearDog to create session (BearDog generates challenge + ephemeral keys)
     let session = security_client
-        .btsp_session_create(&client_pub, &challenge)
+        .btsp_session_create(&family_seed_b64)
         .await
         .context("BTSP NDJSON: BearDog btsp.session.create failed")?;
 
-    info!("BTSP NDJSON handshake: session {} created, sending ServerHello", session.session_id);
+    info!(
+        "BTSP NDJSON handshake: session_token {} created, sending ServerHello",
+        session.session_token
+    );
 
     let server_hello = ServerHello {
         version: BTSP_VERSION,
         server_ephemeral_pub: BASE64_STANDARD.encode(&session.server_ephemeral_pub),
-        challenge: BASE64_STANDARD.encode(&challenge),
+        challenge: BASE64_STANDARD.encode(&session.challenge),
+        session_id: session.session_token.clone(),
     };
     write_ndjson(writer, &server_hello).await?;
 
@@ -363,22 +361,21 @@ where
         .decode(&challenge_resp.response)
         .context("BTSP NDJSON: invalid base64 in challenge response")?;
 
-    // Step 4: Verify via BearDog
+    // Step 4: Verify via BearDog (includes cipher negotiation)
     let verification = security_client
         .btsp_session_verify(
-            &session.session_id,
-            &client_response,
+            &session.session_token,
             &client_pub,
-            &session.server_ephemeral_pub,
-            &challenge,
+            &client_response,
+            &challenge_resp.preferred_cipher,
         )
         .await
         .context("BTSP NDJSON: BearDog btsp.session.verify failed")?;
 
     if !verification.verified {
         error!(
-            "BTSP NDJSON handshake: FAILED for session {} (wrong family seed)",
-            session.session_id
+            "BTSP NDJSON handshake: FAILED for session_token {} (wrong family seed)",
+            session.session_token
         );
         let err = HandshakeError {
             error: "handshake_failed".into(),
@@ -388,53 +385,22 @@ where
         bail!("BTSP NDJSON: client failed family verification");
     }
 
-    let session_key =
-        verification.session_key.context("BTSP NDJSON: verified but no session_key returned")?;
-
-    let preferred = &challenge_resp.preferred_cipher;
-    let negotiation = security_client
-        .btsp_negotiate(&session.session_id, parse_cipher(preferred), "Covalent")
-        .await
-        .context("BTSP NDJSON: BearDog btsp.negotiate failed")?;
-
-    if !negotiation.allowed {
-        warn!(
-            "BTSP NDJSON: cipher '{}' not allowed by BondingPolicy, session {}",
-            preferred, session.session_id
-        );
-        let err = HandshakeError {
-            error: "handshake_failed".into(),
-            reason: format!("cipher '{preferred}' not allowed"),
-        };
-        let _ = write_ndjson(writer, &err).await;
-        bail!("BTSP NDJSON: cipher negotiation rejected");
-    }
+    let session_id =
+        verification.session_id.context("BTSP NDJSON: verified but no session_id returned")?;
+    let cipher = verification.cipher.unwrap_or_else(|| "null".to_string());
 
     let complete = HandshakeComplete {
-        cipher: negotiation.cipher.clone(),
-        session_id: session.session_id.clone(),
+        cipher: cipher.clone(),
+        session_id: session_id.clone(),
     };
     write_ndjson(writer, &complete).await?;
 
-    info!(
-        "BTSP NDJSON handshake: COMPLETE for session {} (cipher: {})",
-        session.session_id, negotiation.cipher
-    );
+    info!("BTSP NDJSON handshake: COMPLETE for session {session_id} (cipher: {cipher})");
 
     Ok(BtspSession {
-        session_id: session.session_id,
-        cipher: negotiation.cipher,
-        session_key,
+        session_id,
+        cipher,
     })
-}
-
-fn parse_cipher(s: &str) -> songbird_http_client::BtspCipher {
-    match s {
-        "chacha20_poly1305" | "chacha20" => songbird_http_client::BtspCipher::ChaCha20Poly1305,
-        "hmac_plain" | "hmac" => songbird_http_client::BtspCipher::HmacPlain,
-        "null" | "none" => songbird_http_client::BtspCipher::Null,
-        _ => songbird_http_client::BtspCipher::ChaCha20Poly1305,
-    }
 }
 
 /// Check whether BTSP handshake is required for the current configuration.
@@ -474,6 +440,15 @@ where
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    fn parse_cipher(s: &str) -> songbird_http_client::BtspCipher {
+        match s {
+            "chacha20_poly1305" | "chacha20" => songbird_http_client::BtspCipher::ChaCha20Poly1305,
+            "hmac_plain" | "hmac" => songbird_http_client::BtspCipher::HmacPlain,
+            "null" | "none" => songbird_http_client::BtspCipher::Null,
+            _ => songbird_http_client::BtspCipher::ChaCha20Poly1305,
+        }
+    }
 
     fn env_map(
         pairs: Vec<(&str, &str)>,
@@ -543,10 +518,12 @@ mod tests {
             version: 1,
             server_ephemeral_pub: "BBBB".to_string(),
             challenge: "CCCC".to_string(),
+            session_id: "tok-xyz".to_string(),
         };
         let json = serde_json::to_vec(&server).unwrap();
         let back: ServerHello = serde_json::from_slice(&json).unwrap();
         assert_eq!(back.challenge, "CCCC");
+        assert_eq!(back.session_id, "tok-xyz");
 
         let resp = ChallengeResponse {
             response: "DDDD".to_string(),
@@ -621,6 +598,7 @@ mod tests {
             version: 1,
             server_ephemeral_pub: "BBBB".to_string(),
             challenge: "CCCC".to_string(),
+            session_id: "tok-ndjson".to_string(),
         };
         let mut buf = Vec::new();
         write_ndjson(&mut buf, &value).await.unwrap();
@@ -630,6 +608,7 @@ mod tests {
         let line = read_ndjson_line(&mut cursor).await.unwrap();
         let back: ServerHello = serde_json::from_str(line.trim()).unwrap();
         assert_eq!(back.challenge, "CCCC");
+        assert_eq!(back.session_id, "tok-ndjson");
     }
 
     #[tokio::test]

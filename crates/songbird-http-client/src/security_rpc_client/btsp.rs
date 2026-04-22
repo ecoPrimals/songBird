@@ -20,25 +20,34 @@ use serde_json::json;
 use tracing::debug;
 
 /// Result of `btsp.session.create` — BearDog generates server-side session state.
+///
+/// Aligned with BearDog's `SessionCreateResponse`: returns an opaque
+/// `session_token` (used to reference the session in subsequent calls),
+/// the server's ephemeral public key, and a random challenge for the client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BtspSessionCreated {
-    pub session_id: String,
+    pub session_token: String,
     pub server_ephemeral_pub: Vec<u8>,
-    pub handshake_key: Vec<u8>,
+    pub challenge: Vec<u8>,
 }
 
 /// Result of `btsp.session.verify` — BearDog verifies the client's challenge response.
+///
+/// Aligned with BearDog's `SessionVerifyResponse`: on success, returns
+/// the promoted `session_id` and negotiated `cipher`. Session keys are
+/// obtained separately via `btsp.server.export_keys` when encryption is needed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BtspSessionVerified {
     pub verified: bool,
-    pub session_key: Option<Vec<u8>>,
+    pub session_id: Option<String>,
+    pub cipher: Option<String>,
 }
 
-/// Result of `btsp.negotiate` — cipher suite negotiation.
+/// Result of `btsp.session.negotiate` — cipher suite negotiation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BtspNegotiation {
     pub cipher: String,
-    pub allowed: bool,
+    pub accepted: bool,
 }
 
 /// BTSP cipher suites as defined in the standard.
@@ -67,32 +76,28 @@ impl SecurityRpcClient {
     ///
     /// Called when a new connection arrives. BearDog generates the server's
     /// ephemeral keypair, derives the handshake key from the family seed,
-    /// and returns session state.
+    /// and returns session state including a random challenge for the client.
+    ///
+    /// `family_seed_b64` must be the base64-encoded family seed bytes.
     ///
     /// # Errors
     ///
     /// Returns an error if BearDog is unreachable or the session cannot be created.
-    pub async fn btsp_session_create(
-        &self,
-        client_ephemeral_pub: &[u8],
-        challenge: &[u8],
-    ) -> Result<BtspSessionCreated> {
+    pub async fn btsp_session_create(&self, family_seed_b64: &str) -> Result<BtspSessionCreated> {
         debug!("BTSP: creating session via security provider");
 
         let result = self
             .call(
                 "btsp.session.create",
                 json!({
-                    "family_seed_ref": "env:FAMILY_SEED",
-                    "client_ephemeral_pub": BASE64_STANDARD.encode(client_ephemeral_pub),
-                    "challenge": BASE64_STANDARD.encode(challenge),
+                    "family_seed": family_seed_b64,
                 }),
             )
             .await?;
 
-        let session_id = result["session_id"]
+        let session_token = result["session_token"]
             .as_str()
-            .ok_or_else(|| Error::SecurityProviderRpc("Missing session_id".to_string()))?
+            .ok_or_else(|| Error::SecurityProviderRpc("Missing session_token".to_string()))?
             .to_string();
 
         let server_ephemeral_pub = BASE64_STANDARD
@@ -103,49 +108,51 @@ impl SecurityRpcClient {
                 Error::SecurityProviderRpc(format!("Invalid server_ephemeral_pub base64: {e}"))
             })?;
 
-        let handshake_key =
-            BASE64_STANDARD
-                .decode(result["handshake_key"].as_str().ok_or_else(|| {
-                    Error::SecurityProviderRpc("Missing handshake_key".to_string())
-                })?)
-                .map_err(|e| {
-                    Error::SecurityProviderRpc(format!("Invalid handshake_key base64: {e}"))
-                })?;
+        let challenge = BASE64_STANDARD
+            .decode(
+                result["challenge"]
+                    .as_str()
+                    .ok_or_else(|| Error::SecurityProviderRpc("Missing challenge".to_string()))?,
+            )
+            .map_err(|e| Error::SecurityProviderRpc(format!("Invalid challenge base64: {e}")))?;
 
         Ok(BtspSessionCreated {
-            session_id,
+            session_token,
             server_ephemeral_pub,
-            handshake_key,
+            challenge,
         })
     }
 
     /// Verify a client's BTSP challenge response.
     ///
     /// After the server sends `ServerHello` with a challenge, the client responds
-    /// with an HMAC proving family membership. BearDog verifies this.
+    /// with an HMAC proving family membership. BearDog verifies the HMAC using
+    /// the session state stored under `session_token`.
+    ///
+    /// On success, BearDog promotes the session and returns a `session_id` and
+    /// the negotiated `cipher`. Session keys are obtained separately via
+    /// `btsp.server.export_keys` when stream encryption is needed.
     ///
     /// # Errors
     ///
     /// Returns an error if BearDog is unreachable or the response is malformed.
     pub async fn btsp_session_verify(
         &self,
-        session_id: &str,
-        client_response: &[u8],
+        session_token: &str,
         client_ephemeral_pub: &[u8],
-        server_ephemeral_pub: &[u8],
-        challenge: &[u8],
+        response: &[u8],
+        preferred_cipher: &str,
     ) -> Result<BtspSessionVerified> {
-        debug!("BTSP: verifying challenge response for session {session_id}");
+        debug!("BTSP: verifying challenge response for session_token {session_token}");
 
         let result = self
             .call(
                 "btsp.session.verify",
                 json!({
-                    "session_id": session_id,
-                    "client_response": BASE64_STANDARD.encode(client_response),
+                    "session_token": session_token,
                     "client_ephemeral_pub": BASE64_STANDARD.encode(client_ephemeral_pub),
-                    "server_ephemeral_pub": BASE64_STANDARD.encode(server_ephemeral_pub),
-                    "challenge": BASE64_STANDARD.encode(challenge),
+                    "response": BASE64_STANDARD.encode(response),
+                    "preferred_cipher": preferred_cipher,
                 }),
             )
             .await?;
@@ -156,64 +163,56 @@ impl SecurityRpcClient {
             )
         })?;
 
-        let session_key = if verified {
-            let key_b64 = result["session_key"].as_str().ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing session_key on verified session".to_string())
-            })?;
-            Some(BASE64_STANDARD.decode(key_b64).map_err(|e| {
-                Error::SecurityProviderRpc(format!("Invalid session_key base64: {e}"))
-            })?)
-        } else {
-            None
-        };
+        let session_id = result["session_id"].as_str().map(ToString::to_string);
+        let cipher = result["cipher"].as_str().map(ToString::to_string);
 
         Ok(BtspSessionVerified {
             verified,
-            session_key,
+            session_id,
+            cipher,
         })
     }
 
     /// Negotiate cipher suite for an authenticated BTSP session.
     ///
     /// After handshake verification succeeds, both parties negotiate which
-    /// cipher to use. The minimum cipher is enforced per `BondingPolicy`.
+    /// cipher to use. BearDog's verify already includes cipher negotiation,
+    /// so this is typically only needed for re-negotiation.
     ///
     /// # Errors
     ///
     /// Returns an error if BearDog is unreachable or negotiation fails.
     pub async fn btsp_negotiate(
         &self,
-        session_id: &str,
-        preferred_cipher: BtspCipher,
-        bond_type: &str,
+        session_token: &str,
+        cipher: BtspCipher,
     ) -> Result<BtspNegotiation> {
-        debug!("BTSP: negotiating cipher for session {session_id}");
+        debug!("BTSP: negotiating cipher for session_token {session_token}");
 
         let result = self
             .call(
-                "btsp.negotiate",
+                "btsp.session.negotiate",
                 json!({
-                    "session_id": session_id,
-                    "preferred_cipher": preferred_cipher.to_string(),
-                    "bond_type": bond_type,
+                    "session_token": session_token,
+                    "cipher": cipher.to_string(),
                 }),
             )
             .await?;
 
-        let cipher = result["cipher"]
+        let negotiated_cipher = result["cipher"]
             .as_str()
             .ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing cipher in btsp.negotiate".to_string())
+                Error::SecurityProviderRpc("Missing cipher in btsp.session.negotiate".to_string())
             })?
             .to_string();
 
-        let allowed = result["allowed"].as_bool().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing 'allowed' in btsp.negotiate".to_string())
+        let accepted = result["accepted"].as_bool().ok_or_else(|| {
+            Error::SecurityProviderRpc("Missing 'accepted' in btsp.session.negotiate".to_string())
         })?;
 
         Ok(BtspNegotiation {
-            cipher,
-            allowed,
+            cipher: negotiated_cipher,
+            accepted,
         })
     }
 }
@@ -241,25 +240,27 @@ mod tests {
     #[test]
     fn btsp_session_created_deserialize() {
         let json = serde_json::json!({
-            "session_id": "abc123",
+            "session_token": "tok-abc123",
             "server_ephemeral_pub": vec![0u8; 32],
-            "handshake_key": vec![1u8; 32],
+            "challenge": vec![1u8; 32],
         });
         let s: BtspSessionCreated = serde_json::from_value(json).expect("deser");
-        assert_eq!(s.session_id, "abc123");
+        assert_eq!(s.session_token, "tok-abc123");
         assert_eq!(s.server_ephemeral_pub.len(), 32);
-        assert_eq!(s.handshake_key.len(), 32);
+        assert_eq!(s.challenge.len(), 32);
     }
 
     #[test]
     fn btsp_session_verified_success() {
         let json = serde_json::json!({
             "verified": true,
-            "session_key": vec![2u8; 32],
+            "session_id": "sess-001",
+            "cipher": "chacha20_poly1305",
         });
         let v: BtspSessionVerified = serde_json::from_value(json).expect("deser");
         assert!(v.verified);
-        assert!(v.session_key.is_some());
+        assert_eq!(v.session_id.as_deref(), Some("sess-001"));
+        assert_eq!(v.cipher.as_deref(), Some("chacha20_poly1305"));
     }
 
     #[test]
@@ -269,17 +270,18 @@ mod tests {
         });
         let v: BtspSessionVerified = serde_json::from_value(json).expect("deser");
         assert!(!v.verified);
-        assert!(v.session_key.is_none());
+        assert!(v.session_id.is_none());
+        assert!(v.cipher.is_none());
     }
 
     #[test]
     fn btsp_negotiation_deserialize() {
         let json = serde_json::json!({
             "cipher": "chacha20_poly1305",
-            "allowed": true,
+            "accepted": true,
         });
         let n: BtspNegotiation = serde_json::from_value(json).expect("deser");
         assert_eq!(n.cipher, "chacha20_poly1305");
-        assert!(n.allowed);
+        assert!(n.accepted);
     }
 }
