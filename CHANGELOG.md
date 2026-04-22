@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave155] - 2026-04-15 - dyn Dispatch Evolution: Modern Idiomatic Rust
+
+### Changed — `dyn` → concrete / generic dispatch (6 sites)
+- **songbird-http-client/response.rs**: `&mut dyn Iterator<Item = &str>` → `impl Iterator` (monomorphized, zero vtable)
+- **songbird-orchestrator/core/metrics/mod.rs**: `Box<dyn std::error::Error + Send + Sync>` → concrete `MetricsError` on `MetricsCapabilityAdapter::collect_compute_metrics`
+- **songbird-universal/adapters/transport.rs**: `Pin<Box<dyn Future>>` dispatch helpers (`dispatch_call_method/get/post`) gated `#[cfg(test)]` — production `CapabilityTransport::call_method/get/post` now use inline `async` match with zero boxing
+- **songbird-universal/capabilities/adapter/discovery.rs**: `impl Fn(&str) -> Pin<Box<dyn Future>>` callback → generic `F: Fn(&str) -> Fut` where `Fut: Future + Send` — callers no longer `Box::pin`
+- **songbird-registry/plugin/mod.rs**: `Box<dyn ComposablePlugin>` trait-object map → `RegisteredPlugin` metadata struct; removed `async_fn_in_trait` expect; health checks use struct field instead of async trait dispatch
+- **songbird-registry/registry/traits.rs**: `&dyn Composable` parameter → `&impl Composable` (monomorphized)
+
+### Kept (architectural, documented)
+- `Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>` — standard async watch stream pattern across discovery backends; all implementations currently return `stream::empty()`; will evolve to enum when real per-backend streams exist
+- `Box<dyn SerialPort>` — external `serialport` crate API; cannot avoid without forking
+- `Arc<dyn Fn(&str) -> Result<String, VarError>>` — intentional test injection for concurrent env reader; production always uses `songbird_process_env::var` via `Option::map_or_else`
+
+---
+
 ## [v0.2.1-wave154] - 2026-04-15 - Deep Debt: Mock Isolation, Dead Deps, Lint Hygiene
 
 ### Changed — Production stub isolation

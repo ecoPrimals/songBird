@@ -11,7 +11,9 @@ use std::time::Duration;
 use serde_json::{Value, json};
 use songbird_http_client::SongbirdHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
+#[cfg(test)]
 use std::future::Future;
+#[cfg(test)]
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -71,6 +73,7 @@ pub enum CapabilityTransport {
     Mock(MockTransport),
 }
 
+#[cfg(test)]
 fn dispatch_call_method<'a>(
     ct: &'a CapabilityTransport,
     method: String,
@@ -81,17 +84,16 @@ fn dispatch_call_method<'a>(
             CapabilityTransport::Tarpc(t) => t.call_method(&method, params).await,
             CapabilityTransport::JsonRpc(t) => t.call_method(&method, params).await,
             CapabilityTransport::Http(t) => t.call_method(&method, params).await,
-            #[cfg(test)]
             CapabilityTransport::Delay(d) => {
                 tokio::time::sleep(d.delay).await;
                 dispatch_call_method(d.inner.as_ref(), method, params).await
             }
-            #[cfg(test)]
             CapabilityTransport::Mock(m) => m.call_method(&method, params).await,
         }
     })
 }
 
+#[cfg(test)]
 fn dispatch_get<'a>(
     ct: &'a CapabilityTransport,
     path: String,
@@ -101,17 +103,16 @@ fn dispatch_get<'a>(
             CapabilityTransport::Tarpc(t) => t.get(&path).await,
             CapabilityTransport::JsonRpc(t) => t.get(&path).await,
             CapabilityTransport::Http(t) => t.get(&path).await,
-            #[cfg(test)]
             CapabilityTransport::Delay(d) => {
                 tokio::time::sleep(d.delay).await;
                 dispatch_get(d.inner.as_ref(), path).await
             }
-            #[cfg(test)]
             CapabilityTransport::Mock(m) => m.get(&path).await,
         }
     })
 }
 
+#[cfg(test)]
 fn dispatch_post<'a>(
     ct: &'a CapabilityTransport,
     path: String,
@@ -122,12 +123,10 @@ fn dispatch_post<'a>(
             CapabilityTransport::Tarpc(t) => t.post(&path, body).await,
             CapabilityTransport::JsonRpc(t) => t.post(&path, body).await,
             CapabilityTransport::Http(t) => t.post(&path, body).await,
-            #[cfg(test)]
             CapabilityTransport::Delay(d) => {
                 tokio::time::sleep(d.delay).await;
                 dispatch_post(d.inner.as_ref(), path, body).await
             }
-            #[cfg(test)]
             CapabilityTransport::Mock(m) => m.post(&path, body).await,
         }
     })
@@ -136,18 +135,45 @@ fn dispatch_post<'a>(
 impl CapabilityTransport {
     /// Call an RPC method with optional parameters.
     pub async fn call_method(&self, method: &str, params: Option<Value>) -> SongbirdResult<Value> {
+        #[cfg(not(test))]
+        {
+            match self {
+                Self::Tarpc(t) => t.call_method(method, params).await,
+                Self::JsonRpc(t) => t.call_method(method, params).await,
+                Self::Http(t) => t.call_method(method, params).await,
+            }
+        }
+        #[cfg(test)]
         dispatch_call_method(self, method.to_string(), params).await
     }
 
     /// Send a GET request to a path relative to the HTTP base (HTTP); RPC transports map paths
     /// to the correct `call_method` / JSON-RPC wire shape.
     pub async fn get(&self, path: &str) -> SongbirdResult<Value> {
+        #[cfg(not(test))]
+        {
+            match self {
+                Self::Tarpc(t) => t.get(path).await,
+                Self::JsonRpc(t) => t.get(path).await,
+                Self::Http(t) => t.get(path).await,
+            }
+        }
+        #[cfg(test)]
         dispatch_get(self, path.to_string()).await
     }
 
     /// Send a POST with a body to a path relative to the HTTP base (HTTP); RPC transports map
     /// well-known paths to JSON-RPC / tarpc methods.
     pub async fn post(&self, path: &str, body: Value) -> SongbirdResult<Value> {
+        #[cfg(not(test))]
+        {
+            match self {
+                Self::Tarpc(t) => t.post(path, body).await,
+                Self::JsonRpc(t) => t.post(path, body).await,
+                Self::Http(t) => t.post(path, body).await,
+            }
+        }
+        #[cfg(test)]
         dispatch_post(self, path.to_string(), body).await
     }
 }

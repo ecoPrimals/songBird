@@ -3,12 +3,8 @@
 
 //! Dynamic plugin registry and composition
 //!
-//! Provides runtime plugin discovery and composition capabilities
-//!
-//! # Native Async Traits (Rust 1.75+)
-//! Uses native async fn in traits for zero-cost plugin composition
-
-#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
+//! Provides runtime plugin discovery and composition capabilities.
+//! Plugins are metadata-only [`RegisteredPlugin`] structs (no trait-object dispatch).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -22,17 +18,18 @@ use tracing;
 // FUTURE WORK: Move to songbird-discovery::traits once plugin system is fully implemented
 // This is a deferred architectural decision pending plugin ecosystem maturity
 
-pub trait ComposablePlugin: Send + Sync {
-    /// Get the capabilities provided by this plugin
-    fn capabilities(&self) -> Vec<PluginCapability>;
-    
-    /// Check if this plugin is healthy and operational
-    /// 
-    /// Returns `true` if the plugin is healthy, `false` otherwise
-    async fn health_check(&self) -> bool {
-        // Default implementation assumes healthy
-        true
-    }
+/// Registered plugin metadata (replaces `dyn ComposablePlugin` trait-object map).
+///
+/// All plugin state is metadata-only — capabilities and health are tracked by the
+/// registry without requiring a live trait object.
+#[derive(Debug, Clone)]
+pub struct RegisteredPlugin {
+    /// Plugin identifier
+    pub id: String,
+    /// Capabilities this plugin provides
+    pub capabilities: Vec<PluginCapability>,
+    /// Whether this plugin is currently healthy
+    pub healthy: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -89,7 +86,7 @@ pub struct SystemHealth {
 /// This registry allows services to be discovered and composed at runtime
 /// without requiring pre-configured TOML files for every possible combination.
 pub struct DynamicPluginRegistry {
-    plugins: Arc<RwLock<HashMap<String, Box<dyn ComposablePlugin>>>>,
+    plugins: Arc<RwLock<HashMap<String, RegisteredPlugin>>>,
     capabilities: Arc<RwLock<HashMap<String, PluginCapability>>>,
     requirements: Arc<RwLock<HashMap<String, Vec<PluginRequirement>>>>,
     #[allow(dead_code, reason = "populated by register(); topological sort used by validate_composition()")]
@@ -130,7 +127,7 @@ impl DynamicPluginRegistry {
     /// Get plugin capabilities
     pub async fn get_plugin_capabilities(&self, plugin_id: &str) -> SongbirdResult<Vec<PluginCapability>> {
         let plugins = self.plugins.read().await;
-        Ok(plugins.get(plugin_id).map_or_else(Vec::new, |p| p.capabilities()))
+        Ok(plugins.get(plugin_id).map_or_else(Vec::new, |p| p.capabilities.clone()))
     }
 
     /// Discover optimal composition for given requirements
@@ -264,17 +261,14 @@ impl DynamicPluginRegistry {
         let mut plugin_health = HashMap::new();
         let mut all_healthy = true;
 
-        // Check health of each requested plugin
         for plugin_id in plugin_ids {
             if let Some(plugin) = plugins.get(plugin_id) {
-                let is_healthy = plugin.health_check().await;
-                plugin_health.insert(plugin_id.clone(), is_healthy);
-                if !is_healthy {
+                plugin_health.insert(plugin_id.clone(), plugin.healthy);
+                if !plugin.healthy {
                     all_healthy = false;
                     tracing::warn!("Plugin '{}' is unhealthy", plugin_id);
                 }
             } else {
-                // Plugin not found - mark as unhealthy
                 plugin_health.insert(plugin_id.clone(), false);
                 all_healthy = false;
                 tracing::warn!("Plugin '{}' not found in registry", plugin_id);
@@ -360,11 +354,7 @@ impl DynamicPluginRegistry {
         let mut plugin_health = HashMap::new();
         let plugins_read = self.plugins.read().await;
         for plugin_id in &plan.plugins {
-            let healthy = if let Some(plugin) = plugins_read.get(plugin_id) {
-                plugin.health_check().await
-            } else {
-                false
-            };
+            let healthy = plugins_read.get(plugin_id).map_or(false, |p| p.healthy);
             plugin_health.insert(plugin_id.clone(), healthy);
         }
         let all_healthy = !plan.plugins.is_empty() && plugin_health.values().all(|&h| h);

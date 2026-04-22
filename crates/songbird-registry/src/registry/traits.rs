@@ -63,8 +63,7 @@ pub trait Composable: Send + Sync {
     fn capabilities(&self) -> &[Capability];
 
     /// Check if this plugin is compatible with another
-    fn compatible_with(&self, other: &dyn Composable) -> bool {
-        // Default implementation: check for capability overlap
+    fn compatible_with(&self, other: &impl Composable) -> bool {
         let self_caps = self.capabilities();
         let other_caps = other.capabilities();
 

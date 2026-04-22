@@ -96,9 +96,7 @@ pub trait MetricsCapabilityAdapter: Send + Sync {
     /// # Errors
     ///
     /// Returns an error if collection fails (e.g. future HTTP delegation).
-    async fn collect_compute_metrics(
-        &self,
-    ) -> Result<ComputeMetrics, Box<dyn std::error::Error + Send + Sync>>;
+    async fn collect_compute_metrics(&self) -> Result<ComputeMetrics, MetricsError>;
 }
 
 impl MetricsCapabilityAdapter for UniversalMetricsAdapter {
@@ -106,9 +104,7 @@ impl MetricsCapabilityAdapter for UniversalMetricsAdapter {
         self.snapshot_compute_metrics()
     }
 
-    async fn collect_compute_metrics(
-        &self,
-    ) -> Result<ComputeMetrics, Box<dyn std::error::Error + Send + Sync>> {
+    async fn collect_compute_metrics(&self) -> Result<ComputeMetrics, MetricsError> {
         self.metrics_counters.collections_total.fetch_add(1, Ordering::Relaxed);
         Ok(self.snapshot_compute_metrics())
     }

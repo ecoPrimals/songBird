@@ -46,15 +46,15 @@ impl CapabilityDiscovery {
     /// # Errors
     ///
     /// Returns an error if the primal is unreachable or does not respond with valid capabilities
-    pub async fn discover_primal_capabilities(
+    pub async fn discover_primal_capabilities<F, Fut>(
         &self,
         primal_name: &str,
-        query_fn: impl Fn(
-            &str,
-        ) -> std::pin::Pin<
-            Box<dyn std::future::Future<Output = Result<Vec<Capability>, CapabilityError>> + Send>,
-        >,
-    ) -> Result<Vec<Capability>, CapabilityError> {
+        query_fn: F,
+    ) -> Result<Vec<Capability>, CapabilityError>
+    where
+        F: Fn(&str) -> Fut,
+        Fut: std::future::Future<Output = Result<Vec<Capability>, CapabilityError>> + Send,
+    {
         info!("🔍 Discovering capabilities for primal: {}", primal_name);
 
         // Get primal endpoint from environment

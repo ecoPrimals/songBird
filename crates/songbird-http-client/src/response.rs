@@ -91,7 +91,9 @@ impl ResponseParser {
     /// Parse HTTP headers
     ///
     /// Returns headers map and the line index where body starts
-    fn parse_headers(lines: &mut dyn Iterator<Item = &str>) -> (HashMap<String, String>, usize) {
+    fn parse_headers<'a>(
+        lines: &mut impl Iterator<Item = &'a str>,
+    ) -> (HashMap<String, String>, usize) {
         let mut headers = HashMap::new();
         let mut body_start = 1; // Start after status line
 

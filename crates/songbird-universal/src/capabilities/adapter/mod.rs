@@ -80,13 +80,12 @@ impl UniversalCapabilityAdapter {
         &self,
         primal_name: &str,
     ) -> Result<Vec<Capability>, CapabilityError> {
-        // Create closure that captures query for the discovery module
         let query = Arc::clone(&self.query);
         self.discovery
             .discover_primal_capabilities(primal_name, move |endpoint: &str| {
                 let query = Arc::clone(&query);
                 let endpoint = endpoint.to_string();
-                Box::pin(async move { query.query_primal_capabilities(&endpoint).await })
+                async move { query.query_primal_capabilities(&endpoint).await }
             })
             .await
     }
