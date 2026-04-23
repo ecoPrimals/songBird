@@ -1,7 +1,8 @@
 # Contributing to Songbird
 
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
-**Edition**: Rust 2024
+**Edition**: Rust 2024  
+**Last Updated**: April 15, 2026
 
 ---
 
