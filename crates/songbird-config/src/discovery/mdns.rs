@@ -156,10 +156,9 @@ impl MdnsDiscovery {
     /// # Errors
     /// Returns error if hostname cannot be determined or mDNS init fails
     pub fn new() -> Result<Self, MdnsError> {
-        let hostname = hostname::get()
-            .ok()
-            .and_then(|h| h.into_string().ok())
-            .unwrap_or_else(|| "songbird-service".to_string());
+        let hostname = gethostname::gethostname()
+            .into_string()
+            .unwrap_or_else(|_| "songbird-service".to_string());
 
         Self::new_with_port(hostname, 0)
     }

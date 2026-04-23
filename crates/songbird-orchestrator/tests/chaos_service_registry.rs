@@ -69,7 +69,7 @@ async fn test_chaos_concurrent_register_unregister() {
     }
 
     // Wait for all chaos to complete
-    futures::future::join_all(handles).await;
+    futures_util::future::join_all(handles).await;
 
     // Registry should be empty after all unregistrations
     let all_primals = registry.discover_by_capability("*", None).await.unwrap();
@@ -107,7 +107,7 @@ async fn test_chaos_rapid_capability_queries() {
     }
 
     // All queries should succeed (even under heavy load)
-    let results: Vec<_> = futures::future::join_all(query_handles).await;
+    let results: Vec<_> = futures_util::future::join_all(query_handles).await;
 
     for result in results {
         let primals = result.unwrap();
@@ -162,8 +162,8 @@ async fn test_chaos_health_status_race_conditions() {
     }
 
     // All operations should complete without panics or deadlocks
-    futures::future::join_all(update_handles).await;
-    let query_results: Vec<_> = futures::future::join_all(query_handles).await;
+    futures_util::future::join_all(update_handles).await;
+    let query_results: Vec<_> = futures_util::future::join_all(query_handles).await;
 
     // All queries should succeed (even with concurrent updates)
     for result in query_results {
@@ -320,7 +320,7 @@ async fn test_chaos_massive_concurrent_operations() {
     }
 
     // All operations should complete without panics or deadlocks
-    futures::future::join_all(handles).await;
+    futures_util::future::join_all(handles).await;
 
     // Registry should be in a consistent state
     let all_primals = registry.discover_by_capability("*", None).await.unwrap();

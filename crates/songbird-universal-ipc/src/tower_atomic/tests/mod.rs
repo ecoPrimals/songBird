@@ -623,7 +623,7 @@ async fn e2e_concurrent_clients_on_one_server() {
             }
         })
         .collect();
-    let results = futures::future::join_all(futs).await;
+    let results = futures_util::future::join_all(futs).await;
     assert_eq!(results.len(), 12);
     for (i, v) in results.iter().enumerate() {
         assert_eq!(*v, json!(i as i64 + 1));

@@ -459,7 +459,7 @@ async fn test_multiple_tunnels_concurrent() -> Result<()> {
     }
 
     // Await all tunnels
-    let tunnels: Vec<_> = futures::future::try_join_all(handles).await?;
+    let tunnels: Vec<_> = futures_util::future::try_join_all(handles).await?;
 
     assert_eq!(tunnels.len(), 5);
 

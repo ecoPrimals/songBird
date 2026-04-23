@@ -141,7 +141,7 @@ async fn test_e2e_jwt_provisioning_concurrent() {
         })
         .collect();
 
-    let secrets: Vec<String> = futures::future::join_all(handles)
+    let secrets: Vec<String> = futures_util::future::join_all(handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))

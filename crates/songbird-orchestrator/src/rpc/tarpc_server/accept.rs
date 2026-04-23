@@ -11,7 +11,7 @@
 macro_rules! run_tarpc_accept_loop {
     ($addr:expr, $server:expr, $startup_log:expr) => {
         async move {
-            use futures::StreamExt;
+            use futures_util::StreamExt;
             use tarpc::server::Channel;
             use tracing::{debug, error, info};
 

@@ -196,7 +196,7 @@ impl StunClient {
         let mut last_error = None;
 
         while !tasks.is_empty() {
-            let (result, _idx, remaining) = futures::future::select_all(tasks).await;
+            let (result, _idx, remaining) = futures_util::future::select_all(tasks).await;
 
             match result {
                 Ok(Ok((server_idx, addr))) => {
@@ -294,7 +294,7 @@ impl StunClient {
             handles.push(handle);
         }
 
-        let (result, index, _remaining) = futures::future::select_all(handles).await;
+        let (result, index, _remaining) = futures_util::future::select_all(handles).await;
 
         match result {
             Ok(Ok(addr)) => {

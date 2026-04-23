@@ -3,6 +3,9 @@
 
 //! Default port configuration with environment variable support
 //!
+//! Fallback values come from `songbird_types::defaults::ports` where a matching
+//! constant exists, keeping this module as the single env-reading layer.
+//!
 //! # Environment Variables
 //!
 //! - `SONGBIRD_ORCHESTRATOR_PORT` - Orchestrator service port (default: 8080)
@@ -11,6 +14,8 @@
 //! - `SONGBIRD_METRICS_PORT` - Metrics/observability port (default: 9090)
 //! - `SONGBIRD_FEDERATION_PORT` - Federation coordination port (default: 8082)
 //! - `SONGBIRD_WEBSOCKET_PORT` - WebSocket streaming port (default: 8080)
+
+use songbird_types::defaults::ports as canonical;
 
 /// Get orchestrator service port from environment or default
 ///
@@ -29,7 +34,7 @@ pub fn orchestrator_port() -> u16 {
     songbird_process_env::var("SONGBIRD_ORCHESTRATOR_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8080)
+        .unwrap_or(canonical::DEFAULT_ORCHESTRATOR_PORT)
 }
 
 /// Get discovery service port from environment or default
@@ -41,7 +46,7 @@ pub fn discovery_port() -> u16 {
     songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8081)
+        .unwrap_or(canonical::DEFAULT_METRICS_PORT)
 }
 
 /// Get dashboard UI port from environment or default
@@ -89,7 +94,7 @@ pub fn websocket_port() -> u16 {
     songbird_process_env::var("SONGBIRD_WEBSOCKET_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8080)
+        .unwrap_or(canonical::DEFAULT_ORCHESTRATOR_PORT)
 }
 
 fn parse_port_env_first(keys: &[&str]) -> Option<u16> {
@@ -142,7 +147,7 @@ pub fn health_port() -> u16 {
     songbird_process_env::var("SONGBIRD_HEALTH_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8002)
+        .unwrap_or(canonical::DEFAULT_HEALTH_PORT)
 }
 
 /// Get security provider service port from environment or default
@@ -159,7 +164,7 @@ pub fn security_provider_port() -> u16 {
         "SONGBIRD_BEARDOG_PORT",
         "SONGBIRD_SECURITY_PORT or SONGBIRD_SECURITY_PROVIDER_PORT",
     )
-    .unwrap_or(8443)
+    .unwrap_or(canonical::DEFAULT_HTTPS_PORT)
 }
 
 /// Get compute capability provider port from environment or default
@@ -176,7 +181,7 @@ pub fn compute_provider_port() -> u16 {
         "SONGBIRD_TOADSTOOL_PORT",
         "SONGBIRD_COMPUTE_PORT or SONGBIRD_COMPUTE_PROVIDER_PORT",
     )
-    .unwrap_or(8001)
+    .unwrap_or(canonical::DEFAULT_TARPC_PORT)
 }
 
 /// Get AI / neural capability provider port from environment or default
@@ -193,7 +198,7 @@ pub fn ai_provider_port() -> u16 {
         "SONGBIRD_SQUIRREL_PORT",
         "SONGBIRD_AI_PORT or SONGBIRD_AI_PROVIDER_PORT",
     )
-    .unwrap_or(8002)
+    .unwrap_or(canonical::DEFAULT_HEALTH_PORT)
 }
 
 /// Get storage provider gateway service port from environment or default
@@ -210,7 +215,7 @@ pub fn storage_provider_port() -> u16 {
         "SONGBIRD_NESTGATE_PORT",
         "SONGBIRD_STORAGE_PORT or SONGBIRD_STORAGE_PROVIDER_PORT",
     )
-    .unwrap_or(8003)
+    .unwrap_or(canonical::DEFAULT_DASHBOARD_PORT)
 }
 
 /// Get gaming port range start from environment or default

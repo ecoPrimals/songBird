@@ -39,7 +39,7 @@ async fn test_chaos_jwt_provisioning_under_load() {
         .collect();
 
     let start = std::time::Instant::now();
-    let secrets: Vec<String> = futures::future::join_all(handles)
+    let secrets: Vec<String> = futures_util::future::join_all(handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))
@@ -92,7 +92,7 @@ async fn test_chaos_jwt_provisioning_with_varying_paths() {
         })
         .collect();
 
-    let secrets: Vec<String> = futures::future::join_all(provision_handles)
+    let secrets: Vec<String> = futures_util::future::join_all(provision_handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))
@@ -133,7 +133,7 @@ async fn test_chaos_jwt_provisioning_rapid_fire() {
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
 
-    let secrets: Vec<String> = futures::future::join_all(handles)
+    let secrets: Vec<String> = futures_util::future::join_all(handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))
@@ -206,7 +206,7 @@ async fn test_chaos_jwt_provisioning_memory_stress() {
         })
         .collect();
 
-    let secrets: Vec<String> = futures::future::join_all(provision_handles)
+    let secrets: Vec<String> = futures_util::future::join_all(provision_handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))

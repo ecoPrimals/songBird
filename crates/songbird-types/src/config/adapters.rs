@@ -90,7 +90,7 @@ impl Default for CanonicalPrimalInstanceConfig {
         let base_port = songbird_process_env::var("DEFAULT_PRIMAL_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(8080);
+            .unwrap_or(crate::defaults::ports::DEFAULT_ORCHESTRATOR_PORT);
 
         Self {
             base_url: format!("http://{base_host}:{base_port}"),

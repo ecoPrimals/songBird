@@ -72,7 +72,7 @@ impl ProviderFactory for StaticProviderFactory {
         let example_port = songbird_process_env::var("EXAMPLE_SERVICE_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(8080);
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
 
         let example_services = serde_json::json!([
             {

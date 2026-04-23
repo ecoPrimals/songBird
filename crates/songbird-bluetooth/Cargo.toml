@@ -40,7 +40,6 @@ tracing = { workspace = true }
 # Utilities
 uuid = { workspace = true }
 bytes = { workspace = true }
-futures = "0.3"
 
 # Zero-copy optimizations
 zerocopy = { version = "0.7", features = ["derive"] }

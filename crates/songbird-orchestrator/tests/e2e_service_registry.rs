@@ -127,7 +127,7 @@ async fn test_e2e_concurrent_registrations() {
 
     // Wait for all registrations to complete
     let service_ids: Vec<String> =
-        futures::future::join_all(handles).await.into_iter().map(|r| r.unwrap()).collect();
+        futures_util::future::join_all(handles).await.into_iter().map(|r| r.unwrap()).collect();
 
     // Verify all 10 services registered
     assert_eq!(service_ids.len(), 10);

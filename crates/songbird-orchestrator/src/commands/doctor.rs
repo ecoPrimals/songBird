@@ -221,7 +221,8 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
         discovered.insert("crypto".to_string(), crypto_status);
         // Scan for other primals via socket directory
         for capability in &["ai", "storage", "messaging"] {
-            let status = check_primal_status(capability, futures::future::ready(Ok(false))).await;
+            let status =
+                check_primal_status(capability, futures_util::future::ready(Ok(false))).await;
             discovered.insert((*capability).to_string(), status);
         }
         Some(discovered)
@@ -383,7 +384,7 @@ mod tests {
 
     #[tokio::test]
     async fn check_primal_status_connected() {
-        let s = check_primal_status("crypto", futures::future::ready(Ok(true))).await;
+        let s = check_primal_status("crypto", futures_util::future::ready(Ok(true))).await;
         assert_eq!(s.name, "crypto");
         assert_eq!(s.status, "connected");
         assert!(s.error.is_none());
@@ -391,22 +392,24 @@ mod tests {
 
     #[tokio::test]
     async fn check_primal_status_not_reachable() {
-        let s = check_primal_status("ai", futures::future::ready(Ok(false))).await;
+        let s = check_primal_status("ai", futures_util::future::ready(Ok(false))).await;
         assert_eq!(s.status, "not_reachable");
     }
 
     #[tokio::test]
     async fn check_primal_status_error_string() {
-        let s =
-            check_primal_status("messaging", futures::future::ready(Err(anyhow::anyhow!("boom"))))
-                .await;
+        let s = check_primal_status(
+            "messaging",
+            futures_util::future::ready(Err(anyhow::anyhow!("boom"))),
+        )
+        .await;
         assert_eq!(s.status, "error");
         assert_eq!(s.error.as_deref(), Some("boom"));
     }
 
     #[tokio::test]
     async fn check_primal_status_preserves_name() {
-        let s = check_primal_status("custom-cap", futures::future::ready(Ok(false))).await;
+        let s = check_primal_status("custom-cap", futures_util::future::ready(Ok(false))).await;
         assert_eq!(s.name, "custom-cap");
     }
 

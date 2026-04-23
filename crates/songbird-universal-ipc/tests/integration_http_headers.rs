@@ -158,7 +158,7 @@ async fn test_e2e_concurrent_requests_different_headers() {
     }
 
     // Wait for all requests
-    let results = futures::future::join_all(tasks).await;
+    let results = futures_util::future::join_all(tasks).await;
 
     // Verify all completed without panicking
     for (i, result) in results.iter().enumerate() {

@@ -382,7 +382,7 @@ impl HealthChecker {
         // Check all components in parallel
         let futures: Vec<_> = components.iter().map(|component| self.check(*component)).collect();
 
-        let results = futures::future::join_all(futures).await;
+        let results = futures_util::future::join_all(futures).await;
 
         for status in results {
             health = health.add_component(status);

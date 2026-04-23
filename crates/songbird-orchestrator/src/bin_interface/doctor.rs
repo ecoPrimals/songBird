@@ -227,12 +227,13 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
             matches!(discover_capability_provider("crypto").await, DiscoveryResult::Found(_));
         discovered.insert(
             "crypto".to_string(),
-            check_primal_status("crypto", futures::future::ready(Ok(crypto_found))).await,
+            check_primal_status("crypto", futures_util::future::ready(Ok(crypto_found))).await,
         );
         for capability in &["ai", "storage", "sovereign-storage", "messaging"] {
             let found =
                 matches!(discover_capability_provider(capability).await, DiscoveryResult::Found(_));
-            let status = check_primal_status(capability, futures::future::ready(Ok(found))).await;
+            let status =
+                check_primal_status(capability, futures_util::future::ready(Ok(found))).await;
             discovered.insert((*capability).to_string(), status);
         }
         Some(discovered)
@@ -389,7 +390,7 @@ mod tests {
     use super::check_primal_status;
     use crate::bin_interface::DoctorArgs;
     use clap::Parser;
-    use futures::future::ready;
+    use futures_util::future::ready;
 
     #[derive(Parser)]
     #[command(name = "songbird-doctor")]

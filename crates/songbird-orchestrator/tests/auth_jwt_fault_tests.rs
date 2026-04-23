@@ -163,7 +163,7 @@ async fn test_fault_concurrent_failures() {
         })
         .collect();
 
-    let secrets: Vec<String> = futures::future::join_all(handles)
+    let secrets: Vec<String> = futures_util::future::join_all(handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))
@@ -196,7 +196,7 @@ async fn test_fault_rapid_socket_changes() {
         })
         .collect();
 
-    let secrets: Vec<String> = futures::future::join_all(handles)
+    let secrets: Vec<String> = futures_util::future::join_all(handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))
@@ -269,14 +269,14 @@ async fn test_fault_resource_exhaustion() {
         })
         .collect();
 
-    let secrets: Vec<String> = futures::future::join_all(provision_handles)
+    let secrets: Vec<String> = futures_util::future::join_all(provision_handles)
         .await
         .into_iter()
         .map(|r| r.expect("Task should not panic"))
         .collect();
 
     // Wait for resource tasks to complete
-    futures::future::join_all(resource_handles).await;
+    futures_util::future::join_all(resource_handles).await;
 
     println!("✅ Generated {} secrets under resource exhaustion", secrets.len());
 

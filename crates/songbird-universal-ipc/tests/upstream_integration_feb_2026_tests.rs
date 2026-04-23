@@ -282,7 +282,7 @@ async fn test_chaos_concurrent_health_requests() {
     }
 
     // Wait for all tasks
-    let results = futures::future::join_all(tasks).await;
+    let results = futures_util::future::join_all(tasks).await;
 
     // Verify all succeeded
     for result in results {
@@ -329,7 +329,7 @@ async fn test_chaos_interleaved_methods() {
         tasks.push(tokio::spawn(async move { handler_clone.handle(method, json!({})).await }));
     }
 
-    let results = futures::future::join_all(tasks).await;
+    let results = futures_util::future::join_all(tasks).await;
 
     // All should succeed
     for (i, result) in results.iter().enumerate() {
@@ -369,8 +369,8 @@ async fn test_chaos_concurrent_with_service_registration() {
         .collect();
 
     // Wait for all
-    let _ = futures::future::join_all(health_tasks).await;
-    let _ = futures::future::join_all(reg_tasks).await;
+    let _ = futures_util::future::join_all(health_tasks).await;
+    let _ = futures_util::future::join_all(reg_tasks).await;
 }
 
 // ============================================================================
@@ -492,7 +492,7 @@ async fn test_fault_concurrent_errors() {
         })
         .collect();
 
-    let results = futures::future::join_all(tasks).await;
+    let results = futures_util::future::join_all(tasks).await;
 
     // All should return errors (not panic)
     for (i, result) in results.iter().enumerate() {

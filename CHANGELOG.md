@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave161] - 2026-04-15 - Deep Debt: Port Centralization, Dependency Cleanup, Error Typing
+
+### Removed
+- **`hostname` crate** from `songbird-config` — consolidated to `gethostname` (both did the same thing; only `gethostname` is needed)
+- **Unused `futures` dep** from `songbird-bluetooth` and `songbird-lineage-relay` — neither crate imported from it
+- **`futures` facade dep** from `songbird-orchestrator`, `songbird-stun`, `songbird-universal-ipc` — replaced with `futures-util` (only `join_all`, `try_join_all`, `select_all`, `StreamExt`, `ready` were used)
+
+### Changed
+- **`Box<dyn std::error::Error>`** in `songbird-execution-agent/src/bin/agent.rs` → `anyhow::Result<()>`
+- **15+ scattered `.unwrap_or(8080)` port fallbacks** across 8 crates replaced with canonical constants from `songbird_types::defaults::ports` (`DEFAULT_HTTP_PORT`, `DEFAULT_ORCHESTRATOR_PORT`, `DEFAULT_HEALTH_PORT`, etc.)
+- **`songbird-config/src/defaults/ports.rs`**: all port functions now fall back to `songbird_types::defaults::ports` constants instead of magic numbers
+- **`songbird-config::config::constants::network::DEFAULT_BIND_ADDRESS`**: replaced duplicate definition with re-export from `bind_and_ports` module
+- **Hardcoded `"0.0.0.0"` in `server.rs`**: replaced with `songbird_types::constants::PRODUCTION_BIND_ADDRESS`
+
+---
+
 ## [v0.2.1-wave160] - 2026-04-15 - BTSP NDJSON Auto-Detect in Server Accept Loop
 
 ### Added

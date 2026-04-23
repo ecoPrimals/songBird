@@ -290,7 +290,7 @@ async fn test_chaos_concurrent_header_requests() {
         tasks.push(task);
     }
 
-    let results = futures::future::join_all(tasks).await;
+    let results = futures_util::future::join_all(tasks).await;
 
     for (i, result) in results.iter().enumerate() {
         assert!(result.is_ok(), "Task {i} should not panic");
@@ -327,7 +327,7 @@ async fn test_chaos_rapid_fire_same_headers() {
         tasks.push(task);
     }
 
-    let results = futures::future::join_all(tasks).await;
+    let results = futures_util::future::join_all(tasks).await;
 
     for result in results {
         assert!(result.is_ok());

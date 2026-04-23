@@ -294,9 +294,10 @@ impl DiscoverableEndpoint {
                     let port_num = match port {
                         PortSpec::Number(n) => *n,
                         PortSpec::Named(name) => resolve_named_port(name)?,
-                        PortSpec::Environment(var) => {
-                            env(var).ok().and_then(|v| v.parse().ok()).unwrap_or(8080)
-                        }
+                        PortSpec::Environment(var) => env(var)
+                            .ok()
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
                     };
 
                     Ok(EndpointSpec {

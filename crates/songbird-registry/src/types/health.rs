@@ -145,7 +145,7 @@ impl Default for HealthCheckConfig {
         let health_port = songbird_process_env::var("HEALTH_CHECK_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(8080);
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_ORCHESTRATOR_PORT);
 
         Self {
             check_type: HealthCheckType::HttpEndpoint {

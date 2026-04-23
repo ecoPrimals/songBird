@@ -129,7 +129,8 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     // When --listen is not explicit, derive it from --port for compliance.
     let effective_listen = args.listen.clone().or_else(|| {
         if args.socket.is_none() {
-            let addr = format!("0.0.0.0:{}", actual_port);
+            let addr =
+                format!("{}:{}", songbird_types::constants::PRODUCTION_BIND_ADDRESS, actual_port);
             tracing::info!(
                 "   TCP JSON-RPC: {} (derived from --port per wateringHole standard)",
                 addr

@@ -104,17 +104,19 @@ pub fn parse_endpoint(endpoint: &str) -> (String, u16) {
 
     endpoint.find(':').map_or_else(
         || {
-            // No port specified, use default
             let host = endpoint.split('/').next().unwrap_or(endpoint).to_string();
-            (host, 8080)
+            (host, songbird_types::defaults::ports::DEFAULT_HTTP_PORT)
         },
         |idx| {
             let host = endpoint[..idx].to_string();
             let port_str = &endpoint[idx + 1..];
-            // Handle paths after port: "host:port/path"
             let port = port_str.find('/').map_or_else(
-                || port_str.parse().unwrap_or(8080),
-                |slash| port_str[..slash].parse().unwrap_or(8080),
+                || port_str.parse().unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
+                |slash| {
+                    port_str[..slash]
+                        .parse()
+                        .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT)
+                },
             );
             (host, port)
         },

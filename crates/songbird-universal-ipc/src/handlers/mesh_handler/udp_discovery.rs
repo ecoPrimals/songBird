@@ -36,7 +36,7 @@ pub(super) async fn udp_multicast_discover(
         .or_else(|_| songbird_process_env::var("SONGBIRD_PORT"))
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8080);
+        .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
 
     let beacon = serde_json::json!({
         "type": "songbird_discovery",
@@ -77,13 +77,12 @@ pub(super) async fn udp_multicast_discover(
                     && let Some(peer_id) = response.get("node_id").and_then(|n| n.as_str())
                     && peer_id != our_node_id
                 {
-                    let jsonrpc_port = u16::try_from(
-                        response
-                            .get("jsonrpc_port")
-                            .and_then(serde_json::Value::as_u64)
-                            .unwrap_or(8080),
-                    )
-                    .unwrap_or(8080);
+                    let default_port = songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+                    let jsonrpc_port = response
+                        .get("jsonrpc_port")
+                        .and_then(serde_json::Value::as_u64)
+                        .and_then(|v| u16::try_from(v).ok())
+                        .unwrap_or(default_port);
                     let peer_addr = SocketAddr::new(addr.ip(), jsonrpc_port);
                     info!(
                         "🔍 Discovered peer {} at {} (jsonrpc_port: {})",
