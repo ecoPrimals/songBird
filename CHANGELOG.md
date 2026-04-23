@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave160] - 2026-04-15 - BTSP NDJSON Auto-Detect in Server Accept Loop
+
+### Added
+- **BTSP auto-detection** in `bin_interface/server.rs`: both Unix socket (`start_ipc_server`) and TCP (`start_tcp_ipc_server`) accept loops now read the first line from each connection; if it contains `"protocol":"btsp"`, the connection is routed through `perform_server_handshake_ndjson()` before falling through to JSON-RPC. This resolves primalSpring Phase 45c audit finding.
+- **`btsp.session.*` semantic mappings** in `security_rpc_client/rpc.rs`: `btsp.session.create`, `btsp.session.verify`, `btsp.session.negotiate`, and `btsp.server.export_keys` added to `semantic_to_actual()` for Direct-mode BTSP session RPC calls.
+
+### Changed
+- `handle_json_rpc_connection` refactored into `handle_connection` (BTSP-aware entry), `handle_json_rpc_lines` (NDJSON loop), and `dispatch_json_rpc_line` (single-request dispatch) for clear separation of concerns.
+- `start_ipc_server` and `start_tcp_ipc_server` now construct a shared `SecurityRpcClient` from the security socket path and pass it to each connection handler.
+
+### Ref
+- `infra/wateringHole/handoffs/PRIMALSPRING_PHASE45C_BTSP_DEFAULT_UPSTREAM_HANDOFF_APR2026.md`
+
+---
+
 ## [v0.2.1-wave159] - 2026-04-15 - Deprecated Constants Removal, Port Centralization, Feature Cleanup
 
 ### Removed

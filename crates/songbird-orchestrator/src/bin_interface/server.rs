@@ -273,19 +273,73 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     Ok(())
 }
 
-/// Handle a single JSON-RPC 2.0 connection over any async stream.
+/// Handle a single connection with BTSP auto-detection.
 ///
-/// Transport-agnostic: works identically for Unix sockets, TCP, or any
-/// `AsyncRead + AsyncWrite` stream. Newline-delimited JSON-RPC per wateringHole spec.
-async fn handle_json_rpc_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin>(
+/// Reads the first line from the stream. If it looks like a BTSP `ClientHello`
+/// (`"protocol":"btsp"`), performs the NDJSON BTSP handshake before falling
+/// through to JSON-RPC. Otherwise treats it as a plain JSON-RPC request.
+async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin>(
     stream: S,
     handler: Arc<IpcServiceHandler>,
+    security_client: Arc<songbird_http_client::SecurityRpcClient>,
     peer_label: &str,
 ) {
     let (reader, mut writer) = tokio::io::split(stream);
     let mut reader = BufReader::new(reader);
-    let mut line = String::new();
+    let mut first_line = String::new();
 
+    match reader.read_line(&mut first_line).await {
+        Ok(0) => {
+            tracing::debug!("{peer_label} disconnected before sending data");
+            return;
+        }
+        Ok(_) => {}
+        Err(e) => {
+            tracing::error!("{peer_label} read error on first line: {e}");
+            return;
+        }
+    }
+
+    if crate::ipc::btsp::is_btsp_client_hello(&first_line) {
+        tracing::info!("{peer_label} BTSP ClientHello detected — starting NDJSON handshake");
+        match crate::ipc::btsp::perform_server_handshake_ndjson(
+            &first_line,
+            &mut reader,
+            &mut writer,
+            &security_client,
+        )
+        .await
+        {
+            Ok(session) => {
+                tracing::info!(
+                    "{peer_label} BTSP handshake complete (session={}, cipher={})",
+                    session.session_id,
+                    session.cipher,
+                );
+            }
+            Err(e) => {
+                tracing::warn!("{peer_label} BTSP handshake failed: {e}");
+                return;
+            }
+        }
+    } else if !first_line.trim().is_empty() {
+        dispatch_json_rpc_line(&first_line, &mut writer, &handler, peer_label).await;
+    }
+
+    handle_json_rpc_lines(&mut reader, &mut writer, &handler, peer_label).await;
+}
+
+/// Process a stream of newline-delimited JSON-RPC requests.
+async fn handle_json_rpc_lines<R, W>(
+    reader: &mut R,
+    writer: &mut W,
+    handler: &Arc<IpcServiceHandler>,
+    peer_label: &str,
+) where
+    R: tokio::io::AsyncBufRead + Unpin,
+    W: tokio::io::AsyncWrite + Unpin,
+{
+    let mut line = String::new();
     loop {
         line.clear();
         match reader.read_line(&mut line).await {
@@ -297,53 +351,57 @@ async fn handle_json_rpc_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWr
                 if line.trim().is_empty() {
                     continue;
                 }
-
-                let request = match serde_json::from_str::<JsonRpcRequest>(&line) {
-                    Ok(req) => req,
-                    Err(e) => {
-                        let resp = JsonRpcResponse::error(
-                            JsonRpcError {
-                                code: JsonRpcError::PARSE_ERROR,
-                                message: format!("Failed to parse request: {e}"),
-                                data: None,
-                            },
-                            serde_json::Value::Null,
-                        );
-                        if let Ok(json) = serde_json::to_string(&resp) {
-                            let _ = writer.write_all(json.as_bytes()).await;
-                            let _ = writer.write_all(b"\n").await;
-                        }
-                        continue;
-                    }
-                };
-
-                let is_notification = request.id.is_none();
-                let id = request.id.unwrap_or(serde_json::Value::Null);
-                tracing::debug!(
-                    "{peer_label} JSON-RPC: {} (notification={is_notification})",
-                    request.method,
-                );
-
-                let response = match handler
-                    .handle(&request.method, request.params.unwrap_or(serde_json::Value::Null))
-                    .await
-                {
-                    Ok(result) => JsonRpcResponse::success(result, id),
-                    Err(message) => {
-                        JsonRpcResponse::error(JsonRpcError::internal_error(message), id)
-                    }
-                };
-
-                if !is_notification && let Ok(response_json) = serde_json::to_string(&response) {
-                    let _ = writer.write_all(response_json.as_bytes()).await;
-                    let _ = writer.write_all(b"\n").await;
-                }
+                dispatch_json_rpc_line(&line, writer, handler, peer_label).await;
             }
             Err(e) => {
                 tracing::error!("{peer_label} read error: {e}");
                 break;
             }
         }
+    }
+}
+
+/// Parse and dispatch a single JSON-RPC line, writing the response.
+async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
+    line: &str,
+    writer: &mut W,
+    handler: &Arc<IpcServiceHandler>,
+    peer_label: &str,
+) {
+    let request = match serde_json::from_str::<JsonRpcRequest>(line) {
+        Ok(req) => req,
+        Err(e) => {
+            let resp = JsonRpcResponse::error(
+                JsonRpcError {
+                    code: JsonRpcError::PARSE_ERROR,
+                    message: format!("Failed to parse request: {e}"),
+                    data: None,
+                },
+                serde_json::Value::Null,
+            );
+            if let Ok(json) = serde_json::to_string(&resp) {
+                let _ = writer.write_all(json.as_bytes()).await;
+                let _ = writer.write_all(b"\n").await;
+            }
+            return;
+        }
+    };
+
+    let is_notification = request.id.is_none();
+    let id = request.id.unwrap_or(serde_json::Value::Null);
+    tracing::debug!("{peer_label} JSON-RPC: {} (notification={is_notification})", request.method,);
+
+    let response = match handler
+        .handle(&request.method, request.params.unwrap_or(serde_json::Value::Null))
+        .await
+    {
+        Ok(result) => JsonRpcResponse::success(result, id),
+        Err(message) => JsonRpcResponse::error(JsonRpcError::internal_error(message), id),
+    };
+
+    if !is_notification && let Ok(response_json) = serde_json::to_string(&response) {
+        let _ = writer.write_all(response_json.as_bytes()).await;
+        let _ = writer.write_all(b"\n").await;
     }
 }
 
@@ -362,13 +420,16 @@ fn log_available_methods() {
     tracing::info!("     • peer.connect - UDP hole punching");
 }
 
-/// Start Unix socket IPC server for external primal access to HTTP/HTTPS capabilities.
+/// Start Unix socket IPC server with BTSP auto-detection.
 #[cfg(unix)]
-async fn start_ipc_server(socket_path: &str, _security_socket: &str) -> Result<()> {
+async fn start_ipc_server(socket_path: &str, security_socket: &str) -> Result<()> {
     let _ = std::fs::remove_file(socket_path);
     let shared_handler = create_shared_handler();
+    let security_client =
+        Arc::new(songbird_http_client::SecurityRpcClient::new(security_socket.to_owned()));
 
     tracing::info!("✅ IPC server listening on {}", socket_path);
+    tracing::info!("   BTSP auto-detect: enabled (JSON-line ClientHello → NDJSON handshake)");
     log_available_methods();
 
     let listener = tokio::net::UnixListener::bind(socket_path)
@@ -378,25 +439,29 @@ async fn start_ipc_server(socket_path: &str, _security_socket: &str) -> Result<(
         match listener.accept().await {
             Ok((stream, _)) => {
                 let handler = Arc::clone(&shared_handler);
-                tokio::spawn(
-                    async move { handle_json_rpc_connection(stream, handler, "IPC").await },
-                );
+                let sec = Arc::clone(&security_client);
+                tokio::spawn(async move {
+                    handle_connection(stream, handler, sec, "IPC").await;
+                });
             }
             Err(e) => tracing::error!("Failed to accept IPC connection: {e}"),
         }
     }
 }
 
-/// Start TCP IPC server for platforms where Unix sockets are restricted
-/// (Android SELinux, Windows). Same JSON-RPC 2.0 protocol, just over TCP.
-async fn start_tcp_ipc_server(listen_addr: &str, _security_socket: &str) -> Result<()> {
+/// Start TCP IPC server with BTSP auto-detection.
+/// For platforms where Unix sockets are restricted (Android SELinux, Windows).
+async fn start_tcp_ipc_server(listen_addr: &str, security_socket: &str) -> Result<()> {
     let addr: std::net::SocketAddr = listen_addr
         .parse()
         .map_err(|e| anyhow::anyhow!("Invalid listen address '{listen_addr}': {e}"))?;
 
     let shared_handler = create_shared_handler();
+    let security_client =
+        Arc::new(songbird_http_client::SecurityRpcClient::new(security_socket.to_owned()));
 
     tracing::info!("✅ TCP IPC server listening on {}", addr);
+    tracing::info!("   BTSP auto-detect: enabled (JSON-line ClientHello → NDJSON handshake)");
     log_available_methods();
 
     let listener = tokio::net::TcpListener::bind(addr)
@@ -407,9 +472,10 @@ async fn start_tcp_ipc_server(listen_addr: &str, _security_socket: &str) -> Resu
         match listener.accept().await {
             Ok((stream, peer_addr)) => {
                 let handler = Arc::clone(&shared_handler);
+                let sec = Arc::clone(&security_client);
                 let label = format!("TCP:{peer_addr}");
                 tokio::spawn(async move {
-                    handle_json_rpc_connection(stream, handler, &label).await;
+                    handle_connection(stream, handler, sec, &label).await;
                 });
             }
             Err(e) => tracing::error!("Failed to accept TCP IPC connection: {e}"),

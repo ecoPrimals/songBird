@@ -100,10 +100,16 @@ impl SecurityRpcClient {
             "crypto.hkdf_extract" => "crypto.hkdf_extract",
             "crypto.hkdf_expand" => "crypto.hkdf_expand",
 
-            // TLS key derivation - already correct
+            // TLS key derivation
             "tls.derive_handshake_secrets" => "tls.derive_handshake_secrets",
             "tls.derive_application_secrets" => "tls.derive_application_secrets",
             "tls.compute_finished_verify_data" => "tls.compute_finished_verify_data",
+
+            // BTSP session management (identity mapping — BearDog uses these names directly)
+            "btsp.session.create" => "btsp.session.create",
+            "btsp.session.verify" => "btsp.session.verify",
+            "btsp.session.negotiate" => "btsp.session.negotiate",
+            "btsp.server.export_keys" => "btsp.server.export_keys",
 
             _ => {
                 return Err(Error::SecurityProviderRpc(format!(
