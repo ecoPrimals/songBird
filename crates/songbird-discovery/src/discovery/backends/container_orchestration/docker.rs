@@ -21,7 +21,7 @@ impl UniversalContainerOrchestration {
         let potential_endpoints = vec![
             songbird_process_env::var("DOCKER_HOST").unwrap_or_default(),
             docker_unix_url,
-            "tcp://songbird_config::canonical::constants::network::DEFAULT_HOST:2376".to_string(), // Docker daemon default
+            format!("tcp://{}:2376", songbird_types::constants::LOCALHOST), // Docker daemon default
         ];
 
         for endpoint in potential_endpoints {

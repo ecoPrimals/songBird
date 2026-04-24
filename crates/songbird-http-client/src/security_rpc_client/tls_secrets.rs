@@ -10,7 +10,7 @@ use super::types::TlsSecrets;
 use crate::error::{Error, Result};
 use base64::prelude::*;
 use serde_json::json;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, trace};
 
 /// Decode a base64 field from a JSON-RPC response, returning a typed error on failure.
 fn decode_b64_field(result: &serde_json::Value, field: &str) -> Result<Vec<u8>> {
@@ -284,36 +284,6 @@ impl SecurityRpcClient {
         info!("✅ Finished verify_data computed: {} bytes", decoded.len());
         debug!("   Verify data (hex): {}", hex::encode(&decoded));
         Ok(decoded)
-    }
-
-    /// Legacy alias for backwards compatibility
-    /// DEPRECATED: Use `tls_derive_application_secrets` instead
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the RPC call fails or the response is invalid.
-    #[deprecated(
-        since = "5.6.0",
-        note = "Use tls_derive_application_secrets with transcript_hash parameter"
-    )]
-    pub async fn tls_derive_secrets(
-        &self,
-        shared_secret: &[u8],
-        client_random: &[u8],
-        server_random: &[u8],
-    ) -> Result<TlsSecrets> {
-        warn!(
-            "Using deprecated tls_derive_secrets without transcript hash - not RFC 8446 compliant!"
-        );
-        // For backwards compatibility, create empty transcript hash (NOT RFC 8446 compliant!)
-        self.tls_derive_application_secrets(
-            shared_secret,
-            client_random,
-            server_random,
-            &[],    // Empty transcript hash
-            0x1303, // Default to ChaCha20-Poly1305
-        )
-        .await
     }
 }
 

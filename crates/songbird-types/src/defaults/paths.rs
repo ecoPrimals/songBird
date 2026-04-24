@@ -108,13 +108,6 @@ pub fn biomeos_security_socket_default_path() -> PathBuf {
     security_socket_default_path()
 }
 
-/// Deprecated alias (legacy filename `beardog.sock`; prefer [`security_socket_default_path`])
-#[deprecated(note = "Use security_socket_tmp_fallback_path() or security_socket_default_path()")]
-#[must_use]
-pub fn beardog_socket_legacy_path() -> PathBuf {
-    security_socket_tmp_fallback_path()
-}
-
 /// Default data directory (FHS fallback when env is unset).
 pub const DEFAULT_DATA_DIR: &str = "/var/lib/songbird";
 
@@ -154,13 +147,6 @@ pub fn ipc_discovery_primal_port_path(primal_name: &str) -> PathBuf {
 pub fn coordination_socket_candidates() -> [PathBuf; 3] {
     let b = biomeos_socket_dir_tmp();
     [b.join("ai.sock"), b.join("neural-api.sock"), b.join(LEGACY_AI_SOCKET_FILENAME)]
-}
-
-/// Deprecated alias for [`coordination_socket_candidates`].
-#[deprecated(note = "use coordination_socket_candidates (capability-based naming)")]
-#[must_use]
-pub fn neural_api_socket_fallback_paths() -> [PathBuf; 3] {
-    coordination_socket_candidates()
 }
 
 /// AI capability provider socket fallbacks (alias for [`coordination_socket_candidates`]).

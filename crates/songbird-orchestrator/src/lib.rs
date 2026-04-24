@@ -224,11 +224,6 @@ pub mod storage_ipc;
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 mod storage_memory;
 
-#[deprecated(note = "renamed to `storage_ipc` — capability-based naming")]
-#[doc(hidden)]
-pub mod storage_nestgate {
-    pub use crate::storage_ipc::*;
-}
 /// Task lifecycle and scheduling hooks for orchestrated work.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod task_lifecycle;

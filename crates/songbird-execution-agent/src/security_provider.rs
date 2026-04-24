@@ -41,10 +41,6 @@ pub struct SecurityProviderValidator {
     audit_enabled: bool,
 }
 
-/// Deprecated alias for [`SecurityProviderValidator`].
-#[deprecated(note = "use SecurityProviderValidator")]
-pub type LegacySecurityProviderValidator = SecurityProviderValidator;
-
 impl SecurityProviderValidator {
     /// Create a new security provider-integrated security validator
     ///

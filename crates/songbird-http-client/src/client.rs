@@ -199,17 +199,6 @@ impl SongbirdHttpClient {
         }
     }
 
-    // Backward compatibility alias
-    #[doc(hidden)]
-    #[deprecated(since = "0.2.0", note = "Use with_tls_config instead")]
-    pub fn with_config(
-        socket_path: impl Into<String>,
-        config: TlsConfig,
-        profiler: Option<Arc<ServerProfiler>>,
-    ) -> Self {
-        Self::with_tls_config(socket_path, config, profiler)
-    }
-
     /// Get the current HTTP configuration
     #[must_use]
     pub const fn http_config(&self) -> &HttpClientConfig {

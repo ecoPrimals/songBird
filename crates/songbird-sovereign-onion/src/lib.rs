@@ -62,12 +62,6 @@ pub mod service;
 pub mod storage;
 pub mod storage_ipc;
 
-#[deprecated(note = "renamed to `storage_ipc` — capability-based naming")]
-#[doc(hidden)]
-pub mod storage_nestgate {
-    pub use crate::storage_ipc::*;
-}
-
 // Re-exports — delegated cryptography via capability-discovered security provider
 pub use address::{
     derive_onion_address_via_security_provider, validate_onion_address_via_security_provider,

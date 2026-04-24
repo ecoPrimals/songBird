@@ -458,15 +458,6 @@ impl SecurityCapabilityClient {
         })
     }
 
-    /// Backward compatibility: alias for `from_endpoint`
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails.
-    #[deprecated(note = "Use from_endpoint instead for clarity")]
-    pub async fn new(endpoint: impl Into<String>) -> Result<Self> {
-        Self::from_endpoint(endpoint).await
-    }
-
     /// Get our current genetic lineage from security provider
     /// # Errors
     ///

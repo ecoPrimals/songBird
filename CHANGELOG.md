@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave163] - 2026-04-15 - Deep Debt: Dead Code Removal, Docker Config Bug Fix
+
+### Fixed
+- **`docker.rs` literal path bug** — `"tcp://songbird_config::canonical::constants::network::DEFAULT_HOST:2376"` was a **string literal** containing Rust path syntax instead of resolving the constant. Now uses `format!("tcp://{}:2376", songbird_types::constants::LOCALHOST)`.
+
+### Removed (zero-caller deprecated items)
+- **`beardog_socket_legacy_path()`** from `songbird-types::defaults::paths` — zero callers, superseded by `security_socket_default_path()`
+- **`neural_api_socket_fallback_paths()`** from `songbird-types::defaults::paths` — zero callers, superseded by `coordination_socket_candidates()`
+- **`storage_nestgate`** re-export modules from `songbird-sovereign-onion` and `songbird-orchestrator` — zero callers, superseded by `storage_ipc`
+- **`security_provider_legacy`** re-export module from `songbird-execution-agent` — zero callers, superseded by `security_provider`
+- **`LegacySecurityProviderValidator`** type alias from `songbird-execution-agent` — zero callers
+- **`tls_derive_secrets()`** from `SecurityRpcClient` in `songbird-http-client` — zero callers, non-RFC-8446-compliant legacy shim superseded by `tls_derive_application_secrets()`
+- **`SongbirdHttpClient::with_config()`** from `songbird-http-client` — zero callers, superseded by `with_tls_config()`
+- **`SecurityCapabilityClient::new()`** from `songbird-orchestrator` — zero callers, superseded by `from_endpoint()`
+
+---
+
 ## [v0.2.1-wave162] - 2026-04-15 - Fix: Remove stream.shutdown() that kills BearDog BTSP roundtrip
 
 ### Fixed
