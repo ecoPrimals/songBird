@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave169] - 2026-04-24 - Fix: remaining SecurityRpcClient::new() → new_direct() in bin_interface
+
+### Fixed
+- **`bin_interface/server.rs`**: two remaining `SecurityRpcClient::new()` call sites in `start_ipc_server` (line 436) and `start_tcp_ipc_server` (line 468) still used Neural API mode. Changed both to `new_direct()`. Wave 168 only fixed `app/core/mod.rs` — these alternative server paths were missed. Zero `SecurityRpcClient::new()` calls remain in production code.
+
+---
+
 ## [v0.2.1-wave168] - 2026-04-24 - Fix: BTSP routing bug + seed encoding (primalSpring Phase 45c)
 
 ### Fixed

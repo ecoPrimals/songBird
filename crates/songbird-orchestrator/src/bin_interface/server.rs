@@ -433,7 +433,7 @@ async fn start_ipc_server(socket_path: &str, security_socket: &str) -> Result<()
     let _ = std::fs::remove_file(socket_path);
     let shared_handler = create_shared_handler();
     let security_client =
-        Arc::new(songbird_http_client::SecurityRpcClient::new(security_socket.to_owned()));
+        Arc::new(songbird_http_client::SecurityRpcClient::new_direct(security_socket.to_owned()));
 
     tracing::info!("✅ IPC server listening on {}", socket_path);
     tracing::info!("   BTSP auto-detect: enabled (JSON-line ClientHello → NDJSON handshake)");
@@ -465,7 +465,7 @@ async fn start_tcp_ipc_server(listen_addr: &str, security_socket: &str) -> Resul
 
     let shared_handler = create_shared_handler();
     let security_client =
-        Arc::new(songbird_http_client::SecurityRpcClient::new(security_socket.to_owned()));
+        Arc::new(songbird_http_client::SecurityRpcClient::new_direct(security_socket.to_owned()));
 
     tracing::info!("✅ TCP IPC server listening on {}", addr);
     tracing::info!("   BTSP auto-detect: enabled (JSON-line ClientHello → NDJSON handshake)");
