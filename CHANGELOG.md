@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave166] - 2026-04-15 - Root Doc Cleanup: Test Count Fix, Dep Status Reconciliation
+
+### Fixed
+- **REMAINING_WORK.md**: corrected "(497)" to "(7,387 lib)" — 497 was last crate subtotal, not workspace total
+- **REMAINING_WORK.md**: marked `serde_yaml` → `serde_yaml_ng` migration as completed (Wave 165)
+- **REMAINING_WORK.md**: updated `hostname` and `futures` entries to reflect Wave 165 expansion scope
+- **REMAINING_WORK.md**: noted `futures 0.3` only transitive via `tarpc` — zero direct deps remain
+- **README.md**: removed stale "sovereign onion architecture" reference from `docs/architecture/` table (file moved to fossilRecord)
+
+---
+
 ## [v0.2.1-wave165] - 2026-04-15 - Deep Debt: Dependency Cleanup, Hardcoded Elimination, Dead Code Removal
 
 ### Changed

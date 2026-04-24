@@ -184,7 +184,7 @@ cargo test -p songbird-tor-protocol --lib      # Single crate
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
 | [`CONTEXT.md`](CONTEXT.md) | AI-ingestible project context |
 | [`specs/`](specs/) | Technical specifications |
-| [`docs/architecture/`](docs/architecture/) | Security provider crypto API spec, sovereign onion architecture |
+| [`docs/architecture/`](docs/architecture/) | Security provider crypto API spec |
 
 ## License
 
