@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave164] - 2026-04-15 - Fix: BTSP handshake relay silent-fail (read_to_end hangs)
+
+### Fixed
+- **`SecurityRpcClient::call_direct()`** — replaced `read_to_end()` with JSON-aware chunked reads via `io_util::read_json_response()`. After Wave 162 removed `stream.shutdown()`, `read_to_end()` would hang forever when BearDog keeps the socket open (no EOF). This was the root cause of the BTSP handshake relay silent-fail reported by primalSpring: Songbird accepted the ClientHello, called BearDog's `btsp.session.create`, then blocked indefinitely waiting for EOF that never came. The client saw zero bytes (EOF) when Songbird never sent ServerHello.
+- **`SecurityCryptoProvider::call()`** — same `stream.shutdown()` + `read_to_end()` bug in `crypto/security_provider/rpc.rs`. Removed `shutdown()` and replaced `read_to_end()` with JSON-aware chunked reads. Also added missing newline terminator and flush to match BearDog's line-based protocol.
+- **`IpcHttpClient::request()`** — replaced `read_to_end()` with JSON-aware chunked reads. IPC servers (Songbird's own) may keep sockets open for multiple requests.
+
+### Changed
+- **Extracted `io_util::read_json_response()`** — shared helper for all JSON-RPC socket reads. Reads in 4KB chunks with per-chunk timeout, breaks when a complete JSON value is detected. Replaces 4 duplicated read loops across `call_direct()`, `call_neural_api()`, `SecurityCryptoProvider::call()`, and `IpcHttpClient::request()`.
+
+### Ref
+- `infra/wateringHole/handoffs/BTSP_WIRE_CONVERGENCE_APR24_2026.md` (primalSpring Phase 45c — Songbird BTSP 9/13→10/13)
+
+---
+
 ## [v0.2.1-wave163] - 2026-04-15 - Deep Debt: Dead Code Removal, Docker Config Bug Fix
 
 ### Fixed

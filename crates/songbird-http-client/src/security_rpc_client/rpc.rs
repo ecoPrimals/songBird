@@ -11,8 +11,8 @@ use crate::crypto::socket_discovery::IpcEndpoint;
 use crate::error::{Error, Result};
 use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
-use tokio::time::{Duration, timeout};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
+use tokio::time::Duration;
 use tracing::{debug, error, trace};
 
 /// Concrete async stream for security RPC (TCP or Unix socket; enum dispatch, no trait objects).
@@ -198,12 +198,10 @@ impl SecurityRpcClient {
         stream.write_all(b"\n").await?;
         stream.flush().await?;
 
-        // Read response — BearDog closes the connection after writing its reply,
-        // which gives us EOF. Do NOT call stream.shutdown() here: the write-half
-        // FIN races with BearDog's read and kills the roundtrip before the
-        // response arrives (guidestone: "server closed connection, no ServerHello").
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
+        // JSON-aware chunked read — BearDog may keep the socket open (no EOF).
+        let buffer = crate::io_util::read_json_response(&mut stream, Duration::from_secs(10))
+            .await
+            .map_err(|e| Error::SecurityProviderRpc(format!("Security provider: {e}")))?;
 
         let response: JsonRpcResponse = serde_json::from_slice(&buffer)
             .map_err(|e| Error::SecurityProviderRpc(format!("Invalid JSON response: {e}")))?;
@@ -263,43 +261,10 @@ impl SecurityRpcClient {
         stream.write_all(b"\n").await?;
         stream.flush().await?;
 
-        // Read response with JSON-aware reading (Neural API keeps socket open).
-        // 5s per-chunk timeout allows for BTSP crypto operations (ECDH, HKDF)
-        // while still failing promptly on truly unreachable providers.
-        let mut buffer = Vec::new();
-        let mut temp_buf = [0u8; 4096];
-        let read_timeout = Duration::from_secs(5);
-
-        loop {
-            match timeout(read_timeout, stream.read(&mut temp_buf)).await {
-                Ok(Ok(0)) => break, // EOF
-                Ok(Ok(n)) => {
-                    buffer.extend_from_slice(&temp_buf[..n]);
-                    // Check for complete JSON
-                    if let Ok(s) = std::str::from_utf8(&buffer)
-                        && serde_json::from_str::<Value>(s).is_ok()
-                    {
-                        break; // Complete JSON received!
-                    }
-                }
-                Ok(Err(e)) => {
-                    return Err(Error::SecurityProviderRpc(format!("Socket read error: {e}")));
-                }
-                Err(_) => {
-                    // Timeout - check if we have valid JSON
-                    if !buffer.is_empty()
-                        && let Ok(s) = std::str::from_utf8(&buffer)
-                        && serde_json::from_str::<Value>(s).is_ok()
-                    {
-                        break;
-                    }
-                    return Err(Error::SecurityProviderRpc(format!(
-                        "Timeout reading from Neural API ({}s with no data)",
-                        read_timeout.as_secs()
-                    )));
-                }
-            }
-        }
+        // JSON-aware chunked read — Neural API keeps socket open (no EOF).
+        let buffer = crate::io_util::read_json_response(&mut stream, Duration::from_secs(5))
+            .await
+            .map_err(|e| Error::SecurityProviderRpc(format!("Neural API: {e}")))?;
 
         // Log raw response for debugging
         if let Ok(response_str) = std::str::from_utf8(&buffer) {

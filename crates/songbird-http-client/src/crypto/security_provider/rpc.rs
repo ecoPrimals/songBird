@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 #[cfg(windows)]
 use tokio::net::TcpStream as PlatformStream;
 #[cfg(unix)]
@@ -126,15 +126,19 @@ impl SecurityCryptoProvider {
             .await
             .map_err(|e| Error::SecurityProviderRpc(format!("Failed to send request: {e}")))?;
         stream
-            .shutdown()
+            .write_all(b"\n")
             .await
-            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to shutdown write: {e}")))?;
-
-        let mut response_bytes = Vec::new();
+            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to send newline: {e}")))?;
         stream
-            .read_to_end(&mut response_bytes)
+            .flush()
             .await
-            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to read response: {e}")))?;
+            .map_err(|e| Error::SecurityProviderRpc(format!("Failed to flush: {e}")))?;
+
+        // JSON-aware chunked read — server may keep socket open (no EOF).
+        let response_bytes =
+            crate::io_util::read_json_response(&mut stream, std::time::Duration::from_secs(10))
+                .await
+                .map_err(|e| Error::SecurityProviderRpc(format!("Security provider: {e}")))?;
 
         let response_str = String::from_utf8_lossy(&response_bytes);
         trace!("Security provider RPC response: {}", response_str);

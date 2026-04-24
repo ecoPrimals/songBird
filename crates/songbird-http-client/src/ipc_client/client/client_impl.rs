@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 // Platform-agnostic IPC transport
 #[cfg(windows)]
@@ -352,14 +352,16 @@ impl IpcHttpClient {
             "id": request_id
         });
 
-        // Send request
+        // Send request (newline-delimited JSON-RPC)
         let request_bytes = serde_json::to_vec(&request)?;
         stream.write_all(&request_bytes).await?;
-        stream.write_all(b"\n").await?; // Line-delimited JSON
+        stream.write_all(b"\n").await?;
+        stream.flush().await?;
 
-        // Read response
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
+        // JSON-aware chunked read — IPC server may keep socket open (no EOF).
+        let buffer = crate::io_util::read_json_response(stream, Duration::from_secs(30))
+            .await
+            .map_err(|e| anyhow::anyhow!("IPC read: {e}"))?;
 
         // Parse JSON-RPC response
         let response: Value =

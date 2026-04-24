@@ -69,6 +69,9 @@
 //! - ✅ Agnostic crypto provider support
 #![forbid(unsafe_code)]
 
+/// Shared async I/O helpers for JSON-RPC socket communication.
+pub(crate) mod io_util;
+
 /// Security-provider RPC client submodules (refactored HTTP/TLS helpers).
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod security_rpc_client;
