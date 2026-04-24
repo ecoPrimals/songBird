@@ -192,16 +192,16 @@ impl SecurityRpcClient {
             ))
         })?;
 
-        // Send request
+        // Send request (newline-terminated; BearDog reads line-by-line)
         let request_json = serde_json::to_string(&request)?;
         stream.write_all(request_json.as_bytes()).await?;
         stream.write_all(b"\n").await?;
         stream.flush().await?;
 
-        // Shutdown write to signal we're done
-        stream.shutdown().await?;
-
-        // Read response
+        // Read response — BearDog closes the connection after writing its reply,
+        // which gives us EOF. Do NOT call stream.shutdown() here: the write-half
+        // FIN races with BearDog's read and kills the roundtrip before the
+        // response arrives (guidestone: "server closed connection, no ServerHello").
         let mut buffer = Vec::new();
         stream.read_to_end(&mut buffer).await?;
 
@@ -257,14 +257,11 @@ impl SecurityRpcClient {
             ))
         })?;
 
-        // Send request
+        // Send request (newline-terminated)
         let request_json = serde_json::to_string(&request)?;
         stream.write_all(request_json.as_bytes()).await?;
         stream.write_all(b"\n").await?;
         stream.flush().await?;
-
-        // Shutdown write to signal we're done
-        stream.shutdown().await?;
 
         // Read response with JSON-aware reading (Neural API keeps socket open).
         // 5s per-chunk timeout allows for BTSP crypto operations (ECDH, HKDF)

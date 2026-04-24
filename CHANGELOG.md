@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave162] - 2026-04-15 - Fix: Remove stream.shutdown() that kills BearDog BTSP roundtrip
+
+### Fixed
+- **`SecurityRpcClient::call_direct()`** — removed `stream.shutdown().await` that sent TCP/UDS FIN before BearDog could respond, causing `btsp.session.create` response loss and empty ServerHello (guidestone: "server closed connection, no ServerHello"). Connection is per-request; BearDog closes after responding, providing natural EOF for `read_to_end`.
+- **`SecurityRpcClient::call_neural_api()`** — removed same `stream.shutdown().await` anti-pattern. Neural API path already uses timeout-based chunked reads; write-half FIN was unnecessary and risked the same race.
+
+### Ref
+- `infra/wateringHole/handoffs/BTSP_WIRE_CONVERGENCE_APR24_2026.md` (primalSpring Phase 45c validation)
+
+---
+
 ## [v0.2.1-wave161] - 2026-04-15 - Deep Debt: Port Centralization, Dependency Cleanup, Error Typing
 
 ### Removed
