@@ -88,7 +88,7 @@ impl NodeIdentity {
             songbird_process_env::var("SONGBIRD_NODE_ID")
                 .or_else(|_| songbird_process_env::var("NODE_ID"))
                 .ok()
-                .or_else(|| hostname::get().ok().and_then(|h| h.into_string().ok()))
+                .or_else(|| gethostname::gethostname().into_string().ok())
                 .unwrap_or_else(|| "songbird-node".to_string())
         });
 

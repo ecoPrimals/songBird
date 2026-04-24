@@ -85,12 +85,7 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
         .tower_id
         .clone()
         .or_else(|| songbird_process_env::var("SERVICE_ID").ok())
-        .unwrap_or_else(|| {
-            hostname::get().map_or_else(
-                |_| format!("tower-unknown-{}", Uuid::new_v4()),
-                |h| format!("tower-{}", h.to_string_lossy()),
-            )
-        });
+        .unwrap_or_else(|| format!("tower-{}", gethostname::gethostname().to_string_lossy()));
 
     let capabilities: Vec<String> = args
         .capabilities

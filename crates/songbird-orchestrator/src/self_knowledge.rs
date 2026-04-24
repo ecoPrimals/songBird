@@ -78,8 +78,7 @@ pub fn discover_node_name() -> Result<String> {
     }
 
     // Fall back to hostname
-    let hostname =
-        hostname::get().context("Failed to get hostname")?.to_string_lossy().into_owned();
+    let hostname = gethostname::gethostname().to_string_lossy().into_owned();
 
     debug!("Using hostname as node name: {}", hostname);
     Ok(hostname)

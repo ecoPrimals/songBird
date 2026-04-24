@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave165] - 2026-04-15 - Deep Debt: Dependency Cleanup, Hardcoded Elimination, Dead Code Removal
+
+### Changed
+- **`serde_yaml` → `serde_yaml_ng`** — migrated from deprecated `serde_yaml 0.9` to maintained fork `serde_yaml_ng 0.10` in `songbird-config` and `songbird-discovery` (API-compatible via `package` rename, zero code changes needed)
+- **`hostname` → `gethostname`** — consolidated duplicate hostname crates across 5 crates (`songbird-discovery`, `songbird-orchestrator`, `songbird-cli`, `songbird-types`, `songbird-compute-bridge`). `gethostname` is infallible (no error handling needed) and was already used in `songbird-config`
+- **`futures` 0.3 → `futures-util`** in `songbird-universal` — only `StreamExt` was used; 13 `futures::executor::block_on` tests converted to `#[tokio::test]` + `.await`
+- **`url` 2.0 → 2.5** in `songbird-universal` — aligned with rest of workspace to avoid duplicate semver resolution
+- **Hardcoded `"0.0.0.0"` → constants** — `udp_discovery.rs` now uses `EPHEMERAL_BIND_ADDR`, `stun_handler/server.rs` uses `PRODUCTION_BIND_ADDRESS`
+- **`#[allow()]` without `reason =`** — added reasons to `songbird-discovery/src/lib.rs` test cfg block, `integration_task_lifecycle.rs`, and 2 example files
+
+### Removed (zero-caller deprecated items)
+- **`MockSquirrel`** type alias from `songbird-test-utils/mocks/ai_provider.rs`
+- **`MockToadStool`** type alias from `songbird-test-utils/mocks/compute_provider.rs`
+- **`mocks::squirrel`**, **`mocks::toadstool`**, **`mocks::nestgate`** deprecated module aliases from `songbird-test-utils/mocks/mod.rs`
+- **`discover_beardog_binary()`** from `songbird-test-utils/fixtures/security_provider.rs`
+- **`discover_security_provider_socket_with()`** from `songbird-crypto-provider/socket_discovery.rs`
+
+---
+
 ## [v0.2.1-wave164] - 2026-04-15 - Fix: BTSP handshake relay silent-fail (read_to_end hangs)
 
 ### Fixed

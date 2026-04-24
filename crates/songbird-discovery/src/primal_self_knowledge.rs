@@ -146,10 +146,7 @@ impl PrimalSelfKnowledge {
         }
 
         // Fall back to hostname
-        hostname::get().ok().and_then(|h| h.to_str().map(String::from)).unwrap_or_else(|| {
-            tracing::warn!("Could not determine primal name, using 'unknown'");
-            "unknown".to_string()
-        })
+        gethostname::gethostname().into_string().unwrap_or_else(|_| "unknown".to_string())
     }
 
     /// Introspect own capabilities through feature detection

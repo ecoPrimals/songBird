@@ -39,7 +39,7 @@ futures-util = { workspace = true }
 # Added for canonical adapters
 rand = { workspace = true }
 # Hostname detection for federation
-hostname = "0.4"
+gethostname = "0.4"
 # Base64 encoding for lineage proofs
 base64 = "0.22"
 

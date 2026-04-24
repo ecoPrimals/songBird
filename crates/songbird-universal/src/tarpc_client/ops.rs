@@ -103,7 +103,7 @@ mod tests {
     use std::net::SocketAddr;
     use std::time::Duration;
 
-    use futures::StreamExt;
+    use futures_util::StreamExt;
     use songbird_types::SongbirdError;
     use tarpc::context::Context;
     use tarpc::server::Channel;

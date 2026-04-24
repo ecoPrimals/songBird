@@ -197,13 +197,6 @@ fn discover_security_provider_binary_impl() -> Option<PathBuf> {
     None
 }
 
-/// Deprecated alias for [`discover_security_provider_binary`].
-#[deprecated(note = "Use discover_security_provider_binary")]
-#[must_use]
-pub fn discover_beardog_binary() -> Option<PathBuf> {
-    discover_security_provider_binary_impl()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

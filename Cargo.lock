@@ -2303,17 +2303,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hostname"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "617aaa3557aef3810a6369d0a99fac8a080891b68bd9f9812a1eeda0c0730cbd"
-dependencies = [
- "cfg-if 1.0.4",
- "libc",
- "windows-link 0.2.1",
-]
-
-[[package]]
 name = "http"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4909,6 +4898,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml_ng"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b4db627b98b36d4203a7b458cf3573730f2bb591b28871d916dfa9efabfd41f"
+dependencies = [
+ "indexmap 2.14.0",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "serialport"
 version = "4.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5129,8 +5131,8 @@ dependencies = [
  "dirs",
  "fastrand",
  "futures-util",
+ "gethostname",
  "hickory-resolver",
- "hostname",
  "indicatif",
  "rand 0.8.5",
  "rustls",
@@ -5165,7 +5167,7 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
- "hostname",
+ "gethostname",
  "serde",
  "serde_json",
  "songbird-config",
@@ -5194,7 +5196,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "serde_yaml",
+ "serde_yaml_ng",
  "songbird-http-client",
  "songbird-process-env",
  "songbird-test-utils",
@@ -5232,14 +5234,14 @@ dependencies = [
  "blake3",
  "chrono",
  "futures-util",
+ "gethostname",
  "getrandom 0.3.4",
  "hex",
  "hickory-resolver",
- "hostname",
  "rand 0.8.5",
  "serde",
  "serde_json",
- "serde_yaml",
+ "serde_yaml_ng",
  "sha2",
  "socket2 0.6.3",
  "songbird-config",
@@ -5475,9 +5477,9 @@ dependencies = [
  "fastrand",
  "flate2",
  "futures-util",
+ "gethostname",
  "getrandom 0.3.4",
  "hmac",
- "hostname",
  "hyper",
  "hyper-util",
  "netdev",
@@ -5725,7 +5727,7 @@ dependencies = [
  "bytes",
  "chrono",
  "futures-util",
- "hostname",
+ "gethostname",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -5750,7 +5752,7 @@ dependencies = [
  "bincode",
  "bollard",
  "chrono",
- "futures",
+ "futures-util",
  "hickory-resolver",
  "k8s-openapi",
  "kube",

@@ -211,7 +211,11 @@ pub async fn execute_quick_setup_api(
 
     // Step 3: Generate optimized configuration
     let node_name = request.node_name.unwrap_or_else(|| {
-        format!("{}-{}", whoami::username(), hostname::get().unwrap_or_default().to_string_lossy())
+        format!(
+            "{}-{}",
+            whoami::username(),
+            gethostname::gethostname().to_string_lossy().into_owned()
+        )
     });
 
     // Generate type-safe configuration based on request and discovered resources

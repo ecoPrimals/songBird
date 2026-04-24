@@ -60,25 +60,8 @@ pub mod ai_provider;
 pub mod common;
 pub mod security_provider;
 
-/// Deprecated alias for [`ai_provider`].
-#[deprecated(note = "use module `ai_provider` (capability-based naming)")]
-pub mod squirrel {
-    pub use super::ai_provider::*;
-}
 pub mod compute_provider;
 pub mod storage_provider;
-
-/// Deprecated alias for [`compute_provider`].
-#[deprecated(note = "use module `compute_provider` (capability-based naming)")]
-pub mod toadstool {
-    pub use super::compute_provider::*;
-}
-
-/// Deprecated alias for [`storage_provider`].
-#[deprecated(note = "use module `storage_provider` (capability-based naming)")]
-pub mod nestgate {
-    pub use super::storage_provider::*;
-}
 
 // 🍼 NEW: Recommended exports
 pub use capability_mocks::{

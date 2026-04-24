@@ -45,7 +45,7 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 dirs = { workspace = true }
 whoami = "1.4"
-hostname = "0.4"
+gethostname = "0.4"
 rand = { workspace = true }
 term_size = "0.3"
 # libc removed - not used, evolved to pure Rust alternatives

@@ -5,9 +5,12 @@
 //! Each test uses an isolated temp directory for its storage backend,
 //! enabling fully concurrent execution without file lock contention.
 //! No `sleep()`, no serial — just isolated state.
-#![allow(clippy::unwrap_used)] // Tests may use unwrap for cleaner code
-#![allow(clippy::expect_used)] // Tests may use expect for cleaner code
-#![allow(clippy::float_cmp)] // Tests may compare floats for exact values
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::float_cmp,
+    reason = "integration test assertions"
+)]
 
 use songbird_orchestrator::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
 use songbird_orchestrator::task_lifecycle::{TaskLifecycleManager, TowerId, UserId};

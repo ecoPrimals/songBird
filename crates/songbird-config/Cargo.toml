@@ -24,7 +24,7 @@ songbird-types = { path = "../songbird-types" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 config = { workspace = true }  # Only formats we use
 toml = { workspace = true }
 tracing = { workspace = true }

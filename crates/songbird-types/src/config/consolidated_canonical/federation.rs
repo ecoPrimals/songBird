@@ -100,7 +100,7 @@ impl Default for CanonicalFederationConfig {
         Self {
             cluster_name: songbird_process_env::var("SONGBIRD_CLUSTER_NAME")
                 .ok()
-                .or_else(|| hostname::get().ok().and_then(|h| h.into_string().ok())),
+                .or_else(|| gethostname::gethostname().into_string().ok()),
             trust_escalation_policy,
             initial_trust_level: "anonymous".to_string(),
             require_hardware_for_admin: songbird_process_env::var(

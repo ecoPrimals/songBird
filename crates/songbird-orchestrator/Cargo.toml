@@ -126,7 +126,7 @@ fastrand = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }
 socket2 = { workspace = true }
 toml = { workspace = true }
-hostname = "0.4"
+gethostname = "0.4"
 dirs = { workspace = true }
 
 # HTTP server for web dashboard

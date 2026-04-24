@@ -19,13 +19,14 @@ pub(super) async fn udp_multicast_discover(
 ) -> Vec<(Arc<str>, SocketAddr)> {
     let mut discovered = Vec::new();
 
-    let socket = match tokio::net::UdpSocket::bind("0.0.0.0:0").await {
-        Ok(s) => s,
-        Err(e) => {
-            warn!("Failed to bind UDP socket for discovery: {}", e);
-            return discovered;
-        }
-    };
+    let socket =
+        match tokio::net::UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("Failed to bind UDP socket for discovery: {}", e);
+                return discovered;
+            }
+        };
 
     if let Err(e) = socket.set_broadcast(true) {
         warn!("Failed to enable broadcast: {}", e);

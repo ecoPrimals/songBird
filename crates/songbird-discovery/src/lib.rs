@@ -84,6 +84,7 @@
         clippy::unnecessary_unwrap,
         clippy::ignore_without_reason,
         clippy::case_sensitive_file_extension_comparisons,
+        reason = "test code: relaxed lints for assertion-heavy discovery tests"
     )
 )]
 //!

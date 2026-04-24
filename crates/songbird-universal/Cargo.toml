@@ -28,14 +28,14 @@ full-discovery = ["mdns", "dns-sd", "k8s", "docker"]
 [dependencies]
 anyhow = { workspace = true } # Used by unix_rpc_client (Pure Rust RPC!)
 chrono = { workspace = true }
-futures = "0.3"
+futures-util = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-url = "2.0"
+url = "2.5"
 uuid = { workspace = true }
 base64 = "0.22"
 

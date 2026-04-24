@@ -128,9 +128,11 @@ async fn test_get_stats_with_disabled_features() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_fully_compliant() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_fully_compliant() -> Result<(), Box<dyn std::error::Error>>
+{
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(0.95);
@@ -138,9 +140,11 @@ fn test_determine_compliance_level_fully_compliant() -> Result<(), Box<dyn std::
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_mostly_compliant() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_mostly_compliant() -> Result<(), Box<dyn std::error::Error>>
+{
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(0.75);
@@ -148,9 +152,11 @@ fn test_determine_compliance_level_mostly_compliant() -> Result<(), Box<dyn std:
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_partially_compliant() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_partially_compliant()
+-> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(0.55);
@@ -158,9 +164,10 @@ fn test_determine_compliance_level_partially_compliant() -> Result<(), Box<dyn s
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_non_compliant() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_non_compliant() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(0.3);
@@ -168,9 +175,10 @@ fn test_determine_compliance_level_non_compliant() -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_boundary_90() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_boundary_90() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(0.9);
@@ -178,9 +186,10 @@ fn test_determine_compliance_level_boundary_90() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_boundary_70() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_boundary_70() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(0.7);
@@ -188,9 +197,10 @@ fn test_determine_compliance_level_boundary_70() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_boundary_50() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_boundary_50() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(0.5);
@@ -214,9 +224,10 @@ async fn test_generate_basic_paths_empty_services() -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-#[test]
-fn test_select_best_path_empty_list() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_select_best_path_empty_list() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let paths = vec![];
@@ -226,9 +237,10 @@ fn test_select_best_path_empty_list() -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-#[test]
-fn test_select_best_path_single_path() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_select_best_path_single_path() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let path = RoutingPath {
@@ -249,9 +261,10 @@ fn test_select_best_path_single_path() -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
-#[test]
-fn test_select_best_path_multiple_paths() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_select_best_path_multiple_paths() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let path1 = RoutingPath {
@@ -434,9 +447,10 @@ async fn test_generate_basic_paths_non_empty() -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-#[test]
-fn test_select_best_path_tie_prefers_one() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_select_best_path_tie_prefers_one() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let path_a = RoutingPath {
@@ -700,9 +714,11 @@ async fn test_adapter_stats_clone_and_debug() -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_negative_score() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_negative_score() -> Result<(), Box<dyn std::error::Error>>
+{
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(-0.1);
@@ -710,9 +726,10 @@ fn test_determine_compliance_level_negative_score() -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-#[test]
-fn test_determine_compliance_level_above_one() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
+#[tokio::test]
+async fn test_determine_compliance_level_above_one() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SovereigntyAwareAdapter::new()
+        .await
         .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
     let level = adapter.determine_compliance_level(1.5);

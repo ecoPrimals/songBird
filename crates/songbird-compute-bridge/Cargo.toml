@@ -21,7 +21,7 @@ uuid = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
-hostname = "0.4"
+gethostname = "0.4"
 
 # Internal dependencies
 songbird-process-env.workspace = true

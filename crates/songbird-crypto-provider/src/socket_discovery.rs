@@ -190,17 +190,6 @@ pub fn discover_security_provider_socket() -> String {
     discover_security_socket()
 }
 
-/// Deprecated alias for [`discover_security_socket_with`].
-#[deprecated(note = "Use discover_security_socket_with (capability-based naming)")]
-#[must_use]
-pub fn discover_security_provider_socket_with<G, P>(get_var: G, path_exists: P) -> String
-where
-    G: Fn(&str) -> Option<String>,
-    P: Fn(&Path) -> bool,
-{
-    discover_security_socket_with(get_var, path_exists)
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {

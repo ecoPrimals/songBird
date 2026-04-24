@@ -38,10 +38,7 @@ pub async fn get_capabilities(
     let max_concurrent = calculate_max_concurrent(available_memory);
 
     let capabilities = DeploymentCapabilities {
-        node_id: hostname::get()
-            .ok()
-            .and_then(|h| h.into_string().ok())
-            .unwrap_or_else(|| "unknown".to_string()),
+        node_id: gethostname::gethostname().into_string().unwrap_or_else(|_| "unknown".to_string()),
         timestamp: chrono::Utc::now().to_rfc3339(),
         network: NetworkCapabilities {
             network_type: network_type.clone(),

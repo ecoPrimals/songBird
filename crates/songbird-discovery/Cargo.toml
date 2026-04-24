@@ -27,7 +27,7 @@ songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 
 tracing = { workspace = true }
 futures-util = { workspace = true }
@@ -43,7 +43,7 @@ hex = "0.4"  # For discovery packet hashing
 socket2 = { workspace = true }  # For multicast socket configuration (aligned with workspace 0.6)
 # `pure`: pure Rust BLAKE3 (no C/assembly build) for ecoBin compliance
 blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
-hostname = "0.4"  # For primal self-knowledge name introspection
+gethostname = "0.4"  # For primal self-knowledge name introspection
 getrandom = { workspace = true }  # Cryptographically secure random nonce for beacon encryption
 rand = { workspace = true }
 

@@ -235,10 +235,6 @@ impl MockPrimalServer for MockComputeProvider {
     }
 }
 
-/// Deprecated alias for [`MockComputeProvider`].
-#[deprecated(note = "use MockComputeProvider (capability-based naming)")]
-pub type MockToadStool = MockComputeProvider;
-
 #[allow(
     clippy::unwrap_used,
     clippy::expect_used,

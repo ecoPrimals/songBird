@@ -343,10 +343,7 @@ RUST_LOG="info,songbird=debug"
 async fn detect_capabilities(args: &TowerStartArgs) -> SongbirdResult<TowerCapabilities> {
     // Hostname
     let hostname = args.name.clone().unwrap_or_else(|| {
-        hostname::get()
-            .ok()
-            .and_then(|h| h.into_string().ok())
-            .unwrap_or_else(|| "songbird-tower".to_string())
+        gethostname::gethostname().into_string().unwrap_or_else(|_| "songbird-tower".to_string())
     });
 
     // CPU cores

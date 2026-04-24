@@ -82,10 +82,6 @@ pub struct MockAiProvider {
     responses: Arc<RwLock<HashMap<String, InferenceResponse>>>,
 }
 
-/// Deprecated alias for [`MockAiProvider`] (legacy type name).
-#[deprecated(note = "use MockAiProvider (capability-based naming)")]
-pub type MockSquirrel = MockAiProvider;
-
 impl MockAiProvider {
     /// Create a new mock AI provider server
     #[must_use]
