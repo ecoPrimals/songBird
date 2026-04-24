@@ -320,6 +320,12 @@ async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unp
             }
             Err(e) => {
                 tracing::warn!("{peer_label} BTSP handshake failed: {e}");
+                let err_frame =
+                    serde_json::json!({"error":"handshake_failed","reason":e.to_string()});
+                let mut bytes = serde_json::to_vec(&err_frame).unwrap_or_default();
+                bytes.push(b'\n');
+                let _ = writer.write_all(&bytes).await;
+                let _ = writer.flush().await;
                 return;
             }
         }

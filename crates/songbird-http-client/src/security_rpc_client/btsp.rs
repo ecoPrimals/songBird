@@ -78,19 +78,21 @@ impl SecurityRpcClient {
     /// ephemeral keypair, derives the handshake key from the family seed,
     /// and returns session state including a random challenge for the client.
     ///
-    /// `family_seed_b64` must be the base64-encoded family seed bytes.
+    /// `family_seed` is the raw string from `FAMILY_SEED` env var (hex). Pass
+    /// it to BearDog as-is — do NOT hex-decode or base64-encode. BearDog
+    /// handles encoding internally (per SOURDOUGH_BTSP_RELAY_PATTERN).
     ///
     /// # Errors
     ///
     /// Returns an error if BearDog is unreachable or the session cannot be created.
-    pub async fn btsp_session_create(&self, family_seed_b64: &str) -> Result<BtspSessionCreated> {
+    pub async fn btsp_session_create(&self, family_seed: &str) -> Result<BtspSessionCreated> {
         debug!("BTSP: creating session via security provider");
 
         let result = self
             .call(
                 "btsp.session.create",
                 json!({
-                    "family_seed": family_seed_b64,
+                    "family_seed": family_seed,
                 }),
             )
             .await?;

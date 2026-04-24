@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave167] - 2026-04-15 - Fix: BTSP relay silent-fail (primalSpring Phase 45c)
+
+### Fixed
+- **`resolve_family_seed_b64()` → `resolve_family_seed()`** — was base64-encoding the hex seed string; BearDog expects the raw hex per SOURDOUGH_BTSP_RELAY_PATTERN. Now just trims and passes through. Also added `BEARDOG_FAMILY_SEED`/`BIOMEOS_FAMILY_SEED` env var fallbacks (matching ecosystem standard)
+- **Silent connection drops** — when `resolve_family_seed()` or `btsp.session.create` failed, the error propagated via `?` without writing an error frame. primalSpring saw "server closed connection (no ServerHello)". Now both `perform_server_handshake_ndjson` and `perform_server_handshake` send `{"error":"handshake_failed","reason":"..."}` error frames for ALL failure modes
+- **`handle_connection` / `handle_connection_with_peek`** — added belt-and-suspenders error frame write in caller's Err branch, matching SOURDOUGH pattern "never return nothing, never close silently"
+- **`btsp_session_create()` docs** — parameter renamed from `family_seed_b64` to `family_seed` with correct SOURDOUGH guidance
+
+---
+
 ## [v0.2.1-wave166] - 2026-04-15 - Root Doc Cleanup: Test Count Fix, Dep Status Reconciliation
 
 ### Fixed

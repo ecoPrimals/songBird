@@ -321,14 +321,25 @@ impl UnixSocketServer {
 
             if btsp::is_btsp_client_hello(&first_line) {
                 debug!("UDS peek: BTSP JSON-line ClientHello detected — NDJSON handshake");
-                let session = btsp::perform_server_handshake_ndjson(
+                let session = match btsp::perform_server_handshake_ndjson(
                     &first_line,
                     &mut reader,
                     &mut write_half,
                     &self.security_client,
                 )
                 .await
-                .context("BTSP NDJSON handshake failed")?;
+                {
+                    Ok(s) => s,
+                    Err(e) => {
+                        let err_frame =
+                            serde_json::json!({"error":"handshake_failed","reason":e.to_string()});
+                        let mut bytes = serde_json::to_vec(&err_frame).unwrap_or_default();
+                        bytes.push(b'\n');
+                        let _ = write_half.write_all(&bytes).await;
+                        let _ = write_half.flush().await;
+                        return Err(e).context("BTSP NDJSON handshake failed");
+                    }
+                };
 
                 info!(
                     "BTSP NDJSON session {} authenticated (cipher: {})",

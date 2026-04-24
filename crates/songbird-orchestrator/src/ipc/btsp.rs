@@ -106,20 +106,25 @@ async fn write_frame<W: AsyncWriteExt + Unpin>(writer: &mut W, payload: &[u8]) -
 
 // ─── Family seed resolution ──────────────────────────────────────────────────
 
-/// Resolve the family seed from the environment and return it as a base64
-/// string suitable for BearDog's `btsp.session.create` `family_seed` param.
+/// Resolve the family seed from the environment as a raw string.
 ///
-/// Returns `None` if `FAMILY_SEED` is unset or empty.
-fn resolve_family_seed_b64() -> Option<String> {
-    let raw = songbird_process_env::var("FAMILY_SEED").ok()?;
-    let trimmed = raw.trim();
+/// Per SOURDOUGH_BTSP_RELAY_PATTERN: pass the seed to BearDog as-is (just
+/// `trim()`). BearDog handles encoding internally. Do NOT hex-decode or
+/// base64-encode the value.
+///
+/// Checks `FAMILY_SEED`, `BEARDOG_FAMILY_SEED`, `BIOMEOS_FAMILY_SEED`.
+/// Returns `None` if all are unset or empty.
+fn resolve_family_seed() -> Option<String> {
+    let raw = songbird_process_env::var("FAMILY_SEED")
+        .or_else(|_| songbird_process_env::var("BEARDOG_FAMILY_SEED"))
+        .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_SEED"))
+        .ok()?;
+    let trimmed = raw.trim().to_string();
     if trimmed.is_empty() {
-        return None;
+        None
+    } else {
+        Some(trimmed)
     }
-    if BASE64_STANDARD.decode(trimmed).is_ok() {
-        return Some(trimmed.to_string());
-    }
-    Some(BASE64_STANDARD.encode(trimmed.as_bytes()))
 }
 
 // ─── Handshake ───────────────────────────────────────────────────────────────
@@ -166,14 +171,27 @@ where
         .decode(&client_hello.client_ephemeral_pub)
         .context("BTSP: invalid base64 in client_ephemeral_pub")?;
 
-    let family_seed_b64 = resolve_family_seed_b64()
-        .context("BTSP: FAMILY_SEED not available — cannot create BTSP session")?;
+    let Some(family_seed) = resolve_family_seed() else {
+        let err = HandshakeError {
+            error: "handshake_failed".into(),
+            reason: "FAMILY_SEED not available".into(),
+        };
+        let _ = write_frame(stream, &serde_json::to_vec(&err)?).await;
+        bail!("BTSP: FAMILY_SEED not available — cannot create BTSP session");
+    };
 
     // Step 2: Call BearDog to create session (BearDog generates challenge + ephemeral keys)
-    let session = security_client
-        .btsp_session_create(&family_seed_b64)
-        .await
-        .context("BTSP: BearDog btsp.session.create failed")?;
+    let session = match security_client.btsp_session_create(&family_seed).await {
+        Ok(s) => s,
+        Err(e) => {
+            let err = HandshakeError {
+                error: "handshake_failed".into(),
+                reason: format!("BearDog relay: session create failed: {e}"),
+            };
+            let _ = write_frame(stream, &serde_json::to_vec(&err)?).await;
+            bail!("BTSP: BearDog btsp.session.create failed: {e}");
+        }
+    };
 
     info!("BTSP handshake: session_token {} created, sending ServerHello", session.session_token);
 
@@ -329,14 +347,27 @@ where
         .decode(&client_hello.client_ephemeral_pub)
         .context("BTSP NDJSON: invalid base64 in client_ephemeral_pub")?;
 
-    let family_seed_b64 = resolve_family_seed_b64()
-        .context("BTSP NDJSON: FAMILY_SEED not available — cannot create BTSP session")?;
+    let Some(family_seed) = resolve_family_seed() else {
+        let err = HandshakeError {
+            error: "handshake_failed".into(),
+            reason: "FAMILY_SEED not available".into(),
+        };
+        let _ = write_ndjson(writer, &err).await;
+        bail!("BTSP NDJSON: FAMILY_SEED not available — cannot create BTSP session");
+    };
 
     // Step 2: Call BearDog to create session (BearDog generates challenge + ephemeral keys)
-    let session = security_client
-        .btsp_session_create(&family_seed_b64)
-        .await
-        .context("BTSP NDJSON: BearDog btsp.session.create failed")?;
+    let session = match security_client.btsp_session_create(&family_seed).await {
+        Ok(s) => s,
+        Err(e) => {
+            let err = HandshakeError {
+                error: "handshake_failed".into(),
+                reason: format!("BearDog relay: session create failed: {e}"),
+            };
+            let _ = write_ndjson(writer, &err).await;
+            bail!("BTSP NDJSON: BearDog btsp.session.create failed: {e}");
+        }
+    };
 
     info!(
         "BTSP NDJSON handshake: session_token {} created, sending ServerHello",
