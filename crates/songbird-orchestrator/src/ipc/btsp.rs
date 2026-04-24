@@ -106,11 +106,10 @@ async fn write_frame<W: AsyncWriteExt + Unpin>(writer: &mut W, payload: &[u8]) -
 
 // ─── Family seed resolution ──────────────────────────────────────────────────
 
-/// Resolve the family seed from the environment as a raw string.
+/// Resolve the family seed from the environment, base64-encoded for BearDog.
 ///
-/// Per SOURDOUGH_BTSP_RELAY_PATTERN: pass the seed to BearDog as-is (just
-/// `trim()`). BearDog handles encoding internally. Do NOT hex-decode or
-/// base64-encode the value.
+/// BearDog's `btsp.session.create` base64-decodes the `family_seed` param
+/// internally. We must base64-encode the raw env string before sending.
 ///
 /// Checks `FAMILY_SEED`, `BEARDOG_FAMILY_SEED`, `BIOMEOS_FAMILY_SEED`.
 /// Returns `None` if all are unset or empty.
@@ -119,11 +118,11 @@ fn resolve_family_seed() -> Option<String> {
         .or_else(|_| songbird_process_env::var("BEARDOG_FAMILY_SEED"))
         .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_SEED"))
         .ok()?;
-    let trimmed = raw.trim().to_string();
+    let trimmed = raw.trim();
     if trimmed.is_empty() {
         None
     } else {
-        Some(trimmed)
+        Some(BASE64_STANDARD.encode(trimmed.as_bytes()))
     }
 }
 

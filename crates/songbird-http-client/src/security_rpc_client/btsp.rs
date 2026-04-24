@@ -78,9 +78,10 @@ impl SecurityRpcClient {
     /// ephemeral keypair, derives the handshake key from the family seed,
     /// and returns session state including a random challenge for the client.
     ///
-    /// `family_seed` is the raw string from `FAMILY_SEED` env var (hex). Pass
-    /// it to BearDog as-is — do NOT hex-decode or base64-encode. BearDog
-    /// handles encoding internally (per SOURDOUGH_BTSP_RELAY_PATTERN).
+    /// `family_seed` must be base64-encoded. BearDog's `btsp.session.create`
+    /// base64-decodes this parameter internally. The caller should read the
+    /// raw `FAMILY_SEED` env var, trim whitespace, and base64-encode the
+    /// resulting bytes before passing them here.
     ///
     /// # Errors
     ///

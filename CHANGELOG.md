@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave168] - 2026-04-24 - Fix: BTSP routing bug + seed encoding (primalSpring Phase 45c)
+
+### Fixed
+- **SecurityRpcClient routing** — `SecurityRpcClient::new(crypto_socket)` in `app/core/mod.rs` delegated to `new_neural_api()`, wrapping ALL calls (including BTSP) in Neural API's `capability.call` wrapper. BearDog doesn't understand `capability.call` and returned "Method not found". Changed to `new_direct()` since `crypto_socket` IS the BearDog socket — BTSP relay (and all crypto ops) now talk directly to BearDog using actual method names
+- **family_seed encoding** — `resolve_family_seed()` now base64-encodes the raw env string. BearDog's `btsp.session.create` base64-decodes the `family_seed` param internally. Wave 167's raw-string approach (following the SOURDOUGH doc comment) was incorrect — the SOURDOUGH doc's guidance on this point was wrong
+- **btsp_session_create docs** — parameter doc updated to reflect correct base64 encoding requirement
+
+---
+
 ## [v0.2.1-wave167] - 2026-04-15 - Fix: BTSP relay silent-fail (primalSpring Phase 45c)
 
 ### Fixed

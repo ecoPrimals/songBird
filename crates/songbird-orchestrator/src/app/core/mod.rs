@@ -405,8 +405,9 @@ impl SongbirdOrchestrator {
                 .into_owned()
         });
 
-        info!("🔐 HTTP Handler: Using crypto provider at {}", crypto_socket);
-        let security_client = Arc::new(songbird_http_client::SecurityRpcClient::new(crypto_socket));
+        info!("🔐 Security provider (Direct): {}", crypto_socket);
+        let security_client =
+            Arc::new(songbird_http_client::SecurityRpcClient::new_direct(crypto_socket));
 
         // v3.20.0: Create Unix socket server with service registry
         let server = Arc::new(UnixSocketServer::new(
