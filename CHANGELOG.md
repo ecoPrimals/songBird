@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave170] - 2026-04-26 - CLI Flag Alignment: confirm --security-socket as canonical
+
+### Documentation
+- **Confirmed**: `--security-socket` is canonical CLI flag, `--beardog-socket` is supported alias. Both resolve to the same `security_socket` field. No code changes needed
+- **Corrected** ludoSpring V53 handoff (wateringHole) which incorrectly claimed Songbird expects `--beardog-socket` (not `--security-socket`)
+- **Archived** stale Wave 168 handoff to `handoffs/archive/`
+
+---
+
 ## [v0.2.1-wave169] - 2026-04-24 - Fix: remaining SecurityRpcClient::new() → new_direct() in bin_interface
 
 ### Fixed
