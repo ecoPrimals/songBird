@@ -230,6 +230,8 @@ mod tests {
 
     #[test]
     fn test_tarpc_config_default() {
+        let _lock = env_lock();
+        let _guard = VarGuard::remove("SONGBIRD_TARPC_PORT");
         let config = TarpcConfig::default();
         assert_eq!(config.addr.port(), 8081);
         assert!(!config.tls_enabled);

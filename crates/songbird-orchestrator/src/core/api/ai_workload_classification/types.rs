@@ -380,8 +380,8 @@ pub enum SecurityOperationType {
 }
 
 #[cfg(test)]
-mod workload_classification_tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use std::collections::HashMap;
 
@@ -396,11 +396,23 @@ mod workload_classification_tests {
         }
     }
 
+    fn sample_request_rich(workload_type: &str) -> WorkloadRequest {
+        let mut meta = HashMap::new();
+        meta.insert("k".to_string(), serde_json::json!({"nested": true}));
+        WorkloadRequest {
+            id: "corr-42".to_string(),
+            workload_type: workload_type.to_string(),
+            metadata: meta,
+            payload: serde_json::json!({"items": [1, 2, 3]}),
+        }
+    }
+
     #[test]
     fn parsed_workload_type_standard_and_aliases() {
         assert_eq!(sample_request("STANDARD").parsed_workload_type(), WorkloadType::Standard);
         assert_eq!(sample_request("web").parsed_workload_type(), WorkloadType::WebService);
         assert_eq!(sample_request("WEB_SERVICE").parsed_workload_type(), WorkloadType::WebService);
+        assert_eq!(sample_request("webservice").parsed_workload_type(), WorkloadType::WebService);
         assert_eq!(sample_request("gaming").parsed_workload_type(), WorkloadType::Gaming);
         assert_eq!(sample_request("ML").parsed_workload_type(), WorkloadType::MachineLearning);
         assert_eq!(
@@ -492,6 +504,37 @@ mod workload_classification_tests {
     }
 
     #[test]
+    fn basic_estimation_batch_processing_cpu_caps_at_32() {
+        let wt = WorkloadType::BatchProcessing {
+            batch_size: 100_000,
+            priority_level: BatchPriority::Low,
+        };
+        let r = ResourceRequirements::basic_estimation(&wt);
+        assert_eq!(r.cpu_cores, 32);
+    }
+
+    #[test]
+    fn basic_estimation_default_branch_matches_default_for_plain_variants() {
+        let d = ResourceRequirements::default();
+        for wt in [
+            WorkloadType::Generic,
+            WorkloadType::Standard,
+            WorkloadType::WebService,
+            WorkloadType::Compute,
+            WorkloadType::Storage,
+            WorkloadType::Security,
+            WorkloadType::Streaming,
+        ] {
+            let r = ResourceRequirements::basic_estimation(&wt);
+            assert_eq!(r.cpu_cores, d.cpu_cores, "{wt:?}");
+            assert_eq!(r.memory_mb, d.memory_mb, "{wt:?}");
+            assert_eq!(r.storage_mb, d.storage_mb, "{wt:?}");
+            assert_eq!(r.network_bandwidth_mbps, d.network_bandwidth_mbps, "{wt:?}");
+            assert_eq!(r.priority, d.priority, "{wt:?}");
+        }
+    }
+
+    #[test]
     fn performance_prediction_from_resources_monotonic_with_pressure() {
         let low = ResourceRequirements {
             cpu_cores: 1,
@@ -524,6 +567,28 @@ mod workload_classification_tests {
     }
 
     #[test]
+    fn risk_assessment_from_pressure_zero_and_high_resource_pressure() {
+        let zero = ResourceRequirements {
+            cpu_cores: 0,
+            memory_mb: 0,
+            storage_mb: 0,
+            network_bandwidth_mbps: 0,
+            priority: ResourcePriority::Low,
+        };
+        let z = RiskAssessment::from_pressure(&zero, &[]);
+        assert!((z.overall_risk_score - 0.15).abs() < 1e-9);
+        assert!(z.risk_factors.is_empty());
+
+        let mut hi = ResourceRequirements::default();
+        hi.cpu_cores = 128;
+        hi.memory_mb = 512 * 1024;
+        hi.network_bandwidth_mbps = 40_000;
+        let h = RiskAssessment::from_pressure(&hi, &["overload".to_string()]);
+        assert!(h.overall_risk_score > z.overall_risk_score);
+        assert_eq!(h.risk_factors, vec!["overload".to_string()]);
+    }
+
+    #[test]
     fn workload_classification_basic_fallback_pipeline() {
         let w = sample_request("ml");
         let c = WorkloadClassification::basic_fallback(&w);
@@ -547,9 +612,138 @@ mod workload_classification_tests {
     }
 
     #[test]
+    fn workload_classification_basic_fallback_web_compute_gaming_standard() {
+        for (label, expected) in [
+            ("web", WorkloadType::WebService),
+            ("compute", WorkloadType::Compute),
+            ("gaming", WorkloadType::Gaming),
+            ("standard", WorkloadType::Standard),
+            ("storage", WorkloadType::Storage),
+        ] {
+            let c = WorkloadClassification::basic_fallback(&sample_request_rich(label));
+            assert_eq!(c.workload_type, expected, "{label}");
+            assert_eq!(c.confidence_score, 0.45);
+        }
+    }
+
+    #[test]
     fn risk_assessment_basic_assessment_is_default_shape() {
         let r = RiskAssessment::basic_assessment();
         assert_eq!(r.overall_risk_score, 0.3);
         assert_eq!(r.confidence, 0.8);
+    }
+
+    #[test]
+    fn defaults_match_documented_baselines() {
+        let rr = ResourceRequirements::default();
+        assert_eq!(rr.cpu_cores, 2);
+        assert_eq!(rr.memory_mb, 2048);
+        assert_eq!(rr.priority, ResourcePriority::Medium);
+
+        let pp = PerformancePrediction::default();
+        assert_eq!(pp.expected_latency_ms, 100);
+        assert!((pp.expected_throughput_rps - 1000.0).abs() < f64::EPSILON);
+
+        let ra = RiskAssessment::default();
+        assert_eq!(ra.overall_risk_score, 0.3);
+        assert_eq!(ra.mitigation_strategies.len(), 1);
+
+        let wc = WorkloadClassification::default();
+        assert_eq!(wc.workload_type, WorkloadType::Generic);
+        assert!((wc.confidence_score - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn serde_round_trip_workload_request() {
+        let w = sample_request_rich("machine_learning");
+        let s = serde_json::to_string(&w).unwrap();
+        let w2: WorkloadRequest = serde_json::from_str(&s).unwrap();
+        assert_eq!(w.id, w2.id);
+        assert_eq!(w.workload_type, w2.workload_type);
+        assert_eq!(w.metadata, w2.metadata);
+        assert_eq!(w.payload, w2.payload);
+    }
+
+    #[test]
+    fn serde_round_trip_workload_type_variants() {
+        let cases = vec![
+            WorkloadType::Generic,
+            WorkloadType::Standard,
+            WorkloadType::RealTimeInteractive {
+                expected_response_ms: 12.5,
+                interaction_pattern: "voice".to_string(),
+            },
+            WorkloadType::BatchProcessing {
+                batch_size: 99,
+                priority_level: BatchPriority::Critical,
+            },
+            WorkloadType::AIComputation {
+                computation_type: "train".to_string(),
+            },
+        ];
+        for wt in cases {
+            let s = serde_json::to_string(&wt).unwrap();
+            let wt2: WorkloadType = serde_json::from_str(&s).unwrap();
+            assert_eq!(wt, wt2);
+        }
+    }
+
+    #[test]
+    fn serde_round_trip_workload_classification() {
+        let c = WorkloadClassification::basic_fallback(&sample_request("ml"));
+        let s = serde_json::to_string(&c).unwrap();
+        let c2: WorkloadClassification = serde_json::from_str(&s).unwrap();
+        assert_eq!(c.workload_type, c2.workload_type);
+        assert!((c.confidence_score - c2.confidence_score).abs() < f64::EPSILON);
+        assert_eq!(c.resource_requirements.cpu_cores, c2.resource_requirements.cpu_cores);
+        assert_eq!(c.risk_assessment.risk_factors, c2.risk_assessment.risk_factors);
+    }
+
+    #[test]
+    fn serde_round_trip_resource_requirements_risk_and_prediction() {
+        let req = ResourceRequirements::basic_estimation(&WorkloadType::MachineLearning);
+        let s = serde_json::to_string(&req).unwrap();
+        let req2: ResourceRequirements = serde_json::from_str(&s).unwrap();
+        assert_eq!(req.cpu_cores, req2.cpu_cores);
+        assert_eq!(req.memory_mb, req2.memory_mb);
+
+        let pred = PerformancePrediction::from_resource_requirements(&req);
+        let s = serde_json::to_string(&pred).unwrap();
+        let pred2: PerformancePrediction = serde_json::from_str(&s).unwrap();
+        assert_eq!(pred.expected_latency_ms, pred2.expected_latency_ms);
+        assert!((pred.confidence_score - pred2.confidence_score).abs() < f64::EPSILON);
+
+        let risk = RiskAssessment::from_pressure(&req, &["x".to_string()]);
+        let s = serde_json::to_string(&risk).unwrap();
+        let risk2: RiskAssessment = serde_json::from_str(&s).unwrap();
+        assert!((risk.overall_risk_score - risk2.overall_risk_score).abs() < f64::EPSILON);
+        assert_eq!(risk.risk_factors, risk2.risk_factors);
+    }
+
+    #[test]
+    fn serde_round_trip_small_enums() {
+        for v in [
+            serde_json::to_string(&BatchPriority::Low).unwrap(),
+            serde_json::to_string(&ResourcePriority::High).unwrap(),
+            serde_json::to_string(&ModelSize::Large).unwrap(),
+            serde_json::to_string(&LLMOperation::FineTuning).unwrap(),
+            serde_json::to_string(&RiskType::ModelSecurity).unwrap(),
+        ] {
+            assert!(!v.is_empty());
+        }
+        assert_eq!(
+            serde_json::from_str::<BatchPriority>(
+                &serde_json::to_string(&BatchPriority::Medium).unwrap()
+            )
+            .unwrap(),
+            BatchPriority::Medium
+        );
+        assert_eq!(
+            serde_json::from_str::<ResourcePriority>(
+                &serde_json::to_string(&ResourcePriority::Critical).unwrap()
+            )
+            .unwrap(),
+            ResourcePriority::Critical
+        );
     }
 }

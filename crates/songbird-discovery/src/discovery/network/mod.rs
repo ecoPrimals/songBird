@@ -296,3 +296,78 @@ impl NetworkManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::NetworkManager;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[test]
+    fn detect_network_region_private_ipv4() {
+        let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+        assert_eq!(NetworkManager::detect_network_region(&ip), "private");
+    }
+
+    #[test]
+    fn detect_network_region_aws_gcp_azure_cloudflare() {
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(3, 0, 0, 1))),
+            "aws"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8))),
+            "gcp"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(20, 0, 0, 1))),
+            "azure"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(162, 0, 0, 1))),
+            "cloudflare"
+        );
+    }
+
+    #[test]
+    fn detect_network_region_heuristic_buckets_and_ipv6() {
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            "reserved"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(15, 0, 0, 1))),
+            "aws"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(50, 0, 0, 1))),
+            "europe"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V6("::1".parse().unwrap())),
+            "ipv6"
+        );
+    }
+
+    #[test]
+    fn measure_network_performance_shape() {
+        let m = NetworkManager::measure_network_performance("node-a", "127.0.0.1");
+        assert_eq!(m.target_node_id, "node-a");
+        assert_eq!(m.latency_ms, 50.0);
+        assert_eq!(m.bandwidth_mbps, 100.0);
+        assert_eq!(m.packet_loss_percent, 0.1);
+        assert_eq!(m.jitter_ms, 2.0);
+    }
+
+    #[tokio::test]
+    async fn start_network_monitoring_returns_ok_without_io() {
+        let (_tx, shutdown_rx) = tokio::sync::mpsc::channel::<()>(1);
+        let res = NetworkManager::start_network_monitoring(
+            "n1".to_string(),
+            vec![("t1".to_string(), "127.0.0.1".to_string())],
+            shutdown_rx,
+        );
+        assert!(res.is_ok());
+    }
+}

@@ -399,3 +399,183 @@ fn matches_filter(task: &TaskLifecycle, filter: &TaskFilter) -> bool {
     }
     true
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use uuid::Uuid;
+
+    #[allow(
+        unused_imports,
+        reason = "wildcard documents parent module; private helpers imported below"
+    )]
+    use super::*;
+    use super::{
+        checkpoint_main_key, checkpoint_task_idx, consent_main_key, consent_task_idx,
+        consent_user_idx, matches_filter, task_main_key, task_owner_idx, task_tower_idx,
+    };
+    use crate::task_lifecycle::{
+        Priority, TaskFilter, TaskId, TaskLifecycle, TaskSpec, TaskStatus, TowerId, UserId,
+    };
+
+    #[test]
+    fn consent_main_key_formats_path() {
+        assert_eq!(consent_main_key("abc"), "songbird/consent/main/abc");
+    }
+
+    #[test]
+    fn consent_user_idx_formats_path() {
+        let u = UserId::from("alice");
+        assert_eq!(consent_user_idx(&u, "rec-1"), "songbird/consent/user/alice/rec-1");
+    }
+
+    #[test]
+    fn consent_task_idx_formats_path() {
+        let tid = TaskId::from_uuid(Uuid::nil());
+        assert_eq!(
+            consent_task_idx(&tid, "c-9"),
+            "songbird/consent/task/00000000-0000-0000-0000-000000000000/c-9"
+        );
+    }
+
+    #[test]
+    fn task_main_key_formats_path() {
+        let id = TaskId::from_uuid(Uuid::from_u128(u128::MAX));
+        assert_eq!(task_main_key(id), "songbird/task/task/ffffffff-ffff-ffff-ffff-ffffffffffff");
+    }
+
+    #[test]
+    fn task_owner_idx_formats_path() {
+        let owner = UserId::from("bob");
+        let id = TaskId::from_uuid(Uuid::nil());
+        assert_eq!(
+            task_owner_idx(&owner, id),
+            "songbird/task/owner_tasks/bob/00000000-0000-0000-0000-000000000000"
+        );
+    }
+
+    #[test]
+    fn task_tower_idx_formats_path() {
+        let tower = TowerId::from("east-1");
+        let id = TaskId::from_string("550e8400-e29b-41d4-a716-446655440000").unwrap();
+        assert_eq!(
+            task_tower_idx(&tower, id),
+            "songbird/task/tower_tasks/east-1/550e8400-e29b-41d4-a716-446655440000"
+        );
+    }
+
+    #[test]
+    fn checkpoint_main_key_formats_path() {
+        assert_eq!(checkpoint_main_key("cp-7"), "songbird/checkpoint/cp-7");
+    }
+
+    #[test]
+    fn checkpoint_task_idx_formats_path() {
+        let task_id = TaskId::from_uuid(Uuid::nil());
+        assert_eq!(
+            checkpoint_task_idx(task_id, "snap-a"),
+            "songbird/checkpoint/task_checkpoints/00000000-0000-0000-0000-000000000000/snap-a"
+        );
+    }
+
+    fn minimal_spec() -> TaskSpec {
+        TaskSpec {
+            task_type: "unit-test".into(),
+            config: serde_json::json!({}),
+            required_capabilities: vec![],
+            resources: crate::task_lifecycle::types::ResourceRequirements::default(),
+            priority: Priority::Standard,
+        }
+    }
+
+    fn sample_task(owner: &str, status: TaskStatus, tower: Option<TowerId>) -> TaskLifecycle {
+        let mut t = TaskLifecycle::new(UserId::from(owner), minimal_spec());
+        t.status = status;
+        t.current_tower = tower;
+        t
+    }
+
+    #[test]
+    fn matches_filter_empty_filter_accepts_all() {
+        let task = sample_task("alice", TaskStatus::Queued, None);
+        let filter = TaskFilter::default();
+        assert!(matches_filter(&task, &filter));
+    }
+
+    #[test]
+    fn matches_filter_owner() {
+        let task = sample_task("alice", TaskStatus::Queued, None);
+        let mut f = TaskFilter::default();
+        f.owner = Some(UserId::from("alice"));
+        assert!(matches_filter(&task, &f));
+        f.owner = Some(UserId::from("bob"));
+        assert!(!matches_filter(&task, &f));
+    }
+
+    #[test]
+    fn matches_filter_status() {
+        let task = sample_task("alice", TaskStatus::Queued, None);
+        let mut f = TaskFilter::default();
+        f.status = Some(TaskStatus::Queued);
+        assert!(matches_filter(&task, &f));
+        f.status = Some(TaskStatus::Completed {
+            completed_at: chrono::Utc::now(),
+        });
+        assert!(!matches_filter(&task, &f));
+    }
+
+    #[test]
+    fn matches_filter_tower_some_matches_current() {
+        let tw = TowerId::from("t1");
+        let task = sample_task(
+            "alice",
+            TaskStatus::Running {
+                started_at: chrono::Utc::now(),
+            },
+            Some(tw.clone()),
+        );
+        let mut f = TaskFilter::default();
+        f.tower = Some(tw);
+        assert!(matches_filter(&task, &f));
+    }
+
+    #[test]
+    fn matches_filter_tower_rejects_wrong_or_missing() {
+        let task_no_tower = sample_task("alice", TaskStatus::Queued, None);
+        let mut f = TaskFilter::default();
+        f.tower = Some(TowerId::from("t1"));
+        assert!(!matches_filter(&task_no_tower, &f));
+
+        let tw = TowerId::from("t-a");
+        let task = sample_task(
+            "alice",
+            TaskStatus::Running {
+                started_at: chrono::Utc::now(),
+            },
+            Some(tw),
+        );
+        f.tower = Some(TowerId::from("t-b"));
+        assert!(!matches_filter(&task, &f));
+    }
+
+    #[test]
+    fn matches_filter_combined_constraints() {
+        let tw = TowerId::from("tower-x");
+        let task = sample_task(
+            "u1",
+            TaskStatus::Running {
+                started_at: chrono::Utc::now(),
+            },
+            Some(tw.clone()),
+        );
+        let mut f = TaskFilter::default();
+        f.owner = Some(UserId::from("u1"));
+        f.status = Some(task.status.clone());
+        f.tower = Some(tw);
+        assert!(matches_filter(&task, &f));
+
+        f.owner = Some(UserId::from("other"));
+        assert!(!matches_filter(&task, &f));
+    }
+}

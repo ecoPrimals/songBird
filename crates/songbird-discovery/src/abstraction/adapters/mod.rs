@@ -243,3 +243,97 @@ impl ProviderFactory for ProviderFactoryImpl {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::{
+        ConsulProviderFactory, DiscoveryProviderImpl, KubernetesProviderFactory, ProviderFactory,
+        ProviderFactoryImpl, StaticProviderAdapter, StaticProviderFactory,
+    };
+    use crate::abstraction::providers::{DiscoveryProvider, ProviderConfig};
+    use serde_json::json;
+    use std::collections::HashMap;
+
+    #[test]
+    fn provider_factory_impl_dispatches_provider_type() {
+        assert_eq!(ProviderFactoryImpl::Consul(ConsulProviderFactory).provider_type(), "consul");
+        assert_eq!(
+            ProviderFactoryImpl::Kubernetes(KubernetesProviderFactory).provider_type(),
+            "kubernetes"
+        );
+        assert_eq!(ProviderFactoryImpl::Static(StaticProviderFactory).provider_type(), "static");
+    }
+
+    #[test]
+    fn consul_validate_config_requires_url() {
+        let factory = ProviderFactoryImpl::Consul(ConsulProviderFactory);
+        let config = ProviderConfig {
+            id: "c".into(),
+            name: "n".into(),
+            parameters: HashMap::new(),
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+        assert!(factory.validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn consul_validate_config_rejects_non_http_url() {
+        let factory = ProviderFactoryImpl::Consul(ConsulProviderFactory);
+        let mut parameters = HashMap::new();
+        parameters.insert("url".into(), json!("ftp://consul:8500"));
+        let config = ProviderConfig {
+            id: "c".into(),
+            name: "n".into(),
+            parameters,
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+        assert!(factory.validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn static_and_kubernetes_validate_config_succeeds() {
+        let empty = ProviderConfig {
+            id: "x".into(),
+            name: "y".into(),
+            parameters: HashMap::new(),
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+        assert!(ProviderFactoryImpl::Static(StaticProviderFactory).validate_config(&empty).is_ok());
+        assert!(
+            ProviderFactoryImpl::Kubernetes(KubernetesProviderFactory)
+                .validate_config(&empty)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn default_config_carries_ids_for_each_factory() {
+        let id = "my-id".to_string();
+        let name = "my-name".to_string();
+        for factory in [
+            ProviderFactoryImpl::Consul(ConsulProviderFactory),
+            ProviderFactoryImpl::Kubernetes(KubernetesProviderFactory),
+            ProviderFactoryImpl::Static(StaticProviderFactory),
+        ] {
+            let cfg = factory.default_config(id.clone(), name.clone());
+            assert_eq!(cfg.id, id);
+            assert_eq!(cfg.name, name);
+        }
+    }
+
+    #[tokio::test]
+    async fn discovery_provider_impl_as_any_round_trip_for_static() {
+        let adapter = StaticProviderAdapter::new_native("aid".into(), vec![]);
+        let provider = DiscoveryProviderImpl::Static(adapter);
+        let any_ref = provider.as_any();
+        assert!(any_ref.is::<StaticProviderAdapter>());
+    }
+}

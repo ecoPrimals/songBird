@@ -56,11 +56,8 @@ async fn test_generate_beacon_params() {
     // Expected: Err (no security provider in test env)
     // But the error should be clear and actionable
     if let Err(e) = result {
-        let e_lower = e.to_lowercase();
         assert!(
-            e_lower.contains("security provider")
-                || e_lower.contains("socket")
-                || e_lower.contains("ipc"),
+            is_expected_crypto_delegate_connectivity_error(&e),
             "Error should mention security provider, socket, or IPC, got: {e}"
         );
     }
@@ -79,11 +76,8 @@ async fn test_decrypt_beacon_params() {
 
     // Expected: Err (no security provider in test env)
     if let Err(e) = result {
-        let e_lower = e.to_lowercase();
         assert!(
-            e_lower.contains("security provider")
-                || e_lower.contains("socket")
-                || e_lower.contains("ipc"),
+            is_expected_crypto_delegate_connectivity_error(&e),
             "Error should mention security provider, socket, or IPC, got: {e}"
         );
     }

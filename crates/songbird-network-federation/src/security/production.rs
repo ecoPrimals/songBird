@@ -365,7 +365,10 @@ impl ProductionSecurityProvider {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
+    use tokio::net::UnixListener;
 
     #[tokio::test]
     async fn test_production_provider_creation() {
@@ -373,5 +376,29 @@ mod tests {
         let result =
             ProductionSecurityProvider::new("/tmp/nonexistent_security_provider_test.sock").await;
         assert!(result.is_err(), "Should error when socket doesn't exist");
+    }
+
+    #[tokio::test]
+    async fn production_connects_to_bound_unix_socket_and_exposes_metadata() {
+        let path = std::env::temp_dir()
+            .join(format!("songbird_prod_sec_test_{}.sock", uuid::Uuid::new_v4()));
+        let _ = std::fs::remove_file(&path);
+        let listener = UnixListener::bind(&path).unwrap();
+        let accept_task = tokio::spawn(async move {
+            listener.accept().await.unwrap();
+        });
+
+        let mut provider = ProductionSecurityProvider::new(&path).await.unwrap();
+        accept_task.await.unwrap();
+
+        assert_eq!(provider.version(), "production-unix-socket");
+        assert_eq!(provider.get_visibility_level(0), AccessLevel::FullLineage);
+        assert_eq!(provider.get_visibility_level(2), AccessLevel::SubMasked);
+        assert_eq!(provider.get_visibility_level(7), AccessLevel::Masked);
+
+        provider.set_family_id("family-x");
+        provider.shutdown().await.unwrap();
+
+        let _ = std::fs::remove_file(&path);
     }
 }

@@ -471,3 +471,81 @@ impl SecurityCryptoProvider {
             .map_err(|e| Error::SecurityProviderRpc(format!("Invalid base64 {field}: {e}")))
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::SecurityCryptoProvider;
+    use crate::crypto::capability::CryptoCapability;
+    use crate::error::Error;
+    use base64::prelude::*;
+    use serde_json::json;
+
+    #[test]
+    fn security_provider_name_is_stable() {
+        let provider = SecurityCryptoProvider::new("/tmp/songbird-test-security.sock");
+        assert_eq!(provider.name(), "security provider");
+    }
+
+    #[test]
+    fn extract_ciphertext_ok() {
+        let raw = b"payload";
+        let v = json!({ "ciphertext": BASE64_STANDARD.encode(raw) });
+        let out = SecurityCryptoProvider::extract_ciphertext(&v).unwrap();
+        assert_eq!(out, raw);
+    }
+
+    #[test]
+    fn extract_ciphertext_missing_field_message() {
+        let v = json!({});
+        let err = SecurityCryptoProvider::extract_ciphertext(&v).unwrap_err();
+        match err {
+            Error::SecurityProviderRpc(msg) => {
+                assert_eq!(msg, "Missing ciphertext in response");
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn extract_ciphertext_invalid_base64_message() {
+        let v = json!({ "ciphertext": "not-valid-b64!!!" });
+        let err = SecurityCryptoProvider::extract_ciphertext(&v).unwrap_err();
+        let Error::SecurityProviderRpc(msg) = err else {
+            panic!("expected SecurityProviderRpc");
+        };
+        assert!(msg.starts_with("Invalid base64 ciphertext:"), "got: {msg}");
+    }
+
+    #[test]
+    fn extract_plaintext_ok_and_errors() {
+        let raw = [0xabu8; 16];
+        let v = json!({ "plaintext": BASE64_STANDARD.encode(raw) });
+        assert_eq!(SecurityCryptoProvider::extract_plaintext(&v).unwrap(), raw.as_slice());
+
+        let err = SecurityCryptoProvider::extract_plaintext(&json!({})).unwrap_err();
+        match err {
+            Error::SecurityProviderRpc(msg) => assert_eq!(msg, "Missing plaintext in response"),
+            other => panic!("unexpected: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn extract_b64_field_includes_field_name_in_errors() {
+        let v = json!({ "other": "eA==" });
+        let err = SecurityCryptoProvider::extract_b64_field(&v, "handshake_secret").unwrap_err();
+        match err {
+            Error::SecurityProviderRpc(msg) => {
+                assert_eq!(msg, "Missing handshake_secret in response");
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
+
+        let v = json!({ "handshake_secret": "???" });
+        let err = SecurityCryptoProvider::extract_b64_field(&v, "handshake_secret").unwrap_err();
+        let Error::SecurityProviderRpc(msg) = err else {
+            panic!("expected SecurityProviderRpc");
+        };
+        assert!(msg.starts_with("Invalid base64 handshake_secret:"), "got: {msg}");
+    }
+}

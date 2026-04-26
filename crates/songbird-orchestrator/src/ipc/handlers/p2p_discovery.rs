@@ -399,8 +399,31 @@ pub async fn announce_capabilities_json(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
-    use super::peer_matches_family_tags;
+    use super::{
+        announce_capabilities, create_genetic_tunnel, create_genetic_tunnel_json,
+        discover_by_family, discover_by_family_json, discovered_node_from_peer,
+        peer_matches_family_tags,
+    };
+    use crate::app::connection_manager::ConnectionManager;
+    use crate::ipc::handlers::IpcHandlers;
+    use crate::ipc::pure_rust_server::JsonRpcError;
+    use crate::ipc::registry::ServiceRegistry;
+    use songbird_discovery::anonymous::DiscoveredPeer;
+    use songbird_http_client::SecurityRpcClient;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use std::sync::Arc;
+    use std::time::SystemTime;
+
+    fn test_ipc_handlers() -> IpcHandlers {
+        IpcHandlers::new(
+            Arc::new(ServiceRegistry::new()),
+            None,
+            Arc::new(ConnectionManager::new()),
+            Arc::new(SecurityRpcClient::new("/tmp/songbird-p2p-discovery-handler-tests.sock")),
+        )
+    }
 
     #[test]
     fn peer_matches_when_tag_contains_family_token() {
@@ -427,5 +450,111 @@ mod tests {
         let tags = vec!["x".to_string()];
         let families: Vec<String> = vec![];
         assert!(!peer_matches_family_tags(Some(&tags), &families));
+    }
+
+    #[test]
+    fn discovered_node_prefers_node_id_over_session() {
+        let peer = DiscoveredPeer {
+            session_id: "sess-1".into(),
+            node_id: Some("node-stable".into()),
+            node_name: Some("east".into()),
+            endpoints: None,
+            capabilities: vec!["compute".into()],
+            tags: Some(vec!["tag-a".into()]),
+            timestamp: Some(1),
+            identity_attestations: None,
+            protocols: vec![],
+            port: 8443,
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 5)), 9),
+            last_seen: SystemTime::UNIX_EPOCH,
+            version: "3".into(),
+        };
+        let node = discovered_node_from_peer(peer);
+        assert_eq!(node.node_id, "node-stable");
+        assert_eq!(node.node_name, Some("east".into()));
+        assert_eq!(node.genetic_families, vec!["tag-a"]);
+        assert_eq!(node.capabilities, vec!["compute".to_string()]);
+        assert_eq!(node.https_endpoint, "https://10.0.0.5:8443");
+    }
+
+    #[test]
+    fn discovered_node_falls_back_to_session_id_when_no_node_id() {
+        let peer = DiscoveredPeer {
+            session_id: "sess-only".into(),
+            node_id: None,
+            node_name: None,
+            endpoints: None,
+            capabilities: vec![],
+            tags: None,
+            timestamp: None,
+            identity_attestations: None,
+            protocols: vec![],
+            port: 443,
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1),
+            last_seen: SystemTime::UNIX_EPOCH,
+            version: "2".into(),
+        };
+        let node = discovered_node_from_peer(peer);
+        assert_eq!(node.node_id, "sess-only");
+        assert_eq!(node.genetic_families, Vec::<String>::new());
+    }
+
+    #[tokio::test]
+    async fn discover_by_family_without_listener_returns_empty_nodes() {
+        let handlers = test_ipc_handlers();
+        let res = discover_by_family(&handlers, serde_json::json!({ "family_tags": ["any"] }))
+            .await
+            .unwrap();
+        assert!(res.nodes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn discover_by_family_invalid_params_is_json_rpc_error() {
+        let handlers = test_ipc_handlers();
+        let err =
+            discover_by_family(&handlers, serde_json::json!("not-an-object")).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn discover_by_family_json_missing_params_errors() {
+        let handlers = test_ipc_handlers();
+        let err = discover_by_family_json(&handlers, None).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn create_genetic_tunnel_requires_peer_endpoint() {
+        let handlers = test_ipc_handlers();
+        let err = create_genetic_tunnel(&handlers, serde_json::json!({ "peer_node_id": "n1" }))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, -32602);
+        assert!(err.message.contains("peer_endpoint"));
+    }
+
+    #[tokio::test]
+    async fn create_genetic_tunnel_json_missing_params_errors() {
+        let handlers = test_ipc_handlers();
+        let err = create_genetic_tunnel_json(&handlers, None).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn announce_capabilities_accepts_request() {
+        let handlers = test_ipc_handlers();
+        let res = announce_capabilities(
+            &handlers,
+            serde_json::json!({
+                "capabilities": ["storage"],
+                "sub_federations": ["f1"],
+                "genetic_families": ["g1"]
+            }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(res.status, "updated");
+        assert!(res.broadcasting);
+        assert!(!res.updated_at.is_empty());
     }
 }

@@ -516,6 +516,27 @@ mod tests {
     }
 
     #[test]
+    fn jsonrpc_error_standard_codes_and_messages() {
+        assert_eq!(JsonRpcError::invalid_request().code, -32600);
+        assert_eq!(JsonRpcError::method_not_found().code, -32601);
+        assert_eq!(JsonRpcError::invalid_params().code, -32602);
+        let internal = JsonRpcError::internal_error("boom");
+        assert_eq!(internal.code, -32603);
+        assert_eq!(internal.message, "boom");
+        let custom = JsonRpcError::server_error(-32000, "routing");
+        assert_eq!(custom.code, -32000);
+        assert_eq!(custom.message, "routing");
+    }
+
+    #[test]
+    fn jsonrpc_error_new_sets_message() {
+        let e = JsonRpcError::new(42, "hello");
+        assert_eq!(e.code, 42);
+        assert_eq!(e.message, "hello");
+        assert!(e.data.is_none());
+    }
+
+    #[test]
     fn test_jsonrpc_request_serialization() {
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -542,5 +563,17 @@ mod tests {
         assert!(json.contains("\"jsonrpc\":\"2.0\""));
         assert!(json.contains("\"result\""));
         assert!(!json.contains("\"error\""));
+    }
+
+    #[test]
+    fn jsonrpc_notification_omits_id_in_json() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "ping".to_string(),
+            params: serde_json::Value::Null,
+            id: None,
+        };
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(!json.contains("\"id\""), "notification should skip id: {json}");
     }
 }

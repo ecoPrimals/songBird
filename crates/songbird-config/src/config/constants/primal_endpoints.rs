@@ -90,8 +90,8 @@ fn should_use_tls_for_primal(primal_name: &str) -> bool {
 pub fn get_configured_primal_names() -> Vec<String> {
     let mut primal_names = Vec::new();
 
-    // Scan for primal-specific environment variables
-    for (key, _value) in std::env::vars() {
+    // Scan for primal-specific environment variables (overlay + OS, matching [`SafeEnv`])
+    for (key, _value) in songbird_process_env::vars() {
         if key.ends_with("_ENDPOINT") && !key.starts_with("SONGBIRD_") {
             let primal_name = key.trim_end_matches("_ENDPOINT").to_lowercase();
             if !primal_names.contains(&primal_name) {
@@ -115,4 +115,82 @@ pub fn get_configured_primal_names() -> Vec<String> {
 
     // If no primals configured, return empty list for pure discovery mode
     primal_names
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use songbird_test_utils::ScopedEnv;
+
+    #[tokio::test]
+    async fn get_primal_endpoint_prefers_primal_specific_env() {
+        let _e = ScopedEnv::remove_and_set_many(
+            [
+                "PRIMAL_SBTESTPRIMALA_ENDPOINT",
+                "KUBERNETES_SERVICE_HOST",
+                "DOCKER_HOST",
+                "CONTAINER",
+            ],
+            [("SBTESTPRIMALA_ENDPOINT", "http://explicit-one:1111")],
+        )
+        .await;
+        assert_eq!(get_primal_endpoint("sbtestprimala"), "http://explicit-one:1111");
+    }
+
+    #[tokio::test]
+    async fn get_primal_endpoint_falls_back_to_primal_underscore_pattern() {
+        let _e = ScopedEnv::remove_and_set_many(
+            ["SBTESTPRIMALB_ENDPOINT", "KUBERNETES_SERVICE_HOST", "DOCKER_HOST", "CONTAINER"],
+            [("PRIMAL_SBTESTPRIMALB_ENDPOINT", "http://explicit-two:2222")],
+        )
+        .await;
+        assert_eq!(get_primal_endpoint("sbtestprimalb"), "http://explicit-two:2222");
+    }
+
+    #[tokio::test]
+    async fn get_primal_endpoint_default_is_stable_for_same_name() {
+        let _e = ScopedEnv::remove_multiple([
+            "SBTESTPRIMALSTABLE_ENDPOINT",
+            "PRIMAL_SBTESTPRIMALSTABLE_ENDPOINT",
+            "KUBERNETES_SERVICE_HOST",
+            "DOCKER_HOST",
+            "CONTAINER",
+            "SONGBIRD_ENV",
+        ])
+        .await;
+        let a = get_primal_endpoint("sbtestprimalstable");
+        let b = get_primal_endpoint("sbtestprimalstable");
+        assert_eq!(a, b);
+        assert!(a.starts_with("http://"), "expected non-TLS dev default, got {a}");
+        assert!(a.contains(':'));
+    }
+
+    #[tokio::test]
+    async fn get_primal_endpoint_production_uses_https_scheme() {
+        let _e = ScopedEnv::remove_and_set_many(
+            [
+                "SBTESTPRIMALPROD_ENDPOINT",
+                "PRIMAL_SBTESTPRIMALPROD_ENDPOINT",
+                "KUBERNETES_SERVICE_HOST",
+                "DOCKER_HOST",
+                "CONTAINER",
+            ],
+            [("SONGBIRD_ENV", "production")],
+        )
+        .await;
+        let ep = get_primal_endpoint("sbtestprimalprod");
+        assert!(ep.starts_with("https://"), "production defaults to TLS, got {ep}");
+    }
+
+    #[tokio::test]
+    async fn get_configured_primal_names_picks_up_endpoint_env_keys() {
+        let key = "SBTESTPRIMALNAMEDXYZ_ENDPOINT";
+        let _e = ScopedEnv::remove_and_set_many([key], [(key, "http://unused:1")]).await;
+        let names = get_configured_primal_names();
+        assert!(
+            names.contains(&"sbtestprimalnamedxyz".to_string()),
+            "expected scan to find {key}, got {names:?}"
+        );
+    }
 }

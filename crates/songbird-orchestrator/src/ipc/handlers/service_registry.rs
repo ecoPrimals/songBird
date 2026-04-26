@@ -449,3 +449,145 @@ pub async fn health_check_json(
         ))
     })
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::app::connection_manager::ConnectionManager;
+    use crate::ipc::handlers::IpcHandlers;
+    use crate::ipc::pure_rust_server::JsonRpcError;
+    use crate::ipc::registry::ServiceRegistry;
+    use songbird_http_client::SecurityRpcClient;
+
+    fn test_handlers() -> IpcHandlers {
+        let registry = Arc::new(ServiceRegistry::new());
+        let connection_manager = Arc::new(ConnectionManager::new());
+        let security_client = Arc::new(SecurityRpcClient::new_direct(
+            "/tmp/songbird-orchestrator-service-registry-tests.sock",
+        ));
+        IpcHandlers::new(registry, None, connection_manager, security_client)
+    }
+
+    fn register_params() -> serde_json::Value {
+        serde_json::json!({
+            "primal_name": "test primal",
+            "capabilities": ["encryption"],
+            "endpoint": "/tmp/test-primal.sock",
+            "protocol": "json-rpc",
+            "health_check_interval": 30
+        })
+    }
+
+    #[tokio::test]
+    async fn register_service_rejects_invalid_params() {
+        let handlers = test_handlers();
+        let err = register_service(&handlers, serde_json::json!(1)).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn discover_by_capability_rejects_invalid_params() {
+        let handlers = test_handlers();
+        let err =
+            discover_by_capability(&handlers, serde_json::json!([1, 2, 3])).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn get_service_health_rejects_invalid_params() {
+        let handlers = test_handlers();
+        let err = get_service_health(&handlers, serde_json::json!("bad")).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn health_check_response_shape() {
+        let handlers = test_handlers();
+        let resp = health_check(&handlers, serde_json::json!({})).await.unwrap();
+        assert_eq!(resp.health.service_id, "songbird");
+        assert_eq!(resp.health.status, "healthy");
+        assert!(resp.health.timestamp.contains('T') || !resp.health.timestamp.is_empty());
+    }
+
+    #[tokio::test]
+    async fn register_service_json_requires_params() {
+        let handlers = test_handlers();
+        let err = register_service_json(&handlers, None).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("params required"));
+    }
+
+    #[tokio::test]
+    async fn register_service_json_success() {
+        let handlers = test_handlers();
+        let out = register_service_json(&handlers, Some(register_params())).await.unwrap();
+        assert_eq!(out["status"], serde_json::json!("registered"));
+        assert!(out.get("service_id").and_then(|v| v.as_str()).is_some());
+    }
+
+    #[tokio::test]
+    async fn discover_by_capability_json_wildcard_after_register() {
+        let handlers = test_handlers();
+        register_service_json(&handlers, Some(register_params())).await.unwrap();
+        let out = discover_by_capability_json(
+            &handlers,
+            Some(serde_json::json!({ "capability": "*", "protocol": "json-rpc" })),
+        )
+        .await
+        .unwrap();
+        let primals = out["primals"].as_array().unwrap();
+        assert_eq!(primals.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn capability_resolve_json_no_provider() {
+        let handlers = test_handlers();
+        let err = capability_resolve_json(
+            &handlers,
+            Some(serde_json::json!({ "capability": "nonexistent-cap" })),
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.code, -32601);
+        assert!(err.message.contains("No provider found"));
+    }
+
+    #[tokio::test]
+    async fn capability_resolve_json_returns_first_match() {
+        let handlers = test_handlers();
+        register_service_json(&handlers, Some(register_params())).await.unwrap();
+        let out = capability_resolve_json(
+            &handlers,
+            Some(serde_json::json!({ "capability": "encryption" })),
+        )
+        .await
+        .unwrap();
+        assert_eq!(out["endpoint"], serde_json::json!("/tmp/test-primal.sock"));
+        assert_eq!(out["protocol"], serde_json::json!("json-rpc"));
+    }
+
+    #[tokio::test]
+    async fn get_service_health_json_unknown_service() {
+        let handlers = test_handlers();
+        let out = get_service_health_json(
+            &handlers,
+            Some(serde_json::json!({ "service_id": "missing" })),
+        )
+        .await
+        .unwrap();
+        assert_eq!(out["health"]["status"], serde_json::json!("unknown"));
+    }
+
+    #[tokio::test]
+    async fn health_check_json_shape() {
+        let handlers = test_handlers();
+        let out = health_check_json(&handlers).await.unwrap();
+        assert_eq!(out["health"]["service_id"], serde_json::json!("songbird"));
+        assert_eq!(out["health"]["status"], serde_json::json!("healthy"));
+        assert_eq!(out["health"]["message"], serde_json::json!("Songbird orchestrator is running"));
+    }
+}

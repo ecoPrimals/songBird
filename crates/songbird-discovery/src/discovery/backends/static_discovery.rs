@@ -153,3 +153,105 @@ impl ServiceDiscovery for StaticServiceDiscovery {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::StaticServiceDiscovery;
+    use crate::traits::discovery::{ServiceDiscovery, ServiceHealthStatus, ServiceQuery};
+    use crate::traits::service::{ServiceInfo, ServiceStatus};
+    use chrono::Utc;
+    use std::collections::HashMap;
+
+    fn sample_service(service_id: &str, name: &str) -> ServiceInfo {
+        ServiceInfo {
+            service_id: service_id.to_string(),
+            name: name.to_string(),
+            version: "1.0.0".to_string(),
+            service_type: "api".to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: format!("{service_id}-i1"),
+            host: "127.0.0.1".to_string(),
+            port: 8080,
+        }
+    }
+
+    #[tokio::test]
+    async fn new_and_default_are_empty() {
+        let a = StaticServiceDiscovery::new();
+        let b = StaticServiceDiscovery::default();
+        assert_eq!(a.service_count().await, 0);
+        assert_eq!(b.service_count().await, 0);
+    }
+
+    #[tokio::test]
+    async fn with_services_populates_map() {
+        let s1 = sample_service("a", "Alpha");
+        let s2 = sample_service("b", "Beta");
+        let d = StaticServiceDiscovery::with_services(vec![s1, s2]).await;
+        assert_eq!(d.service_count().await, 2);
+        assert!(d.has_service("a").await);
+        let mut names: Vec<String> =
+            d.get_all_services().await.into_iter().map(|s| s.name).collect();
+        names.sort();
+        assert_eq!(names, vec!["Alpha".to_string(), "Beta".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn discover_filters_by_name_when_set() {
+        let d = StaticServiceDiscovery::with_services(vec![
+            sample_service("x", "One"),
+            sample_service("y", "Two"),
+        ])
+        .await;
+
+        let mut q = ServiceQuery::new();
+        q.name = Some("Two".to_string());
+        let found = ServiceDiscovery::discover(&d, q).await.unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].service_id, "y");
+
+        let all = ServiceDiscovery::discover(&d, ServiceQuery::new()).await.unwrap();
+        assert_eq!(all.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn register_unregister_and_clear() {
+        let d = StaticServiceDiscovery::new();
+        ServiceDiscovery::register(&d, sample_service("z", "Zed")).await.unwrap();
+        assert!(ServiceDiscovery::exists(&d, "z").await.unwrap());
+        ServiceDiscovery::unregister(&d, "z").await.unwrap();
+        assert!(!ServiceDiscovery::exists(&d, "z").await.unwrap());
+        ServiceDiscovery::register(&d, sample_service("z", "Zed")).await.unwrap();
+        d.clear().await;
+        assert_eq!(d.service_count().await, 0);
+    }
+
+    #[tokio::test]
+    async fn update_health_and_metadata_are_ok() {
+        let d = StaticServiceDiscovery::with_services(vec![sample_service("m", "Meta")]).await;
+        assert!(
+            ServiceDiscovery::update_health(&d, "m", ServiceHealthStatus::Healthy).await.is_ok()
+        );
+        let mut meta = HashMap::new();
+        meta.insert("k".to_string(), "v".to_string());
+        assert!(ServiceDiscovery::update_metadata(&d, "m", meta).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn list_all_matches_discover_empty_query() {
+        let d = StaticServiceDiscovery::with_services(vec![sample_service("p", "Ping")]).await;
+        let a = ServiceDiscovery::list_all(&d).await.unwrap();
+        let b = ServiceDiscovery::discover(&d, ServiceQuery::new()).await.unwrap();
+        assert_eq!(a.len(), b.len());
+    }
+}

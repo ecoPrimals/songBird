@@ -94,9 +94,19 @@ fn igd_enabled_from_env_value_parses_opt_in_cases() {
     assert!(igd_enabled_from_env_value("1"));
     assert!(igd_enabled_from_env_value("true"));
     assert!(igd_enabled_from_env_value("TRUE"));
+    assert!(igd_enabled_from_env_value("TrUe"));
     assert!(!igd_enabled_from_env_value("0"));
     assert!(!igd_enabled_from_env_value("false"));
     assert!(!igd_enabled_from_env_value(""));
+    assert!(!igd_enabled_from_env_value("yes"));
+}
+
+#[test]
+fn http_bind_socket_addr_accepts_ipv4_wildcard() {
+    // `host:port` concatenation matches IPv4; IPv6 literals need bracket form and are not supported here.
+    let addr = http_bind_socket_addr("0.0.0.0", 9090).unwrap();
+    assert_eq!(addr.ip().to_string(), "0.0.0.0");
+    assert_eq!(addr.port(), 9090);
 }
 
 #[test]

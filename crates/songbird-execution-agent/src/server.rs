@@ -220,13 +220,97 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
-    // Removed unused imports
+    use axum::body::to_bytes;
+    use songbird_types::{SecurityError, SongbirdError};
 
     #[tokio::test]
     async fn test_health_check() {
         let response = health_check().await.into_response();
         assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["status"], "healthy");
+        assert_eq!(v["service"], "songbird-execution-agent");
+    }
+
+    #[tokio::test]
+    async fn app_error_validation_maps_to_bad_request() {
+        let err = AppError(SongbirdError::Validation {
+            message: "bad cmd".into(),
+            field: Some("command".into()),
+            suggestion: None,
+        });
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["error"], "bad cmd");
+    }
+
+    #[tokio::test]
+    async fn app_error_security_maps_to_unauthorized() {
+        let err = AppError(SongbirdError::Security(SecurityError {
+            message: "nope".into(),
+            operation: None,
+            required_permission: None,
+            context: None,
+            remediation: None,
+        }));
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["error"], "nope");
+    }
+
+    #[tokio::test]
+    async fn app_error_registry_maps_to_not_found() {
+        let err = AppError(SongbirdError::Registry {
+            message: "missing job".into(),
+            service_name: Some("j1".into()),
+            operation: "get".into(),
+        });
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn app_error_configuration_maps_to_too_many_requests() {
+        let err = AppError(SongbirdError::Configuration {
+            message: "rate".into(),
+            field: None,
+            suggestion: None,
+        });
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    #[tokio::test]
+    async fn app_error_other_maps_to_internal_server_error() {
+        let err = AppError(SongbirdError::Network {
+            message: "down".into(),
+            interface: None,
+            suggestion: None,
+        });
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(v["error"], "Internal server error");
+    }
+
+    #[test]
+    fn execution_server_new_accepts_auth_none() {
+        let server = ExecutionServer::new(
+            "127.0.0.1".into(),
+            0,
+            JobManager::new(1, 60),
+            CommandExecutor::new(crate::ResourceLimits::default()),
+            None,
+        );
+        let _ = server;
     }
 }

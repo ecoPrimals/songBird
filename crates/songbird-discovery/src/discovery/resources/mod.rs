@@ -326,3 +326,45 @@ impl ResourceDetector {
         0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::ResourceDetector;
+
+    #[test]
+    fn parse_size_to_gb_units_and_invalid() {
+        assert_eq!(ResourceDetector::parse_size_to_gb(""), 0);
+        assert_eq!(ResourceDetector::parse_size_to_gb("100G"), 100);
+        assert_eq!(ResourceDetector::parse_size_to_gb("2T"), 2048);
+        assert_eq!(ResourceDetector::parse_size_to_gb("512M"), 0);
+        assert_eq!(ResourceDetector::parse_size_to_gb("not-a-number"), 0);
+    }
+
+    #[test]
+    fn detect_cuda_capability_known_models() {
+        assert_eq!(
+            ResourceDetector::detect_cuda_capability("NVIDIA GeForce RTX 4090").as_deref(),
+            Some("8.9")
+        );
+        assert_eq!(ResourceDetector::detect_cuda_capability("NVIDIA A100").as_deref(), Some("8.0"));
+        assert_eq!(ResourceDetector::detect_cuda_capability("NVIDIA V100").as_deref(), Some("7.0"));
+        assert_eq!(ResourceDetector::detect_cuda_capability("Mystery GPU"), None);
+    }
+
+    #[test]
+    fn get_gpu_utilization_is_empty_by_default() {
+        assert!(ResourceDetector::get_gpu_utilization().is_empty());
+    }
+
+    #[test]
+    fn get_active_jobs_is_zero_by_default() {
+        assert_eq!(ResourceDetector::get_active_jobs(), 0);
+    }
+
+    #[test]
+    fn get_network_utilization_default_constant() {
+        assert_eq!(ResourceDetector::get_network_utilization(), 10.0);
+    }
+}

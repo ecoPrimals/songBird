@@ -6,7 +6,7 @@ use serde::Deserialize;
 use songbird_http_client::IpcHttpClient;
 use tracing::{debug, info};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub(super) struct NodeInfo {
     pub(super) node_id: String,
     pub(super) node_name: String,
@@ -19,6 +19,15 @@ pub(super) struct NodeInfo {
 pub(super) fn parse_tower_address(address: &str) -> String {
     let parts: Vec<&str> = address.split(':').collect();
     parts[0].to_string()
+}
+
+pub(super) fn find_tower_in_nodes(nodes: &[NodeInfo], tower_id: &str) -> Option<NodeInfo> {
+    nodes
+        .iter()
+        .find(|n| {
+            n.node_id == tower_id || n.node_name.to_lowercase().contains(&tower_id.to_lowercase())
+        })
+        .cloned()
 }
 
 pub(super) async fn get_tower_info(songbird_endpoint: &str, tower_id: &str) -> Result<NodeInfo> {
@@ -34,11 +43,7 @@ pub(super) async fn get_tower_info(songbird_endpoint: &str, tower_id: &str) -> R
         .await
         .context("Failed to parse tower list")?;
 
-    nodes
-        .into_iter()
-        .find(|n| {
-            n.node_id == tower_id || n.node_name.to_lowercase().contains(&tower_id.to_lowercase())
-        })
+    find_tower_in_nodes(&nodes, tower_id)
         .ok_or_else(|| anyhow::anyhow!("Tower '{tower_id}' not found in federation"))
 }
 
@@ -136,8 +141,9 @@ pub(super) async fn check_status(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
-    use super::parse_tower_address;
+    use super::{NodeInfo, find_tower_in_nodes, parse_tower_address};
 
     #[test]
     fn parse_tower_address_strips_port() {
@@ -155,5 +161,44 @@ mod tests {
         assert_eq!(parse_tower_address("a:b:c"), "a");
         // Naive split: bracketed IPv6 contains extra ':' segments before the port.
         assert_eq!(parse_tower_address("[::1]:8080"), "[");
+    }
+
+    fn sample_node(id: &str, name: &str) -> NodeInfo {
+        NodeInfo {
+            node_id: id.into(),
+            node_name: name.into(),
+            node_address: "10.0.0.1:443".into(),
+            capabilities: vec![],
+            cpu_cores: 4,
+            memory_gb: 8,
+        }
+    }
+
+    #[test]
+    fn find_tower_matches_node_id_exactly() {
+        let nodes = vec![sample_node("t-1", "Alpha"), sample_node("t-2", "Beta")];
+        let found = find_tower_in_nodes(&nodes, "t-2").expect("tower");
+        assert_eq!(found.node_name, "Beta");
+    }
+
+    #[test]
+    fn find_tower_matches_case_insensitive_substring_of_name() {
+        let nodes = vec![sample_node("x", "Tower-East-Strand")];
+        let found = find_tower_in_nodes(&nodes, "east").expect("tower");
+        assert_eq!(found.node_id, "x");
+    }
+
+    #[test]
+    fn find_tower_not_found() {
+        let nodes = vec![sample_node("a", "Other")];
+        assert!(find_tower_in_nodes(&nodes, "missing").is_none());
+    }
+
+    #[test]
+    fn node_info_deserializes_minimal_json() {
+        let json = r#"{"node_id":"n1","node_name":"N","node_address":"h:1","capabilities":[],"cpu_cores":2,"memory_gb":4}"#;
+        let n: NodeInfo = serde_json::from_str(json).unwrap();
+        assert_eq!(n.node_id, "n1");
+        assert_eq!(n.memory_gb, 4);
     }
 }

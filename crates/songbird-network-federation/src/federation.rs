@@ -564,6 +564,25 @@ mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::*;
+    use crate::state::{FederationStatus, NodeRegistration, NodeStatus};
+    use chrono::Utc;
+
+    fn sample_registration(node_id: &str, name: &str) -> NodeRegistration {
+        NodeRegistration {
+            node_id: node_id.to_string(),
+            node_name: name.to_string(),
+            node_address: "192.168.0.1:8080".to_string(),
+            endpoints: None,
+            cpu_cores: 4,
+            memory_gb: 8,
+            gpu_model: None,
+            storage_gb: None,
+            capabilities: vec![],
+            status: NodeStatus::Active,
+            joined_at: Utc::now(),
+            last_heartbeat: Utc::now(),
+        }
+    }
 
     #[test]
     fn federation_config_default_serde_roundtrip() {
@@ -603,5 +622,97 @@ mod tests {
         let c = FederationConfig::default();
         assert_eq!(c.heartbeat_interval_secs, 30);
         assert_eq!(c.node_timeout_secs, 60);
+    }
+
+    #[tokio::test]
+    async fn discovery_mode_plaintext_without_security_provider() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        assert!(!coord.has_security_provider().await);
+        assert_eq!(coord.discovery_mode().await, DiscoveryMode::Plaintext);
+    }
+
+    #[tokio::test]
+    async fn effective_discovery_mode_respects_override_and_fallback() {
+        let coord = FederationCoordinator::new().await.unwrap();
+
+        let auto = FederationConfig::default();
+        assert_eq!(coord.effective_discovery_mode(&auto).await, DiscoveryMode::Plaintext);
+
+        let forced_plain = FederationConfig {
+            discovery_mode: Some(DiscoveryMode::Plaintext),
+            ..FederationConfig::default()
+        };
+        assert_eq!(coord.effective_discovery_mode(&forced_plain).await, DiscoveryMode::Plaintext);
+
+        let birdsong_without_security = FederationConfig {
+            discovery_mode: Some(DiscoveryMode::BirdSong),
+            ..FederationConfig::default()
+        };
+        assert_eq!(
+            coord.effective_discovery_mode(&birdsong_without_security).await,
+            DiscoveryMode::Plaintext
+        );
+    }
+
+    #[tokio::test]
+    async fn coordinator_debug_formats_without_panicking() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let s = format!("{coord:?}");
+        assert!(s.contains("FederationCoordinator"));
+    }
+
+    #[tokio::test]
+    async fn ingest_peers_from_federation_status_value() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let self_reg = sample_registration("self-node", "Self");
+        let peer = sample_registration("peer-a", "Peer A");
+
+        let status = FederationStatus {
+            federation_id: "fed-1".to_string(),
+            active_nodes: 2,
+            nodes: vec![self_reg.clone(), peer.clone()],
+            total_cpu_cores: 0,
+            total_memory_gb: 0,
+            total_storage_gb: 0,
+            uptime_seconds: 0,
+        };
+        let v = serde_json::to_value(&status).unwrap();
+        coord.ingest_peers_from_join_response(&v, &self_reg).await;
+
+        let state = coord.state();
+        let nodes = state.nodes.read().await;
+        assert!(nodes.contains_key("peer-a"));
+        assert!(!nodes.contains_key("self-node"));
+    }
+
+    #[tokio::test]
+    async fn ingest_peers_from_nodes_array_when_status_shape_unknown() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let self_reg = sample_registration("node-self", "Self");
+        let peer = sample_registration("node-peer", "Peer B");
+
+        let v = serde_json::json!({
+            "not_federation_status": true,
+            "nodes": [ serde_json::to_value(&peer).unwrap() ],
+        });
+        coord.ingest_peers_from_join_response(&v, &self_reg).await;
+
+        let state = coord.state();
+        assert!(state.nodes.read().await.contains_key("node-peer"));
+    }
+
+    #[tokio::test]
+    async fn ingest_peers_from_peers_array() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let self_reg = sample_registration("id-self", "Self");
+        let peer = sample_registration("id-peer", "Peer C");
+
+        let v = serde_json::json!({
+            "peers": [ serde_json::to_value(&peer).unwrap() ],
+        });
+        coord.ingest_peers_from_join_response(&v, &self_reg).await;
+
+        let state = coord.state();
+        assert!(state.nodes.read().await.contains_key("id-peer"));
     }
 }

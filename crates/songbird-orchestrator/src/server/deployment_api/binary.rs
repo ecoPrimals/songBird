@@ -16,6 +16,27 @@ use tracing::{debug, error, info};
 
 use super::types::{DeploymentInfo, DeploymentResponse, DeploymentState, DeploymentStatus};
 
+fn default_service_name_for_deployment(deployment_id: &str) -> String {
+    let suffix = deployment_id.get(7..15).filter(|s| !s.is_empty()).unwrap_or(deployment_id);
+    format!("service-{suffix}")
+}
+
+fn port_from_env_vars(env_vars: &HashMap<String, String>) -> Option<u16> {
+    env_vars
+        .iter()
+        .find(|(k, _)| k.to_uppercase().contains("PORT"))
+        .and_then(|(_, v)| v.parse::<u16>().ok())
+}
+
+fn service_url_from_deployment_env(
+    env_vars: &HashMap<String, String>,
+    port: Option<u16>,
+) -> Option<String> {
+    let host = env_vars.get("COMPUTE_HOST").or_else(|| env_vars.get("SERVICE_HOST"))?;
+    let port = port?;
+    Some(format!("http://{host}:{port}"))
+}
+
 /// POST /api/deployment/binary - Deploy a binary service
 pub async fn deploy_binary(
     State(state): State<DeploymentState>,
@@ -90,11 +111,8 @@ pub async fn deploy_binary_bytes(
     auto_start: bool,
 ) -> Result<(StatusCode, DeploymentResponse), (StatusCode, String)> {
     let deployment_id = format!("deploy-{}", fastrand::u64(..));
-    let service_name = service_name.unwrap_or_else(|| {
-        let suffix =
-            deployment_id.get(7..15).filter(|s| !s.is_empty()).unwrap_or(deployment_id.as_str());
-        format!("service-{suffix}")
-    });
+    let service_name =
+        service_name.unwrap_or_else(|| default_service_name_for_deployment(&deployment_id));
 
     info!("📦 Deploying service: {}", service_name);
     debug!("   Deployment ID: {}", deployment_id);
@@ -127,10 +145,7 @@ pub async fn deploy_binary_bytes(
 
     info!("✅ Binary deployed to: {}", binary_path.display());
 
-    let port = env_vars
-        .iter()
-        .find(|(k, _)| k.to_uppercase().contains("PORT"))
-        .and_then(|(_, v)| v.parse::<u16>().ok());
+    let port = port_from_env_vars(&env_vars);
 
     let mut deployment = DeploymentInfo {
         deployment_id: deployment_id.clone(),
@@ -163,13 +178,7 @@ pub async fn deploy_binary_bytes(
 
     state.deployments.write().await.insert(deployment_id.clone(), deployment.clone());
 
-    let service_url = if let (Some(host), Some(port)) =
-        (env_vars.get("COMPUTE_HOST").or_else(|| env_vars.get("SERVICE_HOST")), port)
-    {
-        Some(format!("http://{host}:{port}"))
-    } else {
-        None
-    };
+    let service_url = service_url_from_deployment_env(&env_vars, port);
 
     let response = DeploymentResponse {
         deployment_id,
@@ -211,4 +220,77 @@ where
     debug!("✅ Service started with PID: {}", pid);
 
     Ok(pid)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{
+        default_service_name_for_deployment, port_from_env_vars, service_url_from_deployment_env,
+    };
+    use std::collections::HashMap;
+
+    #[test]
+    fn default_service_name_uses_deployment_id_suffix() {
+        assert_eq!(default_service_name_for_deployment("deploy-abcdef12"), "service-abcdef12");
+    }
+
+    #[test]
+    fn default_service_name_falls_back_to_full_id_when_short() {
+        assert_eq!(default_service_name_for_deployment("deploy"), "service-deploy");
+    }
+
+    #[test]
+    fn port_from_env_vars_matches_port_substring_case_insensitive() {
+        let mut m = HashMap::new();
+        m.insert("APP_PORT".into(), "8080".into());
+        assert_eq!(port_from_env_vars(&m), Some(8080));
+        m.insert("not-a-number".into(), "xyz".into());
+        assert_eq!(port_from_env_vars(&m), Some(8080));
+    }
+
+    #[test]
+    fn port_from_env_vars_ignores_unparseable_port_value() {
+        let mut m = HashMap::new();
+        m.insert("PORT".into(), "nope".into());
+        assert_eq!(port_from_env_vars(&m), None);
+    }
+
+    #[test]
+    fn service_url_prefers_compute_host_then_service_host() {
+        let mut m = HashMap::new();
+        m.insert("SERVICE_HOST".into(), "10.0.0.1".into());
+        assert_eq!(
+            service_url_from_deployment_env(&m, Some(443)),
+            Some("http://10.0.0.1:443".into())
+        );
+        m.insert("COMPUTE_HOST".into(), "192.168.0.2".into());
+        assert_eq!(
+            service_url_from_deployment_env(&m, Some(80)),
+            Some("http://192.168.0.2:80".into())
+        );
+    }
+
+    #[test]
+    fn service_url_none_without_host_or_port() {
+        let m: HashMap<String, String> = HashMap::new();
+        assert_eq!(service_url_from_deployment_env(&m, Some(1)), None);
+        let mut m = HashMap::new();
+        m.insert("COMPUTE_HOST".into(), "h".into());
+        assert_eq!(service_url_from_deployment_env(&m, None), None);
+    }
+
+    #[test]
+    fn deployment_response_serializes() {
+        use super::DeploymentResponse;
+        let r = DeploymentResponse {
+            deployment_id: "d1".into(),
+            status: "deployed".into(),
+            message: "ok".into(),
+            service_url: Some("http://localhost:1".into()),
+        };
+        let v = serde_json::to_value(&r).unwrap();
+        assert_eq!(v["deployment_id"], "d1");
+        assert_eq!(v["service_url"], "http://localhost:1");
+    }
 }

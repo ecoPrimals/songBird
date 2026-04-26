@@ -406,3 +406,41 @@ impl SecurityProviderFactory {
         Ok(None)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::{SecurityProvider, SecurityProviderFactory, SecurityProviderImpl};
+    use crate::security::{AccessLevel, LineageChain, LineageProof, LineageProvider, LineageRelay};
+
+    #[test]
+    fn create_noop_is_noop_variant() {
+        assert!(matches!(SecurityProviderFactory::create_noop(), SecurityProviderImpl::NoOp(_)));
+    }
+
+    #[tokio::test]
+    async fn noop_impl_security_provider_trait_surface() {
+        let p = SecurityProviderFactory::create_noop();
+        assert_eq!(SecurityProvider::version(&p), "0.0.0-noop");
+        assert!(!SecurityProvider::is_available(&p).await);
+        SecurityProvider::shutdown(&p).await.unwrap();
+        assert_eq!(LineageRelay::get_visibility_level(&p, 0), AccessLevel::FullLineage);
+        assert_eq!(LineageRelay::get_visibility_level(&p, 11), AccessLevel::Transport);
+    }
+
+    #[tokio::test]
+    async fn noop_lineage_provider_verify_lineage_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        let proof = LineageProof {
+            chain: LineageChain {
+                root_id: "r".into(),
+                node_id: "n".into(),
+                links: vec![],
+                depth: 0,
+            },
+            claimer_signature: vec![],
+        };
+        assert!(LineageProvider::verify_lineage(&p, &proof).await.is_err());
+    }
+}

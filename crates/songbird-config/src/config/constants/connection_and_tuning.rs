@@ -141,3 +141,125 @@ pub fn enable_zero_copy() -> bool {
         }
     })
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use songbird_test_utils::ScopedEnv;
+
+    #[test]
+    fn duration_constants_are_positive() {
+        assert!(DEFAULT_CACHE_TTL.as_secs() > 0);
+        assert!(DEFAULT_EVALUATION_TIMEOUT.as_secs() > 0);
+        assert!(DEFAULT_METRICS_INTERVAL.as_secs() > 0);
+        assert_eq!(DEFAULT_CACHE_TTL.as_secs(), 300);
+        assert_eq!(DEFAULT_EVALUATION_TIMEOUT.as_secs(), 30);
+        assert_eq!(DEFAULT_METRICS_INTERVAL.as_secs(), 60);
+    }
+
+    #[tokio::test]
+    async fn get_connection_timeout_ms_env_specific_defaults() {
+        {
+            let _e = ScopedEnv::remove_and_set_many(
+                ["SONGBIRD_CONNECTION_TIMEOUT_MS", "KUBERNETES_SERVICE_HOST"],
+                [("SONGBIRD_ENV", "production")],
+            )
+            .await;
+            assert_eq!(get_connection_timeout_ms(), 30_000);
+        }
+        {
+            let _e = ScopedEnv::remove_and_set_many(
+                ["SONGBIRD_CONNECTION_TIMEOUT_MS", "KUBERNETES_SERVICE_HOST"],
+                [("SONGBIRD_ENV", "staging")],
+            )
+            .await;
+            assert_eq!(get_connection_timeout_ms(), 45_000);
+        }
+        {
+            let _e = ScopedEnv::remove_and_set_many(
+                ["SONGBIRD_CONNECTION_TIMEOUT_MS", "KUBERNETES_SERVICE_HOST"],
+                [("SONGBIRD_ENV", "development")],
+            )
+            .await;
+            assert_eq!(get_connection_timeout_ms(), 60_000);
+        }
+    }
+
+    #[tokio::test]
+    async fn get_connection_timeout_ms_cloud_default_when_unspecified_env() {
+        let _e = ScopedEnv::remove_and_set_many(
+            ["SONGBIRD_CONNECTION_TIMEOUT_MS", "SONGBIRD_ENV"],
+            [("KUBERNETES_SERVICE_HOST", "10.0.0.1")],
+        )
+        .await;
+        assert_eq!(get_connection_timeout_ms(), 15_000);
+    }
+
+    #[tokio::test]
+    async fn get_max_connections_tiers_match_environment() {
+        {
+            let _e = ScopedEnv::remove_and_set_many(
+                ["SONGBIRD_MAX_CONNECTIONS"],
+                [("SONGBIRD_ENV", "production")],
+            )
+            .await;
+            assert_eq!(get_max_connections(), 10_000);
+        }
+        {
+            let _e = ScopedEnv::remove_and_set_many(
+                ["SONGBIRD_MAX_CONNECTIONS"],
+                [("SONGBIRD_ENV", "staging")],
+            )
+            .await;
+            assert_eq!(get_max_connections(), 5_000);
+        }
+        {
+            let _e = ScopedEnv::remove_and_set_many(
+                ["SONGBIRD_MAX_CONNECTIONS"],
+                [("SONGBIRD_ENV", "testing")],
+            )
+            .await;
+            assert_eq!(get_max_connections(), 1_000);
+        }
+    }
+
+    #[test]
+    fn get_worker_threads_is_positive() {
+        assert!(get_worker_threads() > 0);
+    }
+
+    #[test]
+    fn get_batch_size_is_clamped() {
+        let b = get_batch_size();
+        assert!((100..=5000).contains(&b));
+    }
+
+    #[tokio::test]
+    async fn get_log_level_reads_songbird_first() {
+        let _e =
+            ScopedEnv::set_multiple([("SONGBIRD_LOG_LEVEL", "trace"), ("LOG_LEVEL", "info")]).await;
+        assert_eq!(get_log_level(), "trace");
+    }
+
+    #[tokio::test]
+    async fn enable_zero_copy_true_in_production_by_default() {
+        let _e = ScopedEnv::remove_and_set_many(
+            ["SONGBIRD_ENABLE_ZERO_COPY", "MEMORY_LIMIT"],
+            [("SONGBIRD_ENV", "production")],
+        )
+        .await;
+        assert!(enable_zero_copy());
+    }
+
+    #[tokio::test]
+    async fn get_buffer_pool_size_respects_memory_limit_cap() {
+        let _e = ScopedEnv::remove_and_set_many(
+            ["SONGBIRD_BUFFER_POOL_SIZE"],
+            [("SONGBIRD_ENV", "production"), ("MEMORY_LIMIT", "2048")],
+        )
+        .await;
+        let size = get_buffer_pool_size();
+        assert_eq!(size, 20);
+    }
+}

@@ -3,8 +3,8 @@
 **Date**: April 15, 2026  
 **Version**: v0.2.1  
 **Last Deep Debt Audit**: Wave 165 (Apr 15, 2026)  
-**Current Wave**: 170 — CLI flag alignment: confirmed `--security-socket` as canonical flag, `--beardog-socket` as supported alias. No code changes — documentation/alignment only. Corrected incorrect ludoSpring V53 handoff claim. Archived stale W168 handoff.  
-**Previous Waves** (full detail in `CHANGELOG.md`): 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
+**Current Wave**: 171 — Test coverage expansion: 71.28% → 73.41% (+2.13pp). 271 new tests (7,387 → 7,658). Fixed 3 flaky/broken tests. Tests added across 30+ files in songbird-orchestrator, songbird-config, songbird-discovery, songbird-universal, songbird-network-federation, songbird-http-client, songbird-lineage-relay, songbird-cli, songbird-compute-bridge, songbird-remote-deploy, songbird-execution-agent, songbird-sovereign-onion, songbird-onion-relay. 0 clippy warnings, 0 failures.  
+**Previous Waves** (full detail in `CHANGELOG.md`): 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
 
@@ -12,8 +12,8 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,387 lib passed, 0 failures, 22 ignored |
-| **Line Coverage** | **72.29%** measured (llvm-cov `--workspace --lib`, Apr 8 2026; target 90%) |
+| **Tests** | 7,658 lib passed, 0 failures, 22 ignored |
+| **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 26 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 15 verified) |
@@ -63,9 +63,9 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ---
 
-## Pending: Coverage Expansion (72.29% → 90% target)
+## Pending: Coverage Expansion (73.41% → 90% target)
 
-**Note (Apr 8, 2026)**: 72.29% measured via llvm-cov `--workspace --lib` (Apr 8 2026). Target 90% via ongoing pure-logic module expansion.
+**Note (Apr 26, 2026)**: 73.41% measured via llvm-cov `--workspace --lib` (Apr 26 2026). Wave 171 added 271 tests across 30+ files (71.28% → 73.41%). Target 90% via ongoing pure-logic module expansion.
 
 | Module | Measured (Apr 8) | Tests Added (Waves 124-127) | Priority |
 |--------|-------------------|----------------------------|----------|

@@ -418,3 +418,67 @@ pub enum NetworkCapability {
     Monitoring,
     Security,
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[test]
+    fn network_config_serde_roundtrip() {
+        let c = NetworkConfig {
+            interface: InterfaceConfig {
+                bind_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
+                port: 8080,
+                port_ranges: PortRanges::default(),
+                max_connections: 10,
+                connection_timeout: Duration::from_secs(5),
+            },
+            gaming: GamingConfig {
+                enabled: false,
+                ..GamingConfig::default()
+            },
+            proxy: ProxyConfig::default(),
+            discovery: DiscoveryConfig::default(),
+            performance: PerformanceConfig::default(),
+        };
+        let json = serde_json::to_string(&c).unwrap();
+        let back: NetworkConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.interface.port, 8080);
+        assert!(!back.gaming.enabled);
+    }
+
+    #[test]
+    fn port_ranges_and_proxy_defaults() {
+        let pr = PortRanges::default();
+        assert_eq!(pr.gaming.0, 6112);
+        let pc = ProxyConfig::default();
+        assert!(!pc.enabled);
+        assert_eq!(pc.proxy_type, ProxyType::Http);
+    }
+
+    #[tokio::test]
+    async fn network_manager_health_check_no_gaming() {
+        let mut mgr = NetworkManager::new(NetworkConfig {
+            interface: InterfaceConfig {
+                bind_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
+                port: 0,
+                port_ranges: PortRanges::default(),
+                max_connections: 1,
+                connection_timeout: Duration::from_secs(1),
+            },
+            gaming: GamingConfig {
+                enabled: false,
+                ..GamingConfig::default()
+            },
+            ..NetworkConfig::default()
+        });
+        mgr.initialize().await.unwrap();
+        let health = mgr.health_check().await.unwrap();
+        assert_eq!(health.overall_status, NetworkStatus::Healthy);
+        assert_eq!(health.active_connections, 0);
+        assert!(health.gaming_health.is_none());
+    }
+}

@@ -225,3 +225,135 @@ pub async fn validate_coordination_pattern_json(
         .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
     serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::app::connection_manager::ConnectionManager;
+    use crate::graph::{Graph, GraphMetadata, GraphNode};
+    use crate::ipc::handlers::IpcHandlers;
+    use crate::ipc::pure_rust_server::JsonRpcError;
+    use crate::ipc::registry::ServiceRegistry;
+    use songbird_http_client::SecurityRpcClient;
+
+    fn test_handlers() -> IpcHandlers {
+        let registry = Arc::new(ServiceRegistry::new());
+        let connection_manager = Arc::new(ConnectionManager::new());
+        let security_client = Arc::new(SecurityRpcClient::new_direct(
+            "/tmp/songbird-orchestrator-graph-intelligence-tests.sock",
+        ));
+        IpcHandlers::new(registry, None, connection_manager, security_client)
+    }
+
+    fn minimal_graph_value() -> serde_json::Value {
+        let graph = Graph::new(
+            "g-test".to_string(),
+            "Test Graph".to_string(),
+            vec![],
+            vec![],
+            GraphMetadata::default(),
+        );
+        serde_json::to_value(graph).unwrap()
+    }
+
+    fn sample_node_json() -> serde_json::Value {
+        let node = GraphNode {
+            id: "n1".to_string(),
+            primal_name: None,
+            capability: "encryption".to_string(),
+            inputs: vec![],
+            outputs: vec![],
+            config: serde_json::json!({}),
+            preferred_protocol: None,
+            timeout_secs: None,
+        };
+        serde_json::to_value(node).unwrap()
+    }
+
+    #[tokio::test]
+    async fn validate_graph_rejects_non_object_params() {
+        let handlers = test_handlers();
+        let err = validate_graph(&handlers, serde_json::json!("not-a-graph")).await.unwrap_err();
+        assert_eq!(err.code, -32602);
+        assert!(err.message.contains("Failed to parse graph"));
+    }
+
+    #[tokio::test]
+    async fn validate_graph_json_missing_params() {
+        let handlers = test_handlers();
+        let err = validate_graph_json(&handlers, None).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("Missing params"));
+    }
+
+    #[tokio::test]
+    async fn validate_graph_json_invalid_graph_shape() {
+        let handlers = test_handlers();
+        let err = validate_graph_json(&handlers, Some(serde_json::json!({}))).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn validate_graph_json_success_roundtrip() {
+        let handlers = test_handlers();
+        let out = validate_graph_json(&handlers, Some(minimal_graph_value())).await.unwrap();
+        assert_eq!(out["valid"], serde_json::json!(true));
+    }
+
+    #[tokio::test]
+    async fn check_availability_json_missing_params() {
+        let handlers = test_handlers();
+        let err = check_availability_json(&handlers, None).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn check_availability_json_empty_graph() {
+        let handlers = test_handlers();
+        let out = check_availability_json(&handlers, Some(minimal_graph_value())).await.unwrap();
+        assert!(out.get("summary").is_some());
+    }
+
+    #[tokio::test]
+    async fn suggest_alternatives_json_missing_params() {
+        let handlers = test_handlers();
+        let err = suggest_alternatives_json(&handlers, None).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn suggest_alternatives_json_rejects_invalid_node() {
+        let handlers = test_handlers();
+        let err =
+            suggest_alternatives_json(&handlers, Some(serde_json::json!({}))).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn suggest_alternatives_json_success() {
+        let handlers = test_handlers();
+        let out = suggest_alternatives_json(&handlers, Some(sample_node_json())).await.unwrap();
+        assert!(out.get("alternatives").is_some());
+    }
+
+    #[tokio::test]
+    async fn validate_coordination_pattern_json_missing_params() {
+        let handlers = test_handlers();
+        let err = validate_coordination_pattern_json(&handlers, None).await.unwrap_err();
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn validate_coordination_pattern_json_empty_graph() {
+        let handlers = test_handlers();
+        let out = validate_coordination_pattern_json(&handlers, Some(minimal_graph_value()))
+            .await
+            .unwrap();
+        assert!(out.get("valid").is_some());
+        assert!(out.get("pattern").is_some());
+    }
+}

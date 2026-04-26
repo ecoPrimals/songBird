@@ -318,3 +318,72 @@ fn parse_discovery_response(response: &str, source_ip: IpAddr) -> Option<Discove
         None
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{calculate_compatibility_score, discover_networks_api, parse_discovery_response};
+    use crate::cli::commands::quick::{DiscoveredNetwork, DiscoveryParameters};
+    use songbird_process_env;
+    use std::net::IpAddr;
+
+    #[test]
+    fn compatibility_score_caps_at_one() {
+        let net = DiscoveredNetwork {
+            name: "big".into(),
+            node_count: 10,
+            network_type: "Academic grid".into(),
+            institution: Some("Inst".into()),
+            endpoint: "10.0.0.1:80".into(),
+            compatibility_score: 0.0,
+        };
+        let s = calculate_compatibility_score(&net);
+        assert!((s - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn compatibility_score_mid_range_without_bonuses() {
+        let net = DiscoveredNetwork {
+            name: "solo".into(),
+            node_count: 1,
+            network_type: "Subnet".into(),
+            institution: None,
+            endpoint: "127.0.0.1:1".into(),
+            compatibility_score: 0.0,
+        };
+        let s = calculate_compatibility_score(&net);
+        assert!((s - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn parse_discovery_response_reads_json_fields() {
+        songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "7777");
+        let src: IpAddr = "198.51.100.2".parse().unwrap();
+        let json = r#"{"name":"lab-net","nodes":4,"type":"Research","institution":"U"}"#;
+        let net = parse_discovery_response(json, src).unwrap();
+        songbird_process_env::reset_overlay();
+        assert_eq!(net.name, "lab-net");
+        assert_eq!(net.node_count, 4);
+        assert_eq!(net.network_type, "Research");
+        assert_eq!(net.institution.as_deref(), Some("U"));
+        assert_eq!(net.endpoint, "198.51.100.2:7777");
+    }
+
+    #[test]
+    fn parse_discovery_response_rejects_non_json() {
+        let src: IpAddr = "127.0.0.1".parse().unwrap();
+        assert!(parse_discovery_response("not-json", src).is_none());
+    }
+
+    #[tokio::test]
+    async fn discover_networks_api_unknown_method_err() {
+        let params = DiscoveryParameters {
+            methods: vec!["quantum-entanglement".into()],
+            timeout_ms: 100,
+            max_results: 3,
+        };
+        let err = discover_networks_api(params).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Unknown discovery method"), "{msg}");
+    }
+}

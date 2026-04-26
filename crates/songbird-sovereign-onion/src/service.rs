@@ -332,20 +332,40 @@ impl OnionService {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    use std::path::PathBuf;
 
-    use std::time::Duration;
+    use super::storage_socket_from_endpoint;
 
-    #[tokio::test(start_paused = true)]
-    async fn virtual_time_advances_for_sleep() {
-        let start = tokio::time::Instant::now();
-        let sleep = tokio::time::sleep(Duration::from_secs(2));
-        tokio::time::advance(Duration::from_secs(2)).await;
-        sleep.await;
-        assert!(
-            start.elapsed() >= Duration::from_secs(2),
-            "paused timer should advance with tokio::time::advance"
+    #[test]
+    fn storage_socket_from_endpoint_unix_triple_slash() {
+        assert_eq!(
+            storage_socket_from_endpoint("unix:///run/storage.sock"),
+            Some(PathBuf::from("/run/storage.sock"))
         );
+    }
+
+    #[test]
+    fn storage_socket_from_endpoint_absolute_path() {
+        assert_eq!(
+            storage_socket_from_endpoint("/var/songbird/storage.sock"),
+            Some(PathBuf::from("/var/songbird/storage.sock"))
+        );
+    }
+
+    #[test]
+    fn storage_socket_from_endpoint_trims_whitespace() {
+        assert_eq!(
+            storage_socket_from_endpoint("  unix:///tmp/x  "),
+            Some(PathBuf::from("/tmp/x"))
+        );
+    }
+
+    #[test]
+    fn storage_socket_from_endpoint_http_not_socket_path() {
+        assert_eq!(storage_socket_from_endpoint("http://127.0.0.1:8080"), None);
+        assert_eq!(storage_socket_from_endpoint(""), None);
+        assert_eq!(storage_socket_from_endpoint("relative/path"), None);
     }
 }

@@ -114,3 +114,55 @@ impl ConfigTemplate {
         dockerfile
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::ConfigTemplate;
+    use songbird_types::config::CanonicalSongbirdConfig;
+
+    #[test]
+    fn service_template_includes_default_bind_and_port() {
+        let cfg = CanonicalSongbirdConfig::default();
+        let t = ConfigTemplate::service_template();
+        assert!(t.contains("[orchestrator]"));
+        assert!(t.contains(&format!("bind_address = \"{}\"", cfg.network.bind_host)));
+        assert!(t.contains(&format!("port = {}", cfg.network.base_port)));
+        assert!(t.contains("log_level = \"info\""));
+        assert!(t.contains("enable_tls = false"));
+    }
+
+    #[test]
+    fn development_template_uses_debug_and_shorter_metrics_interval() {
+        let t = ConfigTemplate::development_config_template();
+        assert!(t.contains("log_level = \"debug\""));
+        assert!(t.contains("metrics_interval_secs = 10"));
+    }
+
+    #[test]
+    fn production_template_enables_tls_auth_audit() {
+        let t = ConfigTemplate::production_config_template();
+        assert!(t.contains("log_level = \"warn\""));
+        assert!(t.contains("enable_tls = true"));
+        assert!(t.contains("enable_auth = true"));
+        assert!(t.contains("enable_audit = true"));
+        assert!(t.contains("enable_dashboard = false"));
+    }
+
+    #[test]
+    fn home_network_template_enables_discovery_sections() {
+        let t = ConfigTemplate::home_network_config_template();
+        assert!(t.contains("enable_discovery = true"));
+        assert!(t.contains("[discovery]"));
+        assert!(t.contains("enable_multicast = true"));
+    }
+
+    #[test]
+    fn dockerfile_template_exposes_base_port_and_multistage_build() {
+        let cfg = CanonicalSongbirdConfig::default();
+        let t = ConfigTemplate::dockerfile_template();
+        assert!(t.contains("FROM rust:1.75-slim as builder"));
+        assert!(t.contains(&format!("EXPOSE {}", cfg.network.base_port)));
+        assert!(t.contains("CMD [\"songbird\", \"start\"]"));
+    }
+}

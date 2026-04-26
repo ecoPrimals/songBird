@@ -311,3 +311,129 @@ impl BirdSongEncryption {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::BirdSongEncryption;
+    use crate::birdsong::mocks::{
+        ChaoticBirdSongMock, CrossFamilyBirdSongMock, DarkForestTestProvider, FailingBirdSongMock,
+        LegacyBirdSongStub, OrchestratorPrefixMock, ProcessorXorMock, ProtocolPassthroughMock,
+        UnavailableBirdSongMock,
+    };
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn processor_xor_encrypt_decrypt_round_trip() {
+        let enc = BirdSongEncryption::ProcessorXor(Arc::new(ProcessorXorMock {
+            family_id: "fam".to_string(),
+            available: true,
+        }));
+        let plain = b"discovery-payload";
+        let ct = enc.encrypt_discovery(plain).await.unwrap();
+        let out = enc.decrypt_discovery(&ct).await.unwrap().unwrap();
+        assert_eq!(out, plain);
+    }
+
+    #[tokio::test]
+    async fn processor_xor_decrypt_returns_none_when_marked_unknown() {
+        let enc = BirdSongEncryption::ProcessorXor(Arc::new(ProcessorXorMock {
+            family_id: "fam".to_string(),
+            available: true,
+        }));
+        let mut ct = vec![0xFF, 1, 2, 3];
+        assert!(enc.decrypt_discovery(&ct).await.unwrap().is_none());
+        ct[0] = 0x00;
+        assert!(enc.decrypt_discovery(&ct).await.unwrap().is_some());
+    }
+
+    #[tokio::test]
+    async fn legacy_stub_metadata_and_pass_through() {
+        let enc = BirdSongEncryption::Legacy(LegacyBirdSongStub);
+        assert!(enc.is_available());
+        assert_eq!(enc.family_id().as_deref(), Some("legacy"));
+        assert_eq!(enc.provider_name(), "LegacyBirdSongStub");
+        let plain = b"x";
+        let ct = enc.encrypt_discovery(plain).await.unwrap();
+        assert_eq!(enc.decrypt_discovery(&ct).await.unwrap().unwrap(), plain);
+    }
+
+    #[tokio::test]
+    async fn unavailable_errors_on_crypto_ops() {
+        let enc = BirdSongEncryption::Unavailable(Arc::new(UnavailableBirdSongMock {
+            family_id: Some("n/a".to_string()),
+        }));
+        assert!(!enc.is_available());
+        assert!(enc.encrypt_discovery(b"x").await.is_err());
+        assert!(enc.decrypt_discovery(b"x").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn protocol_passthrough_decrypt_none() {
+        let enc = BirdSongEncryption::ProtocolPassthrough(Arc::new(ProtocolPassthroughMock {
+            family_id: "p".to_string(),
+        }));
+        let ct = enc.encrypt_discovery(b"hello").await.unwrap();
+        assert_eq!(ct, b"hello");
+        assert!(enc.decrypt_discovery(&ct).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn cross_family_prefix_round_trip() {
+        let enc = BirdSongEncryption::CrossFamily(Arc::new(CrossFamilyBirdSongMock {
+            family_id: Some("alpha".to_string()),
+        }));
+        let plain = b"payload";
+        let ct = enc.encrypt_discovery(plain).await.unwrap();
+        assert_eq!(enc.decrypt_discovery(&ct).await.unwrap().unwrap(), plain);
+        assert!(enc.decrypt_discovery(b"wrong:payload").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn orchestrator_prefix_strip_and_reject() {
+        let enc = BirdSongEncryption::OrchestratorPrefix(Arc::new(OrchestratorPrefixMock {
+            family_id: None,
+        }));
+        let ct = enc.encrypt_discovery(b"body").await.unwrap();
+        assert!(ct.starts_with(b"ENCRYPTED:"));
+        assert_eq!(enc.decrypt_discovery(&ct).await.unwrap().unwrap(), b"body");
+        assert!(enc.decrypt_discovery(b"plain").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn dark_forest_beacon_round_trip() {
+        let seed = [7u8; 32];
+        let enc = BirdSongEncryption::DarkForestTest(Arc::new(DarkForestTestProvider::new(seed)));
+        let (blob, nonce) = enc.encrypt_beacon(b"beacon").await.unwrap();
+        let out = enc.try_decrypt_beacon(&blob, &nonce).await.unwrap().unwrap();
+        assert_eq!(out, b"beacon");
+        assert!(enc.supports_dark_forest().await);
+        let bid = enc.get_beacon_id().await.unwrap().unwrap();
+        assert_eq!(bid, DarkForestTestProvider::derive_beacon_id(&seed));
+    }
+
+    #[tokio::test]
+    async fn failing_mock_errors_after_budget() {
+        let enc = BirdSongEncryption::Failing(Arc::new(FailingBirdSongMock::new(
+            Some("f".to_string()),
+            1,
+        )));
+        assert!(enc.encrypt_discovery(b"a").await.is_ok());
+        assert!(enc.encrypt_discovery(b"b").await.is_err());
+    }
+
+    #[test]
+    fn chaotic_toggle_and_reset_affect_availability_and_counter() {
+        let enc = BirdSongEncryption::Chaotic(Arc::new(ChaoticBirdSongMock::new(
+            Some("c".to_string()),
+            0.0,
+        )));
+        assert!(enc.is_available());
+        enc.chaotic_toggle_availability();
+        assert!(!enc.is_available());
+        enc.chaotic_toggle_availability();
+        assert!(enc.is_available());
+        enc.chaotic_reset_failure_counter();
+    }
+}

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave171] - 2026-04-26 - Test Coverage Expansion: 71.28% → 73.41% (+271 tests)
+
+### Added
+- **271 new unit tests** across 30+ files in 13 crates, raising workspace lib coverage from 71.28% to 73.41%
+- **songbird-orchestrator**: tests for `information_layers`, `capability_adapters`, `ai_workload_classification/types`, `storage_ipc/ipc_backend` key helpers + `matches_filter`, `graph_intelligence` handlers, `service_registry` handlers, `storage_memory` in-memory backend, `deployment_api/binary` helpers, `task_api` serde, `compute_handlers` routing helpers, `discovery_startup` family_id extraction, `discovery_bridge` tag matching, `connectivity` socket parsing, `command_handler`, `http_gateway/unix_listener` JsonRpcError
+- **songbird-config**: tests for `primal_endpoints`, `connection_and_tuning`, `discover_consul`/`discover_etcd`/`discover_kubernetes` pure helpers, `timeouts_resources`
+- **songbird-discovery**: tests for `birdsong/encryption` dispatch, `network` region detection, `resources` parsing, `static_discovery` backend, `abstraction/adapters` factory, `abstraction/delegation` routing
+- **songbird-universal**: tests for `types/capability` PrimalType/SecurityLevel/serde, `unified_adapter` error edge cases
+- **songbird-network-federation**: tests for `security/mod` noop factory, `security/production` socket lifecycle, `federation` discovery modes, `crypto_helpers` hash/hmac, `network` config serde
+- **songbird-http-client**: tests for `crypto_impl` capability/extraction, `key_exchange` parsing helpers
+- **songbird-lineage-relay**: tests for `packet_handler` masking + protocol encode/parse
+- **songbird-cli**: tests for `templates` rendering, `discovery` version extraction + subnet scanning, `commands/quick/discovery` compatibility scoring
+- **songbird-compute-bridge**: tests for `normalize_capabilities_csv`, `resolve_tower_id`
+- **songbird-remote-deploy**: tests for SSH command building, deployment config, tower node finding
+- **songbird-execution-agent**: tests for health check JSON, AppError responses
+- **songbird-sovereign-onion**: tests for storage socket parsing
+- **songbird-onion-relay**: tests for NAT classification
+
+### Fixed
+- **`birdsong_handler/tests.rs`**: 2 failing beacon tests (`test_generate_beacon_params`, `test_decrypt_beacon_params`) — error messages evolved but assertions didn't. Switched to existing `is_expected_crypto_delegate_connectivity_error()` helper
+- **`rpc/tarpc_server/mod.rs`**: flaky `test_tarpc_config_default` — env var pollution from other tests. Added `env_lock()` + `VarGuard::remove("SONGBIRD_TARPC_PORT")`
+- **`compute-bridge/service/mod.rs`**: wired extracted `normalize_capabilities_csv` and `resolve_tower_id` into `run()` (was dead code)
+- **`deployment_api/binary.rs`**: wired extracted `default_service_name_for_deployment` into `deploy_binary_bytes` (was dead code)
+- **`discovery_startup.rs`**: collapsed nested `if` to satisfy `clippy::collapsible_if`
+
+---
+
 ## [v0.2.1-wave170] - 2026-04-26 - CLI Flag Alignment: confirm --security-socket as canonical
 
 ### Documentation

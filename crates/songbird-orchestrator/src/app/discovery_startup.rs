@@ -142,6 +142,22 @@ pub(crate) enum SecurityFetchMode {
     NoProvider,
 }
 
+/// Extract `family_id` from security identity attestations (same rules as BirdSong setup).
+#[must_use]
+pub(crate) fn family_id_from_identity_attestations(
+    identity_attestations: &[songbird_discovery::IdentityAttestation],
+) -> Option<String> {
+    identity_attestations.iter().find_map(|a| {
+        if a.provider_capability == "security/identity"
+            && let Some(data_obj) = a.data.as_object()
+            && let Some(family) = data_obj.get("family_id")
+        {
+            return family.as_str().map(String::from);
+        }
+        None
+    })
+}
+
 async fn fetch_identity_attestations(
     mode: SecurityFetchMode,
 ) -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
@@ -200,17 +216,7 @@ async fn initialize_birdsong_processor(
     let security_endpoint = crate::app::security_setup::discover_security_endpoint(None).await.ok();
 
     // Extract family_id from identity attestations
-    let family_id = identity_attestations.iter().find_map(|a| {
-        if a.provider_capability == "security/identity" {
-            // Parse the data JSON to find family_id
-            if let Some(data_obj) = a.data.as_object()
-                && let Some(family) = data_obj.get("family_id")
-            {
-                return family.as_str().map(String::from);
-            }
-        }
-        None
-    });
+    let family_id = family_id_from_identity_attestations(identity_attestations);
 
     let Some(endpoint) = security_endpoint else {
         info!("📡 BirdSong disabled (no security endpoint configured)");
@@ -410,19 +416,42 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_hardcoding_discovery_startup() {
-        // This test verifies the zero hardcoding philosophy:
-        // - No hardcoded security provider endpoints
-        // - All configuration via environment
-        // - Runtime discovery of security provider
-
-        // Security provider discovered via environment
-        assert!(
-            std::env::var("SECURITY_ENDPOINT").is_err()
-                || std::env::var("SECURITY_ENDPOINT").is_ok()
+    fn family_id_extracted_from_security_identity_attestation() {
+        let att = songbird_discovery::IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "json".to_string(),
+            data: serde_json::json!({ "family_id": "fam-42" }),
+        };
+        assert_eq!(
+            family_id_from_identity_attestations(std::slice::from_ref(&att)).as_deref(),
+            Some("fam-42")
         );
+    }
 
-        // No hardcoded values in this module!
-        // All security provider discovery is runtime-based via environment
+    #[test]
+    fn family_id_ignored_for_wrong_provider_capability() {
+        let att = songbird_discovery::IdentityAttestation {
+            provider_capability: "other/cap".to_string(),
+            format: "json".to_string(),
+            data: serde_json::json!({ "family_id": "x" }),
+        };
+        assert!(family_id_from_identity_attestations(std::slice::from_ref(&att)).is_none());
+    }
+
+    #[test]
+    fn family_id_missing_when_not_string_or_missing_key() {
+        let att = songbird_discovery::IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "json".to_string(),
+            data: serde_json::json!({ "other": 1 }),
+        };
+        assert!(family_id_from_identity_attestations(std::slice::from_ref(&att)).is_none());
+
+        let att_num = songbird_discovery::IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "json".to_string(),
+            data: serde_json::json!({ "family_id": 99 }),
+        };
+        assert!(family_id_from_identity_attestations(std::slice::from_ref(&att_num)).is_none());
     }
 }

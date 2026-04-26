@@ -13,6 +13,17 @@ use tracing::{info, warn};
 use super::network::get_local_ip_for_connectivity_test;
 use crate::network::{ConnectivityRemediator, ConnectivityTester};
 
+/// Parse `ip:port` for connectivity checks (pure; used by [`verify_external_connectivity`]).
+///
+/// # Errors
+///
+/// Returns an error if `ip` and `port` do not form a valid [`std::net::SocketAddr`] when combined.
+pub(crate) fn parse_connectivity_socket_addr(ip: &str, port: u16) -> Result<std::net::SocketAddr> {
+    format!("{ip}:{port}")
+        .parse()
+        .map_err(|e| anyhow::anyhow!("Failed to parse socket address: {e}"))
+}
+
 /// Verify external connectivity after startup.
 ///
 /// Tests HTTPS reachability, provides diagnostics, and attempts auto-remediation.
@@ -104,4 +115,24 @@ pub(crate) async fn verify_external_connectivity() -> Result<()> {
     warn!("╚═══════════════════════════════════════════════════════════════════╝");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn parse_connectivity_socket_addr_accepts_loopback() {
+        let addr = parse_connectivity_socket_addr("127.0.0.1", 8443).unwrap();
+        assert_eq!(addr.to_string(), "127.0.0.1:8443");
+    }
+
+    #[test]
+    fn parse_connectivity_socket_addr_rejects_invalid_ip_token() {
+        let err = parse_connectivity_socket_addr("not-an-ip", 1).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Failed to parse socket address"), "unexpected message: {msg}");
+    }
 }

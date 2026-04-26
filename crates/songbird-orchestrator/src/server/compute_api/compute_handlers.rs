@@ -16,6 +16,27 @@ use super::compute_types::{
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
+fn new_routing_job_status(job_id: Uuid, routed_to: String) -> JobStatus {
+    JobStatus {
+        job_id,
+        status: JobStatusType::Routing,
+        routed_to,
+        progress: None,
+        started_at: chrono::Utc::now(),
+        completed_at: None,
+        error: None,
+    }
+}
+
+fn compute_submission_ack_response(job_id: Uuid, routed_to: String) -> ComputeTaskResponse {
+    ComputeTaskResponse {
+        job_id,
+        routed_to,
+        status: "routing".to_string(),
+        estimated_completion: None,
+    }
+}
+
 /// Submit a compute task for intelligent routing
 #[tracing::instrument(skip(state, req), fields(task_type = %req.task.task_type))]
 pub async fn submit_compute_task(
@@ -44,15 +65,7 @@ pub async fn submit_compute_task(
     let routed_to = format_compute_routed_destination(&routing_decision);
 
     // Create job status
-    let job_status = JobStatus {
-        job_id,
-        status: JobStatusType::Routing,
-        routed_to: routed_to.clone(),
-        progress: None,
-        started_at: chrono::Utc::now(),
-        completed_at: None,
-        error: None,
-    };
+    let job_status = new_routing_job_status(job_id, routed_to.clone());
 
     // Store job status
     state.active_jobs.write().await.insert(job_id, job_status.clone());
@@ -422,12 +435,7 @@ pub async fn submit_compute_task(
         }
     }
 
-    Ok(Json(ComputeTaskResponse {
-        job_id,
-        routed_to,
-        status: "routing".to_string(),
-        estimated_completion: None,
-    }))
+    Ok(Json(compute_submission_ack_response(job_id, routed_to)))
 }
 
 /// Get the status of a compute task
@@ -445,4 +453,94 @@ pub async fn get_task_status(
         .clone();
 
     Ok(Json(job_status))
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{ComputeTaskRequest, JobStatusType};
+    use super::{
+        compute_submission_ack_response, format_compute_routed_destination, new_routing_job_status,
+    };
+    use crate::core::routing::{RoutingDecision, Task};
+    use songbird_config::capability_endpoints::CapabilityType;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use uuid::Uuid;
+
+    #[test]
+    fn new_routing_job_status_is_routing_phase() {
+        let id = Uuid::nil();
+        let j = new_routing_job_status(id, "local".into());
+        assert_eq!(j.job_id, id);
+        assert_eq!(j.status, JobStatusType::Routing);
+        assert_eq!(j.routed_to, "local");
+        assert!(j.completed_at.is_none());
+        assert!(j.error.is_none());
+    }
+
+    #[test]
+    fn compute_submission_ack_matches_handler_contract() {
+        let id = Uuid::nil();
+        let r = compute_submission_ack_response(id, "songbird:n1".into());
+        assert_eq!(r.job_id, id);
+        assert_eq!(r.routed_to, "songbird:n1");
+        assert_eq!(r.status, "routing");
+        assert!(r.estimated_completion.is_none());
+    }
+
+    #[test]
+    fn format_routed_destination_all_variants() {
+        assert_eq!(format_compute_routed_destination(&RoutingDecision::ExecuteLocally), "local");
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToSongbird {
+                node_id: "n1".into(),
+                endpoint: "http://x".into(),
+            }),
+            "songbird:n1"
+        );
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToRegisteredService {
+                service_id: "s1".into(),
+                service_name: "svc".into(),
+                endpoint: "http://h".into(),
+                port: 42,
+            }),
+            "service:svc:42"
+        );
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToCapability {
+                capability_type: CapabilityType::Compute,
+                provider_endpoint: "http://cap".into(),
+            }),
+            "Compute:http://cap"
+        );
+        assert_eq!(
+            format_compute_routed_destination(&RoutingDecision::RouteToExternalProvider {
+                provider_id: "p1".into(),
+                execution_endpoint: "http://e".into(),
+                capability_name: "c".into(),
+            }),
+            "external:p1"
+        );
+    }
+
+    #[test]
+    fn compute_task_request_roundtrip_json() {
+        let req = ComputeTaskRequest {
+            task: Task {
+                task_type: Arc::from("t1"),
+                payload: serde_json::json!({"k": 1}),
+                resource_requirements: None,
+                estimated_duration_secs: Some(10),
+                metadata: HashMap::from([("a".into(), "b".into())]),
+            },
+            priority: Some(3),
+            timeout_secs: Some(60),
+        };
+        let v = serde_json::to_value(&req).unwrap();
+        let back: ComputeTaskRequest = serde_json::from_value(v).unwrap();
+        assert_eq!(back.task.task_type.as_ref(), "t1");
+        assert_eq!(back.priority, Some(3));
+    }
 }

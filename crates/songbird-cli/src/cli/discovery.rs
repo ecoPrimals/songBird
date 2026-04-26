@@ -334,3 +334,64 @@ impl NetworkScanner {
         nodes
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{NetworkScanner, NodeType};
+    use songbird_process_env;
+    use std::net::IpAddr;
+    use std::time::Duration;
+
+    #[test]
+    fn extract_version_from_json_version_key() {
+        let v = NetworkScanner::extract_version_from_response(r#"{"version":"2.3.4"}"#).unwrap();
+        assert_eq!(v, "2.3.4");
+    }
+
+    #[test]
+    fn extract_version_from_json_build_version_key() {
+        let v =
+            NetworkScanner::extract_version_from_response(r#"{"build_version":"9.9.9"}"#).unwrap();
+        assert_eq!(v, "9.9.9");
+    }
+
+    #[test]
+    fn extract_version_from_plaintext_colon_line() {
+        let body = "Server: test\nVersion: 1.4.2-rc1\n";
+        let v = NetworkScanner::extract_version_from_response(body).unwrap();
+        assert_eq!(v, "1.4.2-rc1");
+    }
+
+    #[test]
+    fn extract_version_plaintext_when_whole_body_is_not_json() {
+        let body = "not-json\nVersion: 2.0.0\n";
+        let v = NetworkScanner::extract_version_from_response(body).unwrap();
+        assert_eq!(v, "2.0.0");
+    }
+
+    #[tokio::test]
+    async fn scan_subnet_invalid_format_errors_when_not_simulated() {
+        songbird_process_env::set_var("SONGBIRD_DISCOVERY_SIMULATION", "false");
+        let scanner = NetworkScanner::new(Duration::from_millis(1));
+        let err = scanner.scan_subnet("10.0").await.unwrap_err();
+        songbird_process_env::reset_overlay();
+        let msg = err.to_string();
+        assert!(msg.contains("Invalid subnet format") || msg.contains("subnet"), "{msg}");
+    }
+
+    #[tokio::test]
+    async fn scan_address_simulation_builds_discovered_node() {
+        songbird_process_env::set_var("SONGBIRD_DISCOVERY_SIMULATION", "true");
+        let scanner = NetworkScanner::new(Duration::from_secs(1));
+        let ip: IpAddr = "10.0.0.1".parse().unwrap();
+        let node = scanner.scan_address(ip, 8080).await.unwrap().unwrap();
+        songbird_process_env::reset_overlay();
+        assert_eq!(node.address, ip);
+        assert_eq!(node.port, 8080);
+        assert!(node.name.contains("SIM"));
+        assert_eq!(node.version.as_deref(), Some("1.0.0-sim"));
+        assert!(matches!(node.node_type, NodeType::ServiceNode));
+        assert_eq!(node.response_time_ms, 10 + 8080 % 50);
+    }
+}

@@ -293,3 +293,112 @@ async fn deallocate_session(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::apply_masking;
+    use crate::relay_protocol::{AllocationRequest, AllocationResponse, RelayProtocol};
+    use crate::types::{MaskingLevel, NodeId};
+    use std::net::{Ipv4Addr, SocketAddr};
+    use uuid::Uuid;
+
+    #[test]
+    fn apply_masking_none_and_timing_passthrough() {
+        let data = vec![1, 2, 3];
+        assert_eq!(apply_masking(&data, MaskingLevel::None).unwrap(), data);
+        assert_eq!(apply_masking(&data, MaskingLevel::TimingOnly).unwrap(), data);
+    }
+
+    #[test]
+    fn apply_masking_size_obfuscation_pads_to_kb_boundary() {
+        let data = vec![0u8; 100];
+        let out = apply_masking(&data, MaskingLevel::SizeObfuscation).unwrap();
+        assert_eq!(out.len(), 1024);
+        assert_eq!(&out[..100], data.as_slice());
+        assert!(out[100..].iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn apply_masking_full_exact_one_kb_unpadded() {
+        let data = vec![0xff; 1024];
+        let out = apply_masking(&data, MaskingLevel::Full).unwrap();
+        assert_eq!(out.len(), 1024);
+        assert_eq!(out, data);
+    }
+
+    #[test]
+    fn apply_masking_legacy_variants_passthrough() {
+        let data = vec![9u8; 5];
+        for level in [MaskingLevel::Masked, MaskingLevel::SubMasked, MaskingLevel::FullVisibility] {
+            assert_eq!(apply_masking(&data, level).unwrap(), data);
+        }
+    }
+
+    #[test]
+    fn relay_protocol_parse_allocate_request_roundtrip() {
+        let req = AllocationRequest::new(
+            NodeId::from("relay-node"),
+            NodeId::from("req-node"),
+            SocketAddr::from((Ipv4Addr::new(10, 0, 0, 2), 9000)),
+            vec![1, 2, 3],
+            120,
+        );
+        let wire = RelayProtocol::AllocateRequest(req.clone()).encode();
+        match RelayProtocol::parse(&wire).unwrap() {
+            RelayProtocol::AllocateRequest(parsed) => {
+                assert_eq!(parsed.relay_node, req.relay_node);
+                assert_eq!(parsed.requester, req.requester);
+                assert_eq!(parsed.target_addr, req.target_addr);
+                assert_eq!(parsed.lineage_proof, req.lineage_proof);
+                assert_eq!(parsed.ttl_seconds, req.ttl_seconds);
+            }
+            other => panic!("unexpected variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn relay_protocol_parse_data_refresh_deallocate() {
+        let sid = Uuid::nil();
+        let dp = RelayProtocol::DataPacket {
+            session_id: sid,
+            data: vec![0xde, 0xad],
+        };
+        let w = dp.encode();
+        match RelayProtocol::parse(&w).unwrap() {
+            RelayProtocol::DataPacket {
+                session_id,
+                data,
+            } => {
+                assert_eq!(session_id, sid);
+                assert_eq!(data, vec![0xde, 0xad]);
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
+
+        let r = RelayProtocol::Refresh {
+            session_id: sid,
+        };
+        assert!(matches!(
+            RelayProtocol::parse(&r.encode()).unwrap(),
+            RelayProtocol::Refresh { session_id: id } if id == sid
+        ));
+
+        let d = RelayProtocol::Deallocate {
+            session_id: sid,
+        };
+        assert!(matches!(
+            RelayProtocol::parse(&d.encode()).unwrap(),
+            RelayProtocol::Deallocate { session_id: id } if id == sid
+        ));
+    }
+
+    #[test]
+    fn relay_protocol_allocate_response_parses() {
+        let session = Uuid::parse_str("00000000-0000-4000-8000-000000000001").unwrap();
+        let resp =
+            AllocationResponse::success(session, SocketAddr::from((Ipv4Addr::LOCALHOST, 3478)), 60);
+        let wire = RelayProtocol::AllocateResponse(resp).encode();
+        assert!(matches!(RelayProtocol::parse(&wire).unwrap(), RelayProtocol::AllocateResponse(_)));
+    }
+}

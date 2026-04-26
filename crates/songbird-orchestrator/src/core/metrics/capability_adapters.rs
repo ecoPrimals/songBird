@@ -244,3 +244,99 @@ impl UniversalMetricsAdapter {
         self.get_endpoints_for_capability(capability).first()
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use std::sync::atomic::Ordering;
+
+    #[test]
+    fn metrics_error_display_discovery_failed() {
+        let e = MetricsError::DiscoveryFailed("no registry".into());
+        assert_eq!(e.to_string(), "Discovery failed: no registry");
+    }
+
+    #[test]
+    fn metrics_error_display_no_endpoints() {
+        let e = MetricsError::NoEndpointsFound("compute".into());
+        assert_eq!(e.to_string(), "No endpoints found for capability: compute");
+    }
+
+    #[test]
+    fn metrics_error_display_network_error() {
+        let e = MetricsError::NetworkError("connection reset".into());
+        assert_eq!(e.to_string(), "Network error: connection reset");
+    }
+
+    #[test]
+    fn universal_adapter_new_starts_empty() {
+        let a = UniversalMetricsAdapter::new();
+        assert!(a.compute_endpoints.is_empty());
+        assert!(a.security_endpoints.is_empty());
+        assert!(a.storage_endpoints.is_empty());
+        assert!(a.ai_endpoints.is_empty());
+        assert!(a.custom_endpoints.is_empty());
+        assert_eq!(a.total_endpoints(), 0);
+    }
+
+    #[test]
+    fn total_endpoints_sums_all_buckets() {
+        let mut a = UniversalMetricsAdapter::new();
+        a.compute_endpoints = vec!["http://a".into(), "http://b".into()];
+        a.security_endpoints = vec!["http://s".into()];
+        a.storage_endpoints = vec![];
+        a.ai_endpoints = vec!["http://ai".into(), "http://ai2".into(), "http://ai3".into()];
+        a.custom_endpoints.insert("foo".into(), vec!["http://c1".into(), "http://c2".into()]);
+        assert_eq!(a.total_endpoints(), 8);
+    }
+
+    #[test]
+    fn snapshot_compute_metrics_bounded_and_consistent() {
+        let mut a = UniversalMetricsAdapter::new();
+        a.compute_endpoints = vec!["http://x".into(); 10];
+        a.metrics_counters.collections_total.store(100, Ordering::Relaxed);
+        a.metrics_counters.queued_jobs_hint.store(5, Ordering::Relaxed);
+        a.metrics_counters.zero_copy_ops_observed.store(0, Ordering::Relaxed);
+
+        let m = a.snapshot_compute_metrics();
+        assert!(m.cpu_usage_percent >= 5.0 && m.cpu_usage_percent <= 95.0);
+        assert!(m.cpu_usage >= 0.0 && m.cpu_usage <= 1.0);
+        assert!(m.memory_usage >= 0.0 && m.memory_usage <= 1.0);
+        assert!(m.load_average >= 0.0 && m.load_average <= 16.0);
+        assert!(m.zero_copy_operations_per_sec >= 1);
+        assert_eq!(m.active_containers, 10);
+        assert_eq!(m.metric_name, "songbird.compute.endpoints=10");
+    }
+
+    #[test]
+    fn get_endpoints_for_known_and_unknown_capabilities() {
+        let mut a = UniversalMetricsAdapter::new();
+        a.compute_endpoints = vec!["http://c".into()];
+        a.custom_endpoints.insert("custom".into(), vec!["http://z".into()]);
+
+        assert_eq!(a.get_endpoints_for_capability("compute"), &["http://c".to_string()]);
+        assert_eq!(a.get_endpoints_for_capability("security"), &[] as &[String]);
+        assert_eq!(a.get_endpoints_for_capability("custom"), &["http://z".to_string()]);
+        assert!(a.get_endpoints_for_capability("nope").is_empty());
+    }
+
+    #[test]
+    fn has_capability_false_until_populated() {
+        let mut a = UniversalMetricsAdapter::new();
+        assert!(!a.has_capability("compute"));
+        a.compute_endpoints.push("http://c".into());
+        assert!(a.has_capability("compute"));
+    }
+
+    #[test]
+    fn get_primary_endpoint_none_or_some() {
+        let mut a = UniversalMetricsAdapter::new();
+        assert!(a.get_primary_endpoint_for_capability("compute").is_none());
+        a.compute_endpoints.push("http://primary".into());
+        assert_eq!(
+            a.get_primary_endpoint_for_capability("compute"),
+            Some(&"http://primary".to_string())
+        );
+    }
+}

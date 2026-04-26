@@ -652,6 +652,17 @@ mod tests {
         assert!(!tag_indicates_same_family("x", ""));
     }
 
+    #[test]
+    fn family_tag_substring_of_other_family_id_does_not_match() {
+        assert!(!tag_indicates_same_family("at", "crypto:family:nat0:node-1"));
+    }
+
+    #[test]
+    fn family_underscore_form_uses_substring_match_on_legacy_tags() {
+        // Implementation uses `contains("family_{id}")`; shorter ids can match inside longer tokens.
+        assert!(tag_indicates_same_family("nat", "prefix_family_nat0_suffix"));
+    }
+
     /// Bridge with no discovery listener is a no-op (no background task); still success.
     #[tokio::test]
     async fn start_discovery_federation_bridge_without_listener_ok() -> anyhow::Result<()> {

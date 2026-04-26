@@ -12,6 +12,20 @@ use tracing::{debug, info, warn};
 
 use super::core::HolePunchCoordinator;
 
+/// Classifies NAT type from two successful STUN binding results (pure logic).
+pub(super) fn classify_nat_from_two_public_addrs(
+    addr1: Option<SocketAddr>,
+    addr2: Option<SocketAddr>,
+) -> NatType {
+    match (addr1, addr2) {
+        (Some(a1), Some(a2)) if a1.port() == a2.port() => {
+            NatType::PortRestricted // Conservative estimate (matches `detect_nat_type`)
+        }
+        (Some(_), Some(_)) => NatType::Symmetric,
+        _ => NatType::Unknown,
+    }
+}
+
 impl HolePunchCoordinator {
     /// Performs STUN binding against configured servers and caches [`PeerInfo`].
     ///
@@ -73,23 +87,55 @@ impl HolePunchCoordinator {
             return NatType::Unknown;
         }
 
-        let addr1 = self.stun_bind(socket, &self.config.stun_servers[0]).await;
-        let addr2 = self.stun_bind(socket, &self.config.stun_servers[1]).await;
+        let addr1 = self.stun_bind(socket, &self.config.stun_servers[0]).await.ok();
+        let addr2 = self.stun_bind(socket, &self.config.stun_servers[1]).await.ok();
 
-        match (addr1, addr2) {
-            (Ok(a1), Ok(a2)) if a1.port() == a2.port() => {
+        let classified = classify_nat_from_two_public_addrs(addr1, addr2);
+        match classified {
+            NatType::PortRestricted => {
                 debug!("NAT type: Same port for different destinations → Cone NAT");
-                NatType::PortRestricted // Conservative estimate
             }
-            (Ok(a1), Ok(a2)) => {
-                debug!(
-                    "NAT type: Different ports ({} vs {}) → Symmetric NAT",
-                    a1.port(),
-                    a2.port()
-                );
-                NatType::Symmetric
+            NatType::Symmetric => {
+                if let (Some(a1), Some(a2)) = (addr1, addr2) {
+                    debug!(
+                        "NAT type: Different ports ({} vs {}) → Symmetric NAT",
+                        a1.port(),
+                        a2.port()
+                    );
+                }
             }
-            _ => NatType::Unknown,
+            _ => {}
         }
+        classified
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use std::net::{Ipv4Addr, SocketAddr};
+
+    use super::classify_nat_from_two_public_addrs;
+    use crate::signaling::NatType;
+
+    #[test]
+    fn classify_same_port_is_port_restricted_estimate() {
+        let a = SocketAddr::from((Ipv4Addr::LOCALHOST, 40_000));
+        let b = SocketAddr::from((Ipv4Addr::LOCALHOST, 40_000));
+        assert_eq!(classify_nat_from_two_public_addrs(Some(a), Some(b)), NatType::PortRestricted);
+    }
+
+    #[test]
+    fn classify_different_ports_is_symmetric() {
+        let a = SocketAddr::from((Ipv4Addr::LOCALHOST, 40_000));
+        let b = SocketAddr::from((Ipv4Addr::LOCALHOST, 40_001));
+        assert_eq!(classify_nat_from_two_public_addrs(Some(a), Some(b)), NatType::Symmetric);
+    }
+
+    #[test]
+    fn classify_missing_addr_is_unknown() {
+        let a = SocketAddr::from((Ipv4Addr::LOCALHOST, 1));
+        assert_eq!(classify_nat_from_two_public_addrs(Some(a), None), NatType::Unknown);
+        assert_eq!(classify_nat_from_two_public_addrs(None, None), NatType::Unknown);
     }
 }

@@ -51,6 +51,18 @@ use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+fn normalize_capabilities_csv(raw: &str) -> Vec<String> {
+    raw.split(',').map(|s| s.trim().to_string()).collect()
+}
+
+fn resolve_tower_id(
+    explicit: Option<String>,
+    service_id_env: Option<String>,
+    hostname: &str,
+) -> String {
+    explicit.or(service_id_env).unwrap_or_else(|| format!("tower-{hostname}"))
+}
+
 fn init_tracing() {
     let filter = songbird_process_env::var("RUST_LOG")
         .unwrap_or_else(|_| "info,songbird_compute_bridge=debug".to_string());
@@ -81,18 +93,17 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
     // Build configuration
     let node_id = args.node_id.unwrap_or_else(|| format!("compute-{}", Uuid::new_v4()));
 
-    let tower_id = args
-        .tower_id
-        .clone()
-        .or_else(|| songbird_process_env::var("SERVICE_ID").ok())
-        .unwrap_or_else(|| format!("tower-{}", gethostname::gethostname().to_string_lossy()));
+    let tower_id = resolve_tower_id(
+        args.tower_id.clone(),
+        songbird_process_env::var("SERVICE_ID").ok(),
+        &gethostname::gethostname().to_string_lossy(),
+    );
 
-    let capabilities: Vec<String> = args
-        .capabilities
-        .unwrap_or_else(|| detection::detect_capabilities(&service_info))
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .collect();
+    let capabilities: Vec<String> = normalize_capabilities_csv(
+        &args
+            .capabilities
+            .unwrap_or_else(|| detection::detect_capabilities(&service_info)),
+    );
 
     let config = Arc::new(types::BridgeConfig {
         host: args.host.clone(),
@@ -156,4 +167,27 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{normalize_capabilities_csv, resolve_tower_id};
+
+    #[test]
+    fn normalize_capabilities_csv_trims_segments() {
+        assert_eq!(normalize_capabilities_csv("compute, cpu , gpu"), vec!["compute", "cpu", "gpu"]);
+        assert_eq!(normalize_capabilities_csv("single"), vec!["single"]);
+        assert_eq!(normalize_capabilities_csv(""), vec![""]);
+    }
+
+    #[test]
+    fn resolve_tower_id_prefers_explicit_then_env_then_hostname() {
+        assert_eq!(
+            resolve_tower_id(Some("t-explicit".into()), Some("svc".into()), "host"),
+            "t-explicit"
+        );
+        assert_eq!(resolve_tower_id(None, Some("from-env".into()), "ignored"), "from-env");
+        assert_eq!(resolve_tower_id(None, None, "mybox"), "tower-mybox");
+    }
 }

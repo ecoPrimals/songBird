@@ -91,3 +91,33 @@ pub(super) async fn deploy_service(config: DeploymentConfig<'_>) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::DeploymentConfig;
+
+    #[test]
+    fn deployment_config_fields_for_auto_start_and_port_detection() {
+        let env = vec![("APP_PORT".into(), "9000".into()), ("OTHER".into(), "x".into())];
+        let cfg = DeploymentConfig {
+            songbird_endpoint: "http://127.0.0.1:8080",
+            tower_id: "tower-a",
+            binary_path: "./target/release/app",
+            remote_path: "/tmp/app",
+            env_vars: &env,
+            ssh_user: "deploy",
+            ssh_key: None,
+            auto_start: false,
+        };
+        assert_eq!(cfg.tower_id, "tower-a");
+        assert!(!cfg.auto_start);
+        assert!(cfg.ssh_key.is_none());
+        let port = cfg
+            .env_vars
+            .iter()
+            .find(|(k, _)| k.ends_with("PORT"))
+            .and_then(|(_, v)| v.parse::<u16>().ok());
+        assert_eq!(port, Some(9000));
+    }
+}

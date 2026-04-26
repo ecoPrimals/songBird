@@ -281,3 +281,115 @@ mod base64 {
         general_purpose::STANDARD.decode(input)
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{
+        AppError, CancelTaskRequest, CreateCheckpointRequest, CreateTaskRequest, StartTaskRequest,
+        TaskQueryParams, UpdateProgressRequest, base64,
+    };
+    use crate::task_lifecycle::{TowerId, UserId};
+    use ::base64::{Engine as _, engine::general_purpose};
+    use axum::http::StatusCode;
+    use axum::response::IntoResponse;
+    use serde_json::json;
+    use std::sync::Arc;
+
+    #[test]
+    fn create_task_request_deserializes() {
+        let v = json!({
+            "owner": "alice",
+            "spec": {
+                "task_type": "echo",
+                "config": {},
+                "required_capabilities": [],
+                "resources": {},
+                "priority": "Standard"
+            }
+        });
+        let req: CreateTaskRequest = serde_json::from_value(v).unwrap();
+        assert_eq!(req.owner, "alice");
+        assert_eq!(req.spec.task_type.as_ref(), "echo");
+    }
+
+    #[test]
+    fn task_query_params_deserializes_optional_fields() {
+        let empty: TaskQueryParams = serde_json::from_value(json!({})).unwrap();
+        assert!(empty.owner.is_none());
+        assert!(empty.tower.is_none());
+        let q: TaskQueryParams =
+            serde_json::from_value(json!({"owner": "u", "tower": "t1"})).unwrap();
+        assert_eq!(q.owner.as_deref(), Some("u"));
+        assert_eq!(q.tower.as_deref(), Some("t1"));
+    }
+
+    #[test]
+    fn task_filter_from_query_maps_ids() {
+        let params = TaskQueryParams {
+            owner: Some("bob".into()),
+            tower: Some("tower-a".into()),
+        };
+        let filter = crate::task_lifecycle::TaskFilter {
+            owner: params.owner.map(UserId::from),
+            tower: params.tower.map(TowerId::from),
+            ..Default::default()
+        };
+        assert_eq!(filter.owner.map(|o| o.to_string()), Some("bob".into()));
+        assert_eq!(filter.tower.map(|t| t.to_string()), Some("tower-a".into()));
+    }
+
+    #[test]
+    fn start_pause_resume_cancel_progress_checkpoint_requests_parse() {
+        let s: StartTaskRequest = serde_json::from_value(json!({"tower": "t"})).unwrap();
+        assert_eq!(s.tower, "t");
+        let u: UpdateProgressRequest = serde_json::from_value(json!({"progress": 0.5})).unwrap();
+        assert!((u.progress - 0.5f32).abs() < f32::EPSILON);
+        let c: CancelTaskRequest = serde_json::from_value(json!({"reason": "stop"})).unwrap();
+        assert_eq!(c.reason.as_deref(), Some("stop"));
+        let ck: CreateCheckpointRequest = serde_json::from_value(json!({"state": "YQo="})).unwrap();
+        assert_eq!(ck.state, "YQo=");
+    }
+
+    #[test]
+    fn base64_decode_checkpoint_payload() {
+        let raw = b"checkpoint-bytes";
+        let enc = general_purpose::STANDARD.encode(raw);
+        assert_eq!(base64::decode(&enc).unwrap(), raw);
+    }
+
+    #[test]
+    fn base64_decode_invalid_is_err() {
+        assert!(base64::decode("@@@").is_err());
+    }
+
+    #[test]
+    fn app_error_maps_to_http_status() {
+        let s = AppError::InvalidTaskId.into_response().status();
+        assert_eq!(s, StatusCode::BAD_REQUEST);
+        let s = AppError::TaskNotFound.into_response().status();
+        assert_eq!(s, StatusCode::NOT_FOUND);
+        let s = AppError::InvalidCheckpointData.into_response().status();
+        assert_eq!(s, StatusCode::BAD_REQUEST);
+        let s = AppError::Internal(anyhow::anyhow!("x")).into_response().status();
+        assert_eq!(s, StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn cancel_reason_maps_to_arc() {
+        let req = CancelTaskRequest {
+            reason: Some("r".into()),
+        };
+        let r = req.reason.map(Arc::from);
+        assert_eq!(r.as_deref(), Some("r"));
+    }
+
+    #[test]
+    fn create_task_response_serializes() {
+        let res = super::CreateTaskResponse {
+            task_id: "tid-1".into(),
+        };
+        let v = serde_json::to_value(&res).unwrap();
+        assert_eq!(v["task_id"], "tid-1");
+    }
+}

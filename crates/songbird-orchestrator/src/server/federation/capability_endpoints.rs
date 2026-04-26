@@ -21,6 +21,15 @@ use crate::core::registry::types::{
     ProviderSummary, RegistrationData,
 };
 
+fn heartbeat_status_label_to_health(status: &str) -> crate::core::registry::types::HealthStatus {
+    use crate::core::registry::types::HealthStatus;
+    match status {
+        "degraded" => HealthStatus::Degraded,
+        "unhealthy" => HealthStatus::Unhealthy,
+        _ => HealthStatus::Healthy,
+    }
+}
+
 /// POST /api/v1/federation/register - Register a capability provider
 pub async fn register_capability_provider(
     State(state): State<Arc<FederationAppState>>,
@@ -109,15 +118,10 @@ pub async fn capability_provider_heartbeat(
 
     // Convert heartbeat status to ProviderHealth if provided
     let health = request.health_status.map(|status| {
-        use crate::core::registry::types::{HealthStatus, ProviderHealth, ResourceUsage};
+        use crate::core::registry::types::{ProviderHealth, ResourceUsage};
 
         ProviderHealth {
-            // Modern idiomatic: combine identical match arms
-            status: match status.status.as_str() {
-                "degraded" => HealthStatus::Degraded,
-                "unhealthy" => HealthStatus::Unhealthy,
-                _ => HealthStatus::Healthy, // Default to healthy for unknown statuses
-            },
+            status: heartbeat_status_label_to_health(status.status.as_str()),
             available_capacity: status.available_capacity,
             resource_usage: ResourceUsage {
                 cpu_percent: status.resource_usage.cpu_percent,
@@ -253,4 +257,118 @@ pub async fn list_capability_providers(
             timestamp: Utc::now(),
         }),
     )
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::heartbeat_status_label_to_health;
+    use crate::core::registry::types::{
+        CapabilityDescriptor, CapabilityRegistrationRequest, HealthStatus,
+        HeartbeatRequest as CapabilityHeartbeatRequest, ProviderHealthStatus, ResourceUsageMetrics,
+    };
+    use chrono::Utc;
+    use serde_json::json;
+    use std::collections::HashMap;
+
+    #[test]
+    fn heartbeat_status_maps_known_labels() {
+        assert_eq!(heartbeat_status_label_to_health("degraded"), HealthStatus::Degraded);
+        assert_eq!(heartbeat_status_label_to_health("unhealthy"), HealthStatus::Unhealthy);
+        assert_eq!(heartbeat_status_label_to_health("healthy"), HealthStatus::Healthy);
+        assert_eq!(heartbeat_status_label_to_health("unknown"), HealthStatus::Healthy);
+    }
+
+    #[test]
+    fn capability_registration_request_roundtrip_json() {
+        let req = CapabilityRegistrationRequest {
+            provider_id: "p1".into(),
+            provider_name: "compute".into(),
+            provider_type: "gpu".into(),
+            version: "1".into(),
+            endpoint: "http://localhost:9".into(),
+            capabilities: vec![CapabilityDescriptor {
+                name: "ml".into(),
+                description: "train".into(),
+                metadata: HashMap::new(),
+            }],
+            workload_endpoint: "/run".into(),
+            health_endpoint: "/health".into(),
+            metadata: HashMap::new(),
+        };
+        let v = serde_json::to_value(&req).unwrap();
+        let back: CapabilityRegistrationRequest = serde_json::from_value(v).unwrap();
+        assert_eq!(back.provider_id, "p1");
+        assert_eq!(back.capabilities.len(), 1);
+    }
+
+    #[test]
+    fn capability_heartbeat_request_roundtrip_json() {
+        let req = CapabilityHeartbeatRequest {
+            provider_id: "p1".into(),
+            registration_id: "r1".into(),
+            health_status: Some(ProviderHealthStatus {
+                status: "degraded".into(),
+                active_tasks: 2,
+                available_capacity: 8,
+                resource_usage: ResourceUsageMetrics {
+                    cpu_percent: 10.0,
+                    memory_percent: 20.0,
+                    gpu_utilization: vec![0.5],
+                },
+            }),
+            timestamp: Utc::now(),
+        };
+        let v = json!({
+            "provider_id": "p1",
+            "registration_id": "r1",
+            "health_status": {
+                "status": "degraded",
+                "active_tasks": 2,
+                "available_capacity": 8,
+                "resource_usage": {
+                    "cpu_percent": 10.0,
+                    "memory_percent": 20.0,
+                    "gpu_utilization": [0.5]
+                }
+            },
+            "timestamp": req.timestamp.to_rfc3339(),
+        });
+        let parsed: CapabilityHeartbeatRequest = serde_json::from_value(v).unwrap();
+        assert_eq!(parsed.provider_id, "p1");
+        let hs = parsed.health_status.unwrap();
+        assert_eq!(hs.status, "degraded");
+        assert_eq!(heartbeat_status_label_to_health(hs.status.as_str()), HealthStatus::Degraded);
+    }
+
+    #[test]
+    fn capability_registration_response_error_json_roundtrip() {
+        use crate::core::registry::types::CapabilityRegistrationResponse;
+        let ts = Utc::now();
+        let res = CapabilityRegistrationResponse {
+            success: false,
+            data: None,
+            error: Some("registry down".into()),
+            timestamp: ts,
+        };
+        let j = serde_json::to_string(&res).unwrap();
+        let back: CapabilityRegistrationResponse = serde_json::from_str(&j).unwrap();
+        assert!(!back.success);
+        assert_eq!(back.error.as_deref(), Some("registry down"));
+    }
+
+    #[test]
+    fn provider_list_response_error_roundtrip_json() {
+        use crate::core::registry::types::ProviderListResponse;
+        let res = ProviderListResponse {
+            success: false,
+            data: None,
+            error: Some("Capability registry not available".into()),
+            timestamp: Utc::now(),
+        };
+        let j = serde_json::to_string(&res).unwrap();
+        let back: ProviderListResponse = serde_json::from_str(&j).unwrap();
+        assert!(!back.success);
+        assert_eq!(back.error.as_deref(), Some("Capability registry not available"));
+    }
 }

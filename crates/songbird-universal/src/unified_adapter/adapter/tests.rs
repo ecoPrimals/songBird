@@ -211,6 +211,39 @@ async fn test_route_request_no_providers() {
 }
 
 #[tokio::test]
+async fn test_route_request_capability_type_not_a_string_is_missing() {
+    let adapter = UnifiedUniversalAdapter::new();
+    let mut parameters = HashMap::new();
+    parameters.insert("capability_type".to_string(), serde_json::json!(42));
+    let request = crate::types::UniversalRequest {
+        request_id: "test-cap-not-str".to_string(),
+        source: "src".to_string(),
+        target: "dst".to_string(),
+        action: "act".to_string(),
+        parameters,
+        security_context: None,
+    };
+    let err = adapter.route_request(request).await.unwrap_err();
+    assert!(matches!(err, UniversalAdapterError::MissingCapability));
+}
+
+#[tokio::test]
+async fn test_find_capability_providers_skips_missing_service_entries() -> SongbirdResult<()> {
+    let adapter = UnifiedUniversalAdapter::new();
+    {
+        let mut registry = adapter.capability_registry.write().await;
+        registry
+            .capability_providers
+            .insert("orphan-cap".to_string(), vec!["ghost-service".to_string()]);
+    }
+    let providers = adapter.find_capability_providers("orphan-cap").await.map_err(|e| {
+        SongbirdError::configuration(format!("find_capability_providers orphan case: {e}"))
+    })?;
+    assert!(providers.is_empty());
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_get_registry_stats_empty() {
     let adapter = UnifiedUniversalAdapter::new();
     let stats = adapter.get_registry_stats().await;

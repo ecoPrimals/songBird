@@ -147,3 +147,13 @@ pub async fn run_server(
     // _singleton_guard drops here, removing PID file cleanly
     // This is the RAII pattern - cleanup is automatic, panic-safe
 }
+
+#[cfg(test)]
+mod tests {
+    //! There is no isolated pure logic in [`super::run_server`]: it acquires a process lock,
+    //! reads configuration from the environment, starts the full orchestrator, waits on OS
+    //! signals, and performs teardown. Those steps require integration or end-to-end tests;
+    //! unit tests would not add meaningful coverage without refactoring into testable helpers.
+
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+}

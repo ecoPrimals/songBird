@@ -93,3 +93,33 @@ pub async fn hmac_sha256(crypto: Option<&CryptoProvider>, key: &[u8], data: &[u8
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use sha2::{Digest, Sha256};
+
+    #[tokio::test]
+    async fn sha256_without_provider_matches_sha2_crate() {
+        let data = b"hello federation";
+        let local: Vec<u8> = {
+            let mut h = Sha256::new();
+            h.update(data);
+            h.finalize().to_vec()
+        };
+        let got = sha256_hash(None, data).await;
+        assert_eq!(got, local);
+    }
+
+    #[tokio::test]
+    async fn hmac_sha256_without_provider_matches_expected() {
+        let key = b"secret";
+        let data = b"message";
+        let mac = hmac_sha256(None, key, data).await;
+        assert_eq!(mac.len(), 32);
+        let empty_key_mac = hmac_sha256(None, &[], data).await;
+        assert_eq!(empty_key_mac.len(), 32);
+    }
+}

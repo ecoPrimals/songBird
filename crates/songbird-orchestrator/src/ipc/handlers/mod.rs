@@ -458,3 +458,29 @@ impl IpcHandlers {
         self.http_handler.handle_delete(params).await
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod ipc_handlers_tests {
+    use super::IpcHandlers;
+    use crate::app::connection_manager::ConnectionManager;
+    use crate::ipc::registry::ServiceRegistry;
+    use songbird_http_client::SecurityRpcClient;
+    use std::sync::Arc;
+
+    #[test]
+    fn new_preserves_registry_and_connection_manager_arcs() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let connections = Arc::new(ConnectionManager::new());
+        let security =
+            Arc::new(SecurityRpcClient::new("/tmp/songbird-orchestrator-ipc-handlers-test.sock"));
+        let registry_ptr = Arc::as_ptr(&registry);
+        let connections_ptr = Arc::as_ptr(&connections);
+
+        let handlers = IpcHandlers::new(registry, None, connections, security);
+
+        assert!(handlers.discovery_listener.is_none());
+        assert_eq!(Arc::as_ptr(&handlers.service_registry), registry_ptr);
+        assert_eq!(Arc::as_ptr(&handlers.connection_manager), connections_ptr);
+    }
+}

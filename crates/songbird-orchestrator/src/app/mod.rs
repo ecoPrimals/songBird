@@ -40,6 +40,10 @@ mod core_tests;
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod startup_orchestration_tests;
 
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod command_handler_tests;
+
 // Re-exports for backwards compatibility
 pub use core::SongbirdOrchestrator;
 pub use health::{HealthCheckReport, OrchestratorStatus};
