@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave172] - 2026-04-26 - Root doc reconciliation + handoff cleanup
+
+### Documentation
+- **README.md**: synced test count (7,658), coverage (73.41%), verification dates (Apr 26)
+- **CONTEXT.md**: synced test count (7,658), coverage (73.41%), date (Apr 26)
+- **CONTRIBUTING.md**: synced coverage (73.41%, 7,658 tests), date (Apr 26)
+- **SECURITY.md**: updated date (Apr 26)
+- **REMAINING_WORK.md**: updated deep debt audit to Wave 171, synced verification dates, replaced outdated per-module coverage table with Wave 171 summary and remaining-gap analysis
+- **Archived** Wave 171 coverage expansion handoff to `handoffs/archive/`
+
+---
+
 ## [v0.2.1-wave171] - 2026-04-26 - Test Coverage Expansion: 71.28% → 73.41% (+271 tests)
 
 ### Added
