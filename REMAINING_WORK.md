@@ -3,7 +3,7 @@
 **Date**: April 27, 2026  
 **Version**: v0.2.1  
 **Last Deep Debt Audit**: Wave 174 (Apr 27, 2026)  
-**Current Wave**: 174 — Deep debt: eliminated ~12 hardcoded IP/port literals (→ `songbird_types::constants`), fixed 2 flaky CLI tests (→ `ScopedEnv`), removed unused `mdns` crate dep (dropped `net2`/`async-std`), removed unused `once_cell`, unified `tempfile` through workspace deps, +18 unit tests across `information_layers`, `security`, `service`. 0 clippy warnings, 497 lib tests pass.  
+**Current Wave**: 174 — Deep debt: eliminated ~12 hardcoded IP/port literals (→ `songbird_types::constants`), fixed 2 flaky CLI tests (→ `ScopedEnv`), removed unused `mdns` crate dep (dropped `net2`/`async-std`), removed unused `once_cell`, unified `tempfile` through workspace deps, +18 unit tests across `information_layers`, `security`, `service`. 0 clippy warnings, 7,683 lib tests pass.  
 **Previous Waves** (full detail in `CHANGELOG.md`): 173 (PG-51 socket discovery), 172 (root doc reconciliation), 171 (test coverage expansion 71.28%→73.41%, +271 tests), 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -12,12 +12,12 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 7,658 lib passed, 0 failures, 22 ignored |
-| **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 26 2026; target 90%) |
+| **Tests** | 7,683 lib passed, 0 failures, 22 ignored |
+| **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 30 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 26 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; Apr 26 verified) |
+| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 27 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Apr 27 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; former 1030L monolith smart-refactored Wave 144; 4 former >700L files refactored Wave 133) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
@@ -65,7 +65,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ## Pending: Coverage Expansion (73.41% → 90% target)
 
-**Note (Apr 26, 2026)**: 73.41% measured via llvm-cov `--workspace --lib` (Apr 26 2026). Wave 171 added 271 tests across 30+ files (71.28% → 73.41%). Target 90% via ongoing pure-logic module expansion.
+**Note (Apr 27, 2026)**: 73.41% measured via llvm-cov `--workspace --lib` (Apr 27 2026). Wave 171 added 271 tests across 30+ files (71.28% → 73.41%); Wave 174 added 18 more tests. Target 90% via ongoing pure-logic module expansion.
 
 **Wave 171 coverage push**: 271 tests added across 30+ files in 13 crates (see CHANGELOG). All previously-tracked low-coverage modules in Waves 124-127 (adapters, STUN client, HTTP handler, tower_atomic) now have comprehensive tests. Wave 171 targeted 0%-coverage pure-logic modules across songbird-orchestrator, songbird-config, songbird-discovery, songbird-universal, songbird-network-federation, songbird-http-client, songbird-lineage-relay, songbird-cli, and 5 smaller crates.
 
