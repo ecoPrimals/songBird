@@ -10,6 +10,7 @@
 use anyhow::Result;
 use songbird_types::defaults::paths::{
     BIOMEOS_RUNTIME_SUBDIR, ai_provider_socket_legacy_path, family_scoped_crypto_socket_path,
+    family_scoped_security_socket_path,
 };
 use tracing::info;
 
@@ -50,15 +51,20 @@ pub async fn get_security_crypto_socket() -> Result<String> {
 pub async fn discover_crypto_socket_for_family(family_id: &str) -> Result<String> {
     info!("🔍 Discovering crypto provider for family '{family_id}'...");
 
-    // Check family-specific socket (capability-based, primal-agnostic)
-    let family_socket = family_scoped_crypto_socket_path(family_id);
-    if family_socket.exists() {
-        let family_socket = family_socket.to_string_lossy().into_owned();
-        info!("   ✅ Found family-specific crypto socket: {family_socket}");
-        return Ok(family_socket);
+    let family_security = family_scoped_security_socket_path(family_id);
+    if family_security.exists() {
+        let path = family_security.to_string_lossy().into_owned();
+        info!("   ✅ Found family-specific security socket: {path}");
+        return Ok(path);
     }
 
-    // Fall back to generic capability discovery
+    let family_crypto = family_scoped_crypto_socket_path(family_id);
+    if family_crypto.exists() {
+        let path = family_crypto.to_string_lossy().into_owned();
+        info!("   ✅ Found family-specific crypto socket: {path}");
+        return Ok(path);
+    }
+
     crate::primal_discovery::discover_crypto_provider().await
 }
 
@@ -166,6 +172,16 @@ mod tests {
         let family_id = "nat0";
         let expected = format!("/tmp/crypto-{family_id}.sock");
         assert_eq!(expected, "/tmp/crypto-nat0.sock");
+    }
+
+    #[test]
+    fn test_family_security_socket_path_format() {
+        let family_id = "nucleus01";
+        let path = family_scoped_security_socket_path(family_id);
+        assert!(
+            path.to_string_lossy().ends_with("security-nucleus01.sock"),
+            "should produce security-{{fid}}.sock, got: {path:?}"
+        );
     }
 
     #[tokio::test]

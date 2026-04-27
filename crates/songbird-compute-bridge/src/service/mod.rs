@@ -100,9 +100,7 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
     );
 
     let capabilities: Vec<String> = normalize_capabilities_csv(
-        &args
-            .capabilities
-            .unwrap_or_else(|| detection::detect_capabilities(&service_info)),
+        &args.capabilities.unwrap_or_else(|| detection::detect_capabilities(&service_info)),
     );
 
     let config = Arc::new(types::BridgeConfig {

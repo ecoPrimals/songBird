@@ -341,18 +341,28 @@ pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> S
 ///
 /// Priority (wateringHole v1.2, aligned with `songbird-crypto-provider`):
 /// 1. `$SECURITY_PROVIDER_SOCKET` (capability-standard)
-/// 2. `$CRYPTO_PROVIDER_SOCKET` (alternate capability name)
-/// 3. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
-/// 4. `$XDG_RUNTIME_DIR/biomeos/crypto.sock` (domain socket, with optional family suffix)
-/// 5. `$BEARDOG_SOCKET` (legacy — logged as deprecated)
-/// 6. `{temp_dir}/biomeos/security.sock` (capability temp fallback)
-/// 7. Legacy temp-directory socket filename (backward-compatible; see implementation)
+/// 2. `$SECURITY_SOCKET` (capability domain)
+/// 3. `$CRYPTO_PROVIDER_SOCKET` (alternate capability name)
+/// 4. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
+/// 5. `$XDG_RUNTIME_DIR/biomeos/security-{family_id}.sock` (family-scoped)
+/// 6. `$XDG_RUNTIME_DIR/biomeos/crypto-{family_id}.sock` (domain socket)
+/// 7. `$XDG_RUNTIME_DIR/biomeos/beardog-{family_id}.sock` (legacy on-disk)
+/// 8. `$BEARDOG_SOCKET` (legacy env — logged as deprecated)
+/// 9. `{temp_dir}/biomeos/security.sock` (capability temp fallback)
+/// 10. Legacy temp-directory socket filename (backward-compatible)
 #[must_use]
 pub fn discover_security_socket() -> String {
     if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
         && !socket.is_empty()
     {
         info!("✅ Security provider via $SECURITY_PROVIDER_SOCKET: {socket}");
+        return socket;
+    }
+
+    if let Ok(socket) = songbird_process_env::var("SECURITY_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Security provider via $SECURITY_SOCKET: {socket}");
         return socket;
     }
 
@@ -364,7 +374,9 @@ pub fn discover_security_socket() -> String {
     }
 
     if let Ok(xdg_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-        let cap_path = PathBuf::from(&xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR).join("security.sock");
+        let biomeos = PathBuf::from(&xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR);
+
+        let cap_path = biomeos.join("security.sock");
         if cap_path.exists() {
             let path = cap_path.to_string_lossy().to_string();
             info!("✅ Security provider via capability symlink: {path}");
@@ -372,16 +384,37 @@ pub fn discover_security_socket() -> String {
         }
 
         let family_id = songbird_process_env::var("FAMILY_ID").unwrap_or_default();
+
+        if !family_id.is_empty() {
+            let family_security = biomeos.join(format!("security-{family_id}.sock"));
+            if family_security.exists() {
+                let path = family_security.to_string_lossy().to_string();
+                info!("✅ Security provider via family-scoped security socket: {path}");
+                return path;
+            }
+        }
+
         let crypto_name = if family_id.is_empty() {
             "crypto.sock".to_string()
         } else {
             format!("crypto-{family_id}.sock")
         };
-        let crypto_path = PathBuf::from(&xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(&crypto_name);
+        let crypto_path = biomeos.join(&crypto_name);
         if crypto_path.exists() {
             let path = crypto_path.to_string_lossy().to_string();
             info!("✅ Security provider via crypto domain socket: {path}");
             return path;
+        }
+
+        if !family_id.is_empty() {
+            let legacy_beardog = biomeos.join(format!("beardog-{family_id}.sock"));
+            if legacy_beardog.exists() {
+                let path = legacy_beardog.to_string_lossy().to_string();
+                warn!(
+                    "Security provider via legacy beardog socket: {path} — migrate to security-{{family}}.sock"
+                );
+                return path;
+            }
         }
     }
 

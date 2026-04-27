@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave173] - 2026-04-27 - Fix: PG-51 crypto provider socket discovery (family-scoped)
+
+### Fixed
+- **PG-51**: Songbird failed with "No Crypto provider" when BearDog socket lived at `security-{fid}.sock` (family-scoped naming). Both `discover_security_socket` functions (in `songbird-crypto-provider` and `songbird-http-client`) only checked `security.sock` (plain) and `crypto-{fid}.sock`, never `security-{fid}.sock` or `beardog-{fid}.sock` under XDG
+- **`songbird-crypto-provider/socket_discovery.rs`**: added `security-{family_id}.sock` and legacy `beardog-{family_id}.sock` to XDG discovery chain. Added `security_socket_path_in_biomeos_runtime_with_family()` and `legacy_beardog_socket_path_in_biomeos_runtime()` helpers
+- **`songbird-http-client/crypto/socket_discovery.rs`**: same fix — added `$SECURITY_SOCKET` env check (was missing vs crypto-provider), family-scoped `security-{fid}.sock`, and legacy `beardog-{fid}.sock` to XDG chain
+- **`songbird-orchestrator/crypto/discovery.rs`**: `discover_crypto_socket_for_family()` now checks `security-{fid}.sock` before `crypto-{fid}.sock`
+- **`songbird-orchestrator/bin_interface/server.rs`**: security socket fallback (when `--security-socket` not provided) now uses full `discover_security_socket()` chain instead of only checking temp-dir path
+
+### Documentation
+- **CLI flag naming** (re-confirmed): `--security-socket` is canonical, `--beardog-socket` is alias (Wave 170). No code change needed
+- **Songbird own socket**: `songbird-{fid}.sock` is created by the launcher via `--socket` flag. Songbird binds to exactly the path given
+
+---
+
 ## [v0.2.1-wave172] - 2026-04-26 - Root doc reconciliation + handoff cleanup
 
 ### Documentation

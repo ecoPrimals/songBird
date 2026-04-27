@@ -151,13 +151,8 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             tracing::info!("   Family: {}", fam);
         }
 
-        // Determine security provider socket/address (capability-first discovery)
         let security_socket = args.security_socket.clone().unwrap_or_else(|| {
-            let default_family = crate::env_config::family_id();
-            let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            songbird_types::defaults::paths::family_scoped_security_socket_path(family_id)
-                .to_string_lossy()
-                .into_owned()
+            songbird_crypto_provider::socket_discovery::discover_security_socket()
         });
         tracing::info!("   Security provider: {}", security_socket);
         tracing::info!("   Capabilities: http, stun, discovery");
@@ -179,13 +174,8 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             tracing::info!("   Family: {}", fam);
         }
 
-        // Determine security provider socket (capability-first discovery)
         let security_socket = args.security_socket.unwrap_or_else(|| {
-            let default_family = crate::env_config::family_id();
-            let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            songbird_types::defaults::paths::family_scoped_security_socket_path(family_id)
-                .to_string_lossy()
-                .into_owned()
+            songbird_crypto_provider::socket_discovery::discover_security_socket()
         });
         tracing::info!("   Security provider: {}", security_socket);
         tracing::info!("   Capabilities: http, discovery, secure_http");

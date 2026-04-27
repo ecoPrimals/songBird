@@ -39,6 +39,36 @@ pub fn security_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str) -> PathBuf
     PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join("security.sock")
 }
 
+/// Family-scoped security socket path under `xdg_runtime_dir`/`biomeos`/
+/// e.g. `/run/user/1000/biomeos/security-nucleus01.sock`
+#[must_use]
+pub fn security_socket_path_in_biomeos_runtime_with_family(
+    xdg_runtime_dir: &str,
+    family_id: &str,
+) -> PathBuf {
+    let socket_name = if family_id.is_empty() {
+        "security.sock".to_string()
+    } else {
+        format!("security-{family_id}.sock")
+    };
+    PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(socket_name)
+}
+
+/// Legacy family-scoped BearDog socket path under `xdg_runtime_dir`/`biomeos`/
+/// e.g. `/run/user/1000/biomeos/beardog-nucleus01.sock`
+#[must_use]
+pub fn legacy_beardog_socket_path_in_biomeos_runtime(
+    xdg_runtime_dir: &str,
+    family_id: &str,
+) -> PathBuf {
+    let socket_name = if family_id.is_empty() {
+        "beardog.sock".to_string()
+    } else {
+        format!("beardog-{family_id}.sock")
+    };
+    PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(socket_name)
+}
+
 /// Crypto provider socket path under `xdg_runtime_dir`/`biomeos`/ (matches discovery rules).
 #[must_use]
 pub fn crypto_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: &str) -> PathBuf {
@@ -108,12 +138,14 @@ where
 ///
 /// Priority (wateringHole v1.2 compliant):
 /// 1. `$SECURITY_PROVIDER_SOCKET` (capability-standard env var)
-/// 2. `$CRYPTO_PROVIDER_SOCKET` (alternate capability name)
-/// 3. `$SECURITY_SOCKET` (capability domain)
+/// 2. `$SECURITY_SOCKET` (capability domain)
+/// 3. `$CRYPTO_PROVIDER_SOCKET` (alternate capability name)
 /// 4. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability symlink)
-/// 5. `$XDG_RUNTIME_DIR/biomeos/crypto.sock` (domain socket, with family suffix)
-/// 6. `$BEARDOG_SOCKET` (legacy — logged as deprecated)
-/// 7. `{temp_dir}/biomeos/security.sock` (temp fallback)
+/// 5. `$XDG_RUNTIME_DIR/biomeos/security-{family_id}.sock` (family-scoped)
+/// 6. `$XDG_RUNTIME_DIR/biomeos/crypto-{family_id}.sock` (domain socket)
+/// 7. `$XDG_RUNTIME_DIR/biomeos/beardog-{family_id}.sock` (legacy on-disk)
+/// 8. `$BEARDOG_SOCKET` (legacy env — logged as deprecated)
+/// 9. `{temp_dir}/biomeos/security.sock` (temp fallback)
 #[must_use]
 pub fn discover_security_socket() -> String {
     discover_security_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
@@ -156,10 +188,28 @@ where
         }
 
         let family_id = get_var("FAMILY_ID").unwrap_or_default();
+
+        let family_security =
+            security_socket_path_in_biomeos_runtime_with_family(&xdg_dir, &family_id);
+        if path_exists(&family_security) {
+            let path = family_security.to_string_lossy().to_string();
+            info!("✅ Security provider via family-scoped security socket: {path}");
+            return path;
+        }
+
         let crypto_path = crypto_socket_path_in_biomeos_runtime(&xdg_dir, &family_id);
         if path_exists(&crypto_path) {
             let path = crypto_path.to_string_lossy().to_string();
             info!("✅ Security provider via crypto domain socket: {path}");
+            return path;
+        }
+
+        let legacy_beardog = legacy_beardog_socket_path_in_biomeos_runtime(&xdg_dir, &family_id);
+        if path_exists(&legacy_beardog) {
+            let path = legacy_beardog.to_string_lossy().to_string();
+            warn!(
+                "Security provider via legacy beardog socket: {path} — migrate to security-{{family}}.sock"
+            );
             return path;
         }
     }
@@ -321,6 +371,80 @@ mod tests {
     fn security_socket_path_capability_symlink() {
         let p = security_socket_path_in_biomeos_runtime("/run/user/1000");
         assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/security.sock"));
+    }
+
+    #[test]
+    fn security_socket_family_scoped_path() {
+        let p = security_socket_path_in_biomeos_runtime_with_family("/run/user/1000", "nucleus01");
+        assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/security-nucleus01.sock"));
+    }
+
+    #[test]
+    fn security_socket_family_scoped_empty_family() {
+        let p = security_socket_path_in_biomeos_runtime_with_family("/run/user/1000", "");
+        assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/security.sock"));
+    }
+
+    #[test]
+    fn legacy_beardog_socket_family_scoped() {
+        let p = legacy_beardog_socket_path_in_biomeos_runtime("/run/user/1000", "nucleus01");
+        assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/beardog-nucleus01.sock"));
+    }
+
+    #[test]
+    fn discover_security_finds_family_scoped_security_socket() {
+        let xdg = "/run/user/5555";
+        let family_security = security_socket_path_in_biomeos_runtime_with_family(xdg, "nucleus01");
+        let map: HashMap<&str, String> =
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "nucleus01".to_string())]
+                .into_iter()
+                .collect();
+        let out = discover_security_socket_with(
+            |k| map.get(k).cloned(),
+            |p| p == family_security.as_path(),
+        );
+        assert_eq!(
+            out,
+            family_security.to_string_lossy(),
+            "should find security-nucleus01.sock under XDG"
+        );
+    }
+
+    #[test]
+    fn discover_security_finds_legacy_beardog_family_socket() {
+        let xdg = "/run/user/6666";
+        let beardog = legacy_beardog_socket_path_in_biomeos_runtime(xdg, "nucleus01");
+        let map: HashMap<&str, String> =
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "nucleus01".to_string())]
+                .into_iter()
+                .collect();
+        let out =
+            discover_security_socket_with(|k| map.get(k).cloned(), |p| p == beardog.as_path());
+        assert_eq!(
+            out,
+            beardog.to_string_lossy(),
+            "should find beardog-nucleus01.sock under XDG as legacy fallback"
+        );
+    }
+
+    #[test]
+    fn discover_security_prefers_family_security_over_legacy_beardog() {
+        let xdg = "/run/user/7777";
+        let security = security_socket_path_in_biomeos_runtime_with_family(xdg, "nucleus01");
+        let beardog = legacy_beardog_socket_path_in_biomeos_runtime(xdg, "nucleus01");
+        let map: HashMap<&str, String> =
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "nucleus01".to_string())]
+                .into_iter()
+                .collect();
+        let out = discover_security_socket_with(
+            |k| map.get(k).cloned(),
+            |p| p == security.as_path() || p == beardog.as_path(),
+        );
+        assert_eq!(
+            out,
+            security.to_string_lossy(),
+            "security-nucleus01.sock should beat beardog-nucleus01.sock"
+        );
     }
 
     /// Backward-compat: ensures `SECURITY_PROVIDER_SOCKET` wins when both it and the deprecated
