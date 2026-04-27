@@ -107,6 +107,8 @@ export SONGBIRD_RELAY_PORT=3479
 export SONGBIRD_ROUTE_DETECT_ADDR=192.0.2.1:80
 ```
 
+See [`docs/ENVIRONMENT_VARIABLES.md`](docs/ENVIRONMENT_VARIABLES.md) for the complete reference including the security provider socket fallback chain.
+
 ## Crate Structure (30 crates)
 
 ### Core
@@ -183,6 +185,7 @@ cargo test -p songbird-tor-protocol --lib      # Single crate
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
 | [`CONTEXT.md`](CONTEXT.md) | AI-ingestible project context |
+| [`docs/ENVIRONMENT_VARIABLES.md`](docs/ENVIRONMENT_VARIABLES.md) | Complete environment variable reference and socket fallback chains |
 | [`specs/`](specs/) | Technical specifications |
 | [`docs/architecture/`](docs/architecture/) | Security provider crypto API spec |
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave175] - 2026-04-27 - PG-51 verified; environment variables documentation
+
+### Added
+- **`docs/ENVIRONMENT_VARIABLES.md`**: comprehensive environment variable reference documenting the full security provider socket discovery fallback chain (`security-{fid}.sock` → `beardog-{fid}.sock` → `BEARDOG_SOCKET`), all network/IPC/capability env vars with defaults, CLI flag aliases, and XDG filesystem probing order (requested by primalSpring PG-51 verification audit)
+- **README.md**: added reference to `docs/ENVIRONMENT_VARIABLES.md` in Quick Start and Documentation sections
+
+---
+
 ## [v0.2.1-wave174] - 2026-04-27 - Deep Debt: hardcoding, stability, dependencies, coverage
 
 ### Changed
