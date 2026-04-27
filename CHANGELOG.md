@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave174] - 2026-04-27 - Deep Debt: hardcoding, stability, dependencies, coverage
+
+### Changed
+- **Hardcoded IP/port elimination**: replaced ~12 bare `"0.0.0.0:0"`, `"127.0.0.1"`, `"localhost"` literals across 7 production files with `songbird_types::constants::{EPHEMERAL_BIND_ADDR, LOCALHOST, LOCALHOST_HOSTNAME}` and `songbird_types::defaults::ports::DEFAULT_HTTP_PORT`
+- **`CanonicalNetworkConfig`/`CanonicalBindConfig`**: `base_port`/`port` defaults now use `DEFAULT_HTTP_PORT` constant instead of magic `8080`
+- **Dependency hygiene**: removed unused `mdns` 3.0 crate dependency (and its `net2`/`async-std` transitive chain) from `songbird-universal`; the `mdns` feature flag remains but now gates only the existing pure-Rust mDNS implementation
+- **Dependency hygiene**: removed unused `once_cell` 1.19 from `songbird-test-utils`
+- **Dependency hygiene**: wired `tempfile` through `[workspace.dependencies]` — all 10 crates now use `tempfile = { workspace = true }` (unified at 3.8)
+
+### Fixed
+- **Flaky test**: `scan_address_simulation_builds_discovered_node` and `scan_subnet_invalid_format_errors_when_not_simulated` in `songbird-cli` now use `ScopedEnv` (from `songbird-test-utils`) for async-safe env isolation instead of bare `set_var`/`reset_overlay`
+
+### Tests
+- **+18 unit tests** across 3 modules:
+  - `information_layers.rs`: +12 tests covering all `TaskStatus` variants in `build_public`, learning_notes content and capability thresholds in `build_educational`, no-tower/CPU-only/GPU-hours/queue-time branches in `build_administrative`, CPU-only temperature/completed-uptime/no-tower branches in `build_infrastructure`, and `build_operational` for non-failure statuses
+  - `security.rs`: +2 tests directly exercising `parse_masking_level` for all 6 known values plus unknown/None/empty fallback to `FullVisibility`
+  - `service.rs`: +4 tests for endpoint/metadata overwrite behavior, capability/dependency duplicate accumulation, and `Custom` variant `as_str`
+
+---
+
 ## [v0.2.1-wave173] - 2026-04-27 - Fix: PG-51 crypto provider socket discovery (family-scoped)
 
 ### Fixed

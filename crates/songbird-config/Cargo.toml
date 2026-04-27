@@ -45,6 +45,6 @@ mdns-sd = "0.10"
 # libc removed - not used, evolved to pure Rust alternatives
 
 [dev-dependencies]
-tempfile = "3.0"
+tempfile = { workspace = true }
 tracing-subscriber = { workspace = true }
 songbird-test-utils = { path = "../songbird-test-utils" }

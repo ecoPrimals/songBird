@@ -240,7 +240,11 @@ impl NetworkScanner {
             &url[offset + i..]
         });
 
-        let host_part = url.trim_start_matches("http://").split('/').next().unwrap_or("localhost");
+        let host_part = url
+            .trim_start_matches("http://")
+            .split('/')
+            .next()
+            .unwrap_or(songbird_types::constants::LOCALHOST_HOSTNAME);
         let request =
             format!("GET {path} HTTP/1.0\r\nHost: {host_part}\r\nConnection: close\r\n\r\n");
 
@@ -372,21 +376,21 @@ mod tests {
 
     #[tokio::test]
     async fn scan_subnet_invalid_format_errors_when_not_simulated() {
-        songbird_process_env::set_var("SONGBIRD_DISCOVERY_SIMULATION", "false");
+        let _env =
+            songbird_test_utils::ScopedEnv::set("SONGBIRD_DISCOVERY_SIMULATION", "false").await;
         let scanner = NetworkScanner::new(Duration::from_millis(1));
         let err = scanner.scan_subnet("10.0").await.unwrap_err();
-        songbird_process_env::reset_overlay();
         let msg = err.to_string();
         assert!(msg.contains("Invalid subnet format") || msg.contains("subnet"), "{msg}");
     }
 
     #[tokio::test]
     async fn scan_address_simulation_builds_discovered_node() {
-        songbird_process_env::set_var("SONGBIRD_DISCOVERY_SIMULATION", "true");
+        let _env =
+            songbird_test_utils::ScopedEnv::set("SONGBIRD_DISCOVERY_SIMULATION", "true").await;
         let scanner = NetworkScanner::new(Duration::from_secs(1));
         let ip: IpAddr = "10.0.0.1".parse().unwrap();
         let node = scanner.scan_address(ip, 8080).await.unwrap().unwrap();
-        songbird_process_env::reset_overlay();
         assert_eq!(node.address, ip);
         assert_eq!(node.port, 8080);
         assert!(node.name.contains("SIM"));

@@ -62,7 +62,8 @@ impl Default for OrchestratorConfig {
             node_name: "songbird-node".to_string(),
             capabilities: vec!["compute".to_string()],
             discovery_endpoints: vec![format!(
-                "http://localhost:{}",
+                "http://{}:{}",
+                songbird_types::constants::LOCALHOST_HOSTNAME,
                 songbird_config::defaults::ports::orchestrator_port()
             )],
             ports,

@@ -51,7 +51,7 @@ impl Default for CanonicalNetworkConfig {
     fn default() -> Self {
         Self {
             bind_host: crate::constants::DEVELOPMENT_BIND_ADDRESS.to_string(),
-            base_port: 8080,
+            base_port: crate::defaults::ports::DEFAULT_HTTP_PORT,
             bind: CanonicalBindConfig::default(),
             client: CanonicalClientConfig::default(),
             tls: None,
@@ -277,7 +277,7 @@ impl Default for CanonicalBindConfig {
     fn default() -> Self {
         Self {
             address: crate::constants::PRODUCTION_BIND_ADDRESS.to_string(),
-            port: 8080,
+            port: crate::defaults::ports::DEFAULT_HTTP_PORT,
             additional_endpoints: vec![],
             ipv6_enabled: false,
             socket_options: HashMap::new(),

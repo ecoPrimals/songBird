@@ -17,7 +17,7 @@ workspace = true
 default = []
 
 # Discovery backend features (optional)
-mdns = ["dep:mdns"]
+mdns = []
 dns-sd = ["dep:hickory-resolver"]
 k8s = ["dep:kube", "dep:k8s-openapi"]
 docker = ["dep:bollard"]
@@ -52,7 +52,6 @@ songbird-types = { path = "../songbird-types" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 
 # Optional: Discovery backend dependencies
-mdns = { version = "3.0", optional = true }
 hickory-resolver = { workspace = true, optional = true }
 kube = { version = "0.95", optional = true, features = ["client", "runtime"] }
 k8s-openapi = { version = "0.23", optional = true, features = ["v1_30"] }

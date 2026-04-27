@@ -36,7 +36,7 @@ impl HolePunchCoordinator {
         info!("🔍 Discovering public address via STUN...");
 
         // Bind local socket
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+        let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await?;
         let local_addr = socket.local_addr()?;
 
         // Try each STUN server

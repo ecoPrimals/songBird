@@ -46,7 +46,7 @@ base64 = "0.22"
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
 tokio-test = "0.4"
-tempfile = "3.0"
+tempfile = { workspace = true }
 
 songbird-test-utils = { path = "../songbird-test-utils" }
 songbird-config = { path = "../songbird-config" }

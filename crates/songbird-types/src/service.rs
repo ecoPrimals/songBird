@@ -697,4 +697,40 @@ mod tests {
         });
         assert_json_roundtrip(&AllowedValues::Pattern(".*".to_string()));
     }
+
+    #[test]
+    fn with_endpoint_overwrites_duplicate_key() {
+        let mut info = CanonicalServiceInfo::new("svc", "1.0");
+        info.with_endpoint("api", "http://a:1");
+        info.with_endpoint("api", "http://a:2");
+        assert_eq!(info.endpoints.get("api").unwrap(), "http://a:2");
+        assert_eq!(info.endpoints.len(), 1);
+    }
+
+    #[test]
+    fn with_metadata_overwrites_duplicate_key() {
+        let mut info = CanonicalServiceInfo::new("svc", "1.0");
+        info.with_metadata("env", "dev");
+        info.with_metadata("env", "prod");
+        assert_eq!(info.metadata.get("env").unwrap(), "prod");
+        assert_eq!(info.metadata.len(), 1);
+    }
+
+    #[test]
+    fn with_capability_and_dependency_allow_duplicates() {
+        let mut info = CanonicalServiceInfo::new("svc", "1.0");
+        info.with_capability("compute");
+        info.with_capability("compute");
+        assert_eq!(info.capabilities.len(), 2);
+
+        info.with_dependency("dep-a");
+        info.with_dependency("dep-a");
+        assert_eq!(info.dependencies.len(), 2);
+    }
+
+    #[test]
+    fn service_type_as_str_custom_returns_inner() {
+        let custom = CanonicalServiceType::Custom("my_service".to_string());
+        assert_eq!(custom.as_str(), "my_service");
+    }
 }

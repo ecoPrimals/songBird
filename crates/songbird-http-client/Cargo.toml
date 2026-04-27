@@ -48,7 +48,7 @@ songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 workspace = true
 [dev-dependencies]
 tokio = { workspace = true, features = ["full", "test-util"] }
-tempfile = "3.0"
+tempfile = { workspace = true }
 wiremock = "0.6"
 tracing-subscriber = { workspace = true }
 rand = { workspace = true }

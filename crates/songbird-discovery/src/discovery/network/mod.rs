@@ -160,7 +160,9 @@ impl NetworkManager {
             // Connect to a non-routable target to discover which local interface the
             // OS kernel selects as the default route. No packets are sent (UDP).
             // Using RFC 5737 documentation address avoids any third-party dependency.
-            if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
+            if let Ok(socket) =
+                std::net::UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
+            {
                 if socket.connect("192.0.2.1:80").is_ok() {
                     if let Ok(local_addr) = socket.local_addr() {
                         addresses.push(local_addr.ip());

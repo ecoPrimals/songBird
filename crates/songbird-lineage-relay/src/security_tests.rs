@@ -470,3 +470,51 @@ async fn security_birdsong_encrypt_missing_ciphertext_errors() {
     assert!(err.is_err());
     serve.await.unwrap();
 }
+
+#[test]
+fn parse_masking_level_all_known_values() {
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("none")),
+        MaskingLevel::None
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("timing_only")),
+        MaskingLevel::TimingOnly
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("size_obfuscation")),
+        MaskingLevel::SizeObfuscation
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("full")),
+        MaskingLevel::Full
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("masked")),
+        MaskingLevel::Masked
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("sub_masked")),
+        MaskingLevel::SubMasked
+    );
+}
+
+#[test]
+fn parse_masking_level_unknown_and_none_fallback_to_full_visibility() {
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(None),
+        MaskingLevel::FullVisibility
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("full_visibility")),
+        MaskingLevel::FullVisibility
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("unknown_value")),
+        MaskingLevel::FullVisibility
+    );
+    assert_eq!(
+        SecurityRelayAuthority::parse_masking_level_for_test(Some("")),
+        MaskingLevel::FullVisibility
+    );
+}

@@ -403,6 +403,11 @@ impl SecurityRelayAuthority {
     }
 
     /// Parse masking level from security-provider response string
+    #[cfg(test)]
+    pub(crate) fn parse_masking_level_for_test(level: Option<&str>) -> MaskingLevel {
+        Self::parse_masking_level(level)
+    }
+
     fn parse_masking_level(level: Option<&str>) -> MaskingLevel {
         match level.unwrap_or("full_visibility") {
             "none" => MaskingLevel::None,

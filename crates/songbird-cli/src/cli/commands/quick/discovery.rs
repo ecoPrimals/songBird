@@ -101,11 +101,14 @@ async fn discover_via_subnet_scan(timeout_ms: u64) -> SongbirdResult<Vec<Discove
     let timeout = std::time::Duration::from_millis(timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS));
 
     let local_ip = {
-        let probe = UdpSocket::bind("0.0.0.0:0").map_err(|e| CliError::Network {
-            message: format!("Failed to bind probe socket: {e}"),
-            interface: None,
-            suggestion: Some("Check network permissions".to_string()),
-        })?;
+        let probe =
+            UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).map_err(|e| {
+                CliError::Network {
+                    message: format!("Failed to bind probe socket: {e}"),
+                    interface: None,
+                    suggestion: Some("Check network permissions".to_string()),
+                }
+            })?;
         let route_target = songbird_process_env::var("SONGBIRD_ROUTE_DETECT_ADDR")
             .unwrap_or_else(|_| "192.0.2.1:80".to_string());
         let _ = probe.connect(route_target.as_str());
@@ -180,10 +183,12 @@ async fn discover_via_multicast(timeout_ms: u64) -> SongbirdResult<Vec<Discovere
     use std::net::UdpSocket;
     use std::time::Duration;
 
-    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| CliError::Network {
-        message: format!("Failed to create socket: {e}"),
-        interface: Some("0.0.0.0:0".to_string()),
-        suggestion: Some("Check network permissions and available ports".to_string()),
+    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).map_err(|e| {
+        CliError::Network {
+            message: format!("Failed to create socket: {e}"),
+            interface: Some(songbird_types::constants::EPHEMERAL_BIND_ADDR.to_string()),
+            suggestion: Some("Check network permissions and available ports".to_string()),
+        }
     })?;
 
     socket
@@ -217,10 +222,12 @@ async fn discover_via_mdns(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetw
     use std::net::UdpSocket;
     use std::time::Duration;
 
-    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| CliError::Network {
-        message: format!("Failed to bind mDNS socket: {e}"),
-        interface: None,
-        suggestion: Some("Check network permissions".to_string()),
+    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).map_err(|e| {
+        CliError::Network {
+            message: format!("Failed to bind mDNS socket: {e}"),
+            interface: None,
+            suggestion: Some("Check network permissions".to_string()),
+        }
     })?;
 
     let timeout = Duration::from_millis(timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS));
@@ -257,10 +264,12 @@ async fn discover_via_broadcast(timeout_ms: u64) -> SongbirdResult<Vec<Discovere
     use std::time::Duration;
 
     let port = discovery_http_port();
-    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| CliError::Network {
-        message: format!("Failed to bind broadcast socket: {e}"),
-        interface: None,
-        suggestion: Some("Check network permissions".to_string()),
+    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).map_err(|e| {
+        CliError::Network {
+            message: format!("Failed to bind broadcast socket: {e}"),
+            interface: None,
+            suggestion: Some("Check network permissions".to_string()),
+        }
     })?;
 
     socket.set_broadcast(true).map_err(|e| CliError::Network {

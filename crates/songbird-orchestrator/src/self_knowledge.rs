@@ -213,7 +213,7 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
         warn!("No endpoints discovered - using localhost fallback");
         endpoints.push(TransportEndpointMessage {
             interface_type: "ipv4".to_string(),
-            address: format!("127.0.0.1:{https_port}"),
+            address: format!("{}:{https_port}", songbird_types::constants::LOCALHOST),
             protocols: vec!["https".to_string()],
             preference: 0,
         });
