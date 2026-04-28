@@ -228,7 +228,7 @@ where
         return fallback.to_string_lossy().to_string();
     }
 
-    let legacy = std::env::temp_dir().join("security-provider.sock");
+    let legacy = songbird_types::defaults::paths::security_provider_legacy_flat_path();
     warn!("⚠️  Using legacy temp-dir fallback for security provider: {}", legacy.display());
     legacy.to_string_lossy().into_owned()
 }

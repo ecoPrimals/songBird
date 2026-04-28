@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave176] - 2026-04-27 - Deep Debt: large file refactor, hardcoding, error types, deprecation
+
+### Changed
+- **Smart refactor `information_layers.rs`** (1121L → directory module): split into `types.rs` (136L), `builders.rs` (214L), `tests.rs` (767L) — zero files >800L remain
+- **Hardcoded fallback elimination**: `RuntimeEndpointResolver` default fallbacks now compose from `songbird_types::constants::{LOCALHOST_HOSTNAME}` and `songbird_types::defaults::ports::{DEFAULT_HTTP_PORT, DEFAULT_METRICS_PORT}` instead of bare `"http://localhost:8080"` / `"http://localhost:8081"`
+- **`DEFAULT_BIND_ADDRESS` deprecated**: marked with `#[deprecated]` pointing to `get_bind_address()` for runtime-aware binding; re-export sites annotated with `#[allow(deprecated)]`
+- **`Result<_, String>` → `anyhow::Result`**: `validate_btsp_insecure_guard()` and `start_service()` now return `anyhow::Result` with `anyhow::ensure!` / `anyhow::Context`; callers simplified (removed `.map_err(|msg| anyhow::anyhow!("{msg}"))`)
+- **Socket path centralization**: added `security_provider_legacy_flat_path()` to `songbird_types::defaults::paths`; `songbird-crypto-provider` discovery now uses it instead of inline `std::env::temp_dir().join("security-provider.sock")`
+
+---
+
 ## [v0.2.1-wave175] - 2026-04-27 - PG-51 verified; environment variables documentation
 
 ### Added

@@ -62,6 +62,14 @@ pub fn security_socket_legacy_tmp_path() -> PathBuf {
     std::env::temp_dir().join(LEGACY_SECURITY_SOCKET_FILENAME)
 }
 
+/// Last-resort legacy flat path `{temp}/security-provider.sock`.
+///
+/// Returned by `discover_security_socket` when all XDG and env-based lookups fail.
+#[must_use]
+pub fn security_provider_legacy_flat_path() -> PathBuf {
+    std::env::temp_dir().join("security-provider.sock")
+}
+
 /// Default security provider socket paths (tried in order during discovery; capability-named first).
 ///
 /// Order: capability paths (`security.sock`, `crypto.sock`), then legacy on-disk security socket file,

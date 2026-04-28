@@ -49,8 +49,10 @@ pub mod network;
 pub mod resources;
 pub mod services;
 
+#[allow(deprecated, reason = "re-exporting deprecated item for backward compatibility")]
+pub use bind_and_ports::DEFAULT_BIND_ADDRESS;
 pub use bind_and_ports::{
-    DEFAULT_BIND_ADDRESS, DEFAULT_CONFIG_PATH, DEFAULT_LOCALHOST, LOCALHOST_IPV4, get_bind_address,
+    DEFAULT_CONFIG_PATH, DEFAULT_LOCALHOST, LOCALHOST_IPV4, get_bind_address,
     get_common_primal_ports, get_port_range_end, get_port_range_start,
 };
 pub use connection_and_tuning::{

@@ -12,6 +12,7 @@ pub use songbird_types::defaults::ports::{
     DEFAULT_DASHBOARD_PORT, DEFAULT_HTTP_PORT as DEFAULT_DEV_PORT, DEFAULT_ORCHESTRATOR_PORT,
 };
 
+#[allow(deprecated, reason = "re-exporting deprecated item for backward compatibility")]
 pub use super::bind_and_ports::DEFAULT_BIND_ADDRESS;
 pub use songbird_types::constants::PRODUCTION_BIND_ADDRESS;
 

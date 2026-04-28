@@ -208,18 +208,25 @@ impl RuntimeEndpointResolver {
     fn default_fallbacks() -> HashMap<String, Vec<String>> {
         let mut fallbacks = HashMap::new();
 
-        // Development fallbacks (localhost only, for testing)
+        let orch_default = format!(
+            "http://{}:{}",
+            songbird_types::constants::LOCALHOST_HOSTNAME,
+            songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+        );
+        let registry_default = format!(
+            "http://{}:{}",
+            songbird_types::constants::LOCALHOST_HOSTNAME,
+            songbird_types::defaults::ports::DEFAULT_METRICS_PORT,
+        );
+
         fallbacks.insert(
             "orchestrator".to_string(),
-            vec![SafeEnv::get_or_default(
-                "SONGBIRD_ORCHESTRATOR_FALLBACK",
-                "http://localhost:8080",
-            )],
+            vec![SafeEnv::get_or_default("SONGBIRD_ORCHESTRATOR_FALLBACK", &orch_default)],
         );
 
         fallbacks.insert(
             "registry".to_string(),
-            vec![SafeEnv::get_or_default("SONGBIRD_REGISTRY_FALLBACK", "http://localhost:8081")],
+            vec![SafeEnv::get_or_default("SONGBIRD_REGISTRY_FALLBACK", &registry_default)],
         );
 
         fallbacks

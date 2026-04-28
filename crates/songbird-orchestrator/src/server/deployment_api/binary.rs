@@ -3,6 +3,7 @@
 
 //! Binary upload, filesystem layout, and process lifecycle for deployments.
 
+use anyhow::Context as _;
 use axum::{
     Json,
     body::Bytes,
@@ -200,7 +201,7 @@ pub async fn deploy_binary_bytes(
 pub async fn start_service<S>(
     binary_path: &str,
     env_vars: &std::collections::HashMap<String, String, S>,
-) -> Result<u32, String>
+) -> anyhow::Result<u32>
 where
     S: std::hash::BuildHasher + Send + Sync,
 {
@@ -214,7 +215,8 @@ where
 
     command.stdout(Stdio::null()).stderr(Stdio::null()).stdin(Stdio::null());
 
-    let child = command.spawn().map_err(|e| format!("Failed to spawn process: {e}"))?;
+    let child =
+        command.spawn().with_context(|| format!("Failed to spawn process: {binary_path}"))?;
 
     let pid = child.id();
     debug!("✅ Service started with PID: {}", pid);

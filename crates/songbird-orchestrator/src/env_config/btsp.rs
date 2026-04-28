@@ -9,13 +9,13 @@
 ///
 /// # Errors
 ///
-/// Returns an error message if the conflicting configuration is detected.
-pub fn validate_btsp_insecure_guard() -> Result<(), String> {
+/// Returns an error if the conflicting configuration is detected.
+pub fn validate_btsp_insecure_guard() -> anyhow::Result<()> {
     validate_btsp_insecure_guard_with(|k| songbird_process_env::var(k))
 }
 
 /// Injectable variant for concurrent-safe testing.
-pub fn validate_btsp_insecure_guard_with<F>(env_reader: F) -> Result<(), String>
+pub fn validate_btsp_insecure_guard_with<F>(env_reader: F) -> anyhow::Result<()>
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
 {
@@ -28,12 +28,11 @@ where
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false);
 
-    if fid != "default" && !fid.is_empty() && insecure {
-        return Err(format!(
-            "FATAL: FAMILY_ID={fid:?} and BIOMEOS_INSECURE=1 are both set. \
-             Per BTSP_PROTOCOL_STANDARD.md v1.0: you cannot claim a family AND skip authentication. \
-             Either remove BIOMEOS_INSECURE or unset FAMILY_ID."
-        ));
-    }
+    anyhow::ensure!(
+        !(fid != "default" && !fid.is_empty() && insecure),
+        "FATAL: FAMILY_ID={fid:?} and BIOMEOS_INSECURE=1 are both set. \
+         Per BTSP_PROTOCOL_STANDARD.md v1.0: you cannot claim a family AND skip authentication. \
+         Either remove BIOMEOS_INSECURE or unset FAMILY_ID."
+    );
     Ok(())
 }

@@ -200,7 +200,7 @@ fn btsp_insecure_guard_rejects_family_plus_insecure() {
         ("BIOMEOS_INSECURE", "1"),
     ]));
     assert!(result.is_err());
-    let msg = result.unwrap_err();
+    let msg = result.unwrap_err().to_string();
     assert!(msg.contains("BTSP_PROTOCOL_STANDARD"), "{msg}");
 }
 
