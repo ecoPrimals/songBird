@@ -61,7 +61,7 @@ impl UniversalIPC {
         let native_endpoint = self.platform.create_endpoint(name).await?;
 
         // Register in service registry
-        self.registry.register(name, native_endpoint, capabilities).await
+        self.registry.register(name, native_endpoint, capabilities, None, None).await
     }
 
     /// Listen on a virtual endpoint

@@ -119,13 +119,9 @@ impl UnifiedCoreConfig {
 }
 
 /// Get unified configuration from environment
-///
-/// # Errors
-///
-/// Returns error if configuration validation fails or required environment
-/// variables are missing.
-pub fn get_unified_config() -> Result<UnifiedCoreConfig, String> {
-    Ok(UnifiedCoreConfig::from_env())
+#[must_use]
+pub fn get_unified_config() -> UnifiedCoreConfig {
+    UnifiedCoreConfig::from_env()
 }
 
 #[cfg(test)]
@@ -187,10 +183,7 @@ mod tests {
 
     #[test]
     fn test_get_unified_config() {
-        let result = get_unified_config();
-        assert!(result.is_ok());
-
-        let config = result.expect("should return config");
+        let config = get_unified_config();
         assert_eq!(config.service.name, "songbird");
     }
 

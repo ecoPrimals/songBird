@@ -11,6 +11,27 @@ use crate::introspection::CONSUMED_CAPABILITIES;
 use serde_json::Value;
 use tracing::debug;
 
+/// Build a deterministic canonical JSON payload for signing.
+///
+/// Field ordering is alphabetical by short key to ensure identical bytes
+/// regardless of capability insertion order.
+fn build_canonical_payload(
+    primal_id: &str,
+    capabilities: &[String],
+    endpoint: &str,
+    registered_at: &str,
+) -> String {
+    let mut sorted_caps = capabilities.to_vec();
+    sorted_caps.sort();
+    serde_json::json!({
+        "c": sorted_caps,
+        "e": endpoint,
+        "p": primal_id,
+        "t": registered_at,
+    })
+    .to_string()
+}
+
 impl IpcServiceHandler {
     /// Handle `ipc.register` method
     pub(super) async fn handle_register(&self, params: Value) -> Result<Value, String> {
@@ -18,6 +39,16 @@ impl IpcServiceHandler {
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
         tracing::info!("Registering primal: {} at {}", params.primal_id, params.endpoint);
+
+        let registered_at = chrono::Utc::now().to_rfc3339();
+
+        // Build canonical payload before endpoint parsing moves the string
+        let canonical = build_canonical_payload(
+            &params.primal_id,
+            &params.capabilities,
+            &params.endpoint,
+            &registered_at,
+        );
 
         // Parse native endpoint
         let native_endpoint = if params.endpoint.starts_with('/') {
@@ -36,21 +67,64 @@ impl IpcServiceHandler {
             ));
         };
 
+        // Sign via BearDog if crypto provider is available
+        let (signature, signed_payload) = self.sign_payload(&canonical).await;
+
         // Register in registry (`register` takes `&self` and uses its own inner lock)
         let virtual_endpoint = self
             .registry
             .read()
             .await
-            .register(&params.primal_id, native_endpoint, params.capabilities)
+            .register(
+                &params.primal_id,
+                native_endpoint,
+                params.capabilities,
+                signature.clone(),
+                signed_payload.clone(),
+            )
             .await
             .map_err(|e| format!("Registration failed: {e}"))?;
 
         let result = RegisterResult {
             virtual_endpoint: virtual_endpoint.path,
-            registered_at: chrono::Utc::now().to_rfc3339(),
+            registered_at,
+            signature,
+            signed_payload,
         };
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Sign a canonical payload via the crypto provider (`BearDog` Ed25519 delegation).
+    ///
+    /// Returns `(Some(signature), Some(payload))` on success, `(None, None)` if
+    /// no crypto provider is configured or signing fails (standalone mode).
+    async fn sign_payload(&self, canonical_payload: &str) -> (Option<String>, Option<String>) {
+        use base64::Engine as _;
+
+        let Some(ref provider) = self.crypto_provider else {
+            return (None, None);
+        };
+
+        let data_b64 =
+            base64::engine::general_purpose::STANDARD.encode(canonical_payload.as_bytes());
+
+        match provider.call("crypto.sign.ed25519", serde_json::json!({ "data": data_b64 })).await {
+            Ok(result) => {
+                let sig = result.get("signature").and_then(|v| v.as_str()).map(String::from);
+                if let Some(ref s) = sig {
+                    debug!("Signed registration payload ({} bytes)", s.len());
+                    (Some(s.clone()), Some(canonical_payload.to_string()))
+                } else {
+                    tracing::warn!("crypto.sign.ed25519 returned no signature field");
+                    (None, None)
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to sign registration (standalone fallback): {e}");
+                (None, None)
+            }
+        }
     }
 
     /// Handle `ipc.resolve` method — resolves by `capability` or `primal_id`/`name`.
@@ -101,6 +175,8 @@ impl IpcServiceHandler {
             virtual_endpoint: entry.virtual_endpoint.path,
             native_endpoint: entry.native_endpoint.display(),
             capabilities: entry.capabilities,
+            signature: entry.signature,
+            signed_payload: entry.signed_payload,
         };
 
         drop(registry);
@@ -132,6 +208,8 @@ impl IpcServiceHandler {
                     virtual_endpoint: entry.virtual_endpoint.path,
                     native_endpoint: entry.native_endpoint.display(),
                     capabilities: entry.capabilities,
+                    signature: entry.signature,
+                    signed_payload: entry.signed_payload,
                 });
             }
         }
@@ -191,6 +269,8 @@ impl IpcServiceHandler {
             virtual_endpoint: entry.virtual_endpoint.path,
             native_endpoint: entry.native_endpoint.display(),
             capabilities: entry.capabilities,
+            signature: entry.signature,
+            signed_payload: entry.signed_payload,
         };
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
@@ -255,5 +335,53 @@ impl IpcServiceHandler {
         };
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canonical_payload_is_deterministic_regardless_of_cap_order() {
+        let a = build_canonical_payload(
+            "nestgate",
+            &["storage".into(), "crypto".into(), "auth".into()],
+            "/tmp/nestgate.sock",
+            "2026-04-28T12:00:00Z",
+        );
+        let b = build_canonical_payload(
+            "nestgate",
+            &["auth".into(), "crypto".into(), "storage".into()],
+            "/tmp/nestgate.sock",
+            "2026-04-28T12:00:00Z",
+        );
+        assert_eq!(a, b, "canonical payload must be order-independent");
+    }
+
+    #[test]
+    fn canonical_payload_contains_all_fields() {
+        let payload = build_canonical_payload(
+            "beardog",
+            &["crypto".into(), "security".into()],
+            "/run/user/1000/biomeos/beardog.sock",
+            "2026-04-28T14:30:00Z",
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        assert_eq!(parsed["p"], "beardog");
+        assert_eq!(parsed["e"], "/run/user/1000/biomeos/beardog.sock");
+        assert_eq!(parsed["t"], "2026-04-28T14:30:00Z");
+        let caps = parsed["c"].as_array().unwrap();
+        assert_eq!(caps[0], "crypto");
+        assert_eq!(caps[1], "security");
+    }
+
+    #[test]
+    fn canonical_payload_empty_capabilities() {
+        let payload =
+            build_canonical_payload("minimal", &[], "tcp://127.0.0.1:9000", "2026-01-01T00:00:00Z");
+        let parsed: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        assert!(parsed["c"].as_array().unwrap().is_empty());
     }
 }

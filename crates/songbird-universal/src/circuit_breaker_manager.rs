@@ -105,8 +105,7 @@ impl CircuitBreakerManager {
     ///     .failure_threshold(10)
     ///     .timeout(Duration::from_secs(120))
     ///     .success_threshold(2)
-    ///     .build()?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    ///     .build();
     /// ```
     #[must_use]
     pub const fn builder() -> CircuitBreakerManagerBuilder {
@@ -340,11 +339,8 @@ impl CircuitBreakerManagerBuilder {
     }
 
     /// Build the manager
-    ///
-    /// # Errors
-    ///
-    /// Returns error if configuration is invalid.
-    pub fn build(self) -> Result<CircuitBreakerManager, String> {
+    #[must_use]
+    pub fn build(self) -> CircuitBreakerManager {
         let mut config = CircuitBreakerConfig::default();
 
         if let Some(threshold) = self.failure_threshold {
@@ -360,7 +356,7 @@ impl CircuitBreakerManagerBuilder {
             config.half_open_max_requests = max;
         }
 
-        Ok(CircuitBreakerManager::with_config(config))
+        CircuitBreakerManager::with_config(config)
     }
 }
 
@@ -427,8 +423,7 @@ mod tests {
         let manager = CircuitBreakerManager::builder()
             .failure_threshold(10)
             .timeout(Duration::from_secs(120))
-            .build()
-            .unwrap();
+            .build();
 
         let breaker = manager.get_breaker_for_endpoint("https://example.com").await;
         assert!(Arc::strong_count(&breaker) >= 1);

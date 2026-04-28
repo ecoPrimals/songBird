@@ -186,7 +186,7 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
         Err(e) => ConfigStatus {
             valid: false,
             source: "environment".to_string(),
-            error: Some(e),
+            error: Some(e.to_string()),
         },
     };
 

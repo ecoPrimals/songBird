@@ -70,19 +70,22 @@ pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
     /// When set, used instead of [`songbird_process_env::var`] for identity `family_id` resolution (tests).
     family_id_overrides: Option<Arc<HashMap<String, String>>>,
+    /// Crypto provider for signing IPC registrations via `BearDog` Ed25519 delegation.
+    /// `None` in standalone mode (no `FAMILY_ID`) — registrations proceed unsigned.
+    crypto_provider: Option<Arc<songbird_crypto_provider::CryptoProvider>>,
     http_handler: Arc<HttpHandler>,
     stun_handler: Arc<StunHandler>,
     discovery_handler: Arc<DiscoveryHandler>,
     rendezvous_handler: Arc<RendezvousHandler>,
     peer_handler: Arc<PeerHandler>,
-    birdsong_handler: Arc<BirdSongHandler>, // BirdSong (Feb 2, 2026)
-    relay_handler: Arc<RelayHandler>,       // Relay Server (Feb 5, 2026)
-    mesh_handler: Arc<MeshHandler>,         // Mesh networking (Feb 4, 2026)
-    onion_handler: Arc<OnionHandler>,       // Sovereign onion (Feb 4, 2026)
-    punch_handler: Arc<PunchHandler>,       // Hole punch (Feb 4, 2026)
-    tor_handler: Arc<TorHandler>,           // Pure Rust Tor (Feb 7, 2026)
-    igd_handler: Arc<IgdHandler>,           // IGD router config (Feb 8, 2026)
-    start_time: Arc<RwLock<std::time::Instant>>, // Track uptime (Feb 5, 2026)
+    birdsong_handler: Arc<BirdSongHandler>,
+    relay_handler: Arc<RelayHandler>,
+    mesh_handler: Arc<MeshHandler>,
+    onion_handler: Arc<OnionHandler>,
+    punch_handler: Arc<PunchHandler>,
+    tor_handler: Arc<TorHandler>,
+    igd_handler: Arc<IgdHandler>,
+    start_time: Arc<RwLock<std::time::Instant>>,
     /// When set, `federation.*` methods reflect live [`FederationState`].
     federation_state: Option<Arc<FederationState>>,
 }

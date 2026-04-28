@@ -70,6 +70,22 @@ impl IpcServiceHandler {
         )
     }
 
+    /// Build a crypto provider for signing IPC registrations.
+    ///
+    /// Returns `Some` when `FAMILY_ID` is set (NUCLEUS composition mode),
+    /// indicating `BearDog` is expected to be available for Ed25519 signing.
+    /// Returns `None` in standalone mode — registrations proceed unsigned.
+    fn build_crypto_provider() -> Option<Arc<songbird_crypto_provider::CryptoProvider>> {
+        if songbird_process_env::var("FAMILY_ID").is_ok() {
+            let provider = songbird_crypto_provider::CryptoProvider::from_env();
+            tracing::info!("IPC registration signing enabled (FAMILY_ID set)");
+            Some(Arc::new(provider))
+        } else {
+            tracing::debug!("IPC registration signing disabled (no FAMILY_ID)");
+            None
+        }
+    }
+
     /// Assemble a handler from pre-built components.
     fn assemble(
         registry: Arc<RwLock<ServiceRegistry>>,
@@ -93,6 +109,7 @@ impl IpcServiceHandler {
         Self {
             registry,
             family_id_overrides: None,
+            crypto_provider: Self::build_crypto_provider(),
             http_handler,
             stun_handler,
             discovery_handler,
@@ -159,6 +176,7 @@ impl IpcServiceHandler {
 
     /// Same as [`new`](Self::new) but resolves `family_id` for `identity` using this map instead of
     /// [`songbird_process_env::var`] (for tests and injected configuration).
+    /// Crypto provider is `None` (test mode — registrations are unsigned).
     #[must_use]
     pub fn with_family_id_overrides(
         registry: Arc<RwLock<ServiceRegistry>>,
@@ -166,6 +184,7 @@ impl IpcServiceHandler {
     ) -> Self {
         let mut h = Self::new(registry);
         h.family_id_overrides = Some(Arc::new(overrides));
+        h.crypto_provider = None;
         h
     }
 

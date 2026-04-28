@@ -84,15 +84,12 @@ pub enum OptimizedHost {
 
 impl OptimizedHost {
     /// Parse from string with optimization for localhost
-    /// Parse host from string
-    ///
-    /// # Errors
-    /// This function never returns an error - it always succeeds
     #[allow(clippy::should_implement_trait, reason = "custom from_str name; not std::str::FromStr")]
-    pub fn from_str(host: &str) -> Result<Self, String> {
+    #[must_use]
+    pub fn from_str(host: &str) -> Self {
         match host {
-            "localhost" | "127.0.0.1" | "::1" => Ok(Self::Localhost),
-            _ => Ok(Self::Custom(host.to_string())),
+            "localhost" | "127.0.0.1" | "::1" => Self::Localhost,
+            _ => Self::Custom(host.to_string()),
         }
     }
 
@@ -329,16 +326,12 @@ mod tests {
     }
 
     #[test]
-    fn test_host_optimization() -> Result<(), Box<dyn std::error::Error>> {
-        use crate::SongbirdError;
-        let localhost = OptimizedHost::from_str("localhost").map_err(|e| {
-            SongbirdError::configuration(format!("Test: localhost should parse: {e}"))
-        })?;
+    fn test_host_optimization() {
+        let localhost = OptimizedHost::from_str("localhost");
         assert!(matches!(localhost, OptimizedHost::Localhost));
         assert_eq!(localhost.as_str(), "127.0.0.1");
 
-        let custom = OptimizedHost::from_str("other.example")?;
+        let custom = OptimizedHost::from_str("other.example");
         assert_eq!(custom.as_str(), "other.example");
-        Ok(())
     }
 }

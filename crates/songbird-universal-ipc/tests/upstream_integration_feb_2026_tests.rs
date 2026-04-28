@@ -361,7 +361,13 @@ async fn test_chaos_concurrent_with_service_registration() {
                     NativeEndpoint::UnixSocket(PathBuf::from(format!("/tmp/test-{i}.sock")));
                 let reg = registry_clone.write().await;
                 let _ = reg
-                    .register(&format!("test-service-{i}"), endpoint, vec!["test".to_string()])
+                    .register(
+                        &format!("test-service-{i}"),
+                        endpoint,
+                        vec!["test".to_string()],
+                        None,
+                        None,
+                    )
                     .await;
                 drop(reg);
             })

@@ -47,34 +47,23 @@ impl ConfigMigrationUtils {
     #[must_use = "Result must be handled - ignoring errors is unsafe"]
     pub fn migrate_from_json(
         json_config: serde_json::Value,
-    ) -> Result<UnifiedSongbirdConfig, String> {
+    ) -> anyhow::Result<UnifiedSongbirdConfig> {
+        use anyhow::Context as _;
+
         let mut unified = UnifiedSongbirdConfig::default();
         let Value::Object(map) = json_config else {
-            return unified
-                .validate()
-                .map_err(|e| {
-                    format!(
-                        "Configuration validation failed: {e
-
-
-
-}"
-                    )
-                })
-                .map(|()| unified);
+            unified.validate().context("Configuration validation failed")?;
+            return Ok(unified);
         };
 
-        // Extract environment configuration
         if let Some(env) = map.get("environment").and_then(|v| v.as_str()) {
             unified.system.environment = env.to_string();
         }
 
-        // Extract system ID
         if let Some(system_id) = map.get("system_id").and_then(|v| v.as_str()) {
             unified.system.system_id = system_id.to_string();
         }
 
-        // Store custom configuration
         let custom_fields: HashMap<String, Value> = map
             .iter()
             .filter(|(key, _)| !Self::is_known_field(key))
@@ -85,10 +74,8 @@ impl ConfigMigrationUtils {
             unified.custom = Some(custom_fields);
         }
 
-        unified
-            .validate()
-            .map_err(|e| format!("Configuration validation failed: {e}"))
-            .map(|()| unified)
+        unified.validate().context("Configuration validation failed")?;
+        Ok(unified)
     }
 
     /// Check if a field is a known configuration field

@@ -24,6 +24,11 @@ pub struct ServiceEntry {
     pub registered_at: Instant,
     /// Last seen timestamp (for health checking)
     pub last_seen: Instant,
+    /// Ed25519 signature over `signed_payload` (base64, via `BearDog` delegation).
+    /// `None` when crypto provider is unavailable (standalone mode).
+    pub signature: Option<String>,
+    /// Canonical JSON payload that was signed.
+    pub signed_payload: Option<String>,
 }
 
 /// Metadata for persistent storage (optional `storage provider` integration)
@@ -41,6 +46,9 @@ pub struct ServiceMetadata {
     pub platform: String,
     /// Registered timestamp (Unix epoch)
     pub registered_at_secs: u64,
+    /// Ed25519 signature (base64) if signed by crypto provider.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
 }
 
 impl ServiceEntry {
@@ -57,6 +65,7 @@ impl ServiceEntry {
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
+            signature: self.signature.clone(),
         }
     }
 }
@@ -85,6 +94,8 @@ impl ServiceRegistry {
     /// * `name` - Service name (e.g., "beardog")
     /// * `native_endpoint` - Platform-specific endpoint
     /// * `capabilities` - List of capabilities this service provides
+    /// * `signature` - Ed25519 signature from crypto provider (`None` in standalone mode)
+    /// * `signed_payload` - Canonical JSON that was signed (`None` in standalone mode)
     ///
     /// # Returns
     /// Virtual endpoint for this service
@@ -93,6 +104,8 @@ impl ServiceRegistry {
         name: &str,
         native_endpoint: NativeEndpoint,
         capabilities: Vec<String>,
+        signature: Option<String>,
+        signed_payload: Option<String>,
     ) -> IpcResult<VirtualEndpoint> {
         let mut services = self.services.write().await;
 
@@ -108,6 +121,8 @@ impl ServiceRegistry {
             capabilities: capabilities.clone(),
             registered_at: Instant::now(),
             last_seen: Instant::now(),
+            signature,
+            signed_payload,
         };
 
         services.insert(name.to_string(), entry);
@@ -252,8 +267,10 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
-        let virtual_endpoint =
-            registry.register("test-primal", endpoint, vec!["test".to_string()]).await.unwrap();
+        let virtual_endpoint = registry
+            .register("test-primal", endpoint, vec!["test".to_string()], None, None)
+            .await
+            .unwrap();
 
         assert_eq!(virtual_endpoint.path, "/primal/test-primal");
     }
@@ -268,7 +285,7 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
-        registry.register("test-primal", endpoint, vec![]).await.unwrap();
+        registry.register("test-primal", endpoint, vec![], None, None).await.unwrap();
 
         let resolved = registry.resolve("/primal/test-primal").await.unwrap();
 
@@ -303,10 +320,19 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint2 = NativeEndpoint::TcpLocal(8081);
 
-        registry.register("primal1", endpoint1, vec!["crypto".to_string()]).await.unwrap();
+        registry
+            .register("primal1", endpoint1, vec!["crypto".to_string()], None, None)
+            .await
+            .unwrap();
 
         registry
-            .register("primal2", endpoint2, vec!["crypto".to_string(), "storage".to_string()])
+            .register(
+                "primal2",
+                endpoint2,
+                vec!["crypto".to_string(), "storage".to_string()],
+                None,
+                None,
+            )
             .await
             .unwrap();
 
@@ -327,7 +353,7 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
-        registry.register("test-primal", endpoint, vec![]).await.unwrap();
+        registry.register("test-primal", endpoint, vec![], None, None).await.unwrap();
 
         assert!(registry.get_service("test-primal").await.is_some());
 
@@ -344,8 +370,12 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
-        registry.register("dup", endpoint.clone(), vec![]).await.expect("first register");
-        let err = registry.register("dup", endpoint, vec![]).await.expect_err("duplicate");
+        registry
+            .register("dup", endpoint.clone(), vec![], None, None)
+            .await
+            .expect("first register");
+        let err =
+            registry.register("dup", endpoint, vec![], None, None).await.expect_err("duplicate");
         assert!(matches!(err, crate::error::IpcError::ServiceAlreadyRegistered(_)));
     }
 
@@ -385,7 +415,7 @@ mod tests {
         #[cfg(not(unix))]
         let ep = NativeEndpoint::TcpLocal(9090);
 
-        registry.register("alpha", ep, vec!["a".into()]).await.expect("register");
+        registry.register("alpha", ep, vec!["a".into()], None, None).await.expect("register");
         let names = registry.list_services().await;
         assert!(names.contains(&"alpha".to_string()));
 
@@ -408,6 +438,8 @@ mod tests {
             capabilities: vec!["x".into()],
             registered_at: std::time::Instant::now(),
             last_seen: std::time::Instant::now(),
+            signature: None,
+            signed_payload: None,
         };
         let m = entry.to_metadata();
         assert_eq!(m.name, "z");
@@ -423,7 +455,7 @@ mod tests {
         #[cfg(not(unix))]
         let ep = NativeEndpoint::TcpLocal(6060);
 
-        registry.register("seen", ep, vec![]).await.expect("register");
+        registry.register("seen", ep, vec![], None, None).await.expect("register");
         registry.update_last_seen("seen").await.expect("last_seen");
         let svc = registry.get_service("seen").await.expect("service");
         assert_eq!(svc.capabilities.len(), 0);
@@ -437,7 +469,7 @@ mod tests {
         #[cfg(not(unix))]
         let ep = NativeEndpoint::TcpLocal(5050);
 
-        registry.register("only", ep, vec!["a".into()]).await.expect("register");
+        registry.register("only", ep, vec!["a".into()], None, None).await.expect("register");
         let paths = registry.find_by_capability("missing-cap").await;
         assert!(paths.is_empty());
     }
@@ -451,10 +483,66 @@ mod tests {
             capabilities: vec!["c".into()],
             platform: "linux".into(),
             registered_at_secs: 42,
+            signature: None,
         };
         let v = serde_json::to_string(&m).expect("serialize metadata");
         let back: ServiceMetadata = serde_json::from_str(&v).expect("deserialize metadata");
         assert_eq!(back.name, "n");
         assert_eq!(back.registered_at_secs, 42);
+    }
+
+    #[tokio::test]
+    async fn register_stores_and_returns_signature() {
+        let registry = ServiceRegistry::new();
+        #[cfg(unix)]
+        let ep = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/signed.sock"));
+        #[cfg(not(unix))]
+        let ep = NativeEndpoint::TcpLocal(4040);
+
+        let sig = Some("base64sig==".to_string());
+        let payload =
+            Some(r#"{"c":["crypto"],"e":"/tmp/signed.sock","p":"sec","t":"T0"}"#.to_string());
+
+        registry
+            .register("sec", ep, vec!["crypto".into()], sig.clone(), payload.clone())
+            .await
+            .expect("register");
+
+        let entry = registry.get_service("sec").await.expect("service exists");
+        assert_eq!(entry.signature, sig);
+        assert_eq!(entry.signed_payload, payload);
+    }
+
+    #[tokio::test]
+    async fn register_without_signature_stores_none() {
+        let registry = ServiceRegistry::new();
+        #[cfg(unix)]
+        let ep = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/unsigned.sock"));
+        #[cfg(not(unix))]
+        let ep = NativeEndpoint::TcpLocal(3030);
+
+        registry
+            .register("standalone", ep, vec!["net".into()], None, None)
+            .await
+            .expect("register");
+
+        let entry = registry.get_service("standalone").await.expect("service exists");
+        assert!(entry.signature.is_none());
+        assert!(entry.signed_payload.is_none());
+    }
+
+    #[test]
+    fn service_metadata_omits_none_signature() {
+        let m = ServiceMetadata {
+            name: "x".into(),
+            virtual_path: "/primal/x".into(),
+            native_endpoint_display: "unix:///x".into(),
+            capabilities: vec![],
+            platform: "linux".into(),
+            registered_at_secs: 1,
+            signature: None,
+        };
+        let json = serde_json::to_string(&m).expect("serialize");
+        assert!(!json.contains("signature"), "None signature should be omitted");
     }
 }

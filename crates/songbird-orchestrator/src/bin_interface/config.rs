@@ -104,7 +104,8 @@ async fn show_config(show_secrets: bool, format: &str) -> Result<()> {
         }
         Err(e) => {
             if format == "json" {
-                println!("{{\"status\":\"error\",\"message\":\"{}\"}}", e.replace('"', "\\\""));
+                let msg = e.to_string();
+                println!("{{\"status\":\"error\",\"message\":\"{}\"}}", msg.replace('"', "\\\""));
             } else if format == "toml" || format == "yaml" {
                 println!("status = \"error\"");
                 println!("message = \"{e}\"");

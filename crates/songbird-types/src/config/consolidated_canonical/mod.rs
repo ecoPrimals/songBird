@@ -117,7 +117,7 @@ impl CanonicalSongbirdConfig {
     /// # Errors
     ///
     /// Returns an error if the configuration cannot be loaded from the environment.
-    pub fn from_env() -> Result<Self, String> {
+    pub fn from_env() -> anyhow::Result<Self> {
         Ok(Self {
             system: CanonicalSystemConfig::default(),
             network: CanonicalNetworkConfig::default(),
@@ -191,39 +191,24 @@ impl CanonicalSongbirdConfig {
     /// # Errors
     ///
     /// Returns an error if any configuration is invalid or inconsistent.
-    pub fn validate(&self) -> Result<(), String> {
-        // Validate system configuration
-        if self.system.environment.is_empty() {
-            return Err("System environment cannot be empty".to_string());
-        }
-        if self.system.system_id.is_empty() {
-            return Err("System ID cannot be empty".to_string());
-        }
+    pub fn validate(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(!self.system.environment.is_empty(), "System environment cannot be empty");
+        anyhow::ensure!(!self.system.system_id.is_empty(), "System ID cannot be empty");
 
-        // Validate network configuration
-        // Validate base port — port 0 means ephemeral (OS-assigned), valid for
-        // IPC-only or test deployments where TCP port doesn't need to be fixed.
-        if self.network.base_port == 0 && self.discovery.mode.is_enabled() {
-            return Err(
-                "❌ Discovery requires external TCP port (network.base_port > 0).\n\
-                 \n\
-                 Songbird operates in dual-mode:\n\
-                 • External TCP port (for LAN discovery beacons)\n\
-                 • Internal Unix socket (for inter-primal IPC)\n\
-                 \n\
-                 Fix: Set network.base_port = 8080 or disable discovery.\n\
-                 Port 0 (ephemeral) is allowed only when discovery is disabled.\n\
-                 \n\
-                 Example:\n\
-                   ./songbird server --port 8080 --socket /run/user/1000/biomeos/songbird-nat0.sock\n\
-                 \n\
-                 Or disable discovery:\n\
-                   [discovery]\n\
-                   mode = \"Disabled\"".to_string()
-            );
-        }
+        // Port 0 means ephemeral (OS-assigned), valid for IPC-only or test
+        // deployments where TCP port doesn't need to be fixed.
+        anyhow::ensure!(
+            !(self.network.base_port == 0 && self.discovery.mode.is_enabled()),
+            "Discovery requires external TCP port (network.base_port > 0).\n\
+             \n\
+             Songbird operates in dual-mode:\n\
+             - External TCP port (for LAN discovery beacons)\n\
+             - Internal Unix socket (for inter-primal IPC)\n\
+             \n\
+             Fix: Set network.base_port = 8080 or disable discovery.\n\
+             Port 0 (ephemeral) is allowed only when discovery is disabled."
+        );
 
-        // All validations passed
         Ok(())
     }
 
@@ -413,7 +398,7 @@ impl CanonicalConfigBuilder {
     /// # Errors
     ///
     /// Returns an error if the configuration fails validation.
-    pub fn build(self) -> Result<CanonicalSongbirdConfig, String> {
+    pub fn build(self) -> anyhow::Result<CanonicalSongbirdConfig> {
         let config = CanonicalSongbirdConfig {
             system: self.system.unwrap_or_default(),
             network: self.network.unwrap_or_default(),
@@ -451,9 +436,10 @@ mod tests {
 
         // Should fail validation
         match config.validate() {
-            Err(err_msg) => {
-                assert!(err_msg.contains("Discovery requires external TCP port"));
-                assert!(err_msg.contains("dual-mode"));
+            Err(err) => {
+                let msg = err.to_string();
+                assert!(msg.contains("Discovery requires external TCP port"));
+                assert!(msg.contains("dual-mode"));
             }
             Ok(()) => panic!("expected validation to fail"),
         }

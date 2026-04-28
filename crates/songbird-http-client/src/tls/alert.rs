@@ -245,19 +245,17 @@ impl TlsAlert {
     /// # Errors
     ///
     /// Returns an error if the data is too short or contains unknown level/description codes.
-    pub fn parse(data: &[u8]) -> Result<Self, String> {
-        if data.len() < 2 {
-            return Err(format!("Alert too short: {} bytes (need 2)", data.len()));
-        }
+    pub fn parse(data: &[u8]) -> anyhow::Result<Self> {
+        anyhow::ensure!(data.len() >= 2, "Alert too short: {} bytes (need 2)", data.len());
 
         let raw_level = data[0];
         let raw_description = data[1];
 
         let level = AlertLevel::from_u8(raw_level)
-            .ok_or_else(|| format!("Unknown alert level: {raw_level}"))?;
+            .ok_or_else(|| anyhow::anyhow!("Unknown alert level: {raw_level}"))?;
 
         let description = AlertDescription::from_u8(raw_description)
-            .ok_or_else(|| format!("Unknown alert description: {raw_description}"))?;
+            .ok_or_else(|| anyhow::anyhow!("Unknown alert description: {raw_description}"))?;
 
         Ok(Self {
             level,
@@ -337,21 +335,21 @@ mod tests {
     #[test]
     fn test_parse_too_short() {
         let data = [2]; // Only 1 byte
-        let err = TlsAlert::parse(&data).unwrap_err();
+        let err = TlsAlert::parse(&data).unwrap_err().to_string();
         assert!(err.contains("too short"));
     }
 
     #[test]
     fn test_parse_unknown_level() {
         let data = [99, 0]; // Invalid level
-        let err = TlsAlert::parse(&data).unwrap_err();
+        let err = TlsAlert::parse(&data).unwrap_err().to_string();
         assert!(err.contains("Unknown alert level"));
     }
 
     #[test]
     fn test_parse_unknown_description() {
         let data = [2, 99]; // Invalid description
-        let err = TlsAlert::parse(&data).unwrap_err();
+        let err = TlsAlert::parse(&data).unwrap_err().to_string();
         assert!(err.contains("Unknown alert description"));
     }
 

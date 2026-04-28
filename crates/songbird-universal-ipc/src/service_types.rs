@@ -57,6 +57,13 @@ pub struct DiscoverParams {
 pub struct RegisterResult {
     pub virtual_endpoint: String,
     pub registered_at: String,
+    /// Ed25519 signature over `signed_payload` (base64, via `BearDog` delegation).
+    /// `None` in standalone mode (no `FAMILY_ID` / no crypto provider).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// Canonical JSON payload that was signed (for consumer verification).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signed_payload: Option<String>,
 }
 
 /// IPC service response for resolution
@@ -65,6 +72,12 @@ pub struct ResolveResult {
     pub virtual_endpoint: String,
     pub native_endpoint: String,
     pub capabilities: Vec<String>,
+    /// Ed25519 signature from the original registration (base64).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// Canonical JSON payload that was signed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signed_payload: Option<String>,
 }
 
 /// IPC service response for discovery
@@ -80,6 +93,12 @@ pub struct ProviderInfo {
     pub virtual_endpoint: String,
     pub native_endpoint: String,
     pub capabilities: Vec<String>,
+    /// Ed25519 signature from the original registration (base64).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// Canonical JSON payload that was signed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signed_payload: Option<String>,
 }
 
 /// IPC service response for listing
@@ -109,6 +128,12 @@ pub struct CapabilityResolveResult {
     pub virtual_endpoint: String,
     pub native_endpoint: String,
     pub capabilities: Vec<String>,
+    /// Ed25519 signature from the original registration (base64).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// Canonical JSON payload that was signed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signed_payload: Option<String>,
 }
 
 /// `lifecycle.composition` response — current composition state for dashboards.
@@ -215,10 +240,13 @@ mod tests {
         let result = RegisterResult {
             virtual_endpoint: "/primal/security".to_string(),
             registered_at: "2026-03-27T12:00:00Z".to_string(),
+            signature: None,
+            signed_payload: None,
         };
         let json = serde_json::to_value(&result).unwrap();
         assert_eq!(json["virtual_endpoint"], "/primal/security");
         assert_eq!(json["registered_at"], "2026-03-27T12:00:00Z");
+        assert!(json.get("signature").is_none(), "None fields should be omitted");
     }
 
     #[test]
@@ -227,11 +255,14 @@ mod tests {
             virtual_endpoint: "/primal/security".to_string(),
             native_endpoint: "/tmp/security.sock".to_string(),
             capabilities: vec!["crypto".to_string(), "auth".to_string()],
+            signature: None,
+            signed_payload: None,
         };
         let json = serde_json::to_value(&result).unwrap();
         assert_eq!(json["native_endpoint"], "/tmp/security.sock");
         let caps = json["capabilities"].as_array().unwrap();
         assert_eq!(caps.len(), 2);
+        assert!(json.get("signature").is_none(), "None fields should be omitted");
     }
 
     #[test]
@@ -251,6 +282,8 @@ mod tests {
                 virtual_endpoint: "/primal/songbird".to_string(),
                 native_endpoint: "/tmp/songbird.sock".to_string(),
                 capabilities: vec!["network.discovery".to_string()],
+                signature: None,
+                signed_payload: None,
             }],
         };
         let json = serde_json::to_value(&result).unwrap();
@@ -313,9 +346,12 @@ mod tests {
             virtual_endpoint: "/primal/test".to_string(),
             native_endpoint: "/tmp/test.sock".to_string(),
             capabilities: vec!["cap1".to_string()],
+            signature: Some("sig123".to_string()),
+            signed_payload: Some("payload".to_string()),
         };
         let cloned = original.clone();
         assert_eq!(original.primal_id, cloned.primal_id);
+        assert_eq!(original.signature, cloned.signature);
         assert_eq!(format!("{original:?}"), format!("{cloned:?}"));
     }
 
@@ -323,5 +359,50 @@ mod tests {
     fn register_params_rejects_missing_fields() {
         let json = r#"{"primal_id":"security"}"#;
         assert!(serde_json::from_str::<RegisterParams>(json).is_err());
+    }
+
+    #[test]
+    fn register_result_with_signature_serializes() {
+        let result = RegisterResult {
+            virtual_endpoint: "/primal/nestgate".to_string(),
+            registered_at: "2026-04-28T14:00:00Z".to_string(),
+            signature: Some("c2lnbmF0dXJl".to_string()),
+            signed_payload: Some(
+                r#"{"c":["storage"],"e":"/tmp/ng.sock","p":"nestgate","t":"2026-04-28T14:00:00Z"}"#
+                    .to_string(),
+            ),
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["signature"], "c2lnbmF0dXJl");
+        assert!(json["signed_payload"].as_str().unwrap().contains("nestgate"));
+    }
+
+    #[test]
+    fn resolve_result_with_signature_serializes() {
+        let result = ResolveResult {
+            virtual_endpoint: "/primal/beardog".to_string(),
+            native_endpoint: "/run/user/1000/biomeos/beardog.sock".to_string(),
+            capabilities: vec!["crypto".to_string()],
+            signature: Some("sig_b64".to_string()),
+            signed_payload: Some("payload_json".to_string()),
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["signature"], "sig_b64");
+        assert_eq!(json["signed_payload"], "payload_json");
+    }
+
+    #[test]
+    fn capability_resolve_result_omits_none_signature() {
+        let result = CapabilityResolveResult {
+            primal_id: "songbird".to_string(),
+            virtual_endpoint: "/primal/songbird".to_string(),
+            native_endpoint: "/tmp/songbird.sock".to_string(),
+            capabilities: vec!["network.discovery".to_string()],
+            signature: None,
+            signed_payload: None,
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert!(json.get("signature").is_none());
+        assert!(json.get("signed_payload").is_none());
     }
 }

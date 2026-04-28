@@ -99,42 +99,35 @@ impl<T> SongbirdResult<T> {
     }
 
     /// Get the data if successful, or return an error
-    /// Get data from response
     ///
     /// # Errors
     /// Returns error if response contains an error instead of data
-    pub fn get_data(&self) -> Result<&T, String> {
+    pub fn get_data(&self) -> anyhow::Result<&T> {
         if self.success {
-            self.data.as_ref().map_or_else(
-                || Err("Response marked as successful but contains no data".to_string()),
-                Ok,
-            )
+            self.data.as_ref().ok_or_else(|| {
+                anyhow::anyhow!("Response marked as successful but contains no data")
+            })
         } else {
-            let error_message = self
-                .error
-                .as_ref()
-                .map_or_else(|| "Unknown error".to_string(), |e| e.message.clone());
-            Err(error_message)
+            let msg = self.error.as_ref().map_or("Unknown error", |e| &e.message);
+            Err(anyhow::anyhow!("{msg}"))
         }
     }
 
-    /// Convert response to Result<T, String>
-    /// Convert response into Result
+    /// Convert response into `Result`
     ///
     /// # Errors
     /// Returns error if response contains an error instead of data
-    pub fn into_result(self) -> Result<T, String> {
+    pub fn into_result(self) -> anyhow::Result<T> {
         if self.success {
-            self.data.map_or_else(
-                || Err("Response marked as successful but contains no data".to_string()),
-                |data| Ok(data),
-            )
+            self.data.ok_or_else(|| {
+                anyhow::anyhow!("Response marked as successful but contains no data")
+            })
         } else {
-            let error_message = self
+            let msg = self
                 .error
                 .as_ref()
                 .map_or_else(|| "Unknown error".to_string(), |e| e.message.clone());
-            Err(error_message)
+            Err(anyhow::anyhow!("{msg}"))
         }
     }
 }
@@ -297,7 +290,7 @@ mod tests {
     fn test_response_conversion() {
         let success_response = SongbirdResult::success(42);
         let result = success_response.into_result();
-        assert_eq!(result, Ok(42));
+        assert_eq!(result.unwrap(), 42);
 
         let error_response: SongbirdResult<i32> =
             SongbirdResult::error("ERROR", "Something went wrong");

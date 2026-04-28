@@ -118,19 +118,13 @@ impl LoadBalancer {
     /// # Errors
     ///
     /// Returns an error if no endpoints are available.
-    pub async fn get_next_endpoint(&self) -> Result<String, String> {
+    pub async fn get_next_endpoint(&self) -> anyhow::Result<String> {
         let endpoints = self.endpoints.read().await;
-
-        if endpoints.is_empty() {
-            return Err("No endpoints configured".to_string());
-        }
+        anyhow::ensure!(!endpoints.is_empty(), "No endpoints configured");
 
         let available: Vec<&LoadBalancedEndpoint> =
             endpoints.iter().filter(|e| e.available).collect();
-
-        if available.is_empty() {
-            return Err("No available endpoints".to_string());
-        }
+        anyhow::ensure!(!available.is_empty(), "No available endpoints");
 
         let selected = match self.strategy {
             LoadBalancingStrategy::RoundRobin => self.select_round_robin(&available).await,
@@ -346,7 +340,8 @@ mod tests {
         // Should return error
         let result = lb.get_next_endpoint().await;
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "No available endpoints");
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("No available endpoints"));
     }
 
     #[tokio::test]
@@ -355,7 +350,8 @@ mod tests {
 
         let result = lb.get_next_endpoint().await;
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "No endpoints configured");
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("No endpoints configured"));
     }
 
     #[tokio::test]

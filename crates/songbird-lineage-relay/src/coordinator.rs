@@ -47,8 +47,11 @@ impl Default for LineageRelayConfig {
         // These are well-known IPv4 addresses that will always parse successfully
         // 0.0.0.0:<port> = bind to all interfaces
         // 255.255.255.255:<port> = broadcast address
+        let node_id = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
+            .unwrap_or_else(|_| "songbird-default".to_string());
         Self {
-            my_id: NodeId::from("default-node"),
+            my_id: NodeId::from(node_id.as_str()),
             birdsong_bind: SocketAddr::from(([0, 0, 0, 0], birdsong_port)),
             birdsong_broadcast: SocketAddr::from(([255, 255, 255, 255], birdsong_port)),
             my_relay_address: None,

@@ -253,7 +253,7 @@ impl PortConfig {
     /// # Errors
     ///
     /// Returns an error if registry construction fails.
-    pub fn to_capability_registry(&self) -> Result<CapabilityPortRegistry, String> {
+    pub fn to_capability_registry(&self) -> anyhow::Result<CapabilityPortRegistry> {
         RegistryBuilder::new()
             .with_port_and_description(
                 "orchestrator",

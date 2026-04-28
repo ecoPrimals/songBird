@@ -57,20 +57,13 @@ impl UnifiedSongbirdConfig {
     /// # Errors
     ///
     /// Returns an error if any configuration values are invalid
-    pub fn validate(&self) -> Result<(), String> {
-        // Validate system configuration
-        if self.system.environment.is_empty() {
-            return Err("System environment cannot be empty".to_string());
-        }
-        if self.system.system_id.is_empty() {
-            return Err("System ID cannot be empty".to_string());
-        }
-
-        // Validate network configuration
-        if self.network.ports.orchestrator == 0 {
-            return Err("Network orchestrator port must be greater than 0".to_string());
-        }
-
+    pub fn validate(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(!self.system.environment.is_empty(), "System environment cannot be empty");
+        anyhow::ensure!(!self.system.system_id.is_empty(), "System ID cannot be empty");
+        anyhow::ensure!(
+            self.network.ports.orchestrator != 0,
+            "Network orchestrator port must be greater than 0"
+        );
         Ok(())
     }
 
@@ -285,24 +278,24 @@ mod tests {
     fn validate_errors_on_empty_environment() {
         let mut c = UnifiedSongbirdConfig::default();
         c.system.environment.clear();
-        assert_eq!(c.validate(), Err("System environment cannot be empty".to_string()));
+        let err = c.validate().unwrap_err();
+        assert!(err.to_string().contains("System environment cannot be empty"));
     }
 
     #[test]
     fn validate_errors_on_empty_system_id() {
         let mut c = UnifiedSongbirdConfig::default();
         c.system.system_id.clear();
-        assert_eq!(c.validate(), Err("System ID cannot be empty".to_string()));
+        let err = c.validate().unwrap_err();
+        assert!(err.to_string().contains("System ID cannot be empty"));
     }
 
     #[test]
     fn validate_errors_on_zero_orchestrator_port() {
         let mut c = UnifiedSongbirdConfig::default();
         c.network.ports.orchestrator = 0;
-        assert_eq!(
-            c.validate(),
-            Err("Network orchestrator port must be greater than 0".to_string())
-        );
+        let err = c.validate().unwrap_err();
+        assert!(err.to_string().contains("Network orchestrator port must be greater than 0"));
     }
 
     #[test]

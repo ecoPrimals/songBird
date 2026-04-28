@@ -130,16 +130,10 @@ impl PoolConfig {
     /// # Errors
     ///
     /// Returns an error if `max_size` is 0, `min_idle` > `max_size`, or `max_idle_time` is zero.
-    pub fn validate(&self) -> Result<(), String> {
-        if self.max_size == 0 {
-            return Err("max_size must be greater than 0".to_string());
-        }
-        if self.min_idle > self.max_size {
-            return Err("min_idle cannot be greater than max_size".to_string());
-        }
-        if self.max_idle_time.is_zero() {
-            return Err("max_idle_time cannot be zero".to_string());
-        }
+    pub fn validate(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(self.max_size > 0, "max_size must be greater than 0");
+        anyhow::ensure!(self.min_idle <= self.max_size, "min_idle cannot be greater than max_size");
+        anyhow::ensure!(!self.max_idle_time.is_zero(), "max_idle_time cannot be zero");
         Ok(())
     }
 }
@@ -478,7 +472,7 @@ impl<T: Send + Sync + 'static> ConnectionPoolBuilder<T> {
     pub async fn build(self) -> PoolResult<ConnectionPool<T>> {
         tokio::task::yield_now().await;
         // Validate configuration
-        self.config.validate().map_err(PoolError::ConnectionCreation)?;
+        self.config.validate().map_err(|e| PoolError::ConnectionCreation(e.to_string()))?;
 
         let inner = Arc::new(ConnectionPoolInner {
             connections: RwLock::new(VecDeque::with_capacity(self.config.max_size)),

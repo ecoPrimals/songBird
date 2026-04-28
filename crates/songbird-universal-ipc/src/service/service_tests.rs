@@ -235,6 +235,8 @@ fn ipc_list_and_provider_serialization_shapes() {
             virtual_endpoint: "/primal/q".into(),
             native_endpoint: "unix:///run/q".into(),
             capabilities: vec![],
+            signature: None,
+            signed_payload: None,
         }],
     };
     let v2 = serde_json::to_value(&dr).expect("discover result");
@@ -246,6 +248,8 @@ fn register_and_resolve_result_serialization() {
     let reg = RegisterResult {
         virtual_endpoint: "/primal/x".into(),
         registered_at: "t0".into(),
+        signature: None,
+        signed_payload: None,
     };
     let v = serde_json::to_value(&reg).expect("RegisterResult json");
     assert_eq!(v["virtual_endpoint"], "/primal/x");
@@ -254,6 +258,8 @@ fn register_and_resolve_result_serialization() {
         virtual_endpoint: "/primal/x".into(),
         native_endpoint: "native".into(),
         capabilities: vec!["c".into()],
+        signature: None,
+        signed_payload: None,
     };
     let v2 = serde_json::to_value(&res).expect("ResolveResult json");
     assert_eq!(v2["capabilities"][0], "c");

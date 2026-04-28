@@ -5364,6 +5364,7 @@ dependencies = [
 name = "songbird-types"
 version = "0.2.1"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
  "bitflags 2.11.1",
  "bytes",
@@ -5431,6 +5432,7 @@ dependencies = [
  "futures-util",
  "serde",
  "serde_json",
+ "songbird-crypto-provider",
  "songbird-discovery",
  "songbird-http-client",
  "songbird-igd",

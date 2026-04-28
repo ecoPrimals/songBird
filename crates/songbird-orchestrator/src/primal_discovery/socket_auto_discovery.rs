@@ -50,7 +50,13 @@ pub async fn discover_and_register_biomeos_primals(registry: &ServiceRegistry) -
             Some(result) => {
                 let endpoint = NativeEndpoint::UnixSocket(path.clone());
                 match registry
-                    .register(&result.primal_name, endpoint, result.capabilities.clone())
+                    .register(
+                        &result.primal_name,
+                        endpoint,
+                        result.capabilities.clone(),
+                        None,
+                        None,
+                    )
                     .await
                 {
                     Ok(_) => {

@@ -72,15 +72,12 @@ pub async fn run_server(
 
     // Step 3: Load configuration
     tracing::info!("📋 Loading configuration...");
-    let config = if let Some(path) = config_path {
-        tracing::info!("   Config file: {}", path);
-        CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {e}"))?
+    if let Some(ref path) = config_path {
+        tracing::info!("   Config file: {path}");
     } else {
         tracing::info!("   Config source: Environment variables");
-        CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {e}"))?
-    };
+    }
+    let config = CanonicalSongbirdConfig::from_env()?;
     tracing::info!("   Configuration: ✅ Loaded");
 
     // Step 4: Start the orchestrator (non-blocking, returns handle)

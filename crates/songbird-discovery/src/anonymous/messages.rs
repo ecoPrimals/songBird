@@ -285,48 +285,30 @@ impl AnonymousDiscoveryMessage {
     /// - Port is valid (non-zero)
     /// - Timestamp is recent (within 5 minutes)
     /// - For v3.0: `node_id` and endpoints are present
-    pub fn validate(&self) -> Result<(), String> {
-        if self.version != "2.0" && self.version != "2.1" && self.version != "3.0" {
-            return Err(format!("Unsupported protocol version: {}", self.version));
-        }
+    pub fn validate(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            self.version == "2.0" || self.version == "2.1" || self.version == "3.0",
+            "Unsupported protocol version: {}",
+            self.version
+        );
 
-        // v3.0 specific validation
         if self.version == "3.0" {
-            if self.node_id.is_none() {
-                return Err("v3.0 requires node_id".to_string());
-            }
-            if self.node_name.is_none() {
-                return Err("v3.0 requires node_name".to_string());
-            }
-            if self.endpoints.as_ref().is_none_or(Vec::is_empty) {
-                return Err("v3.0 requires at least one endpoint".to_string());
-            }
+            anyhow::ensure!(self.node_id.is_some(), "v3.0 requires node_id");
+            anyhow::ensure!(self.node_name.is_some(), "v3.0 requires node_name");
+            anyhow::ensure!(
+                self.endpoints.as_ref().is_some_and(|e| !e.is_empty()),
+                "v3.0 requires at least one endpoint"
+            );
         }
 
-        if self.port == 0 {
-            return Err("Invalid port: 0".to_string());
-        }
+        anyhow::ensure!(self.port != 0, "Invalid port: 0");
+        anyhow::ensure!(!self.session_id.is_empty(), "Session ID is empty");
+        anyhow::ensure!(!self.capabilities.is_empty(), "No capabilities specified");
+        anyhow::ensure!(!self.protocols.is_empty(), "No protocols specified");
 
-        if self.session_id.is_empty() {
-            return Err("Session ID is empty".to_string());
-        }
-
-        if self.capabilities.is_empty() {
-            return Err("No capabilities specified".to_string());
-        }
-
-        if self.protocols.is_empty() {
-            return Err("No protocols specified".to_string());
-        }
-
-        // Check timestamp is recent (within 5 minutes)
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-
         let age = now.saturating_sub(self.timestamp);
-        if age > 300 {
-            // 5 minutes
-            return Err(format!("Message too old: {age} seconds"));
-        }
+        anyhow::ensure!(age <= 300, "Message too old: {age} seconds");
 
         Ok(())
     }

@@ -66,6 +66,9 @@ songbird-universal = { path = "../songbird-universal" }
 # Canonical primal identifiers
 songbird-types = { path = "../songbird-types" }
 
+# Crypto provider (BearDog delegation — signs IPC registrations)
+songbird-crypto-provider = { path = "../songbird-crypto-provider" }
+
 songbird-process-env.workspace = true
 
 # Windows named pipes (only on Windows)

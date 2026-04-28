@@ -102,15 +102,12 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
     // Step 3: Load configuration
     tracing::info!("📋 Loading configuration...");
-    let mut config = if let Some(path) = args.config {
-        tracing::info!("   Config file: {}", path);
-        CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {e}"))?
+    if let Some(ref path) = args.config {
+        tracing::info!("   Config file: {path}");
     } else {
         tracing::info!("   Config source: Environment variables");
-        CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {e}"))?
-    };
+    }
+    let mut config = CanonicalSongbirdConfig::from_env()?;
 
     // Override port from CLI (CLI takes precedence over config/env)
     config.network.base_port = actual_port;
