@@ -19,7 +19,7 @@
 | **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Apr 27 verified) |
 | **Format** | Clean (`cargo fmt --check` passes; Apr 27 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; former 1030L monolith smart-refactored Wave 144; 4 former >700L files refactored Wave 133) |
+| **Files >800 lines** | 0 (largest production 763L `primal_discovery.rs`; Wave 176: `information_layers.rs` (1121L) smart-refactored into directory module; Wave 144: former 1030L monolith refactored; Wave 133: 4 former >700L files refactored) |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |
