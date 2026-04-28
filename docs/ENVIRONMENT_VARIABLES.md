@@ -67,7 +67,7 @@ No symlink workarounds are needed as of Wave 173.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SONGBIRD_ENV` | `development` | Runtime environment label |
-| `FAMILY_ID` | *(none)* | Multi-family identifier (e.g. `nucleus01`); enables BTSP and family-scoped sockets |
+| `FAMILY_ID` | *(none)* | Multi-family identifier (e.g. `nucleus01`); enables BTSP, family-scoped sockets, and **cryptographic signing of `ipc.register` payloads** (Ed25519 via BearDog delegation) |
 | `FAMILY_SEED` | *(none)* | BTSP handshake seed (raw string; Songbird base64-encodes before sending to BearDog) |
 
 ## Network

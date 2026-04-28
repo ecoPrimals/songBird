@@ -4,7 +4,7 @@
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: April 27, 2026
+**Last Updated**: April 28, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -21,14 +21,14 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` throughout — Wave 149: blanket `#![allow(clippy::all, pedantic, nursery)]` removed from 11 discovery/abstraction files (57 clippy issues resolved); Wave 147: all remaining bare `#[allow()]` given reason strings; `#[expect(reason)]` retained where lint provably fires; zero reasonless suppressions, zero blanket suppressions remain |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 7,683 lib passed, 0 failures, 22 ignored |
+| Tests | 7,692 lib passed, 0 failures, 22 ignored |
 | Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 33 domain sub-enums including `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases |
-| Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`; Apr 27 verified) |
+| Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`; Apr 28 verified) |
 | Build | Clean (zero errors, zero warnings) |
-| Formatting | Clean (`cargo fmt --check`; Apr 27 verified) |
+| Formatting | Clean (`cargo fmt --check`; Apr 28 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >800 lines | 0 (largest production 763L `primal_discovery.rs`; Wave 176: `information_layers.rs` (1121L) smart-refactored into directory module; Wave 133: 4 former >700L files refactored) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |

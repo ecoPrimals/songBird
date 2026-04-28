@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave178] - 2026-04-28 - Deep Debt: Result<_, String> → anyhow::Result, hardcoded evolution
+
+### Changed
+- **`Result<_, String>` → `anyhow::Result`**: Evolved 20+ non-handler functions across 6 crates from `Result<T, String>` to `anyhow::Result<T>` using `anyhow::ensure!`, `anyhow::Context`, and `anyhow::anyhow!`:
+  - `songbird-types`: `SongbirdResult::get_data()`, `into_result()`, `UnifiedSongbirdConfig::validate()`, `CanonicalSongbirdConfig::validate()`, `from_env()`, `CanonicalConfigBuilder::build()`, `ConfigMigrationUtils::migrate_from_json()`
+  - `songbird-config`: `CapabilityPortRegistry` (all 7 public methods: `register`, `get_port`, `get_config`, `register_ephemeral`, `has_capability`, `list_capabilities`, `clear`), `RegistryBuilder::build()`, `CanonicalPortConfig::to_capability_registry()`
+  - `songbird-http-client`: `PoolConfig::validate()`, `TlsAlert::parse()`
+  - `songbird-universal`: `LoadBalancer::get_next_endpoint()`
+  - `songbird-discovery`: `DiscoveryMessage::validate()`
+- **Infallible functions simplified**: `get_unified_config()` now returns `UnifiedCoreConfig` directly (was `Result<_, String>` but never errored); `CircuitBreakerManagerBuilder::build()` now returns `CircuitBreakerManager` directly
+- **`OptimizedHost::from_str`** simplified from `Result<Self, String>` to `Self` (was infallible)
+- **Hardcoded `NodeId::from("default-node")`** in `LineageRelayConfig` → reads `SONGBIRD_NODE_ID` / `NODE_ID` env vars with `"songbird-default"` fallback
+- **Config loading deduplicated**: removed redundant `if/else` branches in orchestrator server startup where both arms called `from_env()`; callers updated to propagate `anyhow::Error` cleanly (no more `.map_err(|e| anyhow::anyhow!(...))` wrappers)
+
+---
+
+## [v0.2.1-wave177] - 2026-04-28 - Signed IPC registrations (primalSpring Phase 55 audit)
+
+### Added
+- **Cryptographic registration signing**: `ipc.register` payloads are now signed via `BearDog` Ed25519 delegation (`crypto.sign.ed25519`) when `FAMILY_ID` is set. A deterministic canonical JSON payload is constructed from `primal_id`, sorted capabilities, endpoint, and timestamp, then base64-encoded and signed. Signatures and signed payloads are stored in the `ServiceRegistry` and surfaced on `ipc.resolve`, `ipc.discover`, and `capability.resolve` responses for consumer verification.
+- **Graceful standalone degradation**: when `FAMILY_ID` is absent (standalone mode), registrations proceed unsigned — `signature` and `signed_payload` fields are `None` and omitted from JSON via `skip_serializing_if`.
+- **`songbird-crypto-provider` dependency**: added to `songbird-universal-ipc` for direct BearDog crypto delegation.
+- **New tests**: 9 new tests covering canonical payload determinism, signature round-trip through registry, standalone mode, and wire-type serialization (7,692 lib tests total).
+
+---
+
 ## [v0.2.1-wave176] - 2026-04-27 - Deep Debt: large file refactor, hardcoding, error types, deprecation
 
 ### Changed

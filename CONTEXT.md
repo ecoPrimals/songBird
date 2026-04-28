@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: April 27, 2026
+**Last Updated**: April 28, 2026
 
 ## What It Does
 
@@ -34,10 +34,10 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 30 workspace members |
-| Tests | 7,683 lib passed (0 failures, 22 ignored) |
+| Tests | 7,692 lib passed (0 failures, 22 ignored) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 27 verified) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Apr 28 verified) |
 | Files >800 LOC | 0 (largest production 763L `primal_discovery.rs`; Wave 176: `information_layers.rs` (1121L) smart-refactored into directory module; Wave 133: 4 former >700L files refactored) |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |
@@ -54,7 +54,7 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 - `identity.get` (Wire Standard L3: `{primal, version, domain, license}`), `identity`
 - `capability.resolve` (single-step capability→endpoint, wired Wave 137), `discovery.peers` (wired Wave 137), `ipc.resolve` (capability-first with primal-name fallback; `capability`/`primal_id`/`name` params; `ipc.resolve_by_name` alias; evolved Wave 137b LD-02, Wave 151 PG-37), `lifecycle.composition`, `lifecycle.validate_consumed`
 - `inference.infer`, `inference.status`, `inference.list`, `inference.load` (canonical namespace; absorbs `model.*`/`ai.*`)
-- `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`
+- `ipc.register` (Ed25519-signed payloads via `BearDog` `crypto.sign.ed25519` when `FAMILY_ID` set; graceful degradation), `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`
 - `http.request`, `http.get`, `http.post`
 - `stun.*`, `igd.*`, `relay.*`, `mesh.*`, `punch.*`
 - `birdsong.*`, `beacon.encrypt`, `beacon.decrypt`, `beacon.get_id` (mito-beacon tier)

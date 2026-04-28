@@ -17,7 +17,7 @@
 
 | | |
 |--|--|
-| Passed | 7,683 |
+| Passed | 7,692 |
 | Failed | 0 |
 | Ignored | 22 |
 
