@@ -317,6 +317,20 @@ impl SongbirdFederation for TarpcServer {
     }
 }
 
+/// Convert a `ServiceRegistration` into the tarpc-friendly `ServiceInfo` DTO.
+#[must_use]
+pub fn registration_to_service_info(
+    s: songbird_network_federation::service_registry::ServiceRegistration,
+) -> ServiceInfo {
+    ServiceInfo {
+        name: s.service_name,
+        address: s.endpoint.split(':').next().unwrap_or("").to_string(),
+        port: s.endpoint.split(':').nth(1).and_then(|p| p.parse().ok()).unwrap_or(0),
+        capabilities: s.capabilities,
+        metadata: s.metadata,
+    }
+}
+
 /// Start the tarpc server
 ///
 /// # Arguments
@@ -385,4 +399,155 @@ pub async fn start_tarpc_server(
         .await;
 
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn service_info_serialization_roundtrip() {
+        let info = ServiceInfo {
+            name: "test-service".to_string(),
+            address: "10.0.0.1".to_string(),
+            port: 8080,
+            capabilities: vec!["crypto.sign".to_string(), "network.discovery".to_string()],
+            metadata: std::collections::HashMap::from([("type".to_string(), "primal".to_string())]),
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        let deserialized: ServiceInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name, "test-service");
+        assert_eq!(deserialized.port, 8080);
+        assert_eq!(deserialized.capabilities.len(), 2);
+    }
+
+    #[test]
+    fn discovery_query_empty_capabilities() {
+        let query = DiscoveryQuery {
+            capabilities: vec![],
+            filters: std::collections::HashMap::new(),
+        };
+        assert!(query.capabilities.is_empty());
+        assert!(query.filters.is_empty());
+    }
+
+    #[test]
+    fn discovery_query_serialization() {
+        let query = DiscoveryQuery {
+            capabilities: vec!["network.discovery".to_string()],
+            filters: std::collections::HashMap::from([(
+                "region".to_string(),
+                "us-east".to_string(),
+            )]),
+        };
+        let json = serde_json::to_string(&query).unwrap();
+        let deserialized: DiscoveryQuery = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.capabilities, vec!["network.discovery"]);
+        assert_eq!(deserialized.filters.get("region").unwrap(), "us-east");
+    }
+
+    #[test]
+    fn federation_status_serialization() {
+        let status = FederationStatus {
+            total_services: 5,
+            total_peers: 3,
+            uptime_seconds: 120,
+            version: "0.2.1".to_string(),
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        let deserialized: FederationStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.total_services, 5);
+        assert_eq!(deserialized.total_peers, 3);
+        assert_eq!(deserialized.uptime_seconds, 120);
+        assert_eq!(deserialized.version, "0.2.1");
+    }
+
+    #[test]
+    fn service_update_types() {
+        let update = ServiceUpdate {
+            update_type: ServiceUpdateType::Registered,
+            service: ServiceInfo {
+                name: "new-svc".to_string(),
+                address: "localhost".to_string(),
+                port: 9000,
+                capabilities: vec![],
+                metadata: std::collections::HashMap::new(),
+            },
+            timestamp: 1234567890,
+        };
+        let json = serde_json::to_string(&update).unwrap();
+        assert!(json.contains("Registered"));
+    }
+
+    #[test]
+    fn service_error_display() {
+        let err = ServiceError::RegistrationFailed("timeout".to_string());
+        assert!(err.to_string().contains("timeout"));
+
+        let err = ServiceError::DiscoveryFailed("no services".to_string());
+        assert!(err.to_string().contains("no services"));
+
+        let err = ServiceError::StatusFailed("unavailable".to_string());
+        assert!(err.to_string().contains("unavailable"));
+
+        let err = ServiceError::StreamFailed("broken pipe".to_string());
+        assert!(err.to_string().contains("broken pipe"));
+
+        let err = ServiceError::InternalError("panic".to_string());
+        assert!(err.to_string().contains("panic"));
+    }
+
+    #[test]
+    fn registration_to_service_info_parses_endpoint() {
+        let reg = songbird_network_federation::service_registry::ServiceRegistration {
+            service_id: "id-1".to_string(),
+            service_name: "my-svc".to_string(),
+            service_type: "primal".to_string(),
+            tower_id: "tower-1".to_string(),
+            tower_name: "Tower One".to_string(),
+            endpoint: "192.168.1.10:4433".to_string(),
+            capabilities: vec!["network.tls".to_string()],
+            metadata: std::collections::HashMap::new(),
+            health_status:
+                songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+            registered_at: chrono::Utc::now(),
+            last_seen: chrono::Utc::now(),
+        };
+        let info = registration_to_service_info(reg);
+        assert_eq!(info.name, "my-svc");
+        assert_eq!(info.address, "192.168.1.10");
+        assert_eq!(info.port, 4433);
+        assert_eq!(info.capabilities, vec!["network.tls"]);
+    }
+
+    #[test]
+    fn registration_to_service_info_handles_missing_port() {
+        let reg = songbird_network_federation::service_registry::ServiceRegistration {
+            service_id: "id-2".to_string(),
+            service_name: "no-port".to_string(),
+            service_type: "unknown".to_string(),
+            tower_id: "t".to_string(),
+            tower_name: "T".to_string(),
+            endpoint: "host-only".to_string(),
+            capabilities: vec![],
+            metadata: std::collections::HashMap::new(),
+            health_status:
+                songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+            registered_at: chrono::Utc::now(),
+            last_seen: chrono::Utc::now(),
+        };
+        let info = registration_to_service_info(reg);
+        assert_eq!(info.address, "host-only");
+        assert_eq!(info.port, 0);
+    }
+
+    #[tokio::test]
+    async fn tarpc_server_creation() {
+        let fed_state = Arc::new(FederationState::new("test-federation".to_string()));
+        let registry = Arc::new(FederatedServiceRegistry::new());
+        let server = TarpcServer::new(Arc::clone(&fed_state), Arc::clone(&registry));
+        let start = server.start_time.read().await;
+        assert!(start.elapsed().as_millis() < 100);
+    }
 }

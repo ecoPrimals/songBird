@@ -158,3 +158,86 @@ impl RelaySession {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn access_level_from_lineage_depth_boundaries() {
+        assert_eq!(AccessLevel::from_lineage_depth(0), AccessLevel::FullLineage);
+        assert_eq!(AccessLevel::from_lineage_depth(1), AccessLevel::SubMasked);
+        assert_eq!(AccessLevel::from_lineage_depth(3), AccessLevel::SubMasked);
+        assert_eq!(AccessLevel::from_lineage_depth(4), AccessLevel::Masked);
+        assert_eq!(AccessLevel::from_lineage_depth(10), AccessLevel::Masked);
+        assert_eq!(AccessLevel::from_lineage_depth(11), AccessLevel::Transport);
+        assert_eq!(AccessLevel::from_lineage_depth(usize::MAX), AccessLevel::Transport);
+    }
+
+    #[test]
+    fn access_level_capability_flags_match_policy() {
+        assert!(AccessLevel::SubMasked.can_see_node_id());
+        assert!(AccessLevel::FullLineage.can_see_node_id());
+        assert!(!AccessLevel::Masked.can_see_node_id());
+
+        assert!(AccessLevel::FullLineage.can_see_topology());
+        assert!(!AccessLevel::SubMasked.can_see_topology());
+
+        assert!(AccessLevel::FullLineage.can_revoke());
+        assert!(!AccessLevel::SubMasked.can_revoke());
+    }
+
+    #[test]
+    fn relay_session_serde_roundtrip() {
+        let created = chrono::Utc::now() - chrono::Duration::minutes(5);
+        let expires = chrono::Utc::now() + chrono::Duration::hours(1);
+        let session = RelaySession {
+            session_id: "sid".into(),
+            requester_id: "req".into(),
+            target_id: "tgt".into(),
+            relay_id: "rel".into(),
+            access_level: AccessLevel::Masked,
+            created_at: created,
+            expires_at: expires,
+        };
+        let json = serde_json::to_string(&session).unwrap();
+        let back: RelaySession = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.session_id, session.session_id);
+        assert_eq!(back.access_level, AccessLevel::Masked);
+        assert_eq!(back.created_at, created);
+        assert_eq!(back.expires_at, expires);
+    }
+
+    #[test]
+    fn relay_session_active_expiry_helpers_follow_wall_clock() {
+        let now = chrono::Utc::now();
+        let active = RelaySession {
+            session_id: "a".into(),
+            requester_id: "r".into(),
+            target_id: "t".into(),
+            relay_id: "l".into(),
+            access_level: AccessLevel::Transport,
+            created_at: now - chrono::Duration::minutes(1),
+            expires_at: now + chrono::Duration::minutes(30),
+        };
+        assert!(active.is_active());
+        assert!(!active.is_expired());
+        assert!(active.time_remaining().is_some());
+
+        let expired = RelaySession {
+            expires_at: now - chrono::Duration::seconds(2),
+            ..active.clone()
+        };
+        assert!(!expired.is_active());
+        assert!(expired.is_expired());
+        assert!(expired.time_remaining().is_none());
+
+        let not_yet_started = RelaySession {
+            created_at: now + chrono::Duration::minutes(1),
+            expires_at: now + chrono::Duration::hours(1),
+            ..active
+        };
+        assert!(!not_yet_started.is_active());
+    }
+}

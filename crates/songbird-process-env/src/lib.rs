@@ -141,6 +141,60 @@ pub fn reset_overlay() {
     overlay_lock().clear();
 }
 
+/// RAII guard that sets an overlay environment entry and restores the previous overlay state on drop.
+///
+/// Does **not** call [`std::env::set_var`]. Restoration uses the same overlay semantics as
+/// [`set_var`] / [`remove_var`]: if the key had no overlay entry before, it is removed from the
+/// overlay map on drop so reads fall through to the OS again.
+///
+/// # Examples
+///
+/// ```no_run
+/// use songbird_process_env::ScopedEnv;
+///
+/// {
+///     let _env = ScopedEnv::new("SERVICE_ID", "tower-test");
+///     assert!(songbird_process_env::var("SERVICE_ID").is_ok());
+/// }
+/// ```
+#[must_use = "hold `ScopedEnv` until the test or scope ends so the overlay is restored"]
+#[allow(
+    clippy::option_option,
+    reason = "outer Option = was key present; inner Option = overlay value (Some=set, None=removed)"
+)]
+pub struct ScopedEnv {
+    key: String,
+    previous: Option<Option<String>>,
+}
+
+impl ScopedEnv {
+    /// Overlay `key` with `value` until this guard is dropped.
+    pub fn new(key: impl Into<String>, value: impl AsRef<OsStr>) -> Self {
+        let key = key.into();
+        let mut guard = overlay_lock();
+        let previous = guard.insert(key.clone(), Some(key_str(value.as_ref())));
+        drop(guard);
+        Self {
+            key,
+            previous,
+        }
+    }
+}
+
+impl Drop for ScopedEnv {
+    fn drop(&mut self) {
+        let mut guard = overlay_lock();
+        match self.previous.take() {
+            None => {
+                guard.remove(&self.key);
+            }
+            Some(prev) => {
+                guard.insert(self.key.clone(), prev);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 #[expect(
@@ -575,5 +629,33 @@ mod tests {
         let k_str = key_str(key.as_os_str());
         assert_eq!(var(&k_str).unwrap(), "bar");
         remove_var(&k_str);
+    }
+
+    #[test]
+    fn scoped_env_restores_previous_overlay_entry() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_SCOPED_RESTORE__";
+        set_var(KEY, "before");
+        {
+            let _guard = ScopedEnv::new(KEY, "during");
+            assert_eq!(var(KEY).unwrap(), "during");
+        }
+        assert_eq!(var(KEY).unwrap(), "before");
+        remove_var(KEY);
+    }
+
+    #[test]
+    fn scoped_env_removes_overlay_key_when_absent_before() {
+        let _g = lock();
+        const KEY: &str = "__SONGBIRD_PE_SCOPED_ABSENT__";
+        overlay().lock().unwrap().remove(KEY);
+        {
+            let _guard = ScopedEnv::new(KEY, "only");
+            assert_eq!(var(KEY).unwrap(), "only");
+        }
+        assert!(
+            overlay().lock().unwrap().get(KEY).is_none(),
+            "overlay key should be removed after drop when it was absent before"
+        );
     }
 }

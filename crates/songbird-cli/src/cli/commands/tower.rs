@@ -563,4 +563,22 @@ mod tests {
         let c = caps(8, 64, Some(999));
         assert_eq!(determine_role(&c, "auto"), "orchestrator");
     }
+
+    #[test]
+    fn tower_bind_from_env_or_default_reads_overlay_address() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_BIND_ADDRESS", "192.168.99.7");
+        assert_eq!(super::tower_bind_from_env_or_default(), "192.168.99.7");
+    }
+
+    #[test]
+    fn tower_bind_from_env_or_default_accepts_ipv6_literal_from_overlay() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_BIND_ADDRESS", "::1");
+        assert_eq!(super::tower_bind_from_env_or_default(), "::1");
+    }
+
+    #[test]
+    fn tower_bind_from_env_or_default_trims_nothing_but_preserves_literal_value() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_BIND_ADDRESS", " 127.0.0.1 ");
+        assert_eq!(super::tower_bind_from_env_or_default(), " 127.0.0.1 ");
+    }
 }

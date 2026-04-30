@@ -631,6 +631,43 @@ mod tests {
         let response = b"HTTP/1.1 200 OK\r\n";
         assert!(!HttpsConnection::is_tls_response_complete(response, 1));
     }
+
+    #[test]
+    fn is_tls_response_complete_chunked_zero_terminator_without_transfer_encoding_header() {
+        let response = b"HTTP/1.1 200 OK\r\n\r\n0\r\n\r\n";
+        assert!(HttpsConnection::is_tls_response_complete(response, 1));
+    }
+
+    #[test]
+    fn is_tls_response_complete_chunked_cr_prefix_variant() {
+        let response = b"HTTP/1.1 200 OK\r\n\r\n\r\n0\r\n\r\n";
+        assert!(HttpsConnection::is_tls_response_complete(response, 1));
+    }
+
+    #[test]
+    fn is_tls_response_complete_content_length_header_whitespace_tolerance() {
+        let mut response = b"HTTP/1.1 200 OK\r\nContent-Length:    3\r\n\r\n".to_vec();
+        response.extend_from_slice(b"abc");
+        assert!(HttpsConnection::is_tls_response_complete(&response, 2));
+    }
+
+    #[test]
+    fn handshake_strategies_exhaustive_full_order() {
+        let cfg = TlsConfig {
+            fallback_strategy: FallbackStrategy::Exhaustive,
+            ..Default::default()
+        };
+        let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
+        assert_eq!(
+            strategies,
+            vec![
+                ExtensionStrategy::Modern,
+                ExtensionStrategy::Standard,
+                ExtensionStrategy::Minimal,
+                ExtensionStrategy::MaxCompatibility,
+            ]
+        );
+    }
 }
 
 // Note: Full integration tests for HttpsConnection are in the main client tests

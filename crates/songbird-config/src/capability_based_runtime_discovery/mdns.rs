@@ -320,8 +320,10 @@ pub struct MdnsServiceInfo {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use std::net::{Ipv4Addr, Ipv6Addr};
 
     #[test]
     fn test_mdns_discovery_creation() {
@@ -346,5 +348,141 @@ mod tests {
     fn test_mdns_with_timeout() {
         let discovery = MdnsDiscovery::new(None).with_timeout(Duration::from_secs(10));
         assert_eq!(discovery.timeout, Duration::from_secs(10));
+    }
+
+    fn fixture_service_info(txt: &[(&str, &str)]) -> mdns_sd::ServiceInfo {
+        mdns_sd::ServiceInfo::new(
+            "_songbird._tcp.local.",
+            "fixture-instance",
+            "fixture-host.local.",
+            "192.168.50.2",
+            9400,
+            txt,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn parse_service_info_matches_capability_and_builds_endpoint_metadata() {
+        let info = fixture_service_info(&[
+            ("capability", "compute"),
+            ("features", "batch, gpu"),
+            ("protocol", "https"),
+            ("priority", "5"),
+            ("note", "lab"),
+        ]);
+        let req = CapabilityRequest::new("compute");
+        let svc = MdnsDiscovery::parse_service_info(&info, &req).unwrap();
+        assert_eq!(svc.endpoint, "http://192.168.50.2:9400");
+        assert_eq!(svc.protocol, Protocol::Https);
+        assert_eq!(svc.features, vec!["batch", "gpu"]);
+        assert_eq!(svc.priority, 5);
+        assert_eq!(svc.metadata.get("note"), Some(&"lab".to_string()));
+        assert_eq!(svc.metadata.get("capability"), Some(&"compute".to_string()));
+    }
+
+    #[test]
+    fn parse_service_info_accepts_cap_txt_alias() {
+        let info = fixture_service_info(&[("cap", "storage"), ("protocol", "http")]);
+        let svc =
+            MdnsDiscovery::parse_service_info(&info, &CapabilityRequest::new("storage")).unwrap();
+        assert_eq!(svc.features, Vec::<String>::new());
+        assert_eq!(svc.priority, 100);
+        assert_eq!(svc.protocol, Protocol::Http);
+    }
+
+    #[test]
+    fn parse_service_info_filters_wrong_capability() {
+        let info = fixture_service_info(&[("capability", "ai")]);
+        assert!(
+            MdnsDiscovery::parse_service_info(&info, &CapabilityRequest::new("compute")).is_none()
+        );
+    }
+
+    #[test]
+    fn parse_service_info_protocol_variants_and_bad_priority_default() {
+        let ws = fixture_service_info(&[("capability", "ai"), ("protocol", "ws")]);
+        assert_eq!(
+            MdnsDiscovery::parse_service_info(&ws, &CapabilityRequest::new("ai")).unwrap().protocol,
+            Protocol::WebSocket
+        );
+
+        let tarpc = fixture_service_info(&[("capability", "ai"), ("protocol", "tarpc")]);
+        assert_eq!(
+            MdnsDiscovery::parse_service_info(&tarpc, &CapabilityRequest::new("ai"))
+                .unwrap()
+                .protocol,
+            Protocol::Tarpc
+        );
+
+        let unknown =
+            fixture_service_info(&[("capability", "ai"), ("protocol", "grpc-should-map-http")]);
+        assert_eq!(
+            MdnsDiscovery::parse_service_info(&unknown, &CapabilityRequest::new("ai"))
+                .unwrap()
+                .protocol,
+            Protocol::Http
+        );
+
+        let bad_pri = fixture_service_info(&[("capability", "ai"), ("priority", "not-a-u32")]);
+        assert_eq!(
+            MdnsDiscovery::parse_service_info(&bad_pri, &CapabilityRequest::new("ai"))
+                .unwrap()
+                .priority,
+            100
+        );
+    }
+
+    #[test]
+    fn select_best_service_prefers_priority_then_loopback_family() {
+        let req = CapabilityRequest::new("ai").with_features(&["embed"]);
+        let candidates = vec![
+            MdnsService {
+                name: "slow.local.".into(),
+                endpoint: "http://10.0.0.1:1".into(),
+                protocol: Protocol::Http,
+                features: vec!["embed".into()],
+                metadata: HashMap::new(),
+                priority: 50,
+                address: IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
+            },
+            MdnsService {
+                name: "fast-ipv4-loopback.local.".into(),
+                endpoint: "http://127.0.0.1:2".into(),
+                protocol: Protocol::Http,
+                features: vec!["embed".into()],
+                metadata: HashMap::new(),
+                priority: 10,
+                address: IpAddr::V4(Ipv4Addr::LOCALHOST),
+            },
+            MdnsService {
+                name: "fast-ipv6-loopback.local.".into(),
+                endpoint: "http://[::1]:3".into(),
+                protocol: Protocol::Http,
+                features: vec!["embed".into()],
+                metadata: HashMap::new(),
+                priority: 10,
+                address: IpAddr::V6(Ipv6Addr::LOCALHOST),
+            },
+        ];
+
+        let best = MdnsDiscovery::select_best_service(&candidates, &req).unwrap();
+        assert_eq!(best.endpoint, "http://[::1]:3");
+        assert_eq!(best.name, "fast-ipv6-loopback.local.");
+    }
+
+    #[test]
+    fn select_best_service_errors_when_required_features_missing() {
+        let svc = MdnsService {
+            name: "x".into(),
+            endpoint: "http://127.0.0.1:1".into(),
+            protocol: Protocol::Http,
+            features: vec!["a".into()],
+            metadata: HashMap::new(),
+            priority: 1,
+            address: IpAddr::V4(Ipv4Addr::LOCALHOST),
+        };
+        let req = CapabilityRequest::new("compute").with_features(&["missing"]);
+        assert!(MdnsDiscovery::select_best_service(&[svc], &req).is_err());
     }
 }

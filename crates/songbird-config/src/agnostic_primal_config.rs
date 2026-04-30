@@ -338,9 +338,19 @@ impl PrimalConfigMigration {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::env_override::EnvOverride;
+    use std::sync::OnceLock;
+    use tokio::sync::Mutex;
+
+    /// Serialized overlay reads/writes — [`songbird_process_env`] overlay is process-global.
+    static OVERLAY_ENV_TEST_SERIAL: OnceLock<Mutex<()>> = OnceLock::new();
+
+    async fn lock_overlay_env_tests() -> tokio::sync::MutexGuard<'static, ()> {
+        OVERLAY_ENV_TEST_SERIAL.get_or_init(|| Mutex::new(())).lock().await
+    }
 
     /// Test concurrent-safe capability endpoint discovery
     ///
@@ -431,5 +441,82 @@ mod tests {
         );
 
         // No cleanup needed - env is scoped
+    }
+
+    #[tokio::test]
+    async fn from_environment_reads_capability_endpoint_via_overlay() {
+        let _serial = lock_overlay_env_tests().await;
+        let _security = songbird_process_env::ScopedEnv::new(
+            "CAPABILITY_SECURITY_ENDPOINT",
+            "https://sec:8443",
+        );
+        let cfg = AgnosticPrimalConfig::from_environment().unwrap();
+        assert_eq!(cfg.capability_endpoints.get("security"), Some(&"https://sec:8443".to_string()));
+    }
+
+    #[tokio::test]
+    async fn discover_capability_endpoints_includes_standard_overlay_keys() {
+        let _serial = lock_overlay_env_tests().await;
+        let _compute = songbird_process_env::ScopedEnv::new(
+            "CAPABILITY_COMPUTE_ENDPOINT",
+            "http://compute:8082",
+        );
+        let endpoints = AgnosticPrimalConfig::discover_capability_endpoints();
+        assert_eq!(endpoints.get("compute"), Some(&"http://compute:8082".to_string()));
+    }
+
+    #[tokio::test]
+    async fn create_discovery_config_reflects_overlay_flags_and_methods() {
+        let _serial = lock_overlay_env_tests().await;
+        let _dns = songbird_process_env::ScopedEnv::new("ENABLE_DNS_SRV_DISCOVERY", "true");
+        let _registry =
+            songbird_process_env::ScopedEnv::new("SERVICE_REGISTRY_ENDPOINT", "http://consul:8500");
+        let _mdns = songbird_process_env::ScopedEnv::new("ENABLE_MDNS_DISCOVERY", "1");
+        let _kube = songbird_process_env::ScopedEnv::new("KUBERNETES_SERVICE_HOST", "10.96.0.1");
+        let _disabled =
+            songbird_process_env::ScopedEnv::new("CAPABILITY_DISCOVERY_ENABLED", "false");
+        let _no_cache = songbird_process_env::ScopedEnv::new("DISABLE_CAPABILITY_CACHE", "yes");
+        let _timeout = songbird_process_env::ScopedEnv::new("CAPABILITY_DISCOVERY_TIMEOUT", "42");
+        let _ttl = songbird_process_env::ScopedEnv::new("CAPABILITY_CACHE_TTL", "900");
+
+        let d = AgnosticPrimalConfig::create_discovery_config();
+
+        assert!(!d.enabled);
+        assert_eq!(d.methods.first(), Some(&DiscoveryMethod::Environment));
+        assert!(d.methods.contains(&DiscoveryMethod::DnsSrv));
+        assert!(d.methods.contains(&DiscoveryMethod::HttpRegistry));
+        assert!(d.methods.contains(&DiscoveryMethod::ContainerMetadata));
+        assert!(d.methods.contains(&DiscoveryMethod::Mdns));
+        assert!(!d.enable_cache);
+        assert_eq!(d.timeout_secs, 42);
+        assert_eq!(d.cache_ttl_secs, 900);
+    }
+
+    #[tokio::test]
+    async fn create_service_mesh_config_reads_overlay() {
+        let _serial = lock_overlay_env_tests().await;
+        let _tls = songbird_process_env::ScopedEnv::new("SERVICE_MESH_TLS", "false");
+        let _proto = songbird_process_env::ScopedEnv::new("SERVICE_MESH_PROTOCOL", "json-rpc");
+        let _interval =
+            songbird_process_env::ScopedEnv::new("SERVICE_MESH_DISCOVERY_INTERVAL", "33");
+        let _enabled = songbird_process_env::ScopedEnv::new("SERVICE_MESH_ENABLED", "0");
+
+        let mesh = AgnosticPrimalConfig::create_service_mesh_config();
+        assert!(!mesh.enabled);
+        assert!(!mesh.enable_tls);
+        assert_eq!(mesh.protocol, "json-rpc");
+        assert_eq!(mesh.discovery_interval_secs, 33);
+    }
+
+    #[tokio::test]
+    async fn request_capability_returns_overlay_ai_endpoint_without_discovery_roundtrip() {
+        let _serial = lock_overlay_env_tests().await;
+        let _ai = songbird_process_env::ScopedEnv::new(
+            "CAPABILITY_AI_ENDPOINT",
+            "http://models.local:9200",
+        );
+        let cfg = AgnosticPrimalConfig::from_environment().unwrap();
+        let endpoint = cfg.request_capability("ai").await.unwrap();
+        assert_eq!(endpoint, "http://models.local:9200");
     }
 }

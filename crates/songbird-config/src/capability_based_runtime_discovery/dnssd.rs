@@ -262,8 +262,14 @@ struct DnsService {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use hickory_resolver::lookup::{Lookup, TxtLookup};
+    use hickory_resolver::proto::op::Query;
+    use hickory_resolver::proto::rr::rdata::{SRV, TXT};
+    use hickory_resolver::proto::rr::{Name, RData, RecordType};
+    use std::str::FromStr;
 
     #[test]
     fn test_dnssd_discovery_creation() {
@@ -293,5 +299,128 @@ mod tests {
         // Service name should be: _ai._tcp.songbird.local
         let expected = format!("_{}._tcp.{}", request.capability, discovery.domain);
         assert_eq!(expected, "_ai._tcp.songbird.local");
+    }
+
+    fn txt_lookup_fixture(strings: Vec<String>) -> TxtLookup {
+        let name = Name::from_str("_fixture._tcp.local.").unwrap();
+        let query = Query::query(name, RecordType::TXT);
+        let txt = TXT::new(strings);
+        Lookup::from_rdata(query, RData::TXT(txt)).into()
+    }
+
+    #[test]
+    fn parse_service_builds_http_endpoint_without_txt() {
+        let target = Name::from_str("compute-1.example.local.").unwrap();
+        let srv = SRV::new(20, 100, 9100, target);
+        let req = CapabilityRequest::new("compute");
+        let svc = DnsSDDiscovery::parse_service(&srv, None, &req);
+        assert_eq!(svc.endpoint, "http://compute-1.example.local.:9100");
+        assert_eq!(svc.protocol, Protocol::Http);
+        assert!(svc.features.is_empty());
+        assert_eq!(svc.priority, 20);
+        assert_eq!(svc.weight, 100);
+    }
+
+    #[test]
+    fn parse_service_applies_txt_features_protocol_and_metadata() {
+        let target = Name::from_str("registry-host.local.").unwrap();
+        let srv = SRV::new(5, 50, 443, target.clone());
+        let txt = txt_lookup_fixture(vec![
+            "features=kv,transactions".into(),
+            "protocol=https".into(),
+            "zone=us-east".into(),
+        ]);
+        let req = CapabilityRequest::new("storage");
+        let svc = DnsSDDiscovery::parse_service(&srv, Some(txt), &req);
+        assert_eq!(svc.endpoint, "https://registry-host.local.:443");
+        assert_eq!(svc.protocol, Protocol::Https);
+        assert_eq!(svc.features, vec!["kv", "transactions"]);
+        assert_eq!(svc.metadata.get("zone"), Some(&"us-east".to_string()));
+        assert_eq!(svc.priority, 5);
+    }
+
+    #[test]
+    fn parse_service_protocol_tarpc_ws_and_unknown_metadata_only() {
+        let target = Name::from_str("tar-host.local.").unwrap();
+        let srv_t = SRV::new(1, 0, 3030, target.clone());
+        let txt_t = txt_lookup_fixture(vec!["protocol=tarpc".into()]);
+        assert_eq!(
+            DnsSDDiscovery::parse_service(&srv_t, Some(txt_t), &CapabilityRequest::new("compute"))
+                .protocol,
+            Protocol::Tarpc
+        );
+
+        let srv_w = SRV::new(1, 0, 8080, target.clone());
+        let txt_w = txt_lookup_fixture(vec!["protocol=websocket".into()]);
+        assert_eq!(
+            DnsSDDiscovery::parse_service(&srv_w, Some(txt_w), &CapabilityRequest::new("compute"))
+                .protocol,
+            Protocol::WebSocket
+        );
+
+        let srv_u = SRV::new(2, 0, 80, target);
+        let txt_u = txt_lookup_fixture(vec!["protocol=grpc".into(), "extra=v".into()]);
+        let svc_u =
+            DnsSDDiscovery::parse_service(&srv_u, Some(txt_u), &CapabilityRequest::new("compute"));
+        assert_eq!(svc_u.protocol, Protocol::Http);
+        assert_eq!(svc_u.metadata.get("extra"), Some(&"v".to_string()));
+    }
+
+    #[test]
+    fn select_best_service_orders_priority_then_weight() {
+        let req = CapabilityRequest::new("ai").with_features(&["infer"]);
+        let services = vec![
+            DnsService {
+                name: "low-weight.local.".into(),
+                endpoint: "http://low-weight.local.:1".into(),
+                protocol: Protocol::Http,
+                features: vec!["infer".into()],
+                metadata: HashMap::new(),
+                priority: 10,
+                weight: 10,
+            },
+            DnsService {
+                name: "high-weight.local.".into(),
+                endpoint: "http://high-weight.local.:2".into(),
+                protocol: Protocol::Http,
+                features: vec!["infer".into()],
+                metadata: HashMap::new(),
+                priority: 10,
+                weight: 100,
+            },
+            DnsService {
+                name: "worse-prio.local.".into(),
+                endpoint: "http://worse-prio.local.:3".into(),
+                protocol: Protocol::Http,
+                features: vec!["infer".into()],
+                metadata: HashMap::new(),
+                priority: 99,
+                weight: 1000,
+            },
+        ];
+
+        let picked = DnsSDDiscovery::select_best_service(&services, &req).unwrap();
+        assert_eq!(picked.endpoint, "http://high-weight.local.:2");
+        assert_eq!(picked.name, "high-weight.local.");
+    }
+
+    #[test]
+    fn select_best_service_filters_required_features() {
+        let svc = DnsService {
+            name: "limited.local.".into(),
+            endpoint: "http://limited.local.:80".into(),
+            protocol: Protocol::Http,
+            features: vec!["alpha".into()],
+            metadata: HashMap::new(),
+            priority: 0,
+            weight: 1,
+        };
+        assert!(
+            DnsSDDiscovery::select_best_service(
+                &[svc],
+                &CapabilityRequest::new("compute").with_features(&["beta"]),
+            )
+            .is_err()
+        );
     }
 }

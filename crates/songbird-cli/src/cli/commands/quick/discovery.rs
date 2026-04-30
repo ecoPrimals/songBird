@@ -395,4 +395,120 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("Unknown discovery method"), "{msg}");
     }
+
+    #[test]
+    fn compatibility_score_two_nodes_skips_cluster_bonus() {
+        let net = DiscoveredNetwork {
+            name: "pair".into(),
+            node_count: 2,
+            network_type: "Subnet".into(),
+            institution: None,
+            endpoint: "10.0.0.1:1".into(),
+            compatibility_score: 0.0,
+        };
+        assert!((calculate_compatibility_score(&net) - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn compatibility_score_three_nodes_applies_ideal_cluster_bonus() {
+        let net = DiscoveredNetwork {
+            name: "trip".into(),
+            node_count: 3,
+            network_type: "Subnet".into(),
+            institution: None,
+            endpoint: "10.0.0.2:1".into(),
+            compatibility_score: 0.0,
+        };
+        assert!((calculate_compatibility_score(&net) - 0.7).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn compatibility_score_very_large_cluster_partial_bonus() {
+        let net = DiscoveredNetwork {
+            name: "huge".into(),
+            node_count: 500,
+            network_type: "WAN".into(),
+            institution: None,
+            endpoint: "10.0.0.3:1".into(),
+            compatibility_score: 0.0,
+        };
+        assert!((calculate_compatibility_score(&net) - 0.6).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn compatibility_score_lowercase_research_no_academic_keyword_match() {
+        let net = DiscoveredNetwork {
+            name: "lab".into(),
+            node_count: 10,
+            network_type: "research consortium".into(),
+            institution: None,
+            endpoint: "10.0.0.4:1".into(),
+            compatibility_score: 0.0,
+        };
+        assert!((calculate_compatibility_score(&net) - 0.7).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn compatibility_score_subtype_contains_research_token() {
+        let net = DiscoveredNetwork {
+            name: "lab".into(),
+            node_count: 10,
+            network_type: "GridResearchNet".into(),
+            institution: None,
+            endpoint: "10.0.0.5:1".into(),
+            compatibility_score: 0.0,
+        };
+        assert!((calculate_compatibility_score(&net) - 0.9).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn parse_discovery_response_rejects_empty_object() {
+        let src: IpAddr = "203.0.113.10".parse().unwrap();
+        assert!(parse_discovery_response("{}", src).is_none());
+    }
+
+    #[test]
+    fn parse_discovery_response_rejects_wrong_nodes_scalar_type() {
+        let src: IpAddr = "203.0.113.11".parse().unwrap();
+        let json = r#"{"name":"x","nodes":"not-number","type":"T"}"#;
+        assert!(parse_discovery_response(json, src).is_none());
+    }
+
+    #[test]
+    fn parse_discovery_response_requires_name_field() {
+        let src: IpAddr = "203.0.113.12".parse().unwrap();
+        let json = r#"{"nodes":3,"type":"Subnet"}"#;
+        assert!(parse_discovery_response(json, src).is_none());
+    }
+
+    #[test]
+    fn parse_discovery_response_accepts_institution_null() {
+        let src: IpAddr = "203.0.113.13".parse().unwrap();
+        let json = r#"{"name":"null-inst","nodes":2,"type":"Academic","institution":null}"#;
+        let net = parse_discovery_response(json, src).unwrap();
+        assert!(net.institution.is_none());
+        assert_eq!(net.name, "null-inst");
+        assert_eq!(net.node_count, 2);
+        assert!(net.endpoint.starts_with("203.0.113.13:"));
+    }
+
+    #[test]
+    fn discovery_http_port_overlay_override_numeric() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "49152");
+        assert_eq!(super::discovery_http_port(), 49152);
+    }
+
+    #[test]
+    fn discovery_http_port_invalid_overlay_value_falls_back_to_canonical_default() {
+        let expected = songbird_config::canonical::constants::network::default_orchestrator_port();
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "nan");
+        assert_eq!(super::discovery_http_port(), expected);
+    }
+
+    #[test]
+    fn discovery_http_port_empty_overlay_value_falls_back_to_canonical_default() {
+        let expected = songbird_config::canonical::constants::network::default_orchestrator_port();
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "");
+        assert_eq!(super::discovery_http_port(), expected);
+    }
 }

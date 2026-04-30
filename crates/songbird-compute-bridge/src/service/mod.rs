@@ -188,4 +188,45 @@ mod tests {
         assert_eq!(resolve_tower_id(None, Some("from-env".into()), "ignored"), "from-env");
         assert_eq!(resolve_tower_id(None, None, "mybox"), "tower-mybox");
     }
+
+    #[test]
+    fn normalize_capabilities_csv_empty_duplicate_and_whitespace() {
+        assert_eq!(normalize_capabilities_csv(""), vec![""]);
+        assert_eq!(
+            normalize_capabilities_csv("a,,b"),
+            vec!["a".to_string(), "".to_string(), "b".to_string()]
+        );
+        assert_eq!(
+            normalize_capabilities_csv("gpu, gpu ,gpu"),
+            vec!["gpu".to_string(), "gpu".to_string(), "gpu".to_string()]
+        );
+        assert_eq!(normalize_capabilities_csv("  x  ,  y"), vec!["x".to_string(), "y".to_string()]);
+        assert_eq!(
+            normalize_capabilities_csv(",,,,"),
+            vec!["".to_string(), "".to_string(), "".to_string(), "".to_string(), "".to_string()]
+        );
+    }
+
+    #[test]
+    fn resolve_tower_id_explicit_empty_string_wins_over_env_option() {
+        assert_eq!(resolve_tower_id(Some(String::new()), Some("svc".into()), "host"), "");
+    }
+
+    #[tokio::test]
+    async fn resolve_tower_id_reads_service_id_from_process_env_overlay() {
+        let _env = songbird_process_env::ScopedEnv::new("SERVICE_ID", "overlay-tower");
+        let tid = resolve_tower_id(None, songbird_process_env::var("SERVICE_ID").ok(), "hostname");
+        assert_eq!(tid, "overlay-tower");
+    }
+
+    #[tokio::test]
+    async fn resolve_tower_id_explicit_beats_service_id_overlay() {
+        let _env = songbird_process_env::ScopedEnv::new("SERVICE_ID", "env-tower");
+        let tid = resolve_tower_id(
+            Some("cli-tower".into()),
+            songbird_process_env::var("SERVICE_ID").ok(),
+            "hostname",
+        );
+        assert_eq!(tid, "cli-tower");
+    }
 }

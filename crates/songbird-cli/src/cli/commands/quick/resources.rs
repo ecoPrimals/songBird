@@ -132,3 +132,36 @@ fn detect_platform() -> String {
 fn detect_architecture() -> String {
     std::env::consts::ARCH.to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    #[tokio::test]
+    async fn detect_network_speed_fast_case_insensitive() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "FaSt");
+        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Fast));
+    }
+
+    #[tokio::test]
+    async fn detect_network_speed_slow_branch() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "slow");
+        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Slow));
+    }
+
+    #[tokio::test]
+    async fn detect_network_speed_unknown_word_maps_to_medium() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "fiber-line");
+        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Medium));
+    }
+
+    #[test]
+    fn detect_platform_matches_std_os_constant() {
+        assert_eq!(super::detect_platform(), std::env::consts::OS.to_string());
+    }
+
+    #[test]
+    fn detect_architecture_matches_std_arch_constant() {
+        assert_eq!(super::detect_architecture(), std::env::consts::ARCH.to_string());
+    }
+}

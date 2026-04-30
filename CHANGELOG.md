@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave179] - 2026-04-30 - Deep Debt + Coverage Expansion: +92 tests across 8 crates
+
+### Added
+- **Coverage expansion**: 92 new tests across 15+ files in 8 crates targeting 0%-35% coverage modules:
+  - `songbird-orchestrator`: `server/mod.rs` (ServerManager, HealthCheckService, ServiceMonitor, env-driven health checks), `server/tarpc_server.rs` (ServiceInfo/DiscoveryQuery/FederationStatus serde, ServiceError display, endpoint parsing, TarpcServer creation)
+  - `songbird-cli`: `commands/quick/resources.rs` (network speed env detection, platform/arch), `commands/status.rs` (JSON serialization edges, status label branches), `commands/tower.rs` (bind env override), `commands/quick/discovery.rs` (parse edges, port env override, compatibility score)
+  - `songbird-config`: `capability_based_runtime_discovery/mdns.rs` (fixture-backed service parsing, priority selection, IPv4/IPv6 preference), `capability_based_runtime_discovery/dnssd.rs` (TXT record parsing, protocol detection, feature filtering), `agnostic_primal_config.rs` (env-driven config assembly with ScopedEnv), `capability_endpoints/remote_probes.rs` (Consul/Kubernetes JSON parsing)
+  - `songbird-network-federation`: `security/birdsong.rs` (encryption, timestamps, broadcast keys), `security/relay.rs` (access levels, session lifecycle, expiry)
+  - `songbird-compute-bridge`: `service/mod.rs` (normalization edges, tower ID resolution)
+  - `songbird-http-client`: `connection/https.rs` (chunked body, content-length, strategy ordering)
+  - `songbird-discovery`: `anonymous/broadcaster_tests.rs` (session IDs, intervals, message assembly, identity tags)
+  - `songbird-process-env`: `ScopedEnv` RAII guard for test env isolation (overlay restore on drop)
+
+### Changed
+- **`songbird-process-env`**: Added `ScopedEnv` struct — RAII guard that sets an overlay env entry and restores previous state on drop (replaces `set_var`/`reset_overlay` pattern in tests for safe concurrent test isolation)
+- **`songbird-orchestrator/server/tarpc_server.rs`**: Extracted `registration_to_service_info()` as pub helper (previously inline in `discover_services` closure)
+- **`songbird-config/capability_endpoints/remote_probes.rs`**: Extracted `parse_consul_catalog_service()` and `parse_kubernetes_service_cluster_endpoint()` as pub helpers for testability
+
+---
+
 ## [v0.2.1-wave178] - 2026-04-28 - Deep Debt: Result<_, String> → anyhow::Result, hardcoded evolution
 
 ### Changed

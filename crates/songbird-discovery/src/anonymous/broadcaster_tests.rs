@@ -8,6 +8,9 @@ use std::net::SocketAddr;
 use crate::anonymous::broadcaster::AnonymousDiscoveryBroadcaster;
 use crate::anonymous::messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
 
+use super::protocol::build_discovery_plaintext;
+use super::scheduling::{broadcast_interval, rotating_session_id};
+
 #[test]
 fn test_broadcaster_new_v2() {
     let broadcaster = AnonymousDiscoveryBroadcaster::new(
@@ -180,4 +183,88 @@ fn v2_constructor_sets_version_and_interval() {
     assert_eq!(br.version, "2.1");
     assert_eq!(br.interval_secs, 42);
     assert_eq!(br.port, 9090);
+}
+
+#[test]
+fn rotating_session_id_format_and_hour_bucket() {
+    let id = rotating_session_id();
+    assert!(id.starts_with("session-"), "expected hour bucket prefix, got {id:?}");
+    let slot: u64 = id.strip_prefix("session-").expect("prefix").parse().expect("numeric slot");
+    let expected_slot =
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+            / 3600;
+    assert_eq!(slot, expected_slot);
+}
+
+#[tokio::test]
+async fn broadcast_interval_period_matches_secs() {
+    let iv = broadcast_interval(47);
+    assert_eq!(iv.period(), std::time::Duration::from_secs(47));
+}
+
+#[test]
+fn build_discovery_plaintext_v21_with_attestations_validates() {
+    use crate::IdentityAttestation;
+
+    let att = IdentityAttestation {
+        provider_capability: "security/identity".into(),
+        format: "jwt".into(),
+        data: serde_json::json!({"sub": "node"}),
+    };
+    let prep = build_discovery_plaintext(
+        "2.1",
+        None,
+        None,
+        None,
+        vec!["compute".into()],
+        vec!["https".into()],
+        8443,
+        Some(vec![att]),
+        Some(vec!["crypto:family:f1".into(), "crypto:role:r".into()]),
+    )
+    .expect("plaintext");
+    assert!(!prep.session_id.is_empty());
+    let msg = AnonymousDiscoveryMessage::from_bytes(&prep.bytes).expect("parse");
+    assert!(msg.validate().is_ok());
+    assert_eq!(msg.tags, Some(vec!["crypto:family:f1".into(), "crypto:role:r".into()]));
+    assert!(msg.identity_attestations.is_some());
+}
+
+#[test]
+fn build_discovery_plaintext_v30_preserves_capabilities_order() {
+    let eps = vec![TransportEndpointMessage {
+        interface_type: "lo".into(),
+        address: "127.0.0.1:1".into(),
+        protocols: vec!["https".into()],
+        preference: 0,
+    }];
+    let prep = build_discovery_plaintext(
+        "3.0",
+        Some("nid".into()),
+        Some("nn".into()),
+        Some(eps),
+        vec!["z".into(), "a".into(), "m".into()],
+        vec![],
+        0,
+        None,
+        None,
+    )
+    .expect("v3 plaintext");
+    let msg = AnonymousDiscoveryMessage::from_bytes(&prep.bytes).expect("parse");
+    assert_eq!(msg.capabilities, vec!["z".to_string(), "a".to_string(), "m".to_string()]);
+}
+
+#[test]
+fn with_identity_tags_preserves_order_when_non_empty() {
+    let tags = vec!["p:a:1".into(), "p:b:2".into(), "p:c:3".into()];
+    let b = AnonymousDiscoveryBroadcaster::new(
+        vec!["c".into()],
+        vec!["https".into()],
+        443,
+        vec!["224.0.0.251:2300".parse().unwrap()],
+        15,
+    )
+    .with_identity_tags(tags.clone());
+    assert_eq!(b.tags.as_ref().expect("tags"), &tags);
+    assert_eq!(b.interval_secs, 15);
 }

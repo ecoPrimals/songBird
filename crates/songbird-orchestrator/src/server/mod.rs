@@ -523,3 +523,98 @@ pub struct ServiceMonitoringReport {
     pub critical_services: u32,
     pub timestamp: std::time::SystemTime,
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn server_manager_default_interval() {
+        let mgr = ServerManager::new();
+        assert_eq!(mgr.health_check_interval, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn server_manager_custom_interval() {
+        let mgr = ServerManager::new().with_health_check_interval(Duration::from_secs(60));
+        assert_eq!(mgr.health_check_interval, Duration::from_secs(60));
+    }
+
+    #[test]
+    fn server_manager_default_trait() {
+        let mgr = ServerManager::default();
+        assert_eq!(mgr.health_check_interval, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn health_status_equality() {
+        assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
+        assert_eq!(HealthStatus::Warning, HealthStatus::Warning);
+        assert_eq!(HealthStatus::Critical, HealthStatus::Critical);
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Warning);
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Critical);
+    }
+
+    #[test]
+    fn health_check_service_creation() {
+        let svc = HealthCheckService::new(Duration::from_secs(15));
+        assert_eq!(svc.check_interval, Duration::from_secs(15));
+    }
+
+    #[test]
+    fn service_monitor_creation() {
+        let monitor = ServiceMonitor::new(Duration::from_secs(10));
+        assert_eq!(monitor.check_interval, Duration::from_secs(10));
+    }
+
+    #[tokio::test]
+    async fn service_monitor_report_all_healthy() {
+        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let report = monitor.get_monitoring_report().await.unwrap();
+        assert_eq!(report.services_monitored, 4);
+        assert_eq!(report.healthy_services, 4);
+        assert_eq!(report.warning_services, 0);
+        assert_eq!(report.critical_services, 0);
+    }
+
+    #[tokio::test]
+    async fn service_monitor_env_disables_service() {
+        let _guard =
+            songbird_process_env::ScopedEnv::new("SONGBIRD_SERVICE_REGISTRY_ENABLED", "false");
+        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let report = monitor.get_monitoring_report().await.unwrap();
+        assert_eq!(report.critical_services, 1);
+        assert_eq!(report.healthy_services, 3);
+    }
+
+    #[tokio::test]
+    async fn service_monitor_gaming_disabled() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_GAMING_ENABLED", "false");
+        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let report = monitor.get_monitoring_report().await.unwrap();
+        assert_eq!(report.warning_services, 1);
+    }
+
+    #[tokio::test]
+    async fn service_monitor_federation_disabled() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_FEDERATION_ENABLED", "false");
+        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let report = monitor.get_monitoring_report().await.unwrap();
+        assert_eq!(report.warning_services, 1);
+    }
+
+    #[tokio::test]
+    async fn service_monitor_security_disabled() {
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_SECURITY_ENABLED", "false");
+        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let report = monitor.get_monitoring_report().await.unwrap();
+        assert_eq!(report.critical_services, 1);
+    }
+
+    #[tokio::test]
+    async fn check_system_health_returns_healthy() {
+        let status = HealthCheckService::check_system_health().await;
+        assert_eq!(status, HealthStatus::Healthy);
+    }
+}

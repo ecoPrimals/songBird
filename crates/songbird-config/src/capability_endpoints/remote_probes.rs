@@ -8,6 +8,34 @@ use songbird_types::{SongbirdError, SongbirdResult};
 use tracing::debug;
 
 use super::types::{CapabilityEndpoint, CapabilityType, DiscoveryMethod};
+use serde_json::Value;
+
+/// Parses a Consul-style catalog JSON object into `(endpoint, optional_service_name)`.
+pub fn parse_consul_catalog_service(service: &Value) -> Option<(String, Option<String>)> {
+    let address = service
+        .get("ServiceAddress")
+        .and_then(Value::as_str)
+        .or_else(|| service.get("Address").and_then(Value::as_str))?;
+    let port = service
+        .get("ServicePort")
+        .and_then(Value::as_u64)
+        .or_else(|| service.get("Port").and_then(Value::as_u64))?;
+    let endpoint = if address.contains("://") {
+        format!("{address}:{port}")
+    } else {
+        format!("http://{address}:{port}")
+    };
+    let provider_id = service.get("ServiceName").and_then(Value::as_str).map(String::from);
+    Some((endpoint, provider_id))
+}
+
+/// Parses a Kubernetes `Service` JSON document into `http://cluster_ip:port`.
+pub fn parse_kubernetes_service_cluster_endpoint(service: &Value) -> Option<String> {
+    let cluster_ip = service.get("spec")?.get("clusterIP")?.as_str()?;
+    let ports = service.get("spec")?.get("ports")?.as_array()?;
+    let first_port = ports.first()?.get("port")?.as_u64()?;
+    Some(format!("http://{cluster_ip}:{first_port}"))
+}
 
 /// Discover from service registry
 pub async fn discover_from_registry(
@@ -26,34 +54,16 @@ pub async fn discover_from_registry(
     let consul_url = format!("{}/v1/catalog/service/{}", registry_endpoint, capability.as_str());
     match client.get(&consul_url).await {
         Ok(response) if response.is_success() => {
-            if let Ok(services) = response.json::<Vec<serde_json::Value>>().await
+            if let Ok(services) = response.json::<Vec<Value>>().await
                 && let Some(service) = services.first()
-                && let (Some(address), Some(port)) = (
-                    service
-                        .get("ServiceAddress")
-                        .and_then(|v| v.as_str())
-                        .or_else(|| service.get("Address").and_then(|v| v.as_str())),
-                    service
-                        .get("ServicePort")
-                        .and_then(serde_json::Value::as_u64)
-                        .or_else(|| service.get("Port").and_then(serde_json::Value::as_u64)),
-                )
+                && let Some((endpoint, provider_id)) = parse_consul_catalog_service(service)
             {
-                let endpoint = if address.contains("://") {
-                    format!("{address}:{port}")
-                } else {
-                    format!("http://{address}:{port}")
-                };
-
                 debug!("Found {} capability at {} via registry", capability.as_str(), endpoint);
 
                 return Ok(Some(CapabilityEndpoint {
                     capability: capability.clone(),
                     endpoint,
-                    provider_id: service
-                        .get("ServiceName")
-                        .and_then(|v| v.as_str())
-                        .map(String::from),
+                    provider_id,
                     discovery_method: DiscoveryMethod::ServiceRegistry,
                     confidence: 0.9,
                     discovered_at: std::time::SystemTime::now(),
@@ -86,16 +96,9 @@ pub(super) async fn discover_from_container_metadata(
 
     match client.get(&k8s_url).await {
         Ok(response) if response.is_success() => {
-            if let Ok(service) = response.json::<serde_json::Value>().await
-                && let (Some(cluster_ip), Some(ports)) = (
-                    service.get("spec").and_then(|s| s.get("clusterIP")).and_then(|v| v.as_str()),
-                    service.get("spec").and_then(|s| s.get("ports")).and_then(|v| v.as_array()),
-                )
-                && let Some(first_port) =
-                    ports.first().and_then(|p| p.get("port")).and_then(serde_json::Value::as_u64)
+            if let Ok(service) = response.json::<Value>().await
+                && let Some(endpoint) = parse_kubernetes_service_cluster_endpoint(&service)
             {
-                let endpoint = format!("http://{cluster_ip}:{first_port}");
-
                 debug!(
                     "Found {} capability at {} via container metadata",
                     capability.as_str(),
@@ -156,10 +159,14 @@ pub async fn discover_from_dns(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
-    use super::{discover_from_container_metadata, discover_from_dns, discover_from_registry};
+    use super::{
+        discover_from_container_metadata, discover_from_dns, discover_from_registry,
+        parse_consul_catalog_service, parse_kubernetes_service_cluster_endpoint,
+    };
     use crate::capability_endpoints::types::CapabilityType;
+    use serde_json::Value;
     use songbird_test_utils::ScopedEnv;
 
     #[tokio::test]
@@ -192,5 +199,61 @@ mod tests {
         let _e = ScopedEnv::set("SERVICE_DISCOVERY_DOMAIN", "invalid-label-.invalid.").await;
         let out = discover_from_dns(&CapabilityType::Ai).await.expect("dns probe");
         assert!(out.is_none());
+    }
+
+    #[test]
+    fn parse_consul_prefers_service_address_and_service_port() {
+        let v: Value = serde_json::from_str(
+            r#"{"ServiceAddress":"10.1.2.3","ServicePort":8500,"ServiceName":"security"}"#,
+        )
+        .unwrap();
+        let (ep, id) = parse_consul_catalog_service(&v).unwrap();
+        assert_eq!(ep, "http://10.1.2.3:8500");
+        assert_eq!(id.as_deref(), Some("security"));
+    }
+
+    #[test]
+    fn parse_consul_falls_back_to_address_and_port_fields() {
+        let v: Value = serde_json::from_str(r#"{"Address":"192.168.0.5","Port":9999}"#).unwrap();
+        let (ep, id) = parse_consul_catalog_service(&v).unwrap();
+        assert_eq!(ep, "http://192.168.0.5:9999");
+        assert!(id.is_none());
+    }
+
+    #[test]
+    fn parse_consul_preserves_scheme_when_address_has_uri() {
+        let v: Value =
+            serde_json::from_str(r#"{"ServiceAddress":"https://edge.example","ServicePort":443}"#)
+                .unwrap();
+        let (ep, _) = parse_consul_catalog_service(&v).unwrap();
+        assert_eq!(ep, "https://edge.example:443");
+    }
+
+    #[test]
+    fn parse_consul_returns_none_when_port_missing() {
+        let v: Value = serde_json::from_str(r#"{"Address":"10.0.0.1"}"#).unwrap();
+        assert!(parse_consul_catalog_service(&v).is_none());
+    }
+
+    #[test]
+    fn parse_kubernetes_cluster_endpoint_from_spec() {
+        let v: Value = serde_json::from_str(
+            r#"{"spec":{"clusterIP":"10.96.0.42","ports":[{"port":8080,"protocol":"TCP"}]}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_kubernetes_service_cluster_endpoint(&v).as_deref(),
+            Some("http://10.96.0.42:8080")
+        );
+    }
+
+    #[test]
+    fn parse_kubernetes_returns_none_without_ports_or_cluster_ip() {
+        let bad_ip: Value = serde_json::from_str(r#"{"spec":{"ports":[{"port":80}]}}"#).unwrap();
+        assert!(parse_kubernetes_service_cluster_endpoint(&bad_ip).is_none());
+
+        let bad_ports: Value =
+            serde_json::from_str(r#"{"spec":{"clusterIP":"10.0.0.1"}}"#).unwrap();
+        assert!(parse_kubernetes_service_cluster_endpoint(&bad_ports).is_none());
     }
 }

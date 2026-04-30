@@ -213,3 +213,165 @@ impl EncryptedBirdSong {
         self.timestamp <= now
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use crate::security::genesis::{
+        GenesisTrustLevel, GenesisWitnessProof, PhysicalChannelType, PrimalWitnessSignature,
+    };
+
+    #[test]
+    fn lineage_hint_json_roundtrip_all_variants() {
+        let variants = vec![
+            LineageHint::DirectDescendants,
+            LineageHint::AllDescendants,
+            LineageHint::LineageRoot("root-a".into()),
+            LineageHint::Universal,
+        ];
+        for hint in variants {
+            let json = serde_json::to_string(&hint).unwrap();
+            let back: LineageHint = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, hint);
+        }
+    }
+
+    #[test]
+    fn encrypted_birdsong_json_roundtrip_without_genesis() {
+        let ts = chrono::Utc::now();
+        let msg = EncryptedBirdSong {
+            version: 7,
+            ciphertext: vec![1, 2, 3],
+            lineage_hint: LineageHint::DirectDescendants,
+            timestamp: ts,
+            signature: vec![9],
+            genesis_witness: None,
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let back: EncryptedBirdSong = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.version, msg.version);
+        assert_eq!(back.ciphertext, msg.ciphertext);
+        assert_eq!(back.lineage_hint, msg.lineage_hint);
+        assert_eq!(back.timestamp, msg.timestamp);
+        assert_eq!(back.signature, msg.signature);
+        assert!(back.genesis_witness.is_none());
+    }
+
+    #[test]
+    fn encrypted_birdsong_json_roundtrip_with_genesis() {
+        let witness = GenesisWitnessProof {
+            ceremony_id: "c".into(),
+            node_id: "n".into(),
+            witness_device_id: "w".into(),
+            witness_signature: vec![1],
+            physical_channel: PhysicalChannelType::Bluetooth,
+            primal_witnesses: vec![PrimalWitnessSignature {
+                primal_name: "Songbird".into(),
+                lineage_data: vec![2],
+                signature: vec![3],
+                witness_timestamp: chrono::Utc::now(),
+            }],
+            birth_timestamp: chrono::Utc::now(),
+            trust_level: GenesisTrustLevel::Basic,
+        };
+        let msg = EncryptedBirdSong {
+            version: 1,
+            ciphertext: vec![],
+            lineage_hint: LineageHint::Universal,
+            timestamp: chrono::Utc::now(),
+            signature: vec![],
+            genesis_witness: Some(witness.clone()),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let back: EncryptedBirdSong = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.genesis_witness.as_ref().unwrap().node_id, witness.node_id);
+    }
+
+    #[test]
+    fn encrypted_birdsong_is_recent_and_timestamp_checks() {
+        let fresh = EncryptedBirdSong {
+            version: 1,
+            ciphertext: vec![],
+            lineage_hint: LineageHint::Universal,
+            timestamp: chrono::Utc::now(),
+            signature: vec![],
+            genesis_witness: None,
+        };
+        assert!(fresh.is_recent());
+        assert!(fresh.has_valid_timestamp());
+
+        let stale = EncryptedBirdSong {
+            timestamp: chrono::Utc::now() - chrono::Duration::seconds(120),
+            ..fresh.clone()
+        };
+        assert!(!stale.is_recent());
+
+        let future_ts = EncryptedBirdSong {
+            timestamp: chrono::Utc::now() + chrono::Duration::hours(24),
+            ..fresh
+        };
+        assert!(!future_ts.has_valid_timestamp());
+    }
+
+    #[test]
+    fn broadcast_key_json_roundtrip_preserves_public_fields() {
+        let from = chrono::Utc::now() - chrono::Duration::hours(1);
+        let until = chrono::Utc::now() + chrono::Duration::hours(1);
+        let key = BroadcastKey {
+            key_id: "kid-1".into(),
+            key_data: vec![10, 20],
+            valid_from: from,
+            valid_until: until,
+        };
+        let json = serde_json::to_string(&key).unwrap();
+        assert!(!json.contains("key_data"), "key_data must not appear in JSON");
+        let back: BroadcastKey = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.key_id, key.key_id);
+        assert!(back.key_data.is_empty(), "skipped field deserializes empty");
+        assert_eq!(back.valid_from, key.valid_from);
+        assert_eq!(back.valid_until, key.valid_until);
+    }
+
+    #[test]
+    fn broadcast_key_validity_helpers_track_expiry_window() {
+        let from_past = chrono::Utc::now() - chrono::Duration::hours(2);
+        let until_past = chrono::Utc::now() - chrono::Duration::seconds(1);
+        let expired = BroadcastKey {
+            key_id: "exp".into(),
+            key_data: vec![1],
+            valid_from: from_past,
+            valid_until: until_past,
+        };
+        assert!(!expired.is_valid());
+        assert!(expired.is_expired());
+        assert!(expired.time_until_expiry().is_none());
+
+        let active = BroadcastKey {
+            key_id: "act".into(),
+            key_data: vec![2],
+            valid_from: from_past,
+            valid_until: chrono::Utc::now() + chrono::Duration::hours(5),
+        };
+        assert!(active.is_valid());
+        assert!(!active.is_expired());
+        let remaining = active.time_until_expiry().expect("still valid");
+        assert!(remaining > chrono::Duration::zero());
+    }
+
+    #[tokio::test]
+    async fn broadcast_key_encrypt_broadcast_xor_under_test_cfg() {
+        let key = BroadcastKey {
+            key_id: "ab".into(),
+            key_data: vec![0x0F, 0xF0],
+            valid_from: chrono::Utc::now(),
+            valid_until: chrono::Utc::now() + chrono::Duration::hours(1),
+        };
+        let plain = [1u8, 2, 3, 4];
+        let ct = key.encrypt_broadcast(&plain).await.unwrap();
+        assert_eq!(ct.len(), plain.len());
+        let expected: Vec<u8> =
+            key.key_data.iter().cycle().zip(plain.iter()).map(|(k, d)| k ^ d).collect();
+        assert_eq!(ct, expected);
+    }
+}

@@ -565,4 +565,44 @@ mod tests {
         let ratio = memory_usage / memory_total;
         assert!((ratio - 0.03125).abs() < f64::EPSILON);
     }
+
+    #[test]
+    fn service_to_json_serializes_max_port_and_zero_uptime() {
+        let s = ServiceStatus {
+            name: "svc".to_string(),
+            status: "Idle".to_string(),
+            health: "Unknown".to_string(),
+            port: Some(u16::MAX),
+            uptime: Some(Duration::ZERO),
+            last_health_check: None,
+            error_count: 0,
+            restart_count: 0,
+        };
+        let v = service_to_json(&s);
+        assert_eq!(v["port"], u16::MAX);
+        assert_eq!(v["uptime_seconds"], 0);
+    }
+
+    #[test]
+    fn overall_status_label_unreachable_maps_to_issues() {
+        assert_eq!(overall_status_label("Unreachable"), "🔴 Issues Detected");
+    }
+
+    #[test]
+    fn service_to_json_contains_expected_top_level_keys() {
+        let s = sample_service();
+        let v = service_to_json(&s);
+        for key in [
+            "name",
+            "status",
+            "health",
+            "port",
+            "uptime_seconds",
+            "last_health_check",
+            "error_count",
+            "restart_count",
+        ] {
+            assert!(v.get(key).is_some(), "missing key {key}");
+        }
+    }
 }
