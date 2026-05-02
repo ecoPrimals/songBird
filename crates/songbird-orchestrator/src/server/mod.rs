@@ -40,7 +40,7 @@ impl ServerManager {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            health_check_interval: Duration::from_secs(30),
+            health_check_interval: songbird_types::defaults::timeouts::DEFAULT_HEALTH_CHECK_INTERVAL,
             start_time: std::time::Instant::now(),
         }
     }
@@ -532,7 +532,7 @@ mod tests {
     #[test]
     fn server_manager_default_interval() {
         let mgr = ServerManager::new();
-        assert_eq!(mgr.health_check_interval, Duration::from_secs(30));
+        assert_eq!(mgr.health_check_interval, songbird_types::defaults::timeouts::DEFAULT_HEALTH_CHECK_INTERVAL);
     }
 
     #[test]
@@ -544,7 +544,7 @@ mod tests {
     #[test]
     fn server_manager_default_trait() {
         let mgr = ServerManager::default();
-        assert_eq!(mgr.health_check_interval, Duration::from_secs(30));
+        assert_eq!(mgr.health_check_interval, songbird_types::defaults::timeouts::DEFAULT_HEALTH_CHECK_INTERVAL);
     }
 
     #[test]

@@ -138,7 +138,7 @@ impl SongbirdOrchestrator {
         let mut shutdown_rx = self.shutdown_sender.subscribe();
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+            let mut interval = tokio::time::interval(songbird_types::defaults::timeouts::DEFAULT_HEALTH_CHECK_INTERVAL);
             loop {
                 tokio::select! {
                     _ = interval.tick() => {

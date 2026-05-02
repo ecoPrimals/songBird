@@ -20,7 +20,6 @@ use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::{FederationState, NodeStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
-use std::time::Duration;
 use tracing::{debug, info, warn};
 
 /// Enhanced router with Universal Port Authority integration
@@ -383,7 +382,7 @@ impl EnhancedCapabilityRouter {
         })?;
 
         let response = tokio::time::timeout(
-            Duration::from_secs(300),
+            songbird_types::defaults::timeouts::DEFAULT_COMPUTE_TIMEOUT,
             client.post(&format!("{endpoint}/execute"), task_json),
         )
         .await

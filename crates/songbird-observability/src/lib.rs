@@ -114,6 +114,7 @@
         clippy::unnecessary_unwrap,
         clippy::ignore_without_reason,
         clippy::case_sensitive_file_extension_comparisons,
+        reason = "test code: relaxed lints for assertions, mock construction, and test ergonomics"
     )
 )]
 

@@ -126,7 +126,7 @@ impl SongbirdOrchestrator {
                 crate::app::security_setup::discover_security_endpoint(None).await.ok();
 
             tokio::spawn(async move {
-                let mut interval = interval(tokio::time::Duration::from_secs(10));
+                let mut interval = interval(songbird_types::defaults::timeouts::DEFAULT_DISCOVERY_POLL_INTERVAL);
 
                 if security_client_endpoint.is_some() {
                     info!(

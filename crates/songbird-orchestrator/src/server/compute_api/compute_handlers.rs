@@ -291,7 +291,7 @@ pub async fn submit_compute_task(
                 };
 
                 let result = tokio::time::timeout(
-                    tokio::time::Duration::from_secs(300),
+                    songbird_types::defaults::timeouts::DEFAULT_COMPUTE_TIMEOUT,
                     client.post(&forward_url, task_json),
                 )
                 .await;

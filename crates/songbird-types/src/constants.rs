@@ -55,8 +55,11 @@ pub fn dev_localhost_url(port: u16) -> String {
     format!("http://{LOCALHOST}:{port}")
 }
 
-/// Production bind address (all interfaces)
+/// Production bind address (all interfaces, IPv4)
 pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
+
+/// Production bind address (all interfaces, IPv6 dual-stack)
+pub const PRODUCTION_BIND_ADDRESS_IPV6: &str = "[::]";
 
 /// Ephemeral bind address — all interfaces, OS-assigned port.
 pub const EPHEMERAL_BIND_ADDR: &str = "0.0.0.0:0";

@@ -56,6 +56,10 @@ pub fn security_socket_path_in_biomeos_runtime_with_family(
 
 /// Legacy family-scoped BearDog socket path under `xdg_runtime_dir`/`biomeos`/
 /// e.g. `/run/user/1000/biomeos/beardog-nucleus01.sock`
+#[deprecated(
+    since = "0.2.1",
+    note = "use `security_socket_path_in_biomeos_runtime_with_family` — capability-based naming"
+)]
 #[must_use]
 pub fn legacy_beardog_socket_path_in_biomeos_runtime(
     xdg_runtime_dir: &str,
@@ -204,6 +208,7 @@ where
             return path;
         }
 
+        #[allow(deprecated, reason = "legacy fallback path during migration to capability-based naming")]
         let legacy_beardog = legacy_beardog_socket_path_in_biomeos_runtime(&xdg_dir, &family_id);
         if path_exists(&legacy_beardog) {
             let path = legacy_beardog.to_string_lossy().to_string();

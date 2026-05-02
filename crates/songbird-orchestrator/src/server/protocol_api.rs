@@ -70,10 +70,9 @@ pub struct AvailableProtocols {
 impl Default for AvailableProtocols {
     fn default() -> Self {
         // ✅ MIGRATED: Use environment-based configuration
-        let port =
-            songbird_process_env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
+        let port = songbird_config::defaults::ports::orchestrator_port().to_string();
         let tarpc_port = songbird_config::defaults::ports::tarpc_port().to_string();
-        let base_url = format!("http://[::]:{port}");
+        let base_url = format!("http://{}:{port}", songbird_types::constants::PRODUCTION_BIND_ADDRESS_IPV6);
 
         Self {
             http: ProtocolInfo {

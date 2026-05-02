@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave183] - 2026-05-02 - Deep debt: lint evolution, timeout centralization, hardcoded elimination
+
+### Added
+- **8 timeout constants** in `songbird-types/defaults/timeouts.rs`: `DEFAULT_HEALTH_CHECK_INTERVAL`, `DEFAULT_COMPUTE_TIMEOUT`, `DEFAULT_CACHE_TTL`, `DEFAULT_AUTH_VALIDATION_TIMEOUT`, `DEFAULT_PEEK_TIMEOUT`, `DEFAULT_DISCOVERY_POLL_INTERVAL`, `DEFAULT_SHUTDOWN_TIMEOUT`.
+- **`PRODUCTION_BIND_ADDRESS_IPV6`** constant (`[::]`) in `songbird-types/constants.rs`.
+
+### Changed
+- **8 crate `lib.rs` lint blocks** evolved: `#![cfg_attr(test, allow(...))]` blocks in `songbird-network-federation`, `songbird-config`, `songbird-cli`, `songbird-registry`, `songbird-universal`, `songbird-nfc`, `songbird-observability`, `songbird-canonical` now include `reason = "test code: relaxed lints for assertions, mock construction, and test ergonomics"`.
+- **10 hardcoded `Duration::from_secs(N)` replaced** with canonical constants: `server/mod.rs` health check, `connection.rs` peek timeout, `compute_handlers.rs` compute timeout, `auth.rs` SSO + 2FA + service validation timeouts, `health.rs` heartbeat, `discovery_bridge.rs` poll interval, `enhanced_router.rs` + `execution.rs` compute timeouts.
+- **`protocol_api.rs`**: `"8080"` fallback → `orchestrator_port()`, `"http://[::]"` → `PRODUCTION_BIND_ADDRESS_IPV6` constant.
+- **`legacy_beardog_socket_path_in_biomeos_runtime`**: formally `#[deprecated]` with migration guidance.
+- **Unused imports** cleaned: `Duration` in `enhanced_router.rs` and `execution.rs`.
+- **`cargo update`**: refreshed all compatible dep versions (rustls, tokio, libc, etc.).
+
+---
+
 ## [v0.2.1-wave182] - 2026-05-02 - BTSP Phase 3 spec alignment (primalSpring audit)
 
 ### Added

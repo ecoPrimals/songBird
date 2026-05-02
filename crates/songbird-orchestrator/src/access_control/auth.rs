@@ -229,7 +229,7 @@ async fn validate_sso_credential(
 
     // Send validation request to SSO endpoint
     let response = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        songbird_types::defaults::timeouts::DEFAULT_AUTH_VALIDATION_TIMEOUT,
         client.post(&format!("{sso_endpoint}/validate"), validation_request),
     )
     .await
@@ -433,7 +433,7 @@ async fn validate_security_provider_2fa(
 
     // Send validation request
     let response = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
+        songbird_types::defaults::timeouts::DEFAULT_REQUEST_TIMEOUT,
         client.post(&format!("{security_endpoint}/auth/validate"), validation_request),
     )
     .await
@@ -507,7 +507,7 @@ async fn validate_external_2fa(
 
     // Send validation request
     let response = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        songbird_types::defaults::timeouts::DEFAULT_AUTH_VALIDATION_TIMEOUT,
         client.post(&format!("{service_endpoint}/verify"), validation_request),
     )
     .await

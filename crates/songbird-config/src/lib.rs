@@ -72,6 +72,7 @@
         clippy::unnecessary_wraps,
         clippy::no_effect_underscore_binding,
         clippy::return_self_not_must_use,
+        reason = "test code: relaxed lints for assertions, mock construction, and test ergonomics"
     )
 )]
 

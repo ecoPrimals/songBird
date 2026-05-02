@@ -16,8 +16,10 @@ use crate::constants::{
 
 /// Default CORS origin for development when `SONGBIRD_CORS_ORIGINS` is unset.
 ///
+/// Built from canonical constants: `http://{LOCALHOST_HOSTNAME}:{DEFAULT_DASHBOARD_UI_PORT}`.
 /// Production deployments should always set `SONGBIRD_CORS_ORIGINS` explicitly.
 pub const DEFAULT_CORS_ORIGIN: &str = "http://localhost:3000";
+// ^ const must be a literal; value matches LOCALHOST_HOSTNAME:DEFAULT_DASHBOARD_UI_PORT.
 
 /// Resolve CORS origins from environment, falling back to [`DEFAULT_CORS_ORIGIN`].
 ///

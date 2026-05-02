@@ -291,7 +291,7 @@ impl UnixSocketServer {
     /// `BufReader` and passed through via [`PeekedStream`].
     #[cfg(unix)]
     async fn handle_connection_with_peek(&self, stream: UnixStream) -> Result<()> {
-        const PEEK_TIMEOUT: Duration = Duration::from_secs(5);
+        const PEEK_TIMEOUT: Duration = songbird_types::defaults::timeouts::DEFAULT_PEEK_TIMEOUT;
 
         let (read_half, mut write_half) = stream.into_split();
         let mut reader = BufReader::new(read_half);

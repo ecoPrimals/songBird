@@ -4,7 +4,6 @@
 use super::super::types::Task;
 use super::CapabilityRouter;
 use songbird_types::{SongbirdError, SongbirdResult};
-use std::time::Duration;
 use tracing::info;
 
 impl CapabilityRouter {
@@ -39,7 +38,7 @@ impl CapabilityRouter {
         })?;
 
         let response =
-            tokio::time::timeout(Duration::from_secs(300), client.post(endpoint, task_json))
+            tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_COMPUTE_TIMEOUT, client.post(endpoint, task_json))
                 .await
                 .map_err(|_| SongbirdError::Network {
                     message: "Request timeout (5 minutes)".to_string(),
