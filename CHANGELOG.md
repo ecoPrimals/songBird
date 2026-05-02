@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave184] - 2026-05-02 - BTSP Phase 3 dispatch fix: binary-framed path wired
+
+### Fixed
+- **`handle_btsp_frames`**: `btsp.negotiate` now intercepted in the binary-framed BTSP session loop, not just the NDJSON path. Clients connecting via length-prefixed binary BTSP framing previously received "method not found" for `btsp.negotiate`. On successful cipher negotiation, the binary-framed session transitions to encrypted framing via `tokio::io::split`. This completes Phase 3 coverage across all 3 transport paths (NDJSON session, binary-framed BTSP, bin_interface).
+- **`handle_btsp_on_stream`**: signature evolved from `&mut S` to owned `S` (with `Send + 'static` bounds) to enable `tokio::io::split` for encrypted session transition.
+
+---
+
 ## [v0.2.1-wave183] - 2026-05-02 - Deep debt: lint evolution, timeout centralization, hardcoded elimination
 
 ### Added

@@ -353,11 +353,11 @@ impl UnixSocketServer {
             }
         } else {
             debug!("UDS peek: binary protocol detected (0x{first_byte:02X}) — BTSP handshake");
-            let mut stream = PeekedStream {
+            let stream = PeekedStream {
                 reader,
                 writer: write_half,
             };
-            self.handle_btsp_on_stream(&mut stream).await
+            self.handle_btsp_on_stream(stream).await
         }
     }
 
@@ -366,13 +366,13 @@ impl UnixSocketServer {
     /// Run the full BTSP lifecycle (handshake → persistent framed JSON-RPC) on
     /// any bidirectional async stream. Works with both raw `UnixStream` and the
     /// `PeekedStream` adapter used after first-byte auto-detection.
-    async fn handle_btsp_on_stream<S>(&self, stream: &mut S) -> Result<()>
+    async fn handle_btsp_on_stream<S>(&self, mut stream: S) -> Result<()>
     where
-        S: AsyncReadExt + AsyncWriteExt + Unpin,
+        S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static,
     {
         debug!("New IPC connection (BTSP mode)");
 
-        let session = btsp::perform_server_handshake(stream, &self.security_client)
+        let session = btsp::perform_server_handshake(&mut stream, &self.security_client)
             .await
             .context("BTSP handshake failed")?;
 
@@ -383,9 +383,17 @@ impl UnixSocketServer {
 
     /// Persistent BTSP frame loop: reads length-prefixed JSON-RPC frames until
     /// the client disconnects or a read timeout expires.
-    async fn handle_btsp_frames<S>(&self, stream: &mut S, session: &btsp::BtspSession) -> Result<()>
+    ///
+    /// Intercepts `btsp.negotiate` requests to perform Phase 3 cipher upgrade.
+    /// On successful negotiation with a real cipher, transitions to encrypted
+    /// framing via [`Self::handle_encrypted_session`].
+    async fn handle_btsp_frames<S>(
+        &self,
+        mut stream: S,
+        session: &btsp::BtspSession,
+    ) -> Result<()>
     where
-        S: AsyncReadExt + AsyncWriteExt + Unpin,
+        S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static,
     {
         let mut len_buf = [0u8; 4];
         loop {
@@ -425,10 +433,34 @@ impl UnixSocketServer {
                         ))),
                         id: serde_json::Value::Null,
                     };
-                    Self::write_btsp_response(stream, &resp).await?;
+                    Self::write_btsp_response(&mut stream, &resp).await?;
                     continue;
                 }
             };
+
+            if request.method == "btsp.negotiate" {
+                let id = request.id.clone().unwrap_or(serde_json::Value::Null);
+                let params = request.params.unwrap_or(serde_json::Value::Null);
+                let (result, keys) =
+                    btsp_phase3::handle_negotiate(&params, &self.security_client).await;
+
+                let resp = JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: Some(serde_json::to_value(&result).unwrap_or_default()),
+                    error: None,
+                    id,
+                };
+                Self::write_btsp_response(&mut stream, &resp).await?;
+
+                if let Some(session_keys) = keys {
+                    debug!("BTSP Phase 3: switching binary-framed session to encrypted framing");
+                    let (reader, writer) = tokio::io::split(stream);
+                    return self
+                        .handle_encrypted_session(reader, writer, session_keys)
+                        .await;
+                }
+                continue;
+            }
 
             let is_notification = request.id.is_none();
             debug!(
@@ -438,7 +470,7 @@ impl UnixSocketServer {
             let response = self.handle_jsonrpc_request(request).await;
 
             if !is_notification {
-                Self::write_btsp_response(stream, &response).await?;
+                Self::write_btsp_response(&mut stream, &response).await?;
             }
         }
 
