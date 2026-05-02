@@ -29,7 +29,7 @@
 
 ### Network Safety
 
-- **BTSP Phase 2** — Incoming UDS connections require 4-step BTSP handshake when `FAMILY_ID` is set; crypto delegated to security provider via `btsp.session.create/verify/negotiate`; post-handshake framing uses length-prefixed (4-byte BE) frames; development mode (no `FAMILY_ID`) uses newline-delimited JSON-RPC
+- **BTSP Phase 3** — Incoming UDS connections require 4-step BTSP handshake when `FAMILY_ID` is set; crypto delegated to security provider via `btsp.session.create/verify/negotiate`; post-handshake `btsp.negotiate` upgrades to ChaCha20-Poly1305 encrypted framing (HKDF-SHA256 session keys, BondingPolicy cipher floor enforcement); graceful NULL cipher fallback for backward compatibility; development mode (no `FAMILY_ID`) uses newline-delimited JSON-RPC
 - **TLS** — Pure Rust TLS 1.3 implementation
 - **QUIC** — Pure Rust QUIC transport
 - **Sovereign Onion** — Privacy-preserving routing

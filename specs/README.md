@@ -1,6 +1,6 @@
 # Songbird Specifications
 
-**Date**: April 2026
+**Date**: May 2026
 **Workspace**: 30-crate Rust workspace (see root `Cargo.toml`)
 **Version**: v0.2.1
 
@@ -29,29 +29,26 @@ songbird-remote-deploy  songbird-genesis          (root: songbird)
 
 ### Core Architecture
 - [UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md](./UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md) — Capability adapter implementation
-- [CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md](./CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md) — Discovery system specification
-- [ECOSYSTEM_DELEGATION_SPECIFICATION.md](./ECOSYSTEM_DELEGATION_SPECIFICATION.md) — Primal delegation boundaries
-- [CAPABILITY_BASED_CLIENT_ANALYSIS.md](./CAPABILITY_BASED_CLIENT_ANALYSIS.md) — Client capability analysis
+- [PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md](./PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md) — Self-knowledge standard
 
 ### Implementation
 - [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — Native JSON-RPC + tarpc protocol
-
-### Archived (fossil record — legacy primal integration specs)
-- [Security provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
-- [Entropy hierarchy (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
-- [AI provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
-- [Storage discovery (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved
+- [HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Multi-protocol architecture
 
 ### Protocol
 - [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Sovereign multipath protocol
-- [SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md](./SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md) — Federation implementation
-- ~~SONGBIRD_NEURALAPI_ALIGNMENT_V3_12_1.md~~ — Neural API alignment (absorbed into `HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md` and `TARPC_JSON_RPC_PROTOCOL_SPEC.md`)
+- [SOVEREIGN_ONION_PROTOCOL.md](./SOVEREIGN_ONION_PROTOCOL.md) — Onion routing
+- [BIRDSONG_PROTOCOL.md](./BIRDSONG_PROTOCOL.md) — Encrypted discovery multicast
 - [SONGBIRD_ROLE_CLARIFICATION_SPEC.md](./SONGBIRD_ROLE_CLARIFICATION_SPEC.md) — Songbird vs other primals
 
-## Archived Specifications
+## Archived Specifications (`specs/archived/`)
 
-Specs in the [consolidated fossil record](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/) reference the historical September 2025 crate layout
-(`songbird-core`, `songbird-network`, `songbird-errors`, `songbird-security`). They are
-retained as fossil record but should not be used for current integration.
+16 specs archived on May 2, 2026. These reference crates that were never created
+(`songbird-client`, `songbird-primal-sdk`, `songbird-universal-primals`,
+`songbird-federation`, `songbird-rpc`) or file paths that no longer exist.
+Retained as design fossil record.
+
+See also the [consolidated fossil record](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/) for
+September 2025 crate layout specs (`songbird-core`, `songbird-network`, etc.).
 
 See [00_SPECIFICATIONS_INDEX.md](./00_SPECIFICATIONS_INDEX.md) for the full historical index.

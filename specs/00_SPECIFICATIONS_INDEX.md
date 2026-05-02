@@ -1,6 +1,6 @@
 # Songbird Specifications Index
 
-**Last Updated:** April 8, 2026
+**Last Updated:** May 2, 2026
 **Version:** v0.2.1
 
 ---
@@ -8,11 +8,6 @@
 ## Core Architecture
 
 - [UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md](./UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md) — Capability adapter patterns
-- [CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md](./CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md) — Discovery system
-- [ECOSYSTEM_DELEGATION_SPECIFICATION.md](./ECOSYSTEM_DELEGATION_SPECIFICATION.md) — Primal delegation boundaries
-- [CAPABILITY_BASED_CLIENT_ANALYSIS.md](./CAPABILITY_BASED_CLIENT_ANALYSIS.md) — Client capability analysis
-- [CAPABILITY_BASED_SECURITY_DISCOVERY.md](./CAPABILITY_BASED_SECURITY_DISCOVERY.md) — Security capability discovery
-- [CAPABILITY_REGISTRATION_API.md](./CAPABILITY_REGISTRATION_API.md) — Capability registration
 - [PRIMAL_COORDINATION_ARCHITECTURE.md](./PRIMAL_COORDINATION_ARCHITECTURE.md) — Primal coordination
 - [PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md](./PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md) — Self-knowledge principle
 - [ECOPRIMALS_ARCHITECTURE_CLARITY.md](./ECOPRIMALS_ARCHITECTURE_CLARITY.md) — Architecture clarity
@@ -21,18 +16,15 @@
 ## Protocols
 
 - [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — JSON-RPC 2.0 + tarpc
-- [TARPC_JSON_RPC_PROTOCOL_SPEC.md](./TARPC_JSON_RPC_PROTOCOL_SPEC.md) — Dual-protocol IPC
 - [HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Hybrid protocol architecture
 - [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Multi-path connectivity
 - [SOVEREIGN_BEACON_MESH_SPECIFICATION.md](./SOVEREIGN_BEACON_MESH_SPECIFICATION.md) — Encrypted beacon mesh
 - [SOVEREIGN_ONION_PROTOCOL.md](./SOVEREIGN_ONION_PROTOCOL.md) — P2P onion service
-- [SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md](./SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md) — Federation
 - [SOVEREIGN_QUORUM_FEDERATION_SPECIFICATION.md](./SOVEREIGN_QUORUM_FEDERATION_SPECIFICATION.md) — Quorum federation
 - [BIRDSONG_PROTOCOL.md](./BIRDSONG_PROTOCOL.md) — Encrypted beacon protocol
 - [LINEAGE_GATED_RELAY_PROTOCOL.md](./LINEAGE_GATED_RELAY_PROTOCOL.md) — Lineage relay
 - [NTOR_HANDSHAKE.md](./NTOR_HANDSHAKE.md) — Tor ntor handshake
 - [TOR_PROTOCOL_PURE_RUST.md](./TOR_PROTOCOL_PURE_RUST.md) — Pure Rust Tor
-- [TOR_TRANSPORT_INTEGRATION.md](./TOR_TRANSPORT_INTEGRATION.md) — Tor transport integration
 - [SECURE_COMMUNICATIONS_PROTOCOL.md](./SECURE_COMMUNICATIONS_PROTOCOL.md) — Secure communications
 - [RENDEZVOUS_PROTOCOL_SPEC.md](./RENDEZVOUS_PROTOCOL_SPEC.md) — Rendezvous protocol
 - [RELAY_SERVER_SPECIFICATION.md](./RELAY_SERVER_SPECIFICATION.md) — Relay server
@@ -41,20 +33,13 @@
 
 ## Transport & Networking
 
-- [TRANSPORT_SYSTEM_EVOLUTION_SPEC.md](./TRANSPORT_SYSTEM_EVOLUTION_SPEC.md) — Transport evolution
-- [UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md](./UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md) — Universal protocol framework
-- [INTELLIGENT_CAPABILITY_ROUTING_SPEC.md](./INTELLIGENT_CAPABILITY_ROUTING_SPEC.md) — Capability routing
 - [PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md](./PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md) — Progressive protocol enhancement
 - [SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md](./SONGBIRD_IPV6_DUAL_STACK_SPECIFICATION.md) — IPv6 dual-stack
-- [FRACTAL_FEDERATION_IMPLEMENTATION_GUIDE.md](./FRACTAL_FEDERATION_IMPLEMENTATION_GUIDE.md) — Fractal federation
-- [STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md](./STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md) — Standalone network effects
 
 ## Deployment & Operations
 
 - [ADAPTIVE_DEPLOYMENT_SPECIFICATION.md](./ADAPTIVE_DEPLOYMENT_SPECIFICATION.md) — Adaptive deployment
-- [STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md](./STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md) — Deployment guide
 - [REMOTE_EXECUTION_API_SPEC.md](./REMOTE_EXECUTION_API_SPEC.md) — Remote execution API
-- [CLI_VS_CLIENT_ARCHITECTURE.md](./CLI_VS_CLIENT_ARCHITECTURE.md) — CLI architecture
 
 ## Governance & Operational
 
@@ -71,16 +56,38 @@
 
 - [UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md](./UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md) — Universal adapter
 - [UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md](./UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md) — SDK integration
-- [PRIMAL_REGISTRATION_PROTOCOL.md](./PRIMAL_REGISTRATION_PROTOCOL.md) — Primal registration
 - [DISTRIBUTED_ML_DEMO_REQUIREMENTS.md](./DISTRIBUTED_ML_DEMO_REQUIREMENTS.md) — Distributed ML demo
 - [COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md](./COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md) — Intelligence graph
 
-## Archived (fossil record)
+## Archived — `specs/archived/` (May 2, 2026)
+
+16 specs archived. Referenced crates that were never created (`songbird-client`,
+`songbird-primal-sdk`, `songbird-universal-primals`, `songbird-federation`, `songbird-rpc`)
+or file paths that no longer exist. Retained as design fossil record.
+
+- [archived/CAPABILITY_BASED_CLIENT_ANALYSIS.md](./archived/CAPABILITY_BASED_CLIENT_ANALYSIS.md) — `songbird-client` (never created)
+- [archived/CLI_VS_CLIENT_ARCHITECTURE.md](./archived/CLI_VS_CLIENT_ARCHITECTURE.md) — `songbird-client` (never created)
+- [archived/PRIMAL_REGISTRATION_PROTOCOL.md](./archived/PRIMAL_REGISTRATION_PROTOCOL.md) — `songbird-client` (never created)
+- [archived/TARPC_JSON_RPC_PROTOCOL_SPEC.md](./archived/TARPC_JSON_RPC_PROTOCOL_SPEC.md) — `songbird-primal-sdk` (never created)
+- [archived/CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md](./archived/CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md) — `songbird-universal-primals` (renamed)
+- [archived/STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md](./archived/STANDALONE_NETWORK_EFFECTS_ARCHITECTURE_SPEC.md) — `songbird-universal-primals` (renamed)
+- [archived/FRACTAL_FEDERATION_IMPLEMENTATION_GUIDE.md](./archived/FRACTAL_FEDERATION_IMPLEMENTATION_GUIDE.md) — `songbird-federation` (renamed)
+- [archived/SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md](./archived/SOVEREIGN_FEDERATION_IMPLEMENTATION_PLAN.md) — `songbird-federation` (renamed)
+- [archived/TRANSPORT_SYSTEM_EVOLUTION_SPEC.md](./archived/TRANSPORT_SYSTEM_EVOLUTION_SPEC.md) — `songbird-rpc` (never created)
+- [archived/CAPABILITY_BASED_SECURITY_DISCOVERY.md](./archived/CAPABILITY_BASED_SECURITY_DISCOVERY.md) — `songbird-primal-sdk` (never created)
+- [archived/CAPABILITY_REGISTRATION_API.md](./archived/CAPABILITY_REGISTRATION_API.md) — `federation_api.rs` (never created)
+- [archived/INTELLIGENT_CAPABILITY_ROUTING_SPEC.md](./archived/INTELLIGENT_CAPABILITY_ROUTING_SPEC.md) — test paths no longer exist
+- [archived/ECOSYSTEM_DELEGATION_SPECIFICATION.md](./archived/ECOSYSTEM_DELEGATION_SPECIFICATION.md) — `environment_config.rs` (absorbed)
+- [archived/TOR_TRANSPORT_INTEGRATION.md](./archived/TOR_TRANSPORT_INTEGRATION.md) — `tor_transport.rs` (never created)
+- [archived/STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md](./archived/STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md) — references removed binaries/files
+- [archived/UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md](./archived/UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md) — gRPC sketch (never implemented)
+
+## Archived — wateringHole fossil record
 
 Specs in the [consolidated fossil record](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/) retain historical primal codenames and filenames. Fossil record only.
 
-- [Security provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_BEARDOG_INTEGRATION.md) — legacy document path preserved
-- [Entropy hierarchy (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md) — legacy document path preserved
-- [AI provider integration (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md) — legacy document path preserved
-- [Storage discovery (archived spec)](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/NESTGATE_DISCOVERY_WALKTHROUGH.md) — legacy document path preserved
-- [Zero-cost architecture evolution plan (archived)](../../../infra/wateringHole/fossilRecord/songBird/ZERO_COST_ARCHITECTURE_EVOLUTION_PLAN.md) — async-trait migration complete (historical)
+- [Security provider integration](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_BEARDOG_INTEGRATION.md)
+- [Entropy hierarchy](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/BEARDOG_ENTROPY_HIERARCHY_INTEGRATION.md)
+- [AI provider integration](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/SONGBIRD_SQUIRREL_INTEGRATION_SPEC.md)
+- [Storage discovery](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/NESTGATE_DISCOVERY_WALKTHROUGH.md)
+- [Zero-cost architecture evolution plan](../../../infra/wateringHole/fossilRecord/songBird/ZERO_COST_ARCHITECTURE_EVOLUTION_PLAN.md) — async-trait migration complete
