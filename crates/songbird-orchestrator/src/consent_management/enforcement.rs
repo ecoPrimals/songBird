@@ -60,7 +60,7 @@ impl Default for EnforcementConfig {
                 "export_data".into(),
                 "gpu_training".into(),
             ],
-            default_timeout: Duration::from_secs(300), // 5 minutes
+            default_timeout: songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL,
             timeout_behavior: TimeoutBehavior::Deny,   // Fail-safe: deny
         }
     }

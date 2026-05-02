@@ -20,8 +20,8 @@ impl IntegrationManager {
     pub const fn new(config: CanonicalSongbirdConfig) -> Self {
         Self {
             config,
-            startup_timeout: Duration::from_secs(60),
-            shutdown_timeout: Duration::from_secs(30),
+            startup_timeout: songbird_types::defaults::timeouts::DEFAULT_STARTUP_TIMEOUT,
+            shutdown_timeout: songbird_types::defaults::timeouts::DEFAULT_SHUTDOWN_TIMEOUT,
         }
     }
 

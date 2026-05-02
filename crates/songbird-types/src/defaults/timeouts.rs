@@ -25,3 +25,30 @@ pub const DEFAULT_PEEK_TIMEOUT: Duration = Duration::from_secs(5);
 pub const DEFAULT_DISCOVERY_POLL_INTERVAL: Duration = Duration::from_secs(10);
 /// Default graceful shutdown timeout.
 pub const DEFAULT_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Default startup timeout for orchestrated services.
+pub const DEFAULT_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Default socket I/O timeout for IPC probes and auto-discovery.
+pub const DEFAULT_SOCKET_IO_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// Default quick connectivity check timeout.
+pub const DEFAULT_CONNECTIVITY_CHECK_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Default circuit breaker timeout before half-open retry.
+pub const DEFAULT_CIRCUIT_BREAKER_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Default rate limiter window.
+pub const DEFAULT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
+
+/// Default task/resource cleanup interval (1 hour).
+pub const DEFAULT_CLEANUP_INTERVAL: Duration = Duration::from_secs(3600);
+
+/// Default retry initial backoff.
+pub const DEFAULT_RETRY_INITIAL_BACKOFF: Duration = Duration::from_millis(100);
+
+/// Default retry maximum backoff.
+pub const DEFAULT_RETRY_MAX_BACKOFF: Duration = Duration::from_secs(30);
+
+/// Polling interval for accept loops (non-blocking accept with timeout).
+pub const DEFAULT_ACCEPT_POLL_INTERVAL: Duration = Duration::from_millis(100);

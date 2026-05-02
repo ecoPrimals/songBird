@@ -41,8 +41,8 @@ impl Default for RetryPolicy {
     fn default() -> Self {
         Self {
             max_attempts: 3,
-            initial_backoff: Duration::from_millis(100),
-            max_backoff: Duration::from_secs(30),
+            initial_backoff: songbird_types::defaults::timeouts::DEFAULT_RETRY_INITIAL_BACKOFF,
+            max_backoff: songbird_types::defaults::timeouts::DEFAULT_RETRY_MAX_BACKOFF,
             multiplier: 2.0,
             jitter: true,
             retry_on: vec![ErrorClass::Transient, ErrorClass::Timeout, ErrorClass::RateLimit],

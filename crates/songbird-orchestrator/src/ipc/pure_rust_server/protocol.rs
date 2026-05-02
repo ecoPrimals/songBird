@@ -18,6 +18,9 @@ pub struct JsonRpcRequest {
     pub id: Option<serde_json::Value>,
 }
 
+/// JSON-RPC 2.0 version string.
+const JSONRPC_VERSION: &str = "2.0";
+
 /// JSON-RPC 2.0 Response
 #[derive(Debug, Clone, Serialize)]
 pub struct JsonRpcResponse {
@@ -27,6 +30,30 @@ pub struct JsonRpcResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<JsonRpcError>,
     pub id: serde_json::Value,
+}
+
+impl JsonRpcResponse {
+    /// Create a success response.
+    #[must_use]
+    pub fn success(result: serde_json::Value, id: serde_json::Value) -> Self {
+        Self {
+            jsonrpc: JSONRPC_VERSION.to_owned(),
+            result: Some(result),
+            error: None,
+            id,
+        }
+    }
+
+    /// Create an error response.
+    #[must_use]
+    pub fn error(error: JsonRpcError, id: serde_json::Value) -> Self {
+        Self {
+            jsonrpc: JSONRPC_VERSION.to_owned(),
+            result: None,
+            error: Some(error),
+            id,
+        }
+    }
 }
 
 /// JSON-RPC 2.0 Error

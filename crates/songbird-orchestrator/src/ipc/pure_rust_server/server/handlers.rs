@@ -18,14 +18,10 @@ impl UnixSocketServer {
         let id = request.id.clone().unwrap_or(serde_json::Value::Null);
 
         if request.jsonrpc != "2.0" {
-            return JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: None,
-                error: Some(JsonRpcError::invalid_request(
-                    r#"Invalid Request: jsonrpc must be "2.0""#,
-                )),
+            return JsonRpcResponse::error(
+                JsonRpcError::invalid_request(r#"Invalid Request: jsonrpc must be "2.0""#),
                 id,
-            };
+            );
         }
 
         let normalized = normalize_json_rpc_method_name(&request.method);
@@ -119,18 +115,8 @@ impl UnixSocketServer {
         };
 
         match result {
-            Ok(value) => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: Some(value),
-                error: None,
-                id,
-            },
-            Err(error) => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: None,
-                error: Some(error),
-                id,
-            },
+            Ok(value) => JsonRpcResponse::success(value, id),
+            Err(error) => JsonRpcResponse::error(error, id),
         }
     }
 }

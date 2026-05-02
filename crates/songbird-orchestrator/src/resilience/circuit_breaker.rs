@@ -137,7 +137,7 @@ impl Default for CircuitBreakerConfig {
     fn default() -> Self {
         Self {
             failure_threshold: 5,
-            timeout: Duration::from_secs(60),
+            timeout: songbird_types::defaults::timeouts::DEFAULT_CIRCUIT_BREAKER_TIMEOUT,
             success_threshold: 2,
             operation_timeout: None,
         }

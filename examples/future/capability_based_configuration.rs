@@ -14,7 +14,7 @@
 use songbird_config::defaults::hosts_evolved::{Environment, SelfAwareConfig, ServiceLocator};
 
 /// Old pattern (deprecated) - hardcoded configuration
-#[allow(dead_code)]
+#[allow(dead_code, reason = "example: intentionally unused to show deprecated pattern")]
 fn old_pattern_hardcoded() {
     // ❌ OLD PATTERN: Hardcoded addresses
     let _orchestrator_host = "127.0.0.1:8080";
@@ -25,7 +25,7 @@ fn old_pattern_hardcoded() {
 }
 
 /// Old pattern (improved) - environment variables but still hardcoded defaults
-#[allow(dead_code)]
+#[allow(dead_code, reason = "example: intentionally unused to show deprecated pattern")]
 fn old_pattern_with_env_vars() {
     // ⚠️ OLD PATTERN: Environment variables with hardcoded fallbacks
     let _host = std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

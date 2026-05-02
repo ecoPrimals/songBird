@@ -51,8 +51,8 @@ impl Default for CircuitBreakerConfig {
         Self {
             failure_threshold: 5,
             success_threshold: 2,
-            timeout: Duration::from_secs(60),
-            window_size: Duration::from_secs(60),
+            timeout: songbird_types::defaults::timeouts::DEFAULT_CIRCUIT_BREAKER_TIMEOUT,
+            window_size: songbird_types::defaults::timeouts::DEFAULT_CIRCUIT_BREAKER_TIMEOUT,
         }
     }
 }

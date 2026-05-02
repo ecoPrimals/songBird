@@ -426,7 +426,7 @@ impl SongbirdOrchestrator {
         });
 
         // Wait for server to be ready (atomic, lock-free!)
-        if !server.wait_ready(std::time::Duration::from_secs(5)).await {
+        if !server.wait_ready(songbird_types::defaults::timeouts::DEFAULT_REQUEST_TIMEOUT).await {
             warn!("⚠️  Unix Socket IPC server did not become ready within 5 seconds");
         }
 
@@ -532,7 +532,7 @@ impl SongbirdOrchestrator {
         let federation_state = Arc::clone(&self.federation_state);
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // 5 minutes
+            let mut interval = tokio::time::interval(songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL);
             let ttl_secs = 600; // 10 minutes (2x heartbeat interval)
 
             info!("🧹 Session TTL cleanup task started (interval: 5min, TTL: 10min)");

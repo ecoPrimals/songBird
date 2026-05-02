@@ -113,7 +113,7 @@ impl Default for CapabilityQuery {
             required: vec![],
             optional: vec![],
             min_providers: 1,
-            timeout: Duration::from_secs(5),
+            timeout: songbird_types::defaults::timeouts::DEFAULT_REQUEST_TIMEOUT,
         }
     }
 }
@@ -134,7 +134,7 @@ impl UniversalAdapter {
 
         Ok(Self {
             cache: HashMap::new(),
-            cache_ttl: Duration::from_secs(300), // 5 minutes
+            cache_ttl: songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL,
             http_client: songbird_http_client::SongbirdHttpClient::new(crypto_socket),
         })
     }

@@ -116,8 +116,8 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
         println!("   🤖  AI coordination (AI & MCP)");
         println!("      Status: ⏳ Not yet integrated");
 
-        // Check ToadStool connectivity (future)
-        println!("   🍄 ToadStool (Storage)");
+        // Check compute provider connectivity (future)
+        println!("   🍄 Compute provider (GPU/shader)");
         println!("      Status: ⏳ Not yet integrated");
 
         // Check storage provider connectivity (future)

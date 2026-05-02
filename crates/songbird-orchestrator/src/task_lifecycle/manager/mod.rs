@@ -98,7 +98,7 @@ impl TaskLifecycleManager {
             storage,
             checkpoint_config: CheckpointConfig::default(),
             event_tx,
-            cleanup_interval: std::time::Duration::from_secs(3600), // 1 hour
+            cleanup_interval: songbird_types::defaults::timeouts::DEFAULT_CLEANUP_INTERVAL,
         };
 
         cleanup::spawn_checkpoint_cleanup_task(

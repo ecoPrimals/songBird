@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave185] - 2026-05-02 - Deep debt: timeout centralization, JSON-RPC constructors, hardcoded elimination
+
+### Added
+- **11 new timeout constants** in `songbird-types/defaults/timeouts.rs`: `DEFAULT_STARTUP_TIMEOUT`, `DEFAULT_SOCKET_IO_TIMEOUT`, `DEFAULT_CONNECTIVITY_CHECK_TIMEOUT`, `DEFAULT_CIRCUIT_BREAKER_TIMEOUT`, `DEFAULT_RATE_LIMIT_WINDOW`, `DEFAULT_CLEANUP_INTERVAL`, `DEFAULT_RETRY_INITIAL_BACKOFF`, `DEFAULT_RETRY_MAX_BACKOFF`, `DEFAULT_ACCEPT_POLL_INTERVAL`.
+- **`JsonRpcResponse::success`/`::error` constructors** and `JSONRPC_VERSION` constant in `pure_rust_server/protocol.rs` — eliminates 9 scattered `"2.0".to_string()` construction patterns.
+
+### Changed
+- **15+ production `Duration` literals replaced** with named constants: `connection.rs` (accept poll, idle timeout), `discovery_bridge.rs` (connectivity check), `core/mod.rs` (wait_ready, TTL cleanup), `task_lifecycle/manager/mod.rs` (cleanup interval), `universal_adapter.rs` (timeout, cache TTL), `http_gateway/mod.rs` (rate limiter window), `socket_auto_discovery.rs` + `unix_transport.rs` (socket I/O), `consent_management/enforcement.rs` + `trust/lineage_auth.rs` (cache TTL), `error_recovery/retry.rs` + `error_recovery/circuit_breaker.rs` (retry/circuit defaults), `resilience/circuit_breaker.rs` (timeout), `integration/mod.rs` (startup/shutdown).
+- **`doctor.rs`**: "ToadStool (Storage)" evolved to "Compute provider (GPU/shader)" — capability-based, no primal codenames.
+- **4 bare `#[allow(dead_code)]`** in `examples/future/` given `reason` strings.
+- **Unused `std::time::Duration` imports** cleaned from `socket_auto_discovery.rs` and `unix_transport.rs`.
+
+---
+
 ## [v0.2.1-wave184] - 2026-05-02 - BTSP Phase 3 dispatch fix: binary-framed path wired
 
 ### Fixed

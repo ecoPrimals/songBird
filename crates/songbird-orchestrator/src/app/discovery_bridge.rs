@@ -211,7 +211,7 @@ impl SongbirdOrchestrator {
                                 );
 
                                 let connectivity_check = tokio::time::timeout(
-                                tokio::time::Duration::from_secs(3),
+                                songbird_types::defaults::timeouts::DEFAULT_CONNECTIVITY_CHECK_TIMEOUT,
                                 async {
                                     // ✅ TOWER ATOMIC: Pure Rust HTTP with security provider crypto
                                     let crypto_socket = crate::primal_discovery::discover_crypto_provider().await

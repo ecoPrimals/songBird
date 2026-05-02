@@ -129,7 +129,7 @@ impl UnixSocketServer {
         info!("   Status: READY ✅ (atomic flag set)");
 
         while self.is_running() {
-            match tokio::time::timeout(Duration::from_millis(100), listener.accept()).await {
+            match tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_ACCEPT_POLL_INTERVAL, listener.accept()).await {
                 Ok(Ok((stream, _addr))) => {
                     let server = Arc::clone(&self);
                     tokio::spawn(async move {
@@ -222,7 +222,7 @@ impl UnixSocketServer {
         info!("   Status: READY ✅ (isomorphic TCP fallback active)");
 
         while self.is_running() {
-            match tokio::time::timeout(Duration::from_millis(100), listener.accept()).await {
+            match tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_ACCEPT_POLL_INTERVAL, listener.accept()).await {
                 Ok(Ok((stream, addr))) => {
                     debug!("📥 TCP IPC connection from {}", addr);
                     let server = Arc::clone(&self);
@@ -397,7 +397,7 @@ impl UnixSocketServer {
     {
         let mut len_buf = [0u8; 4];
         loop {
-            match tokio::time::timeout(Duration::from_secs(30), stream.read_exact(&mut len_buf))
+            match tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_IDLE_TIMEOUT, stream.read_exact(&mut len_buf))
                 .await
             {
                 Ok(Ok(_)) => {}
@@ -425,14 +425,10 @@ impl UnixSocketServer {
             let request = match serde_json::from_slice::<JsonRpcRequest>(&payload) {
                 Ok(req) => req,
                 Err(e) => {
-                    let resp = JsonRpcResponse {
-                        jsonrpc: "2.0".to_string(),
-                        result: None,
-                        error: Some(JsonRpcError::parse_error(format!(
-                            "Failed to parse JSON-RPC request: {e}"
-                        ))),
-                        id: serde_json::Value::Null,
-                    };
+                    let resp = JsonRpcResponse::error(
+                        JsonRpcError::parse_error(format!("Failed to parse JSON-RPC request: {e}")),
+                        serde_json::Value::Null,
+                    );
                     Self::write_btsp_response(&mut stream, &resp).await?;
                     continue;
                 }
@@ -444,12 +440,10 @@ impl UnixSocketServer {
                 let (result, keys) =
                     btsp_phase3::handle_negotiate(&params, &self.security_client).await;
 
-                let resp = JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
-                    result: Some(serde_json::to_value(&result).unwrap_or_default()),
-                    error: None,
+                let resp = JsonRpcResponse::success(
+                    serde_json::to_value(&result).unwrap_or_default(),
                     id,
-                };
+                );
                 Self::write_btsp_response(&mut stream, &resp).await?;
 
                 if let Some(session_keys) = keys {
@@ -521,14 +515,10 @@ impl UnixSocketServer {
                     }
                 }
                 Err(e) => {
-                    let resp = JsonRpcResponse {
-                        jsonrpc: "2.0".to_string(),
-                        result: None,
-                        error: Some(JsonRpcError::parse_error(format!(
-                            "Failed to parse JSON-RPC request: {e}"
-                        ))),
-                        id: serde_json::Value::Null,
-                    };
+                    let resp = JsonRpcResponse::error(
+                        JsonRpcError::parse_error(format!("Failed to parse JSON-RPC request: {e}")),
+                        serde_json::Value::Null,
+                    );
                     let mut payload = serde_json::to_vec(&resp)?;
                     payload.push(b'\n');
                     writer.write_all(&Bytes::from(payload)).await?;
@@ -568,14 +558,10 @@ impl UnixSocketServer {
                     let request = match serde_json::from_str::<JsonRpcRequest>(&line) {
                         Ok(req) => req,
                         Err(e) => {
-                            let resp = JsonRpcResponse {
-                                jsonrpc: "2.0".to_string(),
-                                result: None,
-                                error: Some(JsonRpcError::parse_error(format!(
-                                    "Failed to parse JSON-RPC request: {e}"
-                                ))),
-                                id: serde_json::Value::Null,
-                            };
+                            let resp = JsonRpcResponse::error(
+                                JsonRpcError::parse_error(format!("Failed to parse JSON-RPC request: {e}")),
+                                serde_json::Value::Null,
+                            );
                             let mut payload = serde_json::to_vec(&resp)?;
                             payload.push(b'\n');
                             writer.write_all(&Bytes::from(payload)).await?;
@@ -590,12 +576,10 @@ impl UnixSocketServer {
                         let (result, keys) =
                             btsp_phase3::handle_negotiate(&params, &self.security_client).await;
 
-                        let resp = JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            result: Some(serde_json::to_value(&result).unwrap_or_default()),
-                            error: None,
+                        let resp = JsonRpcResponse::success(
+                            serde_json::to_value(&result).unwrap_or_default(),
                             id,
-                        };
+                        );
                         let mut payload = serde_json::to_vec(&resp)?;
                         payload.push(b'\n');
                         writer.write_all(&Bytes::from(payload)).await?;
@@ -669,14 +653,10 @@ impl UnixSocketServer {
             let request = match serde_json::from_slice::<JsonRpcRequest>(&plaintext) {
                 Ok(req) => req,
                 Err(e) => {
-                    let resp = JsonRpcResponse {
-                        jsonrpc: "2.0".to_string(),
-                        result: None,
-                        error: Some(JsonRpcError::parse_error(format!(
-                            "Failed to parse JSON-RPC request: {e}"
-                        ))),
-                        id: serde_json::Value::Null,
-                    };
+                    let resp = JsonRpcResponse::error(
+                        JsonRpcError::parse_error(format!("Failed to parse JSON-RPC request: {e}")),
+                        serde_json::Value::Null,
+                    );
                     let resp_bytes = serde_json::to_vec(&resp)?;
                     let encrypted = keys.encrypt(&resp_bytes)?;
                     btsp_phase3::write_encrypted_frame(&mut writer, &encrypted).await?;

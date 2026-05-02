@@ -17,7 +17,7 @@ use songbird_config::defaults::{
 };
 
 /// Stage 1: Old hardcoded configuration (deprecated)
-#[allow(dead_code)]
+#[allow(dead_code, reason = "example: intentionally unused to show deprecated pattern")]
 fn stage1_hardcoded() {
     println!("❌ STAGE 1: Hardcoded Configuration (Deprecated)");
     println!("================================================\n");
@@ -39,7 +39,7 @@ fn stage1_hardcoded() {
 }
 
 /// Stage 2: Environment variables with fallbacks (old pattern)
-#[allow(dead_code)]
+#[allow(dead_code, reason = "example: intentionally unused to show deprecated pattern")]
 fn stage2_env_vars() {
     println!("⚠️  STAGE 2: Environment Variables (Old Pattern)");
     println!("================================================\n");

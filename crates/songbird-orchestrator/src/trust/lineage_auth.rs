@@ -402,7 +402,7 @@ impl LineageAuthenticator {
             security_client: None,
             local_lineage: None,
             verification_cache: std::collections::HashMap::new(),
-            cache_ttl: std::time::Duration::from_secs(300), // 5 minutes
+            cache_ttl: songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL,
         }
     }
 
