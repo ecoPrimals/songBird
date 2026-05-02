@@ -12,7 +12,7 @@
 Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 
 - **HTTP/HTTPS**: Pure Rust TLS 1.3 client for sovereign HTTPS (Tower Atomic with security provider)
-- **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication; BTSP Phase 2 handshake on UDS accept when `FAMILY_ID` set (length-prefix + NDJSON wire formats; first-line auto-detect for JSON-line BTSP clients); domain symlink `network.sock` → `songbird.sock` for capability discovery
+- **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication; BTSP Phase 2 handshake on UDS accept when `FAMILY_ID` set (length-prefix + NDJSON wire formats; first-line auto-detect); BTSP Phase 3 `btsp.negotiate` encrypted framing (ChaCha20-Poly1305, HKDF session keys) on all 3 transport paths; domain symlink `network.sock` → `songbird.sock` for capability discovery
 - **Discovery**: Capability-based runtime discovery — mDNS, SSDP, UDP broadcast, DNS-SD, BirdSong encrypted beacons
 - **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh
 - **Federation**: Multi-node mesh networking with capability-based routing

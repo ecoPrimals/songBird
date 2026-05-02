@@ -133,10 +133,8 @@ retry backoff, rate limiting, periodic renewal, chaos tests.
 
 ### Test Categories
 
-1. **Unit**: `#[cfg(test)]` modules
-2. **Integration**: `tests/` directory
-3. **E2E**: `tests/e2e/`
-4. **Chaos/Fault**: `tests/chaos/`
+1. **Unit**: `#[cfg(test)]` modules within each crate
+2. **Integration**: Root `tests/` directory (`integration_task_lifecycle.rs`, `local_infrastructure_ci.rs`, `cli_parsing_tests.rs`)
 
 ---
 

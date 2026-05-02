@@ -1,7 +1,7 @@
 # Songbird Security
 
 **Last Updated**: May 2, 2026
-**Status**: Active Development (v0.2.1)
+**Status**: Production Ready (v0.2.1, S+ Tier)
 
 ---
 
@@ -29,7 +29,7 @@
 
 ### Network Safety
 
-- **BTSP Phase 3** — Incoming UDS connections require 4-step BTSP handshake when `FAMILY_ID` is set; crypto delegated to security provider via `btsp.session.create/verify/negotiate`; post-handshake `btsp.negotiate` upgrades to ChaCha20-Poly1305 encrypted framing (HKDF-SHA256 session keys, BondingPolicy cipher floor enforcement); graceful NULL cipher fallback for backward compatibility; development mode (no `FAMILY_ID`) uses newline-delimited JSON-RPC
+- **BTSP Phase 3 (FULL)** — Incoming UDS connections require 4-step BTSP handshake when `FAMILY_ID` is set; crypto delegated to security provider via `btsp.session.create/verify/negotiate`; post-handshake `btsp.negotiate` upgrades to ChaCha20-Poly1305 encrypted framing (HKDF-SHA256 session keys, BondingPolicy cipher floor enforcement); negotiate dispatch wired on all 3 transport paths (NDJSON session, binary-framed BTSP, bin_interface); graceful NULL cipher fallback for backward compatibility; development mode (no `FAMILY_ID`) uses newline-delimited JSON-RPC
 - **TLS** — Pure Rust TLS 1.3 implementation
 - **QUIC** — Pure Rust QUIC transport
 - **Sovereign Onion** — Privacy-preserving routing
