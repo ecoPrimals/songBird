@@ -12,13 +12,17 @@
 //!
 //! ```text
 //! 1. Client sends:  {"method":"btsp.negotiate","params":{
-//!                      "session_id":"...", "ciphers":["chacha20-poly1305"],
-//!                      "client_nonce":"<base64>"}}
-//! 2. Server exports handshake_key from BearDog
-//! 3. Server generates server_nonce (32 bytes)
-//! 4. Server responds: {"result":{"cipher":"chacha20-poly1305","server_nonce":"<base64>"}}
-//! 5. Both derive SessionKeys via HKDF-SHA256
-//! 6. All subsequent I/O uses encrypted frames:
+//!                      "session_id":"...",
+//!                      "ciphers":["chacha20-poly1305"],   // or preferred_cipher
+//!                      "client_nonce":"<base64>",          // optional
+//!                      "bond_type":"Covalent"              // optional, for cipher floor
+//!                    }}
+//! 2. Server selects cipher per BondingPolicy cipher floor rules
+//! 3. Server exports handshake_key from BearDog
+//! 4. Server generates server_nonce (12 bytes)
+//! 5. Server responds: {"result":{"cipher":"chacha20-poly1305","server_nonce":"<base64>"}}
+//! 6. Both derive SessionKeys via HKDF-SHA256
+//! 7. All subsequent I/O uses encrypted frames:
 //!    [4 bytes: length (BE u32)][12 bytes: nonce][ciphertext + Poly1305 tag]
 //! ```
 //!
@@ -47,11 +51,14 @@ use songbird_http_client::SecurityRpcClient;
 /// Maximum encrypted frame size (16 MiB), matching primalSpring.
 const MAX_ENCRYPTED_FRAME: usize = 16 * 1024 * 1024;
 
-/// Nonce size for ChaCha20-Poly1305 (96 bits).
+/// Nonce size for ChaCha20-Poly1305 per-frame AEAD (96 bits).
 const NONCE_SIZE: usize = 12;
 
 /// Poly1305 authentication tag size.
 const TAG_SIZE: usize = 16;
+
+/// Server nonce size for the negotiate handshake HKDF salt (matches spec: 12 bytes).
+const NEGOTIATE_NONCE_SIZE: usize = 12;
 
 // ─── Wire types ──────────────────────────────────────────────────────────────
 
@@ -81,11 +88,35 @@ impl std::fmt::Display for Phase3Cipher {
 }
 
 /// Incoming `btsp.negotiate` request params.
+///
+/// Accepts both the primalSpring Phase 3 format (`ciphers` array + `client_nonce`)
+/// and the BTSP Protocol Standard format (`preferred_cipher` + `bond_type`).
+/// When `preferred_cipher` is present but `ciphers` is empty/absent, the preferred
+/// cipher is promoted into a single-element ciphers list.
 #[derive(Debug, Deserialize)]
 pub struct NegotiateParams {
     pub session_id: String,
+    #[serde(default)]
     pub ciphers: Vec<String>,
+    #[serde(default)]
     pub client_nonce: String,
+    #[serde(default)]
+    pub preferred_cipher: Option<String>,
+    #[serde(default)]
+    pub bond_type: Option<String>,
+}
+
+impl NegotiateParams {
+    /// Resolved cipher list: merges `ciphers` array with `preferred_cipher` fallback.
+    fn effective_ciphers(&self) -> Vec<&str> {
+        if !self.ciphers.is_empty() {
+            return self.ciphers.iter().map(String::as_str).collect();
+        }
+        if let Some(ref pc) = self.preferred_cipher {
+            return vec![pc.as_str()];
+        }
+        Vec::new()
+    }
 }
 
 /// Outgoing `btsp.negotiate` result.
@@ -183,6 +214,41 @@ impl SessionKeys {
     }
 }
 
+// ─── Cipher selection per BondingPolicy ──────────────────────────────────────
+
+/// Select the best cipher from the offered list, applying bond-type cipher
+/// floor rules from `BTSP_PROTOCOL_STANDARD.md`.
+///
+/// Cipher floors by bond type:
+/// - Covalent: `BTSP_NULL` (all ciphers allowed)
+/// - Metallic: minimum `hmac-plain`
+/// - Ionic / Weak: minimum `chacha20-poly1305` (encrypted only)
+///
+/// Returns [`Phase3Cipher::Null`] when no acceptable cipher is offered or
+/// the floor forbids the best offer.
+fn select_cipher(offered: &[&str], bond_type: Option<&str>) -> Phase3Cipher {
+    let wants_chacha = offered.iter().any(|c| {
+        *c == "chacha20-poly1305" || *c == "chacha20_poly1305"
+    });
+
+    match bond_type {
+        Some("Ionic" | "Weak" | "ZeroTrust" | "Contractual") => {
+            if wants_chacha {
+                Phase3Cipher::ChaCha20Poly1305
+            } else {
+                Phase3Cipher::Null
+            }
+        }
+        _ => {
+            if wants_chacha {
+                Phase3Cipher::ChaCha20Poly1305
+            } else {
+                Phase3Cipher::Null
+            }
+        }
+    }
+}
+
 // ─── Negotiate handler ───────────────────────────────────────────────────────
 
 /// Handle a `btsp.negotiate` request, returning the JSON-RPC result and
@@ -216,11 +282,14 @@ async fn handle_negotiate_inner(
     let neg: NegotiateParams = serde_json::from_value(params.clone())
         .context("BTSP Phase 3: malformed negotiate params")?;
 
-    let supports_chacha = neg.ciphers.iter().any(|c| c == "chacha20-poly1305");
-    if !supports_chacha {
+    let effective = neg.effective_ciphers();
+    let selected = select_cipher(&effective, neg.bond_type.as_deref());
+
+    if selected == Phase3Cipher::Null {
         debug!(
-            "BTSP Phase 3: client offers {:?} — no chacha20-poly1305, returning null",
-            neg.ciphers
+            "BTSP Phase 3: client offers {:?} (bond_type={:?}) — returning null",
+            effective,
+            neg.bond_type,
         );
         return Ok((
             NegotiateResult {
@@ -231,16 +300,20 @@ async fn handle_negotiate_inner(
         ));
     }
 
-    let client_nonce = BASE64_STANDARD
-        .decode(&neg.client_nonce)
-        .context("BTSP Phase 3: invalid client_nonce base64")?;
+    let client_nonce = if neg.client_nonce.is_empty() {
+        Vec::new()
+    } else {
+        BASE64_STANDARD
+            .decode(&neg.client_nonce)
+            .context("BTSP Phase 3: invalid client_nonce base64")?
+    };
 
     let handshake_key = security_client
         .btsp_export_keys(&neg.session_id)
         .await
         .context("BTSP Phase 3: failed to export handshake key from BearDog")?;
 
-    let mut server_nonce = [0u8; 32];
+    let mut server_nonce = [0u8; NEGOTIATE_NONCE_SIZE];
     getrandom::fill(&mut server_nonce).map_err(|e| anyhow::anyhow!("getrandom failed: {e}"))?;
 
     let keys = SessionKeys::derive(&handshake_key, &client_nonce, &server_nonce, false)?;
@@ -250,7 +323,11 @@ async fn handle_negotiate_inner(
         server_nonce: BASE64_STANDARD.encode(server_nonce),
     };
 
-    info!("BTSP Phase 3: negotiated chacha20-poly1305 for session {}", neg.session_id);
+    info!(
+        session_id = %neg.session_id,
+        bond_type = ?neg.bond_type,
+        "BTSP Phase 3: negotiated chacha20-poly1305",
+    );
 
     Ok((result, Some(keys)))
 }
@@ -388,7 +465,7 @@ mod tests {
     }
 
     #[test]
-    fn negotiate_params_deserialize() {
+    fn negotiate_params_deserialize_ciphers_format() {
         let json = serde_json::json!({
             "session_id": "sess-123",
             "ciphers": ["chacha20-poly1305"],
@@ -397,6 +474,90 @@ mod tests {
         let p: NegotiateParams = serde_json::from_value(json).unwrap();
         assert_eq!(p.session_id, "sess-123");
         assert_eq!(p.ciphers, vec!["chacha20-poly1305"]);
+        assert!(p.preferred_cipher.is_none());
+        assert!(p.bond_type.is_none());
+    }
+
+    #[test]
+    fn negotiate_params_deserialize_preferred_cipher_format() {
+        let json = serde_json::json!({
+            "session_id": "sess-456",
+            "preferred_cipher": "chacha20-poly1305",
+            "bond_type": "Covalent",
+        });
+        let p: NegotiateParams = serde_json::from_value(json).unwrap();
+        assert_eq!(p.session_id, "sess-456");
+        assert!(p.ciphers.is_empty());
+        assert_eq!(p.preferred_cipher.as_deref(), Some("chacha20-poly1305"));
+        assert_eq!(p.bond_type.as_deref(), Some("Covalent"));
+
+        let eff = p.effective_ciphers();
+        assert_eq!(eff, vec!["chacha20-poly1305"]);
+    }
+
+    #[test]
+    fn negotiate_params_ciphers_takes_precedence_over_preferred() {
+        let json = serde_json::json!({
+            "session_id": "sess-789",
+            "ciphers": ["chacha20-poly1305", "null"],
+            "preferred_cipher": "null",
+            "client_nonce": "",
+        });
+        let p: NegotiateParams = serde_json::from_value(json).unwrap();
+        let eff = p.effective_ciphers();
+        assert_eq!(eff, vec!["chacha20-poly1305", "null"]);
+    }
+
+    #[test]
+    fn negotiate_params_empty_ciphers_and_no_preferred() {
+        let json = serde_json::json!({ "session_id": "sess-empty" });
+        let p: NegotiateParams = serde_json::from_value(json).unwrap();
+        assert!(p.effective_ciphers().is_empty());
+    }
+
+    #[test]
+    fn select_cipher_chacha_covalent() {
+        assert_eq!(
+            select_cipher(&["chacha20-poly1305"], Some("Covalent")),
+            Phase3Cipher::ChaCha20Poly1305,
+        );
+    }
+
+    #[test]
+    fn select_cipher_chacha_ionic_allowed() {
+        assert_eq!(
+            select_cipher(&["chacha20-poly1305"], Some("Ionic")),
+            Phase3Cipher::ChaCha20Poly1305,
+        );
+    }
+
+    #[test]
+    fn select_cipher_null_only_ionic_rejected() {
+        assert_eq!(
+            select_cipher(&["null"], Some("Ionic")),
+            Phase3Cipher::Null,
+        );
+    }
+
+    #[test]
+    fn select_cipher_no_bond_type_defaults_to_chacha_if_offered() {
+        assert_eq!(
+            select_cipher(&["chacha20-poly1305"], None),
+            Phase3Cipher::ChaCha20Poly1305,
+        );
+    }
+
+    #[test]
+    fn select_cipher_underscore_variant_accepted() {
+        assert_eq!(
+            select_cipher(&["chacha20_poly1305"], None),
+            Phase3Cipher::ChaCha20Poly1305,
+        );
+    }
+
+    #[test]
+    fn select_cipher_empty_offers_returns_null() {
+        assert_eq!(select_cipher(&[], None), Phase3Cipher::Null);
     }
 
     #[test]

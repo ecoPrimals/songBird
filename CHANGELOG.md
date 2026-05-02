@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave182] - 2026-05-02 - BTSP Phase 3 spec alignment (primalSpring audit)
+
+### Added
+- **`bond_type` parameter** in `NegotiateParams`: accepts `BondingPolicy` type from `BTSP_PROTOCOL_STANDARD.md`; cipher floor enforcement per bond type (Covalent allows all, Ionic/Weak/ZeroTrust require `chacha20-poly1305`).
+- **`preferred_cipher` parameter** in `NegotiateParams`: backward compat with BTSP Protocol Standard format (single cipher string vs `ciphers` array).
+- **`select_cipher()` function**: BondingPolicy-aware cipher selection with underscore variant normalization (`chacha20_poly1305` ↔ `chacha20-poly1305`).
+- **`effective_ciphers()` method** on `NegotiateParams`: merges `ciphers` array with `preferred_cipher` fallback.
+- **10 new tests**: `negotiate_params_deserialize_preferred_cipher_format`, `negotiate_params_ciphers_takes_precedence_over_preferred`, `negotiate_params_empty_ciphers_and_no_preferred`, `select_cipher_chacha_covalent`, `select_cipher_chacha_ionic_allowed`, `select_cipher_null_only_ionic_rejected`, `select_cipher_no_bond_type_defaults_to_chacha_if_offered`, `select_cipher_underscore_variant_accepted`, `select_cipher_empty_offers_returns_null` — total 28 btsp_phase3 tests.
+
+### Changed
+- **Server nonce size**: 32 bytes → 12 bytes to align with primalSpring audit spec and ecosystem convention.
+- **PRIMAL_REGISTRY.md**: Songbird entry updated from "BTSP Phase 2 complete" to "BTSP Phase 3 complete" with current test count.
+- **Module doc** in `btsp_phase3.rs`: updated protocol description to document `bond_type`, `preferred_cipher`, 12-byte nonce, and `BondingPolicy` cipher floor rules.
+
+---
+
 ## [v0.2.1-wave181] - 2026-05-02 - Port canonicalization, hardcoded elimination & deep debt
 
 ### Added
