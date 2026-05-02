@@ -2,7 +2,7 @@
 
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: April 27, 2026
+**Last Updated**: May 2, 2026
 
 ---
 
@@ -94,7 +94,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: **73.41%** (llvm-cov measured, Apr 27 2026; 7,683 lib tests). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: **73.41%** (llvm-cov measured, Apr 27 2026; 7,803 lib tests). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html

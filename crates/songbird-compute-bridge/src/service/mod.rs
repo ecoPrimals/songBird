@@ -194,7 +194,7 @@ mod tests {
         assert_eq!(normalize_capabilities_csv(""), vec![""]);
         assert_eq!(
             normalize_capabilities_csv("a,,b"),
-            vec!["a".to_string(), "".to_string(), "b".to_string()]
+            vec!["a".to_string(), String::new(), "b".to_string()]
         );
         assert_eq!(
             normalize_capabilities_csv("gpu, gpu ,gpu"),
@@ -203,7 +203,7 @@ mod tests {
         assert_eq!(normalize_capabilities_csv("  x  ,  y"), vec!["x".to_string(), "y".to_string()]);
         assert_eq!(
             normalize_capabilities_csv(",,,,"),
-            vec!["".to_string(), "".to_string(), "".to_string(), "".to_string(), "".to_string()]
+            vec![String::new(), String::new(), String::new(), String::new(), String::new()]
         );
     }
 

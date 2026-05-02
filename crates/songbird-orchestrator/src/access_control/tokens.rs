@@ -48,8 +48,11 @@ pub struct AccessToken {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TokenType {
     JWT,
-    /// Reserved for security provider–issued tokens (future integration)
-    #[serde(alias = "BearDog")]
+    /// Tokens issued by the security capability provider.
+    ///
+    /// `"security_provider"` is the canonical wire name; legacy payloads that
+    /// serialised the variant as `"BearDog"` are accepted for backward compat.
+    #[serde(alias = "security_provider", alias = "BearDog")]
     SecurityProvider,
 }
 

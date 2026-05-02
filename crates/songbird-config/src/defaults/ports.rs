@@ -46,7 +46,7 @@ pub fn discovery_port() -> u16 {
     songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(canonical::DEFAULT_METRICS_PORT)
+        .unwrap_or(canonical::DEFAULT_DISCOVERY_SERVICE_PORT)
 }
 
 /// Get dashboard UI port from environment or default
@@ -58,7 +58,7 @@ pub fn dashboard_port() -> u16 {
     songbird_process_env::var("SONGBIRD_DASHBOARD_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(3000)
+        .unwrap_or(canonical::DEFAULT_DASHBOARD_UI_PORT)
 }
 
 /// Get metrics/observability port from environment or default
@@ -70,7 +70,7 @@ pub fn metrics_port() -> u16 {
     songbird_process_env::var("SONGBIRD_METRICS_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(9090)
+        .unwrap_or(canonical::DEFAULT_OBSERVABILITY_PORT)
 }
 
 /// Get federation coordination port from environment or default
@@ -82,7 +82,7 @@ pub fn federation_port() -> u16 {
     songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8082)
+        .unwrap_or(canonical::DEFAULT_FEDERATION_COORDINATION_PORT)
 }
 
 /// Get WebSocket streaming port from environment or default
@@ -135,7 +135,7 @@ pub fn gaming_port() -> u16 {
     songbird_process_env::var("SONGBIRD_GAMING_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(6112)
+        .unwrap_or(canonical::DEFAULT_GAMING_BASE_PORT)
 }
 
 /// Get health monitoring port from environment or default
@@ -310,7 +310,7 @@ pub fn tarpc_port() -> u16 {
     songbird_process_env::var("SONGBIRD_TARPC_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8091)
+        .unwrap_or(canonical::DEFAULT_TARPC_RPC_PORT)
 }
 
 /// Collect all known provider scan ports from env-driven defaults (orchestrator, discovery, federation, security, dashboard, compute, storage).

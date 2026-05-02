@@ -9,18 +9,21 @@ use super::{DiscoveredNetwork, DiscoveryParameters};
 use crate::errors::{CliError, SongbirdResult};
 use std::net::IpAddr;
 
-/// RFC 6762 mDNS multicast group and port (IANA assigned)
-const MDNS_MULTICAST_ADDR: &str = "224.0.0.251:5353";
+/// RFC 6762 mDNS multicast socket address — derived from canonical constants.
+fn mdns_multicast_addr() -> String {
+    format!(
+        "{}:{}",
+        songbird_types::constants::MDNS_MULTICAST_GROUP,
+        songbird_types::constants::MDNS_PORT,
+    )
+}
 
 /// Maximum time to wait for discovery responses before giving up
 const MAX_DISCOVERY_TIMEOUT_MS: u64 = 5000;
 
 /// Resolve the discovery HTTP port from environment or canonical defaults
 fn discovery_http_port() -> u16 {
-    songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or_else(songbird_config::canonical::constants::network::default_orchestrator_port)
+    songbird_config::defaults::ports::discovery_port()
 }
 
 /// Network discovery API endpoint
@@ -200,7 +203,7 @@ async fn discover_via_multicast(timeout_ms: u64) -> SongbirdResult<Vec<Discovere
         })?;
 
     let discovery_msg = b"SONGBIRD_DISCOVERY_v1";
-    let _ = socket.send_to(discovery_msg, MDNS_MULTICAST_ADDR);
+    let _ = socket.send_to(discovery_msg, mdns_multicast_addr().as_str());
 
     let mut buf = [0u8; 2048];
     let mut networks = Vec::new();
@@ -237,7 +240,7 @@ async fn discover_via_mdns(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetw
         suggestion: None,
     })?;
 
-    let _ = socket.send_to(b"SONGBIRD_MDNS_QUERY_v1", MDNS_MULTICAST_ADDR);
+    let _ = socket.send_to(b"SONGBIRD_MDNS_QUERY_v1", mdns_multicast_addr().as_str());
 
     let mut buf = [0u8; 2048];
     let mut networks = Vec::new();
@@ -500,14 +503,14 @@ mod tests {
 
     #[test]
     fn discovery_http_port_invalid_overlay_value_falls_back_to_canonical_default() {
-        let expected = songbird_config::canonical::constants::network::default_orchestrator_port();
+        let expected = songbird_types::defaults::ports::DEFAULT_DISCOVERY_SERVICE_PORT;
         let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "nan");
         assert_eq!(super::discovery_http_port(), expected);
     }
 
     #[test]
     fn discovery_http_port_empty_overlay_value_falls_back_to_canonical_default() {
-        let expected = songbird_config::canonical::constants::network::default_orchestrator_port();
+        let expected = songbird_types::defaults::ports::DEFAULT_DISCOVERY_SERVICE_PORT;
         let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "");
         assert_eq!(super::discovery_http_port(), expected);
     }

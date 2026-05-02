@@ -176,6 +176,49 @@ impl SecurityRpcClient {
         })
     }
 
+    /// Export the handshake key for a verified BTSP session.
+    ///
+    /// After Phase 1 handshake completes, the `handshake_key` (derived from
+    /// the X25519 shared secret during `btsp.session.create`/`verify`) is
+    /// held by BearDog. This method retrieves it so Songbird can derive
+    /// Phase 3 session keys locally via HKDF.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if BearDog is unreachable, the session is unknown,
+    /// or the response is malformed.
+    pub async fn btsp_export_keys(&self, session_id: &str) -> Result<[u8; 32]> {
+        debug!("BTSP: exporting handshake key for session {session_id}");
+
+        let result = self
+            .call(
+                "btsp.server.export_keys",
+                json!({
+                    "session_id": session_id,
+                }),
+            )
+            .await?;
+
+        let handshake_key_b64 = result["handshake_key"].as_str().ok_or_else(|| {
+            Error::SecurityProviderRpc(
+                "Missing 'handshake_key' in btsp.server.export_keys response".to_string(),
+            )
+        })?;
+
+        let raw = BASE64_STANDARD.decode(handshake_key_b64).map_err(|e| {
+            Error::SecurityProviderRpc(format!("Invalid handshake_key base64: {e}"))
+        })?;
+
+        let key: [u8; 32] = raw.try_into().map_err(|v: Vec<u8>| {
+            Error::SecurityProviderRpc(format!(
+                "handshake_key wrong length: expected 32, got {}",
+                v.len()
+            ))
+        })?;
+
+        Ok(key)
+    }
+
     /// Negotiate cipher suite for an authenticated BTSP session.
     ///
     /// After handshake verification succeeds, both parties negotiate which

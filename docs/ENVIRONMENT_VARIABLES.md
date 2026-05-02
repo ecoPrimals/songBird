@@ -1,6 +1,6 @@
 # Songbird Environment Variables
 
-**Last Updated**: April 27, 2026
+**Last Updated**: May 2, 2026
 **Version**: v0.2.1
 
 ---
@@ -76,7 +76,7 @@ No symlink workarounds are needed as of Wave 173.
 |----------|---------|-------------|
 | `SONGBIRD_HTTP_PORT` | `8080` | HTTP API port |
 | `SONGBIRD_HTTPS_PORT` | `8443` | HTTPS API port |
-| `SONGBIRD_TARPC_PORT` | `8001` | tarpc RPC port |
+| `SONGBIRD_TARPC_PORT` | `8091` | tarpc RPC port |
 | `SONGBIRD_BIND_ADDRESS` | `0.0.0.0` | Bind address for federation/tower mode |
 | `SONGBIRD_DISCOVERY_PORT` | `8081` | Discovery service HTTP port |
 | `SONGBIRD_STUN_PORT` | `3478` | STUN server port |

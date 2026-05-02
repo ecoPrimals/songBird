@@ -35,6 +35,7 @@ use tracing::{debug, error, info, warn};
 use super::super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use super::UnixSocketServer;
 use crate::ipc::btsp;
+use crate::ipc::btsp_phase3;
 
 // ─── PeekedStream adapter ────────────────────────────────────────────────────
 //
@@ -509,9 +510,14 @@ impl UnixSocketServer {
 
     /// Persistent newline-delimited JSON-RPC session: reads requests in a loop
     /// until the client disconnects. Generic over any buffered reader + writer pair.
+    ///
+    /// If the client sends a `btsp.negotiate` request, the handler processes
+    /// the Phase 3 negotiation, sends the NDJSON response, and (if a real
+    /// cipher was negotiated) switches to the encrypted frame loop for all
+    /// subsequent traffic.
     async fn handle_ndjson_session<R, W>(&self, mut reader: R, mut writer: W) -> Result<()>
     where
-        R: AsyncBufRead + Unpin,
+        R: AsyncBufRead + AsyncRead + Unpin,
         W: AsyncWrite + Unpin,
     {
         let mut line = String::new();
@@ -546,6 +552,32 @@ impl UnixSocketServer {
                         }
                     };
 
+                    if request.method == "btsp.negotiate" {
+                        let id = request.id.clone().unwrap_or(serde_json::Value::Null);
+                        let params = request.params.unwrap_or(serde_json::Value::Null);
+                        let (result, keys) =
+                            btsp_phase3::handle_negotiate(&params, &self.security_client).await;
+
+                        let resp = JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            result: Some(serde_json::to_value(&result).unwrap_or_default()),
+                            error: None,
+                            id,
+                        };
+                        let mut payload = serde_json::to_vec(&resp)?;
+                        payload.push(b'\n');
+                        writer.write_all(&Bytes::from(payload)).await?;
+                        writer.flush().await?;
+
+                        if let Some(session_keys) = keys {
+                            debug!("BTSP Phase 3: switching to encrypted framing");
+                            return self
+                                .handle_encrypted_session(reader, writer, session_keys)
+                                .await;
+                        }
+                        continue;
+                    }
+
                     let is_notification = request.id.is_none();
                     debug!(
                         "JSON-RPC request: {} (notification={})",
@@ -564,6 +596,70 @@ impl UnixSocketServer {
                     error!("Failed to read from socket: {}", e);
                     break;
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Persistent encrypted JSON-RPC session (BTSP Phase 3).
+    ///
+    /// After `btsp.negotiate` upgrades the connection, all subsequent traffic
+    /// uses length-prefixed encrypted frames:
+    /// `[4B len (BE u32)][12B nonce][ciphertext + Poly1305 tag]`
+    async fn handle_encrypted_session<R, W>(
+        &self,
+        mut reader: R,
+        mut writer: W,
+        keys: btsp_phase3::SessionKeys,
+    ) -> Result<()>
+    where
+        R: AsyncRead + Unpin,
+        W: AsyncWrite + Unpin,
+    {
+        info!("BTSP Phase 3: encrypted session active");
+        loop {
+            let frame = match btsp_phase3::read_encrypted_frame(&mut reader).await {
+                Ok(f) => f,
+                Err(e) => {
+                    let msg = format!("{e:#}");
+                    if msg.contains("UnexpectedEof") || msg.contains("failed to read frame length")
+                    {
+                        debug!("BTSP Phase 3: client disconnected");
+                        break;
+                    }
+                    return Err(e).context("BTSP Phase 3: frame read error");
+                }
+            };
+
+            let plaintext = keys.decrypt(&frame).context("BTSP Phase 3: decryption failed")?;
+
+            let request = match serde_json::from_slice::<JsonRpcRequest>(&plaintext) {
+                Ok(req) => req,
+                Err(e) => {
+                    let resp = JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        result: None,
+                        error: Some(JsonRpcError::parse_error(format!(
+                            "Failed to parse JSON-RPC request: {e}"
+                        ))),
+                        id: serde_json::Value::Null,
+                    };
+                    let resp_bytes = serde_json::to_vec(&resp)?;
+                    let encrypted = keys.encrypt(&resp_bytes)?;
+                    btsp_phase3::write_encrypted_frame(&mut writer, &encrypted).await?;
+                    continue;
+                }
+            };
+
+            let is_notification = request.id.is_none();
+            debug!("BTSP Phase 3 JSON-RPC: {} (notification={})", request.method, is_notification);
+            let response = self.handle_jsonrpc_request(request).await;
+
+            if !is_notification {
+                let resp_bytes = serde_json::to_vec(&response)?;
+                let encrypted = keys.encrypt(&resp_bytes)?;
+                btsp_phase3::write_encrypted_frame(&mut writer, &encrypted).await?;
             }
         }
 

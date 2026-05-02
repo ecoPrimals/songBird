@@ -207,7 +207,7 @@ pub struct TarpcConfig {
 impl Default for TarpcConfig {
     fn default() -> Self {
         use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-        let port = songbird_types::error_helpers::SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081);
+        let port = songbird_config::defaults::ports::tarpc_port();
         Self {
             addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port),
             tls_enabled: false,
@@ -233,7 +233,7 @@ mod tests {
         let _lock = env_lock();
         let _guard = VarGuard::remove("SONGBIRD_TARPC_PORT");
         let config = TarpcConfig::default();
-        assert_eq!(config.addr.port(), 8081);
+        assert_eq!(config.addr.port(), songbird_types::defaults::ports::DEFAULT_TARPC_RPC_PORT);
         assert!(!config.tls_enabled);
         assert_eq!(config.max_connections, 1000);
     }

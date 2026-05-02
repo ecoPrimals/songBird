@@ -484,8 +484,11 @@ async fn from_discovery_fallback_default_bind_address_and_security_port() -> Son
         songbird_process_env::remove_var(key);
     }
 
-    let expected =
-        format!("http://{}:8081", songbird_config::canonical::constants::get_bind_address());
+    let expected = format!(
+        "http://{}:{}",
+        songbird_config::canonical::constants::get_bind_address(),
+        songbird_config::defaults::ports::security_provider_port()
+    );
     let adapter =
         SecurityAdapter::from_discovery_with_resolver(CapabilityEndpointResolver::new()).await?;
     assert_eq!(adapter.endpoint(), expected);

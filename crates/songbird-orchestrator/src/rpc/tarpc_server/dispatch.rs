@@ -144,12 +144,10 @@ pub fn version() -> VersionInfo {
 
 /// Protocol list for [`super::TarpcServerSimple`].
 pub fn protocols_simple() -> Vec<ProtocolInfo> {
-    use songbird_types::error_helpers::SafeEnv;
-
     debug!("tarpc: protocols()");
 
-    let tarpc_port = SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081);
-    let http_port = SafeEnv::get_port("SONGBIRD_HTTP_PORT", 8080);
+    let tarpc_port = songbird_config::defaults::ports::tarpc_port();
+    let http_port = songbird_config::defaults::ports::orchestrator_port();
     let ipc_path = crate::env_config::socket_path().to_string_lossy().into_owned();
 
     vec![
@@ -177,11 +175,10 @@ pub fn protocols_simple() -> Vec<ProtocolInfo> {
 /// Protocol list for legacy [`super::TarpcServer`].
 pub fn protocols_legacy() -> Vec<ProtocolInfo> {
     debug!("tarpc: protocols()");
-    use songbird_types::error_helpers::SafeEnv;
 
-    let http_port = SafeEnv::get_port("SONGBIRD_HTTP_PORT", 8080);
-    let https_port = SafeEnv::get_port("SONGBIRD_HTTPS_PORT", 8443);
-    let tarpc_port = SafeEnv::get_port("SONGBIRD_TARPC_PORT", 8081);
+    let http_port = songbird_config::defaults::ports::orchestrator_port();
+    let https_port = songbird_config::defaults::ports::security_provider_port();
+    let tarpc_port = songbird_config::defaults::ports::tarpc_port();
 
     vec![
         ProtocolInfo {

@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave181] - 2026-05-02 - Port canonicalization, hardcoded elimination & deep debt
+
+### Added
+- **8 new port constants** in `songbird-types/defaults/ports.rs`: `DEFAULT_DISCOVERY_SERVICE_PORT` (8081), `DEFAULT_OBSERVABILITY_PORT` (9090), `DEFAULT_DASHBOARD_UI_PORT` (3000), `DEFAULT_FEDERATION_COORDINATION_PORT` (8082), `DEFAULT_TARPC_RPC_PORT` (8091), `DEFAULT_GAMING_BASE_PORT` (6112), `EPHEMERAL_BIND_ADDR` ("127.0.0.1:0").
+- **`songbird-types`** dep added to `songbird-compute-bridge` for constant access.
+
+### Fixed
+- **`discovery_port()` bug**: was falling back to `DEFAULT_METRICS_PORT` (wrong constant); now correctly uses `DEFAULT_DISCOVERY_SERVICE_PORT`.
+- **Tarpc port harmonization**: three conflicting defaults (8001, 8081, 8091) across `TarpcConfig`, `protocols_simple()`, `protocol_api.rs` — all now use canonical `tarpc_port()` → `DEFAULT_TARPC_RPC_PORT` (8091).
+- **`manual_string_new` clippy lint** (Rust 1.94): fixed `"".to_string()` → `String::new()` in `songbird-compute-bridge` tests.
+
+### Changed
+- **6 `SafeEnv::get_port()` calls** replaced with canonical port functions: `tarpc_server/mod.rs`, `tarpc_server/dispatch.rs` (2×), `security.rs` adapter, `unified/core.rs` metrics, `network_extras.rs` discovery.
+- **5 hardcoded IPs evolved**: `memory_optimized.rs` (`"localhost"`, `"127.0.0.1"` → `crate::constants::is_loopback_host()` + `LOCALHOST`), `capability_port_config.rs` (`"127.0.0.1:0"` → `EPHEMERAL_BIND_ADDR`), `compute-bridge/types.rs` (`"0.0.0.0"` → `PRODUCTION_BIND_ADDRESS`, `"9000"` → `DEFAULT_COMPUTE_PORT`), CLI `tower.rs` (`"8080"` → `DEFAULT_ORCHESTRATOR_PORT`, `"0.0.0.0"` → `PRODUCTION_BIND_ADDRESS`).
+- **Duplicate mDNS constant removed**: `"224.0.0.251:5353"` in `cli/commands/quick/discovery.rs` replaced with function deriving from `MDNS_MULTICAST_GROUP` + `MDNS_PORT`.
+- **`#[serde(alias = "BearDog")]`** in `tokens.rs` evolved: added `alias = "security_provider"` as capability-based canonical name; `"BearDog"` retained for backward compat.
+- **Discovery HTTP port** in CLI: `discovery_http_port()` now delegates to `songbird_config::defaults::ports::discovery_port()` instead of `default_orchestrator_port()`.
+- **Port function magic numbers** in `songbird-config/defaults/ports.rs`: `dashboard_port()`, `metrics_port()`, `federation_port()`, `gaming_port()`, `tarpc_port()`, `discovery_port()` all wired to canonical constants.
+
+---
+
+## [v0.2.1-wave180] - 2026-05-02 - BTSP Phase 3: `btsp.negotiate` server-side encrypted framing
+
+### Added
+- **BTSP Phase 3 server handler** (`btsp.negotiate` JSON-RPC method): after Phase 1 handshake, clients can upgrade to ChaCha20-Poly1305 encrypted framing. Handles `session_id`, `ciphers`, `client_nonce` params; generates `server_nonce`; derives directional session keys via HKDF-SHA256 (`btsp-session-v1-c2s`/`btsp-session-v1-s2c`); switches to encrypted frame loop `[4B len][12B nonce][ciphertext + Poly1305 tag]`. Graceful NULL cipher fallback when BearDog unavailable or cipher unsupported.
+- **`btsp_phase3` module** (`songbird-orchestrator/src/ipc/btsp_phase3.rs`): `SessionKeys` (derive/encrypt/decrypt), `NegotiateParams`/`NegotiateResult` types, `handle_negotiate()` handler, `read_encrypted_frame()`/`write_encrypted_frame()` I/O helpers.
+- **`SecurityRpcClient::btsp_export_keys()`** in `songbird-http-client`: retrieves handshake key from BearDog via `btsp.server.export_keys` for local HKDF derivation.
+- **Encrypted session loops**: wired in both `pure_rust_server/server/connection.rs` (`handle_encrypted_session`) and `bin_interface/server.rs` (`handle_encrypted_json_rpc`).
+- **19 new tests**: SessionKeys derivation (directional, deterministic, different-nonces), encrypt/decrypt round-trip (bidirectional, empty plaintext, tamper rejection, cross-key rejection, unique nonces), negotiate params/result serde, encrypted frame I/O round-trip, frame size limits, full encrypted session round-trip.
+
+### Changed
+- **Dependencies**: added `chacha20poly1305 = "0.10"` and `hkdf = "0.12"` to `songbird-orchestrator` (already had `sha2`, `getrandom`, `base64`).
+- **`handle_ndjson_session`** (`connection.rs`): now intercepts `btsp.negotiate` inline, processes Phase 3 negotiation, sends NDJSON response, then switches to encrypted frame loop if cipher negotiated.
+- **`handle_json_rpc_lines`** (`bin_interface/server.rs`): same negotiate-then-switch logic for the bin_interface TCP/UDS path.
+
+---
+
 ## [v0.2.1-wave179] - 2026-04-30 - Deep Debt + Coverage Expansion: +92 tests across 8 crates
 
 ### Added

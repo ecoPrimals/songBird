@@ -87,9 +87,10 @@ impl OptimizedHost {
     #[allow(clippy::should_implement_trait, reason = "custom from_str name; not std::str::FromStr")]
     #[must_use]
     pub fn from_str(host: &str) -> Self {
-        match host {
-            "localhost" | "127.0.0.1" | "::1" => Self::Localhost,
-            _ => Self::Custom(host.to_string()),
+        if crate::constants::is_loopback_host(host) {
+            Self::Localhost
+        } else {
+            Self::Custom(host.to_string())
         }
     }
 
@@ -97,7 +98,7 @@ impl OptimizedHost {
     #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
-            Self::Localhost => "127.0.0.1",
+            Self::Localhost => crate::constants::LOCALHOST,
             Self::Custom(host) => host,
         }
     }

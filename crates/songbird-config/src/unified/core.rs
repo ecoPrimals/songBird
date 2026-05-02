@@ -91,7 +91,7 @@ impl Default for CanonicalObservabilityConfig {
             metrics_enabled: true,
             tracing_enabled: true,
             health_check_enabled: true,
-            metrics_port: SafeEnv::get_port("SONGBIRD_METRICS_PORT", 9090),
+            metrics_port: crate::defaults::ports::metrics_port(),
         }
     }
 }

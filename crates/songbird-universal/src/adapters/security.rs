@@ -172,7 +172,7 @@ impl SecurityAdapter {
                         &songbird_config::canonical::constants::get_bind_address()
                     ),
                 );
-                let port = SafeEnv::get_port("SONGBIRD_SECURITY_PORT", 8081).to_string();
+                let port = songbird_config::defaults::ports::security_provider_port().to_string();
                 let discovered_endpoint = format!("{endpoint}:{port}");
 
                 debug!("🔄 Using fallback security endpoint: {}", discovered_endpoint);

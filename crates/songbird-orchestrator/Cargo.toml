@@ -118,6 +118,8 @@ uuid = { workspace = true, features = ["v5", "v7"] }
 
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"], optional = true }
 sha2 = "0.10"
+hkdf = "0.12"
+chacha20poly1305 = "0.10"
 base64 = "0.22"
 getrandom = { workspace = true }
 

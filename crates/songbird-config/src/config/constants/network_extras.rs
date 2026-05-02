@@ -77,7 +77,7 @@ pub fn node_id() -> String {
 /// Get default discovery port
 #[must_use]
 pub fn default_discovery_port() -> u16 {
-    SafeEnv::get_port("SONGBIRD_DISCOVERY_PORT", 5678)
+    crate::defaults::ports::discovery_port()
 }
 
 /// Get default bind address for the current environment

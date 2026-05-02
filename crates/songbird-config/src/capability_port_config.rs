@@ -187,7 +187,8 @@ impl CapabilityPortRegistry {
     ) -> anyhow::Result<u16> {
         use anyhow::Context as _;
 
-        let listener = TcpListener::bind("127.0.0.1:0").context("Failed to bind ephemeral port")?;
+        let listener = TcpListener::bind(songbird_types::defaults::ports::EPHEMERAL_BIND_ADDR)
+            .context("Failed to bind ephemeral port")?;
         let port = listener.local_addr().context("Failed to get local address")?.port();
         drop(listener);
         self.register(capability, port, PortSource::Ephemeral, description)?;

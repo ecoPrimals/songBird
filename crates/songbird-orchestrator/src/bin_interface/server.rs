@@ -320,17 +320,22 @@ async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unp
         dispatch_json_rpc_line(&first_line, &mut writer, &handler, peer_label).await;
     }
 
-    handle_json_rpc_lines(&mut reader, &mut writer, &handler, peer_label).await;
+    handle_json_rpc_lines(&mut reader, &mut writer, &handler, &security_client, peer_label).await;
 }
 
 /// Process a stream of newline-delimited JSON-RPC requests.
+///
+/// If the client sends `btsp.negotiate`, the Phase 3 negotiation is handled
+/// inline: the NDJSON response is sent, and (if a real cipher was negotiated)
+/// the connection switches to encrypted framing for all subsequent traffic.
 async fn handle_json_rpc_lines<R, W>(
     reader: &mut R,
     writer: &mut W,
     handler: &Arc<IpcServiceHandler>,
+    security_client: &Arc<songbird_http_client::SecurityRpcClient>,
     peer_label: &str,
 ) where
-    R: tokio::io::AsyncBufRead + Unpin,
+    R: tokio::io::AsyncBufRead + tokio::io::AsyncRead + Unpin,
     W: tokio::io::AsyncWrite + Unpin,
 {
     let mut line = String::new();
@@ -345,12 +350,129 @@ async fn handle_json_rpc_lines<R, W>(
                 if line.trim().is_empty() {
                     continue;
                 }
+
+                if let Ok(request) = serde_json::from_str::<JsonRpcRequest>(&line)
+                    && request.method == "btsp.negotiate"
+                {
+                    let id = request.id.unwrap_or(serde_json::Value::Null);
+                    let params = request.params.unwrap_or(serde_json::Value::Null);
+                    let (result, keys) =
+                        crate::ipc::btsp_phase3::handle_negotiate(&params, security_client).await;
+
+                    let resp = JsonRpcResponse::success(
+                        serde_json::to_value(&result).unwrap_or_default(),
+                        id,
+                    );
+                    if let Ok(json) = serde_json::to_string(&resp) {
+                        let _ = writer.write_all(json.as_bytes()).await;
+                        let _ = writer.write_all(b"\n").await;
+                        let _ = writer.flush().await;
+                    }
+
+                    if let Some(session_keys) = keys {
+                        tracing::debug!(
+                            "{peer_label} BTSP Phase 3: switching to encrypted framing"
+                        );
+                        handle_encrypted_json_rpc(
+                            reader,
+                            writer,
+                            handler,
+                            session_keys,
+                            peer_label,
+                        )
+                        .await;
+                        return;
+                    }
+                    continue;
+                }
+
                 dispatch_json_rpc_line(&line, writer, handler, peer_label).await;
             }
             Err(e) => {
                 tracing::error!("{peer_label} read error: {e}");
                 break;
             }
+        }
+    }
+}
+
+/// Encrypted JSON-RPC loop (BTSP Phase 3) for the `bin_interface` server path.
+async fn handle_encrypted_json_rpc<R, W>(
+    reader: &mut R,
+    writer: &mut W,
+    handler: &Arc<IpcServiceHandler>,
+    keys: crate::ipc::btsp_phase3::SessionKeys,
+    peer_label: &str,
+) where
+    R: tokio::io::AsyncRead + Unpin,
+    W: tokio::io::AsyncWrite + Unpin,
+{
+    tracing::info!("{peer_label} BTSP Phase 3: encrypted session active");
+    loop {
+        let frame = match crate::ipc::btsp_phase3::read_encrypted_frame(reader).await {
+            Ok(f) => f,
+            Err(e) => {
+                let msg = format!("{e:#}");
+                if msg.contains("UnexpectedEof") || msg.contains("failed to read frame length") {
+                    tracing::debug!("{peer_label} BTSP Phase 3: client disconnected");
+                } else {
+                    tracing::error!("{peer_label} BTSP Phase 3 frame read error: {e:#}");
+                }
+                break;
+            }
+        };
+
+        let plaintext = match keys.decrypt(&frame) {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::error!("{peer_label} BTSP Phase 3 decrypt failed: {e:#}");
+                break;
+            }
+        };
+
+        let request = match serde_json::from_slice::<JsonRpcRequest>(&plaintext) {
+            Ok(req) => req,
+            Err(e) => {
+                let resp = JsonRpcResponse::error(
+                    JsonRpcError {
+                        code: JsonRpcError::PARSE_ERROR,
+                        message: format!("Failed to parse request: {e}"),
+                        data: None,
+                    },
+                    serde_json::Value::Null,
+                );
+                if let Ok(resp_bytes) = serde_json::to_vec(&resp)
+                    && let Ok(encrypted) = keys.encrypt(&resp_bytes)
+                {
+                    let _ =
+                        crate::ipc::btsp_phase3::write_encrypted_frame(writer, &encrypted).await;
+                }
+                continue;
+            }
+        };
+
+        let is_notification = request.id.is_none();
+        let id = request.id.unwrap_or(serde_json::Value::Null);
+        tracing::debug!(
+            "{peer_label} BTSP Phase 3 JSON-RPC: {} (notification={is_notification})",
+            request.method
+        );
+
+        let response = match handler
+            .handle(&request.method, request.params.unwrap_or(serde_json::Value::Null))
+            .await
+        {
+            Ok(result) => JsonRpcResponse::success(result, id),
+            Err(message) => JsonRpcResponse::error(JsonRpcError::internal_error(message), id),
+        };
+
+        if !is_notification
+            && let Ok(resp_bytes) = serde_json::to_vec(&response)
+            && let Ok(encrypted) = keys.encrypt(&resp_bytes)
+            && let Err(e) = crate::ipc::btsp_phase3::write_encrypted_frame(writer, &encrypted).await
+        {
+            tracing::error!("{peer_label} BTSP Phase 3 write error: {e:#}");
+            break;
         }
     }
 }

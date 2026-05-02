@@ -25,6 +25,7 @@ gethostname = "0.4"
 
 # Internal dependencies
 songbird-process-env.workspace = true
+songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 

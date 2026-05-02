@@ -59,3 +59,17 @@ pub const DEFAULT_BIRDSONG_PORT: u16 = 42_424;
 pub const DEFAULT_QUIC_PORT: u16 = 4433;
 /// Default request timeout in milliseconds
 pub const DEFAULT_TIMEOUT_MS: u64 = 5000;
+/// Discovery HTTP service port (env: `SONGBIRD_DISCOVERY_PORT`)
+pub const DEFAULT_DISCOVERY_SERVICE_PORT: u16 = 8081;
+/// Prometheus-standard observability / metrics scrape port (env: `SONGBIRD_METRICS_PORT`)
+pub const DEFAULT_OBSERVABILITY_PORT: u16 = 9090;
+/// Dashboard frontend dev-server port (env: `SONGBIRD_DASHBOARD_PORT`)
+pub const DEFAULT_DASHBOARD_UI_PORT: u16 = 3000;
+/// Federation coordination port (env: `SONGBIRD_FEDERATION_PORT`)
+pub const DEFAULT_FEDERATION_COORDINATION_PORT: u16 = 8082;
+/// tarpc binary RPC transport port (env: `SONGBIRD_TARPC_PORT`)
+pub const DEFAULT_TARPC_RPC_PORT: u16 = 8091;
+/// StarCraft IPX / gaming base port (env: `SONGBIRD_GAMING_PORT`)
+pub const DEFAULT_GAMING_BASE_PORT: u16 = 6112;
+/// Ephemeral bind address for port-0 allocation
+pub const EPHEMERAL_BIND_ADDR: &str = "127.0.0.1:0";

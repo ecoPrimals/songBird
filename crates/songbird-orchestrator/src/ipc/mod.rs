@@ -45,6 +45,7 @@
 //! 6. **Secure**: Unix socket permissions
 
 pub mod btsp;
+pub mod btsp_phase3;
 pub mod handlers;
 pub mod pure_rust_server; // v4.9.0: Refactored into domain modules
 pub mod registry;

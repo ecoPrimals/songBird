@@ -15,11 +15,11 @@ use std::sync::Arc;
 #[command(about = "Agnostic compute service bridge for Songbird federation")]
 pub struct Args {
     /// Bind address
-    #[arg(long, env = "COMPUTE_HOST", default_value = "0.0.0.0")]
+    #[arg(long, env = "COMPUTE_HOST", default_value = songbird_types::constants::PRODUCTION_BIND_ADDRESS)]
     pub(crate) host: String,
 
     /// Bind port
-    #[arg(long, env = "COMPUTE_PORT", default_value = "9000")]
+    #[arg(long, env = "COMPUTE_PORT", default_value_t = songbird_types::defaults::ports::DEFAULT_COMPUTE_PORT)]
     pub(crate) port: u16,
 
     /// Service name
