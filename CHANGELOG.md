@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave186] - 2026-05-03 - BTSP Phase 3 live connection verification
+
+### Added
+- **4 new tests** in `connection.rs` verifying post-negotiate encrypted frame loop on live async duplex streams:
+  - `encrypted_session_loop_on_live_duplex`: full multi-request encrypted exchange
+  - `encrypted_session_notifications_produce_no_response`: notification semantics in encrypted mode
+  - `ndjson_negotiate_dispatch_null_cipher_fallback`: null cipher path when security provider unavailable
+  - `ndjson_negotiate_to_encrypted_session_live`: full E2E negotiate → encrypted transition with mock security provider
+
+### Verified
+- **GAP-06** (`discovery.register` naming): confirmed closed — zero occurrences of `"discovery.register"` as JSON-RPC method in Songbird production code (Squirrel resolved Apr 29)
+- 32 total BTSP Phase 3 tests (28 existing + 4 new)
+- 0 clippy warnings across all 30 crates
+
+---
+
 ## [v0.2.1-wave185] - 2026-05-02 - Deep debt: timeout centralization, JSON-RPC constructors, hardcoded elimination
 
 ### Added
