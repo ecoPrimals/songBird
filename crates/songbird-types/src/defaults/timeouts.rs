@@ -52,3 +52,16 @@ pub const DEFAULT_RETRY_MAX_BACKOFF: Duration = Duration::from_secs(30);
 
 /// Polling interval for accept loops (non-blocking accept with timeout).
 pub const DEFAULT_ACCEPT_POLL_INTERVAL: Duration = Duration::from_millis(100);
+
+/// Default BTSP NDJSON handshake read timeout.
+/// Accounts for security provider relay latency (crypto operations) with margin.
+pub const DEFAULT_BTSP_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Default federation heartbeat interval.
+pub const DEFAULT_FEDERATION_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(30);
+
+/// Default federation rendezvous refresh interval.
+pub const DEFAULT_FEDERATION_RENDEZVOUS_INTERVAL: Duration = Duration::from_secs(60);
+
+/// Default security adapter RPC timeout.
+pub const DEFAULT_SECURITY_ADAPTER_TIMEOUT: Duration = Duration::from_secs(5);

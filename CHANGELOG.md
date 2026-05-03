@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave187] - 2026-05-03 - Smart refactor, primal-name evolution, timeout centralization
+
+### Changed
+- **Smart refactor `connection.rs`**: 1043L → 694L by extracting test module to `connection_tests.rs` via `#[path]` attribute. Zero files >800L in workspace.
+- **Primal-name evolution**: 15 "BearDog" references in BTSP error messages and doc comments evolved to "security provider" — Songbird only has self-knowledge, discovers providers at runtime.
+- **Duration centralization**: 4 new constants (`DEFAULT_BTSP_HANDSHAKE_TIMEOUT`, `DEFAULT_FEDERATION_HEARTBEAT_INTERVAL`, `DEFAULT_FEDERATION_RENDEZVOUS_INTERVAL`, `DEFAULT_SECURITY_ADAPTER_TIMEOUT`), replacing 4 scattered literals in `btsp.rs`, `federation.rs`, `security.rs`.
+
+### Verified
+- Mock isolation confirmed: both `songbird-network-federation` and `songbird-lineage-relay` security modules gate `Mock` variants behind `#[cfg(any(test, feature = "test-mocks"))]`
+- 0 unsafe code across all 30 crates
+- 0 `Box<dyn Error>` in production code
+- 0 bare `#[allow]` without `reason`
+- 0 clippy warnings
+
+---
+
 ## [v0.2.1-wave186] - 2026-05-03 - BTSP Phase 3 live connection verification
 
 ### Added

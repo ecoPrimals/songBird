@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! BTSP (BearDog Secure Tunnel Protocol) server-side handshake
+//! BTSP (BearDog Transport Security Protocol) server-side handshake
 //!
 //! Implements the server half of the BTSP 4-step handshake on incoming
-//! UDS connections, delegating all crypto to BearDog via `SecurityRpcClient`.
+//! UDS connections, delegating all crypto to the security provider via `SecurityRpcClient`.
 //!
 //! ## Protocol Flow (server perspective)
 //!
@@ -106,9 +106,9 @@ async fn write_frame<W: AsyncWriteExt + Unpin>(writer: &mut W, payload: &[u8]) -
 
 // ─── Family seed resolution ──────────────────────────────────────────────────
 
-/// Resolve the family seed from the environment, base64-encoded for BearDog.
+/// Resolve the family seed from the environment, base64-encoded for the security provider.
 ///
-/// BearDog's `btsp.session.create` base64-decodes the `family_seed` param
+/// The security provider's `btsp.session.create` base64-decodes the `family_seed` param
 /// internally. We must base64-encode the raw env string before sending.
 ///
 /// Checks `FAMILY_SEED`, `BEARDOG_FAMILY_SEED`, `BIOMEOS_FAMILY_SEED`.
@@ -130,7 +130,7 @@ fn resolve_family_seed() -> Option<String> {
 
 /// Perform the server-side BTSP handshake on an accepted connection.
 ///
-/// Delegates all crypto to BearDog via `security_client`. On success returns
+/// Delegates all crypto to the security provider via `security_client`. On success returns
 /// a [`BtspSession`] with the negotiated cipher and session id. On failure,
 /// sends a `HandshakeError` to the client and returns `Err`.
 ///
@@ -138,7 +138,7 @@ fn resolve_family_seed() -> Option<String> {
 ///
 /// Returns an error if:
 /// - The client sends malformed handshake messages
-/// - BearDog is unreachable or rejects the session
+/// - Security provider is unreachable or rejects the session
 /// - The client fails the challenge-response (wrong family seed)
 /// - Cipher negotiation is disallowed
 pub async fn perform_server_handshake<S>(
@@ -179,16 +179,16 @@ where
         bail!("BTSP: FAMILY_SEED not available — cannot create BTSP session");
     };
 
-    // Step 2: Call BearDog to create session (BearDog generates challenge + ephemeral keys)
+    // Step 2: Create session (security provider generates challenge + ephemeral keys)
     let session = match security_client.btsp_session_create(&family_seed).await {
         Ok(s) => s,
         Err(e) => {
             let err = HandshakeError {
                 error: "handshake_failed".into(),
-                reason: format!("BearDog relay: session create failed: {e}"),
+                reason: format!("security provider: session create failed: {e}"),
             };
             let _ = write_frame(stream, &serde_json::to_vec(&err)?).await;
-            bail!("BTSP: BearDog btsp.session.create failed: {e}");
+            bail!("BTSP: security provider btsp.session.create failed: {e}");
         }
     };
 
@@ -212,7 +212,7 @@ where
         .decode(&challenge_resp.response)
         .context("BTSP: invalid base64 in challenge response")?;
 
-    // Step 4: Verify via BearDog (includes cipher negotiation)
+    // Step 4: Verify via security provider (includes cipher negotiation)
     let verification = security_client
         .btsp_session_verify(
             &session.session_token,
@@ -221,7 +221,7 @@ where
             &challenge_resp.preferred_cipher,
         )
         .await
-        .context("BTSP: BearDog btsp.session.verify failed")?;
+        .context("BTSP: security provider btsp.session.verify failed")?;
 
     if !verification.verified {
         error!(
@@ -281,8 +281,8 @@ async fn write_ndjson<W: AsyncWrite + Unpin>(writer: &mut W, value: &impl Serial
 }
 
 /// Per-line read timeout for NDJSON handshake messages.
-/// 15 seconds accounts for BearDog relay latency (crypto operations) with margin.
-const NDJSON_HANDSHAKE_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+const NDJSON_HANDSHAKE_READ_TIMEOUT: std::time::Duration =
+    songbird_types::defaults::timeouts::DEFAULT_BTSP_HANDSHAKE_TIMEOUT;
 
 async fn read_ndjson_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<String> {
     let mut line = String::new();
@@ -313,7 +313,7 @@ async fn read_ndjson_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<Str
 ///
 /// # Errors
 ///
-/// Returns an error if the handshake fails (malformed messages, BearDog
+/// Returns an error if the handshake fails (malformed messages, security provider
 /// unreachable, wrong family seed, cipher rejection).
 pub async fn perform_server_handshake_ndjson<R, W>(
     first_line: &str,
@@ -355,16 +355,16 @@ where
         bail!("BTSP NDJSON: FAMILY_SEED not available — cannot create BTSP session");
     };
 
-    // Step 2: Call BearDog to create session (BearDog generates challenge + ephemeral keys)
+    // Step 2: Create session (security provider generates challenge + ephemeral keys)
     let session = match security_client.btsp_session_create(&family_seed).await {
         Ok(s) => s,
         Err(e) => {
             let err = HandshakeError {
                 error: "handshake_failed".into(),
-                reason: format!("BearDog relay: session create failed: {e}"),
+                reason: format!("security provider: session create failed: {e}"),
             };
             let _ = write_ndjson(writer, &err).await;
-            bail!("BTSP NDJSON: BearDog btsp.session.create failed: {e}");
+            bail!("BTSP NDJSON: security provider btsp.session.create failed: {e}");
         }
     };
 
@@ -391,7 +391,7 @@ where
         .decode(&challenge_resp.response)
         .context("BTSP NDJSON: invalid base64 in challenge response")?;
 
-    // Step 4: Verify via BearDog (includes cipher negotiation)
+    // Step 4: Verify via security provider (includes cipher negotiation)
     let verification = security_client
         .btsp_session_verify(
             &session.session_token,
@@ -400,7 +400,7 @@ where
             &challenge_resp.preferred_cipher,
         )
         .await
-        .context("BTSP NDJSON: BearDog btsp.session.verify failed")?;
+        .context("BTSP NDJSON: security provider btsp.session.verify failed")?;
 
     if !verification.verified {
         error!(

@@ -233,7 +233,7 @@ impl SecurityAdapter {
             endpoint,
             transport,
             transport_kind,
-            timeout: Duration::from_secs(5),
+            timeout: songbird_types::defaults::timeouts::DEFAULT_SECURITY_ADAPTER_TIMEOUT,
         })
     }
 

@@ -359,7 +359,9 @@ impl FederationCoordinator {
         let timeout_secs = config.node_timeout_secs;
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(30));
+            let mut interval = tokio::time::interval(
+                songbird_types::defaults::timeouts::DEFAULT_FEDERATION_HEARTBEAT_INTERVAL,
+            );
 
             loop {
                 interval.tick().await;
@@ -437,7 +439,9 @@ impl FederationCoordinator {
         _state: Arc<FederationState>,
         rendezvous_client: Arc<RwLock<Option<Arc<RendezvousClient>>>>,
     ) {
-        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        let mut interval = tokio::time::interval(
+            songbird_types::defaults::timeouts::DEFAULT_FEDERATION_RENDEZVOUS_INTERVAL,
+        );
 
         loop {
             interval.tick().await;

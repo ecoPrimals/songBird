@@ -18,7 +18,7 @@
 //!                      "bond_type":"Covalent"              // optional, for cipher floor
 //!                    }}
 //! 2. Server selects cipher per BondingPolicy cipher floor rules
-//! 3. Server exports handshake_key from BearDog
+//! 3. Server exports handshake_key from security provider
 //! 4. Server generates server_nonce (12 bytes)
 //! 5. Server responds: {"result":{"cipher":"chacha20-poly1305","server_nonce":"<base64>"}}
 //! 6. Both derive SessionKeys via HKDF-SHA256
@@ -254,7 +254,7 @@ fn select_cipher(offered: &[&str], bond_type: Option<&str>) -> Phase3Cipher {
 /// Handle a `btsp.negotiate` request, returning the JSON-RPC result and
 /// optionally the derived session keys (if a real cipher was negotiated).
 ///
-/// On any failure (BearDog unreachable, missing fields), falls back to null
+/// On any failure (security provider unreachable, missing fields), falls back to null
 /// cipher so the connection stays alive on plaintext.
 pub async fn handle_negotiate(
     params: &serde_json::Value,
@@ -311,7 +311,7 @@ async fn handle_negotiate_inner(
     let handshake_key = security_client
         .btsp_export_keys(&neg.session_id)
         .await
-        .context("BTSP Phase 3: failed to export handshake key from BearDog")?;
+        .context("BTSP Phase 3: failed to export handshake key from security provider")?;
 
     let mut server_nonce = [0u8; NEGOTIATE_NONCE_SIZE];
     getrandom::fill(&mut server_nonce).map_err(|e| anyhow::anyhow!("getrandom failed: {e}"))?;
