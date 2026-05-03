@@ -4,7 +4,7 @@
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: May 2, 2026
+**Last Updated**: May 3, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -30,7 +30,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`; May 2 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | 0 (largest production 763L `primal_discovery.rs`; Wave 176: `information_layers.rs` (1121L) smart-refactored into directory module; Wave 133: 4 former >700L files refactored) |
+| Files >800 lines | 0 (largest production 694L `connection.rs`; Wave 187: `connection.rs` (1043L) smart-refactored via `#[path]` test extraction; Wave 176: `information_layers.rs` (1121L) → directory module; Wave 133: 4 former >700L files refactored) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |

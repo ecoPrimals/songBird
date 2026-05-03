@@ -340,7 +340,7 @@ SONGBIRD_IGD_ENABLED=true songbird server
 **Coordinator Wiring**:
 
 ```rust
-// crates/songbird-universal-ipc/src/handlers/stun_handler.rs
+// crates/songbird-universal-ipc/src/handlers/stun_handler/mod.rs
 
 pub async fn handle_punch_request(
     params: PunchRequestParams,
@@ -522,7 +522,7 @@ Needed: Automated periodic update
 **DNS Auto-Update Implementation**:
 
 ```rust
-// crates/songbird-universal-ipc/src/handlers/beacon_handler.rs
+// crates/songbird-universal-ipc/src/handlers/birdsong_handler/mod.rs
 
 pub async fn handle_publish_dns(
     dns_config: DnsConfig,

@@ -1,6 +1,6 @@
 # Songbird Specifications Index
 
-**Last Updated:** May 2, 2026
+**Last Updated:** May 3, 2026
 **Version:** v0.2.1
 
 ---
@@ -61,7 +61,7 @@
 
 ## Archived — `specs/archived/` (May 2, 2026)
 
-16 specs archived. Referenced crates that were never created (`songbird-client`,
+19 specs archived. Referenced crates that were never created (`songbird-client`,
 `songbird-primal-sdk`, `songbird-universal-primals`, `songbird-federation`, `songbird-rpc`)
 or file paths that no longer exist. Retained as design fossil record.
 

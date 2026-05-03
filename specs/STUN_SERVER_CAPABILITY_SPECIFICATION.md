@@ -327,7 +327,7 @@ All infrastructure exists in `songbird-stun` crate.
 **Files**:
 - `crates/songbird-stun/src/server.rs` (new, ~280 lines)
 - `crates/songbird-stun/src/lib.rs` (update, +2 lines)
-- `crates/songbird-universal-ipc/src/handlers/stun_handler.rs` (new, ~150 lines)
+- `crates/songbird-universal-ipc/src/handlers/stun_handler/` (module directory, ~150 lines)
 - Tests (~100 lines)
 
 **Success Criteria**:
