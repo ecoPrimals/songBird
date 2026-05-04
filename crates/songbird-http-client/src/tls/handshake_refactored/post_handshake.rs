@@ -12,8 +12,9 @@ use crate::crypto::CryptoCapability;
 use crate::crypto::TlsApplicationSecrets;
 use crate::error::{Error, Result};
 use crate::tls::alert::TlsAlert;
+use songbird_types::defaults::timeouts::DEFAULT_POST_HANDSHAKE_READ_WINDOW;
 use tokio::net::TcpStream;
-use tokio::time::{Duration, timeout};
+use tokio::time::timeout;
 use tracing::{error, info, trace, warn};
 
 /// Post-handshake message processing result
@@ -41,7 +42,7 @@ impl TlsHandshake {
         let mut read_seq: u64 = 0;
 
         loop {
-            match timeout(Duration::from_millis(200), self.read_record(stream)).await {
+            match timeout(DEFAULT_POST_HANDSHAKE_READ_WINDOW, self.read_record(stream)).await {
                 Ok(Ok((content_type, encrypted_data))) => {
                     count += 1;
                     trace!(

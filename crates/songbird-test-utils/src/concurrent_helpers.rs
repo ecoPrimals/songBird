@@ -30,8 +30,7 @@ use std::time::Duration;
 use tokio::sync::{Notify, RwLock, Semaphore};
 use tokio::time::{sleep, timeout};
 
-// Re-export commonly used types for convenience
-type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
+use anyhow::Result;
 
 #[expect(unused_imports, reason = "unused bindings/imports in this compilation unit")]
 use tracing::{debug, warn};
@@ -129,7 +128,7 @@ impl ReadinessSignal {
         // Slow path: wait for signal
         timeout(duration, self.notify.notified())
             .await
-            .map_err(|_| "Readiness signal timeout".into())
+            .map_err(|_| anyhow::anyhow!("Readiness signal timeout"))
             .map(|()| {
                 #[cfg(feature = "tracing")]
                 debug!("Readiness signal received");
@@ -239,7 +238,7 @@ impl CompletionWaiter {
             }
         })
         .await
-        .map_err(|_| "Completion waiter timeout".into())
+        .map_err(|_| anyhow::anyhow!("Completion waiter timeout"))
         .map(|()| {
             #[cfg(feature = "tracing")]
             debug!("All tasks complete");
@@ -337,7 +336,7 @@ impl AsyncBarrier {
                 }
             })
             .await
-            .map_err(|_| "Barrier wait timeout".into())
+            .map_err(|_| anyhow::anyhow!("Barrier wait timeout"))
             .map(|()| {
                 #[cfg(feature = "tracing")]
                 debug!("Barrier: released");
@@ -514,7 +513,7 @@ impl ConcurrencyLimiter {
         self.semaphore
             .acquire()
             .await
-            .map_err(|e| format!("Failed to acquire semaphore permit: {}", e).into())
+            .map_err(|e| anyhow::anyhow!("Failed to acquire semaphore permit: {e}"))
     }
 
     /// Try to acquire a permit (non-blocking)

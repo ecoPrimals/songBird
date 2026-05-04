@@ -67,7 +67,7 @@ impl MockComputeProvider {
     /// # Errors
     ///
     /// Currently never returns an error, but signature allows for future error cases.
-    pub async fn start(&mut self) -> Result<u16, Box<dyn std::error::Error>> {
+    pub async fn start(&mut self) -> anyhow::Result<u16> {
         // In a real implementation, this would start an actual HTTP server
         // For now, we'll assign a random port for testing purposes
         let port = fastrand::u16(10000..60000);
@@ -314,7 +314,7 @@ mod tests {
     // ========== NEW TESTS (5 tests to improve coverage) ==========
 
     #[tokio::test]
-    async fn test_toadstool_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_toadstool_server_lifecycle() -> anyhow::Result<()> {
         let mut mock = MockComputeProvider::new();
         let port = mock
             .start()

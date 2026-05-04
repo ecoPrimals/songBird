@@ -37,9 +37,12 @@ use crate::crypto::{TlsApplicationSecrets, TlsHandshakeSecrets as TlsSecrets};
 use crate::error::{Error, Result};
 use crate::tls::session::SessionKeys;
 use crate::tls::{CIPHER_SUITES, TLS_1_2};
+use songbird_types::defaults::timeouts::{
+    DEFAULT_TLS_HANDSHAKE_TIMEOUT, DEFAULT_TLS_RECORD_READ_TIMEOUT,
+};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use tokio::time::{Duration, timeout};
+use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
 impl TlsHandshake {
@@ -199,7 +202,7 @@ impl TlsHandshake {
     async fn receive_server_hello(&self, stream: &mut TcpStream) -> Result<Vec<u8>> {
         info!("📥 Waiting for ServerHello");
         let (server_hello_type, server_hello) =
-            timeout(Duration::from_secs(10), self.read_record(stream))
+            timeout(DEFAULT_TLS_HANDSHAKE_TIMEOUT, self.read_record(stream))
                 .await
                 .map_err(|_| Error::TlsHandshake("Timeout waiting for ServerHello (10s)".into()))?
                 .map_err(|e| {
@@ -268,7 +271,7 @@ impl TlsHandshake {
         let mut sequence_number = 0u64;
 
         while messages_read < 5 {
-            match timeout(Duration::from_secs(5), self.read_record(stream)).await {
+            match timeout(DEFAULT_TLS_RECORD_READ_TIMEOUT, self.read_record(stream)).await {
                 Ok(Ok((content_type, encrypted_record))) => {
                     // Skip ChangeCipherSpec (legacy TLS 1.3 compatibility)
                     if content_type == 0x14 {

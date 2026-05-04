@@ -9,10 +9,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::*;
-use base64::Engine as _;
 use crate::app::connection_manager::ConnectionManager;
 use crate::ipc::btsp_phase3::SessionKeys;
 use crate::ipc::registry::ServiceRegistry;
+use base64::Engine as _;
 
 fn test_server() -> Arc<UnixSocketServer> {
     let registry = Arc::new(ServiceRegistry::new());
@@ -43,9 +43,7 @@ async fn encrypted_session_loop_on_live_duplex() {
     let (server_reader, server_writer) = tokio::io::split(server_stream);
 
     let server_handle = tokio::spawn(async move {
-        server
-            .handle_encrypted_session(server_reader, server_writer, server_keys)
-            .await
+        server.handle_encrypted_session(server_reader, server_writer, server_keys).await
     });
 
     let (mut client_reader, mut client_writer) = tokio::io::split(client_stream);
@@ -57,13 +55,9 @@ async fn encrypted_session_loop_on_live_duplex() {
     });
     let req_bytes = serde_json::to_vec(&request).unwrap();
     let encrypted_req = client_keys.encrypt(&req_bytes).unwrap();
-    btsp_phase3::write_encrypted_frame(&mut client_writer, &encrypted_req)
-        .await
-        .unwrap();
+    btsp_phase3::write_encrypted_frame(&mut client_writer, &encrypted_req).await.unwrap();
 
-    let resp_frame = btsp_phase3::read_encrypted_frame(&mut client_reader)
-        .await
-        .unwrap();
+    let resp_frame = btsp_phase3::read_encrypted_frame(&mut client_reader).await.unwrap();
     let resp_bytes = client_keys.decrypt(&resp_frame).unwrap();
     let resp: serde_json::Value = serde_json::from_slice(&resp_bytes).unwrap();
 
@@ -79,13 +73,9 @@ async fn encrypted_session_loop_on_live_duplex() {
     });
     let req2_bytes = serde_json::to_vec(&request2).unwrap();
     let encrypted_req2 = client_keys.encrypt(&req2_bytes).unwrap();
-    btsp_phase3::write_encrypted_frame(&mut client_writer, &encrypted_req2)
-        .await
-        .unwrap();
+    btsp_phase3::write_encrypted_frame(&mut client_writer, &encrypted_req2).await.unwrap();
 
-    let resp2_frame = btsp_phase3::read_encrypted_frame(&mut client_reader)
-        .await
-        .unwrap();
+    let resp2_frame = btsp_phase3::read_encrypted_frame(&mut client_reader).await.unwrap();
     let resp2_bytes = client_keys.decrypt(&resp2_frame).unwrap();
     let resp2: serde_json::Value = serde_json::from_slice(&resp2_bytes).unwrap();
 
@@ -115,9 +105,8 @@ async fn encrypted_session_notifications_produce_no_response() {
     let client_keys = SessionKeys::derive(&hk, cn, sn, true).unwrap();
 
     let (sr, sw) = tokio::io::split(server_stream);
-    let server_handle = tokio::spawn(async move {
-        server.handle_encrypted_session(sr, sw, server_keys).await
-    });
+    let server_handle =
+        tokio::spawn(async move { server.handle_encrypted_session(sr, sw, server_keys).await });
 
     let (mut cr, mut cw) = tokio::io::split(client_stream);
 
@@ -159,9 +148,7 @@ async fn ndjson_negotiate_dispatch_null_cipher_fallback() {
 
     let (sr, sw) = tokio::io::split(server_stream);
     let reader = BufReader::new(sr);
-    let server_handle = tokio::spawn(async move {
-        server.handle_ndjson_session(reader, sw).await
-    });
+    let server_handle = tokio::spawn(async move { server.handle_ndjson_session(reader, sw).await });
 
     let (mut cr, mut cw) = tokio::io::split(client_stream);
 
@@ -192,8 +179,7 @@ async fn ndjson_negotiate_dispatch_null_cipher_fallback() {
     }
 
     let resp: serde_json::Value =
-        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap())
-            .unwrap();
+        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
 
     assert_eq!(resp["jsonrpc"], "2.0");
     assert_eq!(resp["id"], 1);
@@ -221,8 +207,7 @@ async fn ndjson_negotiate_dispatch_null_cipher_fallback() {
         }
     }
     let resp2: serde_json::Value =
-        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap())
-            .unwrap();
+        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
 
     assert_eq!(resp2["id"], 2);
     assert!(resp2["result"].is_object());
@@ -274,9 +259,8 @@ async fn ndjson_negotiate_to_encrypted_session_live() {
         }
     });
 
-    let security = Arc::new(songbird_http_client::SecurityRpcClient::new_direct(
-        mock_sock.to_str().unwrap(),
-    ));
+    let security =
+        Arc::new(songbird_http_client::SecurityRpcClient::new_direct(mock_sock.to_str().unwrap()));
     let registry = Arc::new(ServiceRegistry::new());
     let conn_mgr = Arc::new(ConnectionManager::new());
     let server = Arc::new(UnixSocketServer::new(registry, None, conn_mgr, security));
@@ -285,9 +269,7 @@ async fn ndjson_negotiate_to_encrypted_session_live() {
     let (sr, sw) = tokio::io::split(server_stream);
     let reader = BufReader::new(sr);
 
-    let server_handle = tokio::spawn(async move {
-        server.handle_ndjson_session(reader, sw).await
-    });
+    let server_handle = tokio::spawn(async move { server.handle_ndjson_session(reader, sw).await });
 
     let (mut cr, mut cw) = tokio::io::split(client_stream);
 
@@ -317,22 +299,14 @@ async fn ndjson_negotiate_to_encrypted_session_live() {
         }
     }
     let resp: serde_json::Value =
-        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap())
-            .unwrap();
+        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
 
     assert_eq!(resp["result"]["cipher"], "chacha20-poly1305");
     let server_nonce_b64 = resp["result"]["server_nonce"].as_str().unwrap();
-    let server_nonce = base64::prelude::BASE64_STANDARD
-        .decode(server_nonce_b64)
-        .unwrap();
+    let server_nonce = base64::prelude::BASE64_STANDARD.decode(server_nonce_b64).unwrap();
 
-    let client_keys = SessionKeys::derive(
-        &handshake_key,
-        b"client_nonce_16b",
-        &server_nonce,
-        true,
-    )
-    .unwrap();
+    let client_keys =
+        SessionKeys::derive(&handshake_key, b"client_nonce_16b", &server_nonce, true).unwrap();
 
     let request = serde_json::json!({
         "jsonrpc": "2.0",

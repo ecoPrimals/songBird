@@ -15,6 +15,8 @@ use tracing::{trace, warn};
 
 use super::{CryptoProvider, Result, RpcError};
 
+const JSONRPC_VERSION: &str = "2.0";
+
 /// Routing mode for crypto operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoutingMode {
@@ -82,7 +84,7 @@ impl CryptoProvider {
             RoutingMode::Direct => {
                 let actual_method = Self::semantic_to_actual(method);
                 JsonRpcRequest {
-                    jsonrpc: "2.0".to_string(),
+                    jsonrpc: JSONRPC_VERSION.into(),
                     method: actual_method.to_string(),
                     params,
                     id,
@@ -92,7 +94,7 @@ impl CryptoProvider {
                 let (capability, operation) = Self::method_to_capability(method);
                 trace!("🌐 Neural API: capability.call({}, {})", capability, operation);
                 JsonRpcRequest {
-                    jsonrpc: "2.0".to_string(),
+                    jsonrpc: JSONRPC_VERSION.into(),
                     method: "capability.call".to_string(),
                     params: json!({
                         "capability": capability,
@@ -296,7 +298,7 @@ mod tests {
     #[test]
     fn direct_json_rpc_request_serializes_expected_shape() -> TestResult {
         let req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             method: CryptoProvider::semantic_to_actual("crypto.encrypt_aes_256_gcm").to_string(),
             params: json!({ "k": "v" }),
             id: 42,
@@ -320,7 +322,7 @@ mod tests {
             "args": json!({ "data": "abc" })
         });
         let req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             method: "capability.call".to_string(),
             params: inner,
             id: 7,

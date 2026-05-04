@@ -37,23 +37,21 @@ impl CapabilityRouter {
             debug_info: None,
         })?;
 
-        let response =
-            tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_COMPUTE_TIMEOUT, client.post(endpoint, task_json))
-                .await
-                .map_err(|_| SongbirdError::Network {
-                    message: "Request timeout (5 minutes)".to_string(),
-                    interface: Some(endpoint.to_string()),
-                    suggestion: Some(
-                        "Check provider endpoint and network connectivity".to_string(),
-                    ),
-                })?
-                .map_err(|e| SongbirdError::Network {
-                    message: format!("Failed to send task to external provider: {e}"),
-                    interface: Some(endpoint.to_string()),
-                    suggestion: Some(
-                        "Check provider endpoint and network connectivity".to_string(),
-                    ),
-                })?;
+        let response = tokio::time::timeout(
+            songbird_types::defaults::timeouts::DEFAULT_COMPUTE_TIMEOUT,
+            client.post(endpoint, task_json),
+        )
+        .await
+        .map_err(|_| SongbirdError::Network {
+            message: "Request timeout (5 minutes)".to_string(),
+            interface: Some(endpoint.to_string()),
+            suggestion: Some("Check provider endpoint and network connectivity".to_string()),
+        })?
+        .map_err(|e| SongbirdError::Network {
+            message: format!("Failed to send task to external provider: {e}"),
+            interface: Some(endpoint.to_string()),
+            suggestion: Some("Check provider endpoint and network connectivity".to_string()),
+        })?;
 
         if response.status < 200 || response.status >= 300 {
             return Err(SongbirdError::Service {

@@ -8,6 +8,7 @@ use super::types::{
 };
 use crate::traits::ServiceQuery;
 use crate::traits::service::ServiceInfo;
+use songbird_types::defaults::timeouts::DEFAULT_CONTAINER_API_TIMEOUT;
 use songbird_types::errors::SongbirdResult;
 use tracing::debug;
 
@@ -39,7 +40,7 @@ impl UniversalContainerOrchestration {
                         api_endpoint: Some(ApiEndpoint {
                             url: endpoint.clone(),
                             version: "v1".to_string(),
-                            timeout: std::time::Duration::from_secs(10),
+                            timeout: DEFAULT_CONTAINER_API_TIMEOUT,
                             verify_tls: true,
                         }),
                         auth_method: None,

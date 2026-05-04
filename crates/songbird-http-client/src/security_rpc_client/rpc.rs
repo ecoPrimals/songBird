@@ -10,10 +10,14 @@ use super::types::{JsonRpcRequest, JsonRpcResponse};
 use crate::crypto::socket_discovery::IpcEndpoint;
 use crate::error::{Error, Result};
 use serde_json::{Value, json};
+use songbird_types::defaults::timeouts::{
+    DEFAULT_NEURAL_API_TIMEOUT, DEFAULT_SECURITY_RPC_TIMEOUT,
+};
 use std::sync::atomic::Ordering;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
-use tokio::time::Duration;
 use tracing::{debug, error, trace};
+
+const JSONRPC_VERSION: &str = "2.0";
 
 /// Concrete async stream for security RPC (TCP or Unix socket; enum dispatch, no trait objects).
 enum AsyncStreamImpl {
@@ -177,7 +181,7 @@ impl SecurityRpcClient {
         let method = Self::semantic_to_actual(capability)?;
 
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             method: method.to_string(),
             params: args,
             id,
@@ -192,14 +196,14 @@ impl SecurityRpcClient {
             ))
         })?;
 
-        // Send request (newline-terminated; BearDog reads line-by-line)
+        // Send request (newline-terminated; security provider reads line-by-line)
         let request_json = serde_json::to_string(&request)?;
         stream.write_all(request_json.as_bytes()).await?;
         stream.write_all(b"\n").await?;
         stream.flush().await?;
 
-        // JSON-aware chunked read — BearDog may keep the socket open (no EOF).
-        let buffer = crate::io_util::read_json_response(&mut stream, Duration::from_secs(10))
+        // JSON-aware chunked read — security provider may keep the socket open (no EOF).
+        let buffer = crate::io_util::read_json_response(&mut stream, DEFAULT_SECURITY_RPC_TIMEOUT)
             .await
             .map_err(|e| Error::SecurityProviderRpc(format!("Security provider: {e}")))?;
 
@@ -236,7 +240,7 @@ impl SecurityRpcClient {
         };
 
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             method: "capability.call".to_string(),
             params: json!({
                 "capability": cap,
@@ -262,7 +266,7 @@ impl SecurityRpcClient {
         stream.flush().await?;
 
         // JSON-aware chunked read — Neural API keeps socket open (no EOF).
-        let buffer = crate::io_util::read_json_response(&mut stream, Duration::from_secs(5))
+        let buffer = crate::io_util::read_json_response(&mut stream, DEFAULT_NEURAL_API_TIMEOUT)
             .await
             .map_err(|e| Error::SecurityProviderRpc(format!("Neural API: {e}")))?;
 

@@ -532,7 +532,8 @@ impl SongbirdOrchestrator {
         let federation_state = Arc::clone(&self.federation_state);
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL);
+            let mut interval =
+                tokio::time::interval(songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL);
             let ttl_secs = 600; // 10 minutes (2x heartbeat interval)
 
             info!("🧹 Session TTL cleanup task started (interval: 5min, TTL: 10min)");

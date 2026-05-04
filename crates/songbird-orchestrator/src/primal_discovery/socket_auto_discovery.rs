@@ -106,8 +106,12 @@ fn probe_socket_sync(path: &Path) -> Option<ProbeResult> {
     use std::os::unix::net::UnixStream;
 
     let mut stream = UnixStream::connect(path).ok()?;
-    stream.set_read_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT)).ok()?;
-    stream.set_write_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT)).ok()?;
+    stream
+        .set_read_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT))
+        .ok()?;
+    stream
+        .set_write_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT))
+        .ok()?;
 
     // Try identity.get first (Wire Standard L3: {primal, version, domain, license})
     let identity = send_jsonrpc(&mut stream, "identity.get", 1);

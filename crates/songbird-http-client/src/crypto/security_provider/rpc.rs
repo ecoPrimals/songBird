@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use songbird_types::defaults::timeouts::DEFAULT_SECURITY_RPC_TIMEOUT;
 use std::sync::atomic::Ordering;
 use tokio::io::AsyncWriteExt;
 #[cfg(windows)]
@@ -136,7 +137,7 @@ impl SecurityCryptoProvider {
 
         // JSON-aware chunked read — server may keep socket open (no EOF).
         let response_bytes =
-            crate::io_util::read_json_response(&mut stream, std::time::Duration::from_secs(10))
+            crate::io_util::read_json_response(&mut stream, DEFAULT_SECURITY_RPC_TIMEOUT)
                 .await
                 .map_err(|e| Error::SecurityProviderRpc(format!("Security provider: {e}")))?;
 

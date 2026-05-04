@@ -22,6 +22,7 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
+use songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL;
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 use tracing::{info, warn};
@@ -169,7 +170,7 @@ impl SecurityProviderValidator {
     fn assess_command_threat(&mut self, command: &str) -> f64 {
         // Check cache first
         if let Some(cached) = self.threat_cache.get(command)
-            && cached.age() < Duration::from_secs(300)
+            && cached.age() < DEFAULT_CACHE_TTL
         {
             return cached.score;
         }

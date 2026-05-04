@@ -61,7 +61,7 @@ impl Default for EnforcementConfig {
                 "gpu_training".into(),
             ],
             default_timeout: songbird_types::defaults::timeouts::DEFAULT_CACHE_TTL,
-            timeout_behavior: TimeoutBehavior::Deny,   // Fail-safe: deny
+            timeout_behavior: TimeoutBehavior::Deny, // Fail-safe: deny
         }
     }
 }

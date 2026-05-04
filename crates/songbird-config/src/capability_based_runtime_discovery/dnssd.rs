@@ -9,6 +9,7 @@
 use super::{CapabilityProvider, CapabilityRequest, Protocol};
 use hickory_resolver::TokioAsyncResolver;
 use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+use songbird_types::defaults::timeouts::DEFAULT_DNSSD_TIMEOUT;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -45,7 +46,7 @@ impl DnsSDDiscovery {
         Self {
             domain: domain.into(),
             resolver_config: ResolverConfig::default(),
-            timeout: Duration::from_secs(5),
+            timeout: DEFAULT_DNSSD_TIMEOUT,
         }
     }
 

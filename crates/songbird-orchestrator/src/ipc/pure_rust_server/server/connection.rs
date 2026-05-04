@@ -129,7 +129,12 @@ impl UnixSocketServer {
         info!("   Status: READY ✅ (atomic flag set)");
 
         while self.is_running() {
-            match tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_ACCEPT_POLL_INTERVAL, listener.accept()).await {
+            match tokio::time::timeout(
+                songbird_types::defaults::timeouts::DEFAULT_ACCEPT_POLL_INTERVAL,
+                listener.accept(),
+            )
+            .await
+            {
                 Ok(Ok((stream, _addr))) => {
                     let server = Arc::clone(&self);
                     tokio::spawn(async move {
@@ -222,7 +227,12 @@ impl UnixSocketServer {
         info!("   Status: READY ✅ (isomorphic TCP fallback active)");
 
         while self.is_running() {
-            match tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_ACCEPT_POLL_INTERVAL, listener.accept()).await {
+            match tokio::time::timeout(
+                songbird_types::defaults::timeouts::DEFAULT_ACCEPT_POLL_INTERVAL,
+                listener.accept(),
+            )
+            .await
+            {
                 Ok(Ok((stream, addr))) => {
                     debug!("📥 TCP IPC connection from {}", addr);
                     let server = Arc::clone(&self);
@@ -387,18 +397,17 @@ impl UnixSocketServer {
     /// Intercepts `btsp.negotiate` requests to perform Phase 3 cipher upgrade.
     /// On successful negotiation with a real cipher, transitions to encrypted
     /// framing via [`Self::handle_encrypted_session`].
-    async fn handle_btsp_frames<S>(
-        &self,
-        mut stream: S,
-        session: &btsp::BtspSession,
-    ) -> Result<()>
+    async fn handle_btsp_frames<S>(&self, mut stream: S, session: &btsp::BtspSession) -> Result<()>
     where
         S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static,
     {
         let mut len_buf = [0u8; 4];
         loop {
-            match tokio::time::timeout(songbird_types::defaults::timeouts::DEFAULT_IDLE_TIMEOUT, stream.read_exact(&mut len_buf))
-                .await
+            match tokio::time::timeout(
+                songbird_types::defaults::timeouts::DEFAULT_IDLE_TIMEOUT,
+                stream.read_exact(&mut len_buf),
+            )
+            .await
             {
                 Ok(Ok(_)) => {}
                 Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
@@ -440,18 +449,14 @@ impl UnixSocketServer {
                 let (result, keys) =
                     btsp_phase3::handle_negotiate(&params, &self.security_client).await;
 
-                let resp = JsonRpcResponse::success(
-                    serde_json::to_value(&result).unwrap_or_default(),
-                    id,
-                );
+                let resp =
+                    JsonRpcResponse::success(serde_json::to_value(&result).unwrap_or_default(), id);
                 Self::write_btsp_response(&mut stream, &resp).await?;
 
                 if let Some(session_keys) = keys {
                     debug!("BTSP Phase 3: switching binary-framed session to encrypted framing");
                     let (reader, writer) = tokio::io::split(stream);
-                    return self
-                        .handle_encrypted_session(reader, writer, session_keys)
-                        .await;
+                    return self.handle_encrypted_session(reader, writer, session_keys).await;
                 }
                 continue;
             }
@@ -559,7 +564,9 @@ impl UnixSocketServer {
                         Ok(req) => req,
                         Err(e) => {
                             let resp = JsonRpcResponse::error(
-                                JsonRpcError::parse_error(format!("Failed to parse JSON-RPC request: {e}")),
+                                JsonRpcError::parse_error(format!(
+                                    "Failed to parse JSON-RPC request: {e}"
+                                )),
                                 serde_json::Value::Null,
                             );
                             let mut payload = serde_json::to_vec(&resp)?;
@@ -691,4 +698,3 @@ impl UnixSocketServer {
 #[cfg(test)]
 #[path = "connection_tests.rs"]
 mod tests;
-

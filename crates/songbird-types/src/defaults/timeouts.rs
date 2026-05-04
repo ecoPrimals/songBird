@@ -65,3 +65,45 @@ pub const DEFAULT_FEDERATION_RENDEZVOUS_INTERVAL: Duration = Duration::from_secs
 
 /// Default security adapter RPC timeout.
 pub const DEFAULT_SECURITY_ADAPTER_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Default TLS handshake record read timeout (ServerHello, etc.).
+pub const DEFAULT_TLS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Default timeout for reading individual encrypted TLS records during handshake.
+pub const DEFAULT_TLS_RECORD_READ_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Window for reading optional post-handshake messages (NewSessionTicket).
+pub const DEFAULT_POST_HANDSHAKE_READ_WINDOW: Duration = Duration::from_millis(200);
+
+/// Default IPC JSON-RPC response read timeout.
+pub const DEFAULT_IPC_JSON_READ_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Default connection pool maximum idle time.
+pub const DEFAULT_POOL_MAX_IDLE_TIME: Duration = Duration::from_secs(300);
+
+/// Default connection pool acquire timeout.
+pub const DEFAULT_POOL_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Default security provider RPC timeout.
+pub const DEFAULT_SECURITY_RPC_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Default neural API call timeout.
+pub const DEFAULT_NEURAL_API_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Default mDNS discovery scan timeout.
+pub const DEFAULT_MDNS_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Default DNS-SD discovery timeout.
+pub const DEFAULT_DNSSD_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Default UDP hole-punch per-attempt timeout.
+pub const DEFAULT_HOLE_PUNCH_ATTEMPT_TIMEOUT: Duration = Duration::from_millis(200);
+
+/// Default delay between UDP hole-punch attempts.
+pub const DEFAULT_HOLE_PUNCH_ATTEMPT_DELAY: Duration = Duration::from_millis(50);
+
+/// Default relay service wait cycle cap.
+pub const DEFAULT_RELAY_WAIT_CYCLE: Duration = Duration::from_secs(300);
+
+/// Default container runtime API probe timeout.
+pub const DEFAULT_CONTAINER_API_TIMEOUT: Duration = Duration::from_secs(10);

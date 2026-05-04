@@ -540,7 +540,7 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_metrics_serialization() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_capability_metrics_serialization() -> anyhow::Result<()> {
         let metrics = CapabilityMetrics::default();
         let json = serde_json::to_string(&metrics).map_err(|e| {
             SongbirdError::configuration(format!("Serialization should succeed: {}", e))
@@ -626,7 +626,7 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_type_serialization() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_capability_type_serialization() -> anyhow::Result<()> {
         let security = CapabilityType::Security;
         let json = serde_json::to_string(&security).map_err(|e| {
             SongbirdError::configuration(format!("Serialization should succeed: {}", e))
@@ -642,7 +642,7 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_type_deserialization() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_capability_type_deserialization() -> anyhow::Result<()> {
         let json = r#""Security""#;
         let cap: CapabilityType = serde_json::from_str(json).map_err(|e| {
             SongbirdError::configuration(format!("Deserialization should succeed: {}", e))

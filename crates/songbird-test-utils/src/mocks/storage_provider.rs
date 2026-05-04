@@ -66,7 +66,7 @@ impl MockStorageProvider {
     /// # Errors
     ///
     /// Currently never returns an error, but signature allows for future error cases.
-    pub async fn start(&mut self) -> Result<u16, Box<dyn std::error::Error>> {
+    pub async fn start(&mut self) -> anyhow::Result<u16> {
         let port = fastrand::u16(10000..60000);
         self.state = Arc::new(MockServerState::new(port));
         Ok(port)
@@ -291,7 +291,7 @@ mod tests {
     // ========== NEW TESTS (5 tests to improve coverage) ==========
 
     #[tokio::test]
-    async fn test_nestgate_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_nestgate_server_lifecycle() -> anyhow::Result<()> {
         let mut mock = MockStorageProvider::new();
         let port = mock
             .start()
@@ -314,7 +314,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_object_retrieval() -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_object_retrieval() -> anyhow::Result<()> {
         let mock = MockStorageProvider::new();
         let data = vec![1, 2, 3, 4, 5];
         mock.store_object("test_key", data.clone());

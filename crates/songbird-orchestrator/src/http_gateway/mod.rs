@@ -118,7 +118,10 @@ impl HttpGatewayService {
         let http_client = SongbirdHttpClient::new(crypto_socket);
 
         // Create rate limiter (100 requests per minute default)
-        let rate_limiter = Arc::new(RateLimiter::new(100, songbird_types::defaults::timeouts::DEFAULT_RATE_LIMIT_WINDOW));
+        let rate_limiter = Arc::new(RateLimiter::new(
+            100,
+            songbird_types::defaults::timeouts::DEFAULT_RATE_LIMIT_WINDOW,
+        ));
 
         // Create response cache (100MB default)
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));

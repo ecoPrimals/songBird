@@ -29,11 +29,12 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-// Platform-agnostic (Unix-only gateway, conditional compilation)
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, trace, warn};
+
+const JSONRPC_VERSION: &str = "2.0";
 
 /// JSON-RPC 2.0 Request
 ///
@@ -258,7 +259,7 @@ impl UnixSocketListener {
                 Err(e) => {
                     warn!("Failed to parse JSON-RPC request: {}", e);
                     let error_response = JsonRpcResponse {
-                        jsonrpc: "2.0".to_string(),
+                        jsonrpc: JSONRPC_VERSION.into(),
                         result: None,
                         error: Some(JsonRpcError::parse_error()),
                         id: serde_json::Value::Null,
@@ -288,9 +289,9 @@ impl UnixSocketListener {
     async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         let id = request.id.clone().unwrap_or(serde_json::Value::Null);
 
-        if request.jsonrpc != "2.0" {
+        if request.jsonrpc != JSONRPC_VERSION {
             return JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: JSONRPC_VERSION.into(),
                 result: None,
                 error: Some(JsonRpcError::invalid_request()),
                 id,
@@ -302,7 +303,7 @@ impl UnixSocketListener {
             "ping" => self.handle_ping_request(request).await,
             "capabilities" => self.handle_capabilities_request(request).await,
             _ => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: JSONRPC_VERSION.into(),
                 result: None,
                 error: Some(JsonRpcError::method_not_found()),
                 id,
@@ -318,7 +319,7 @@ impl UnixSocketListener {
             Some(obj) => obj,
             None => {
                 return JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
+                    jsonrpc: JSONRPC_VERSION.into(),
                     result: None,
                     error: Some(JsonRpcError::invalid_params()),
                     id,
@@ -338,7 +339,7 @@ impl UnixSocketListener {
             Err(e) => {
                 warn!("Routing failed for capability '{}': {}", capability_id, e);
                 return JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
+                    jsonrpc: JSONRPC_VERSION.into(),
                     result: None,
                     error: Some(JsonRpcError::server_error(-32000, format!("Routing failed: {e}"))),
                     id,
@@ -349,7 +350,7 @@ impl UnixSocketListener {
         if let Err(e) = self.rate_limiter.check(&route.provider.id).await {
             warn!("Rate limit exceeded for provider '{}': {}", route.provider.id, e);
             return JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: JSONRPC_VERSION.into(),
                 result: None,
                 error: Some(JsonRpcError::server_error(-32001, "Rate limit exceeded")),
                 id,
@@ -361,7 +362,7 @@ impl UnixSocketListener {
         if let Some(cached) = self.cache.get(&cache_key).await {
             debug!("Cache hit for key: {}", cache_key);
             return JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: JSONRPC_VERSION.into(),
                 result: Some(cached),
                 error: None,
                 id,
@@ -372,7 +373,7 @@ impl UnixSocketListener {
 
         match result {
             Ok(response_data) => JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
+                jsonrpc: JSONRPC_VERSION.into(),
                 result: Some(response_data),
                 error: None,
                 id,
@@ -380,7 +381,7 @@ impl UnixSocketListener {
             Err(e) => {
                 error!("External request failed: {}", e);
                 JsonRpcResponse {
-                    jsonrpc: "2.0".to_string(),
+                    jsonrpc: JSONRPC_VERSION.into(),
                     result: None,
                     error: Some(JsonRpcError::internal_error(format!(
                         "External request failed: {e}"
@@ -447,7 +448,7 @@ impl UnixSocketListener {
 
     async fn handle_ping_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: Some(serde_json::json!({
                 "status": "ok",
                 "primal": "songbird",
@@ -463,7 +464,7 @@ impl UnixSocketListener {
         let capabilities = self.router.list_capabilities().await;
 
         JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: Some(serde_json::json!({
                 "capabilities": capabilities,
             })),
@@ -539,7 +540,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_request_serialization() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             method: "proxy".to_string(),
             params: serde_json::json!({"capability": "ai:text-generation"}),
             id: Some(serde_json::json!(1)),
@@ -553,7 +554,7 @@ mod tests {
     #[test]
     fn test_jsonrpc_response_serialization() {
         let response = JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             result: Some(serde_json::json!({"status": "ok"})),
             error: None,
             id: serde_json::json!(1),
@@ -568,7 +569,7 @@ mod tests {
     #[test]
     fn jsonrpc_notification_omits_id_in_json() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.into(),
             method: "ping".to_string(),
             params: serde_json::Value::Null,
             id: None,

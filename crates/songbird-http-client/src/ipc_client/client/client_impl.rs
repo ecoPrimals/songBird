@@ -4,6 +4,9 @@
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Value, json};
+use songbird_types::defaults::timeouts::{
+    DEFAULT_IPC_JSON_READ_TIMEOUT, DEFAULT_POOL_ACQUIRE_TIMEOUT, DEFAULT_POOL_MAX_IDLE_TIME,
+};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -359,7 +362,7 @@ impl IpcHttpClient {
         stream.flush().await?;
 
         // JSON-aware chunked read — IPC server may keep socket open (no EOF).
-        let buffer = crate::io_util::read_json_response(stream, Duration::from_secs(30))
+        let buffer = crate::io_util::read_json_response(stream, DEFAULT_IPC_JSON_READ_TIMEOUT)
             .await
             .map_err(|e| anyhow::anyhow!("IPC read: {e}"))?;
 
@@ -540,8 +543,8 @@ impl IpcHttpClientBuilder {
             let pool = ConnectionPool::builder()
                 .max_size(max_size)
                 .min_idle(2)
-                .max_idle_time(Duration::from_secs(300)) // 5 minutes max idle
-                .acquire_timeout(Duration::from_secs(5)) // 5 seconds acquisition timeout
+                .max_idle_time(DEFAULT_POOL_MAX_IDLE_TIME)
+                .acquire_timeout(DEFAULT_POOL_ACQUIRE_TIMEOUT)
                 .build()
                 .await
                 .map_err(|e| anyhow::anyhow!("Failed to create connection pool: {e}"))?;

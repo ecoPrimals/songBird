@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave188] - 2026-05-04 - Timeout centralization (wave 2), JSONRPC_VERSION consolidation, Box<dyn Error> elimination
+
+### Changed
+- **15 new timeout constants** in `songbird-types/defaults/timeouts.rs`: `DEFAULT_TLS_HANDSHAKE_TIMEOUT`, `DEFAULT_TLS_RECORD_READ_TIMEOUT`, `DEFAULT_POST_HANDSHAKE_READ_WINDOW`, `DEFAULT_IPC_JSON_READ_TIMEOUT`, `DEFAULT_POOL_MAX_IDLE_TIME`, `DEFAULT_POOL_ACQUIRE_TIMEOUT`, `DEFAULT_SECURITY_RPC_TIMEOUT`, `DEFAULT_NEURAL_API_TIMEOUT`, `DEFAULT_MDNS_TIMEOUT`, `DEFAULT_DNSSD_TIMEOUT`, `DEFAULT_HOLE_PUNCH_ATTEMPT_TIMEOUT`, `DEFAULT_HOLE_PUNCH_ATTEMPT_DELAY`, `DEFAULT_RELAY_WAIT_CYCLE`, `DEFAULT_CONTAINER_API_TIMEOUT`.
+- **10+ scattered Duration literals replaced** across: `handshake_flow.rs`, `post_handshake.rs`, `client_impl.rs`, `security_provider/rpc.rs`, `security_rpc_client/rpc.rs`, `mdns.rs`, `dnssd.rs`, `coordinator.rs`, `docker.rs`, `security_provider.rs`.
+- **JSONRPC_VERSION constant** consolidated in `unix_listener.rs` (14 sites), `security_rpc_client/rpc.rs` (2 sites), `crypto-provider/rpc.rs` (4 sites) — eliminating 20 `"2.0".to_string()` allocations.
+- **`Box<dyn Error>` eliminated** in `songbird-test-utils`: `concurrent_helpers.rs` type alias evolved to `anyhow::Result`, 4 mock providers (`security_provider.rs`, `compute_provider.rs`, `ai_provider.rs`, `storage_provider.rs`), `capability_mocks.rs`, and `chaos_activation_test.rs` all evolved from `Box<dyn Error>` to `anyhow::Result`.
+- **Primal-name evolution**: "BearDog" comment in `security_rpc_client/rpc.rs` evolved to "security provider".
+- **`cargo update`**: `serde_with` 3.18→3.19, `tokio` 1.52.1→1.52.2.
+
+### Verified
+- 0 `Box<dyn Error>` anywhere in the workspace (production or test)
+- 0 clippy warnings (`-D warnings`)
+- All 506 lib tests pass
+- All songbird-test-utils tests pass (16 passed, 12 ignored doctests)
+
+---
+
 ## [v0.2.1-wave187] - 2026-05-03 - Smart refactor, primal-name evolution, timeout centralization
 
 ### Changed

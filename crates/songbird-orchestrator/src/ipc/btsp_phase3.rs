@@ -227,9 +227,8 @@ impl SessionKeys {
 /// Returns [`Phase3Cipher::Null`] when no acceptable cipher is offered or
 /// the floor forbids the best offer.
 fn select_cipher(offered: &[&str], bond_type: Option<&str>) -> Phase3Cipher {
-    let wants_chacha = offered.iter().any(|c| {
-        *c == "chacha20-poly1305" || *c == "chacha20_poly1305"
-    });
+    let wants_chacha =
+        offered.iter().any(|c| *c == "chacha20-poly1305" || *c == "chacha20_poly1305");
 
     match bond_type {
         Some("Ionic" | "Weak" | "ZeroTrust" | "Contractual") => {
@@ -288,8 +287,7 @@ async fn handle_negotiate_inner(
     if selected == Phase3Cipher::Null {
         debug!(
             "BTSP Phase 3: client offers {:?} (bond_type={:?}) — returning null",
-            effective,
-            neg.bond_type,
+            effective, neg.bond_type,
         );
         return Ok((
             NegotiateResult {
@@ -533,26 +531,17 @@ mod tests {
 
     #[test]
     fn select_cipher_null_only_ionic_rejected() {
-        assert_eq!(
-            select_cipher(&["null"], Some("Ionic")),
-            Phase3Cipher::Null,
-        );
+        assert_eq!(select_cipher(&["null"], Some("Ionic")), Phase3Cipher::Null,);
     }
 
     #[test]
     fn select_cipher_no_bond_type_defaults_to_chacha_if_offered() {
-        assert_eq!(
-            select_cipher(&["chacha20-poly1305"], None),
-            Phase3Cipher::ChaCha20Poly1305,
-        );
+        assert_eq!(select_cipher(&["chacha20-poly1305"], None), Phase3Cipher::ChaCha20Poly1305,);
     }
 
     #[test]
     fn select_cipher_underscore_variant_accepted() {
-        assert_eq!(
-            select_cipher(&["chacha20_poly1305"], None),
-            Phase3Cipher::ChaCha20Poly1305,
-        );
+        assert_eq!(select_cipher(&["chacha20_poly1305"], None), Phase3Cipher::ChaCha20Poly1305,);
     }
 
     #[test]

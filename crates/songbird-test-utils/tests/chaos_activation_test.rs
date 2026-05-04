@@ -85,7 +85,7 @@ mod chaos_activation_tests {
         assert!(experiment_config.service_failure.is_none());
     }
     #[test]
-    fn test_experiment_types() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_experiment_types() -> anyhow::Result<()> {
         // Test that all experiment types can be created
         let experiment_types = vec![
             ExperimentType::NetworkFault,
@@ -110,7 +110,7 @@ mod chaos_activation_tests {
         Ok(())
     }
     #[test]
-    fn test_experiment_status() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_experiment_status() -> anyhow::Result<()> {
         let statuses = vec![
             ExperimentStatus::Preparing,
             ExperimentStatus::Running,

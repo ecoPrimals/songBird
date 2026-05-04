@@ -13,6 +13,9 @@ use crate::session::{ConnectionSession, DirectConnection, RelayedConnection};
 use crate::types::NodeId;
 use crate::udp_hole_punch::{HolePunchConfig, create_hole_punch_socket, udp_hole_punch};
 use songbird_types::config::stun_relay::StunRelayConfig;
+use songbird_types::defaults::timeouts::{
+    DEFAULT_HOLE_PUNCH_ATTEMPT_DELAY, DEFAULT_HOLE_PUNCH_ATTEMPT_TIMEOUT, DEFAULT_RELAY_WAIT_CYCLE,
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -202,8 +205,8 @@ impl LineageRelayCoordinator {
         // Configure hole punch (use coordinator timeout)
         let config = HolePunchConfig {
             max_attempts: 10,
-            attempt_timeout: Duration::from_millis(200),
-            attempt_delay: Duration::from_millis(50),
+            attempt_timeout: DEFAULT_HOLE_PUNCH_ATTEMPT_TIMEOUT,
+            attempt_delay: DEFAULT_HOLE_PUNCH_ATTEMPT_DELAY,
             total_timeout: self.config.direct_timeout,
         };
 
@@ -268,7 +271,7 @@ impl LineageRelayCoordinator {
                 match broadcaster
                     .wait_for_message_by_type(
                         crate::types::BirdSongType::RelayRequest,
-                        Duration::from_secs(300), // 5 min cycle — wakes instantly on message
+                        DEFAULT_RELAY_WAIT_CYCLE,
                     )
                     .await
                 {

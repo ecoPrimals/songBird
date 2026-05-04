@@ -208,7 +208,10 @@ where
             return path;
         }
 
-        #[allow(deprecated, reason = "legacy fallback path during migration to capability-based naming")]
+        #[allow(
+            deprecated,
+            reason = "legacy fallback path during migration to capability-based naming"
+        )]
         let legacy_beardog = legacy_beardog_socket_path_in_biomeos_runtime(&xdg_dir, &family_id);
         if path_exists(&legacy_beardog) {
             let path = legacy_beardog.to_string_lossy().to_string();

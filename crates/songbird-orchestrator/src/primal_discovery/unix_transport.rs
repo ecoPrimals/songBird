@@ -11,8 +11,12 @@ use super::parse::parse_capabilities_result;
 /// `health.liveness` then `capabilities.list` / `capability.list`; returns flat token list.
 pub(super) fn probe_capabilities_list(path: &Path) -> Option<Vec<String>> {
     let mut stream = std::os::unix::net::UnixStream::connect(path).ok()?;
-    stream.set_read_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT)).ok()?;
-    stream.set_write_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT)).ok()?;
+    stream
+        .set_read_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT))
+        .ok()?;
+    stream
+        .set_write_timeout(Some(songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT))
+        .ok()?;
 
     let liveness_ok = jsonrpc_request_response(&mut stream, "health.liveness", 1).is_ok()
         || jsonrpc_request_response_raw(&mut stream, "ping", 11).is_ok();

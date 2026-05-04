@@ -43,7 +43,7 @@ songbird-remote-deploy  songbird-genesis          (root: songbird)
 
 ## Archived Specifications (`specs/archived/`)
 
-19 specs archived (May 2–3, 2026). These reference crates that were never created
+22 specs archived (May 2–4, 2026). These reference crates that were never created
 (`songbird-client`, `songbird-primal-sdk`, `songbird-universal-primals`,
 `songbird-federation`, `songbird-rpc`) or file paths that no longer exist.
 Retained as design fossil record.

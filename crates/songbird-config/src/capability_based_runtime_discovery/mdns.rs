@@ -7,6 +7,7 @@
 //! Enables zero-configuration service discovery on local networks.
 
 use super::{CapabilityProvider, CapabilityRequest, Protocol};
+use songbird_types::defaults::timeouts::DEFAULT_MDNS_TIMEOUT;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -43,7 +44,7 @@ impl MdnsDiscovery {
     pub fn new(service_type: Option<String>) -> Self {
         Self {
             service_type: service_type.unwrap_or_else(|| "_songbird._tcp.local.".to_string()),
-            timeout: Duration::from_secs(3),
+            timeout: DEFAULT_MDNS_TIMEOUT,
             interface: None,
         }
     }

@@ -1,6 +1,6 @@
 # Songbird Specifications Index
 
-**Last Updated:** May 3, 2026
+**Last Updated:** May 4, 2026
 **Version:** v0.2.1
 
 ---
@@ -15,8 +15,8 @@
 
 ## Protocols
 
-- [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — JSON-RPC 2.0 + tarpc
-- [HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Hybrid protocol architecture
+- [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./archived/SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — JSON-RPC 2.0 + tarpc *(archived: superseded by current JsonRpcMethod dispatch)*
+- [HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./archived/HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Hybrid protocol architecture *(archived: Jan 2025 sketch, references non-existent `security_provider-tunnel`)*
 - [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Multi-path connectivity
 - [SOVEREIGN_BEACON_MESH_SPECIFICATION.md](./SOVEREIGN_BEACON_MESH_SPECIFICATION.md) — Encrypted beacon mesh
 - [SOVEREIGN_ONION_PROTOCOL.md](./SOVEREIGN_ONION_PROTOCOL.md) — P2P onion service
@@ -56,14 +56,14 @@
 
 - [UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md](./UNIVERSAL_PRIMAL_ADAPTER_SPECIFICATION.md) — Universal adapter
 - [UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md](./UNIVERSAL_PRIMAL_SDK_INTEGRATION_SPECIFICATION.md) — SDK integration
-- [DISTRIBUTED_ML_DEMO_REQUIREMENTS.md](./DISTRIBUTED_ML_DEMO_REQUIREMENTS.md) — Distributed ML demo
+- [DISTRIBUTED_ML_DEMO_REQUIREMENTS.md](./archived/DISTRIBUTED_ML_DEMO_REQUIREMENTS.md) — Distributed ML demo *(archived: blocked on archived Remote Execution API)*
 - [COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md](./COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md) — Intelligence graph
 
-## Archived — `specs/archived/` (May 2, 2026)
+## Archived — `specs/archived/` (May 4, 2026)
 
-19 specs archived. Referenced crates that were never created (`songbird-client`,
+22 specs archived. Referenced crates that were never created (`songbird-client`,
 `songbird-primal-sdk`, `songbird-universal-primals`, `songbird-federation`, `songbird-rpc`)
-or file paths that no longer exist. Retained as design fossil record.
+or file paths that no longer exist, or superseded by current implementation. Retained as design fossil record.
 
 - [archived/CAPABILITY_BASED_CLIENT_ANALYSIS.md](./archived/CAPABILITY_BASED_CLIENT_ANALYSIS.md) — `songbird-client` (never created)
 - [archived/CLI_VS_CLIENT_ARCHITECTURE.md](./archived/CLI_VS_CLIENT_ARCHITECTURE.md) — `songbird-client` (never created)
@@ -81,6 +81,9 @@ or file paths that no longer exist. Retained as design fossil record.
 - [archived/TOR_TRANSPORT_INTEGRATION.md](./archived/TOR_TRANSPORT_INTEGRATION.md) — `tor_transport.rs` (never created)
 - [archived/STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md](./archived/STANDALONE_TO_FAMILY_DEPLOYMENT_GUIDE.md) — references removed binaries/files
 - [archived/UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md](./archived/UNIVERSAL_PROTOCOL_FRAMEWORK_SPECIFICATION.md) — gRPC sketch (never implemented)
+- [archived/SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./archived/SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — tarpc RPC sketch (superseded by JsonRpcMethod dispatch)
+- [archived/HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./archived/HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Jan 2025 hybrid protocol sketch (references `security_provider-tunnel`)
+- [archived/DISTRIBUTED_ML_DEMO_REQUIREMENTS.md](./archived/DISTRIBUTED_ML_DEMO_REQUIREMENTS.md) — ML demo (blocked on archived Remote Execution API)
 
 ## Archived — wateringHole fossil record
 
