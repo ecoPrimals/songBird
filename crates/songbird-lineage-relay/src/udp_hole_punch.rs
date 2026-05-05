@@ -216,7 +216,9 @@ pub async fn coordinated_hole_punch(
 ///
 /// Bound UDP socket ready for hole punching.
 pub async fn create_hole_punch_socket(bind_addr: Option<SocketAddr>) -> Result<UdpSocket> {
-    let addr = bind_addr.unwrap_or_else(|| "0.0.0.0:0".parse().expect("valid static address"));
+    let addr = bind_addr.unwrap_or_else(|| {
+        songbird_types::constants::EPHEMERAL_BIND_ADDR.parse().expect("valid static address")
+    });
 
     UdpSocket::bind(addr)
         .await

@@ -31,9 +31,9 @@ songbird-remote-deploy  songbird-genesis          (root: songbird)
 - [UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md](./UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md) — Capability adapter implementation
 - [PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md](./PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md) — Self-knowledge standard
 
-### Implementation
-- [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — Native JSON-RPC + tarpc protocol
-- [HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Multi-protocol architecture
+### Implementation (archived — superseded by BTSP Phase 3 + `JsonRpcMethod` enum dispatch)
+- [SONGBIRD_NATIVE_RPC_SPECIFICATION.md](./archived/SONGBIRD_NATIVE_RPC_SPECIFICATION.md) — Native JSON-RPC + tarpc protocol
+- [HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md](./archived/HYBRID_PROTOCOL_ARCHITECTURE_SPECIFICATION.md) — Multi-protocol architecture
 
 ### Protocol
 - [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Sovereign multipath protocol

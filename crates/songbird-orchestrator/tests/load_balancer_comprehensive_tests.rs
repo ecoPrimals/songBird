@@ -58,7 +58,8 @@ async fn test_empty_endpoints() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.expect_err("testing error case"), "No endpoints configured");
+    let err_msg = result.unwrap_err().to_string();
+    assert!(err_msg.contains("No endpoints configured"), "unexpected: {err_msg}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -73,7 +74,8 @@ async fn test_all_endpoints_unavailable() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.expect_err("testing error case"), "No available endpoints");
+    let err_msg = result.unwrap_err().to_string();
+    assert!(err_msg.contains("No available endpoints"), "unexpected: {err_msg}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

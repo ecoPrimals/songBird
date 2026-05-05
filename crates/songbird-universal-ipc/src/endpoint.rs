@@ -4,6 +4,7 @@
 //! Endpoint types - Virtual and Native
 
 use serde::{Deserialize, Serialize};
+use songbird_types::constants::LOCALHOST;
 use std::path::PathBuf;
 
 /// Virtual endpoint (platform-agnostic path)
@@ -131,7 +132,7 @@ impl NativeEndpoint {
                 format!("shmem://{region}")
             }
             Self::TcpLocal(port) => {
-                format!("tcp://127.0.0.1:{port}")
+                format!("tcp://{LOCALHOST}:{port}")
             }
         }
     }
@@ -145,7 +146,7 @@ impl NativeEndpoint {
         match self {
             Self::UnixSocket(path) => Some(path.display().to_string()),
             Self::AbstractSocket(name) => Some(format!("@{name}")),
-            Self::TcpLocal(port) => Some(format!("127.0.0.1:{port}")),
+            Self::TcpLocal(port) => Some(format!("{LOCALHOST}:{port}")),
             Self::NamedPipe(_) | Self::XPC(_) | Self::InProcess(_) | Self::SharedMemory(_) => None,
         }
     }

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave190] - 2026-05-05 - Hardcoded literal cleanup, redundant clone, robust endpoint parsing
+
+### Changed
+- **IP literals centralized**: `endpoint.rs` `TcpLocal` display/socket_path use `LOCALHOST` constant instead of repeated `"127.0.0.1"` literal. `udp_hole_punch.rs` uses `EPHEMERAL_BIND_ADDR` constant.
+- **Redundant clone eliminated**: `circuit_breaker.rs` `stats()` computed `current_failures` from `&state` reference then moved `state` into struct — removing an unnecessary `.clone()`.
+- **Robust endpoint parsing**: Replaced fragile `split(':').nth(1).unwrap_or(0)` in `tarpc_server.rs` and `websocket_api.rs` with `parse_endpoint()` helper that handles IPv6 `[::1]:port`, scheme-prefixed `tcp://host:port`, and port-less hostnames.
+- **Test Duration literals centralized**: `concurrent_helpers.rs` timeout defaults extracted to named constants (`DEFAULT_READINESS_TIMEOUT`, `DEFAULT_COMPLETION_TIMEOUT`, `DEFAULT_BARRIER_TIMEOUT`).
+- **Integration test fix**: `load_balancer_comprehensive_tests.rs` updated to work with `anyhow::Result` (was comparing `anyhow::Error == &str`).
+
+### Verified
+- 0 clippy warnings (`-D warnings`)
+- All 506 lib tests pass, all 13 load_balancer integration tests pass
+
+---
+
 ## [v0.2.1-wave189] - 2026-05-05 - ipc.resolve `socket` field for primalSpring tier-1 discovery
 
 ### Added

@@ -32,6 +32,10 @@ use tokio::time::{sleep, timeout};
 
 use anyhow::Result;
 
+const DEFAULT_READINESS_TIMEOUT: Duration = Duration::from_secs(30);
+const DEFAULT_COMPLETION_TIMEOUT: Duration = Duration::from_secs(60);
+const DEFAULT_BARRIER_TIMEOUT: Duration = Duration::from_secs(30);
+
 #[expect(unused_imports, reason = "unused bindings/imports in this compilation unit")]
 use tracing::{debug, warn};
 
@@ -110,7 +114,7 @@ impl ReadinessSignal {
     ///
     /// Returns an error if the timeout expires before the signal.
     pub async fn wait(&self) -> Result<()> {
-        self.wait_with_timeout(Duration::from_secs(30)).await
+        self.wait_with_timeout(DEFAULT_READINESS_TIMEOUT).await
     }
 
     /// Wait for the readiness signal with custom timeout
@@ -210,7 +214,7 @@ impl CompletionWaiter {
 
     /// Wait for all tasks to complete
     pub async fn wait_all(&self) -> Result<()> {
-        self.wait_all_with_timeout(Duration::from_secs(60)).await
+        self.wait_all_with_timeout(DEFAULT_COMPLETION_TIMEOUT).await
     }
 
     /// Wait for all tasks with custom timeout
@@ -294,7 +298,7 @@ impl AsyncBarrier {
 
     /// Wait at the barrier
     pub async fn wait(&self) -> Result<()> {
-        self.wait_with_timeout(Duration::from_secs(30)).await
+        self.wait_with_timeout(DEFAULT_BARRIER_TIMEOUT).await
     }
 
     /// Wait at the barrier with custom timeout

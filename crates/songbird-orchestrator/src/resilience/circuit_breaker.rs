@@ -403,17 +403,18 @@ impl CircuitBreaker {
     /// Get circuit breaker statistics
     pub async fn stats(&self) -> CircuitBreakerStats {
         let state = self.state.read().await.clone();
+        let current_failures = match &state {
+            CircuitState::Closed {
+                failures,
+            } => *failures,
+            _ => 0,
+        };
         CircuitBreakerStats {
-            state: state.clone(),
+            state,
             failure_threshold: self.config.failure_threshold,
             success_threshold: self.config.success_threshold,
             timeout: self.config.timeout,
-            current_failures: match state {
-                CircuitState::Closed {
-                    failures,
-                } => failures,
-                _ => 0,
-            },
+            current_failures,
             current_successes: *self.successes_in_half_open.read().await,
         }
     }

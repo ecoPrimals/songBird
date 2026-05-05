@@ -279,17 +279,8 @@ impl SongbirdFederation for TarpcServer {
             svcs
         };
 
-        // Convert to ServiceInfo format
-        let service_infos: Vec<ServiceInfo> = services
-            .into_iter()
-            .map(|s| ServiceInfo {
-                name: s.service_name,
-                address: s.endpoint.split(':').next().unwrap_or("").to_string(),
-                port: s.endpoint.split(':').nth(1).and_then(|p| p.parse().ok()).unwrap_or(0),
-                capabilities: s.capabilities,
-                metadata: s.metadata,
-            })
-            .collect();
+        let service_infos: Vec<ServiceInfo> =
+            services.into_iter().map(registration_to_service_info).collect();
 
         tracing::info!(found_services = service_infos.len(), "tarpc: Service discovery completed");
 
@@ -317,15 +308,37 @@ impl SongbirdFederation for TarpcServer {
     }
 }
 
+/// Parse host and port from an endpoint string.
+///
+/// Handles IPv4 (`host:port`), IPv6 (`[::1]:port`), and scheme-prefixed
+/// (`tcp://host:port`) formats gracefully.
+pub(super) fn parse_endpoint(endpoint: &str) -> (&str, u16) {
+    let ep = endpoint
+        .strip_prefix("tcp://")
+        .or_else(|| endpoint.strip_prefix("unix://"))
+        .unwrap_or(endpoint);
+
+    if let Some(bracket_end) = ep.find("]:") {
+        let host = &ep[..=bracket_end];
+        let port = ep[bracket_end + 2..].parse().unwrap_or(0);
+        (host, port)
+    } else if let Some((host, port_str)) = ep.rsplit_once(':') {
+        (host, port_str.parse().unwrap_or(0))
+    } else {
+        (ep, 0)
+    }
+}
+
 /// Convert a `ServiceRegistration` into the tarpc-friendly `ServiceInfo` DTO.
 #[must_use]
 pub fn registration_to_service_info(
     s: songbird_network_federation::service_registry::ServiceRegistration,
 ) -> ServiceInfo {
+    let (address, port) = parse_endpoint(&s.endpoint);
     ServiceInfo {
         name: s.service_name,
-        address: s.endpoint.split(':').next().unwrap_or("").to_string(),
-        port: s.endpoint.split(':').nth(1).and_then(|p| p.parse().ok()).unwrap_or(0),
+        address: address.to_string(),
+        port,
         capabilities: s.capabilities,
         metadata: s.metadata,
     }
@@ -496,6 +509,34 @@ mod tests {
 
         let err = ServiceError::InternalError("panic".to_string());
         assert!(err.to_string().contains("panic"));
+    }
+
+    #[test]
+    fn parse_endpoint_ipv4() {
+        let (host, port) = parse_endpoint("192.168.1.10:4433");
+        assert_eq!(host, "192.168.1.10");
+        assert_eq!(port, 4433);
+    }
+
+    #[test]
+    fn parse_endpoint_ipv6_bracketed() {
+        let (host, port) = parse_endpoint("[::1]:8081");
+        assert_eq!(host, "[::1]");
+        assert_eq!(port, 8081);
+    }
+
+    #[test]
+    fn parse_endpoint_with_scheme() {
+        let (host, port) = parse_endpoint("tcp://10.0.0.1:9090");
+        assert_eq!(host, "10.0.0.1");
+        assert_eq!(port, 9090);
+    }
+
+    #[test]
+    fn parse_endpoint_no_port() {
+        let (host, port) = parse_endpoint("hostname-only");
+        assert_eq!(host, "hostname-only");
+        assert_eq!(port, 0);
     }
 
     #[test]

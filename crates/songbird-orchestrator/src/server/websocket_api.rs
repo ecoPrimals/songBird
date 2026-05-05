@@ -369,11 +369,14 @@ async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<
                             .iter()
                             .any(|cap| svc.capabilities.iter().any(|c| c.contains(cap.as_str())))
                 })
-                .map(|svc| ServiceSummary {
-                    name: svc.service_name.clone(),
-                    address: svc.endpoint.clone(),
-                    port: svc.endpoint.rsplit(':').next().and_then(|p| p.parse().ok()).unwrap_or(0),
-                    capabilities: svc.capabilities.clone(),
+                .map(|svc| {
+                    let (addr, port) = super::tarpc_server::parse_endpoint(&svc.endpoint);
+                    ServiceSummary {
+                        name: svc.service_name.clone(),
+                        address: addr.to_string(),
+                        port,
+                        capabilities: svc.capabilities.clone(),
+                    }
                 })
                 .collect();
             Some(WsMessage::ServiceList {
