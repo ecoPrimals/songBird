@@ -69,7 +69,12 @@ pub struct RegisterResult {
 /// IPC service response for resolution
 #[derive(Debug, Clone, Serialize)]
 pub struct ResolveResult {
+    /// Bare socket/connect path (e.g. `/run/user/1000/biomeos/network.sock`).
+    /// Consumers can connect directly without parsing transport schemes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub socket: Option<String>,
     pub virtual_endpoint: String,
+    /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
     pub native_endpoint: String,
     pub capabilities: Vec<String>,
     /// Ed25519 signature from the original registration (base64).
@@ -90,7 +95,11 @@ pub struct DiscoverResult {
 #[derive(Debug, Clone, Serialize)]
 pub struct ProviderInfo {
     pub primal_id: String,
+    /// Bare socket/connect path (e.g. `/run/user/1000/biomeos/security.sock`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub socket: Option<String>,
     pub virtual_endpoint: String,
+    /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
     pub native_endpoint: String,
     pub capabilities: Vec<String>,
     /// Ed25519 signature from the original registration (base64).
@@ -125,7 +134,11 @@ pub struct CapabilityResolveParams {
 #[derive(Debug, Clone, Serialize)]
 pub struct CapabilityResolveResult {
     pub primal_id: String,
+    /// Bare socket/connect path (e.g. `/run/user/1000/biomeos/security.sock`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub socket: Option<String>,
     pub virtual_endpoint: String,
+    /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
     pub native_endpoint: String,
     pub capabilities: Vec<String>,
     /// Ed25519 signature from the original registration (base64).
@@ -252,14 +265,15 @@ mod tests {
     #[test]
     fn resolve_result_serializes_with_capabilities() {
         let result = ResolveResult {
+            socket: Some("/tmp/security.sock".to_string()),
             virtual_endpoint: "/primal/security".to_string(),
-            native_endpoint: "/tmp/security.sock".to_string(),
+            native_endpoint: "unix:///tmp/security.sock".to_string(),
             capabilities: vec!["crypto".to_string(), "auth".to_string()],
             signature: None,
             signed_payload: None,
         };
         let json = serde_json::to_value(&result).unwrap();
-        assert_eq!(json["native_endpoint"], "/tmp/security.sock");
+        assert_eq!(json["socket"], "/tmp/security.sock");
         let caps = json["capabilities"].as_array().unwrap();
         assert_eq!(caps.len(), 2);
         assert!(json.get("signature").is_none(), "None fields should be omitted");
@@ -279,8 +293,9 @@ mod tests {
         let result = DiscoverResult {
             providers: vec![ProviderInfo {
                 primal_id: "songbird".to_string(),
+                socket: Some("/tmp/songbird.sock".to_string()),
                 virtual_endpoint: "/primal/songbird".to_string(),
-                native_endpoint: "/tmp/songbird.sock".to_string(),
+                native_endpoint: "unix:///tmp/songbird.sock".to_string(),
                 capabilities: vec!["network.discovery".to_string()],
                 signature: None,
                 signed_payload: None,
@@ -290,6 +305,7 @@ mod tests {
         let providers = json["providers"].as_array().unwrap();
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0]["primal_id"], "songbird");
+        assert_eq!(providers[0]["socket"], "/tmp/songbird.sock");
     }
 
     #[test]
@@ -343,8 +359,9 @@ mod tests {
     fn provider_info_clone_is_independent() {
         let original = ProviderInfo {
             primal_id: "test".to_string(),
+            socket: Some("/tmp/test.sock".to_string()),
             virtual_endpoint: "/primal/test".to_string(),
-            native_endpoint: "/tmp/test.sock".to_string(),
+            native_endpoint: "unix:///tmp/test.sock".to_string(),
             capabilities: vec!["cap1".to_string()],
             signature: Some("sig123".to_string()),
             signed_payload: Some("payload".to_string()),
@@ -380,8 +397,9 @@ mod tests {
     #[test]
     fn resolve_result_with_signature_serializes() {
         let result = ResolveResult {
+            socket: Some("/run/user/1000/biomeos/beardog.sock".to_string()),
             virtual_endpoint: "/primal/beardog".to_string(),
-            native_endpoint: "/run/user/1000/biomeos/beardog.sock".to_string(),
+            native_endpoint: "unix:///run/user/1000/biomeos/beardog.sock".to_string(),
             capabilities: vec!["crypto".to_string()],
             signature: Some("sig_b64".to_string()),
             signed_payload: Some("payload_json".to_string()),
@@ -389,14 +407,16 @@ mod tests {
         let json = serde_json::to_value(&result).unwrap();
         assert_eq!(json["signature"], "sig_b64");
         assert_eq!(json["signed_payload"], "payload_json");
+        assert_eq!(json["socket"], "/run/user/1000/biomeos/beardog.sock");
     }
 
     #[test]
     fn capability_resolve_result_omits_none_signature() {
         let result = CapabilityResolveResult {
             primal_id: "songbird".to_string(),
+            socket: Some("/tmp/songbird.sock".to_string()),
             virtual_endpoint: "/primal/songbird".to_string(),
-            native_endpoint: "/tmp/songbird.sock".to_string(),
+            native_endpoint: "unix:///tmp/songbird.sock".to_string(),
             capabilities: vec!["network.discovery".to_string()],
             signature: None,
             signed_payload: None,
@@ -404,5 +424,6 @@ mod tests {
         let json = serde_json::to_value(&result).unwrap();
         assert!(json.get("signature").is_none());
         assert!(json.get("signed_payload").is_none());
+        assert_eq!(json["socket"], "/tmp/songbird.sock");
     }
 }

@@ -172,6 +172,7 @@ impl IpcServiceHandler {
         };
 
         let result = ResolveResult {
+            socket: entry.native_endpoint.socket_path(),
             virtual_endpoint: entry.virtual_endpoint.path,
             native_endpoint: entry.native_endpoint.display(),
             capabilities: entry.capabilities,
@@ -205,6 +206,7 @@ impl IpcServiceHandler {
             {
                 provider_infos.push(ProviderInfo {
                     primal_id: name.to_string(),
+                    socket: entry.native_endpoint.socket_path(),
                     virtual_endpoint: entry.virtual_endpoint.path,
                     native_endpoint: entry.native_endpoint.display(),
                     capabilities: entry.capabilities,
@@ -266,6 +268,7 @@ impl IpcServiceHandler {
 
         let result = CapabilityResolveResult {
             primal_id: name,
+            socket: entry.native_endpoint.socket_path(),
             virtual_endpoint: entry.virtual_endpoint.path,
             native_endpoint: entry.native_endpoint.display(),
             capabilities: entry.capabilities,

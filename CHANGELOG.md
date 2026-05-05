@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave189] - 2026-05-05 - ipc.resolve `socket` field for primalSpring tier-1 discovery
+
+### Added
+- **`socket` field** in `ipc.resolve`, `ipc.discover`, and `capability.resolve` responses — bare filesystem path (e.g. `/run/user/1000/biomeos/network.sock`) without transport scheme prefix. Enables primalSpring's `CompositionContext::discover()` tier-1 Songbird routing to connect directly via `PathBuf::from(socket)`.
+- **`NativeEndpoint::socket_path()`** — extracts connect-ready path from any endpoint variant (Unix → bare path, Abstract → `@name`, TCP → `addr:port`).
+
+### Context
+primalSpring v0.9.21 `CompositionContext::discover()` checks `result.get("socket").or_else(|| result.get("native_endpoint"))` — the `native_endpoint` field returns `unix:///path` (with scheme prefix), which is not a valid filesystem path for `PathBuf::from()`. The new `socket` field provides the bare path, giving highest-fidelity routing as tier-1 in primalSpring's discovery escalation hierarchy.
+
+### Verified
+- 0 clippy warnings (`-D warnings`)
+- All 506 universal-ipc lib tests pass
+- Full workspace tests pass (883 songbird-config, 506 universal-ipc, etc.)
+
+---
+
 ## [v0.2.1-wave188] - 2026-05-04 - Timeout centralization (wave 2), JSONRPC_VERSION consolidation, Box<dyn Error> elimination
 
 ### Changed

@@ -232,6 +232,7 @@ fn ipc_list_and_provider_serialization_shapes() {
     let dr = DiscoverResult {
         providers: vec![ProviderInfo {
             primal_id: "q".into(),
+            socket: Some("/run/q".into()),
             virtual_endpoint: "/primal/q".into(),
             native_endpoint: "unix:///run/q".into(),
             capabilities: vec![],
@@ -255,6 +256,7 @@ fn register_and_resolve_result_serialization() {
     assert_eq!(v["virtual_endpoint"], "/primal/x");
 
     let res = ResolveResult {
+        socket: None,
         virtual_endpoint: "/primal/x".into(),
         native_endpoint: "native".into(),
         capabilities: vec!["c".into()],
