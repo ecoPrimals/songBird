@@ -97,7 +97,6 @@ mod server;
 mod types;
 
 use serde_json::Value;
-use std::future::Future;
 
 pub use client::TowerAtomicClient;
 pub use server::TowerAtomicServer;
@@ -106,6 +105,7 @@ pub use types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 /// JSON-RPC handler trait
 ///
 /// Implement this trait to handle JSON-RPC requests in your service.
+/// All implementations must produce `Send` futures for use with `tokio::spawn`.
 pub trait JsonRpcHandler: Send + Sync {
     /// Handle a JSON-RPC method call
     ///
@@ -119,7 +119,7 @@ pub trait JsonRpcHandler: Send + Sync {
         &self,
         method: &str,
         params: Value,
-    ) -> impl Future<Output = Result<Value, String>> + Send;
+    ) -> impl std::future::Future<Output = Result<Value, String>> + Send;
 }
 
 #[cfg(test)]

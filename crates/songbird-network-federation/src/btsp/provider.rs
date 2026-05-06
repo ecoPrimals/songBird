@@ -7,7 +7,6 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_http_client::IpcHttpClient;
-use std::future::Future;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
@@ -105,33 +104,33 @@ pub trait BtspProvider: Send + Sync {
     fn establish_tunnel(
         &self,
         peer: &PeerInfo,
-    ) -> impl Future<Output = SongbirdResult<TunnelHandle>> + Send;
+    ) -> impl std::future::Future<Output = SongbirdResult<TunnelHandle>> + Send;
 
     /// Encrypt data for transmission through tunnel
     fn encrypt(
         &self,
         data: &[u8],
         context: &SecurityContext,
-    ) -> impl Future<Output = SongbirdResult<Vec<u8>>> + Send;
+    ) -> impl std::future::Future<Output = SongbirdResult<Vec<u8>>> + Send;
 
     /// Decrypt data received through tunnel
     fn decrypt(
         &self,
         data: &[u8],
         context: &SecurityContext,
-    ) -> impl Future<Output = SongbirdResult<Vec<u8>>> + Send;
+    ) -> impl std::future::Future<Output = SongbirdResult<Vec<u8>>> + Send;
 
     /// Get tunnel status
     fn tunnel_status(
         &self,
         handle: &TunnelHandle,
-    ) -> impl Future<Output = SongbirdResult<TunnelStatus>> + Send;
+    ) -> impl std::future::Future<Output = SongbirdResult<TunnelStatus>> + Send;
 
     /// Close tunnel
     fn close_tunnel(
         &self,
         handle: &TunnelHandle,
-    ) -> impl Future<Output = SongbirdResult<()>> + Send;
+    ) -> impl std::future::Future<Output = SongbirdResult<()>> + Send;
 
     /// Get provider name (for logging/debugging)
     fn provider_name(&self) -> &str;

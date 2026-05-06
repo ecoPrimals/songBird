@@ -13,6 +13,8 @@ use crate::storage::{InMemoryOnionStorage, OnionStorage, OnionStorageBackend};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+const MAX_ONION_FRAME: usize = 16 * 1024 * 1024;
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, error, info, warn};
 
@@ -284,6 +286,12 @@ impl OnionService {
                     ]);
                     let payload_len =
                         u32::from_be_bytes([header[8], header[9], header[10], header[11]]) as usize;
+
+                    if payload_len > MAX_ONION_FRAME {
+                        return Err(OnionError::InvalidMessage(format!(
+                            "Frame too large: {payload_len} bytes (max {MAX_ONION_FRAME})"
+                        )));
+                    }
 
                     // Read encrypted payload
                     let mut encrypted = vec![0u8; payload_len];

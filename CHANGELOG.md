@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave192] - 2026-05-06 - Frame size guard, stale Future import removal
+
+### Changed
+- **Sovereign onion frame guard**: Added `MAX_ONION_FRAME` (16 MiB) size validation in `sovereign-onion/service.rs` before allocating wire-frame buffers from untrusted `u32` lengths. Prevents memory-bomb attacks via oversized frame headers.
+- **Removed stale `use std::future::Future` import** from `songbird-network-federation/src/btsp/provider.rs` — trait already uses inline `std::future::Future` path in RPITIT signatures.
+
+### Verified
+- 0 clippy warnings (`-D warnings`)
+- All 69 sovereign-onion tests pass
+- All 132 network-federation tests pass
+- All 44 tower_atomic tests pass
+
+---
+
 ## [v0.2.1-wave191] - 2026-05-06 - ipc.register identity verification, whitespace-tolerant protocol detection
 
 ### Added
