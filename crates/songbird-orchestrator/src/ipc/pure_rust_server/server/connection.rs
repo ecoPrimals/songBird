@@ -321,7 +321,31 @@ impl UnixSocketServer {
             }
         };
 
-        if first_byte == b'{' {
+        // Whitespace-tolerant protocol detection: skip leading ASCII whitespace
+        // before classifying. Handles clients that send `\n{...` or `  {...`.
+        let first_meaningful_byte = if first_byte.is_ascii_whitespace() {
+            reader.consume(1);
+            loop {
+                match reader.fill_buf().await {
+                    Ok(buf) if !buf.is_empty() => {
+                        let b = buf[0];
+                        if b.is_ascii_whitespace() {
+                            reader.consume(1);
+                            continue;
+                        }
+                        break b;
+                    }
+                    _ => {
+                        debug!("UDS peek: only whitespace received — dropping connection");
+                        return Ok(());
+                    }
+                }
+            }
+        } else {
+            first_byte
+        };
+
+        if first_meaningful_byte == b'{' {
             let mut first_line = String::new();
             reader.read_line(&mut first_line).await.context("UDS: failed to read first line")?;
 
@@ -362,7 +386,9 @@ impl UnixSocketServer {
                 self.handle_ndjson_first_line_then_session(first_line, reader, write_half).await
             }
         } else {
-            debug!("UDS peek: binary protocol detected (0x{first_byte:02X}) — BTSP handshake");
+            debug!(
+                "UDS peek: binary protocol detected (0x{first_meaningful_byte:02X}) — BTSP handshake"
+            );
             let stream = PeekedStream {
                 reader,
                 writer: write_half,
@@ -455,6 +481,8 @@ impl UnixSocketServer {
 
                 if let Some(session_keys) = keys {
                     debug!("BTSP Phase 3: switching binary-framed session to encrypted framing");
+                    // Safety: stream is PeekedStream wrapping BufReader — split
+                    // preserves the buffer chain. No into_inner() needed.
                     let (reader, writer) = tokio::io::split(stream);
                     return self.handle_encrypted_session(reader, writer, session_keys).await;
                 }
@@ -594,6 +622,12 @@ impl UnixSocketServer {
 
                         if let Some(session_keys) = keys {
                             debug!("BTSP Phase 3: switching to encrypted framing");
+                            // Safety: reader IS the BufReader used for negotiate — any
+                            // bytes the client sent after our negotiate response are in
+                            // this buffer, not lost. We do NOT call into_inner() here
+                            // (the barraCuda/coralReef bug class). The encrypted frame
+                            // reader consumes from the same BufReader, preserving all
+                            // buffered data.
                             return self
                                 .handle_encrypted_session(reader, writer, session_keys)
                                 .await;

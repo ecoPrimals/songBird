@@ -373,6 +373,9 @@ async fn handle_json_rpc_lines<R, W>(
                         tracing::debug!(
                             "{peer_label} BTSP Phase 3: switching to encrypted framing"
                         );
+                        // Safety: reader is the same BufReader used for negotiate line
+                        // I/O — any bytes buffered ahead are preserved. We do NOT call
+                        // into_inner() (avoids barraCuda/coralReef bug class).
                         handle_encrypted_json_rpc(
                             reader,
                             writer,

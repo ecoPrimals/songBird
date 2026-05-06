@@ -9,6 +9,7 @@ use super::{
 use crate::endpoint::NativeEndpoint;
 use crate::introspection::CONSUMED_CAPABILITIES;
 use serde_json::Value;
+use songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT;
 use tracing::debug;
 
 /// Build a deterministic canonical JSON payload for signing.
@@ -66,6 +67,11 @@ impl IpcServiceHandler {
                 params.endpoint
             ));
         };
+
+        // Verify registrant identity: probe the endpoint with identity.get and confirm
+        // the primal_id matches. Gracefully degrades if endpoint is unreachable (trust-on-first-use
+        // for primals still starting). Hard-rejects identity mismatch (spoofed names).
+        self.verify_registrant_identity(&native_endpoint, &params.primal_id).await?;
 
         // Sign via BearDog if crypto provider is available
         let (signature, signed_payload) = self.sign_payload(&canonical).await;
@@ -125,6 +131,104 @@ impl IpcServiceHandler {
                 (None, None)
             }
         }
+    }
+
+    /// Verify a registering primal's identity by probing its endpoint with `identity.get`.
+    ///
+    /// Returns `Ok(())` if the probe confirms the primal's identity matches `expected_name`,
+    /// or if the endpoint is unreachable (graceful degradation for primals still starting).
+    /// Returns `Err(reason)` only if the primal responds but claims a DIFFERENT identity.
+    async fn verify_registrant_identity(
+        &self,
+        endpoint: &NativeEndpoint,
+        expected_name: &str,
+    ) -> Result<(), String> {
+        let Some(response) = self.probe_identity(endpoint).await else {
+            tracing::warn!(
+                "ipc.register identity probe: no response from {expected_name} \
+                 (allowing trust-on-first-use)"
+            );
+            return Ok(());
+        };
+
+        if response.get("error").is_some() {
+            debug!("ipc.register identity probe: identity.get returned error (non-fatal)");
+            return Ok(());
+        }
+
+        let Some(claimed_name) =
+            response.get("result").and_then(|r| r.get("primal")).and_then(|p| p.as_str())
+        else {
+            return Ok(());
+        };
+
+        if !claimed_name.eq_ignore_ascii_case(expected_name) {
+            return Err(format!(
+                "Identity mismatch: registering as '{expected_name}' but endpoint \
+                 claims to be '{claimed_name}'"
+            ));
+        }
+        debug!("ipc.register identity verified: {expected_name}");
+        Ok(())
+    }
+
+    /// Send `identity.get` to an endpoint and return the parsed JSON response.
+    ///
+    /// Returns `None` on connection failure, timeout, or unparseable response
+    /// (all treated as trust-on-first-use by the caller).
+    async fn probe_identity(&self, endpoint: &NativeEndpoint) -> Option<Value> {
+        let req_bytes =
+            b"{\"jsonrpc\":\"2.0\",\"method\":\"identity.get\",\"params\":{},\"id\":1}\n";
+
+        match endpoint {
+            NativeEndpoint::UnixSocket(path) => {
+                let stream = tokio::time::timeout(
+                    DEFAULT_SOCKET_IO_TIMEOUT,
+                    tokio::net::UnixStream::connect(path),
+                )
+                .await
+                .ok()?
+                .ok()?;
+
+                Self::send_and_read(stream, req_bytes).await
+            }
+            NativeEndpoint::TcpLocal(port) => {
+                let addr = format!("{}:{port}", songbird_types::constants::LOCALHOST);
+                let stream = tokio::time::timeout(
+                    DEFAULT_SOCKET_IO_TIMEOUT,
+                    tokio::net::TcpStream::connect(&addr),
+                )
+                .await
+                .ok()?
+                .ok()?;
+
+                Self::send_and_read(stream, req_bytes).await
+            }
+            _ => None,
+        }
+    }
+
+    /// Write a request and read a single NDJSON response line from a stream.
+    async fn send_and_read<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin>(
+        stream: S,
+        request: &[u8],
+    ) -> Option<Value> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+        let (reader, mut writer) = tokio::io::split(stream);
+        let mut reader = BufReader::new(reader);
+        writer.write_all(request).await.ok()?;
+        writer.flush().await.ok()?;
+
+        let mut line = String::new();
+        let n = tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, reader.read_line(&mut line))
+            .await
+            .ok()?
+            .ok()?;
+        if n == 0 {
+            return None;
+        }
+        serde_json::from_str(line.trim()).ok()
     }
 
     /// Handle `ipc.resolve` method — resolves by `capability` or `primal_id`/`name`.

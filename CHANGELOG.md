@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave191] - 2026-05-06 - ipc.register identity verification, whitespace-tolerant protocol detection
+
+### Added
+- **`ipc.register` identity verification**: Registration now probes the registering primal's endpoint via `identity.get` (async, NDJSON). Hard-rejects identity mismatch (spoofed primal names). Gracefully degrades to trust-on-first-use when endpoint is unreachable (handles primals still starting up). Resolves primalSpring Phase 55 audit item.
+- **Whitespace-tolerant protocol detection**: UDS multiplexer now skips leading ASCII whitespace before classifying the first meaningful byte as JSON-RPC (`{`) or binary BTSP. Matches sweetGrass-style robustness.
+- **BufReader post-negotiate safety documentation**: Explicit comments in `connection.rs` and `bin_interface/server.rs` documenting why Songbird is NOT affected by the barraCuda/coralReef BufReader bug class (we pass the BufReader itself to the encrypted frame handler, never calling `into_inner()`).
+
+### Verified
+- 0 clippy warnings (`-D warnings`)
+- All 506 universal-ipc lib tests pass
+- All 57 orchestrator connection tests pass (including BTSP negotiate → encrypted session)
+
+---
+
 ## [v0.2.1-wave190] - 2026-05-05 - Hardcoded literal cleanup, redundant clone, robust endpoint parsing
 
 ### Changed

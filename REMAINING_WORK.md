@@ -88,7 +88,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ## Pending: Architectural Evolution
 
-- [ ] **IPC registration identity verification** (primalSpring Phase 55 audit item 2): probe registering primal's endpoint with `identity.get` and verify via BearDog BTSP before accepting `ipc.register` — requires async probing during registration and handling of primals not yet fully started
+- [x] **IPC registration identity verification** (primalSpring Phase 55 audit, Wave 191): `ipc.register` now probes the registering primal's endpoint with `identity.get` and hard-rejects identity mismatch (spoofed names). Gracefully degrades to trust-on-first-use if endpoint is unreachable (handles primals still starting). Full BTSP handshake verification remains as a future hardening (requires BearDog availability at registration time)
 - [ ] **Purpose key derivation for discovery signing**: two-tier crypto model describes a `discovery` purpose key; currently using BearDog's Ed25519 signing key directly — purpose key derivation is a BearDog-side evolution
 - [ ] Cluster support for anonymous beacon broadcasting
 - [ ] TLS handshake v2 module integration
