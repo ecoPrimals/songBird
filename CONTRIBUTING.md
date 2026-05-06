@@ -2,7 +2,7 @@
 
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: May 5, 2026
+**Last Updated**: May 6, 2026
 
 ---
 
