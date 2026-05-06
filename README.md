@@ -87,11 +87,23 @@ Security Provider (capability discovery: security.sock / SECURITY_PROVIDER_SOCKE
 ```bash
 cargo build --workspace --release
 cargo run --bin songbird -- server
+cargo run --bin songbird -- server --bind 0.0.0.0 --port 9200  # LAN-exposed
 cargo run --bin songbird -- doctor
 cargo run --bin songbird -- config show
 cargo run --bin songbird -- compute-bridge
 cargo run --bin songbird -- deploy
 ```
+
+### Network Flags
+
+| Flag | Controls | Default |
+|------|----------|---------|
+| `--bind` | HTTP/HTTPS server bind address | `127.0.0.1` (localhost only) |
+| `--port` | HTTP/HTTPS server port | `8080` (env: `SONGBIRD_HTTP_PORT`) |
+| `--listen` | **IPC only** — TCP JSON-RPC inter-primal listener | derived from `--port` |
+| `--socket` | **IPC only** — Unix socket path for inter-primal IPC | XDG auto |
+
+`--bind` defaults to localhost for security. Use `--bind 0.0.0.0` to expose on all interfaces (LAN/WAN). Accepts `host` or `host:port` (port overrides `--port`).
 
 ### Environment Variables
 

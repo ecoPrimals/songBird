@@ -93,7 +93,26 @@ pub struct ServerArgs {
     #[arg(long = "security-socket", alias = "beardog-socket")]
     pub security_socket: Option<String>,
 
+    /// HTTP server bind address (host or host:port)
+    ///
+    /// Controls which network interface the HTTP/HTTPS server listens on.
+    /// Defaults to 127.0.0.1 (localhost only — secure by default).
+    /// Use 0.0.0.0 to accept connections from all interfaces (LAN exposure).
+    ///
+    /// When specified as host:port, overrides --port for the HTTP server.
+    /// When specified as host only, uses --port for the port number.
+    ///
+    /// Examples:
+    ///   --bind 127.0.0.1        (localhost only, default)
+    ///   --bind 0.0.0.0          (all interfaces)
+    ///   --bind 192.168.1.5:9200 (specific interface and port)
+    #[arg(long, env = "SONGBIRD_BIND_ADDRESS", default_value = songbird_types::constants::LOCALHOST)]
+    pub bind: String,
+
     /// TCP listen address for IPC (alternative to Unix socket)
+    ///
+    /// **IPC only** — this flag controls the inter-primal JSON-RPC IPC listener,
+    /// NOT the HTTP server. For HTTP server bind address, use --bind.
     ///
     /// Use this on platforms where Unix sockets are restricted (Android, Windows).
     /// When specified, Songbird uses TCP instead of Unix socket for inter-primal IPC.

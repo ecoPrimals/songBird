@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
         Commands::Server {
             args,
         } => {
-            songbird_orchestrator::run_server(args).await?;
+            Box::pin(songbird_orchestrator::run_server(args)).await?;
         }
         Commands::Doctor {
             args,

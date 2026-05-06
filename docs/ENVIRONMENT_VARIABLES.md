@@ -77,7 +77,7 @@ No symlink workarounds are needed as of Wave 173.
 | `SONGBIRD_HTTP_PORT` | `8080` | HTTP API port |
 | `SONGBIRD_HTTPS_PORT` | `8443` | HTTPS API port |
 | `SONGBIRD_TARPC_PORT` | `8091` | tarpc RPC port |
-| `SONGBIRD_BIND_ADDRESS` | `0.0.0.0` | Bind address for federation/tower mode |
+| `SONGBIRD_BIND_ADDRESS` | `127.0.0.1` | HTTP server bind address (CLI: `--bind`). Use `0.0.0.0` for LAN exposure |
 | `SONGBIRD_DISCOVERY_PORT` | `8081` | Discovery service HTTP port |
 | `SONGBIRD_STUN_PORT` | `3478` | STUN server port |
 | `SONGBIRD_RELAY_PORT` | `3479` | Relay service port |

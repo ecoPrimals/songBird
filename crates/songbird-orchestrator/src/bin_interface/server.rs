@@ -64,7 +64,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             "(foreground)"
         }
     );
-    tracing::info!("   External Port: {} (LAN discovery/federation)", actual_port);
+    tracing::info!("   HTTP Bind: {}:{}", args.bind, actual_port);
     if args.dark_forest {
         tracing::info!("   Dark Forest: ✅ Enabled (encrypted beacons only)");
     }
@@ -109,9 +109,19 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     }
     let mut config = CanonicalSongbirdConfig::from_env()?;
 
-    // Override port from CLI (CLI takes precedence over config/env)
-    config.network.base_port = actual_port;
-    tracing::info!("   Configuration: ✅ Loaded (port override: {})", actual_port);
+    // Override bind address and port from CLI (CLI takes precedence over config/env)
+    let (bind_host, bind_port_override) = parse_bind_flag(&args.bind);
+    config.network.bind_host = bind_host.to_string();
+    if let Some(bp) = bind_port_override {
+        config.network.base_port = bp;
+    } else {
+        config.network.base_port = actual_port;
+    }
+    tracing::info!(
+        "   Configuration: ✅ Loaded (bind: {}:{})",
+        config.network.bind_host,
+        config.network.base_port,
+    );
 
     // Step 4: Start the orchestrator (non-blocking, returns handle)
     tracing::info!("🔧 Starting orchestrator components...");
@@ -602,6 +612,37 @@ async fn start_tcp_ipc_server(listen_addr: &str, security_socket: &str) -> Resul
     }
 }
 
+/// Parse `--bind` flag value into (host, optional port).
+///
+/// Accepts:
+/// - `"127.0.0.1"` → (`"127.0.0.1"`, None)
+/// - `"0.0.0.0:9200"` → (`"0.0.0.0"`, Some(9200))
+/// - `"[::1]:8080"` → (`"[::1]"`, Some(8080))
+/// - `"::"` → (`"::"`, None)
+fn parse_bind_flag(value: &str) -> (&str, Option<u16>) {
+    if let Some(bracket_end) = value.find(']') {
+        if let Some(colon_after) = value[bracket_end..].find(':') {
+            let port_str = &value[bracket_end + colon_after + 1..];
+            if let Ok(port) = port_str.parse::<u16>() {
+                return (&value[..=bracket_end], Some(port));
+            }
+        }
+        return (value, None);
+    }
+
+    match value.rfind(':') {
+        Some(pos) if value[..pos].contains(':') => (value, None),
+        Some(pos) => {
+            let port_str = &value[pos + 1..];
+            match port_str.parse::<u16>() {
+                Ok(port) => (&value[..pos], Some(port)),
+                Err(_) => (value, None),
+            }
+        }
+        None => (value, None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
@@ -682,11 +723,66 @@ mod tests {
     }
 
     #[test]
+    fn bind_flag_defaults_to_localhost() {
+        let cli = Cli::try_parse_from(["songbird"]).unwrap();
+        assert_eq!(cli.args.bind, "127.0.0.1");
+    }
+
+    #[test]
+    fn bind_flag_accepts_host() {
+        let cli = Cli::try_parse_from(["songbird", "--bind", "0.0.0.0"]).unwrap();
+        assert_eq!(cli.args.bind, "0.0.0.0");
+    }
+
+    #[test]
+    fn bind_flag_accepts_host_port() {
+        let cli = Cli::try_parse_from(["songbird", "--bind", "192.168.1.5:9200"]).unwrap();
+        assert_eq!(cli.args.bind, "192.168.1.5:9200");
+    }
+
+    #[test]
+    fn parse_bind_flag_host_only() {
+        let (host, port) = super::parse_bind_flag("127.0.0.1");
+        assert_eq!(host, "127.0.0.1");
+        assert_eq!(port, None);
+    }
+
+    #[test]
+    fn parse_bind_flag_host_port() {
+        let (host, port) = super::parse_bind_flag("0.0.0.0:9200");
+        assert_eq!(host, "0.0.0.0");
+        assert_eq!(port, Some(9200));
+    }
+
+    #[test]
+    fn parse_bind_flag_ipv6_bracketed_port() {
+        let (host, port) = super::parse_bind_flag("[::1]:8080");
+        assert_eq!(host, "[::1]");
+        assert_eq!(port, Some(8080));
+    }
+
+    #[test]
+    fn parse_bind_flag_ipv6_no_port() {
+        let (host, port) = super::parse_bind_flag("::");
+        assert_eq!(host, "::");
+        assert_eq!(port, None);
+    }
+
+    #[test]
+    fn parse_bind_flag_ipv6_bracketed_no_port() {
+        let (host, port) = super::parse_bind_flag("[::1]");
+        assert_eq!(host, "[::1]");
+        assert_eq!(port, None);
+    }
+
+    #[test]
     fn all_flags_combined() {
         let cli = Cli::try_parse_from([
             "songbird",
             "--port",
             "9090",
+            "--bind",
+            "0.0.0.0",
             "--dark-forest",
             "--pid-dir",
             "/run/songbird",
@@ -695,6 +791,7 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(cli.args.port, 9090);
+        assert_eq!(cli.args.bind, "0.0.0.0");
         assert!(cli.args.dark_forest);
         assert_eq!(cli.args.pid_dir.as_deref(), Some("/run/songbird"));
         assert!(cli.args.verbose);
