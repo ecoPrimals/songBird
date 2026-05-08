@@ -1,6 +1,6 @@
 # Songbird Security
 
-**Last Updated**: May 6, 2026
+**Last Updated**: May 8, 2026
 **Status**: Production Ready (v0.2.1, S+ Tier)
 
 ---
@@ -34,6 +34,15 @@
 - **QUIC** — Pure Rust QUIC transport
 - **Sovereign Onion** — Privacy-preserving routing
 - **Dark Forest gating** — TCP requests subject to trust verification
+
+### Authorization (MethodGate JH-0)
+
+- **Pre-dispatch method gate** — Every JSON-RPC call passes through `MethodGate::check` before reaching the dispatch table on all transport paths (UDS, TCP NDJSON, BTSP-encrypted TCP)
+- **Transport-aware CallerContext** — TCP connections classified as loopback or remote based on peer address; UDS connections carry `ConnectionOrigin::Unix`
+- **Public methods** — `health.*`, `identity.get`, `capabilities.list`, `lifecycle.status`, `auth.*` — always accessible regardless of enforcement mode
+- **Protected methods** — `discovery.*`, `birdsong.*`, `mesh.*`, `ipc.*` — require capability token when enforcement is active
+- **Permissive default** — `SONGBIRD_AUTH_MODE=permissive` logs protected-method access without rejecting; switch to `enforced` to reject unauthenticated protected calls
+- **Introspection on all transports** — `auth.mode`, `auth.check`, `auth.peer_info` accessible over UDS, TCP, and encrypted BTSP (not UDS-only)
 
 ### Operational Safety
 

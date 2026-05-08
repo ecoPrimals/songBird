@@ -1,6 +1,6 @@
 # Songbird Environment Variables
 
-**Last Updated**: May 6, 2026
+**Last Updated**: May 8, 2026
 **Version**: v0.2.1
 
 ---
@@ -106,6 +106,16 @@ No symlink workarounds are needed as of Wave 173.
 
 Each capability follows the same fallback chain: `{CAP}_PROVIDER_ENDPOINT` →
 `{CAP}_ENDPOINT` → legacy primal-named env var → runtime discovery → error.
+
+## Authorization (MethodGate JH-0)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SONGBIRD_AUTH_MODE` | `permissive` | Method gate enforcement mode. `permissive` logs protected-method calls but allows them; `enforced` rejects unauthenticated calls to protected methods with `-32001 PERMISSION_DENIED` |
+
+The `auth.*` introspection methods (`auth.check`, `auth.mode`, `auth.peer_info`) are
+exposed on **all transports** — UDS, TCP NDJSON, and BTSP-encrypted TCP. They are
+classified as Public and are always accessible regardless of enforcement mode.
 
 ## Test / Development
 

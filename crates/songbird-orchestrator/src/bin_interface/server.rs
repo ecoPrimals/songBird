@@ -284,6 +284,7 @@ async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unp
     handler: Arc<IpcServiceHandler>,
     security_client: Arc<songbird_http_client::SecurityRpcClient>,
     peer_label: &str,
+    caller: &CallerContext,
 ) {
     let (reader, mut writer) = tokio::io::split(stream);
     let mut reader = BufReader::new(reader);
@@ -330,10 +331,11 @@ async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unp
             }
         }
     } else if !first_line.trim().is_empty() {
-        dispatch_json_rpc_line(&first_line, &mut writer, &handler, peer_label).await;
+        dispatch_json_rpc_line(&first_line, &mut writer, &handler, peer_label, caller).await;
     }
 
-    handle_json_rpc_lines(&mut reader, &mut writer, &handler, &security_client, peer_label).await;
+    handle_json_rpc_lines(&mut reader, &mut writer, &handler, &security_client, peer_label, caller)
+        .await;
 }
 
 /// Process a stream of newline-delimited JSON-RPC requests.
@@ -347,6 +349,7 @@ async fn handle_json_rpc_lines<R, W>(
     handler: &Arc<IpcServiceHandler>,
     security_client: &Arc<songbird_http_client::SecurityRpcClient>,
     peer_label: &str,
+    caller: &CallerContext,
 ) where
     R: tokio::io::AsyncBufRead + tokio::io::AsyncRead + Unpin,
     W: tokio::io::AsyncWrite + Unpin,
@@ -395,6 +398,7 @@ async fn handle_json_rpc_lines<R, W>(
                             handler,
                             session_keys,
                             peer_label,
+                            caller,
                         )
                         .await;
                         return;
@@ -402,7 +406,7 @@ async fn handle_json_rpc_lines<R, W>(
                     continue;
                 }
 
-                dispatch_json_rpc_line(&line, writer, handler, peer_label).await;
+                dispatch_json_rpc_line(&line, writer, handler, peer_label, caller).await;
             }
             Err(e) => {
                 tracing::error!("{peer_label} read error: {e}");
@@ -419,6 +423,7 @@ async fn handle_encrypted_json_rpc<R, W>(
     handler: &Arc<IpcServiceHandler>,
     keys: crate::ipc::btsp_phase3::SessionKeys,
     peer_label: &str,
+    caller: &CallerContext,
 ) where
     R: tokio::io::AsyncRead + Unpin,
     W: tokio::io::AsyncWrite + Unpin,
@@ -475,11 +480,10 @@ async fn handle_encrypted_json_rpc<R, W>(
         );
 
         // JH-0: Pre-dispatch method gate
-        let caller = CallerContext::loopback();
         let response =
-            if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, &caller) {
+            if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, caller) {
                 JsonRpcResponse::success(auth_result, id.clone())
-            } else if let Err(gate_err) = BIN_GATE.check(&request.method, &caller) {
+            } else if let Err(gate_err) = BIN_GATE.check(&request.method, caller) {
                 JsonRpcResponse::error(
                     JsonRpcError {
                         code: gate_err.code,
@@ -517,6 +521,7 @@ async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
     writer: &mut W,
     handler: &Arc<IpcServiceHandler>,
     peer_label: &str,
+    caller: &CallerContext,
 ) {
     let request = match serde_json::from_str::<JsonRpcRequest>(line) {
         Ok(req) => req,
@@ -542,8 +547,7 @@ async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
     tracing::debug!("{peer_label} JSON-RPC: {} (notification={is_notification})", request.method,);
 
     // JH-0: Pre-dispatch method gate
-    let caller = CallerContext::loopback();
-    if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, &caller) {
+    if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, caller) {
         let response = JsonRpcResponse::success(auth_result, id);
         if !is_notification && let Ok(response_json) = serde_json::to_string(&response) {
             let _ = writer.write_all(response_json.as_bytes()).await;
@@ -551,7 +555,7 @@ async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
         }
         return;
     }
-    if let Err(gate_err) = BIN_GATE.check(&request.method, &caller) {
+    if let Err(gate_err) = BIN_GATE.check(&request.method, caller) {
         let response = JsonRpcResponse::error(
             JsonRpcError {
                 code: gate_err.code,
@@ -611,13 +615,15 @@ async fn start_ipc_server(socket_path: &str, security_socket: &str) -> Result<()
     let listener = tokio::net::UnixListener::bind(socket_path)
         .map_err(|e| anyhow::anyhow!("Failed to bind to {socket_path}: {e}"))?;
 
+    let uds_caller = CallerContext::from_unix();
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
                 let handler = Arc::clone(&shared_handler);
                 let sec = Arc::clone(&security_client);
+                let caller = uds_caller.clone();
                 tokio::spawn(async move {
-                    handle_connection(stream, handler, sec, "IPC").await;
+                    handle_connection(stream, handler, sec, "IPC", &caller).await;
                 });
             }
             Err(e) => tracing::error!("Failed to accept IPC connection: {e}"),
@@ -650,8 +656,9 @@ async fn start_tcp_ipc_server(listen_addr: &str, security_socket: &str) -> Resul
                 let handler = Arc::clone(&shared_handler);
                 let sec = Arc::clone(&security_client);
                 let label = format!("TCP:{peer_addr}");
+                let caller = CallerContext::from_tcp(peer_addr);
                 tokio::spawn(async move {
-                    handle_connection(stream, handler, sec, &label).await;
+                    handle_connection(stream, handler, sec, &label, &caller).await;
                 });
             }
             Err(e) => tracing::error!("Failed to accept TCP IPC connection: {e}"),

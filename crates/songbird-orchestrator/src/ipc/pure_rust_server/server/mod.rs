@@ -245,6 +245,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::app::connection_manager::ConnectionManager;
+    use crate::ipc::pure_rust_server::method_gate::CallerContext;
     use crate::ipc::pure_rust_server::protocol::{JsonRpcRequest, JsonRpcResponse};
     use crate::ipc::registry::ServiceRegistry;
 
@@ -282,7 +283,8 @@ mod tests {
     #[tokio::test]
     async fn wire_standard_l2_capabilities_list_on_socket() {
         let server = test_server();
-        let resp = server.handle_jsonrpc_request(jsonrpc_req("capabilities.list")).await;
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("capabilities.list"), &caller).await;
         assert_success(&resp, "capabilities.list");
         let result = resp.result.unwrap();
         assert_eq!(result["primal"].as_str().unwrap(), "songbird");
@@ -293,7 +295,9 @@ mod tests {
     #[tokio::test]
     async fn wire_standard_l2_capabilities_methods_on_socket() {
         let server = test_server();
-        let resp = server.handle_jsonrpc_request(jsonrpc_req("capabilities.methods")).await;
+        let caller = CallerContext::from_unix();
+        let resp =
+            server.handle_jsonrpc_request(jsonrpc_req("capabilities.methods"), &caller).await;
         assert_success(&resp, "capabilities.methods");
         let result = resp.result.unwrap();
         assert!(result.is_object(), "capabilities.methods should return a map");
@@ -302,7 +306,8 @@ mod tests {
     #[tokio::test]
     async fn wire_standard_l2_identity_get_on_socket() {
         let server = test_server();
-        let resp = server.handle_jsonrpc_request(jsonrpc_req("identity.get")).await;
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("identity.get"), &caller).await;
         assert_success(&resp, "identity.get");
         let result = resp.result.unwrap();
         assert_eq!(result["primal"].as_str().unwrap(), "songbird");
@@ -314,7 +319,8 @@ mod tests {
     #[tokio::test]
     async fn wire_standard_l2_identity_on_socket() {
         let server = test_server();
-        let resp = server.handle_jsonrpc_request(jsonrpc_req("identity")).await;
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("identity"), &caller).await;
         assert_success(&resp, "identity");
         let result = resp.result.unwrap();
         assert_eq!(result["primal"].as_str().unwrap(), "songbird");
@@ -324,8 +330,9 @@ mod tests {
     #[tokio::test]
     async fn wire_standard_l2_health_triad_on_socket() {
         let server = test_server();
+        let caller = CallerContext::from_unix();
         for method in &["health.liveness", "health.readiness", "health.check"] {
-            let resp = server.handle_jsonrpc_request(jsonrpc_req(method)).await;
+            let resp = server.handle_jsonrpc_request(jsonrpc_req(method), &caller).await;
             assert_success(&resp, method);
         }
     }
@@ -333,7 +340,8 @@ mod tests {
     #[tokio::test]
     async fn socket_unknown_method_returns_error() {
         let server = test_server();
-        let resp = server.handle_jsonrpc_request(jsonrpc_req("nonexistent.method")).await;
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("nonexistent.method"), &caller).await;
         assert!(resp.error.is_some(), "unknown method should return error");
         assert!(resp.result.is_none());
     }

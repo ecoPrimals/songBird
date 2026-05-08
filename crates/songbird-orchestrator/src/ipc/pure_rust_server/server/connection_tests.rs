@@ -11,6 +11,7 @@
 use super::*;
 use crate::app::connection_manager::ConnectionManager;
 use crate::ipc::btsp_phase3::SessionKeys;
+use crate::ipc::pure_rust_server::method_gate::CallerContext;
 use crate::ipc::registry::ServiceRegistry;
 use base64::Engine as _;
 
@@ -43,7 +44,8 @@ async fn encrypted_session_loop_on_live_duplex() {
     let (server_reader, server_writer) = tokio::io::split(server_stream);
 
     let server_handle = tokio::spawn(async move {
-        server.handle_encrypted_session(server_reader, server_writer, server_keys).await
+        let caller = CallerContext::from_unix();
+        server.handle_encrypted_session(server_reader, server_writer, server_keys, &caller).await
     });
 
     let (mut client_reader, mut client_writer) = tokio::io::split(client_stream);
@@ -105,8 +107,10 @@ async fn encrypted_session_notifications_produce_no_response() {
     let client_keys = SessionKeys::derive(&hk, cn, sn, true).unwrap();
 
     let (sr, sw) = tokio::io::split(server_stream);
-    let server_handle =
-        tokio::spawn(async move { server.handle_encrypted_session(sr, sw, server_keys).await });
+    let server_handle = tokio::spawn(async move {
+        let caller = CallerContext::from_unix();
+        server.handle_encrypted_session(sr, sw, server_keys, &caller).await
+    });
 
     let (mut cr, mut cw) = tokio::io::split(client_stream);
 
@@ -148,7 +152,10 @@ async fn ndjson_negotiate_dispatch_null_cipher_fallback() {
 
     let (sr, sw) = tokio::io::split(server_stream);
     let reader = BufReader::new(sr);
-    let server_handle = tokio::spawn(async move { server.handle_ndjson_session(reader, sw).await });
+    let server_handle = tokio::spawn(async move {
+        let caller = CallerContext::from_unix();
+        server.handle_ndjson_session(reader, sw, &caller).await
+    });
 
     let (mut cr, mut cw) = tokio::io::split(client_stream);
 
@@ -269,7 +276,10 @@ async fn ndjson_negotiate_to_encrypted_session_live() {
     let (sr, sw) = tokio::io::split(server_stream);
     let reader = BufReader::new(sr);
 
-    let server_handle = tokio::spawn(async move { server.handle_ndjson_session(reader, sw).await });
+    let server_handle = tokio::spawn(async move {
+        let caller = CallerContext::from_unix();
+        server.handle_ndjson_session(reader, sw, &caller).await
+    });
 
     let (mut cr, mut cw) = tokio::io::split(client_stream);
 

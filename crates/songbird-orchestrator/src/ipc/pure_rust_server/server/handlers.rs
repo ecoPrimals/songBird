@@ -15,7 +15,11 @@ use super::UnixSocketServer;
 
 impl UnixSocketServer {
     /// Handle a JSON-RPC 2.0 request and route to appropriate API handler
-    pub(crate) async fn handle_jsonrpc_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
+    pub(crate) async fn handle_jsonrpc_request(
+        &self,
+        request: JsonRpcRequest,
+        caller: &CallerContext,
+    ) -> JsonRpcResponse {
         let id = request.id.clone().unwrap_or(serde_json::Value::Null);
 
         if request.jsonrpc != "2.0" {
@@ -26,13 +30,11 @@ impl UnixSocketServer {
         }
 
         // JH-0: Pre-dispatch method gate authorization
-        let caller = CallerContext::from_unix();
-
-        if let Some(auth_result) = dispatch_auth_method(&request.method, &self.gate, &caller) {
+        if let Some(auth_result) = dispatch_auth_method(&request.method, &self.gate, caller) {
             return JsonRpcResponse::success(auth_result, id);
         }
 
-        if let Err(gate_err) = self.gate.check(&request.method, &caller) {
+        if let Err(gate_err) = self.gate.check(&request.method, caller) {
             return JsonRpcResponse::error(gate_err, id);
         }
 

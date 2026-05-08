@@ -133,6 +133,24 @@ impl CallerContext {
             origin: ConnectionOrigin::Remote,
         }
     }
+
+    /// Build a caller context from a TCP peer address.
+    ///
+    /// Checks whether the peer IP is a loopback address (`127.0.0.1`, `::1`)
+    /// and sets `ConnectionOrigin` accordingly.
+    #[must_use]
+    pub fn from_tcp(addr: std::net::SocketAddr) -> Self {
+        let origin = if addr.ip().is_loopback() {
+            ConnectionOrigin::Loopback
+        } else {
+            ConnectionOrigin::Remote
+        };
+        Self {
+            bearer_token: None,
+            peer: None,
+            origin,
+        }
+    }
 }
 
 /// Enforcement mode for the method gate.
@@ -392,6 +410,27 @@ mod tests {
     }
 
     #[test]
+    fn from_tcp_loopback_ipv4() {
+        let addr: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let ctx = CallerContext::from_tcp(addr);
+        assert_eq!(ctx.origin, ConnectionOrigin::Loopback);
+    }
+
+    #[test]
+    fn from_tcp_loopback_ipv6() {
+        let addr: std::net::SocketAddr = "[::1]:9000".parse().unwrap();
+        let ctx = CallerContext::from_tcp(addr);
+        assert_eq!(ctx.origin, ConnectionOrigin::Loopback);
+    }
+
+    #[test]
+    fn from_tcp_remote() {
+        let addr: std::net::SocketAddr = "192.168.1.50:8080".parse().unwrap();
+        let ctx = CallerContext::from_tcp(addr);
+        assert_eq!(ctx.origin, ConnectionOrigin::Remote);
+    }
+
+    #[test]
     fn enforcement_mode_as_str() {
         assert_eq!(EnforcementMode::Permissive.as_str(), "permissive");
         assert_eq!(EnforcementMode::Enforced.as_str(), "enforced");
@@ -519,5 +558,17 @@ mod tests {
         assert!(is_gate_handled_method("auth.peer_info"));
         assert!(!is_gate_handled_method("auth.issue_ionic"));
         assert!(!is_gate_handled_method("discovery.peers"));
+    }
+
+    #[test]
+    fn auth_mode_accessible_via_tcp_context() {
+        let gate = MethodGate::new(EnforcementMode::Permissive);
+        let tcp_addr: std::net::SocketAddr = "192.168.1.100:5000".parse().unwrap();
+        let caller = CallerContext::from_tcp(tcp_addr);
+        assert_eq!(caller.origin, ConnectionOrigin::Remote);
+        let result = dispatch_auth_method("auth.mode", &gate, &caller);
+        assert!(result.is_some(), "auth.mode must be reachable over TCP");
+        let value = result.unwrap();
+        assert_eq!(value["mode"], "permissive");
     }
 }

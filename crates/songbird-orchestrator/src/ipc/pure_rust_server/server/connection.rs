@@ -237,7 +237,7 @@ impl UnixSocketServer {
                     debug!("📥 TCP IPC connection from {}", addr);
                     let server = Arc::clone(&self);
                     tokio::spawn(async move {
-                        if let Err(e) = server.handle_tcp_connection(stream).await {
+                        if let Err(e) = server.handle_tcp_connection(stream, addr).await {
                             error!("❌ TCP connection handler error: {}", e);
                         }
                     });
@@ -253,12 +253,17 @@ impl UnixSocketServer {
         Ok(())
     }
 
-    async fn handle_tcp_connection(&self, stream: tokio::net::TcpStream) -> Result<()> {
-        debug!("📥 New TCP IPC connection");
+    async fn handle_tcp_connection(
+        &self,
+        stream: tokio::net::TcpStream,
+        peer_addr: std::net::SocketAddr,
+    ) -> Result<()> {
+        debug!("📥 New TCP IPC connection from {peer_addr}");
 
+        let caller = super::super::method_gate::CallerContext::from_tcp(peer_addr);
         let (reader, writer) = stream.into_split();
         let reader = BufReader::new(reader);
-        self.handle_ndjson_session(reader, writer).await
+        self.handle_ndjson_session(reader, writer, &caller).await
     }
 
     fn write_tcp_discovery_file(&self, port: u16) -> Result<()> {
@@ -380,10 +385,13 @@ impl UnixSocketServer {
                     "BTSP NDJSON session {} authenticated (cipher: {})",
                     session.session_id, session.cipher
                 );
-                self.handle_ndjson_session(reader, write_half).await
+                let caller = super::super::method_gate::CallerContext::from_unix();
+                self.handle_ndjson_session(reader, write_half, &caller).await
             } else {
                 debug!("UDS peek: JSON-RPC detected — plain NDJSON session");
-                self.handle_ndjson_first_line_then_session(first_line, reader, write_half).await
+                let caller = super::super::method_gate::CallerContext::from_unix();
+                self.handle_ndjson_first_line_then_session(first_line, reader, write_half, &caller)
+                    .await
             }
         } else {
             debug!(
@@ -393,7 +401,8 @@ impl UnixSocketServer {
                 reader,
                 writer: write_half,
             };
-            self.handle_btsp_on_stream(stream).await
+            let caller = super::super::method_gate::CallerContext::from_unix();
+            self.handle_btsp_on_stream(stream, &caller).await
         }
     }
 
@@ -402,7 +411,11 @@ impl UnixSocketServer {
     /// Run the full BTSP lifecycle (handshake → persistent framed JSON-RPC) on
     /// any bidirectional async stream. Works with both raw `UnixStream` and the
     /// `PeekedStream` adapter used after first-byte auto-detection.
-    async fn handle_btsp_on_stream<S>(&self, mut stream: S) -> Result<()>
+    async fn handle_btsp_on_stream<S>(
+        &self,
+        mut stream: S,
+        caller: &super::super::method_gate::CallerContext,
+    ) -> Result<()>
     where
         S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static,
     {
@@ -414,7 +427,7 @@ impl UnixSocketServer {
 
         info!("BTSP session {} authenticated (cipher: {})", session.session_id, session.cipher);
 
-        self.handle_btsp_frames(stream, &session).await
+        self.handle_btsp_frames(stream, &session, caller).await
     }
 
     /// Persistent BTSP frame loop: reads length-prefixed JSON-RPC frames until
@@ -423,7 +436,12 @@ impl UnixSocketServer {
     /// Intercepts `btsp.negotiate` requests to perform Phase 3 cipher upgrade.
     /// On successful negotiation with a real cipher, transitions to encrypted
     /// framing via [`Self::handle_encrypted_session`].
-    async fn handle_btsp_frames<S>(&self, mut stream: S, session: &btsp::BtspSession) -> Result<()>
+    async fn handle_btsp_frames<S>(
+        &self,
+        mut stream: S,
+        session: &btsp::BtspSession,
+        caller: &super::super::method_gate::CallerContext,
+    ) -> Result<()>
     where
         S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static,
     {
@@ -484,7 +502,9 @@ impl UnixSocketServer {
                     // Safety: stream is PeekedStream wrapping BufReader — split
                     // preserves the buffer chain. No into_inner() needed.
                     let (reader, writer) = tokio::io::split(stream);
-                    return self.handle_encrypted_session(reader, writer, session_keys).await;
+                    return self
+                        .handle_encrypted_session(reader, writer, session_keys, caller)
+                        .await;
                 }
                 continue;
             }
@@ -494,7 +514,7 @@ impl UnixSocketServer {
                 "BTSP JSON-RPC: {} (notification={}, session={})",
                 request.method, is_notification, session.session_id
             );
-            let response = self.handle_jsonrpc_request(request).await;
+            let response = self.handle_jsonrpc_request(request, caller).await;
 
             if !is_notification {
                 Self::write_btsp_response(&mut stream, &response).await?;
@@ -526,6 +546,7 @@ impl UnixSocketServer {
         first_line: String,
         reader: R,
         mut writer: W,
+        caller: &super::super::method_gate::CallerContext,
     ) -> Result<()>
     where
         R: AsyncBufRead + Unpin,
@@ -539,7 +560,7 @@ impl UnixSocketServer {
                         "JSON-RPC request: {} (notification={})",
                         request.method, is_notification
                     );
-                    let response = self.handle_jsonrpc_request(request).await;
+                    let response = self.handle_jsonrpc_request(request, caller).await;
                     if !is_notification {
                         let mut payload = serde_json::to_vec(&response)?;
                         payload.push(b'\n');
@@ -560,7 +581,7 @@ impl UnixSocketServer {
             }
         }
 
-        self.handle_ndjson_session(reader, writer).await
+        self.handle_ndjson_session(reader, writer, caller).await
     }
 
     /// Persistent newline-delimited JSON-RPC session: reads requests in a loop
@@ -570,7 +591,12 @@ impl UnixSocketServer {
     /// the Phase 3 negotiation, sends the NDJSON response, and (if a real
     /// cipher was negotiated) switches to the encrypted frame loop for all
     /// subsequent traffic.
-    async fn handle_ndjson_session<R, W>(&self, mut reader: R, mut writer: W) -> Result<()>
+    async fn handle_ndjson_session<R, W>(
+        &self,
+        mut reader: R,
+        mut writer: W,
+        caller: &super::super::method_gate::CallerContext,
+    ) -> Result<()>
     where
         R: AsyncBufRead + AsyncRead + Unpin,
         W: AsyncWrite + Unpin,
@@ -629,7 +655,7 @@ impl UnixSocketServer {
                             // reader consumes from the same BufReader, preserving all
                             // buffered data.
                             return self
-                                .handle_encrypted_session(reader, writer, session_keys)
+                                .handle_encrypted_session(reader, writer, session_keys, caller)
                                 .await;
                         }
                         continue;
@@ -640,7 +666,7 @@ impl UnixSocketServer {
                         "JSON-RPC request: {} (notification={})",
                         request.method, is_notification
                     );
-                    let response = self.handle_jsonrpc_request(request).await;
+                    let response = self.handle_jsonrpc_request(request, caller).await;
 
                     if !is_notification {
                         let mut payload = serde_json::to_vec(&response)?;
@@ -669,6 +695,7 @@ impl UnixSocketServer {
         mut reader: R,
         mut writer: W,
         keys: btsp_phase3::SessionKeys,
+        caller: &super::super::method_gate::CallerContext,
     ) -> Result<()>
     where
         R: AsyncRead + Unpin,
@@ -707,7 +734,7 @@ impl UnixSocketServer {
 
             let is_notification = request.id.is_none();
             debug!("BTSP Phase 3 JSON-RPC: {} (notification={})", request.method, is_notification);
-            let response = self.handle_jsonrpc_request(request).await;
+            let response = self.handle_jsonrpc_request(request, caller).await;
 
             if !is_notification {
                 let resp_bytes = serde_json::to_vec(&response)?;
@@ -723,9 +750,10 @@ impl UnixSocketServer {
     #[cfg(unix)]
     pub(crate) async fn handle_connection(&self, stream: UnixStream) -> Result<()> {
         debug!("New IPC connection (development mode)");
+        let caller = super::super::method_gate::CallerContext::from_unix();
         let (read_half, write_half) = stream.into_split();
         let reader = BufReader::new(read_half);
-        self.handle_ndjson_session(reader, write_half).await
+        self.handle_ndjson_session(reader, write_half, &caller).await
     }
 }
 
