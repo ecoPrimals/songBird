@@ -41,11 +41,16 @@ const CALLABLE_METHODS: &[&str] = &[
     "capabilities.methods",
     "identity",
     "identity.get",
+    "lifecycle.status",
     "primal.info",
     "primal.capabilities",
     "rpc.methods",
     "rpc.discover",
     "discover_capabilities",
+    // ── Auth / method gate (JH-0) ──
+    "auth.check",
+    "auth.mode",
+    "auth.peer_info",
     // ── IPC registry ──
     "ipc.register",
     "ipc.resolve",

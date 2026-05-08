@@ -22,6 +22,7 @@
 //! - `JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`: Protocol types
 
 pub mod coordination_handlers;
+pub mod method_gate;
 pub mod protocol;
 pub mod server;
 

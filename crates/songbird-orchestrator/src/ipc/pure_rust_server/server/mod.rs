@@ -38,6 +38,7 @@ use tracing::{info, warn};
 
 use crate::app::connection_manager::ConnectionManager;
 use crate::ipc::handlers::IpcHandlers;
+use crate::ipc::pure_rust_server::method_gate::MethodGate;
 use crate::ipc::registry::ServiceRegistry;
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 
@@ -46,6 +47,7 @@ pub struct UnixSocketServer {
     socket_path: PathBuf,
     handlers: Arc<IpcHandlers>,
     security_client: Arc<songbird_http_client::SecurityRpcClient>,
+    gate: MethodGate,
     is_ready: Arc<AtomicBool>,
     is_running: Arc<AtomicBool>,
     ready_notify: Arc<tokio::sync::Notify>,
@@ -66,10 +68,14 @@ impl UnixSocketServer {
             Arc::clone(&security_client),
         ));
 
+        let gate = MethodGate::from_env();
+        info!("🔐 Method gate: {} mode", gate.mode().as_str());
+
         Self {
             socket_path,
             handlers,
             security_client,
+            gate,
             is_ready: Arc::new(AtomicBool::new(false)),
             is_running: Arc::new(AtomicBool::new(false)),
             ready_notify: Arc::new(tokio::sync::Notify::new()),
