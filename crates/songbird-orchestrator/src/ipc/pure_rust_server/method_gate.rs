@@ -28,6 +28,121 @@ pub mod error_codes {
     pub const PERMISSION_DENIED: i32 = -32_001;
 }
 
+// ─── Token verification infrastructure (JH-11 prep) ─────────────────────────
+
+/// Claims extracted from a verified ionic token.
+#[derive(Debug, Clone)]
+pub struct TokenClaims {
+    /// Subject identifier (the entity the token was issued to).
+    pub subject: String,
+    /// Scope patterns: `"*"`, `"domain.*"`, or exact method names.
+    pub scopes: Vec<String>,
+    /// Unix timestamp when the token expires (if bounded).
+    pub expires_at: Option<u64>,
+}
+
+/// Errors from token verification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TokenVerifyError {
+    /// No verifier is configured (development/permissive mode).
+    NotConfigured,
+    /// The token's signature or structure is invalid.
+    Invalid(String),
+    /// The token has expired.
+    Expired,
+    /// The upstream verification endpoint is unreachable.
+    Unavailable(String),
+}
+
+/// Abstraction over ionic token verification.
+///
+/// Production deployments wire [`BearDogVerifier`] which calls
+/// `auth.verify_ionic` on the security provider. Tests use [`NoopVerifier`].
+pub trait TokenVerifier: Send + Sync {
+    /// Verify an ionic token and extract its claims.
+    fn verify(
+        &self,
+        token: &str,
+    ) -> impl std::future::Future<Output = Result<TokenClaims, TokenVerifyError>> + Send;
+}
+
+/// Verifier that always returns `NotConfigured` — used in tests and when
+/// no security provider is available.
+#[derive(Debug, Clone, Copy)]
+pub struct NoopVerifier;
+
+impl TokenVerifier for NoopVerifier {
+    async fn verify(&self, _token: &str) -> Result<TokenClaims, TokenVerifyError> {
+        Err(TokenVerifyError::NotConfigured)
+    }
+}
+
+/// Verifier that will call BearDog's `auth.verify_ionic` via IPC once
+/// BearDog ships key distribution (JH-11).
+///
+/// Currently returns `Unavailable` — the trait infrastructure is in place so
+/// that wiring is a single-line change when the upstream capability lands.
+/// Expected BearDog response shape:
+/// ```json
+/// { "subject": "primal-name", "scopes": ["domain.*"], "expires_at": 1717000000 }
+/// ```
+#[derive(Debug, Clone)]
+pub struct BearDogVerifier {
+    _security_client: std::sync::Arc<songbird_http_client::SecurityRpcClient>,
+}
+
+impl BearDogVerifier {
+    /// Create a verifier backed by the given security provider client.
+    #[must_use]
+    pub fn new(client: std::sync::Arc<songbird_http_client::SecurityRpcClient>) -> Self {
+        Self {
+            _security_client: client,
+        }
+    }
+}
+
+impl TokenVerifier for BearDogVerifier {
+    async fn verify(&self, _token: &str) -> Result<TokenClaims, TokenVerifyError> {
+        // JH-11: Once BearDog ships `auth.verify_ionic`, this becomes:
+        //   let params = serde_json::json!({ "token": token });
+        //   let result = self._security_client.verify_ionic(params).await?;
+        //   Ok(TokenClaims { subject, scopes, expires_at })
+        Err(TokenVerifyError::Unavailable(
+            "BearDog auth.verify_ionic not yet available (pending JH-11)".to_owned(),
+        ))
+    }
+}
+
+/// Check if any scope in `scopes` permits access to `method`.
+///
+/// Scope patterns:
+/// - `"*"` — permits all methods
+/// - `"domain.*"` — permits all methods starting with `domain.`
+/// - `"exact.method"` — permits only that exact method
+#[must_use]
+pub fn scope_permits_method(scopes: &[String], method: &str) -> bool {
+    scopes.iter().any(|scope| match scope.as_str() {
+        "*" => true,
+        s if s.ends_with(".*") => {
+            let prefix = &s[..s.len() - 2];
+            method.starts_with(prefix) && method.as_bytes().get(prefix.len()) == Some(&b'.')
+        }
+        s => s == method,
+    })
+}
+
+/// Extract `_bearer_token` from a JSON-RPC `params` object.
+///
+/// Clients pass the ionic token as `"_bearer_token"` inside `params`.
+/// The field is stripped before forwarding to the method handler.
+#[must_use]
+pub fn extract_bearer_token(params: &mut serde_json::Value) -> Option<String> {
+    params.as_object_mut().and_then(|map| map.remove("_bearer_token")).and_then(|v| match v {
+        serde_json::Value::String(s) if !s.is_empty() => Some(s),
+        _ => None,
+    })
+}
+
 /// Access level for a JSON-RPC method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MethodAccessLevel {
@@ -79,6 +194,8 @@ pub struct PeerCredentials {
 pub struct CallerContext {
     /// Optional bearer / capability token sent in the request.
     pub bearer_token: Option<String>,
+    /// Verified claims from the token (populated after async verification).
+    pub verified_claims: Option<TokenClaims>,
     /// Peer credentials from `SO_PEERCRED` (Unix socket only).
     pub peer: Option<PeerCredentials>,
     /// Where the connection came from.
@@ -109,6 +226,7 @@ impl CallerContext {
     pub const fn from_unix() -> Self {
         Self {
             bearer_token: None,
+            verified_claims: None,
             peer: None,
             origin: ConnectionOrigin::Unix,
         }
@@ -119,6 +237,7 @@ impl CallerContext {
     pub const fn loopback() -> Self {
         Self {
             bearer_token: None,
+            verified_claims: None,
             peer: None,
             origin: ConnectionOrigin::Loopback,
         }
@@ -129,6 +248,7 @@ impl CallerContext {
     pub const fn remote() -> Self {
         Self {
             bearer_token: None,
+            verified_claims: None,
             peer: None,
             origin: ConnectionOrigin::Remote,
         }
@@ -147,9 +267,25 @@ impl CallerContext {
         };
         Self {
             bearer_token: None,
+            verified_claims: None,
             peer: None,
             origin,
         }
+    }
+
+    /// Attach a bearer token (extracted from `_bearer_token` in params) to
+    /// this context. Returns a new context with the token set.
+    #[must_use]
+    pub fn with_bearer_token(mut self, token: String) -> Self {
+        self.bearer_token = Some(token);
+        self
+    }
+
+    /// Attach verified claims to this context (after async token verification).
+    #[must_use]
+    pub fn with_verified_claims(mut self, claims: TokenClaims) -> Self {
+        self.verified_claims = Some(claims);
+        self
     }
 }
 
@@ -218,11 +354,17 @@ impl MethodGate {
     ///
     /// Returns `Ok(())` if the call should proceed.
     ///
+    /// Authorization order:
+    /// 1. Public methods always pass.
+    /// 2. If verified claims are present, scope must cover the method.
+    /// 3. If only a raw bearer token is present (unverified), allow
+    ///    (backward-compatible during JH-11 rollout).
+    /// 4. No token → permissive logs and allows, enforced rejects.
+    ///
     /// # Errors
     ///
     /// Returns `JsonRpcError` with `PERMISSION_DENIED` when a protected
-    /// method is called without a valid capability token and the gate is
-    /// in `Enforced` mode.
+    /// method is called without authorization and the gate is in `Enforced` mode.
     pub fn check(&self, method: &str, caller: &CallerContext) -> Result<(), JsonRpcError> {
         let level = classify_method(method);
 
@@ -230,12 +372,47 @@ impl MethodGate {
             return Ok(());
         }
 
-        let authorized = caller.bearer_token.is_some();
+        // Verified claims: check scopes
+        if let Some(claims) = &caller.verified_claims {
+            if scope_permits_method(&claims.scopes, method) {
+                return Ok(());
+            }
+            return match self.mode {
+                EnforcementMode::Permissive => {
+                    tracing::warn!(
+                        method,
+                        subject = %claims.subject,
+                        scopes = ?claims.scopes,
+                        "method gate: token scope does not cover method (permissive — allowing)"
+                    );
+                    Ok(())
+                }
+                EnforcementMode::Enforced => {
+                    tracing::warn!(
+                        method,
+                        subject = %claims.subject,
+                        "method gate: REJECTED — token scope does not cover method"
+                    );
+                    Err(JsonRpcError {
+                        code: error_codes::PERMISSION_DENIED,
+                        message: format!(
+                            "permission denied: token scope does not cover '{method}'"
+                        ),
+                        data: Some(serde_json::json!({
+                            "method": method,
+                            "subject": claims.subject,
+                        })),
+                    })
+                }
+            };
+        }
 
-        if authorized {
+        // Raw bearer token present (unverified) — backward-compatible allow
+        if caller.bearer_token.is_some() {
             return Ok(());
         }
 
+        // No token at all
         match self.mode {
             EnforcementMode::Permissive => {
                 tracing::warn!(
@@ -273,14 +450,41 @@ pub fn is_gate_handled_method(method: &str) -> bool {
     matches!(method, "auth.check" | "auth.mode" | "auth.peer_info")
 }
 
-/// Handle `auth.check` — is the caller authenticated?
+/// Handle `auth.check` — enriched authentication introspection.
+///
+/// Returns `{ authenticated, verified, enforcement, scopes, subject, expires_in, origin }`.
 #[must_use]
-pub fn handle_auth_check(caller: &CallerContext) -> serde_json::Value {
+pub fn handle_auth_check(caller: &CallerContext, gate: &MethodGate) -> serde_json::Value {
     let authenticated = caller.bearer_token.is_some();
+    let verified = caller.verified_claims.is_some();
+    let (scopes, subject, expires_in) = match &caller.verified_claims {
+        Some(claims) => {
+            let exp = claims.expires_at.and_then(|exp| {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                exp.checked_sub(now)
+            });
+            (
+                serde_json::Value::Array(
+                    claims.scopes.iter().map(|s| serde_json::Value::String(s.clone())).collect(),
+                ),
+                serde_json::Value::String(claims.subject.clone()),
+                exp.map_or(serde_json::Value::Null, |s| serde_json::Value::Number(s.into())),
+            )
+        }
+        None => (serde_json::Value::Null, serde_json::Value::Null, serde_json::Value::Null),
+    };
+
     serde_json::json!({
         "authenticated": authenticated,
+        "verified": verified,
+        "enforcement": gate.mode().as_str(),
+        "scopes": scopes,
+        "subject": subject,
+        "expires_in": expires_in,
         "origin": format!("{:?}", caller.origin).to_lowercase(),
-        "has_peer_credentials": caller.peer.is_some(),
     })
 }
 
@@ -320,7 +524,7 @@ pub fn dispatch_auth_method(
     caller: &CallerContext,
 ) -> Option<serde_json::Value> {
     match method {
-        "auth.check" => Some(handle_auth_check(caller)),
+        "auth.check" => Some(handle_auth_check(caller, gate)),
         "auth.mode" => Some(handle_auth_mode(gate)),
         "auth.peer_info" => Some(handle_auth_peer_info(caller)),
         _ => None,
@@ -469,6 +673,7 @@ mod tests {
         let gate = MethodGate::new(EnforcementMode::Enforced);
         let caller = CallerContext {
             bearer_token: Some("valid-token".to_owned()),
+            verified_claims: None,
             peer: None,
             origin: ConnectionOrigin::Unix,
         };
@@ -487,21 +692,49 @@ mod tests {
 
     #[test]
     fn auth_check_unauthenticated() {
+        let gate = MethodGate::new(EnforcementMode::Permissive);
         let caller = CallerContext::loopback();
-        let result = handle_auth_check(&caller);
+        let result = handle_auth_check(&caller, &gate);
         assert_eq!(result["authenticated"], false);
+        assert_eq!(result["verified"], false);
+        assert_eq!(result["enforcement"], "permissive");
         assert_eq!(result["origin"], "loopback");
     }
 
     #[test]
     fn auth_check_authenticated() {
+        let gate = MethodGate::new(EnforcementMode::Enforced);
         let caller = CallerContext {
             bearer_token: Some("tok".to_owned()),
+            verified_claims: None,
             peer: None,
             origin: ConnectionOrigin::Unix,
         };
-        let result = handle_auth_check(&caller);
+        let result = handle_auth_check(&caller, &gate);
         assert_eq!(result["authenticated"], true);
+        assert_eq!(result["verified"], false);
+        assert_eq!(result["enforcement"], "enforced");
+    }
+
+    #[test]
+    fn auth_check_verified_with_claims() {
+        let gate = MethodGate::new(EnforcementMode::Enforced);
+        let caller = CallerContext {
+            bearer_token: Some("verified-tok".to_owned()),
+            verified_claims: Some(TokenClaims {
+                subject: "songbird-test".to_owned(),
+                scopes: vec!["discovery.*".to_owned(), "mesh.connect".to_owned()],
+                expires_at: None,
+            }),
+            peer: None,
+            origin: ConnectionOrigin::Unix,
+        };
+        let result = handle_auth_check(&caller, &gate);
+        assert_eq!(result["authenticated"], true);
+        assert_eq!(result["verified"], true);
+        assert_eq!(result["subject"], "songbird-test");
+        assert_eq!(result["scopes"][0], "discovery.*");
+        assert_eq!(result["scopes"][1], "mesh.connect");
     }
 
     #[test]
@@ -523,6 +756,7 @@ mod tests {
     fn auth_peer_info_with_creds() {
         let caller = CallerContext {
             bearer_token: None,
+            verified_claims: None,
             peer: Some(PeerCredentials {
                 pid: Some(1234),
                 uid: 1000,
@@ -570,5 +804,141 @@ mod tests {
         assert!(result.is_some(), "auth.mode must be reachable over TCP");
         let value = result.unwrap();
         assert_eq!(value["mode"], "permissive");
+    }
+
+    // ─── scope_permits_method tests ──────────────────────────────────────
+
+    #[test]
+    fn scope_wildcard_permits_all() {
+        let scopes = vec!["*".to_owned()];
+        assert!(scope_permits_method(&scopes, "discovery.peers"));
+        assert!(scope_permits_method(&scopes, "mesh.connect"));
+        assert!(scope_permits_method(&scopes, "anything"));
+    }
+
+    #[test]
+    fn scope_domain_wildcard_permits_domain() {
+        let scopes = vec!["discovery.*".to_owned()];
+        assert!(scope_permits_method(&scopes, "discovery.peers"));
+        assert!(scope_permits_method(&scopes, "discovery.register"));
+        assert!(!scope_permits_method(&scopes, "mesh.connect"));
+        assert!(!scope_permits_method(&scopes, "discover.peers"));
+    }
+
+    #[test]
+    fn scope_exact_match() {
+        let scopes = vec!["mesh.connect".to_owned()];
+        assert!(scope_permits_method(&scopes, "mesh.connect"));
+        assert!(!scope_permits_method(&scopes, "mesh.disconnect"));
+        assert!(!scope_permits_method(&scopes, "mesh.connect.sub"));
+    }
+
+    #[test]
+    fn scope_multiple_patterns() {
+        let scopes = vec!["discovery.*".to_owned(), "mesh.connect".to_owned()];
+        assert!(scope_permits_method(&scopes, "discovery.peers"));
+        assert!(scope_permits_method(&scopes, "mesh.connect"));
+        assert!(!scope_permits_method(&scopes, "mesh.disconnect"));
+    }
+
+    #[test]
+    fn scope_empty_denies_all() {
+        let scopes: Vec<String> = vec![];
+        assert!(!scope_permits_method(&scopes, "anything"));
+    }
+
+    #[test]
+    fn scope_domain_wildcard_boundary() {
+        let scopes = vec!["ipc.*".to_owned()];
+        assert!(scope_permits_method(&scopes, "ipc.register"));
+        assert!(!scope_permits_method(&scopes, "ipcx.register"));
+        assert!(!scope_permits_method(&scopes, "ipc"));
+    }
+
+    // ─── extract_bearer_token tests ──────────────────────────────────────
+
+    #[test]
+    fn extract_token_from_params() {
+        let mut params = serde_json::json!({
+            "_bearer_token": "ionic-tok-123",
+            "capability": "compute"
+        });
+        let token = extract_bearer_token(&mut params);
+        assert_eq!(token, Some("ionic-tok-123".to_owned()));
+        assert!(params.get("_bearer_token").is_none(), "token should be removed");
+        assert_eq!(params["capability"], "compute");
+    }
+
+    #[test]
+    fn extract_token_missing() {
+        let mut params = serde_json::json!({ "capability": "compute" });
+        let token = extract_bearer_token(&mut params);
+        assert_eq!(token, None);
+    }
+
+    #[test]
+    fn extract_token_empty_string() {
+        let mut params = serde_json::json!({ "_bearer_token": "" });
+        let token = extract_bearer_token(&mut params);
+        assert_eq!(token, None);
+    }
+
+    #[test]
+    fn extract_token_non_object_params() {
+        let mut params = serde_json::json!([1, 2, 3]);
+        let token = extract_bearer_token(&mut params);
+        assert_eq!(token, None);
+    }
+
+    // ─── verified claims in gate check ───────────────────────────────────
+
+    #[test]
+    fn verified_claims_with_matching_scope_passes_enforced() {
+        let gate = MethodGate::new(EnforcementMode::Enforced);
+        let caller = CallerContext {
+            bearer_token: Some("tok".to_owned()),
+            verified_claims: Some(TokenClaims {
+                subject: "test-primal".to_owned(),
+                scopes: vec!["discovery.*".to_owned()],
+                expires_at: None,
+            }),
+            peer: None,
+            origin: ConnectionOrigin::Loopback,
+        };
+        assert!(gate.check("discovery.peers", &caller).is_ok());
+    }
+
+    #[test]
+    fn verified_claims_wrong_scope_rejected_enforced() {
+        let gate = MethodGate::new(EnforcementMode::Enforced);
+        let caller = CallerContext {
+            bearer_token: Some("tok".to_owned()),
+            verified_claims: Some(TokenClaims {
+                subject: "test-primal".to_owned(),
+                scopes: vec!["mesh.*".to_owned()],
+                expires_at: None,
+            }),
+            peer: None,
+            origin: ConnectionOrigin::Loopback,
+        };
+        let err = gate.check("discovery.peers", &caller).unwrap_err();
+        assert_eq!(err.code, error_codes::PERMISSION_DENIED);
+        assert!(err.message.contains("scope"));
+    }
+
+    #[test]
+    fn verified_claims_wrong_scope_allowed_permissive() {
+        let gate = MethodGate::new(EnforcementMode::Permissive);
+        let caller = CallerContext {
+            bearer_token: Some("tok".to_owned()),
+            verified_claims: Some(TokenClaims {
+                subject: "test-primal".to_owned(),
+                scopes: vec!["mesh.*".to_owned()],
+                expires_at: None,
+            }),
+            peer: None,
+            origin: ConnectionOrigin::Loopback,
+        };
+        assert!(gate.check("discovery.peers", &caller).is_ok());
     }
 }

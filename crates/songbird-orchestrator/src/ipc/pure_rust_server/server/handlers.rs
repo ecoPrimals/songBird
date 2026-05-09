@@ -9,7 +9,7 @@ use songbird_types::json_rpc_method::{
 use songbird_types::{JsonRpcMethod, normalize_json_rpc_method_name};
 
 use super::super::coordination_handlers;
-use super::super::method_gate::{CallerContext, dispatch_auth_method};
+use super::super::method_gate::{CallerContext, dispatch_auth_method, extract_bearer_token};
 use super::super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use super::UnixSocketServer;
 
@@ -17,7 +17,7 @@ impl UnixSocketServer {
     /// Handle a JSON-RPC 2.0 request and route to appropriate API handler
     pub(crate) async fn handle_jsonrpc_request(
         &self,
-        request: JsonRpcRequest,
+        mut request: JsonRpcRequest,
         caller: &CallerContext,
     ) -> JsonRpcResponse {
         let id = request.id.clone().unwrap_or(serde_json::Value::Null);
@@ -29,12 +29,23 @@ impl UnixSocketServer {
             );
         }
 
+        // Extract _bearer_token from params and enrich CallerContext
+        let caller = if let Some(ref mut params) = request.params {
+            if let Some(token) = extract_bearer_token(params) {
+                caller.clone().with_bearer_token(token)
+            } else {
+                caller.clone()
+            }
+        } else {
+            caller.clone()
+        };
+
         // JH-0: Pre-dispatch method gate authorization
-        if let Some(auth_result) = dispatch_auth_method(&request.method, &self.gate, caller) {
+        if let Some(auth_result) = dispatch_auth_method(&request.method, &self.gate, &caller) {
             return JsonRpcResponse::success(auth_result, id);
         }
 
-        if let Err(gate_err) = self.gate.check(&request.method, caller) {
+        if let Err(gate_err) = self.gate.check(&request.method, &caller) {
             return JsonRpcResponse::error(gate_err, id);
         }
 

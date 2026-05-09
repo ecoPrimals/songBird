@@ -20,7 +20,9 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::RwLock;
 
 use super::ServerArgs;
-use crate::ipc::pure_rust_server::method_gate::{CallerContext, MethodGate, dispatch_auth_method};
+use crate::ipc::pure_rust_server::method_gate::{
+    CallerContext, MethodGate, dispatch_auth_method, extract_bearer_token,
+};
 
 static BIN_GATE: std::sync::LazyLock<MethodGate> = std::sync::LazyLock::new(MethodGate::from_env);
 
@@ -451,7 +453,7 @@ async fn handle_encrypted_json_rpc<R, W>(
             }
         };
 
-        let request = match serde_json::from_slice::<JsonRpcRequest>(&plaintext) {
+        let mut request = match serde_json::from_slice::<JsonRpcRequest>(&plaintext) {
             Ok(req) => req,
             Err(e) => {
                 let resp = JsonRpcResponse::error(
@@ -479,11 +481,22 @@ async fn handle_encrypted_json_rpc<R, W>(
             request.method
         );
 
+        // Extract _bearer_token from params and enrich CallerContext
+        let caller = if let Some(ref mut params) = request.params {
+            if let Some(token) = extract_bearer_token(params) {
+                caller.clone().with_bearer_token(token)
+            } else {
+                caller.clone()
+            }
+        } else {
+            caller.clone()
+        };
+
         // JH-0: Pre-dispatch method gate
         let response =
-            if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, caller) {
+            if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, &caller) {
                 JsonRpcResponse::success(auth_result, id.clone())
-            } else if let Err(gate_err) = BIN_GATE.check(&request.method, caller) {
+            } else if let Err(gate_err) = BIN_GATE.check(&request.method, &caller) {
                 JsonRpcResponse::error(
                     JsonRpcError {
                         code: gate_err.code,
@@ -523,7 +536,7 @@ async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
     peer_label: &str,
     caller: &CallerContext,
 ) {
-    let request = match serde_json::from_str::<JsonRpcRequest>(line) {
+    let mut request = match serde_json::from_str::<JsonRpcRequest>(line) {
         Ok(req) => req,
         Err(e) => {
             let resp = JsonRpcResponse::error(
@@ -546,8 +559,19 @@ async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
     let id = request.id.unwrap_or(serde_json::Value::Null);
     tracing::debug!("{peer_label} JSON-RPC: {} (notification={is_notification})", request.method,);
 
+    // Extract _bearer_token from params and enrich CallerContext
+    let caller = if let Some(ref mut params) = request.params {
+        if let Some(token) = extract_bearer_token(params) {
+            caller.clone().with_bearer_token(token)
+        } else {
+            caller.clone()
+        }
+    } else {
+        caller.clone()
+    };
+
     // JH-0: Pre-dispatch method gate
-    if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, caller) {
+    if let Some(auth_result) = dispatch_auth_method(&request.method, &BIN_GATE, &caller) {
         let response = JsonRpcResponse::success(auth_result, id);
         if !is_notification && let Ok(response_json) = serde_json::to_string(&response) {
             let _ = writer.write_all(response_json.as_bytes()).await;
@@ -555,7 +579,7 @@ async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
         }
         return;
     }
-    if let Err(gate_err) = BIN_GATE.check(&request.method, caller) {
+    if let Err(gate_err) = BIN_GATE.check(&request.method, &caller) {
         let response = JsonRpcResponse::error(
             JsonRpcError {
                 code: gate_err.code,
