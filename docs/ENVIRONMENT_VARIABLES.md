@@ -130,9 +130,18 @@ classified as Public and are always accessible regardless of enforcement mode.
 | `SONGBIRD_DDNS_KEY_NAME` | — | TSIG key name (for RFC 2136) |
 | `SONGBIRD_DDNS_KEY_SECRET` | — | TSIG key secret (for RFC 2136) |
 
-Configuration is in `songbird-types::config::ddns`. Only the `NoopDdnsProvider` is
-currently implemented; production providers (RFC 2136, Cloudflare) are targets for
-feature-flag gated modules.
+### Cloudflare DDNS Provider (H2-15)
+
+| Variable | Description |
+|----------|-------------|
+| `SONGBIRD_CF_API_TOKEN` | Cloudflare API Bearer token |
+| `SONGBIRD_CF_ZONE_ID` | Cloudflare Zone ID for the target DNS zone |
+
+Set `SONGBIRD_DDNS_PROVIDER=cloudflare` and provide the above variables to enable
+Cloudflare DNS updates. The `CloudflareDdnsProvider` updates A/AAAA records via
+the Cloudflare API v4. Configuration is in `songbird-types::config::ddns` (trait)
+and `songbird-stun::ddns_cloudflare` (Cloudflare implementation).
+`NoopDdnsProvider` is the default when DDNS is disabled.
 
 ## Test / Development
 

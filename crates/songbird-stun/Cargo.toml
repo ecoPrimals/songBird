@@ -19,6 +19,14 @@ bytes = { workspace = true }
 rand = { workspace = true }
 futures-util = { workspace = true }
 
+# RFC 5389 wire integrity
+hmac = "0.12"
+sha1 = "0.10"
+crc32fast = "1"
+
+# JSON serialization (for Cloudflare API)
+serde_json = { workspace = true }
+
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }

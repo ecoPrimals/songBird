@@ -5279,10 +5279,13 @@ name = "songbird-stun"
 version = "0.2.1"
 dependencies = [
  "bytes",
+ "crc32fast",
  "futures-util",
+ "hmac",
  "rand 0.8.6",
  "serde",
  "serde_json",
+ "sha1",
  "songbird-config",
  "songbird-types",
  "thiserror 2.0.18",

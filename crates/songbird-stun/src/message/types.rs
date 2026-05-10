@@ -3,7 +3,7 @@
 
 use crate::error::{StunError, StunResult};
 
-/// STUN message types
+/// STUN/TURN message types (RFC 5389 + RFC 5766).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MessageType {
     /// Binding Request (0x0001)
@@ -14,6 +14,33 @@ pub enum MessageType {
 
     /// Binding Error Response (0x0111)
     BindingError,
+
+    /// TURN Allocate (0x0003 — RFC 5766 §6)
+    Allocate,
+
+    /// TURN Allocate Success (0x0103)
+    AllocateSuccess,
+
+    /// TURN Allocate Error (0x0113)
+    AllocateError,
+
+    /// TURN Refresh (0x0004 — RFC 5766 §7)
+    Refresh,
+
+    /// TURN Refresh Success (0x0104)
+    RefreshSuccess,
+
+    /// TURN `CreatePermission` (0x0008 — RFC 5766 §9)
+    CreatePermission,
+
+    /// TURN `CreatePermission` Success (0x0108)
+    CreatePermissionSuccess,
+
+    /// TURN `ChannelBind` (0x0009 — RFC 5766 §11)
+    ChannelBind,
+
+    /// TURN `ChannelBind` Success (0x0109)
+    ChannelBindSuccess,
 }
 
 impl MessageType {
@@ -24,6 +51,15 @@ impl MessageType {
             Self::BindingRequest => 0x0001,
             Self::BindingResponse => 0x0101,
             Self::BindingError => 0x0111,
+            Self::Allocate => 0x0003,
+            Self::AllocateSuccess => 0x0103,
+            Self::AllocateError => 0x0113,
+            Self::Refresh => 0x0004,
+            Self::RefreshSuccess => 0x0104,
+            Self::CreatePermission => 0x0008,
+            Self::CreatePermissionSuccess => 0x0108,
+            Self::ChannelBind => 0x0009,
+            Self::ChannelBindSuccess => 0x0109,
         }
     }
 
@@ -31,12 +67,21 @@ impl MessageType {
     ///
     /// # Errors
     ///
-    /// Returns an error if the value is not a valid message type.
+    /// Returns an error if the value is not a recognized message type.
     pub fn from_u16(value: u16) -> StunResult<Self> {
         match value {
             0x0001 => Ok(Self::BindingRequest),
             0x0101 => Ok(Self::BindingResponse),
             0x0111 => Ok(Self::BindingError),
+            0x0003 => Ok(Self::Allocate),
+            0x0103 => Ok(Self::AllocateSuccess),
+            0x0113 => Ok(Self::AllocateError),
+            0x0004 => Ok(Self::Refresh),
+            0x0104 => Ok(Self::RefreshSuccess),
+            0x0008 => Ok(Self::CreatePermission),
+            0x0108 => Ok(Self::CreatePermissionSuccess),
+            0x0009 => Ok(Self::ChannelBind),
+            0x0109 => Ok(Self::ChannelBindSuccess),
             _ => Err(StunError::InvalidResponse(format!("Unknown message type: 0x{value:04x}"))),
         }
     }
@@ -51,14 +96,20 @@ pub enum AttributeType {
     /// USERNAME (0x0006) — RFC 5389 short-term credentials
     Username,
 
-    /// XOR-MAPPED-ADDRESS (0x0020) - preferred
-    XorMappedAddress,
+    /// MESSAGE-INTEGRITY (0x0008) — HMAC-SHA1 over the STUN message
+    MessageIntegrity,
 
     /// REALM (0x0014) — RFC 5389 long-term credentials
     Realm,
 
     /// NONCE (0x0015) — RFC 5389 long-term credentials
     Nonce,
+
+    /// XOR-MAPPED-ADDRESS (0x0020) - preferred
+    XorMappedAddress,
+
+    /// FINGERPRINT (0x8028) — CRC-32 XOR 0x5354554E
+    Fingerprint,
 
     /// OTHER-ADDRESS (0x802C) - for NAT type detection
     OtherAddress,
@@ -74,9 +125,11 @@ impl AttributeType {
         match self {
             Self::MappedAddress => 0x0001,
             Self::Username => 0x0006,
-            Self::XorMappedAddress => 0x0020,
+            Self::MessageIntegrity => 0x0008,
             Self::Realm => 0x0014,
             Self::Nonce => 0x0015,
+            Self::XorMappedAddress => 0x0020,
+            Self::Fingerprint => 0x8028,
             Self::OtherAddress => 0x802C,
             Self::Unknown(value) => value,
         }
@@ -88,9 +141,11 @@ impl AttributeType {
         match value {
             0x0001 => Self::MappedAddress,
             0x0006 => Self::Username,
+            0x0008 => Self::MessageIntegrity,
             0x0014 => Self::Realm,
             0x0015 => Self::Nonce,
             0x0020 => Self::XorMappedAddress,
+            0x8028 => Self::Fingerprint,
             0x802C => Self::OtherAddress,
             _ => Self::Unknown(value),
         }

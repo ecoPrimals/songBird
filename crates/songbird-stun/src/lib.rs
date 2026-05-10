@@ -44,15 +44,19 @@
 #![warn(missing_docs)]
 
 pub mod client;
+pub mod ddns_cloudflare;
 pub mod error;
 pub mod message;
 mod protocol;
 pub mod server;
 mod transaction;
+pub mod turn;
 pub mod types;
 
 // Re-exports
 pub use client::{StunClient, classify_nat_from_dual_probes};
+pub use ddns_cloudflare::CloudflareDdnsProvider;
 pub use error::{StunError, StunResult};
 pub use server::{StunServer, StunServerStats};
+pub use turn::{TurnAllocation, TurnClient};
 pub use types::{NatType, PortPattern, PublicEndpoint, StunCredentials};

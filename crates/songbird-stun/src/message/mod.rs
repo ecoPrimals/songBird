@@ -88,7 +88,7 @@ impl StunMessage {
 
         // Attributes
         for attr in &self.attributes {
-            attr.encode(&mut buf);
+            attr.encode_with_tid(&mut buf, &self.transaction_id);
         }
 
         // Update message length (total bytes after header)
@@ -135,7 +135,7 @@ impl StunMessage {
         // Parse attributes
         let mut attributes = Vec::new();
         while buf.remaining() >= 4 {
-            match StunAttribute::decode(&mut buf) {
+            match StunAttribute::decode_with_tid(&mut buf, &transaction_id) {
                 Ok(attr) => attributes.push(attr),
                 Err(e) => {
                     tracing::debug!("Failed to decode attribute: {}", e);
@@ -177,6 +177,49 @@ impl StunMessage {
     #[must_use]
     pub fn get_any_mapped_address(&self) -> Option<SocketAddr> {
         self.get_xor_mapped_address().or_else(|| self.get_mapped_address())
+    }
+
+    /// Encode with MESSAGE-INTEGRITY and FINGERPRINT (RFC 5389 authenticated message).
+    ///
+    /// The message is encoded normally, then:
+    /// 1. MESSAGE-INTEGRITY is computed over the header+attrs (with length adjusted
+    ///    to include the MI attribute) and appended.
+    /// 2. FINGERPRINT is computed over the header+attrs+MI (with length adjusted
+    ///    to include the FP attribute) and appended.
+    #[must_use]
+    pub fn encode_authenticated(&self, key: &[u8]) -> bytes::Bytes {
+        let mut buf = BytesMut::new();
+
+        // Header
+        buf.put_u16(self.message_type.to_u16());
+        buf.put_u16(0); // length placeholder
+        buf.put_u32(MAGIC_COOKIE);
+        buf.put_slice(&self.transaction_id);
+
+        // Attributes (excluding MI and FP — we compute them)
+        for attr in &self.attributes {
+            attr.encode_with_tid(&mut buf, &self.transaction_id);
+        }
+
+        // --- MESSAGE-INTEGRITY ---
+        // Adjust length to include MI attr (4 header + 20 value = 24 bytes)
+        let mi_length = (buf.len() - 20) + 24;
+        buf[2..4].copy_from_slice(&u16::try_from(mi_length).unwrap_or(u16::MAX).to_be_bytes());
+        let hmac_val = StunAttribute::compute_message_integrity(&buf, key);
+        StunAttribute::MessageIntegrity(hmac_val).encode_with_tid(&mut buf, &self.transaction_id);
+
+        // --- FINGERPRINT ---
+        // Adjust length to include FP attr (4 header + 4 value = 8 bytes)
+        let fp_length = (buf.len() - 20) + 8;
+        buf[2..4].copy_from_slice(&u16::try_from(fp_length).unwrap_or(u16::MAX).to_be_bytes());
+        let fp_val = StunAttribute::compute_fingerprint(&buf);
+        StunAttribute::Fingerprint(fp_val).encode_with_tid(&mut buf, &self.transaction_id);
+
+        // Final length (includes MI + FP)
+        let final_length = buf.len() - 20;
+        buf[2..4].copy_from_slice(&u16::try_from(final_length).unwrap_or(u16::MAX).to_be_bytes());
+
+        buf.freeze()
     }
 }
 

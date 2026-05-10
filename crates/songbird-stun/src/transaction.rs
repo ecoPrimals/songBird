@@ -12,6 +12,7 @@ use std::net::SocketAddr;
 #[derive(Debug)]
 pub struct BindingTransaction {
     request: StunMessage,
+    key: Option<Vec<u8>>,
 }
 
 impl BindingTransaction {
@@ -20,13 +21,15 @@ impl BindingTransaction {
     pub fn new() -> Self {
         Self {
             request: StunMessage::new_binding_request(),
+            key: None,
         }
     }
 
     /// Create an authenticated binding transaction with beacon-tier credentials.
     ///
-    /// Adds the USERNAME attribute to the binding request. Per
-    /// `DARK_FOREST_BEACON_GENETICS_STANDARD.md`, these MUST be beacon-tier
+    /// Adds USERNAME to the request. When a key is present, `encode_request`
+    /// produces a message with MESSAGE-INTEGRITY and FINGERPRINT per RFC 5389.
+    /// Per `DARK_FOREST_BEACON_GENETICS_STANDARD.md`, these MUST be beacon-tier
     /// credentials — never nuclear/lineage material.
     #[must_use]
     pub fn with_credentials(credentials: &crate::types::StunCredentials) -> Self {
@@ -34,12 +37,22 @@ impl BindingTransaction {
         request.attributes.push(StunAttribute::Username(credentials.username.clone()));
         Self {
             request,
+            key: if credentials.key.is_empty() {
+                None
+            } else {
+                Some(credentials.key.clone())
+            },
         }
     }
 
+    /// Encode the binding request. When credentials with a key are attached,
+    /// the message includes MESSAGE-INTEGRITY (HMAC-SHA1) and FINGERPRINT (CRC32).
     #[must_use]
     pub fn encode_request(&self) -> Bytes {
-        self.request.encode()
+        match &self.key {
+            Some(k) => self.request.encode_authenticated(k),
+            None => self.request.encode(),
+        }
     }
 
     /// Decode a binding response, verify the transaction ID, and return the mapped address.

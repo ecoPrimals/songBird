@@ -7,6 +7,9 @@ use crate::error::{StunError, StunResult};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
+/// RFC 5389 FINGERPRINT XOR constant.
+const FINGERPRINT_XOR: u32 = 0x5354_554E;
+
 /// STUN attribute
 #[derive(Debug, Clone)]
 pub enum StunAttribute {
@@ -19,6 +22,12 @@ pub enum StunAttribute {
     /// USERNAME (RFC 5389 short-term or long-term credentials)
     Username(String),
 
+    /// MESSAGE-INTEGRITY (RFC 5389) — HMAC-SHA1 over the message
+    MessageIntegrity([u8; 20]),
+
+    /// FINGERPRINT (RFC 5389) — CRC32 XOR 0x5354554E over the message
+    Fingerprint(u32),
+
     /// OTHER-ADDRESS (for NAT type detection)
     OtherAddress(SocketAddr),
 
@@ -27,10 +36,18 @@ pub enum StunAttribute {
 }
 
 impl StunAttribute {
+    #[allow(
+        dead_code,
+        reason = "convenience fallback for tests/server without transaction context"
+    )]
     pub(crate) fn encode(&self, buf: &mut BytesMut) {
+        self.encode_with_tid(buf, &[0u8; 12]);
+    }
+
+    pub(crate) fn encode_with_tid(&self, buf: &mut BytesMut, transaction_id: &[u8; 12]) {
         match self {
             Self::MappedAddress(addr) => {
-                Self::encode_address(buf, AttributeType::MappedAddress, addr, None);
+                Self::encode_address(buf, AttributeType::MappedAddress, addr, None, transaction_id);
             }
             Self::XorMappedAddress(addr) => {
                 Self::encode_address(
@@ -38,6 +55,7 @@ impl StunAttribute {
                     AttributeType::XorMappedAddress,
                     addr,
                     Some(MAGIC_COOKIE),
+                    transaction_id,
                 );
             }
             Self::Username(name) => {
@@ -47,8 +65,18 @@ impl StunAttribute {
                 buf.put_slice(name_bytes);
                 Self::add_padding(buf);
             }
+            Self::MessageIntegrity(hmac) => {
+                buf.put_u16(AttributeType::MessageIntegrity.to_u16());
+                buf.put_u16(20);
+                buf.put_slice(hmac);
+            }
+            Self::Fingerprint(crc) => {
+                buf.put_u16(AttributeType::Fingerprint.to_u16());
+                buf.put_u16(4);
+                buf.put_u32(*crc);
+            }
             Self::OtherAddress(addr) => {
-                Self::encode_address(buf, AttributeType::OtherAddress, addr, None);
+                Self::encode_address(buf, AttributeType::OtherAddress, addr, None, transaction_id);
             }
             Self::Unknown(attr_type, data) => {
                 buf.put_u16(*attr_type);
@@ -64,6 +92,7 @@ impl StunAttribute {
         attr_type: AttributeType,
         addr: &SocketAddr,
         xor_key: Option<u32>,
+        transaction_id: &[u8; 12],
     ) {
         buf.put_u16(attr_type.to_u16());
 
@@ -77,7 +106,7 @@ impl StunAttribute {
             SocketAddr::V6(_) => buf.put_u8(0x02), // IPv6
         }
 
-        // Port (2 bytes)
+        // Port (2 bytes) — XOR with high 16 bits of magic cookie
         let port = xor_key.map_or_else(|| addr.port(), |xor| addr.port() ^ (xor >> 16) as u16);
         buf.put_u16(port);
 
@@ -95,9 +124,20 @@ impl StunAttribute {
                 buf.put_slice(&octets);
             }
             IpAddr::V6(ip) => {
-                // XOR with magic cookie + transaction ID not implemented for IPv6
-                let octets = ip.octets();
-                buf.put_slice(&octets);
+                if xor_key.is_some() {
+                    // RFC 5389 §15.2: XOR with magic_cookie (4 bytes) || transaction_id (12 bytes)
+                    let mut xor_pad = [0u8; 16];
+                    xor_pad[..4].copy_from_slice(&MAGIC_COOKIE.to_be_bytes());
+                    xor_pad[4..].copy_from_slice(transaction_id);
+                    let raw = ip.octets();
+                    let mut xored = [0u8; 16];
+                    for i in 0..16 {
+                        xored[i] = raw[i] ^ xor_pad[i];
+                    }
+                    buf.put_slice(&xored);
+                } else {
+                    buf.put_slice(&ip.octets());
+                }
             }
         }
 
@@ -109,7 +149,12 @@ impl StunAttribute {
         Self::add_padding(buf);
     }
 
+    #[allow(dead_code, reason = "convenience fallback for tests without transaction context")]
     pub(crate) fn decode(buf: &mut &[u8]) -> StunResult<Self> {
+        Self::decode_with_tid(buf, &[0u8; 12])
+    }
+
+    pub(crate) fn decode_with_tid(buf: &mut &[u8], transaction_id: &[u8; 12]) -> StunResult<Self> {
         if buf.remaining() < 4 {
             return Err(StunError::InvalidResponse("Attribute too short".to_string()));
         }
@@ -134,7 +179,7 @@ impl StunAttribute {
 
         match AttributeType::from_u16(attr_type) {
             AttributeType::MappedAddress => {
-                let addr = Self::decode_address(attr_data, None)?;
+                let addr = Self::decode_address(attr_data, None, transaction_id)?;
                 Ok(Self::MappedAddress(addr))
             }
             AttributeType::Username => {
@@ -146,11 +191,33 @@ impl StunAttribute {
                 Ok(Self::Username(name))
             }
             AttributeType::XorMappedAddress => {
-                let addr = Self::decode_address(attr_data, Some(MAGIC_COOKIE))?;
+                let addr = Self::decode_address(attr_data, Some(MAGIC_COOKIE), transaction_id)?;
                 Ok(Self::XorMappedAddress(addr))
             }
+            AttributeType::MessageIntegrity => {
+                if attr_data.len() != 20 {
+                    return Err(StunError::InvalidResponse(format!(
+                        "MESSAGE-INTEGRITY must be 20 bytes, got {}",
+                        attr_data.len()
+                    )));
+                }
+                let mut hmac_val = [0u8; 20];
+                hmac_val.copy_from_slice(attr_data);
+                Ok(Self::MessageIntegrity(hmac_val))
+            }
+            AttributeType::Fingerprint => {
+                if attr_data.len() != 4 {
+                    return Err(StunError::InvalidResponse(format!(
+                        "FINGERPRINT must be 4 bytes, got {}",
+                        attr_data.len()
+                    )));
+                }
+                let crc =
+                    u32::from_be_bytes([attr_data[0], attr_data[1], attr_data[2], attr_data[3]]);
+                Ok(Self::Fingerprint(crc))
+            }
             AttributeType::OtherAddress => {
-                let addr = Self::decode_address(attr_data, None)?;
+                let addr = Self::decode_address(attr_data, None, transaction_id)?;
                 Ok(Self::OtherAddress(addr))
             }
             AttributeType::Realm | AttributeType::Nonce | AttributeType::Unknown(_) => {
@@ -159,7 +226,11 @@ impl StunAttribute {
         }
     }
 
-    pub(crate) fn decode_address(data: &[u8], xor_key: Option<u32>) -> StunResult<SocketAddr> {
+    pub(crate) fn decode_address(
+        data: &[u8],
+        xor_key: Option<u32>,
+        transaction_id: &[u8; 12],
+    ) -> StunResult<SocketAddr> {
         if data.len() < 4 {
             return Err(StunError::InvalidResponse("Address attribute too short".to_string()));
         }
@@ -199,13 +270,65 @@ impl StunAttribute {
                 let mut octets = [0u8; 16];
                 buf.copy_to_slice(&mut octets);
 
-                // Note: Full XOR for IPv6 requires transaction ID (not implemented for simplicity)
-                let ip = Ipv6Addr::from(octets);
+                if xor_key.is_some() {
+                    // RFC 5389 §15.2: XOR with magic_cookie (4 bytes) || transaction_id (12 bytes)
+                    let mut xor_pad = [0u8; 16];
+                    xor_pad[..4].copy_from_slice(&MAGIC_COOKIE.to_be_bytes());
+                    xor_pad[4..].copy_from_slice(transaction_id);
+                    for i in 0..16 {
+                        octets[i] ^= xor_pad[i];
+                    }
+                }
 
+                let ip = Ipv6Addr::from(octets);
                 Ok(SocketAddr::new(IpAddr::V6(ip), port))
             }
             _ => Err(StunError::InvalidResponse(format!("Unknown address family: {family}"))),
         }
+    }
+
+    /// Verify a FINGERPRINT attribute value against a message buffer.
+    /// `message_up_to_fingerprint` is all bytes before the FINGERPRINT attribute TLV.
+    #[must_use]
+    pub fn verify_fingerprint(message_up_to_fingerprint: &[u8], received_crc: u32) -> bool {
+        let computed = crc32fast::hash(message_up_to_fingerprint) ^ FINGERPRINT_XOR;
+        computed == received_crc
+    }
+
+    /// Compute FINGERPRINT value for a message buffer (all bytes before the FINGERPRINT TLV).
+    #[must_use]
+    pub fn compute_fingerprint(message_up_to_fingerprint: &[u8]) -> u32 {
+        crc32fast::hash(message_up_to_fingerprint) ^ FINGERPRINT_XOR
+    }
+
+    /// Compute MESSAGE-INTEGRITY HMAC-SHA1 for a message buffer.
+    /// `message_up_to_integrity` is all bytes before the MESSAGE-INTEGRITY attribute TLV,
+    /// with the message length adjusted to include the MESSAGE-INTEGRITY attribute (24 bytes).
+    #[must_use]
+    pub fn compute_message_integrity(message_up_to_integrity: &[u8], key: &[u8]) -> [u8; 20] {
+        use hmac::{Hmac, Mac};
+        type HmacSha1 = Hmac<sha1::Sha1>;
+
+        // HMAC-SHA1 new_from_slice is infallible for any key length (SHA1 block size handles all).
+        let Ok(mut mac) = HmacSha1::new_from_slice(key) else {
+            unreachable!()
+        };
+        mac.update(message_up_to_integrity);
+        let result = mac.finalize();
+        let mut out = [0u8; 20];
+        out.copy_from_slice(&result.into_bytes());
+        out
+    }
+
+    /// Verify a MESSAGE-INTEGRITY attribute value.
+    #[must_use]
+    pub fn verify_message_integrity(
+        message_up_to_integrity: &[u8],
+        key: &[u8],
+        received_hmac: &[u8; 20],
+    ) -> bool {
+        let computed = Self::compute_message_integrity(message_up_to_integrity, key);
+        computed == *received_hmac
     }
 
     pub(crate) fn add_padding(buf: &mut BytesMut) {

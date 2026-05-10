@@ -237,6 +237,89 @@ fn decode_continues_when_mapped_attribute_has_unknown_family() {
     );
 }
 
+#[test]
+fn xor_mapped_address_ipv6_roundtrip() {
+    let addr = SocketAddr::new(
+        IpAddr::V6(Ipv6Addr::new(0x2001, 0x0db8, 0xabcd, 0, 0, 0, 0, 0x0001)),
+        12_345,
+    );
+    let mut msg = StunMessage::new_binding_request();
+    msg.message_type = MessageType::BindingResponse;
+    msg.attributes.push(StunAttribute::XorMappedAddress(addr));
+    let wire = msg.encode();
+    let decoded = StunMessage::decode(&wire).expect("decode IPv6 XOR-MAPPED-ADDRESS");
+    assert_eq!(
+        decoded.get_xor_mapped_address(),
+        Some(addr),
+        "IPv6 XOR-MAPPED-ADDRESS must roundtrip correctly"
+    );
+}
+
+#[test]
+fn xor_mapped_address_ipv6_xor_uses_cookie_and_tid() {
+    let ipv6 = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 1);
+    let addr = SocketAddr::new(IpAddr::V6(ipv6), 9999);
+    let mut msg = StunMessage::new_binding_request();
+    msg.transaction_id = [0x11; 12];
+    msg.message_type = MessageType::BindingResponse;
+    msg.attributes.push(StunAttribute::XorMappedAddress(addr));
+    let wire = msg.encode();
+
+    // Verify that the IPv6 bytes on wire are XOR'd (not plaintext)
+    // Header is 20 bytes, attribute header is 4 bytes (type+length),
+    // then 1 reserved + 1 family + 2 port + 16 ipv6 = 20 payload bytes.
+    // So IPv6 starts at offset 20 + 4 + 4 = 28.
+    let wire_ipv6 = &wire[28..44];
+    assert_ne!(wire_ipv6, &ipv6.octets(), "IPv6 must be XOR'd on wire");
+
+    let decoded = StunMessage::decode(&wire).expect("decode");
+    assert_eq!(decoded.get_xor_mapped_address(), Some(addr));
+}
+
+#[test]
+fn message_integrity_compute_and_verify() {
+    let key = b"test-key-12345";
+    let message = b"fake stun message bytes for hmac test";
+    let hmac = StunAttribute::compute_message_integrity(message, key);
+    assert!(StunAttribute::verify_message_integrity(message, key, &hmac));
+    assert!(!StunAttribute::verify_message_integrity(message, b"wrong-key", &hmac));
+}
+
+#[test]
+fn fingerprint_compute_and_verify() {
+    let message = b"fake stun message bytes for crc test";
+    let fp = StunAttribute::compute_fingerprint(message);
+    assert!(StunAttribute::verify_fingerprint(message, fp));
+    assert!(!StunAttribute::verify_fingerprint(message, fp ^ 1));
+}
+
+#[test]
+fn encode_authenticated_produces_mi_and_fp() {
+    let key = b"beacon-stun-key";
+    let msg = StunMessage::new_binding_request();
+    let wire = msg.encode_authenticated(key);
+
+    let decoded = StunMessage::decode(&wire).expect("decode authenticated message");
+    assert_eq!(decoded.message_type, MessageType::BindingRequest);
+
+    let has_mi = decoded.attributes.iter().any(|a| matches!(a, StunAttribute::MessageIntegrity(_)));
+    let has_fp = decoded.attributes.iter().any(|a| matches!(a, StunAttribute::Fingerprint(_)));
+    assert!(has_mi, "authenticated message must contain MESSAGE-INTEGRITY");
+    assert!(has_fp, "authenticated message must contain FINGERPRINT");
+}
+
+#[test]
+fn attribute_type_message_integrity_roundtrip() {
+    assert_eq!(AttributeType::MessageIntegrity.to_u16(), 0x0008);
+    assert_eq!(AttributeType::from_u16(0x0008), AttributeType::MessageIntegrity);
+}
+
+#[test]
+fn attribute_type_fingerprint_roundtrip() {
+    assert_eq!(AttributeType::Fingerprint.to_u16(), 0x8028);
+    assert_eq!(AttributeType::from_u16(0x8028), AttributeType::Fingerprint);
+}
+
 /// Hand-crafted edge cases for [`StunMessage::decode`] (fuzz-style, no external harness).
 mod fuzz_style_stun_decode_tests {
     use super::super::{MAGIC_COOKIE, MessageType, StunMessage};

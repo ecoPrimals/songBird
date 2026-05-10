@@ -2,8 +2,8 @@
 
 **Date**: May 10, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 196 (May 10, 2026)  
-**Current Wave**: 196 — H2-13 through H2-16 NAT traversal sovereignty wave. H2-13: fixed critical NAT type detection bug (shared-socket dual-probe — old code created independent sockets per STUN query defeating symmetric detection); added `StunClient::discover_on_socket()`, `classify_nat_from_dual_probes()`, `discover_public_endpoint_multi()`. H2-14: TURN relay tier wired into `ConnectionFallbackChain` (stub pending JH-11 BearDog key distribution). H2-15: `DdnsConfig` + `DdnsProvider` trait + `NoopDdnsProvider` in `songbird-types::config::ddns` (RFC 2136/Cloudflare env config ready). H2-16: `ConnectionFallbackChain` in `multi_tier_coordinator.rs` (direct → STUN punch → lineage relay → TURN relay → emergency tunnel), `ConnectionTier` enum, `try_direct_punch()`, `try_stun_punch()`. Wave 195: Token verification infrastructure (JH-11 prep). Wave 193–194: MethodGate (JH-0), CallerContext transport-aware, auth.* on all transports (DF-3). 0 clippy warnings, all tests pass.  
+**Last Deep Debt Audit**: Wave 197 (May 10, 2026)  
+**Current Wave**: 197 — Sovereignty NAT traversal completion (H2-13 through H2-16 Step 3c). STUN wire compliance: MESSAGE-INTEGRITY (HMAC-SHA1), FINGERPRINT (CRC32 XOR 0x5354554E), IPv6 XOR-MAPPED-ADDRESS encoding/decoding (RFC 5389 §15.2 — XOR with magic_cookie||transaction_id); `encode_authenticated()` for credential-bearing requests. RFC 5766 TURN client: `TurnClient` with `allocate()`, `refresh()`, `create_permission()`, `channel_bind()`; `MessageType` extended with TURN method variants; XOR-PEER-ADDRESS encoding. Cloudflare DDNS provider: `CloudflareDdnsProvider` with `HttpExecutor` callback pattern (dep-free); list/upsert via CF API v4; 6 mock-driven tests. Lineage relay injection: `MultiTierCoordinator` now accepts `with_relay_discovery()` + `with_turn_client()`; Tier 3 (lineage relay) calls `RelayDiscovery::request_relay()`; Tier 4 (TURN) calls `TurnClient::allocate()`. `cloudflared` emergency tunnel: Tier 5 probes for `cloudflared` binary availability. Wave 196: H2-13 shared-socket dual-probe NAT type fix, H2-14/15/16 scaffolding. 0 clippy warnings, 3804 tests across 4 affected crates.  
 **Previous Waves** (full detail in `CHANGELOG.md`): 191 (ipc.register identity verification, whitespace-tolerant protocol detection, BufReader safety), 190 (IP literals, parse_endpoint IPv6, redundant clone, test Duration constants), 189 (ipc.resolve `socket` field for primalSpring tier-1 discovery), 188 (15 timeout constants, JSONRPC_VERSION, Box<dyn Error> elimination), 187 (smart refactor connection.rs, primal-name evolution, 4 timeout constants), 186 (BTSP Phase 3 live connection verification — 4 tests), 185 (deep debt: 11 timeout constants, JSON-RPC constructors, primal codename evolution), 184 (BTSP Phase 3 binary-framed dispatch fix), 183 (deep debt: lint evolution, timeout centralization, hardcoded elimination), 182 (BTSP Phase 3 spec alignment), 181 (port canonicalization), 180 (BTSP Phase 3 btsp.negotiate), 175 (PG-51 verified, ENVIRONMENT_VARIABLES.md), 174 (hardcoded IP/port elimination, flaky tests, dep cleanup, +18 tests), 173 (PG-51 socket discovery), 172 (root doc reconciliation), 171 (test coverage expansion 71.28%→73.41%, +271 tests), 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -114,23 +114,26 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ---
 
-## Sovereignty: NAT Traversal (H2-13 — H2-16, Wave 196)
+## Sovereignty: NAT Traversal (H2-13 — H2-16, Waves 196–197)
 
 Step 3c on the sovereignty critical path — replacing `cloudflared` tunnels.
 
-- [x] **H2-13**: STUN client production hardening — shared-socket dual-probe for correct NAT type detection (`discover_on_socket()`, `classify_nat_from_dual_probes()`, `discover_public_endpoint_multi()`); fixed `stun_handler/client.rs` and `onion-relay/stun.rs` callers; 10+ new tests
-- [x] **H2-14 (scaffold)**: TURN relay tier added to `ConnectionFallbackChain` — config struct exists (`TURNRelay`), runtime stub returns `Unavailable` pending JH-11 BearDog key distribution. Self-hosted VPS TURN remains config-only until protocol client is implemented
-- [x] **H2-15 (scaffold)**: Dynamic DNS update module — `DdnsConfig`, `DdnsProvider` trait, `NoopDdnsProvider`, env vars (`SONGBIRD_DDNS_*`). Production providers (RFC 2136 `nsupdate`, Cloudflare) are feature-flag targets
-- [x] **H2-16 (scaffold + partial)**: Connection fallback chain in `multi_tier_coordinator.rs` — `direct → STUN punch → lineage relay → TURN relay → emergency tunnel`. Direct and STUN tiers are live; lineage/TURN/tunnel tiers are stubs awaiting orchestrator injection and JH-11
+- [x] **H2-13**: STUN client production hardening — shared-socket dual-probe for correct NAT type detection (`discover_on_socket()`, `classify_nat_from_dual_probes()`, `discover_public_endpoint_multi()`); fixed `stun_handler/client.rs` and `onion-relay/stun.rs` callers; 10+ new tests. **Wire compliance** (Wave 197): MESSAGE-INTEGRITY (HMAC-SHA1), FINGERPRINT (CRC32 XOR 0x5354554E), IPv6 XOR-MAPPED-ADDRESS encoding/decoding per RFC 5389 §15.2
+- [x] **H2-14**: RFC 5766 TURN client — `TurnClient` with `allocate()`, `refresh()`, `create_permission()`, `channel_bind()`; `MessageType` extended with TURN method variants (Allocate/Refresh/CreatePermission/ChannelBind + success/error); XOR-PEER-ADDRESS encoding; `StunCredentials.key` wired for BearDog beacon-tier auth (JH-11 resolved). TURN tier live in `ConnectionFallbackChain` via `with_turn_client()`
+- [x] **H2-15**: Cloudflare DDNS provider — `CloudflareDdnsProvider` implements `DdnsProvider` trait via `HttpExecutor` callback (zero HTTP-stack dep in STUN crate); list/upsert A/AAAA records via CF API v4; `from_env()` reads `SONGBIRD_CF_API_TOKEN`/`SONGBIRD_CF_ZONE_ID`; 6 mock-driven tests. `NoopDdnsProvider` + `DdnsConfig` + env vars (`SONGBIRD_DDNS_*`) remain for disabled/test configurations
+- [x] **H2-16**: Connection fallback chain fully wired — all 5 tiers live in `MultiTierCoordinator::establish_connection()`:
+  1. Direct UDP hole-punch (`try_direct_punch`)
+  2. STUN-assisted punch (`try_stun_punch` → `discover_public_address`)
+  3. Lineage relay (`with_relay_discovery()` → `RelayDiscovery::request_relay()`)
+  4. TURN relay (`with_turn_client()` → `TurnClient::allocate()`)
+  5. Emergency tunnel (`try_emergency_tunnel` — probes `cloudflared` binary on `$PATH`)
 
-**Remaining for full sovereignty**:
-- [ ] MESSAGE-INTEGRITY / FINGERPRINT in STUN wire protocol (RFC 5389 compliance)
-- [ ] IPv6 XOR-MAPPED-ADDRESS encoding fix in `songbird-stun`
-- [ ] RFC 5766 TURN client (Allocate, Refresh, ChannelBind, permissions)
-- [ ] BearDog key-authenticated TURN allocation (JH-11 dependency)
-- [ ] Production DDNS provider implementations (RFC 2136, Cloudflare API)
-- [ ] `cloudflared` emergency tunnel integration
-- [ ] Lineage relay injection into `ConnectionFallbackChain`
+**Remaining hardening**:
+- [ ] Full `cloudflared` tunnel orchestration (spawn process, parse assigned URL, monitor lifecycle)
+- [ ] RFC 2136 DDNS provider (`nsupdate` wire protocol)
+- [ ] TURN allocation refresh lifecycle (keepalive loop)
+- [ ] BearDog cross-host key distribution for TURN credential derivation
+- [ ] Integration tests with live STUN/TURN servers
 
 ---
 
