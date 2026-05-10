@@ -64,6 +64,40 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
+// ---------------------------------------------------------------------------
+// H2-16: Connection Fallback Chain Tier Identifiers
+// ---------------------------------------------------------------------------
+
+/// Tier attempted during the connection fallback chain (H2-16).
+///
+/// Order follows the sovereignty-first path:
+///   direct → STUN punch → lineage relay → TURN relay → emergency tunnel
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConnectionTier {
+    /// Direct UDP hole-punch (no relay infrastructure).
+    Direct,
+    /// STUN-assisted hole-punch using reflexive address discovery.
+    StunPunch,
+    /// Genetic lineage relay (sovereign, zero external trust).
+    LineageRelay,
+    /// TURN relay (RFC 5766 — self-hosted VPS, `BearDog` key-authenticated; H2-14).
+    TurnRelay,
+    /// Emergency tunnel fallback (e.g. `cloudflared` — last resort).
+    EmergencyTunnel,
+}
+
+impl std::fmt::Display for ConnectionTier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Direct => write!(f, "direct"),
+            Self::StunPunch => write!(f, "stun-punch"),
+            Self::LineageRelay => write!(f, "lineage-relay"),
+            Self::TurnRelay => write!(f, "turn-relay"),
+            Self::EmergencyTunnel => write!(f, "emergency-tunnel"),
+        }
+    }
+}
+
 /// Multi-tier coordinator for NAT traversal
 pub struct MultiTierCoordinator {
     config: StunRelayConfig,
@@ -209,30 +243,138 @@ impl MultiTierCoordinator {
         ))
     }
 
-    /// Establish connection using multi-tier strategy
+    /// Establish connection using the H2-16 fallback chain:
     ///
-    /// # Strategy
+    /// ```text
+    /// direct → STUN punch → lineage relay → TURN relay → emergency tunnel
+    /// ```
     ///
-    /// 1. Try direct connection (UDP hole punch)
-    /// 2. Fall back to genetic lineage relay
-    /// 3. Use STUN for public address discovery if needed
+    /// Each tier is attempted in order. The first success wins; each failure
+    /// is logged and the chain advances to the next tier. The method returns
+    /// a [`ConnectionResult`] that records which tier ultimately succeeded.
     ///
     /// # Errors
     ///
-    /// Returns error if all connection methods fail.
+    /// Returns error if **all** tiers fail.
     pub async fn establish_connection(
         &self,
-        _peer: NodeId,
-        _peer_addr: Option<SocketAddr>,
+        peer: NodeId,
+        peer_addr: Option<SocketAddr>,
     ) -> Result<ConnectionResult> {
-        info!("Multi-tier connection establishment for peer");
+        info!("H2-16 fallback chain: establishing connection to {peer}");
 
-        Err(LineageRelayError::Other(
-            "Multi-tier coordinator requires LineageRelayCoordinator injection — \
-             direct UDP punch, relay fallback, and STUN discovery are handled by \
-             the orchestrator's connection pipeline"
-                .to_string(),
-        ))
+        let mut tier_attempts: Vec<(ConnectionTier, String)> = Vec::new();
+
+        // --- Tier 1: Direct UDP hole-punch ---
+        if let Some(addr) = peer_addr {
+            info!("  tier=direct: attempting direct punch to {addr}");
+            match self.try_direct_punch(addr).await {
+                Ok(latency) => {
+                    info!("  tier=direct: success ({latency:?})");
+                    return Ok(ConnectionResult::Direct {
+                        peer_addr: addr,
+                        latency,
+                        tier: ConnectionTier::Direct,
+                    });
+                }
+                Err(e) => {
+                    let msg = format!("{e}");
+                    warn!("  tier=direct: failed — {msg}");
+                    tier_attempts.push((ConnectionTier::Direct, msg));
+                }
+            }
+        } else {
+            tier_attempts.push((ConnectionTier::Direct, "no peer address available".to_string()));
+        }
+
+        // --- Tier 2: STUN-assisted punch ---
+        match self.try_stun_punch(&peer).await {
+            Ok(addr) => {
+                info!("  tier=stun-punch: discovered reflexive addr {addr}");
+                return Ok(ConnectionResult::Direct {
+                    peer_addr: addr,
+                    latency: Duration::ZERO,
+                    tier: ConnectionTier::StunPunch,
+                });
+            }
+            Err(e) => {
+                let msg = format!("{e}");
+                warn!("  tier=stun-punch: failed — {msg}");
+                tier_attempts.push((ConnectionTier::StunPunch, msg));
+            }
+        }
+
+        // --- Tier 3: Lineage relay ---
+        // Stub: lineage relay session requires the orchestrator's
+        // LineageRelayCoordinator injection — wiring deferred until the
+        // relay session lifecycle is integrated into this coordinator.
+        tier_attempts.push((
+            ConnectionTier::LineageRelay,
+            "lineage relay session injection not yet wired".to_string(),
+        ));
+
+        // --- Tier 4: TURN relay (H2-14) ---
+        // Stub: self-hosted TURN relay requires BearDog key-authenticated
+        // allocation (JH-11 dependency). Config is present in
+        // CanonicalNetworkConfig::turn_relay but protocol client is pending.
+        tier_attempts.push((
+            ConnectionTier::TurnRelay,
+            "TURN relay client not yet implemented (pending JH-11 key distribution)".to_string(),
+        ));
+
+        // --- Tier 5: Emergency tunnel ---
+        // Stub: cloudflared or equivalent tunnel. Fully last-resort.
+        tier_attempts.push((
+            ConnectionTier::EmergencyTunnel,
+            "emergency tunnel not yet implemented".to_string(),
+        ));
+
+        let summary = tier_attempts
+            .iter()
+            .map(|(tier, err)| format!("{tier}: {err}"))
+            .collect::<Vec<_>>()
+            .join("; ");
+
+        Err(LineageRelayError::NoRelayAvailable(format!(
+            "H2-16 fallback chain exhausted — {summary}"
+        )))
+    }
+
+    /// Attempt a direct UDP punch to the peer.
+    async fn try_direct_punch(&self, peer_addr: SocketAddr) -> Result<Duration> {
+        let start = std::time::Instant::now();
+
+        let bind_addr = if peer_addr.is_ipv4() {
+            "0.0.0.0:0"
+        } else {
+            "[::]:0"
+        };
+
+        let socket = tokio::net::UdpSocket::bind(bind_addr)
+            .await
+            .map_err(|e| LineageRelayError::NetworkError(format!("bind failed: {e}")))?;
+
+        let probe = b"SONGBIRD_PUNCH_PROBE";
+        socket
+            .send_to(probe, peer_addr)
+            .await
+            .map_err(|e| LineageRelayError::DirectConnectionFailed(format!("send failed: {e}")))?;
+
+        let mut buf = [0u8; 64];
+        match tokio::time::timeout(Duration::from_secs(2), socket.recv_from(&mut buf)).await {
+            Ok(Ok(_)) => Ok(start.elapsed()),
+            Ok(Err(e)) => {
+                Err(LineageRelayError::DirectConnectionFailed(format!("recv failed: {e}")))
+            }
+            Err(_) => Err(LineageRelayError::DirectConnectionFailed(
+                "punch probe timed out (2 s)".to_string(),
+            )),
+        }
+    }
+
+    /// Attempt STUN-assisted NAT discovery.
+    async fn try_stun_punch(&self, _peer: &NodeId) -> Result<SocketAddr> {
+        self.discover_public_address().await
     }
 
     /// Check connection quality across tiers
@@ -273,20 +415,38 @@ impl MultiTierCoordinator {
     }
 }
 
-/// Connection result from multi-tier coordinator
+/// Connection result from the H2-16 fallback chain.
 #[derive(Debug, Clone)]
 pub enum ConnectionResult {
-    /// Direct connection established
+    /// Direct or STUN-punched connection established.
     Direct {
-        /// Peer address
+        /// Peer address (may be reflexive for STUN-punch tier).
         peer_addr: SocketAddr,
-        /// Connection latency
+        /// Connection latency (zero when latency is not measurable).
         latency: Duration,
+        /// Which tier succeeded.
+        tier: ConnectionTier,
     },
-    /// Relayed connection through genetic lineage
+    /// Relayed connection through genetic lineage.
     Relayed {
-        /// Relay session details
+        /// Relay session details.
         session: Arc<RelaySession>,
+        /// Which relay tier.
+        tier: ConnectionTier,
+    },
+    /// TURN-allocated relay connection (H2-14).
+    TurnRelayed {
+        /// Relay address allocated by the TURN server.
+        relay_addr: SocketAddr,
+        /// Which tier.
+        tier: ConnectionTier,
+    },
+    /// Emergency tunnel connection.
+    Tunneled {
+        /// Tunnel endpoint URL or address.
+        endpoint: String,
+        /// Which tier.
+        tier: ConnectionTier,
     },
 }
 
@@ -374,12 +534,27 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn establish_connection_returns_configuration_error_string() {
+    async fn establish_connection_exhausts_fallback_chain() {
         let config = StunRelayConfig::default();
         let coordinator = MultiTierCoordinator::new(config);
-        let err =
-            coordinator.establish_connection(NodeId::from("p"), None).await.expect_err("not wired");
-        assert!(err.to_string().contains("orchestrator") || err.to_string().contains("pipeline"));
+        let err = coordinator
+            .establish_connection(NodeId::from("p"), None)
+            .await
+            .expect_err("all tiers should fail in test without network");
+        let msg = err.to_string();
+        assert!(msg.contains("fallback chain exhausted"), "unexpected: {msg}");
+        assert!(msg.contains("direct"), "should mention direct tier: {msg}");
+        assert!(msg.contains("stun-punch"), "should mention stun tier: {msg}");
+    }
+
+    #[test]
+    fn connection_tier_display_all_variants() {
+        use super::ConnectionTier;
+        assert_eq!(ConnectionTier::Direct.to_string(), "direct");
+        assert_eq!(ConnectionTier::StunPunch.to_string(), "stun-punch");
+        assert_eq!(ConnectionTier::LineageRelay.to_string(), "lineage-relay");
+        assert_eq!(ConnectionTier::TurnRelay.to_string(), "turn-relay");
+        assert_eq!(ConnectionTier::EmergencyTunnel.to_string(), "emergency-tunnel");
     }
 
     #[test]

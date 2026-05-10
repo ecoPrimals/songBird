@@ -1,6 +1,6 @@
 # Songbird Environment Variables
 
-**Last Updated**: May 8, 2026
+**Last Updated**: May 10, 2026
 **Version**: v0.2.1
 
 ---
@@ -116,6 +116,23 @@ Each capability follows the same fallback chain: `{CAP}_PROVIDER_ENDPOINT` →
 The `auth.*` introspection methods (`auth.check`, `auth.mode`, `auth.peer_info`) are
 exposed on **all transports** — UDS, TCP NDJSON, and BTSP-encrypted TCP. They are
 classified as Public and are always accessible regardless of enforcement mode.
+
+## Dynamic DNS (H2-15)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SONGBIRD_DDNS_ENABLED` | (unset = disabled) | Enable DDNS updates on IP change |
+| `SONGBIRD_DDNS_PROVIDER` | `noop` | Provider name (`noop`, `rfc2136`, `cloudflare`) |
+| `SONGBIRD_DDNS_HOSTNAME` | — | FQDN to update when public IP changes |
+| `SONGBIRD_DDNS_TTL` | `60` | DNS record TTL in seconds |
+| `SONGBIRD_DDNS_ZONE` | — | DNS zone (for RFC 2136) |
+| `SONGBIRD_DDNS_SERVER` | — | DNS server address (for RFC 2136) |
+| `SONGBIRD_DDNS_KEY_NAME` | — | TSIG key name (for RFC 2136) |
+| `SONGBIRD_DDNS_KEY_SECRET` | — | TSIG key secret (for RFC 2136) |
+
+Configuration is in `songbird-types::config::ddns`. Only the `NoopDdnsProvider` is
+currently implemented; production providers (RFC 2136, Cloudflare) are targets for
+feature-flag gated modules.
 
 ## Test / Development
 

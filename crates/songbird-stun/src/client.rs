@@ -226,30 +226,101 @@ impl StunClient {
         Err(StunError::AllServersFailed(error_msg))
     }
 
-    /// Discover public endpoint with NAT type detection
+    /// Perform a STUN binding request on an **existing** UDP socket.
+    ///
+    /// Unlike [`discover_public_address`](Self::discover_public_address) which binds a
+    /// fresh ephemeral socket per call, this method reuses the caller-provided socket.
+    /// This is critical for symmetric-NAT detection: the same local endpoint must be
+    /// probed against multiple STUN servers to observe whether the NAT assigns different
+    /// external ports per destination.
     ///
     /// # Errors
     ///
-    /// Returns an error if STUN discovery fails.
+    /// Returns an error if the STUN server is unreachable, unresolvable, or
+    /// returns an invalid response.
+    pub async fn discover_on_socket(
+        &self,
+        socket: &UdpSocket,
+        stun_server: &str,
+    ) -> StunResult<SocketAddr> {
+        let server_addr = resolve_stun_server(stun_server).await?;
+
+        let txn = self.new_transaction();
+        let request_bytes = txn.encode_request();
+
+        socket
+            .send_to(&request_bytes, server_addr)
+            .await
+            .map_err(|e| StunError::Network(format!("Failed to send STUN request: {e}")))?;
+
+        let mut buf = vec![0u8; 2048];
+
+        let (recv_len, _recv_addr) = timeout(self.timeout, socket.recv_from(&mut buf))
+            .await
+            .map_err(|_| StunError::Timeout(self.timeout))?
+            .map_err(|e| StunError::Network(format!("Failed to receive STUN response: {e}")))?;
+
+        txn.parse_response(&buf[..recv_len])
+    }
+
+    /// Discover public endpoint **with** NAT type detection via two STUN servers.
     ///
-    /// # Arguments
+    /// Binds a single local UDP socket and probes two servers. If the NAT
+    /// assigns the same external port for both, it is likely cone-type;
+    /// different ports indicate symmetric NAT.
     ///
-    /// * `stun_server` - Primary STUN server address
+    /// When only one server is provided, falls back to single-probe (returns
+    /// `NatType::Unknown`).
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Public endpoint including NAT type classification.
-    ///
-    /// # Note
-    ///
-    /// Full NAT type detection requires multiple STUN servers and is not yet implemented.
-    /// This method returns basic public address discovery with `NatType::Unknown`.
+    /// Returns an error if the primary STUN server is unreachable.
     pub async fn discover_public_endpoint(&self, stun_server: &str) -> StunResult<PublicEndpoint> {
-        let address = self.discover_public_address(stun_server).await?;
+        self.discover_public_endpoint_multi(&[stun_server]).await
+    }
+
+    /// Discover public endpoint using multiple STUN servers for NAT classification.
+    ///
+    /// Requires at least one server. Two or more enables NAT type detection
+    /// via same-socket dual-probe (RFC 5780 simplified).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if all STUN servers fail.
+    pub async fn discover_public_endpoint_multi(
+        &self,
+        stun_servers: &[&str],
+    ) -> StunResult<PublicEndpoint> {
+        if stun_servers.is_empty() {
+            return Err(StunError::Config("No STUN servers provided".to_string()));
+        }
+
+        let first_server_addr = resolve_stun_server(stun_servers[0]).await?;
+        let bind_addr = local_bind_addr_for_peer(first_server_addr);
+        let socket = UdpSocket::bind(bind_addr)
+            .await
+            .map_err(|e| StunError::Network(format!("Failed to bind shared probe socket: {e}")))?;
+
+        let addr1 = self.discover_on_socket(&socket, stun_servers[0]).await?;
+
+        if stun_servers.len() < 2 {
+            return Ok(PublicEndpoint {
+                address: addr1,
+                nat_type: NatType::Unknown,
+            });
+        }
+
+        let nat_type = match self.discover_on_socket(&socket, stun_servers[1]).await {
+            Ok(addr2) => classify_nat_from_dual_probes(addr1, addr2),
+            Err(e) => {
+                warn!("Second STUN probe failed (NAT type unknown): {e}");
+                NatType::Unknown
+            }
+        };
 
         Ok(PublicEndpoint {
-            address,
-            nat_type: NatType::Unknown,
+            address: addr1,
+            nat_type,
         })
     }
 
@@ -411,6 +482,23 @@ impl StunClient {
         }
 
         Ok(pattern)
+    }
+}
+
+/// Classify NAT behavior from two STUN binding results obtained via the
+/// **same local socket** against two different servers.
+///
+/// Same external port → cone-type NAT (good for direct punch).
+/// Different external ports → symmetric NAT (relay-assisted punch needed).
+/// Different public IPs → unusual multi-homed topology.
+#[must_use]
+pub fn classify_nat_from_dual_probes(addr1: SocketAddr, addr2: SocketAddr) -> NatType {
+    if addr1.ip() != addr2.ip() {
+        NatType::Unknown
+    } else if addr1.port() == addr2.port() {
+        NatType::PortRestrictedCone
+    } else {
+        NatType::Symmetric
     }
 }
 

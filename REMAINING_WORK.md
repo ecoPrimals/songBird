@@ -1,9 +1,9 @@
 # Songbird Remaining Work
 
-**Date**: May 6, 2026  
+**Date**: May 10, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 192 (May 6, 2026)  
-**Current Wave**: 192 — Sovereign onion `MAX_ONION_FRAME` guard (16 MiB) prevents memory-bomb from untrusted wire frames. Stale `Future` import removed from BTSP provider. Wave 191: `ipc.register` identity verification (identity.get probe, hard-rejects spoofed names, trust-on-first-use fallback); whitespace-tolerant UDS protocol detection; BufReader post-negotiate safety documented. 0 clippy warnings, all tests pass.  
+**Last Deep Debt Audit**: Wave 196 (May 10, 2026)  
+**Current Wave**: 196 — H2-13 through H2-16 NAT traversal sovereignty wave. H2-13: fixed critical NAT type detection bug (shared-socket dual-probe — old code created independent sockets per STUN query defeating symmetric detection); added `StunClient::discover_on_socket()`, `classify_nat_from_dual_probes()`, `discover_public_endpoint_multi()`. H2-14: TURN relay tier wired into `ConnectionFallbackChain` (stub pending JH-11 BearDog key distribution). H2-15: `DdnsConfig` + `DdnsProvider` trait + `NoopDdnsProvider` in `songbird-types::config::ddns` (RFC 2136/Cloudflare env config ready). H2-16: `ConnectionFallbackChain` in `multi_tier_coordinator.rs` (direct → STUN punch → lineage relay → TURN relay → emergency tunnel), `ConnectionTier` enum, `try_direct_punch()`, `try_stun_punch()`. Wave 195: Token verification infrastructure (JH-11 prep). Wave 193–194: MethodGate (JH-0), CallerContext transport-aware, auth.* on all transports (DF-3). 0 clippy warnings, all tests pass.  
 **Previous Waves** (full detail in `CHANGELOG.md`): 191 (ipc.register identity verification, whitespace-tolerant protocol detection, BufReader safety), 190 (IP literals, parse_endpoint IPv6, redundant clone, test Duration constants), 189 (ipc.resolve `socket` field for primalSpring tier-1 discovery), 188 (15 timeout constants, JSONRPC_VERSION, Box<dyn Error> elimination), 187 (smart refactor connection.rs, primal-name evolution, 4 timeout constants), 186 (BTSP Phase 3 live connection verification — 4 tests), 185 (deep debt: 11 timeout constants, JSON-RPC constructors, primal codename evolution), 184 (BTSP Phase 3 binary-framed dispatch fix), 183 (deep debt: lint evolution, timeout centralization, hardcoded elimination), 182 (BTSP Phase 3 spec alignment), 181 (port canonicalization), 180 (BTSP Phase 3 btsp.negotiate), 175 (PG-51 verified, ENVIRONMENT_VARIABLES.md), 174 (hardcoded IP/port elimination, flaky tests, dep cleanup, +18 tests), 173 (PG-51 socket discovery), 172 (root doc reconciliation), 171 (test coverage expansion 71.28%→73.41%, +271 tests), 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -114,13 +114,32 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ---
 
+## Sovereignty: NAT Traversal (H2-13 — H2-16, Wave 196)
+
+Step 3c on the sovereignty critical path — replacing `cloudflared` tunnels.
+
+- [x] **H2-13**: STUN client production hardening — shared-socket dual-probe for correct NAT type detection (`discover_on_socket()`, `classify_nat_from_dual_probes()`, `discover_public_endpoint_multi()`); fixed `stun_handler/client.rs` and `onion-relay/stun.rs` callers; 10+ new tests
+- [x] **H2-14 (scaffold)**: TURN relay tier added to `ConnectionFallbackChain` — config struct exists (`TURNRelay`), runtime stub returns `Unavailable` pending JH-11 BearDog key distribution. Self-hosted VPS TURN remains config-only until protocol client is implemented
+- [x] **H2-15 (scaffold)**: Dynamic DNS update module — `DdnsConfig`, `DdnsProvider` trait, `NoopDdnsProvider`, env vars (`SONGBIRD_DDNS_*`). Production providers (RFC 2136 `nsupdate`, Cloudflare) are feature-flag targets
+- [x] **H2-16 (scaffold + partial)**: Connection fallback chain in `multi_tier_coordinator.rs` — `direct → STUN punch → lineage relay → TURN relay → emergency tunnel`. Direct and STUN tiers are live; lineage/TURN/tunnel tiers are stubs awaiting orchestrator injection and JH-11
+
+**Remaining for full sovereignty**:
+- [ ] MESSAGE-INTEGRITY / FINGERPRINT in STUN wire protocol (RFC 5389 compliance)
+- [ ] IPv6 XOR-MAPPED-ADDRESS encoding fix in `songbird-stun`
+- [ ] RFC 5766 TURN client (Allocate, Refresh, ChannelBind, permissions)
+- [ ] BearDog key-authenticated TURN allocation (JH-11 dependency)
+- [ ] Production DDNS provider implementations (RFC 2136, Cloudflare API)
+- [ ] `cloudflared` emergency tunnel integration
+- [ ] Lineage relay injection into `ConnectionFallbackChain`
+
+---
+
 ## Future: Protocol Enhancements
 
 - [ ] PCP (RFC 6887) — Port Control Protocol
 - [ ] QUIC multi-path into sovereign socket
 - [ ] Full Tor relay mode
 - [ ] LoRaWAN integration
-- [ ] Full NAT type detection (requires multiple STUN requests)
 - [ ] Tor consensus microdescriptor parsing (ntor_key, version fields)
 - [ ] Tor HSDir descriptor upload
 

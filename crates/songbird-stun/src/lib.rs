@@ -52,7 +52,7 @@ mod transaction;
 pub mod types;
 
 // Re-exports
-pub use client::StunClient;
+pub use client::{StunClient, classify_nat_from_dual_probes};
 pub use error::{StunError, StunResult};
 pub use server::{StunServer, StunServerStats};
 pub use types::{NatType, PortPattern, PublicEndpoint, StunCredentials};

@@ -174,7 +174,9 @@ mod security_tests;
 pub use birdsong::BirdSongBroadcaster;
 pub use coordinator::LineageRelayCoordinator;
 pub use error::{LineageRelayError, Result};
-pub use multi_tier_coordinator::{ConnectionResult, MultiTierCoordinator, TierQualityReport};
+pub use multi_tier_coordinator::{
+    ConnectionResult, ConnectionTier, MultiTierCoordinator, TierQualityReport,
+};
 pub use relay::{RelayAuthority, RelayDiscovery, RelaySession};
 pub use relay_handler::RelayHandler;
 pub use relay_protocol::{AllocationRequest, AllocationResponse, RelayProtocol};

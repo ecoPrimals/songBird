@@ -6,8 +6,8 @@
 //! These methods delegate to [`songbird_stun::StunClient`] and format JSON results for IPC.
 
 use serde_json::{Value, json};
-use songbird_stun::{PortPattern, StunClient};
-use std::net::SocketAddr;
+use songbird_stun::{NatType, PortPattern, StunClient, classify_nat_from_dual_probes};
+use tokio::net::UdpSocket;
 use tracing::{info, warn};
 
 use super::StunHandler;
@@ -44,18 +44,18 @@ fn port_pattern_ipc_value(pattern: &PortPattern) -> Value {
     }
 }
 
-/// Classify NAT behavior from two STUN binding results (same logic as [`StunHandler::handle_detect_nat_type`]).
+/// Human-readable label and description for a [`NatType`].
 #[must_use]
-fn nat_type_from_dual_probes(addr1: SocketAddr, addr2: SocketAddr) -> (&'static str, &'static str) {
-    if addr1.ip() != addr2.ip() {
-        ("unknown", "Different public IPs detected — unusual topology")
-    } else if addr1.port() == addr2.port() {
-        ("cone", "Same port for different destinations — likely cone NAT (good for punching)")
-    } else {
-        (
+fn nat_type_label(nat: NatType) -> (&'static str, &'static str) {
+    match nat {
+        NatType::PortRestrictedCone => {
+            ("cone", "Same port for different destinations — likely cone NAT (good for punching)")
+        }
+        NatType::Symmetric => (
             "symmetric",
             "Different ports for different destinations — symmetric NAT (needs relay-assisted punch)",
-        )
+        ),
+        _ => ("unknown", "Could not classify NAT type"),
     }
 }
 
@@ -176,7 +176,13 @@ impl StunHandler {
         Ok(port_pattern_ipc_value(&pattern))
     }
 
-    /// Handle `stun.detect_nat_type` method - Detect NAT type via multiple probes
+    /// Handle `stun.detect_nat_type` method — detect NAT type via shared-socket dual-probe.
+    ///
+    /// Binds a single UDP socket and sends STUN binding requests to two
+    /// different servers, then compares the reflexive addresses. This is
+    /// the correct algorithm: using separate sockets (as the pre-H2-13 code
+    /// did) defeats symmetric NAT detection because each socket gets its
+    /// own NAT mapping regardless of destination.
     pub async fn handle_detect_nat_type(&self, params: Value) -> Result<Value, String> {
         let servers: Vec<String> = if let Some(servers_val) = params.get("servers") {
             serde_json::from_value(servers_val.clone())
@@ -189,21 +195,26 @@ impl StunHandler {
             return Err("Need at least 2 STUN servers for NAT type detection".to_string());
         }
 
-        info!("🔍 STUN: Detecting NAT type via {} servers", servers.len());
+        info!("🔍 STUN: Detecting NAT type via {} servers (shared socket)", servers.len());
+
+        let socket = UdpSocket::bind("0.0.0.0:0")
+            .await
+            .map_err(|e| format!("Failed to bind shared probe socket: {e}"))?;
 
         let client = StunClient::new();
 
         let addr1 = client
-            .discover_public_address(&servers[0])
+            .discover_on_socket(&socket, &servers[0])
             .await
             .map_err(|e| format!("STUN server 1 failed: {e}"))?;
 
         let addr2 = client
-            .discover_public_address(&servers[1])
+            .discover_on_socket(&socket, &servers[1])
             .await
             .map_err(|e| format!("STUN server 2 failed: {e}"))?;
 
-        let (nat_type, description) = nat_type_from_dual_probes(addr1, addr2);
+        let classified = classify_nat_from_dual_probes(addr1, addr2);
+        let (nat_type, description) = nat_type_label(classified);
 
         info!("✅ NAT type detected: {} — {}", nat_type, description);
 
@@ -214,7 +225,7 @@ impl StunHandler {
                 "server_1": { "server": &servers[0], "public_addr": addr1.to_string() },
                 "server_2": { "server": &servers[1], "public_addr": addr2.to_string() }
             },
-            "recommendation": if nat_type == "symmetric" {
+            "recommendation": if classified == NatType::Symmetric {
                 "Use relay-assisted coordinated punch (punch.coordinate)"
             } else {
                 "Direct hole punch should work (punch.request)"
@@ -227,9 +238,11 @@ impl StunHandler {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
-    use super::{StunHandler, nat_type_from_dual_probes, port_pattern_ipc_value};
+    use super::{StunHandler, nat_type_label, port_pattern_ipc_value};
     use serde_json::json;
-    use songbird_stun::{PortPattern, StunClient, StunError, StunServer};
+    use songbird_stun::{
+        NatType, PortPattern, StunClient, StunError, StunServer, classify_nat_from_dual_probes,
+    };
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::time::Duration;
     use tokio::sync::oneshot;
@@ -316,38 +329,29 @@ mod tests {
     }
 
     #[test]
-    fn nat_type_from_dual_probes_different_public_ips() {
+    fn classify_dual_probes_different_public_ips() {
         let a = SocketAddr::from((Ipv4Addr::new(1, 1, 1, 1), 10_000));
         let b = SocketAddr::from((Ipv4Addr::new(2, 2, 2, 2), 10_000));
-        assert_eq!(
-            nat_type_from_dual_probes(a, b),
-            ("unknown", "Different public IPs detected — unusual topology")
-        );
+        assert_eq!(classify_nat_from_dual_probes(a, b), NatType::Unknown);
+        assert_eq!(nat_type_label(NatType::Unknown).0, "unknown");
     }
 
     #[test]
-    fn nat_type_from_dual_probes_cone_same_ip_and_port() {
+    fn classify_dual_probes_cone_same_ip_and_port() {
         let ip = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 1));
         let a = SocketAddr::new(ip, 50_000);
         let b = SocketAddr::new(ip, 50_000);
-        assert_eq!(
-            nat_type_from_dual_probes(a, b),
-            ("cone", "Same port for different destinations — likely cone NAT (good for punching)")
-        );
+        assert_eq!(classify_nat_from_dual_probes(a, b), NatType::PortRestrictedCone);
+        assert_eq!(nat_type_label(NatType::PortRestrictedCone).0, "cone");
     }
 
     #[test]
-    fn nat_type_from_dual_probes_symmetric_same_ip_different_ports() {
+    fn classify_dual_probes_symmetric_same_ip_different_ports() {
         let ip = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 2));
         let a = SocketAddr::new(ip, 50_000);
         let b = SocketAddr::new(ip, 50_001);
-        assert_eq!(
-            nat_type_from_dual_probes(a, b),
-            (
-                "symmetric",
-                "Different ports for different destinations — symmetric NAT (needs relay-assisted punch)",
-            )
-        );
+        assert_eq!(classify_nat_from_dual_probes(a, b), NatType::Symmetric);
+        assert_eq!(nat_type_label(NatType::Symmetric).0, "symmetric");
     }
 
     #[test]

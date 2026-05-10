@@ -69,12 +69,12 @@ impl HolePunchCoordinator {
         Err(OnionRelayError::StunFailed("All STUN servers failed".to_string()))
     }
 
-    pub(super) async fn stun_bind(&self, _socket: &UdpSocket, server: &str) -> Result<SocketAddr> {
+    pub(super) async fn stun_bind(&self, socket: &UdpSocket, server: &str) -> Result<SocketAddr> {
         use songbird_stun::StunClient;
 
         let client = StunClient::new();
         client
-            .discover_public_address(server)
+            .discover_on_socket(socket, server)
             .await
             .map_err(|e| OnionRelayError::StunFailed(e.to_string()))
     }

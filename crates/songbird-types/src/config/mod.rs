@@ -11,6 +11,7 @@ pub mod ai_first;
 pub mod api;
 pub mod communication;
 pub mod consolidated_canonical;
+pub mod ddns;
 pub mod environment;
 pub mod federation;
 pub mod gaming;
