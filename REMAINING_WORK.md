@@ -1,9 +1,10 @@
 # Songbird Remaining Work
 
-**Date**: May 10, 2026  
+**Date**: May 11, 2026  
 **Version**: v0.2.1  
-**Last Deep Debt Audit**: Wave 197 (May 10, 2026)  
-**Current Wave**: 197 — Sovereignty NAT traversal completion (H2-13 through H2-16 Step 3c). STUN wire compliance: MESSAGE-INTEGRITY (HMAC-SHA1), FINGERPRINT (CRC32 XOR 0x5354554E), IPv6 XOR-MAPPED-ADDRESS encoding/decoding (RFC 5389 §15.2 — XOR with magic_cookie||transaction_id); `encode_authenticated()` for credential-bearing requests. RFC 5766 TURN client: `TurnClient` with `allocate()`, `refresh()`, `create_permission()`, `channel_bind()`; `MessageType` extended with TURN method variants; XOR-PEER-ADDRESS encoding. Cloudflare DDNS provider: `CloudflareDdnsProvider` with `HttpExecutor` callback pattern (dep-free); list/upsert via CF API v4; 6 mock-driven tests. Lineage relay injection: `MultiTierCoordinator` now accepts `with_relay_discovery()` + `with_turn_client()`; Tier 3 (lineage relay) calls `RelayDiscovery::request_relay()`; Tier 4 (TURN) calls `TurnClient::allocate()`. `cloudflared` emergency tunnel: Tier 5 probes for `cloudflared` binary availability. Wave 196: H2-13 shared-socket dual-probe NAT type fix, H2-14/15/16 scaffolding. 0 clippy warnings, 3804 tests across 4 affected crates.  
+**Last Deep Debt Audit**: Wave 198 (May 11, 2026)  
+**Composition Audit Status**: **CLEAN** — primalSpring full stadial gate blurb (May 11, 2026) confirms zero composition debt. "NAT traversal shipped (STUN, TURN, Cloudflare DDNS, 5-tier ConnectionFallbackChain). Discovery works. No composition debt." Only stadial target: VPS relay operational for NestGate extracellular serving.  
+**Current Wave**: 198 — Record clean composition audit. Wave 197: Sovereignty NAT traversal completion (H2-13 through H2-16 Step 3c). STUN wire compliance: MESSAGE-INTEGRITY (HMAC-SHA1), FINGERPRINT (CRC32 XOR 0x5354554E), IPv6 XOR-MAPPED-ADDRESS encoding/decoding (RFC 5389 §15.2 — XOR with magic_cookie||transaction_id); `encode_authenticated()` for credential-bearing requests. RFC 5766 TURN client: `TurnClient` with `allocate()`, `refresh()`, `create_permission()`, `channel_bind()`; `MessageType` extended with TURN method variants; XOR-PEER-ADDRESS encoding. Cloudflare DDNS provider: `CloudflareDdnsProvider` with `HttpExecutor` callback pattern (dep-free); list/upsert via CF API v4; 6 mock-driven tests. Lineage relay injection: `MultiTierCoordinator` now accepts `with_relay_discovery()` + `with_turn_client()`; Tier 3 (lineage relay) calls `RelayDiscovery::request_relay()`; Tier 4 (TURN) calls `TurnClient::allocate()`. `cloudflared` emergency tunnel: Tier 5 probes for `cloudflared` binary availability. Wave 196: H2-13 shared-socket dual-probe NAT type fix, H2-14/15/16 scaffolding. 0 clippy warnings, 3804 tests across 4 affected crates.  
 **Previous Waves** (full detail in `CHANGELOG.md`): 191 (ipc.register identity verification, whitespace-tolerant protocol detection, BufReader safety), 190 (IP literals, parse_endpoint IPv6, redundant clone, test Duration constants), 189 (ipc.resolve `socket` field for primalSpring tier-1 discovery), 188 (15 timeout constants, JSONRPC_VERSION, Box<dyn Error> elimination), 187 (smart refactor connection.rs, primal-name evolution, 4 timeout constants), 186 (BTSP Phase 3 live connection verification — 4 tests), 185 (deep debt: 11 timeout constants, JSON-RPC constructors, primal codename evolution), 184 (BTSP Phase 3 binary-framed dispatch fix), 183 (deep debt: lint evolution, timeout centralization, hardcoded elimination), 182 (BTSP Phase 3 spec alignment), 181 (port canonicalization), 180 (BTSP Phase 3 btsp.negotiate), 175 (PG-51 verified, ENVIRONMENT_VARIABLES.md), 174 (hardcoded IP/port elimination, flaky tests, dep cleanup, +18 tests), 173 (PG-51 socket discovery), 172 (root doc reconciliation), 171 (test coverage expansion 71.28%→73.41%, +271 tests), 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -134,6 +135,25 @@ Step 3c on the sovereignty critical path — replacing `cloudflared` tunnels.
 - [ ] TURN allocation refresh lifecycle (keepalive loop)
 - [ ] BearDog cross-host key distribution for TURN credential derivation
 - [ ] Integration tests with live STUN/TURN servers
+
+---
+
+## Composition Audit (primalSpring Full Stadial Gate — May 11, 2026)
+
+Songbird is **CLEAN** in the 13/13 primal composition audit. No blocking debt, no downstream consumers waiting on Songbird, no composition gaps.
+
+**Structural gate**: MethodGate, BTSP Phase 3, Edition 2024, deny.toml, plasmidBin — all cleared.
+
+**Composition readiness**: Discovery works across all transport paths. NAT traversal (STUN, TURN, DDNS, 5-tier fallback chain) shipped. No transport routing gaps (unlike NestGate's `content.*` which is the ecosystem critical path).
+
+**Songbird in the ecosystem dependency chain**: Songbird is not on the critical path for any other primal. No primal is blocked on Songbird. The dependency chains that matter are:
+- NestGate `content.*` transport parity → petalTongue, projectNUCLEUS Pillars 1-3, sovereign content pipeline
+- skunkBat Phase 3 (JH-5) → rhizoCrypt, sweetGrass, NFT pipeline
+- loamSpine API contract → RootPulse Phase 5
+- bearDog crypto IPC surface → barraCuda crypto dedup
+- squirrel compute delegation → toadStool IPC
+
+**Stadial target** (not blocking): VPS relay operational for NestGate extracellular serving. This becomes relevant when NestGate ships `content.*` transport parity and sovereign content needs external-network serving via Songbird relay infrastructure.
 
 ---
 
