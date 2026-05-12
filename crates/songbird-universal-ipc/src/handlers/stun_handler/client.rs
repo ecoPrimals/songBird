@@ -197,7 +197,7 @@ impl StunHandler {
 
         info!("🔍 STUN: Detecting NAT type via {} servers (shared socket)", servers.len());
 
-        let socket = UdpSocket::bind("0.0.0.0:0")
+        let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
             .await
             .map_err(|e| format!("Failed to bind shared probe socket: {e}"))?;
 

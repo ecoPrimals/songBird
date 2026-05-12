@@ -280,8 +280,10 @@ impl MockPeerConnector {
         let connection_id = uuid::Uuid::new_v4().to_string();
 
         if should_succeed {
-            let local_address = our_binding
-                .map_or_else(|| "0.0.0.0:0".to_string(), std::string::ToString::to_string);
+            let local_address = our_binding.map_or_else(
+                || songbird_types::constants::EPHEMERAL_BIND_ADDR.to_string(),
+                std::string::ToString::to_string,
+            );
 
             Ok(PeerConnectResult {
                 connection_id,

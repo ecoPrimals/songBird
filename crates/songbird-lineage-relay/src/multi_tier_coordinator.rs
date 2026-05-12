@@ -402,7 +402,7 @@ impl MultiTierCoordinator {
         let start = std::time::Instant::now();
 
         let bind_addr = if peer_addr.is_ipv4() {
-            "0.0.0.0:0"
+            songbird_types::constants::EPHEMERAL_BIND_ADDR
         } else {
             "[::]:0"
         };
@@ -439,7 +439,7 @@ impl MultiTierCoordinator {
         &self,
         turn_client: &TurnClient,
     ) -> Result<songbird_stun::TurnAllocation> {
-        let socket = tokio::net::UdpSocket::bind("0.0.0.0:0")
+        let socket = tokio::net::UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
             .await
             .map_err(|e| LineageRelayError::NetworkError(format!("TURN bind: {e}")))?;
 

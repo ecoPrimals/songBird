@@ -312,7 +312,7 @@ impl TurnRelayServer {
         let lifetime = lifetime.min(MAX_ALLOCATION_LIFETIME);
 
         // Bind relay socket
-        let relay_socket = UdpSocket::bind("0.0.0.0:0")
+        let relay_socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
             .await
             .map_err(|e| StunError::Network(format!("relay socket bind: {e}")))?;
         let relay_addr = relay_socket

@@ -39,6 +39,7 @@
 //! ```
 
 mod aead;
+mod auth;
 pub mod btsp;
 mod core;
 mod hash;

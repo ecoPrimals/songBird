@@ -29,7 +29,7 @@ pub async fn run_coordinated_udp_punch(
     peer_predicted_port: u16,
 ) -> Result<CoordinatePunchOutcome, String> {
     let socket = Arc::new(
-        tokio::net::UdpSocket::bind("0.0.0.0:0")
+        tokio::net::UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
             .await
             .map_err(|e| format!("Failed to bind socket: {e}"))?,
     );

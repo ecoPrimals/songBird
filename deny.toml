@@ -87,6 +87,10 @@ ignore = [
     "RUSTSEC-2024-0387",
     # paste: unmaintained — transitive; no known vulnerabilities
     "RUSTSEC-2024-0436",
+    # hickory-proto O(n²) name compression (RUSTSEC-2026-0119) — Songbird is a
+    # resolver client (not encoding DNS messages for others). Upgrade to 0.26
+    # requires API migration (SRV field access changed). Stadial migration.
+    "RUSTSEC-2026-0119",
 ]
 
 # EVOLUTION NOTE: serde_yaml 0.9 is archived by its maintainer (David Tolnay).
