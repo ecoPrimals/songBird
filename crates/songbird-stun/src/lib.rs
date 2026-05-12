@@ -51,6 +51,7 @@ mod protocol;
 pub mod server;
 mod transaction;
 pub mod turn;
+pub mod turn_server;
 pub mod types;
 
 // Re-exports
@@ -59,4 +60,5 @@ pub use ddns_cloudflare::CloudflareDdnsProvider;
 pub use error::{StunError, StunResult};
 pub use server::{StunServer, StunServerStats};
 pub use turn::{TurnAllocation, TurnClient};
+pub use turn_server::{CredentialStore, StaticCredentialStore, TurnRelayServer, TurnRelayStats};
 pub use types::{NatType, PortPattern, PublicEndpoint, StunCredentials};

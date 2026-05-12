@@ -400,6 +400,7 @@ fn capability_resolve_request_roundtrip() {
 fn capability_resolve_response_roundtrip() {
     let resp = CapabilityResolveResponse {
         service_id: "svc-sec-001".to_string(),
+        primal_name: "bearDog".to_string(),
         endpoint: "/run/user/1000/biomeos/security.sock".to_string(),
         protocol: "json-rpc".to_string(),
         capabilities: vec!["crypto".to_string(), "identity".to_string()],

@@ -131,6 +131,8 @@ pub struct CapabilityResolveRequest {
 pub struct CapabilityResolveResponse {
     /// Service ID of the resolved provider
     pub service_id: String,
+    /// Primal name that owns this capability
+    pub primal_name: String,
     /// Endpoint (Unix socket path or URL)
     pub endpoint: String,
     /// Protocol (json-rpc, tarpc, etc.)

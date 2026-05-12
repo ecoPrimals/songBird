@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave199] - 2026-05-12 - Pass 12 VPS relay server + Pass 14 capability.resolve enrichment
+
+### Added
+- **`TurnRelayServer`** (`songbird-stun::turn_server`): RFC 5766 sovereign VPS relay for NAT traversal (Pass 12 Sentinel Escalation). Handles Allocate, Refresh, CreatePermission, ChannelBind. `CredentialStore` trait for BearDog beacon-tier authentication (`StaticCredentialStore` for testing). Per-allocation ephemeral relay sockets with permission-gated data forwarding. Periodic cleanup of expired allocations. STUN Binding Request compatibility (responds with XOR-MAPPED-ADDRESS). `TurnRelayStats` for observability.
+- **`primal_name` field in `CapabilityResolveResponse`** (Pass 14 Convergence): `capability.resolve` on the orchestrator path now returns the owning primal's name, achieving parity with the universal-ipc path's `primal_id`.
+
+### Verified
+- 0 clippy warnings (`--workspace -D warnings`)
+- All 112 songbird-stun tests pass (including 4 new TURN server integration tests: allocate+refresh, binding, auth rejection, stats)
+- All 1625 songbird-orchestrator lib tests pass
+- `cargo fmt -- --check` clean
+
+---
+
 ## [v0.2.1-wave192] - 2026-05-06 - Frame size guard, stale Future import removal
 
 ### Changed

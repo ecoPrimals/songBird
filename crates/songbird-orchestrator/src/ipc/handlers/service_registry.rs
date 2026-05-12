@@ -363,6 +363,7 @@ pub async fn capability_resolve_json(
 
     let resp = CapabilityResolveResponse {
         service_id: provider.service_id,
+        primal_name: provider.primal_name,
         endpoint: provider.endpoint,
         protocol: provider.protocol,
         capabilities: provider.capabilities,
@@ -568,6 +569,7 @@ mod tests {
         .unwrap();
         assert_eq!(out["endpoint"], serde_json::json!("/tmp/test-primal.sock"));
         assert_eq!(out["protocol"], serde_json::json!("json-rpc"));
+        assert!(out.get("primal_name").is_some(), "primal_name must be in response");
     }
 
     #[tokio::test]
