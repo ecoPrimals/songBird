@@ -30,7 +30,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`; May 6 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | 0 (largest production 694L `connection.rs`; Wave 187: `connection.rs` (1043L) smart-refactored via `#[path]` test extraction; Wave 176: `information_layers.rs` (1121L) → directory module; Wave 133: 4 former >700L files refactored) |
+| Files >800 lines | 2 deferred (`bin_interface/server.rs` 878L, `turn_server.rs` 836L — both tightly coupled, deferred in Wave 200 audit); largest non-deferred: `primal_discovery.rs` 763L; Wave 200: `method_gate.rs` (944L) → directory module; Wave 187: `connection.rs` (1043L) smart-refactored via `#[path]` test extraction; Wave 176: `information_layers.rs` (1121L) → directory module |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
@@ -39,7 +39,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | BTSP Phase 3 (FULL) | `btsp.negotiate` server-side handler — ChaCha20-Poly1305 encrypted framing post-handshake; HKDF-SHA256 session key derivation (directional c2s/s2c keys); graceful NULL cipher fallback; `btsp.server.export_keys` delegation to security provider; length-prefixed encrypted frames `[4B len][12B nonce][ciphertext + Poly1305 tag]`; 16 MiB max frame; `BondingPolicy` cipher floor enforcement; negotiate dispatch wired on all 3 transport paths (NDJSON session, binary-framed BTSP, bin_interface) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
-| cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok); enforced in CI (`cargo deny check` step in `ci.yml`) |
+| cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok); locally enforced (`cargo deny check`); CI runs fmt + clippy + test only |
 | Dependencies | Pure Rust in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`, SB-02 documented); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; zero first-party `-sys` crates, zero `cc`, zero `build.rs`; `cargo deny check` fully passing |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous` |
 | Total Rust | ~421,000 lines across 30 crates (1,609 files) |

@@ -1,6 +1,6 @@
 # Songbird Specifications Index
 
-**Last Updated:** May 4, 2026
+**Last Updated:** May 12, 2026
 **Version:** v0.2.1
 
 ---
@@ -28,7 +28,7 @@
 - [SECURE_COMMUNICATIONS_PROTOCOL.md](./SECURE_COMMUNICATIONS_PROTOCOL.md) — Secure communications
 - [RENDEZVOUS_PROTOCOL_SPEC.md](./RENDEZVOUS_PROTOCOL_SPEC.md) — Rendezvous protocol
 - [RELAY_SERVER_SPECIFICATION.md](./archived/RELAY_SERVER_SPECIFICATION.md) — Relay server *(archived: stale file paths)*
-- [STUN_SERVER_CAPABILITY_SPECIFICATION.md](./STUN_SERVER_CAPABILITY_SPECIFICATION.md) — STUN server
+- [STUN_SERVER_CAPABILITY_SPECIFICATION.md](./STUN_SERVER_CAPABILITY_SPECIFICATION.md) — STUN/TURN server *(implemented: Waves 196-199)*
 - [IGD_ROUTER_CONFIGURATION_SPECIFICATION.md](./IGD_ROUTER_CONFIGURATION_SPECIFICATION.md) — UPnP IGD + NAT-PMP
 
 ## Transport & Networking

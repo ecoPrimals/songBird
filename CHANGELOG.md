@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave200] - 2026-05-12 - Deep debt cleanup & documentation reconciliation
+
+### Changed
+- **`method_gate.rs` (944L) → directory module**: Split monolith into `caller.rs`, `classification.rs`, `gate.rs`, `token.rs`, `tests.rs`, `mod.rs` under `method_gate/`. 45 unit tests preserved.
+- **`BearDogVerifier` evolution**: Stub ("Unavailable JH-11") → live IPC via `SecurityRpcClient::verify_ionic()`. Graceful fallback on IPC failure.
+- **Hardcoding elimination**: 7× `"0.0.0.0:0"` → `songbird_types::constants::EPHEMERAL_BIND_ADDR` across 5 crates.
+- **Dependency audit**: `hickory-resolver` 0.24→0.26 attempted, reverted (API breaking); `RUSTSEC-2026-0119` tracked in `deny.toml` ignore.
+
+### Removed
+- **`examples/future/`** (5 files): Stale examples referencing deleted types (`CapabilityPortDiscovery`, `PrimalSelfKnowledge`). Non-compilable debris.
+
+### Fixed
+- **README.md**: Corrected CI/cargo-deny enforcement claim (locally enforced, not in CI); updated largest-file metric (2 deferred >800L).
+- **CONTEXT.md**: Same metric/date fixes. Date bumped to May 12.
+- **REMAINING_WORK.md**: Wave 200 current; files >800L corrected; cargo-deny claim fixed.
+- **STUN spec**: Status updated from "Ready for Implementation" to "Implemented (Waves 196-199)".
+- **specs/00_SPECIFICATIONS_INDEX.md**: Date bumped to May 12; STUN entry updated.
+- **docs/ENVIRONMENT_VARIABLES.md**: Date bumped to May 12.
+- **wateringHole README.md**: Handoff count (5→6→7), removed false "currently empty" claim, fixed broken PROJECTNUCLEUS links (archived to fossilRecord).
+
+### Verified
+- 0 clippy warnings (`--workspace -D warnings`)
+- `cargo fmt -- --check` clean
+- `cargo deny check` fully passing
+
+---
+
 ## [v0.2.1-wave199] - 2026-05-12 - Pass 12 VPS relay server + Pass 14 capability.resolve enrichment
 
 ### Added

@@ -1,6 +1,6 @@
 # Songbird Environment Variables
 
-**Last Updated**: May 10, 2026
+**Last Updated**: May 12, 2026
 **Version**: v0.2.1
 
 ---

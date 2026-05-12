@@ -1,8 +1,9 @@
 # STUN Server Capability Specification
 
-**Version**: 1.0.0  
-**Status**: ✅ Ready for Implementation (Phase 1 - MVP)  
+**Version**: 1.1.0  
+**Status**: ✅ Implemented (Wave 196-199: STUN wire-compliant RFC 5389, TURN client RFC 5766, TURN relay server, Cloudflare DDNS, 5-tier ConnectionFallbackChain)  
 **Created**: February 5, 2026  
+**Implemented**: May 2026  
 **Priority**: Medium  
 **Upstream Request**: biomeOS Integration Team
 
