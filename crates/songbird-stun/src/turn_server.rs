@@ -81,6 +81,18 @@ impl StaticCredentialStore {
     pub fn insert(&mut self, username: String, key: Vec<u8>) {
         self.credentials.insert(username, key);
     }
+
+    /// Number of stored credentials.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.credentials.len()
+    }
+
+    /// Whether the store is empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.credentials.is_empty()
+    }
 }
 
 impl CredentialStore for StaticCredentialStore {

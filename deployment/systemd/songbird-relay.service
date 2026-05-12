@@ -1,0 +1,91 @@
+# Songbird TURN Relay — systemd Service Unit
+# Sovereign VPS relay for NAT traversal (RFC 5766)
+#
+# Installation:
+#   sudo cp songbird-relay.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable songbird-relay
+#   sudo systemctl start songbird-relay
+#
+# Credentials:
+#   Create /etc/songbird/relay-credentials with one username:hex_key per line.
+#   Keys are beacon-tier HMAC material from BearDog auth.public_key.
+#
+# Status:
+#   systemctl status songbird-relay
+#   journalctl -u songbird-relay -f
+
+[Unit]
+Description=Songbird TURN Relay Server (ecoPrimals NAT Traversal)
+Documentation=https://github.com/ecoPrimals/SongBird
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+ExecStart=/usr/local/bin/songbird relay --credentials-file /etc/songbird/relay-credentials
+
+# Environment
+Environment="RUST_LOG=info,songbird_stun=info"
+Environment="SONGBIRD_RELAY_BIND=0.0.0.0"
+Environment="SONGBIRD_RELAY_PORT=3478"
+
+# Runtime directory
+RuntimeDirectory=songbird-relay
+RuntimeDirectoryMode=0755
+
+# State directory
+StateDirectory=songbird-relay
+StateDirectoryMode=0700
+
+# Configuration directory (for credentials file)
+ConfigurationDirectory=songbird
+ConfigurationDirectoryMode=0750
+
+# Security Hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/songbird-relay
+
+# Namespace isolation
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# System call filtering
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+# Network — UDP required for TURN relay
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Capabilities — bind to privileged port 3478
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Resource limits (relay handles many UDP flows)
+LimitNOFILE=65536
+LimitNPROC=256
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=songbird-relay
+
+# Dedicated user (recommended — create with setup script)
+# User=songbird-relay
+# Group=songbird-relay
+
+[Install]
+WantedBy=multi-user.target

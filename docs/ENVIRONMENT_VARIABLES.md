@@ -143,6 +143,18 @@ the Cloudflare API v4. Configuration is in `songbird-types::config::ddns` (trait
 and `songbird-stun::ddns_cloudflare` (Cloudflare implementation).
 `NoopDdnsProvider` is the default when DDNS is disabled.
 
+## TURN Relay Server (VPS Deployment)
+
+| Variable | Description |
+|----------|-------------|
+| `SONGBIRD_RELAY_BIND` | Bind address for relay UDP listener (default: `0.0.0.0`) |
+| `SONGBIRD_RELAY_PORT` | UDP port for relay listener (default: `3478`) |
+| `SONGBIRD_RELAY_CREDENTIALS_FILE` | Path to credentials file (`username:hex_key` per line) |
+| `SONGBIRD_RELAY_CREDENTIALS` | Inline credentials (newline-separated `username:hex_key` pairs) |
+
+Deploy via `songbird relay` subcommand. See `deployment/relay/README.md` for full
+VPS deployment guide including firewall, systemd, and credential provisioning.
+
 ## Test / Development
 
 | Variable | Description |
