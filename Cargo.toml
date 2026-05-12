@@ -92,6 +92,7 @@ songbird-discovery = { path = "crates/songbird-discovery" }
 songbird-config = { path = "crates/songbird-config" }
 songbird-types = { path = "crates/songbird-types" }
 songbird-http-client = { path = "crates/songbird-http-client" }
+songbird-stun = { path = "crates/songbird-stun" }
 anyhow = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }

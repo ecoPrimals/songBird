@@ -54,10 +54,13 @@ pub mod turn;
 pub mod turn_server;
 pub mod types;
 
+mod relay_args;
+
 // Re-exports
 pub use client::{StunClient, classify_nat_from_dual_probes};
 pub use ddns_cloudflare::CloudflareDdnsProvider;
 pub use error::{StunError, StunResult};
+pub use relay_args::RelayArgs;
 pub use server::{StunServer, StunServerStats};
 pub use turn::{TurnAllocation, TurnClient};
 pub use turn_server::{CredentialStore, StaticCredentialStore, TurnRelayServer, TurnRelayStats};

@@ -18,6 +18,7 @@ tracing = { workspace = true }
 bytes = { workspace = true }
 rand = { workspace = true }
 futures-util = { workspace = true }
+clap = { workspace = true }
 
 # RFC 5389 wire integrity
 hmac = "0.12"

@@ -4712,6 +4712,7 @@ dependencies = [
  "songbird-orchestrator",
  "songbird-process-env",
  "songbird-remote-deploy",
+ "songbird-stun",
  "songbird-types",
  "songbird-universal-ipc",
  "tempfile",
@@ -5279,6 +5280,7 @@ name = "songbird-stun"
 version = "0.2.1"
 dependencies = [
  "bytes",
+ "clap",
  "crc32fast",
  "futures-util",
  "hmac",

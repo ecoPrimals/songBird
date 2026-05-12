@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave201] - 2026-05-12 - Pass 12/14 sentinel resolution: VPS relay + capability.resolve parity
+
+### Added
+- **`songbird relay` CLI subcommand**: First-class VPS relay startup via `songbird relay --bind 0.0.0.0 --port 3478`. Resolves Pass 12 "no startup path" gap.
+- **Send Indication handling** (RFC 5766 §10): `TurnRelayServer` now processes client→peer data relay via XOR-PEER-ADDRESS + DATA attributes.
+- **ChannelData handling** (RFC 5766 §11.6): Framed `[channel][length][data]` packets from clients forwarded to bound peers.
+- **Data Indication generation**: Peer→client traffic now wrapped in proper Data Indication STUN messages (or ChannelData frames when channel bindings exist).
+- **`SendIndication` / `DataIndication` message types** added to `MessageType` enum.
+- **`RelayArgs`** (`songbird-stun::RelayArgs`): Clap-derived struct for relay CLI configuration.
+
+### Changed
+- **`CapabilityResolveResponse` harmonized**: Orchestrator path now emits `socket`, `native_endpoint`, `virtual_endpoint` fields matching universal-ipc `CapabilityResolveResult`. Wire-format parity across both transport paths. Resolves Pass 14 `capability.resolve` gap.
+- **`relay_forward_loop` evolved**: Now wraps peer→client data in ChannelData (if binding exists) or Data Indication (RFC-compliant framing) instead of raw bytes.
+
+### Verified
+- 0 clippy warnings (`--workspace -D warnings`)
+- 111 songbird-stun tests pass (including bidirectional relay tests)
+- 27 root songbird lib tests pass (including new `relay` subcommand parsing)
+- 4 capability_resolve tests pass (including new wire-format assertions)
+- `cargo fmt -- --check` clean
+
+---
+
 ## [v0.2.1-wave200] - 2026-05-12 - Deep debt cleanup & documentation reconciliation
 
 ### Changed

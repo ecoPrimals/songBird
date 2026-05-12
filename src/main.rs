@@ -31,6 +31,8 @@
 //! songbird --version
 //! ```
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use clap::Parser;
 use songbird::{Cli, Commands, parse_delegated, run_interactive_cli, run_rendezvous};
@@ -86,6 +88,18 @@ async fn main() -> Result<()> {
             // Re-exec rendezvous binary if it exists,
             // otherwise provide helpful error
             run_rendezvous(args)?;
+        }
+        Commands::Relay {
+            args,
+        } => {
+            tracing_subscriber::fmt::init();
+            let bind_addr: std::net::SocketAddr = format!("{}:{}", args.bind, args.port)
+                .parse()
+                .map_err(|e| anyhow::anyhow!("Invalid relay bind address: {e}"))?;
+            let credentials: Arc<dyn songbird_stun::CredentialStore> =
+                Arc::new(songbird_stun::StaticCredentialStore::new());
+            let server = songbird_stun::TurnRelayServer::new(bind_addr, credentials);
+            server.run().await.map_err(|e| anyhow::anyhow!("Relay server error: {e}"))?;
         }
     }
 

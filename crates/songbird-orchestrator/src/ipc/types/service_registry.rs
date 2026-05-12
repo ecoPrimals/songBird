@@ -127,16 +127,27 @@ pub struct CapabilityResolveRequest {
 }
 
 /// Response for `capability.resolve` — the single best provider for the capability.
+///
+/// Wire-format harmonized with universal-ipc `CapabilityResolveResult`: both paths
+/// now emit `socket`, `native_endpoint`, `virtual_endpoint`, and `capabilities`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityResolveResponse {
     /// Service ID of the resolved provider
     pub service_id: String,
     /// Primal name that owns this capability
     pub primal_name: String,
-    /// Endpoint (Unix socket path or URL)
+    /// Endpoint (Unix socket path or URL) — legacy field, prefer `native_endpoint`
     pub endpoint: String,
     /// Protocol (json-rpc, tarpc, etc.)
     pub protocol: String,
+    /// Bare socket path (e.g. `/run/user/1000/biomeos/security.sock`).
+    /// Present when the provider uses a Unix socket transport.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub socket: Option<String>,
+    /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
+    pub native_endpoint: String,
+    /// Capability-addressed virtual endpoint (e.g. `capability://crypto@beardog`).
+    pub virtual_endpoint: String,
     /// All capabilities advertised by this provider
     pub capabilities: Vec<String>,
 }

@@ -41,6 +41,12 @@ pub enum MessageType {
 
     /// TURN `ChannelBind` Success (0x0109)
     ChannelBindSuccess,
+
+    /// TURN Send Indication (0x0016 — RFC 5766 §10)
+    SendIndication,
+
+    /// TURN Data Indication (0x0017 — RFC 5766 §10)
+    DataIndication,
 }
 
 impl MessageType {
@@ -60,6 +66,8 @@ impl MessageType {
             Self::CreatePermissionSuccess => 0x0108,
             Self::ChannelBind => 0x0009,
             Self::ChannelBindSuccess => 0x0109,
+            Self::SendIndication => 0x0016,
+            Self::DataIndication => 0x0017,
         }
     }
 
@@ -82,6 +90,8 @@ impl MessageType {
             0x0108 => Ok(Self::CreatePermissionSuccess),
             0x0009 => Ok(Self::ChannelBind),
             0x0109 => Ok(Self::ChannelBindSuccess),
+            0x0016 => Ok(Self::SendIndication),
+            0x0017 => Ok(Self::DataIndication),
             _ => Err(StunError::InvalidResponse(format!("Unknown message type: 0x{value:04x}"))),
         }
     }

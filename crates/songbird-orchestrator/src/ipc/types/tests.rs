@@ -403,10 +403,15 @@ fn capability_resolve_response_roundtrip() {
         primal_name: "bearDog".to_string(),
         endpoint: "/run/user/1000/biomeos/security.sock".to_string(),
         protocol: "json-rpc".to_string(),
+        socket: Some("/run/user/1000/biomeos/security.sock".to_string()),
+        native_endpoint: "unix:///run/user/1000/biomeos/security.sock".to_string(),
+        virtual_endpoint: "capability://crypto@bearDog".to_string(),
         capabilities: vec!["crypto".to_string(), "identity".to_string()],
     };
     let j = serde_json::to_string(&resp).unwrap();
     let back: CapabilityResolveResponse = serde_json::from_str(&j).unwrap();
     assert_eq!(back.service_id, "svc-sec-001");
     assert_eq!(back.capabilities.len(), 2);
+    assert_eq!(back.native_endpoint, "unix:///run/user/1000/biomeos/security.sock");
+    assert_eq!(back.virtual_endpoint, "capability://crypto@bearDog");
 }

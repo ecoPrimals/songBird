@@ -361,11 +361,26 @@ pub async fn capability_resolve_json(
         crate::ipc::pure_rust_server::JsonRpcError::custom(-32601, &msg, None)
     })?;
 
+    let socket = if provider.endpoint.starts_with('/') {
+        Some(provider.endpoint.clone())
+    } else {
+        None
+    };
+    let native_endpoint = if provider.endpoint.starts_with('/') {
+        format!("unix://{}", provider.endpoint)
+    } else {
+        provider.endpoint.clone()
+    };
+    let virtual_endpoint = format!("capability://{}@{}", request.capability, provider.primal_name);
+
     let resp = CapabilityResolveResponse {
         service_id: provider.service_id,
         primal_name: provider.primal_name,
         endpoint: provider.endpoint,
         protocol: provider.protocol,
+        socket,
+        native_endpoint,
+        virtual_endpoint,
         capabilities: provider.capabilities,
     };
 
@@ -570,6 +585,12 @@ mod tests {
         assert_eq!(out["endpoint"], serde_json::json!("/tmp/test-primal.sock"));
         assert_eq!(out["protocol"], serde_json::json!("json-rpc"));
         assert!(out.get("primal_name").is_some(), "primal_name must be in response");
+        assert_eq!(out["socket"], serde_json::json!("/tmp/test-primal.sock"));
+        assert_eq!(out["native_endpoint"], serde_json::json!("unix:///tmp/test-primal.sock"));
+        assert_eq!(
+            out["virtual_endpoint"],
+            serde_json::json!("capability://encryption@test primal")
+        );
     }
 
     #[tokio::test]

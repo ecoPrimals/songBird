@@ -128,6 +128,16 @@ pub enum Commands {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
+
+    /// TURN relay server (RFC 5766 sovereign VPS relay)
+    ///
+    /// Starts a standalone TURN relay for NAT traversal. Songbird clients
+    /// allocate through this server when direct and STUN-assisted connectivity fail.
+    Relay {
+        /// Relay server configuration.
+        #[command(flatten)]
+        args: songbird_stun::RelayArgs,
+    },
 }
 
 /// Outcome of attempting to run the external `songbird-rendezvous` binary.
@@ -371,6 +381,24 @@ mod tests {
         let _ = Cli::try_parse_from(["songbird", "compute-bridge"]).unwrap();
         let _ = Cli::try_parse_from(["songbird", "deploy", "list"]).unwrap();
         let _ = Cli::try_parse_from(["songbird", "rendezvous"]).unwrap();
+        let _ = Cli::try_parse_from(["songbird", "relay"]).unwrap();
+    }
+
+    #[test]
+    fn try_parse_delegated_relay_custom_port() {
+        let cli = try_parse_delegated::<Cli>(
+            "songbird",
+            vec!["relay".into(), "--port".into(), "4000".into()],
+        )
+        .unwrap();
+        match cli.command {
+            Commands::Relay {
+                args,
+            } => {
+                assert_eq!(args.port, 4000);
+            }
+            _ => panic!("expected Relay variant"),
+        }
     }
 
     #[test]
