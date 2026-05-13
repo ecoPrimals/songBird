@@ -437,4 +437,165 @@ mod tests {
             h.join().unwrap();
         }
     }
+
+    // ── Tower Atomic Validation (GAP-16) ─────────────────────────────────
+
+    fn jsonrpc_req_with_params(method: &str, params: serde_json::Value) -> JsonRpcRequest {
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: method.to_string(),
+            params: Some(params),
+            id: Some(serde_json::json!(1)),
+        }
+    }
+
+    #[tokio::test]
+    async fn mesh_init_routed_on_canonical_socket() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let req = jsonrpc_req_with_params(
+            "mesh.init",
+            serde_json::json!({ "node_id": "tower-gap16-test", "bootstrap_onions": [] }),
+        );
+        let resp = server.handle_jsonrpc_request(req, &caller).await;
+        assert_success(&resp, "mesh.init");
+        let result = resp.result.unwrap();
+        assert_eq!(result["initialized"], true);
+        assert_eq!(result["node_id"], "tower-gap16-test");
+    }
+
+    #[tokio::test]
+    async fn mesh_status_routed_after_init() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let init_req = jsonrpc_req_with_params(
+            "mesh.init",
+            serde_json::json!({ "node_id": "tower-status-route", "bootstrap_onions": [] }),
+        );
+        server.handle_jsonrpc_request(init_req, &caller).await;
+
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("mesh.status"), &caller).await;
+        assert_success(&resp, "mesh.status");
+    }
+
+    #[tokio::test]
+    async fn mesh_peers_routed_after_init() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let init_req = jsonrpc_req_with_params(
+            "mesh.init",
+            serde_json::json!({ "node_id": "tower-peers-route", "bootstrap_onions": [] }),
+        );
+        server.handle_jsonrpc_request(init_req, &caller).await;
+
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("mesh.peers"), &caller).await;
+        assert_success(&resp, "mesh.peers");
+        let result = resp.result.unwrap();
+        assert!(result["peers"].is_array());
+    }
+
+    #[tokio::test]
+    async fn mesh_topology_routed_after_init() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let init_req = jsonrpc_req_with_params(
+            "mesh.init",
+            serde_json::json!({ "node_id": "tower-topo-route", "bootstrap_onions": [] }),
+        );
+        server.handle_jsonrpc_request(init_req, &caller).await;
+
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("mesh.topology"), &caller).await;
+        assert_success(&resp, "mesh.topology");
+    }
+
+    #[tokio::test]
+    async fn mesh_health_check_routed_after_init() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let init_req = jsonrpc_req_with_params(
+            "mesh.init",
+            serde_json::json!({ "node_id": "tower-hc-route", "bootstrap_onions": [] }),
+        );
+        server.handle_jsonrpc_request(init_req, &caller).await;
+
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("mesh.health_check"), &caller).await;
+        assert_success(&resp, "mesh.health_check");
+    }
+
+    #[tokio::test]
+    async fn mesh_auto_discover_routed_after_init() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let init_req = jsonrpc_req_with_params(
+            "mesh.init",
+            serde_json::json!({ "node_id": "tower-ad-route", "bootstrap_onions": [] }),
+        );
+        server.handle_jsonrpc_request(init_req, &caller).await;
+
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("mesh.auto_discover"), &caller).await;
+        assert_success(&resp, "mesh.auto_discover");
+    }
+
+    #[tokio::test]
+    async fn mesh_without_init_returns_error() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("mesh.status"), &caller).await;
+        assert!(resp.error.is_some(), "mesh.status without init should error");
+    }
+
+    #[tokio::test]
+    async fn capability_resolve_routed_on_canonical_socket() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let req = jsonrpc_req_with_params(
+            "capability.resolve",
+            serde_json::json!({ "capability": "network" }),
+        );
+        let resp = server.handle_jsonrpc_request(req, &caller).await;
+        // No providers registered, so we expect an error
+        assert!(resp.error.is_some(), "capability.resolve with no providers should error");
+    }
+
+    #[tokio::test]
+    async fn discover_capabilities_routed_on_canonical_socket() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let resp =
+            server.handle_jsonrpc_request(jsonrpc_req("discover_capabilities"), &caller).await;
+        assert_success(&resp, "discover_capabilities");
+    }
+
+    #[tokio::test]
+    async fn invalid_jsonrpc_version_rejected() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let req = JsonRpcRequest {
+            jsonrpc: "1.0".to_string(),
+            method: "health.liveness".to_string(),
+            params: None,
+            id: Some(serde_json::json!(1)),
+        };
+        let resp = server.handle_jsonrpc_request(req, &caller).await;
+        assert!(resp.error.is_some());
+        assert_eq!(resp.error.unwrap().code, -32600);
+    }
+
+    #[tokio::test]
+    async fn ipc_register_routed_on_canonical_socket() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let req = jsonrpc_req_with_params(
+            "ipc.register",
+            serde_json::json!({
+                "service_id": "test-svc",
+                "primal_name": "testPrimal",
+                "endpoint": "/tmp/test.sock",
+                "capabilities": ["test.capability"],
+                "protocol": "json-rpc"
+            }),
+        );
+        let resp = server.handle_jsonrpc_request(req, &caller).await;
+        assert_success(&resp, "ipc.register");
+    }
 }

@@ -15,6 +15,7 @@ use crate::app::connection_manager::ConnectionManager;
 use crate::graph::{AvailabilityChecker, CoordinationValidator, GraphValidator};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_http_client::SecurityRpcClient;
+use songbird_universal_ipc::handlers::MeshHandler;
 
 // Domain-focused handler modules
 pub mod graph_intelligence;
@@ -50,6 +51,9 @@ pub struct IpcHandlers {
 
     /// HTTP handler for Tower Atomic HTTPS requests (v5.27.0)
     pub(crate) http_handler: Arc<http::HttpHandler>,
+
+    /// Mesh handler for beacon mesh networking (GAP-16: Tower atomic validation)
+    pub(crate) mesh_handler: Arc<MeshHandler>,
 }
 
 impl IpcHandlers {
@@ -68,6 +72,7 @@ impl IpcHandlers {
         let availability_checker = Arc::new(AvailabilityChecker::new(service_registry.clone()));
         let coordination_validator = Arc::new(CoordinationValidator::new(service_registry.clone()));
         let http_handler = Arc::new(http::HttpHandler::new(security_client));
+        let mesh_handler = Arc::new(MeshHandler::new());
 
         Self {
             service_registry,
@@ -77,6 +82,7 @@ impl IpcHandlers {
             availability_checker,
             coordination_validator,
             http_handler,
+            mesh_handler,
         }
     }
 
@@ -457,6 +463,35 @@ impl IpcHandlers {
     ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         self.http_handler.handle_delete(params).await
     }
+
+    // ========================================================================
+    // Mesh Networking APIs (GAP-16: Tower Atomic Validation)
+    // ========================================================================
+
+    /// Dispatch a `mesh.*` JSON-RPC method to the `MeshHandler`.
+    ///
+    /// Converts the `Result<Value, String>` return type from `MeshHandler` to
+    /// the `Result<Value, JsonRpcError>` expected by the UDS routing layer.
+    pub async fn mesh_dispatch(
+        &self,
+        method: songbird_types::json_rpc_method::MeshMethod,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        use songbird_types::json_rpc_method::MeshMethod;
+
+        let params = params.unwrap_or(serde_json::Value::Null);
+        let result: Result<serde_json::Value, String> = match method {
+            MeshMethod::Init => self.mesh_handler.handle_init(params).await,
+            MeshMethod::Status => self.mesh_handler.handle_status(params).await,
+            MeshMethod::FindPath => self.mesh_handler.handle_find_path(params).await,
+            MeshMethod::Announce => self.mesh_handler.handle_announce(params).await,
+            MeshMethod::Peers => self.mesh_handler.handle_peers(params).await,
+            MeshMethod::Topology => self.mesh_handler.handle_topology(params).await,
+            MeshMethod::HealthCheck => self.mesh_handler.handle_health_check(params).await,
+            MeshMethod::AutoDiscover => self.mesh_handler.handle_auto_discover(params).await,
+        };
+        result.map_err(|e| crate::ipc::pure_rust_server::JsonRpcError::internal_error(e))
+    }
 }
 
 #[cfg(test)]
@@ -466,7 +501,17 @@ mod ipc_handlers_tests {
     use crate::app::connection_manager::ConnectionManager;
     use crate::ipc::registry::ServiceRegistry;
     use songbird_http_client::SecurityRpcClient;
+    use songbird_types::json_rpc_method::MeshMethod;
     use std::sync::Arc;
+
+    fn test_handlers() -> IpcHandlers {
+        IpcHandlers::new(
+            Arc::new(ServiceRegistry::new()),
+            None,
+            Arc::new(ConnectionManager::new()),
+            Arc::new(SecurityRpcClient::new("/tmp/songbird-orchestrator-ipc-handlers-test.sock")),
+        )
+    }
 
     #[test]
     fn new_preserves_registry_and_connection_manager_arcs() {
@@ -482,5 +527,46 @@ mod ipc_handlers_tests {
         assert!(handlers.discovery_listener.is_none());
         assert_eq!(Arc::as_ptr(&handlers.service_registry), registry_ptr);
         assert_eq!(Arc::as_ptr(&handlers.connection_manager), connections_ptr);
+    }
+
+    #[tokio::test]
+    async fn mesh_status_requires_init() {
+        let handlers = test_handlers();
+        let result = handlers.mesh_dispatch(MeshMethod::Status, None).await;
+        assert!(result.is_err(), "mesh.status should fail before mesh.init");
+    }
+
+    #[tokio::test]
+    async fn mesh_status_works_after_init() {
+        let handlers = test_handlers();
+        let init_params = serde_json::json!({
+            "node_id": "tower-status-test",
+            "bootstrap_onions": []
+        });
+        handlers.mesh_dispatch(MeshMethod::Init, Some(init_params)).await.unwrap();
+        let result = handlers.mesh_dispatch(MeshMethod::Status, None).await;
+        assert!(result.is_ok());
+        let val = result.unwrap();
+        assert!(val.is_object(), "mesh.status should return a JSON object");
+    }
+
+    #[tokio::test]
+    async fn mesh_init_succeeds_with_valid_params() {
+        let handlers = test_handlers();
+        let params = serde_json::json!({
+            "node_id": "tower-test-node-12345678",
+            "bootstrap_onions": []
+        });
+        let result = handlers.mesh_dispatch(MeshMethod::Init, Some(params)).await;
+        assert!(result.is_ok());
+        let val = result.unwrap();
+        assert_eq!(val["initialized"], true);
+    }
+
+    #[tokio::test]
+    async fn mesh_init_fails_without_node_id() {
+        let handlers = test_handlers();
+        let result = handlers.mesh_dispatch(MeshMethod::Init, Some(serde_json::json!({}))).await;
+        assert!(result.is_err());
     }
 }

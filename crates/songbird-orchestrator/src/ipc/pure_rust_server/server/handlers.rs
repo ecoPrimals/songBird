@@ -102,6 +102,7 @@ impl UnixSocketServer {
                     .http_post(request.params.unwrap_or_else(|| serde_json::json!({})))
                     .await
             }
+            Ok(JsonRpcMethod::Mesh(m)) => self.handlers.mesh_dispatch(m, request.params).await,
             Ok(_) => Err(JsonRpcError::method_not_found(normalized)),
             Err(_) => match normalized {
                 "discover_by_family" => self.handlers.discover_by_family_json(request.params).await,

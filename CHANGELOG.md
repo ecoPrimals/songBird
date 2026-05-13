@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave204] - 2026-05-13 - GAP-16 Tower Atomic: mesh.* on canonical UDS
+
+### Added
+- **Mesh method dispatch on orchestrator UDS** (GAP-16): `mesh.init`, `mesh.status`, `mesh.find_path`, `mesh.announce`, `mesh.peers`, `mesh.topology`, `mesh.health_check`, `mesh.auto_discover` now routed through the canonical `songbird.sock` / `network.sock` socket. Previously these methods were only available on the TCP IPC transport — ludoSpring Tower atomic validation was blocked.
+- **`IpcHandlers::mesh_dispatch()`**: Single-entrypoint adapter mapping `MeshMethod` variants to `MeshHandler` with `Result<Value, String>` → `Result<Value, JsonRpcError>` conversion.
+- **15 new unit tests**: 11 socket-level routing tests covering full Tower atomic validation path (mesh init/status/peers/topology/health_check/auto_discover, capability.resolve, discover_capabilities, ipc.register, invalid jsonrpc version), 4 mesh handler dispatch unit tests.
+
+### Changed
+- `IpcHandlers` struct now holds `mesh_handler: Arc<MeshHandler>` — initialized as uninitialized handler, becomes active after `mesh.init` call.
+- `handle_jsonrpc_request` match expanded with `Ok(JsonRpcMethod::Mesh(m))` arm before catch-all.
+
+### Verified
+- 0 clippy warnings (full workspace `--exclude songbird-types -D warnings`)
+- 29 socket routing tests pass (24 in `server::tests` + 5 in `ipc_handlers_tests`)
+- `cargo fmt -- --check` clean
+
+---
+
 ## [v0.2.1-wave201] - 2026-05-12 - Pass 12/14 sentinel resolution: VPS relay + capability.resolve parity
 
 ### Added
