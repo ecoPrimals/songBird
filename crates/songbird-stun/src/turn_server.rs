@@ -27,13 +27,15 @@
 //!
 //! ## Authentication
 //!
-//! Credentials are verified via MESSAGE-INTEGRITY (HMAC-SHA1) using
-//! `BearDog`-derived beacon-tier keys. The server holds a `CredentialStore`
-//! that maps usernames to shared secrets.
+//! Credentials are verified via the `CredentialStore` trait which maps usernames
+//! to shared secrets. In production, keys are derived from `BearDog`'s
+//! beacon-tier crypto delegation.
+
+#[path = "turn_attrs.rs"]
+mod turn_attrs;
 
 use crate::error::{StunError, StunResult};
-use crate::message::{MAGIC_COOKIE, MessageType, StunAttribute, StunMessage};
-use bytes::{BufMut, BytesMut};
+use crate::message::{MessageType, StunAttribute, StunMessage};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -41,19 +43,11 @@ use std::time::{Duration, Instant};
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
+use turn_attrs::TurnAttrs;
 
 const DEFAULT_ALLOCATION_LIFETIME: u32 = 600;
 const MAX_ALLOCATION_LIFETIME: u32 = 3600;
 const CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
-
-/// Generate a random 12-byte STUN transaction ID.
-fn rand_transaction_id() -> [u8; 12] {
-    let mut tid = [0u8; 12];
-    for byte in &mut tid {
-        *byte = rand::random();
-    }
-    tid
-}
 
 /// Credential store for TURN authentication.
 ///
@@ -103,24 +97,14 @@ impl CredentialStore for StaticCredentialStore {
 
 /// A single TURN allocation.
 #[derive(Debug)]
-#[allow(
-    dead_code,
-    reason = "fields keep relay resources alive and model RFC 5766 allocation state"
-)]
+#[allow(dead_code, reason = "fields model RFC 5766 state; client_addr/relay_addr for diagnostics")]
 struct Allocation {
-    /// Username that owns this allocation.
     username: String,
-    /// Client transport address (where the client sends from).
     client_addr: SocketAddr,
-    /// Relay socket (bound to an ephemeral port, forwards to/from peers).
     relay_socket: Arc<UdpSocket>,
-    /// Relay address (the public-facing address peers send to).
     relay_addr: SocketAddr,
-    /// Permitted peer IP addresses.
     permissions: Vec<IpAddr>,
-    /// Channel bindings: channel number → peer address.
     channels: HashMap<u16, SocketAddr>,
-    /// When this allocation expires.
     expires_at: Instant,
 }
 
@@ -214,7 +198,6 @@ impl TurnRelayServer {
 
         let socket = Arc::new(socket);
 
-        // Spawn cleanup task
         let allocs = Arc::clone(&self.allocations);
         let stats_ref = Arc::clone(&self.stats);
         tokio::spawn(async move {
@@ -243,7 +226,6 @@ impl TurnRelayServer {
         data: &[u8],
         src_addr: SocketAddr,
     ) -> StunResult<()> {
-        // ChannelData detection: first two bytes in 0x4000..=0x7FFF are channel numbers
         if data.len() >= 4 {
             let first_two = u16::from_be_bytes([data[0], data[1]]);
             if (0x4000..=0x7FFF).contains(&first_two) {
@@ -251,7 +233,6 @@ impl TurnRelayServer {
             }
         }
 
-        // Try to decode as STUN/TURN message
         let msg = StunMessage::decode(data)?;
 
         match msg.message_type {
@@ -270,14 +251,13 @@ impl TurnRelayServer {
         }
     }
 
-    /// STUN Binding compatibility — respond with XOR-MAPPED-ADDRESS.
     async fn handle_binding(
         &self,
         socket: &Arc<UdpSocket>,
         request: &StunMessage,
         src_addr: SocketAddr,
     ) -> StunResult<()> {
-        let mut response = StunMessage {
+        let response = StunMessage {
             message_type: MessageType::BindingResponse,
             transaction_id: request.transaction_id,
             attributes: vec![
@@ -285,7 +265,6 @@ impl TurnRelayServer {
                 StunAttribute::MappedAddress(src_addr),
             ],
         };
-        let _ = &mut response;
         let wire = response.encode();
         socket
             .send_to(&wire, src_addr)
@@ -294,14 +273,12 @@ impl TurnRelayServer {
         Ok(())
     }
 
-    /// Handle Allocate request — create a relay allocation.
     async fn handle_allocate(
         &self,
         socket: &Arc<UdpSocket>,
         request: &StunMessage,
         src_addr: SocketAddr,
     ) -> StunResult<()> {
-        // Authenticate
         let username = match self.authenticate(request) {
             Ok(u) => u,
             Err(e) => {
@@ -320,7 +297,6 @@ impl TurnRelayServer {
             }
         };
 
-        // Check for existing allocation
         {
             let allocs = self.allocations.read().await;
             if allocs.contains_key(&src_addr) {
@@ -337,11 +313,9 @@ impl TurnRelayServer {
             }
         }
 
-        // Parse requested lifetime
-        let lifetime = Self::parse_lifetime(request).unwrap_or(DEFAULT_ALLOCATION_LIFETIME);
+        let lifetime = TurnAttrs::parse_lifetime(request).unwrap_or(DEFAULT_ALLOCATION_LIFETIME);
         let lifetime = lifetime.min(MAX_ALLOCATION_LIFETIME);
 
-        // Bind relay socket
         let relay_socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
             .await
             .map_err(|e| StunError::Network(format!("relay socket bind: {e}")))?;
@@ -355,7 +329,6 @@ impl TurnRelayServer {
 
         let relay_socket = Arc::new(relay_socket);
 
-        // Spawn relay forwarder
         let fwd_socket = Arc::clone(socket);
         let fwd_relay = Arc::clone(&relay_socket);
         let fwd_client = src_addr;
@@ -366,7 +339,6 @@ impl TurnRelayServer {
                 .await;
         });
 
-        // Store allocation
         {
             let mut allocs = self.allocations.write().await;
             allocs.insert(
@@ -389,10 +361,7 @@ impl TurnRelayServer {
             stats.active_allocations += 1;
         }
 
-        // Build success response
-        let server_addr = socket.local_addr().unwrap_or(self.bind_addr);
-        let response =
-            Self::build_allocate_success(request, src_addr, relay_addr, server_addr, lifetime);
+        let response = TurnAttrs::build_allocate_success(request, src_addr, relay_addr, lifetime);
         let wire = response.encode();
         socket
             .send_to(&wire, src_addr)
@@ -402,7 +371,6 @@ impl TurnRelayServer {
         Ok(())
     }
 
-    /// Handle Refresh — extend or release allocation.
     async fn handle_refresh(
         &self,
         socket: &Arc<UdpSocket>,
@@ -414,7 +382,7 @@ impl TurnRelayServer {
                 socket,
                 request,
                 src_addr,
-                MessageType::RefreshSuccess,
+                MessageType::RefreshError,
                 401,
                 "Unauthorized",
             )
@@ -422,7 +390,7 @@ impl TurnRelayServer {
             return Ok(());
         }
 
-        let lifetime = Self::parse_lifetime(request).unwrap_or(DEFAULT_ALLOCATION_LIFETIME);
+        let lifetime = TurnAttrs::parse_lifetime(request).unwrap_or(DEFAULT_ALLOCATION_LIFETIME);
 
         let mut allocs = self.allocations.write().await;
         if let Some(alloc) = allocs.get_mut(&src_addr) {
@@ -439,7 +407,7 @@ impl TurnRelayServer {
         }
         drop(allocs);
 
-        let response = Self::build_lifetime_response(
+        let response = TurnAttrs::build_lifetime_response(
             request,
             MessageType::RefreshSuccess,
             lifetime.min(MAX_ALLOCATION_LIFETIME),
@@ -452,7 +420,6 @@ impl TurnRelayServer {
         Ok(())
     }
 
-    /// Handle CreatePermission — allow a peer IP through the relay.
     async fn handle_create_permission(
         &self,
         socket: &Arc<UdpSocket>,
@@ -463,18 +430,7 @@ impl TurnRelayServer {
             return Ok(());
         }
 
-        // Extract XOR-PEER-ADDRESS from Unknown(0x0012, ...)
-        let peer_ip = request.attributes.iter().find_map(|attr| {
-            if let StunAttribute::Unknown(0x0012, data) = attr {
-                StunAttribute::decode_address(data, Some(MAGIC_COOKIE), &request.transaction_id)
-                    .ok()
-                    .map(|addr| addr.ip())
-            } else {
-                None
-            }
-        });
-
-        if let Some(ip) = peer_ip {
+        if let Some(ip) = TurnAttrs::parse_peer_addr(request).map(|a| a.ip()) {
             let mut allocs = self.allocations.write().await;
             if let Some(alloc) = allocs.get_mut(&src_addr) {
                 if !alloc.permissions.contains(&ip) {
@@ -497,7 +453,6 @@ impl TurnRelayServer {
         Ok(())
     }
 
-    /// Handle ChannelBind — map a channel number to a peer address.
     async fn handle_channel_bind(
         &self,
         socket: &Arc<UdpSocket>,
@@ -508,26 +463,8 @@ impl TurnRelayServer {
             return Ok(());
         }
 
-        let channel = request.attributes.iter().find_map(|attr| {
-            if let StunAttribute::Unknown(0x000C, data) = attr {
-                if data.len() >= 2 {
-                    Some(u16::from_be_bytes([data[0], data[1]]))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        });
-
-        let peer_addr = request.attributes.iter().find_map(|attr| {
-            if let StunAttribute::Unknown(0x0012, data) = attr {
-                StunAttribute::decode_address(data, Some(MAGIC_COOKIE), &request.transaction_id)
-                    .ok()
-            } else {
-                None
-            }
-        });
+        let channel = TurnAttrs::parse_channel(request);
+        let peer_addr = TurnAttrs::parse_peer_addr(request);
 
         if let (Some(ch), Some(peer)) = (channel, peer_addr) {
             let mut allocs = self.allocations.write().await;
@@ -550,33 +487,17 @@ impl TurnRelayServer {
         Ok(())
     }
 
-    /// Handle Send Indication (RFC 5766 §10) — client→peer data relay.
-    ///
-    /// Extracts XOR-PEER-ADDRESS and DATA attributes, checks permissions,
-    /// and forwards the data from the allocation's relay socket to the peer.
     async fn handle_send_indication(
         &self,
         msg: &StunMessage,
         src_addr: SocketAddr,
     ) -> StunResult<()> {
-        let peer_addr = msg.attributes.iter().find_map(|attr| {
-            if let StunAttribute::Unknown(0x0012, data) = attr {
-                StunAttribute::decode_address(data, Some(MAGIC_COOKIE), &msg.transaction_id).ok()
-            } else {
-                None
-            }
-        });
-
-        let payload = msg.attributes.iter().find_map(|attr| {
-            if let StunAttribute::Unknown(0x0013, data) = attr {
-                Some(data.as_ref())
-            } else {
-                None
-            }
-        });
-
-        let (Some(peer), Some(data)) = (peer_addr, payload) else {
-            debug!("TURN: SendIndication missing XOR-PEER-ADDRESS or DATA from {src_addr}");
+        let Some(peer) = TurnAttrs::parse_peer_addr(msg) else {
+            debug!("TURN: SendIndication missing XOR-PEER-ADDRESS from {src_addr}");
+            return Ok(());
+        };
+        let Some(payload) = TurnAttrs::parse_data(msg) else {
+            debug!("TURN: SendIndication missing DATA from {src_addr}");
             return Ok(());
         };
 
@@ -591,18 +512,15 @@ impl TurnRelayServer {
             return Ok(());
         }
 
-        if alloc.relay_socket.send_to(data, peer).await.is_ok() {
+        if alloc.relay_socket.send_to(payload, peer).await.is_ok() {
             let mut s = self.stats.write().await;
             s.packets_relayed += 1;
-            s.bytes_relayed += data.len() as u64;
+            s.bytes_relayed += payload.len() as u64;
         }
 
         Ok(())
     }
 
-    /// Handle ChannelData (RFC 5766 §11.6) — framed client→peer relay via channel binding.
-    ///
-    /// Format: `[2B channel][2B length][payload]`
     async fn handle_channel_data(&self, data: &[u8], src_addr: SocketAddr) -> StunResult<()> {
         if data.len() < 4 {
             return Ok(());
@@ -643,9 +561,8 @@ impl TurnRelayServer {
         Ok(())
     }
 
-    // --- Internal helpers ---
+    // ── Internal helpers ─────────────────────────────────────────────────
 
-    /// Verify MESSAGE-INTEGRITY against the credential store.
     fn authenticate(&self, msg: &StunMessage) -> StunResult<String> {
         let username = msg
             .attributes
@@ -667,100 +584,20 @@ impl TurnRelayServer {
         Ok(username)
     }
 
-    fn parse_lifetime(msg: &StunMessage) -> Option<u32> {
-        msg.attributes.iter().find_map(|attr| {
-            if let StunAttribute::Unknown(0x000D, data) = attr {
-                if data.len() >= 4 {
-                    Some(u32::from_be_bytes([data[0], data[1], data[2], data[3]]))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    fn build_allocate_success(
-        request: &StunMessage,
-        client_addr: SocketAddr,
-        relay_addr: SocketAddr,
-        server_addr: SocketAddr,
-        lifetime: u32,
-    ) -> StunMessage {
-        let mut attrs: Vec<StunAttribute> = Vec::new();
-
-        // XOR-MAPPED-ADDRESS (client's reflexive address)
-        attrs.push(StunAttribute::XorMappedAddress(client_addr));
-
-        // XOR-RELAYED-ADDRESS (0x0016)
-        let mut relay_buf = BytesMut::new();
-        relay_buf.put_u8(0); // reserved
-        match relay_addr {
-            SocketAddr::V4(_) => relay_buf.put_u8(0x01),
-            SocketAddr::V6(_) => relay_buf.put_u8(0x02),
-        }
-        let port = relay_addr.port() ^ (MAGIC_COOKIE >> 16) as u16;
-        relay_buf.put_u16(port);
-        match relay_addr.ip() {
-            IpAddr::V4(ip) => {
-                let xored = u32::from(ip) ^ MAGIC_COOKIE;
-                relay_buf.put_u32(xored);
-            }
-            IpAddr::V6(ip) => {
-                let mut xor_pad = [0u8; 16];
-                xor_pad[..4].copy_from_slice(&MAGIC_COOKIE.to_be_bytes());
-                xor_pad[4..].copy_from_slice(&request.transaction_id);
-                let raw = ip.octets();
-                for i in 0..16 {
-                    relay_buf.put_u8(raw[i] ^ xor_pad[i]);
-                }
-            }
-        }
-        attrs.push(StunAttribute::Unknown(0x0016, relay_buf.freeze()));
-
-        // LIFETIME (0x000D)
-        let mut lt_buf = BytesMut::with_capacity(4);
-        lt_buf.put_u32(lifetime);
-        attrs.push(StunAttribute::Unknown(0x000D, lt_buf.freeze()));
-
-        let _ = server_addr; // reserved for SOFTWARE attribute if needed
-
-        StunMessage {
-            message_type: MessageType::AllocateSuccess,
-            transaction_id: request.transaction_id,
-            attributes: attrs,
-        }
-    }
-
-    fn build_lifetime_response(
-        request: &StunMessage,
-        msg_type: MessageType,
-        lifetime: u32,
-    ) -> StunMessage {
-        let mut lt_buf = BytesMut::with_capacity(4);
-        lt_buf.put_u32(lifetime);
-
-        StunMessage {
-            message_type: msg_type,
-            transaction_id: request.transaction_id,
-            attributes: vec![StunAttribute::Unknown(0x000D, lt_buf.freeze())],
-        }
-    }
-
+    /// Send a STUN error response with a proper ERROR-CODE attribute (RFC 5389 §15.6).
     async fn send_error(
         &self,
         socket: &Arc<UdpSocket>,
         request: &StunMessage,
         dst: SocketAddr,
         error_type: MessageType,
-        _code: u16,
-        _reason: &str,
+        code: u16,
+        reason: &str,
     ) -> StunResult<()> {
         let response = StunMessage {
             message_type: error_type,
             transaction_id: request.transaction_id,
-            attributes: Vec::new(),
+            attributes: vec![TurnAttrs::build_error_code(code, reason)],
         };
         let wire = response.encode();
         socket
@@ -771,9 +608,6 @@ impl TurnRelayServer {
     }
 
     /// Forward data from relay socket back to the client via the main socket.
-    ///
-    /// If a channel binding exists for the peer, sends ChannelData frame.
-    /// Otherwise wraps in a TURN Data Indication (RFC 5766 §10).
     async fn relay_forward_loop(
         relay_socket: Arc<UdpSocket>,
         main_socket: Arc<UdpSocket>,
@@ -794,14 +628,13 @@ impl TurnRelayServer {
                     continue;
                 }
 
-                // Check for channel binding → ChannelData frame
                 let channel =
                     alloc.channels.iter().find(|&(_, &addr)| addr == peer_addr).map(|(&ch, _)| ch);
 
                 if let Some(ch) = channel {
-                    bytes::Bytes::from(Self::build_channel_data(ch, &buf[..len]))
+                    bytes::Bytes::from(TurnAttrs::build_channel_data(ch, &buf[..len]))
                 } else {
-                    Self::build_data_indication(peer_addr, &buf[..len])
+                    TurnAttrs::build_data_indication(peer_addr, &buf[..len])
                 }
             };
 
@@ -811,58 +644,6 @@ impl TurnRelayServer {
                 s.bytes_relayed += len as u64;
             }
         }
-    }
-
-    /// Build a ChannelData frame: `[2B channel][2B length][payload]`
-    fn build_channel_data(channel: u16, data: &[u8]) -> Vec<u8> {
-        let len = u16::try_from(data.len()).unwrap_or(u16::MAX);
-        let mut frame = Vec::with_capacity(4 + data.len());
-        frame.extend_from_slice(&channel.to_be_bytes());
-        frame.extend_from_slice(&len.to_be_bytes());
-        frame.extend_from_slice(data);
-        frame
-    }
-
-    /// Build a Data Indication (RFC 5766 §10): XOR-PEER-ADDRESS + DATA.
-    fn build_data_indication(peer_addr: SocketAddr, data: &[u8]) -> bytes::Bytes {
-        let transaction_id = rand_transaction_id();
-        let mut attrs: Vec<StunAttribute> = Vec::new();
-
-        // XOR-PEER-ADDRESS (0x0012)
-        let mut peer_buf = BytesMut::new();
-        peer_buf.put_u8(0); // reserved
-        match peer_addr {
-            SocketAddr::V4(_) => peer_buf.put_u8(0x01),
-            SocketAddr::V6(_) => peer_buf.put_u8(0x02),
-        }
-        let port = peer_addr.port() ^ (MAGIC_COOKIE >> 16) as u16;
-        peer_buf.put_u16(port);
-        match peer_addr.ip() {
-            IpAddr::V4(ip) => {
-                let xored = u32::from(ip) ^ MAGIC_COOKIE;
-                peer_buf.put_u32(xored);
-            }
-            IpAddr::V6(ip) => {
-                let mut xor_pad = [0u8; 16];
-                xor_pad[..4].copy_from_slice(&MAGIC_COOKIE.to_be_bytes());
-                xor_pad[4..].copy_from_slice(&transaction_id);
-                let raw = ip.octets();
-                for i in 0..16 {
-                    peer_buf.put_u8(raw[i] ^ xor_pad[i]);
-                }
-            }
-        }
-        attrs.push(StunAttribute::Unknown(0x0012, peer_buf.freeze()));
-
-        // DATA (0x0013)
-        attrs.push(StunAttribute::Unknown(0x0013, bytes::Bytes::copy_from_slice(data)));
-
-        let msg = StunMessage {
-            message_type: MessageType::DataIndication,
-            transaction_id,
-            attributes: attrs,
-        };
-        msg.encode()
     }
 
     /// Periodic cleanup of expired allocations.

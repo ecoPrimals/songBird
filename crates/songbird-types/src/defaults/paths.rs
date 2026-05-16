@@ -13,10 +13,12 @@ use std::path::PathBuf;
 /// Subdirectory under `XDG_RUNTIME_DIR` or `/run/user/<uid>/` for biomeOS sockets
 pub const BIOMEOS_RUNTIME_SUBDIR: &str = "biomeos";
 
-/// Legacy security provider socket filename (deprecated; retained for migration).
+/// Legacy security provider socket filename (retained for migration scan).
 ///
 /// Code scanning for this name should use this constant rather than the
 /// raw string `"beardog.sock"` so we can track and eventually remove it.
+/// Capability-based discovery uses `security.sock` and `crypto.sock`.
+#[deprecated(since = "0.2.1", note = "use capability-based 'security.sock' or 'crypto.sock'")]
 pub const LEGACY_SECURITY_SOCKET_FILENAME: &str = "beardog.sock";
 
 /// Crypto/security provider socket basenames (XDG scan order: crypto first)
@@ -33,9 +35,11 @@ pub const CRYPTO_PROVIDER_SOCKET_FILENAMES_UID: &[&str] = &["security.sock", "cr
 pub const NEURAL_API_CAPABILITY_SOCKET_FILENAMES: &[&str] = &["ai.sock", "neural-api.sock"];
 
 /// Legacy AI/coordination provider socket filename (Squirrel).
+#[deprecated(since = "0.2.1", note = "use capability-based 'ai.sock' or 'neural-api.sock'")]
 pub const LEGACY_AI_SOCKET_FILENAME: &str = "squirrel.sock";
 
 /// Legacy compute provider socket filename (toadStool).
+#[deprecated(since = "0.2.1", note = "use capability-based 'compute.sock' or 'bridge.sock'")]
 pub const LEGACY_COMPUTE_SOCKET_FILENAME: &str = "toadstool.sock";
 
 /// `/run/user/{uid}/biomeos/{socket_filename}` for UID-based socket discovery
@@ -58,6 +62,7 @@ pub fn security_socket_tmp_fallback_path() -> PathBuf {
 
 /// Legacy on-disk filename `{temp}/beardog.sock` (older security deployments; filename retained on disk).
 #[must_use]
+#[allow(deprecated, reason = "intentional backward-compat fallback path")]
 pub fn security_socket_legacy_tmp_path() -> PathBuf {
     std::env::temp_dir().join(LEGACY_SECURITY_SOCKET_FILENAME)
 }
@@ -154,7 +159,9 @@ pub fn ipc_discovery_primal_port_path(primal_name: &str) -> PathBuf {
 #[must_use]
 pub fn coordination_socket_candidates() -> [PathBuf; 3] {
     let b = biomeos_socket_dir_tmp();
-    [b.join("ai.sock"), b.join("neural-api.sock"), b.join(LEGACY_AI_SOCKET_FILENAME)]
+    #[allow(deprecated, reason = "intentional backward-compat fallback path")]
+    let legacy = LEGACY_AI_SOCKET_FILENAME;
+    [b.join("ai.sock"), b.join("neural-api.sock"), b.join(legacy)]
 }
 
 /// AI capability provider socket fallbacks (alias for [`coordination_socket_candidates`]).
@@ -181,12 +188,11 @@ pub fn ai_provider_socket_legacy_path(family_id: &str) -> PathBuf {
 #[must_use]
 pub fn compute_socket_candidates() -> [PathBuf; 4] {
     let b = biomeos_socket_dir_tmp();
-    [
-        b.join("compute.sock"),
-        b.join("bridge.sock"),
-        std::env::temp_dir().join("compute.sock"),
-        b.join(LEGACY_COMPUTE_SOCKET_FILENAME),
-    ]
+    [b.join("compute.sock"), b.join("bridge.sock"), std::env::temp_dir().join("compute.sock"), {
+        #[allow(deprecated, reason = "intentional backward-compat fallback path")]
+        let legacy = LEGACY_COMPUTE_SOCKET_FILENAME;
+        b.join(legacy)
+    }]
 }
 
 /// `{temp}/crypto-{family_id}.sock` (family-scoped crypto socket fallback).

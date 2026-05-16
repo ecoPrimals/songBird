@@ -408,55 +408,6 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     Err(AuthError::InvalidToken)
 }
 
-/// Validate 2FA via security provider hardware key service
-#[allow(dead_code, reason = "reserved for security-provider 2FA path wiring")]
-async fn validate_security_provider_2fa(
-    user_id: &str,
-    token: &str,
-    security_endpoint: &str,
-) -> Result<(), AuthError> {
-    tracing::info!("Validating hardware key via security provider for user '{}'", user_id);
-
-    // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
-    let crypto_socket = crate::primal_discovery::discover_crypto_provider()
-        .await
-        .map_err(|_| AuthError::InvalidToken)?;
-
-    let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
-
-    // Prepare validation request
-    let validation_request = serde_json::json!({
-        "user_id": user_id,
-        "token": token,
-        "auth_type": "webauthn"
-    });
-
-    // Send validation request
-    let response = tokio::time::timeout(
-        songbird_types::defaults::timeouts::DEFAULT_REQUEST_TIMEOUT,
-        client.post(&format!("{security_endpoint}/auth/validate"), validation_request),
-    )
-    .await
-    .map_err(|_| AuthError::InvalidToken)?
-    .map_err(|e| {
-        tracing::error!("security provider 2FA validation failed: {}", e);
-        AuthError::InvalidToken
-    })?;
-
-    // Check response
-    if response.status >= 200 && response.status < 300 {
-        tracing::info!("security provider 2FA validation successful for user '{}'", user_id);
-        Ok(())
-    } else {
-        tracing::warn!(
-            "security provider 2FA validation failed for user '{}': HTTP {}",
-            user_id,
-            response.status
-        );
-        Err(AuthError::InvalidToken)
-    }
-}
-
 /// Validate TOTP token (Time-based One-Time Password - RFC 6238)
 fn validate_totp_token(user_id: &str, token: &str, totp_secret: &str) -> Result<(), AuthError> {
     // NOTE: Full TOTP implementation would use totp-rs crate

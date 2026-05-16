@@ -29,6 +29,7 @@ pub use self::server::run_server;
 // Module declarations
 mod config;
 mod doctor;
+mod ipc_session;
 mod server;
 
 /// Server mode arguments

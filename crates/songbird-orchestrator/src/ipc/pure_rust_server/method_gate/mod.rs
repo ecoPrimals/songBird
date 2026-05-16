@@ -34,7 +34,9 @@ pub use gate::{
     EnforcementMode, MethodGate, dispatch_auth_method, handle_auth_check, handle_auth_mode,
     handle_auth_peer_info, is_gate_handled_method,
 };
-pub use token::{BearDogVerifier, NoopVerifier, TokenClaims, TokenVerifier, TokenVerifyError};
+#[cfg(test)]
+pub use token::NoopVerifier;
+pub use token::{BearDogVerifier, TokenClaims, TokenVerifier, TokenVerifyError};
 
 /// Server-defined error codes (JSON-RPC 2.0 range: -32000 to -32099).
 pub mod error_codes {

@@ -30,17 +30,26 @@ pub enum MessageType {
     /// TURN Refresh Success (0x0104)
     RefreshSuccess,
 
+    /// TURN Refresh Error (0x0114)
+    RefreshError,
+
     /// TURN `CreatePermission` (0x0008 — RFC 5766 §9)
     CreatePermission,
 
     /// TURN `CreatePermission` Success (0x0108)
     CreatePermissionSuccess,
 
+    /// TURN `CreatePermission` Error (0x0118)
+    CreatePermissionError,
+
     /// TURN `ChannelBind` (0x0009 — RFC 5766 §11)
     ChannelBind,
 
     /// TURN `ChannelBind` Success (0x0109)
     ChannelBindSuccess,
+
+    /// TURN `ChannelBind` Error (0x0119)
+    ChannelBindError,
 
     /// TURN Send Indication (0x0016 — RFC 5766 §10)
     SendIndication,
@@ -62,10 +71,13 @@ impl MessageType {
             Self::AllocateError => 0x0113,
             Self::Refresh => 0x0004,
             Self::RefreshSuccess => 0x0104,
+            Self::RefreshError => 0x0114,
             Self::CreatePermission => 0x0008,
             Self::CreatePermissionSuccess => 0x0108,
+            Self::CreatePermissionError => 0x0118,
             Self::ChannelBind => 0x0009,
             Self::ChannelBindSuccess => 0x0109,
+            Self::ChannelBindError => 0x0119,
             Self::SendIndication => 0x0016,
             Self::DataIndication => 0x0017,
         }
@@ -86,10 +98,13 @@ impl MessageType {
             0x0113 => Ok(Self::AllocateError),
             0x0004 => Ok(Self::Refresh),
             0x0104 => Ok(Self::RefreshSuccess),
+            0x0114 => Ok(Self::RefreshError),
             0x0008 => Ok(Self::CreatePermission),
             0x0108 => Ok(Self::CreatePermissionSuccess),
+            0x0118 => Ok(Self::CreatePermissionError),
             0x0009 => Ok(Self::ChannelBind),
             0x0109 => Ok(Self::ChannelBindSuccess),
+            0x0119 => Ok(Self::ChannelBindError),
             0x0016 => Ok(Self::SendIndication),
             0x0017 => Ok(Self::DataIndication),
             _ => Err(StunError::InvalidResponse(format!("Unknown message type: 0x{value:04x}"))),

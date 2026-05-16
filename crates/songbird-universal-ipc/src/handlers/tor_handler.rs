@@ -128,12 +128,13 @@ impl TorHandler {
                     if primary.exists() {
                         return Some(primary.to_string_lossy().into_owned());
                     }
-                    let legacy = biomeos_dir
-                        .join(songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME);
+                    #[allow(deprecated, reason = "intentional backward-compat fallback path")]
+                    let legacy_name =
+                        songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME;
+                    let legacy = biomeos_dir.join(legacy_name);
                     if legacy.exists() {
                         tracing::warn!(
-                            "{} is deprecated — migrate to security.sock or SECURITY_PROVIDER_SOCKET",
-                            songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME,
+                            "{legacy_name} is deprecated — migrate to security.sock or SECURITY_PROVIDER_SOCKET",
                         );
                         return Some(legacy.to_string_lossy().into_owned());
                     }

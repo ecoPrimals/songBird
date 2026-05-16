@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave206] - 2026-05-15 - Deep Debt Cleanup: Smart Refactors, Bug Fixes, Production Hardening
+
+### Fixed
+- **Bug: `handle_refresh` used `RefreshSuccess` as error message type** — now correctly uses `RefreshError` (0x0114).
+- **Bug: `send_error()` discarded error code and reason** — now emits proper ERROR-CODE attribute (RFC 5389 §15.6) with class/number and reason phrase.
+
+### Refactored
+- **`turn_server.rs`: 898L → 679L** — Extracted `turn_attrs.rs` (281L) with shared TURN attribute parsing/construction helpers. Deduplicated XOR address encoding (was duplicated between `build_allocate_success` and `build_data_indication`, now uses single `encode_xor_peer_address`). Centralized RFC 5766 attribute type codes as named constants.
+- **`bin_interface/server.rs`: 878L → 360L** — Extracted `ipc_session.rs` (317L) for per-connection protocol stack (BTSP auto-detect, JSON-RPC dispatch, encrypted framing). Extracted `server_tests.rs` (151L). Created shared `dispatch_gated()` function that unifies bearer token extraction + method gate + handler dispatch across plaintext and encrypted sessions (was duplicated in two places).
+
+### Added
+- **`MessageType::RefreshError` (0x0114)**, **`CreatePermissionError` (0x0118)**, **`ChannelBindError` (0x0119)** — RFC 5766 error response types for TURN operations.
+- **`TurnAttrs::build_error_code()`** — RFC 5389 §15.6 compliant ERROR-CODE attribute builder.
+- **`TurnAttrs::parse_peer_addr()`, `parse_lifetime()`, `parse_channel()`, `parse_data()`** — Centralized attribute extraction replacing 5 inline `Unknown(0x00XX, ...)` patterns.
+- **10 new unit tests in `turn_attrs.rs`** — lifecycle roundtrip, error code formatting, wire value verification.
+
+### Changed
+- **`NoopVerifier` gated behind `#[cfg(test)]`** — no longer available in production builds; production must wire `BearDogVerifier`.
+- **Legacy socket constants deprecated**: `LEGACY_SECURITY_SOCKET_FILENAME`, `LEGACY_COMPUTE_SOCKET_FILENAME`, `LEGACY_AI_SOCKET_FILENAME` all marked `#[deprecated]` with guidance to use capability-based `security.sock`, `compute.sock`, `ai.sock`. All 5 backward-compat call sites annotated with `allow(deprecated, reason = ...)`.
+
+### Removed
+- **Dead function `validate_security_provider_2fa`** — zero call sites, never wired.
+- **Dead function `integrate_plugins`** — zero call sites in composition engine.
+- **Dead function `check_system_health`** in registry — zero call sites (note: distinct from `server/mod.rs` health check which is live).
+- **Dead function `calculate_metrics`** — empty no-op, zero call sites.
+- **Dead function `is_allocated`** — zero call sites.
+
+### Verified
+- 0 clippy warnings (workspace `--exclude songbird-types -D warnings`)
+- All existing tests pass across `songbird-stun`, `songbird-orchestrator`, `songbird-registry`
+- `cargo fmt -- --check` clean
+
+---
+
 ## [v0.2.1-wave205] - 2026-05-15 - UB-1 songbird-turn-client crate + primal.announce adoption
 
 ### Added

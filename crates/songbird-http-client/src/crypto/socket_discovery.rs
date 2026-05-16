@@ -433,6 +433,7 @@ pub fn discover_security_socket() -> String {
         return temp_biomeos_security.to_string_lossy().into_owned();
     }
 
+    #[allow(deprecated, reason = "intentional backward-compat fallback path")]
     let legacy =
         std::env::temp_dir().join(songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME);
     warn!(

@@ -243,44 +243,6 @@ impl DynamicPluginRegistry {
         Ok(combinations)
     }
 
-    /// Integrate two plugins
-    #[allow(dead_code, reason = "called by composition engine when plugin integration is requested")]
-    async fn integrate_plugins(&self, plugin_a: &str, plugin_b: &str) -> SongbirdResult<String> {
-        let integration_id = format!("{}_{plugin_b}", plugin_a);
-
-        // Event broadcasting removed - would need to be implemented differently
-        tracing::info!("Integrated plugins {} and {}", plugin_a, plugin_b);
-
-        Ok(integration_id)
-    }
-
-    /// Check system health for given plugins
-    #[allow(dead_code, reason = "health aggregation for composition dashboard; wired when lifecycle.composition ships")]
-    async fn check_system_health(&self, plugin_ids: &[String]) -> SongbirdResult<SystemHealth> {
-        let plugins = self.plugins.read().await;
-        let mut plugin_health = HashMap::new();
-        let mut all_healthy = true;
-
-        for plugin_id in plugin_ids {
-            if let Some(plugin) = plugins.get(plugin_id) {
-                plugin_health.insert(plugin_id.clone(), plugin.healthy);
-                if !plugin.healthy {
-                    all_healthy = false;
-                    tracing::warn!("Plugin '{}' is unhealthy", plugin_id);
-                }
-            } else {
-                plugin_health.insert(plugin_id.clone(), false);
-                all_healthy = false;
-                tracing::warn!("Plugin '{}' not found in registry", plugin_id);
-            }
-        }
-
-        Ok(SystemHealth {
-            overall_healthy: all_healthy && !plugin_ids.is_empty(),
-            plugin_health,
-            integration_health: HashMap::new(),
-        })
-    }
 }
 
 impl Default for DynamicPluginRegistry {

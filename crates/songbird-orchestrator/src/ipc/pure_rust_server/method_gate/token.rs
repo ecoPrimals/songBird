@@ -46,11 +46,15 @@ pub trait TokenVerifier: Send + Sync {
     ) -> impl std::future::Future<Output = Result<TokenClaims, TokenVerifyError>> + Send;
 }
 
-/// Verifier that always returns `NotConfigured` — used in tests and when
-/// no security provider is available.
+/// Verifier that always returns `NotConfigured` — test-only.
+///
+/// Gated behind `#[cfg(test)]` to prevent accidental use in production
+/// binaries. Production code should always wire [`BearDogVerifier`].
+#[cfg(test)]
 #[derive(Debug, Clone, Copy)]
 pub struct NoopVerifier;
 
+#[cfg(test)]
 impl TokenVerifier for NoopVerifier {
     async fn verify(&self, _token: &str) -> Result<TokenClaims, TokenVerifyError> {
         Err(TokenVerifyError::NotConfigured)

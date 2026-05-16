@@ -577,6 +577,3 @@ mod tests {
         assert!(json.is_ok());
     }
 }
-
-#[allow(dead_code, reason = "QoS metrics calculation hook reserved; callers not wired yet")]
-const fn calculate_metrics() {}
