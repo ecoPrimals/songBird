@@ -17,11 +17,11 @@
 | **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 31 crates compile clean (~43s dev) |
-| **Clippy Pedantic** | 30/30 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, May 6 verified) |
-| **Format** | Clean (`cargo fmt --check` passes; May 6 verified) |
+| **Clippy Pedantic** | 31/31 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, May 15 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; May 15 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | **0** — Wave 206: `bin_interface/server.rs` (878L → 360L via `ipc_session.rs` extraction + `server_tests.rs`), `turn_server.rs` (898L → 679L via `turn_attrs.rs` extraction); largest: `primal_discovery.rs` 763L; Wave 200: `method_gate.rs` (944L) → directory module; Wave 176: `information_layers.rs` (1121L) → directory module; Wave 133: 4 former >700L files refactored |
-| **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 30 crates |
+| **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 31 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |
 | **Production `panic!()`** | 0 |
@@ -40,7 +40,7 @@
 | **`async-trait`** | **0** annotations, dependency fully removed from workspace (Wave 145). 141→0: every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. No crate depends on `async-trait`. SB-06 resolved. Wave 155: eliminated 6 more production `dyn` sites (iterator, error, future, plugin, composable, callback). Remaining `dyn`: architectural `dyn Stream` (async watch), `Box<dyn SerialPort>` (external crate), `Arc<dyn Fn>` (test injection) |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented) |
 | **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
-| **Total Rust** | ~421,000 lines across 30 crates (1,609 files) |
+| **Total Rust** | ~422,000 lines across 31 crates |
 | **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented; Wave 143: content distribution federation wired (`ContentAnnouncementStore`, `discovery.content_peers`, seeder/leecher coordination), `ring` deny.toml updated; Wave 145: `async-trait` fully eliminated (SB-06 resolved); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139); **Phase 45c** BTSP wire-format fixes completed Wave 160: server.rs refactored with BTSP auto-detection (first-line peek routes `"protocol":"btsp"` → NDJSON handshake), `btsp.session.*` RPC mappings added |
 
 ---

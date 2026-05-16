@@ -2,7 +2,7 @@
 ## Universal Gateway Clients for JSON-RPC API
 
 **Version**: 0.2.1  
-**Last Updated**: April 15, 2026  
+**Last Updated**: May 15, 2026  
 **Status**: ✅ Production Ready
 
 ---
@@ -485,9 +485,9 @@ health = client.health()  # ✅ Correct
 
 ## 📖 Additional Resources
 
-- **Quick Start Guide**: [docs/JSONRPC_QUICKSTART.md](../../docs/JSONRPC_QUICKSTART.md)
-- **Full Specification**: [specs/PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md](../../specs/PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md)
-- **Architecture**: [specs/ECOPRIMALS_ARCHITECTURE_CLARITY.md](../../specs/ECOPRIMALS_ARCHITECTURE_CLARITY.md)
+- **Environment Variables**: [docs/ENVIRONMENT_VARIABLES.md](../../docs/ENVIRONMENT_VARIABLES.md)
+- **Sovereign Multipath**: [specs/SOVEREIGN_MULTIPATH_PROTOCOL.md](../../specs/SOVEREIGN_MULTIPATH_PROTOCOL.md)
+- **Architecture Spec**: [specs/archived/ECOPRIMALS_ARCHITECTURE_CLARITY.md](../../specs/archived/ECOPRIMALS_ARCHITECTURE_CLARITY.md)
 - **JSON-RPC 2.0 Spec**: https://www.jsonrpc.org/specification
 
 ---

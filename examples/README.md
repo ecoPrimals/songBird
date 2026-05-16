@@ -31,6 +31,6 @@ cargo run --example ipc_client_primal
 
 - `config/` — Example TOML configurations for capability discovery, ecosystem integration, and security provider delegation
 
-## Experimental
+## Provider Configuration
 
-- `future/` — Experimental/proposed API patterns (may not compile against current workspace)
+- `provider-configs/` — Example provider configurations for orchestrator startup

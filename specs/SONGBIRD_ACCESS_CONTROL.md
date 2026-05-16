@@ -1,8 +1,9 @@
 # Songbird Access Control Specification
 
-**Status:** Design - Implementation Planned Q1 2025  
-**Version:** 0.2.0  
+**Status:** Implemented (MethodGate + BTSP Phase 3, Waves 180–206)  
+**Version:** 0.2.1  
 **Dependencies:** None (Standalone), Enhanced by Security Provider  
+**Note (May 2026):** This spec is a design fossil. The production implementation is `MethodGate` (see `crates/songbird-orchestrator/src/ipc/pure_rust_server/method_gate/`). Access control is enforced via `SONGBIRD_AUTH_MODE`, bearer token verification through BearDog's `auth.verify_ionic`, and transport-aware `CallerContext`. See `SECURITY.md` for the current posture.  
 
 ---
 

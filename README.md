@@ -4,7 +4,7 @@
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: May 12, 2026
+**Last Updated**: May 15, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -12,7 +12,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 
 | Metric | Value |
 |--------|-------|
-| Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 30 crates; zero `unsafe` blocks) |
+| Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 31 crates; zero `unsafe` blocks) |
 | Pure Rust | 100% — native QUIC engine with security provider crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` feature removed Wave 135 (SB-02 resolved) |
 | Crypto Delegation | Security provider via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
 | Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing via `BIOMEOS_RUNTIME_SUBDIR` constant; **LD-08 socket auto-discovery** seeds `ipc.resolve` registry at startup and **self-heals every 30s** (Wave 139) by scanning `$XDG_RUNTIME_DIR/biomeos/*.sock` and probing with `identity.get` + `capabilities.list` (Wire Standard L3); netdev-based IP detection; all ports env-configurable; XDG-compliant socket paths; mDNS via `MDNS_MULTICAST_GROUP` constant |
@@ -26,11 +26,11 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (53+ methods, 33 domain sub-enums including `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases |
-| Clippy Pedantic | All 30 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`; May 6 verified) |
+| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`; May 15 verified) |
 | Build | Clean (zero errors, zero warnings) |
-| Formatting | Clean (`cargo fmt --check`; May 6 verified) |
+| Formatting | Clean (`cargo fmt --check`; May 15 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | 1 deferred (`bin_interface/server.rs` 878L — tightly coupled startup); `turn_server.rs` resolved (1027L → 898L via `#[path]` test extraction, Wave 203); largest non-deferred: `primal_discovery.rs` 763L; Wave 200: `method_gate.rs` (944L) → directory module; Wave 187: `connection.rs` (1043L) smart-refactored; Wave 176: `information_layers.rs` (1121L) → directory module |
+| Files >800 lines | **0** — Wave 206: `bin_interface/server.rs` (878L → 360L via `ipc_session.rs` extraction), `turn_server.rs` (898L → 679L via `turn_attrs.rs` extraction); largest: `primal_discovery.rs` 763L |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
@@ -40,9 +40,9 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok); locally enforced (`cargo deny check`); CI runs fmt + clippy + test only |
-| Dependencies | Pure Rust in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`, SB-02 documented); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; zero first-party `-sys` crates, zero `cc`, zero `build.rs`; `cargo deny check` fully passing |
+| Dependencies | Pure Rust in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`); `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; zero first-party `-sys` crates, zero `cc`, zero `build.rs`; `cargo deny check` fully passing |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous`, `relay` |
-| Total Rust | ~421,000 lines across 30 crates (1,609 files) |
+| Total Rust | ~422,000 lines across 31 crates |
 
 ## Architecture
 
@@ -122,7 +122,7 @@ export SONGBIRD_ROUTE_DETECT_ADDR=192.0.2.1:80
 
 See [`docs/ENVIRONMENT_VARIABLES.md`](docs/ENVIRONMENT_VARIABLES.md) for the complete reference including the security provider socket fallback chain.
 
-## Crate Structure (30 crates)
+## Crate Structure (31 crates)
 
 ### Core
 - `songbird-orchestrator` - Main orchestration engine (7-stage startup)
@@ -146,6 +146,7 @@ See [`docs/ENVIRONMENT_VARIABLES.md`](docs/ENVIRONMENT_VARIABLES.md) for the com
 - `songbird-sovereign-onion` - P2P onion service
 - `songbird-lineage-relay` - Lineage relay + coordinated punch
 - `songbird-onion-relay` - Hole punch coordinator
+- `songbird-turn-client` - Reusable TURN relay client (data-plane sessions for downstream consumers)
 
 ### Hardware
 - `songbird-nfc` - NFC genesis protocol

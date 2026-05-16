@@ -22,7 +22,7 @@ This specification defines the **Sovereign Multi-Path Protocol** - a 7-tier conn
 | **STUN Client** | ✅ BUILT | Concurrent racing, multiple servers |
 | **Mesh Relay** | ✅ BUILT | `mesh.init`, `relay_enabled: true` |
 | **DNS Beacon** | ✅ WORKING | Security provider–encrypted endpoint discovery |
-| **IGD/UPnP** | ❌ PLANNED | Router becomes tool, not dependency |
+| **IGD/UPnP** | ✅ BUILT | `songbird-igd` crate — UPnP IGD + NAT-PMP |
 
 ### What Was Achieved This Session
 
@@ -204,7 +204,7 @@ echo '{"jsonrpc":"2.0","method":"onion.status","params":{},"id":1}' \
 - Security provider handles all crypto operations
 - Zero C dependencies, pure Rust throughout
 
-### Layer 3: IGD/UPnP Router Evolution (PLANNED)
+### Layer 3: IGD/UPnP Router Evolution (IMPLEMENTED — `songbird-igd`)
 
 **Philosophy**: Port forwarding is currently an external dependency. The router should be a tool Songbird configures, not a dependency Songbird requires.
 

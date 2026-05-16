@@ -1,14 +1,14 @@
 # Songbird Specifications
 
 **Date**: May 2026
-**Workspace**: 30-crate Rust workspace (see root `Cargo.toml`)
+**Workspace**: 31-crate Rust workspace (see root `Cargo.toml`)
 **Version**: v0.2.1
 
 ---
 
 ## Current Workspace Crates
 
-Songbird is a 30-member workspace. There is **no** `songbird-core`, `songbird-network`,
+Songbird is a 31-member workspace. There is **no** `songbird-core`, `songbird-network`,
 `songbird-errors`, or `songbird-security` package — those names reflect the September 2025
 layout and are historical. Current crate names:
 
@@ -22,7 +22,8 @@ songbird-lineage-relay  songbird-compute-bridge   songbird-execution-agent
 songbird-registry       songbird-observability    songbird-cli
 songbird-nfc            songbird-bluetooth        songbird-crypto-provider
 songbird-test-utils     songbird-process-env      songbird-primal-coordination
-songbird-remote-deploy  songbird-genesis          (root: songbird)
+songbird-remote-deploy  songbird-genesis          songbird-turn-client
+songbird-quic           (root: songbird)
 ```
 
 ## Active Specifications

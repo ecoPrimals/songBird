@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: May 12, 2026
+**Last Updated**: May 15, 2026
 
 ## What It Does
 
@@ -33,13 +33,13 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 
 | Metric | Value |
 |--------|-------|
-| Crates | 30 workspace members |
+| Crates | 31 workspace members |
 | Tests | 7,803 lib passed (0 failures, 22 ignored) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; May 6 verified) |
-| Files >800 LOC | 2 deferred (`bin_interface/server.rs` 878L, `turn_server.rs` 836L — tightly coupled, deferred Wave 200); largest non-deferred: `primal_discovery.rs` 763L; Wave 200: `method_gate.rs` (944L) → directory module; Wave 187: `connection.rs` (1043L) → `#[path]` test extraction; Wave 176: `information_layers.rs` (1121L) → directory module |
-| Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 30 crates) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; May 15 verified) |
+| Files >800 LOC | **0** — Wave 206: `bin_interface/server.rs` (878L → 360L via `ipc_session.rs` extraction), `turn_server.rs` (898L → 679L via `turn_attrs.rs` extraction); largest: `primal_discovery.rs` 763L |
+| Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 31 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates); legacy socket filenames centralized as constants (`LEGACY_SECURITY_SOCKET_FILENAME`, `LEGACY_AI_SOCKET_FILENAME`, `LEGACY_COMPUTE_SOCKET_FILENAME`); all `/tmp/` paths evolved to `std::env::temp_dir()`; `cors_origins()` env-overridable, `data_dir()` XDG-compliant; legacy env vars (`BEARDOG_*`) deprecated with `tracing::warn!` |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |

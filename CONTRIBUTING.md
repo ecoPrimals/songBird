@@ -2,7 +2,7 @@
 
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: May 6, 2026
+**Last Updated**: May 15, 2026
 
 ---
 
@@ -39,11 +39,11 @@ fn compute_offset(&self) -> usize { /* ... */ }
 
 **Never** use bare `#[allow(lint)]` or `#[expect(lint)]` without a reason string.
 
-**Note**: Wave 134 completed the full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 30 crates. `dead_code` lints are inherently cfg-dependent (items used from `#[cfg(test)]` appear dead in non-test builds), so `#[allow]` is the correct suppression. Do not convert these to `#[expect]` — CI will break with `unfulfilled-lint-expectations`.
+**Note**: Wave 134 completed the full `#[expect(dead_code)]` → `#[allow(dead_code)]` migration across all 31 crates. `dead_code` lints are inherently cfg-dependent (items used from `#[cfg(test)]` appear dead in non-test builds), so `#[allow]` is the correct suppression. Do not convert these to `#[expect]` — CI will break with `unfulfilled-lint-expectations`.
 
 ### Unsafe Code
 
-`#![forbid(unsafe_code)]` across all 30 crates with zero exceptions.
+`#![forbid(unsafe_code)]` across all 31 crates with zero exceptions.
 `songbird-process-env` uses an in-memory overlay (`std::sync::Mutex<HashMap>`)
 instead of calling `std::env::set_var`/`remove_var`, eliminating the Rust 2024
 `unsafe` requirement entirely.

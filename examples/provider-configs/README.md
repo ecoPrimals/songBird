@@ -207,10 +207,10 @@ export SONGBIRD_PROVIDER_CONFIG_DIR=./examples/provider-configs/
 export OPENAI_API_KEY=sk-...
 
 # Run Songbird
-cargo run --bin songbird-orchestrator
+cargo run --bin songbird -- server
 
 # Test via Unix socket (from Squirrel or other primal)
-echo '{"jsonrpc":"2.0","method":"proxy","params":{"capability":"ai:text-generation:openai","payload":{"prompt":"Hello"}},"id":1}' | nc -U /run/user/1000/songbird-ai.sock
+echo '{"jsonrpc":"2.0","method":"proxy","params":{"capability":"ai:text-generation:openai","payload":{"prompt":"Hello"}},"id":1}' | nc -U $XDG_RUNTIME_DIR/biomeos/network.sock
 ```
 
 ## Philosophy Vindication
@@ -233,7 +233,6 @@ We have:
 ---
 
 **See also**:
-- `../http_gateway/capability_router.rs` - Capability routing implementation
-- `../http_gateway/universal_proxy.rs` - Universal proxy implementation
-- `../http_gateway/unix_listener.rs` - Unix socket listener implementation
+- `crates/songbird-orchestrator/src/http_gateway/` - Capability routing and universal proxy
+- `crates/songbird-universal-ipc/` - Universal IPC implementation
 

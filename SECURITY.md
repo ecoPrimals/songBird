@@ -1,6 +1,6 @@
 # Songbird Security
 
-**Last Updated**: May 8, 2026
+**Last Updated**: May 15, 2026
 **Status**: Production Ready (v0.2.1, S+ Tier)
 
 ---
@@ -10,7 +10,7 @@
 | Metric | Status |
 |--------|--------|
 | **Pure Rust** | ✅ Application code — `quinn`/`ring` eliminated from QUIC path (native pure-Rust QUIC engine with security provider crypto delegation); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`); `sled` removed (Wave 135, SB-03 resolved); all default-build deps are pure Rust |
-| **Unsafe Code** | ✅ `forbid(unsafe_code)` across all 30 crates; zero `unsafe` blocks (`songbird-process-env` evolved to in-memory overlay) |
+| **Unsafe Code** | ✅ `forbid(unsafe_code)` across all 31 crates; zero `unsafe` blocks (`songbird-process-env` evolved to in-memory overlay) |
 | **Cast Safety** | ✅ `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | **Panic Paths** | ✅ `unwrap_used`/`expect_used` warn workspace-wide |
 | **JSON-RPC 2.0** | ✅ Strict version validation, notification suppression, serialization fallbacks |
@@ -22,7 +22,7 @@
 
 ### Code Safety
 
-- **Zero unsafe code** — `forbid(unsafe_code)` across all 30 crates; `songbird-process-env` evolved to in-memory overlay pattern (zero calls to `std::env::set_var`/`remove_var`)
+- **Zero unsafe code** — `forbid(unsafe_code)` across all 31 crates; `songbird-process-env` evolved to in-memory overlay pattern (zero calls to `std::env::set_var`/`remove_var`)
 - **Cast discipline** — All four cast lints denied at workspace level; justified sites use `#[expect(reason)]`
 - **Result-based errors** — All fallible operations return `Result<T, E>`
 - **Strict linting** — `clippy::pedantic` + `clippy::nursery` workspace-wide
