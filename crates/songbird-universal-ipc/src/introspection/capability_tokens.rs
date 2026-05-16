@@ -44,6 +44,7 @@ const CALLABLE_METHODS: &[&str] = &[
     "lifecycle.status",
     "primal.info",
     "primal.capabilities",
+    "primal.announce",
     "rpc.methods",
     "rpc.discover",
     "discover_capabilities",
@@ -134,6 +135,12 @@ const CALLABLE_METHODS: &[&str] = &[
     "tor.circuit.build",
     "tor.circuit.close",
 ];
+
+/// All callable JSON-RPC methods as a `Vec<Value>` (for `primal.announce` payload).
+#[must_use]
+pub fn callable_methods_list() -> Vec<Value> {
+    CALLABLE_METHODS.iter().map(|s| Value::String((*s).to_string())).collect()
+}
 
 /// Wire Standard Level 3 envelope for `capabilities.list`.
 ///

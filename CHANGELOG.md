@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave205] - 2026-05-15 - UB-1 songbird-turn-client crate + primal.announce adoption
+
+### Added
+- **`songbird-turn-client` crate** (UB-1 HIGH): Reusable TURN relay client library for downstream consumers (lithoSpore). `TurnSession` wraps full lifecycle: Allocate → CreatePermission → ChannelBind → send/recv data. Supports both `ChannelData` framing (efficient) and `SendIndication`/`DataIndication` (fallback). 7 unit tests + 1 doctest.
+- **`TurnSessionConfig`**: Builder-pattern configuration with sensible defaults (ChannelData enabled, 5s control timeout, 30s recv timeout).
+- **`TurnClient::server_addr()`**: Public accessor for the TURN server address.
+- **`encode_xor_peer_address()`**: Now public in `songbird-stun` for data-plane framing.
+- **`StunAttribute::decode_address()`**: Now public in `songbird-stun` for external consumers.
+- **`PrimalMethod::Announce`** (biomeOS v3.57): Atomic registration replacing separate `lifecycle.register` + `capability.register` + `method.register`. Wire name `"primal.announce"`.
+- **`primal_announce()` handler**: Returns `{primal, version, domain, license, provided_capabilities, consumed_capabilities, signal_tiers, endpoints, methods, status}`.
+- **Signal-tier membership**: Songbird declares `signal_tiers: ["tower"]` in announce payload.
+- **`primal.info` and `primal.capabilities`**: Now routed on the orchestrator UDS (were previously only on TCP IPC).
+- **3 new socket routing tests**: `primal.announce`, `primal.info`, `primal.capabilities` on canonical UDS.
+- **`callable_methods_list()`**: Public function returning all callable methods as `Vec<Value>`.
+
+### Changed
+- `songbird-turn-client` registered as workspace member (#31 crate).
+- `PrimalMethod` enum extended with `Announce` variant.
+- `CALLABLE_METHODS` list includes `"primal.announce"`.
+- Orchestrator UDS handler now dispatches `primal.*` methods directly (Info, Capabilities, Announce).
+
+### Verified
+- 0 clippy warnings (full workspace `--exclude songbird-types -D warnings`)
+- 27 socket routing tests pass + 5 IPC handler tests + 7 turn-client tests
+- `cargo fmt -- --check` clean
+
+---
+
 ## [v0.2.1-wave204] - 2026-05-13 - GAP-16 Tower Atomic: mesh.* on canonical UDS
 
 ### Added

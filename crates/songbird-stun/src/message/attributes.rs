@@ -226,7 +226,11 @@ impl StunAttribute {
         }
     }
 
-    pub(crate) fn decode_address(
+    /// Decode an address attribute value (MAPPED-ADDRESS or XOR-MAPPED-ADDRESS).
+    ///
+    /// When `xor_key` is `Some(MAGIC_COOKIE)`, the address and port are XOR-decoded
+    /// per RFC 5389 §15.2.
+    pub fn decode_address(
         data: &[u8],
         xor_key: Option<u32>,
         transaction_id: &[u8; 12],

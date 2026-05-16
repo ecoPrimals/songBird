@@ -4,7 +4,7 @@
 //! JSON-RPC request routing and response construction for the pure Rust IPC server.
 
 use songbird_types::json_rpc_method::{
-    CapabilitiesMethod, DiscoveryMethod, HealthMethod, HttpMethod, IpcMethod,
+    CapabilitiesMethod, DiscoveryMethod, HealthMethod, HttpMethod, IpcMethod, PrimalMethod,
 };
 use songbird_types::{JsonRpcMethod, normalize_json_rpc_method_name};
 
@@ -83,6 +83,15 @@ impl UnixSocketServer {
             }
             Ok(JsonRpcMethod::IdentityGet(_)) => {
                 Ok(songbird_universal_ipc::introspection::identity_get())
+            }
+            Ok(JsonRpcMethod::Primal(PrimalMethod::Info)) => {
+                Ok(songbird_universal_ipc::introspection::primal_info())
+            }
+            Ok(JsonRpcMethod::Primal(PrimalMethod::Capabilities)) => {
+                Ok(songbird_universal_ipc::introspection::primal_capabilities())
+            }
+            Ok(JsonRpcMethod::Primal(PrimalMethod::Announce)) => {
+                Ok(songbird_universal_ipc::introspection::primal_announce())
             }
             Ok(JsonRpcMethod::DiscoverCapabilities) => {
                 coordination_handlers::handle_discover_capabilities().await

@@ -71,6 +71,12 @@ impl TurnClient {
         }
     }
 
+    /// The TURN server address this client targets.
+    #[must_use]
+    pub const fn server_addr(&self) -> SocketAddr {
+        self.server_addr
+    }
+
     /// Override the request timeout (default 5s).
     #[must_use]
     pub const fn with_timeout(mut self, timeout: Duration) -> Self {
@@ -341,7 +347,10 @@ impl TurnClient {
 }
 
 /// Encode a peer address as XOR-PEER-ADDRESS value bytes (without TLV header).
-fn encode_xor_peer_address(addr: &SocketAddr, transaction_id: &[u8; 12]) -> bytes::Bytes {
+///
+/// Used by both `TurnClient` control-plane methods and `songbird-turn-client`
+/// data-plane `SendIndication` framing.
+pub fn encode_xor_peer_address(addr: &SocketAddr, transaction_id: &[u8; 12]) -> bytes::Bytes {
     use std::net::IpAddr;
 
     let mut buf = BytesMut::new();

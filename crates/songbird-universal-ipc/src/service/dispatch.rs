@@ -27,6 +27,9 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Primal(PrimalMethod::Capabilities) => {
                 Ok(crate::introspection::primal_capabilities())
             }
+            JsonRpcMethod::Primal(PrimalMethod::Announce) => {
+                Ok(crate::introspection::primal_announce())
+            }
             JsonRpcMethod::Rpc(RpcMethod::Methods) => Ok(crate::introspection::rpc_methods()),
             JsonRpcMethod::Rpc(RpcMethod::Discover) => {
                 Ok(crate::introspection::rpc_discover_standard())

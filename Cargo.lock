@@ -5371,6 +5371,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "songbird-turn-client"
+version = "0.2.1"
+dependencies = [
+ "bytes",
+ "songbird-stun",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "songbird-types"
 version = "0.2.1"
 dependencies = [

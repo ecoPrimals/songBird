@@ -24,6 +24,8 @@ pub enum PrimalMethod {
     Health,
     /// `primal.ping`
     Ping,
+    /// `primal.announce` — atomic registration replacing lifecycle/capability/method register (biomeOS v3.57)
+    Announce,
 }
 
 /// `rpc.*` introspection.

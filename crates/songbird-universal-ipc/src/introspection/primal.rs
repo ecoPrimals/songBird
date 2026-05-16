@@ -6,6 +6,8 @@
 use serde_json::Value;
 use songbird_types::primal_names;
 
+use super::capability_tokens::SONGBIRD_CAPABILITY_STRINGS;
+
 /// Generate primal info (self-knowledge only)
 #[must_use]
 pub fn primal_info() -> Value {
@@ -121,5 +123,32 @@ pub fn primal_capabilities() -> Value {
                 "provider": "security"
             }
         ]
+    })
+}
+
+/// Generate `primal.announce` payload (biomeOS v3.57 atomic registration).
+///
+/// Replaces separate `lifecycle.register` + `capability.register` + `method.register`
+/// with a single atomic announcement that includes identity, capabilities, methods,
+/// and signal-tier membership.
+#[must_use]
+pub fn primal_announce() -> Value {
+    serde_json::json!({
+        "primal": primal_names::SELF_NAME,
+        "version": env!("CARGO_PKG_VERSION"),
+        "domain": "network",
+        "license": "AGPL-3.0-or-later",
+        "provided_capabilities": SONGBIRD_CAPABILITY_STRINGS,
+        "consumed_capabilities": [
+            "security",
+            "crypto"
+        ],
+        "signal_tiers": ["tower"],
+        "endpoints": {
+            "transports": ["unix_socket", "tcp"],
+            "protocols": ["json-rpc", "ndjson", "btsp"]
+        },
+        "methods": super::capability_tokens::callable_methods_list(),
+        "status": "ready"
     })
 }

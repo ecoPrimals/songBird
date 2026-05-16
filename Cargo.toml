@@ -43,6 +43,7 @@ members = [
 
     # NAT traversal & relay
     "crates/songbird-lineage-relay",
+    "crates/songbird-turn-client",
 
     # IPC
     "crates/songbird-universal-ipc",

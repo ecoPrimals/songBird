@@ -598,4 +598,40 @@ mod tests {
         let resp = server.handle_jsonrpc_request(req, &caller).await;
         assert_success(&resp, "ipc.register");
     }
+
+    #[tokio::test]
+    async fn primal_announce_routed_on_canonical_socket() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("primal.announce"), &caller).await;
+        assert_success(&resp, "primal.announce");
+        let result = resp.result.unwrap();
+        assert_eq!(result["primal"].as_str().unwrap(), "songbird");
+        assert_eq!(result["domain"].as_str().unwrap(), "network");
+        assert!(result["provided_capabilities"].is_array());
+        assert!(result["signal_tiers"].is_array());
+        assert_eq!(result["signal_tiers"][0].as_str().unwrap(), "tower");
+        assert!(result["methods"].is_array());
+        assert_eq!(result["status"].as_str().unwrap(), "ready");
+    }
+
+    #[tokio::test]
+    async fn primal_info_routed_on_canonical_socket() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("primal.info"), &caller).await;
+        assert_success(&resp, "primal.info");
+        let result = resp.result.unwrap();
+        assert_eq!(result["name"].as_str().unwrap(), "songbird");
+    }
+
+    #[tokio::test]
+    async fn primal_capabilities_routed_on_canonical_socket() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("primal.capabilities"), &caller).await;
+        assert_success(&resp, "primal.capabilities");
+        let result = resp.result.unwrap();
+        assert!(result["capabilities"].is_array());
+    }
 }

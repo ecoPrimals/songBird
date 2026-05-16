@@ -1,0 +1,36 @@
+[package]
+name = "songbird-turn-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Reusable TURN relay client for establishing data-plane connections through Songbird's TURN infrastructure"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["turn", "relay", "nat-traversal", "networking", "rpc"]
+categories = ["network-programming"]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+expect_used = "warn"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"
+multiple_crate_versions = "allow"
+must_use_candidate = "allow"
+
+[dependencies]
+songbird-stun = { path = "../songbird-stun" }
+tokio = { workspace = true, features = ["net", "time", "sync"] }
+bytes = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }
