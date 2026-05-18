@@ -148,6 +148,9 @@ impl UnixPlatformIPC {
             NativeEndpoint::UnixSocket(path) => {
                 debug!("Creating Unix listener on: {}", path.display());
 
+                // Unlink stale socket before bind (prevents EADDRINUSE after crash)
+                let _ = tokio::fs::remove_file(path).await;
+
                 let listener = TokioUnixListener::bind(path).map_err(|e| {
                     IpcError::ListenerFailed(format!(
                         "Failed to bind Unix socket at {}: {}",

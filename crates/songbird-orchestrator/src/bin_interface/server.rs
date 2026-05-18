@@ -108,6 +108,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         config.network.base_port,
     );
 
+    tracing::info!("🧹 Cleaning stale sockets...");
+    crate::env_config::cleanup_stale_sockets();
+
     tracing::info!("🔧 Starting orchestrator components...");
     let mut orchestrator = app::start_orchestrator(config).await?;
     tracing::info!("   Orchestrator: ✅ Started");

@@ -50,8 +50,9 @@ pub use paths::{
 };
 pub(crate) use security_ipc::security_crypto_ipc_socket_from_env;
 pub use socket::{
-    create_domain_socket_symlink, legacy_socket_name, legacy_socket_name_with,
-    remove_domain_socket_symlink_if_matches, socket_name, socket_name_with, socket_path,
+    cleanup_stale_sockets, create_domain_socket_symlink, legacy_socket_name,
+    legacy_socket_name_with, remove_domain_socket_symlink_if_matches, socket_name,
+    socket_name_with, socket_path,
 };
 
 /// Convenience alias — reads from overlay first, then OS.

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
+use tracing::{debug, info};
 
 use super::identity::family_id_with;
 use super::{env, runtime_or_tmp_base};
@@ -184,3 +185,129 @@ pub fn remove_domain_socket_symlink_if_matches(bound_socket: &std::path::Path) {
 
 #[cfg(not(unix))]
 pub fn remove_domain_socket_symlink_if_matches(_bound_socket: &std::path::Path) {}
+
+/// Scan Songbird's socket directories and remove stale `.sock` files.
+///
+/// A socket is "stale" if `connect()` returns `ConnectionRefused` or times out.
+/// This prevents downstream consumers from wasting ~100ms per failed connect probe
+/// on sockets left behind by crashed or ungracefully-stopped instances.
+///
+/// Per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.0 §6 and upstream
+/// `STALE_SOCKET_CLEANUP_UPSTREAM_MAY18_2026.md` (primalSpring R10).
+///
+/// Scans:
+/// 1. The resolved socket directory (`$XDG_RUNTIME_DIR/biomeos/`)
+/// 2. `/tmp/` for any `songbird*.sock` or `network*.sock` files
+///
+/// Best-effort — failures are logged at debug level. Never blocks startup.
+#[cfg(unix)]
+pub fn cleanup_stale_sockets() {
+    let socket_dir = resolve_socket_directory();
+    cleanup_stale_in_directory(&socket_dir, None);
+
+    let tmp = PathBuf::from(runtime_or_tmp_base());
+    if tmp != socket_dir {
+        cleanup_stale_in_directory(&tmp, Some(&["songbird", "network"]));
+    }
+}
+
+#[cfg(not(unix))]
+pub fn cleanup_stale_sockets() {}
+
+/// Resolve the directory where Songbird places its sockets.
+fn resolve_socket_directory() -> PathBuf {
+    if let Ok(socket_dir) = env("BIOMEOS_SOCKET_DIR") {
+        return PathBuf::from(socket_dir);
+    }
+    if let Ok(xdg) = env("XDG_RUNTIME_DIR") {
+        return PathBuf::from(xdg).join(BIOMEOS_RUNTIME_SUBDIR);
+    }
+    PathBuf::from(runtime_or_tmp_base())
+}
+
+/// Scan `dir` for `.sock` files and remove any that are stale (no listener).
+///
+/// If `prefix_filter` is `Some`, only sockets whose filename starts with one of
+/// the given prefixes are checked (avoids clobbering other primals' sockets in `/tmp/`).
+#[cfg(unix)]
+fn cleanup_stale_in_directory(dir: &Path, prefix_filter: Option<&[&str]>) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    let mut removed = 0u32;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(ext) = path.extension() else {
+            continue;
+        };
+        if ext != "sock" {
+            continue;
+        }
+
+        if let Some(prefixes) = prefix_filter {
+            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                continue;
+            };
+            if !prefixes.iter().any(|p| name.starts_with(p)) {
+                continue;
+            }
+        }
+
+        if is_socket_stale(&path) {
+            match std::fs::remove_file(&path) {
+                Ok(()) => {
+                    removed += 1;
+                    debug!(path = %path.display(), "Removed stale socket");
+                }
+                Err(e) => {
+                    debug!(path = %path.display(), error = %e, "Failed to remove stale socket");
+                }
+            }
+        }
+    }
+
+    if removed > 0 {
+        info!(
+            directory = %dir.display(),
+            count = removed,
+            "Cleaned up stale socket files"
+        );
+    }
+}
+
+/// Probe whether a socket file is stale (no process listening).
+///
+/// Returns `true` if the socket file exists but `connect()` fails with
+/// `ConnectionRefused` or `NotFound`. Returns `false` if the socket is live
+/// or we can't determine its state.
+#[cfg(unix)]
+fn is_socket_stale(path: &Path) -> bool {
+    use std::os::unix::net::UnixStream;
+    use std::time::Duration;
+
+    let meta = match std::fs::symlink_metadata(path) {
+        Ok(m) => m,
+        Err(_) => return false,
+    };
+
+    // Skip symlinks — they're domain aliases, not independent sockets
+    if meta.file_type().is_symlink() {
+        return false;
+    }
+
+    // Attempt a blocking connect with a short timeout
+    // std::os::unix::net::UnixStream::connect is non-blocking for refused
+    match UnixStream::connect(path) {
+        Ok(stream) => {
+            // Socket is alive — set a short read timeout and drop
+            let _ = stream.set_read_timeout(Some(Duration::from_millis(1)));
+            drop(stream);
+            false
+        }
+        Err(e) => {
+            matches!(e.kind(), std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound)
+        }
+    }
+}

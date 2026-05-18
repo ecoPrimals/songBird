@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave209] - 2026-05-18 - Stale Socket Cleanup (primalSpring R10)
+
+### Added
+- **`cleanup_stale_sockets()`** — scans `$XDG_RUNTIME_DIR/biomeos/` and `/tmp/` for stale `.sock` files (no listener) and removes them on startup. Uses connect-probe to distinguish live vs dead sockets. Prevents downstream consumers from wasting ~100ms per failed connection attempt on dead socket files left behind by crashes.
+- **Stale socket scan on server startup** — called before any socket binding, eliminating accumulated dead socket files.
+
+### Fixed
+- **`songbird-universal-ipc` unlink-before-bind** — `UnixIPC::listen()` now removes pre-existing socket file before `bind()`, preventing `EADDRINUSE` errors after crash restarts. All production socket bind sites now follow the unlink-before-bind pattern.
+
+### Verified
+- All production `UnixListener::bind` sites audited — 4/4 do unlink-before-bind (bin_interface, pure_rust_server, http_gateway, universal-ipc).
+- Shutdown cleanup: `stop()` + `Drop` impl in `UnixSocketServer` remove socket files.
+- Domain symlink cleanup: `remove_domain_socket_symlink_if_matches()` cleans up `network.sock` → `songbird.sock` links.
+
+### Reference
+- `infra/wateringHole/handoffs/STALE_SOCKET_CLEANUP_UPSTREAM_MAY18_2026.md`
+- `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.0 §5-6
+
+---
+
 ## [v0.2.1-wave208] - 2026-05-18 - Deep Debt: Test Extraction, Dead Feature Removal, Dead Code Narrowing
 
 ### Removed
