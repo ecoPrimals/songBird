@@ -153,9 +153,7 @@ pub async fn setup_security() -> Result<SecurityIntegration> {
 
 /// Construct a heuristic security endpoint from bind address and port.
 ///
-/// **Not used by [`discover_security_endpoint`]** — discovery is fail-closed without
-/// explicit configuration to avoid pointing production traffic at the wrong service.
-/// This helper remains for unit tests and ad-hoc local tooling.
+#[allow(dead_code, reason = "retained for unit tests and local tooling")]
 fn construct_default_security_endpoint() -> String {
     let bind_address = SafeEnv::get_or_default(
         "SONGBIRD_BIND_ADDRESS",

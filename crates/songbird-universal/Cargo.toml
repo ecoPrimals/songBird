@@ -22,8 +22,6 @@ dns-sd = ["dep:hickory-resolver"]
 k8s = ["dep:kube", "dep:k8s-openapi"]
 docker = ["dep:bollard"]
 
-# Convenience feature to enable all discovery backends
-full-discovery = ["mdns", "dns-sd", "k8s", "docker"]
 
 [dependencies]
 anyhow = { workspace = true } # Used by unix_rpc_client (Pure Rust RPC!)

@@ -139,6 +139,7 @@ pub(crate) enum SecurityFetchMode {
     /// Normal discovery via [`crate::app::security_setup::discover_security_endpoint`].
     Discover,
     /// Skip env/capability discovery — behave as if no security provider is configured (tests).
+    #[allow(dead_code, reason = "test infrastructure for mocking absent security provider")]
     NoProvider,
 }
 

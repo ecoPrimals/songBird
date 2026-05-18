@@ -80,7 +80,7 @@ pub async fn initialize_federation() -> Result<(
     ))
 }
 
-/// Create federation coordinator with node registration
+#[allow(dead_code, reason = "wires when federation startup path goes live")]
 async fn create_federation_coordinator(
     node_identity: &NodeIdentity,
     federation_state: Arc<FederationState>,
@@ -110,15 +110,7 @@ async fn create_federation_coordinator(
     Ok((Arc::new(coordinator), config))
 }
 
-/// Build self-registration with node capabilities
-///
-/// Uses runtime detection to discover:
-/// - CPU cores (via `std::thread::available_parallelism`)
-/// - Memory (via `/proc/meminfo` on Linux, fallback on other platforms)
-/// - GPU model (runtime detection)
-/// - Storage capacity (runtime detection)
-///
-/// This is **not hardcoded** - capabilities are discovered at startup.
+#[allow(dead_code, reason = "called by create_federation_coordinator")]
 fn build_self_registration(node_identity: &NodeIdentity) -> Result<NodeRegistration> {
     let node_address = format!(
         "{}:{}",
@@ -148,19 +140,12 @@ fn build_self_registration(node_identity: &NodeIdentity) -> Result<NodeRegistrat
     })
 }
 
-/// Detect available memory in GB via `/proc/meminfo` (pure Rust).
+#[allow(dead_code, reason = "called by build_self_registration")]
 fn detect_memory_gb() -> usize {
     songbird_types::sys_metrics::total_memory_gb().max(16)
 }
 
-/// Detect GPU model (runtime capability discovery)
-///
-/// Uses platform-specific methods to detect GPU hardware:
-/// - Linux: Reads from `/sys/class/drm/` and `/proc/driver/nvidia/gpus/`
-/// - Windows: Falls back to generic detection
-/// - macOS: Falls back to generic detection
-///
-/// Returns the GPU model string if detected, None otherwise.
+#[allow(dead_code, reason = "called by build_self_registration")]
 fn detect_gpu() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
@@ -202,7 +187,7 @@ fn detect_gpu() -> Option<String> {
     None
 }
 
-/// Detect storage capacity in GB via `/sys/block/` (pure Rust).
+#[allow(dead_code, reason = "called by build_self_registration")]
 fn detect_storage_capacity() -> Option<usize> {
     let disks = songbird_types::sys_metrics::disk_info();
     let total_bytes: u64 = disks.iter().map(|d| d.total_bytes).sum();

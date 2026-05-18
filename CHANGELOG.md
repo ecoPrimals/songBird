@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave208] - 2026-05-18 - Deep Debt: Test Extraction, Dead Feature Removal, Dead Code Narrowing
+
+### Removed
+- **Dead `full-discovery` feature flag** from `songbird-universal` Cargo.toml — was never referenced in source code (`cfg(feature = "full-discovery")` had zero hits). Individual backend features (`mdns`, `dns-sd`, `k8s`, `docker`) remain and are properly gated.
+
+### Refactored
+- **`primal_discovery.rs`** (763→419 lines) — test module extracted to `primal_discovery_tests.rs` via `#[path]` include. 22 tests preserved, all passing.
+- **`json_rpc_method/mod.rs`** (639→487 lines) — test module extracted to `json_rpc_method/tests.rs` via `#[path]` include. 12 tests preserved, all passing.
+- **Blanket `#![allow(dead_code)]` removed** from orchestrator `app/mod.rs` — replaced with 9 targeted per-item `#[allow(dead_code, reason = "...")]` annotations with specific justifications.
+
+### Fixed
+- **`PortAllocator::is_allocated()`** — pre-existing test compile error in `service_registry_tests.rs` fixed by adding the missing method (gated with `#[cfg(test)]`).
+
+### Verified
+- 0 clippy warnings (workspace `-D warnings`, 31 crates)
+- 556 songbird-types + 883 songbird-config + 887 songbird-universal + 1646 songbird-orchestrator lib tests pass
+- `cargo fmt --check` clean
+- Largest `.rs` file: 767 lines (well under 800L threshold)
+
+---
+
 ## [v0.2.1-wave207] - 2026-05-17 - Stadial Readiness: BTSP Capabilities, deny.toml Hardening, Composition Docs
 
 ### Added

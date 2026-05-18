@@ -18,6 +18,7 @@ use crate::network::{ConnectivityRemediator, ConnectivityTester};
 /// # Errors
 ///
 /// Returns an error if `ip` and `port` do not form a valid [`std::net::SocketAddr`] when combined.
+#[allow(dead_code, reason = "used by upcoming connectivity test expansion")]
 pub(crate) fn parse_connectivity_socket_addr(ip: &str, port: u16) -> Result<std::net::SocketAddr> {
     format!("{ip}:{port}")
         .parse()

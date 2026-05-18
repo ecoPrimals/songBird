@@ -255,6 +255,12 @@ impl PortAllocator {
             debug!("Released port {} from service {}", port, service_id);
         }
     }
+
+    /// Check if a port is currently allocated
+    #[cfg(test)]
+    fn is_allocated(&self, port: u16) -> bool {
+        self.allocated.contains_key(&port)
+    }
 }
 
 // ============================================================================
