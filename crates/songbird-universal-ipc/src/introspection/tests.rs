@@ -243,7 +243,8 @@ fn discover_capabilities_includes_tor_and_mesh() {
 fn songbird_capability_strings_count_matches_network_ipc_crypto() {
     assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"ipc.jsonrpc"));
     assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"network.tls"));
-    assert_eq!(SONGBIRD_CAPABILITY_STRINGS.len(), 14);
+    assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"network.btsp"));
+    assert_eq!(SONGBIRD_CAPABILITY_STRINGS.len(), 15);
 }
 
 #[test]

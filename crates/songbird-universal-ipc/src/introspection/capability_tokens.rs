@@ -20,6 +20,7 @@ pub const SONGBIRD_CAPABILITY_STRINGS: &[&str] = &[
     "network.tls",
     "network.tor",
     "network.onion",
+    "network.btsp",
     "ipc.jsonrpc",
     "ipc.tarpc",
     "crypto.delegate",
@@ -48,6 +49,9 @@ const CALLABLE_METHODS: &[&str] = &[
     "rpc.methods",
     "rpc.discover",
     "discover_capabilities",
+    // ── BTSP transport security ──
+    "btsp.negotiate",
+    "btsp.capabilities",
     // ── Auth / method gate (JH-0) ──
     "auth.check",
     "auth.mode",
@@ -164,9 +168,14 @@ pub fn capabilities_list() -> Value {
         })
         .collect();
 
+    let capabilities: Vec<Value> =
+        SONGBIRD_CAPABILITY_STRINGS.iter().map(|s| Value::String((*s).to_string())).collect();
+
     json!({
         "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
+        "capabilities": capabilities,
+        "count": CALLABLE_METHODS.len(),
         "methods": methods,
         "provided_capabilities": provided,
         "consumed_capabilities": CONSUMED_CAPABILITIES,
@@ -218,6 +227,7 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
         "network.onion",
         &["onion.start", "onion.stop", "onion.status", "onion.connect", "onion.address"],
     ),
+    ("network.btsp", &["btsp.negotiate", "btsp.capabilities"]),
     (
         "ipc.jsonrpc",
         &[

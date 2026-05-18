@@ -258,6 +258,13 @@ pub enum RegistryMethod {
     Discover,
 }
 
+/// `btsp.negotiate` and `btsp.capabilities`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BtspMethod {
+    Negotiate,
+    Capabilities,
+}
+
 /// `protocol.negotiate` and `songbird.protocol.capabilities`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProtocolMethod {

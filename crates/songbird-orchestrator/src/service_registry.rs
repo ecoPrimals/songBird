@@ -255,7 +255,6 @@ impl PortAllocator {
             debug!("Released port {} from service {}", port, service_id);
         }
     }
-
 }
 
 // ============================================================================

@@ -37,7 +37,7 @@ pub use capability_tokens::{
 };
 pub use health_payloads::{health, health_check, health_liveness, health_readiness};
 pub use identity_payloads::{canonical_family_id, identity, identity_get};
-pub use primal::{primal_announce, primal_capabilities, primal_info};
+pub use primal::{btsp_capabilities, primal_announce, primal_capabilities, primal_info};
 pub use rpc::{discover_capabilities, normalize_method, rpc_discover_standard, rpc_methods};
 
 #[cfg(test)]

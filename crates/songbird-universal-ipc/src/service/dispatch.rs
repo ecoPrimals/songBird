@@ -5,10 +5,10 @@ use super::IpcServiceHandler;
 use crate::tower_atomic::JsonRpcHandler;
 use serde_json::Value;
 use songbird_types::json_rpc_method::{
-    BirdsongMethod, CapabilitiesMethod, DiscoveryMethod, FederationMethod, HealthMethod,
-    HttpMethod, IdentityMethod, IgdMethod, IpcMethod, JsonRpcMethod, LifecycleMethod, MeshMethod,
-    OnionMethod, PeerMethod, PrimalMethod, PunchMethod, RelayMethod, RendezvousMethod, RpcMethod,
-    StunMethod, TorMethod,
+    BirdsongMethod, BtspMethod, CapabilitiesMethod, DiscoveryMethod, FederationMethod,
+    HealthMethod, HttpMethod, IdentityMethod, IgdMethod, IpcMethod, JsonRpcMethod, LifecycleMethod,
+    MeshMethod, OnionMethod, PeerMethod, PrimalMethod, PunchMethod, RelayMethod, RendezvousMethod,
+    RpcMethod, StunMethod, TorMethod,
 };
 
 impl JsonRpcHandler for IpcServiceHandler {
@@ -55,6 +55,14 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Identity => self.handle_identity().await,
             JsonRpcMethod::IdentityGet(IdentityMethod::Get) => {
                 Ok(crate::introspection::identity_get())
+            }
+
+            // ── BTSP transport security ────────────────────────────────
+            JsonRpcMethod::Btsp(BtspMethod::Capabilities) => {
+                Ok(crate::introspection::btsp_capabilities())
+            }
+            JsonRpcMethod::Btsp(BtspMethod::Negotiate) => {
+                Err("btsp.negotiate is handled at the transport layer".to_string())
             }
 
             // ── IPC registry ─────────────────────────────────────────

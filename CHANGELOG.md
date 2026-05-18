@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave207] - 2026-05-17 - Stadial Readiness: BTSP Capabilities, deny.toml Hardening, Composition Docs
+
+### Added
+- **`btsp.capabilities` JSON-RPC method** — returns supported BTSP transport security features (cipher suites, KDF, handshake mode, wire formats). Wired through full dispatch chain (`BtspMethod` enum + `JsonRpcMethod::Btsp` variant).
+- **`btsp.negotiate` in dispatch enum** — now parseable by `JsonRpcMethod::parse_ipc()` (still handled at transport layer; dispatch returns informational error directing callers to connection-level negotiation).
+- **`network.btsp` capability token** — 15th capability in `SONGBIRD_CAPABILITY_STRINGS`, registered in `CAPABILITY_METHOD_MAP` with methods `btsp.negotiate` + `btsp.capabilities`.
+- **`capabilities.list` envelope enrichment** — response now includes `"capabilities"` (flat token string array) and `"count"` (total callable method count) alongside existing `provided_capabilities` L3 envelope.
+- **`aws-lc-sys` ban in `deny.toml`** — stadial gate requirement: no C/ASM crypto dependencies.
+- **Stadial composition documentation** — method stability tiers (Stable/Operational/Introspection/Passthrough), degradation behavior table (what breaks when Songbird is down), downstream pairing map (cellMembrane, lithoSpore, springs, gardens).
+
+### Changed
+- **Method count**: 46 → 48 callable methods (`btsp.negotiate`, `btsp.capabilities` added).
+- **Capability count**: 14 → 15 tokens (`network.btsp` added).
+- **`normalize_json_rpc_method_name()`**: `"network.btsp"` now normalizes to `"btsp.capabilities"`.
+
+### Verified
+- 0 clippy warnings (workspace `-D warnings`)
+- 506 tests pass in `songbird-universal-ipc` + `songbird-types`
+- `cargo deny check` fully passing (advisories ok, bans ok, licenses ok, sources ok)
+- `cargo fmt --check` clean
+
+---
+
 ## [v0.2.1-wave206] - 2026-05-15 - Deep Debt Cleanup: Smart Refactors, Bug Fixes, Production Hardening
 
 ### Fixed

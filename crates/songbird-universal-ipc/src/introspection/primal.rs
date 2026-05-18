@@ -152,3 +152,22 @@ pub fn primal_announce() -> Value {
         "status": "ready"
     })
 }
+
+/// `btsp.capabilities` — advertise supported BTSP transport security features.
+#[must_use]
+pub fn btsp_capabilities() -> Value {
+    serde_json::json!({
+        "protocol": "btsp",
+        "version": "1.0",
+        "ciphers": ["chacha20-poly1305"],
+        "kdf": "hkdf-sha256",
+        "handshake": "challenge-response",
+        "features": [
+            "encrypted-framing",
+            "null-cipher-fallback",
+            "bonding-policy-enforcement",
+            "ndjson-wire",
+            "binary-wire"
+        ]
+    })
+}

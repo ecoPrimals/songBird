@@ -65,11 +65,11 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 - `network.beacon_exchange`, `network.broadcast`, `network.listen`
 - `deployment.create`, `deployment.status`, `protocol.negotiate`
 
-## Capabilities (14 tokens)
+## Capabilities (15 tokens)
 
 `network.discovery`, `network.federation`, `network.relay`, `network.stun`,
 `network.igd`, `network.quic`, `network.tls`, `network.tor`, `network.onion`,
-`ipc.jsonrpc`, `ipc.tarpc`, `crypto.delegate`, `nfc.genesis`, `bluetooth.pair`
+`network.btsp`, `ipc.jsonrpc`, `ipc.tarpc`, `crypto.delegate`, `nfc.genesis`, `bluetooth.pair`
 
 ## Dependencies on Other Primals
 

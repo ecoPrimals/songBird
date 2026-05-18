@@ -46,6 +46,7 @@ deny = [
     # RESOLUTION: lockfile stanza is a Cargo metadata artifact with zero binary impact.
     # Stadial gate's own test (`cargo tree -i ring --edges normal`) passes.
     { name = "ring", version = "*", reason = "Violates ecoBin: C/ASM via `cc` (native crypto), not pure Rust." },
+    { name = "aws-lc-sys", version = "*", reason = "Violates ecoBin: C/ASM via `cc` + cmake, not pure Rust." },
 ]
 skip = [
     # Transitive duplicates from upstream — tracked for elimination
