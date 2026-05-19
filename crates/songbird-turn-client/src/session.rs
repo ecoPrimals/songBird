@@ -67,6 +67,47 @@ impl TurnSessionConfig {
         }
     }
 
+    /// Create config from environment variables.
+    ///
+    /// Reads:
+    /// - `SONGBIRD_TURN_SERVER` — relay address (e.g. `relay.primals.eco:3478`)
+    /// - `SONGBIRD_TURN_USERNAME` — TURN credential username
+    /// - `SONGBIRD_TURN_KEY` — TURN credential key (hex-encoded)
+    ///
+    /// `peer_addr` must still be provided (it's connection-specific).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if required env vars are missing or `SONGBIRD_TURN_SERVER`
+    /// fails to parse as a `SocketAddr`.
+    pub fn from_env(peer_addr: SocketAddr) -> Result<Self, TurnSessionError> {
+        let server_str = std::env::var("SONGBIRD_TURN_SERVER")
+            .map_err(|_| TurnSessionError::Config("SONGBIRD_TURN_SERVER not set".into()))?;
+        let server_addr: SocketAddr = server_str.parse().map_err(|e| {
+            TurnSessionError::Config(format!(
+                "SONGBIRD_TURN_SERVER '{server_str}' is not a valid address: {e}"
+            ))
+        })?;
+
+        let username = std::env::var("SONGBIRD_TURN_USERNAME")
+            .map_err(|_| TurnSessionError::Config("SONGBIRD_TURN_USERNAME not set".into()))?;
+
+        let key_hex = std::env::var("SONGBIRD_TURN_KEY")
+            .map_err(|_| TurnSessionError::Config("SONGBIRD_TURN_KEY not set".into()))?;
+        let key = hex_decode(&key_hex).map_err(|e| {
+            TurnSessionError::Config(format!("SONGBIRD_TURN_KEY is not valid hex: {e}"))
+        })?;
+
+        Ok(Self::new(
+            server_addr,
+            StunCredentials {
+                username,
+                key,
+            },
+            peer_addr,
+        ))
+    }
+
     /// Override the local bind address.
     #[must_use]
     pub const fn with_local_bind(mut self, addr: SocketAddr) -> Self {
@@ -409,4 +450,16 @@ mod tests {
         let result = TurnSession::parse_data_indication(&wire, &mut buf);
         assert!(result.is_err());
     }
+}
+
+/// Decode a hex string to bytes.
+fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
+    let hex = hex.trim();
+    if !hex.len().is_multiple_of(2) {
+        return Err("odd-length hex string".into());
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(|e| e.to_string()))
+        .collect()
 }

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave210] - 2026-05-19 - Shadow Run Readiness (S2 Sovereignty Parity Proofs)
+
+### Added
+- **`TurnRelayStats` periodic emission** — relay server now emits structured stats every 60s via `tracing::info!` (uptime, active allocations, packets/bytes relayed, auth failures). Consumable by journalctl, log aggregators, and membrane telemetry pipelines. `TurnRelayStats` now derives `serde::Serialize` with computed `uptime_seconds` field.
+- **`TurnSessionConfig::from_env(peer_addr)`** — resolves `SONGBIRD_TURN_SERVER`, `SONGBIRD_TURN_USERNAME`, `SONGBIRD_TURN_KEY` env vars into a ready-to-connect session config. Provides the client-side discovery path for shadow runs.
+- **`LineageRelayCoordinator::probe_turn_relay(peer_addr)`** — performs full TURN Allocate → CreatePermission handshake and returns `(relay_addr, setup_duration)`. Used for shadow metric collection (S2 connection setup time parity measurement).
+- **`LineageRelayCoordinator::turn_relay_configured()`** — env-gated check for TURN relay availability.
+- **`TurnSessionError::Config` variant** — for env var / address parsing errors in `from_env()`.
+
+### Changed
+- **Deployment README** — updated monitoring section with stats field descriptions; added `from_env()` and `probe_turn_relay()` references for shadow run consumers.
+
+### Reference
+- primalSpring Wave 24: Shadow Run Execution — Sovereignty Parity Proofs (S2: NAT traversal)
+- `deployment/relay/README.md` updated with stats monitoring guidance
+
+---
+
 ## [v0.2.1-wave209] - 2026-05-18 - Stale Socket Cleanup (primalSpring R10)
 
 ### Added

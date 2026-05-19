@@ -118,9 +118,14 @@ allocation's relay socket. These must be reachable from peers.
 
 ## Monitoring
 
+The relay emits structured stats every 60 seconds via `tracing::info!`:
+
 ```bash
 # Live logs
 journalctl -u songbird-relay -f
+
+# Structured stats (every 60s — uptime, active allocations, bytes relayed)
+journalctl -u songbird-relay | grep "TURN relay stats"
 
 # Allocation activity
 journalctl -u songbird-relay | grep "TURN: allocation"
@@ -131,6 +136,14 @@ journalctl -u songbird-relay | grep "auth_failures\|Unauthorized"
 # Resource usage
 systemd-cgtop -1 | grep songbird-relay
 ```
+
+Stats fields emitted per interval:
+- `uptime_s` — seconds since server start
+- `allocations_active` — currently held allocations
+- `allocations_total` — lifetime allocation count
+- `packets_relayed` — total data packets forwarded
+- `bytes_relayed` — total bytes forwarded
+- `auth_failures` — failed authentication attempts
 
 ---
 
@@ -147,6 +160,10 @@ export SONGBIRD_TURN_KEY=<hex_key_from_credentials_file>
 
 The `ConnectionFallbackChain` (Tier 4) will automatically attempt TURN
 allocation through this server when direct and STUN-assisted paths fail.
+
+Client code can also resolve config from env via `TurnSessionConfig::from_env(peer_addr)`
+(songbird-turn-client crate). Shadow probe available via
+`LineageRelayCoordinator::probe_turn_relay(peer_addr)` — returns `(relay_addr, setup_duration)`.
 
 ---
 

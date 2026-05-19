@@ -141,12 +141,87 @@ impl LineageRelayCoordinator {
         }
 
         // Phase 2: Request lineage relay
-        let relay_session =
-            self.relay_discovery.request_relay(peer.clone(), Some(peer_address)).await?;
+        self.relay_discovery.request_relay(peer.clone(), Some(peer_address)).await.map(
+            |relay_session| {
+                info!("✅ Relayed connection established through {}", relay_session.relay_node);
+                ConnectionSession::Relayed(RelayedConnection::new(relay_session))
+            },
+        )
+    }
 
-        info!("✅ Relayed connection established through {}", relay_session.relay_node);
+    /// Check whether a TURN relay is configured and reachable.
+    ///
+    /// Returns the parsed server address if `SONGBIRD_TURN_SERVER` is set and
+    /// parses as a valid `SocketAddr`. Used by shadow-run metric collection to
+    /// validate that the sovereign relay is available before measuring parity.
+    #[must_use]
+    pub fn turn_relay_configured() -> Option<SocketAddr> {
+        songbird_process_env::var("SONGBIRD_TURN_SERVER").ok().and_then(|s| s.parse().ok())
+    }
 
-        Ok(ConnectionSession::Relayed(RelayedConnection::new(relay_session)))
+    /// Attempt a TURN allocation probe (connection setup time measurement).
+    ///
+    /// Performs a full TURN Allocate → `CreatePermission` handshake against the
+    /// configured `SONGBIRD_TURN_*` relay server. Returns the allocated relay
+    /// address and setup duration. Used for shadow metric collection
+    /// (connection setup time, S2 parity proof).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if TURN env vars are missing, server is unreachable, or
+    /// authentication fails.
+    pub async fn probe_turn_relay(
+        peer_address: SocketAddr,
+    ) -> std::result::Result<(SocketAddr, Duration), String> {
+        use songbird_stun::{StunCredentials, TurnClient};
+        use tokio::net::UdpSocket;
+
+        let server_str = songbird_process_env::var("SONGBIRD_TURN_SERVER")
+            .map_err(|_| "SONGBIRD_TURN_SERVER not set".to_string())?;
+        let server_addr: SocketAddr =
+            server_str.parse().map_err(|e| format!("SONGBIRD_TURN_SERVER invalid: {e}"))?;
+
+        let username = songbird_process_env::var("SONGBIRD_TURN_USERNAME").unwrap_or_default();
+        let key_hex = songbird_process_env::var("SONGBIRD_TURN_KEY").unwrap_or_default();
+        let key = key_hex
+            .trim()
+            .as_bytes()
+            .chunks(2)
+            .filter_map(|c| {
+                std::str::from_utf8(c).ok().and_then(|s| u8::from_str_radix(s, 16).ok())
+            })
+            .collect::<Vec<u8>>();
+
+        let credentials = StunCredentials {
+            username,
+            key,
+        };
+        let client = TurnClient::new(server_addr, credentials);
+
+        let socket = UdpSocket::bind("0.0.0.0:0")
+            .await
+            .map_err(|e| format!("Failed to bind UDP socket: {e}"))?;
+
+        let start = std::time::Instant::now();
+
+        let allocation =
+            client.allocate(&socket).await.map_err(|e| format!("TURN allocate failed: {e}"))?;
+
+        client
+            .create_permission(&socket, peer_address)
+            .await
+            .map_err(|e| format!("TURN create_permission failed: {e}"))?;
+
+        let setup_duration = start.elapsed();
+
+        info!(
+            relay = %server_addr,
+            allocated = %allocation.relay_addr,
+            setup_ms = setup_duration.as_millis(),
+            "TURN relay probe successful"
+        );
+
+        Ok((allocation.relay_addr, setup_duration))
     }
 
     /// Try direct connection via UDP hole punching with optional STUN discovery

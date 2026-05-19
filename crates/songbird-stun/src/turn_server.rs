@@ -48,6 +48,7 @@ use turn_attrs::TurnAttrs;
 const DEFAULT_ALLOCATION_LIFETIME: u32 = 600;
 const MAX_ALLOCATION_LIFETIME: u32 = 3600;
 const CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
+const STATS_REPORT_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Credential store for TURN authentication.
 ///
@@ -109,7 +110,10 @@ struct Allocation {
 }
 
 /// TURN relay server statistics.
-#[derive(Debug, Default, Clone)]
+///
+/// Emitted periodically (every 60s) to structured logs for shadow metric
+/// collection. Also queryable via `TurnRelayServer::stats()`.
+#[derive(Debug, Default, Clone, serde::Serialize)]
 pub struct TurnRelayStats {
     /// Total allocations created.
     pub allocations_created: u64,
@@ -122,7 +126,11 @@ pub struct TurnRelayStats {
     /// Total authentication failures.
     pub auth_failures: u64,
     /// Server start time.
+    #[serde(skip)]
     pub start_time: Option<Instant>,
+    /// Uptime in seconds (computed on serialization / stats query).
+    #[serde(skip_deserializing)]
+    pub uptime_seconds: u64,
 }
 
 /// TURN relay server (RFC 5766).
@@ -148,9 +156,13 @@ impl TurnRelayServer {
         }
     }
 
-    /// Get server statistics.
+    /// Get server statistics (uptime computed at call time).
     pub async fn stats(&self) -> TurnRelayStats {
-        self.stats.read().await.clone()
+        let mut s = self.stats.read().await.clone();
+        if let Some(start) = s.start_time {
+            s.uptime_seconds = start.elapsed().as_secs();
+        }
+        s
     }
 
     /// Run the TURN relay server.
@@ -202,6 +214,11 @@ impl TurnRelayServer {
         let stats_ref = Arc::clone(&self.stats);
         tokio::spawn(async move {
             Self::cleanup_loop(allocs, stats_ref).await;
+        });
+
+        let stats_report = Arc::clone(&self.stats);
+        tokio::spawn(async move {
+            Self::stats_report_loop(stats_report).await;
         });
 
         let mut buf = vec![0u8; 4096];
@@ -670,6 +687,30 @@ impl TurnRelayServer {
                 let mut s = stats.write().await;
                 s.active_allocations = s.active_allocations.saturating_sub(removed as u64);
             }
+        }
+    }
+
+    /// Periodic stats emission for shadow metric collection.
+    ///
+    /// Emits structured log every 60s with relay throughput, allocation count,
+    /// and uptime — consumable by journalctl, log aggregators, or membrane
+    /// telemetry pipelines.
+    async fn stats_report_loop(stats: Arc<RwLock<TurnRelayStats>>) {
+        loop {
+            tokio::time::sleep(STATS_REPORT_INTERVAL).await;
+            let mut s = stats.read().await.clone();
+            if let Some(start) = s.start_time {
+                s.uptime_seconds = start.elapsed().as_secs();
+            }
+            info!(
+                uptime_s = s.uptime_seconds,
+                allocations_active = s.active_allocations,
+                allocations_total = s.allocations_created,
+                packets_relayed = s.packets_relayed,
+                bytes_relayed = s.bytes_relayed,
+                auth_failures = s.auth_failures,
+                "TURN relay stats"
+            );
         }
     }
 }

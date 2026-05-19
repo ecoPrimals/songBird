@@ -31,4 +31,8 @@ pub enum TurnSessionError {
     /// Payload exceeds maximum TURN data size (< 64 KiB).
     #[error("payload too large: {0} bytes (max 65535)")]
     PayloadTooLarge(usize),
+
+    /// Configuration error (missing env vars, invalid addresses).
+    #[error("configuration error: {0}")]
+    Config(String),
 }
