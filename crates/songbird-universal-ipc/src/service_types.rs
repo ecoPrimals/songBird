@@ -12,6 +12,7 @@
 //! with the wateringHole zero-copy IPC convention.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// `bytes::Bytes` re-export for zero-copy IPC payload fields and wire buffers.
 pub use bytes::Bytes;
@@ -147,6 +148,41 @@ pub struct CapabilityResolveResult {
     /// Canonical JSON payload that was signed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signed_payload: Option<String>,
+}
+
+/// `capability.call` request — cross-gate capability dispatch.
+///
+/// Invokes an operation on a capability provider. Songbird resolves the provider
+/// locally (same gate) or remotely (via mesh peer's Songbird instance). This is
+/// the routing layer that biomeOS uses for multi-gate composition dispatch.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CapabilityCallParams {
+    /// Capability domain to target (e.g. `"crypto"`, `"content"`, `"compute"`).
+    pub capability: String,
+    /// Operation within the capability (e.g. `"generate_keypair"`, `"sign"`).
+    pub operation: String,
+    /// Operation-specific parameters (forwarded verbatim to the provider).
+    #[serde(default)]
+    pub params: Value,
+    /// Preferred routing: `"local"` (same gate only), `"any"` (local or remote).
+    /// Default: `"any"`.
+    #[serde(default = "default_routing")]
+    pub routing: String,
+}
+
+fn default_routing() -> String {
+    "any".to_string()
+}
+
+/// `capability.call` response — result from the resolved provider.
+#[derive(Debug, Clone, Serialize)]
+pub struct CapabilityCallResult {
+    /// The provider that handled the call.
+    pub provider: String,
+    /// Which gate served the request (`"local"` or a remote `node_id`).
+    pub gate: String,
+    /// The provider's response (operation-specific).
+    pub result: Value,
 }
 
 /// `lifecycle.composition` response — current composition state for dashboards.

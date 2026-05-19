@@ -75,6 +75,10 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve) => {
                 self.handle_capability_resolve(params).await
             }
+            // ── Cross-gate capability dispatch ─────────────────────────
+            JsonRpcMethod::Capabilities(CapabilitiesMethod::Call) => {
+                self.handle_capability_call(params).await
+            }
 
             // ── Lifecycle / composition introspection ────────────────
             JsonRpcMethod::Lifecycle(LifecycleMethod::Composition) => {

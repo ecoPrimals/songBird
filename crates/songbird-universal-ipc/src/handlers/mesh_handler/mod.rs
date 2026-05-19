@@ -66,6 +66,11 @@ impl MeshHandler {
         }
     }
 
+    /// Access the mesh state (for cross-gate dispatch capability resolution).
+    pub async fn mesh(&self) -> tokio::sync::RwLockReadGuard<'_, Option<Arc<BeaconMesh>>> {
+        self.mesh.read().await
+    }
+
     /// Create with an existing mesh instance
     pub fn with_mesh(mesh: BeaconMesh, node_id: impl Into<Arc<str>>) -> Self {
         Self {

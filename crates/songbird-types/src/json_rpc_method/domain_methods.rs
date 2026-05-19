@@ -58,6 +58,9 @@ pub enum CapabilitiesMethod {
     /// `capability.resolve` — single-step routing: returns the best provider endpoint
     /// for a given capability (the IPC equivalent of DNS resolution).
     Resolve,
+    /// `capability.call` — cross-gate dispatch: invoke a capability operation, resolving
+    /// locally or forwarding to a remote gate via mesh/relay transport.
+    Call,
 }
 
 /// `lifecycle.*` — composition and runtime state introspection.

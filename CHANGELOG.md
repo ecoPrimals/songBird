@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave211] - 2026-05-19 - Cross-Gate Dispatch (CG-8 Resolution)
+
+### Added
+- **`capability.call` JSON-RPC method** — cross-gate capability dispatch handler. Receives `{ capability, operation, params, routing }`, resolves the provider locally (same gate) or remotely (via mesh peer's Songbird TCP endpoint), forwards the operation, and returns `{ provider, gate, result }`. This is the routing glue that enables biomeOS multi-gate compositions (CG-8).
+- **`CapabilityCallParams` / `CapabilityCallResult`** types in `service_types.rs` — stable wire format for cross-gate dispatch.
+- **Local provider forwarding** — connects to the local primal's UDS socket, sends the operation as JSON-RPC, and returns the result with timeout handling.
+- **Remote gate forwarding** — discovers reachable mesh peers, connects to their Songbird TCP endpoint, sends `capability.call` with `routing: "local"` (prevents infinite forwarding loops), and returns the remote result.
+- **`EndpointType::address()`** — extracts the IP address from Direct/Local endpoint types for TCP connection.
+- **`MeshHandler::mesh()`** — public accessor for cross-gate dispatch to query mesh topology.
+- **`capability.call` and `capability.resolve` in `rpc.methods`/`rpc.discover`** method lists.
+
+### Changed
+- **`CapabilitiesMethod` enum** — added `Call` variant for `capability.call` wire string.
+- **Dispatch table** — routes `capability.call` to the new `handle_capability_call` handler.
+
+### Architecture
+```
+biomeOS gate A → capability.call("crypto", "sign", {...})
+    → Songbird A: resolve locally? Yes → UDS forward to bearDog.sock → return
+    → Songbird A: resolve locally? No → mesh.peers → TCP to Songbird B
+        → Songbird B: capability.call(routing="local") → local dispatch → return
+```
+
+### Reference
+- primalSpring `PRIMAL_GAPS.md` line 558: "Cross-gate dispatch via songBird (CG-8)"
+- `REMAINING_WORK.md` §Cross-Gate Dispatch (Phase 2)
+
+---
+
 ## [v0.2.1-wave210] - 2026-05-19 - Shadow Run Readiness (S2 Sovereignty Parity Proofs)
 
 ### Added

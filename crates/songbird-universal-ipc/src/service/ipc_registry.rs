@@ -383,6 +383,237 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
+    /// Handle `capability.call` — cross-gate capability dispatch.
+    ///
+    /// 1. Resolves the capability to a local provider (via registry)
+    /// 2. If local: connects to the provider's UDS socket and forwards the operation
+    /// 3. If not local and routing is `"any"`: attempts remote dispatch via mesh peer
+    ///
+    /// This is the routing glue that enables biomeOS multi-gate compositions via
+    /// Songbird's relay infrastructure (CG-8).
+    pub(super) async fn handle_capability_call(&self, params: Value) -> Result<Value, String> {
+        let call: super::CapabilityCallParams =
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
+
+        debug!(
+            capability = %call.capability,
+            operation = %call.operation,
+            routing = %call.routing,
+            "capability.call dispatch"
+        );
+
+        // Phase 1: Try local resolution
+        let registry = self.registry.read().await;
+        if let Some((primal_id, entry)) = registry.resolve_by_capability(&call.capability).await {
+            let socket_path = entry.native_endpoint.socket_path();
+            drop(registry);
+
+            if let Some(ref path) = socket_path {
+                let result =
+                    self.forward_to_local_provider(path, &call.operation, &call.params).await?;
+
+                let response = super::CapabilityCallResult {
+                    provider: primal_id,
+                    gate: "local".to_string(),
+                    result,
+                };
+                return serde_json::to_value(response)
+                    .map_err(|e| format!("Serialization error: {e}"));
+            }
+
+            return Err(format!(
+                "Provider '{}' registered for '{}' but has no connectable socket",
+                primal_id, call.capability
+            ));
+        }
+        drop(registry);
+
+        // Phase 2: Remote dispatch via mesh (if routing allows)
+        if call.routing == "local" {
+            return Err(format!(
+                "No local provider for capability '{}' (routing=local, remote dispatch disabled)",
+                call.capability
+            ));
+        }
+
+        self.forward_to_remote_gate(&call).await
+    }
+
+    /// Forward an operation to a local provider via its UDS socket.
+    async fn forward_to_local_provider(
+        &self,
+        socket_path: &str,
+        operation: &str,
+        params: &Value,
+    ) -> Result<Value, String> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::UnixStream;
+
+        let stream =
+            tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, UnixStream::connect(socket_path))
+                .await
+                .map_err(|_| format!("Timeout connecting to provider at {socket_path}"))?
+                .map_err(|e| format!("Cannot connect to provider at {socket_path}: {e}"))?;
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": operation,
+            "params": params,
+            "id": 1
+        });
+
+        let mut request_bytes = serde_json::to_vec(&request)
+            .map_err(|e| format!("Failed to serialize request: {e}"))?;
+        request_bytes.push(b'\n');
+
+        let (reader, mut writer) = stream.into_split();
+
+        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, writer.write_all(&request_bytes))
+            .await
+            .map_err(|_| format!("Timeout writing to provider at {socket_path}"))?
+            .map_err(|e| format!("Write error to provider: {e}"))?;
+
+        let mut buf_reader = BufReader::new(reader);
+        let mut response_line = String::new();
+        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, buf_reader.read_line(&mut response_line))
+            .await
+            .map_err(|_| format!("Timeout reading from provider at {socket_path}"))?
+            .map_err(|e| format!("Read error from provider: {e}"))?;
+
+        let response: Value = serde_json::from_str(response_line.trim())
+            .map_err(|e| format!("Invalid JSON response from provider: {e}"))?;
+
+        if let Some(error) = response.get("error") {
+            return Err(format!(
+                "Provider error: {}",
+                error.get("message").and_then(Value::as_str).unwrap_or("unknown")
+            ));
+        }
+
+        Ok(response.get("result").cloned().unwrap_or(Value::Null))
+    }
+
+    /// Forward a capability call to a remote gate via mesh peer TCP.
+    ///
+    /// Discovers mesh peers, finds one advertising the needed capability, and
+    /// dispatches via that peer's Songbird TCP JSON-RPC endpoint.
+    async fn forward_to_remote_gate(
+        &self,
+        call: &super::CapabilityCallParams,
+    ) -> Result<Value, String> {
+        use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+
+        let mesh_guard = self.mesh_handler.mesh().await;
+        let mesh =
+            mesh_guard.as_ref().ok_or("Mesh not initialized — cannot discover remote gates")?;
+
+        let reachable = mesh.get_reachable_nodes().await;
+        if reachable.is_empty() {
+            return Err(format!(
+                "No local provider for '{}' and no reachable mesh peers for remote dispatch",
+                call.capability
+            ));
+        }
+
+        // For each reachable peer, attempt dispatch via their TCP endpoint.
+        // In a fully evolved system, peers would advertise capabilities via
+        // primal.announce — for now we try the first reachable peer.
+        for node_id in &reachable {
+            let Some(path) = mesh.get_best_path(node_id).await else {
+                continue;
+            };
+            let Some(address) = path.endpoint_type.address() else {
+                continue;
+            };
+            let tcp_endpoint = format!("http://{address}:{DEFAULT_HTTP_PORT}/jsonrpc");
+
+            match self.forward_to_remote_tcp(&tcp_endpoint, call).await {
+                Ok(result) => {
+                    let response = super::CapabilityCallResult {
+                        provider: format!("remote:{node_id}"),
+                        gate: node_id.clone(),
+                        result,
+                    };
+                    return serde_json::to_value(response)
+                        .map_err(|e| format!("Serialization error: {e}"));
+                }
+                Err(e) => {
+                    debug!(
+                        peer = %node_id,
+                        error = %e,
+                        "Remote gate dispatch failed, trying next peer"
+                    );
+                }
+            }
+        }
+
+        Err(format!(
+            "No local or remote provider found for capability '{}' \
+             (tried {} mesh peers)",
+            call.capability,
+            reachable.len()
+        ))
+    }
+
+    /// Send a `capability.call` to a remote Songbird instance via TCP JSON-RPC.
+    async fn forward_to_remote_tcp(
+        &self,
+        endpoint: &str,
+        call: &super::CapabilityCallParams,
+    ) -> Result<Value, String> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::TcpStream;
+
+        let addr = endpoint.trim_start_matches("http://").trim_end_matches("/jsonrpc");
+
+        let stream = tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, TcpStream::connect(addr))
+            .await
+            .map_err(|_| format!("Timeout connecting to remote gate at {addr}"))?
+            .map_err(|e| format!("Cannot connect to remote gate at {addr}: {e}"))?;
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "capability.call",
+            "params": {
+                "capability": call.capability,
+                "operation": call.operation,
+                "params": call.params,
+                "routing": "local"
+            },
+            "id": 1
+        });
+
+        let mut request_bytes = serde_json::to_vec(&request)
+            .map_err(|e| format!("Failed to serialize remote request: {e}"))?;
+        request_bytes.push(b'\n');
+
+        let (reader, mut writer) = stream.into_split();
+
+        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, writer.write_all(&request_bytes))
+            .await
+            .map_err(|_| format!("Timeout writing to remote gate at {addr}"))?
+            .map_err(|e| format!("Write error to remote gate: {e}"))?;
+
+        let mut buf_reader = BufReader::new(reader);
+        let mut response_line = String::new();
+        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, buf_reader.read_line(&mut response_line))
+            .await
+            .map_err(|_| format!("Timeout reading from remote gate at {addr}"))?
+            .map_err(|e| format!("Read error from remote gate: {e}"))?;
+
+        let response: Value = serde_json::from_str(response_line.trim())
+            .map_err(|e| format!("Invalid JSON from remote gate: {e}"))?;
+
+        if let Some(error) = response.get("error") {
+            return Err(format!(
+                "Remote gate error: {}",
+                error.get("message").and_then(Value::as_str).unwrap_or("unknown")
+            ));
+        }
+
+        Ok(response.get("result").cloned().unwrap_or(Value::Null))
+    }
+
     /// Handle `lifecycle.composition` — returns current composition state for dashboards.
     pub(super) async fn handle_lifecycle_composition(
         &self,

@@ -65,6 +65,25 @@ impl EndpointType {
             } => 3,
         }
     }
+
+    /// Extract the IP address if this endpoint type has one.
+    #[must_use]
+    pub fn address(&self) -> Option<std::net::IpAddr> {
+        match self {
+            Self::Direct {
+                addr,
+            }
+            | Self::Local {
+                addr,
+            } => Some(addr.ip()),
+            Self::FamilyRelay {
+                ..
+            }
+            | Self::TorOnion {
+                ..
+            } => None,
+        }
+    }
 }
 
 #[cfg(test)]

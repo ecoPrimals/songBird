@@ -53,10 +53,10 @@ mod meta;
 mod util;
 
 pub use crate::service_types::{
-    CapabilityResolveParams, CapabilityResolveResult, CompositionPrimalInfo, CompositionState,
-    DiscoverParams, DiscoverResult, FederationPeersResponse, FederationStatusResponse, ListResult,
-    ProviderInfo, RegisterParams, RegisterResult, ResolveParams, ResolveResult, ServiceInfo,
-    ValidateConsumedResult,
+    CapabilityCallParams, CapabilityCallResult, CapabilityResolveParams, CapabilityResolveResult,
+    CompositionPrimalInfo, CompositionState, DiscoverParams, DiscoverResult,
+    FederationPeersResponse, FederationStatusResponse, ListResult, ProviderInfo, RegisterParams,
+    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, ValidateConsumedResult,
 };
 
 /// Songbird IPC Service Handler
