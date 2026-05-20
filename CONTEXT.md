@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: May 15, 2026
+**Last Updated**: May 20, 2026
 
 ## What It Does
 
@@ -14,7 +14,8 @@ Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 - **HTTP/HTTPS**: Pure Rust TLS 1.3 client for sovereign HTTPS (Tower Atomic with security provider)
 - **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication; BTSP Phase 2 handshake on UDS accept when `FAMILY_ID` set (length-prefix + NDJSON wire formats; first-line auto-detect); BTSP Phase 3 `btsp.negotiate` encrypted framing (ChaCha20-Poly1305, HKDF session keys) on all 3 transport paths; domain symlink `network.sock` → `songbird.sock` for capability discovery
 - **Discovery**: Capability-based runtime discovery — mDNS, SSDP, UDP broadcast, DNS-SD, BirdSong encrypted beacons
-- **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh
+- **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh, TURN client (RFC 5766), cloudflared emergency tunnels, shadow dual-path comparator
+- **Cross-Gate Dispatch**: `capability.call` routes RPCs to local or remote capabilities via mesh/TCP/UDS
 - **Federation**: Multi-node mesh networking with capability-based routing
 - **Onion Routing**: Pure Rust Tor protocol + sovereign .onion services
 - **Relay**: Lineage-gated relay for symmetric NAT traversal
@@ -37,8 +38,8 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Tests | 7,803 lib passed (0 failures, 22 ignored) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; May 15 verified) |
-| Files >800 LOC | **0** — Wave 206: `bin_interface/server.rs` (878L → 360L via `ipc_session.rs` extraction), `turn_server.rs` (898L → 679L via `turn_attrs.rs` extraction); largest: `primal_discovery.rs` 763L |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; May 20 verified) |
+| Files >800 LOC | **0** — largest: `multi_tier_coordinator.rs` 799L |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 31 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |
 | Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates); legacy socket filenames centralized as constants (`LEGACY_SECURITY_SOCKET_FILENAME`, `LEGACY_AI_SOCKET_FILENAME`, `LEGACY_COMPUTE_SOCKET_FILENAME`); all `/tmp/` paths evolved to `std::env::temp_dir()`; `cors_origins()` env-overridable, `data_dir()` XDG-compliant; legacy env vars (`BEARDOG_*`) deprecated with `tracing::warn!` |

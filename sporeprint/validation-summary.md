@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 7,803 tests, 31 crates, 54 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate dispatch"
-date = 2026-05-19
+description = "Sovereign networking primal — 7,803 tests, 31 crates, 54 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate dispatch, zero production stubs"
+date = 2026-05-20
 
 [taxonomies]
 primals = ["songbird"]
@@ -16,6 +16,7 @@ springs = ["primalspring"]
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
 - **5-tier ConnectionFallbackChain**: direct → STUN → lineage relay → TURN → emergency tunnel
 - **`capability.call` cross-gate dispatch** (Wave 211): local UDS + remote mesh TCP forwarding
+- **Zero production stubs** in networking paths (Wave 214: DirectConnection, protocol upgrade, HTTPS cert all evolved)
 - **Zero unsafe blocks** (`forbid(unsafe_code)` on all 31 crates)
 - **Zero `async-trait`** — fully eliminated (141→0), enum dispatch throughout
 - **Zero production `unwrap()`/`panic!()`/`todo!()`**
