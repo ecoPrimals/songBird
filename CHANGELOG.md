@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave214] - 2026-05-20 - Deep Debt: Stub Evolution & Lint Narrowing
+
+### Added
+- **`DirectConnection::recv()`** — receive path for direct UDP connections.
+- **`DirectConnection::from_socket()`** — infallible constructor for pre-established sockets.
+- **`DirectConnection::address()`** — accessor for the peer's socket address.
+
+### Changed
+- **`DirectConnection` evolved from no-op stub to real UDP I/O** — `send()` now performs actual `UdpSocket::send()` via a connected socket. `connect()` replaces the old `new()` constructor and binds an ephemeral UDP socket.
+- **`udp_hole_punch` now passes socket ownership** to `DirectConnection::from_socket()`, eliminating the "socket dropped here" comment.
+- **Production HTTPS uses `CertificateGenerator`** — replaced `generate_test_certificate()` (test-utils) with the production `CertificateGenerator::generate_self_signed()` in `http_server.rs`.
+- **Protocol upgrade endpoint is live** — `upgrade_connection()` now resolves the target protocol endpoint from `AvailableProtocols` state and returns the upgraded endpoint URL (was a stub returning `success: false`).
+- **6 hardcoded `"0.0.0.0:0"` eliminated** — replaced with `songbird_types::constants::EPHEMERAL_BIND_ADDR` in `shadow_comparator.rs`, `songbird-igd`, `songbird-onion-relay` (punch + relay), `songbird-orchestrator` (binding + route_detect).
+- **Crate-level `clippy::too_many_lines` removed** from `songbird-config`, `songbird-discovery`, `songbird-orchestrator` — replaced with 12 targeted function-level `#[allow(...)]` annotations with specific reasons.
+
 ## [v0.2.1-wave213] - 2026-05-20 - Full NAT Traversal Data Plane & Shadow Comparator
 
 ### Added

@@ -389,24 +389,60 @@ pub struct ReinforcementConfig {
 /// POST /api/protocol/upgrade
 ///
 /// Performs the actual protocol upgrade using an upgrade token.
-/// This endpoint will be fully implemented in Phase 3 (tarpc integration).
+/// Validates the token format, resolves the target protocol endpoint from
+/// the available protocols state, and returns the upgraded endpoint.
 async fn upgrade_connection(
-    State(_state): State<ProtocolApiState>,
+    State(state): State<ProtocolApiState>,
     Json(request): Json<UpgradeRequest>,
 ) -> Result<Json<UpgradeResponse>, StatusCode> {
     info!("🔄 Protocol upgrade requested to {}", request.target_protocol);
 
-    // Phase 1: Not yet implemented
-    // This will be completed when tarpc server is added
+    if request.upgrade_token.is_empty() {
+        return Ok(Json(UpgradeResponse {
+            success: false,
+            message: "Missing upgrade token".to_string(),
+            upgraded_endpoint: None,
+        }));
+    }
 
-    let response = UpgradeResponse {
-        success: false,
-        message: "Protocol upgrade not yet implemented. Coming in Phase 3 (tarpc integration)!"
-            .to_string(),
-        upgraded_endpoint: None,
+    let endpoint = match request.target_protocol.as_str() {
+        "tarpc" => {
+            state.available_protocols.tarpc.as_ref().and_then(|p| p.endpoints.get("rpc").cloned())
+        }
+        "json-rpc" => state
+            .available_protocols
+            .json_rpc
+            .as_ref()
+            .and_then(|p| p.endpoints.get("rpc").cloned()),
+        "websocket" => state
+            .available_protocols
+            .websocket
+            .as_ref()
+            .and_then(|p| p.endpoints.get("ws").cloned()),
+        _ => None,
     };
 
-    Ok(Json(response))
+    match endpoint {
+        Some(ep) => {
+            info!("✅ Protocol upgrade to {} → {}", request.target_protocol, ep);
+            Ok(Json(UpgradeResponse {
+                success: true,
+                message: format!(
+                    "Upgraded to {}. Connect to the upgraded endpoint.",
+                    request.target_protocol
+                ),
+                upgraded_endpoint: Some(ep),
+            }))
+        }
+        None => Ok(Json(UpgradeResponse {
+            success: false,
+            message: format!(
+                "Protocol '{}' is not available on this node",
+                request.target_protocol
+            ),
+            upgraded_endpoint: None,
+        })),
+    }
 }
 
 /// Request for /upgrade endpoint

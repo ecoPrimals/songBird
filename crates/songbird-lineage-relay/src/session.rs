@@ -73,21 +73,61 @@ impl ConnectionSession {
     }
 }
 
-/// Direct connection (no relay)
+/// Direct UDP connection (no relay).
+///
+/// Holds a connected [`UdpSocket`](tokio::net::UdpSocket) bound to an
+/// ephemeral port and connected to the peer address. Sends are real I/O.
 pub struct DirectConnection {
     peer: NodeId,
-    /// Remote address (used when relay mode fully implemented)
-    _address: SocketAddr,
+    address: SocketAddr,
+    socket: Arc<tokio::net::UdpSocket>,
     stats: Arc<Mutex<ConnectionStats>>,
 }
 
 impl DirectConnection {
-    /// Create new direct connection
+    /// Create a new direct connection by binding an ephemeral UDP socket.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if socket bind or connect fails.
+    pub async fn connect(peer: NodeId, address: SocketAddr) -> Result<Self> {
+        let bind_addr = if address.is_ipv4() {
+            songbird_types::constants::EPHEMERAL_BIND_ADDR
+        } else {
+            "[::]:0"
+        };
+
+        let socket = tokio::net::UdpSocket::bind(bind_addr)
+            .await
+            .map_err(|e| crate::error::LineageRelayError::NetworkError(format!("bind: {e}")))?;
+
+        socket.connect(address).await.map_err(|e| {
+            crate::error::LineageRelayError::NetworkError(format!("connect to {address}: {e}"))
+        })?;
+
+        Ok(Self {
+            peer,
+            address,
+            socket: Arc::new(socket),
+            stats: Arc::new(Mutex::new(ConnectionStats {
+                established_at: Some(SystemTime::now()),
+                connection_type: Some(ConnectionType::Direct),
+                ..Default::default()
+            })),
+        })
+    }
+
+    /// Infallible constructor for contexts where the socket is pre-established.
     #[must_use]
-    pub fn new(peer: NodeId, address: SocketAddr) -> Self {
+    pub fn from_socket(
+        peer: NodeId,
+        address: SocketAddr,
+        socket: Arc<tokio::net::UdpSocket>,
+    ) -> Self {
         Self {
             peer,
-            _address: address,
+            address,
+            socket,
             stats: Arc::new(Mutex::new(ConnectionStats {
                 established_at: Some(SystemTime::now()),
                 connection_type: Some(ConnectionType::Direct),
@@ -96,24 +136,52 @@ impl DirectConnection {
         }
     }
 
-    /// Send data directly
+    /// The peer's address.
+    #[must_use]
+    pub const fn address(&self) -> SocketAddr {
+        self.address
+    }
+
+    /// Send data directly via UDP.
     ///
     /// # Errors
     ///
-    /// Returns error if sending fails
+    /// Returns error if the send syscall fails.
     pub async fn send(&self, data: &[u8]) -> Result<()> {
         debug!("Sending {} bytes directly to {}", data.len(), self.peer);
+
+        self.socket.send(data).await.map_err(|e| {
+            crate::error::LineageRelayError::NetworkError(format!(
+                "UDP send to {}: {e}",
+                self.address
+            ))
+        })?;
 
         let mut stats = self.stats.lock().await;
         stats.bytes_sent += data.len() as u64;
         stats.packets_sent += 1;
-        drop(stats);
 
-        // In real implementation, would send through UDP/TCP socket
         Ok(())
     }
 
-    /// Get connection statistics
+    /// Receive data from the peer.
+    ///
+    /// # Errors
+    ///
+    /// Returns error on I/O failure.
+    pub async fn recv(&self, buf: &mut [u8]) -> Result<usize> {
+        let n = self.socket.recv(buf).await.map_err(|e| {
+            crate::error::LineageRelayError::NetworkError(format!(
+                "UDP recv from {}: {e}",
+                self.address
+            ))
+        })?;
+        let mut stats = self.stats.lock().await;
+        stats.bytes_received += n as u64;
+        Ok(n)
+    }
+
+    /// Get connection statistics.
     pub async fn stats(&self) -> ConnectionStats {
         self.stats.lock().await.clone()
     }
@@ -252,9 +320,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_direct_connection() {
-        let conn = DirectConnection::new(NodeId::from("peer-1"), "127.0.0.1:8080".parse().unwrap());
+        let receiver = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let peer_addr = receiver.local_addr().unwrap();
+
+        let conn = DirectConnection::connect(NodeId::from("peer-1"), peer_addr).await.unwrap();
 
         conn.send(b"test data").await.unwrap();
+
+        let mut buf = [0u8; 64];
+        let n = receiver.recv(&mut buf).await.unwrap();
+        assert_eq!(&buf[..n], b"test data");
 
         let stats = conn.stats().await;
         assert_eq!(stats.bytes_sent, 9);
@@ -289,8 +364,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection_session_enum() {
-        let direct =
-            DirectConnection::new(NodeId::from("peer-1"), "127.0.0.1:8080".parse().unwrap());
+        let receiver = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let peer_addr = receiver.local_addr().unwrap();
+
+        let direct = DirectConnection::connect(NodeId::from("peer-1"), peer_addr).await.unwrap();
         let session = ConnectionSession::Direct(direct);
 
         assert_eq!(session.connection_type(), ConnectionType::Direct);
@@ -303,10 +380,11 @@ mod tests {
 
     #[tokio::test]
     async fn attempt_upgrade_direct_reports_already_direct() {
-        let mut session = ConnectionSession::Direct(DirectConnection::new(
-            NodeId::from("peer-1"),
-            "127.0.0.1:8080".parse().unwrap(),
-        ));
+        let receiver = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let peer_addr = receiver.local_addr().unwrap();
+        let mut session = ConnectionSession::Direct(
+            DirectConnection::connect(NodeId::from("peer-1"), peer_addr).await.unwrap(),
+        );
         assert!(session.attempt_upgrade().await.expect("upgrade"));
     }
 

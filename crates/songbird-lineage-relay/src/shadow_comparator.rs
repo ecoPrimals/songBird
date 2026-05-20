@@ -107,7 +107,7 @@ async fn probe_turn_path(peer_addr: SocketAddr) -> Result<PathMetrics> {
     let client = songbird_stun::TurnClient::new(config.server_addr, config.credentials.clone())
         .with_timeout(config.control_timeout);
 
-    let socket = UdpSocket::bind("0.0.0.0:0")
+    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
         .await
         .map_err(|e| crate::error::LineageRelayError::NetworkError(format!("bind: {e}")))?;
 

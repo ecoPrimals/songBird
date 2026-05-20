@@ -100,7 +100,6 @@
     clippy::return_self_not_must_use,
     clippy::trivially_copy_pass_by_ref,
     clippy::similar_names,
-    clippy::too_many_lines,
     clippy::match_same_arms,
     clippy::manual_let_else,
     clippy::missing_panics_doc,

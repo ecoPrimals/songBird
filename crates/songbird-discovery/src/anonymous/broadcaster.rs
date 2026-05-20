@@ -209,6 +209,10 @@ impl AnonymousDiscoveryBroadcaster {
     /// Uses UDP multicast for reliable cross-router discovery, with fallback to:
     /// - Broadcast addresses (for local subnet)
     /// - Known peers (for guaranteed delivery)
+    #[allow(
+        clippy::too_many_lines,
+        reason = "sequential multicast, broadcast, and peer fallback discovery loop"
+    )]
     pub async fn start_broadcasting(&self) -> Result<(), std::io::Error> {
         info!("🌐 Starting anonymous discovery broadcaster");
         info!("   Version: {}", self.version);

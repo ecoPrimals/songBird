@@ -27,6 +27,7 @@ use crate::error::{LineageRelayError, Result};
 use crate::session::DirectConnection;
 use crate::types::NodeId;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::time::{sleep, timeout};
@@ -130,10 +131,11 @@ pub async fn udp_hole_punch(
                         // Port might differ due to NAT, but IP should match
                         info!("✅ UDP hole punch successful! Connected to {}", addr);
 
-                        // Create direct connection
-                        // Note: DirectConnection expects NodeId and SocketAddr
-                        // The socket is dropped here; in production, we'd pass ownership
-                        return Ok(DirectConnection::new(peer_id, addr));
+                        return Ok(DirectConnection::from_socket(
+                            peer_id,
+                            addr,
+                            Arc::new(local_socket),
+                        ));
                     }
                     debug!(
                         "     Received from unexpected address: {} (expected IP: {})",

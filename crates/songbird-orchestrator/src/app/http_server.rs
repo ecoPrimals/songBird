@@ -224,12 +224,13 @@ async fn get_local_ip() -> Result<String> {
 }
 
 /// Start HTTPS server with Pure Rust TLS (songbird-tls + `security provider`)
+#[allow(clippy::too_many_lines, reason = "HTTPS server startup with TLS and route registration")]
 async fn start_https_server(
     app: Router,
     listener: tokio::net::TcpListener,
     addr: SocketAddr,
 ) -> Result<()> {
-    use songbird_tls::cert::test_utils::generate_test_certificate;
+    use songbird_tls::cert::generator::CertificateGenerator;
     use songbird_tls::crypto::SecurityTlsCryptoClient;
     use songbird_tls::{TlsAcceptor, TlsServerConfig};
 
@@ -268,13 +269,14 @@ async fn start_https_server(
 
     let sans_display = sans.join(", ");
 
-    // PURE RUST TLS: songbird-tls + security provider crypto
-    // Generate test certificate (in production, use proper cert management)
-    let test_cert = generate_test_certificate(&node_id)
-        .map_err(|e| anyhow::anyhow!("Failed to generate test certificate: {e}"))?;
+    // Self-signed certificate via CertificateGenerator (Pure Rust, Ed25519)
+    let cert_gen = CertificateGenerator::new()
+        .map_err(|e| anyhow::anyhow!("Failed to create cert generator: {e}"))?;
+    let (cert, _signing_key) = cert_gen
+        .generate_self_signed(&node_id, 365)
+        .map_err(|e| anyhow::anyhow!("Failed to generate self-signed certificate: {e}"))?;
 
-    // Extract certificate data (first entry in chain)
-    let certificate_der = test_cert
+    let certificate_der = cert
         .certificate_list
         .first()
         .ok_or_else(|| anyhow::anyhow!("No certificate in chain"))?

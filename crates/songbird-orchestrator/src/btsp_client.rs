@@ -382,6 +382,7 @@ impl BtspClient {
     ///
     /// # Errors
     /// Returns an error if the handshake fails at any stage (connection, crypto, verification).
+    #[allow(clippy::too_many_lines, reason = "sequential BTSP client handshake protocol steps")]
     pub async fn handshake(
         &self,
         target_socket: &std::path::Path,

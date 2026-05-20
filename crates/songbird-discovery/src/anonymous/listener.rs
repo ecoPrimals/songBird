@@ -135,6 +135,10 @@ impl AnonymousDiscoveryListener {
     ///
     /// This runs indefinitely, processing incoming discovery messages.
     /// Joins multicast group if `multicast_addr` is set.
+    #[allow(
+        clippy::too_many_lines,
+        reason = "indefinite UDP discovery message receive and dispatch loop"
+    )]
     pub async fn start_listening(&self) -> Result<(), std::io::Error> {
         info!("👂 Starting anonymous discovery listener on port {}", self.port);
         if let Some(multicast) = self.multicast_addr {

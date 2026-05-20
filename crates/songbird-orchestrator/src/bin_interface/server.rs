@@ -24,6 +24,7 @@ pub(super) static BIN_GATE: std::sync::LazyLock<MethodGate> =
 /// # Errors
 ///
 /// Returns an error if the operation fails.
+#[allow(clippy::too_many_lines, reason = "orchestrator server lifecycle and startup sequence")]
 pub async fn run_server(args: ServerArgs) -> Result<()> {
     use crate::app;
     use crate::process_manager::ProcessManager;

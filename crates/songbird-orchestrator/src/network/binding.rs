@@ -236,7 +236,7 @@ impl NetworkCapabilities {
 
         // Test IPv4: route probe to documentation / configured address (no public DNS IPs)
         if !has_ipv4
-            && let Ok(socket) = UdpSocket::bind("0.0.0.0:0")
+            && let Ok(socket) = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
             && socket.connect(route_detect_addr_v4().as_str()).is_ok()
             && let Ok(local_addr) = socket.local_addr()
         {

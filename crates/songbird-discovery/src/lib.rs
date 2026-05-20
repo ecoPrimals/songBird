@@ -31,7 +31,6 @@
     clippy::missing_panics_doc,
     clippy::unused_async,
     clippy::unused_self,
-    clippy::too_many_lines,
     clippy::manual_let_else,
     clippy::struct_excessive_bools,
     clippy::collapsible_if,

@@ -47,7 +47,6 @@
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::unused_async,
-    clippy::too_many_lines,
     clippy::implicit_hasher,
     reason = "config crate: broad surface; doc and style exceptions during consolidation"
 )]

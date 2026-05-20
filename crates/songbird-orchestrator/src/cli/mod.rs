@@ -58,6 +58,7 @@ pub struct Cli {
 /// # Errors
 ///
 /// Returns an error if the operation fails.
+#[allow(clippy::too_many_lines, reason = "CLI command dispatch table")]
 pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()> {
     match command {
         Commands::Init {

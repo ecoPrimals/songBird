@@ -171,6 +171,7 @@ pub async fn upload_chunk(
 /// # Errors
 ///
 /// Returns an error if the operation fails.
+#[allow(clippy::too_many_lines, reason = "chunked upload finalize and deployment pipeline")]
 pub async fn finalize_chunked_upload(
     State(state): State<DeploymentState>,
     Path(neg_id): Path<String>,

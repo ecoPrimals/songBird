@@ -404,7 +404,8 @@ impl Gateway {
         let gateway =
             Self::get_default_gateway().unwrap_or(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)));
 
-        let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(IgdError::Io)?;
+        let socket = std::net::UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
+            .map_err(IgdError::Io)?;
         socket.connect(std::net::SocketAddr::new(gateway, 80)).map_err(IgdError::Io)?;
 
         let local_addr = socket.local_addr().map_err(IgdError::Io)?;

@@ -64,7 +64,8 @@ impl HolePunchCoordinator {
         );
 
         // 1. Bind a new socket for the punch attempt
-        let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await?);
+        let socket =
+            Arc::new(UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await?);
         let local_addr = socket.local_addr()?;
 
         // 2. Signal coordination timing via relay

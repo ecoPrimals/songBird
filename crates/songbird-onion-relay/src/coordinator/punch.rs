@@ -58,7 +58,8 @@ impl HolePunchCoordinator {
         let start_time = self.wait_for_punch_ack(&nonce).await?;
 
         // Create socket for punching
-        let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await?);
+        let socket =
+            Arc::new(UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await?);
 
         // Wait until coordinated start time
         let now_ms = unix_epoch_millis_u64()?;

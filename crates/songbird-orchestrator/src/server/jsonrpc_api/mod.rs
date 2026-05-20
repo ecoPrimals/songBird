@@ -123,6 +123,7 @@ impl JsonRpcState {
 ///
 /// Handles JSON-RPC 2.0 requests.
 /// Provides universal language-agnostic access to Songbird functionality.
+#[allow(clippy::too_many_lines, reason = "HTTP JSON-RPC method dispatch")]
 async fn handle_jsonrpc_request(
     State(state): State<JsonRpcState>,
     Json(request): Json<JsonRpcRequest>,

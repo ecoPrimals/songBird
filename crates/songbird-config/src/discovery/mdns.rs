@@ -246,6 +246,10 @@ impl MdnsDiscovery {
     ///
     /// # Errors
     /// Returns error if network query fails or times out
+    #[allow(
+        clippy::too_many_lines,
+        reason = "mDNS capability scan with timeout and result caching"
+    )]
     pub async fn discover_by_capability(
         &self,
         capability: &str,

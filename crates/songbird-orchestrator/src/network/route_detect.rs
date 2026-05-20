@@ -62,7 +62,7 @@ pub fn resolve_local_ipv4() -> anyhow::Result<String> {
         return Ok(ip.to_string());
     }
 
-    let socket = UdpSocket::bind("0.0.0.0:0")?;
+    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)?;
     socket.connect(route_detect_addr_v4().as_str())?;
 
     if let Ok(local_addr) = socket.local_addr() {

@@ -113,6 +113,10 @@ impl SongbirdOrchestrator {
     /// orchestrator.start_discovery_federation_bridge().await?;
     /// // Bridge now running in background, polling every 10s
     /// ```
+    #[allow(
+        clippy::too_many_lines,
+        reason = "discovery-to-federation polling and peer trust evaluation"
+    )]
     pub(super) async fn start_discovery_federation_bridge(&self) -> Result<()> {
         if let Some(ref listener) = self.discovery_listener {
             let listener_clone = Arc::clone(listener);
