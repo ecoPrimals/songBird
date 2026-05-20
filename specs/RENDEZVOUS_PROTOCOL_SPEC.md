@@ -556,27 +556,21 @@ cargo test rendezvous
 
 ### Integration Tests
 
-**Test 1: Registration**
-```bash
-./showcase/12-internet-deployment/01-rendezvous-registration-test.sh
-```
+> **Note**: The `showcase/12-internet-deployment/` scripts were fossilized
+> (archived to `archive/songbird-sessions-fossil-mar28-2026/`). These tests
+> are now covered by the `songbird-lineage-relay` crate's integration test
+> suite and the `shadow_comparator` module (Wave 213+).
 
-**Test 2: Peer Discovery**
-```bash
-./showcase/12-internet-deployment/02-peer-discovery-test.sh
-```
+**Test 1: Registration** — `cargo test --package songbird-lineage-relay registration`
 
-**Test 3: Connection Coordination**
-```bash
-./showcase/12-internet-deployment/03-connection-coordination-test.sh
-```
+**Test 2: Peer Discovery** — `cargo test --package songbird-discovery`
+
+**Test 3: Connection Coordination** — `cargo test --package songbird-lineage-relay coordination`
 
 ### E2E Tests
 
-**Scenario**: Mobile device discovers and connects to home network
-```bash
-./showcase/12-internet-deployment/04-mobile-to-home-test.sh
-```
+**Scenario**: Mobile device discovers and connects to home network — covered by
+`shadow_comparator::compare_paths` (TURN vs cloudflared) in the lineage-relay crate.
 
 ---
 
