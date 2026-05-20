@@ -228,6 +228,8 @@ pub enum ConnectionType {
     Direct,
     /// Relayed through ancestor
     Relayed,
+    /// Relayed through sovereign TURN server (RFC 5766)
+    TurnRelayed,
     /// Attempting upgrade from relay to direct
     Upgrading,
 }

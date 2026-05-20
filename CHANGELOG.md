@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave213] - 2026-05-20 - Full NAT Traversal Data Plane & Shadow Comparator
+
+### Added
+- **TURN allocation refresh lifecycle** — `TurnSession::spawn_keepalive()` spawns a background task that refreshes the allocation at 80% of its lifetime, preventing expiry during long-running sessions.
+- **`TurnRelayedConnection`** — full data-plane `ConnectionSession::TurnRelayed` variant wrapping a `TurnSession` with stats tracking, send/recv, and automatic keepalive. Drops cleanly via `JoinHandle::abort()`.
+- **`ConnectionType::TurnRelayed`** — new enum variant across `types.rs` and `universal_coordinator_adapter.rs`.
+- **`CloudflaredTunnel`** — Tier 5 emergency tunnel orchestration. Spawns `cloudflared tunnel --url localhost:<port>`, parses the `*.trycloudflare.com` URL from stderr, provides `endpoint()` accessor, and kill-on-drop cleanup.
+- **`shadow_comparator` module** — dual-path shadow run infrastructure. `compare_paths(peer_addr)` probes both TURN and cloudflared in parallel, records `PathMetrics` (setup time, relay address, success/error), and recommends the faster tier. Structured `ShadowComparisonReport` for downstream analysis.
+- **Cross-gate `capability.call` integration tests** — 3 new tests: local UDS dispatch with mock provider (multi-connection), routing=local error path, and no-provider error handling.
+- **`extract_trycloudflare_url` unit tests** — URL parser coverage for cloudflared log lines.
+- **`recommend_tier` unit tests** — decision logic coverage for the shadow comparator.
+
+### Changed
+- `try_emergency_tunnel()` in `MultiTierCoordinator` now spawns a real `cloudflared` process (was previously a stub).
+- `ConnectionSession::attempt_upgrade()` handles `TurnRelayed` variant (returns `false`, same as `Relayed`).
+- `songbird-lineage-relay` now depends on `songbird-turn-client` and `chrono`.
+
 ## [v0.2.1-wave211] - 2026-05-19 - Cross-Gate Dispatch (CG-8 Resolution)
 
 ### Added

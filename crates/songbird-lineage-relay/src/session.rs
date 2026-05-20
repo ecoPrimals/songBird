@@ -14,12 +14,14 @@ use std::time::SystemTime;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-/// Connection session (direct or relayed)
+/// Connection session (direct, lineage-relayed, or TURN-relayed)
 pub enum ConnectionSession {
     /// Direct connection (no relay)
     Direct(DirectConnection),
     /// Relayed connection through ancestor
     Relayed(RelayedConnection),
+    /// Relayed via sovereign TURN server (RFC 5766)
+    TurnRelayed(TurnRelayedConnection),
 }
 
 impl ConnectionSession {
@@ -32,6 +34,7 @@ impl ConnectionSession {
         match self {
             Self::Direct(conn) => conn.send(data).await,
             Self::Relayed(conn) => conn.send(data).await,
+            Self::TurnRelayed(conn) => conn.send(data).await,
         }
     }
 
@@ -41,6 +44,7 @@ impl ConnectionSession {
         match self {
             Self::Direct(_) => ConnectionType::Direct,
             Self::Relayed(_) => ConnectionType::Relayed,
+            Self::TurnRelayed(_) => ConnectionType::TurnRelayed,
         }
     }
 
@@ -49,6 +53,7 @@ impl ConnectionSession {
         match self {
             Self::Direct(conn) => conn.stats().await,
             Self::Relayed(conn) => conn.stats().await,
+            Self::TurnRelayed(conn) => conn.stats().await,
         }
     }
 
@@ -59,13 +64,11 @@ impl ConnectionSession {
     /// Returns error if upgrade fails
     pub async fn attempt_upgrade(&mut self) -> Result<bool> {
         match self {
-            Self::Relayed(_conn) => {
+            Self::Relayed(_) | Self::TurnRelayed(_) => {
                 debug!("Attempting to upgrade relayed connection to direct");
-                // In real implementation, would attempt direct connection
-                // For now, just return false (no upgrade)
                 Ok(false)
             }
-            Self::Direct(_) => Ok(true), // Already direct
+            Self::Direct(_) => Ok(true),
         }
     }
 }
@@ -160,6 +163,82 @@ impl RelayedConnection {
         // Add relay-specific stats
         stats.bytes_sent = self.relay_session.stats();
         stats
+    }
+}
+
+/// TURN-relayed connection via sovereign VPS relay (RFC 5766).
+///
+/// Wraps a [`songbird_turn_client::TurnSession`] with stats tracking and
+/// automatic keepalive. Created when the `ConnectionFallbackChain` reaches
+/// Tier 4 (TURN relay).
+pub struct TurnRelayedConnection {
+    session: Arc<songbird_turn_client::TurnSession>,
+    stats: Arc<Mutex<ConnectionStats>>,
+    keepalive_handle: tokio::task::JoinHandle<()>,
+}
+
+impl TurnRelayedConnection {
+    /// Create from a connected `TurnSession`, spawning a keepalive task.
+    pub fn new(session: Arc<songbird_turn_client::TurnSession>) -> Self {
+        let keepalive = session.spawn_keepalive();
+        Self {
+            session,
+            stats: Arc::new(Mutex::new(ConnectionStats {
+                established_at: Some(SystemTime::now()),
+                connection_type: Some(ConnectionType::TurnRelayed),
+                ..Default::default()
+            })),
+            keepalive_handle: keepalive,
+        }
+    }
+
+    /// Send data through the TURN relay.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the TURN session send fails.
+    pub async fn send(&self, data: &[u8]) -> Result<()> {
+        debug!("Sending {} bytes through TURN relay", data.len());
+
+        self.session.send(data).await.map_err(|e| {
+            crate::error::LineageRelayError::NetworkError(format!("TURN send: {e}"))
+        })?;
+
+        let mut stats = self.stats.lock().await;
+        stats.bytes_sent += data.len() as u64;
+        stats.packets_sent += 1;
+        Ok(())
+    }
+
+    /// Receive data from the TURN relay.
+    ///
+    /// # Errors
+    ///
+    /// Returns error on timeout or I/O failure.
+    pub async fn recv(&self, buf: &mut [u8]) -> Result<usize> {
+        let n = self.session.recv(buf).await.map_err(|e| {
+            crate::error::LineageRelayError::NetworkError(format!("TURN recv: {e}"))
+        })?;
+        let mut stats = self.stats.lock().await;
+        stats.bytes_received += n as u64;
+        Ok(n)
+    }
+
+    /// Get connection statistics.
+    pub async fn stats(&self) -> ConnectionStats {
+        self.stats.lock().await.clone()
+    }
+
+    /// The relay address allocated by the TURN server.
+    #[must_use]
+    pub fn relay_addr(&self) -> SocketAddr {
+        self.session.relay_addr()
+    }
+}
+
+impl Drop for TurnRelayedConnection {
+    fn drop(&mut self) {
+        self.keepalive_handle.abort();
     }
 }
 

@@ -160,6 +160,7 @@ pub mod relay_handler;
 pub mod relay_protocol;
 pub mod relay_server;
 pub mod session;
+pub mod shadow_comparator;
 pub mod types;
 pub mod udp_hole_punch;
 pub mod universal_coordinator_adapter;
@@ -175,7 +176,7 @@ pub use birdsong::BirdSongBroadcaster;
 pub use coordinator::LineageRelayCoordinator;
 pub use error::{LineageRelayError, Result};
 pub use multi_tier_coordinator::{
-    ConnectionResult, ConnectionTier, MultiTierCoordinator, TierQualityReport,
+    CloudflaredTunnel, ConnectionResult, ConnectionTier, MultiTierCoordinator, TierQualityReport,
 };
 pub use relay::{RelayAuthority, RelayDiscovery, RelaySession};
 pub use relay_handler::RelayHandler;

@@ -282,6 +282,39 @@ impl TurnSession {
         Ok(self.client.refresh(&self.socket, lifetime_secs).await?)
     }
 
+    /// Spawn a background keepalive task that refreshes the allocation
+    /// before it expires.
+    ///
+    /// Refreshes at 80% of the allocation lifetime (e.g. every 480s for a
+    /// 600s allocation). Returns a `JoinHandle` that runs until the session
+    /// is dropped or the refresh fails.
+    ///
+    /// The handle can be aborted to stop keepalive when the session is no
+    /// longer needed.
+    pub fn spawn_keepalive(self: &Arc<Self>) -> tokio::task::JoinHandle<()>
+    where
+        Self: Send + Sync + 'static,
+    {
+        let session = Arc::clone(self);
+        let lifetime = session.allocation.lifetime_secs;
+        let interval = Duration::from_secs(u64::from(lifetime) * 4 / 5);
+
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(interval).await;
+                match session.refresh(lifetime).await {
+                    Ok(new_lifetime) => {
+                        debug!(lifetime_s = new_lifetime, "TURN keepalive: allocation refreshed");
+                    }
+                    Err(e) => {
+                        info!("TURN keepalive: refresh failed ({e}), stopping");
+                        break;
+                    }
+                }
+            }
+        })
+    }
+
     /// Release the allocation (lifetime=0) and close the session.
     ///
     /// # Errors

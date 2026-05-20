@@ -632,4 +632,122 @@ mod dispatch_tests {
             .await
             .ok();
     }
+
+    /// Spawn a mock UDS JSON-RPC server that echoes back the operation.
+    ///
+    /// Handles multiple sequential connections (registration identity probe +
+    /// the actual capability.call forward).
+    fn spawn_mock_provider(socket_path: &str) -> tokio::task::JoinHandle<()> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::UnixListener;
+
+        let _ = std::fs::remove_file(socket_path);
+        let listener = UnixListener::bind(socket_path).unwrap();
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((stream, _)) = listener.accept().await else {
+                    break;
+                };
+                let (reader, mut writer) = stream.into_split();
+                let mut buf_reader = BufReader::new(reader);
+                let mut line = String::new();
+                if buf_reader.read_line(&mut line).await.is_ok() && !line.is_empty() {
+                    let req: Value = serde_json::from_str(line.trim()).unwrap();
+                    let method = req["method"].as_str().unwrap_or("unknown");
+                    let response = serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "result": { "echo_method": method, "status": "ok" },
+                        "id": req["id"]
+                    });
+                    let mut bytes = serde_json::to_vec(&response).unwrap();
+                    bytes.push(b'\n');
+                    let _ = writer.write_all(&bytes).await;
+                }
+            }
+        })
+    }
+
+    #[tokio::test]
+    async fn capability_call_dispatches_to_local_provider_via_uds() {
+        let socket_path = format!("/tmp/songbird-test-cap-{}.sock", Uuid::new_v4());
+        let mock_handle = spawn_mock_provider(&socket_path);
+
+        let h = ipc_handler();
+
+        h.handle(
+            "ipc.register",
+            json!({
+                "primal_id": "echo-provider",
+                "capabilities": ["echo"],
+                "endpoint": socket_path
+            }),
+        )
+        .await
+        .expect("register");
+
+        let result = h
+            .handle(
+                "capability.call",
+                json!({
+                    "capability": "echo",
+                    "operation": "echo.ping",
+                    "params": { "msg": "hello" }
+                }),
+            )
+            .await
+            .expect("capability.call");
+
+        assert_eq!(result["provider"], "echo-provider");
+        assert_eq!(result["gate"], "local");
+        assert_eq!(result["result"]["echo_method"], "echo.ping");
+        assert_eq!(result["result"]["status"], "ok");
+
+        mock_handle.abort();
+        let _ = tokio::fs::remove_file(&socket_path).await;
+    }
+
+    #[tokio::test]
+    async fn capability_call_errors_when_no_provider_registered() {
+        let h = ipc_handler();
+
+        // routing=local forces the handler to skip remote dispatch
+        let err = h
+            .handle(
+                "capability.call",
+                json!({
+                    "capability": "nonexistent",
+                    "operation": "foo.bar",
+                    "params": {},
+                    "routing": "local"
+                }),
+            )
+            .await
+            .expect_err("no provider");
+
+        assert!(
+            err.contains("No local provider") || err.contains("nonexistent"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn capability_call_with_routing_local_skips_remote() {
+        let h = ipc_handler();
+
+        let err = h
+            .handle(
+                "capability.call",
+                json!({
+                    "capability": "remote-only",
+                    "operation": "remote.op",
+                    "params": {},
+                    "routing": "local"
+                }),
+            )
+            .await
+            .expect_err("routing=local, no provider");
+
+        assert!(err.contains("routing=local"), "unexpected error: {err}");
+    }
 }

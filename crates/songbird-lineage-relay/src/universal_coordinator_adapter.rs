@@ -84,6 +84,7 @@ impl LineageRelayAdapter {
                 let connection_type = match connection.connection_type() {
                     crate::types::ConnectionType::Direct => "direct",
                     crate::types::ConnectionType::Relayed => "relayed",
+                    crate::types::ConnectionType::TurnRelayed => "turn_relayed",
                     crate::types::ConnectionType::Upgrading => "upgrading",
                 };
 
