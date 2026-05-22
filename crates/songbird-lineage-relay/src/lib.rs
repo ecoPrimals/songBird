@@ -155,6 +155,7 @@ pub mod birdsong;
 pub mod coordinator;
 pub mod error;
 pub mod multi_tier_coordinator;
+pub mod nat_field_test;
 pub mod relay;
 pub mod relay_handler;
 pub mod relay_protocol;

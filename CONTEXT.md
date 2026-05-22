@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: May 20, 2026
+**Last Updated**: May 22, 2026
 
 ## What It Does
 
@@ -15,7 +15,7 @@ Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 - **IPC**: JSON-RPC 2.0 + tarpc dual-protocol inter-primal communication; BTSP Phase 2 handshake on UDS accept when `FAMILY_ID` set (length-prefix + NDJSON wire formats; first-line auto-detect); BTSP Phase 3 `btsp.negotiate` encrypted framing (ChaCha20-Poly1305, HKDF session keys) on all 3 transport paths; domain symlink `network.sock` → `songbird.sock` for capability discovery
 - **Discovery**: Capability-based runtime discovery — mDNS, SSDP, UDP broadcast, DNS-SD, BirdSong encrypted beacons
 - **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh, TURN client (RFC 5766), cloudflared emergency tunnels, shadow dual-path comparator
-- **Cross-Gate Dispatch**: `capability.call` routes RPCs to local or remote capabilities via mesh/TCP/UDS
+- **Cross-Gate Dispatch**: `capability.call` routes RPCs to local or remote capabilities via mesh TCP, TURN relay fallback, and UDS
 - **Federation**: Multi-node mesh networking with capability-based routing
 - **Onion Routing**: Pure Rust Tor protocol + sovereign .onion services
 - **Relay**: Lineage-gated relay for symmetric NAT traversal

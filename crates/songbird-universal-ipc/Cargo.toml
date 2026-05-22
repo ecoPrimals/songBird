@@ -36,6 +36,9 @@ songbird-stun = { path = "../songbird-stun" }
 # Lineage Relay (for sovereign NAT traversal)
 songbird-lineage-relay = { path = "../songbird-lineage-relay" }
 
+# TURN client (for relay-backed cross-gate dispatch through NAT)
+songbird-turn-client = { path = "../songbird-turn-client" }
+
 # Onion Relay (for beacon mesh and hole punch)
 songbird-onion-relay = { path = "../songbird-onion-relay" }
 

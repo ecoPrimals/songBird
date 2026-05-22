@@ -5467,6 +5467,7 @@ dependencies = [
  "songbird-stun",
  "songbird-test-utils",
  "songbird-tor-protocol",
+ "songbird-turn-client",
  "songbird-types",
  "songbird-universal",
  "tempfile",

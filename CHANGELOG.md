@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave38] - 2026-05-22 - Cross-Gate TURN Relay Dispatch & NAT Field Test
+
+### Added
+- **TURN relay fallback for `capability.call` remote dispatch** — when direct TCP to mesh peers
+  fails (CGNAT, double-NAT, symmetric NAT), `forward_to_remote_via_turn()` allocates a TURN
+  session via sovereign relay (`SONGBIRD_TURN_*` env vars) and sends JSON-RPC bytes through it.
+  Two-phase dispatch: TCP direct first, TURN relay second.
+- **Capability-aware peer filtering** — `peer_has_capability()` probes remote peers via
+  `capabilities.list` before dispatching `capability.call`. Checks both flat `capabilities`
+  array and structured `provided_capabilities` entries. Skips peers that lack the target
+  capability, eliminating blind fan-out across the mesh.
+- **NAT field test harness** (`songbird-lineage-relay::nat_field_test`) — structured test
+  framework for validating TURN relay paths under residential NAT scenarios (CGNAT, double-NAT,
+  symmetric). `probe_turn_path()` tests individual scenarios; `run_field_test_matrix()` runs
+  the full matrix. Live TURN tests gated behind `--ignored`. Unit tests validate graceful
+  failure when TURN env is unconfigured.
+- New dependency: `songbird-turn-client` added to `songbird-universal-ipc` for relay-backed
+  cross-gate dispatch.
+
+### Changed
+- `forward_to_remote_gate()` now collects peer addresses during the TCP direct phase and
+  attempts TURN relay for all of them if direct connections fail. Error messages include
+  both TCP and TURN failure context.
+
+---
+
 ## [v0.2.1-wave214] - 2026-05-20 - Deep Debt: Stub Evolution & Lint Narrowing
 
 ### Added
