@@ -6,8 +6,6 @@
 use serde_json::Value;
 use songbird_types::primal_names;
 
-use super::capability_tokens::SONGBIRD_CAPABILITY_STRINGS;
-
 /// Generate primal info (self-knowledge only)
 #[must_use]
 pub fn primal_info() -> Value {
@@ -134,6 +132,12 @@ pub fn primal_capabilities() -> Value {
 ///
 /// `socket_path` is the full UDS path this instance is listening on
 /// (e.g. `$XDG_RUNTIME_DIR/biomeos/songbird-ecoPrimal.sock`).
+/// Routing-domain capabilities for Neural API weight seeding.
+///
+/// These align with `cost_hints` and `latency_estimates` keys so biomeOS can
+/// correctly attach weights per capability domain.
+const ROUTING_CAPABILITIES: &[&str] = &["relay", "communication", "presence"];
+
 #[must_use]
 pub fn primal_announce_with_socket(socket_path: &str) -> Value {
     serde_json::json!({
@@ -141,7 +145,7 @@ pub fn primal_announce_with_socket(socket_path: &str) -> Value {
         "version": env!("CARGO_PKG_VERSION"),
         "domain": "network",
         "license": "AGPL-3.0-or-later",
-        "capabilities": SONGBIRD_CAPABILITY_STRINGS,
+        "capabilities": ROUTING_CAPABILITIES,
         "consumed_capabilities": [
             "security",
             "crypto"

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave45] - 2026-05-23 - Outbound Neural API Announce + Capability Alignment
+
+### Added
+- **Outbound `primal.announce` push on startup** (`neural_announce.rs`) — after socket bind,
+  songbird announces itself to biomeOS Neural API so routing weights are seeded. Uses WAVE42
+  tiered socket discovery (`$NEURAL_API_SOCKET` → XDG → `/tmp` fallback). Non-blocking,
+  non-fatal if Neural API is unavailable.
+- **`resolve_neural_api_socket()`** — tiered discovery for biomeOS Neural API socket path.
+- **4 tests** for announce payload alignment, field presence, and family resolution.
+
+### Changed
+- **Capabilities aligned to routing domains** — `capabilities` in `primal.announce` now contains
+  `["relay", "communication", "presence"]` matching `cost_hints`/`latency_estimates` keys.
+  Previously used 15 `network.*` method-level tokens which caused biomeOS to never attach
+  routing weights to the correct domains.
+- Removed unused `SONGBIRD_CAPABILITY_STRINGS` import from announce payload builder (still used
+  by `capabilities.list` for full method-level detail).
+
+---
+
 ## [v0.2.1-wave43] - 2026-05-23 - Neural API primal.announce Schema Alignment
 
 ### Changed

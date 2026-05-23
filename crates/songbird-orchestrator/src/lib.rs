@@ -172,6 +172,8 @@ pub mod ipc;
 /// Network binding, listeners, and endpoint management.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod network;
+/// Outbound `primal.announce` push to biomeOS Neural API on startup.
+pub mod neural_announce;
 /// Stable node identity and cryptographic node identifiers.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod node_identity;

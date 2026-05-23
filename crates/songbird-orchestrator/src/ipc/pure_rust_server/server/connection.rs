@@ -115,6 +115,8 @@ impl UnixSocketServer {
         self.is_ready.store(true, std::sync::atomic::Ordering::Release);
         self.ready_notify.notify_waiters();
 
+        crate::neural_announce::spawn_announce(&self.socket_path);
+
         info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
         if btsp_active {
