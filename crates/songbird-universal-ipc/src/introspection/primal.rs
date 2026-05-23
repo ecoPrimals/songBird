@@ -126,24 +126,38 @@ pub fn primal_capabilities() -> Value {
     })
 }
 
-/// Generate `primal.announce` payload (biomeOS v3.57 atomic registration).
+/// Generate `primal.announce` payload (biomeOS v3.69+ Neural API wire schema).
 ///
 /// Replaces separate `lifecycle.register` + `capability.register` + `method.register`
 /// with a single atomic announcement that includes identity, capabilities, methods,
-/// and signal-tier membership.
+/// signal-tier membership, cost hints, and latency estimates.
+///
+/// `socket_path` is the full UDS path this instance is listening on
+/// (e.g. `$XDG_RUNTIME_DIR/biomeos/songbird-ecoPrimal.sock`).
 #[must_use]
-pub fn primal_announce() -> Value {
+pub fn primal_announce_with_socket(socket_path: &str) -> Value {
     serde_json::json!({
         "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
         "domain": "network",
         "license": "AGPL-3.0-or-later",
-        "provided_capabilities": SONGBIRD_CAPABILITY_STRINGS,
+        "capabilities": SONGBIRD_CAPABILITY_STRINGS,
         "consumed_capabilities": [
             "security",
             "crypto"
         ],
+        "socket": socket_path,
         "signal_tiers": ["tower"],
+        "cost_hints": {
+            "relay": 15.0,
+            "communication": 10.0,
+            "presence": 5.0
+        },
+        "latency_estimates": {
+            "relay": 20,
+            "communication": 10,
+            "presence": 5
+        },
         "endpoints": {
             "transports": ["unix_socket", "tcp"],
             "protocols": ["json-rpc", "ndjson", "btsp"]
@@ -151,6 +165,37 @@ pub fn primal_announce() -> Value {
         "methods": super::capability_tokens::callable_methods_list(),
         "status": "ready"
     })
+}
+
+/// Generate `primal.announce` payload with socket path resolved from environment.
+///
+/// Reads `XDG_RUNTIME_DIR` to construct the socket path. Falls back to
+/// `{temp_dir}/biomeos/songbird.sock` if XDG is unavailable.
+#[must_use]
+pub fn primal_announce() -> Value {
+    let socket_path = resolve_self_socket_path();
+    primal_announce_with_socket(&socket_path)
+}
+
+/// Resolve this instance's UDS path from the environment.
+fn resolve_self_socket_path() -> String {
+    let family_id = std::env::var("FAMILY_ID")
+        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+        .unwrap_or_else(|_| "ecoPrimal".to_string());
+
+    let sock_name = if family_id == "default" || family_id.is_empty() {
+        "songbird.sock".to_string()
+    } else {
+        format!("songbird-{family_id}.sock")
+    };
+
+    if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+        return format!("{xdg}/biomeos/{sock_name}");
+    }
+
+    let tmp = std::env::temp_dir();
+    format!("{}/biomeos/{sock_name}", tmp.display())
 }
 
 /// `btsp.capabilities` — advertise supported BTSP transport security features.

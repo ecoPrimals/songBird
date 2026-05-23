@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave43] - 2026-05-23 - Neural API primal.announce Schema Alignment
+
+### Changed
+- **`primal.announce` wire schema aligned to biomeOS v3.69 Neural API** — `provided_capabilities`
+  renamed to `capabilities` (biomeOS-expected key). Added required `socket` field (full UDS path
+  resolved from `XDG_RUNTIME_DIR`/`FAMILY_ID` env). Added `cost_hints` (`relay: 15.0`,
+  `communication: 10.0`, `presence: 5.0`) and `latency_estimates` (`relay: 20ms`,
+  `communication: 10ms`, `presence: 5ms`) for Neural API routing weight computation.
+- **Orchestrator `primal.announce` uses actual bound socket path** — the pure Rust IPC server
+  now passes its real `socket_path` to `primal_announce_with_socket()` instead of relying on
+  env-only resolution.
+- New public API: `primal_announce_with_socket(socket_path)` for callers that know their bind path.
+
+---
+
 ## [v0.2.1-wave38] - 2026-05-22 - Cross-Gate TURN Relay Dispatch & NAT Field Test
 
 ### Added

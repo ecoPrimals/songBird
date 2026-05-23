@@ -608,9 +608,12 @@ mod tests {
         let result = resp.result.unwrap();
         assert_eq!(result["primal"].as_str().unwrap(), "songbird");
         assert_eq!(result["domain"].as_str().unwrap(), "network");
-        assert!(result["provided_capabilities"].is_array());
+        assert!(result["capabilities"].is_array(), "biomeOS v3.69 expects 'capabilities' key");
+        assert!(result["socket"].is_string(), "socket path required by biomeOS v3.68+");
         assert!(result["signal_tiers"].is_array());
         assert_eq!(result["signal_tiers"][0].as_str().unwrap(), "tower");
+        assert!(result["cost_hints"].is_object(), "cost_hints required for Neural API routing");
+        assert!(result["latency_estimates"].is_object(), "latency_estimates for routing weights");
         assert!(result["methods"].is_array());
         assert_eq!(result["status"].as_str().unwrap(), "ready");
     }

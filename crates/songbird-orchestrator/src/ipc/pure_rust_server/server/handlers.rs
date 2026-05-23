@@ -92,7 +92,8 @@ impl UnixSocketServer {
                 Ok(songbird_universal_ipc::introspection::primal_capabilities())
             }
             Ok(JsonRpcMethod::Primal(PrimalMethod::Announce)) => {
-                Ok(songbird_universal_ipc::introspection::primal_announce())
+                let socket = self.socket_path.to_string_lossy();
+                Ok(songbird_universal_ipc::introspection::primal_announce_with_socket(&socket))
             }
             Ok(JsonRpcMethod::DiscoverCapabilities) => {
                 coordination_handlers::handle_discover_capabilities().await
