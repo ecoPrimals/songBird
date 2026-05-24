@@ -5,7 +5,7 @@
 **Phase**: 1 (Foundation)
 **Version**: 0.2.1
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: May 22, 2026
+**Last Updated**: May 24, 2026
 
 ## What It Does
 
@@ -38,7 +38,7 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Tests | 7,803 lib passed (0 failures, 22 ignored) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; May 20 verified) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; May 24 verified) |
 | Files >800 LOC | **0** — largest: `multi_tier_coordinator.rs` 799L |
 | Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 31 crates) |
 | C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |
@@ -75,7 +75,7 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 ## Dependencies on Other Primals
 
 - **Security Provider**: Crypto delegation via capability discovery (no compile-time import, no identity hardcoding)
-- **biomeOS**: Registers via Neural API `lifecycle.register` when available
+- **biomeOS**: Outbound `primal.announce` on startup (Neural API routing weight seeding); tiered socket discovery (`$NEURAL_API_SOCKET` → XDG → `/tmp`)
 - No other primal code imports — all coordination via JSON-RPC IPC
 
 ## Part of ecoPrimals
