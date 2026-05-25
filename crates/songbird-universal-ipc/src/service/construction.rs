@@ -90,7 +90,7 @@ impl IpcServiceHandler {
     fn assemble(
         registry: Arc<RwLock<ServiceRegistry>>,
         http_handler: Arc<HttpHandler>,
-        discovery_handler: Arc<DiscoveryHandler>,
+        mut discovery_handler: DiscoveryHandler,
         federation_state: Option<Arc<FederationState>>,
     ) -> Self {
         let (
@@ -105,6 +105,9 @@ impl IpcServiceHandler {
             tor_handler,
             igd_handler,
         ) = Self::build_handlers();
+
+        discovery_handler.set_mesh_handler(Arc::clone(&mesh_handler));
+        let discovery_handler = Arc::new(discovery_handler);
 
         Self {
             registry,
@@ -134,7 +137,7 @@ impl IpcServiceHandler {
         Self::assemble(
             registry,
             Arc::new(HttpHandler::with_default_discovery()),
-            Arc::new(DiscoveryHandler::new()),
+            DiscoveryHandler::new(),
             None,
         )
     }
@@ -148,7 +151,7 @@ impl IpcServiceHandler {
         Self::assemble(
             registry,
             Arc::new(HttpHandler::with_default_discovery()),
-            Arc::new(DiscoveryHandler::new()),
+            DiscoveryHandler::new(),
             Some(federation_state),
         )
     }
@@ -161,7 +164,7 @@ impl IpcServiceHandler {
         Self::assemble(
             registry,
             Arc::new(HttpHandler::with_default_discovery()),
-            Arc::new(DiscoveryHandler::with_bridge(peer_registry)),
+            DiscoveryHandler::with_bridge(peer_registry),
             None,
         )
     }
@@ -171,7 +174,7 @@ impl IpcServiceHandler {
         registry: Arc<RwLock<ServiceRegistry>>,
         http_handler: Arc<HttpHandler>,
     ) -> Self {
-        Self::assemble(registry, http_handler, Arc::new(DiscoveryHandler::new()), None)
+        Self::assemble(registry, http_handler, DiscoveryHandler::new(), None)
     }
 
     /// Same as [`new`](Self::new) but resolves `family_id` for `identity` using this map instead of

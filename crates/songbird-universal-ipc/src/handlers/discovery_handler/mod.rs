@@ -35,6 +35,7 @@ pub use slot::PeerRegistrySlot;
 pub use types::{DiscoveredPeerInfo, DiscoveryGetPeerParams, DiscoveryPeersResult, PeerRegistry};
 
 use crate::error::{IpcError, IpcResult};
+use crate::handlers::mesh_handler::MeshHandler;
 use content::ContentAnnouncementStore;
 use serde_json::Value;
 use std::sync::Arc;
@@ -47,8 +48,12 @@ use tracing::{debug, info, warn};
 /// Maintains both a peer registry (injected from orchestrator) and an in-memory
 /// content announcement store for the seeder/leecher pattern defined by
 /// `content_distribution_federation.toml`.
+///
+/// When a `MeshHandler` is attached, `discovery.peers` also returns peers known
+/// to the beacon mesh (those added via `mesh.init` `bootstrap_peers`).
 pub struct DiscoveryHandler {
     peer_registry: Option<PeerRegistrySlot>,
+    mesh_handler: Option<Arc<MeshHandler>>,
     content_announcements: Arc<RwLock<ContentAnnouncementStore>>,
 }
 
@@ -57,6 +62,7 @@ impl DiscoveryHandler {
     pub fn new() -> Self {
         Self {
             peer_registry: None,
+            mesh_handler: None,
             content_announcements: Arc::new(RwLock::new(ContentAnnouncementStore::new())),
         }
     }
@@ -68,6 +74,7 @@ impl DiscoveryHandler {
     ) -> Self {
         Self {
             peer_registry: Some(PeerRegistrySlot::Bridge(bridge)),
+            mesh_handler: None,
             content_announcements: Arc::new(RwLock::new(ContentAnnouncementStore::new())),
         }
     }
@@ -77,8 +84,14 @@ impl DiscoveryHandler {
     pub fn with_peer_registry(slot: PeerRegistrySlot) -> Self {
         Self {
             peer_registry: Some(slot),
+            mesh_handler: None,
             content_announcements: Arc::new(RwLock::new(ContentAnnouncementStore::new())),
         }
+    }
+
+    /// Attach a mesh handler so `discovery.peers` includes mesh-known peers.
+    pub fn set_mesh_handler(&mut self, mesh: Arc<MeshHandler>) {
+        self.mesh_handler = Some(mesh);
     }
 
     /// Handle `discovery.peers` JSON-RPC method.
@@ -120,6 +133,15 @@ impl DiscoveryHandler {
             Vec::new()
         };
 
+        if let Some(ref mesh) = self.mesh_handler {
+            let mesh_peers = self.collect_mesh_peers(mesh).await;
+            for mp in mesh_peers {
+                if !peers.iter().any(|p| p.node_id == mp.node_id) {
+                    peers.push(mp);
+                }
+            }
+        }
+
         if family_only {
             let own_family = resolve_family().unwrap_or_default();
             if own_family.is_empty() {
@@ -147,6 +169,56 @@ impl DiscoveryHandler {
             peers,
             total_count,
         })
+    }
+
+    /// Collect peers from the beacon mesh as [`DiscoveredPeerInfo`] entries.
+    async fn collect_mesh_peers(&self, mesh: &MeshHandler) -> Vec<DiscoveredPeerInfo> {
+        use songbird_onion_relay::EndpointType;
+
+        let guard = mesh.mesh().await;
+        let Some(ref beacon_mesh) = *guard else {
+            return Vec::new();
+        };
+
+        let reachable = beacon_mesh.get_reachable_nodes().await;
+        let mut result = Vec::new();
+
+        for node_id in &reachable {
+            let address = if let Some(path) = beacon_mesh.get_best_path(node_id).await {
+                match &path.endpoint_type {
+                    EndpointType::Direct {
+                        addr,
+                    }
+                    | EndpointType::Local {
+                        addr,
+                    } => addr.to_string(),
+                    EndpointType::FamilyRelay {
+                        relay_node_id,
+                    } => relay_node_id.clone(),
+                    EndpointType::TorOnion {
+                        onion_addr,
+                    } => onion_addr.clone(),
+                }
+            } else {
+                String::new()
+            };
+
+            let tcp_port = address.parse::<std::net::SocketAddr>().ok().map(|a| a.port());
+
+            result.push(DiscoveredPeerInfo {
+                node_id: node_id.clone(),
+                family_id: String::new(),
+                address,
+                tcp_port,
+                capabilities: Vec::new(),
+                last_seen: "mesh".to_string(),
+                quality: Some(1.0),
+                node_name: None,
+                protocols: vec!["tcp".to_string()],
+            });
+        }
+
+        result
     }
 
     /// Handle `discovery.announce` JSON-RPC method.

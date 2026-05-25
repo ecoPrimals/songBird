@@ -537,3 +537,42 @@ async fn ipc_resolve_by_name_method_alias() {
         .expect("ipc.resolve_by_name should route to ipc.resolve handler");
     assert_eq!(result["native_endpoint"].as_str().unwrap(), "unix:///tmp/beardog.sock");
 }
+
+#[tokio::test]
+async fn discovery_peers_returns_mesh_bootstrap_peers() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry);
+
+    let init_result = handler
+        .handle(
+            "mesh.init",
+            json!({
+                "node_id": "east-gate",
+                "bootstrap_peers": [
+                    { "node_id": "iron-gate", "address": "192.168.1.238:7700" },
+                    { "node_id": "west-gate", "address": "10.0.0.5:3492" }
+                ]
+            }),
+        )
+        .await
+        .unwrap();
+    assert_eq!(init_result["initialized"], true);
+    assert_eq!(init_result["bootstrap_peers_added"], 2);
+
+    let peers_result = handler.handle("discovery.peers", json!({})).await.unwrap();
+    let peers = peers_result["peers"].as_array().unwrap();
+
+    assert_eq!(
+        peers_result["total_count"].as_u64().unwrap(),
+        2,
+        "discovery.peers should return mesh bootstrap peers"
+    );
+
+    let node_ids: Vec<&str> = peers.iter().filter_map(|p| p["node_id"].as_str()).collect();
+    assert!(node_ids.contains(&"iron-gate"), "should contain iron-gate");
+    assert!(node_ids.contains(&"west-gate"), "should contain west-gate");
+
+    let iron = peers.iter().find(|p| p["node_id"] == "iron-gate").unwrap();
+    assert_eq!(iron["address"].as_str().unwrap(), "192.168.1.238:7700");
+    assert_eq!(iron["tcp_port"].as_u64().unwrap(), 7700);
+}

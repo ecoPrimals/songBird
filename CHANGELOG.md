@@ -7,22 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.2.1-wave49] - 2026-05-25 - Ecosystem Tightening: bootstrap_peers + --security-socket
+## [v0.2.1-wave49] - 2026-05-25 - Ecosystem Tightening: bootstrap_peers + discovery.peers mesh bridge
 
 ### Added
 - **`bootstrap_peers` param in `mesh.init`** — accepts `[{node_id, address}]` TCP peer entries.
   Each valid peer is added as a `Direct` endpoint to the `BeaconMesh` at init time, enabling
   cross-gate discovery without requiring onion bootstrap addresses. Invalid entries (bad addresses,
   missing fields) are silently skipped.
+- **`discovery.peers` mesh bridge** — `discovery.peers` now includes peers from the beacon mesh
+  (those added via `mesh.init` `bootstrap_peers` or `mesh.announce`). De-duplicates by `node_id`
+  against the peer registry. This closes the data path: `mesh.init` → `BeaconMesh` → `discovery.peers`.
+  **Gates the glacial shift** (cross-gate `discovery.peers` live test).
 - **`--security-socket` CLI flag** on the orchestrator binary — sets `SECURITY_PROVIDER_ENDPOINT`
   via `songbird_process_env` overlay (zero `unsafe`). plasmidBin binary compatibility maintained
   through env var fallback chain (existing `SECURITY_PROVIDER_ENDPOINT` / `SECURITY_ENDPOINT` /
   `SONGBIRD_SECURITY_ENDPOINT` discovery path already present).
-- **2 new tests** for bootstrap peers (valid peers added + invalid peers skipped gracefully).
+- **3 new tests** — bootstrap peers (valid + invalid), E2E `mesh.init` → `discovery.peers` verification.
 
 ### Changed
 - **Stale deployment pattern removed** — `deployment/relay/README.md` no longer references
   `target/release/songbird`; updated to reference `plasmidBin` depot as per post-primordial mandate.
+- **`DiscoveryHandler` accepts optional `MeshHandler`** — wired during `IpcServiceHandler` assembly;
+  `collect_mesh_peers()` converts reachable `BeaconMesh` nodes to `DiscoveredPeerInfo`.
 
 ### Verified (Wave 49 Cleanup Vectors)
 - **No `showcase/` directory** — songbird has never had one; clean.
