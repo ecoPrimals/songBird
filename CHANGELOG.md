@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave49] - 2026-05-25 - Ecosystem Tightening: bootstrap_peers + --security-socket
+
+### Added
+- **`bootstrap_peers` param in `mesh.init`** — accepts `[{node_id, address}]` TCP peer entries.
+  Each valid peer is added as a `Direct` endpoint to the `BeaconMesh` at init time, enabling
+  cross-gate discovery without requiring onion bootstrap addresses. Invalid entries (bad addresses,
+  missing fields) are silently skipped.
+- **`--security-socket` CLI flag** on the orchestrator binary — sets `SECURITY_PROVIDER_ENDPOINT`
+  via `songbird_process_env` overlay (zero `unsafe`). plasmidBin binary compatibility maintained
+  through env var fallback chain (existing `SECURITY_PROVIDER_ENDPOINT` / `SECURITY_ENDPOINT` /
+  `SONGBIRD_SECURITY_ENDPOINT` discovery path already present).
+- **2 new tests** for bootstrap peers (valid peers added + invalid peers skipped gracefully).
+
+### Changed
+- **Stale deployment pattern removed** — `deployment/relay/README.md` no longer references
+  `target/release/songbird`; updated to reference `plasmidBin` depot as per post-primordial mandate.
+
+### Verified (Wave 49 Cleanup Vectors)
+- **No `showcase/` directory** — songbird has never had one; clean.
+- **No local `wateringHole/`** — clean; all handoffs in central `infra/wateringHole/handoffs/`.
+- **`notify-plasmidbin.yml` active** in `.github/workflows/`.
+- **No `target/release/songbird` or `which songbird`** in active scripts (only in `specs/archived/`).
+- **Sled eliminated** (Wave 135) — no DB corruption risk; only a historical comment remains.
+
+---
+
 ## [v0.2.1-wave45] - 2026-05-23 - Outbound Neural API Announce + Capability Alignment
 
 ### Added

@@ -80,7 +80,10 @@ impl MeshHandler {
         }
     }
 
-    /// Initialize the mesh with node ID and bootstrap onions
+    /// Initialize the mesh with node ID, bootstrap onions, and/or bootstrap peers.
+    ///
+    /// `bootstrap_peers` enables cross-gate discovery by adding TCP-reachable peers
+    /// to the mesh at init time (connection attempts are spawned asynchronously).
     ///
     /// # Request Example
     ///
@@ -90,12 +93,17 @@ impl MeshHandler {
     ///   "method": "mesh.init",
     ///   "params": {
     ///     "node_id": "tower-abc123",
-    ///     "bootstrap_onions": ["xyz.onion"]
+    ///     "bootstrap_onions": ["xyz.onion"],
+    ///     "bootstrap_peers": [
+    ///       { "node_id": "west-gate", "address": "192.168.1.50:3492" }
+    ///     ]
     ///   },
     ///   "id": 1
     /// }
     /// ```
     pub async fn handle_init(&self, params: Value) -> Result<Value, String> {
+        use songbird_onion_relay::{EndpointType, RelayEndpoint};
+
         let node_id: Arc<str> = params
             .get("node_id")
             .and_then(|v| v.as_str())
@@ -108,19 +116,51 @@ impl MeshHandler {
             .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
             .unwrap_or_default();
 
+        let bootstrap_peers: Vec<(String, std::net::SocketAddr)> = params
+            .get("bootstrap_peers")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|entry| {
+                        let peer_id = entry.get("node_id")?.as_str()?.to_string();
+                        let addr_str = entry.get("address")?.as_str()?;
+                        let addr: std::net::SocketAddr = addr_str.parse().ok()?;
+                        Some((peer_id, addr))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         info!(
-            "🌐 Initializing mesh for node {} with {} bootstrap onions",
+            "🌐 Initializing mesh for node {} with {} bootstrap onions, {} bootstrap peers",
             &node_id.as_ref()[..8.min(node_id.len())],
-            bootstrap_onions.len()
+            bootstrap_onions.len(),
+            bootstrap_peers.len()
         );
 
         let mesh = BeaconMesh::new(node_id.as_ref().to_string(), bootstrap_onions);
-        *self.mesh.write().await = Some(Arc::new(mesh));
+        let mesh = Arc::new(mesh);
+
+        for (peer_id, addr) in &bootstrap_peers {
+            let endpoint = RelayEndpoint {
+                node_id: peer_id.clone(),
+                endpoint_type: EndpointType::Direct {
+                    addr: *addr,
+                },
+                latency: None,
+                last_seen: std::time::Instant::now(),
+                reachable: true,
+            };
+            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+        }
+
+        *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
 
         Ok(json!({
             "initialized": true,
-            "node_id": node_id.as_ref()
+            "node_id": node_id.as_ref(),
+            "bootstrap_peers_added": bootstrap_peers.len()
         }))
     }
 

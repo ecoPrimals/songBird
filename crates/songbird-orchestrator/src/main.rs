@@ -21,6 +21,10 @@ use songbird_orchestrator::commands::{self, ConfigAction};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    /// Security provider socket/endpoint (sets SECURITY_PROVIDER_ENDPOINT)
+    #[arg(long, global = true)]
+    security_socket: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -101,6 +105,10 @@ enum ConfigCommands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    if let Some(ref socket) = cli.security_socket {
+        songbird_process_env::set_var("SECURITY_PROVIDER_ENDPOINT", socket);
+    }
 
     match cli.command {
         Commands::Server {

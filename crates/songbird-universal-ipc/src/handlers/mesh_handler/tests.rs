@@ -35,6 +35,54 @@ async fn test_mesh_init() {
 }
 
 #[tokio::test]
+async fn mesh_init_with_bootstrap_peers_adds_endpoints() {
+    let handler = MeshHandler::new();
+
+    let result = handler
+        .handle_init(json!({
+            "node_id": "east-gate",
+            "bootstrap_onions": [],
+            "bootstrap_peers": [
+                { "node_id": "west-gate", "address": "192.168.1.50:3492" },
+                { "node_id": "flock-gate", "address": "10.0.0.5:3492" }
+            ]
+        }))
+        .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response["initialized"], true);
+    assert_eq!(response["bootstrap_peers_added"], 2);
+
+    let mesh = handler.mesh().await;
+    let mesh = mesh.as_ref().unwrap();
+    let reachable = mesh.get_reachable_nodes().await;
+    assert_eq!(reachable.len(), 2, "both bootstrap peers should be reachable");
+    assert!(reachable.contains(&"west-gate".to_string()));
+    assert!(reachable.contains(&"flock-gate".to_string()));
+}
+
+#[tokio::test]
+async fn mesh_init_with_invalid_bootstrap_peers_skips_gracefully() {
+    let handler = MeshHandler::new();
+
+    let result = handler
+        .handle_init(json!({
+            "node_id": "east-gate",
+            "bootstrap_peers": [
+                { "node_id": "good-peer", "address": "192.168.1.50:3492" },
+                { "node_id": "bad-peer", "address": "not-a-valid-addr" },
+                { "missing_fields": true }
+            ]
+        }))
+        .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response["bootstrap_peers_added"], 1, "only valid peer should be added");
+}
+
+#[tokio::test]
 async fn test_mesh_status_after_init() {
     let handler = MeshHandler::new();
 

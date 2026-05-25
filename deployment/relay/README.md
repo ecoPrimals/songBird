@@ -9,8 +9,8 @@
 ## Quick Deploy (5 minutes)
 
 ```bash
-# 1. Copy binary to VPS
-scp target/release/songbird user@vps:/usr/local/bin/
+# 1. Copy binary to VPS (from plasmidBin depot)
+scp plasmidBin/songbird user@vps:/usr/local/bin/
 
 # 2. Copy systemd service
 scp deployment/systemd/songbird-relay.service user@vps:/etc/systemd/system/

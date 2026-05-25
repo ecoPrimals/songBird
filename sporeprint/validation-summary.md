@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 7,803+ tests, 31 crates, 54 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, Neural API announce, zero debt"
-date = 2026-05-24
+description = "Sovereign networking primal — 7,803+ tests, 31 crates, 54 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, Neural API announce, bootstrap_peers mesh init, zero debt"
+date = 2026-05-25
 
 [taxonomies]
 primals = ["songbird"]
@@ -16,6 +16,8 @@ springs = ["primalspring"]
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
 - **5-tier ConnectionFallbackChain**: direct → STUN → lineage relay → TURN → emergency tunnel
 - **`capability.call` cross-gate dispatch** (Wave 211+38): local UDS + remote mesh TCP + TURN relay fallback for NAT'd peers
+- **`mesh.init` bootstrap peers** (Wave 49): TCP peer entries added as Direct endpoints, enabling cross-gate discovery without onion bootstrap
+- **`--security-socket` CLI flag** (Wave 49): feeds env var overlay for plasmidBin binary deployments
 - **Outbound `primal.announce`** on startup (Wave 45): biomeOS Neural API routing weight seeding with aligned capability domains
 - **Zero production stubs** in networking paths (Wave 214: DirectConnection, protocol upgrade, HTTPS cert all evolved)
 - **Zero unsafe blocks** (`forbid(unsafe_code)` on all 31 crates)
