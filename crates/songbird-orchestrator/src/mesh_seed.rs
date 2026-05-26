@@ -26,6 +26,10 @@ fn parse_peers_env() -> Vec<(String, String)> {
 }
 
 /// Parse a peer specification string into `(node_id, address)` pairs.
+///
+/// Supports two formats:
+/// - `node_id@host:port` — explicit identity
+/// - `host:port` — auto-generates node_id as `peer-{ip}` (backward-compat with Wave 49 docs)
 pub(crate) fn parse_peers_str(raw: &str) -> Vec<(String, String)> {
     raw.split(',')
         .filter_map(|entry| {
@@ -33,21 +37,31 @@ pub(crate) fn parse_peers_str(raw: &str) -> Vec<(String, String)> {
             if entry.is_empty() {
                 return None;
             }
-            let (node_id, address) = entry.split_once('@')?;
-            let node_id = node_id.trim();
-            let address = address.trim();
-            if node_id.is_empty() || address.is_empty() {
-                warn!(
-                    entry,
-                    "SONGBIRD_PEERS: skipping malformed entry (missing node_id or address)"
-                );
+            let (node_id, address) = if let Some((nid, addr)) = entry.split_once('@') {
+                let nid = nid.trim();
+                let addr = addr.trim();
+                if nid.is_empty() {
+                    warn!(entry, "SONGBIRD_PEERS: skipping entry with empty node_id");
+                    return None;
+                }
+                (nid.to_string(), addr.to_string())
+            } else {
+                let addr = entry.to_string();
+                let Ok(sa) = addr.parse::<std::net::SocketAddr>() else {
+                    warn!(entry, "SONGBIRD_PEERS: skipping entry with invalid address");
+                    return None;
+                };
+                let node_id = format!("peer-{}", sa.ip());
+                (node_id, addr)
+            };
+            if address.is_empty() {
                 return None;
             }
             if address.parse::<std::net::SocketAddr>().is_err() {
                 warn!(entry, "SONGBIRD_PEERS: skipping entry with invalid address");
                 return None;
             }
-            Some((node_id.to_string(), address.to_string()))
+            Some((node_id, address))
         })
         .collect()
 }
@@ -143,6 +157,24 @@ mod tests {
         assert_eq!(peers.len(), 2);
         assert_eq!(peers[0].0, "east");
         assert_eq!(peers[1].0, "west");
+    }
+
+    #[test]
+    fn parse_address_only_format() {
+        let peers = parse_peers_str("192.168.1.144:7700,192.168.1.238:7700");
+        assert_eq!(peers.len(), 2);
+        assert_eq!(peers[0], ("peer-192.168.1.144".to_string(), "192.168.1.144:7700".to_string()));
+        assert_eq!(peers[1], ("peer-192.168.1.238".to_string(), "192.168.1.238:7700".to_string()));
+    }
+
+    #[test]
+    fn parse_mixed_formats() {
+        let peers =
+            parse_peers_str("iron-gate@192.168.1.238:7700,192.168.4.29:7700,south@10.0.0.1:7700");
+        assert_eq!(peers.len(), 3);
+        assert_eq!(peers[0].0, "iron-gate");
+        assert_eq!(peers[1].0, "peer-192.168.4.29");
+        assert_eq!(peers[2].0, "south");
     }
 
     #[tokio::test]
