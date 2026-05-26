@@ -84,6 +84,29 @@ impl EndpointType {
             } => None,
         }
     }
+
+    /// Extract the full socket address (IP + port) if available.
+    ///
+    /// Prefer this over [`Self::address`] when connecting — it preserves the
+    /// port from the peer's advertised endpoint rather than falling back to
+    /// a hardcoded default.
+    #[must_use]
+    pub fn socket_addr(&self) -> Option<SocketAddr> {
+        match self {
+            Self::Direct {
+                addr,
+            }
+            | Self::Local {
+                addr,
+            } => Some(*addr),
+            Self::FamilyRelay {
+                ..
+            }
+            | Self::TorOnion {
+                ..
+            } => None,
+        }
+    }
 }
 
 #[cfg(test)]

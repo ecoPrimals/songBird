@@ -50,6 +50,7 @@ mod dispatch;
 mod http;
 mod ipc_registry;
 mod meta;
+mod remote_dispatch;
 mod util;
 
 pub use crate::service_types::{
