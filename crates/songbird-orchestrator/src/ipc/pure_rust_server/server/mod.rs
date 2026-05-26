@@ -495,6 +495,44 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn discovery_peers_returns_mesh_bootstrap_peers() {
+        let server = test_server();
+        let caller = CallerContext::from_unix();
+
+        let init_req = jsonrpc_req_with_params(
+            "mesh.init",
+            serde_json::json!({
+                "node_id": "east-gate",
+                "bootstrap_peers": [
+                    { "node_id": "iron-gate", "address": "192.168.1.238:7700" },
+                    { "node_id": "south-gate", "address": "192.168.4.29:7700" }
+                ]
+            }),
+        );
+        let init_resp = server.handle_jsonrpc_request(init_req, &caller).await;
+        assert_success(&init_resp, "mesh.init");
+
+        let resp = server.handle_jsonrpc_request(jsonrpc_req("discovery.peers"), &caller).await;
+        assert_success(&resp, "discovery.peers");
+        let result = resp.result.unwrap();
+        let peers = result["peers"].as_array().unwrap();
+        assert_eq!(
+            result["total_count"].as_u64().unwrap(),
+            2,
+            "discovery.peers should return mesh bootstrap peers"
+        );
+
+        let node_ids: Vec<&str> = peers.iter().filter_map(|p| p["node_id"].as_str()).collect();
+        assert!(node_ids.contains(&"iron-gate"));
+        assert!(node_ids.contains(&"south-gate"));
+
+        let iron = peers.iter().find(|p| p["node_id"] == "iron-gate").unwrap();
+        assert_eq!(iron["address"].as_str().unwrap(), "192.168.1.238:7700");
+        assert_eq!(iron["tcp_port"].as_u64().unwrap(), 7700);
+        assert_eq!(iron["source"].as_str().unwrap(), "mesh");
+    }
+
+    #[tokio::test]
     async fn mesh_topology_routed_after_init() {
         let server = test_server();
         let caller = CallerContext::from_unix();

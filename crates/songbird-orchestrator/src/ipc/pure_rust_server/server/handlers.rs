@@ -75,9 +75,7 @@ impl UnixSocketServer {
                 self.handlers.capability_resolve_json(request.params).await
             }
             Ok(JsonRpcMethod::Discovery(DiscoveryMethod::Peers)) => {
-                self.handlers
-                    .discover_by_capability_json(Some(serde_json::json!({ "capability": "*" })))
-                    .await
+                self.handlers.discovery_peers_json(request.params).await
             }
             Ok(JsonRpcMethod::Identity) => {
                 Ok(songbird_universal_ipc::introspection::identity(&crate::env_config::family_id()))
