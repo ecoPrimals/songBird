@@ -169,6 +169,8 @@ pub mod integration;
 /// Inter-primal communication, Unix IPC, and primal registry.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod ipc;
+/// Automatic mesh peer seeding from `SONGBIRD_PEERS` env var on startup.
+pub mod mesh_seed;
 /// Network binding, listeners, and endpoint management.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod network;

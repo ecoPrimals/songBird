@@ -116,6 +116,7 @@ impl UnixSocketServer {
         self.ready_notify.notify_waiters();
 
         crate::neural_announce::spawn_announce(&self.socket_path);
+        crate::mesh_seed::spawn_mesh_seed(std::sync::Arc::clone(&self.handlers.mesh_handler));
 
         info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");

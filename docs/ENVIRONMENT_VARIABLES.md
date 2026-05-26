@@ -84,6 +84,8 @@ No symlink workarounds are needed as of Wave 173.
 | `SONGBIRD_PORT` | `3492` | Canonical service/IGD port |
 | `SONGBIRD_MULTICAST_ADDRESS` | `239.255.42.99` | Discovery multicast group |
 | `SONGBIRD_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated CORS origins |
+| `SONGBIRD_PEERS` | *(none)* | Comma-separated mesh peers for auto-seeding: `node_id@host:port,node_id@host:port`. Peers are added to `BeaconMesh` on startup so `discovery.peers` is immediately populated without requiring an explicit `mesh.init` RPC call |
+| `SONGBIRD_NODE_ID` | *(hostname)* | This node's identity in the mesh |
 | `COMPUTE_HOST` | *(none)* | Compute provider host override |
 | `SERVICE_HOST` | *(none)* | Service host override |
 

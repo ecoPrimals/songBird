@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave51] - 2026-05-26 - SONGBIRD_PEERS auto-seeding: zero-config mesh on startup
+
+### Added
+- **`SONGBIRD_PEERS` env var auto-seeding** — comma-separated `node_id@host:port` entries are
+  parsed on startup and fed to `mesh.init` automatically. Gates no longer need an external RPC
+  caller to seed the mesh. `discovery.peers` is immediately populated on boot.
+- **`SONGBIRD_NODE_ID` env var** — overrides hostname for mesh identity (falls back to
+  `NODE_ID`, then `HOSTNAME`, then system hostname).
+- **`mesh_seed` module** — reusable peer-spec parser (`parse_peers_str`) with robust validation
+  (address parsing, skip-on-invalid logging) and `spawn_mesh_seed` startup hook.
+- **5 new tests** — parser edge cases (empty, valid, invalid, whitespace) + full E2E
+  `spawn_mesh_seed` → `BeaconMesh` → reachable node verification.
+
+### Changed
+- **Server startup** wires `spawn_mesh_seed` immediately after `spawn_announce`, ensuring peers
+  are live before any external consumer connects.
+
+---
+
 ## [v0.2.1-wave49] - 2026-05-25 - Ecosystem Tightening: bootstrap_peers + discovery.peers mesh bridge
 
 ### Added
