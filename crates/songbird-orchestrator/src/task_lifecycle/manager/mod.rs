@@ -42,10 +42,13 @@ use tracing::info;
 /// # Architecture
 ///
 /// The manager coordinates between:
-/// - **Storage layer**: `SQLite` for persistent task state
+/// - **Storage layer**: IPC to NestGate `storage.*` capability, or in-memory fallback
 /// - **Checkpoint system**: gzip compression (flate2) with SHA-256 verification
 /// - **Event system**: Broadcast channels for real-time updates
 /// - **Background tasks**: Automatic cleanup of old tasks
+///
+/// On startup, any orphaned sled database artifacts (pre-Wave-135) are automatically
+/// removed from `data_dir` to prevent corruption issues on unclean shutdown.
 ///
 /// # Example
 /// ```rust,ignore

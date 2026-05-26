@@ -205,10 +205,6 @@ pub async fn create_genetic_tunnel(
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-#[expect(
-    clippy::unused_async,
-    reason = "async signature required by Axum, trait objects, or future I/O"
-)]
 pub async fn announce_capabilities(
     _handlers: &IpcHandlers,
     params: serde_json::Value,

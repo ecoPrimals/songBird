@@ -186,7 +186,7 @@ async fn ndjson_negotiate_dispatch_null_cipher_fallback() {
     }
 
     let resp: serde_json::Value =
-        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
+        serde_json::from_slice(resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
 
     assert_eq!(resp["jsonrpc"], "2.0");
     assert_eq!(resp["id"], 1);
@@ -214,7 +214,7 @@ async fn ndjson_negotiate_dispatch_null_cipher_fallback() {
         }
     }
     let resp2: serde_json::Value =
-        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
+        serde_json::from_slice(resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
 
     assert_eq!(resp2["id"], 2);
     assert!(resp2["result"].is_object());
@@ -309,7 +309,7 @@ async fn ndjson_negotiate_to_encrypted_session_live() {
         }
     }
     let resp: serde_json::Value =
-        serde_json::from_slice(&resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
+        serde_json::from_slice(resp_buf[..total].split(|&b| b == b'\n').next().unwrap()).unwrap();
 
     assert_eq!(resp["result"]["cipher"], "chacha20-poly1305");
     let server_nonce_b64 = resp["result"]["server_nonce"].as_str().unwrap();

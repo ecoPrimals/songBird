@@ -5,6 +5,7 @@
 
 use super::TaskLifecycleManager;
 use super::events::TaskEvent;
+use super::storage::clean_legacy_sled_artifacts;
 use crate::task_lifecycle::types::{Priority, ResourceRequirements};
 use crate::task_lifecycle::{TaskFilter, TaskSpec, TowerId, UserId};
 use anyhow::Result;
@@ -148,4 +149,35 @@ async fn test_list_tasks() -> Result<()> {
     assert_eq!(tasks.len(), 5);
 
     Ok(())
+}
+
+#[test]
+fn clean_legacy_sled_removes_orphaned_db_dir() {
+    let tmp = std::env::temp_dir().join(format!("songbird-sled-test-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&tmp).unwrap();
+
+    let sled_dir = tmp.join("task_lifecycle.db");
+    std::fs::create_dir_all(&sled_dir).unwrap();
+    std::fs::write(sled_dir.join("conf"), b"sled config").unwrap();
+    std::fs::write(sled_dir.join("db"), b"sled data").unwrap();
+    assert!(sled_dir.exists());
+
+    clean_legacy_sled_artifacts(&tmp);
+
+    assert!(!sled_dir.exists(), "sled directory should be removed");
+    assert!(tmp.exists(), "parent data_dir should remain");
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+#[test]
+fn clean_legacy_sled_noop_when_no_artifacts() {
+    let tmp = std::env::temp_dir().join(format!("songbird-sled-test-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&tmp).unwrap();
+
+    clean_legacy_sled_artifacts(&tmp);
+
+    assert!(tmp.exists());
+
+    let _ = std::fs::remove_dir_all(&tmp);
 }

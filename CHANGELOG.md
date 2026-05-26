@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave51b] - 2026-05-26 - Sled corruption fix: auto-cleanup of orphaned DB artifacts
+
+### Fixed
+- **Sled DB corruption on unclean shutdown** — orphaned sled database directories (`task_lifecycle.db/`)
+  from pre-Wave-135 installations are now automatically removed on startup. This eliminates the
+  manual "clean `task_lifecycle*`" workaround reported by primalSpring.
+- **3 pre-existing clippy warnings** — `needless_borrow` in `connection_tests.rs` (3 sites),
+  dead code fields in `tests_discovery_bridge_e2e.rs`, unfulfilled `expect(unused_async)` in
+  `p2p_discovery.rs`.
+
+### Changed
+- **Task storage doc** — corrected architecture comment from "SQLite" to "IPC to NestGate
+  `storage.*` capability, or in-memory fallback" (matching actual implementation since Wave 135).
+
+---
+
 ## [v0.2.1-wave51] - 2026-05-26 - SONGBIRD_PEERS auto-seeding: zero-config mesh on startup
 
 ### Added

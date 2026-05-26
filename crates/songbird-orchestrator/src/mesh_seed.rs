@@ -127,6 +127,7 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
 

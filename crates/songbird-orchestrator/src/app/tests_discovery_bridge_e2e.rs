@@ -2,6 +2,7 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+#![allow(dead_code, reason = "enum variants model production trust outcomes for test coverage")]
 
 //! Simulated end-to-end tests for the discovery → federation bridge (`discovery_bridge.rs`).
 //! They mirror the production control flow (identity extraction, same-family skip, `/health`
