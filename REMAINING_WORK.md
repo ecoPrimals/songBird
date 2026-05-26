@@ -51,9 +51,9 @@
 
 Phase 2 relay fixed (Waves 132–169). **Phase 3 implemented** (Wave 180): `btsp.negotiate` JSON-RPC handler, ChaCha20-Poly1305 encrypted framing, HKDF-SHA256 session key derivation via `btsp.server.export_keys` delegation to BearDog, graceful NULL cipher fallback, encrypted frame loop wired in both `pure_rust_server/connection.rs` and `bin_interface/server.rs`. **Spec-aligned** (Wave 182): `bond_type` parameter with cipher floor enforcement per `BTSP_PROTOCOL_STANDARD.md` `BondingPolicy` table, `preferred_cipher` backward compat, 12-byte server_nonce (aligned with audit spec), both `ciphers` array and `preferred_cipher` formats accepted. **Dispatch fix** (Wave 184): `btsp.negotiate` wired into `handle_btsp_frames` (binary-framed BTSP path) — was previously only on NDJSON path, causing "method not found" for binary-protocol clients. Now reachable on all 3 transport paths: NDJSON session, binary-framed BTSP, and bin_interface. **Live connection verification** (Wave 186): 4 new tests verifying post-negotiate encrypted frame loop on live async duplex streams — full negotiate→encrypt→exchange→disconnect lifecycle, notification handling, null-cipher fallback, and mock-security-provider E2E transition. 32 tests total. **Remaining**: Multi-frame session stress tests, live BearDog + primalSpring integration.
 
-### Tor Onion Service — Security Provider Crypto (BLOCKED)
+### Tor Onion Service — Security Provider Crypto (DEFERRED — blocked on external security provider)
 
-HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`/`INTRODUCE2` ntor payloads, and rendezvous auth keys delegate to security provider JSON-RPC. Stub sections documented inline with `// BLOCKED:` and return `Error::CryptoUnavailable`.
+HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`/`INTRODUCE2` ntor payloads, and rendezvous auth keys delegate to security provider JSON-RPC. Stub sections documented inline with `// BLOCKED:` and return `Error::CryptoUnavailable`. Not a glacial shift blocker — requires live BearDog crypto IPC surface with Ed25519/X25519 key operations available at runtime.
 
 ### TLS / Sovereign Onion (requires live security provider)
 

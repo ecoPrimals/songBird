@@ -341,3 +341,176 @@ async fn ndjson_negotiate_to_encrypted_session_live() {
     let _ = server_handle.await.unwrap();
     mock_handle.abort();
 }
+
+/// Multi-frame stress test: sends 100 encrypted JSON-RPC requests in rapid succession
+/// and verifies all responses arrive correctly ordered.
+#[tokio::test]
+async fn encrypted_session_multi_frame_stress_100_requests() {
+    let server = test_server();
+    let (client_stream, server_stream) = tokio::io::duplex(64 * 1024);
+
+    let hk = [0x77u8; 32];
+    let cn = b"stress_client_16";
+    let sn = b"stress_server_16";
+
+    let server_keys = SessionKeys::derive(&hk, cn, sn, false).unwrap();
+    let client_keys = SessionKeys::derive(&hk, cn, sn, true).unwrap();
+
+    let (sr, sw) = tokio::io::split(server_stream);
+    let server_handle = tokio::spawn(async move {
+        let caller = CallerContext::from_unix();
+        server.handle_encrypted_session(sr, sw, server_keys, &caller).await
+    });
+
+    let (mut cr, mut cw) = tokio::io::split(client_stream);
+    let client_keys_read = SessionKeys::derive(&hk, cn, sn, true).unwrap();
+
+    const NUM_REQUESTS: u64 = 100;
+
+    for i in 1..=NUM_REQUESTS {
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "health.liveness",
+            "id": i
+        });
+        let req_bytes = serde_json::to_vec(&request).unwrap();
+        let encrypted = client_keys.encrypt(&req_bytes).unwrap();
+        btsp_phase3::write_encrypted_frame(&mut cw, &encrypted).await.unwrap();
+    }
+
+    for i in 1..=NUM_REQUESTS {
+        let frame = btsp_phase3::read_encrypted_frame(&mut cr).await.unwrap();
+        let decrypted = client_keys_read.decrypt(&frame).unwrap();
+        let resp: serde_json::Value = serde_json::from_slice(&decrypted).unwrap();
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert_eq!(resp["id"], i, "response ordering must match request ordering");
+        assert!(resp["result"].is_object(), "response {i} should have result");
+    }
+
+    drop(cw);
+    drop(cr);
+    let result = server_handle.await.unwrap();
+    assert!(result.is_ok(), "server should exit cleanly after stress test");
+}
+
+/// Sustained load: sends requests with varying payload sizes (1B to 4KB JSON params)
+/// to exercise buffer management under sustained load conditions.
+#[tokio::test]
+async fn encrypted_session_sustained_load_varying_payload() {
+    let server = test_server();
+    let (client_stream, server_stream) = tokio::io::duplex(128 * 1024);
+
+    let hk = [0x88u8; 32];
+    let cn = b"payload_client16";
+    let sn = b"payload_server16";
+
+    let server_keys = SessionKeys::derive(&hk, cn, sn, false).unwrap();
+    let client_keys = SessionKeys::derive(&hk, cn, sn, true).unwrap();
+
+    let (sr, sw) = tokio::io::split(server_stream);
+    let server_handle = tokio::spawn(async move {
+        let caller = CallerContext::from_unix();
+        server.handle_encrypted_session(sr, sw, server_keys, &caller).await
+    });
+
+    let (mut cr, mut cw) = tokio::io::split(client_stream);
+    let client_keys_read = SessionKeys::derive(&hk, cn, sn, true).unwrap();
+
+    const NUM_REQUESTS: u64 = 50;
+
+    for i in 1..=NUM_REQUESTS {
+        let payload_size = ((i as usize) * 80).min(4000);
+        let payload = "x".repeat(payload_size);
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "health.liveness",
+            "params": { "data": payload },
+            "id": i
+        });
+        let req_bytes = serde_json::to_vec(&request).unwrap();
+        let encrypted = client_keys.encrypt(&req_bytes).unwrap();
+        btsp_phase3::write_encrypted_frame(&mut cw, &encrypted).await.unwrap();
+    }
+
+    for i in 1..=NUM_REQUESTS {
+        let frame = btsp_phase3::read_encrypted_frame(&mut cr).await.unwrap();
+        let decrypted = client_keys_read.decrypt(&frame).unwrap();
+        let resp: serde_json::Value = serde_json::from_slice(&decrypted).unwrap();
+        assert_eq!(resp["id"], i, "response {i} out of order");
+        assert_eq!(resp["jsonrpc"], "2.0");
+    }
+
+    drop(cw);
+    drop(cr);
+    let result = server_handle.await.unwrap();
+    assert!(result.is_ok());
+}
+
+/// Concurrent multi-client stress: 10 simultaneous encrypted sessions each
+/// sending 20 requests, verifying session isolation under load.
+#[tokio::test]
+async fn encrypted_session_concurrent_multi_client() {
+    let server = test_server();
+    let mut handles = Vec::new();
+
+    for client_idx in 0u8..10 {
+        let server_clone = Arc::clone(&server);
+        let handle = tokio::spawn(async move {
+            let (client_stream, server_stream) = tokio::io::duplex(32 * 1024);
+
+            let hk = [client_idx.wrapping_add(0x10); 32];
+            let cn_bytes: [u8; 16] = {
+                let mut buf = [0u8; 16];
+                let s = format!("cn{client_idx:02}");
+                buf[..s.len()].copy_from_slice(s.as_bytes());
+                buf
+            };
+            let sn_bytes: [u8; 16] = {
+                let mut buf = [0u8; 16];
+                let s = format!("sn{client_idx:02}");
+                buf[..s.len()].copy_from_slice(s.as_bytes());
+                buf
+            };
+
+            let server_keys = SessionKeys::derive(&hk, &cn_bytes, &sn_bytes, false).unwrap();
+            let client_keys = SessionKeys::derive(&hk, &cn_bytes, &sn_bytes, true).unwrap();
+            let client_keys_read = SessionKeys::derive(&hk, &cn_bytes, &sn_bytes, true).unwrap();
+
+            let (sr, sw) = tokio::io::split(server_stream);
+            let server_handle = tokio::spawn(async move {
+                let caller = CallerContext::from_unix();
+                server_clone.handle_encrypted_session(sr, sw, server_keys, &caller).await
+            });
+
+            let (mut cr, mut cw) = tokio::io::split(client_stream);
+
+            for i in 1..=20u64 {
+                let request = serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "method": "health.liveness",
+                    "id": i
+                });
+                let req_bytes = serde_json::to_vec(&request).unwrap();
+                let encrypted = client_keys.encrypt(&req_bytes).unwrap();
+                btsp_phase3::write_encrypted_frame(&mut cw, &encrypted).await.unwrap();
+            }
+
+            for i in 1..=20u64 {
+                let frame = btsp_phase3::read_encrypted_frame(&mut cr).await.unwrap();
+                let decrypted = client_keys_read.decrypt(&frame).unwrap();
+                let resp: serde_json::Value = serde_json::from_slice(&decrypted).unwrap();
+                assert_eq!(resp["id"], i);
+            }
+
+            drop(cw);
+            drop(cr);
+            let result = server_handle.await.unwrap();
+            assert!(result.is_ok(), "client {client_idx} server session failed");
+        });
+        handles.push(handle);
+    }
+
+    for h in handles {
+        h.await.unwrap();
+    }
+}

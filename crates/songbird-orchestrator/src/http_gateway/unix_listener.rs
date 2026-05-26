@@ -178,10 +178,8 @@ impl UnixSocketListener {
     ///
     /// Returns an error if the operation fails.
     pub async fn start(self: Arc<Self>) -> Result<()> {
-        // Remove existing socket file if it exists
-        if self.config.socket_path.exists() {
-            tokio::fs::remove_file(&self.config.socket_path).await?;
-        }
+        // Unconditional unlink before bind (prevents EADDRINUSE after crash)
+        let _ = tokio::fs::remove_file(&self.config.socket_path).await;
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = self.config.socket_path.parent() {

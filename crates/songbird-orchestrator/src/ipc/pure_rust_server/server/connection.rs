@@ -98,11 +98,10 @@ impl UnixSocketServer {
                 .context(format!("Failed to create socket directory: {}", parent.display()))?;
         }
 
-        if self.socket_path.exists() {
-            debug!("   Removing stale socket file");
-            std::fs::remove_file(&self.socket_path)
-                .context("Failed to remove stale socket file")?;
-        }
+        // Unconditional unlink before bind (prevents EADDRINUSE after crash).
+        // Ignoring errors: NotFound is expected on fresh start, PermissionDenied
+        // will surface as a bind error with better context below.
+        let _ = std::fs::remove_file(&self.socket_path);
 
         let listener = UnixListener::bind(&*self.socket_path)
             .context(format!("Failed to bind Unix socket: {}", self.socket_path.display()))?;
