@@ -21,7 +21,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` throughout — Wave 149: blanket `#![allow(clippy::all, pedantic, nursery)]` removed from 11 discovery/abstraction files (57 clippy issues resolved); Wave 147: all remaining bare `#[allow()]` given reason strings; `#[expect(reason)]` retained where lint provably fires; zero reasonless suppressions, zero blanket suppressions remain |
 | Concurrent Tests | Injectable `_with` env readers; all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 8,070 lib passed, 0 failures, 23 ignored |
+| Tests | 8,091 lib passed, 0 failures, 23 ignored |
 | Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; Wave 53: +74 tests across pure-logic modules) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |

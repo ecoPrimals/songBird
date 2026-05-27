@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave56] - 2026-05-27 - GAP-17/18 capability socket evolution + TCP fallback fix
+
+### Added
+- **`CAPABILITY_DOMAIN` constant** (`songbird-types::primal_names`) — centralizes "network" domain
+  name with documentation directing consumers to `ipc.resolve` over filesystem symlink scanning.
+- **`NETWORK_CAPABILITY_SOCKET_FILENAMES`** + **`network_socket_candidates()`** in `paths.rs` —
+  follows established pattern (like security/ai/compute socket candidates).
+- **`advanced_cache/helpers.rs` coverage** — 17 new tests: `should_evict` (empty, count limit,
+  byte limit, update-vs-insert, exact boundary), `entry_is_expired` (no expiry, future, past),
+  `estimate_entry_size` (all 4 key variants × 5 value variants).
+- **`primal_names` + `paths` tests** — 4 new tests for `CAPABILITY_DOMAIN`, `SELF_NAME`,
+  `network_socket_candidates` domain-then-primal order.
+
+### Fixed
+- **TCP fallback mesh seed gap** (Wave 55 NC-2) — `start_tcp_fallback()` now fires
+  `spawn_mesh_seed()` so mesh auto-initializes even when UDS bind fails.
+- **`clippy::unnecessary_get_then_check`** in `graph/coordination` test.
+
+### Changed
+- **CLI `status.rs`** — evolved from hardcoded `"network.sock"` to checking both primal-named
+  (`songbird.sock`) and domain (`network.sock`) sockets via centralized constants.
+- **`env_config/socket.rs`** `DOMAIN_SOCKET_STEM` now references `primal_names::CAPABILITY_DOMAIN`
+  instead of a local string literal.
+- **Test counts**: songbird-types 556→560 (+4), songbird-orchestrator 1716→1733 (+17).
+
+---
+
 ## [v0.2.1-wave53b] - 2026-05-27 - Coverage push: +74 tests across pure-logic modules
 
 ### Added
