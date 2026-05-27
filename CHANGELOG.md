@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave53b] - 2026-05-27 - Coverage push: +74 tests across pure-logic modules
+
+### Added
+- **primal_discovery coverage** — 21 new tests: capability token matching (all variants, empty,
+  case-insensitive), `capability_from_wire_id` valid/invalid, `parse_capabilities_result` (array,
+  object, null, mixed types), TCP discovery (IPv6, malformed, empty, nonexistent), injectable
+  env reader paths.
+- **graph/coordination coverage** — 22 new tests: `build_dependency_map` (empty, sequential),
+  fan-in/fan-out detection, `is_linear_chain` (sequential, parallel, empty), `is_map_reduce_pattern`,
+  `identify_parallel_groups`, `identify_pipeline_stages`, `identify_map_reduce_nodes`,
+  `decompose_into_subgraphs`, `detect_pipeline_bottleneck`, validation helpers.
+- **app/network coverage** — 8 new tests: IPv6 localhost, bracketed IPv6, custom IPv4, invalid
+  IPv6, empty brackets, port preservation (0..65535), detect_primary_ip sanity check.
+- **songbird-config runtime_discovery/engine coverage** — 13 new tests: constructor variants,
+  `from_environment_with` (found, uppercased, missing), cache miss/hit/expiry/roundtrip,
+  `discover_by_capability` (env, cached, unavailable).
+- **songbird-config capability_endpoints/resolver coverage** — 8 new tests: static override
+  resolution, caching behavior, cache clearing, failure path, repeated calls.
+- **songbird-universal-ipc tower_atomic/types coverage** — 16 new tests: `JsonRpcRequest` (new,
+  notification, serialization, skip-null-params), `JsonRpcResponse` (success, error, roundtrip),
+  `JsonRpcError` (constructors, constants), wire types (request/response deserialization).
+
+### Changed
+- **Test counts**: orchestrator 1663→1716 (+53), songbird-config 883→906 (+23 across 2 modules),
+  songbird-universal-ipc 513→529 (+16).
+
+---
+
 ## [v0.2.1-wave51b] - 2026-05-26 - Sled corruption fix: auto-cleanup of orphaned DB artifacts
 
 ### Fixed

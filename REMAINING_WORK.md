@@ -66,7 +66,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ## Pending: Coverage Expansion (73.41% → 90% target)
 
-**Note (May 2, 2026)**: 73.41% measured via llvm-cov `--workspace --lib` (Apr 27 2026). Wave 179 added 92 tests across 15+ files in 8 crates targeting low-coverage pure-logic modules. Wave 171 added 271 tests (71.28% → 73.41%); Wave 174 added 18; Wave 177 added 9. Wave 180 added 19. 7,803 total lib tests. Target 90% via ongoing coverage expansion of I/O-heavy modules with mock infrastructure.
+**Note (May 27, 2026)**: 73.41% measured via llvm-cov `--workspace --lib` (Apr 27 2026). Wave 53 coverage push added **+74 tests** across 5 modules in 3 crates: `primal_discovery` (+21 capability/parse/tcp tests), `graph/coordination` (+22 scheduler topology/analysis tests), `app/network` (+8 bind-address edge-case tests), `runtime_discovery/engine` (+13 cache/discovery tests), `capability_endpoints/resolver` (+8 override/cache tests), `tower_atomic/types` (+16 JSON-RPC wire-type serde tests). Prior: Wave 179 added 92 tests across 15+ files in 8 crates. Wave 171 added 271 tests (71.28% → 73.41%); Wave 174 added 18; Wave 177 added 9. Wave 180 added 19. Target 90% via ongoing coverage expansion of I/O-heavy modules with mock infrastructure.
 
 **Wave 171 coverage push**: 271 tests added across 30+ files in 13 crates (see CHANGELOG). All previously-tracked low-coverage modules in Waves 124-127 (adapters, STUN client, HTTP handler, tower_atomic) now have comprehensive tests. Wave 171 targeted 0%-coverage pure-logic modules across songbird-orchestrator, songbird-config, songbird-discovery, songbird-universal, songbird-network-federation, songbird-http-client, songbird-lineage-relay, songbird-cli, and 5 smaller crates.
 

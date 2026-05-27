@@ -196,3 +196,144 @@ impl JsonRpcError {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn request_new_sets_id_and_version() {
+        let req = JsonRpcRequest::new("health.check", None, 42);
+        assert_eq!(req.jsonrpc, "2.0");
+        assert_eq!(req.method, "health.check");
+        assert_eq!(req.id, Some(json!(42)));
+        assert!(!req.is_notification());
+    }
+
+    #[test]
+    fn request_is_notification_when_no_id() {
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            method: "event.fire".into(),
+            params: None,
+            id: None,
+        };
+        assert!(req.is_notification());
+    }
+
+    #[test]
+    fn request_serialization_roundtrip() {
+        let req = JsonRpcRequest::new("test.method", Some(json!({"key": "value"})), 1);
+        let serialized = serde_json::to_string(&req).unwrap();
+        let deserialized: JsonRpcRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.method, "test.method");
+        assert_eq!(deserialized.params.unwrap()["key"], "value");
+    }
+
+    #[test]
+    fn request_skips_null_params_in_serialization() {
+        let req = JsonRpcRequest::new("simple", None, 1);
+        let serialized = serde_json::to_string(&req).unwrap();
+        assert!(!serialized.contains("params"));
+    }
+
+    #[test]
+    fn response_success_has_result_no_error() {
+        let resp = JsonRpcResponse::success(json!("ok"), json!(1));
+        assert_eq!(resp.jsonrpc, "2.0");
+        assert_eq!(resp.result, Some(json!("ok")));
+        assert!(resp.error.is_none());
+        assert_eq!(resp.id, json!(1));
+    }
+
+    #[test]
+    fn response_error_has_error_no_result() {
+        let err = JsonRpcError::method_not_found("unknown.method");
+        let resp = JsonRpcResponse::error(err, json!(99));
+        assert!(resp.result.is_none());
+        assert!(resp.error.is_some());
+        assert_eq!(resp.id, json!(99));
+        let e = resp.error.unwrap();
+        assert_eq!(e.code, JsonRpcError::METHOD_NOT_FOUND);
+        assert!(e.message.contains("unknown.method"));
+    }
+
+    #[test]
+    fn response_serialization_roundtrip() {
+        let resp = JsonRpcResponse::success(json!({"status": "healthy"}), json!(5));
+        let serialized = serde_json::to_string(&resp).unwrap();
+        let deserialized: JsonRpcResponse = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.result.unwrap()["status"], "healthy");
+    }
+
+    #[test]
+    fn error_method_not_found_code() {
+        let err = JsonRpcError::method_not_found("foo");
+        assert_eq!(err.code, -32601);
+        assert!(err.message.contains("foo"));
+        assert!(err.data.is_none());
+    }
+
+    #[test]
+    fn error_invalid_params_code() {
+        let err = JsonRpcError::invalid_params("missing field 'name'");
+        assert_eq!(err.code, -32602);
+        assert!(err.message.contains("missing field"));
+    }
+
+    #[test]
+    fn error_internal_error_code() {
+        let err = JsonRpcError::internal_error("unexpected failure");
+        assert_eq!(err.code, -32603);
+        assert!(err.message.contains("unexpected"));
+    }
+
+    #[test]
+    fn error_constants_match_spec() {
+        assert_eq!(JsonRpcError::PARSE_ERROR, -32700);
+        assert_eq!(JsonRpcError::INVALID_REQUEST, -32600);
+        assert_eq!(JsonRpcError::METHOD_NOT_FOUND, -32601);
+        assert_eq!(JsonRpcError::INVALID_PARAMS, -32602);
+        assert_eq!(JsonRpcError::INTERNAL_ERROR, -32603);
+    }
+
+    #[test]
+    fn wire_request_deserialization() {
+        let raw = r#"{"jsonrpc":"2.0","method":"test","params":null,"id":1}"#;
+        let wire: JsonRpcRequestWire = serde_json::from_str(raw).unwrap();
+        assert_eq!(wire.method.as_ref(), "test");
+        assert!(!wire.is_notification());
+    }
+
+    #[test]
+    fn wire_request_notification() {
+        let raw = r#"{"jsonrpc":"2.0","method":"event.fire"}"#;
+        let wire: JsonRpcRequestWire = serde_json::from_str(raw).unwrap();
+        assert!(wire.is_notification());
+    }
+
+    #[test]
+    fn wire_response_success_deserialization() {
+        let raw = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
+        let wire: JsonRpcResponseWire = serde_json::from_str(raw).unwrap();
+        assert_eq!(wire.result, Some(json!("ok")));
+        assert!(wire.error.is_none());
+    }
+
+    #[test]
+    fn wire_response_error_deserialization() {
+        let raw = r#"{"jsonrpc":"2.0","error":{"code":-32601,"message":"not found"},"id":2}"#;
+        let wire: JsonRpcResponseWire = serde_json::from_str(raw).unwrap();
+        assert!(wire.result.is_none());
+        let e = wire.error.unwrap();
+        assert_eq!(e.code, -32601);
+        assert_eq!(e.message.as_ref(), "not found");
+    }
+
+    #[test]
+    fn jsonrpc_version_constant() {
+        assert_eq!(JSONRPC_VERSION, "2.0");
+    }
+}

@@ -241,3 +241,146 @@ impl Default for RuntimeDiscoveryEngine {
         Self::new()
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_engine_has_5s_timeout() {
+        let engine = RuntimeDiscoveryEngine::new();
+        assert_eq!(engine.timeout, Duration::from_secs(5));
+        assert!(engine.capabilities.is_empty());
+    }
+
+    #[test]
+    fn with_timeout_sets_custom_timeout() {
+        let engine = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(100));
+        assert_eq!(engine.timeout, Duration::from_millis(100));
+    }
+
+    #[test]
+    fn with_capabilities_stores_capabilities() {
+        let caps = vec!["http".into(), "crypto".into()];
+        let engine = RuntimeDiscoveryEngine::with_capabilities(caps.clone());
+        assert_eq!(engine.required_capabilities(), &caps);
+    }
+
+    #[test]
+    fn default_engine_matches_new() {
+        let engine = RuntimeDiscoveryEngine::default();
+        assert_eq!(engine.timeout, Duration::from_secs(5));
+        assert!(engine.capabilities.is_empty());
+    }
+
+    #[test]
+    fn from_environment_with_finds_set_var() {
+        let env = |name: &str| -> Result<String, std::env::VarError> {
+            if name == "CRYPTO_ENDPOINT" {
+                Ok("http://localhost:9999".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        };
+        let service = RuntimeDiscoveryEngine::from_environment_with("crypto", &env).unwrap();
+        assert_eq!(service.capability, "crypto");
+        assert_eq!(service.endpoint, "http://localhost:9999");
+        assert_eq!(service.discovered_via, DiscoveryMethod::Environment);
+        assert!((service.health_score - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn from_environment_with_uppercases_capability() {
+        let env = |name: &str| -> Result<String, std::env::VarError> {
+            if name == "HTTP_REQUEST_ENDPOINT" {
+                Ok("http://proxy:8080".into())
+            } else {
+                Err(std::env::VarError::NotPresent)
+            }
+        };
+        let service = RuntimeDiscoveryEngine::from_environment_with("http_request", &env).unwrap();
+        assert_eq!(service.endpoint, "http://proxy:8080");
+    }
+
+    #[test]
+    fn from_environment_with_missing_var_errors() {
+        let env =
+            |_: &str| -> Result<String, std::env::VarError> { Err(std::env::VarError::NotPresent) };
+        let result = RuntimeDiscoveryEngine::from_environment_with("storage", &env);
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn cache_miss_returns_none() {
+        let engine = RuntimeDiscoveryEngine::new();
+        assert!(engine.check_cache("nonexistent").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn update_and_check_cache_roundtrip() {
+        let engine = RuntimeDiscoveryEngine::new();
+        let service = DiscoveredService {
+            capability: "test".into(),
+            endpoint: "http://test:1234".into(),
+            discovered_via: DiscoveryMethod::Environment,
+            health_score: 0.9,
+            last_seen: std::time::SystemTime::now(),
+        };
+        engine.update_cache("test", &service).await;
+        let cached = engine.check_cache("test").await.unwrap();
+        assert_eq!(cached.endpoint, "http://test:1234");
+        assert_eq!(cached.capability, "test");
+    }
+
+    #[tokio::test]
+    async fn expired_cache_entry_returns_none() {
+        let mut engine = RuntimeDiscoveryEngine::new();
+        engine.cache_ttl = Duration::from_millis(1);
+
+        let service = DiscoveredService {
+            capability: "expired".into(),
+            endpoint: "http://stale:5555".into(),
+            discovered_via: DiscoveryMethod::Registry,
+            health_score: 1.0,
+            last_seen: std::time::SystemTime::now() - Duration::from_secs(60),
+        };
+        engine.update_cache("expired", &service).await;
+        assert!(engine.check_cache("expired").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn discover_by_capability_finds_from_env() {
+        let unique_cap = "songbirdconfigtest_engine_env_discover";
+        let env_var = format!("{}_ENDPOINT", unique_cap.to_uppercase());
+        songbird_process_env::set_var(&env_var, "http://via-env:7777");
+        let engine = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(1));
+        let result = engine.discover_by_capability(unique_cap).await;
+        songbird_process_env::remove_var(&env_var);
+        let service = result.unwrap();
+        assert_eq!(service.endpoint, "http://via-env:7777");
+        assert_eq!(service.discovered_via, DiscoveryMethod::Environment);
+    }
+
+    #[tokio::test]
+    async fn discover_by_capability_returns_cached() {
+        let engine = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(1));
+        let service = DiscoveredService {
+            capability: "cached_cap".into(),
+            endpoint: "http://cached:1111".into(),
+            discovered_via: DiscoveryMethod::MDNS,
+            health_score: 0.95,
+            last_seen: std::time::SystemTime::now(),
+        };
+        engine.update_cache("cached_cap", &service).await;
+        let result = engine.discover_by_capability("cached_cap").await.unwrap();
+        assert_eq!(result.endpoint, "http://cached:1111");
+    }
+
+    #[tokio::test]
+    async fn discover_by_capability_fails_when_nothing_available() {
+        let engine = RuntimeDiscoveryEngine::with_timeout(Duration::from_millis(1));
+        let result = engine.discover_by_capability("nonexistent_capability_xyz").await;
+        assert!(result.is_err());
+    }
+}

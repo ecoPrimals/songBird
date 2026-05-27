@@ -150,6 +150,15 @@ mod tests {
         let addr = parse_bind_address("[::]", 8080).unwrap();
         assert_eq!(addr.port(), 8080);
         assert!(addr.is_ipv6());
+        assert_eq!(addr.ip(), IpAddr::V6(Ipv6Addr::UNSPECIFIED));
+    }
+
+    #[test]
+    fn test_parse_bind_address_ipv6_localhost() {
+        let addr = parse_bind_address("[::1]", 9090).unwrap();
+        assert_eq!(addr.port(), 9090);
+        assert!(addr.is_ipv6());
+        assert!(addr.ip().is_loopback());
     }
 
     #[test]
@@ -157,6 +166,7 @@ mod tests {
         let addr = parse_bind_address("0.0.0.0", 8080).unwrap();
         assert_eq!(addr.port(), 8080);
         assert!(addr.is_ipv4());
+        assert_eq!(addr.ip(), IpAddr::V4(Ipv4Addr::UNSPECIFIED));
     }
 
     #[test]
@@ -164,5 +174,56 @@ mod tests {
         let addr = parse_bind_address("127.0.0.1", 3000).unwrap();
         assert_eq!(addr.port(), 3000);
         assert!(addr.ip().is_loopback());
+    }
+
+    #[test]
+    fn test_parse_bind_address_custom_ipv4() {
+        let addr = parse_bind_address("10.0.0.5", 4000).unwrap();
+        assert_eq!(addr.port(), 4000);
+        assert_eq!(addr.ip().to_string(), "10.0.0.5");
+    }
+
+    #[test]
+    fn test_parse_bind_address_bracketed_ipv6() {
+        let addr = parse_bind_address("[fe80::1]", 5000).unwrap();
+        assert_eq!(addr.port(), 5000);
+        assert!(addr.is_ipv6());
+    }
+
+    #[test]
+    fn test_parse_bind_address_invalid_ipv6() {
+        let result = parse_bind_address("[not-an-ipv6]", 1234);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid IPv6"));
+    }
+
+    #[test]
+    fn test_parse_bind_address_invalid_format() {
+        let result = parse_bind_address("not.a.valid.address.at.all", 80);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_bind_address_empty_brackets() {
+        let result = parse_bind_address("[]", 80);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_bind_address_preserves_port() {
+        for port in [0u16, 1, 80, 443, 8080, 65535] {
+            let addr = parse_bind_address("127.0.0.1", port).unwrap();
+            assert_eq!(addr.port(), port);
+        }
+    }
+
+    #[test]
+    fn test_detect_primary_ip_returns_some_or_none() {
+        let result = detect_primary_ip();
+        if let Some(ip) = result {
+            let parsed: IpAddr = ip.parse().expect("must parse as IP");
+            assert!(!parsed.is_loopback());
+            assert!(!parsed.is_unspecified());
+        }
     }
 }

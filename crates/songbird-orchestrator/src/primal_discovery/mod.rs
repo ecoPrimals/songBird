@@ -280,4 +280,255 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), custom_path);
     }
+
+    // ─── capability.rs coverage ──────────────────────────────────────────
+
+    #[test]
+    fn capability_matches_ai_tokens() {
+        assert!(Capability::Ai.matches_capability_tokens(&["ai.inference".into()]));
+        assert!(Capability::Ai.matches_capability_tokens(&["llm.chat".into()]));
+        assert!(Capability::Ai.matches_capability_tokens(&["mcp.tool".into()]));
+        assert!(Capability::Ai.matches_capability_tokens(&["model.load".into()]));
+        assert!(Capability::Ai.matches_capability_tokens(&["local.inference.gpu".into()]));
+        assert!(!Capability::Ai.matches_capability_tokens(&["storage.get".into()]));
+    }
+
+    #[test]
+    fn capability_matches_messaging_tokens() {
+        assert!(Capability::Messaging.matches_capability_tokens(&["messaging.send".into()]));
+        assert!(Capability::Messaging.matches_capability_tokens(&["pubsub.subscribe".into()]));
+        assert!(Capability::Messaging.matches_capability_tokens(&["queue.push".into()]));
+        assert!(Capability::Messaging.matches_capability_tokens(&["message.deliver".into()]));
+        assert!(!Capability::Messaging.matches_capability_tokens(&["http.request".into()]));
+    }
+
+    #[test]
+    fn capability_matches_storage_tokens() {
+        assert!(Capability::Storage.matches_capability_tokens(&["storage.put".into()]));
+        assert!(Capability::Storage.matches_capability_tokens(&["data.persist".into()]));
+        assert!(!Capability::Storage.matches_capability_tokens(&["compute.run".into()]));
+    }
+
+    #[test]
+    fn capability_matches_http_all_variants() {
+        assert!(Capability::Http.matches_capability_tokens(&["http.get".into()]));
+        assert!(Capability::Http.matches_capability_tokens(&["http.post".into()]));
+        assert!(Capability::Http.matches_capability_tokens(&["http.request".into()]));
+        assert!(Capability::Http.matches_capability_tokens(&["http.delete".into()]));
+        assert!(!Capability::Http.matches_capability_tokens(&["https.verify".into()]));
+    }
+
+    #[test]
+    fn capability_matches_crypto_all_variants() {
+        assert!(Capability::Crypto.matches_capability_tokens(&["crypto.delegate".into()]));
+        assert!(Capability::Crypto.matches_capability_tokens(&["crypto.sign".into()]));
+        assert!(Capability::Crypto.matches_capability_tokens(&["encryption.aes".into()]));
+        assert!(!Capability::Crypto.matches_capability_tokens(&["security.jwt".into()]));
+    }
+
+    #[test]
+    fn capability_matches_security_all_variants() {
+        assert!(Capability::Security.matches_capability_tokens(&["security.verify".into()]));
+        assert!(Capability::Security.matches_capability_tokens(&["jwt.issue".into()]));
+        assert!(Capability::Security.matches_capability_tokens(&["btsp.negotiate".into()]));
+        assert!(Capability::Security.matches_capability_tokens(&["security".into()]));
+        assert!(!Capability::Security.matches_capability_tokens(&["crypto.sign".into()]));
+    }
+
+    #[test]
+    fn capability_matches_empty_tokens_returns_false() {
+        assert!(!Capability::Crypto.matches_capability_tokens(&[]));
+        assert!(!Capability::Security.matches_capability_tokens(&[]));
+        assert!(!Capability::Http.matches_capability_tokens(&[]));
+        assert!(!Capability::Ai.matches_capability_tokens(&[]));
+        assert!(!Capability::Storage.matches_capability_tokens(&[]));
+        assert!(!Capability::Messaging.matches_capability_tokens(&[]));
+    }
+
+    #[test]
+    fn capability_matches_is_case_insensitive() {
+        assert!(Capability::Crypto.matches_capability_tokens(&["CRYPTO.DELEGATE".into()]));
+        assert!(Capability::Http.matches_capability_tokens(&["HTTP.Request".into()]));
+        assert!(Capability::Ai.matches_capability_tokens(&["AI.Inference".into()]));
+    }
+
+    #[test]
+    fn capability_from_wire_id_valid() {
+        assert_eq!(capability_from_wire_id("crypto").unwrap(), Capability::Crypto);
+        assert_eq!(capability_from_wire_id("ai").unwrap(), Capability::Ai);
+        assert_eq!(capability_from_wire_id("storage").unwrap(), Capability::Storage);
+        assert_eq!(capability_from_wire_id("messaging").unwrap(), Capability::Messaging);
+        assert_eq!(capability_from_wire_id("http").unwrap(), Capability::Http);
+        assert_eq!(capability_from_wire_id("security").unwrap(), Capability::Security);
+    }
+
+    #[test]
+    fn capability_from_wire_id_unknown() {
+        assert!(capability_from_wire_id("unknown").is_err());
+        assert!(capability_from_wire_id("").is_err());
+        assert!(capability_from_wire_id("compute").is_err());
+    }
+
+    #[test]
+    fn capability_alt_env_vars_non_empty() {
+        assert!(!Capability::Crypto.alt_env_vars().is_empty());
+        assert!(!Capability::Security.alt_env_vars().is_empty());
+        assert!(!Capability::Http.alt_env_vars().is_empty());
+        assert!(!Capability::Ai.alt_env_vars().is_empty());
+        assert!(!Capability::Storage.alt_env_vars().is_empty());
+        assert!(!Capability::Messaging.alt_env_vars().is_empty());
+    }
+
+    #[test]
+    fn sovereign_storage_requires_both_storage_and_sovereign() {
+        assert!(matches_sovereign_storage_tokens(&["storage.get".into(), "edge.sovereign".into()]));
+        assert!(!matches_sovereign_storage_tokens(&["storage.get".into()]));
+        assert!(!matches_sovereign_storage_tokens(&["edge.sovereign".into()]));
+    }
+
+    // ─── parse.rs coverage ───────────────────────────────────────────────
+
+    #[test]
+    fn parse_capabilities_array_result() {
+        let response = serde_json::json!({
+            "result": ["http.request", "http.get", "tls.1.3"]
+        });
+        let caps = parse::parse_capabilities_result(&response).unwrap();
+        assert_eq!(caps, vec!["http.request", "http.get", "tls.1.3"]);
+    }
+
+    #[test]
+    fn parse_capabilities_object_with_capabilities_key() {
+        let response = serde_json::json!({
+            "result": {
+                "capabilities": ["crypto.sign", "crypto.delegate"]
+            }
+        });
+        let caps = parse::parse_capabilities_result(&response).unwrap();
+        assert_eq!(caps, vec!["crypto.sign", "crypto.delegate"]);
+    }
+
+    #[test]
+    fn parse_capabilities_missing_result_key() {
+        let response = serde_json::json!({ "error": "not found" });
+        assert!(parse::parse_capabilities_result(&response).is_none());
+    }
+
+    #[test]
+    fn parse_capabilities_null_result() {
+        let response = serde_json::json!({ "result": null });
+        assert!(parse::parse_capabilities_result(&response).is_none());
+    }
+
+    #[test]
+    fn parse_capabilities_empty_array() {
+        let response = serde_json::json!({ "result": [] });
+        let caps = parse::parse_capabilities_result(&response).unwrap();
+        assert!(caps.is_empty());
+    }
+
+    #[test]
+    fn parse_capabilities_filters_non_strings() {
+        let response = serde_json::json!({
+            "result": ["valid", 42, null, "also_valid", true]
+        });
+        let caps = parse::parse_capabilities_result(&response).unwrap();
+        assert_eq!(caps, vec!["valid", "also_valid"]);
+    }
+
+    // ─── tcp_biomeos.rs injectable env coverage ──────────────────────────
+
+    #[test]
+    fn discover_with_sync_finds_via_primary_env_var() {
+        let env = |name: &str| -> Option<String> {
+            if name == "CRYPTO_PROVIDER_SOCKET" {
+                Some("/run/crypto.sock".into())
+            } else {
+                None
+            }
+        };
+        let result = tcp_biomeos::discover_with_sync(Capability::Crypto, env);
+        assert_eq!(result.unwrap(), "/run/crypto.sock");
+    }
+
+    #[test]
+    fn discover_with_sync_finds_via_alt_env_var() {
+        let env = |name: &str| -> Option<String> {
+            if name == "BEARDOG_SOCKET" {
+                Some("/run/beardog.sock".into())
+            } else {
+                None
+            }
+        };
+        let result = tcp_biomeos::discover_with_sync(Capability::Crypto, env);
+        assert_eq!(result.unwrap(), "/run/beardog.sock");
+    }
+
+    #[test]
+    fn discover_with_sync_no_env_no_fs_fails() {
+        let env = |_: &str| -> Option<String> { None };
+        let result = tcp_biomeos::discover_with_sync(Capability::Messaging, env);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn tcp_discovery_file_ignores_malformed_content() {
+        use std::io::Write;
+
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("test-malformed-tcp-discovery");
+
+        let mut file = std::fs::File::create(&file_path).unwrap();
+        file.write_all(b"tcp:not_a_valid_socket_addr").unwrap();
+        drop(file);
+
+        let candidates = vec![file_path.clone()];
+        let result = check_tcp_discovery_from_candidates(&candidates);
+        assert_eq!(result, None);
+
+        std::fs::remove_file(file_path).ok();
+    }
+
+    #[test]
+    fn tcp_discovery_file_empty_file() {
+        use std::io::Write;
+
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("test-empty-tcp-discovery");
+
+        let mut file = std::fs::File::create(&file_path).unwrap();
+        file.write_all(b"").unwrap();
+        drop(file);
+
+        let candidates = vec![file_path.clone()];
+        let result = check_tcp_discovery_from_candidates(&candidates);
+        assert_eq!(result, None);
+
+        std::fs::remove_file(file_path).ok();
+    }
+
+    #[test]
+    fn tcp_discovery_file_nonexistent_path() {
+        let candidates = vec![std::path::PathBuf::from("/nonexistent/path/to/tcp-port-file")];
+        let result = check_tcp_discovery_from_candidates(&candidates);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn tcp_discovery_ipv6_address() {
+        use std::io::Write;
+
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("test-ipv6-tcp-discovery");
+
+        let mut file = std::fs::File::create(&file_path).unwrap();
+        file.write_all(b"tcp:[::1]:9876").unwrap();
+        drop(file);
+
+        let candidates = vec![file_path.clone()];
+        let result = check_tcp_discovery_from_candidates(&candidates);
+        assert_eq!(result, Some("[::1]:9876".to_string()));
+
+        std::fs::remove_file(file_path).ok();
+    }
 }

@@ -153,3 +153,84 @@ impl Default for CapabilityEndpointResolver {
         Self::new()
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_resolver_has_empty_cache() {
+        let resolver = CapabilityEndpointResolver::new();
+        assert!(resolver.static_overrides.is_none());
+    }
+
+    #[test]
+    fn with_endpoint_overrides_stores_overrides() {
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Networking, "http://mock:8080".into());
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
+        assert!(resolver.static_overrides.is_some());
+        let map = resolver.static_overrides.unwrap();
+        assert_eq!(map.get(&CapabilityType::Networking).unwrap(), "http://mock:8080");
+    }
+
+    #[tokio::test]
+    async fn get_endpoint_uses_static_override() {
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Storage, "http://storage:9000".into());
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
+        let endpoint = resolver.get_endpoint(CapabilityType::Storage).await.unwrap();
+        assert_eq!(endpoint, "http://storage:9000");
+    }
+
+    #[tokio::test]
+    async fn get_endpoint_caches_result() {
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Compute, "http://compute:7000".into());
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
+
+        let _ = resolver.get_endpoint(CapabilityType::Compute).await.unwrap();
+        let cached = resolver.get_all_cached().await;
+        assert!(cached.contains_key(&CapabilityType::Compute));
+        assert_eq!(cached[&CapabilityType::Compute].endpoint, "http://compute:7000");
+    }
+
+    #[tokio::test]
+    async fn clear_cache_empties_state() {
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Ai, "http://ai:5000".into());
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
+
+        let _ = resolver.get_endpoint(CapabilityType::Ai).await.unwrap();
+        assert!(!resolver.get_all_cached().await.is_empty());
+
+        resolver.clear_cache().await;
+        assert!(resolver.get_all_cached().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn get_endpoint_fails_without_any_source() {
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(HashMap::new());
+        let result = resolver.get_endpoint(CapabilityType::Observability).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn cached_endpoint_returned_on_second_call() {
+        let mut overrides = HashMap::new();
+        overrides.insert(CapabilityType::Security, "http://cached-test:1234".into());
+        let resolver = CapabilityEndpointResolver::with_endpoint_overrides(overrides);
+
+        let first = resolver.get_endpoint(CapabilityType::Security).await.unwrap();
+        let second = resolver.get_endpoint(CapabilityType::Security).await.unwrap();
+        assert_eq!(first, second);
+        assert_eq!(first, "http://cached-test:1234");
+    }
+
+    #[test]
+    fn default_resolver_matches_new() {
+        let resolver = CapabilityEndpointResolver::default();
+        assert!(resolver.static_overrides.is_none());
+    }
+}

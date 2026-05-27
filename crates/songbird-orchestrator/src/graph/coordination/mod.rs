@@ -233,4 +233,192 @@ mod tests {
         // Should fail because no primals registered
         assert!(!result.valid, "Expected validation to fail with no primals, but got: {result:?}");
     }
+
+    // ─── scheduler.rs pure-logic helpers ─────────────────────────────────
+
+    #[test]
+    fn build_dependency_map_empty_graph() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph =
+            Graph::new("empty".into(), "Empty".into(), vec![], vec![], GraphMetadata::default());
+        let deps = validator.build_dependency_map(&graph);
+        assert!(deps.is_empty());
+    }
+
+    #[test]
+    fn build_dependency_map_sequential() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert_eq!(deps.get("node2").unwrap(), &vec!["node1".to_string()]);
+        assert_eq!(deps.get("node3").unwrap(), &vec!["node2".to_string()]);
+        assert!(deps.get("node1").is_none());
+    }
+
+    #[test]
+    fn has_fan_out_sequential_is_false() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(!validator.has_fan_out(&deps));
+    }
+
+    #[test]
+    fn has_fan_out_parallel_is_true() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_parallel_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(validator.has_fan_out(&deps));
+    }
+
+    #[test]
+    fn has_fan_in_sequential_is_false() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(!validator.has_fan_in(&deps));
+    }
+
+    #[test]
+    fn has_fan_in_parallel_is_true() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_parallel_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(validator.has_fan_in(&deps));
+    }
+
+    #[test]
+    fn is_linear_chain_sequential() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(validator.is_linear_chain(&deps, graph.nodes.len()));
+    }
+
+    #[test]
+    fn is_linear_chain_parallel_is_false() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_parallel_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(!validator.is_linear_chain(&deps, graph.nodes.len()));
+    }
+
+    #[test]
+    fn is_linear_chain_empty_graph() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let deps = std::collections::HashMap::new();
+        assert!(validator.is_linear_chain(&deps, 0));
+    }
+
+    #[test]
+    fn is_map_reduce_pattern_parallel_graph() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_parallel_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(validator.is_map_reduce_pattern(&deps, &graph));
+    }
+
+    #[test]
+    fn is_map_reduce_pattern_sequential_is_false() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let deps = validator.build_dependency_map(&graph);
+        assert!(!validator.is_map_reduce_pattern(&deps, &graph));
+    }
+
+    #[test]
+    fn identify_parallel_groups_sequential_is_empty() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let groups = validator.identify_parallel_groups(&graph).unwrap();
+        assert!(groups.is_empty());
+    }
+
+    #[test]
+    fn identify_pipeline_stages_parallel_graph() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_parallel_graph();
+        let stages = validator.identify_pipeline_stages(&graph).unwrap();
+        assert!(stages.len() >= 2);
+        // Input node is in first stage
+        assert!(stages[0].contains(&"input".to_string()));
+    }
+
+    #[test]
+    fn identify_map_reduce_nodes_parallel() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_parallel_graph();
+        let (map_nodes, reduce_nodes) = validator.identify_map_reduce_nodes(&graph).unwrap();
+        assert!(!map_nodes.is_empty());
+        assert!(!reduce_nodes.is_empty());
+    }
+
+    #[test]
+    fn decompose_into_subgraphs_returns_single_graph() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let subgraphs = validator.decompose_into_subgraphs(&graph).unwrap();
+        assert_eq!(subgraphs.len(), 1);
+        assert_eq!(subgraphs[0].id, graph.id);
+    }
+
+    #[test]
+    fn detect_pipeline_bottleneck_sequential_inner_node() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let stages = validator.identify_pipeline_stages(&graph).unwrap();
+        let bottleneck = validator.detect_pipeline_bottleneck(&graph, &stages).unwrap();
+        // Middle stage has single node → bottleneck
+        assert!(bottleneck.is_some());
+    }
+
+    #[test]
+    fn detect_pipeline_bottleneck_empty_stages() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        let bottleneck = validator.detect_pipeline_bottleneck(&graph, &[]).unwrap();
+        assert!(bottleneck.is_none());
+    }
+
+    #[test]
+    fn validate_data_flow_sequential_always_ok() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        assert!(validator.validate_data_flow_sequential(&graph).is_ok());
+    }
+
+    #[test]
+    fn validate_stage_data_flow_always_ok() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let s1 = vec!["a".into()];
+        let s2 = vec!["b".into()];
+        assert!(validator.validate_stage_data_flow(&s1, &s2).is_ok());
+    }
+
+    #[test]
+    fn detect_deadlocks_returns_none() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let validator = CoordinationValidator::new(registry);
+        let graph = create_sequential_graph();
+        assert_eq!(validator.detect_deadlocks(&graph).unwrap(), None);
+    }
 }
