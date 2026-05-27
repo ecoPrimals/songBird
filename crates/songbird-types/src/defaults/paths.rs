@@ -219,8 +219,28 @@ pub fn tmp_flat_security_sock_path() -> PathBuf {
     std::env::temp_dir().join("security.sock")
 }
 
+// --- Network / orchestration capability provider (Songbird self-discovery) --------------------
+
+/// Network capability socket filenames (domain-named, for filesystem discovery).
+///
+/// Consumers prefer `ipc.resolve({ "capability": "network" })` when a broker
+/// connection exists. Filesystem scanning is the bootstrap fallback.
+pub const NETWORK_CAPABILITY_SOCKET_FILENAMES: &[&str] = &["network.sock"];
+
+/// Network/orchestration socket candidates (capability domain + primal name).
+///
+/// Tries: capability domain socket first (`network.sock`), then primal-named
+/// socket (`songbird.sock`). Both resolve to the same listener (the domain
+/// name is a symlink to the primal name).
+#[must_use]
+pub fn network_socket_candidates() -> [PathBuf; 2] {
+    let b = biomeos_socket_dir_tmp();
+    [b.join("network.sock"), b.join(format!("{}.sock", crate::primal_names::SELF_NAME))]
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
+#[allow(deprecated, reason = "tests intentionally verify deprecated constants for backward-compat")]
 mod tests {
     use super::*;
 
@@ -271,5 +291,25 @@ mod tests {
             last.contains(LEGACY_SECURITY_SOCKET_FILENAME),
             "last candidate should be legacy, got: {last}"
         );
+    }
+
+    #[test]
+    fn network_socket_candidates_domain_then_primal() {
+        let candidates = network_socket_candidates();
+        let first = candidates[0].to_string_lossy();
+        assert!(
+            first.ends_with("network.sock"),
+            "first candidate should be domain-named, got: {first}"
+        );
+        let second = candidates[1].to_string_lossy();
+        assert!(
+            second.ends_with("songbird.sock"),
+            "second candidate should be primal-named, got: {second}"
+        );
+    }
+
+    #[test]
+    fn capability_domain_constant_is_network() {
+        assert_eq!(crate::primal_names::CAPABILITY_DOMAIN, "network");
     }
 }

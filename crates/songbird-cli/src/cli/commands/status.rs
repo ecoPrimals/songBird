@@ -120,9 +120,14 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
             })
         })
         .unwrap_or_else(|_| std::env::temp_dir());
-    let ipc_path = biomeos_dir.join("network.sock");
+    let ipc_alive = [
+        biomeos_dir.join(format!("{}.sock", songbird_types::primal_names::SELF_NAME)),
+        biomeos_dir.join(format!("{}.sock", songbird_types::primal_names::CAPABILITY_DOMAIN)),
+    ]
+    .iter()
+    .any(|p| p.exists());
 
-    let (orch_status, orch_health, orch_uptime) = if ipc_path.exists() {
+    let (orch_status, orch_health, orch_uptime) = if ipc_alive {
         ("Running".to_string(), "Healthy".to_string(), None)
     } else {
         ("Stopped".to_string(), "Unreachable".to_string(), None)

@@ -8,6 +8,13 @@
 /// This primal's canonical name (self-knowledge).
 pub const SELF_NAME: &str = "songbird";
 
+/// This primal's capability domain (what consumers discover us as).
+///
+/// Used for domain-socket naming (`network.sock`) and capability registry tokens.
+/// Consumers should prefer `ipc.resolve({ "capability": "network" })` over
+/// filesystem symlink scanning when a broker connection is available.
+pub const CAPABILITY_DOMAIN: &str = "network";
+
 /// Filesystem directory name for XDG-style paths (`~/.config/songbird/`).
 pub const APP_DIR: &str = "songbird";
 
@@ -23,6 +30,16 @@ pub const BIOMEOS_DIR: &str = "biomeos";
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn self_name_is_songbird() {
+        assert_eq!(SELF_NAME, "songbird");
+    }
+
+    #[test]
+    fn capability_domain_is_network() {
+        assert_eq!(CAPABILITY_DOMAIN, "network");
+    }
 
     #[test]
     fn test_neural_api_constant() {

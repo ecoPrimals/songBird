@@ -73,7 +73,11 @@ pub fn socket_path() -> PathBuf {
 }
 
 /// Capability domain stem for socket naming per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1.
-const DOMAIN_SOCKET_STEM: &str = "network";
+///
+/// This is the filesystem-level domain alias. Consumers with a broker connection
+/// should prefer `ipc.resolve({ "capability": "network" })` over scanning for
+/// this socket on disk.
+const DOMAIN_SOCKET_STEM: &str = songbird_types::primal_names::CAPABILITY_DOMAIN;
 
 /// Get the socket filename based on family configuration.
 ///
