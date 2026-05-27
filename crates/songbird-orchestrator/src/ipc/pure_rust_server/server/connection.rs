@@ -225,6 +225,8 @@ impl UnixSocketServer {
         self.is_ready.store(true, std::sync::atomic::Ordering::Release);
         self.ready_notify.notify_waiters();
 
+        crate::mesh_seed::spawn_mesh_seed(std::sync::Arc::clone(&self.handlers.mesh_handler));
+
         info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 coordination)");
         info!("   Status: READY ✅ (isomorphic TCP fallback active)");
 

@@ -254,7 +254,7 @@ mod tests {
         let deps = validator.build_dependency_map(&graph);
         assert_eq!(deps.get("node2").unwrap(), &vec!["node1".to_string()]);
         assert_eq!(deps.get("node3").unwrap(), &vec!["node2".to_string()]);
-        assert!(deps.get("node1").is_none());
+        assert!(!deps.contains_key("node1"));
     }
 
     #[test]
