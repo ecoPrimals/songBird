@@ -312,7 +312,7 @@ pub async fn unregister(name: &str) -> IpcResult<()> {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use crate::endpoint::VirtualEndpoint;

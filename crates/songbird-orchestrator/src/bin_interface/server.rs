@@ -24,7 +24,7 @@ pub(super) static BIN_GATE: std::sync::LazyLock<MethodGate> =
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-#[allow(clippy::too_many_lines, reason = "orchestrator server lifecycle and startup sequence")]
+#[expect(clippy::too_many_lines, reason = "orchestrator server lifecycle and startup sequence")]
 pub async fn run_server(args: ServerArgs) -> Result<()> {
     use crate::app;
     use crate::process_manager::ProcessManager;
@@ -173,7 +173,7 @@ async fn await_shutdown_signal() {
         () = async {
             #[cfg(unix)]
             {
-                #[expect(clippy::expect_used, reason = "process-level signal handler — panicking is correct on setup failure")]
+                #[allow(clippy::expect_used, reason = "process-level signal handler — panicking is correct on setup failure")]
                 let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
                     .expect("Failed to setup SIGTERM handler");
                 sigterm.recv().await;

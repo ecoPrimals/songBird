@@ -85,9 +85,9 @@ impl CloudflareDdnsProvider {
     ///
     /// Returns `DdnsError::ConfigError` if required env vars are missing.
     pub fn from_env(http: HttpExecutor) -> Result<Self, DdnsError> {
-        let api_token = std::env::var("SONGBIRD_CF_API_TOKEN")
+        let api_token = songbird_process_env::var("SONGBIRD_CF_API_TOKEN")
             .map_err(|_| DdnsError::ConfigError("SONGBIRD_CF_API_TOKEN not set".to_string()))?;
-        let zone_id = std::env::var("SONGBIRD_CF_ZONE_ID")
+        let zone_id = songbird_process_env::var("SONGBIRD_CF_ZONE_ID")
             .map_err(|_| DdnsError::ConfigError("SONGBIRD_CF_ZONE_ID not set".to_string()))?;
         Ok(Self::new(api_token, zone_id, http))
     }

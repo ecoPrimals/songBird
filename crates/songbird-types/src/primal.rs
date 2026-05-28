@@ -268,17 +268,20 @@ impl CanonicalPrimalResponse {
     reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
-#[allow(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
-#[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
-#[allow(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
-#[allow(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
-#[allow(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
-#[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
 #[allow(
     clippy::cast_possible_truncation,
     reason = "intentional pattern; clippy false positive for this API"
 )]
-#[allow(clippy::cast_sign_loss, reason = "intentional pattern; clippy false positive for this API")]
+#[expect(
+    clippy::cast_sign_loss,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 mod tests {
     #![allow(clippy::all, reason = "test assertions and harness ergonomics")]
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
@@ -295,9 +298,12 @@ mod tests {
 
     #[test]
     fn test_primal_id_creation() {
-        let test_host = std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string());
-        let test_port =
-            std::env::var("TEST_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+        let test_host =
+            songbird_process_env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string());
+        let test_port = songbird_process_env::var("TEST_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
 
         let mut id = CanonicalPrimalId::new(CanonicalPrimalType::Security, "security-001", "1.0.0");
         id.with_endpoint("health", format!("http://{test_host}:{test_port}/health"));

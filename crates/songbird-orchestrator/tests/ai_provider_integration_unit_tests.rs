@@ -18,7 +18,7 @@ use tokio::net::UnixStream;
 #[allow(dead_code, reason = "test helper not used by every test case")]
 fn clean_env() -> std::collections::HashMap<String, String> {
     let mut env = std::collections::HashMap::new();
-    env.insert("PATH".to_string(), std::env::var("PATH").unwrap_or_default());
+    env.insert("PATH".to_string(), songbird_process_env::var("PATH").unwrap_or_default());
     env
 }
 

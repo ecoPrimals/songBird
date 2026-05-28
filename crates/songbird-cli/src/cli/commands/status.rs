@@ -111,10 +111,10 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
 
     // Attempt real IPC health probe
     let orchestrator_port = songbird_config::defaults::ports::orchestrator_port();
-    let biomeos_dir = std::env::var("BIOMEOS_SOCKET_DIR")
+    let biomeos_dir = songbird_process_env::var("BIOMEOS_SOCKET_DIR")
         .map(std::path::PathBuf::from)
         .or_else(|_| {
-            std::env::var("XDG_RUNTIME_DIR").map(|xdg| {
+            songbird_process_env::var("XDG_RUNTIME_DIR").map(|xdg| {
                 std::path::PathBuf::from(xdg)
                     .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
             })

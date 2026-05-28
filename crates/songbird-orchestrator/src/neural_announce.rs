@@ -19,7 +19,7 @@ use tracing::{debug, info, warn};
 /// 2. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`
 /// 3. `/tmp/biomeos/neural-api-{family}.sock`
 pub fn resolve_neural_api_socket() -> Option<PathBuf> {
-    if let Ok(p) = std::env::var("NEURAL_API_SOCKET") {
+    if let Ok(p) = songbird_process_env::var("NEURAL_API_SOCKET") {
         let path = PathBuf::from(&p);
         if path.exists() {
             debug!(path = %path.display(), "Neural API socket from NEURAL_API_SOCKET");
@@ -29,7 +29,7 @@ pub fn resolve_neural_api_socket() -> Option<PathBuf> {
 
     let family = resolve_family_id();
 
-    if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
         let candidate =
             PathBuf::from(&xdg).join("biomeos").join(format!("neural-api-{family}.sock"));
         if candidate.exists() {
@@ -143,9 +143,9 @@ pub fn spawn_announce(own_socket_path: &Path) {
 }
 
 fn resolve_family_id() -> String {
-    std::env::var("FAMILY_ID")
-        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-        .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+    songbird_process_env::var("FAMILY_ID")
+        .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
         .unwrap_or_else(|_| "ecoPrimal".to_string())
 }
 

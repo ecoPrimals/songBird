@@ -15,7 +15,7 @@ use super::UnixSocketServer;
 
 impl UnixSocketServer {
     /// Handle a JSON-RPC 2.0 request and route to appropriate API handler
-    #[allow(clippy::too_many_lines, reason = "IPC JSON-RPC handler dispatch")]
+    #[expect(clippy::too_many_lines, reason = "IPC JSON-RPC handler dispatch")]
     pub(crate) async fn handle_jsonrpc_request(
         &self,
         mut request: JsonRpcRequest,

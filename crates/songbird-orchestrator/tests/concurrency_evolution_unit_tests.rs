@@ -55,7 +55,7 @@ fn clean_cmd() -> Command {
     // ✅ Clear environment for this command only (not global!)
     cmd.env_clear();
     // ✅ Set minimal required env vars for test isolation
-    cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
+    cmd.env("PATH", songbird_process_env::var("PATH").unwrap_or_default());
     cmd
 }
 
@@ -111,7 +111,7 @@ async fn test_concurrent_command_creation() {
 #[tokio::test]
 async fn test_no_global_state_mutation() {
     // This test verifies that we don't mutate global state
-    let original_var = std::env::var("SONGBIRD_PORT").ok();
+    let original_var = songbird_process_env::var("SONGBIRD_PORT").ok();
 
     // Create a command with custom env
     let mut cmd = clean_cmd();
@@ -119,7 +119,7 @@ async fn test_no_global_state_mutation() {
 
     // Global environment should be unchanged
     assert_eq!(
-        std::env::var("SONGBIRD_PORT").ok(),
+        songbird_process_env::var("SONGBIRD_PORT").ok(),
         original_var,
         "Global environment was not mutated"
     );
@@ -156,12 +156,12 @@ async fn test_concurrent_execution_safety() {
 
 #[test]
 fn test_path_env_preserved() {
-    let original_path = std::env::var("PATH").ok();
+    let original_path = songbird_process_env::var("PATH").ok();
 
     let cmd = clean_cmd();
 
     // PATH should still be available in the system
-    assert_eq!(std::env::var("PATH").ok(), original_path, "Global PATH unchanged");
+    assert_eq!(songbird_process_env::var("PATH").ok(), original_path, "Global PATH unchanged");
 
     // Command has PATH set (verified by constructor)
     drop(cmd);

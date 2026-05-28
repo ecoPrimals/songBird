@@ -32,7 +32,7 @@ fn clean_cmd() -> Command {
     // ✅ Clear environment for this command only (not global!)
     cmd.env_clear();
     // ✅ Set minimal required env vars for test isolation
-    cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
+    cmd.env("PATH", songbird_process_env::var("PATH").unwrap_or_default());
     cmd
 }
 

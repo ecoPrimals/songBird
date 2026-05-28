@@ -30,7 +30,7 @@ mod consolidated_engine;
 mod orchestrator_health;
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod consolidated_tests;
 
 // Re-export key functionality for convenience

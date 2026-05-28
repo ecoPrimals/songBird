@@ -81,7 +81,7 @@ impl TurnSessionConfig {
     /// Returns error if required env vars are missing or `SONGBIRD_TURN_SERVER`
     /// fails to parse as a `SocketAddr`.
     pub fn from_env(peer_addr: SocketAddr) -> Result<Self, TurnSessionError> {
-        let server_str = std::env::var("SONGBIRD_TURN_SERVER")
+        let server_str = songbird_process_env::var("SONGBIRD_TURN_SERVER")
             .map_err(|_| TurnSessionError::Config("SONGBIRD_TURN_SERVER not set".into()))?;
         let server_addr: SocketAddr = server_str.parse().map_err(|e| {
             TurnSessionError::Config(format!(
@@ -89,10 +89,10 @@ impl TurnSessionConfig {
             ))
         })?;
 
-        let username = std::env::var("SONGBIRD_TURN_USERNAME")
+        let username = songbird_process_env::var("SONGBIRD_TURN_USERNAME")
             .map_err(|_| TurnSessionError::Config("SONGBIRD_TURN_USERNAME not set".into()))?;
 
-        let key_hex = std::env::var("SONGBIRD_TURN_KEY")
+        let key_hex = songbird_process_env::var("SONGBIRD_TURN_KEY")
             .map_err(|_| TurnSessionError::Config("SONGBIRD_TURN_KEY not set".into()))?;
         let key = hex_decode(&key_hex).map_err(|e| {
             TurnSessionError::Config(format!("SONGBIRD_TURN_KEY is not valid hex: {e}"))

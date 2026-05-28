@@ -55,7 +55,7 @@ use tokio::time::{Duration, sleep};
 fn clean_cmd() -> Command {
     let mut cmd = Command::new(assert_cmd::cargo::cargo_bin("songbird"));
     cmd.env_clear();
-    cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
+    cmd.env("PATH", songbird_process_env::var("PATH").unwrap_or_default());
     cmd
 }
 

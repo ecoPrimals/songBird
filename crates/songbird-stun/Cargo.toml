@@ -31,6 +31,7 @@ serde_json = { workspace = true }
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
+songbird-process-env = { path = "../songbird-process-env" }
 
 [lints]
 workspace = true

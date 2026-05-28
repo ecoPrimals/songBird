@@ -15,11 +15,13 @@ async fn test_service_registration() {
     let discovery = ProductionServiceDiscovery::new(ProductionDiscoveryConfig::default());
 
     // Use configurable test endpoint
-    let test_host = std::env::var("TEST_SERVICE_HOST").unwrap_or_else(|_| {
+    let test_host = songbird_process_env::var("TEST_SERVICE_HOST").unwrap_or_else(|_| {
         songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()
     });
-    let test_port =
-        std::env::var("TEST_SERVICE_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+    let test_port = songbird_process_env::var("TEST_SERVICE_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8080);
 
     let _service = ServiceInstance {
         id: "test-service".to_string(),

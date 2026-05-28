@@ -224,7 +224,7 @@ async fn get_local_ip() -> Result<String> {
 }
 
 /// Start HTTPS server with Pure Rust TLS (songbird-tls + `security provider`)
-#[allow(clippy::too_many_lines, reason = "HTTPS server startup with TLS and route registration")]
+#[expect(clippy::too_many_lines, reason = "HTTPS server startup with TLS and route registration")]
 async fn start_https_server(
     app: Router,
     listener: tokio::net::TcpListener,

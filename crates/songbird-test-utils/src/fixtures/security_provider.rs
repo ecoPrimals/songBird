@@ -151,7 +151,7 @@ pub fn discover_security_provider_binary() -> Option<PathBuf> {
 
 fn discover_security_provider_binary_impl() -> Option<PathBuf> {
     // 1. Explicit $BEARDOG_BIN
-    if let Ok(bin) = std::env::var("BEARDOG_BIN") {
+    if let Ok(bin) = songbird_process_env::var("BEARDOG_BIN") {
         let p = PathBuf::from(bin);
         if p.is_file() {
             return Some(p);
@@ -159,7 +159,7 @@ fn discover_security_provider_binary_impl() -> Option<PathBuf> {
     }
 
     // 2. $ECOPRIMALS_PLASMID_BIN/primals/beardog
-    if let Ok(dir) = std::env::var("ECOPRIMALS_PLASMID_BIN") {
+    if let Ok(dir) = songbird_process_env::var("ECOPRIMALS_PLASMID_BIN") {
         let p = PathBuf::from(dir).join("primals").join("beardog");
         if p.is_file() {
             return Some(p);
@@ -179,7 +179,7 @@ fn discover_security_provider_binary_impl() -> Option<PathBuf> {
     }
 
     // 4. Check relative path from workspace: ../../infra/plasmidBin/primals/beardog
-    if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
+    if let Ok(manifest) = songbird_process_env::var("CARGO_MANIFEST_DIR") {
         let workspace = PathBuf::from(manifest);
         for ancestor in &["../..", "../../.."] {
             let candidate = workspace

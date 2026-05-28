@@ -136,7 +136,7 @@ fn initialize_service_paths_top_level_creates_under_tmp() {
 #[test]
 fn get_fallback_data_dir_with_xdg_data_home() {
     let base = tempfile::tempdir().expect("tempdir");
-    let prev = std::env::var_os("XDG_DATA_HOME");
+    let prev = songbird_process_env::var_os("XDG_DATA_HOME");
     songbird_process_env::set_var("XDG_DATA_HOME", base.path());
     let p = PathConfig::get_fallback_data_dir().expect("xdg data");
     if let Some(v) = prev {
@@ -150,7 +150,7 @@ fn get_fallback_data_dir_with_xdg_data_home() {
 #[test]
 fn get_fallback_config_dir_with_xdg_config_home() {
     let base = tempfile::tempdir().expect("tempdir");
-    let prev = std::env::var_os("XDG_CONFIG_HOME");
+    let prev = songbird_process_env::var_os("XDG_CONFIG_HOME");
     songbird_process_env::set_var("XDG_CONFIG_HOME", base.path());
     let p = PathConfig::get_fallback_config_dir().expect("xdg config");
     if let Some(v) = prev {

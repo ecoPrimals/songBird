@@ -592,8 +592,8 @@ mod tests {
         let _guard = LOCK.get_or_init(|| Mutex::new(())).lock().expect("lock");
 
         let dir = tempfile::tempdir().expect("tempdir");
-        let prev_data = std::env::var("SONGBIRD_DATA_DIR").ok();
-        let prev_node = std::env::var("SONGBIRD_NODE_ID").ok();
+        let prev_data = songbird_process_env::var("SONGBIRD_DATA_DIR").ok();
+        let prev_node = songbird_process_env::var("SONGBIRD_NODE_ID").ok();
 
         songbird_process_env::set_var(
             "SONGBIRD_DATA_DIR",

@@ -61,12 +61,12 @@ static PORT_REGISTRY: std::sync::LazyLock<Mutex<HashMap<String, u16>>> =
 pub fn test_endpoint(capability: &str) -> String {
     // Try environment variables first
     let env_key = format!("{}_ENDPOINT", capability.to_uppercase());
-    if let Ok(endpoint) = std::env::var(&env_key) {
+    if let Ok(endpoint) = songbird_process_env::var(&env_key) {
         return endpoint;
     }
 
     let test_env_key = format!("TEST_{}_ENDPOINT", capability.to_uppercase());
-    if let Ok(endpoint) = std::env::var(&test_env_key) {
+    if let Ok(endpoint) = songbird_process_env::var(&test_env_key) {
         return endpoint;
     }
 
@@ -103,14 +103,14 @@ pub fn test_endpoint(capability: &str) -> String {
 pub fn test_port(capability: &str) -> u16 {
     // Try environment variables first
     let env_key = format!("{}_PORT", capability.to_uppercase());
-    if let Ok(port_str) = std::env::var(&env_key)
+    if let Ok(port_str) = songbird_process_env::var(&env_key)
         && let Ok(port) = port_str.parse()
     {
         return port;
     }
 
     let test_env_key = format!("TEST_{}_PORT", capability.to_uppercase());
-    if let Ok(port_str) = std::env::var(&test_env_key)
+    if let Ok(port_str) = songbird_process_env::var(&test_env_key)
         && let Ok(port) = port_str.parse()
     {
         return port;

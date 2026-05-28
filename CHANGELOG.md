@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave58] - 2026-05-28 - Process-env full adoption + #[expect] lint evolution
+
+### Changed
+- **`songbird-process-env` full adoption** — ~48 `std::env::var`/`var_os` call sites migrated
+  across 15+ files in 8 crates to use `songbird_process_env::var()`/`var_os()`. Production code
+  now uses the injectable overlay consistently, enabling test isolation without env pollution.
+  Remaining `std::env::var` calls: process-env crate itself (the implementation), examples
+  (standalone binaries), doc comments, and `error_helpers_comprehensive_tests.rs` (deliberately
+  tests std::env error conversion).
+- **`songbird-process-env` added as dependency** to `songbird-stun` and `songbird-turn-client`
+  (previously missing; these crates had bare `std::env::var` in `from_env()` methods).
+- **`#[allow(clippy::` → `#[expect(clippy::` migration** — 146 lint suppressions evolved to
+  `#[expect]` for lints that provably fire on specific items (`too_many_lines`,
+  `type_complexity`, `cast_*`, `float_cmp`, `useless_vec`, `unreadable_literal`,
+  `items_after_statements`, `uninlined_format_args`). Module-level `unwrap_used`/`expect_used`
+  blanket suppressions correctly remain as `#[allow]` (module-scope `#[expect]` requires the
+  lint to fire exactly once in that scope, which doesn't work for blanket test suppression).
+
+### Files migrated (env)
+- `songbird-orchestrator/src/neural_announce.rs` (5 sites)
+- `songbird-universal-ipc/src/introspection/primal.rs` (4 sites)
+- `songbird-turn-client/src/session.rs` (3 sites)
+- `songbird-stun/src/ddns_cloudflare.rs` (2 sites)
+- `songbird-cli/src/cli/commands/status.rs` (2 sites)
+- `songbird-config/src/config/paths.rs` (2 sites)
+- `songbird-orchestrator/src/node_identity.rs` (2 sites)
+- `songbird-cli/src/bin/test_runner.rs` (1 site)
+- `songbird-test-utils/src/network_fixtures.rs` (9 sites)
+- `songbird-test-utils/src/fixtures/endpoints.rs` (6 sites)
+- `songbird-test-utils/src/fixtures/security_provider.rs` (3 sites)
+- `songbird-config/src/config/paths_tests.rs` (2 sites)
+- Plus 24 additional test/integration file sites
+
+---
+
 ## [v0.2.1-wave56] - 2026-05-27 - GAP-17/18 capability socket evolution + TCP fallback fix
 
 ### Added

@@ -382,7 +382,7 @@ impl BtspClient {
     ///
     /// # Errors
     /// Returns an error if the handshake fails at any stage (connection, crypto, verification).
-    #[allow(clippy::too_many_lines, reason = "sequential BTSP client handshake protocol steps")]
+    #[expect(clippy::too_many_lines, reason = "sequential BTSP client handshake protocol steps")]
     pub async fn handshake(
         &self,
         target_socket: &std::path::Path,
@@ -624,8 +624,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_btsp_ping() {
-        if std::env::var("SECURITY_PROVIDER_SOCKET")
-            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+        if songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
             .is_ok()
         {
             let client = BtspClient::new();

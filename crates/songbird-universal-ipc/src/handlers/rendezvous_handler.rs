@@ -143,7 +143,7 @@ impl RendezvousHandler {
 
 #[cfg(test)]
 pub struct MockRendezvousClient {
-    #[allow(clippy::type_complexity, reason = "test-only struct; named type adds no clarity")]
+    #[expect(clippy::type_complexity, reason = "test-only struct; named type adds no clarity")]
     registered: std::sync::RwLock<Vec<(Arc<str>, Arc<str>, Arc<str>, Arc<str>)>>,
 }
 

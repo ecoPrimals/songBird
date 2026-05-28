@@ -219,7 +219,7 @@ fn test_health_status_clone() {
 
     assert_eq!(status1.healthy, status2.healthy);
     // Allow float comparison in test context
-    #[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
     {
         assert_eq!(status1.score, status2.score);
     }
@@ -238,7 +238,7 @@ fn test_health_status_degraded_sequence() {
 
     for (i, status) in statuses.iter().enumerate() {
         if i < 3 {
-            #[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+            #[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
             {
                 assert!(status.healthy || status.score == 0.5);
             }

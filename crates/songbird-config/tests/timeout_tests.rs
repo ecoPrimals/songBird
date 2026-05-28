@@ -166,13 +166,13 @@ fn test_timeout_wrapping_operations() {
 }
 
 #[test]
-#[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
 fn test_timeout_as_f64() {
     let timeout = 10u64;
-    #[allow(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+    #[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
     let as_float = timeout as f64;
     // Use epsilon comparison for floats in production, but exact for small test values
-    #[allow(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
     {
         assert_eq!(as_float, 10.0);
     }

@@ -337,7 +337,7 @@ mod tests {
 
         let test_consul_url = format!(
             "http://{}:8500",
-            std::env::var("TEST_CONSUL_HOST")
+            songbird_process_env::var("TEST_CONSUL_HOST")
                 .unwrap_or_else(|_| constants::network::DEFAULT_HOST.to_string())
         );
 

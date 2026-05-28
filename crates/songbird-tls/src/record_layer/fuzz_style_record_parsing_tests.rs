@@ -59,7 +59,7 @@ fn parse_record_truncated_after_header_various_lengths() {
 }
 
 #[test]
-#[allow(clippy::cast_possible_truncation, reason = "test: MAX_RECORD_SIZE fits in u16")]
+#[expect(clippy::cast_possible_truncation, reason = "test: MAX_RECORD_SIZE fits in u16")]
 fn parse_record_exact_max_length_succeeds_when_buffer_complete() {
     let mut rl = RecordLayer::new();
     let mut buf = vec![0x16u8, 0x03, 0x03];

@@ -108,7 +108,7 @@ pub async fn run_server(
             #[cfg(unix)]
             {
                 // Signal handler setup is infallible in practice — panic is correct here
-                #[expect(clippy::expect_used, reason = "intentional pattern; clippy false positive for this API")]
+                #[allow(clippy::expect_used, reason = "intentional pattern; clippy false positive for this API")]
                 let mut sigterm = tokio::signal::unix::signal(
                     tokio::signal::unix::SignalKind::terminate(),
                 )

@@ -248,17 +248,17 @@ impl IntegrationManager {
 }
 
 #[cfg(test)]
-#[allow(clippy::uninlined_format_args, reason = "test module: clippy noise in integration tests")]
-#[allow(clippy::float_cmp, reason = "test module: clippy noise in integration tests")]
-#[allow(clippy::useless_vec, reason = "test module: clippy noise in integration tests")]
-#[allow(clippy::unreadable_literal, reason = "test module: clippy noise in integration tests")]
-#[allow(clippy::items_after_statements, reason = "test module: clippy noise in integration tests")]
-#[allow(clippy::cast_precision_loss, reason = "test module: clippy noise in integration tests")]
+#[expect(clippy::uninlined_format_args, reason = "test module: clippy noise in integration tests")]
+#[expect(clippy::float_cmp, reason = "test module: clippy noise in integration tests")]
+#[expect(clippy::useless_vec, reason = "test module: clippy noise in integration tests")]
+#[expect(clippy::unreadable_literal, reason = "test module: clippy noise in integration tests")]
+#[expect(clippy::items_after_statements, reason = "test module: clippy noise in integration tests")]
+#[expect(clippy::cast_precision_loss, reason = "test module: clippy noise in integration tests")]
 #[allow(
     clippy::cast_possible_truncation,
     reason = "test module: clippy noise in integration tests"
 )]
-#[allow(clippy::cast_sign_loss, reason = "test module: clippy noise in integration tests")]
+#[expect(clippy::cast_sign_loss, reason = "test module: clippy noise in integration tests")]
 mod tests {
     #![allow(clippy::all, reason = "test module: broad clippy suppression for assertions")]
     #![allow(unused, reason = "test module: unused imports/bindings in tests")]

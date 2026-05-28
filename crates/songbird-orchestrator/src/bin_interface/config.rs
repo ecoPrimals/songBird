@@ -240,7 +240,7 @@ const fn mask_secrets_in_config(
 }
 
 /// Human-readable configuration text (same content as printed by `songbird config show`).
-#[expect(clippy::unwrap_used, reason = "write! to String is infallible")]
+#[allow(clippy::unwrap_used, reason = "write! to String is infallible")]
 fn format_config_display(
     config: &songbird_types::config::CanonicalSongbirdConfig,
     _show_secrets: bool,

@@ -38,7 +38,7 @@ fn compute_submission_ack_response(job_id: Uuid, routed_to: String) -> ComputeTa
 }
 
 /// Submit a compute task for intelligent routing
-#[allow(clippy::too_many_lines, reason = "compute task routing and job submission pipeline")]
+#[expect(clippy::too_many_lines, reason = "compute task routing and job submission pipeline")]
 #[tracing::instrument(skip(state, req), fields(task_type = %req.task.task_type))]
 pub async fn submit_compute_task(
     State(state): State<ComputeApiState>,

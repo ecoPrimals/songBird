@@ -54,8 +54,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "Requires security provider running"]
     async fn test_provision_jwt_secret_from_security_provider() {
-        if let Ok(socket) =
-            std::env::var("SECURITY_PROVIDER_SOCKET").or_else(|_| std::env::var("BEARDOG_SOCKET"))
+        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"))
         {
             let secret = provision_jwt_secret(Some(&socket), "songbird_test").await.unwrap();
             assert!(secret.len() >= 85);

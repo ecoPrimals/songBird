@@ -183,9 +183,9 @@ pub fn primal_announce() -> Value {
 
 /// Resolve this instance's UDS path from the environment.
 fn resolve_self_socket_path() -> String {
-    let family_id = std::env::var("FAMILY_ID")
-        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-        .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+    let family_id = songbird_process_env::var("FAMILY_ID")
+        .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
         .unwrap_or_else(|_| "ecoPrimal".to_string());
 
     let sock_name = if family_id == "default" || family_id.is_empty() {
@@ -194,7 +194,7 @@ fn resolve_self_socket_path() -> String {
         format!("songbird-{family_id}.sock")
     };
 
-    if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
         return format!("{xdg}/biomeos/{sock_name}");
     }
 

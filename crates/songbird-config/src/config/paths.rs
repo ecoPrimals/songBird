@@ -246,8 +246,7 @@ impl PathConfig {
     /// - Unable to determine home directory
     /// - Suggestion: Set `XDG_DATA_HOME` environment variable
     pub fn get_fallback_data_dir() -> Result<PathBuf> {
-        // Use XDG base directory specification or platform defaults
-        std::env::var_os("XDG_DATA_HOME").map_or_else(
+        songbird_process_env::var_os("XDG_DATA_HOME").map_or_else(
             || {
                 dirs::home_dir().map_or_else(
                     || {
@@ -273,8 +272,7 @@ impl PathConfig {
     /// - Unable to determine home directory
     /// - Suggestion: Set `XDG_CONFIG_HOME` environment variable
     pub fn get_fallback_config_dir() -> Result<PathBuf> {
-        // Use XDG base directory specification or platform defaults
-        std::env::var_os("XDG_CONFIG_HOME").map_or_else(
+        songbird_process_env::var_os("XDG_CONFIG_HOME").map_or_else(
             || {
                 dirs::home_dir().map_or_else(
                     || {

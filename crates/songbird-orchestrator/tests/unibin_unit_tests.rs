@@ -63,7 +63,8 @@ mod helper_tests {
     #[test]
     fn test_default_values() {
         // Test default value handling
-        let port = std::env::var("NONEXISTENT_PORT").unwrap_or_else(|_| "8080".to_string());
+        let port =
+            songbird_process_env::var("NONEXISTENT_PORT").unwrap_or_else(|_| "8080".to_string());
         assert_eq!(port, "8080");
     }
 

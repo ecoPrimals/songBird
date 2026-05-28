@@ -605,7 +605,7 @@ mod tests {
     #[test]
     fn turn_config_from_env_fails_gracefully_when_not_set() {
         // In CI and dev, SONGBIRD_TURN_SERVER is not set — from_env returns Err
-        if std::env::var("SONGBIRD_TURN_SERVER").is_err() {
+        if songbird_process_env::var("SONGBIRD_TURN_SERVER").is_err() {
             let peer_addr: std::net::SocketAddr = "192.168.1.100:8080".parse().unwrap();
             let result = songbird_turn_client::TurnSessionConfig::from_env(peer_addr);
             assert!(result.is_err(), "Should fail when TURN env vars are absent");

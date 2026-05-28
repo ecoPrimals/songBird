@@ -42,7 +42,7 @@ pub struct TestConfig {
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
-            songbird_url: std::env::var("SONGBIRD_URL")
+            songbird_url: songbird_process_env::var("SONGBIRD_URL")
                 .unwrap_or_else(|_| default_orchestrator_endpoint()),
             timeout_seconds: 15,
             verbose: false,

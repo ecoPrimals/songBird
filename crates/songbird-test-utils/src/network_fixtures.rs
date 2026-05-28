@@ -17,7 +17,8 @@ use std::net::IpAddr;
 /// use `test_bind_address(capability)` from fixtures module instead.
 #[must_use]
 pub fn test_bind_ip_str() -> String {
-    std::env::var("SONGBIRD_TEST_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string())
+    songbird_process_env::var("SONGBIRD_TEST_BIND_ADDRESS")
+        .unwrap_or_else(|_| "127.0.0.1".to_string())
 }
 
 /// DEPRECATED: Use `test_bind_ip_str()` for IP-only or `test_bind_address(capability)` for IP:PORT
@@ -44,13 +45,16 @@ pub fn test_bind_ip() -> IpAddr {
 /// Defaults to 8080.
 #[must_use]
 pub fn test_port() -> u16 {
-    std::env::var("SONGBIRD_TEST_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8080)
+    songbird_process_env::var("SONGBIRD_TEST_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8080)
 }
 
 /// Get orchestrator test port
 #[must_use]
 pub fn test_orchestrator_port() -> u16 {
-    std::env::var("SONGBIRD_TEST_ORCHESTRATOR_PORT")
+    songbird_process_env::var("SONGBIRD_TEST_ORCHESTRATOR_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(8080)
@@ -59,31 +63,46 @@ pub fn test_orchestrator_port() -> u16 {
 /// Get discovery test port
 #[must_use]
 pub fn test_discovery_port() -> u16 {
-    std::env::var("SONGBIRD_TEST_DISCOVERY_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8081)
+    songbird_process_env::var("SONGBIRD_TEST_DISCOVERY_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8081)
 }
 
 /// Get health check test port
 #[must_use]
 pub fn test_health_port() -> u16 {
-    std::env::var("SONGBIRD_TEST_HEALTH_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8082)
+    songbird_process_env::var("SONGBIRD_TEST_HEALTH_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8082)
 }
 
 /// Get metrics test port
 #[must_use]
 pub fn test_metrics_port() -> u16 {
-    std::env::var("SONGBIRD_TEST_METRICS_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(9090)
+    songbird_process_env::var("SONGBIRD_TEST_METRICS_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(9090)
 }
 
 /// Get dashboard test port
 #[must_use]
 pub fn test_dashboard_port() -> u16 {
-    std::env::var("SONGBIRD_TEST_DASHBOARD_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(3000)
+    songbird_process_env::var("SONGBIRD_TEST_DASHBOARD_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(3000)
 }
 
 /// Get federation test port
 #[must_use]
 pub fn test_federation_port() -> u16 {
-    std::env::var("SONGBIRD_TEST_FEDERATION_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8083)
+    songbird_process_env::var("SONGBIRD_TEST_FEDERATION_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8083)
 }
 
 /// Create a test service URL
@@ -96,7 +115,7 @@ pub fn test_federation_port() -> u16 {
 #[must_use]
 pub fn test_service_url(service: &str) -> String {
     let env_var = format!("SONGBIRD_TEST_{}_URL", service.to_uppercase());
-    std::env::var(&env_var)
+    songbird_process_env::var(&env_var)
         .unwrap_or_else(|_| format!("http://{}:{}/{}", test_bind_ip_str(), test_port(), service))
 }
 

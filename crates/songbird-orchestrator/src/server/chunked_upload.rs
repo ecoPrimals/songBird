@@ -171,7 +171,7 @@ pub async fn upload_chunk(
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-#[allow(clippy::too_many_lines, reason = "chunked upload finalize and deployment pipeline")]
+#[expect(clippy::too_many_lines, reason = "chunked upload finalize and deployment pipeline")]
 pub async fn finalize_chunked_upload(
     State(state): State<DeploymentState>,
     Path(neg_id): Path<String>,
@@ -342,7 +342,7 @@ mod tests {
             clippy::cast_possible_truncation,
             reason = "test: same cast as production negotiate_chunked_upload"
         )]
-        #[allow(clippy::cast_sign_loss, reason = "test: positive MB inputs match production")]
+        #[expect(clippy::cast_sign_loss, reason = "test: positive MB inputs match production")]
         let n = ((binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
         n
     }

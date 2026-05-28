@@ -343,7 +343,7 @@ async fn test_encryption_with_sequence_increment() {
 }
 
 #[test]
-#[allow(clippy::cast_possible_truncation, reason = "test: value masked to u8 range")]
+#[expect(clippy::cast_possible_truncation, reason = "test: value masked to u8 range")]
 fn parse_record_rejects_oversized_length_field() {
     let mut record_layer = RecordLayer::new();
     let oversized = MAX_RECORD_SIZE + 1;

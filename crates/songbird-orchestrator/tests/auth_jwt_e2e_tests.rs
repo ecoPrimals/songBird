@@ -41,8 +41,8 @@ async fn test_e2e_jwt_provisioning_from_security_provider() {
     // This test requires security provider to be running
     // Set SECURITY_PROVIDER_SOCKET (or legacy BEARDOG_SOCKET) to test with the security provider
 
-    let socket_opt =
-        std::env::var("SECURITY_PROVIDER_SOCKET").or_else(|_| std::env::var("BEARDOG_SOCKET"));
+    let socket_opt = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+        .or_else(|_| songbird_process_env::var("BEARDOG_SOCKET"));
 
     if let Ok(socket) = socket_opt {
         println!("🔍 Testing JWT provisioning from security provider at: {socket}");

@@ -327,7 +327,10 @@ mod fuzz_style_stun_decode_tests {
     #[test]
     fn decode_random_short_inputs_never_panic() {
         for len in 0..20usize {
-            #[allow(clippy::cast_possible_truncation, reason = "fuzz test: intentional truncation")]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "fuzz test: intentional truncation"
+            )]
             let buf: Vec<u8> = (0..len).map(|i| (i * 7 + 13) as u8).collect();
             let _ = StunMessage::decode(&buf);
         }

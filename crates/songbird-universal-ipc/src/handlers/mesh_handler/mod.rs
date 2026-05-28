@@ -24,7 +24,7 @@ mod json;
 mod udp_discovery;
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "test assertions")]
+#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests;
 
 use serde_json::{Value, json};
