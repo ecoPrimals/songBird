@@ -90,3 +90,110 @@ pub fn get_canonical_cors_origins_with(
         |origins| origins.split(',').map(|s| s.trim().to_string()).collect(),
     )
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn mock_env<'a>(
+        map: &'a HashMap<&str, &str>,
+    ) -> impl Fn(&str) -> Result<String, std::env::VarError> + 'a {
+        move |key| map.get(key).map(|v| v.to_string()).ok_or(std::env::VarError::NotPresent)
+    }
+
+    #[test]
+    fn get_log_level_with_uses_songbird_log_level() {
+        let map = HashMap::from([("SONGBIRD_LOG_LEVEL", "trace")]);
+        let env = mock_env(&map);
+        assert_eq!(get_log_level_with(&env), "trace");
+    }
+
+    #[test]
+    fn get_log_level_with_falls_back_to_log_level() {
+        let map = HashMap::from([("LOG_LEVEL", "info")]);
+        let env = mock_env(&map);
+        assert_eq!(get_log_level_with(&env), "info");
+    }
+
+    #[test]
+    fn get_log_level_with_falls_back_to_rust_log() {
+        let map = HashMap::from([("RUST_LOG", "debug")]);
+        let env = mock_env(&map);
+        assert_eq!(get_log_level_with(&env), "debug");
+    }
+
+    #[test]
+    fn get_log_level_with_prefers_songbird_over_log_level_and_rust_log() {
+        let map = HashMap::from([
+            ("SONGBIRD_LOG_LEVEL", "error"),
+            ("LOG_LEVEL", "info"),
+            ("RUST_LOG", "debug"),
+        ]);
+        let env = mock_env(&map);
+        assert_eq!(get_log_level_with(&env), "error");
+    }
+
+    #[test]
+    fn get_log_level_with_production_env_defaults_to_warn() {
+        let map = HashMap::from([("SONGBIRD_ENV", "production")]);
+        let env = mock_env(&map);
+        assert_eq!(get_log_level_with(&env), "warn");
+    }
+
+    #[test]
+    fn get_log_level_with_staging_env_defaults_to_info() {
+        let map = HashMap::from([("SONGBIRD_ENV", "staging")]);
+        let env = mock_env(&map);
+        assert_eq!(get_log_level_with(&env), "info");
+    }
+
+    #[test]
+    fn get_log_level_with_no_env_defaults_to_debug() {
+        let map = HashMap::new();
+        let env = mock_env(&map);
+        assert_eq!(get_log_level_with(&env), "debug");
+    }
+
+    #[test]
+    fn get_canonical_cors_origins_with_splits_comma_separated_list() {
+        let map = HashMap::from([("SONGBIRD_CORS_ORIGINS", "http://example.com,http://other.com")]);
+        let env = mock_env(&map);
+        assert_eq!(
+            get_canonical_cors_origins_with(&env),
+            vec!["http://example.com".to_string(), "http://other.com".to_string(),]
+        );
+    }
+
+    #[test]
+    fn get_canonical_cors_origins_with_trims_whitespace() {
+        let map = HashMap::from([("SONGBIRD_CORS_ORIGINS", " http://a.com , http://b.com ")]);
+        let env = mock_env(&map);
+        assert_eq!(
+            get_canonical_cors_origins_with(&env),
+            vec!["http://a.com".to_string(), "http://b.com".to_string()]
+        );
+    }
+
+    #[test]
+    fn get_canonical_cors_origins_with_production_denies_all_when_unset() {
+        let map = HashMap::from([("SONGBIRD_ENVIRONMENT", "production")]);
+        let env = mock_env(&map);
+        assert!(get_canonical_cors_origins_with(&env).is_empty());
+    }
+
+    #[test]
+    fn get_canonical_cors_origins_with_development_generates_default_origins() {
+        let map = HashMap::from([("SONGBIRD_ENVIRONMENT", "development")]);
+        let env = mock_env(&map);
+        let bind_addr = songbird_types::constants::DEVELOPMENT_BIND_ADDRESS;
+        let expected: Vec<String> = [3000, 8080, 8081]
+            .iter()
+            .flat_map(|port| {
+                [format!("http://{bind_addr}:{port}"), format!("http://localhost:{port}")]
+            })
+            .collect();
+        assert_eq!(get_canonical_cors_origins_with(&env), expected);
+    }
+}
