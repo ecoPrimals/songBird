@@ -1,6 +1,6 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 8,158+ tests, 31 crates, 56 JSON-RPC methods (Wave 60: +mesh.discover_remotes/mirror/publish), BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, SONGBIRD_PEERS auto-seeding, discovery.peers mesh bridge, DH-1 compliant (zero /tmp writes), zero debt"
+description = "Sovereign networking primal — 8,179+ tests, 31 crates, 56 JSON-RPC methods (Wave 60: +mesh.discover_remotes/mirror/publish), BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, SONGBIRD_PEERS auto-seeding, discovery.peers mesh bridge, DH-1 compliant (zero /tmp writes), zero debt"
 date = 2026-05-29
 
 [taxonomies]
@@ -10,7 +10,7 @@ springs = ["primalspring"]
 
 ## Status
 
-- **8,158 lib tests** passed, 0 failures, 23 ignored
+- **8,179 lib tests** passed, 0 failures, 23 ignored
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
 - **54 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement

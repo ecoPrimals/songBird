@@ -13,7 +13,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 8,158 lib passed, 0 failures, 23 ignored |
+| **Tests** | 8,179 lib passed, 0 failures, 23 ignored |
 | **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 31 crates compile clean (~43s dev) |
