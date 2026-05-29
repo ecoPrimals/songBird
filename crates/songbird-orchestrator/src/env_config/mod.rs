@@ -60,15 +60,17 @@ pub(super) fn env(key: &str) -> Result<String, std::env::VarError> {
     songbird_process_env::var(key)
 }
 
-/// Prefer `XDG_RUNTIME_DIR`, then `TMPDIR`, then `/tmp` (same resolution as peer socket fallbacks).
+/// Prefer `XDG_RUNTIME_DIR`, then `TMPDIR`, then platform temp dir.
 pub(super) fn runtime_or_tmp_base_with<F>(env_fn: &F) -> String
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
 {
-    env_fn("XDG_RUNTIME_DIR").or_else(|_| env_fn("TMPDIR")).unwrap_or_else(|_| "/tmp".to_string())
+    env_fn("XDG_RUNTIME_DIR")
+        .or_else(|_| env_fn("TMPDIR"))
+        .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned())
 }
 
-/// Prefer `XDG_RUNTIME_DIR`, then `TMPDIR`, then `/tmp` (same resolution as peer socket fallbacks).
+/// Prefer `XDG_RUNTIME_DIR`, then `TMPDIR`, then platform temp dir.
 pub(super) fn runtime_or_tmp_base() -> String {
     runtime_or_tmp_base_with(&|k| songbird_process_env::var(k))
 }

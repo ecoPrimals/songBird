@@ -86,9 +86,7 @@ pub async fn run_server(
     tracing::info!("   Orchestrator: ✅ Started");
 
     tracing::info!("✅ Songbird ready!");
-    tracing::info!(
-        "   Unix Socket IPC: $XDG_RUNTIME_DIR/biomeos/songbird.sock (see logs for actual path)"
-    );
+    tracing::info!("   Unix Socket IPC: $BIOMEOS_SOCKET_DIR or $XDG_RUNTIME_DIR/biomeos/ (see logs for actual path)");
     tracing::info!("   Protocol: JSON-RPC 2.0 over Unix sockets");
     tracing::info!("   HTTP/TLS: Handled by external gateway component");
     tracing::info!("");
