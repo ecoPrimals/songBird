@@ -372,4 +372,225 @@ mod tests {
         let protocol = manager.negotiate_protocol("tower-2").await;
         assert_eq!(protocol, Some(Protocol::Tarpc)); // Should choose highest performance
     }
+
+    #[test]
+    fn best_encrypted_protocol_returns_highest_tier_encrypted() {
+        let mut caps = TowerCapabilities::new("t".into(), "e".into());
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Http,
+            port: 80,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Https,
+            port: 443,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Btsp,
+            port: 9090,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        let best = caps.best_encrypted_protocol().unwrap();
+        assert_eq!(best.protocol, Protocol::Btsp);
+    }
+
+    #[test]
+    fn best_encrypted_protocol_none_when_only_unencrypted() {
+        let mut caps = TowerCapabilities::new("t".into(), "e".into());
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Http,
+            port: 80,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::JsonRpc,
+            port: 3000,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        assert!(caps.best_encrypted_protocol().is_none());
+    }
+
+    #[test]
+    fn best_encrypted_protocol_ignores_inactive() {
+        let mut caps = TowerCapabilities::new("t".into(), "e".into());
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Btsp,
+            port: 9090,
+            path: None,
+            status: ProtocolStatus::Deprecated,
+            metadata: HashMap::new(),
+        });
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Https,
+            port: 443,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        let best = caps.best_encrypted_protocol().unwrap();
+        assert_eq!(best.protocol, Protocol::Https);
+    }
+
+    #[test]
+    fn supports_protocol_checks_active_status() {
+        let mut caps = TowerCapabilities::new("t".into(), "e".into());
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Tarpc,
+            port: 8081,
+            path: None,
+            status: ProtocolStatus::Planned,
+            metadata: HashMap::new(),
+        });
+        assert!(!caps.supports_protocol(&Protocol::Tarpc));
+
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Https,
+            port: 443,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        assert!(caps.supports_protocol(&Protocol::Https));
+        assert!(!caps.supports_protocol(&Protocol::Http));
+    }
+
+    #[test]
+    fn best_protocol_prefers_highest_performance_tier() {
+        let mut caps = TowerCapabilities::new("t".into(), "e".into());
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::JsonRpc,
+            port: 3000,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::WebSocketSecure,
+            port: 8443,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Tarpc,
+            port: 8081,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        let best = caps.best_protocol().unwrap();
+        assert_eq!(best.protocol, Protocol::Tarpc);
+    }
+
+    #[test]
+    fn best_protocol_ignores_inactive() {
+        let mut caps = TowerCapabilities::new("t".into(), "e".into());
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Tarpc,
+            port: 8081,
+            path: None,
+            status: ProtocolStatus::Deprecated,
+            metadata: HashMap::new(),
+        });
+        caps.add_protocol(ProtocolCapability {
+            protocol: Protocol::Http,
+            port: 80,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        let best = caps.best_protocol().unwrap();
+        assert_eq!(best.protocol, Protocol::Http);
+    }
+
+    #[tokio::test]
+    async fn negotiate_protocol_no_mutual_returns_none() {
+        let manager =
+            ProtocolCapabilityManager::new("tower-1".into(), "http://localhost:8080".into());
+        manager
+            .register_protocol(ProtocolCapability {
+                protocol: Protocol::Tarpc,
+                port: 8081,
+                path: None,
+                status: ProtocolStatus::Active,
+                metadata: HashMap::new(),
+            })
+            .await;
+
+        let mut peer = TowerCapabilities::new("tower-2".into(), "http://peer:80".into());
+        peer.add_protocol(ProtocolCapability {
+            protocol: Protocol::Http,
+            port: 80,
+            path: None,
+            status: ProtocolStatus::Active,
+            metadata: HashMap::new(),
+        });
+        manager.store_peer_capabilities(peer).await;
+
+        assert_eq!(manager.negotiate_protocol("tower-2").await, None);
+    }
+
+    #[tokio::test]
+    async fn negotiate_protocol_unknown_peer_returns_none() {
+        let manager =
+            ProtocolCapabilityManager::new("tower-1".into(), "http://localhost:8080".into());
+        assert_eq!(manager.negotiate_protocol("nonexistent").await, None);
+    }
+
+    #[tokio::test]
+    async fn get_active_peers_returns_stored_ids() {
+        let manager =
+            ProtocolCapabilityManager::new("tower-1".into(), "http://localhost:8080".into());
+        let p1 = TowerCapabilities::new("peer-a".into(), "http://a:1".into());
+        let p2 = TowerCapabilities::new("peer-b".into(), "http://b:1".into());
+        manager.store_peer_capabilities(p1).await;
+        manager.store_peer_capabilities(p2).await;
+        let peers = manager.get_active_peers().await;
+        assert_eq!(peers.len(), 2);
+        assert!(peers.contains(&"peer-a".to_string()));
+        assert!(peers.contains(&"peer-b".to_string()));
+    }
+
+    #[tokio::test]
+    async fn register_feature_stored_in_capabilities() {
+        let manager =
+            ProtocolCapabilityManager::new("tower-1".into(), "http://localhost:8080".into());
+        manager.register_feature("gpu-compute".into()).await;
+        manager.register_feature("arm64".into()).await;
+        let caps = manager.get_local_capabilities().await;
+        assert_eq!(caps.features.len(), 2);
+        assert!(caps.features.contains(&"gpu-compute".to_string()));
+    }
+
+    #[test]
+    fn protocol_encryption_classification() {
+        assert!(!Protocol::Http.is_encrypted());
+        assert!(Protocol::Https.is_encrypted());
+        assert!(Protocol::Btsp.is_encrypted());
+        assert!(Protocol::Tarpc.is_encrypted());
+        assert!(!Protocol::WebSocket.is_encrypted());
+        assert!(Protocol::WebSocketSecure.is_encrypted());
+        assert!(!Protocol::JsonRpc.is_encrypted());
+    }
+
+    #[test]
+    fn performance_tiers_ordered() {
+        assert!(Protocol::Tarpc.performance_tier() > Protocol::Btsp.performance_tier());
+        assert!(Protocol::Btsp.performance_tier() > Protocol::Https.performance_tier());
+        assert!(Protocol::Https.performance_tier() >= Protocol::Http.performance_tier());
+        assert!(
+            Protocol::WebSocketSecure.performance_tier() > Protocol::WebSocket.performance_tier()
+        );
+    }
 }

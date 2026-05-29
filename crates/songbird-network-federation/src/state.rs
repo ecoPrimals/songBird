@@ -696,4 +696,182 @@ mod tests {
         let back: FederationStatus = serde_json::from_str(&json).unwrap();
         assert_eq!(back.active_nodes, 1);
     }
+
+    #[test]
+    fn active_endpoints_returns_only_active() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.endpoints = Some(vec![
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.1:1".into(),
+                protocols: vec![],
+                preference: 100,
+                status: EndpointStatus::Active,
+                last_check: Utc::now(),
+            },
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.2:2".into(),
+                protocols: vec![],
+                preference: 50,
+                status: EndpointStatus::Degraded,
+                last_check: Utc::now(),
+            },
+            TransportEndpointInfo {
+                interface_type: "wifi".into(),
+                address: "10.0.0.3:3".into(),
+                protocols: vec![],
+                preference: 200,
+                status: EndpointStatus::Failed,
+                last_check: Utc::now(),
+            },
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.4:4".into(),
+                protocols: vec![],
+                preference: 80,
+                status: EndpointStatus::Active,
+                last_check: Utc::now(),
+            },
+        ]);
+        let active = reg.active_endpoints();
+        assert_eq!(active.len(), 2);
+        assert!(active.iter().all(|e| e.status == EndpointStatus::Active));
+    }
+
+    #[test]
+    fn active_endpoints_empty_when_none() {
+        let reg = make_registration_sync("n", "a");
+        assert!(reg.active_endpoints().is_empty());
+    }
+
+    #[test]
+    fn active_endpoints_empty_when_all_failed() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.endpoints = Some(vec![
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.1:1".into(),
+                protocols: vec![],
+                preference: 100,
+                status: EndpointStatus::Failed,
+                last_check: Utc::now(),
+            },
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.2:2".into(),
+                protocols: vec![],
+                preference: 50,
+                status: EndpointStatus::Standby,
+                last_check: Utc::now(),
+            },
+        ]);
+        assert!(reg.active_endpoints().is_empty());
+    }
+
+    #[test]
+    fn update_endpoint_status_changes_matching_address() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.endpoints = Some(vec![
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.1:1".into(),
+                protocols: vec![],
+                preference: 100,
+                status: EndpointStatus::Active,
+                last_check: Utc::now() - chrono::Duration::seconds(60),
+            },
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.2:2".into(),
+                protocols: vec![],
+                preference: 50,
+                status: EndpointStatus::Active,
+                last_check: Utc::now() - chrono::Duration::seconds(60),
+            },
+        ]);
+        reg.update_endpoint_status("10.0.0.1:1", EndpointStatus::Failed);
+        let eps = reg.endpoints.as_ref().unwrap();
+        assert_eq!(eps[0].status, EndpointStatus::Failed);
+        assert_eq!(eps[1].status, EndpointStatus::Active);
+        let elapsed = (Utc::now() - eps[0].last_check).num_seconds();
+        assert!(elapsed < 2, "last_check should be updated to now");
+    }
+
+    #[test]
+    fn update_endpoint_status_no_match_is_noop() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.endpoints = Some(vec![TransportEndpointInfo {
+            interface_type: "eth".into(),
+            address: "10.0.0.1:1".into(),
+            protocols: vec![],
+            preference: 100,
+            status: EndpointStatus::Active,
+            last_check: Utc::now(),
+        }]);
+        reg.update_endpoint_status("nonexistent:999", EndpointStatus::Failed);
+        assert_eq!(reg.endpoints.as_ref().unwrap()[0].status, EndpointStatus::Active);
+    }
+
+    #[test]
+    fn update_endpoint_status_with_no_endpoints_is_noop() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.update_endpoint_status("10.0.0.1:1", EndpointStatus::Failed);
+        assert!(reg.endpoints.is_none());
+    }
+
+    #[test]
+    fn preferred_endpoint_none_when_all_degraded() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.endpoints = Some(vec![
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.1:1".into(),
+                protocols: vec![],
+                preference: 200,
+                status: EndpointStatus::Degraded,
+                last_check: Utc::now(),
+            },
+            TransportEndpointInfo {
+                interface_type: "eth".into(),
+                address: "10.0.0.2:2".into(),
+                protocols: vec![],
+                preference: 100,
+                status: EndpointStatus::Standby,
+                last_check: Utc::now(),
+            },
+        ]);
+        assert!(reg.preferred_endpoint().is_none());
+    }
+
+    #[test]
+    fn preferred_endpoint_none_when_no_endpoints() {
+        let reg = make_registration_sync("n", "a");
+        assert!(reg.preferred_endpoint().is_none());
+    }
+
+    #[test]
+    fn add_endpoint_replaces_existing_by_address() {
+        let mut reg = make_registration_sync("n", "a");
+        reg.add_endpoint(TransportEndpointInfo {
+            interface_type: "eth".into(),
+            address: "10.0.0.1:1".into(),
+            protocols: vec!["http".into()],
+            preference: 50,
+            status: EndpointStatus::Active,
+            last_check: Utc::now(),
+        });
+        reg.add_endpoint(TransportEndpointInfo {
+            interface_type: "wifi".into(),
+            address: "10.0.0.1:1".into(),
+            protocols: vec!["https".into()],
+            preference: 200,
+            status: EndpointStatus::Active,
+            last_check: Utc::now(),
+        });
+        let eps = reg.endpoints.as_ref().unwrap();
+        assert_eq!(eps.len(), 1, "should deduplicate by address");
+        assert_eq!(eps[0].interface_type, "wifi");
+        assert_eq!(eps[0].preference, 200);
+    }
 }
