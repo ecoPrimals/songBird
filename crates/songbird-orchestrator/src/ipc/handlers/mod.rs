@@ -559,6 +559,9 @@ impl IpcHandlers {
             MeshMethod::Topology => self.mesh_handler.handle_topology(params).await,
             MeshMethod::HealthCheck => self.mesh_handler.handle_health_check(params).await,
             MeshMethod::AutoDiscover => self.mesh_handler.handle_auto_discover(params).await,
+            MeshMethod::DiscoverRemotes => self.mesh_handler.handle_discover_remotes(params).await,
+            MeshMethod::Mirror => self.mesh_handler.handle_mirror(params).await,
+            MeshMethod::Publish => self.mesh_handler.handle_publish(params).await,
         };
         result.map_err(|e| crate::ipc::pure_rust_server::JsonRpcError::internal_error(e))
     }

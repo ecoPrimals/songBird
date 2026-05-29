@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 8,158+ tests, 31 crates, 54 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, SONGBIRD_PEERS auto-seeding, discovery.peers mesh bridge, zero debt"
-date = 2026-05-28
+description = "Sovereign networking primal — 8,158+ tests, 31 crates, 56 JSON-RPC methods (Wave 60: +mesh.discover_remotes/mirror/publish), BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, SONGBIRD_PEERS auto-seeding, discovery.peers mesh bridge, DH-1 compliant (zero /tmp writes), zero debt"
+date = 2026-05-29
 
 [taxonomies]
 primals = ["songbird"]

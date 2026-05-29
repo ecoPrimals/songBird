@@ -117,6 +117,9 @@ const CALLABLE_METHODS: &[&str] = &[
     "mesh.topology",
     "mesh.health_check",
     "mesh.auto_discover",
+    "mesh.discover_remotes",
+    "mesh.mirror",
+    "mesh.publish",
     // ── Hole punching ──
     "punch.request",
     "punch.coordinate",

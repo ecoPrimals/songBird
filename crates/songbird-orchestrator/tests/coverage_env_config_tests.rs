@@ -264,9 +264,9 @@ fn test_socket_name_no_family_returns_domain() {
 fn test_data_dir_default() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_DATA_DIR");
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
-    songbird_process_env::remove_var("TMPDIR");
-    assert_eq!(env_config::data_dir().to_string_lossy(), "/tmp/songbird-data");
+    songbird_process_env::remove_var("XDG_DATA_HOME");
+    songbird_process_env::remove_var("HOME");
+    assert_eq!(env_config::data_dir().to_string_lossy(), "/var/lib/songbird");
 }
 
 #[test]
@@ -282,9 +282,10 @@ fn test_data_dir_from_env() {
 fn test_deployment_dir_default() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_DEPLOY_DIR");
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
-    songbird_process_env::remove_var("TMPDIR");
-    assert_eq!(env_config::deployment_dir().to_string_lossy(), "/tmp/songbird-deployments");
+    songbird_process_env::remove_var("SONGBIRD_DATA_DIR");
+    songbird_process_env::remove_var("XDG_DATA_HOME");
+    songbird_process_env::remove_var("HOME");
+    assert_eq!(env_config::deployment_dir().to_string_lossy(), "/var/lib/songbird/deployments");
 }
 
 #[test]
@@ -300,9 +301,9 @@ fn test_deployment_dir_from_env() {
 fn test_cache_dir_default() {
     let _g = lock_env();
     songbird_process_env::remove_var("SONGBIRD_CACHE_DIR");
-    songbird_process_env::remove_var("XDG_RUNTIME_DIR");
-    songbird_process_env::remove_var("TMPDIR");
-    assert_eq!(env_config::cache_dir().to_string_lossy(), "/tmp/songbird-cache");
+    songbird_process_env::remove_var("XDG_CACHE_HOME");
+    songbird_process_env::remove_var("HOME");
+    assert_eq!(env_config::cache_dir().to_string_lossy(), "/var/cache/songbird");
 }
 
 #[test]

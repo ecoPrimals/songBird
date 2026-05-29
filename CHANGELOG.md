@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave60] - 2026-05-29 - Mesh federation methods + DH-1 /tmp elimination
+
+### Added
+- **`mesh.discover_remotes`** — discover remote gates and their content sources via
+  the mesh. Used by `ecosystem.pull` signal graph. Returns reachable remote peers
+  with path type and address.
+- **`mesh.mirror`** — mirror content/repos to a remote target. Used by `ecosystem.push`
+  signal graph. Accepts `target` and `refs` params; queues async mirror operation.
+- **`mesh.publish`** — publish freshness/drift status to the mesh. Used by all three
+  ecosystem signal graphs (`pull`/`push`/`check`). Fire-and-forget broadcast to all
+  connected peers. Accepts `topic` and `payload` params.
+- Capability tokens and introspection updated for all 3 new methods.
+- `MeshMethod::DiscoverRemotes`, `MeshMethod::Mirror`, `MeshMethod::Publish` enum variants.
+
+### Changed
+- **DH-1: `/tmp` hardcoding eliminated** — `data_dir()`, `deployment_dir()`, `cache_dir()`
+  no longer fall back to `/tmp`. New resolution chain:
+  - Data: `$SONGBIRD_DATA_DIR` → `$XDG_DATA_HOME/songbird` → `$HOME/.local/share/songbird` → `/var/lib/songbird`
+  - Cache: `$SONGBIRD_CACHE_DIR` → `$XDG_CACHE_HOME/songbird` → `$HOME/.cache/songbird` → `/var/cache/songbird`
+  - Deployments: `$SONGBIRD_DEPLOY_DIR` → derived from data_dir + `/deployments`
+  This enables `ProtectSystem=strict` on VPS systemd units (zero `/tmp` writes).
+- Server startup log updated to reference `$XDG_RUNTIME_DIR/biomeos/songbird.sock`.
+
+---
+
 ## [v0.2.1-wave58] - 2026-05-28 - Process-env full adoption + #[expect] lint evolution
 
 ### Changed

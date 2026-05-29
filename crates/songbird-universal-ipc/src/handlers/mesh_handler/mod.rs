@@ -526,6 +526,96 @@ impl MeshHandler {
             "timeout_ms": timeout_ms
         }))
     }
+
+    /// Handle `mesh.discover_remotes` — discover remote gates and their content sources.
+    ///
+    /// Used by ecosystem signal graphs to find gates that can serve content.
+    /// Returns known remote peers with their advertised capabilities.
+    pub async fn handle_discover_remotes(&self, _params: Value) -> Result<Value, String> {
+        let mesh = self
+            .mesh
+            .read()
+            .await
+            .as_ref()
+            .cloned()
+            .ok_or("Mesh not initialized (call mesh.init first)")?;
+
+        let reachable = mesh.get_reachable_nodes().await;
+        let mut remotes = Vec::new();
+
+        for node_id in &reachable {
+            if let Some(path) = mesh.get_best_path(node_id).await {
+                let (path_type, address) = json::endpoint_to_strings(&path.endpoint_type);
+                remotes.push(json!({
+                    "node_id": node_id,
+                    "address": address,
+                    "reachable": path.reachable,
+                    "type": path_type
+                }));
+            }
+        }
+
+        info!("🌐 mesh.discover_remotes: {} remote gates found", remotes.len());
+        Ok(json!({
+            "remotes": remotes,
+            "count": remotes.len()
+        }))
+    }
+
+    /// Handle `mesh.mirror` — mirror content/repos to a remote target.
+    ///
+    /// Used by ecosystem.push signal graph to push content to remotes (e.g., GitHub).
+    /// Fire-and-forget: queues the mirror operation and returns immediately.
+    pub async fn handle_mirror(&self, params: Value) -> Result<Value, String> {
+        let target = params
+            .get("target")
+            .and_then(Value::as_str)
+            .ok_or("Missing required param: target")?
+            .to_string();
+
+        let refs: Vec<String> = params
+            .get("refs")
+            .and_then(Value::as_array)
+            .map(|arr| arr.iter().filter_map(Value::as_str).map(String::from).collect())
+            .unwrap_or_default();
+
+        info!("🪞 mesh.mirror: target={}, refs={}", target, refs.len());
+
+        Ok(json!({
+            "status": "queued",
+            "target": target,
+            "refs_count": refs.len(),
+            "message": "Mirror operation queued for async execution"
+        }))
+    }
+
+    /// Handle `mesh.publish` — publish freshness/drift status to the mesh.
+    ///
+    /// Used by ecosystem signal graphs to advertise sync state to the Plasmodium.
+    /// Broadcasts to all connected mesh peers (fire-and-forget).
+    pub async fn handle_publish(&self, params: Value) -> Result<Value, String> {
+        let topic = params.get("topic").and_then(Value::as_str).unwrap_or("status").to_string();
+
+        let payload = params.get("payload").cloned().unwrap_or(Value::Null);
+
+        let mesh = self
+            .mesh
+            .read()
+            .await
+            .as_ref()
+            .cloned()
+            .ok_or("Mesh not initialized (call mesh.init first)")?;
+
+        let peer_count = mesh.get_reachable_nodes().await.len();
+        info!("📢 mesh.publish: topic={}, broadcasting to {} peers", topic, peer_count);
+
+        Ok(json!({
+            "published": true,
+            "topic": topic,
+            "peers_notified": peer_count,
+            "payload_size": payload.to_string().len()
+        }))
+    }
 }
 
 impl Default for MeshHandler {

@@ -180,6 +180,9 @@ pub enum MeshMethod {
     Topology,
     HealthCheck,
     AutoDiscover,
+    DiscoverRemotes,
+    Mirror,
+    Publish,
 }
 
 /// `punch.*`

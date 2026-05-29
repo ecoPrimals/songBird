@@ -241,21 +241,21 @@ fn data_dir_with_explicit_override() {
 }
 
 #[test]
-fn data_dir_with_defaults_under_xdg_runtime() {
-    let p = data_dir_with(env_map(vec![("XDG_RUNTIME_DIR", "/run/user/1000")]));
-    assert_eq!(p, PathBuf::from("/run/user/1000/songbird-data"));
+fn data_dir_with_xdg_data_home() {
+    let p = data_dir_with(env_map(vec![("XDG_DATA_HOME", "/home/user/.local/share")]));
+    assert_eq!(p, PathBuf::from("/home/user/.local/share/songbird"));
 }
 
 #[test]
-fn data_dir_with_defaults_under_tmpdir_when_xdg_unset() {
-    let p = data_dir_with(env_map(vec![("TMPDIR", "/var/tmp/sb")]));
-    assert_eq!(p, PathBuf::from("/var/tmp/sb/songbird-data"));
+fn data_dir_with_home_fallback() {
+    let p = data_dir_with(env_map(vec![("HOME", "/home/user")]));
+    assert_eq!(p, PathBuf::from("/home/user/.local/share/songbird"));
 }
 
 #[test]
-fn data_dir_with_fallback_tmp_base() {
+fn data_dir_with_vps_fallback() {
     let p = data_dir_with(env_map(vec![]));
-    assert_eq!(p, PathBuf::from("/tmp/songbird-data"));
+    assert_eq!(p, PathBuf::from("/var/lib/songbird"));
 }
 
 #[test]
@@ -265,14 +265,17 @@ fn deployment_dir_with_explicit_and_defaults() {
         PathBuf::from("/deploy")
     );
     assert_eq!(
-        deployment_dir_with(env_map(vec![("XDG_RUNTIME_DIR", "/xdg")])),
-        PathBuf::from("/xdg/songbird-deployments")
+        deployment_dir_with(env_map(vec![("XDG_DATA_HOME", "/xdg/data")])),
+        PathBuf::from("/xdg/data/songbird/deployments")
     );
     assert_eq!(
-        deployment_dir_with(env_map(vec![("TMPDIR", "/t")])),
-        PathBuf::from("/t/songbird-deployments")
+        deployment_dir_with(env_map(vec![("HOME", "/home/user")])),
+        PathBuf::from("/home/user/.local/share/songbird/deployments")
     );
-    assert_eq!(deployment_dir_with(env_map(vec![])), PathBuf::from("/tmp/songbird-deployments"));
+    assert_eq!(
+        deployment_dir_with(env_map(vec![])),
+        PathBuf::from("/var/lib/songbird/deployments")
+    );
 }
 
 #[cfg(unix)]
@@ -299,9 +302,12 @@ fn cache_dir_with_explicit_and_defaults() {
         PathBuf::from("/cache")
     );
     assert_eq!(
-        cache_dir_with(env_map(vec![("XDG_RUNTIME_DIR", "/xdg")])),
-        PathBuf::from("/xdg/songbird-cache")
+        cache_dir_with(env_map(vec![("XDG_CACHE_HOME", "/home/user/.cache")])),
+        PathBuf::from("/home/user/.cache/songbird")
     );
-    assert_eq!(cache_dir_with(env_map(vec![("TMPDIR", "/t")])), PathBuf::from("/t/songbird-cache"));
-    assert_eq!(cache_dir_with(env_map(vec![])), PathBuf::from("/tmp/songbird-cache"));
+    assert_eq!(
+        cache_dir_with(env_map(vec![("HOME", "/home/user")])),
+        PathBuf::from("/home/user/.cache/songbird")
+    );
+    assert_eq!(cache_dir_with(env_map(vec![])), PathBuf::from("/var/cache/songbird"));
 }
