@@ -4,7 +4,7 @@
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: May 29, 2026
+**Last Updated**: June 1, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -15,7 +15,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 31 crates; zero `unsafe` blocks) |
 | Pure Rust | 100% — native QUIC engine with security provider crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` feature removed Wave 135 (SB-02 resolved) |
 | Crypto Delegation | Security provider via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
-| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing via `BIOMEOS_RUNTIME_SUBDIR` constant; **LD-08 socket auto-discovery** seeds `ipc.resolve` registry at startup and **self-heals every 30s** (Wave 139) by scanning `$XDG_RUNTIME_DIR/biomeos/*.sock` and probing with `identity.get` + `capabilities.list` (Wire Standard L3); netdev-based IP detection; all ports env-configurable; XDG-compliant socket paths; mDNS via `MDNS_MULTICAST_GROUP` constant; **DH-1 compliant** (Wave 60): zero `/tmp` writes — data→`$XDG_DATA_HOME/songbird`, cache→`$XDG_CACHE_HOME/songbird`, VPS→`/var/lib/songbird` |
+| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing via `BIOMEOS_RUNTIME_SUBDIR` constant; **LD-08 socket auto-discovery** seeds `ipc.resolve` registry at startup and **self-heals every 30s** (Wave 139) by scanning `$XDG_RUNTIME_DIR/biomeos/*.sock` and probing with `identity.get` + `capabilities.list` (Wire Standard L3); netdev-based IP detection; all ports env-configurable; XDG-compliant socket paths; mDNS via `MDNS_MULTICAST_GROUP` constant; **DH-1 compliant** (Wave 60+67): zero `/tmp` writes — security socket honors `--security-socket`/`BEARDOG_SOCKET`/`SECURITY_PROVIDER_SOCKET` → XDG → `/var/run/biomeos/`; data→`$XDG_DATA_HOME/songbird`, cache→`$XDG_CACHE_HOME/songbird`, VPS→`/var/lib/songbird` |
 | Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |
 | Production `FIXME`/`HACK` | Zero |

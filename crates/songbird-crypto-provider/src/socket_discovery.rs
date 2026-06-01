@@ -110,32 +110,32 @@ where
     G: Fn(&str) -> Option<String>,
     P: Fn(&Path) -> bool,
 {
-    if let Some(socket) = get_var("NEURAL_API_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Neural API socket via $NEURAL_API_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Some(socket) = get_var("NEURAL_API_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Neural API socket via $NEURAL_API_SOCKET: {}", socket);
+        return socket;
     }
 
-    if let Some(socket) = get_var("NEURALS_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Neural API socket via $NEURALS_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Some(socket) = get_var("NEURALS_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Neural API socket via $NEURALS_SOCKET: {}", socket);
+        return socket;
     }
 
-    if let Some(socket) = get_var("SECURITY_PROVIDER_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Neural API socket via $SECURITY_PROVIDER_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Some(socket) = get_var("SECURITY_PROVIDER_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Neural API socket via $SECURITY_PROVIDER_SOCKET: {}", socket);
+        return socket;
     }
 
-    if let Some(socket) = get_var("BEARDOG_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Neural API socket via $BEARDOG_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Some(socket) = get_var("BEARDOG_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Neural API socket via $BEARDOG_SOCKET: {}", socket);
+        return socket;
     }
 
     if let Some(xdg_dir) = get_var("XDG_RUNTIME_DIR") {
@@ -320,7 +320,10 @@ mod tests {
         let map: HashMap<&str, String> =
             std::iter::once(("NEURAL_API_SOCKET", String::new())).collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/var/run/biomeos/neural-api.sock", "empty env should fall through to VPS fallback");
+        assert_eq!(
+            out, "/var/run/biomeos/neural-api.sock",
+            "empty env should fall through to VPS fallback"
+        );
     }
 
     #[test]
@@ -346,7 +349,10 @@ mod tests {
     fn discover_neural_vps_fallback_when_no_env_set() {
         let map: HashMap<&str, String> = HashMap::new();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/var/run/biomeos/neural-api.sock", "DH-1: falls back to VPS path, not /tmp");
+        assert_eq!(
+            out, "/var/run/biomeos/neural-api.sock",
+            "DH-1: falls back to VPS path, not /tmp"
+        );
     }
 
     #[test]
@@ -360,7 +366,8 @@ mod tests {
     #[test]
     fn discover_neural_honors_security_provider_socket() {
         let map: HashMap<&str, String> =
-            std::iter::once(("SECURITY_PROVIDER_SOCKET", "/run/security.sock".to_string())).collect();
+            std::iter::once(("SECURITY_PROVIDER_SOCKET", "/run/security.sock".to_string()))
+                .collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/run/security.sock");
     }

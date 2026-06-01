@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.2-wave67] - 2026-06-01 - P0 BLOCKER: Security socket fix (BEARDOG_SOCKET honored)
+
+### Fixed
+- **P0 BLOCKER**: `SecurityRpcClient::from_env()` now honors `--security-socket` CLI flag
+  (via `SECURITY_PROVIDER_ENDPOINT`), `BEARDOG_SOCKET`, and `SECURITY_PROVIDER_SOCKET`
+  env vars instead of hardcoding `/tmp/neural-api-*.sock`. This unblocks federation TLS
+  and cross-gate `capability.call` across all gates.
+- **`discover_neural_api_socket()`** in both `songbird-http-client` and `songbird-crypto-provider`
+  now includes `SECURITY_PROVIDER_SOCKET` and `BEARDOG_SOCKET` in the discovery chain.
+- **`discover_security_socket()`** final fallback changed from `/tmp/security-provider.sock`
+  to `/var/run/biomeos/security.sock` (DH-1 compliant).
+- All legacy `/tmp` fallbacks in socket discovery eliminated — VPS paths (`/var/run/biomeos/`)
+  are now the final fallback when no env vars or XDG paths are configured.
+- E2E test suite updated to use env-based socket discovery instead of hardcoded paths.
+- Clippy `collapsible_if` warnings resolved across both crates.
+
+### Changed
+- `SecurityRpcClient::discover_neural_api_endpoint()` discovery priority:
+  1. `$SECURITY_PROVIDER_ENDPOINT` (CLI `--security-socket`)
+  2. `$NEURAL_API_SOCKET`
+  3. `$SECURITY_PROVIDER_SOCKET`
+  4. `$BEARDOG_SOCKET` (southGate standard)
+  5. XDG runtime socket
+  6. TCP discovery file
+  7. `/var/run/biomeos/neural-api.sock` (VPS fallback)
+
+---
+
 ## [v0.2.1-wave60] - 2026-05-29 - Mesh federation methods + DH-1 /tmp elimination
 
 ### Added

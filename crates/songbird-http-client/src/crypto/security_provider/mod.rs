@@ -49,15 +49,18 @@ impl SecurityCryptoProvider {
 
         // CLI --security-socket sets SECURITY_PROVIDER_ENDPOINT — honor it
         // unconditionally so the http_client TLS path respects the flag.
-        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT") {
-            if !socket.is_empty() {
-                info!("🔧 Security provider: CLI/env override (SECURITY_PROVIDER_ENDPOINT) → {}", socket);
-                return Self {
-                    socket_path: socket,
-                    request_id: AtomicU64::new(1),
-                    mode: RoutingMode::Direct,
-                };
-            }
+        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            && !socket.is_empty()
+        {
+            info!(
+                "🔧 Security provider: CLI/env override (SECURITY_PROVIDER_ENDPOINT) → {}",
+                socket
+            );
+            return Self {
+                socket_path: socket,
+                request_id: AtomicU64::new(1),
+                mode: RoutingMode::Direct,
+            };
         }
 
         let mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")

@@ -94,7 +94,7 @@ impl SecurityRpcClient {
     /// # Example
     /// ```rust,ignore
     /// use songbird_http_client::SecurityRpcClient;
-    /// let client = SecurityRpcClient::new_neural_api("/tmp/neural-api.sock");
+    /// let client = SecurityRpcClient::new_neural_api("/run/user/1000/biomeos/neural-api.sock");
     /// ```
     pub fn new_neural_api(neural_api_socket: impl Into<String>) -> Self {
         info!("🌐 Security provider client: NEURAL API mode (production/orchestration)");
@@ -180,35 +180,38 @@ impl SecurityRpcClient {
         use crate::crypto::socket_discovery;
 
         // 1. CLI --security-socket flag (sets SECURITY_PROVIDER_ENDPOINT)
-        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT") {
-            if !socket.is_empty() {
-                info!("✅ Security socket via --security-socket (SECURITY_PROVIDER_ENDPOINT): {}", socket);
-                return IpcEndpoint::UnixSocket(socket);
-            }
+        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            && !socket.is_empty()
+        {
+            info!(
+                "✅ Security socket via --security-socket (SECURITY_PROVIDER_ENDPOINT): {}",
+                socket
+            );
+            return IpcEndpoint::UnixSocket(socket);
         }
 
         // 2. Explicit Neural API socket
-        if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET") {
-            if !socket.is_empty() {
-                info!("✅ Security socket via $NEURAL_API_SOCKET: {}", socket);
-                return IpcEndpoint::UnixSocket(socket);
-            }
+        if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET")
+            && !socket.is_empty()
+        {
+            info!("✅ Security socket via $NEURAL_API_SOCKET: {}", socket);
+            return IpcEndpoint::UnixSocket(socket);
         }
 
         // 3. Capability-first naming
-        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET") {
-            if !socket.is_empty() {
-                info!("✅ Security socket via $SECURITY_PROVIDER_SOCKET: {}", socket);
-                return IpcEndpoint::UnixSocket(socket);
-            }
+        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            && !socket.is_empty()
+        {
+            info!("✅ Security socket via $SECURITY_PROVIDER_SOCKET: {}", socket);
+            return IpcEndpoint::UnixSocket(socket);
         }
 
         // 4. BEARDOG_SOCKET (backward-compatible — standard on southGate)
-        if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
-            if !socket.is_empty() {
-                info!("✅ Security socket via $BEARDOG_SOCKET: {}", socket);
-                return IpcEndpoint::UnixSocket(socket);
-            }
+        if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
+            && !socket.is_empty()
+        {
+            info!("✅ Security socket via $BEARDOG_SOCKET: {}", socket);
+            return IpcEndpoint::UnixSocket(socket);
         }
 
         // 5-7. XDG + TCP + VPS fallback via standard discovery

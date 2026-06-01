@@ -453,39 +453,39 @@ pub fn discover_security_provider_socket() -> String {
 /// 5. `$XDG_RUNTIME_DIR/biomeos/neural-api-$FAMILY_ID.sock`
 /// 6. `/var/run/biomeos/neural-api.sock` (VPS fallback — no `/tmp` writes)
 pub fn discover_neural_api_socket() -> String {
-    if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Socket discovered via $NEURAL_API_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $NEURAL_API_SOCKET: {}", socket);
+        return socket;
     }
 
-    if let Ok(socket) = songbird_process_env::var("NEURALS_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Socket discovered via $NEURALS_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Ok(socket) = songbird_process_env::var("NEURALS_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $NEURALS_SOCKET: {}", socket);
+        return socket;
     }
 
-    if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Socket discovered via $SECURITY_PROVIDER_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $SECURITY_PROVIDER_SOCKET: {}", socket);
+        return socket;
     }
 
-    if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT") {
-        if !socket.is_empty() {
-            info!("✅ Socket discovered via $SECURITY_PROVIDER_ENDPOINT: {}", socket);
-            return socket;
-        }
+    if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $SECURITY_PROVIDER_ENDPOINT: {}", socket);
+        return socket;
     }
 
-    if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Socket discovered via $BEARDOG_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $BEARDOG_SOCKET: {}", socket);
+        return socket;
     }
 
     // Try XDG discovery
