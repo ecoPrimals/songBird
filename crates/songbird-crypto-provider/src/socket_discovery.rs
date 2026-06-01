@@ -14,7 +14,7 @@
 //! - Fallback: `$XDG_RUNTIME_DIR/biomeos/crypto.sock`
 //! - Legacy: `BEARDOG_SOCKET` env var (deprecated, logged)
 
-use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, ai_provider_socket_legacy_path};
+use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
 use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
@@ -97,24 +97,45 @@ pub fn discover_neural_api_socket() -> String {
 }
 
 /// Like [`discover_neural_api_socket`], but with injectable env and path checks (tests / embedding).
+///
+/// Discovery chain (DH-1 compliant — no `/tmp` writes):
+/// 1. `$NEURAL_API_SOCKET` or `$NEURALS_SOCKET`
+/// 2. `$SECURITY_PROVIDER_SOCKET` (capability-first naming)
+/// 3. `$BEARDOG_SOCKET` (backward-compatible — standard on southGate)
+/// 4. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`
+/// 5. `/var/run/biomeos/neural-api.sock` (VPS fallback)
 #[must_use]
 pub fn discover_neural_api_socket_with<G, P>(get_var: G, path_exists: P) -> String
 where
     G: Fn(&str) -> Option<String>,
     P: Fn(&Path) -> bool,
 {
-    if let Some(socket) = get_var("NEURAL_API_SOCKET")
-        && !socket.is_empty()
-    {
-        info!("✅ Neural API socket via $NEURAL_API_SOCKET: {}", socket);
-        return socket;
+    if let Some(socket) = get_var("NEURAL_API_SOCKET") {
+        if !socket.is_empty() {
+            info!("✅ Neural API socket via $NEURAL_API_SOCKET: {}", socket);
+            return socket;
+        }
     }
 
-    if let Some(socket) = get_var("NEURALS_SOCKET")
-        && !socket.is_empty()
-    {
-        info!("✅ Neural API socket via $NEURALS_SOCKET: {}", socket);
-        return socket;
+    if let Some(socket) = get_var("NEURALS_SOCKET") {
+        if !socket.is_empty() {
+            info!("✅ Neural API socket via $NEURALS_SOCKET: {}", socket);
+            return socket;
+        }
+    }
+
+    if let Some(socket) = get_var("SECURITY_PROVIDER_SOCKET") {
+        if !socket.is_empty() {
+            info!("✅ Neural API socket via $SECURITY_PROVIDER_SOCKET: {}", socket);
+            return socket;
+        }
+    }
+
+    if let Some(socket) = get_var("BEARDOG_SOCKET") {
+        if !socket.is_empty() {
+            info!("✅ Neural API socket via $BEARDOG_SOCKET: {}", socket);
+            return socket;
+        }
     }
 
     if let Some(xdg_dir) = get_var("XDG_RUNTIME_DIR") {
@@ -127,15 +148,11 @@ where
         }
     }
 
-    let biomeos_path = std::env::temp_dir().join(BIOMEOS_RUNTIME_SUBDIR).join("neural-api.sock");
-    if path_exists(&biomeos_path) {
-        return biomeos_path.to_string_lossy().to_string();
-    }
-
-    let family_id = get_var("FAMILY_ID").unwrap_or_else(|| "default".to_string());
-    let socket = ai_provider_socket_legacy_path(&family_id).to_string_lossy().into_owned();
-    warn!("⚠️  Using legacy Neural API path: {}", socket);
-    socket
+    // VPS fallback (DH-1 compliant — no /tmp writes)
+    let fallback = "/var/run/biomeos/neural-api.sock".to_string();
+    warn!("⚠️  Using VPS fallback Neural API socket: {}", fallback);
+    warn!("   Consider setting $NEURAL_API_SOCKET, $BEARDOG_SOCKET, or XDG_RUNTIME_DIR");
+    fallback
 }
 
 /// Discover the security provider socket via capability-based discovery.
@@ -149,7 +166,7 @@ where
 /// 6. `$XDG_RUNTIME_DIR/biomeos/crypto-{family_id}.sock` (domain socket)
 /// 7. `$XDG_RUNTIME_DIR/biomeos/beardog-{family_id}.sock` (legacy on-disk)
 /// 8. `$BEARDOG_SOCKET` (legacy env — logged as deprecated)
-/// 9. `{temp_dir}/biomeos/security.sock` (temp fallback)
+/// 9. `/var/run/biomeos/security.sock` (VPS fallback — DH-1 compliant)
 #[must_use]
 pub fn discover_security_socket() -> String {
     discover_security_socket_with(|k| songbird_process_env::var(k).ok(), Path::exists)
@@ -231,14 +248,11 @@ where
         return socket;
     }
 
-    let fallback = std::env::temp_dir().join(BIOMEOS_RUNTIME_SUBDIR).join("security.sock");
-    if path_exists(&fallback) {
-        return fallback.to_string_lossy().to_string();
-    }
-
-    let legacy = songbird_types::defaults::paths::security_provider_legacy_flat_path();
-    warn!("⚠️  Using legacy temp-dir fallback for security provider: {}", legacy.display());
-    legacy.to_string_lossy().into_owned()
+    // VPS fallback (DH-1 compliant — no /tmp writes)
+    let fallback = "/var/run/biomeos/security.sock";
+    warn!("⚠️  Using VPS fallback for security provider: {}", fallback);
+    warn!("   Consider setting $SECURITY_PROVIDER_SOCKET, $BEARDOG_SOCKET, or XDG_RUNTIME_DIR");
+    fallback.to_string()
 }
 
 /// Deprecated alias for [`discover_security_socket`].
@@ -306,7 +320,7 @@ mod tests {
         let map: HashMap<&str, String> =
             std::iter::once(("NEURAL_API_SOCKET", String::new())).collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/tmp/neural-api-default.sock", "empty env should fall through to legacy");
+        assert_eq!(out, "/var/run/biomeos/neural-api.sock", "empty env should fall through to VPS fallback");
     }
 
     #[test]
@@ -329,37 +343,26 @@ mod tests {
     }
 
     #[test]
-    fn discover_neural_legacy_family_default_when_unset() {
+    fn discover_neural_vps_fallback_when_no_env_set() {
         let map: HashMap<&str, String> = HashMap::new();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/tmp/neural-api-default.sock");
+        assert_eq!(out, "/var/run/biomeos/neural-api.sock", "DH-1: falls back to VPS path, not /tmp");
     }
 
     #[test]
-    fn discover_neural_legacy_family_from_env() {
+    fn discover_neural_honors_beardog_socket() {
         let map: HashMap<&str, String> =
-            std::iter::once(("FAMILY_ID", "gamma".to_string())).collect();
+            std::iter::once(("BEARDOG_SOCKET", "/run/beardog/security.sock".to_string())).collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
-        assert_eq!(out, "/tmp/neural-api-gamma.sock");
+        assert_eq!(out, "/run/beardog/security.sock");
     }
 
     #[test]
-    fn discover_neural_uses_temp_biomeos_neural_socket_when_present() {
-        let temp = std::env::temp_dir();
-        let biomeos_path = temp.join("biomeos").join("neural-api.sock");
-        let _ = std::fs::create_dir_all(biomeos_path.parent().expect("biomeos parent"));
-        std::fs::write(&biomeos_path, b"x").expect("touch neural socket");
-        let map: HashMap<&str, String> = HashMap::new();
-        let out = discover_neural_api_socket_with(
-            |k| map.get(k).cloned(),
-            |p| p == biomeos_path.as_path(),
-        );
-        assert_eq!(
-            PathBuf::from(&out),
-            biomeos_path,
-            "should prefer temp_dir/biomeos/neural-api.sock when it exists"
-        );
-        let _ = std::fs::remove_file(&biomeos_path);
+    fn discover_neural_honors_security_provider_socket() {
+        let map: HashMap<&str, String> =
+            std::iter::once(("SECURITY_PROVIDER_SOCKET", "/run/security.sock".to_string())).collect();
+        let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
+        assert_eq!(out, "/run/security.sock");
     }
 
     #[test]
@@ -520,10 +523,9 @@ mod tests {
     }
 
     #[test]
-    fn discover_security_legacy_when_no_match() {
+    fn discover_security_vps_fallback_when_no_match() {
         let map: HashMap<&str, String> = HashMap::new();
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
-        let expected = std::env::temp_dir().join("security-provider.sock");
-        assert_eq!(PathBuf::from(out), expected);
+        assert_eq!(out, "/var/run/biomeos/security.sock", "DH-1: falls back to VPS path, not /tmp");
     }
 }
