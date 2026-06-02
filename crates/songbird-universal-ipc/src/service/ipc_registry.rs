@@ -94,10 +94,7 @@ impl IpcServiceHandler {
 
         // Phase 1 (shadow mode): spawn virtual relay listener alongside native endpoint
         if let Some(ref socket_path) = native_socket
-            && let Err(e) = self
-                .virtual_relay
-                .start_relay(&params.primal_id, socket_path)
-                .await
+            && let Err(e) = self.virtual_relay.start_relay(&params.primal_id, socket_path).await
         {
             tracing::warn!(
                 primal = %params.primal_id,

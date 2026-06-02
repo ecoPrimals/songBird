@@ -125,11 +125,7 @@ impl VirtualRelayManager {
 
     /// Get the relay socket path if active, otherwise None.
     pub async fn get_relay_path(&self, primal_name: &str) -> Option<PathBuf> {
-        self.relays
-            .read()
-            .await
-            .get(primal_name)
-            .map(|e| e.socket_path.clone())
+        self.relays.read().await.get(primal_name).map(|e| e.socket_path.clone())
     }
 
     /// List all active relays.
@@ -245,13 +241,11 @@ async fn forward_inner(
     request_line: &str,
     native_target: &str,
 ) -> anyhow::Result<serde_json::Value> {
-    let stream = tokio::time::timeout(
-        DEFAULT_SOCKET_IO_TIMEOUT,
-        UnixStream::connect(native_target),
-    )
-    .await
-    .map_err(|_| anyhow::anyhow!("Timeout connecting to native endpoint"))?
-    .map_err(|e| anyhow::anyhow!("Cannot connect to native endpoint: {e}"))?;
+    let stream =
+        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, UnixStream::connect(native_target))
+            .await
+            .map_err(|_| anyhow::anyhow!("Timeout connecting to native endpoint"))?
+            .map_err(|e| anyhow::anyhow!("Cannot connect to native endpoint: {e}"))?;
 
     let (reader, mut writer) = stream.into_split();
 
@@ -299,12 +293,10 @@ mod tests {
 
     #[test]
     fn relay_socket_path_format() {
-        let mgr = VirtualRelayManager::new(PathBuf::from("/run/user/1000/biomeos/songbird/virtual"));
+        let mgr =
+            VirtualRelayManager::new(PathBuf::from("/run/user/1000/biomeos/songbird/virtual"));
         let path = mgr.relay_socket_path("beardog");
-        assert_eq!(
-            path,
-            PathBuf::from("/run/user/1000/biomeos/songbird/virtual/beardog.sock")
-        );
+        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/songbird/virtual/beardog.sock"));
     }
 
     #[tokio::test]
@@ -350,10 +342,8 @@ mod tests {
         });
 
         let mgr = VirtualRelayManager::new(dir.path().to_path_buf());
-        let relay_path = mgr
-            .start_relay("mock-primal", native_path.to_str().unwrap())
-            .await
-            .unwrap();
+        let relay_path =
+            mgr.start_relay("mock-primal", native_path.to_str().unwrap()).await.unwrap();
 
         assert!(mgr.has_relay("mock-primal").await);
         assert_eq!(mgr.list_relays().await.len(), 1);
