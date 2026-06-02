@@ -77,6 +77,7 @@ impl IpcServiceHandler {
         let (signature, signed_payload) = self.sign_payload(&canonical).await;
 
         // Register in registry (`register` takes `&self` and uses its own inner lock)
+        let native_socket = native_endpoint.socket_path();
         let virtual_endpoint = self
             .registry
             .read()
@@ -90,6 +91,20 @@ impl IpcServiceHandler {
             )
             .await
             .map_err(|e| format!("Registration failed: {e}"))?;
+
+        // Phase 1 (shadow mode): spawn virtual relay listener alongside native endpoint
+        if let Some(ref socket_path) = native_socket
+            && let Err(e) = self
+                .virtual_relay
+                .start_relay(&params.primal_id, socket_path)
+                .await
+        {
+            tracing::warn!(
+                primal = %params.primal_id,
+                error = %e,
+                "Virtual relay start failed (non-blocking)"
+            );
+        }
 
         let result = RegisterResult {
             virtual_endpoint: virtual_endpoint.path,
@@ -275,17 +290,36 @@ impl IpcServiceHandler {
             );
         };
 
-        let result = ResolveResult {
-            socket: entry.native_endpoint.socket_path(),
-            virtual_endpoint: entry.virtual_endpoint.path,
-            native_endpoint: entry.native_endpoint.display(),
-            capabilities: entry.capabilities,
-            signature: entry.signature,
-            signed_payload: entry.signed_payload,
+        let native_socket = entry.native_endpoint.socket_path();
+        let native_display = entry.native_endpoint.display();
+        let capabilities = entry.capabilities;
+        let signature = entry.signature;
+        let signed_payload = entry.signed_payload;
+        let virtual_path = entry.virtual_endpoint.path;
+        drop(registry);
+
+        // Determine relay availability and whether to use it
+        let relay_path = self.virtual_relay.get_relay_path(&resolved_name).await;
+        let use_relay = params.prefer_virtual && !params.native && relay_path.is_some();
+
+        let socket = if use_relay {
+            relay_path.as_ref().map(|p| p.display().to_string())
+        } else {
+            native_socket
         };
 
-        drop(registry);
-        debug!("Resolved to: {resolved_name}");
+        let result = ResolveResult {
+            socket,
+            virtual_endpoint: virtual_path,
+            native_endpoint: native_display,
+            capabilities,
+            relay: use_relay,
+            relay_socket: relay_path.map(|p| p.display().to_string()),
+            signature,
+            signed_payload,
+        };
+
+        debug!("Resolved to: {resolved_name} (relay={})", result.relay);
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }

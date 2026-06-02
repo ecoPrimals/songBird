@@ -52,6 +52,7 @@ mod ipc_registry;
 mod meta;
 mod remote_dispatch;
 mod util;
+pub mod virtual_relay;
 
 pub use crate::service_types::{
     CapabilityCallParams, CapabilityCallResult, CapabilityResolveParams, CapabilityResolveResult,
@@ -89,6 +90,8 @@ pub struct IpcServiceHandler {
     start_time: Arc<RwLock<std::time::Instant>>,
     /// When set, `federation.*` methods reflect live [`FederationState`].
     federation_state: Option<Arc<FederationState>>,
+    /// Virtual endpoint relay manager (Phase 1: shadow mode).
+    virtual_relay: Arc<virtual_relay::VirtualRelayManager>,
 }
 
 /// All handler instances built by `build_handlers()`.

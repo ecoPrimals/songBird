@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-use super::{HandlerBundle, IpcServiceHandler};
+use super::{virtual_relay::VirtualRelayManager, HandlerBundle, IpcServiceHandler};
 use crate::handlers::birdsong_handler::BirdSongHandler;
 use crate::handlers::discovery_bridge::DiscoveryListenerBridge;
 use crate::handlers::discovery_handler::DiscoveryHandler;
@@ -127,6 +127,9 @@ impl IpcServiceHandler {
             igd_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
             federation_state,
+            virtual_relay: Arc::new(VirtualRelayManager::new(
+                VirtualRelayManager::default_base_dir(),
+            )),
         }
     }
 

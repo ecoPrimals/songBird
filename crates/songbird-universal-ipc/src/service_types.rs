@@ -45,6 +45,13 @@ pub struct ResolveParams {
     pub primal_id: Option<String>,
     #[serde(default)]
     pub capability: Option<String>,
+    /// When `true`, prefer the virtual relay endpoint over the native socket.
+    /// Phase 1 (shadow mode): opt-in only. Phase 2 will make this the default.
+    #[serde(default, rename = "virtual")]
+    pub prefer_virtual: bool,
+    /// When `true`, force native endpoint (bypass relay even in Phase 2+).
+    #[serde(default)]
+    pub native: bool,
 }
 
 /// IPC service request parameters for discovery
@@ -70,14 +77,20 @@ pub struct RegisterResult {
 /// IPC service response for resolution
 #[derive(Debug, Clone, Serialize)]
 pub struct ResolveResult {
-    /// Bare socket/connect path (e.g. `/run/user/1000/biomeos/network.sock`).
-    /// Consumers can connect directly without parsing transport schemes.
+    /// Bare socket/connect path — the recommended endpoint to connect to.
+    /// When relay is active and requested, this points to the virtual relay socket.
+    /// Otherwise, it's the native socket path.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub socket: Option<String>,
     pub virtual_endpoint: String,
     /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
     pub native_endpoint: String,
     pub capabilities: Vec<String>,
+    /// Whether traffic flows through Songbird's virtual relay.
+    pub relay: bool,
+    /// Filesystem path to the virtual relay socket (if active).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relay_socket: Option<String>,
     /// Ed25519 signature from the original registration (base64).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<String>,
@@ -305,6 +318,8 @@ mod tests {
             virtual_endpoint: "/primal/security".to_string(),
             native_endpoint: "unix:///tmp/security.sock".to_string(),
             capabilities: vec!["crypto".to_string(), "auth".to_string()],
+            relay: false,
+            relay_socket: None,
             signature: None,
             signed_payload: None,
         };
@@ -313,6 +328,7 @@ mod tests {
         let caps = json["capabilities"].as_array().unwrap();
         assert_eq!(caps.len(), 2);
         assert!(json.get("signature").is_none(), "None fields should be omitted");
+        assert_eq!(json["relay"], false);
     }
 
     #[test]
@@ -437,6 +453,8 @@ mod tests {
             virtual_endpoint: "/primal/beardog".to_string(),
             native_endpoint: "unix:///run/user/1000/biomeos/beardog.sock".to_string(),
             capabilities: vec!["crypto".to_string()],
+            relay: false,
+            relay_socket: None,
             signature: Some("sig_b64".to_string()),
             signed_payload: Some("payload_json".to_string()),
         };

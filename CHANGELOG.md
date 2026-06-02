@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.4-wave70] - 2026-06-02 - Virtual Endpoint Relay Phase 1 (shadow mode)
+
+### Added
+- **Virtual Endpoint Relay (Phase 1)**: `VirtualRelayManager` in `songbird-universal-ipc/src/service/virtual_relay.rs`
+  implements per-primal relay UDS sockets. On `ipc.register`, Songbird spawns an async
+  relay listener at `$XDG_RUNTIME_DIR/biomeos/songbird/virtual/{primal}.sock` that proxies
+  NDJSON JSON-RPC to the native endpoint. Supports streaming (multi-request sessions).
+- **`ipc.resolve` virtual opt-in**: `ResolveParams` gains `virtual: bool` and `native: bool`
+  fields. When `virtual: true`, `socket` in the response points to the relay path. `native: true`
+  always bypasses relay (performance escape hatch).
+- **`ResolveResult` extended**: New `relay: bool` and `relay_socket: Option<String>` fields.
+  Clients see whether traffic is relayed and can opt in/out explicitly.
+- **4 new integration tests**: Full lifecycle test with mock native provider — relay start,
+  JSON-RPC round-trip through virtual socket, stop + cleanup.
+
+### Design
+Phase 1 is **shadow mode** (non-breaking): virtual endpoints created alongside native,
+`ipc.resolve` returns native by default. Clients opt-in via `"virtual": true`. Matches
+`SONGBIRD_VIRTUAL_ENDPOINT_RELAY_DESIGN.md` from wateringHole (Wave 68).
+
+---
+
 ## [v0.2.3-wave69] - 2026-06-02 - Wire latency_ms into discovery.peers, Wave 69 coordination
 
 ### Added

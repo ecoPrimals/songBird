@@ -260,6 +260,8 @@ fn register_and_resolve_result_serialization() {
         virtual_endpoint: "/primal/x".into(),
         native_endpoint: "native".into(),
         capabilities: vec!["c".into()],
+        relay: false,
+        relay_socket: None,
         signature: None,
         signed_payload: None,
     };
