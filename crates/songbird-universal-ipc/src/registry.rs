@@ -70,14 +70,46 @@ impl ServiceEntry {
     }
 }
 
+/// A registry change event (for `ipc.watch` consumers)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegistryEvent {
+    /// Monotonic revision at which this event occurred
+    pub revision: u64,
+    /// Event kind
+    pub kind: RegistryEventKind,
+    /// Primal that triggered the event
+    pub primal: String,
+    /// Capabilities affected
+    pub capabilities: Vec<String>,
+    /// Native endpoint (for newly registered services)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
+}
+
+/// Kind of registry mutation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RegistryEventKind {
+    Registered,
+    Unregistered,
+}
+
 /// In-memory service registry
 ///
 /// Tracks all registered services and their endpoints.
 /// Thread-safe via `RwLock` for concurrent access.
+/// Maintains a monotonic revision + event log for `ipc.watch`.
 pub struct ServiceRegistry {
     /// Services by name
     services: RwLock<HashMap<String, ServiceEntry>>,
+    /// Monotonic revision counter (increments on every mutation)
+    revision: std::sync::atomic::AtomicU64,
+    /// Event log for `ipc.watch` (bounded ring buffer of recent changes)
+    events: RwLock<Vec<RegistryEvent>>,
 }
+
+/// Maximum number of events retained in the event log
+const EVENT_LOG_CAPACITY: usize = 256;
 
 impl ServiceRegistry {
     /// Create a new service registry
@@ -85,7 +117,37 @@ impl ServiceRegistry {
     pub fn new() -> Self {
         Self {
             services: RwLock::new(HashMap::new()),
+            revision: std::sync::atomic::AtomicU64::new(0),
+            events: RwLock::new(Vec::with_capacity(EVENT_LOG_CAPACITY)),
         }
+    }
+
+    /// Current monotonic revision (increases on every register/unregister)
+    pub fn revision(&self) -> u64 {
+        self.revision.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    /// Get events since a given revision (for `ipc.watch` consumers).
+    ///
+    /// Returns all events with `revision > since_revision`, optionally
+    /// filtered to only those affecting `capabilities`.
+    pub async fn events_since(
+        &self,
+        since_revision: u64,
+        capability_filter: Option<&[String]>,
+    ) -> (u64, Vec<RegistryEvent>) {
+        let current = self.revision();
+        let events = self.events.read().await;
+        let filtered: Vec<RegistryEvent> = events
+            .iter()
+            .filter(|e| e.revision > since_revision)
+            .filter(|e| {
+                capability_filter
+                    .map_or(true, |caps| e.capabilities.iter().any(|c| caps.contains(c)))
+            })
+            .cloned()
+            .collect();
+        (current, filtered)
     }
 
     /// Register a service
@@ -115,6 +177,7 @@ impl ServiceRegistry {
         }
 
         let virtual_endpoint = VirtualEndpoint::new(name);
+        let endpoint_display = native_endpoint.display();
         let entry = ServiceEntry {
             virtual_endpoint: virtual_endpoint.clone(),
             native_endpoint,
@@ -128,7 +191,29 @@ impl ServiceRegistry {
         services.insert(name.to_string(), entry);
         drop(services);
 
-        info!("Registered service '{}' with {} capabilities", name, capabilities.len());
+        let rev = self.revision.fetch_add(1, std::sync::atomic::Ordering::AcqRel) + 1;
+        let event = RegistryEvent {
+            revision: rev,
+            kind: RegistryEventKind::Registered,
+            primal: name.to_string(),
+            capabilities: capabilities.clone(),
+            endpoint: Some(endpoint_display),
+        };
+        {
+            let mut log = self.events.write().await;
+            let len = log.len();
+            if len >= EVENT_LOG_CAPACITY {
+                log.drain(..len / 2);
+            }
+            log.push(event);
+        }
+
+        info!(
+            "Registered service '{}' with {} capabilities (rev={})",
+            name,
+            capabilities.len(),
+            rev
+        );
         debug!("Service capabilities: {:?}", capabilities);
 
         Ok(virtual_endpoint)
@@ -141,8 +226,27 @@ impl ServiceRegistry {
     pub async fn unregister(&self, name: &str) -> IpcResult<()> {
         let mut services = self.services.write().await;
 
-        if services.remove(name).is_some() {
-            info!("Unregistered service '{}'", name);
+        if let Some(removed) = services.remove(name) {
+            drop(services);
+
+            let rev = self.revision.fetch_add(1, std::sync::atomic::Ordering::AcqRel) + 1;
+            let event = RegistryEvent {
+                revision: rev,
+                kind: RegistryEventKind::Unregistered,
+                primal: name.to_string(),
+                capabilities: removed.capabilities,
+                endpoint: None,
+            };
+            {
+                let mut log = self.events.write().await;
+                let len = log.len();
+                if len >= EVENT_LOG_CAPACITY {
+                    log.drain(..len / 2);
+                }
+                log.push(event);
+            }
+
+            info!("Unregistered service '{}' (rev={})", name, rev);
             Ok(())
         } else {
             Err(IpcError::ServiceNotFound(name.to_string()))

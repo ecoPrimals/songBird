@@ -70,6 +70,7 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Ipc(IpcMethod::Resolve) => self.handle_resolve(params).await,
             JsonRpcMethod::Ipc(IpcMethod::Discover) => self.handle_discover(params).await,
             JsonRpcMethod::Ipc(IpcMethod::List) => self.handle_list(params).await,
+            JsonRpcMethod::Ipc(IpcMethod::Watch) => self.handle_watch(params).await,
 
             // ── Capability resolution (single-step DNS-like routing) ─
             JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve) => {

@@ -352,6 +352,51 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
+    /// Handle `ipc.watch` — poll for registry changes since a given revision.
+    ///
+    /// Enables consuming primals (e.g. toadStool) to detect when new providers
+    /// register capabilities they depend on. Returns events since `since_revision`,
+    /// optionally filtered by capability names.
+    ///
+    /// ## Params
+    /// ```json
+    /// { "since_revision": 0, "capabilities": ["shader", "compile"] }
+    /// ```
+    ///
+    /// ## Response
+    /// ```json
+    /// {
+    ///   "revision": 5,
+    ///   "events": [
+    ///     { "revision": 3, "kind": "registered", "primal": "coralReef",
+    ///       "capabilities": ["shader", "compile", "visualization"],
+    ///       "endpoint": "unix:///run/user/1000/biomeos/coralreef-nucleus01.sock" }
+    ///   ]
+    /// }
+    /// ```
+    pub(super) async fn handle_watch(&self, params: Value) -> Result<Value, String> {
+        #[derive(serde::Deserialize)]
+        struct WatchParams {
+            #[serde(default)]
+            since_revision: u64,
+            #[serde(default)]
+            capabilities: Option<Vec<String>>,
+        }
+
+        let params: WatchParams =
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
+
+        let registry = self.registry.read().await;
+        let (current_rev, events) =
+            registry.events_since(params.since_revision, params.capabilities.as_deref()).await;
+
+        serde_json::to_value(serde_json::json!({
+            "revision": current_rev,
+            "events": events,
+        }))
+        .map_err(|e| format!("Serialization error: {e}"))
+    }
+
     /// Handle `capability.resolve` — single-step routing by capability.
     ///
     /// Returns the best provider endpoint for the requested capability (most
