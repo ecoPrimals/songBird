@@ -101,6 +101,7 @@ fn convert_discovered_peer(peer: DiscoveredPeer) -> DiscoveredPeerInfo {
         quality: Some(quality),
         node_name: peer.node_name,
         protocols: peer.protocols,
+        latency_ms: None,
     }
 }
 

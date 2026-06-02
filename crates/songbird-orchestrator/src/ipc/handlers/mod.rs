@@ -495,6 +495,7 @@ impl IpcHandlers {
                             .and_then(|a| a.as_str())
                             .and_then(|a| a.parse::<std::net::SocketAddr>().ok())
                             .map(|a| a.port()),
+                        "latency_ms": mp.get("latency_ms").unwrap_or(&serde_json::Value::Null),
                         "source": "mesh",
                         "reachable": mp.get("reachable").and_then(serde_json::Value::as_bool).unwrap_or(true),
                         "protocols": ["tcp"]

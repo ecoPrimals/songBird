@@ -55,6 +55,7 @@ async fn test_handle_list_peers_with_mock_registry() {
             quality: Some(0.95),
             node_name: Some("alpha-tower".to_string()),
             protocols: vec!["birdsong".to_string()],
+            latency_ms: None,
         },
         DiscoveredPeerInfo {
             node_id: "node-beta".to_string(),
@@ -66,6 +67,7 @@ async fn test_handle_list_peers_with_mock_registry() {
             quality: Some(0.88),
             node_name: Some("beta-tower".to_string()),
             protocols: vec!["birdsong".to_string()],
+            latency_ms: None,
         },
     ];
 
@@ -94,6 +96,7 @@ async fn test_handle_get_peer_by_id() {
         quality: Some(0.95),
         node_name: Some("gamma-tower".to_string()),
         protocols: vec!["birdsong".to_string(), "tarpc".to_string()],
+        latency_ms: None,
     }];
 
     let registry = Arc::new(MockPeerRegistry {
@@ -129,6 +132,7 @@ async fn test_discovered_peer_info_serialization() {
         quality: Some(0.99),
         node_name: Some("test-tower".to_string()),
         protocols: vec!["test-protocol".to_string()],
+        latency_ms: Some(42),
     };
 
     let json = serde_json::to_value(&peer).expect("Should serialize");
@@ -242,6 +246,7 @@ fn peer(id: &str, family: &str, caps: &[&str]) -> DiscoveredPeerInfo {
         quality: None,
         node_name: None,
         protocols: vec![],
+        latency_ms: None,
     }
 }
 

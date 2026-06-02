@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.3-wave69] - 2026-06-02 - Wire latency_ms into discovery.peers, Wave 69 coordination
+
+### Added
+- **`latency_ms` in `discovery.peers`**: RTT measurement now forwarded from mesh layer to
+  `discovery.peers` response. Both orchestrator (dynamic JSON path) and universal IPC
+  (typed `DiscoveredPeerInfo`) paths emit the field. Uses `skip_serializing_if` — absent
+  until a real probe measures latency, matching primalSpring's graceful-skip validation.
+
+### Notes
+- **sled→redb**: Already resolved at Wave 135 (SB-03). sled is fully removed from workspace.
+  Only legacy artifact cleanup code remains. No migration needed.
+- **Virtual endpoint relay**: Design doc not yet published. Gated on biomeOS L4 routing.
+- **Mesh P0**: Infrastructure confirmed ready. `SONGBIRD_PEERS` parsing, `mesh.init`,
+  `discovery.peers` all operational. Port configurable via `SONGBIRD_FEDERATION_PORT` env.
+
+---
+
 ## [v0.2.2-wave209] - 2026-06-02 - Full evolution pass: env abstraction, integration test fix, clippy zero-warning
 
 ### Fixed

@@ -58,4 +58,7 @@ pub struct DiscoveredPeerInfo {
     pub quality: Option<f64>,
     pub node_name: Option<String>,
     pub protocols: Vec<String>,
+    /// RTT to peer in milliseconds (null if not yet measured)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latency_ms: Option<u64>,
 }

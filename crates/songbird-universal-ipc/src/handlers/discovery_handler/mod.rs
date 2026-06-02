@@ -184,24 +184,21 @@ impl DiscoveryHandler {
         let mut result = Vec::new();
 
         for node_id in &reachable {
-            let address = if let Some(path) = beacon_mesh.get_best_path(node_id).await {
-                match &path.endpoint_type {
-                    EndpointType::Direct {
-                        addr,
-                    }
-                    | EndpointType::Local {
-                        addr,
-                    } => addr.to_string(),
-                    EndpointType::FamilyRelay {
-                        relay_node_id,
-                    } => relay_node_id.clone(),
-                    EndpointType::TorOnion {
-                        onion_addr,
-                    } => onion_addr.clone(),
-                }
-            } else {
-                String::new()
-            };
+            let (address, latency_ms) =
+                if let Some(path) = beacon_mesh.get_best_path(node_id).await {
+                    let addr = match &path.endpoint_type {
+                        EndpointType::Direct { addr } | EndpointType::Local { addr } => {
+                            addr.to_string()
+                        }
+                        EndpointType::FamilyRelay { relay_node_id } => relay_node_id.clone(),
+                        EndpointType::TorOnion { onion_addr } => onion_addr.clone(),
+                    };
+                    let ms =
+                        path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
+                    (addr, ms)
+                } else {
+                    (String::new(), None)
+                };
 
             let tcp_port = address.parse::<std::net::SocketAddr>().ok().map(|a| a.port());
 
@@ -215,6 +212,7 @@ impl DiscoveryHandler {
                 quality: Some(1.0),
                 node_name: None,
                 protocols: vec!["tcp".to_string()],
+                latency_ms,
             });
         }
 
