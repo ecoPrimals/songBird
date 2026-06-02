@@ -150,10 +150,15 @@ async fn discover_via_subnet_scan(timeout_ms: u64) -> SongbirdResult<Vec<Discove
 
 /// Discover networks via DNS-SD SRV record lookup
 async fn discover_via_dns(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
-    use hickory_resolver::TokioAsyncResolver;
-    use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+    use hickory_resolver::Resolver;
+    use hickory_resolver::config::ResolverConfig;
+    use hickory_resolver::name_server::TokioConnectionProvider;
 
-    let resolver = TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
+    let resolver = Resolver::builder_with_config(
+        ResolverConfig::default(),
+        TokioConnectionProvider::default(),
+    )
+    .build();
     let service_name = "_songbird._tcp.local.";
     let timeout = std::time::Duration::from_millis(timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS));
 

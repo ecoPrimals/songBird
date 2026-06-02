@@ -181,12 +181,17 @@ async fn relay_accept_loop(listener: UnixListener, native_target: String) {
     }
 }
 
-/// Relay a single connection: read JSON-RPC from client, forward to native, return response.
+/// Relay a single client connection: maintains a persistent native connection for the
+/// session lifetime. Requests stream from client → native, responses stream back.
 ///
-/// Supports NDJSON streaming (one request per line, one response per line).
+/// Connection pooling: one native UDS connection is held open for the entire client
+/// session (NDJSON streaming). Reconnects automatically on native connection failure.
 async fn relay_connection(client_stream: UnixStream, native_target: &str) -> anyhow::Result<()> {
     let (client_reader, mut client_writer) = client_stream.into_split();
     let mut client_buf = BufReader::new(client_reader);
+
+    // Establish persistent connection to native endpoint
+    let mut native_conn = connect_native(native_target).await.ok();
 
     let mut line = String::new();
     loop {
@@ -206,7 +211,19 @@ async fn relay_connection(client_stream: UnixStream, native_target: &str) -> any
             continue;
         }
 
-        let response = forward_single_request(trimmed, native_target).await;
+        // Try persistent connection first, reconnect on failure
+        let response = if let Some(conn) = &mut native_conn {
+            if let Ok(resp) = forward_on_persistent(trimmed, conn).await {
+                resp
+            } else {
+                // Reconnect and retry once
+                native_conn = connect_native(native_target).await.ok();
+                forward_or_fallback(trimmed, &mut native_conn, native_target).await
+            }
+        } else {
+            native_conn = connect_native(native_target).await.ok();
+            forward_or_fallback(trimmed, &mut native_conn, native_target).await
+        };
 
         let mut response_bytes = serde_json::to_vec(&response)?;
         response_bytes.push(b'\n');
@@ -216,60 +233,100 @@ async fn relay_connection(client_stream: UnixStream, native_target: &str) -> any
     Ok(())
 }
 
-/// Forward a single JSON-RPC request to the native provider and return the response.
-async fn forward_single_request(request_line: &str, native_target: &str) -> serde_json::Value {
-    match forward_inner(request_line, native_target).await {
-        Ok(response) => response,
-        Err(e) => {
-            let id = serde_json::from_str::<serde_json::Value>(request_line)
-                .ok()
-                .and_then(|v| v.get("id").cloned())
-                .unwrap_or(serde_json::Value::Null);
-            serde_json::json!({
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32603,
-                    "message": format!("Relay error: {e}")
-                },
-                "id": id
-            })
-        }
+/// Forward on existing connection or fall back to a fresh one-shot connection.
+async fn forward_or_fallback(
+    request_line: &str,
+    native_conn: &mut Option<NativeConn>,
+    native_target: &str,
+) -> serde_json::Value {
+    if let Some(conn) = native_conn {
+        forward_on_persistent(request_line, conn)
+            .await
+            .unwrap_or_else(|e| make_error_response(request_line, &e))
+    } else {
+        forward_fresh(request_line, native_target).await
     }
 }
 
-async fn forward_inner(
-    request_line: &str,
-    native_target: &str,
-) -> anyhow::Result<serde_json::Value> {
+/// Persistent native connection state (writer + buffered reader).
+struct NativeConn {
+    writer: tokio::net::unix::OwnedWriteHalf,
+    reader: BufReader<tokio::net::unix::OwnedReadHalf>,
+}
+
+/// Establish a connection to the native endpoint.
+async fn connect_native(native_target: &str) -> anyhow::Result<NativeConn> {
     let stream =
         tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, UnixStream::connect(native_target))
             .await
             .map_err(|_| anyhow::anyhow!("Timeout connecting to native endpoint"))?
             .map_err(|e| anyhow::anyhow!("Cannot connect to native endpoint: {e}"))?;
 
-    let (reader, mut writer) = stream.into_split();
+    let (reader, writer) = stream.into_split();
+    Ok(NativeConn {
+        writer,
+        reader: BufReader::new(reader),
+    })
+}
 
+/// Forward a request on a persistent native connection.
+async fn forward_on_persistent(
+    request_line: &str,
+    conn: &mut NativeConn,
+) -> anyhow::Result<serde_json::Value> {
     let mut request_bytes = request_line.as_bytes().to_vec();
     if !request_bytes.ends_with(b"\n") {
         request_bytes.push(b'\n');
     }
 
-    tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, writer.write_all(&request_bytes))
+    tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, conn.writer.write_all(&request_bytes))
         .await
         .map_err(|_| anyhow::anyhow!("Timeout writing to native endpoint"))?
         .map_err(|e| anyhow::anyhow!("Write error: {e}"))?;
 
-    let mut buf_reader = BufReader::new(reader);
     let mut response_line = String::new();
-    tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, buf_reader.read_line(&mut response_line))
+    tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, conn.reader.read_line(&mut response_line))
         .await
         .map_err(|_| anyhow::anyhow!("Timeout reading from native endpoint"))?
         .map_err(|e| anyhow::anyhow!("Read error: {e}"))?;
 
-    let response: serde_json::Value = serde_json::from_str(response_line.trim())
-        .map_err(|e| anyhow::anyhow!("Invalid JSON from native provider: {e}"))?;
+    if response_line.is_empty() {
+        return Err(anyhow::anyhow!("Native endpoint closed connection"));
+    }
 
-    Ok(response)
+    serde_json::from_str(response_line.trim())
+        .map_err(|e| anyhow::anyhow!("Invalid JSON from native provider: {e}"))
+}
+
+/// Fallback: open a fresh connection for a single request (no pooling).
+async fn forward_fresh(request_line: &str, native_target: &str) -> serde_json::Value {
+    match forward_fresh_inner(request_line, native_target).await {
+        Ok(response) => response,
+        Err(e) => make_error_response(request_line, &e),
+    }
+}
+
+async fn forward_fresh_inner(
+    request_line: &str,
+    native_target: &str,
+) -> anyhow::Result<serde_json::Value> {
+    let mut conn = connect_native(native_target).await?;
+    forward_on_persistent(request_line, &mut conn).await
+}
+
+fn make_error_response(request_line: &str, error: &anyhow::Error) -> serde_json::Value {
+    let id = serde_json::from_str::<serde_json::Value>(request_line)
+        .ok()
+        .and_then(|v| v.get("id").cloned())
+        .unwrap_or(serde_json::Value::Null);
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "error": {
+            "code": -32603,
+            "message": format!("Relay error: {error}")
+        },
+        "id": id
+    })
 }
 
 /// Resolve the relay socket path for a primal given the base directory.

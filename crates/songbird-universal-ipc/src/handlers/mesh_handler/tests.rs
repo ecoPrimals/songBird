@@ -352,6 +352,101 @@ async fn mesh_announce_as_relay_false_short_circuits() {
     assert_eq!(v["announced"], false);
 }
 
+#[tokio::test]
+async fn mesh_probe_latency_requires_init() {
+    let handler = MeshHandler::new();
+    let result = handler.handle_probe_latency(json!({})).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Mesh not initialized"));
+}
+
+#[tokio::test]
+async fn mesh_probe_latency_with_no_peers_returns_empty() {
+    let handler = MeshHandler::new();
+    handler
+        .handle_init(json!({
+            "node_id": "probe-test",
+            "bootstrap_onions": []
+        }))
+        .await
+        .expect("init");
+
+    let result = handler.handle_probe_latency(json!({ "timeout_ms": 1000 })).await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response["probed"], 0);
+    assert_eq!(response["total_peers"], 0);
+    assert_eq!(response["results"].as_array().expect("results array").len(), 0);
+}
+
+#[tokio::test]
+async fn mesh_probe_latency_skips_non_tcp_endpoints() {
+    let handler = MeshHandler::new();
+    handler
+        .handle_init(json!({
+            "node_id": "probe-relay-test",
+            "bootstrap_onions": []
+        }))
+        .await
+        .expect("init");
+
+    // Add a peer with a relay endpoint (no direct TCP address)
+    {
+        let mesh = handler.mesh.read().await;
+        let mesh = mesh.as_ref().unwrap();
+        mesh.record_relay_path(
+            "relay-peer".to_string(),
+            "via-relay".to_string(),
+            Duration::from_millis(50),
+        )
+        .await;
+    }
+
+    let result = handler.handle_probe_latency(json!({})).await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    let results = response["results"].as_array().expect("results");
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["status"], "skipped");
+    assert_eq!(results[0]["reason"], "no_tcp_endpoint");
+}
+
+#[tokio::test]
+async fn mesh_probe_latency_attempts_unreachable_peer() {
+    let handler = MeshHandler::new();
+    handler
+        .handle_init(json!({
+            "node_id": "probe-unreachable-test",
+            "bootstrap_onions": []
+        }))
+        .await
+        .expect("init");
+
+    // Add a peer with a direct TCP endpoint that won't be reachable
+    {
+        let mesh = handler.mesh.read().await;
+        let mesh = mesh.as_ref().unwrap();
+        mesh.record_direct_connection(
+            "unreachable-peer".to_string(),
+            "192.0.2.1:1".parse().unwrap(), // RFC 5737 documentation address
+            Duration::from_millis(999),
+        )
+        .await;
+    }
+
+    let result = handler.handle_probe_latency(json!({ "timeout_ms": 200 })).await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    let results = response["results"].as_array().expect("results");
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["node_id"], "unreachable-peer");
+    assert_eq!(results[0]["status"], "error");
+    assert!(
+        results[0]["error"].as_str().unwrap().contains("timeout")
+            || results[0]["error"].as_str().unwrap().contains("failed")
+    );
+}
+
 #[test]
 fn mesh_handler_default_matches_new() {
     let _a = MeshHandler::new();

@@ -326,13 +326,14 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
     #[cfg(feature = "dns-sd")]
     {
         use hickory_resolver::{
-            TokioAsyncResolver,
-            config::{ResolverConfig, ResolverOpts},
+            Resolver, config::ResolverConfig, name_server::TokioConnectionProvider,
         };
 
-        // Create DNS resolver
-        let resolver =
-            TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
+        let resolver = Resolver::builder_with_config(
+            ResolverConfig::default(),
+            TokioConnectionProvider::default(),
+        )
+        .build();
 
         let service_domain = songbird_process_env::var("SONGBIRD_SERVICE_DOMAIN")
             .unwrap_or_else(|_| "local".to_string());
@@ -348,7 +349,6 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
 
             match resolver.srv_lookup(&service_name).await {
                 Ok(srv_lookup) => {
-                    // SrvLookup is an iterator over SRV records
                     for srv_record in srv_lookup.iter() {
                         if let Some(primal) =
                             resolve_srv_to_primal(capability, srv_record, &resolver).await
@@ -377,7 +377,7 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
 async fn resolve_srv_to_primal(
     capability: &str,
     srv: &hickory_resolver::proto::rr::rdata::SRV,
-    resolver: &hickory_resolver::TokioAsyncResolver,
+    resolver: &hickory_resolver::TokioResolver,
 ) -> Option<DiscoveredPrimal> {
     use crate::capabilities::Capability;
     use crate::types::PrimalType;

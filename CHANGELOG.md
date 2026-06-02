@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.5-wave70] - 2026-06-02 - Active Latency Probing + Connection Pooling + Dependency Evolution
+
+### Added
+- **`mesh.probe_latency` method**: Active RTT measurement to mesh peers. Connects to each
+  peer's TCP endpoint, sends `health.ping` JSON-RPC, measures round-trip time, and updates
+  `BeaconMesh` with real latency data. This populates `latency_ms` in `discovery.peers`.
+  4 new tests (init guard, empty peers, relay skip, unreachable timeout).
+- **Virtual relay connection pooling**: `relay_connection()` now maintains a persistent
+  `NativeConn` (writer + buffered reader) for the entire client session. Reconnects
+  automatically on native endpoint failure with single-retry semantics.
+  Eliminates per-request connect overhead for long-lived sessions.
+
+### Changed
+- **`hickory-resolver` 0.24 → 0.25**: Migrated 4 crates from deprecated 0.24 to 0.25.
+  Constructor updated to builder API (`Resolver::builder_with_config`). Type alias
+  `TokioAsyncResolver` → `TokioResolver`. Feature `tokio-runtime` → `tokio`.
+  0.26 deferred due to breaking SRV/TXT API changes.
+- **Clippy collapsible_if** in `dnssd.rs`: Refactored nested `if let` to chained let-chains.
+- **49 registered methods** (up from 48): `mesh.probe_latency` added to dispatch tables.
+
+### Dependency Notes
+- `bincode` 1.x (RUSTSEC-2025-0141): Documented as blocked on tarpc upstream codec migration.
+  Zero direct production usage outside tarpc protocol transport.
+
+---
+
 ## [v0.2.4-wave70] - 2026-06-02 - Virtual Endpoint Relay Phase 1 (shadow mode)
 
 ### Added

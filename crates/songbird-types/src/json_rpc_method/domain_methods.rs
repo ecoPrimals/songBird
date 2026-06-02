@@ -184,6 +184,7 @@ pub enum MeshMethod {
     DiscoverRemotes,
     Mirror,
     Publish,
+    ProbeLatency,
 }
 
 /// `punch.*`

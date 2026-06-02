@@ -100,10 +100,10 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 ## Pending: Dependency Evolution
 
 - [x] `ring-crypto` feature removed (Wave 135, SB-02 resolved): `rustls_rustcrypto` is the sole TLS provider. `ring` is NOT compiled in any build config (`cargo tree -i ring` = empty). Cargo.lock stanza persists because `rustls-webpki` (0.102 + 0.103) declares `ring` as an optional dep — Cargo's resolver locks optional dep versions by design. Investigated git `rustls-rustcrypto` (drops webpki 0.102) but pre-release RustCrypto crates are incompatible with stable workspace. Blocked on upstream `rustls-rustcrypto` crates.io release. See `deny.toml` for full stadial gate analysis.
-- [ ] `hickory-resolver` 0.24 → 0.26 (RUSTSEC-2026-0119): migration attempted Wave 208, deferred — SRV/TXT record API changed significantly in 0.26 (getters removed, `TokioAsyncResolver` → `Resolver` builder, `TxtLookup` type moved); 4 crates affected (`songbird-config`, `songbird-cli`, `songbird-discovery`, `songbird-universal`). Targeted upgrade wave recommended.
+- [x] `hickory-resolver` 0.24 → 0.25 (Wave 70): Migrated 4 crates (`songbird-config`, `songbird-cli`, `songbird-discovery`, `songbird-universal`) from deprecated 0.24 to 0.25. Constructor `TokioAsyncResolver::tokio(config, opts)` replaced with `Resolver::builder_with_config(config, TokioConnectionProvider::default()).build()`. Type alias `TokioAsyncResolver` → `TokioResolver`. Feature `tokio-runtime` → `tokio`. All 9 DNS-SD tests + 938 songbird-config tests pass. 0.26 deferred — breaking changes to `SrvLookup`/`TxtLookup` (types removed, fields replace accessors) require full iteration rewrite when upstream stabilizes.
 - [ ] Remaining transitive duplicates (hashbrown ×5, getrandom ×3, socket2 ×2, rand ×3, indexmap ×2, generic-array ×2, cpufeatures ×2) require upstream version unification; `futures 0.3` only transitive via `tarpc` — no direct deps remain
 - [x] `serde_yaml` → `serde_yaml_ng` (Wave 165): `songbird-config` and `songbird-discovery` migrated from archived `serde_yaml 0.9` to `serde_yaml_ng 0.10` (maintained fork, aliased as `serde_yaml` — zero call-site changes). `kube-client` transitive dep keeps original `serde_yaml` in Cargo.lock — full lockfile removal blocked on kube upstream
-- [ ] `bincode` 1.x (RUSTSEC-2025-0141): transitive via tarpc/tokio-serde; migrate tarpc codec or swap to postcard
+- [ ] `bincode` 1.x (RUSTSEC-2025-0141): transitive via tarpc/tokio-serde — not directly actionable, blocked on tarpc upstream codec migration. `bincode` is only used as the serialization format for `tarpc` RPC transport (songbird-orchestrator, songbird-universal). Zero direct production usage outside tarpc protocol
 - [x] Dead `full-discovery` feature flag removed from `songbird-universal` (Wave 208): was never referenced in code; individual backend features (`mdns`, `dns-sd`, `k8s`, `docker`) remain properly gated
 - [x] `async-trait` **fully eliminated** (Wave 145): 141→0 annotations, dependency removed from all crates and workspace `Cargo.toml`. Every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. SB-06 resolved.
 - [x] `dyn` dispatch evolution (Wave 155, audited Wave 159): 6 production `dyn` sites eliminated. Remaining architectural: `Pin<Box<dyn Stream>>` (discovery watch trait — `CanonicalDiscovery::watch_services`, delegation, 6+ adapter impls; all backends return empty streams; evolve to enum dispatch when real streams exist), `Box<dyn SerialPort>` (external `serialport` crate API), `Arc<dyn Fn(&str) -> Result<String, VarError>>` (env reader injection in `capability_discovery`/`runtime_engine` — intentional for testability), `&dyn Any` (`as_any()` in discovery factory/backends — standard `Any` downcast pattern, architectural)
@@ -181,12 +181,12 @@ Songbird is **CLEAN** in the 13/13 primal composition audit. Pass 12 and Pass 14
 
 ### Method Stability Tiers
 
-All 48 registered methods are annotated by stability:
+All 49 registered methods are annotated by stability:
 
 | Tier | Methods | Description |
 |------|---------|-------------|
 | **Stable** | `health.*`, `identity.get`, `capabilities.list`, `capabilities.methods`, `primal.info`, `primal.capabilities`, `primal.announce`, `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `capability.resolve`, `http.request`, `http.get`, `http.post`, `auth.check`, `auth.mode`, `auth.peer_info`, `btsp.capabilities` | Wire-format frozen. Breaking changes require major version bump. |
-| **Operational** | `stun.*` (7), `igd.*` (5), `relay.*` (4), `mesh.*` (7), `punch.*` (3), `discovery.*` (2), `federation.*` (2), `onion.*` (5), `tor.*` (6) | Semantics stable, response shapes may gain fields. No field removal without deprecation. |
+| **Operational** | `stun.*` (7), `igd.*` (5), `relay.*` (4), `mesh.*` (8 incl. `probe_latency`), `punch.*` (3), `discovery.*` (2), `federation.*` (2), `onion.*` (5), `tor.*` (6) | Semantics stable, response shapes may gain fields. No field removal without deprecation. |
 | **Introspection** | `rpc.methods`, `rpc.discover`, `discover_capabilities`, `lifecycle.*`, `btsp.negotiate` | Internal self-description; may evolve freely between minor versions. |
 | **Inference (passthrough)** | `inference.*` (4) | Routed to downstream AI provider; Songbird is pass-through only. |
 

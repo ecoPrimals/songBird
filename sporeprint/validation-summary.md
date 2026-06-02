@@ -1,6 +1,6 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 8,500+ tests, 31 crates, 56 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, DH-1 compliant, Wave 209: full env abstraction (zero std::env in prod), integration tests compile clean, clippy zero-warning workspace-wide"
+description = "Sovereign networking primal — 8,530+ tests, 31 crates, 57 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, DH-1 compliant, Wave 70: mesh.probe_latency (active RTT), virtual relay connection pooling, hickory-resolver 0.24→0.25, zero clippy workspace-wide"
 date = 2026-06-02
 
 [taxonomies]
@@ -10,9 +10,9 @@ springs = ["primalspring"]
 
 ## Status
 
-- **8,500+ lib tests** passed, 0 failures, 23 ignored
+- **8,530+ lib tests** passed, 0 failures, 23 ignored
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
-- **54 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
+- **57 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
 - **5-tier ConnectionFallbackChain**: direct → STUN → lineage relay → TURN → emergency tunnel
 - **`capability.call` cross-gate dispatch** (Wave 211+38): local UDS + remote mesh TCP + TURN relay fallback for NAT'd peers
@@ -34,7 +34,7 @@ springs = ["primalspring"]
 |--------|---------|-----------|
 | Network discovery | `ipc.register`, `ipc.resolve`, `ipc.discover`, `capability.resolve`, `capability.call` | UDS, TCP |
 | NAT traversal | `stun.*` (7 methods), `punch.*`, `relay.*` (4), TURN | UDP, TURN relay |
-| Mesh networking | `mesh.*` (7 methods) | BirdSong UDP, relay |
+| Mesh networking | `mesh.*` (8 methods incl. `probe_latency`) | BirdSong UDP, relay |
 | HTTP gateway | `http.request/get/post` | HTTPS (rustls) |
 | Tor/Onion | `tor.*`, `onion.*` | Tor circuits |
 | Federation | `federation.*` | Cross-cluster |

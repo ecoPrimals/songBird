@@ -210,6 +210,9 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Mesh(MeshMethod::AutoDiscover) => {
                 self.mesh_handler.handle_auto_discover(params).await
             }
+            JsonRpcMethod::Mesh(MeshMethod::ProbeLatency) => {
+                self.mesh_handler.handle_probe_latency(params).await
+            }
 
             // ── Hole punching ────────────────────────────────────────
             JsonRpcMethod::Punch(PunchMethod::Request) => {

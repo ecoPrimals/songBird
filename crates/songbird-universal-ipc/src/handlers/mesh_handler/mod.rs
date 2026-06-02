@@ -589,6 +589,126 @@ impl MeshHandler {
         }))
     }
 
+    /// Handle `mesh.probe_latency` — actively probe peers to measure RTT.
+    ///
+    /// Connects to each reachable peer's TCP endpoint, sends a `health.ping` JSON-RPC
+    /// request, measures the round-trip time, and updates the mesh with measured latency.
+    /// This populates the `latency_ms` field in `discovery.peers` responses.
+    pub async fn handle_probe_latency(&self, params: Value) -> Result<Value, String> {
+        let timeout_ms = params.get("timeout_ms").and_then(Value::as_u64).unwrap_or(5000);
+        let timeout = Duration::from_millis(timeout_ms);
+
+        let mesh = self
+            .mesh
+            .read()
+            .await
+            .as_ref()
+            .cloned()
+            .ok_or("Mesh not initialized (call mesh.init first)")?;
+
+        let reachable = mesh.get_reachable_nodes().await;
+        let mut results = Vec::new();
+
+        for node_id in &reachable {
+            if let Some(path) = mesh.get_best_path(node_id).await {
+                let addr = match &path.endpoint_type {
+                    EndpointType::Direct {
+                        addr,
+                    }
+                    | EndpointType::Local {
+                        addr,
+                    } => Some(*addr),
+                    _ => None,
+                };
+
+                if let Some(peer_addr) = addr {
+                    let start = Instant::now();
+                    let probe_result = Self::probe_peer_rtt(peer_addr, timeout).await;
+                    match probe_result {
+                        Ok(rtt) => {
+                            mesh.record_direct_connection(node_id.clone(), peer_addr, rtt).await;
+                            let rtt_ms = u64::try_from(rtt.as_millis()).unwrap_or(u64::MAX);
+                            results.push(json!({
+                                "node_id": node_id,
+                                "latency_ms": rtt_ms,
+                                "address": peer_addr.to_string(),
+                                "status": "ok"
+                            }));
+                            debug!(
+                                peer = %node_id,
+                                latency_ms = rtt_ms,
+                                "Latency probe successful"
+                            );
+                        }
+                        Err(e) => {
+                            let elapsed_ms = start.elapsed().as_millis();
+                            results.push(json!({
+                                "node_id": node_id,
+                                "address": peer_addr.to_string(),
+                                "status": "error",
+                                "error": e,
+                                "elapsed_ms": elapsed_ms
+                            }));
+                        }
+                    }
+                } else {
+                    results.push(json!({
+                        "node_id": node_id,
+                        "status": "skipped",
+                        "reason": "no_tcp_endpoint"
+                    }));
+                }
+            }
+        }
+
+        let probed_count = results.iter().filter(|r| r["status"] == "ok").count();
+        info!(
+            "📡 mesh.probe_latency: {}/{} peers probed successfully",
+            probed_count,
+            reachable.len()
+        );
+
+        Ok(json!({
+            "results": results,
+            "probed": probed_count,
+            "total_peers": reachable.len()
+        }))
+    }
+
+    /// Probe a peer's TCP endpoint with a minimal JSON-RPC ping to measure RTT.
+    async fn probe_peer_rtt(
+        addr: std::net::SocketAddr,
+        timeout: Duration,
+    ) -> Result<Duration, String> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::TcpStream;
+
+        let start = Instant::now();
+
+        let stream = tokio::time::timeout(timeout, TcpStream::connect(addr))
+            .await
+            .map_err(|_| "connect timeout".to_string())?
+            .map_err(|e| format!("connect failed: {e}"))?;
+
+        let (reader, mut writer) = stream.into_split();
+
+        let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.ping\",\"id\":1}\n";
+        tokio::time::timeout(timeout, writer.write_all(request))
+            .await
+            .map_err(|_| "write timeout".to_string())?
+            .map_err(|e| format!("write failed: {e}"))?;
+
+        let mut buf_reader = BufReader::new(reader);
+        let mut response = String::new();
+        tokio::time::timeout(timeout, buf_reader.read_line(&mut response))
+            .await
+            .map_err(|_| "read timeout".to_string())?
+            .map_err(|e| format!("read failed: {e}"))?;
+
+        let rtt = start.elapsed();
+        Ok(rtt)
+    }
+
     /// Handle `mesh.publish` — publish freshness/drift status to the mesh.
     ///
     /// Used by ecosystem signal graphs to advertise sync state to the Plasmodium.
