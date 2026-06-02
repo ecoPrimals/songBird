@@ -79,7 +79,7 @@ impl UniversalContainerOrchestration {
         _query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
         let mut services = Vec::new();
-        let env_vars = std::env::vars().collect::<HashMap<_, _>>();
+        let env_vars = songbird_process_env::vars().collect::<HashMap<_, _>>();
 
         // Look for service-related environment variables common in containers
         for (key, _value) in env_vars {

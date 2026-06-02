@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.2-wave209] - 2026-06-02 - Full evolution pass: env abstraction, integration test fix, clippy zero-warning
+
+### Fixed
+- **Integration test compilation**: 7 test files in `songbird-universal` using `futures::future::join_all`
+  migrated to `futures_util::future::join_all` (the `futures` facade crate was never a dependency).
+- **`anyhow::Error` comparison**: 6 sites in integration tests using `assert_eq!` on `anyhow::Error`
+  fixed with `.to_string()` (anyhow doesn't impl `PartialEq`).
+- **`songbird-types` integration tests**: 3 `matches!` guards comparing `anyhow::Error` with `==`
+  fixed to use `.to_string()` comparison.
+- **`songbird-stun` clippy**: `cast_possible_truncation` in test (→ `u16::try_from().unwrap()`),
+  unused `Ipv6Addr` import, unused `StunCredentials` import, `Arc::clone` idiom.
+- **Items after test module**: `hex_decode` in `songbird-turn-client/session.rs` moved above `mod tests`.
+- **36 unfulfilled `#[expect(clippy::...)]`** removed across 5 files — lints no longer fire.
+- **Redundant closures**: 2 sites `|v| v.to_string()` → `ToString::to_string`.
+
+### Changed
+- **`songbird-process-env` adoption complete**: migrated last 7 `std::env::vars()` call sites in
+  `songbird-config` and `songbird-discovery` to `songbird_process_env::vars()`. Zero `std::env`
+  bypass remains in production code.
+- **`state.rs` refactored** (877→459L): tests extracted to `state_tests.rs` via `#[path]` pattern.
+  Zero source files now exceed 800 lines.
+- **Deprecated function tests**: 3 tests calling `legacy_beardog_socket_path_in_biomeos_runtime`
+  annotated with `#[allow(deprecated)]` (intentional backward-compat coverage).
+
+### Metrics
+- 31 crates, 31/31 `forbid(unsafe_code)`, zero clippy warnings (production), zero `std::env` in
+  production, zero `/tmp` in production, zero files >800L, 8,500+ tests passing
+
+---
+
 ## [v0.2.2-wave67] - 2026-06-01 - P0 BLOCKER: Security socket fix (BEARDOG_SOCKET honored)
 
 ### Fixed

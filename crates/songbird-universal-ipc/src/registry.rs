@@ -142,8 +142,7 @@ impl ServiceRegistry {
             .iter()
             .filter(|e| e.revision > since_revision)
             .filter(|e| {
-                capability_filter
-                    .map_or(true, |caps| e.capabilities.iter().any(|c| caps.contains(c)))
+                capability_filter.is_none_or(|caps| e.capabilities.iter().any(|c| caps.contains(c)))
             })
             .cloned()
             .collect();

@@ -139,7 +139,7 @@ async fn test_concurrent_capability_lookups() {
         }));
     }
 
-    let results = futures::future::join_all(handles).await;
+    let results = futures_util::future::join_all(handles).await;
 
     // All should succeed (returning empty lists)
     for result in results {
@@ -161,7 +161,7 @@ async fn test_concurrent_stats_access() {
         handles.push(tokio::spawn(async move { adapter_clone.get_registry_stats().await }));
     }
 
-    let results = futures::future::join_all(handles).await;
+    let results = futures_util::future::join_all(handles).await;
 
     // All should succeed
     for result in results {
@@ -192,7 +192,7 @@ async fn test_concurrent_mixed_operations() {
     }
 
     // Should all complete without deadlock
-    futures::future::join_all(handles).await;
+    futures_util::future::join_all(handles).await;
 }
 
 // ============================================================================

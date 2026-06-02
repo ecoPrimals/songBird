@@ -144,7 +144,7 @@ impl AgnosticPrimalConfig {
         }
 
         // Check for custom capabilities
-        for (key, value) in std::env::vars() {
+        for (key, value) in songbird_process_env::vars() {
             if key.starts_with("CAPABILITY_") && key.ends_with("_ENDPOINT") {
                 let capability = key
                     .trim_start_matches("CAPABILITY_")

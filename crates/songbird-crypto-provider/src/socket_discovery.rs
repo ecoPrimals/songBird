@@ -404,6 +404,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn legacy_beardog_socket_family_scoped() {
         let p = legacy_beardog_socket_path_in_biomeos_runtime("/run/user/1000", "nucleus01");
         assert_eq!(p, PathBuf::from("/run/user/1000/biomeos/beardog-nucleus01.sock"));
@@ -429,6 +430,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn discover_security_finds_legacy_beardog_family_socket() {
         let xdg = "/run/user/6666";
         let beardog = legacy_beardog_socket_path_in_biomeos_runtime(xdg, "nucleus01");
@@ -446,6 +448,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn discover_security_prefers_family_security_over_legacy_beardog() {
         let xdg = "/run/user/7777";
         let security = security_socket_path_in_biomeos_runtime_with_family(xdg, "nucleus01");

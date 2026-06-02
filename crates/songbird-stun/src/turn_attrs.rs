@@ -170,7 +170,6 @@ impl TurnAttrs {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
-    use crate::types::StunCredentials;
 
     #[test]
     fn parse_lifetime_extracts_value() {
@@ -251,7 +250,7 @@ mod tests {
         let frame = TurnAttrs::build_channel_data(0x4000, data);
         assert_eq!(frame.len(), 4 + data.len());
         assert_eq!(u16::from_be_bytes([frame[0], frame[1]]), 0x4000);
-        assert_eq!(u16::from_be_bytes([frame[2], frame[3]]), data.len() as u16);
+        assert_eq!(u16::from_be_bytes([frame[2], frame[3]]), u16::try_from(data.len()).unwrap());
         assert_eq!(&frame[4..], data);
     }
 

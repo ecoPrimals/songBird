@@ -291,7 +291,7 @@ impl UniversalServiceDiscovery {
 
     /// Detect environment-based service configuration
     fn detect_environment_services(&mut self) {
-        let env_vars = std::env::vars().collect::<HashMap<_, _>>();
+        let env_vars = songbird_process_env::vars().collect::<HashMap<_, _>>();
 
         // Look for service-related environment variables
         let service_patterns = ["_SERVICE_URL", "_ENDPOINT", "_HOST"];
@@ -459,7 +459,7 @@ impl UniversalServiceDiscovery {
         query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
         let mut services = Vec::new();
-        let env_vars = std::env::vars().collect::<HashMap<_, _>>();
+        let env_vars = songbird_process_env::vars().collect::<HashMap<_, _>>();
 
         for (key, _value) in env_vars {
             if key.ends_with("_SERVICE_URL") || key.ends_with("_ENDPOINT") {

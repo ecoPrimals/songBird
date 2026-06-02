@@ -279,7 +279,7 @@ async fn test_error_concurrent_routing() {
         });
         handles.push(handle);
     }
-    let results = futures::future::join_all(handles).await;
+    let results = futures_util::future::join_all(handles).await;
     // All should complete - truly concurrent test, no artificial delays
     assert_eq!(results.len(), 50, "All routing requests should complete");
 }
@@ -317,7 +317,7 @@ async fn test_error_concurrent_adapter_creation() {
         let handle = tokio::spawn(async { SovereigntyAwareAdapter::new().await });
         handles.push(handle);
     }
-    let results = futures::future::join_all(handles).await;
+    let results = futures_util::future::join_all(handles).await;
     // All should succeed
     let success_count = results.iter().filter(|r| matches!(r, Ok(Ok(_)))).count();
     assert_eq!(success_count, 20, "All adapter creations should succeed");

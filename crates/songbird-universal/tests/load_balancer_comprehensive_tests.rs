@@ -195,7 +195,7 @@ async fn test_no_endpoints_configured() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.expect_err("testing error case"), "No endpoints configured");
+    assert_eq!(result.expect_err("testing error case").to_string(), "No endpoints configured");
 }
 
 #[tokio::test]
@@ -211,7 +211,7 @@ async fn test_all_endpoints_unavailable() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.expect_err("testing error case"), "No available endpoints");
+    assert_eq!(result.expect_err("testing error case").to_string(), "No available endpoints");
 }
 
 #[tokio::test]

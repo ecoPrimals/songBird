@@ -4,8 +4,7 @@
 use super::*;
 
 #[tokio::test]
-async fn test_duplicate_endpoints() -> SongbirdResult<()> {
-    // Test with duplicate endpoint URLs
+async fn test_duplicate_endpoints() -> anyhow::Result<()> {
     let endpoints = vec![
         "http://same:8080".to_string(),
         "http://same:8080".to_string(),
@@ -14,7 +13,6 @@ async fn test_duplicate_endpoints() -> SongbirdResult<()> {
 
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin);
 
-    // Should handle duplicates (though not ideal in practice)
     for _ in 0..10 {
         let result = lb.get_next_endpoint().await;
         assert!(result.is_ok());

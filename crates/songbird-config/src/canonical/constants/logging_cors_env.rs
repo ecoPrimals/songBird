@@ -100,7 +100,7 @@ mod tests {
     fn mock_env<'a>(
         map: &'a HashMap<&str, &str>,
     ) -> impl Fn(&str) -> Result<String, std::env::VarError> + 'a {
-        move |key| map.get(key).map(|v| v.to_string()).ok_or(std::env::VarError::NotPresent)
+        move |key| map.get(key).map(ToString::to_string).ok_or(std::env::VarError::NotPresent)
     }
 
     #[test]
