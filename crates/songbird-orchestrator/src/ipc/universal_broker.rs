@@ -64,6 +64,7 @@ pub struct UniversalIpcBroker {
     endpoint: VirtualEndpoint,
     server: TowerAtomicServer<IpcServiceHandler>,
     registry: Arc<tokio::sync::RwLock<songbird_universal_ipc::registry::ServiceRegistry>>,
+    mesh_handler: Arc<songbird_universal_ipc::handlers::MeshHandler>,
 }
 
 impl UniversalIpcBroker {
@@ -150,6 +151,9 @@ impl UniversalIpcBroker {
             IpcServiceHandler::new(Arc::clone(&registry))
         };
 
+        // Capture mesh handler before handler moves into server
+        let mesh_handler = Arc::clone(handler.mesh_handler());
+
         // Create Tower Atomic server
         let server = TowerAtomicServer::new(handler);
 
@@ -162,6 +166,7 @@ impl UniversalIpcBroker {
             endpoint,
             server,
             registry,
+            mesh_handler,
         })
     }
 
@@ -174,6 +179,12 @@ impl UniversalIpcBroker {
         &self,
     ) -> &Arc<tokio::sync::RwLock<songbird_universal_ipc::registry::ServiceRegistry>> {
         &self.registry
+    }
+
+    /// Access the mesh handler for auto-seeding from `SONGBIRD_PEERS` on boot.
+    #[must_use]
+    pub fn mesh_handler(&self) -> &Arc<songbird_universal_ipc::handlers::MeshHandler> {
+        &self.mesh_handler
     }
 
     /// Start the Universal IPC Broker (runs indefinitely).
@@ -238,14 +249,24 @@ pub type SharedServiceRegistry =
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-pub async fn start_broker() -> Result<SharedServiceRegistry> {
+pub async fn start_broker() -> Result<BrokerHandle> {
     start_broker_with_discovery(None).await
+}
+
+/// Handle returned by [`start_broker_with_discovery`] containing the registry
+/// and mesh handler for startup wiring.
+pub struct BrokerHandle {
+    /// Shared service registry for auto-discovery seeding.
+    pub registry: SharedServiceRegistry,
+    /// Mesh handler for auto-seeding peers from `SONGBIRD_PEERS`.
+    pub mesh_handler: Arc<songbird_universal_ipc::handlers::MeshHandler>,
 }
 
 /// Start the Universal IPC Broker with discovery listener.
 ///
-/// Returns a shared handle to the broker's `ServiceRegistry` so the startup
-/// sequence can seed it with auto-discovered primals (LD-08).
+/// Returns a [`BrokerHandle`] containing the shared `ServiceRegistry` and
+/// mesh handler so the startup sequence can seed registrations and bootstrap
+/// mesh peers.
 ///
 /// Enables real-time peer discovery when a listener is provided.
 /// This is the recommended way to start the broker in production.
@@ -254,7 +275,7 @@ pub async fn start_broker() -> Result<SharedServiceRegistry> {
 /// Returns an error if the operation fails.
 pub async fn start_broker_with_discovery(
     discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
-) -> Result<SharedServiceRegistry> {
+) -> Result<BrokerHandle> {
     info!("🌍 Starting Universal IPC Broker (service-based architecture)");
 
     if discovery_listener.is_some() {
@@ -271,6 +292,7 @@ pub async fn start_broker_with_discovery(
     info!("✅ Universal IPC Broker created successfully");
 
     let registry = Arc::clone(broker.registry());
+    let mesh_handler = Arc::clone(broker.mesh_handler());
     let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
 
     tokio::spawn(async move {
@@ -286,7 +308,10 @@ pub async fn start_broker_with_discovery(
     info!("   Methods: ipc.*, http.*, stun.*, discovery.*, rendezvous.*, peer.*");
     info!("   NOTE: Service layer handles platform abstraction internally");
 
-    Ok(registry)
+    Ok(BrokerHandle {
+        registry,
+        mesh_handler,
+    })
 }
 
 #[cfg(test)]

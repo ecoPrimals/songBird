@@ -54,6 +54,7 @@ pub struct SongbirdOrchestrator {
     pub(super) discovery_status_manager: Arc<songbird_discovery::DiscoveryStatusManager>,
     pub(super) ipc_server_handle: Option<tokio::task::JoinHandle<()>>,
     pub(super) broker_registry: Option<crate::ipc::universal_broker::SharedServiceRegistry>,
+    pub(super) broker_mesh_handler: Option<Arc<songbird_universal_ipc::handlers::MeshHandler>>,
     pub(super) shutdown_signal: tokio::sync::broadcast::Receiver<()>,
     pub(super) shutdown_sender: tokio::sync::broadcast::Sender<()>,
 }
@@ -183,8 +184,9 @@ impl SongbirdOrchestrator {
             discovery_listener_pending, // ✅ Holds non-Arc listener for configuration
             discovery_listener: None,   // ✅ Will be set in start() after full config
             discovery_status_manager,
-            ipc_server_handle: None, // Will be set in start()
-            broker_registry: None,   // Set in stage_2 when broker starts
+            ipc_server_handle: None,   // Will be set in start()
+            broker_registry: None,     // Set in stage_2 when broker starts
+            broker_mesh_handler: None, // Set in stage_2 when broker starts
             shutdown_signal,
             shutdown_sender,
         })

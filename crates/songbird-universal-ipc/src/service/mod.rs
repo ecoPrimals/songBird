@@ -94,6 +94,14 @@ pub struct IpcServiceHandler {
     virtual_relay: Arc<virtual_relay::VirtualRelayManager>,
 }
 
+impl IpcServiceHandler {
+    /// Access the mesh handler (for startup auto-seeding from `SONGBIRD_PEERS`).
+    #[must_use]
+    pub fn mesh_handler(&self) -> &Arc<MeshHandler> {
+        &self.mesh_handler
+    }
+}
+
 /// All handler instances built by `build_handlers()`.
 pub(super) type HandlerBundle = (
     Arc<StunHandler>,

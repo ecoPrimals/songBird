@@ -74,6 +74,11 @@ songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 songbird-process-env.workspace = true
 
+# HTTP client for cross-gate dispatch (remote peers run axum HTTP servers)
+hyper = { workspace = true }
+hyper-util = { version = "0.1", features = ["tokio", "client-legacy", "http1"] }
+http-body-util = { workspace = true }
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }

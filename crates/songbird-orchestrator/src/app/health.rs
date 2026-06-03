@@ -135,15 +135,18 @@ impl SongbirdOrchestrator {
         let federation_state = Arc::clone(&self.federation_state);
         let connection_manager = Arc::clone(&self.connection_manager);
         let observability_manager = Arc::clone(&self.observability_manager);
+        let mesh_handler = self.broker_mesh_handler.clone();
         let mut shutdown_rx = self.shutdown_sender.subscribe();
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(
                 songbird_types::defaults::timeouts::DEFAULT_HEALTH_CHECK_INTERVAL,
             );
+            let mut tick_count: u64 = 0;
             loop {
                 tokio::select! {
                     _ = interval.tick() => {
+                        tick_count += 1;
                         let fed_healthy = {
                             let stats = federation_state.get_stats().await;
                             stats.active_nodes >= 1
@@ -159,6 +162,23 @@ impl SongbirdOrchestrator {
                             warn!("🏥 Health: observability degraded");
                         }
                         debug!("🏥 Health tick: federation={fed_healthy} peers={_peer_count} obs={obs_healthy}");
+
+                        // Probe mesh peer latency every 4th tick (~2 min at 30s interval)
+                        if tick_count.is_multiple_of(4) && let Some(ref mh) = mesh_handler {
+                            let params = serde_json::json!({"timeout_ms": 5000});
+                            match mh.handle_probe_latency(params).await {
+                                Ok(result) => {
+                                    let probed = result
+                                        .get("probed")
+                                        .and_then(serde_json::Value::as_u64)
+                                        .unwrap_or(0);
+                                    if probed > 0 {
+                                        debug!("🏥 Latency probe: measured {probed} peer(s)");
+                                    }
+                                }
+                                Err(_) => {} // Mesh not initialized — skip silently
+                            }
+                        }
                     }
                     _ = shutdown_rx.recv() => {
                         info!("🏥 Health monitoring shutting down");
@@ -168,7 +188,7 @@ impl SongbirdOrchestrator {
             }
         });
 
-        info!("🏥 Health monitoring started (30s interval)");
+        info!("🏥 Health monitoring started (30s interval, latency probe every ~2 min)");
         Ok(())
     }
 

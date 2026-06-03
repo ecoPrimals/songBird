@@ -83,6 +83,52 @@ async fn mesh_init_with_invalid_bootstrap_peers_skips_gracefully() {
 }
 
 #[tokio::test]
+async fn mesh_init_string_format_bootstrap_peers() {
+    let handler = MeshHandler::new();
+
+    let result = handler
+        .handle_init(json!({
+            "node_id": "south-gate",
+            "bootstrap_peers": [
+                "east-gate@192.168.1.100:7700",
+                "192.168.4.29:7700",
+                "invalid-no-port"
+            ]
+        }))
+        .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response["bootstrap_peers_added"], 2);
+
+    let mesh = handler.mesh().await;
+    let mesh = mesh.as_ref().unwrap();
+    let reachable = mesh.get_reachable_nodes().await;
+    assert_eq!(reachable.len(), 2);
+    assert!(reachable.contains(&"east-gate".to_string()));
+    assert!(reachable.contains(&"peer-192.168.4.29".to_string()));
+}
+
+#[tokio::test]
+async fn mesh_init_mixed_format_bootstrap_peers() {
+    let handler = MeshHandler::new();
+
+    let result = handler
+        .handle_init(json!({
+            "node_id": "iron-gate",
+            "bootstrap_peers": [
+                { "node_id": "west-gate", "address": "10.0.0.1:7700" },
+                "east-gate@192.168.1.100:7700"
+            ]
+        }))
+        .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response["bootstrap_peers_added"], 2);
+}
+
+#[tokio::test]
 async fn test_mesh_status_after_init() {
     let handler = MeshHandler::new();
 

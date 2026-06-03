@@ -122,10 +122,21 @@ impl MeshHandler {
             .map(|arr| {
                 arr.iter()
                     .filter_map(|entry| {
-                        let peer_id = entry.get("node_id")?.as_str()?.to_string();
-                        let addr_str = entry.get("address")?.as_str()?;
-                        let addr: std::net::SocketAddr = addr_str.parse().ok()?;
-                        Some((peer_id, addr))
+                        // Object format: {"node_id": "...", "address": "host:port"}
+                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
+                            let addr_str = entry.get("address")?.as_str()?;
+                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
+                            return Some((obj_id.to_string(), addr));
+                        }
+                        // String format: "node_id@host:port" or bare "host:port"
+                        let s = entry.as_str()?;
+                        if let Some((nid, addr_part)) = s.split_once('@') {
+                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
+                            Some((nid.to_string(), addr))
+                        } else {
+                            let addr: std::net::SocketAddr = s.parse().ok()?;
+                            Some((format!("peer-{}", addr.ip()), addr))
+                        }
                     })
                     .collect()
             })

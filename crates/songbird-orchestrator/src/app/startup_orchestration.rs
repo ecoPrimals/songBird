@@ -231,18 +231,23 @@ impl<'a> StartupOrchestrator<'a> {
         // 🌍 NEW (Jan 19, 2026): Start Universal IPC Broker for service-based inter-primal IPC
         // ✅ EVOLUTION (Jan 29, 2026): Wire up discovery listener for runtime peer discovery
         // ✅ LD-08 (Apr 12, 2026): Capture broker registry for socket auto-discovery seeding
+        // ✅ Wave 73 (Jun 3, 2026): Auto-seed mesh peers from SONGBIRD_PEERS on boot
         info!("🌍 Starting Universal IPC Broker...");
         match crate::ipc::universal_broker::start_broker_with_discovery(
             self.orchestrator.discovery_listener.clone(),
         )
         .await
         {
-            Ok(registry) => {
+            Ok(handle) => {
                 info!("✅ Universal IPC Broker started");
-                self.orchestrator.broker_registry = Some(registry);
+                self.orchestrator.broker_registry = Some(handle.registry);
+                self.orchestrator.broker_mesh_handler = Some(Arc::clone(&handle.mesh_handler));
                 if self.orchestrator.discovery_listener.is_some() {
                     info!("   🌉 Discovery bridge: ENABLED (real-time peer discovery)");
                 }
+
+                // Auto-seed mesh from SONGBIRD_PEERS (Wave 73: no manual mesh.init required)
+                crate::mesh_seed::spawn_mesh_seed(handle.mesh_handler);
             }
             Err(e) => {
                 warn!("⚠️  Universal IPC Broker failed to start: {}", e);

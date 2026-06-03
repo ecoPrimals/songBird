@@ -179,25 +179,14 @@ impl IpcServiceHandler {
 
     /// Probe whether a remote peer advertises a given capability.
     ///
-    /// Sends `capabilities.list` and checks `provided_capabilities`. Returns
-    /// `Ok(true)` if the peer has it, `Ok(false)` if it doesn't, or `Err` if
-    /// the probe itself failed (treat as "unknown — try anyway").
+    /// Sends `capabilities.list` via HTTP POST and checks `provided_capabilities`.
+    /// Returns `Ok(true)` if the peer has it, `Ok(false)` if it doesn't, or `Err`
+    /// if the probe itself failed (treat as "unknown — try anyway").
     pub(super) async fn peer_has_capability(
         &self,
-        tcp_endpoint: &str,
+        http_endpoint: &str,
         capability: &str,
     ) -> Result<bool, String> {
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-        use tokio::net::TcpStream;
-
-        let addr = tcp_endpoint.trim_start_matches("http://").trim_end_matches("/jsonrpc");
-        let probe_timeout = std::time::Duration::from_secs(3);
-
-        let stream = tokio::time::timeout(probe_timeout, TcpStream::connect(addr))
-            .await
-            .map_err(|_| "probe timeout")?
-            .map_err(|e| format!("probe connect: {e}"))?;
-
         let request = serde_json::json!({
             "jsonrpc": "2.0",
             "method": "capabilities.list",
@@ -205,24 +194,10 @@ impl IpcServiceHandler {
             "id": 1
         });
 
-        let mut bytes = serde_json::to_vec(&request).map_err(|e| e.to_string())?;
-        bytes.push(b'\n');
-
-        let (reader, mut writer) = stream.into_split();
-        tokio::time::timeout(probe_timeout, writer.write_all(&bytes))
+        let resp = self
+            .http_post_jsonrpc(http_endpoint, &request)
             .await
-            .map_err(|_| "probe write timeout")?
-            .map_err(|e| format!("probe write: {e}"))?;
-
-        let mut buf_reader = BufReader::new(reader);
-        let mut line = String::new();
-        tokio::time::timeout(probe_timeout, buf_reader.read_line(&mut line))
-            .await
-            .map_err(|_| "probe read timeout")?
-            .map_err(|e| format!("probe read: {e}"))?;
-
-        let resp: Value =
-            serde_json::from_str(line.trim()).map_err(|e| format!("probe parse: {e}"))?;
+            .map_err(|e| format!("probe: {e}"))?;
 
         let caps = resp
             .get("result")
@@ -245,22 +220,15 @@ impl IpcServiceHandler {
         }
     }
 
-    /// Send a `capability.call` to a remote Songbird instance via TCP JSON-RPC.
+    /// Send a `capability.call` to a remote Songbird instance via HTTP POST.
+    ///
+    /// The remote peer runs an axum HTTP server on its mesh port. We POST
+    /// JSON-RPC to `/jsonrpc` with `Content-Type: application/json`.
     pub(super) async fn forward_to_remote_tcp(
         &self,
         endpoint: &str,
         call: &CapabilityCallParams,
     ) -> Result<Value, String> {
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-        use tokio::net::TcpStream;
-
-        let addr = endpoint.trim_start_matches("http://").trim_end_matches("/jsonrpc");
-
-        let stream = tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, TcpStream::connect(addr))
-            .await
-            .map_err(|_| format!("Timeout connecting to remote gate at {addr}"))?
-            .map_err(|e| format!("Cannot connect to remote gate at {addr}: {e}"))?;
-
         let request = serde_json::json!({
             "jsonrpc": "2.0",
             "method": "capability.call",
@@ -273,26 +241,10 @@ impl IpcServiceHandler {
             "id": 1
         });
 
-        let mut request_bytes = serde_json::to_vec(&request)
-            .map_err(|e| format!("Failed to serialize remote request: {e}"))?;
-        request_bytes.push(b'\n');
-
-        let (reader, mut writer) = stream.into_split();
-
-        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, writer.write_all(&request_bytes))
+        let response = self
+            .http_post_jsonrpc(endpoint, &request)
             .await
-            .map_err(|_| format!("Timeout writing to remote gate at {addr}"))?
-            .map_err(|e| format!("Write error to remote gate: {e}"))?;
-
-        let mut buf_reader = BufReader::new(reader);
-        let mut response_line = String::new();
-        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, buf_reader.read_line(&mut response_line))
-            .await
-            .map_err(|_| format!("Timeout reading from remote gate at {addr}"))?
-            .map_err(|e| format!("Read error from remote gate: {e}"))?;
-
-        let response: Value = serde_json::from_str(response_line.trim())
-            .map_err(|e| format!("Invalid JSON from remote gate: {e}"))?;
+            .map_err(|e| format!("Remote gate HTTP error: {e}"))?;
 
         if let Some(error) = response.get("error") {
             return Err(format!(
@@ -302,5 +254,54 @@ impl IpcServiceHandler {
         }
 
         Ok(response.get("result").cloned().unwrap_or(Value::Null))
+    }
+
+    /// HTTP POST a JSON-RPC request to a remote peer's `/jsonrpc` endpoint.
+    ///
+    /// Uses hyper for HTTP/1.1 transport — the remote peer is an axum server,
+    /// not a raw NDJSON stream.
+    async fn http_post_jsonrpc(&self, url: &str, request: &Value) -> Result<Value, String> {
+        use http_body_util::{BodyExt, Full};
+        use hyper::Request;
+        use hyper::body::Bytes;
+        use hyper_util::client::legacy::Client;
+        use hyper_util::rt::TokioExecutor;
+
+        let body_bytes =
+            serde_json::to_vec(request).map_err(|e| format!("Serialization error: {e}"))?;
+
+        let uri: hyper::Uri =
+            url.parse().map_err(|e| format!("Invalid endpoint URI '{url}': {e}"))?;
+
+        let http_request = Request::builder()
+            .method(hyper::Method::POST)
+            .uri(&uri)
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from(body_bytes)))
+            .map_err(|e| format!("Failed to build HTTP request: {e}"))?;
+
+        let client = Client::builder(TokioExecutor::new()).build_http::<Full<Bytes>>();
+
+        let response =
+            tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, client.request(http_request))
+                .await
+                .map_err(|_| format!("Timeout posting to remote gate at {url}"))?
+                .map_err(|e| format!("HTTP request to {url} failed: {e}"))?;
+
+        let status = response.status();
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .map_err(|e| format!("Failed to read response body from {url}: {e}"))?
+            .to_bytes();
+
+        if !status.is_success() {
+            let snippet = String::from_utf8_lossy(&body[..body.len().min(200)]);
+            return Err(format!("Remote gate returned HTTP {status} from {url}: {snippet}"));
+        }
+
+        serde_json::from_slice(&body)
+            .map_err(|e| format!("Invalid JSON from remote gate at {url}: {e}"))
     }
 }
