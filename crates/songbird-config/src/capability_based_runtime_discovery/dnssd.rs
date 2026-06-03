@@ -323,7 +323,7 @@ mod tests {
     #[test]
     fn parse_service_applies_txt_features_protocol_and_metadata() {
         let target = Name::from_str("registry-host.local.").unwrap();
-        let srv = SRV::new(5, 50, 443, target.clone());
+        let srv = SRV::new(5, 50, 443, target);
         let txt = txt_lookup_fixture(vec![
             "features=kv,transactions".into(),
             "protocol=https".into(),

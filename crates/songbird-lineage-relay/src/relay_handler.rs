@@ -13,7 +13,7 @@
 //! | Method | Purpose |
 //! |--------|---------|
 //! | `relay.serve` | Start relay server |
-//! | `relay.allocate` | Allocate relay session (for testing) |
+//! | `relay.allocate` | Allocate relay session (pre-provision cross-subnet path) |
 //! | `relay.status` | Get server statistics |
 //! | `relay.stop` | Stop relay server |
 //!
@@ -288,22 +288,41 @@ impl RelayHandler {
             .and_then(serde_json::Value::as_u64)
             .map_or(300, |n| u32::try_from(n).unwrap_or(u32::MAX));
 
-        // Create allocation request (this is normally done by the client)
         let request =
             AllocationRequest::new(relay_node, requester, target_addr, lineage_proof, ttl_seconds);
 
-        // Serialize for testing (in real usage, this comes over UDP)
-        let response_json = json!({
-            "method": "allocate",
-            "request": {
-                "relay_node": request.relay_node.0,
-                "requester": request.requester.0,
-                "target_addr": request.target_addr.to_string(),
-                "ttl_seconds": request.ttl_seconds
-            }
-        });
+        // Authorize via lineage authority
+        let auth_result =
+            self.authority.authorize_relay(&request.relay_node, &request.requester).await;
 
-        Ok(response_json)
+        match auth_result {
+            Ok(auth) if auth.authorized => {
+                let session_id = uuid::Uuid::new_v4();
+                let bind_addr = {
+                    let server_guard = self.server.read().await;
+                    server_guard
+                        .as_ref()
+                        .map_or(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0), |s| {
+                            s.bind_addr()
+                        })
+                };
+
+                info!(
+                    "✅ relay.allocate: session {} for {} → {}",
+                    session_id, request.requester.0, request.target_addr
+                );
+
+                Ok(json!({
+                    "success": true,
+                    "session_id": session_id.to_string(),
+                    "relay_addr": bind_addr.to_string(),
+                    "ttl_seconds": request.ttl_seconds,
+                    "masking_level": format!("{:?}", auth.masking_level)
+                }))
+            }
+            Ok(_) => Err(format!("Relay authorization denied for {}", request.requester.0)),
+            Err(e) => Err(format!("Authorization check failed: {e}")),
+        }
     }
 }
 
@@ -415,10 +434,8 @@ mod tests {
         let authority = Arc::new(RelayAuthority::StubAllow);
         let handler = RelayHandler::new(authority);
 
-        // Start server
         handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
 
-        // Test allocate (this is a mock/test method)
         let params = json!({
             "relay_node": "tower",
             "requester": "pixel",
@@ -428,11 +445,11 @@ mod tests {
 
         let result = handler.handle_allocate(params).await.unwrap();
 
-        assert_eq!(result["method"], "allocate");
-        assert_eq!(result["request"]["relay_node"], "tower");
-        assert_eq!(result["request"]["requester"], "pixel");
+        assert_eq!(result["success"], true);
+        assert!(result["session_id"].as_str().is_some());
+        assert!(result["relay_addr"].as_str().is_some());
+        assert_eq!(result["ttl_seconds"], 300);
 
-        // Cleanup
         let _ = handler.handle_stop(json!({})).await;
     }
 
@@ -517,8 +534,8 @@ mod tests {
             }))
             .await
             .unwrap();
-        assert_eq!(result["method"], "allocate");
-        assert_eq!(result["request"]["ttl_seconds"], 60);
+        assert_eq!(result["success"], true);
+        assert_eq!(result["ttl_seconds"], 60);
         let _ = handler.handle_stop(json!({})).await;
     }
 }

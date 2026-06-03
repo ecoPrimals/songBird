@@ -187,7 +187,6 @@ mod tests {
     #[test]
     fn get_connection_timeout_ms_with_tiered_defaults() {
         let ms = get_connection_timeout_ms_with(&|k| match k {
-            "SONGBIRD_CONNECTION_TIMEOUT_MS" => Err(std::env::VarError::NotPresent),
             "SONGBIRD_ENV" => Ok("staging".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
@@ -197,8 +196,6 @@ mod tests {
     #[test]
     fn get_connection_timeout_ms_with_cloud_fallback() {
         let ms = get_connection_timeout_ms_with(&|k| match k {
-            "SONGBIRD_CONNECTION_TIMEOUT_MS" => Err(std::env::VarError::NotPresent),
-            "SONGBIRD_ENV" => Err(std::env::VarError::NotPresent),
             "KUBERNETES_SERVICE_HOST" => Ok("10.0.0.1".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
@@ -208,7 +205,6 @@ mod tests {
     #[test]
     fn get_max_connections_with_respects_environment_tier() {
         let n = get_max_connections_with(&|k| match k {
-            "SONGBIRD_MAX_CONNECTIONS" => Err(std::env::VarError::NotPresent),
             "SONGBIRD_ENV" => Ok("testing".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
@@ -230,7 +226,6 @@ mod tests {
     #[test]
     fn get_buffer_pool_size_with_caps_against_memory_limit() {
         let n = get_buffer_pool_size_with(&|k| match k {
-            "SONGBIRD_BUFFER_POOL_SIZE" => Err(std::env::VarError::NotPresent),
             "SONGBIRD_ENV" => Ok("production".to_string()),
             "MEMORY_LIMIT" => Ok("2048".to_string()),
             _ => Err(std::env::VarError::NotPresent),
@@ -241,9 +236,7 @@ mod tests {
     #[test]
     fn get_batch_size_with_clamps_to_bounds() {
         let n = get_batch_size_with(&|k| match k {
-            "SONGBIRD_BATCH_SIZE" => Err(std::env::VarError::NotPresent),
             "SONGBIRD_WORKER_THREADS" => Ok("1000".to_string()),
-            "MEMORY_LIMIT" => Err(std::env::VarError::NotPresent),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert_eq!(n, 5000);
@@ -264,7 +257,6 @@ mod tests {
     #[test]
     fn enable_zero_copy_with_production_default_true() {
         let b = enable_zero_copy_with(&|k| match k {
-            "SONGBIRD_ENABLE_ZERO_COPY" => Err(std::env::VarError::NotPresent),
             "SONGBIRD_ENV" => Ok("production".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });

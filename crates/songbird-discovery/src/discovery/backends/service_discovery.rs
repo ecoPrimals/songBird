@@ -307,16 +307,28 @@ impl UniversalServiceDiscovery {
         }
     }
 
-    /// Detect file-based service definitions
+    /// Detect file-based service definitions.
+    ///
+    /// Checks `$SONGBIRD_SERVICE_CONFIG_PATH` first (colon-separated list),
+    /// then probes conventional OS paths as fallback.
     fn detect_file_based_services(&mut self) {
-        let config_paths =
-            vec!["/etc/services.yaml", "/etc/services.json", "./services.yaml", "./services.json"];
+        let paths: Vec<String> =
+            if let Ok(custom) = songbird_process_env::var("SONGBIRD_SERVICE_CONFIG_PATH") {
+                custom.split(':').map(String::from).collect()
+            } else {
+                vec![
+                    "/etc/services.yaml".to_string(),
+                    "/etc/services.json".to_string(),
+                    "./services.yaml".to_string(),
+                    "./services.json".to_string(),
+                ]
+            };
 
-        for path in config_paths {
+        for path in &paths {
             if std::path::Path::new(path).exists() {
                 debug!("Detected file-based services: {}", path);
                 self.discovery_methods.push(DiscoveryMethod::FileBased {
-                    path: path.to_string(),
+                    path: path.clone(),
                 });
             }
         }

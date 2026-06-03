@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn detect_network_region_heuristic_buckets_and_ipv6() {
         assert_eq!(
-            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
             "reserved"
         );
         assert_eq!(

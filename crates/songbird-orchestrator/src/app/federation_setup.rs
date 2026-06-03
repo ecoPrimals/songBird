@@ -160,9 +160,14 @@ pub async fn setup_federation(
     federation_state: Arc<FederationState>,
     options: FederationOptions,
 ) -> Result<FederationSetup> {
-    // Resolve federation enabled from options OR env
-    let enabled =
-        options.enabled.unwrap_or_else(|| SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false));
+    // Resolve federation enabled: options → SONGBIRD_FEDERATION_ENABLED → FEDERATION_ENABLED (legacy alias)
+    let enabled = options.enabled.unwrap_or_else(|| {
+        if songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED").is_ok() {
+            SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false)
+        } else {
+            SafeEnv::get_bool("FEDERATION_ENABLED", false)
+        }
+    });
 
     if !enabled {
         info!("🏠 Running in standalone mode (federation disabled)");

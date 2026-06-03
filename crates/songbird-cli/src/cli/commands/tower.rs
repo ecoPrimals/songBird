@@ -159,7 +159,7 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
     }
 
     if args.federation {
-        songbird_process_env::set_var("FEDERATION_ENABLED", "true");
+        songbird_process_env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
     }
 
     if args.dark_forest {

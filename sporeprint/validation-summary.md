@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 8,530+ tests, 31 crates, 57 JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate TURN dispatch, DH-1 compliant, Wave 70: mesh.probe_latency (active RTT), virtual relay connection pooling, hickory-resolver 0.24→0.25, zero clippy workspace-wide"
-date = 2026-06-02
+description = "Sovereign networking primal — 8,530+ tests, 31 crates, 57+ JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate capability.call (HTTP POST), virtual relay Phase 2 (default mode), relay session allocate handshake, env var alignment, DH-1 compliant, zero clippy workspace-wide"
+date = 2026-06-03
 
 [taxonomies]
 primals = ["songbird"]

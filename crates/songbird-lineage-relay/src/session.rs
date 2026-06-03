@@ -343,7 +343,7 @@ mod tests {
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
 
-        let relay_session = RelaySession::new(
+        let relay_session = RelaySession::new_unverified(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
@@ -392,7 +392,7 @@ mod tests {
     async fn attempt_upgrade_relayed_returns_false_without_socket_upgrade() {
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
-        let relay_session = RelaySession::new(
+        let relay_session = RelaySession::new_unverified(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
@@ -411,7 +411,7 @@ mod tests {
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
         let relay_session = Arc::new(
-            RelaySession::new(
+            RelaySession::new_unverified(
                 NodeId::from("relay-1"),
                 server_addr,
                 NodeId::from("requester"),

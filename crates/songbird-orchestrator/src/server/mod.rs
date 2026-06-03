@@ -498,9 +498,10 @@ impl ServiceMonitor {
         reason = "async signature required by Axum, trait objects, or future I/O"
     )]
     async fn check_federation_connections_health() -> bool {
-        // In production, this would check actual federation node connections
-        // For now, simulate with environment variable check
-        SafeEnv::get_or_default("SONGBIRD_FEDERATION_ENABLED", "true") != "false"
+        let explicitly_disabled = songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED")
+            .or_else(|_| songbird_process_env::var("FEDERATION_ENABLED"))
+            .is_ok_and(|v| matches!(v.to_lowercase().as_str(), "false" | "0" | "no" | "off"));
+        !explicitly_disabled
     }
 
     /// Check security services health

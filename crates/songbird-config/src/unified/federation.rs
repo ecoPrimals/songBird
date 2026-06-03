@@ -41,8 +41,13 @@ pub struct UnifiedFederationConfig {
 
 impl Default for UnifiedFederationConfig {
     fn default() -> Self {
+        let enabled = songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED")
+            .or_else(|_| songbird_process_env::var("FEDERATION_ENABLED"))
+            .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes" | "on"))
+            .unwrap_or(false);
+
         Self {
-            enabled: songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED").is_ok(),
+            enabled,
             node: NodeConfig::default(),
             cluster: ClusterConfig::default(),
             cluster_discovery: ClusterDiscoveryConfig::default(),

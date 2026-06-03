@@ -537,8 +537,7 @@ mod tests {
 
     #[test]
     fn btsp_validation_rejects_empty_session() {
-        let request =
-            r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1,"_btsp_session":""}"#;
+        let request = r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1,"_btsp_session":""}"#;
         let result = validate_btsp_session(request);
         assert!(result.is_err());
         let err = result.unwrap_err();

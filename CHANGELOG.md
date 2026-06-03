@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.6-wave74] - 2026-06-03 - Cross-Subnet Relay + Virtual Relay Phase 2 + Env Var Alignment
+
+### Added
+- **Virtual relay Phase 2 (default mode)**: `ipc.resolve` now returns virtual relay endpoints
+  by default. `prefer_virtual` defaults to `true`. Native endpoints available via explicit
+  `native: true` parameter. BTSP session validation on relay traffic (rejects empty tokens).
+- **`ipc.relay_stats` method**: Exposes virtual relay performance metrics — active relays,
+  total requests, average overhead (microseconds). New `IpcMethod::RelayStats` enum variant.
+- **Relay session allocate handshake**: `RelaySession::new` now performs full server-side
+  allocation — sends `AllocateRequest`, receives `AllocationResponse`, uses server-assigned
+  `session_id`. Fixes the critical integration gap where client-generated UUIDs never matched
+  server sessions.
+- **`relay.allocate` real implementation**: Evolved from test stub to production handler that
+  checks lineage authorization and returns proper allocation response with session_id, relay_addr,
+  TTL, and masking level.
+- **`RelayMetrics` tracking**: Atomic counters for relay request count and cumulative overhead
+  (microseconds) in `virtual_relay.rs`.
+
+### Changed
+- **Env var alignment**: `SONGBIRD_FEDERATION_ENABLED` canonicalized with consistent bool
+  parsing (default `false`). `FEDERATION_ENABLED` honored as legacy alias in federation setup
+  and health monitor. Tower CLI writes canonical name. Unified config presence-check fixed to
+  proper bool parse.
+- **`cloudflared_tunnel.rs` extraction**: `CloudflaredTunnel` (Tier 5 emergency tunnel) extracted
+  from `multi_tier_coordinator.rs` (799→655L) into its own SRP module.
+- **`remote_dispatch.rs` HTTP POST** (Wave 73): Cross-gate `capability.call` now uses proper
+  HTTP POST to `/jsonrpc` instead of raw TCP.
+- **`mesh_seed` auto-bootstrap** (Wave 73): `spawn_mesh_seed()` called during startup when
+  `SONGBIRD_PEERS` is set.
+- **`mesh.init` string format** (Wave 73): `bootstrap_peers` accepts both `{node_id, address}`
+  objects and `"node@host:port"` / `"host:port"` strings.
+- **`latency_ms` in health cycle** (Wave 73): `mesh.probe_latency` invoked every 4th health
+  tick (~2 minutes) for consistent RTT in `discovery.peers`.
+- **Service discovery env override**: `SONGBIRD_SERVICE_CONFIG_PATH` (colon-separated) allows
+  custom file-based service definition paths instead of hardcoded `/etc/services.*`.
+- **Clippy evolution**: Removed redundant clone, redundant match arms, approx_constant false
+  positive, unchecked Duration subtraction, hand-coded IP address, identity_op.
+
+### Fixed
+- **Relay session ID mismatch**: Production `RelaySession` was generating client-side UUIDs
+  that never matched server-allocated sessions. Now performs proper allocation handshake.
+- **Federation health check semantics**: Was defaulting to "enabled=true" even when unset;
+  now correctly reports healthy unless explicitly set to `false`.
+
+---
+
 ## [v0.2.5-wave70] - 2026-06-02 - Active Latency Probing + Connection Pooling + Dependency Evolution
 
 ### Added

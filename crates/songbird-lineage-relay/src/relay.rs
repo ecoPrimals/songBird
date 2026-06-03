@@ -143,12 +143,19 @@ pub struct RelaySession {
     socket: Arc<UdpSocket>,
 }
 
+/// Timeout for the allocation handshake response from the relay server.
+const ALLOCATE_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
+
 impl RelaySession {
-    /// Create new relay session
+    /// Establish a relay session by performing a full allocation handshake with the relay server.
+    ///
+    /// Sends an `AllocateRequest` and waits for an `AllocationResponse` containing the
+    /// server-assigned `session_id`. All subsequent frames use this server-assigned ID.
     ///
     /// # Errors
     ///
-    /// Returns error if UDP socket binding fails.
+    /// Returns error if UDP socket binding fails, the relay server is unreachable,
+    /// the allocation is denied (authorization failure), or the handshake times out.
     pub async fn new(
         relay_node: NodeId,
         relay_address: SocketAddr,
@@ -156,14 +163,104 @@ impl RelaySession {
         target: NodeId,
         masking_level: MaskingLevel,
     ) -> Result<Self> {
-        // Bind to ephemeral port (OS-assigned)
         let socket = UdpSocket::bind(EPHEMERAL_BIND_ADDR).await.map_err(|e| {
             LineageRelayError::NetworkError(format!(
                 "Failed to bind UDP socket for relay session: {e}"
             ))
         })?;
 
-        // Connect to relay address (sets default destination)
+        socket.connect(relay_address).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to connect to relay server: {e}"))
+        })?;
+
+        let alloc_req =
+            RelayProtocol::AllocateRequest(crate::relay_protocol::AllocationRequest::new(
+                relay_node.clone(),
+                requester.clone(),
+                relay_address,
+                Vec::new(), // lineage_proof — populated by security provider when available
+                300,        // TTL 5 minutes
+            ));
+
+        let encoded = alloc_req.encode();
+        socket.send(&encoded).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to send AllocateRequest: {e}"))
+        })?;
+
+        debug!("📡 Sent AllocateRequest to relay {} for target {}", relay_node, target);
+
+        let mut buf = [0u8; 4096];
+        let n = tokio::time::timeout(ALLOCATE_HANDSHAKE_TIMEOUT, socket.recv(&mut buf))
+            .await
+            .map_err(|_| {
+                LineageRelayError::Timeout(format!(
+                    "Relay allocation handshake timed out after {}s",
+                    ALLOCATE_HANDSHAKE_TIMEOUT.as_secs()
+                ))
+            })?
+            .map_err(|e| {
+                LineageRelayError::NetworkError(format!(
+                    "Failed to receive AllocationResponse: {e}"
+                ))
+            })?;
+
+        let response = match RelayProtocol::parse(&buf[..n])? {
+            RelayProtocol::AllocateResponse(resp) => resp,
+            other => {
+                return Err(LineageRelayError::InvalidProtocol(format!(
+                    "Expected AllocationResponse, got: {other:?}"
+                )));
+            }
+        };
+
+        if !response.success {
+            let reason = response.error.unwrap_or_else(|| "unknown".to_string());
+            return Err(LineageRelayError::NoRelayAvailable(format!(
+                "Relay allocation denied by {relay_node}: {reason}"
+            )));
+        }
+
+        let session_id = response.session_id.ok_or_else(|| {
+            LineageRelayError::InvalidProtocol(
+                "AllocationResponse success=true but no session_id".to_string(),
+            )
+        })?;
+
+        info!(
+            "✅ Relay session allocated: {} via {} (TTL {}s)",
+            session_id, relay_node, response.ttl_seconds
+        );
+
+        Ok(Self {
+            session_id,
+            relay_node,
+            relay_address,
+            requester,
+            target,
+            masking_level,
+            established_at: SystemTime::now(),
+            bytes_relayed: Arc::new(AtomicU64::new(0)),
+            socket: Arc::new(socket),
+        })
+    }
+
+    /// Create a relay session without performing the server allocate handshake.
+    ///
+    /// Used in tests where no real relay server is running.
+    #[cfg(any(test, feature = "test-mocks"))]
+    pub async fn new_unverified(
+        relay_node: NodeId,
+        relay_address: SocketAddr,
+        requester: NodeId,
+        target: NodeId,
+        masking_level: MaskingLevel,
+    ) -> Result<Self> {
+        let socket = UdpSocket::bind(EPHEMERAL_BIND_ADDR).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!(
+                "Failed to bind UDP socket for relay session: {e}"
+            ))
+        })?;
+
         socket.connect(relay_address).await.map_err(|e| {
             LineageRelayError::NetworkError(format!("Failed to connect to relay server: {e}"))
         })?;
@@ -460,11 +557,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_session_creation() {
-        // Bind a server first to have a valid address to connect to
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
 
-        let session = RelaySession::new(
+        let session = RelaySession::new_unverified(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
@@ -480,11 +576,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_session_send() {
-        // Bind a server first
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
 
-        let session = RelaySession::new(
+        let session = RelaySession::new_unverified(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
@@ -563,7 +658,7 @@ mod tests {
         rt.block_on(async {
             let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
             let server_addr = server_socket.local_addr().unwrap();
-            let session = RelaySession::new(
+            let session = RelaySession::new_unverified(
                 NodeId::from("relay-1"),
                 server_addr,
                 NodeId::from("requester"),
@@ -613,7 +708,7 @@ mod tests {
     async fn relay_session_refresh_and_close_sends_wire_messages() {
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
-        let session = RelaySession::new(
+        let session = RelaySession::new_unverified(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
