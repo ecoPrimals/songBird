@@ -383,6 +383,27 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
+    /// Handle `ipc.relay_stats` — return virtual relay performance metrics.
+    ///
+    /// ## Response
+    /// ```json
+    /// { "active_relays": 3, "total_requests": 1024, "avg_overhead_us": 342 }
+    /// ```
+    pub(super) async fn handle_relay_stats(&self, _params: Value) -> Result<Value, String> {
+        let relays = self.virtual_relay.list_relays().await;
+        let metrics = self.virtual_relay.metrics();
+
+        Ok(serde_json::json!({
+            "active_relays": relays.len(),
+            "relays": relays.iter().map(|(name, path)| {
+                serde_json::json!({"primal": name, "socket": path.display().to_string()})
+            }).collect::<Vec<_>>(),
+            "total_requests": metrics.requests.load(std::sync::atomic::Ordering::Relaxed),
+            "avg_overhead_us": metrics.avg_overhead_us(),
+            "total_overhead_us": metrics.overhead_us.load(std::sync::atomic::Ordering::Relaxed),
+        }))
+    }
+
     /// Handle `ipc.watch` — poll for registry changes since a given revision.
     ///
     /// Enables consuming primals (e.g. toadStool) to detect when new providers

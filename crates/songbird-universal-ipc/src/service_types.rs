@@ -14,6 +14,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+fn default_true() -> bool {
+    true
+}
+
 /// `bytes::Bytes` re-export for zero-copy IPC payload fields and wire buffers.
 pub use bytes::Bytes;
 /// Reference-counted IPC byte buffer (see [`crate::service_types`] module docs).
@@ -45,11 +49,12 @@ pub struct ResolveParams {
     pub primal_id: Option<String>,
     #[serde(default)]
     pub capability: Option<String>,
-    /// When `true`, prefer the virtual relay endpoint over the native socket.
-    /// Phase 1 (shadow mode): opt-in only. Phase 2 will make this the default.
-    #[serde(default, rename = "virtual")]
+    /// When `false`, force native endpoint (bypass relay).
+    /// Default is `true` (Phase 2): virtual relay used when available.
+    #[serde(default = "default_true", rename = "virtual")]
     pub prefer_virtual: bool,
-    /// When `true`, force native endpoint (bypass relay even in Phase 2+).
+    /// When `true`, force native endpoint (bypass relay even when virtual is available).
+    /// Overrides `prefer_virtual`.
     #[serde(default)]
     pub native: bool,
 }

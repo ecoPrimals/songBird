@@ -91,6 +91,7 @@ pub enum IpcMethod {
     FindCapability,
     Heartbeat,
     Watch,
+    RelayStats,
 }
 
 /// `http.*`

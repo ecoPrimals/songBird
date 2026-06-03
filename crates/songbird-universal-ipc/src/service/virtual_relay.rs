@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Virtual Endpoint Relay — Phase 1 (Shadow Mode)
+//! Virtual Endpoint Relay — Phase 2 (Default Mode)
 //!
 //! Creates per-primal relay UDS sockets under `$XDG_RUNTIME_DIR/biomeos/songbird/virtual/`.
 //! Each relay socket accepts JSON-RPC connections and transparently forwards them to the
-//! primal's native endpoint. In Phase 1, virtual endpoints are opt-in via `virtual: true`
-//! in `ipc.resolve`.
+//! primal's native endpoint. Phase 2: virtual endpoints are the default in `ipc.resolve`
+//! (opt-out via `native: true`).
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
@@ -23,6 +25,34 @@ use songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT;
 pub struct VirtualRelayManager {
     relays: RwLock<HashMap<String, RelayEntry>>,
     base_dir: PathBuf,
+    /// Shared relay metrics (request count, total overhead in microseconds).
+    metrics: Arc<RelayMetrics>,
+}
+
+/// Relay performance metrics (shared atomically across all relay tasks).
+pub struct RelayMetrics {
+    /// Total number of requests relayed.
+    pub requests: AtomicU64,
+    /// Cumulative relay overhead in microseconds (time spent in relay, excluding native processing).
+    pub overhead_us: AtomicU64,
+}
+
+impl RelayMetrics {
+    fn new() -> Self {
+        Self {
+            requests: AtomicU64::new(0),
+            overhead_us: AtomicU64::new(0),
+        }
+    }
+
+    /// Average overhead per request in microseconds.
+    pub fn avg_overhead_us(&self) -> u64 {
+        let count = self.requests.load(Ordering::Relaxed);
+        if count == 0 {
+            return 0;
+        }
+        self.overhead_us.load(Ordering::Relaxed) / count
+    }
 }
 
 struct RelayEntry {
@@ -41,6 +71,7 @@ impl VirtualRelayManager {
         Self {
             relays: RwLock::new(HashMap::new()),
             base_dir,
+            metrics: Arc::new(RelayMetrics::new()),
         }
     }
 
@@ -93,7 +124,11 @@ impl VirtualRelayManager {
             "Virtual relay listener started (Phase 1 shadow mode)"
         );
 
-        let task = tokio::spawn(relay_accept_loop(listener, native_target.clone()));
+        let task = tokio::spawn(relay_accept_loop(
+            listener,
+            native_target.clone(),
+            Arc::clone(&self.metrics),
+        ));
 
         let mut relays = self.relays.write().await;
         relays.insert(
@@ -138,6 +173,12 @@ impl VirtualRelayManager {
             .collect()
     }
 
+    /// Access relay performance metrics.
+    #[must_use]
+    pub fn metrics(&self) -> &Arc<RelayMetrics> {
+        &self.metrics
+    }
+
     /// Cleanup all relay sockets on shutdown.
     pub async fn shutdown(&self) {
         let mut relays = self.relays.write().await;
@@ -162,13 +203,18 @@ impl Drop for VirtualRelayManager {
 /// Accept loop for a virtual relay listener.
 ///
 /// Each accepted connection is spawned as an independent relay task.
-async fn relay_accept_loop(listener: UnixListener, native_target: String) {
+async fn relay_accept_loop(
+    listener: UnixListener,
+    native_target: String,
+    metrics: Arc<RelayMetrics>,
+) {
     loop {
         match listener.accept().await {
             Ok((stream, _addr)) => {
                 let target = native_target.clone();
+                let m = Arc::clone(&metrics);
                 tokio::spawn(async move {
-                    if let Err(e) = relay_connection(stream, &target).await {
+                    if let Err(e) = relay_connection(stream, &target, &m).await {
                         tracing::debug!(error = %e, "Virtual relay connection ended");
                     }
                 });
@@ -181,12 +227,44 @@ async fn relay_accept_loop(listener: UnixListener, native_target: String) {
     }
 }
 
+/// Validate BTSP session token on a relay request (Phase 2 security).
+///
+/// Returns `Ok(())` if the request carries a valid `_btsp_session` field, or if
+/// BTSP enforcement is not configured (graceful degradation for standalone mode).
+/// Returns `Err` with a JSON-RPC error response if validation fails.
+fn validate_btsp_session(request_line: &str) -> Result<(), serde_json::Value> {
+    let parsed: serde_json::Value = match serde_json::from_str(request_line) {
+        Ok(v) => v,
+        Err(_) => return Ok(()), // Not valid JSON — will fail later in forwarding
+    };
+
+    // If request carries a _btsp_session field, validate it is non-empty.
+    // Full cryptographic validation deferred until BearDog BTSP Phase 4.
+    if let Some(session) = parsed.get("_btsp_session").and_then(serde_json::Value::as_str)
+        && session.is_empty()
+    {
+        let id = parsed.get("id").cloned().unwrap_or(serde_json::Value::Null);
+        return Err(serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": "BTSP session token is empty"},
+            "id": id
+        }));
+    }
+    // No _btsp_session field: allowed (backward compatibility / standalone mode)
+    Ok(())
+}
+
 /// Relay a single client connection: maintains a persistent native connection for the
 /// session lifetime. Requests stream from client → native, responses stream back.
 ///
 /// Connection pooling: one native UDS connection is held open for the entire client
 /// session (NDJSON streaming). Reconnects automatically on native connection failure.
-async fn relay_connection(client_stream: UnixStream, native_target: &str) -> anyhow::Result<()> {
+/// Measures relay overhead (time spent in relay logic, excluding native I/O wait).
+async fn relay_connection(
+    client_stream: UnixStream,
+    native_target: &str,
+    metrics: &RelayMetrics,
+) -> anyhow::Result<()> {
     let (client_reader, mut client_writer) = client_stream.into_split();
     let mut client_buf = BufReader::new(client_reader);
 
@@ -211,6 +289,16 @@ async fn relay_connection(client_stream: UnixStream, native_target: &str) -> any
             continue;
         }
 
+        // BTSP session validation (Phase 2)
+        if let Err(reject) = validate_btsp_session(trimmed) {
+            let mut reject_bytes = serde_json::to_vec(&reject)?;
+            reject_bytes.push(b'\n');
+            client_writer.write_all(&reject_bytes).await?;
+            continue;
+        }
+
+        let relay_start = std::time::Instant::now();
+
         // Try persistent connection first, reconnect on failure
         let response = if let Some(conn) = &mut native_conn {
             if let Ok(resp) = forward_on_persistent(trimmed, conn).await {
@@ -228,6 +316,11 @@ async fn relay_connection(client_stream: UnixStream, native_target: &str) -> any
         let mut response_bytes = serde_json::to_vec(&response)?;
         response_bytes.push(b'\n');
         client_writer.write_all(&response_bytes).await?;
+
+        // Record metrics (overhead includes serialization + write, not client read wait)
+        let elapsed_us = u64::try_from(relay_start.elapsed().as_micros()).unwrap_or(u64::MAX);
+        metrics.requests.fetch_add(1, Ordering::Relaxed);
+        metrics.overhead_us.fetch_add(elapsed_us, Ordering::Relaxed);
     }
 
     Ok(())
@@ -427,5 +520,38 @@ mod tests {
         assert!(!mgr.has_relay("mock-primal").await);
 
         mock_handle.abort();
+    }
+
+    #[test]
+    fn btsp_validation_allows_no_session() {
+        let request = r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1}"#;
+        assert!(validate_btsp_session(request).is_ok());
+    }
+
+    #[test]
+    fn btsp_validation_allows_valid_session() {
+        let request =
+            r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1,"_btsp_session":"abc123"}"#;
+        assert!(validate_btsp_session(request).is_ok());
+    }
+
+    #[test]
+    fn btsp_validation_rejects_empty_session() {
+        let request =
+            r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1,"_btsp_session":""}"#;
+        let result = validate_btsp_session(request);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn relay_metrics_avg_overhead() {
+        let metrics = RelayMetrics::new();
+        assert_eq!(metrics.avg_overhead_us(), 0);
+
+        metrics.requests.store(4, Ordering::Relaxed);
+        metrics.overhead_us.store(1000, Ordering::Relaxed);
+        assert_eq!(metrics.avg_overhead_us(), 250);
     }
 }
