@@ -564,6 +564,9 @@ impl IpcHandlers {
             MeshMethod::Mirror => self.mesh_handler.handle_mirror(params).await,
             MeshMethod::Publish => self.mesh_handler.handle_publish(params).await,
             MeshMethod::ProbeLatency => self.mesh_handler.handle_probe_latency(params).await,
+            MeshMethod::CapabilitiesAnnounce => {
+                self.mesh_handler.handle_capabilities_announce(params).await
+            }
         };
         result.map_err(|e| crate::ipc::pure_rust_server::JsonRpcError::internal_error(e))
     }

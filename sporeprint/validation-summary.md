@@ -1,6 +1,6 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 8,530+ tests, 31 crates, 57+ JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate capability.call (HTTP POST), virtual relay Phase 2 (default mode), relay session allocate handshake, env var alignment, DH-1 compliant, zero clippy workspace-wide"
+description = "Sovereign networking primal — 13,960+ tests, 31 crates, 58+ JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate capability.call (HTTP POST), capability propagation (push model), HTTP/UDS unified state, BTSP relay hardened (Phase 3: structural+timestamp), virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
 date = 2026-06-03
 
 [taxonomies]
@@ -10,9 +10,9 @@ springs = ["primalspring"]
 
 ## Status
 
-- **8,530+ lib tests** passed, 0 failures, 23 ignored
+- **13,960+ lib tests** passed, 0 failures, 23 ignored
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
-- **57 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
+- **58 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
 - **5-tier ConnectionFallbackChain**: direct → STUN → lineage relay → TURN → emergency tunnel
 - **`capability.call` cross-gate dispatch** (Wave 211+38): local UDS + remote mesh TCP + TURN relay fallback for NAT'd peers

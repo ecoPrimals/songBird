@@ -216,6 +216,62 @@ impl UniversalIpcBroker {
             .context("Universal IPC Broker server error")?;
         Ok(())
     }
+
+    /// Create broker using a pre-built shared handler (state unification).
+    ///
+    /// Both the HTTP server and UDS broker share the same `IpcServiceHandler`,
+    /// ensuring `ipc.register` and `mesh.init` state is visible on both transports.
+    /// # Errors
+    ///
+    /// Returns an error if the operation fails.
+    pub async fn with_shared_handler(
+        handler: Arc<IpcServiceHandler>,
+        registry: Arc<tokio::sync::RwLock<songbird_universal_ipc::registry::ServiceRegistry>>,
+    ) -> Result<Self> {
+        use songbird_universal_ipc::ipc;
+
+        info!("🌍 Initializing Universal IPC Broker (shared handler mode)");
+
+        ipc::init().context("Failed to initialize Universal IPC")?;
+
+        let endpoint = match ipc::register(
+            primal_names::SELF_NAME,
+            vec![
+                "ipc".to_string(),
+                "discovery".to_string(),
+                "registry".to_string(),
+                "stun".to_string(),
+            ],
+        )
+        .await
+        {
+            Ok(endpoint) => {
+                info!("✅ Songbird registered at endpoint: {}", endpoint.path);
+                endpoint
+            }
+            Err(e) if e.to_string().contains("already registered") => {
+                warn!("⚠️  Songbird already registered, using existing registration");
+                VirtualEndpoint {
+                    path: "/primal/songbird".to_string(),
+                }
+            }
+            Err(e) => {
+                return Err(e).context("Failed to register Songbird IPC endpoint");
+            }
+        };
+
+        let mesh_handler = Arc::clone(handler.mesh_handler());
+        let server = TowerAtomicServer::from_shared(handler);
+
+        info!("✅ Universal IPC Broker initialized (shared state)");
+
+        Ok(Self {
+            endpoint,
+            server,
+            registry,
+            mesh_handler,
+        })
+    }
 }
 
 /// Shared handle to the broker's service registry (returned by [`start_broker_with_discovery`]).
@@ -307,6 +363,42 @@ pub async fn start_broker_with_discovery(
     info!("   Other primals can now connect to /primal/songbird");
     info!("   Methods: ipc.*, http.*, stun.*, discovery.*, rendezvous.*, peer.*");
     info!("   NOTE: Service layer handles platform abstraction internally");
+
+    Ok(BrokerHandle {
+        registry,
+        mesh_handler,
+    })
+}
+
+/// Start the Universal IPC Broker with a pre-built shared handler.
+///
+/// This achieves HTTP/UDS state unification: the same `IpcServiceHandler`
+/// backs both the HTTP `/jsonrpc` endpoint and the UDS `/primal/songbird` socket.
+/// # Errors
+///
+/// Returns an error if the operation fails.
+pub async fn start_broker_with_shared_handler(
+    handler: Arc<songbird_universal_ipc::service::IpcServiceHandler>,
+    registry: SharedServiceRegistry,
+) -> Result<BrokerHandle> {
+    info!("🌍 Starting Universal IPC Broker (shared handler — HTTP/UDS unified)");
+
+    let mesh_handler = Arc::clone(handler.mesh_handler());
+    let broker = UniversalIpcBroker::with_shared_handler(handler, Arc::clone(&registry))
+        .await
+        .context("Failed to create Universal IPC Broker (shared)")?;
+
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+
+    tokio::spawn(async move {
+        if let Err(e) = broker.start_with_ready(ready_tx).await {
+            error!("❌ Universal IPC Broker error: {}", e);
+        }
+    });
+
+    let _ = ready_rx.await;
+
+    info!("✅ Universal IPC Broker started (shared state with HTTP)");
 
     Ok(BrokerHandle {
         registry,

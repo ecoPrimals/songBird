@@ -209,7 +209,7 @@ mod tests {
         let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let relay_addr: SocketAddr = server.local_addr().unwrap();
 
-        let session = RelaySession::new(
+        let session = RelaySession::new_unverified(
             NodeId("relay".into()),
             relay_addr,
             NodeId("me".into()),

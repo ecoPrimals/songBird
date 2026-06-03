@@ -10,6 +10,7 @@ use crate::endpoint::NativeEndpoint;
 use crate::introspection::CONSUMED_CAPABILITIES;
 use serde_json::Value;
 use songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT;
+use std::sync::Arc;
 use tracing::debug;
 
 /// Build a deterministic canonical JSON payload for signing.
@@ -78,6 +79,7 @@ impl IpcServiceHandler {
 
         // Register in registry (`register` takes `&self` and uses its own inner lock)
         let native_socket = native_endpoint.socket_path();
+        let has_capabilities = !params.capabilities.is_empty();
         let virtual_endpoint = self
             .registry
             .read()
@@ -101,6 +103,15 @@ impl IpcServiceHandler {
                 error = %e,
                 "Virtual relay start failed (non-blocking)"
             );
+        }
+
+        // Propagate capabilities to mesh peers (push model for cross-gate discovery)
+        if has_capabilities {
+            let all_capabilities = self.collect_all_local_capabilities().await;
+            let mesh = Arc::clone(&self.mesh_handler);
+            tokio::spawn(async move {
+                mesh.announce_capabilities_to_peers(all_capabilities).await;
+            });
         }
 
         let result = RegisterResult {
@@ -143,6 +154,18 @@ impl IpcServiceHandler {
                 (None, None)
             }
         }
+    }
+
+    /// Collect all capabilities from all locally registered primals.
+    ///
+    /// Used to build the aggregate capability set announced to mesh peers.
+    async fn collect_all_local_capabilities(&self) -> Vec<String> {
+        let registry = self.registry.read().await;
+        let metadata = registry.get_all_metadata().await;
+        let mut all_caps: Vec<String> = metadata.into_iter().flat_map(|m| m.capabilities).collect();
+        all_caps.sort();
+        all_caps.dedup();
+        all_caps
     }
 
     /// Verify a registering primal's identity by probing its endpoint with `identity.get`.

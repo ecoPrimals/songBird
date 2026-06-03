@@ -30,6 +30,13 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
         }
     }
 
+    /// Create from a pre-built shared handler (state unification).
+    pub fn from_shared(handler: Arc<H>) -> Self {
+        Self {
+            handler,
+        }
+    }
+
     /// Serve JSON-RPC requests on the given endpoint.
     ///
     /// Listens for connections and handles requests until cancelled.

@@ -519,3 +519,45 @@ fn content_announcement_store_query_excludes_expired() {
     });
     assert!(store.query("content:old").is_empty(), "expired entries filtered out");
 }
+
+#[tokio::test]
+async fn collect_mesh_peers_returns_announced_capabilities() {
+    use crate::handlers::mesh_handler::MeshHandler;
+    use songbird_onion_relay::mesh::{BeaconMesh, EndpointType, RelayEndpoint};
+
+    let mesh = BeaconMesh::new("local-node".into(), vec![]);
+    mesh.add_endpoint(
+        "east-gate".into(),
+        RelayEndpoint {
+            node_id: "east-gate".into(),
+            endpoint_type: EndpointType::Direct {
+                addr: "192.168.1.50:7700".parse().unwrap(),
+            },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: true,
+        },
+    )
+    .await;
+
+    let handler = MeshHandler::with_mesh(mesh, "local-node");
+
+    // Simulate receiving a capabilities announcement from east-gate
+    handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "east-gate",
+            "capabilities": ["security", "crypto", "mesh"]
+        }))
+        .await
+        .unwrap();
+
+    let discovery = DiscoveryHandler::new();
+    let mut discovery = discovery;
+    discovery.set_mesh_handler(std::sync::Arc::new(handler));
+
+    let result = discovery.handle_list_peers(serde_json::json!({})).await.unwrap();
+
+    assert_eq!(result.total_count, 1);
+    assert_eq!(result.peers[0].node_id, "east-gate");
+    assert_eq!(result.peers[0].capabilities, vec!["security", "crypto", "mesh"]);
+}

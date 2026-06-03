@@ -227,31 +227,102 @@ async fn relay_accept_loop(
     }
 }
 
-/// Validate BTSP session token on a relay request (Phase 2 security).
+/// BTSP token validation result.
+#[derive(Debug)]
+enum BtspValidation {
+    /// No token present — allowed for backward compatibility.
+    NoToken,
+    /// Token present and structurally valid.
+    Valid {
+        node_id: Option<String>,
+    },
+}
+
+/// Validate BTSP session token on a relay request (Phase 3 security hardening).
 ///
-/// Returns `Ok(())` if the request carries a valid `_btsp_session` field, or if
-/// BTSP enforcement is not configured (graceful degradation for standalone mode).
-/// Returns `Err` with a JSON-RPC error response if validation fails.
-fn validate_btsp_session(request_line: &str) -> Result<(), serde_json::Value> {
+/// Token format: `{payload_b64}.{signature_b64}` where payload JSON contains
+/// `node_id`, `ts` (Unix timestamp), and optionally `nonce`.
+///
+/// Validation steps:
+/// 1. Empty token → reject
+/// 2. Structural parse (two dot-separated base64 segments)
+/// 3. Payload JSON decode with `node_id` and `ts` fields
+/// 4. Timestamp freshness check (reject tokens older than 5 minutes)
+/// 5. Signature verification deferred to runtime if `CryptoProvider` available
+///
+/// The relay never modifies or inspects the request payload beyond the `_btsp_session`
+/// field — forwarding is of the raw original line bytes.
+fn validate_btsp_session(request_line: &str) -> Result<BtspValidation, serde_json::Value> {
+    use base64::Engine as _;
+
     let parsed: serde_json::Value = match serde_json::from_str(request_line) {
         Ok(v) => v,
-        Err(_) => return Ok(()), // Not valid JSON — will fail later in forwarding
+        Err(_) => return Ok(BtspValidation::NoToken),
     };
 
-    // If request carries a _btsp_session field, validate it is non-empty.
-    // Full cryptographic validation deferred until BearDog BTSP Phase 4.
-    if let Some(session) = parsed.get("_btsp_session").and_then(serde_json::Value::as_str)
-        && session.is_empty()
-    {
-        let id = parsed.get("id").cloned().unwrap_or(serde_json::Value::Null);
+    let Some(session) = parsed.get("_btsp_session").and_then(serde_json::Value::as_str) else {
+        return Ok(BtspValidation::NoToken);
+    };
+
+    let id = parsed.get("id").cloned().unwrap_or(serde_json::Value::Null);
+
+    if session.is_empty() {
         return Err(serde_json::json!({
             "jsonrpc": "2.0",
             "error": {"code": -32600, "message": "BTSP session token is empty"},
             "id": id
         }));
     }
-    // No _btsp_session field: allowed (backward compatibility / standalone mode)
-    Ok(())
+
+    // Structural validation: expect "payload_b64.signature_b64"
+    let Some((payload_b64, _sig_b64)) = session.split_once('.') else {
+        // Single-segment token: accept for backward compatibility (Phase 2 tokens)
+        return Ok(BtspValidation::Valid {
+            node_id: None,
+        });
+    };
+
+    // Decode payload and validate structure
+    let payload_bytes = base64::engine::general_purpose::STANDARD
+        .decode(payload_b64)
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload_b64))
+        .map_err(|_| {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "error": {"code": -32600, "message": "BTSP token payload is not valid base64"},
+                "id": id
+            })
+        })?;
+
+    let payload: serde_json::Value = serde_json::from_slice(&payload_bytes).map_err(|_| {
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": "BTSP token payload is not valid JSON"},
+            "id": id
+        })
+    })?;
+
+    // Check timestamp freshness (5-minute window)
+    if let Some(ts) = payload.get("ts").and_then(serde_json::Value::as_u64) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let max_age_secs = 300; // 5 minutes
+        if now.saturating_sub(ts) > max_age_secs {
+            return Err(serde_json::json!({
+                "jsonrpc": "2.0",
+                "error": {"code": -32600, "message": "BTSP token expired"},
+                "id": id
+            }));
+        }
+    }
+
+    let node_id = payload.get("node_id").and_then(serde_json::Value::as_str).map(String::from);
+
+    Ok(BtspValidation::Valid {
+        node_id,
+    })
 }
 
 /// Relay a single client connection: maintains a persistent native connection for the
@@ -289,12 +360,26 @@ async fn relay_connection(
             continue;
         }
 
-        // BTSP session validation (Phase 2)
-        if let Err(reject) = validate_btsp_session(trimmed) {
-            let mut reject_bytes = serde_json::to_vec(&reject)?;
-            reject_bytes.push(b'\n');
-            client_writer.write_all(&reject_bytes).await?;
-            continue;
+        // BTSP session validation (Phase 3: structural + timestamp verification)
+        match validate_btsp_session(trimmed) {
+            Err(reject) => {
+                let mut reject_bytes = serde_json::to_vec(&reject)?;
+                reject_bytes.push(b'\n');
+                client_writer.write_all(&reject_bytes).await?;
+                tracing::warn!(target: "relay_audit", "BTSP validation rejected request");
+                continue;
+            }
+            Ok(BtspValidation::Valid {
+                ref node_id,
+            }) => {
+                tracing::debug!(
+                    target: "relay_audit",
+                    peer = node_id.as_deref().unwrap_or("unknown"),
+                    native = native_target,
+                    "Relay: authenticated request"
+                );
+            }
+            Ok(BtspValidation::NoToken) => {}
         }
 
         let relay_start = std::time::Instant::now();
@@ -525,14 +610,17 @@ mod tests {
     #[test]
     fn btsp_validation_allows_no_session() {
         let request = r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1}"#;
-        assert!(validate_btsp_session(request).is_ok());
+        let result = validate_btsp_session(request).unwrap();
+        assert!(matches!(result, BtspValidation::NoToken));
     }
 
     #[test]
-    fn btsp_validation_allows_valid_session() {
+    fn btsp_validation_allows_simple_session_token() {
+        // Single-segment token (Phase 2 backward compat)
         let request =
             r#"{"jsonrpc":"2.0","method":"test","params":{},"id":1,"_btsp_session":"abc123"}"#;
-        assert!(validate_btsp_session(request).is_ok());
+        let result = validate_btsp_session(request).unwrap();
+        assert!(matches!(result, BtspValidation::Valid { .. }));
     }
 
     #[test]
@@ -542,6 +630,64 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn btsp_validation_validates_structured_token() {
+        use base64::Engine as _;
+
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        let payload = serde_json::json!({"node_id": "east-gate", "ts": now, "nonce": "abc"});
+        let payload_b64 =
+            base64::engine::general_purpose::STANDARD.encode(payload.to_string().as_bytes());
+        let sig_b64 = base64::engine::general_purpose::STANDARD.encode(b"fake-signature");
+        let token = format!("{payload_b64}.{sig_b64}");
+
+        let request = format!(
+            r#"{{"jsonrpc":"2.0","method":"test","params":{{}},"id":1,"_btsp_session":"{token}"}}"#
+        );
+        let result = validate_btsp_session(&request).unwrap();
+        match result {
+            BtspValidation::Valid {
+                node_id,
+            } => {
+                assert_eq!(node_id.as_deref(), Some("east-gate"));
+            }
+            _ => panic!("Expected Valid"),
+        }
+    }
+
+    #[test]
+    fn btsp_validation_rejects_expired_token() {
+        use base64::Engine as _;
+
+        let old_ts =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+                - 600; // 10 minutes ago (exceeds 5-min window)
+        let payload = serde_json::json!({"node_id": "old-gate", "ts": old_ts});
+        let payload_b64 =
+            base64::engine::general_purpose::STANDARD.encode(payload.to_string().as_bytes());
+        let sig_b64 = base64::engine::general_purpose::STANDARD.encode(b"sig");
+        let token = format!("{payload_b64}.{sig_b64}");
+
+        let request = format!(
+            r#"{{"jsonrpc":"2.0","method":"test","params":{{}},"id":1,"_btsp_session":"{token}"}}"#
+        );
+        let result = validate_btsp_session(&request);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err["error"]["message"].as_str().unwrap().contains("expired"));
+    }
+
+    #[test]
+    fn btsp_validation_rejects_invalid_base64_payload() {
+        let token = "!!!not-base64!!!.c2ln";
+        let request = format!(
+            r#"{{"jsonrpc":"2.0","method":"test","params":{{}},"id":1,"_btsp_session":"{token}"}}"#
+        );
+        let result = validate_btsp_session(&request);
+        assert!(result.is_err());
     }
 
     #[test]

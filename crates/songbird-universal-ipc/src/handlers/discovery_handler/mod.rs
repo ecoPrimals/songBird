@@ -172,6 +172,9 @@ impl DiscoveryHandler {
     }
 
     /// Collect peers from the beacon mesh as [`DiscoveredPeerInfo`] entries.
+    ///
+    /// Capabilities are populated from `mesh.capabilities_announce` data received
+    /// from remote peers (push/gossip propagation model).
     async fn collect_mesh_peers(&self, mesh: &MeshHandler) -> Vec<DiscoveredPeerInfo> {
         use songbird_onion_relay::EndpointType;
 
@@ -207,13 +210,14 @@ impl DiscoveryHandler {
             };
 
             let tcp_port = address.parse::<std::net::SocketAddr>().ok().map(|a| a.port());
+            let capabilities = mesh.get_peer_capabilities(node_id).await;
 
             result.push(DiscoveredPeerInfo {
                 node_id: node_id.clone(),
                 family_id: String::new(),
                 address,
                 tcp_port,
-                capabilities: Vec::new(),
+                capabilities,
                 last_seen: "mesh".to_string(),
                 quality: Some(1.0),
                 node_name: None,

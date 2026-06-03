@@ -186,6 +186,7 @@ pub enum MeshMethod {
     Mirror,
     Publish,
     ProbeLatency,
+    CapabilitiesAnnounce,
 }
 
 /// `punch.*`

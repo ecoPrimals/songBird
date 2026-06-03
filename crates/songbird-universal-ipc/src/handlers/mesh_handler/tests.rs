@@ -518,3 +518,53 @@ fn path_to_json_respects_found_flag_and_latency() {
     assert_eq!(v["reachable"], false);
     assert_eq!(v["path_type"], "local");
 }
+
+#[tokio::test]
+async fn capabilities_announce_stores_remote_peer_caps() {
+    let handler = MeshHandler::new();
+    let params = serde_json::json!({
+        "node_id": "east-gate",
+        "capabilities": ["crypto", "storage", "mesh"]
+    });
+    let result = handler.handle_capabilities_announce(params).await.expect("announce");
+    assert_eq!(result["accepted"], true);
+    assert_eq!(result["capabilities_count"], 3);
+
+    let caps = handler.get_peer_capabilities("east-gate").await;
+    assert_eq!(caps, vec!["crypto", "storage", "mesh"]);
+
+    // Unknown peer returns empty
+    let unknown = handler.get_peer_capabilities("unknown-gate").await;
+    assert!(unknown.is_empty());
+}
+
+#[tokio::test]
+async fn capabilities_announce_overwrites_on_update() {
+    let handler = MeshHandler::new();
+
+    handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "gate-a",
+            "capabilities": ["old-cap"]
+        }))
+        .await
+        .expect("first");
+
+    handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "gate-a",
+            "capabilities": ["new-cap-1", "new-cap-2"]
+        }))
+        .await
+        .expect("second");
+
+    let caps = handler.get_peer_capabilities("gate-a").await;
+    assert_eq!(caps, vec!["new-cap-1", "new-cap-2"]);
+}
+
+#[tokio::test]
+async fn capabilities_announce_to_uninitialized_mesh_is_noop() {
+    let handler = MeshHandler::new();
+    // announce_capabilities_to_peers on uninitialized mesh should not panic
+    handler.announce_capabilities_to_peers(vec!["crypto".to_string()]).await;
+}

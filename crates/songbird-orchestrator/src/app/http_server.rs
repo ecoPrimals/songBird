@@ -29,12 +29,14 @@ pub async fn start_http_server(
     federated_service_registry: Arc<FederatedServiceRegistry>,
     service_registry: Arc<crate::service_registry::ServiceRegistry>,
     bind_addr: SocketAddr,
+    shared_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
 ) -> Result<u16> {
     // Build the app with all API routes
     let app = build_router(
         Arc::clone(&federation_state),
         Arc::clone(&federated_service_registry),
         Arc::clone(&service_registry),
+        shared_ipc_handler,
     )
     .await?;
 
@@ -90,6 +92,7 @@ async fn build_router(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
     service_registry: Arc<crate::service_registry::ServiceRegistry>,
+    shared_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
 ) -> Result<Router> {
     // Build the app with federation and deployment routes
     let deployment_state = crate::server::deployment_api::DeploymentState::new();
@@ -121,17 +124,20 @@ async fn build_router(
     );
     let consent_manager = Arc::new(crate::consent_management::ConsentManager::new());
 
-    // Create JSON-RPC API state for universal gateway
-    // ✅ EVOLUTION (Feb 9, 2026): Wire IpcServiceHandler for full method forwarding on TCP
-    // This makes TCP /jsonrpc equivalent to Unix socket for inter-gate mesh communication
-    let ipc_registry = Arc::new(tokio::sync::RwLock::new(
-        songbird_universal_ipc::registry::ServiceRegistry::new(),
-    ));
-    let ipc_handler =
-        Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
-            ipc_registry,
-            Arc::clone(&federation_state),
-        ));
+    // ✅ EVOLUTION (Wave 75): HTTP/UDS state unification — shared handler makes
+    // TCP /jsonrpc identical to Unix socket for ipc.register, mesh.init, capability.call
+    let ipc_handler: Arc<songbird_universal_ipc::service::IpcServiceHandler> =
+        if let Some(handler) = shared_ipc_handler {
+            handler
+        } else {
+            let ipc_registry = Arc::new(tokio::sync::RwLock::new(
+                songbird_universal_ipc::registry::ServiceRegistry::new(),
+            ));
+            Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
+                ipc_registry,
+                Arc::clone(&federation_state),
+            ))
+        };
 
     let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::with_ipc_handler(
         Arc::clone(&federation_state),

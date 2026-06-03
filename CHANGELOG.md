@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.7-wave75] - 2026-06-03 - Capability Propagation + HTTP/UDS Unification + Relay Hardening
+
+### Added
+- **Capability Propagation (P1 MESH BLOCKER FIX)**: `ipc.register` now propagates capabilities
+  to all reachable mesh peers via `mesh.capabilities_announce`. Remote peers store received
+  capabilities so `discovery.peers` returns them correctly. Push model eliminates the
+  cross-gate routing blocker where `capabilities: []` was hardcoded for mesh peers.
+- **`mesh.capabilities_announce` method**: New JSON-RPC method for receiving remote peer
+  capability announcements. Stores `node_id → capabilities` mapping. New `MeshMethod::CapabilitiesAnnounce`
+  enum variant.
+- **HTTP/UDS state unification (P1)**: HTTP endpoint (port 7700) and UDS endpoint (`/primal/songbird`)
+  now share the same `IpcServiceHandler`, `ServiceRegistry`, and `MeshHandler`. A single call to
+  `ipc.register` or `mesh.init` on either transport is visible on both.
+  - `TowerAtomicServer::from_shared()` constructor for pre-built Arc handlers
+  - `UniversalIpcBroker::with_shared_handler()` accepts pre-built handler
+  - `start_broker_with_shared_handler()` entrypoint for unified startup
+  - `start_http_server` accepts optional shared handler parameter
+- **BTSP relay security hardening (Phase 3)**: Token validation evolved from presence-only
+  to structural + timestamp verification:
+  - Parses `payload_b64.signature_b64` token format
+  - Validates payload JSON structure (`node_id`, `ts` fields)
+  - Rejects tokens older than 5 minutes (timestamp freshness)
+  - Audit trail via `relay_audit` tracing target
+  - Backward compatible with Phase 2 single-segment tokens
+
+### Fixed
+- **`discovery.peers` capabilities for mesh peers**: `collect_mesh_peers` now reads from
+  `MeshHandler::get_peer_capabilities()` instead of hardcoding `Vec::new()`.
+- **`relay.allocate` dispatch test**: Test updated to accept authorization denial from
+  production implementation (Wave 74 regression).
+- **`coordinate_relay_punch_keep_relay_when_no_udp_reply`**: Updated to use test-only
+  `RelaySession::new_unverified` constructor (Wave 74 handshake regression).
+
+---
+
 ## [v0.2.6-wave74] - 2026-06-03 - Cross-Subnet Relay + Virtual Relay Phase 2 + Env Var Alignment
 
 ### Added

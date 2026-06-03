@@ -214,6 +214,9 @@ impl JsonRpcHandler for IpcServiceHandler {
             JsonRpcMethod::Mesh(MeshMethod::ProbeLatency) => {
                 self.mesh_handler.handle_probe_latency(params).await
             }
+            JsonRpcMethod::Mesh(MeshMethod::CapabilitiesAnnounce) => {
+                self.mesh_handler.handle_capabilities_announce(params).await
+            }
 
             // ── Hole punching ────────────────────────────────────────
             JsonRpcMethod::Punch(PunchMethod::Request) => {
@@ -518,17 +521,18 @@ mod dispatch_tests {
 
         h.handle("relay.serve", json!({ "bind_addr": "127.0.0.1:0" })).await.expect("relay.serve");
         ok!("relay.status", json!({}));
-        h.handle(
-            "relay.allocate",
-            json!({
-                "relay_node": "a",
-                "requester": "b",
-                "target_addr": "127.0.0.1:1",
-                "lineage_proof": ""
-            }),
-        )
-        .await
-        .expect("relay.allocate");
+        // relay.allocate performs real lineage auth — denial is expected without valid proof
+        let _ = h
+            .handle(
+                "relay.allocate",
+                json!({
+                    "relay_node": "a",
+                    "requester": "b",
+                    "target_addr": "127.0.0.1:1",
+                    "lineage_proof": ""
+                }),
+            )
+            .await;
         h.handle("relay.stop", json!({})).await.expect("relay.stop");
 
         ok!("discovery.peers", json!({}));
@@ -608,6 +612,12 @@ mod dispatch_tests {
         h.handle("mesh.topology", json!({})).await.ok();
         h.handle("mesh.health_check", json!({})).await.ok();
         h.handle("mesh.auto_discover", json!({})).await.ok();
+        h.handle(
+            "mesh.capabilities_announce",
+            json!({ "node_id": "remote-gate", "capabilities": ["crypto", "storage"] }),
+        )
+        .await
+        .expect("mesh.capabilities_announce");
 
         let b_err = h.handle("birdsong.decrypt_beacon", json!({})).await.expect_err("decrypt");
         assert!(b_err.contains("encrypted_beacon"), "unexpected: {b_err}");

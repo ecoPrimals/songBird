@@ -29,10 +29,11 @@ mod tests;
 
 use serde_json::{Value, json};
 use songbird_onion_relay::mesh::{BeaconMesh, EndpointType, RelayEndpoint};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Mesh handler for JSON-RPC integration
 ///
@@ -53,6 +54,9 @@ pub struct MeshHandler {
     start_time: Instant,
     /// Our node ID
     node_id: Arc<RwLock<Arc<str>>>,
+    /// Remote peer capabilities received via `mesh.capabilities_announce`.
+    /// Key: `node_id`, Value: list of capability strings.
+    peer_capabilities: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
 impl MeshHandler {
@@ -63,6 +67,7 @@ impl MeshHandler {
             mesh: Arc::new(RwLock::new(None::<Arc<BeaconMesh>>)),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(Arc::from(""))),
+            peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -77,6 +82,110 @@ impl MeshHandler {
             mesh: Arc::new(RwLock::new(Some(Arc::new(mesh)))),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(node_id.into())),
+            peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Get capabilities for a specific remote peer (from announcements).
+    pub async fn get_peer_capabilities(&self, node_id: &str) -> Vec<String> {
+        self.peer_capabilities.read().await.get(node_id).cloned().unwrap_or_default()
+    }
+
+    /// Handle `mesh.capabilities_announce` — receive remote peer capabilities.
+    ///
+    /// Called by remote gates when their primals register capabilities.
+    /// Stores the announced capabilities so `discovery.peers` can return them.
+    pub async fn handle_capabilities_announce(&self, params: Value) -> Result<Value, String> {
+        let node_id =
+            params.get("node_id").and_then(Value::as_str).ok_or("Missing node_id")?.to_string();
+
+        let capabilities: Vec<String> = params
+            .get("capabilities")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
+            .unwrap_or_default();
+
+        debug!(
+            peer = %node_id,
+            caps = ?capabilities,
+            "Received capability announcement from remote peer"
+        );
+
+        self.peer_capabilities.write().await.insert(node_id.clone(), capabilities.clone());
+
+        Ok(json!({
+            "accepted": true,
+            "node_id": node_id,
+            "capabilities_count": capabilities.len()
+        }))
+    }
+
+    /// Push local capabilities to all reachable mesh peers.
+    ///
+    /// Called after `ipc.register` to propagate capability info so remote
+    /// `discovery.peers` returns accurate data.
+    pub async fn announce_capabilities_to_peers(&self, local_capabilities: Vec<String>) {
+        let our_node_id = self.node_id.read().await.to_string();
+        if our_node_id.is_empty() {
+            return;
+        }
+
+        let mesh_guard = self.mesh.read().await;
+        let Some(ref mesh) = *mesh_guard else {
+            return;
+        };
+
+        let reachable = mesh.get_reachable_nodes().await;
+        if reachable.is_empty() {
+            drop(mesh_guard);
+            return;
+        }
+
+        // Collect addresses while we hold the lock
+        let mut targets: Vec<(String, String)> = Vec::new();
+        for node_id in &reachable {
+            if let Some(path) = mesh.get_best_path(node_id).await {
+                let address = match path.endpoint_type {
+                    EndpointType::Direct {
+                        addr,
+                    }
+                    | EndpointType::Local {
+                        addr,
+                    } => {
+                        format!("http://{}:{}/jsonrpc", addr.ip(), addr.port())
+                    }
+                    _ => continue,
+                };
+                targets.push((node_id.clone(), address));
+            }
+        }
+        drop(mesh_guard);
+
+        if targets.is_empty() {
+            return;
+        }
+
+        let payload = json!({
+            "jsonrpc": "2.0",
+            "method": "mesh.capabilities_announce",
+            "params": {
+                "node_id": our_node_id,
+                "capabilities": local_capabilities
+            },
+            "id": null
+        });
+
+        for (node_id, address) in targets {
+            let payload = payload.clone();
+            tokio::spawn(async move {
+                if let Err(e) = post_jsonrpc_fire_and_forget(&address, &payload).await {
+                    warn!(
+                        peer = %node_id,
+                        error = %e,
+                        "Failed to announce capabilities to peer"
+                    );
+                }
+            });
         }
     }
 
@@ -753,6 +862,35 @@ impl Default for MeshHandler {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Fire-and-forget HTTP POST for capability announcements to peers.
+async fn post_jsonrpc_fire_and_forget(url: &str, body: &Value) -> Result<(), String> {
+    use http_body_util::Full;
+    use hyper::Request;
+    use hyper::body::Bytes;
+    use hyper_util::client::legacy::Client;
+    use hyper_util::rt::TokioExecutor;
+
+    let body_bytes = serde_json::to_vec(body).map_err(|e| format!("Serialize: {e}"))?;
+    let uri: hyper::Uri = url.parse().map_err(|e| format!("URI: {e}"))?;
+
+    let request = Request::builder()
+        .method(hyper::Method::POST)
+        .uri(&uri)
+        .header("content-type", "application/json")
+        .body(Full::new(Bytes::from(body_bytes)))
+        .map_err(|e| format!("Build request: {e}"))?;
+
+    let client = Client::builder(TokioExecutor::new()).build_http::<Full<Bytes>>();
+
+    let timeout = Duration::from_secs(5);
+    tokio::time::timeout(timeout, client.request(request))
+        .await
+        .map_err(|_| format!("Timeout posting to {url}"))?
+        .map_err(|e| format!("HTTP error to {url}: {e}"))?;
+
+    Ok(())
 }
 
 #[cfg(test)]
