@@ -92,6 +92,11 @@ ignore = [
     # resolver client (not encoding DNS messages for others). Upgrade to 0.26
     # requires API migration (SRV field access changed). Stadial migration.
     "RUSTSEC-2026-0119",
+    # hickory-proto NSEC3 infinite loop (RUSTSEC-2026-0118) — only affects
+    # DnssecDnsHandle (DNSSEC validation). Songbird uses plain stub resolver
+    # without DNSSEC features. Not reachable in our usage. Upgrade to 0.26
+    # planned as stadial migration (major API breaking changes).
+    "RUSTSEC-2026-0118",
 ]
 
 # EVOLUTION NOTE: serde_yaml 0.9 is archived by its maintainer (David Tolnay).

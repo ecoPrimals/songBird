@@ -568,3 +568,36 @@ async fn capabilities_announce_to_uninitialized_mesh_is_noop() {
     // announce_capabilities_to_peers on uninitialized mesh should not panic
     handler.announce_capabilities_to_peers(vec!["crypto".to_string()]).await;
 }
+
+#[tokio::test]
+async fn retry_pending_announces_drains_empty_queue() {
+    let handler = MeshHandler::new();
+    // Should be a no-op with empty queue and not panic
+    handler.retry_pending_announces().await;
+}
+
+#[tokio::test]
+async fn capabilities_announce_rejects_unknown_peer_when_mesh_active() {
+    use songbird_onion_relay::mesh::BeaconMesh;
+
+    let mesh = BeaconMesh::new("local-gate".into(), vec![]);
+    let handler = MeshHandler::with_mesh(mesh, "local-gate");
+
+    // "unknown-peer" is not in the mesh's reachable nodes
+    let result = handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "unknown-peer",
+            "capabilities": ["storage"]
+        }))
+        .await;
+
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("unknown peer"));
+}
+
+#[tokio::test]
+async fn get_peer_capabilities_returns_empty_for_unknown() {
+    let handler = MeshHandler::new();
+    let caps = handler.get_peer_capabilities("nonexistent").await;
+    assert!(caps.is_empty());
+}
