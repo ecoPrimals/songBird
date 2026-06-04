@@ -114,15 +114,16 @@ fn detect_gpu_availability() -> bool {
 }
 
 async fn detect_network_speed() -> NetworkSpeed {
-    if let Ok(speed_str) = songbird_process_env::var("SONGBIRD_NETWORK_SPEED") {
-        match speed_str.to_lowercase().as_str() {
-            "fast" => return NetworkSpeed::Fast,
-            "slow" => return NetworkSpeed::Slow,
-            _ => return NetworkSpeed::Medium,
-        }
-    }
+    let speed_str = songbird_process_env::var("SONGBIRD_NETWORK_SPEED").unwrap_or_default();
+    parse_network_speed(&speed_str)
+}
 
-    NetworkSpeed::Medium
+fn parse_network_speed(s: &str) -> NetworkSpeed {
+    match s.to_lowercase().as_str() {
+        "fast" => NetworkSpeed::Fast,
+        "slow" => NetworkSpeed::Slow,
+        _ => NetworkSpeed::Medium,
+    }
 }
 
 fn detect_platform() -> String {
@@ -137,22 +138,24 @@ fn detect_architecture() -> String {
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
-    #[tokio::test]
-    async fn detect_network_speed_fast_case_insensitive() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "FaSt");
-        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Fast));
+    #[test]
+    fn detect_network_speed_fast_case_insensitive() {
+        assert!(matches!(super::parse_network_speed("FaSt"), super::NetworkSpeed::Fast));
+        assert!(matches!(super::parse_network_speed("fast"), super::NetworkSpeed::Fast));
+        assert!(matches!(super::parse_network_speed("FAST"), super::NetworkSpeed::Fast));
     }
 
-    #[tokio::test]
-    async fn detect_network_speed_slow_branch() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "slow");
-        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Slow));
+    #[test]
+    fn detect_network_speed_slow_branch() {
+        assert!(matches!(super::parse_network_speed("slow"), super::NetworkSpeed::Slow));
+        assert!(matches!(super::parse_network_speed("SLOW"), super::NetworkSpeed::Slow));
     }
 
-    #[tokio::test]
-    async fn detect_network_speed_unknown_word_maps_to_medium() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "fiber-line");
-        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Medium));
+    #[test]
+    fn detect_network_speed_unknown_word_maps_to_medium() {
+        assert!(matches!(super::parse_network_speed("fiber-line"), super::NetworkSpeed::Medium));
+        assert!(matches!(super::parse_network_speed(""), super::NetworkSpeed::Medium));
+        assert!(matches!(super::parse_network_speed("unknown"), super::NetworkSpeed::Medium));
     }
 
     #[test]

@@ -406,15 +406,18 @@ mod tests {
         // No cleanup needed - fully isolated
     }
 
-    /// Test concurrent-safe legacy environment variable migration
-    #[test]
-    fn test_migration_helper() {
-        // Isolated environment for this test
+    /// Test concurrent-safe legacy environment variable migration.
+    ///
+    /// Uses the overlay serialization lock because `EnvOverride::contains_key`
+    /// falls back to process env, which can race with ScopedEnv tests.
+    #[tokio::test]
+    async fn test_migration_helper() {
+        let _serial = lock_overlay_env_tests().await;
+
         let env = EnvOverride::new();
         env.set("SONGBIRD_BEARDOG_ENDPOINT", "https://beardog:8443");
         env.set("SONGBIRD_TOADSTOOL_ENDPOINT", "http://toadstool:8082");
 
-        // Simulate the migration logic with our isolated env
         let migrations = [
             ("SONGBIRD_BEARDOG_ENDPOINT", "CAPABILITY_SECURITY_ENDPOINT"),
             ("SONGBIRD_TOADSTOOL_ENDPOINT", "CAPABILITY_COMPUTE_ENDPOINT"),
@@ -426,11 +429,10 @@ mod tests {
             if let Some(value) = env.get(legacy_var)
                 && !env.contains_key(capability_var)
             {
-                env.set(*capability_var, value); // Dereference to get &str
+                env.set(*capability_var, value);
             }
         }
 
-        // Verify migration worked in our isolated environment
         assert_eq!(
             env.get("CAPABILITY_SECURITY_ENDPOINT"),
             Some("https://beardog:8443".to_string())
@@ -439,8 +441,6 @@ mod tests {
             env.get("CAPABILITY_COMPUTE_ENDPOINT"),
             Some("http://toadstool:8082".to_string())
         );
-
-        // No cleanup needed - env is scoped
     }
 
     #[tokio::test]

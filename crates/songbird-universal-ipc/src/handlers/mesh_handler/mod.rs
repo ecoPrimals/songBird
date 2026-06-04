@@ -36,6 +36,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
+pub(crate) use capability_propagation::PeerCapabilityEntry;
 use capability_propagation::PendingAnnounce;
 
 /// Manages the distributed beacon mesh and provides status,
@@ -56,8 +57,8 @@ pub struct MeshHandler {
     /// Our node ID
     node_id: Arc<RwLock<Arc<str>>>,
     /// Remote peer capabilities received via `mesh.capabilities_announce`.
-    /// Key: `node_id`, Value: list of capability strings.
-    peer_capabilities: Arc<RwLock<HashMap<String, Vec<String>>>>,
+    /// Key: `node_id`, Value: capabilities + last-seen timestamp.
+    peer_capabilities: Arc<RwLock<HashMap<String, PeerCapabilityEntry>>>,
     /// Peers that failed to receive announcements (retried on next health cycle).
     pending_announces: Arc<RwLock<Vec<PendingAnnounce>>>,
 }

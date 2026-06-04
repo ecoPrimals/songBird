@@ -601,3 +601,148 @@ async fn get_peer_capabilities_returns_empty_for_unknown() {
     let caps = handler.get_peer_capabilities("nonexistent").await;
     assert!(caps.is_empty());
 }
+
+#[tokio::test]
+async fn stale_capabilities_are_evicted_on_retry_cycle() {
+    use capability_propagation::PeerCapabilityEntry;
+    use std::time::Instant;
+
+    let handler = MeshHandler::new();
+
+    // Manually insert a stale entry (pretend it was received 11 minutes ago)
+    {
+        let mut caps = handler.peer_capabilities.write().await;
+        caps.insert(
+            "stale-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["old-cap".to_string()],
+                last_seen: Instant::now() - Duration::from_secs(660),
+            },
+        );
+        caps.insert(
+            "fresh-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["new-cap".to_string()],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    handler.retry_pending_announces().await;
+
+    // Stale entry should be evicted
+    let stale = handler.get_peer_capabilities("stale-gate").await;
+    assert!(stale.is_empty());
+
+    // Fresh entry should remain
+    let fresh = handler.get_peer_capabilities("fresh-gate").await;
+    assert_eq!(fresh, vec!["new-cap"]);
+}
+
+#[tokio::test]
+async fn queue_depth_cap_prevents_unbounded_growth() {
+    use capability_propagation::PendingAnnounce;
+    use std::time::Instant;
+
+    let handler = MeshHandler::new();
+
+    // Fill the pending queue to capacity (50)
+    {
+        let mut guard = handler.pending_announces.write().await;
+        for i in 0..50 {
+            guard.push(PendingAnnounce {
+                node_id: format!("gate-{i}"),
+                address: format!("http://10.0.0.{i}:9100/jsonrpc"),
+                payload: json!({"test": true}),
+                attempts: 1,
+                enqueued_at: Instant::now(),
+            });
+        }
+    }
+
+    // Verify queue is at capacity
+    let len = handler.pending_announces.read().await.len();
+    assert_eq!(len, 50);
+}
+
+#[tokio::test]
+async fn expired_pending_entries_are_dropped() {
+    use capability_propagation::PendingAnnounce;
+    use std::time::Instant;
+
+    let handler = MeshHandler::new();
+
+    // Insert an entry that was enqueued over 10 minutes ago (expired)
+    {
+        let mut guard = handler.pending_announces.write().await;
+        guard.push(PendingAnnounce {
+            node_id: "expired-gate".to_string(),
+            address: "http://10.0.0.1:9100/jsonrpc".to_string(),
+            payload: json!({"test": true}),
+            attempts: 2,
+            enqueued_at: Instant::now() - Duration::from_secs(700),
+        });
+    }
+
+    handler.retry_pending_announces().await;
+
+    // Expired entry should have been dropped
+    let len = handler.pending_announces.read().await.len();
+    assert_eq!(len, 0);
+}
+
+#[tokio::test]
+async fn backoff_defers_recent_entries() {
+    use capability_propagation::PendingAnnounce;
+    use std::time::Instant;
+
+    let handler = MeshHandler::new();
+
+    // Insert an entry with attempt=2, enqueued just now.
+    // Backoff for attempt 2 = 120 * 2^2 = 480 seconds.
+    // Since it was just enqueued, it should be deferred (not retried).
+    {
+        let mut guard = handler.pending_announces.write().await;
+        guard.push(PendingAnnounce {
+            node_id: "deferred-gate".to_string(),
+            address: "http://10.0.0.99:9100/jsonrpc".to_string(),
+            payload: json!({"test": true}),
+            attempts: 2,
+            enqueued_at: Instant::now(),
+        });
+    }
+
+    handler.retry_pending_announces().await;
+
+    // Entry should still be in the queue (deferred, not retried or dropped)
+    let guard = handler.pending_announces.read().await;
+    assert_eq!(guard.len(), 1);
+    assert_eq!(guard[0].node_id, "deferred-gate");
+    assert_eq!(guard[0].attempts, 2, "attempts should not be incremented on defer");
+}
+
+#[tokio::test]
+async fn max_retries_drops_entry() {
+    use capability_propagation::PendingAnnounce;
+    use std::time::Instant;
+
+    let handler = MeshHandler::new();
+
+    // Insert an entry at max retries (5)
+    {
+        let mut guard = handler.pending_announces.write().await;
+        guard.push(PendingAnnounce {
+            node_id: "maxed-gate".to_string(),
+            address: "http://10.0.0.5:9100/jsonrpc".to_string(),
+            payload: json!({"test": true}),
+            attempts: 5,
+            enqueued_at: Instant::now(),
+        });
+    }
+
+    handler.retry_pending_announces().await;
+
+    // Entry should have been dropped
+    let len = handler.pending_announces.read().await.len();
+    assert_eq!(len, 0);
+}

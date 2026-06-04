@@ -10,7 +10,7 @@ springs = ["primalspring"]
 
 ## Status
 
-- **13,966+ lib tests** passed, 0 failures, 23 ignored
+- **13,971+ lib tests** passed, 0 failures, 23 ignored
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
 - **58 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement

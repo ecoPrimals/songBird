@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.8-wave77] - 2026-06-04 - Retry Hardening + Flaky Test Elimination
+
+### Added
+- **Exponential backoff for capability retries**: Retry timing now scales as 120s × 2^attempt
+  (attempt 1 = immediate, attempt 2 = skip 1 cycle, attempt 3 = skip 3 cycles, etc.).
+- **Queue depth cap (50)**: Pending announce queue capped to prevent unbounded memory growth
+  in multi-gate scenarios with many unreachable peers.
+- **Stale capability TTL (10 min)**: `PeerCapabilityEntry` tracks `last_seen` timestamp.
+  Entries not refreshed within 600s are evicted during the health cycle.
+- **Max retries raised to 5**: Extended from 3 to give transient outages more recovery time.
+- **5 new tests**: `stale_capabilities_are_evicted_on_retry_cycle`,
+  `queue_depth_cap_prevents_unbounded_growth`, `expired_pending_entries_are_dropped`,
+  `backoff_defers_recent_entries`, `max_retries_drops_entry`.
+
+### Fixed
+- **Flaky env-var test races (3 files, 6 tests)**: CLI `detect_network_speed` and
+  `discovery_http_port` tests refactored to test pure parsing functions (no global env
+  mutation). Orchestrator `test_stable_id_generation` and `new_or_load` pinned with
+  `ScopedEnv`. Config `test_migration_helper` serialized via overlay lock.
+- **Tower bind tests**: Extracted `resolve_bind_address()` pure function, tests no longer
+  race on `SONGBIRD_BIND_ADDRESS`.
+
+### Changed
+- `PendingAnnounce` struct now carries `enqueued_at: Instant` for age-based eviction.
+- `peer_capabilities` internal type evolved from `HashMap<String, Vec<String>>` to
+  `HashMap<String, PeerCapabilityEntry>` (capabilities + freshness timestamp).
+- Retry cycle now logs `retried`/`dropped`/`deferred` counts for observability.
+- Total tests: **13,971** (38 mesh_handler, 175 CLI).
+
+---
+
 ## [v0.2.8-wave76] - 2026-06-03 - Hygiene Sweep + Retry Resilience + Phase 3.5 Scaffold
 
 ### Added

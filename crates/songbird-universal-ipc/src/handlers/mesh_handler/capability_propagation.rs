@@ -8,16 +8,28 @@
 //! gates store these announcements so `discovery.peers` returns correct capability
 //! lists without requiring polling.
 //!
-//! Includes retry logic: failed announcements are queued and retried on the
-//! periodic health cycle (max [`MAX_ANNOUNCE_RETRIES`] attempts).
+//! ## Retry Resilience
+//!
+//! Failed announcements are queued with exponential backoff (skip cycles based on
+//! attempt count). Queue depth is capped at [`MAX_PENDING_QUEUE_DEPTH`] to prevent
+//! memory growth in multi-gate scenarios. Stale peer capabilities (not refreshed
+//! within [`CAPABILITY_TTL`]) are evicted on each health cycle.
 
 use serde_json::{Value, json};
 use songbird_onion_relay::mesh::EndpointType;
 use std::sync::Arc;
-use std::time::Duration;
-use tracing::{debug, warn};
+use std::time::{Duration, Instant};
+use tracing::{debug, info, warn};
 
 use super::MeshHandler;
+
+/// Remote peer capabilities with freshness tracking.
+#[derive(Clone)]
+#[allow(clippy::redundant_pub_crate)]
+pub(crate) struct PeerCapabilityEntry {
+    pub capabilities: Vec<String>,
+    pub last_seen: Instant,
+}
 
 /// A capability announcement that failed delivery and is queued for retry.
 pub(super) struct PendingAnnounce {
@@ -25,16 +37,32 @@ pub(super) struct PendingAnnounce {
     pub address: String,
     pub payload: Value,
     pub attempts: u8,
+    /// When this entry was enqueued (for staleness detection).
+    pub enqueued_at: Instant,
 }
 
 /// Maximum retry attempts for a failed capability announcement.
-pub(super) const MAX_ANNOUNCE_RETRIES: u8 = 3;
+pub(super) const MAX_ANNOUNCE_RETRIES: u8 = 5;
+
+/// Maximum pending queue depth (prevents unbounded growth with many unreachable gates).
+const MAX_PENDING_QUEUE_DEPTH: usize = 50;
+
+/// Time-to-live for stored remote peer capabilities (10 minutes).
+/// Capabilities not refreshed within this window are evicted.
+const CAPABILITY_TTL: Duration = Duration::from_secs(600);
 
 impl MeshHandler {
     /// Get capabilities for a specific remote peer (from announcements).
+    ///
+    /// Returns empty if the peer has no known capabilities or if the entry has
+    /// expired (older than [`CAPABILITY_TTL`]).
     #[must_use = "peer capabilities should be used in discovery responses"]
     pub async fn get_peer_capabilities(&self, node_id: &str) -> Vec<String> {
-        self.peer_capabilities.read().await.get(node_id).cloned().unwrap_or_default()
+        let guard = self.peer_capabilities.read().await;
+        match guard.get(node_id) {
+            Some(entry) if entry.last_seen.elapsed() < CAPABILITY_TTL => entry.capabilities.clone(),
+            _ => Vec::new(),
+        }
     }
 
     /// Handle `mesh.capabilities_announce` — receive remote peer capabilities.
@@ -73,7 +101,13 @@ impl MeshHandler {
             "Accepted capability announcement from mesh peer"
         );
 
-        self.peer_capabilities.write().await.insert(node_id.clone(), capabilities.clone());
+        self.peer_capabilities.write().await.insert(
+            node_id.clone(),
+            PeerCapabilityEntry {
+                capabilities: capabilities.clone(),
+                last_seen: Instant::now(),
+            },
+        );
 
         Ok(json!({
             "accepted": true,
@@ -150,12 +184,18 @@ impl MeshHandler {
                         error = %e,
                         "Failed to announce capabilities to peer (queued for retry)"
                     );
-                    pending.write().await.push(PendingAnnounce {
-                        node_id,
-                        address,
-                        payload,
-                        attempts: 1,
-                    });
+                    let mut guard = pending.write().await;
+                    if guard.len() < MAX_PENDING_QUEUE_DEPTH {
+                        guard.push(PendingAnnounce {
+                            node_id,
+                            address,
+                            payload,
+                            attempts: 1,
+                            enqueued_at: Instant::now(),
+                        });
+                    } else {
+                        warn!("Pending announce queue full ({MAX_PENDING_QUEUE_DEPTH}), dropping");
+                    }
                 }
             });
         }
@@ -163,10 +203,24 @@ impl MeshHandler {
 
     /// Retry failed capability announcements (called from health cycle).
     ///
-    /// Drains the pending queue, retries each, and re-queues those that still fail
-    /// (up to [`MAX_ANNOUNCE_RETRIES`] attempts). Peers that exceed the retry limit
-    /// are dropped — they will receive a fresh announcement on the next `ipc.register`.
+    /// Uses exponential backoff: an entry with N attempts is only retried if
+    /// `2^N` health cycles have elapsed since enqueueing. Entries exceeding
+    /// [`MAX_ANNOUNCE_RETRIES`] or older than 10 minutes are dropped.
+    ///
+    /// Also evicts stale entries from `peer_capabilities` that haven't been
+    /// refreshed within [`CAPABILITY_TTL`].
     pub async fn retry_pending_announces(&self) {
+        // Evict stale peer capabilities
+        {
+            let mut caps = self.peer_capabilities.write().await;
+            let before = caps.len();
+            caps.retain(|_, entry| entry.last_seen.elapsed() < CAPABILITY_TTL);
+            let evicted = before - caps.len();
+            if evicted > 0 {
+                info!(evicted, remaining = caps.len(), "Evicted stale peer capabilities");
+            }
+        }
+
         let pending: Vec<PendingAnnounce> = {
             let mut guard = self.pending_announces.write().await;
             std::mem::take(&mut *guard)
@@ -177,31 +231,64 @@ impl MeshHandler {
         }
 
         let requeue = Arc::clone(&self.pending_announces);
+        let mut retried = 0u32;
+        let mut dropped = 0u32;
+        let mut deferred = 0u32;
+
         for item in pending {
-            if item.attempts >= MAX_ANNOUNCE_RETRIES {
+            // Drop entries that exceeded max retries or are very stale
+            if item.attempts >= MAX_ANNOUNCE_RETRIES
+                || item.enqueued_at.elapsed() > Duration::from_secs(600)
+            {
                 debug!(
                     peer = %item.node_id,
                     attempts = item.attempts,
-                    "Dropping failed capability announce (max retries exceeded)"
+                    age_secs = item.enqueued_at.elapsed().as_secs(),
+                    "Dropping failed capability announce"
                 );
+                dropped += 1;
                 continue;
             }
 
+            // Exponential backoff: skip if not enough cycles have elapsed.
+            // Health cycle runs every ~2min. Backoff: attempt 1 = retry immediately,
+            // attempt 2 = skip 1 cycle (~2min), attempt 3 = skip 3 cycles (~6min), etc.
+            let backoff_secs = 120u64 * u64::from(1u32 << item.attempts.min(4));
+            if item.enqueued_at.elapsed() < Duration::from_secs(backoff_secs) {
+                // Not yet time to retry — re-queue without incrementing attempts
+                let mut guard = requeue.write().await;
+                if guard.len() < MAX_PENDING_QUEUE_DEPTH {
+                    guard.push(item);
+                }
+                deferred += 1;
+                continue;
+            }
+
+            retried += 1;
             let requeue = Arc::clone(&requeue);
             let node_id = item.node_id;
             let address = item.address;
             let payload = item.payload;
             let attempts = item.attempts;
+            let enqueued_at = item.enqueued_at;
             tokio::spawn(async move {
                 if post_jsonrpc_fire_and_forget(&address, &payload).await.is_err() {
-                    requeue.write().await.push(PendingAnnounce {
-                        node_id,
-                        address,
-                        payload,
-                        attempts: attempts + 1,
-                    });
+                    let mut guard = requeue.write().await;
+                    if guard.len() < MAX_PENDING_QUEUE_DEPTH {
+                        guard.push(PendingAnnounce {
+                            node_id,
+                            address,
+                            payload,
+                            attempts: attempts + 1,
+                            enqueued_at,
+                        });
+                    }
                 }
             });
+        }
+
+        if retried > 0 || dropped > 0 || deferred > 0 {
+            debug!(retried, dropped, deferred, "Capability announce retry cycle");
         }
     }
 }
