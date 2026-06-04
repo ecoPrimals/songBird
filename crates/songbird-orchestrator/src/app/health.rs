@@ -178,6 +178,9 @@ impl SongbirdOrchestrator {
                                 }
                                 Err(_) => {} // Mesh not initialized — skip silently
                             }
+
+                            // Retry failed capability announcements
+                            mh.retry_pending_announces().await;
                         }
                     }
                     _ = shutdown_rx.recv() => {

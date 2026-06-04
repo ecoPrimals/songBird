@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.8-wave76] - 2026-06-03 - Hygiene Sweep + Retry Resilience + Phase 3.5 Scaffold
+
+### Added
+- **Capability propagation retry queue**: Failed `mesh.capabilities_announce` deliveries are
+  queued with the original payload and retried on the next health cycle (every ~2 min).
+  Peers that exceed 3 retry attempts are dropped gracefully.
+- **BTSP Phase 3.5 scaffold**: `BtspSignatureVerifier` trait for Ed25519 signature
+  verification on relay tokens. `NoopSignatureVerifier` placeholder active until bearDog
+  delivers `CryptoProvider` integration design. Signature bytes decoded and stored in
+  `BtspValidation::Valid` for future verification.
+- **`VirtualRelayManager::set_signature_verifier()`**: Runtime injection point for
+  bearDog-backed cryptographic verification.
+
+### Fixed
+- **Broker readiness propagation (High)**: `start_broker_with_discovery` and
+  `start_broker_with_shared_handler` now propagate bind failures via `ready_rx.await`
+  instead of silently discarding them with `let _ =`.
+- **`post_jsonrpc_fire_and_forget` HTTP status check**: Drains response body and returns
+  error on non-2xx HTTP responses (prevents connection leaks and silent failures).
+- **Mesh read lock held too long**: `announce_capabilities_to_peers` now clones the
+  `Arc<BeaconMesh>` and drops the outer read lock before async peer iteration.
+- **BTSP timestamp validation hardened**: Structured tokens now REQUIRE `ts` field (no
+  longer optional). Future-skew bound added (60s) to reject far-future tokens.
+- **Capability announce peer validation**: `handle_capabilities_announce` rejects
+  announcements from unknown peers (not in mesh reachable nodes).
+- **`#[must_use]` on `get_peer_capabilities`**: Return value unlikely to be intentionally
+  discarded.
+
+### Metrics
+- Zero clippy warnings, zero `unsafe`, zero `/tmp` hardcoding
+- 13,960+ tests (1 known flaky pre-existing: env var leakage in parallel execution)
+
+---
+
 ## [v0.2.7-wave75] - 2026-06-03 - Capability Propagation + HTTP/UDS Unification + Relay Hardening
 
 ### Added

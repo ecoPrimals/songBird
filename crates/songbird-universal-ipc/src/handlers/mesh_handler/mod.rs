@@ -37,6 +37,17 @@ use tracing::{debug, info, warn};
 
 /// Mesh handler for JSON-RPC integration
 ///
+/// A capability announcement that failed delivery and is queued for retry.
+struct PendingAnnounce {
+    node_id: String,
+    address: String,
+    payload: Value,
+    attempts: u8,
+}
+
+/// Maximum retry attempts for a failed capability announcement.
+const MAX_ANNOUNCE_RETRIES: u8 = 3;
+
 /// Manages the distributed beacon mesh and provides status,
 /// path finding, and relay announcement via JSON-RPC.
 ///
@@ -57,6 +68,8 @@ pub struct MeshHandler {
     /// Remote peer capabilities received via `mesh.capabilities_announce`.
     /// Key: `node_id`, Value: list of capability strings.
     peer_capabilities: Arc<RwLock<HashMap<String, Vec<String>>>>,
+    /// Peers that failed to receive announcements (retried on next health cycle).
+    pending_announces: Arc<RwLock<Vec<PendingAnnounce>>>,
 }
 
 impl MeshHandler {
@@ -68,6 +81,7 @@ impl MeshHandler {
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(Arc::from(""))),
             peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
+            pending_announces: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -83,10 +97,12 @@ impl MeshHandler {
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(node_id.into())),
             peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
+            pending_announces: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
     /// Get capabilities for a specific remote peer (from announcements).
+    #[must_use = "peer capabilities should be used in discovery responses"]
     pub async fn get_peer_capabilities(&self, node_id: &str) -> Vec<String> {
         self.peer_capabilities.read().await.get(node_id).cloned().unwrap_or_default()
     }
@@ -99,6 +115,22 @@ impl MeshHandler {
         let node_id =
             params.get("node_id").and_then(Value::as_str).ok_or("Missing node_id")?.to_string();
 
+        // Only accept announcements from peers we know about in the mesh.
+        // Prevents untrusted callers from polluting discovery.peers.
+        let is_known_peer = {
+            let guard = self.mesh.read().await;
+            if let Some(ref mesh) = *guard {
+                mesh.get_reachable_nodes().await.iter().any(|n| n == &node_id)
+            } else {
+                // Mesh not initialized — accept on trust (bootstrap phase)
+                true
+            }
+        };
+
+        if !is_known_peer {
+            return Err(format!("Rejected capability announce from unknown peer '{node_id}'"));
+        }
+
         let capabilities: Vec<String> = params
             .get("capabilities")
             .and_then(Value::as_array)
@@ -107,8 +139,8 @@ impl MeshHandler {
 
         debug!(
             peer = %node_id,
-            caps = ?capabilities,
-            "Received capability announcement from remote peer"
+            count = capabilities.len(),
+            "Accepted capability announcement from mesh peer"
         );
 
         self.peer_capabilities.write().await.insert(node_id.clone(), capabilities.clone());
@@ -130,18 +162,21 @@ impl MeshHandler {
             return;
         }
 
-        let mesh_guard = self.mesh.read().await;
-        let Some(ref mesh) = *mesh_guard else {
-            return;
+        // Clone the Arc<BeaconMesh> and release the outer lock immediately to avoid
+        // holding it during async I/O (get_reachable_nodes, get_best_path).
+        let mesh = {
+            let guard = self.mesh.read().await;
+            match &*guard {
+                Some(m) => Arc::clone(m),
+                None => return,
+            }
         };
 
         let reachable = mesh.get_reachable_nodes().await;
         if reachable.is_empty() {
-            drop(mesh_guard);
             return;
         }
 
-        // Collect addresses while we hold the lock
         let mut targets: Vec<(String, String)> = Vec::new();
         for node_id in &reachable {
             if let Some(path) = mesh.get_best_path(node_id).await {
@@ -159,7 +194,6 @@ impl MeshHandler {
                 targets.push((node_id.clone(), address));
             }
         }
-        drop(mesh_guard);
 
         if targets.is_empty() {
             return;
@@ -175,15 +209,67 @@ impl MeshHandler {
             "id": null
         });
 
+        let pending = Arc::clone(&self.pending_announces);
         for (node_id, address) in targets {
             let payload = payload.clone();
+            let pending = Arc::clone(&pending);
             tokio::spawn(async move {
                 if let Err(e) = post_jsonrpc_fire_and_forget(&address, &payload).await {
                     warn!(
                         peer = %node_id,
                         error = %e,
-                        "Failed to announce capabilities to peer"
+                        "Failed to announce capabilities to peer (queued for retry)"
                     );
+                    pending.write().await.push(PendingAnnounce {
+                        node_id,
+                        address,
+                        payload,
+                        attempts: 1,
+                    });
+                }
+            });
+        }
+    }
+
+    /// Retry failed capability announcements (called from health cycle).
+    ///
+    /// Drains the pending queue, retries each, and re-queues those that still fail
+    /// (up to [`MAX_ANNOUNCE_RETRIES`] attempts). Peers that exceed the retry limit
+    /// are dropped — they will receive a fresh announcement on the next `ipc.register`.
+    pub async fn retry_pending_announces(&self) {
+        let pending: Vec<PendingAnnounce> = {
+            let mut guard = self.pending_announces.write().await;
+            std::mem::take(&mut *guard)
+        };
+
+        if pending.is_empty() {
+            return;
+        }
+
+        let requeue = Arc::clone(&self.pending_announces);
+        for item in pending {
+            if item.attempts >= MAX_ANNOUNCE_RETRIES {
+                debug!(
+                    peer = %item.node_id,
+                    attempts = item.attempts,
+                    "Dropping failed capability announce (max retries exceeded)"
+                );
+                continue;
+            }
+
+            let requeue = Arc::clone(&requeue);
+            let node_id = item.node_id;
+            let address = item.address;
+            let payload = item.payload;
+            let attempts = item.attempts;
+            tokio::spawn(async move {
+                if post_jsonrpc_fire_and_forget(&address, &payload).await.is_err() {
+                    requeue.write().await.push(PendingAnnounce {
+                        node_id,
+                        address,
+                        payload,
+                        attempts: attempts + 1,
+                    });
                 }
             });
         }
@@ -866,7 +952,7 @@ impl Default for MeshHandler {
 
 /// Fire-and-forget HTTP POST for capability announcements to peers.
 async fn post_jsonrpc_fire_and_forget(url: &str, body: &Value) -> Result<(), String> {
-    use http_body_util::Full;
+    use http_body_util::{BodyExt, Full};
     use hyper::Request;
     use hyper::body::Bytes;
     use hyper_util::client::legacy::Client;
@@ -885,10 +971,18 @@ async fn post_jsonrpc_fire_and_forget(url: &str, body: &Value) -> Result<(), Str
     let client = Client::builder(TokioExecutor::new()).build_http::<Full<Bytes>>();
 
     let timeout = Duration::from_secs(5);
-    tokio::time::timeout(timeout, client.request(request))
+    let response = tokio::time::timeout(timeout, client.request(request))
         .await
         .map_err(|_| format!("Timeout posting to {url}"))?
         .map_err(|e| format!("HTTP error to {url}: {e}"))?;
+
+    let status = response.status();
+    // Drain body to free the connection
+    let _ = response.into_body().collect().await;
+
+    if !status.is_success() {
+        return Err(format!("Remote peer {url} returned HTTP {status}"));
+    }
 
     Ok(())
 }

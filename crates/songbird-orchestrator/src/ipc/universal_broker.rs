@@ -357,7 +357,9 @@ pub async fn start_broker_with_discovery(
         }
     });
 
-    let _ = ready_rx.await;
+    ready_rx
+        .await
+        .map_err(|_| anyhow::anyhow!("Universal IPC Broker failed to bind (task dropped)"))?;
 
     info!("✅ Universal IPC Broker started in background");
     info!("   Other primals can now connect to /primal/songbird");
@@ -396,7 +398,7 @@ pub async fn start_broker_with_shared_handler(
         }
     });
 
-    let _ = ready_rx.await;
+    ready_rx.await.map_err(|_| anyhow::anyhow!("Universal IPC Broker (shared) failed to bind"))?;
 
     info!("✅ Universal IPC Broker started (shared state with HTTP)");
 

@@ -1,6 +1,6 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 13,960+ tests, 31 crates, 58+ JSON-RPC methods, BTSP P3 FULL, 5-tier NAT traversal, cross-gate capability.call (HTTP POST), capability propagation (push model), HTTP/UDS unified state, BTSP relay hardened (Phase 3: structural+timestamp), virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
+description = "Sovereign networking primal — 13,960+ tests, 31 crates, 58+ JSON-RPC methods, BTSP P3.5 scaffold (Ed25519 verifier trait), 5-tier NAT traversal, cross-gate capability.call (HTTP POST), capability propagation (push model + retry queue), HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
 date = 2026-06-03
 
 [taxonomies]

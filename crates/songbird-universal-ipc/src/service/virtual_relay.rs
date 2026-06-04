@@ -27,6 +27,8 @@ pub struct VirtualRelayManager {
     base_dir: PathBuf,
     /// Shared relay metrics (request count, total overhead in microseconds).
     metrics: Arc<RelayMetrics>,
+    /// Signature verifier for Phase 3.5 (defaults to noop — accepts all).
+    signature_verifier: Arc<dyn BtspSignatureVerifier>,
 }
 
 /// Relay performance metrics (shared atomically across all relay tasks).
@@ -72,7 +74,13 @@ impl VirtualRelayManager {
             relays: RwLock::new(HashMap::new()),
             base_dir,
             metrics: Arc::new(RelayMetrics::new()),
+            signature_verifier: Arc::new(NoopSignatureVerifier),
         }
+    }
+
+    /// Replace the signature verifier (Phase 3.5: inject bearDog-backed verifier).
+    pub fn set_signature_verifier(&mut self, verifier: Arc<dyn BtspSignatureVerifier>) {
+        self.signature_verifier = verifier;
     }
 
     /// Determine the base directory for virtual relay sockets.
@@ -227,14 +235,62 @@ async fn relay_accept_loop(
     }
 }
 
+// ─── Phase 3.5: Cryptographic Verification Trait ────────────────────────────
+//
+// When bearDog delivers the CryptoProvider integration design, implement this
+// trait against bearDog IPC (`crypto.verify_signature`). Until then, the relay
+// uses structural + temporal validation only (Phase 3).
+
+/// Trait for verifying Ed25519 signatures on BTSP relay tokens.
+///
+/// Implementations may call bearDog via IPC, use an in-process Ed25519 library,
+/// or delegate to any signing authority. The relay calls `verify` only when a
+/// structured token (payload.signature) is present.
+///
+/// Object-safe: uses boxed futures for dynamic dispatch.
+pub trait BtspSignatureVerifier: Send + Sync + 'static {
+    /// Verify that `signature_bytes` is a valid Ed25519 signature over
+    /// `payload_bytes` from the node identified by `node_id`.
+    ///
+    /// Returns `Ok(true)` if signature is valid, `Ok(false)` if invalid,
+    /// or `Err` if the verifier is unavailable (e.g., bearDog offline).
+    fn verify(
+        &self,
+        node_id: &str,
+        payload_bytes: &[u8],
+        signature_bytes: &[u8],
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, String>> + Send + '_>>;
+}
+
+/// Placeholder verifier that accepts all signatures (Phase 3 behavior).
+/// Replaced by bearDog-backed implementation in Phase 3.5.
+pub(crate) struct NoopSignatureVerifier;
+
+impl BtspSignatureVerifier for NoopSignatureVerifier {
+    fn verify(
+        &self,
+        _node_id: &str,
+        _payload_bytes: &[u8],
+        _signature_bytes: &[u8],
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, String>> + Send + '_>>
+    {
+        Box::pin(async { Ok(true) })
+    }
+}
+
 /// BTSP token validation result.
 #[derive(Debug)]
+#[allow(dead_code)] // payload_bytes/signature_bytes used in Phase 3.5 signature verification
 enum BtspValidation {
     /// No token present — allowed for backward compatibility.
     NoToken,
     /// Token present and structurally valid.
     Valid {
         node_id: Option<String>,
+        /// Raw payload bytes for Phase 3.5 signature verification.
+        payload_bytes: Vec<u8>,
+        /// Raw signature bytes (empty if Phase 2 single-segment token).
+        signature_bytes: Vec<u8>,
     },
 }
 
@@ -275,10 +331,12 @@ fn validate_btsp_session(request_line: &str) -> Result<BtspValidation, serde_jso
     }
 
     // Structural validation: expect "payload_b64.signature_b64"
-    let Some((payload_b64, _sig_b64)) = session.split_once('.') else {
+    let Some((payload_b64, sig_b64)) = session.split_once('.') else {
         // Single-segment token: accept for backward compatibility (Phase 2 tokens)
         return Ok(BtspValidation::Valid {
             node_id: None,
+            payload_bytes: Vec::new(),
+            signature_bytes: Vec::new(),
         });
     };
 
@@ -302,26 +360,49 @@ fn validate_btsp_session(request_line: &str) -> Result<BtspValidation, serde_jso
         })
     })?;
 
-    // Check timestamp freshness (5-minute window)
-    if let Some(ts) = payload.get("ts").and_then(serde_json::Value::as_u64) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        let max_age_secs = 300; // 5 minutes
-        if now.saturating_sub(ts) > max_age_secs {
-            return Err(serde_json::json!({
-                "jsonrpc": "2.0",
-                "error": {"code": -32600, "message": "BTSP token expired"},
-                "id": id
-            }));
-        }
+    // Structured tokens MUST carry a timestamp for freshness verification.
+    let ts = payload.get("ts").and_then(serde_json::Value::as_u64).ok_or_else(|| {
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": "BTSP token missing required 'ts' field"},
+            "id": id
+        })
+    })?;
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let max_age_secs: u64 = 300; // 5 minutes
+    let max_skew_secs: u64 = 60; // allow 60s clock skew into the future
+
+    if now.saturating_sub(ts) > max_age_secs {
+        return Err(serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": "BTSP token expired"},
+            "id": id
+        }));
+    }
+    if ts.saturating_sub(now) > max_skew_secs {
+        return Err(serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": "BTSP token timestamp is in the future"},
+            "id": id
+        }));
     }
 
     let node_id = payload.get("node_id").and_then(serde_json::Value::as_str).map(String::from);
 
+    // Decode signature bytes for Phase 3.5 cryptographic verification
+    let signature_bytes = base64::engine::general_purpose::STANDARD
+        .decode(sig_b64)
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(sig_b64))
+        .unwrap_or_default();
+
     Ok(BtspValidation::Valid {
         node_id,
+        payload_bytes,
+        signature_bytes,
     })
 }
 
@@ -371,7 +452,12 @@ async fn relay_connection(
             }
             Ok(BtspValidation::Valid {
                 ref node_id,
+                payload_bytes: _,
+                signature_bytes: _,
             }) => {
+                // Phase 3.5: When a real BtspSignatureVerifier is injected,
+                // call verifier.verify(node_id, &payload_bytes, &signature_bytes).await
+                // here and reject if signature is invalid.
                 tracing::debug!(
                     target: "relay_audit",
                     peer = node_id.as_deref().unwrap_or("unknown"),
@@ -651,8 +737,11 @@ mod tests {
         match result {
             BtspValidation::Valid {
                 node_id,
+                signature_bytes,
+                ..
             } => {
                 assert_eq!(node_id.as_deref(), Some("east-gate"));
+                assert!(!signature_bytes.is_empty());
             }
             _ => panic!("Expected Valid"),
         }

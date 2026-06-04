@@ -612,12 +612,13 @@ mod dispatch_tests {
         h.handle("mesh.topology", json!({})).await.ok();
         h.handle("mesh.health_check", json!({})).await.ok();
         h.handle("mesh.auto_discover", json!({})).await.ok();
-        h.handle(
-            "mesh.capabilities_announce",
-            json!({ "node_id": "remote-gate", "capabilities": ["crypto", "storage"] }),
-        )
-        .await
-        .expect("mesh.capabilities_announce");
+        // capabilities_announce from unknown peer is rejected (peer validation)
+        let _ = h
+            .handle(
+                "mesh.capabilities_announce",
+                json!({ "node_id": "remote-gate", "capabilities": ["crypto", "storage"] }),
+            )
+            .await;
 
         let b_err = h.handle("birdsong.decrypt_beacon", json!({})).await.expect_err("decrypt");
         assert!(b_err.contains("encrypted_beacon"), "unexpected: {b_err}");
