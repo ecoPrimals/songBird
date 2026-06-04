@@ -25,6 +25,29 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+/// Discover the bearDog signing socket for Phase 3.5 relay signature verification.
+///
+/// Checks `CAPABILITY_SECURITY_ENDPOINT` env var first, then falls back to
+/// XDG runtime dir standard path. Returns None if no socket is found.
+fn discover_crypto_signing_socket() -> Option<String> {
+    if let Ok(endpoint) = songbird_process_env::var("CAPABILITY_SECURITY_ENDPOINT")
+        && !endpoint.is_empty()
+    {
+        return Some(endpoint);
+    }
+
+    // Standard XDG path for bearDog signing socket
+    if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+        let path =
+            std::path::PathBuf::from(xdg).join("biomeos").join("beardog").join("signing.sock");
+        if path.exists() {
+            return path.to_str().map(String::from);
+        }
+    }
+
+    None
+}
+
 impl IpcServiceHandler {
     /// Build all production-ready handler instances.
     ///
@@ -127,8 +150,9 @@ impl IpcServiceHandler {
             igd_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
             federation_state,
-            virtual_relay: Arc::new(VirtualRelayManager::new(
+            virtual_relay: Arc::new(VirtualRelayManager::with_crypto_verifier(
                 VirtualRelayManager::default_base_dir(),
+                discover_crypto_signing_socket(),
             )),
         }
     }

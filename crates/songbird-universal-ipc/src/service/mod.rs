@@ -50,6 +50,7 @@ mod dispatch;
 mod http;
 mod ipc_registry;
 mod meta;
+pub mod relay_security;
 mod remote_dispatch;
 mod util;
 pub mod virtual_relay;

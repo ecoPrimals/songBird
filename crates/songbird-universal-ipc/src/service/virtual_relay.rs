@@ -78,6 +78,32 @@ impl VirtualRelayManager {
         }
     }
 
+    /// Create with Phase 3.5 signature verification via bearDog crypto socket.
+    ///
+    /// If `crypto_socket` is provided, relay requests with Ed25519 signed BTSP
+    /// tokens will be cryptographically verified. If unreachable at request time,
+    /// degrades to trust-on-accept.
+    #[must_use]
+    pub fn with_crypto_verifier(base_dir: PathBuf, crypto_socket: Option<String>) -> Self {
+        let signature_verifier: Arc<dyn BtspSignatureVerifier> = if let Some(path) = crypto_socket {
+            tracing::info!(
+                socket = %path,
+                "Phase 3.5: Relay signature verification enabled via CryptoProvider"
+            );
+            Arc::new(super::relay_security::CryptoProviderVerifier::new(path))
+        } else {
+            tracing::info!("Phase 3.5: No crypto socket — relay using noop verifier");
+            Arc::new(NoopSignatureVerifier)
+        };
+
+        Self {
+            relays: RwLock::new(HashMap::new()),
+            base_dir,
+            metrics: Arc::new(RelayMetrics::new()),
+            signature_verifier,
+        }
+    }
+
     /// Replace the signature verifier (Phase 3.5: inject bearDog-backed verifier).
     pub fn set_signature_verifier(&mut self, verifier: Arc<dyn BtspSignatureVerifier>) {
         self.signature_verifier = verifier;
@@ -136,6 +162,7 @@ impl VirtualRelayManager {
             listener,
             native_target.clone(),
             Arc::clone(&self.metrics),
+            Arc::clone(&self.signature_verifier),
         ));
 
         let mut relays = self.relays.write().await;
@@ -215,14 +242,16 @@ async fn relay_accept_loop(
     listener: UnixListener,
     native_target: String,
     metrics: Arc<RelayMetrics>,
+    verifier: Arc<dyn BtspSignatureVerifier>,
 ) {
     loop {
         match listener.accept().await {
             Ok((stream, _addr)) => {
                 let target = native_target.clone();
                 let m = Arc::clone(&metrics);
+                let v = Arc::clone(&verifier);
                 tokio::spawn(async move {
-                    if let Err(e) = relay_connection(stream, &target, &m).await {
+                    if let Err(e) = relay_connection(stream, &target, &m, v.as_ref()).await {
                         tracing::debug!(error = %e, "Virtual relay connection ended");
                     }
                 });
@@ -280,8 +309,7 @@ impl BtspSignatureVerifier for NoopSignatureVerifier {
 
 /// BTSP token validation result.
 #[derive(Debug)]
-#[allow(dead_code)] // payload_bytes/signature_bytes used in Phase 3.5 signature verification
-enum BtspValidation {
+pub(crate) enum BtspValidation {
     /// No token present — allowed for backward compatibility.
     NoToken,
     /// Token present and structurally valid.
@@ -416,6 +444,7 @@ async fn relay_connection(
     client_stream: UnixStream,
     native_target: &str,
     metrics: &RelayMetrics,
+    verifier: &dyn BtspSignatureVerifier,
 ) -> anyhow::Result<()> {
     let (client_reader, mut client_writer) = client_stream.into_split();
     let mut client_buf = BufReader::new(client_reader);
@@ -452,18 +481,24 @@ async fn relay_connection(
             }
             Ok(BtspValidation::Valid {
                 ref node_id,
-                payload_bytes: _,
-                signature_bytes: _,
+                ref payload_bytes,
+                ref signature_bytes,
             }) => {
-                // Phase 3.5: When a real BtspSignatureVerifier is injected,
-                // call verifier.verify(node_id, &payload_bytes, &signature_bytes).await
-                // here and reject if signature is invalid.
-                tracing::debug!(
-                    target: "relay_audit",
-                    peer = node_id.as_deref().unwrap_or("unknown"),
-                    native = native_target,
-                    "Relay: authenticated request"
-                );
+                if let Some(rejection) = super::relay_security::verify_relay_signature(
+                    verifier,
+                    node_id.as_deref(),
+                    payload_bytes,
+                    signature_bytes,
+                    trimmed,
+                    native_target,
+                )
+                .await
+                {
+                    let mut reject_bytes = serde_json::to_vec(&rejection)?;
+                    reject_bytes.push(b'\n');
+                    client_writer.write_all(&reject_bytes).await?;
+                    continue;
+                }
             }
             Ok(BtspValidation::NoToken) => {}
         }
@@ -787,5 +822,90 @@ mod tests {
         metrics.requests.store(4, Ordering::Relaxed);
         metrics.overhead_us.store(1000, Ordering::Relaxed);
         assert_eq!(metrics.avg_overhead_us(), 250);
+    }
+
+    #[tokio::test]
+    async fn relay_rejects_tampered_btsp_signature() {
+        use base64::Engine as _;
+
+        let dir = tempfile::tempdir().unwrap();
+        let native_dir = tempfile::tempdir().unwrap();
+
+        let native_path = native_dir.path().join("mock.sock");
+        let native_listener = UnixListener::bind(&native_path).unwrap();
+
+        // Mock native: should NEVER receive a request (relay rejects before forwarding)
+        let mock_handle = tokio::spawn(async move {
+            if let Ok((stream, _)) = native_listener.accept().await {
+                let (reader, mut writer) = stream.into_split();
+                let mut buf = BufReader::new(reader);
+                let mut line = String::new();
+                if buf.read_line(&mut line).await.is_ok() {
+                    let resp = serde_json::json!({"jsonrpc":"2.0","result":{"leaked":true},"id":1});
+                    let mut bytes = serde_json::to_vec(&resp).unwrap();
+                    bytes.push(b'\n');
+                    let _ = writer.write_all(&bytes).await;
+                }
+            }
+        });
+
+        // Create relay with a rejecting verifier
+        struct RejectAllVerifier;
+        impl BtspSignatureVerifier for RejectAllVerifier {
+            fn verify(
+                &self,
+                _: &str,
+                _: &[u8],
+                _: &[u8],
+            ) -> std::pin::Pin<
+                Box<dyn std::future::Future<Output = Result<bool, String>> + Send + '_>,
+            > {
+                Box::pin(async { Ok(false) })
+            }
+        }
+
+        let mut mgr = VirtualRelayManager::new(dir.path().to_path_buf());
+        mgr.set_signature_verifier(Arc::new(RejectAllVerifier));
+        let relay_path =
+            mgr.start_relay("tamper-test", native_path.to_str().unwrap()).await.unwrap();
+
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        let stream = UnixStream::connect(&relay_path).await.unwrap();
+        let (reader, mut writer) = stream.into_split();
+
+        // Build a signed BTSP token (will be rejected by RejectAllVerifier)
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        let payload = serde_json::json!({"node_id": "attacker", "ts": now});
+        let payload_b64 =
+            base64::engine::general_purpose::STANDARD.encode(payload.to_string().as_bytes());
+        let sig_b64 = base64::engine::general_purpose::STANDARD.encode(b"tampered-sig");
+        let token = format!("{payload_b64}.{sig_b64}");
+
+        let request = format!(
+            r#"{{"jsonrpc":"2.0","method":"secrets.steal","params":{{}},"id":99,"_btsp_session":"{token}"}}"#
+        );
+        let mut req_bytes = request.into_bytes();
+        req_bytes.push(b'\n');
+        writer.write_all(&req_bytes).await.unwrap();
+
+        let mut buf = BufReader::new(reader);
+        let mut response_line = String::new();
+        buf.read_line(&mut response_line).await.unwrap();
+
+        let response: serde_json::Value = serde_json::from_str(response_line.trim()).unwrap();
+        assert_eq!(response["error"]["code"], -32603);
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("signature verification failed")
+        );
+        assert_eq!(response["id"], 99);
+        // The native mock should NOT have received the request
+        assert!(response.get("result").is_none());
+
+        mgr.stop_relay("tamper-test").await;
+        mock_handle.abort();
     }
 }

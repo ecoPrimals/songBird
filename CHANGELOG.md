@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.8-wave78] - 2026-06-04 - Phase 3.5: Ed25519 Relay Signature Verification
+
+### Added
+- **Ed25519 signature verification on relay path (Phase 3.5)**: BTSP tokens with signed payloads
+  are now cryptographically verified via bearDog's `crypto.verify.ed25519` UDS JSON-RPC endpoint.
+  Invalid signatures immediately rejected with JSON-RPC error -32603.
+- **`CryptoProviderVerifier`**: Production verifier calling bearDog signing socket. Boxed async
+  trait dispatch (`BtspSignatureVerifier`) for zero-cost noop path when bearDog unavailable.
+- **`relay_security.rs`**: SRP extraction of Phase 3.5 verification logic (258L) — verifier impl,
+  `call_crypto_rpc` low-level UDS client, `verify_relay_signature` orchestration helper.
+- **`discover_crypto_signing_socket()`**: Auto-discovers bearDog via `CAPABILITY_SECURITY_ENDPOINT`
+  env var or XDG runtime path (`$XDG_RUNTIME_DIR/biomeos/beardog/signing.sock`).
+- **Graceful degradation**: If bearDog is offline at verify time, relay logs warning and accepts
+  on trust (prevents hard outage when security primal restarts).
+- **End-to-end tamper rejection test**: Full relay integration test proving that a request with
+  a forged BTSP signature is rejected before reaching the native endpoint.
+- **4 new unit tests** in `relay_security`: invalid sig rejection, empty sig skip, verifier
+  unavailable degradation, socket connection failure handling.
+
+### Changed
+- `VirtualRelayManager::with_crypto_verifier()` constructor wires Phase 3.5 at startup.
+- `relay_accept_loop` and `relay_connection` now thread the verifier through the relay path.
+- `BtspValidation::Valid` fields (`payload_bytes`, `signature_bytes`) promoted from `dead_code`
+  to actively consumed by the verification path.
+
+---
+
 ## [v0.2.8-wave77] - 2026-06-04 - Retry Hardening + Flaky Test Elimination
 
 ### Added
