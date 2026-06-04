@@ -13,14 +13,14 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 13,960+ lib passed, 0 failures, 23 ignored |
+| **Tests** | 13,966+ lib passed, 0 failures, 23 ignored |
 | **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 31 crates compile clean (~43s dev) |
 | **Clippy Pedantic** | 31/31 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, May 27 verified) |
 | **Format** | Clean (`cargo fmt --check` passes; May 27 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | **0** — Wave 74: `multi_tier_coordinator.rs` (799→655L via `cloudflared_tunnel.rs` SRP extraction); largest file now 772L (`mesh_handler/mod.rs`). Wave 209: `state.rs` (877→459L). Wave 206: `bin_interface/server.rs` (878→360L), `turn_server.rs` (898→679L). Wave 200: `method_gate.rs` (944L) → directory module |
+| **Files >800 lines** | **0** — Wave 76: `mesh_handler/mod.rs` (1004→783L via `capability_propagation.rs` SRP extraction); largest file now 791L (`virtual_relay.rs`). Wave 74: `multi_tier_coordinator.rs` (799→655L). Wave 209: `state.rs` (877→459L). Wave 206: `bin_interface/server.rs` (878→360L), `turn_server.rs` (898→679L). Wave 200: `method_gate.rs` (944L) → directory module |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 31 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |
