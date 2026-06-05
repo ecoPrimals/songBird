@@ -319,9 +319,17 @@ fn resolve_node_id() -> String {
 mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr};
+    use std::sync::Mutex;
+
+    static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
+
+    fn env_mutex() -> &'static Mutex<()> {
+        ENV_LOCK.get_or_init(|| Mutex::new(()))
+    }
 
     #[test]
     fn discover_beardog_socket_returns_err_when_no_env() {
+        let _guard = env_mutex().lock().unwrap();
         songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
         songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
         songbird_process_env::remove_var("SECURITY_SOCKET");
@@ -334,25 +342,26 @@ mod tests {
 
     #[test]
     fn discover_beardog_socket_uses_security_provider_socket() {
-        let path = "/tmp/songbird-test-trust-exchange.sock";
-        std::fs::File::create(path).ok();
-        songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", path);
+        let _guard = env_mutex().lock().unwrap();
+        let path = format!("/tmp/songbird-test-trust-exchange-{}.sock", std::process::id());
+        std::fs::File::create(&path).ok();
+        songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", &path);
 
         let result = discover_beardog_socket();
         assert_eq!(result.unwrap(), path);
 
         songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
-        std::fs::remove_file(path).ok();
+        std::fs::remove_file(&path).ok();
     }
 
     #[tokio::test]
     async fn spawn_trust_exchange_empty_peers_returns_immediately() {
-        // Empty peers early-returns without spawning
         spawn_trust_exchange(vec![]);
     }
 
     #[test]
     fn resolve_node_id_falls_back_to_hostname() {
+        let _guard = env_mutex().lock().unwrap();
         songbird_process_env::remove_var("SONGBIRD_NODE_ID");
         songbird_process_env::remove_var("NODE_ID");
         songbird_process_env::remove_var("HOSTNAME");
@@ -363,6 +372,7 @@ mod tests {
 
     #[test]
     fn resolve_node_id_prefers_songbird_node_id() {
+        let _guard = env_mutex().lock().unwrap();
         songbird_process_env::set_var("SONGBIRD_NODE_ID", "test-gate-trust");
         let id = resolve_node_id();
         assert_eq!(id, "test-gate-trust");
@@ -382,7 +392,6 @@ mod tests {
             SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 7700),
         )];
         spawn_trust_exchange(peers);
-        // Give spawned task a moment to start (it will fail gracefully — no bearDog socket)
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        tokio::task::yield_now().await;
     }
 }

@@ -199,7 +199,23 @@ mod tests {
         let mesh_handler = Arc::new(MeshHandler::new());
         spawn_mesh_seed(Arc::clone(&mesh_handler));
 
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        // Poll until mesh is populated (max 2s) instead of sleeping fixed duration
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
+        loop {
+            let guard = mesh_handler.mesh().await;
+            if guard.is_some() {
+                let mesh = guard.as_ref().unwrap();
+                let reachable = mesh.get_reachable_nodes().await;
+                if reachable.len() >= 2 {
+                    break;
+                }
+            }
+            drop(guard);
+            if tokio::time::Instant::now() >= deadline {
+                panic!("mesh not populated within 2s");
+            }
+            tokio::task::yield_now().await;
+        }
 
         let guard = mesh_handler.mesh().await;
         let mesh = guard.as_ref().expect("mesh should be initialized");

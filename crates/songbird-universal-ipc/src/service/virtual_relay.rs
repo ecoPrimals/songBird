@@ -704,9 +704,17 @@ mod tests {
         assert!(mgr.has_relay("mock-primal").await);
         assert_eq!(mgr.list_relays().await.len(), 1);
 
-        // Connect to the virtual relay and send a request
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        let stream = UnixStream::connect(&relay_path).await.unwrap();
+        // Connect to the virtual relay (retry until socket is ready)
+        let stream = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                match UnixStream::connect(&relay_path).await {
+                    Ok(s) => return s,
+                    Err(_) => tokio::task::yield_now().await,
+                }
+            }
+        })
+        .await
+        .expect("relay socket should be connectable within 2s");
         let (reader, mut writer) = stream.into_split();
 
         let request = serde_json::json!({"jsonrpc":"2.0","method":"test.ping","params":{},"id":1});
@@ -869,8 +877,16 @@ mod tests {
         let relay_path =
             mgr.start_relay("tamper-test", native_path.to_str().unwrap()).await.unwrap();
 
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        let stream = UnixStream::connect(&relay_path).await.unwrap();
+        let stream = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                match UnixStream::connect(&relay_path).await {
+                    Ok(s) => return s,
+                    Err(_) => tokio::task::yield_now().await,
+                }
+            }
+        })
+        .await
+        .expect("relay socket should be connectable within 2s");
         let (reader, mut writer) = stream.into_split();
 
         // Build a signed BTSP token (will be rejected by RejectAllVerifier)
